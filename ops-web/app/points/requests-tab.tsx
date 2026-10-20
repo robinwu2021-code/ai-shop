@@ -47,7 +47,7 @@ export function PointsTreasuryTab({ canMake, canCheck }: { canMake: boolean; can
     intent.current = next.intent;
     save.mutate({ ...command, value: { ...command.value, requestId: next.command.requestId } } as Command);
   }
-  const amount = (minor: number) => type ? new Intl.NumberFormat(locale === "ar" ? "ar" : en ? "en" : "zh-CN", { style: "currency", currency: type.currency }).format(minor / 10 ** type.scale) : String(minor);
+  const amount = (minor: number) => type ? new Intl.NumberFormat(en ? "en" : "zh-CN", { style: "currency", currency: type.currency }).format(minor / 10 ** type.scale) : String(minor);
   const withdrawal = action === "WITHDRAW_U" || action === "WITHDRAW_B";
   const card = "space-y-3 rounded-card border border-border p-4";
   const busy = save.isPending;

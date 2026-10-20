@@ -68,7 +68,7 @@ def _h2_type(col: str) -> str:
     **JSON → TEXT**：H2 的 JSON 列经 MyBatis 映射成 String 时读回来是**空串**，
     于是「存下去了、字段全没了」，而代码与 SQL 各自看都正常。
     本库其余 JSON 串（title_i18n / spec_groups / featured / out_of_range）
-    在建表时本来就写的 TEXT，只有 prd_spec_template.options 用了 JSON —— 
+    在建表时本来就写的 TEXT，只有 prd_spec_template.options 用了 JSON ——
     它让平台规格模板（E27）在测试里从来跑不通。
 
     **修在生成器而不是产物**：手改 schema-test.sql 会在下一次重新生成时被冲掉，
@@ -99,10 +99,25 @@ def main():
                     key=lambda p: int(re.match(r"V(\d+)", p.name).group(1))):
         replay(f.read_text(), tables, order, seeds, renames, altered)
 
+    # MySQL scopes index names to a table; H2 scopes named constraints to the schema.
+    # Rename only collisions in the generated fixture, preserving production migrations.
+    constraint_names = {}
+    for cols in tables.values():
+        for col in cols:
+            match = re.match(r"\s*CONSTRAINT\s+(\w+)\b", col, re.I)
+            if match:
+                key = match.group(1).lower()
+                constraint_names[key] = constraint_names.get(key, 0) + 1
     out = [HEADER]
     for name in order:
+        cols = []
+        for col in tables[name]:
+            match = re.match(r"(\s*CONSTRAINT\s+)(\w+)\b", col, re.I)
+            if match and constraint_names[match.group(2).lower()] > 1:
+                col = col[:match.start(2)] + name + "_" + col[match.start(2):]
+            cols.append(_h2_type(col))
         out.append(f"CREATE TABLE IF NOT EXISTS {name}\n(\n"
-                   + ",\n".join(tables[name]) + "\n);\n")
+                   + ",\n".join(cols) + "\n);\n")
     if seeds:
         # 种子里的旧表名回填成改名后的新名（见 alter_table 里 RENAME TO 那段）
         fixed = []
@@ -509,6 +524,16 @@ def _apply_action(table, action, cols):
             raise SystemExit(f"✗ DROP COLUMN {table}.{col}：这一列本来就不存在")
         return
 
+    drop_check = re.fullmatch(r"DROP\s+CHECK\s+(\w+)", action, re.I)
+    if drop_check:
+        name = drop_check.group(1)
+        before = len(cols)
+        cols[:] = [c for c in cols
+                   if not re.match(rf"^\s*CONSTRAINT\s+{name}\s+CHECK\b", c, re.I)]
+        if len(cols) == before:
+            raise SystemExit(f"✗ DROP CHECK {table}.{name}：约束不存在")
+        return
+
     add = re.match(r"ADD COLUMN\s+(?:IF NOT EXISTS\s+)?(.*)", action, re.I | re.S)
     if add:
         # ↑ `IF NOT EXISTS` 要在这里吃掉。不吃的话它会当成**列名**落进建表语句
@@ -555,6 +580,15 @@ def _apply_action(table, action, cols):
         idx = next((i for i, c in enumerate(cols)
                     if re.match(r"^\s*(CONSTRAINT|PRIMARY\s+KEY|UNIQUE)\b", c, re.I)), len(cols))
         cols.insert(idx, f"    CONSTRAINT {name} UNIQUE ({uk_cols.strip()})")
+        return
+
+    # Added financial checks must survive H2 fixture generation as well as CREATE TABLE checks.
+    add_check = re.fullmatch(
+        r"ADD\s+(?:CONSTRAINT\s+(\w+)\s+)?CHECK\s*(\(.*\))", action, re.I | re.S)
+    if add_check:
+        name, expression = add_check.groups()
+        prefix = f"CONSTRAINT {name} " if name else ""
+        cols.append(f"    {prefix}CHECK {expression}")
         return
 
     if re.match(r"ADD\s+(?:INDEX|KEY)\s+(?:IF\s+NOT\s+EXISTS\s+)?\w*\s*\(", action, re.I):

@@ -1,0 +1,185 @@
+-- Additive activity version and participation storage. Legacy activity rows retain their current columns.
+ALTER TABLE pmt_activity ADD COLUMN scene VARCHAR(24) NOT NULL DEFAULT 'ORDER' COMMENT 'ORDER/ENTITLEMENT_GRANT/RECHARGE';
+ALTER TABLE pmt_activity ADD COLUMN current_version_no VARCHAR(64) NULL COMMENT '不可变当前发布版本';
+ALTER TABLE pmt_activity ADD COLUMN draft_snapshot JSON NULL COMMENT '统一模型草稿；空表示旧模型';
+CREATE INDEX ix_activity_scene ON pmt_activity (tenant_no,entity_no,scene,status,id);
+
+CREATE TABLE pmt_activity_version (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
+    tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
+    version_no VARCHAR(64) NOT NULL COMMENT '版本号',
+    activity_no VARCHAR(64) NOT NULL COMMENT '活动号',
+    version_index INT NOT NULL COMMENT '递增版本',
+    schema_version INT NOT NULL COMMENT '规则结构版本',
+    currency VARCHAR(8) NOT NULL COMMENT '预算与充值币种',
+    schedule_type VARCHAR(24) NOT NULL COMMENT 'ONE_OFF/ALWAYS_ON/RECURRING',
+    starts_at DATETIME(3) NOT NULL COMMENT 'UTC开始',
+    ends_at DATETIME(3) NULL COMMENT 'UTC结束',
+    market_zone VARCHAR(64) NOT NULL COMMENT '市场时区',
+    rule_snapshot JSON NOT NULL COMMENT '触发/利益/引用pay模板版本',
+    rule_hash CHAR(64) NOT NULL COMMENT '快照摘要非授权签名',
+    published_by VARCHAR(64) NOT NULL COMMENT '发布人',
+    published_at DATETIME(3) NOT NULL COMMENT '发布时间',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity乐观锁',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity，账务事实禁止删除',
+    created_at DATETIME(3) NOT NULL COMMENT 'UTC创建',
+    updated_at DATETIME(3) NOT NULL COMMENT 'UTC更新',
+    created_by VARCHAR(64) NOT NULL COMMENT '操作者或系统任务',
+    updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_activity_version (tenant_no,version_no),
+    UNIQUE KEY uk_activity_revision (tenant_no,activity_no,version_index)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='不可变活动发布规则，不拥有权益余次';
+
+CREATE TABLE pmt_activity_scope (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
+    tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
+    version_no VARCHAR(64) NOT NULL COMMENT '活动版本',
+    scope_kind VARCHAR(24) NOT NULL COMMENT 'STORE/GOODS/CATEGORY/ALL',
+    ref_no VARCHAR(64) NOT NULL COMMENT '范围对象，ALL固定*',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity乐观锁',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity，账务事实禁止删除',
+    created_at DATETIME(3) NOT NULL COMMENT 'UTC创建',
+    updated_at DATETIME(3) NOT NULL COMMENT 'UTC更新',
+    created_by VARCHAR(64) NOT NULL COMMENT '操作者或系统任务',
+    updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_scope (tenant_no,version_no,scope_kind,ref_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='活动参与范围；权益使用范围在pay快照中';
+
+CREATE TABLE pmt_recharge_tier (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
+    tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
+    tier_no VARCHAR(64) NOT NULL COMMENT '档位号',
+    version_no VARCHAR(64) NOT NULL COMMENT '活动版本',
+    pay_amount_minor BIGINT NOT NULL COMMENT '应实收本金',
+    bonus_amount_minor BIGINT NOT NULL COMMENT '赠金额',
+    redemption_scope JSON NOT NULL COMMENT '余额可用门店及项目快照',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity乐观锁',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity，账务事实禁止删除',
+    created_at DATETIME(3) NOT NULL COMMENT 'UTC创建',
+    updated_at DATETIME(3) NOT NULL COMMENT 'UTC更新',
+    created_by VARCHAR(64) NOT NULL COMMENT '操作者或系统任务',
+    updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_tier (tenant_no,version_no,tier_no),
+    UNIQUE KEY uk_tier_amount (tenant_no,version_no,pay_amount_minor),
+    CHECK (pay_amount_minor>0 AND bonus_amount_minor>=0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='储值活动精确档位规则';
+
+CREATE TABLE pmt_activity_budget (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
+    tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
+    activity_no VARCHAR(64) NOT NULL COMMENT '活动号',
+    currency VARCHAR(8) NOT NULL COMMENT '币种发布后不可换账',
+    quota_limit BIGINT NULL COMMENT 'NULL不限',
+    quota_held BIGINT NOT NULL DEFAULT 0 COMMENT '预留数量',
+    quota_used BIGINT NOT NULL DEFAULT 0 COMMENT '实际参与',
+    budget_limit_minor BIGINT NULL COMMENT '营销预算NULL不限',
+    budget_held_minor BIGINT NOT NULL DEFAULT 0 COMMENT '预留营销额',
+    budget_used_minor BIGINT NOT NULL DEFAULT 0 COMMENT '实际营销额',
+    per_user_limit INT NOT NULL COMMENT '每人跨版本次数',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity乐观锁',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity，账务事实禁止删除',
+    created_at DATETIME(3) NOT NULL COMMENT 'UTC创建',
+    updated_at DATETIME(3) NOT NULL COMMENT 'UTC更新',
+    created_by VARCHAR(64) NOT NULL COMMENT '操作者或系统任务',
+    updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_budget (tenant_no,activity_no),
+    CHECK (quota_held>=0 AND quota_used>=0 AND budget_held_minor>=0 AND budget_used_minor>=0),
+    CHECK (quota_limit IS NULL OR quota_held+quota_used<=quota_limit),
+    CHECK (budget_limit_minor IS NULL OR budget_held_minor+budget_used_minor<=budget_limit_minor),
+    CHECK (per_user_limit>0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='活动跨版本总名额与营销预算';
+
+CREATE TABLE pmt_activity_participant (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
+    tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
+    activity_no VARCHAR(64) NOT NULL COMMENT '活动号',
+    user_no VARCHAR(64) NOT NULL COMMENT '本人用户',
+    held_count INT NOT NULL DEFAULT 0 COMMENT '预留次数',
+    used_count INT NOT NULL DEFAULT 0 COMMENT '成功次数',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity乐观锁',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity，账务事实禁止删除',
+    created_at DATETIME(3) NOT NULL COMMENT 'UTC创建',
+    updated_at DATETIME(3) NOT NULL COMMENT 'UTC更新',
+    created_by VARCHAR(64) NOT NULL COMMENT '操作者或系统任务',
+    updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_participant (tenant_no,activity_no,user_no),
+    CHECK (held_count>=0 AND used_count>=0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='跨版本个人参与计数';
+
+CREATE TABLE pmt_activity_reservation (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
+    tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
+    reservation_no VARCHAR(64) NOT NULL COMMENT '参与预留号',
+    source_key CHAR(64) NOT NULL COMMENT '稳定源业务与利益项摘要',
+    activity_no VARCHAR(64) NOT NULL COMMENT '活动号',
+    version_no VARCHAR(64) NOT NULL COMMENT '规则版本',
+    tier_no VARCHAR(64) NULL COMMENT '储值档位',
+    user_no VARCHAR(64) NOT NULL COMMENT '受益用户',
+    entity_no VARCHAR(64) NOT NULL COMMENT '商家',
+    store_no VARCHAR(64) NOT NULL COMMENT '参与门店',
+    currency VARCHAR(8) NOT NULL COMMENT '币种',
+    quota_units INT NOT NULL COMMENT '名额占用量',
+    budget_minor BIGINT NOT NULL COMMENT '营销预算占用',
+    status VARCHAR(16) NOT NULL COMMENT 'RESERVED/COMMITTED/RELEASED',
+    permit_snapshot JSON NOT NULL COMMENT '不可变权益约定',
+    payload_hash CHAR(64) NOT NULL COMMENT '同键异参检查',
+    deadline DATETIME(3) NOT NULL COMMENT '超时核查而非直接释放',
+    pay_fact_no VARCHAR(64) NULL COMMENT '权威发放或终止事实',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity乐观锁',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity，账务事实禁止删除',
+    created_at DATETIME(3) NOT NULL COMMENT 'UTC创建',
+    updated_at DATETIME(3) NOT NULL COMMENT 'UTC更新',
+    created_by VARCHAR(64) NOT NULL COMMENT '操作者或系统任务',
+    updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_reservation (tenant_no,reservation_no),
+    UNIQUE KEY uk_reserve_source (tenant_no,source_key),
+    KEY ix_reserve_pending (tenant_no,status,deadline),
+    CHECK (quota_units>0 AND budget_minor>=0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='营销参与凭证与预算预留';
+
+CREATE TABLE pmt_effect_projection (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
+    tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
+    source_event_no VARCHAR(64) NOT NULL COMMENT 'pay/core源事件号',
+    activity_no VARCHAR(64) NOT NULL COMMENT '活动号',
+    entity_no VARCHAR(64) NOT NULL COMMENT '商家',
+    effect_kind VARCHAR(32) NOT NULL COMMENT 'ORDER_DISCOUNT/COUPON_ISSUED/RECHARGE/CONSUMED',
+    amount_minor BIGINT NULL COMMENT '金额类事实',
+    currency VARCHAR(8) NULL COMMENT '金额币种',
+    units BIGINT NULL COMMENT '数量类事实',
+    occurred_at DATETIME(3) NOT NULL COMMENT '业务发生UTC',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity乐观锁',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity，账务事实禁止删除',
+    created_at DATETIME(3) NOT NULL COMMENT 'UTC创建',
+    updated_at DATETIME(3) NOT NULL COMMENT 'UTC更新',
+    created_by VARCHAR(64) NOT NULL COMMENT '操作者或系统任务',
+    updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_effect (tenant_no,source_event_no,activity_no,effect_kind),
+    KEY ix_effect_summary (tenant_no,entity_no,effect_kind,occurred_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='非权威可重建营销统计，量纲分开';
+
+CREATE TABLE pmt_command_dedup (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
+    tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
+    operation_kind VARCHAR(64) NOT NULL COMMENT '接口/动作命名空间',
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL COMMENT 'Idempotency-Key',
+    payload_hash CHAR(64) NOT NULL COMMENT '同键异参检测',
+    resource_no VARCHAR(64) NOT NULL COMMENT '原资源或操作号',
+    result_status VARCHAR(24) NOT NULL COMMENT 'PENDING/COMPLETED',
+    response_snapshot JSON NULL COMMENT '稳定业务响应，不含敏感token',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity乐观锁',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity，账务事实禁止删除',
+    created_at DATETIME(3) NOT NULL COMMENT 'UTC创建',
+    updated_at DATETIME(3) NOT NULL COMMENT 'UTC更新',
+    created_by VARCHAR(64) NOT NULL COMMENT '操作者或系统任务',
+    updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_command (tenant_no,operation_kind,request_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='写接口幂等结果，与本域业务变更同事务';

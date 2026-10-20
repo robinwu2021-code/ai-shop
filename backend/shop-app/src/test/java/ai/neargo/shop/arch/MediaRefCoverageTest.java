@@ -16,6 +16,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -53,7 +54,7 @@ class MediaRefCoverageTest {
      * <p>之所以要求写理由而不是只列名字：这份名单是用来豁免检查的，
      * 而没有理由的豁免半年后就没人敢动，也没人记得当初为什么加。
      */
-    private static final Map<String, String> NOT_MEDIA = Map.of(
+    private static final Map<String, String> NOT_MEDIA = new LinkedHashMap<>(Map.of(
             "sys_function.icon", "菜单图标是前端内置图标名（如 shop / user），不是上传的文件",
             "mch_store_audit.kind", "枚举值 BANNER/NOTICE，注释里提到「店招图」只是在解释枚举含义",
             "sys_media_asset.last_ref_desc", "记账表自己的人话描述列，内容是「商品 G0012 · 主图」这种标签",
@@ -66,7 +67,17 @@ class MediaRefCoverageTest {
             "msg_ticket.content", "工单正文，用户打字写的一段话。同上，命中的是列名不是内容",
             "prd_goods_revision.entry_source", "录入方式枚举（MANUAL/QUICK_TEXT/ZIP/IMAGE，16 字符）。"
                     + "命中的是注释里那句「IMAGE 图片识别」—— 那是在解释枚举含义，"
-                    + "不是说这一列装着图片地址");
+                    + "不是说这一列装着图片地址"));
+
+    static {
+        NOT_MEDIA.put("sv_voucher.biz_no","储值凭证关联的业务号，注释中的意图是业务意图，不是图片");
+        NOT_MEDIA.put("ent_use_allocation.operation_no","核销操作编号，关联使用意图，不是图片地址");
+        NOT_MEDIA.put("ent_usage.operation_no","核销操作编号，关联使用意图，不是图片地址");
+        NOT_MEDIA.put("pmt_recharge_intent.intent_no","充值业务意图号，不存上传资产");
+        NOT_MEDIA.put("pmt_benefit_intent.intent_no","活动权益业务意图号，不存上传资产");
+        NOT_MEDIA.put("sv_hold_allocation.operation_no","储值预占操作号，关联核销意图，不是图片");
+        NOT_MEDIA.put("ent_code_token.consumed_operation_no","码令牌已消费的操作编号，不存二维码图片或明码");
+    }
 
     private static final Pattern CREATE_TABLE =
             Pattern.compile("CREATE TABLE(?:\\s+IF NOT EXISTS)?\\s+([a-z_]+)", Pattern.CASE_INSENSITIVE);

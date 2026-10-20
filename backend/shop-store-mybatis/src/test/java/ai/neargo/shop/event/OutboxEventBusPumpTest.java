@@ -13,6 +13,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 「publish 之后会不会真的交给投递泵」——
@@ -69,5 +71,20 @@ class OutboxEventBusPumpTest {
         new OutboxEventBus(mapper, new ObjectMapper(), provider).publish(new Evt("SUB-2"));
 
         verify(mapper, times(1)).insert(any(SysOutbox.class));
+    }
+
+    @Test
+    @DisplayName("publishes each immutable domain event through the outbox")
+    void publishesDomainEvents() {
+        SysOutboxMapper mapper = mock(SysOutboxMapper.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<OutboxPump> provider = mock(ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(null);
+        var bus = new OutboxEventBus(mapper, new ObjectMapper(), provider);
+
+        bus.publish(new Evt("SUB-3"));
+        bus.publish(new Evt("SUB-3"));
+
+        verify(mapper, times(2)).insert(any(SysOutbox.class));
     }
 }

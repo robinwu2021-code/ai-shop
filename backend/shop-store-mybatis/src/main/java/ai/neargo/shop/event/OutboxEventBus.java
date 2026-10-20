@@ -63,6 +63,34 @@ public class OutboxEventBus {
         }
     }
 
+    /** Publish an externally-owned immutable event with its stable source key. */
+    public void publish(String eventNo, DomainEvent event) {
+        if (eventNo == null || eventNo.isBlank() || event == null) throw new IllegalArgumentException("event identity required");
+        if (unified != null && unified.isMaintenance()) throw new IllegalStateException("Outbox maintenance");
+        String payload = toJson(event);
+        SysOutbox row = new SysOutbox();
+        row.setEventNo(eventNo);
+        row.setAggregateType(event.aggregateType());
+        row.setAggregateId(event.aggregateId());
+        row.setEventType(event.eventType());
+        row.setPayload(payload);
+        row.setStatus(PENDING);
+        row.setRetryCount(0);
+        row.setCreatedAt(LocalDateTime.now());
+        int inserted = mapper.insertIfAbsent(row);
+        if (inserted == 1) {
+            pumpAfterCommit(row);
+            return;
+        }
+        SysOutbox existing = mapper.findByEventNo(eventNo);
+        if (existing == null || !java.util.Objects.equals(existing.getAggregateType(), event.aggregateType())
+                || !java.util.Objects.equals(existing.getAggregateId(), event.aggregateId())
+                || !java.util.Objects.equals(existing.getEventType(), event.eventType())
+                || !java.util.Objects.equals(existing.getPayload(), payload)) {
+            throw new IllegalStateException("event number replay has different immutable facts: " + eventNo);
+        }
+    }
+
     public void publish(DomainEvent event) {
         if (unified != null && unified.isMaintenance()) { throw new IllegalStateException("Outbox maintenance"); }
         if (unified != null && unified.enabled("PLATFORM")) {

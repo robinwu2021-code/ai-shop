@@ -3452,6 +3452,32 @@ _无字段_
 | `serviceScopes` | [`ServiceScope`](#servicescope)\[\] | 是 | **这一期开放的经营范围档位**（`SERVICE_SCOPE` 的启用子集，运营在后台配）。 端上要照它渲染选项，**不要把三档写死**。写死的后果不是「多了个选项」： 一期自营模式关掉了 `PLATFORM`，而 B 端照样把「全平台发货」摆在那里， 商家点下去得到的是「当前不支持这个经营范围」—— 一个必被拒的选项， 而他无从知道自己该选什么。2026-08-11 的端到端实测撞到过。 拿到 EDI 切平台模式时运营在后台放开，端上不发版就跟着变 —— 这正是它下发而不是写死的理由。 |
 
 
+### member-code
+
+#### POST `/biz/member-code/resolve`
+
+识别统一会员码　🔒
+
+**入参**
+
+请求体：[`MemberResolveReq`](#memberresolvereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `memberCode` | `string` | 是 | 顾客出示的短期统一会员码。 |
+| `storeNo` | `string` | 是 | 当前办理业务的门店号，必须属于商家会话主体。 |
+
+**出参**（`data`）
+
+类型：[`CustomerReference`](#customerreference)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `customerRef` | `string` | 是 | 绑定原商家、门店和操作人的短期顾客引用。 |
+| `maskedName` | `string` | 是 | 脱敏顾客显示名称。 |
+| `expiresAt` | `string` | 是 | 凭证失效时间，ISO 8601 UTC。 |
+
+
 ### member-reach
 
 #### POST `/biz/member-reach/plan`
@@ -8375,6 +8401,16 @@ _无字段_
 - `USD`
 - `AED`
 
+### CustomerReference
+
+商家扫码得到的短期顾客引用，只在原主体、门店和操作人范围内可用。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `customerRef` | `string` | 是 | 绑定原商家、门店和操作人的短期顾客引用。 |
+| `maskedName` | `string` | 是 | 脱敏顾客显示名称。 |
+| `expiresAt` | `string` | 是 | 凭证失效时间，ISO 8601 UTC。 |
+
 ### DailyFlow
 
 每日流水的一天（TDD-供应商结算与双轨资金 §3.3）。 ⚠️ **与  {@link  IncomeSummary }  是两个维度**：那四个数按状态分（钱在哪一档）， 这里按天分（哪天挣的）。同一批结算单，两种切法 —— 所以两处的合计必须相等，不等就是有一侧的口径动过。
@@ -9150,6 +9186,15 @@ _无字段_
 | `bothTagged` | `number` | 是 | 两个标签都有的人。合并后只保留一条 |
 | `referencedActivities` | `number` | 是 | 引用了这个标签的活动数。**合并前要看** —— 合并不可逆，而活动的受众条件会跟着变 |
 | `applied` | `boolean` | 是 | false = 这只是试算，没有落库 |
+
+### MemberResolveReq
+
+身份/主体由会话解析，端上只提交扫描凭证和门店。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `memberCode` | `string` | 是 | 顾客出示的短期统一会员码。 |
+| `storeNo` | `string` | 是 | 当前办理业务的门店号，必须属于商家会话主体。 |
 
 ### MemberSegment
 

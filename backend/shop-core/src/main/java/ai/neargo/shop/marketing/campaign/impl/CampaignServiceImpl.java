@@ -1,5 +1,8 @@
 package ai.neargo.shop.marketing.campaign.impl;
 
+import ai.neargo.shop.spi.entitlement.LegacyCouponWriteFencePort;
+import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
+
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -38,14 +41,16 @@ public class CampaignServiceImpl implements CampaignService {
     private static final String COUPON_PREFIX = "CU@";
 
     private final CampaignMapper campaignMapper;
+    private final LegacyCouponWriteFencePort sourceFence;
     private final CouponMapper couponMapper;
     /** 限时特价的多规格校验要知道商品有几个 SKU。marketing → product 走 Port */
     private final ai.neargo.shop.spi.product.GoodsQueryPort goodsPort;
     private final ObjectMapper json;
 
     public CampaignServiceImpl(CampaignMapper campaignMapper, CouponMapper couponMapper,
-                               ai.neargo.shop.spi.product.GoodsQueryPort goodsPort, ObjectMapper json) {
+                               ai.neargo.shop.spi.product.GoodsQueryPort goodsPort, ObjectMapper json, LegacyCouponWriteFencePort sourceFence) {
         this.campaignMapper = campaignMapper;
+        this.sourceFence = sourceFence;
         this.couponMapper = couponMapper;
         this.goodsPort = goodsPort;
         this.json = json;
@@ -198,6 +203,8 @@ public class CampaignServiceImpl implements CampaignService {
         DataScopeContext.executeWithoutScope(() -> {
             MktCoupon exist = couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
                     .eq(MktCoupon::getCouponNo, couponNo));
+            if (exist != null) sourceFence.requireWritable(exist.getTenantNo(), SourceSystem.MKT_LEGACY,
+                    exist.getCouponNo(), false);
             MktCoupon coupon = exist == null ? new MktCoupon() : exist;
             coupon.setCouponNo(couponNo);
             coupon.setTitle(c.getName());

@@ -50,6 +50,7 @@ class WxNotifyFlowTest {
     private WebApplicationContext context;
     @Autowired
     private ObjectMapper json;
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate refundSource;
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
     @Autowired
@@ -243,6 +244,10 @@ class WxNotifyFlowTest {
         // 即使买家授权过退款模板，也不该发 —— notify_scene_channel 里 AFTER_SALE_REFUNDED/WXSUB 已关
         subscribe(token, TPL_REFUNDED, true);
 
+        // The shared refund event now also has financial source consumers; provide actual Core source rows.
+        refundSource.update("INSERT INTO ord_order(order_no,user_no,status,currency,goods_amount,discount_amount,pay_amount,paid_at,tenant_no,created_at,updated_at) VALUES('O-WXN-REFUND',?,'PAID','CNY',1250,0,1250,?,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",userNo,System.currentTimeMillis());
+        refundSource.update("INSERT INTO ord_sub_order(sub_order_no,order_no,user_no,entity_no,status,goods_amount,discount_amount,pay_amount,refunded_minor,refund_progress,tenant_no,created_at,updated_at) VALUES('SO-WXN-1','O-WXN-REFUND',?,'M0001','REFUNDED',1250,0,1250,1250,'FULL','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",userNo);
+        refundSource.update("INSERT INTO ord_after_sale(after_sale_no,order_no,sub_order_no,user_no,entity_no,type,status,reason,refund_minor,refunded_at,tenant_no,created_at,updated_at) VALUES('AS-WXN-1','O-WXN-REFUND','SO-WXN-1',?,'M0001','REFUND_ONLY','REFUNDED','notification fixture',1250,?,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",userNo,System.currentTimeMillis());
         eventBus.publish(new OrderEvents.AfterSaleRefunded("AS-WXN-1", "SO-WXN-1", userNo, 1250L));
         dispatcher.dispatchPending();
 

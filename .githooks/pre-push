@@ -128,6 +128,9 @@ fi
 # **b/c 端此前只有一个方向**，缺的偏偏是更难发现的那个。
 # 立闸当天扫出 33 条，其中 b 端 5 条里两条是功能洞（报价不能改、结算单没详情）。
 # 基线：known-app-backend-orphan.txt，两向都有闸（新增会红，修好没删也会红）。
+if ! gate_run python3 scripts/tests/test-backend-ui-delivery.py; then
+  exit 1
+fi
 if ! gate_run python3 scripts/check-app-backend-orphan.py --check; then
   exit 1
 fi
@@ -156,6 +159,9 @@ if ! gate_run node scripts/check-app-orphan.mjs --check; then
   exit 1
 fi
 
+if ! gate_run node scripts/tests/backend-ui-delivery.test.mjs; then
+  exit 1
+fi
 if ! gate_run node scripts/check-ops-orphan.mjs --check; then
   exit 1
 fi

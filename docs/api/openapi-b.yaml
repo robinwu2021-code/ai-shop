@@ -3934,6 +3934,38 @@ components:
         - "silent"
         - "source"
       additionalProperties: false
+    MemberCodeView:
+      type: "object"
+      properties:
+        memberCode:
+          type: "string"
+          description: "短期会员身份凭证，仅用于识别本人，不代表消费授权。"
+        expiresAt:
+          type: "string"
+          description: "凭证失效时间，ISO 8601 UTC。"
+      required:
+        - "memberCode"
+        - "expiresAt"
+      additionalProperties: false
+      description: "统一会员身份凭证，ISO UTC截止时间；与登录令牌不同，不代表扣款同意。"
+    CustomerReference:
+      type: "object"
+      properties:
+        customerRef:
+          type: "string"
+          description: "绑定原商家、门店和操作人的短期顾客引用。"
+        maskedName:
+          type: "string"
+          description: "脱敏顾客显示名称。"
+        expiresAt:
+          type: "string"
+          description: "凭证失效时间，ISO 8601 UTC。"
+      required:
+        - "customerRef"
+        - "maskedName"
+        - "expiresAt"
+      additionalProperties: false
+      description: "商家扫码得到的短期顾客引用，只在原主体、门店和操作人范围内可用。"
     StorePointTypeStatus:
       type: "string"
       enum:
@@ -19309,6 +19341,34 @@ paths:
                     type: "string"
                   data:
                     "$ref": "#/components/schemas/MemberStats"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/member-code/resolve":
+    post:
+      operationId: "mResolveMemberCode"
+      summary: "识别统一会员码"
+      tags:
+        - "member-code"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/CustomerReference"
                 required:
                   - "code"
                   - "msg"

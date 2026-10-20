@@ -69,6 +69,38 @@ const EXEMPT: Record<string, string> = {
   pts_receivable: "门店应收，运营先验证门店；清偿不得按当前请求线程的数据域截断原责任。",
   pts_redeem_position: "用户及接收门店原使用快照，运营查询先校验对应边界，恢复按原持仓。",
   pts_store_statement: "原门店及路线结算持仓，运营先校验门店，账务恢复不能隐藏原责任。",
+  // 独立Pay库不能依赖Core请求线程的数据域拦截器；这些API以可信EntitlementContext、
+  // userNo/entityNo/storeNo显式隔离，运营使用OperatorEntityScope；原生Writer与内部HTTP测试覆盖拒绝。
+  ent_grant: "Pay领域显式tenant/主体/本人或OperatorEntityScope过滤；不依赖Core请求线程数据域，远程场景同样校验。",
+  ent_instance: "Pay领域显式tenant/主体/本人或OperatorEntityScope过滤；不依赖Core请求线程数据域，远程场景同样校验。",
+  ent_issue_batch: "Pay领域显式tenant/主体/本人或OperatorEntityScope过滤；不依赖Core请求线程数据域，远程场景同样校验。",
+  ent_issue_recipient: "Pay领域显式tenant/主体/本人或OperatorEntityScope过滤；不依赖Core请求线程数据域，远程场景同样校验。",
+  ent_sale_reservation: "Pay领域显式tenant/主体/本人或OperatorEntityScope过滤；不依赖Core请求线程数据域，远程场景同样校验。",
+  ent_template: "Pay领域显式tenant/主体/本人或OperatorEntityScope过滤；不依赖Core请求线程数据域，远程场景同样校验。",
+  ent_usage: "Pay领域显式tenant/主体/本人或OperatorEntityScope过滤；不依赖Core请求线程数据域，远程场景同样校验。",
+  ent_use_intent: "Pay领域显式tenant/主体/本人或OperatorEntityScope过滤；不依赖Core请求线程数据域，远程场景同样校验。",
+  ent_use_proposal: "Pay领域显式tenant/主体/本人或OperatorEntityScope过滤；不依赖Core请求线程数据域，远程场景同样校验。",
+  pay_ent_exception: "Pay领域显式tenant/主体/本人或OperatorEntityScope过滤；不依赖Core请求线程数据域，远程场景同样校验。",
+  pay_ent_recon_diff: "Pay领域显式tenant/主体/本人或OperatorEntityScope过滤；不依赖Core请求线程数据域，远程场景同样校验。",
+  pay_ent_recon_run: "Pay领域显式tenant/主体/本人或OperatorEntityScope过滤；不依赖Core请求线程数据域，远程场景同样校验。",
+  pay_ent_source_fence: "Pay领域显式tenant/主体/本人或OperatorEntityScope过滤；不依赖Core请求线程数据域，远程场景同样校验。",
+  sv_account: "Pay领域显式tenant/主体/本人或OperatorEntityScope过滤；不依赖Core请求线程数据域，远程场景同样校验。",
+  sv_recharge: "Pay领域显式tenant/主体/本人或OperatorEntityScope过滤；不依赖Core请求线程数据域，远程场景同样校验。",
+  sv_user_store_index: "Pay领域显式tenant/主体/本人或OperatorEntityScope过滤；不依赖Core请求线程数据域，远程场景同样校验。",
+  // Core协调记录不是通用运营列表：按可信订单/活动源、本人授权及实际主体读取，
+  // 远程恢复与Outbox不携带Web数据域；自动追加SELF过滤会破坏商家代办和原号恢复。
+  ord_card_sale_snapshot: "Core协调/投影记录，先校验可信订单或活动主体/本人，再按tenant与原业务号读取；无通用跨主体列表。",
+  ord_ent_authorization: "Core协调/投影记录，先校验可信订单或活动主体/本人，再按tenant与原业务号读取；无通用跨主体列表。",
+  ord_ent_service_order: "Core协调/投影记录，先校验可信订单或活动主体/本人，再按tenant与原业务号读取；无通用跨主体列表。",
+  ord_ent_source_decision: "Core协调/投影记录，先校验可信订单或活动主体/本人，再按tenant与原业务号读取；无通用跨主体列表。",
+  pmt_activity_audience: "Core协调/投影记录，先校验可信订单或活动主体/本人，再按tenant与原业务号读取；无通用跨主体列表。",
+  pmt_activity_goods: "Core协调/投影记录，先校验可信订单或活动主体/本人，再按tenant与原业务号读取；无通用跨主体列表。",
+  pmt_activity_participant: "Core协调/投影记录，先校验可信订单或活动主体/本人，再按tenant与原业务号读取；无通用跨主体列表。",
+  pmt_activity_reservation: "Core协调/投影记录，先校验可信订单或活动主体/本人，再按tenant与原业务号读取；无通用跨主体列表。",
+  pmt_benefit_intent: "Core协调/投影记录，先校验可信订单或活动主体/本人，再按tenant与原业务号读取；无通用跨主体列表。",
+  pmt_effect_projection: "Core协调/投影记录，先校验可信订单或活动主体/本人，再按tenant与原业务号读取；无通用跨主体列表。",
+  pmt_recharge_intent: "Core协调/投影记录，先校验可信订单或活动主体/本人，再按tenant与原业务号读取；无通用跨主体列表。",
+
   /*
    * ── 2026-08-31：入驻申请单 —— **登记它反而会造出一片空白** ──
    *

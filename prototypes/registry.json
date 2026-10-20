@@ -2569,6 +2569,193 @@
      "route": "pages/order/index"
     }
    ]
+  },
+  {
+   "slug": "marketing-assets-unified",
+   "file": "marketing-assets-unified.html",
+   "title": "活动卡券储值统一入口：三端功能矩阵与原型",
+   "kind": "pages",
+   "clients": [
+    "b-app",
+    "c-app",
+    "ops-web"
+   ],
+   "status": "在建",
+   "date": "2026-10-18",
+   "summary": "29屏，先定义24项功能矩阵。统一商家活动中心，购物与储值模板、卡券发放核销、线下储值办理、C端权益与门店核销记录、运营治理和资金/通知异常。功能复用与拟新增边界明确。",
+   "docs": [
+    {
+     "label": "功能清单矩阵",
+     "path": "docs/requirements/活动卡券储值-统一入口功能矩阵.md"
+    },
+    {
+     "label": "储值活动统一模型扩展",
+     "path": "docs/technical/TDD-储值活动-统一活动模型扩展.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "活动中心",
+     "client": "b-app",
+     "route": "pages/marketing/index"
+    },
+    {
+     "id": "s02",
+     "title": "全部活动",
+     "client": "b-app",
+     "route": "pages/activities/index"
+    },
+    {
+     "id": "s03",
+     "title": "选择活动玩法",
+     "client": "b-app"
+    },
+    {
+     "id": "s04",
+     "title": "填写活动规则",
+     "client": "b-app",
+     "route": "pages/activity-edit/index"
+    },
+    {
+     "id": "s05",
+     "title": "确认活动发布",
+     "client": "b-app"
+    },
+    {
+     "id": "s06",
+     "title": "活动详情",
+     "client": "b-app"
+    },
+    {
+     "id": "s07",
+     "title": "卡券管理",
+     "client": "b-app",
+     "route": "pages/coupons/index"
+    },
+    {
+     "id": "s08",
+     "title": "创建券模板",
+     "client": "b-app",
+     "route": "pages/coupon-edit/index"
+    },
+    {
+     "id": "s09",
+     "title": "选择适用人群",
+     "client": "b-app"
+    },
+    {
+     "id": "s10",
+     "title": "发放结果",
+     "client": "b-app",
+     "route": "pages/coupon-issues/index"
+    },
+    {
+     "id": "s11",
+     "title": "券核销预览",
+     "client": "b-app"
+    },
+    {
+     "id": "s12",
+     "title": "办理储值",
+     "client": "b-app",
+     "route": "pages/stored-value-recharge/index"
+    },
+    {
+     "id": "s13",
+     "title": "服务开单",
+     "client": "b-app",
+     "route": "pages/stored-value-service-create/index"
+    },
+    {
+     "id": "s14",
+     "title": "经营效果",
+     "client": "b-app"
+    },
+    {
+     "id": "s15",
+     "title": "团与集单待办",
+     "client": "b-app"
+    },
+    {
+     "id": "s16",
+     "title": "活动已暂停",
+     "client": "b-app"
+    },
+    {
+     "id": "s17",
+     "title": "办理与核销结果",
+     "client": "b-app"
+    },
+    {
+     "id": "s18",
+     "title": "我的",
+     "client": "c-app",
+     "route": "pages/me/index"
+    },
+    {
+     "id": "s19",
+     "title": "我的卡券",
+     "client": "c-app",
+     "route": "pages/coupons/index"
+    },
+    {
+     "id": "s20",
+     "title": "卡券详情",
+     "client": "c-app",
+     "route": "pages/coupon/index"
+    },
+    {
+     "id": "s21",
+     "title": "我的储值门店",
+     "client": "c-app",
+     "route": "pages/stored-value-stores/index"
+    },
+    {
+     "id": "s22",
+     "title": "核销记录",
+     "client": "c-app",
+     "route": "pages/stored-value-ledger/index"
+    },
+    {
+     "id": "s23",
+     "title": "核销详情",
+     "client": "c-app",
+     "route": "pages/stored-value-detail/index"
+    },
+    {
+     "id": "s24",
+     "title": "门店主页",
+     "client": "c-app",
+     "route": "pages/store/index"
+    },
+    {
+     "id": "s25",
+     "title": "统一会员码",
+     "client": "c-app"
+    },
+    {
+     "id": "s26",
+     "title": "统一活动中心",
+     "client": "ops-web",
+     "route": "/marketing"
+    },
+    {
+     "id": "s27",
+     "title": "活动治理与暂停",
+     "client": "ops-web"
+    },
+    {
+     "id": "s28",
+     "title": "支付异常处理",
+     "client": "ops-web"
+    },
+    {
+     "id": "s29",
+     "title": "通知记录",
+     "client": "ops-web"
+    }
+   ]
   }
  ],
  "index": "https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9"

@@ -38,6 +38,7 @@ export const marketingMock: Pick<MerchantApi,
   | "mMembers"
   | "mMemberStats"
   | "mMemberDetail"
+  | "mResolveMemberCode"
   | "mEnrollMember"
   | "mPatchMember"
   | "mTagMembers"
@@ -79,6 +80,9 @@ export const marketingMock: Pick<MerchantApi,
   | "mDecidePeriod"
   | "mPeriodPurchaseLines"
 > = {
+  async mResolveMemberCode() {
+    throw new Error("统一会员凭证仅支持真实后端，演示模式不签发身份凭证");
+  },
   // ---------------------------------------------------------------- 营销
   async mCampaignList() {
     const merchantNo = db.merchant.merchantNo;

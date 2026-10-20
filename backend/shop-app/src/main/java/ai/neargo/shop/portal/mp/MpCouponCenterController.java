@@ -1,6 +1,9 @@
 package ai.neargo.shop.portal.mp;
 
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.paybridge.CouponBestAppService;
+import ai.neargo.shop.paybridge.LegacyCouponWalletProjectionService;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.marketing.coupon.CouponService;
 import ai.neargo.shop.marketing.coupon.dto.CouponVO;
 import ai.neargo.shop.marketing.coupon.dto.UserCouponVO;
@@ -37,6 +40,8 @@ import java.util.Map;
 @RestController
 public class MpCouponCenterController {
 
+    @Autowired private LegacyCouponWalletProjectionService wallet;
+    @Autowired private CouponBestAppService best;
     private final CouponService legacy;
     private final ai.neargo.shop.promotion.service.CouponService promo;
     private final GoodsQueryPort goodsPort;
@@ -78,7 +83,7 @@ public class MpCouponCenterController {
         for (HeldCoupon h : promo.held(SecurityUtils.currentUserNo())) {
             out.add(toVO(h));
         }
-        return out;
+        return wallet.checkoutWallet(SecurityUtils.currentUserNo(),out);
     }
 
     /**
@@ -91,49 +96,7 @@ public class MpCouponCenterController {
     public CouponService.BestResult best(@RequestBody BestReq req) {
         List<CouponService.Item> items = req.items() == null ? List.of() : req.items().stream()
                 .map(i -> new CouponService.Item(i.goodsNo(), i.skuNo(), i.qty())).toList();
-        CouponService.BestResult old = legacy.best(items);
-        if (items.isEmpty()) {
-            return old;
-        }
-        Map<String, Long> byMerchant = new HashMap<>();
-        var snaps = goodsPort.snapshot(items.stream().map(CouponService.Item::skuNo).toList());
-        for (CouponService.Item i : items) {
-            var s = snaps.get(i.skuNo());
-            if (s != null) {
-                byMerchant.merge(s.merchantNo(), s.price() * i.qty(), Long::sum);
-            }
-        }
-        List<UserCouponVO> usable = new ArrayList<>(old.usable());
-        List<CouponService.BestResult.Unusable> unusable = new ArrayList<>(old.unusable());
-        String bestNo = old.bestUserCouponNo();
-        long best = old.discountMinor();
-        long now = System.currentTimeMillis();
-        for (HeldCoupon h : promo.held(SecurityUtils.currentUserNo())) {
-            if (!"UNUSED".equals(h.status())) {
-                continue;
-            }
-            if (!h.usableNow() || (h.expireAt() > 0 && h.expireAt() < now)) {
-                unusable.add(new CouponService.BestResult.Unusable(h.userCouponNo(), "已过期",
-                        CouponService.BestResult.Unusable.EXPIRED, null));
-                continue;
-            }
-            long base = byMerchant.getOrDefault(h.coupon().entityNo(), 0L);
-            long gap = h.coupon().minAmountMinor() - base;
-            if (base <= 0 || gap > 0) {
-                // 这一单里没有这家店的货，也算「差多少」：差的就是整个门槛
-                long g = base <= 0 ? Math.max(h.coupon().minAmountMinor(), 1L) : gap;
-                unusable.add(new CouponService.BestResult.Unusable(h.userCouponNo(),
-                        "未达使用门槛，还差 " + g + " 分", CouponService.BestResult.Unusable.BELOW_THRESHOLD, g));
-                continue;
-            }
-            usable.add(toVO(h));
-            long d = h.coupon().discountFor(base);
-            if (d > best) {
-                best = d;
-                bestNo = h.userCouponNo();
-            }
-        }
-        return new CouponService.BestResult(bestNo, best, usable, unusable);
+        return best.best(SecurityUtils.currentUserNo(),items,mine());
     }
 
     public record BestReq(List<Item> items) {

@@ -1,0 +1,25 @@
+-- Core freezes real activity, holder and tier before marketing reserve; no receipt or pay balances here.
+CREATE TABLE pmt_recharge_intent (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
+    tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
+    intent_no VARCHAR(64) NOT NULL COMMENT '稳定储值意图',
+    recharge_no VARCHAR(64) NOT NULL COMMENT '确定的支付充值号',
+    entity_no VARCHAR(64) NOT NULL COMMENT '商家主体',
+    operator_no VARCHAR(64) NOT NULL COMMENT '原建单操作人',
+    request_key_hash CHAR(64) NOT NULL COMMENT '原请求键摘要',
+    payload_hash CHAR(64) NOT NULL COMMENT '原请求摘要',
+    status VARCHAR(24) NOT NULL COMMENT 'PENDING/CREDITED/CANCELLED',
+    plan_snapshot JSON NOT NULL COMMENT '冻结来源身份档位及许可，无原始会员引用',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '乐观锁',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '来源事实不可删除',
+    created_at DATETIME(3) NOT NULL COMMENT 'UTC',
+    updated_at DATETIME(3) NOT NULL COMMENT 'UTC',
+    created_by VARCHAR(64) NOT NULL COMMENT '操作者',
+    updated_by VARCHAR(64) NOT NULL COMMENT '操作者',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_recharge_intent (tenant_no,intent_no),
+    UNIQUE KEY uk_recharge_intent_pay (tenant_no,recharge_no),
+    UNIQUE KEY uk_recharge_intent_request (tenant_no,entity_no,operator_no,request_key_hash),
+    KEY ix_recharge_intent_pending (status,updated_at),
+    CHECK (status IN ('PENDING','CREDITED','CANCELLED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='核心活动的真实储值来源';

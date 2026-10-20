@@ -2,6 +2,9 @@ server:
   port: 8080
 
 spring:
+  jackson:
+    deserialization:
+      accept-float-as-int: false
   application:
     name: shop-app
 
@@ -100,6 +103,17 @@ management:
       enabled: false   # token-store=memory 时没有 Redis，开着会让 readiness 常绿变常红
 
 shop:
+  core:
+    entitlement:
+      # Offline source fencing only; an empty key leaves migration transitions closed.
+      legacy-coupon:
+        enabled: ${SHOP_CORE_ENTITLEMENT_LEGACY_COUPON_ENABLED:false}
+      migration-commit:
+        enabled: ${SHOP_CORE_ENTITLEMENT_MIGRATION_COMMIT_ENABLED:false}
+      migration-watermark-key: ${SHOP_CORE_ENTITLEMENT_MIGRATION_WATERMARK_KEY:}
+      authorization:
+        # C09 and trusted intent staging stay closed until all quote/source owners are wired.
+        enabled: ${SHOP_ENTITLEMENT_AUTHORIZATION_ENABLED:false}
   # 接口耗时与慢日志（TDD-接口耗时与慢日志）。
   # 键名必须与 ObsConfig 的 @Value 占位符**逐字一致** —— @Value 不做松绑定，
   # 写成 slowMs 配了等于没配，而且不报错。
@@ -542,6 +556,19 @@ shop:
 
   # 支付通道。**密钥一律走环境变量**，不写进这个文件、不进代码库。
   pay:
+    entitlement:
+      # Stable shared random secret (>=32 characters) for scoped query cursors; no development fallback.
+      # Original ORDER-coupon compatibility stays opt-in until core checkout/import acceptance.
+      migration-recovery:
+        enabled: ${SHOP_PAY_ENTITLEMENT_MIGRATION_RECOVERY_ENABLED:false}
+      legacy-coupon:
+        enabled: ${SHOP_PAY_ENTITLEMENT_LEGACY_COUPON_ENABLED:false}
+        usage-repair-enabled: ${SHOP_PAY_LEGACY_COUPON_USAGE_REPAIR_ENABLED:false}
+        issue-recovery-enabled: ${SHOP_PAY_LEGACY_COUPON_ISSUE_RECOVERY_ENABLED:false}
+      cursor-key: ${SHOP_PAY_ENTITLEMENT_CURSOR_KEY:}
+      code:
+        enabled: ${SHOP_PAY_ENTITLEMENT_CODE_ENABLED:false}
+      code-key: ${SHOP_PAY_ENTITLEMENT_CODE_KEY:}
     # 假网关：只在开发期开。默认 false —— 默认开的话，真实现没接上时
     # 线上会「支付成功」而钱根本没动，且没有任何症状，要到对账日才发现
     stub: ${SHOP_PAY_STUB:false}

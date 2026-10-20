@@ -15,6 +15,12 @@ import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
 
 import ai.neargo.shop.trade.service.MerchantOrderService;
+import ai.neargo.shop.spi.entitlement.PaidCardPaymentGatePort;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import ai.neargo.shop.spi.user.UserQueryPort;
 
 import ai.neargo.shop.common.PageData;
@@ -53,6 +59,15 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     /** 叫 LOG 不叫 log：这个类里已经有一个 {@code log(sub, ...)} 方法，同名字段读起来会打架 */
     private static final org.slf4j.Logger LOG =
             org.slf4j.LoggerFactory.getLogger(MerchantOrderServiceImpl.class);
+
+    private PaidCardPaymentGatePort cardPaymentGate;
+    private TransactionTemplate offlineTransactions;
+    @Autowired(required=false)
+    public void setCardPaymentGate(PaidCardPaymentGatePort gate) { this.cardPaymentGate=gate; }
+    @Autowired
+    public void setOfflineTransactions(@Qualifier("transactionManager") PlatformTransactionManager manager) {
+        this.offlineTransactions=new TransactionTemplate(manager);
+    }
 
     private final StoreOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
@@ -310,9 +325,21 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation=Propagation.NOT_SUPPORTED)
     public OrderVO confirmOfflinePay(String merchantNo, String storeNo, String subOrderNo,
                                      String operator) {
+        var sub=require(merchantNo,storeNo,subOrderNo);
+        var order=DataScopeContext.executeWithoutScope(() -> orderMapper.selectOne(
+                Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getOrderNo,sub.getOrderNo()).last("LIMIT 1")));
+        if(order==null || !OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus())) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+        // Source/pay checks run before acquiring a core write lock. Repeat ownership/state checks under the lock.
+        if(cardPaymentGate!=null) cardPaymentGate.requireReady(order.getTenantNo(),order.getOrderNo());
+        return offlineTransactions.execute(status -> confirmOfflinePayLocked(merchantNo,storeNo,subOrderNo,operator));
+    }
+
+    private OrderVO confirmOfflinePayLocked(String merchantNo,String storeNo,String subOrderNo,String operator) {
         OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
         List<OrdSubOrder> siblings = DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(
                 Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getOrderNo, sub.getOrderNo())));
@@ -325,7 +352,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         // 已验证完整集合；B端SELF维度不等于主单买家，资金入口读取须解域。
         OrdOrder order = DataScopeContext.executeWithoutScope(() ->
                 orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
-                        .eq(OrdOrder::getOrderNo, sub.getOrderNo()).last("LIMIT 1")));
+                        .eq(OrdOrder::getOrderNo, sub.getOrderNo()).last("FOR UPDATE")));
         if (order == null || !OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus())) {
                 throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }

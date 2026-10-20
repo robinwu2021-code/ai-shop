@@ -9,7 +9,7 @@ import java.util.Set;
  *
  * <p><b>与运营端的 {@link Perms} 刻意不合并</b>：两端的角色词表没有交集
  * （店长/店员 vs BD/客服），合成一个类只会让人每次都要先想「这是哪端的码」。
- * B 端的码一律带 {@code biz:} 前缀，一眼能分。
+ * 常规经营权限带 {@code biz:} 前缀；权益权限沿支付域冻结契约使用 {@code pay:ent:}。
  *
  * <h2>分界线画在「出错的后果」上</h2>
  * 不按「功能重要性」这种模糊的东西分，而是问：这件事做错了会怎样。
@@ -76,6 +76,23 @@ public final class BizPerms {
     /** 结算账单、费率卡、收款进件、积分开关。<b>钱</b> */
     public static final String FINANCE = "biz:finance";
 
+    /** 查看主体级权益目录，不授予变更能力。 */
+    public static final String SV_RECHARGE_CREATE = "pay:sv:recharge:create";
+    public static final String SV_RECHARGE_RECEIVE = "pay:sv:recharge:receive";
+    public static final String SV_RECHARGE_READ = "pay:sv:recharge:read";
+    public static final String SV_ACCOUNT_READ = "pay:sv:account:read";
+    public static final String SV_CONSUME_CREATE = "pay:sv:consume:create";
+    public static final String ENT_USE = "pay:ent:use";
+    public static final String ENT_ISSUE = "pay:ent:issue";
+    public static final String ENT_READ = "pay:ent:read";
+    public static final String ENT_TEMPLATE_READ = "pay:ent:template:read";
+    /** 编辑权益草稿，不能发布。 */
+    public static final String ENT_TEMPLATE_WRITE = "pay:ent:template:write";
+    /** 发布与停发影响全主体，需单独授权。 */
+    public static final String ENT_TEMPLATE_PUBLISH = "pay:ent:template:publish";
+    /** 调整发行容量，不直接发放实例。 */
+    public static final String ENT_ISSUE_MANAGE = "pay:ent:issue:manage";
+
     // ---------------------------------------------------------------- 角色
 
     public static final String OWNER = "OWNER";
@@ -133,6 +150,18 @@ public final class BizPerms {
             Map.entry(CUSTOMER, "顾客列表与经营数据"),
             Map.entry(STORE, "店铺装修与配送规则"),
             Map.entry(STORE_ADMIN, "建店、停用、挂收款号、管员工"),
+            Map.entry(SV_RECHARGE_CREATE, "办理与取消未实收储值"),
+            Map.entry(SV_RECHARGE_RECEIVE, "核验储值实收"),
+            Map.entry(SV_RECHARGE_READ, "查看储值办理进度"),
+            Map.entry(SV_ACCOUNT_READ, "查看顾客储值可用余额"),
+            Map.entry(SV_CONSUME_CREATE, "使用储值核销服务"),
+            Map.entry(ENT_USE, "核销权益"),
+            Map.entry(ENT_ISSUE, "定向发放权益"),
+            Map.entry(ENT_READ, "查看权益与核销记录"),
+            Map.entry(ENT_TEMPLATE_READ, "查看权益模板"),
+            Map.entry(ENT_TEMPLATE_WRITE, "编辑权益模板"),
+            Map.entry(ENT_TEMPLATE_PUBLISH, "发布与停用权益模板"),
+            Map.entry(ENT_ISSUE_MANAGE, "管理权益发行规则"),
             Map.entry(FINANCE, "结算账单与收款进件"));
 
     /**

@@ -132,6 +132,11 @@ public final class Perms {
     public static final String FULFILLMENT_LOGISTICS_REPLAY = "fulfillment:logistics:replay";
 
     // ── 结算与资金 ──────────────────────────────────────────────────────────
+    public static final String ENT_EXCEPTION_READ = "ops:pay:ent:read";
+    public static final String ENT_EXCEPTION_RECOVER = "ops:pay:ent:recover";
+    public static final String ENT_EXCEPTION_VERIFY = "ops:pay:ent:verify";
+    /** Freezing restricts new use; read or recovery permission alone must not authorize it. */
+    public static final String ENT_FREEZE = "ops:pay:ent:freeze";
     public static final String FINANCE_SETTLE_READ = "finance:settle:read";
 
     /** 对账确认（制单）。与下面的付款分开 —— 这是这次细化最主要的收益之一。 */

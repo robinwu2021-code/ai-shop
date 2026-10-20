@@ -17,6 +17,21 @@ import ai.neargo.shop.spi.user.PickupQueryPort;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import ai.neargo.shop.trade.service.CloseRuleService;
 import ai.neargo.shop.trade.service.OrderService;
+import ai.neargo.shop.trade.service.LegacyCouponOrderPricingService;
+import ai.neargo.shop.trade.service.LegacyCouponBoundOrderService;
+import ai.neargo.shop.trade.service.LegacyCouponCheckoutJournal;
+import ai.neargo.shop.trade.service.LegacyCouponOrderCreationCoordinator;
+import ai.neargo.shop.spi.entitlement.EntitlementContext;
+import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.Outcome;
+import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.MerchantGroup;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
+import ai.neargo.shop.trade.service.EntitlementOrderUseService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.shop.trade.service.OrderStateMachine;
 import ai.neargo.shop.trade.order.projection.OrderStatusProjector;
 import ai.neargo.shop.trade.order.service.receipt.OrderReceiptCompleter;
@@ -36,6 +51,10 @@ import ai.neargo.shop.spi.marketing.AttributionPort;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
+import ai.neargo.shop.spi.product.CardProductSalePort;
+import ai.neargo.shop.spi.entitlement.CardSaleEvents;
+import ai.neargo.shop.spi.entitlement.PaidCardPaymentGatePort;
+import ai.neargo.shop.trade.entitlement.CardSaleSnapshotPlan;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.trade.OrderEvents;
@@ -87,7 +106,39 @@ import java.util.stream.Collectors;
  * 否则「预览 2 个包裹、下单变 3 个」这类问题会一直复发。
  */
 @Service
-public class OrderServiceImpl implements OrderService {
+public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingService, LegacyCouponBoundOrderService {
+    @Autowired private LegacyCouponCheckoutJournal legacyCheckoutJournal;
+    @Autowired private ObjectProvider<LegacyCouponOrderCreationCoordinator> legacyCreationCoordinators;
+    @Autowired private ObjectProvider<LegacyCouponBoundOrderService> coreCreationWriters;
+    @Autowired private ObjectMapper legacyCheckoutJson;
+
+    @Override
+    public LegacyCouponOrderPricingService.Snapshot snapshot(String userNo,CreateOrderCommand cmd) {
+        if(userNo==null || userNo.isBlank() || cmd==null) throw BizException.of(ErrorCode.BAD_REQUEST);
+        Split raw=split(cmd);
+        Split priced=repriced(raw,groupQuoteOf(cmd,raw,userNo));
+        Split actual=withFreight(priced,cmd,storesOf(cmd,priced),userNo);
+        var auto=campaignPort.autoDiscount(merchantAmounts(cmd,actual,storesOf(cmd,actual)),cmd.activityChoices());
+        return legacyPricing(userNo,cmd,actual,auto);
+    }
+    private LegacyCouponOrderPricingService.Snapshot legacyPricing(String userNo,CreateOrderCommand cmd,Split split,
+                                                                  CampaignPort.Discount auto) {
+        var groups=split.groups.stream().map(g->new MerchantGroup(g.key(),g.merchantNo,g.storeNo(),
+                Math.subtractExact(g.goodsAmount(),auto.of(g.merchantNo,g.storeNo())))).toList();
+        var lines=split.groups.stream().flatMap(g->g.lines.stream().map(l->new LegacyPricingLine(g.key(),g.merchantNo,
+                g.storeNo(),l.snapshot.goodsNo(),l.skuNo(),l.qty(),l.snapshot.price()))).toList();
+        String payload=legacyCheckoutJson.writer().with(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+                .writeValueAsString(new LegacyPricingSeal(userNo,cmd,lines,groups));
+        try {
+            String digest=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(payload.getBytes(StandardCharsets.UTF_8)));
+            return new LegacyCouponOrderPricingService.Snapshot(CURRENCY_CNY,groups,digest);
+        } catch(java.security.NoSuchAlgorithmException failure) {throw new IllegalStateException("SHA-256 unavailable");}
+    }
+    private record LegacyPricingLine(String groupKey,String merchantNo,String storeNo,String goodsNo,String skuNo,
+                                     int quantity,long priceMinor) { }
+    private record LegacyPricingSeal(String userNo,CreateOrderCommand command,List<LegacyPricingLine> lines,
+                                     List<MerchantGroup> groups) { }
+
 
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(OrderServiceImpl.class);
@@ -226,6 +277,40 @@ public class OrderServiceImpl implements OrderService {
      * 可选依赖放 setter 让没有集单能力的装配（部分切片测试）也能起来 —— 缺了按「不是集单」处理。
      */
     private ai.neargo.shop.spi.marketing.PeriodPort periodPort;
+
+    /** Pay facts for paid-card sale snapshots; optional until the paid-card product flow is wired. */
+    private ai.neargo.shop.trade.entitlement.CardSaleSnapshotService cardSaleSnapshotService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setCardSaleSnapshotService(
+            ai.neargo.shop.trade.entitlement.CardSaleSnapshotService cardSaleSnapshotService) {
+        this.cardSaleSnapshotService = cardSaleSnapshotService;
+    }
+
+    private PaidCardPaymentGatePort cardPaymentGate;
+    @Autowired(required=false)
+    public void setCardPaymentGate(PaidCardPaymentGatePort gate) { this.cardPaymentGate=gate; }
+
+    private ObjectProvider<OrderService> orderServiceProvider;
+
+    @Autowired
+    public void setOrderServiceProvider(ObjectProvider<OrderService> orderServiceProvider) {
+        this.orderServiceProvider = orderServiceProvider;
+    }
+
+    private CardProductSalePort cardProductSales;
+
+    @Autowired
+    public void setCardProductSales(CardProductSalePort cardProductSales) {
+        this.cardProductSales = cardProductSales;
+    }
+
+    private EntitlementOrderUseService entitlementOrderUses;
+
+    @Autowired
+    public void setEntitlementOrderUses(EntitlementOrderUseService entitlementOrderUses) {
+        this.entitlementOrderUses = entitlementOrderUses;
+    }
 
     /** 状态写入口（TDD-订单状态机 §2B）：支付单 / 订单状态一律经它 CAS 落库 + 记流水 */
     private ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter;
@@ -805,10 +890,11 @@ public class OrderServiceImpl implements OrderService {
         if (sub == null || sub.getDiscountAmount() == null || sub.getDiscountAmount() <= 0) {
             return List.of();
         }
-        return campaignPort.appliedOf(sub.getOrderNo()).stream()
+        var lines=new ArrayList<>(campaignPort.appliedOf(sub.getOrderNo()).stream()
                 .filter(d -> d.merchantNo() == null || d.merchantNo().equals(sub.getEntityNo()))
-                .map(d -> new OrderVO.DiscountLine(d.kind(), d.name(), d.amountMinor(), d.funder()))
-                .toList();
+                .map(d -> new OrderVO.DiscountLine(d.kind(), d.name(), d.amountMinor(), d.funder())).toList());
+        if(legacyCheckoutJournal!=null) lines.addAll(legacyCheckoutJournal.discountLines(sub.getTenantNo(),sub.getSubOrderNo()));
+        return List.copyOf(lines);
     }
 
     @Override
@@ -1146,6 +1232,9 @@ public class OrderServiceImpl implements OrderService {
      *               取当前登录人会去扣客服自己的券，而且不会有任何报错
      */
     private Discounts discountsOf(CreateOrderCommand cmd, Split split, String userNo) {
+        return discountsOf(cmd,split,userNo,null);
+    }
+    private Discounts discountsOf(CreateOrderCommand cmd,Split split,String userNo,LegacyCouponBoundOrderService.Binding binding) {
         if (split.groups.isEmpty()) {
             return Discounts.none();
         }
@@ -1160,6 +1249,14 @@ public class OrderServiceImpl implements OrderService {
         // 顾客对活动的选择（批 2）：没选的店按最优；选的那个不成立就拒（ACTIVITY_CHOICE_UNAVAILABLE）
         CampaignPort.Discount auto = campaignPort.autoDiscount(merchantAmounts(cmd, split, stores),
                 cmd.activityChoices());
+        if(binding!=null) {
+            var pricing=legacyPricing(userNo,cmd,split,auto);
+            if(!pricing.commandHash().equals(binding.commandHash())) throw BizException.of(ErrorCode.CONFLICT);
+            var fact=legacyCheckoutJournal.bind(binding.context(),binding.checkoutNo(),userNo,pricing.commandHash(),pricing.groups(),binding.held());
+            if(!java.util.Objects.equals(cmd.couponNo(),fact.origin().sourceNo())) throw BizException.of(ErrorCode.CONFLICT);
+            var shares=binding.held().allocations().stream().map(a->new CouponPort.MerchantDiscount(a.merchantNo(),a.discountMinor(),a.storeNo())).toList();
+            return new Discounts(auto,new CouponPort.Allocation(binding.held().discountMinor(),true,shares,null));
+        }
         if (cmd.couponNo() == null || cmd.couponNo().isBlank()) {
             return new Discounts(auto, CouponPort.Allocation.none());
         }
@@ -1414,38 +1511,61 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey,
                              Integer payMinutes) {
+        var coordinator=legacyCreationCoordinators==null?null:legacyCreationCoordinators.getIfAvailable();
+        if(coordinator!=null && cmd!=null && cmd.couponNo()!=null && !cmd.couponNo().isBlank())
+            return coordinator.createFor(userNo,cmd,idempotencyKey,payMinutes);
         boolean callerTransaction = org.springframework.transaction.support.TransactionSynchronizationManager
                 .isActualTransactionActive();
         String inputHash = createRequestHasher.hash(cmd);
         java.util.function.Supplier<OrderVO> create = () -> idempotency.execute(
                 idempotencyKey, "POST /mp/order", userNo, inputHash, OrderVO.class,
-                () -> doCreate(cmd, userNo, payMinutes, idempotencyKey, inputHash));
+                () -> doCreate(cmd, userNo, payMinutes, idempotencyKey, inputHash, null));
         OrderVO initial = sourceTransactions == null ? create.get() : sourceTransactions.execute(s -> create.get());
-        if (!ai.neargo.shop.trade.order.contract.ContractOrderStatus.POINTS_PROCESSING.equals(initial.status())) {
-            return initial;
-        }
+        if (!ai.neargo.shop.trade.order.contract.ContractOrderStatus.POINTS_PROCESSING.equals(initial.status())) return initial;
         String root = initial.payOrderNo();
         var staged = pointsPlacement.inspect(root);
-        if (staged == null || !staged.draft().requestHash().equals(pointsRequestHash(userNo, cmd))) {
+        if (staged == null || !staged.draft().requestHash().equals(pointsRequestHash(userNo, cmd)))
             throw new IllegalArgumentException("POINTS_PLACEMENT_REPLAY_CONFLICT");
-        }
         if (callerTransaction) return initial;
-        try {
-            pointsPlacement.resume(root);
-        } catch (RuntimeException pending) {
-            log.warn("[points] placement awaiting recovery order={} cause={}", root,
-                    pending.getClass().getSimpleName());
-        }
+        try { pointsPlacement.resume(root); }
+        catch (RuntimeException pending) { log.warn("[points] placement awaiting recovery order={} cause={}", root, pending.getClass().getSimpleName()); }
         return detailOf(root, userNo, "MP");
     }
 
+    @Override @Transactional
+    public OrderVO createCoreFor(String userNo,CreateOrderCommand cmd,String idempotencyKey,Integer payMinutes) {
+        String hash=createRequestHasher.hash(cmd);
+        return idempotency.execute(idempotencyKey,"POST /mp/order",userNo,hash,OrderVO.class,
+                ()->doCreate(cmd,userNo,payMinutes,idempotencyKey,hash,null));
+    }
+
+    @Override @Transactional(readOnly=true)
+    public OrderVO readCreated(EntitlementContext ctx,String checkoutNo,String userNo) {
+        var fact=legacyCheckoutJournal.resolve(ctx,checkoutNo);
+        var decision=legacyCheckoutJournal.decision(ctx,checkoutNo).orElseThrow(()->BizException.of(ErrorCode.CONFLICT));
+        if(!fact.userNo().equals(userNo) || !fact.selectionActorNo().equals(ctx.actorNo()) || decision.outcome()!=Outcome.COMMIT)
+            throw BizException.of(ErrorCode.CONFLICT);
+        return detailOf(decision.orderNo(),userNo,"MP");
+    }
+
+    @Override @Transactional
+    public OrderVO createBound(String userNo,CreateOrderCommand cmd,String idempotencyKey,Integer payMinutes,
+                               LegacyCouponBoundOrderService.Binding binding) {
+        if(binding==null) throw BizException.of(ErrorCode.BAD_REQUEST);
+        String hash=createRequestHasher.hash(cmd);
+        var result=idempotency.execute(idempotencyKey,"POST /mp/order",userNo,hash,OrderVO.class,
+                ()->doCreate(cmd,userNo,payMinutes,idempotencyKey,hash,binding));
+        legacyCheckoutJournal.commit(binding.context(),binding.checkoutNo(),result.payOrderNo(),binding.held());
+        return result;
+    }
+
     /**
-     * ⚠️ 事务注解放在 {@link #create} 上而不是这里：本方法是被同类的 lambda 调用的，
+     * 事务位于createCoreFor/createBound代理入口；本方法由同类lambda调用，
      * 自调用不走代理，写在这里的 {@code @Transactional} 完全不生效 ——
      * 那样「锁了库存但订单没落库」会变成常态，且测试很难发现。
      */
     private OrderVO doCreate(CreateOrderCommand cmd, String userNo, Integer payMinutes,
-                             String idempotencyKey, String inputHash) {
+                             String idempotencyKey, String inputHash, LegacyCouponBoundOrderService.Binding binding) {
         Split raw = split(cmd);
         if (raw.items.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -1555,8 +1675,8 @@ public class OrderServiceImpl implements OrderService {
          */
         Map<String, Integer> gifts = giftQtyOf(split);
 
-        // 优惠：与预览同一套规则（discountsOf 是唯一实现）
-        Discounts discounts = discountsOf(cmd, split, userNo);
+        // 优惠与预览同规则；迁移券使用预先锁定并核对的分摊。
+        Discounts discounts = binding == null ? discountsOf(cmd, split, userNo) : discountsOf(cmd, split, userNo, binding);
 
         /*
          * 子单号**提前生成**：积分抵扣要落到各个子单上（三家里退了一家时才退得准），
@@ -1844,12 +1964,22 @@ public class OrderServiceImpl implements OrderService {
                 if (pointDecisions.containsKey(g.key())) {
                     pointLines.computeIfAbsent(g.key(), k -> new ArrayList<>()).add(
                             new ai.neargo.shop.trade.order.points.OrderPointsTargetFactory.PricedLine(
-                                    String.valueOf(item.getId()), g.merchantNo(),
-                                    line.snapshot.storeNo(), storeOfMerchant.get(g.key()), line.amount()));
+                                    String.valueOf(item.getId()), g.merchantNo(), line.snapshot.storeNo(), storeOfMerchant.get(g.key()), line.amount()));
                     pointRules.computeIfAbsent(g.key(), k -> new ArrayList<>()).add(
                             new ai.neargo.shop.spi.points.PointsEarnPort.EarnLine(
-                                    String.valueOf(item.getId()), item.getGoodsNo(), item.getCategoryNo(),
-                                    item.getQty(), 0, 0, null));
+                                    String.valueOf(item.getId()), item.getGoodsNo(), item.getCategoryNo(), item.getQty(), 0, 0, null));
+                }
+                if (cardProductSales != null && cardSaleSnapshotService != null) {
+                    var definition=cardProductSales.saleDefinition(g.merchantNo,line.snapshot.goodsNo(),line.skuNo());
+                    if (definition != null && definition.isPresent()) {
+                        var d=definition.get();
+                        if (!java.util.Objects.equals(order.getCurrency(),d.currency())) throw BizException.of(ErrorCode.CONFLICT);
+                        var rule=new CardSaleSnapshotPlan.EntitlementRule(d.templateVersionNo(),"PAID_CARD",d.ruleSnapshot());
+                        cardSaleSnapshotService.capture(new CardSaleSnapshotPlan.OrderFacts(orderNo,userNo,order.getCurrency()),
+                                List.of(new CardSaleSnapshotPlan.SaleLine(CardSaleSnapshotPlan.orderLineIdentity(item.getId()),
+                                        subOrderNo,g.merchantNo,sub.getStoreNo(),line.snapshot.goodsNo(),line.skuNo(),item.getPrice(),line.qty,
+                                        java.util.Collections.nCopies(d.unitsPerItem(),rule))));
+                    }
                 }
 
                 int giftQty = gifts.getOrDefault(line.snapshot.skuNo(), 0);
@@ -1891,8 +2021,10 @@ public class OrderServiceImpl implements OrderService {
          * 而那个数只有这里知道 —— 它是这一单算价的结果，事后重算会因为
          * 券的门槛/封顶被改过而对不上。
          */
-        couponPort.markUsed(userNo, cmd.couponNo(), orderNo, discounts.coupon());
-        refundCouponScopes.freeze(orderNo,cmd.couponNo(),discounts.coupon());
+        if(binding==null) {
+            couponPort.markUsed(userNo, cmd.couponNo(), orderNo, discounts.coupon());
+            refundCouponScopes.freeze(orderNo,cmd.couponNo(),discounts.coupon());
+        } else legacyCheckoutJournal.commit(binding.context(),binding.checkoutNo(),orderNo,binding.held());
 
         /*
          * 活动扣限量。**放在这里而不是算价那一步**：算价会被反复调用
@@ -2068,6 +2200,7 @@ public class OrderServiceImpl implements OrderService {
         if (order.getPayDeadlineAt() != null && order.getPayDeadlineAt() < System.currentTimeMillis()) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
+        if (cardPaymentGate != null) cardPaymentGate.requireReady(order.getTenantNo(),orderNo);
         /*
          * **先在支付域记一行「发起了」，再把参数给端上。**
          *
@@ -2098,7 +2231,11 @@ public class OrderServiceImpl implements OrderService {
          * 于是「下单 → 向通道下单 → 拿参数」这一段<b>在真通道接上那天才第一次被执行</b>，
          * 而那是最不该第一次执行它的时候。
          */
+        if (entitlementOrderUses != null) {
+            order = entitlementOrderUses.sealForPayment(order.getTenantNo(), orderNo);
+        }
         String channel = resolvePayChannel(order, payChannel);
+        final Long paymentAmount = order.getPayAmount();
         SettlePort.PaymentOpen open;
         if (Boolean.TRUE.equals(order.getPointsIntegrated())) {
             var accepted = pointsPlacement.inspect(orderNo);
@@ -2108,7 +2245,7 @@ public class OrderServiceImpl implements OrderService {
                     || accepted.draft().paymentStores().stream().anyMatch(s ->
                     !channel.equals(s.route().channel())
                             && !(ai.neargo.shop.common.PayChannels.FREE.equals(channel)
-                                    && Long.valueOf(0).equals(order.getPayAmount())))) {
+                                    && Long.valueOf(0).equals(paymentAmount)))) {
                 throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
             }
             open = new SettlePort.PaymentOpen(orderNo, order.getUserNo(), null, channel,
@@ -2145,7 +2282,7 @@ public class OrderServiceImpl implements OrderService {
          */
         boolean settled = ai.neargo.shop.common.PayChannels.FREE.equals(init.payChannel());
         if (settled) {
-            markPaid(orderNo, init.payChannel(), null);
+            orderServiceProvider.getObject().markPaid(orderNo, init.payChannel(), init.outTradeNo());
         }
         return new PayResult(orderNo, init.payChannel(), init.payParams(), settled);
     }
@@ -2198,6 +2335,10 @@ public class OrderServiceImpl implements OrderService {
         }
         var confirmed = paymentLifecycle.requireConfirmed(order, payChannel, payTradeNo);
         if (OrdOrder.PAID.equals(order.getStatus())) {
+            if (entitlementOrderUses != null) {
+                entitlementOrderUses.decideForTerminalOrder(order.getTenantNo(), orderNo);
+            }
+            if (cardSaleSnapshotService != null) cardSaleSnapshotService.recordPaidFromOrder(orderNo);
             return;   // 幂等：回调会重发，重复到达不能重复扣库存、重复发事件
         }
         if (Boolean.TRUE.equals(order.getPointsIntegrated()) && proof == null) {
@@ -2213,6 +2354,10 @@ public class OrderServiceImpl implements OrderService {
         order.setPayTradeNo(confirmed.tradeNo());
         order.setPaidAt(System.currentTimeMillis());
         orderMapper.updateById(order);
+        if (entitlementOrderUses != null) {
+            entitlementOrderUses.decideForTerminalOrder(order.getTenantNo(), orderNo);
+        }
+        if (cardSaleSnapshotService != null) cardSaleSnapshotService.recordPaidFromOrder(orderNo);
 
         // 锁定转实扣
         List<OrdSubOrder> paidSubOrders = subOrders(orderNo);
@@ -2599,6 +2744,13 @@ public class OrderServiceImpl implements OrderService {
                 new PaymentContext(OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus()), true, true, false));
         order.setCancelReason(reason);
         orderMapper.updateById(order);
+        if (cardSaleSnapshotService != null
+                && cardSaleSnapshotService.recordCancelledFromOrder(order.getOrderNo()) > 0) {
+            eventBus.publish(new CardSaleEvents.Cancelled(order.getOrderNo()));
+        }
+        if (entitlementOrderUses != null) {
+            entitlementOrderUses.decideForTerminalOrder(order.getTenantNo(), order.getOrderNo());
+        }
 
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
             statusWriter.order(sub, OrderEvent.CANCEL, Actor.SYSTEM, operatorNo, label,
@@ -2606,6 +2758,7 @@ public class OrderServiceImpl implements OrderService {
         }
         stockPort.release(order.getOrderNo());
         couponPort.release(order.getOrderNo());
+        // All suborders are durably CANCELLED in this transaction before marketing returns its capacity.
         campaignPort.release(order.getOrderNo());
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
             // 名额还回去。幂等标记在子单上 —— 与超时关闭那条路同时到达也只还一次
@@ -2699,6 +2852,13 @@ public class OrderServiceImpl implements OrderService {
         }
         order.setCancelReason(reason);
         orderMapper.updateById(order);
+        if (cardSaleSnapshotService != null
+                && cardSaleSnapshotService.recordCancelledFromOrder(order.getOrderNo()) > 0) {
+            eventBus.publish(new CardSaleEvents.Cancelled(order.getOrderNo()));
+        }
+        if (entitlementOrderUses != null) {
+            entitlementOrderUses.decideForTerminalOrder(order.getTenantNo(), order.getOrderNo());
+        }
 
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
             if (!OrdSubOrder.WAIT_PAY.equals(sub.getStatus())) {
@@ -2940,6 +3100,12 @@ public class OrderServiceImpl implements OrderService {
                 throw BizException.of(ErrorCode.GOODS_OFF_SALE);
             }
             lines.add(new Line(s, item.qty()));
+        }
+        for (Line line : lines) {
+            if ("CARD".equals(line.snapshot.categoryType())) {
+                if (cardProductSales == null) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+                cardProductSales.requirePurchasable(line.snapshot.merchantNo(), line.snapshot.goodsNo(), line.skuNo());
+            }
         }
         /*
          * **仅活动的货，普通下单要有活动开着这条路**（TDD-商品仅活动可售 §4.3）。

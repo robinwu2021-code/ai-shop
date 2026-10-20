@@ -166,7 +166,7 @@ export const NAV: NavSection[] = [
       // perm 与后端 OpsMerchantChainController 判的是同一个码 ——
       // 界面闸门比后端松就是「菜单点得进、进去一片 403」。
       { href: "/merchants?tab=chain", label: "链条画像", perm: "merchant:merchant:read", group: "经营诊断", matrix: "P-11.1", ready: true , gated: "shop.inventory.enabled"},
-    
+
 
       // ── P-10 门店主页治理（一期主获客路径）──────────────────────────────────
       { href: "/stores", label: "店招公告审核", perm: "store:page:audit", group: "模板与合规", matrix: "P-10.1", ready: true },
@@ -178,7 +178,7 @@ export const NAV: NavSection[] = [
       // 不把 store:page:read 整个放开，是因为「主页模板配置」还挂在它上面且后端仍然没有 ——
       // 放开会多出一个点进去 404 的死按钮。后端端点判的也是 store:page:audit，两边对齐。
       { href: "/stores?tab=effect", label: "获客效果看板", perm: "store:page:audit", group: "获客", matrix: "P-10.1", ready: true },
-    
+
     ],
   },
 
@@ -241,7 +241,7 @@ export const NAV: NavSection[] = [
       // 单独成组排在最后：同 group 的叶子必须相邻，且它是唯一一页只读不改的。
       // perm 用 product:sku:read —— 与后端 OpsProductStatsController 同一个码
       { href: "/products?tab=stats", label: "商品统计", perm: "product:sku:read", group: "统计", matrix: "P-3.2", ready: true },
-    
+
 
       // ── P-18 进销存 ────────────────────────────────────────────────────────
       //
@@ -268,7 +268,7 @@ export const NAV: NavSection[] = [
       // 哪些已吊销 —— 审计要看的正是这个）。签发与吊销另判
       // inventory:credential:grant，按钮按它藏掉，不是画出来点了 403。
       { href: "/inventory?tab=credentials", label: "开放对接", perm: "inventory:credential:read", group: "对外", matrix: "P-18.4", ready: true , gated: "shop.inventory.enabled"},
-    
+
     ],
   },
 
@@ -285,7 +285,7 @@ export const NAV: NavSection[] = [
       { href: "/orders?tab=pay", label: "支付流水核对", perm: "order:pay:read", group: "支付", matrix: "P-4.2" },
       { href: "/orders?tab=repair", label: "掉单补偿", perm: "order:pay:repair", group: "支付", matrix: "P-4.2" },
       { href: "/orders?tab=close", label: "关单策略配置", perm: "order:pay:repair", group: "支付", matrix: "P-4.2" },
-    
+
 
       // ── P-5 履约调度（一期 M1-3，与 B 端核销台成对交付）──────────────────────
       { href: "/fulfillment", label: "到货批次与配车", perm: "fulfillment:batch:read", group: "到货与分拣", matrix: "P-5.1", ready: true },
@@ -295,7 +295,7 @@ export const NAV: NavSection[] = [
       { href: "/fulfillment?tab=express", label: "快递与轨迹", perm: "fulfillment:logistics:read", group: "物流", matrix: "P-5.2" },
       { href: "/fulfillment?tab=freight", label: "运费模板与超区", perm: "fulfillment:rule:update", group: "物流", matrix: "P-5.2" },
       { href: "/fulfillment?tab=carrier", label: "第三方运力配置", perm: "fulfillment:logistics:read", group: "物流", matrix: "P-5.2", phase: 2, ready: true },
-    
+
     ],
   },
 
@@ -306,7 +306,7 @@ export const NAV: NavSection[] = [
     // 只是旧断言按 href 反查目标 section 把它绕过去了 —— 改成集合判定之后要显式写出来。
     // ⚠️ 注释放在 key 行**之前**：gen-ui-catalog.py 按行认 section 头
     // （`key: … label: … href: …` 要在同一行），插在中间会让这个域从界面清单里消失
-    key: "aftersale", label: "售后治理", icon: "Undo2", modules: ["aftersale", "finance"], href: "/after-sales",
+    key: "aftersale", label: "售后治理", icon: "Undo2", modules: ["aftersale", "finance", "ops"], href: "/after-sales",
     children: [
       { href: "/after-sales", label: "售后工单池", perm: "aftersale:ticket:read", group: "处置", matrix: "P-6.1", ready: true },
       // 责任判定（6.1.4）并入裁决抽屉：判了责任才谈得上赔付归属，拆成两页会出现
@@ -343,14 +343,14 @@ export const NAV: NavSection[] = [
        */
       { href: "/marketing?tab=platform", label: "平台活动", perm: "marketing:campaign:read", group: "平台活动", matrix: "P-7.2", ready: true },
       { href: "/marketing?tab=platformAudit", label: "报名审核", perm: "marketing:campaign:read", group: "平台活动", matrix: "P-7.2", ready: true },
-    
+
 
       // ── P-8 团购与求团 ──────────────────────────────────────────────────────
       // 团模板审核与团监控是同一张列表的两种看法（筛状态即可），合并为一个叶子
       { href: "/groups", label: "商家团", perm: "group:campaign:audit", group: "商家团", matrix: "P-8.1", ready: true },
       { href: "/groups?tab=demands", label: "需求单池与指派", perm: "group:demand:read", group: "求团撮合", matrix: "P-8.2", ready: true },
       { href: "/groups?tab=quotes", label: "改价留痕与毁约", perm: "group:demand:read", group: "求团撮合", matrix: "P-8.2", ready: true },
-    
+
 
       // ── P-9 增长与归因（B1 未拍板，见矩阵 §九）──────────────────────────────
       // 优先级/窗口期/冲突处置/新客口径都是同一张规则表上的字段，拆四个菜单
@@ -358,7 +358,7 @@ export const NAV: NavSection[] = [
       { href: "/growth", label: "归因规则", perm: "growth:attribution:read", group: "归因引擎", matrix: "P-9.1", ready: true },
       { href: "/growth?tab=traces", label: "归因链路审计", perm: "growth:attribution:read", group: "归因引擎", matrix: "P-9.1", ready: true },
       { href: "/growth?tab=fission", label: "邀请有礼配置", perm: "growth:fission:update", group: "裂变活动", matrix: "P-9.2", ready: true },
-    
+
     ],
   },
 
@@ -438,14 +438,14 @@ export const NAV: NavSection[] = [
       // 刷评识别（13.1.5）并入审核队列的筛选项：发现刷评后要做的动作就在那条队列里，
       // 单独一页会变成"看得见但没法处置"的孤岛。
       { href: "/reviews?tab=score", label: "评分算法参数", perm: "review:score:update", group: "评分", matrix: "P-13.1", ready: true },
-    
+
 
       // ── P-15 素材与内容 ─────────────────────────────────────────────────────
       // 分发范围是素材行上的字段，不是另一张表：一份素材投给谁，和素材本身是一件事
       { href: "/contents", label: "素材中心与分发", perm: "content:material:read", group: "素材", matrix: "P-15.1", ready: true },
       { href: "/contents?tab=audit", label: "种草内容审核", perm: "content:material:audit", group: "内容", matrix: "P-15.2", phase: 2, ready: true },
       { href: "/contents?tab=rank", label: "榜单与问答", perm: "content:material:update", group: "内容", matrix: "P-15.2", phase: 2, ready: true },
-    
+
     ],
   },
 
@@ -545,7 +545,7 @@ export const NAV: NavSection[] = [
       // 复用 iam:role:grant：能配权限的人才该动菜单结构，不为它新增一个码。
       { href: "/iam?tab=menu", label: "菜单顺序", perm: "iam:role:grant", group: "账号", matrix: "P-1.1", ready: true },
       { href: "/iam?tab=audit", label: "操作审计日志", perm: "iam:audit:read", group: "审计", matrix: "P-1.1", ready: true },
-    
+
 
       // ── P-17.1 定时任务（**独立成一个入口，不做成系统配置的一个 tab**）──────
       //
@@ -560,7 +560,7 @@ export const NAV: NavSection[] = [
       // 而 groupedLeaves 会把同名组并成一段 —— 并进去之后「任务与执行日志」
       // 会和市场/货币、开关灰度挤在一个标题下，它是监控页不是配置页
       { href: "/jobs", label: "任务与执行日志", perm: "system:job:read", group: "定时任务", matrix: "P-17.1", ready: true , gated: "shop.job.enabled"},
-    
+
 
       // ── P-17 系统配置（固定在 Rail 底部）────────────────────────────────────
       // 皮肤/回落语言/规则文案都是"下发给 C 端的东西"，放同一页；市场与开关各自成 tab
@@ -590,7 +590,7 @@ export const NAV: NavSection[] = [
       { href: "/system?tab=industry", label: "行业与小微白名单", perm: "system:param:read", group: "经营范围", matrix: "P-17.1", ready: true },
       { href: "/system?tab=authCode", label: "经营授权码", perm: "system:param:read", group: "经营范围", matrix: "P-17.1", ready: true },
       { href: "/system?tab=scope", label: "经营范围开关", perm: "system:param:read", group: "经营范围", matrix: "P-17.1", ready: true },
-    
+
     ],
   },
 

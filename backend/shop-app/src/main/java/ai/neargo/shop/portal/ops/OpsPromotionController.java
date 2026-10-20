@@ -86,7 +86,7 @@ public class OpsPromotionController {
 
     /** O6 全平台活动：归属、受众、限量 */
     @PreAuthorize("@perm.can('" + Perms.MARKETING_CAMPAIGN_READ + "')")
-    @GetMapping("/ops/promotion/activities")
+    @GetMapping(value = "/ops/promotion/activities", params = "model!=unified")
     public List<OpsActivityVO> activities(@RequestParam(required = false) String entityNo) {
         return opsPromotionService.activities(entityNo);
     }
@@ -99,7 +99,7 @@ public class OpsPromotionController {
      * 那会变成一通客服电话，而接电话的人也答不上来。
      */
     @PreAuthorize("@perm.can('" + Perms.MARKETING_CAMPAIGN_UPDATE + "')")
-    @PostMapping("/ops/promotion/activities/{activityNo}/stop")
+    @PostMapping(value = "/ops/promotion/activities/{activityNo}/stop", params = "model!=unified")
     public OpsActivityVO stop(@PathVariable String activityNo, @RequestBody StopReq req) {
         return opsPromotionService.stop(activityNo, req.reason(), SecurityUtils.currentUserNo());
     }

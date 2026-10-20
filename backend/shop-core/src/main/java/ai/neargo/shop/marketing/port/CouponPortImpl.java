@@ -1,8 +1,12 @@
 package ai.neargo.shop.marketing.port;
 
+import ai.neargo.shop.spi.entitlement.LegacyCouponWriteFencePort;
+import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.promotion.CouponCalculation;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.marketing.coupon.entity.MktCoupon;
 import ai.neargo.shop.marketing.coupon.entity.MktUserCoupon;
@@ -14,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Comparator;
 
 /**
  * trade → marketing：下单时的券计算与核销（{@link CouponPort}）。
@@ -29,10 +34,12 @@ import java.util.List;
 @Component
 public class CouponPortImpl implements CouponPort {
 
+    private final LegacyCouponWriteFencePort sourceFence;
     private final CouponMapper couponMapper;
     private final UserCouponMapper userCouponMapper;
 
-    public CouponPortImpl(CouponMapper couponMapper, UserCouponMapper userCouponMapper) {
+    public CouponPortImpl(CouponMapper couponMapper, UserCouponMapper userCouponMapper, LegacyCouponWriteFencePort sourceFence) {
+        this.sourceFence = sourceFence;
         this.couponMapper = couponMapper;
         this.userCouponMapper = userCouponMapper;
     }
@@ -63,24 +70,10 @@ public class CouponPortImpl implements CouponPort {
 
         // 按比例分摊
         List<Share> shares = new ArrayList<>();
-        long allocated = 0;
-        for (MerchantAmount g : applicable) {
-            long part = Math.round((double) total * g.goodsAmount() / base);
-            shares.add(new Share(g.merchantNo(), part, g.storeNo()));
-            allocated += part;
-        }
-        // 尾数给适用商品额最大的那一单（正负都可能：round 会上下浮动）
-        long remainder = total - allocated;
-        if (remainder != 0) {
-            // 按位置找最大那一组，不按主体号：同主体两家店是两组（ADR-031），按号会落到第一组
-            int largest = 0;
-            for (int i = 1; i < applicable.size(); i++) {
-                if (applicable.get(i).goodsAmount() > applicable.get(largest).goodsAmount()) {
-                    largest = i;
-                }
-            }
-            Share d = shares.get(largest);
-            shares.set(largest, new Share(d.merchantNo(), d.amount() + remainder, d.storeNo()));
+        var amounts = CouponCalculation.allocate(total, applicable.stream().map(MerchantAmount::goodsAmount).toList());
+        for (int i = 0; i < applicable.size(); i++) {
+            var group = applicable.get(i);
+            shares.add(new Share(group.merchantNo(), amounts.get(i), group.storeNo()));
         }
 
         boolean byMerchant = MktCoupon.BY_MERCHANT.equals(coupon.getFunder());
@@ -99,6 +92,7 @@ public class CouponPortImpl implements CouponPort {
             return;
         }
         MktUserCoupon uc = ownUserCoupon(userNo, userCouponNo);
+        sourceFence.requireWritable(uc.getTenantNo(), SourceSystem.MKT_LEGACY, uc.getCouponNo(), false);
         assertUsable(uc, templateOf(uc.getCouponNo()));
         /*
          * **带条件的 UPDATE 才是这里的锁**（《分布式集群与高可用方案》§5 P0）：只有仍是 UNUSED 才改得动。
@@ -125,7 +119,9 @@ public class CouponPortImpl implements CouponPort {
                 userCouponMapper.selectList(Wrappers.<MktUserCoupon>lambdaQuery()
                         .eq(MktUserCoupon::getOrderNo, orderNo)
                         .eq(MktUserCoupon::getStatus, MktUserCoupon.USED)));
+        used = used.stream().sorted(Comparator.comparing(MktUserCoupon::getCouponNo)).toList();
         for (MktUserCoupon uc : used) {
+            sourceFence.requireWritable(uc.getTenantNo(), SourceSystem.MKT_LEGACY, uc.getCouponNo(), true);
             /*
              * **订单号留在券上**（2026-09-21 写明）。此前这里写着 setOrderNo(null)，
              * 但 updateById 跳过 null 字段 —— 那一行从来没生效过，订单号一直都留着。
@@ -134,7 +130,9 @@ public class CouponPortImpl implements CouponPort {
              * 再用到别的单时 markUsed 会覆盖它。
              */
             uc.setStatus(MktUserCoupon.UNUSED);
-            DataScopeContext.executeWithoutScope(() -> userCouponMapper.updateById(uc));
+            DataScopeContext.executeWithoutScope(() -> userCouponMapper.update(uc,
+                    Wrappers.<MktUserCoupon>lambdaUpdate().eq(MktUserCoupon::getId, uc.getId())
+                            .eq(MktUserCoupon::getOrderNo, orderNo).eq(MktUserCoupon::getStatus, MktUserCoupon.USED)));
         }
     }
 

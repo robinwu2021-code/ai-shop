@@ -29,7 +29,7 @@ const epSrc = readFileSync(ENDPOINTS, "utf8");
 // 注释只取「紧邻字段那一段」：截到最后一个 /** 之后，否则惰性匹配会从类注释一路跨过来
 // —— gen-biz-role-matrix 就是这么让 RECEIVE 的含义变成类注释第一句的。
 const perms = new Map();
-for (const m of permSrc.matchAll(/public static final String ([A-Z_]+) = "(biz:[a-z:]+)";/g)) {
+for (const m of permSrc.matchAll(/public static final String ([A-Z_]+) = "((?:biz|pay):[a-z:]+)";/g)) {
   const before = permSrc.slice(0, m.index);
   const open = before.lastIndexOf("/**");
   const close = before.lastIndexOf("*/");

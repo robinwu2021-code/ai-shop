@@ -1,0 +1,223 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "按用户要求优先完整交付Java后端；B/C/运营新页面另阶段接入，不伪造已上线入口。",
+  "plan": "docs/technical/任务表-活动权益-前端接入.md",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/activity-presets"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/card-product-presets"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/entitlement-issue-batches/*"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/entitlement-templates"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/entitlement-usage"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/entitlement-uses/*"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/entitlements/*"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/marketing-summary"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stored-value/accounts"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stored-value/recharges/*"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/activities/*/publish"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/card-product-bindings"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/entitlement-issue-batches"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/entitlement-templates"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/entitlement-templates/*/publish"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/entitlement-uses"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/entitlement-uses/*/cancel"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/entitlement-uses/preview"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stored-value/consumptions"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stored-value/consumptions/preview"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stored-value/recharges"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stored-value/recharges/*/cancel"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stored-value/recharges/*/receive"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stored-value/recharges/*/submit"
+    },
+    {
+      "app": "b-app",
+      "method": "PUT",
+      "path": "/biz/entitlement-templates/*/draft"
+    },
+    {
+      "app": "b-app",
+      "method": "PUT",
+      "path": "/biz/entitlement-templates/*/issue-policy"
+    },
+    {
+      "app": "b-app",
+      "method": "PUT",
+      "path": "/biz/entitlement-templates/*/status"
+    },
+    {
+      "app": "c-app",
+      "method": "GET",
+      "path": "/mp/entitlement-claims/*"
+    },
+    {
+      "app": "c-app",
+      "method": "GET",
+      "path": "/mp/entitlement-service-orders"
+    },
+    {
+      "app": "c-app",
+      "method": "GET",
+      "path": "/mp/entitlement-service-orders/*"
+    },
+    {
+      "app": "c-app",
+      "method": "GET",
+      "path": "/mp/entitlement-usage"
+    },
+    {
+      "app": "c-app",
+      "method": "GET",
+      "path": "/mp/entitlement-usage/*"
+    },
+    {
+      "app": "c-app",
+      "method": "GET",
+      "path": "/mp/entitlements"
+    },
+    {
+      "app": "c-app",
+      "method": "GET",
+      "path": "/mp/entitlements/*"
+    },
+    {
+      "app": "c-app",
+      "method": "GET",
+      "path": "/mp/entitlements/*/allowances"
+    },
+    {
+      "app": "c-app",
+      "method": "GET",
+      "path": "/mp/entitlements/*/usage"
+    },
+    {
+      "app": "c-app",
+      "method": "GET",
+      "path": "/mp/stored-value/consumptions"
+    },
+    {
+      "app": "c-app",
+      "method": "GET",
+      "path": "/mp/stored-value/stores"
+    },
+    {
+      "app": "c-app",
+      "method": "POST",
+      "path": "/mp/entitlement-claims"
+    },
+    {
+      "app": "c-app",
+      "method": "POST",
+      "path": "/mp/entitlement-quotes"
+    },
+    {
+      "app": "c-app",
+      "method": "POST",
+      "path": "/mp/entitlements/*/activation-quotes"
+    },
+    {
+      "app": "c-app",
+      "method": "POST",
+      "path": "/mp/entitlements/*/redeem-codes"
+    },
+    {
+      "app": "c-app",
+      "method": "POST",
+      "path": "/mp/orders/*/entitlement-authorizations"
+    }
+  ]
+}

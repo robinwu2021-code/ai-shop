@@ -29,7 +29,7 @@ export function PointsSettlementsTab({ canMake, canExecute }: { canMake: boolean
   const funds = useQuery({ queryKey: ["points-funds", fundsRef], queryFn: () => api.pointsFunds(fundsRef!), enabled: !!fundsRef });
   const refund = useQuery({ queryKey: ["points-refund", refundRef], queryFn: () => api.pointsRefund(refundRef!), enabled: !!refundRef });
   const type = types.data?.find((x) => x.typeCode === filter?.typeCode);
-  const amount = (n: number) => type ? new Intl.NumberFormat(locale === "ar" ? "ar" : en ? "en" : "zh-CN", { style: "currency", currency: type.currency }).format(n / 10 ** type.scale) : String(n);
+  const amount = (n: number) => type ? new Intl.NumberFormat(en ? "en" : "zh-CN", { style: "currency", currency: type.currency }).format(n / 10 ** type.scale) : String(n);
   const intent = useRef<{ body: string; requestId: string } | undefined>(undefined);
   const save = useMutation<PointsOperation | PointsRecoveryExecution, Error, Command>({ mutationFn: (c) => {
     switch (c.kind) {

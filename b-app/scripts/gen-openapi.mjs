@@ -261,6 +261,7 @@ const RESPONSE_TYPES = {
   mOfflineSell: "{ docNo: string }",
   mOfflineSaleRevoke: "{ docNo: string }",
   mSaveSellRule: "SellRule",
+  mResolveMemberCode: "CustomerReference",
   mMemberDetail: "MemberDetail",
   mMemberSegments: "MemberSegment[]",
   mMemberSettings: "MemberSetting",

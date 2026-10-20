@@ -138,6 +138,26 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
   cash_payment_no: { table: "stl_payment", col: "payment_no" },
   origin_payment_no: { table: "stl_payment", col: "payment_no" },
   pay_no: { table: "ord_create_intent" },
+  tier_no: { table: "pmt_recharge_tier" },
+  grant_no: { table: "ent_grant" },
+  instance_no: { table: "ent_instance" },
+  usage_no: { table: "ent_usage" },
+  source_order_no: { table: "ord_order", col: "order_no" },
+  recharge_no: { table: "sv_recharge" },
+  lot_no: { table: "sv_lot" },
+  voucher_no: { table: "sv_voucher" },
+  exception_no: { table: "pay_ent_exception" },
+  recon_no: { table: "pay_ent_recon_run" },
+  stage_no: { table: "ent_migration_stage" },
+  alias_no: { table: "ent_migration_alias" },
+  checkout_no: { table: "ord_legacy_coupon_checkout" },
+  plan_no: { table: "ent_migration_plan" },
+  import_no: { table: "ent_migration_import" },
+  return_no: { table: "pmt_migration_return" },
+  target_template_no: { table: "ent_template", col: "template_no" },
+  template_version_no: { table: "ent_template_version", col: "version_no" },
+  activity_version_no: { table: "pmt_activity_version", col: "version_no" },
+
   /*
    * ── 2026-08-29 补齐的十三个 ──
    * 归属判据不是靠猜：**看哪张表把它建成了唯一键**（schema-test.sql 里逐个查过），
@@ -250,6 +270,25 @@ const NAME_COLLISIONS: Record<string, string> = {
   holder_no: "积分持有人多态编号，必须结合 holder_type。",
   position_no: "不同种类积分持仓的多态编号，必须结合持仓类型。",
   ticket_no: "积分资金指令与客服工单的独立编号，不可直接关联。",
+  migration_batch_no: "旧券迁移批次按tenant/sourceSystem/sourceTemplateNo限定，不是全局迁移主键；目标原子导入主键是import_no。",
+  aggregate_no: "订单状态聚合与Pay Outbox的多态聚合号，各自携带聚合类型。",
+  diff_no: "结算差异stl_recon_diff与权益差异pay_ent_recon_diff分别发号。",
+  current_version_no: "pmt_activity指活动版本，ent_template指权益模板版本，须按所属表限定。",
+  biz_no: "通道消息、储值凭证和权益异常各自按biz_type解释的多态业务号。",
+  account_no: "mch_payout_account为银行出款账户；sv_account为储值账户。",
+  version_no: "活动版本和权益模板版本各自发号；活动子表指pmt_activity_version，ent_template_version自持权益版本。",
+  resource_no: "幂等结果和对账差异按对应资源类型解释，不是同一实体。",
+  actor_no: "审计操作人可为商家账号、运营或系统，必须结合actor_type解释。",
+  decision_no: "Core订单源决定与旧券迁移永久源决定分别发号。",
+  reservation_no: "活动资源占用与Pay售卡承诺分别发号，关联必须结合业务协议。",
+  source_decision_no: "Core订单源决定或迁移源决定，由source协议与purpose限定。",
+  operation_no: "统一使用意图或旧券原操作号，由protocol决定根表，不能仅按号合并。",
+  intent_no: "活动发权益与储值充值协调意图分别发号。",
+  source_template_no: "旧MKT或PMT根号，须同时校验source_system与tenant，禁止同号猜测。",
+  source_instance_no: "原旧券实例号，须同时校验source_system与tenant，禁止跨来源连接。",
+  source_usage_no: "原历史流水号，须同时校验source_system与source_instance_no。",
+
+  parent_no: "cmt_community.parent_no是社区层级，prd_category.parent_no是商品类目层级；各自树内引用，不能按全局名字连线。",
   waybill_no:
     "两边是**同一个快递运单号**，但它**不是外键**：运单号只在承运商内唯一，lgs_waybill 按（承运商, 运单号）登记；" +
     "ord_shipment（订单服务 2.0 发货单，V401）记的是商家录入的号。\n" +
@@ -320,8 +359,8 @@ const NAME_COLLISIONS: Record<string, string> = {
     "所以谁都不能登记成外键，按名字 join 必然连错，且不报错。",
   operator_no: "ord_status_log 与 ful_verify_log 各自记录操作人，不是同一张表的外键。",
   template_no:
-    "**同一个列名下其实是两族**：notify_template 是消息模板，notify_message.template_no 引用它；" +
-    "prd_spec_template.template_no 是商品规格模板（颜色/尺码那套），与消息毫无关系。\n" +
+    "**同一个列名下有独立的模板族**：notify_template 是消息模板，notify_message.template_no 引用它；" +
+    "prd_spec_template.template_no 是商品规格模板，ent_template/ent_template_version是支付权益模板；三族互不相干。\n" +
     "  按名字 join 会把「发过哪条推送」连到「用了哪个规格模板」上 —— 两边都有值，不报错。\n" +
     "  没改名是因为两族在各自的域里都叫得通；登记在这里，是为了让下一个人先看到这句话。\n" +
     "  注意 notify_message → notify_template 这一跳**没有守卫** —— LINEAGE 只管资金账与积分账，" +

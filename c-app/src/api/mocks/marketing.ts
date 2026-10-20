@@ -18,6 +18,7 @@ export const marketingMock: Pick<ShopApi,
   | "couponBest"
   | "myStoreCoupons"
   | "myMemberships"
+  | "issueMemberCode"
   | "setMembershipReach"
   | "reachOpened"
   | "receiveCoupon"
@@ -30,6 +31,9 @@ export const marketingMock: Pick<ShopApi,
   | "confirmGroupBatch"
   | "verifyGroupPickup"
 > = {
+  async issueMemberCode() {
+    throw new Error("统一会员凭证仅支持真实后端，演示模式不签发身份凭证");
+  },
   // ---------------------------------------------------------------- 营销
   async couponList() {
     return delay(

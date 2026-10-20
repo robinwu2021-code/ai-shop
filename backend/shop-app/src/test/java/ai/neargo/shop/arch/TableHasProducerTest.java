@@ -101,7 +101,7 @@ class TableHasProducerTest {
         for (Map.Entry<String, String> e : entities.entrySet()) {
             String table = e.getKey();
             String cls = e.getValue();
-            if (allSource.contains("new " + cls + "()")) {
+            if (hasProducer(table,cls,allSource)) {
                 continue;   // 有生产者
             }
             if (seedSql.stream().anyMatch(sql -> sql.contains("INSERT INTO " + table))) {
@@ -146,7 +146,7 @@ class TableHasProducerTest {
             String cls = entities.get(table);
             if (cls == null) {
                 stale.add(table + "：表已经不在了");
-            } else if (allSource.contains("new " + cls + "()")) {
+            } else if (hasProducer(table,cls,allSource)) {
                 stale.add(table + "：已经有生产者了，这条登记下面那句理由已经不成立");
             }
         }
@@ -161,6 +161,12 @@ class TableHasProducerTest {
                         + "  留着的害处是它下面那句理由会变成谎话，"
                         + "而下一个读的人会照着它做判断。", stale)
                 .isEmpty();
+    }
+
+    private static boolean hasProducer(String table,String entity,String source) {
+        // Conditional INSERT statements on real mapper methods are producers too; no dummy entity is needed.
+        return source.contains("new "+entity+"()") || Pattern.compile("(?i)INSERT\\s+(?:IGNORE\\s+)?INTO\\s+"
+                +Pattern.quote(table)+"\\b").matcher(source).find();
     }
 
     private static Map<String, String> scanEntities() throws IOException {

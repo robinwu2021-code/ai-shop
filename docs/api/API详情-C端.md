@@ -1354,6 +1354,24 @@
 | `serviceScopes` | [`ServiceScope`](#servicescope)\[\] | 是 | **这一期开放的经营范围档位**（`SERVICE_SCOPE` 的启用子集，运营在后台配）。 端上要照它渲染选项，**不要把三档写死**。写死的后果不是「多了个选项」： 一期自营模式关掉了 `PLATFORM`，而 B 端照样把「全平台发货」摆在那里， 商家点下去得到的是「当前不支持这个经营范围」—— 一个必被拒的选项， 而他无从知道自己该选什么。2026-08-11 的端到端实测撞到过。 拿到 EDI 切平台模式时运营在后台放开，端上不发版就跟着变 —— 这正是它下发而不是写死的理由。 |
 
 
+### member-code
+
+#### POST `/mp/member-code`
+
+签发本人统一会员码　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MemberCodeView`](#membercodeview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `memberCode` | `string` | 是 | 短期会员身份凭证，仅用于识别本人，不代表消费授权。 |
+| `expiresAt` | `string` | 是 | 凭证失效时间，ISO 8601 UTC。 |
+
+
 ### member-reach
 
 #### POST `/mp/member-reach/{reachNo}/opened`
@@ -4088,6 +4106,15 @@
 | `needLicense` | `boolean` | 是 | 要不要传营业执照 |
 | `industryGated` | `boolean` | 是 | 是否受行业白名单管控（小微受管，其余不受） |
 | `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 是 | 该主体默认的结算账户形态：小微打个人，其余打对公 |
+
+### MemberCodeView
+
+统一会员身份凭证，ISO UTC截止时间；与登录令牌不同，不代表扣款同意。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `memberCode` | `string` | 是 | 短期会员身份凭证，仅用于识别本人，不代表消费授权。 |
+| `expiresAt` | `string` | 是 | 凭证失效时间，ISO 8601 UTC。 |
 
 ### Merchant
 

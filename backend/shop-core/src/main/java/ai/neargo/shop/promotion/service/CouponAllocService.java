@@ -15,6 +15,9 @@ import java.util.List;
  */
 public interface CouponAllocService {
 
+    /** An existing order coupon blocks a second protocol, even if its template has been removed. */
+    boolean hasActiveBinding(String tenantNo, String orderNo);
+
     /** 这张用户券是不是新模型的（路由靠它分流） */
     boolean owns(String userNo, String userCouponNo);
 

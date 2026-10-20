@@ -283,6 +283,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   // 会员（P1）：客户页的升级版。沿用 biz:customer，不新造权限码
   mMembers: { method: "GET", path: "/biz/members", auth: true, summary: "会员列表（筛选+分页）" },
   mMemberStats: { method: "GET", path: "/biz/members/stats", auth: true, summary: "四层人数与未计入买家" },
+  mResolveMemberCode: { method: "POST", path: "/biz/member-code/resolve", auth: true, summary: "识别统一会员码" },
   mMemberDetail: { method: "GET", path: "/biz/members/{memberNo}", auth: true, summary: "会员详情：各店往来与来源轨迹" },
   // 录入与标签（P2）
   mEnrollMember: { method: "POST", path: "/biz/members", auth: true, summary: "手工录入（未注册记为线索）" },

@@ -6,6 +6,8 @@ import ai.neargo.shop.pay.mapper.ChannelMappers;
 import ai.neargo.shop.spi.pay.ChannelCallbackVerifier;
 import ai.neargo.shop.spi.pay.PayQueryPort;
 import ai.neargo.shop.trade.service.OrderService;
+import ai.neargo.shop.trade.service.LegacyCouponOrderPricingService;
+import ai.neargo.shop.trade.service.LegacyCouponBoundOrderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -100,7 +102,7 @@ class ChannelPayCallbackFlowTest {
     private WebApplicationContext context;
     @MockitoBean
     private PayQueryPort payQuery;
-    @MockitoBean
+    @MockitoBean(extraInterfaces={LegacyCouponOrderPricingService.class,LegacyCouponBoundOrderService.class})
     private OrderService orderService;
     @Autowired
     private ChannelMappers.ChannelMessageMapper messageMapper;
@@ -303,7 +305,7 @@ class ChannelPayCallbackFlowTest {
         StlChannelMessage m = lastMessage();
         // 停在 RECEIVED 不是脏数据，是「收到了、没处理完」这句话本身 ——
         // 排查时看到它就知道该去翻应用日志的那一刻，而不是怀疑通道没推
-        
+
         assertThat(m.getOutcome()).isEqualTo(StlChannelMessage.RECEIVED);
     }
 

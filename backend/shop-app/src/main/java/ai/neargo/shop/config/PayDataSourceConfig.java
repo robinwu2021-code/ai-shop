@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.AbstractPlatformTransactionManager;
 
 import javax.sql.DataSource;
 
@@ -100,7 +101,10 @@ public class PayDataSourceConfig {
     @Bean
     PlatformTransactionManager payTxManager(
             @Qualifier("payDataSource") DataSource ds) {
-        return new DataSourceTransactionManager(ds);
+        var manager = new DataSourceTransactionManager(ds);
+        manager.setTransactionSynchronization(
+                AbstractPlatformTransactionManager.SYNCHRONIZATION_ON_ACTUAL_TRANSACTION);
+        return manager;
     }
 
     /**

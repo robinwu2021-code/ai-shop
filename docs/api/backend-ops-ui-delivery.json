@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "Java后端优先；运营端页面按独立前端接入阶段交付。",
+  "plan": "docs/technical/任务表-活动权益-前端接入.md",
+  "entries": [
+    {
+      "app": "ops-web",
+      "method": "GET",
+      "path": "/ops/pay/entitlement-dead-letters"
+    },
+    {
+      "app": "ops-web",
+      "method": "GET",
+      "path": "/ops/pay/entitlement-exceptions"
+    },
+    {
+      "app": "ops-web",
+      "method": "GET",
+      "path": "/ops/pay/entitlement-exceptions/{exceptionNo}"
+    },
+    {
+      "app": "ops-web",
+      "method": "GET",
+      "path": "/ops/pay/entitlement-exceptions/{exceptionNo}/actions"
+    },
+    {
+      "app": "ops-web",
+      "method": "POST",
+      "path": "/ops/pay/entitlement-exceptions/{exceptionNo}/query-source"
+    },
+    {
+      "app": "ops-web",
+      "method": "POST",
+      "path": "/ops/pay/entitlement-exceptions/{exceptionNo}/retry-event"
+    },
+    {
+      "app": "ops-web",
+      "method": "POST",
+      "path": "/ops/pay/entitlement-exceptions/{exceptionNo}/retry-grant"
+    },
+    {
+      "app": "ops-web",
+      "method": "GET",
+      "path": "/ops/pay/entitlement-reconciliations"
+    },
+    {
+      "app": "ops-web",
+      "method": "POST",
+      "path": "/ops/pay/entitlement-reconciliations"
+    },
+    {
+      "app": "ops-web",
+      "method": "GET",
+      "path": "/ops/pay/entitlement-reconciliations/{reconNo}"
+    },
+    {
+      "app": "ops-web",
+      "method": "GET",
+      "path": "/ops/pay/entitlement-reconciliations/{reconNo}/differences"
+    },
+    {
+      "app": "ops-web",
+      "method": "POST",
+      "path": "/ops/pay/entitlements/{instanceNo}/freeze"
+    },
+    {
+      "app": "ops-web",
+      "method": "GET",
+      "path": "/ops/pay/entitlements/{instanceNo}/lifecycle"
+    }
+  ]
+}

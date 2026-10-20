@@ -66,8 +66,8 @@ export function PointsQueriesTab({ canEdit, canReconRead, canReconRun }: { canEd
   const card = "space-y-3 rounded-card border border-border p-4";
   const error = types.error || account.error || entries.error || vouchers.error || flows.error || position.error || stats.error || recon.error || events.error;
   const activeLedger = ledgerKind === "VOUCHERS" ? vouchers : flows;
-  const money = (n: number) => type ? new Intl.NumberFormat(locale === "ar" ? "ar" : en ? "en" : "zh-CN", { style: "currency", currency: type.currency }).format(n / 10 ** type.scale) : String(n);
-  const time = (at: number | null) => at ? new Date(at).toLocaleString(locale === "ar" ? "ar" : en ? "en" : "zh-CN") : "—";
+  const money = (n: number) => type ? new Intl.NumberFormat(en ? "en" : "zh-CN", { style: "currency", currency: type.currency }).format(n / 10 ** type.scale) : String(n);
+  const time = (at: number | null) => at ? new Date(at).toLocaleString(en ? "en" : "zh-CN") : "—";
   return <div className="space-y-4">
     <Notice>{t("查询只读。统计和对账快照需显式刷新，不自动修账；未生成、扫描未完成和无差异是不同状态。冻结只控制账户使用与到期时钟，不改积分余额。", "Queries are read-only. Statistics and reconciliation require explicit refresh and never repair balances. No snapshot, incomplete scan and no differences are distinct states. Freezing controls use and the expiry clock, preserving balances.")}</Notice>
     {IS_MOCK && <Notice tone="warning">{t("演示账户和流水为空，对账不模拟平账结果。", "Demo accounts and ledger rows are empty. Reconciliation does not simulate a balanced result.")}</Notice>}

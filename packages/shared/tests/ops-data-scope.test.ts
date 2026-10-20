@@ -463,6 +463,13 @@ const OWNER_COLUMNS = [
 ];
 
 const ANCHOR_WAIVED: Record<string, string> = {
+  "ent_code_token:COMMUNITY": "身份凭证或订单权益协调记录不按社区/自提点公开；仅该维度运营查询应为空，须用实际主体权限入口，不得查看他人凭证。",
+  "ent_code_token:PICKUP": "身份凭证或订单权益协调记录不按社区/自提点公开；仅该维度运营查询应为空，须用实际主体权限入口，不得查看他人凭证。",
+  "ord_ent_order_use:COMMUNITY": "身份凭证或订单权益协调记录不按社区/自提点公开；仅该维度运营查询应为空，须用实际主体权限入口，不得查看他人凭证。",
+  "ord_ent_order_use:PICKUP": "身份凭证或订单权益协调记录不按社区/自提点公开；仅该维度运营查询应为空，须用实际主体权限入口，不得查看他人凭证。",
+  "mbr_identity_ticket:COMMUNITY": "身份凭证或订单权益协调记录不按社区/自提点公开；仅该维度运营查询应为空，须用实际主体权限入口，不得查看他人凭证。",
+  "mbr_identity_ticket:PICKUP": "身份凭证或订单权益协调记录不按社区/自提点公开；仅该维度运营查询应为空，须用实际主体权限入口，不得查看他人凭证。",
+
   // 这是消费者的私有会话操作者上下文，仅由 C 端认证/付款按 token 哈希读取；无运营查询入口。
   // 保留 SELF 过滤。若运营将来直接读该表，下面三种会话应得到空集，不能按商家/片区公开。
   "usr_mp_session:COMMUNITY": "没有运营页面读取；持社区域的运营直接查询应为空，消费者会话不能按社区公开",
@@ -1071,6 +1078,7 @@ describe("运营端数据域接入", () => {
     expect(
       [...new Set(offenders)].sort(),
       "这些 ops 查询走到了 `executeWithoutScope`，而它包住的表**已经注册进数据域**。\n"
+      + [...new Set(offenders)].sort().join("\n") + "\n"
       + "  后果：给这个运营配的数据域对这条查询完全不生效 —— 配了「只看某商家」的人照样看到全量，\n"
       + "  而页面上没有任何线索说明这一点。\n"
       + "  两条路：把这处 `executeWithoutScope` 去掉（查询路径应当接数据域）；\n"
@@ -1312,7 +1320,7 @@ describe("运营端数据域接入", () => {
     prd_spec_value: "同上，取值随维度一起查",
     prd_spec_template: "同上，模板也分平台/商家两种 scope",
 
-    
+
     rvw_review_like:
       "评价点赞。只有 user_no，且**只在 C 端读**（看评价时标出「我赞过」）——"
       + "它被挂到 /ops/reviews 上是因为与 C 端那条在同一个类里、解析时一并追到。"

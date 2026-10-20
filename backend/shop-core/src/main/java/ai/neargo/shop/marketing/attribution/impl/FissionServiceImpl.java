@@ -20,15 +20,18 @@ import java.util.List;
 @Service
 public class FissionServiceImpl implements FissionService {
 
+    private final ai.neargo.shop.spi.entitlement.LegacyCouponWriteFencePort sourceFence;
     private final FissionCampaignMapper campaignMapper;
     private final CouponMapper couponMapper;
     private final ai.neargo.shop.marketing.attribution.mapper.AttributionMappers.FissionInviteMapper
             inviteMapper;
 
     public FissionServiceImpl(
+            ai.neargo.shop.spi.entitlement.LegacyCouponWriteFencePort sourceFence,
             FissionCampaignMapper campaignMapper, CouponMapper couponMapper,
             ai.neargo.shop.marketing.attribution.mapper.AttributionMappers.FissionInviteMapper
                     inviteMapper) {
+        this.sourceFence=sourceFence;
         this.campaignMapper = campaignMapper;
         this.couponMapper = couponMapper;
         this.inviteMapper = inviteMapper;
@@ -61,6 +64,7 @@ public class FissionServiceImpl implements FissionService {
         if (coupon == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        sourceFence.requireWritable(coupon.getTenantNo(),ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem.MKT_LEGACY,coupon.getCouponNo(),false);
         int inviter = nz(cmd.inviterCount());
         int invitee = nz(cmd.inviteeCount());
         // 两边都是 0 = 一张券都不发，那这个活动存在的意义是什么
@@ -106,6 +110,7 @@ public class FissionServiceImpl implements FissionService {
                 throw BizException.of(ErrorCode.COUPON_NOT_APPLICABLE);
             }
         }
+        if(enabled) sourceFence.requireWritable(row.getTenantNo(),ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem.MKT_LEGACY,row.getCouponNo(),false);
         row.setEnabled(enabled);
         DataScopeContext.executeWithoutScope(() -> campaignMapper.updateById(row));
         return toVO(row);

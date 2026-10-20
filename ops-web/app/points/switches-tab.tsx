@@ -78,7 +78,7 @@ export function PointsPolicyTab({ c, canEdit }: { c: FinanceCopy; canEdit: boole
           { header: text("方向", "Flow"), cell: (r) => r.flow },
           { header: text("状态", "Availability"), cell: (r) => r.enabled ? text("开启", "Enabled") : text("关闭", "Disabled") },
           { header: text("操作人 / 原因", "Operator / reason"), cell: (r) => `${r.actor} / ${r.reason}` },
-          { header: text("服务端时间", "Server time"), cell: (r) => new Date(r.at).toLocaleString(locale === "ar" ? "ar" : en ? "en" : "zh-CN") },
+          { header: text("服务端时间", "Server time"), cell: (r) => new Date(r.at).toLocaleString(en ? "en" : "zh-CN") },
         ]} />
         {!list.data.rows.length && <p dir="auto" className="p-3">{text("此范围暂无开关记录；实际可用性还受类型状态、协议及资金限制。", "No switch records in this scope. Type state, agreement and funding still constrain availability.")}</p>}
         <div className="flex gap-2"><Button disabled={!after} onClick={() => setAfter(0)}>{text("首页", "First page")}</Button><Button disabled={!list.data.hasMore || list.isFetching} onClick={() => setAfter(list.data.next)}>{text("下一页", "Next page")}</Button></div>

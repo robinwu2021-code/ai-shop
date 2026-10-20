@@ -3,11 +3,13 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { OrderPointsIntegrationChange, PointsCreate, PointsFallbackChange, PointsTermsChange, PointsTypeChange } from "@/lib/types";
+import type { OrderPointsIntegrationChange, PointsCreate, PointsFallbackChange, PointsTermsChange, PointsTypeChange, PointsTypeConfig } from "@/lib/types";
 import { pointsCommand } from "@/lib/points-command";
 import { usePointsText } from "@/lib/points-i18n";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
+import { DataTable } from "@/components/ui/data-table";
+import { Drawer } from "@/components/ui/drawer";
 import { Notice } from "@/components/ui/notice";
 import { SectionHeader } from "@/components/ui/section-header";
 import { ManualPointsRefunds } from "./manual-refunds";
@@ -19,8 +21,8 @@ export function PointsConfigurationTab({ canEdit }: { canEdit: boolean }) {
   const en = locale !== "zh";
   const qc = useQueryClient();
   const types = useQuery({ queryKey: ["points-types"], queryFn: () => api.pointsTypes() });
-  const [selected, select] = useState("");
-  const code = selected || types.data?.[0]?.typeCode || "";
+  const [code, select] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
   const type = types.data?.find((x) => x.typeCode === code);
   const rule = useQuery({ queryKey: ["points-fallback", code], queryFn: () => api.pointsFallback(code), enabled: !!code });
   const terms = useQuery({ queryKey: ["points-terms", code], queryFn: () => api.pointsTerms(code), enabled: !!code });
@@ -54,7 +56,16 @@ export function PointsConfigurationTab({ canEdit }: { canEdit: boolean }) {
       case "RULE": return api.savePointsFallback(command.value);
       case "TERMS": return api.publishPointsTerms(command.value);
     }
-  }, onSuccess: () => { intent.current = undefined; void qc.invalidateQueries({ queryKey: ["points-types"] }); void qc.invalidateQueries({ queryKey: ["points-fallback"] }); void qc.invalidateQueries({ queryKey: ["points-terms"] }); } });
+  }, onSuccess: (_result, command) => {
+    intent.current = undefined;
+    void qc.invalidateQueries({ queryKey: ["points-types"] });
+    void qc.invalidateQueries({ queryKey: ["points-fallback"] });
+    void qc.invalidateQueries({ queryKey: ["points-terms"] });
+    if (command.kind === "CREATE") {
+      setCreateOpen(false);
+      select(command.value.command.typeCode);
+    }
+  } });
   function send(command: Command) {
     const next = pointsCommand({ ...command, value: { ...command.value, requestId: "" } }, intent.current);
     intent.current = next.intent;
@@ -63,17 +74,50 @@ export function PointsConfigurationTab({ canEdit }: { canEdit: boolean }) {
   const error = types.error || rule.error || terms.error || agreements.error;
   const integrationError = integration.error || integrationSave.error;
   const card = "space-y-3 rounded-card border border-border p-4";
+  const columns = [
+    { header: t("积分类型", "Points type"), cell: (row: PointsTypeConfig) => <div><p className="font-semibold">{row.typeCode}</p><p className="txt-caption text-muted-foreground">{row.market} · {row.currency}</p></div> },
+    { header: t("兑换比例", "Conversion rate"), cell: (row: PointsTypeConfig) => `${row.rate.pointsUnit} ${t("积分", "points")} = ${row.rate.minorUnit} ${t("最小货币单位", "minor units")}` },
+    { header: t("抵扣上限", "Deduction cap"), numeric: true, cell: (row: PointsTypeConfig) => `${(row.deductRatioBp / 100).toFixed(2)}%` },
+    { header: t("闲置天数", "Idle days"), numeric: true, cell: (row: PointsTypeConfig) => row.idleDays },
+    { header: t("状态", "Status"), cell: (row: PointsTypeConfig) => t(
+      row.status === "DRAFT" ? "草稿" : row.status === "ACTIVE" ? "生效中" : row.status === "DRAINING" ? "清偿中" : "已退役", row.status,
+    ) },
+    { header: "", cell: () => <span className="text-muted-foreground">{t("查看详情 →", "View details →")}</span> },
+  ];
   return <div className="space-y-4">
-    <SectionHeader title={t("积分类型、规则与门店协议", "Points types, rules and store agreements")} />
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <SectionHeader title={t("积分类型、规则与门店协议", "Points types, rules and store agreements")} summary={types.data?.length ?? 0} className="mb-0" />
+      {canEdit && <Button onClick={() => { save.reset(); setCreateOpen(true); }}>{t("新建积分类型", "New points type")}</Button>}
+    </div>
     <Notice>{t("金额使用类型币种的最小货币单位。配置只影响后续交易，旧交易保留原比例、规则与协议快照。", "Amounts use the type's minor currency unit. Configuration affects future transactions; existing transactions retain their rate, rules and agreement.")}</Notice>
-    {error && <Notice tone="warning">{t(error.message, error.message)}<Button onClick={() => { void types.refetch(); if (code) { void rule.refetch(); void terms.refetch(); } if (store) void agreements.refetch(); }}>{t("重试", "Retry")}</Button></Notice>}
-    {save.isError && <Notice tone="warning">{t(save.error.message, save.error.message)}</Notice>}
-    {save.isSuccess && <Notice>{t("已保存，操作号：", "Saved, request ID: ")}{save.data.requestId}</Notice>}
-    {types.isPending && <p dir="auto">{t("加载中…", "Loading…")}</p>}
-    <label className="block">{t("积分类型", "Points type")} <Select value={code} onChange={(e) => { select(e.target.value); setAfter(0); save.reset(); }}>
-      {!types.data?.length && <option value="">{t("尚无类型", "No types")}</option>}
-      {types.data?.map((x) => <option key={x.typeCode} value={x.typeCode}>{x.typeCode} · {x.market} · {x.status}</option>)}
-    </Select></label>
+    <DataTable<PointsTypeConfig> columns={columns} rows={types.data} loading={types.isPending} error={types.error} onRetry={() => void types.refetch()}
+      rowKey={(row) => row.typeCode} empty={t("还没有积分类型，请先新建。", "No points types yet. Create one to get started.")}
+      emptyAction={canEdit ? <Button size="sm" onClick={() => { save.reset(); setCreateOpen(true); }}>{t("新建积分类型", "New points type")}</Button> : undefined}
+      rowProps={(row) => ({ role: "button", tabIndex: 0, "aria-label": `${t("查看积分类型", "View points type")} ${row.typeCode}`,
+        className: "cursor-pointer hover:bg-accent/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
+        onClick: () => { select(row.typeCode); setAfter(0); save.reset(); },
+        onKeyDown: (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); select(row.typeCode); setAfter(0); save.reset(); } },
+      })} />
+    <Drawer open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) save.reset(); }}
+      title={t("新建积分类型（草稿）", "Create points type (draft)")}
+      desc={t("设置积分类型、兑换比例与使用边界。创建后还需在详情中激活。", "Set the points type, conversion rate and usage limits. Activate it from details after creation.")}
+      width="w-[640px]"
+      footer={<><Button variant="outline" onClick={() => setCreateOpen(false)}>{t("取消", "Cancel")}</Button><Button type="submit" form="points-type-create" disabled={save.isPending}>{t("新建草稿", "Create draft")}</Button></>}>
+      {save.isError && <Notice tone="warning">{t(save.error.message, save.error.message)}</Notice>}
+      <form id="points-type-create" className="space-y-4" onSubmit={(e) => { e.preventDefault(); const d = new FormData(e.currentTarget); send({ kind: "CREATE", value: { requestId: "", command: { typeCode: String(d.get("code")).trim(), market: String(d.get("market")).trim(), rate: { pointsUnit: Number(d.get("points")), minorUnit: Number(d.get("minor")) }, deductRatioBp: Number(d.get("ratio")), idleDays: Number(d.get("days")) }, reason: String(d.get("reason")) } }); }}>
+        <div className="grid gap-3 md:grid-cols-2">{[["code",t("类型代码", "Type code")], ["market",t("区域代码", "Market code")]].map(([name,label]) => <label key={name}>{label}<Input dir="auto" name={name} required maxLength={40} /></label>)}
+          {[["points",t("比例：积分单位", "Rate: points unit"),1,Number.MAX_SAFE_INTEGER], ["minor",t("比例：最小货币单位", "Rate: minor currency unit"),1,Number.MAX_SAFE_INTEGER], ["ratio",t("抵扣上限（万分比）", "Deduction cap (bp)"),0,10000], ["days",t("闲置天数", "Idle days"),1,36500]].map(([name,label,min,max]) => <label key={String(name)}>{label}<Input dir="auto" name={String(name)} type="number" required min={Number(min)} max={Number(max)} step={1} /></label>)}
+          <label className="md:col-span-2">{t("原因", "Reason")}<Input dir="auto" name="reason" required /></label>
+        </div>
+      </form>
+    </Drawer>
+    <Drawer open={!!type} onOpenChange={(open) => { if (!open) { select(""); setAfter(0); save.reset(); } }}
+      title={type ? `${type.typeCode} · ${type.market} · ${type.status}` : ""}
+      desc={t("维护类型状态、平台规则、协议和门店接入。", "Manage type state, platform rules, terms and store integration.")}
+      width="w-[760px]">
+      {error && <Notice tone="warning">{t(error.message, error.message)}<Button onClick={() => { if (type) { void rule.refetch(); void terms.refetch(); } if (store) void agreements.refetch(); }}>{t("重试", "Retry")}</Button></Notice>}
+      {save.isError && <Notice tone="warning">{t(save.error.message, save.error.message)}</Notice>}
+      {save.isSuccess && <Notice>{t("已保存，操作号：", "Saved, request ID: ")}{save.data.requestId}</Notice>}
     {type && <div className={card}><p dir="auto">{type.currency} / {type.scale} · {type.rate.pointsUnit} {t("积分", "points")} = {type.rate.minorUnit} {t("最小货币单位", "minor currency units")} · {t("抵扣上限（万分比）", "Deduction cap (bp)")} {type.deductRatioBp} · {t("闲置天数", "Idle days")} {type.idleDays}</p>
       <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); const d = new FormData(e.currentTarget); send({ kind: "STATE", value: { requestId: "", typeCode: code, action: String(d.get("action")) as PointsTypeChange["action"], reason: String(d.get("reason")) } }); }}>
         <label>{t("状态流转", "State transition")} <Select name="action" disabled={!canEdit || type.status === "RETIRED"}>
@@ -82,20 +126,13 @@ export function PointsConfigurationTab({ canEdit }: { canEdit: boolean }) {
         {canEdit && type.status !== "RETIRED" && <Button disabled={save.isPending} type="submit">{t("提交状态变更", "Change state")}</Button>}
       </form>
     </div>}
-    {canEdit && <form className={card} onSubmit={(e) => { e.preventDefault(); const d = new FormData(e.currentTarget); send({ kind: "CREATE", value: { requestId: "", command: { typeCode: String(d.get("code")).trim(), market: String(d.get("market")).trim(), rate: { pointsUnit: Number(d.get("points")), minorUnit: Number(d.get("minor")) }, deductRatioBp: Number(d.get("ratio")), idleDays: Number(d.get("days")) }, reason: String(d.get("reason")) } }); }}>
-      <h3 className="txt-heading">{t("新建积分类型（草稿）", "Create a points type (draft)")}</h3>
-      <div className="grid gap-3 md:grid-cols-3">{[["code",t("类型代码", "Type code")], ["market",t("区域代码", "Market code")]].map(([name,label]) => <label key={name}>{label}<Input dir="auto" name={name} required maxLength={40} /></label>)}
-        {[["points",t("比例：积分单位", "Rate: points unit"),1,Number.MAX_SAFE_INTEGER], ["minor",t("比例：最小货币单位", "Rate: minor currency unit"),1,Number.MAX_SAFE_INTEGER], ["ratio",t("抵扣上限（万分比）", "Deduction cap (bp)"),0,10000], ["days",t("闲置天数", "Idle days"),1,36500]].map(([name,label,min,max]) => <label key={String(name)}>{label}<Input dir="auto" name={String(name)} type="number" required min={Number(min)} max={Number(max)} step={1} /></label>)}
-        <label>{t("原因", "Reason")}<Input dir="auto" name="reason" required /></label>
-      </div><Button disabled={save.isPending} type="submit">{t("新建草稿", "Create draft")}</Button>
-    </form>}
-    {rule.data && <form key={`${code}:${rule.data.revision}`} className={card} onSubmit={(e) => { e.preventDefault(); const d = new FormData(e.currentTarget); send({ kind: "RULE", value: { requestId: "", typeCode: code, expectedRevision: rule.data.revision, mode: String(d.get("mode")) as PointsFallbackChange["mode"], value: Number(d.get("value")), reason: String(d.get("reason")) } }); }}>
+    {rule.data && <form key={`fallback:${code}:${rule.data.revision}`} className={card} onSubmit={(e) => { e.preventDefault(); const d = new FormData(e.currentTarget); send({ kind: "RULE", value: { requestId: "", typeCode: code, expectedRevision: rule.data.revision, mode: String(d.get("mode")) as PointsFallbackChange["mode"], value: Number(d.get("value")), reason: String(d.get("reason")) } }); }}>
       <h3 className="txt-heading">{t("平台兜底规则 · 修订", "Platform fallback rule · revision")} {rule.data.revision}</h3>
       <p dir="auto">{t("商品例外和类目规则在商品管理维护；此处设置最终兜底。RATIO 使用万分比，FIXED 使用积分数量。", "Maintain product exceptions and category rules in Products. This is the final fallback. RATIO uses basis points; FIXED uses points.")}</p>
       <div className="flex flex-wrap gap-3"><label>{t("方式", "Mode")}<Select name="mode" defaultValue={rule.data.mode} disabled={!canEdit}><option>RATIO</option><option>FIXED</option></Select></label><label>{t("数值", "Value")}<Input dir="auto" name="value" type="number" min={0} max={Number.MAX_SAFE_INTEGER} step={1} required defaultValue={rule.data.value} disabled={!canEdit} /></label><label>{t("原因", "Reason")}<Input dir="auto" name="reason" required disabled={!canEdit} /></label></div>
       {canEdit && <Button type="submit" disabled={save.isPending}>{t("保存新修订", "Save new revision")}</Button>}
     </form>}
-    {code && !terms.isPending && !terms.isError && <form key={`${code}:${terms.data?.version ?? "none"}`} className={card} onSubmit={(e) => { e.preventDefault(); const d = new FormData(e.currentTarget); send({ kind: "TERMS", value: { requestId: "", typeCode: code, version: String(d.get("version")), text: String(d.get("text")), reason: String(d.get("reason")) } }); }}>
+    {code && !terms.isPending && !terms.isError && <form key={`terms:${code}:${terms.data?.version ?? "none"}`} className={card} onSubmit={(e) => { e.preventDefault(); const d = new FormData(e.currentTarget); send({ kind: "TERMS", value: { requestId: "", typeCode: code, version: String(d.get("version")), text: String(d.get("text")), reason: String(d.get("reason")) } }); }}>
       <h3 className="txt-heading">{t("受理协议文本", "Acceptance terms")}</h3><p dir="auto">{t("发布文本不代表门店已签署。签署及解除由商家主账号办理。", "Publishing terms does not sign for a store. Signing and termination require the merchant owner.")}</p>
       <label className="block">{t("版本", "Version")}<Input dir="auto" name="version" required defaultValue={terms.data?.version ?? ""} disabled={!canEdit} /></label>
       <label className="block">{t("正文", "Text")}<textarea dir="auto" name="text" className="focus-ring min-h-40 w-full rounded-field border border-border p-3" required defaultValue={terms.data?.text ?? ""} disabled={!canEdit} /></label>
@@ -169,5 +206,6 @@ export function PointsConfigurationTab({ canEdit }: { canEdit: boolean }) {
       {inspection.error && <p role="alert" className="text-destructive">{inspection.error instanceof Error ? inspection.error.message : String(inspection.error)}</p>}
     </div>
     <ManualPointsRefunds key={integrationStore} storeNo={integrationStore} canEdit={canEdit} />
+    </Drawer>
   </div>;
 }

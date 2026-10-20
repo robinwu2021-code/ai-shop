@@ -1,3 +1,4 @@
+import type { MemberCodeView } from "@shared/types";
 // 真实后端实现 —— **不手写 URL**，全部从 endpoints.ts 的端点表取。
 //
 // 这样做的意义：端点只有一处定义，http 实现、mock、OpenAPI 三者不会漂移。
@@ -232,6 +233,7 @@ export const httpApi: ShopApi = {
   myCoupons: () => call<UserCoupon[]>("myCoupons"),
   couponBest: (items) => call<CouponBestResult>("couponBest", undefined, { items }),
   myStoreCoupons: () => call<MyStoreCoupon[]>("myStoreCoupons"),
+  issueMemberCode: () => call<MemberCodeView>("issueMemberCode"),
   myMemberships: () => call<MyMembership[]>("myMemberships"),
   setMembershipReach: (entityNo, optOut) =>
     call<void>("setMembershipReach", { entityNo }, { optOut }),

@@ -338,6 +338,30 @@ class BizEndpointPermTest {
         // 只能改库存的角色（配送员、客服）建不了品，也就用不上标准品
         put("/biz/spu-std", BizPerms.GOODS);
 
+        // Same resource has read/write methods; registry records the stricter permission.
+        put("/biz/entitlement-templates", BizPerms.ENT_TEMPLATE_WRITE);
+        put("/biz/entitlement-templates/{templateNo}/draft", BizPerms.ENT_TEMPLATE_WRITE);
+        put("/biz/entitlement-templates/{templateNo}/publish", BizPerms.ENT_TEMPLATE_PUBLISH);
+        put("/biz/entitlement-templates/{templateNo}/status", BizPerms.ENT_TEMPLATE_PUBLISH);
+        put("/biz/entitlement-templates/{templateNo}/issue-policy", BizPerms.ENT_ISSUE_MANAGE);
+        put("/biz/entitlement-issue-batches", BizPerms.ENT_ISSUE);
+        put("/biz/entitlement-issue-batches/{batchNo}", BizPerms.ENT_READ);
+        put("/biz/card-product-bindings", BizPerms.GOODS);
+        put("/biz/entitlement-uses/preview", BizPerms.ENT_USE);
+        put("/biz/entitlement-uses", BizPerms.ENT_USE);
+        put("/biz/entitlement-uses/{operationNo}", BizPerms.ENT_READ);
+        put("/biz/entitlement-uses/{operationNo}/cancel", BizPerms.ENT_USE);
+        put("/biz/entitlement-usage", BizPerms.ENT_READ);
+        put("/biz/stored-value/accounts", BizPerms.SV_ACCOUNT_READ);
+        put("/biz/stored-value/consumptions", BizPerms.SV_CONSUME_CREATE);
+        put("/biz/stored-value/consumptions/preview", BizPerms.SV_CONSUME_CREATE);
+        put("/biz/stored-value/recharges", BizPerms.SV_RECHARGE_CREATE);
+        put("/biz/stored-value/recharges/{rechargeNo}", BizPerms.SV_RECHARGE_READ);
+        put("/biz/stored-value/recharges/{rechargeNo}/cancel", BizPerms.SV_RECHARGE_CREATE);
+        put("/biz/stored-value/recharges/{rechargeNo}/submit", BizPerms.SV_RECHARGE_CREATE);
+        put("/biz/stored-value/recharges/{rechargeNo}/receive", BizPerms.SV_RECHARGE_RECEIVE);
+        put("/biz/entitlements/{instanceNo}", BizPerms.ENT_READ);
+
         // ---- 营销与报价：都是对钱的承诺 ----
         put("/biz/campaign", BizPerms.CAMPAIGN);
         put("/biz/campaign/{campaignNo}/toggle", BizPerms.CAMPAIGN);
@@ -374,6 +398,7 @@ class BizEndpointPermTest {
         put("/biz/store/scope-preview", BizPerms.STORE);
         // 会员（P1）：沿用客户资产那个码 —— 会员就是「我的客户」那一页的升级版
         put("/biz/members", BizPerms.CUSTOMER);
+        put("/biz/member-code/resolve", BizPerms.CUSTOMER);
         put("/biz/members/stats", BizPerms.CUSTOMER);
         put("/biz/members/{memberNo}", BizPerms.CUSTOMER);
         // 录入与标签（P2）：同一屏、同一批人、同一个码
@@ -401,6 +426,10 @@ class BizEndpointPermTest {
         // 核销的人是收银台前的店员，不是建券的老板 —— 与自提核销同一个码
         put("/biz/coupon-redeem/{code}", BizPerms.VERIFY);
         put("/biz/coupon-redeem", BizPerms.VERIFY);
+        put("/biz/activity-presets", BizPerms.CAMPAIGN);
+        put("/biz/card-product-presets", BizPerms.GOODS);
+        put("/biz/marketing-summary", BizPerms.CAMPAIGN);
+        put("/biz/activities/{activityNo}/publish", BizPerms.CAMPAIGN);
         put("/biz/activities", BizPerms.CAMPAIGN);
         put("/biz/activities/{activityNo}", BizPerms.CAMPAIGN);
         put("/biz/activities/{activityNo}/status", BizPerms.CAMPAIGN);
@@ -656,7 +685,7 @@ class BizEndpointPermTest {
             if (f.getType() == String.class && java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
                 try {
                     Object v = f.get(null);
-                    if (v instanceof String s && s.startsWith("biz:")) {
+                    if (v instanceof String s && (s.startsWith("biz:") || s.startsWith("pay:ent:") || s.startsWith("pay:sv:"))) {
                         out.add(s);
                     }
                 } catch (IllegalAccessException ignored) {

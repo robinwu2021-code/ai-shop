@@ -11,6 +11,7 @@ import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityGoodsMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ApplyMapper;
 import ai.neargo.shop.promotion.service.ActivityPricingService;
+import ai.neargo.shop.promotion.service.UnifiedOrderActivityPricingService;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.member.MemberQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -38,6 +39,14 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
     private final MemberQueryPort memberPort;
     /** 活动效果按 promo_no 聚合，读的就是这张表 —— 与券的每一次使用同一张 */
     private final ApplyMapper applyMapper;
+
+    private UnifiedOrderActivityPricingService unifiedOrders;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setUnifiedOrders(UnifiedOrderActivityPricingService unifiedOrders) {
+        this.unifiedOrders = unifiedOrders;
+    }
+
 
     /**
      * 平台活动的报名单与报名的货（P3）。setter 注入：切片测试里没有它们时，平台活动不参与算价，
@@ -191,6 +200,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 }
             }
         }
+        if (unifiedOrders != null) out.addAll(unifiedOrders.candidates(userNo, groups));
         return out;
     }
 
@@ -205,7 +215,9 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                         .eq(ai.neargo.shop.promotion.entity.PmtApply::getOrderNo, orderNo)
                         .eq(ai.neargo.shop.promotion.entity.PmtApply::getPromoType,
                                 CampaignPort.AppliedDiscount.ACTIVITY)));
-        for (var r : rows) {
+        for (var r : rows.stream().sorted(java.util.Comparator.comparing(PmtApply::getPromoNo)
+                .thenComparing(r -> r.getStoreNo() == null ? "" : r.getStoreNo())).toList()) {
+            if (unifiedOrders != null && unifiedOrders.release(r)) continue;
             long amount = r.getAmountMinor() == null ? 0L : r.getAmountMinor();
             /*
              * 配额按「份」退，一单占一份（与 commit 那边的 qty 同一口径）。
@@ -237,6 +249,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                         .eq(ai.neargo.shop.promotion.entity.PmtApply::getOrderNo, orderNo)));
         java.util.List<CampaignPort.AppliedDiscount> out = new ArrayList<>();
         for (var r : rows) {
+            if (r.getRevertedAt() != null) continue;
             long amount = r.getAmountMinor() == null ? 0L : r.getAmountMinor();
             if (amount <= 0) {
                 // 只送积分的组合也会记一行（减 0）—— 那不是「优惠依据」，别列出来
@@ -550,7 +563,11 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         if (discount == null || discount.applied().isEmpty()) {
             return;
         }
-        for (CampaignPort.AppliedActivity it : discount.applied()) {
+        // Stable lock ordering across a multi-merchant order avoids cross-activity deadlocks.
+        for (CampaignPort.AppliedActivity it : discount.applied().stream()
+                .sorted(java.util.Comparator.comparing(CampaignPort.AppliedActivity::activityNo)
+                        .thenComparing(a -> a.storeNo() == null ? "" : a.storeNo())).toList()) {
+            if (unifiedOrders != null && unifiedOrders.commit(userNo, orderNo, it)) continue;
             if (it.enrollmentNo() != null) {
                 commitPlatform(userNo, orderNo, it);
                 continue;
@@ -677,7 +694,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             if (a.getStoreNo() != null && !a.getStoreNo().equals(storeNo)) {
                 continue;
             }
-            if (!a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()) {
+            if (a.getDraftSnapshot() != null || !a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()) {
                 continue;
             }
             out.add(a);
@@ -701,7 +718,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             if (a == null || !benefitType.equals(a.getBenefitType())) {
                 continue;
             }
-            if (!a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()) {
+            if (a.getDraftSnapshot() != null || !a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()) {
                 continue;
             }
             out.add(a);

@@ -277,6 +277,7 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
    */
   couponBest: { method: "POST", path: "/mp/coupon/best", auth: true, summary: "最优券试算（含不可用原因）" },
   myStoreCoupons: { method: "GET", path: "/mp/my-coupons", auth: true, summary: "商家发给我的券（含到店码）" },
+  issueMemberCode: { method: "POST", path: "/mp/member-code", auth: true, summary: "签发本人统一会员码" },
   myMemberships: { method: "GET", path: "/mp/my-memberships", auth: true, summary: "我是哪几家店的会员" },
   reachOpened: { method: "POST", path: "/mp/member-reach/:reachNo/opened", auth: true, summary: "点推送进店" },
   setMembershipReach: {

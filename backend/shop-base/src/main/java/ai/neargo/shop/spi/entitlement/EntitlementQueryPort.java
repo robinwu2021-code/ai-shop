@@ -1,0 +1,136 @@
+package ai.neargo.shop.spi.entitlement;
+
+import ai.neargo.shop.common.CursorPage;
+import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.spi.entitlement.EntitlementUsePort.AssetKind;
+import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseItem;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Set;
+
+/** Payment-owned, scoped consumer projections; no principal/bonus pools, tokens or authorization references. */
+public interface EntitlementQueryPort {
+    CursorPage<EntitlementItem> mine(EntitlementContext context, AssetQuery query);
+
+    EntitlementDetail detail(EntitlementContext context, DetailQuery query);
+
+    PageData<UsageItem> merchantUsage(EntitlementContext context, BizUsageQuery query);
+
+    UsageDetail usage(EntitlementContext context, UsageQuery query);
+
+    CursorPage<UsageItem> history(EntitlementContext context, UsageHistoryQuery query);
+
+    AllowanceView allowances(EntitlementContext context, AllowanceQuery query);
+
+    /** Preview only; the first successful use transaction persists activation. */
+    ActivationQuote activationQuote(EntitlementContext context, DetailQuery query);
+
+    /** Trusted store scope is constructed from merchant permissions, never bound from a public body. */
+    record BizUsageQuery(String entityNo, Set<String> allowedStores, String storeNo, AssetKind assetKind,
+                         Instant from, Instant to, long page, long size) {
+        public BizUsageQuery {
+            ContractChecks.id(entityNo); ContractChecks.optionalId(storeNo);
+            allowedStores = allowedStores == null ? null : Set.copyOf(allowedStores);
+            if (allowedStores != null) allowedStores.forEach(ContractChecks::id);
+            ContractChecks.require(page >= 1 && page <= 10000 && size >= 1 && size <= 50);
+            ContractChecks.require(from == null || to == null || from.isBefore(to));
+        }
+    }
+    enum ActivationAction { NONE, ON_FIRST_COMMIT }
+
+    record ActivationQuote(String instanceNo, String startBasis, String periodBasis, Instant effectiveFrom,
+                           Instant effectiveUntil, ActivationAction activationAction) {
+        public ActivationQuote {
+            ContractChecks.id(instanceNo);
+            ContractChecks.require(startBasis != null
+                    && Set.of("PAID", "GRANTED", "FIRST_USE").contains(startBasis));
+            ContractChecks.require(periodBasis != null
+                    && Set.of("ROLLING_DAYS", "CALENDAR_MONTH").contains(periodBasis));
+            ContractChecks.present(activationAction);
+            ContractChecks.require(activationAction != ActivationAction.ON_FIRST_COMMIT
+                    || "FIRST_USE".equals(startBasis));
+            ContractChecks.require(activationAction != ActivationAction.NONE || effectiveFrom != null);
+            ContractChecks.require((effectiveFrom == null) == (effectiveUntil == null));
+            ContractChecks.require(effectiveFrom == null ? "FIRST_USE".equals(startBasis)
+                    : effectiveFrom.isBefore(effectiveUntil));
+        }
+    }
+
+    enum AssetState { PENDING_ACTIVATION, ACTIVE, FROZEN, EXHAUSTED, EXPIRED, REVOKED }
+
+    record AssetQuery(String userNo, String entityNo, AssetKind kind, AssetState status, String cursor, int size) {
+        public AssetQuery {
+            ContractChecks.id(userNo);
+            ContractChecks.optionalId(entityNo);
+            ContractChecks.require(kind != AssetKind.STORED_VALUE);
+            checkPage(cursor, size);
+        }
+    }
+
+    record DetailQuery(String userNo, String entityNo, String instanceNo, String storeNo) {
+        public DetailQuery {
+            ContractChecks.id(userNo);
+            ContractChecks.optionalId(entityNo);
+            ContractChecks.id(instanceNo);
+            ContractChecks.optionalId(storeNo);
+        }
+    }
+
+    record UsageQuery(String userNo, String entityNo, String usageNo) {
+        public UsageQuery {
+            ContractChecks.id(userNo);
+            ContractChecks.optionalId(entityNo);
+            ContractChecks.id(usageNo);
+        }
+    }
+
+    record UsageHistoryQuery(String userNo,String entityNo,String instanceNo,String cursor,int size) {
+        public UsageHistoryQuery {
+            ContractChecks.id(userNo);ContractChecks.optionalId(entityNo);ContractChecks.optionalId(instanceNo);
+            checkPage(cursor,size);
+        }
+    }
+
+    record AllowanceQuery(String userNo, String entityNo, String instanceNo, LocalDate serviceDate) {
+        public AllowanceQuery {
+            ContractChecks.id(userNo);
+            ContractChecks.optionalId(entityNo);
+            ContractChecks.id(instanceNo);
+        }
+    }
+
+    record EntitlementItem(String instanceNo, String title, AssetKind kind, AssetState status,
+                           Integer remainingUnits, Integer dailyRemaining, Instant effectiveFrom,
+                           Instant effectiveUntil, String scopeSummary, String sourceLabel) {
+    }
+
+    record EntitlementDetail(EntitlementItem entitlement, String usageInstructions, List<UsageItem> recentUsage) {
+        public EntitlementDetail {
+            ContractChecks.present(entitlement);
+            recentUsage = List.copyOf(ContractChecks.present(recentUsage));
+        }
+    }
+
+    record UsageItem(String usageNo, AssetKind assetKind, String title, Long amountMinor, String currency,
+                     Integer units, String storeNo, String storeName, Instant occurredAt, String status) {
+    }
+
+    record UsageDetail(UsageItem usage, List<UseItem> items, String serviceStaffName, String sourceOrderNo,
+                       Integer remainingUnits) {
+        public UsageDetail {
+            ContractChecks.present(usage);
+            items = List.copyOf(ContractChecks.present(items));
+        }
+    }
+
+    record AllowanceView(String instanceNo, LocalDate serviceDay, String zone, Integer totalRemaining,
+                         Integer dayLimit, Integer dayReserved, Integer dayUsed, Integer dayRemaining) {
+    }
+
+    /** Opaque cursors are bounded independently of business IDs; implementations verify their signature/scope. */
+    static void checkPage(String cursor, int size) {
+        ContractChecks.require(size >= 1 && size <= 50);
+        ContractChecks.require(cursor == null || (!cursor.isBlank() && cursor.length() <= 512));
+    }
+}

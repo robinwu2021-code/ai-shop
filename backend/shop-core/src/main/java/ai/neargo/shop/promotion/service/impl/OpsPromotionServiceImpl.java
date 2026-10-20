@@ -84,6 +84,7 @@ public class OpsPromotionServiceImpl implements OpsPromotionService {
                                 PmtActivity::getEntityNo, entityNo)
                         // 这一页是「商家的活动会不会失控」；平台活动在「平台活动」那一栏看（s29 · s30）
                         .ne(PmtActivity::getOwner, PmtActivity.OWNER_PLATFORM)
+                        .isNull(PmtActivity::getDraftSnapshot)
                         .orderByDesc(PmtActivity::getId))
                 .stream().map(this::vo)
                 // 常驻无门槛直减置顶（P7）：它们是最容易出现「被薅」的一类，运营要一眼找到
@@ -106,7 +107,7 @@ public class OpsPromotionServiceImpl implements OpsPromotionService {
              * 归属由上面 `activities` 那一页保证：看不到的活动，运营拿不到它的单号。
              */
             PmtActivity a = activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
-                    .eq(PmtActivity::getActivityNo, activityNo).last("limit 1"));
+                    .eq(PmtActivity::getActivityNo, activityNo).isNull(PmtActivity::getDraftSnapshot).last("limit 1"));
             if (a == null) {
                 throw BizException.of(ErrorCode.NOT_FOUND);
             }

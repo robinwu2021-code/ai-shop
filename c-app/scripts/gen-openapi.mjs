@@ -120,6 +120,7 @@ if (Object.keys(renamed).length) {
 // ---------------------------------------------------------------- 3. 组装 OpenAPI
 /** 契约方法 → 响应类型名。手工维护，因为 TS 的返回类型没法在运行时反射出来 */
 const RESPONSE_TYPES = {
+  issueMemberCode: "MemberCodeView",
   confirmGroupBatch: "Order[]",
   cancelAfterSale: "AfterSale",
   fillReturnExpress: "AfterSale",

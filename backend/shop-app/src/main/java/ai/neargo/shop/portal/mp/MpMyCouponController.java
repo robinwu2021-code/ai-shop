@@ -1,6 +1,8 @@
 package ai.neargo.shop.portal.mp;
 
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.paybridge.LegacyCouponWalletProjectionService;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.promotion.dto.CouponVOs.MyCouponVO;
 import ai.neargo.shop.promotion.service.CouponService;
 import org.springframework.context.annotation.Profile;
@@ -22,6 +24,7 @@ import java.util.List;
 public class MpMyCouponController {
 
     private final CouponService couponService;
+    @Autowired private LegacyCouponWalletProjectionService wallet;
 
     public MpMyCouponController(CouponService couponService) {
         this.couponService = couponService;
@@ -30,6 +33,7 @@ public class MpMyCouponController {
     /** 过期的也返回，由端上折叠 —— 券包里突然少一张，用户会认为平台吞了它 */
     @GetMapping("/mp/my-coupons")
     public List<MyCouponVO> mine() {
-        return couponService.myCoupons(SecurityUtils.currentUserNo());
+        String user=SecurityUtils.currentUserNo();
+        return wallet.wallet(user,couponService.myCoupons(user));
     }
 }

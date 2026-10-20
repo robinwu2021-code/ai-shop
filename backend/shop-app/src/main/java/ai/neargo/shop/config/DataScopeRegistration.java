@@ -31,6 +31,11 @@ public class DataScopeRegistration implements DataScopeRegistrar {
     @Override
     public void register(DataScopeTableRegistry registry) {
 
+        registry.register("ent_code_token", Map.of(
+                ScopeDim.SELF, "user_no", ScopeDim.MERCHANT, "entity_no"));
+        registry.register("ord_ent_order_use", Map.of(
+                ScopeDim.SELF, "user_no", ScopeDim.MERCHANT, "entity_no"));
+
         // —— 交易：子订单是商家视角的账本，也是 C 端「我的订单」的来源 ——
         // SELF 必须登记，理由见类注释第 2 条。
         // COMMUNITY 是运营端接入时补的（V137 的冗余列）：运营会话的维度是
@@ -286,6 +291,8 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          * 运营端将来要看会员（P8）时，这里要补 COMMUNITY/PICKUP —— 漏一个，
          * 配了那个维度的运营看到的是空列表而不是报错。
          */
+        registry.register("mbr_identity_ticket", Map.of(ScopeDim.SELF, "user_no",
+                ScopeDim.MERCHANT, "entity_no"));
         registry.register("mbr_member", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("mbr_member_store", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("mbr_member_source", Map.of(ScopeDim.MERCHANT, "entity_no"));

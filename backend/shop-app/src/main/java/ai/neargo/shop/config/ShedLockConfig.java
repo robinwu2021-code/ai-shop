@@ -1,4 +1,6 @@
 package ai.neargo.shop.config;
+import org.springframework.jdbc.core.JdbcTemplate;
+
 
 import net.javacrumbs.shedlock.core.LockProvider;
 import net.javacrumbs.shedlock.core.LockingTaskExecutor;
@@ -38,7 +40,7 @@ public class ShedLockConfig {
     public LockProvider lockProvider(DataSource dataSource) {
         return new JdbcTemplateLockProvider(
                 JdbcTemplateLockProvider.Configuration.builder()
-                        .withJdbcTemplate(new org.springframework.jdbc.core.JdbcTemplate(dataSource))
+                        .withJdbcTemplate(new JdbcTemplate(dataSource))
                         .usingDbTime()
                         .build());
     }

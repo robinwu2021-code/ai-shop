@@ -3,6 +3,9 @@ server:
   port: ${PAY_SVC_PORT:8083}
 
 spring:
+  jackson:
+    deserialization:
+      accept-float-as-int: false
   application:
     name: pay-svc
   datasource:
@@ -20,7 +23,24 @@ spring:
     enabled: false
 
 shop:
+  services:
+    internal-token: ${SHOP_INTERNAL_TOKEN:}
+    targets:
+      PLATFORM: ${PLATFORM_API_BASE_URL:}
   pay:
+    entitlement:
+      # Stable shared random secret (>=32 characters) for scoped query cursors; no development fallback.
+      # Original ORDER-coupon compatibility stays opt-in until core checkout/import acceptance.
+      migration-recovery:
+        enabled: ${SHOP_PAY_ENTITLEMENT_MIGRATION_RECOVERY_ENABLED:false}
+      legacy-coupon:
+        enabled: ${SHOP_PAY_ENTITLEMENT_LEGACY_COUPON_ENABLED:false}
+        usage-repair-enabled: ${SHOP_PAY_LEGACY_COUPON_USAGE_REPAIR_ENABLED:false}
+        issue-recovery-enabled: ${SHOP_PAY_LEGACY_COUPON_ISSUE_RECOVERY_ENABLED:false}
+      cursor-key: ${SHOP_PAY_ENTITLEMENT_CURSOR_KEY:}
+      code:
+        enabled: ${SHOP_PAY_ENTITLEMENT_CODE_ENABLED:false}
+      code-key: ${SHOP_PAY_ENTITLEMENT_CODE_KEY:}
     # 这个进程自己不读这个开关（有闸门盯着：PayHasNoControllerTest）。
     # 形态由**主应用侧**决定注入 Local 还是 Remote。
     deployment: standalone

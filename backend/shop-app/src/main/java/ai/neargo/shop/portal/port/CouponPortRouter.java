@@ -4,6 +4,17 @@ import ai.neargo.shop.marketing.port.CouponPortImpl;
 import ai.neargo.shop.promotion.service.CouponAllocService;
 import ai.neargo.shop.spi.marketing.CouponPort;
 import org.springframework.context.annotation.Primary;
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.trade.service.LegacyCouponCheckoutJournal;
+import ai.neargo.shop.spi.entitlement.EntitlementContext;
+import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.paybridge.LegacyCouponWalletProjectionService;
+import ai.neargo.shop.paybridge.impl.LegacyCouponRouteResolver;
+import ai.neargo.shop.spi.entitlement.LegacyCouponUsePort;
+import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.MerchantGroup;
+import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.OwnerSystem;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -27,6 +38,11 @@ import java.util.List;
 @Component
 public class CouponPortRouter implements CouponPort {
 
+    @Autowired private LegacyCouponCheckoutJournal checkoutJournal;
+    @Autowired private ai.neargo.shop.trade.service.LegacyCouponHistoricalReturnService historicalReturns;
+    @Autowired private LegacyCouponRouteResolver ownerRoutes;
+    @Autowired private LegacyCouponUsePort legacyPay;
+    @Autowired private LegacyCouponWalletProjectionService wallet;
     private final CouponPortImpl legacy;
     private final CouponAllocService promo;
 
@@ -37,6 +53,27 @@ public class CouponPortRouter implements CouponPort {
 
     @Override
     public Allocation allocate(String userNo, String userCouponNo, List<MerchantAmount> groups) {
+        if(userCouponNo==null || userCouponNo.isBlank()) return Allocation.none();
+        if(ownerRoutes!=null) {
+            var ctx=new EntitlementContext("MAIN",SecurityUtils.currentUser().map(u->u.userNo()).orElse("CORE_QUOTE"),"LEGACY_QUOTE","0".repeat(64));
+            LegacyCouponRouteResolver.Route route;
+            try {route=ownerRoutes.resolve(ctx,userNo,userCouponNo);}
+            catch(BizException failure) {
+                if(failure.errorCode()==ErrorCode.NOT_FOUND) throw BizException.of(ErrorCode.COUPON_NOT_APPLICABLE);
+                throw failure;
+            }
+            if(route.ownerSystem()==OwnerSystem.PAY) {
+                if(route.entityNo()==null) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+                var amounts=groups.stream().map(g->{
+                    String store=g.storeNo()==null || g.storeNo().isBlank()?null:g.storeNo();
+                    return new MerchantGroup(store==null?g.merchantNo():store,g.merchantNo(),store,g.goodsAmount());
+                }).toList();
+                var estimate=legacyPay.estimate(ctx,new LegacyCouponUsePort.EstimateCommand(userNo,route.entityNo(),route.source(),
+                        route.targetNo(),route.migrationBatchNo(),route.cutoverProofHash(),"CNY",amounts));
+                return new Allocation(estimate.discountMinor(),true,estimate.allocations().stream()
+                        .map(a->new MerchantDiscount(a.merchantNo(),a.discountMinor(),a.storeNo())).toList(),estimate.title());
+            }
+        }
         return promo.owns(userNo, userCouponNo)
                 ? promo.allocate(userNo, userCouponNo, groups)
                 : legacy.allocate(userNo, userCouponNo, groups);
@@ -54,6 +91,10 @@ public class CouponPortRouter implements CouponPort {
 
     @Override
     public void release(String orderNo) {
+        if(checkoutJournal!=null && checkoutJournal.returnCancelledOrder(
+                new EntitlementContext("MAIN",SecurityUtils.currentUser().map(u->u.userNo()).orElse("CORE_LIFECYCLE"),orderNo,"0".repeat(64)),orderNo)) return;
+        if(historicalReturns!=null && historicalReturns.cancelled(
+                new EntitlementContext("MAIN",SecurityUtils.currentUser().map(u->u.userNo()).orElse("CORE_LIFECYCLE"),orderNo,"0".repeat(64)),orderNo)) return;
         /*
          * 退券**两边都要跑**，不能像上面那样二选一：这里只有订单号，
          * 拿不到用户券号，无从判断这一单当时用的是哪一套。
@@ -70,6 +111,10 @@ public class CouponPortRouter implements CouponPort {
      */
     @Override
     public String returnedTitleOf(String orderNo) {
+        String migrated=checkoutJournal==null?null:checkoutJournal.originalTitle("MAIN",orderNo,true);
+        if(migrated!=null) return migrated;
+        String historical=historicalReturns==null?null:historicalReturns.returnedTitle("MAIN",orderNo);
+        if(historical!=null) return historical;
         String t = legacy.returnedTitleOf(orderNo);
         return t != null ? t : promo.returnedTitleOf(orderNo);
     }
@@ -77,6 +122,8 @@ public class CouponPortRouter implements CouponPort {
     /** 同上：不转发就永远是 null（P2c · B 端售后单「会退回哪张券」） */
     @Override
     public String usedTitleOf(String orderNo) {
+        String migrated=checkoutJournal==null?null:checkoutJournal.originalTitle("MAIN",orderNo,false);
+        if(migrated!=null) return migrated;
         String t = legacy.usedTitleOf(orderNo);
         return t != null ? t : promo.usedTitleOf(orderNo);
     }
@@ -86,6 +133,6 @@ public class CouponPortRouter implements CouponPort {
     public List<String> heldUsable(String userNo) {
         List<String> all = new java.util.ArrayList<>(legacy.heldUsable(userNo));
         all.addAll(promo.heldUsable(userNo));
-        return all;
+        return wallet==null?all:wallet.usable(userNo,all);
     }
 }
