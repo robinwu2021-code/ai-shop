@@ -36,6 +36,9 @@ function generatedCheck(script, output) {
     if (!readFileSync(path).equals(before)) throw new Error(`生成物未同步：${output}`);
   } finally { writeFileSync(path, before); }
 }
+export function normalizeTable(text) {
+  return text.split('\n').map(line => line.trim().replace(/,$/, '')).filter(Boolean).sort().join('\n');
+}
 function schemaCheck() {
   const temp = mkdtempSync(join(tmpdir(), 'points-schema-'));
   try {
@@ -43,7 +46,7 @@ function schemaCheck() {
     run('python3', ['backend/scripts/gen-test-schema.py', generated]);
     const table = text => text.match(/CREATE TABLE IF NOT EXISTS pts_point_type\s*\([\s\S]*?\n\);/)?.[0];
     const expected = table(readFileSync(generated, 'utf8'));
-    if (!expected || expected !== table(readFileSync(join(root, 'backend/shop-app/src/test/resources/schema-test.sql'), 'utf8'))) {
+    if (!expected || normalizeTable(expected) !== normalizeTable(table(readFileSync(join(root, 'backend/shop-app/src/test/resources/schema-test.sql'), 'utf8')) ?? '')) {
       throw new Error('积分类型测试表与迁移生成结果不一致');
     }
   } finally { rmSync(temp, { recursive: true, force: true }); }

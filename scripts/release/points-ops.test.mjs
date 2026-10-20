@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateFiles, validateUpdate } from './points-ops.mjs';
+import { validateFiles, validateUpdate, normalizeTable } from './points-ops.mjs';
 const head = 'a'.repeat(40), base = 'b'.repeat(40);
 test('accepts points files and rejects unrelated changes', () => {
   validateFiles(['ops-web/app/points/types-tab.tsx']);
@@ -35,4 +35,12 @@ test('CLI executes validation, including when launched through a symlink path', 
     const result = spawnSync(process.execPath, [link], { input: '', encoding: 'utf8' });
     assert.notEqual(result.status, 0, 'invalid input must fail; a no-op CLI must never pass');
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('schema check permits column order but detects missing uniqueness and nullable names', () => {
+  const a = 'name VARCHAR(80) NOT NULL,\ntype_code VARCHAR(40) NOT NULL,\nCONSTRAINT uk_name UNIQUE (name),';
+  const b = 'CONSTRAINT uk_name UNIQUE (name),\nname VARCHAR(80) NOT NULL,\ntype_code VARCHAR(40) NOT NULL,';
+  assert.equal(normalizeTable(a), normalizeTable(b));
+  assert.notEqual(normalizeTable(a), normalizeTable(b.replace('CONSTRAINT uk_name UNIQUE (name),', '')));
+  assert.notEqual(normalizeTable(a), normalizeTable(b.replace('name VARCHAR(80) NOT NULL', 'name VARCHAR(80)')));
 });
