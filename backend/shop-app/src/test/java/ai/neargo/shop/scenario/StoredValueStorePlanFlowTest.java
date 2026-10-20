@@ -49,8 +49,14 @@ class StoredValueStorePlanFlowTest {
         var command=new StoredValuePlanRecharges.Create(user,store,"测试门店",plan.planNo(),plan.versionNo(),"f".repeat(64));
         var first=direct.confirmOffline(ctx,entity,command);
         assertThat(first.status().name()).isEqualTo("CREDITED");
+        assertThat(ai.neargo.shop.numbering.DocumentNumberFormatter.isValid(
+            ai.neargo.shop.numbering.DocumentType.SV_RECHARGE,first.documentNo())).isTrue();
+        assertThat(direct.query(ctx,entity,first.rechargeNo()).documentNo()).isEqualTo(first.documentNo());
         assertThat(accounts.balance(ctx,new BalanceQuery(user,entity,"CNY",store)).availableMinor()).isEqualTo(13000);
-        assertThat(direct.confirmOffline(ctx,entity,command).rechargeNo()).isEqualTo(first.rechargeNo());
+        var repeated=direct.confirmOffline(ctx,entity,command);
+        assertThat(repeated.rechargeNo()).isEqualTo(first.rechargeNo());
+        assertThat(repeated.documentNo()).isEqualTo(first.documentNo());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_document_number WHERE source_no=?",Integer.class,first.rechargeNo())).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT collection_method FROM sv_recharge WHERE recharge_no=?",String.class,first.rechargeNo())).isEqualTo("MERCHANT_OFFLINE");
         assertThat(jdbc.queryForObject("SELECT actual_amount_minor FROM sv_recharge WHERE recharge_no=?",Long.class,first.rechargeNo())).isEqualTo(10000);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_recharge WHERE user_no=?",Integer.class,user)).isEqualTo(1);
@@ -66,6 +72,8 @@ class StoredValueStorePlanFlowTest {
         var command=new StoredValuePlanRecharges.Create(user,store,"测试门店",plan.planNo(),plan.versionNo(),"d".repeat(64));
         assertThatThrownBy(()->direct.confirmOffline(ctx,entity,command)).isInstanceOf(BizException.class);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_recharge WHERE user_no=? AND source_kind='PLAN'",Integer.class,user)).isZero();
+        String failedNo=ai.neargo.shop.pay.storedvalue.policy.StoredValueFacts.no("PR",java.util.List.of(ctx.tenantNo(),entity,ctx.actorNo(),ctx.requestId()),json);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_document_number WHERE source_no=?",Integer.class,failedNo)).isZero();
         assertThat(accounts.balance(ctx,new BalanceQuery(user,entity,"CNY",store)).availableMinor()).isEqualTo(Long.MAX_VALUE-5000);
     }
 

@@ -8,11 +8,19 @@ import java.time.Instant;
 public record StoredValueRechargeProgress(String rechargeNo, String status, String userNo, String entityNo,
                                           String storeNo, String currency, Long paidAmountMinor,
                                           Long creditedTotalMinor, Instant receivedAt, Instant creditedAt,
-                                          long revision) {
+                                          long revision,String documentNo) {
+    public StoredValueRechargeProgress(String rechargeNo,String status,String userNo,String entityNo,String storeNo,
+            String currency,Long paidAmountMinor,Long creditedTotalMinor,Instant receivedAt,Instant creditedAt,long revision) {
+        this(rechargeNo,status,userNo,entityNo,storeNo,currency,paidAmountMinor,creditedTotalMinor,receivedAt,creditedAt,revision,null);
+    }
     public static StoredValueRechargeProgress from(RechargeView r) {
+        return from(r,null);
+    }
+    /** Receipt writers keep the original internal ID; carry the already-authorized original human number. */
+    public static StoredValueRechargeProgress from(RechargeView r,String originalDocumentNo) {
         return new StoredValueRechargeProgress(r.rechargeNo(), r.status().name(), r.userNo(), r.entityNo(),
                 r.storeNo(), r.currency(), r.paidAmountMinor(), r.creditedTotalMinor(), r.receivedAt(), r.creditedAt(),
-                r.revision());
+                r.revision(),r.documentNo()!=null?r.documentNo():originalDocumentNo);
     }
     public static StoredValueRechargeProgress pending(RechargeIntentPlan p) {
         return new StoredValueRechargeProgress(p.rechargeNo(), "PROCESSING", p.permit().userNo(),

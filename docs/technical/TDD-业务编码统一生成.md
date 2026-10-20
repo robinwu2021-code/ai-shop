@@ -404,3 +404,36 @@ C端“订单号”展示OD或对应OS；支付详情展示PY并标注“支付�
 - 定向测试：格式边界、前缀重复、明确时区、序列扩宽、多实例唯一、重复请求、失败不复用、历史空映射、关联查询权限及各包所改页面展示；订单额外测子单／支付回跳。按执行包编译和基本单测，不重复全量回归。
 
 本节是逐项编码规则设计，尚未实施。建议落地顺序仍为A储值和规范 → B权益及积分 → C运维及库存 → D营销财务 → E订单专项；订单关联核查可提前进行，实际格式切换独立安排。
+
+
+## §11 基础编号组件首批实施记录（2026-10-20）
+
+本节记录实际代码状态；§8～10仍包含尚未切换的业务模块设计。编号类型已集中登记，不代表29类业务都已改用新编号。
+
+| 能力 | 已实现内容 |
+|---|---|
+| 基础契约 | shop-base的numbering包：DocumentOwner、DocumentType（29类）、DocumentNumberFormatter、ReservedDocumentNumber、DocumentSource、DocumentNumberGenerator、DocumentNumberService |
+| 通用持久化实现 | shop-store-mybatis的numbering/store包：DocumentNumberProperties、SegmentDocumentNumberGenerator、JdbcDocumentNumberRepository；不为每种规则编写独立类 |
+| Core／Pay装配 | CoreDocumentNumberConfiguration、PayDocumentNumberConfiguration，分别使用transactionManager／payTxManager绑定的真实DataSource；业务注入时明确core/pay限定名 |
+| 可配置项 | shop.numbering.business-zone默认Asia/Shanghai；shop.numbering.segment-size默认100、允许1～100000。前缀和归属在枚举中受控管理；批量预留上限10000，本地缓存最多256个类型／日期号段 |
+| 数据库 | V542新增pay_document_sequence、core_document_number、pay_document_number；Core复用sys_sequence。source_no统一留128字符容纳现有不同域长度，来源系统／资源类型独立列，避免截断复合源键 |
+| 首批业务 | 门店方案储值充值通过StoredValueNumberedPlanRechargeService接入PR：先预留，再在同一Pay事务执行原充值／线下确认与号码绑定；原内部号、冻结事实及账务流程保留 |
+| 对外结果 | RechargeView、StoredValueRechargeProgress新增可空documentNo；B端SvProgress增加可选类型。新建、查询、重放及计划充值状态变更保留号码；无原单的取消标记不绑定号码，旧单查询不补号 |
+| 安全边界 | 事务内预留一律拒绝，即使命中缓存；绑定必须已有所属数据源事务；同源并发返回胜出号，不靠后续快照读推测；按租户、类型及显式来源查映射 |
+
+业务调用示意：
+
+```java
+// 根据业务归属注入payDocumentNumberGenerator / payDocumentNumbers，Core则用core限定名。
+var reserved = generator.reserve(DocumentType.SV_RECHARGE, trustedBusinessInstant);
+// 以下在已有Pay业务事务中执行：创建原单后绑定；不得在这里调用reserve。
+var source = new DocumentSource(tenantNo, "PAY", "SV_RECHARGE", rechargeNo);
+String documentNo = numbers.bind(DocumentType.SV_RECHARGE, source, reserved);
+// bind返回值可能来自并发胜出的映射，必须使用返回值，不能直接返回预留候选号。
+```
+
+验证：基础格式3项、JDBC号段与映射7项、储值装饰编排2项、储值确认／回滚场景2项、BFF短号透传1项、原入账返回兼容1项，共16项定向测试通过；Core和独立Pay服务编译通过，B端类型检查通过。审查覆盖号段、事务、并发绑定及返回契约；并发测试使用H2，未进行真实MySQL压测。本轮没有执行全量回归。
+
+尚未切换：旧活动来源充值、核销EU、账务SV、积分、营销、库存、订单及其他业务的实际发号与页面短号展示。收支详情的documentNo与按短号查单的HTTP入口也属于后续业务接入；当前组件已提供内部findBySource／resolve能力，不能将其误认为已发布通用查单接口。储值结果不恢复“到账状态后展示内部号”的旧交互。
+
+部署顺序：先由主应用执行V542迁移，再更新Core／Pay应用；独立Pay沿用现有Flyway关闭、迁移由主应用负责的部署约定。本轮仅提交代码和文档，未执行服务器迁移或部署。

@@ -79,25 +79,25 @@ public class BizStoredValuePlanRechargeController {
     @PostMapping("/biz/stored-value/plan-recharges/{rechargeNo}/submit")
     public StoredValueRechargeProgress submit(@PathVariable String rechargeNo,@RequestBody SubmitRequest c,
             @RequestHeader("Idempotency-Key") String key){
-        var ctx=context(key);original(ctx,rechargeNo,BizPerms.SV_RECHARGE_CREATE);
+        var ctx=context(key);var original=original(ctx,rechargeNo,BizPerms.SV_RECHARGE_CREATE);
         return StoredValueRechargeProgress.from(receipts.submit(ctx,BizContext.requireMerchantNo(),new SubmitRecharge(rechargeNo,
-                c.expectedRevision(),c.actualAmountMinor(),c.collectionMethod(),c.receiptNo(),receiptDigest(ctx,rechargeNo,c.receiptNo()))));
+                c.expectedRevision(),c.actualAmountMinor(),c.collectionMethod(),c.receiptNo(),receiptDigest(ctx,rechargeNo,c.receiptNo()))),original.documentNo());
     }
     @PreAuthorize("@perm.canBiz('"+BizPerms.SV_RECHARGE_RECEIVE+"')")
     @PostMapping("/biz/stored-value/plan-recharges/{rechargeNo}/receive")
     public StoredValueRechargeProgress receive(@PathVariable String rechargeNo,@RequestBody ReceiveRequest c,
             @RequestHeader("Idempotency-Key") String key){
-        var ctx=context(key);original(ctx,rechargeNo,BizPerms.SV_RECHARGE_RECEIVE);
+        var ctx=context(key);var original=original(ctx,rechargeNo,BizPerms.SV_RECHARGE_RECEIVE);
         return StoredValueRechargeProgress.from(receipts.receive(ctx,BizContext.requireMerchantNo(),new ReceiveRecharge(rechargeNo,
-                c.expectedRevision(),receiptDigest(ctx,rechargeNo,c.receiptNo()),c.confirmationNote())));
+                c.expectedRevision(),receiptDigest(ctx,rechargeNo,c.receiptNo()),c.confirmationNote())),original.documentNo());
     }
     @PreAuthorize("@perm.canBiz('"+BizPerms.SV_RECHARGE_CREATE+"')")
     @PostMapping("/biz/stored-value/plan-recharges/{rechargeNo}/cancel")
     public StoredValueRechargeProgress cancel(@PathVariable String rechargeNo,@RequestBody CancelRequest c,
             @RequestHeader("Idempotency-Key") String key){
-        var ctx=context(key);original(ctx,rechargeNo,BizPerms.SV_RECHARGE_CREATE);
+        var ctx=context(key);var original=original(ctx,rechargeNo,BizPerms.SV_RECHARGE_CREATE);
         return StoredValueRechargeProgress.from(receipts.cancel(ctx,BizContext.requireMerchantNo(),new CancelRecharge(rechargeNo,
-                c.expectedRevision(),c.reason())));
+                c.expectedRevision(),c.reason())),original.documentNo());
     }
     @PreAuthorize("@perm.canBiz('"+BizPerms.SV_RECHARGE_CREATE+"')")
     @PostMapping("/biz/stored-value/plan-recharges/resolve")

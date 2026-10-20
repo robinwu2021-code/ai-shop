@@ -111,7 +111,8 @@ public interface StoredValuePort {
 
     record RechargeView(String rechargeNo, RechargeState status, String userNo, String entityNo, String storeNo,
                         String currency, Long paidAmountMinor, Long creditedTotalMinor, Instant receivedAt,
-                        Instant creditedAt, long revision,String customerNo) {
+                        Instant creditedAt, long revision,String customerNo,String documentNo) {
+        public RechargeView(String rechargeNo,RechargeState status,String userNo,String entityNo,String storeNo,String currency,Long paidAmountMinor,Long creditedTotalMinor,Instant receivedAt,Instant creditedAt,long revision,String customerNo){this(rechargeNo,status,userNo,entityNo,storeNo,currency,paidAmountMinor,creditedTotalMinor,receivedAt,creditedAt,revision,customerNo,null);}
         public RechargeView(String rechargeNo,RechargeState status,String userNo,String entityNo,String storeNo,String currency,Long paidAmountMinor,Long creditedTotalMinor,Instant receivedAt,Instant creditedAt,long revision){this(rechargeNo,status,userNo,entityNo,storeNo,currency,paidAmountMinor,creditedTotalMinor,receivedAt,creditedAt,revision,userNo);}
     }
 
