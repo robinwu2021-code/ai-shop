@@ -1,3 +1,4 @@
+import { storedValueMock } from './stored-value';
 // B 端 mock 的门面：把各域拼成一份完整实现。
 //
 // <p><b>类型标注在这里，就是那道闸</b>：`MerchantApi` 要求 228 个方法一个不少，
@@ -18,6 +19,7 @@ import { messageMock } from "./message";
 import { inventoryMock } from "./inventory";
 
 export const mockApi: MerchantApi = {
+  ...storedValueMock,
   ...accountMock,
   ...storeMock,
   ...dashboardMock,

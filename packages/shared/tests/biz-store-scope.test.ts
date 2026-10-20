@@ -53,10 +53,11 @@ const NOT_SCOPED = parseRecord(src, "NOT_STORE_SCOPED_REASONS");
 function pageSource(dir: string): string {
   const d = join(PAGES, dir);
   if (!existsSync(d)) return "";
-  return readdirSync(d)
-    .filter((f) => f.endsWith(".vue") || f.endsWith(".ts"))
-    .map((f) => readFileSync(join(d, f), "utf8"))
+  const read = (folder: string): string => readdirSync(folder, { withFileTypes: true })
+    .map((f) => f.isDirectory() ? read(join(folder, f.name))
+      : /\.(vue|ts)$/.test(f.name) ? readFileSync(join(folder, f.name), "utf8") : "")
     .join("\n");
+  return read(d);
 }
 
 /** 这一页调了哪些按门店的接口。 */

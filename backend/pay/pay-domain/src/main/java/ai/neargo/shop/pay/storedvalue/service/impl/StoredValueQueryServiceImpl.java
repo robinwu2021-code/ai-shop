@@ -7,6 +7,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.CursorPage;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.entitlement.entity.EntUsage;
+import ai.neargo.shop.pay.storedvalue.policy.StoredValueAccountScope;
 import ai.neargo.shop.pay.entitlement.service.EntitlementRecords;
 import ai.neargo.shop.pay.mapper.entitlement.EntUsageMapper;
 import ai.neargo.shop.pay.mapper.storedvalue.SvAccountMapper;
@@ -50,7 +51,8 @@ public class StoredValueQueryServiceImpl implements StoredValueQueryService {
 
     @Override
     public BalanceView balance(EntitlementContext context, BalanceQuery query) {
-        var account = accounts.findOwner(context.tenantNo(), query.userNo(), query.entityNo(), query.currency());
+        StoredValueAccountScope.requireMigrated(accounts, context.tenantNo(), query.userNo(), query.entityNo(), query.currency());
+        var account = accounts.findOwner(context.tenantNo(), query.userNo(), query.entityNo(), query.currency(), query.storeNo());
         if (account == null) return new BalanceView(null, query.currency(), 0, 0, 0, null);
         long balance = Math.addExact(account.getPrincipalMinor(), account.getBonusMinor());
         long held = Math.addExact(account.getHeldPrincipalMinor(), account.getHeldBonusMinor());

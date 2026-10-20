@@ -15,6 +15,23 @@ export interface EndpointDef {
 
 /** key 与 MerchantApi 的方法名一一对应，缺一个就编译不过 */
 export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
+  mSvContext: { method:"GET",path:"/biz/stored-value/context",auth:true,summary:"储值上下文" },
+  mSvPlans: { method:"GET",path:"/biz/stored-value/plans",auth:true,summary:"门店储值方案" },
+  mSvPlan: { method:"GET",path:"/biz/stored-value/plans/{planNo}",auth:true,summary:"储值方案详情" },
+  mSvCreatePlan: { method:"POST",path:"/biz/stored-value/plans",auth:true,summary:"创建门店储值方案" },
+  mSvPlanStatus: { method:"PUT",path:"/biz/stored-value/plans/{planNo}/status",auth:true,summary:"启停门店储值方案" },
+  mSvAccounts: { method:"GET",path:"/biz/stored-value/account-directory",auth:true,summary:"门店储值顾客" },
+  mSvAccount: { method:"GET",path:"/biz/stored-value/accounts/{accountRef}",auth:true,summary:"门店储值账户" },
+  mSvRecords: { method:"GET",path:"/biz/stored-value/records",auth:true,summary:"门店储值收支" },
+  mSvRecord: { method:"GET",path:"/biz/stored-value/records/{recordNo}",auth:true,summary:"储值收支详情" },
+  mSvResolveRecharge:{method:"POST",path:"/biz/stored-value/plan-recharges/resolve",auth:true,summary:"查询原充值创建结果"},
+  mSvCancelCreate:{method:"POST",path:"/biz/stored-value/plan-recharges/cancel-create",auth:true,summary:"取消未明确创建的原充值命令"},
+  mSvCreateRecharge: { method:"POST",path:"/biz/stored-value/plan-recharges",auth:true,summary:"按方案办理储值" },
+  mSvRecharge: { method:"GET",path:"/biz/stored-value/plan-recharges/{rechargeNo}",auth:true,summary:"独立储值进度" },
+  mSvSubmit: { method:"POST",path:"/biz/stored-value/plan-recharges/{rechargeNo}/submit",auth:true,summary:"提交储值实收" },
+  mSvReceive: { method:"POST",path:"/biz/stored-value/plan-recharges/{rechargeNo}/receive",auth:true,summary:"确认储值收款" },
+  mSvCancel: { method:"POST",path:"/biz/stored-value/plan-recharges/{rechargeNo}/cancel",auth:true,summary:"取消未收款储值" },
+
   mSendOtp: { method: "POST", path: "/biz/auth/otp/send", auth: false, summary: "发送验证码" },
   mSetPassword: { method: "POST", path: "/biz/auth/password", auth: true, summary: "设置登录密码" },
   mSetDisplayName: { method: "POST", path: "/biz/merchant/display-name", auth: true, summary: "改用户名" },

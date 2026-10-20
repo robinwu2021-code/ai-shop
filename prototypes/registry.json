@@ -2,6 +2,169 @@
  "_readme": "界面原型登记表（真源，手工维护）。每份原型一条；screens[].client/route 让界面清单（gen-ui-catalog.py）能从页面跳到那一屏，路由还不存在的屏会在清单里列成「原型」行；同一路由被多份登记时，排在前面的赢。status: 在建 | 已落地 | 参考 | 作废（作废要写 supersededBy）。生成总览：python3 scripts/gen-proto-index.py；screens[].pageTitle 是清单里那一行的页名（屏名与页名不同时才写）",
  "prototypes": [
   {
+   "slug": "marketing-module-v2",
+   "file": "marketing-module-v2.html",
+   "title": "营销模块重整：活动、卡券、储值与团期",
+   "kind": "pages",
+   "clients": [
+    "b-app"
+   ],
+   "status": "在建",
+   "date": "2026-10-20",
+   "summary": "门店独立储值原型：多方案、顾客账户、统一收支、类型Tab与时间弹框；已开始业务页面接入，服务端与联调状态见任务表。",
+   "docs": [
+    {
+     "label": "营销模块重整与对象关系方案",
+     "path": "docs/requirements/营销模块重整与对象关系方案.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "营销",
+     "client": "b-app"
+    },
+    {
+     "id": "s02",
+     "title": "活动管理",
+     "client": "b-app"
+    },
+    {
+     "id": "s03",
+     "title": "新建活动",
+     "client": "b-app"
+    },
+    {
+     "id": "s04",
+     "title": "选择活动类型",
+     "client": "b-app"
+    },
+    {
+     "id": "s05",
+     "title": "配置活动",
+     "client": "b-app"
+    },
+    {
+     "id": "s06",
+     "title": "确认活动",
+     "client": "b-app"
+    },
+    {
+     "id": "s07",
+     "title": "活动详情",
+     "client": "b-app"
+    },
+    {
+     "id": "s08",
+     "title": "卡券与权益",
+     "client": "b-app"
+    },
+    {
+     "id": "s09",
+     "title": "定义卡券",
+     "client": "b-app"
+    },
+    {
+     "id": "s10",
+     "title": "发放与活动关联",
+     "client": "b-app"
+    },
+    {
+     "id": "s11",
+     "title": "储值管理",
+     "client": "b-app",
+     "route": "pages/stored-value/index"
+    },
+    {
+     "id": "s12",
+     "title": "基础充值方案",
+     "client": "b-app"
+    },
+    {
+     "id": "s13",
+     "title": "顾客储值账户",
+     "client": "b-app",
+     "route": "pages/stored-value-account/index"
+    },
+    {
+     "id": "s14",
+     "title": "办理充值",
+     "client": "b-app",
+     "route": "pages/stored-value-recharge/index"
+    },
+    {
+     "id": "s15",
+     "title": "拼团管理",
+     "client": "b-app"
+    },
+    {
+     "id": "s16",
+     "title": "团详情",
+     "client": "b-app"
+    },
+    {
+     "id": "s17",
+     "title": "集单管理",
+     "client": "b-app"
+    },
+    {
+     "id": "s18",
+     "title": "集单期详情",
+     "client": "b-app"
+    },
+    {
+     "id": "s19",
+     "title": "效果与记录",
+     "client": "b-app"
+    },
+    {
+     "id": "s20",
+     "title": "工作台 · 常用办理",
+     "client": "b-app"
+    },
+    {
+     "id": "s21",
+     "title": "暂停活动",
+     "client": "b-app"
+    },
+    {
+     "id": "s22",
+     "title": "新建储值方案",
+     "client": "b-app",
+     "route": "pages/stored-value-plan-edit/index"
+    },
+    {
+     "id": "s23",
+     "title": "确认储值方案",
+     "client": "b-app"
+    },
+    {
+     "id": "s24",
+     "title": "储值方案详情",
+     "client": "b-app",
+     "route": "pages/stored-value-plan-detail/index"
+    },
+    {
+     "id": "s25",
+     "title": "顾客账户列表",
+     "client": "b-app",
+     "route": "pages/stored-value/index"
+    },
+    {
+     "id": "s26",
+     "title": "收支记录",
+     "client": "b-app",
+     "route": "pages/stored-value/index"
+    },
+    {
+     "id": "s27",
+     "title": "收支详情",
+     "client": "b-app",
+     "route": "pages/stored-value-record/index"
+    }
+   ]
+  },
+  {
    "slug": "food-cashier-tablet",
    "file": "food-cashier-tablet.html",
    "title": "餐饮平板收银：桌台、点餐、结账与交班",

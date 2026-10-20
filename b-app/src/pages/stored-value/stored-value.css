@@ -1,0 +1,2 @@
+/* Domain layout only; surfaces, typography and controls remain shared UI components. */
+.sv-card{display:flex;flex-direction:column;gap:var(--sh-gap-block)}

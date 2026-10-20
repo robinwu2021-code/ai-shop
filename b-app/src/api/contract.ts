@@ -1,3 +1,4 @@
+import type * as SV from './stored-value-types';
 import type { StorePointStatementPage, StorePointStatementChange, StorePointStatement, StorePointStatementLinePage, StorePointStatementReceipt } from "@shared/types";
 // B 端唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
 // 端点对齐后端 B 端 BFF `/mb/**`（C 端是 `/mp/**`）。
@@ -841,6 +842,24 @@ export interface EstateList {
 }
 
 export interface MerchantApi {
+  mSvContext(storeNo:string):Promise<SV.SvContext>;
+  mSvPlans(q:{storeNo:string;status?:string;cursor?:string;size?:number}):Promise<SV.SvPage<SV.SvPlan>>;
+  mSvPlan(planNo:string,storeNo:string):Promise<SV.SvPlan>;
+  mSvCreatePlan(body:SV.SvPlanCreate,key:string):Promise<SV.SvPlan>;
+  mSvPlanStatus(planNo:string,body:{storeNo:string;status:string;expectedRevision:number},key:string):Promise<SV.SvPlan>;
+  mSvAccounts(q:{storeNo:string;keyword?:string;cursor?:string;size?:number}):Promise<SV.SvPage<SV.SvAccount>>;
+  mSvAccount(accountRef:string,storeNo:string):Promise<SV.SvAccount>;
+  mSvRecords(q:SV.SvRecordsQuery):Promise<SV.SvPage<SV.SvRecord>>;
+  mSvRecord(recordNo:string,storeNo:string):Promise<SV.SvRecord>;
+  mSvResolveRecharge(body:SV.SvRechargeCreate,key:string):Promise<{found:boolean;recharge:SV.SvProgress|null}>;
+  mSvCancelCreate(body:SV.SvRechargeCreate,key:string):Promise<SV.SvProgress>;
+  mSvCreateRecharge(body:SV.SvRechargeCreate,key:string):Promise<SV.SvProgress>;
+  mSvRecharge(rechargeNo:string):Promise<SV.SvProgress>;
+  mSvSubmit(rechargeNo:string,body:SV.SvReceipt,key:string):Promise<SV.SvProgress>;
+  mSvReceive(rechargeNo:string,body:SV.SvReceive,key:string):Promise<SV.SvProgress>;
+  mSvCancel(rechargeNo:string,body:{expectedRevision:number;reason:string},key:string):Promise<SV.SvProgress>;
+  mResolveMemberCode(body:{memberCode:string;storeNo:string}):Promise<SV.SvCustomer>;
+
   // ---- 账号与入驻（B-11.1）
   mLogin(req: LoginReq): Promise<MerchantLoginResp>;
   mProfile(): Promise<MerchantProfile>;

@@ -1,3 +1,4 @@
+import type * as SV from './stored-value-types';
 import type { StorePointStatementPage, StorePointStatementChange, StorePointStatement, StorePointStatementLinePage, StorePointStatementReceipt } from "@shared/types";
 // 真实后端实现 —— **不手写 URL**，全部从 endpoints.ts 取。
 // 迁移时这个文件基本不用改，改的是 .env 里的开关。
@@ -199,6 +200,24 @@ import type {
 } from "@shared/types";
 
 export const httpApi: MerchantApi = {
+  mSvContext:(storeNo)=>http.get<SV.SvContext>(E.mSvContext.path,{storeNo}),
+  mSvPlans:(q)=>http.get<SV.SvPage<SV.SvPlan>>(E.mSvPlans.path,q),
+  mSvPlan:(planNo,storeNo)=>http.get<SV.SvPlan>(buildPath(E.mSvPlan.path,{planNo}),{storeNo}),
+  mSvCreatePlan:(body,key)=>http.post<SV.SvPlan>(E.mSvCreatePlan.path,body,{'Idempotency-Key':key}),
+  mSvPlanStatus:(planNo,body,key)=>http.put<SV.SvPlan>(buildPath(E.mSvPlanStatus.path,{planNo}),body,{'Idempotency-Key':key}),
+  mSvAccounts:(q)=>http.get<SV.SvPage<SV.SvAccount>>(E.mSvAccounts.path,q),
+  mSvAccount:(accountRef,storeNo)=>http.get<SV.SvAccount>(buildPath(E.mSvAccount.path,{accountRef}),{storeNo}),
+  mSvRecords:(q)=>http.get<SV.SvPage<SV.SvRecord>>(E.mSvRecords.path,q),
+  mSvRecord:(recordNo,storeNo)=>http.get<SV.SvRecord>(buildPath(E.mSvRecord.path,{recordNo}),{storeNo}),
+  mSvResolveRecharge:(body,key)=>http.post<{found:boolean;recharge:SV.SvProgress|null}>(E.mSvResolveRecharge.path,body,{"Idempotency-Key":key}),
+  mSvCancelCreate:(body,key)=>http.post<SV.SvProgress>(E.mSvCancelCreate.path,body,{"Idempotency-Key":key}),
+  mSvCreateRecharge:(body,key)=>http.post<SV.SvProgress>(E.mSvCreateRecharge.path,body,{'Idempotency-Key':key}),
+  mSvRecharge:(rechargeNo)=>http.get<SV.SvProgress>(buildPath(E.mSvRecharge.path,{rechargeNo})),
+  mSvSubmit:(rechargeNo,body,key)=>http.post<SV.SvProgress>(buildPath(E.mSvSubmit.path,{rechargeNo}),body,{'Idempotency-Key':key}),
+  mSvReceive:(rechargeNo,body,key)=>http.post<SV.SvProgress>(buildPath(E.mSvReceive.path,{rechargeNo}),body,{'Idempotency-Key':key}),
+  mSvCancel:(rechargeNo,body,key)=>http.post<SV.SvProgress>(buildPath(E.mSvCancel.path,{rechargeNo}),body,{'Idempotency-Key':key}),
+  mResolveMemberCode:(body)=>http.post<SV.SvCustomer>(E.mResolveMemberCode.path,body),
+
   mSendOtp: (phone) => http.post<void>(E.mSendOtp.path, { phone }),
   mSetPassword: (password) => http.post<void>(E.mSetPassword.path, { password }),
   mSetDisplayName: (displayName) => http.post<void>(E.mSetDisplayName.path, { displayName }),

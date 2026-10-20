@@ -89,7 +89,7 @@ public interface StoredValuePort {
             ContractChecks.id(userNo);
             ContractChecks.id(entityNo);
             ContractChecks.currency(currency);
-            ContractChecks.optionalId(storeNo);
+            ContractChecks.id(storeNo);
         }
     }
 

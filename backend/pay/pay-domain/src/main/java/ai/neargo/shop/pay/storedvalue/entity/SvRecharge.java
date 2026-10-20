@@ -13,6 +13,9 @@ public class SvRecharge extends BaseEntity {
     private String rechargeNo;
     private String requestId;
     private String payloadHash;
+    private String sourceKind;
+    private String planNo;
+    private String planVersionNo;
     private String reservationNo;
     private String activityNo;
     private String activityVersionNo;

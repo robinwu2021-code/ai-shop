@@ -920,8 +920,12 @@
       "path": "pages/stock-sync-records/index",
       "style": {
         "navigationBarTitleText": "库存同步记录",
-        "app-plus": { "navigationStyle": "custom" },
-        "h5": { "navigationStyle": "custom" }
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
@@ -1052,6 +1056,66 @@
           "navigationStyle": "custom"
         },
         "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/stored-value/index",
+      "style": {
+        "navigationBarTitleText": "储值管理",
+        "navigationStyle": "custom",
+        "app-plus": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/stored-value-plan-edit/index",
+      "style": {
+        "navigationBarTitleText": "新建储值方案",
+        "navigationStyle": "custom",
+        "app-plus": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/stored-value-plan-detail/index",
+      "style": {
+        "navigationBarTitleText": "储值方案详情",
+        "navigationStyle": "custom",
+        "app-plus": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/stored-value-account/index",
+      "style": {
+        "navigationBarTitleText": "账户详情",
+        "navigationStyle": "custom",
+        "app-plus": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/stored-value-record/index",
+      "style": {
+        "navigationBarTitleText": "收支详情",
+        "navigationStyle": "custom",
+        "app-plus": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/stored-value-recharge/index",
+      "style": {
+        "navigationBarTitleText": "办理储值",
+        "navigationStyle": "custom",
+        "app-plus": {
           "navigationStyle": "custom"
         }
       }

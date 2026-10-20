@@ -1,6 +1,75 @@
 {
   "components": {
     "schemas": {
+      "AccountView_a2884d5da1": {
+        "properties": {
+          "accountRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "availableMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "balanceMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "heldMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "lastOccurredAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maskedName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maskedPhone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueMerchantQueryController$AccountView"
+      },
       "ActionView_d9019e9a24": {
         "properties": {
           "actionNo": {
@@ -692,6 +761,26 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.portal.biz.BizEntitlementUseController$CancelRequest"
       },
+      "CancelRequest_55d90a72a8": {
+        "properties": {
+          "expectedRevision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValuePlanRechargeController$CancelRequest"
+      },
       "CardProductBindingView_7e26a87ef7": {
         "properties": {
           "bindingRevision": {
@@ -1074,6 +1163,192 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.pay.entitlement.dto.IssueBatchViews$CreateBatch"
+      },
+      "CreateRequest_6c84c85148": {
+        "properties": {
+          "customerRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "planNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "storeNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "versionNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValuePlanRechargeController$CreateRequest"
+      },
+      "Create_e8b2342d73": {
+        "properties": {
+          "bonusAmountMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "paidAmountMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "storeNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValuePlans$Create"
+      },
+      "CursorPage_18a4b8942c": {
+        "properties": {
+          "hasMore": {
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "records": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AccountView_a2884d5da1"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.common.CursorPage<ai.neargo.shop.portal.biz.BizStoredValueMerchantQueryController$AccountView>"
+      },
+      "CursorPage_196417b701": {
+        "properties": {
+          "hasMore": {
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "records": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RecordView_c8b429540b"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.common.CursorPage<ai.neargo.shop.portal.biz.BizStoredValueMerchantQueryController$RecordView>"
+      },
+      "CursorPage_1eaf1b8884": {
+        "properties": {
+          "hasMore": {
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "records": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/View_a11db9045d"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValuePlans$View>"
       },
       "CursorPage_47cc766c65": {
         "properties": {
@@ -2446,6 +2721,62 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.pay.entitlement.dto.ManagedTemplateView"
       },
+      "MarketBrief_2df960aa68": {
+        "properties": {
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currencyScale": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "displayRate": {
+            "type": "number"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "market": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timeZone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.pay.MarketPort$MarketBrief"
+      },
       "MemberCodeView_95118ebaa6": {
         "properties": {
           "expiresAt": {
@@ -3632,6 +3963,36 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.entitlement.EntitlementUsePort$QuoteView"
       },
+      "ReceiveRequest_5e3b67ab7f": {
+        "properties": {
+          "confirmationNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedRevision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "receiptNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValuePlanRechargeController$ReceiveRequest"
+      },
       "ReceiveRequest_bd5ee73df5": {
         "properties": {
           "confirmationNote": {
@@ -3718,6 +4079,163 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.promotion.dto.RechargeIntentCreate"
       },
+      "RecordView_c8b429540b": {
+        "properties": {
+          "balanceAfterMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "bonusAmountMinor": {
+            "anyOf": [
+              {
+                "format": "int64",
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "businessNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maskedName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maskedPhone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "occurredAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "paidAmountMinor": {
+            "anyOf": [
+              {
+                "format": "int64",
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "planNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recordNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "signedAmountMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "storeName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "storeNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "versionNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueMerchantQueryController$RecordView"
+      },
       "RecoveryCommand_b181030e56": {
         "properties": {
           "expectedExceptionRevision": {
@@ -3795,6 +4313,25 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.entitlement.EntitlementDefinition$RedemptionScope"
+      },
+      "ResolveView_e64f88b202": {
+        "properties": {
+          "found": {
+            "type": "boolean"
+          },
+          "recharge": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoredValueRechargeProgress_ba849030ea"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValuePlanRechargeController$ResolveView"
       },
       "Rule_51f3b19c0f": {
         "properties": {
@@ -4453,6 +4990,36 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.portal.biz.BizEntitlementTemplateController$StatusRequest"
       },
+      "Status_78f06cee13": {
+        "properties": {
+          "expectedRevision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "storeNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValuePlans$Status"
+      },
       "StoreItem_443598882d": {
         "properties": {
           "entityNo": {
@@ -4792,6 +5359,43 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.paybridge.dto.StoredValueRechargeProgress"
+      },
+      "SubmitRequest_059e35e2b5": {
+        "properties": {
+          "actualAmountMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "collectionMethod": {
+            "anyOf": [
+              {
+                "enum": [
+                  "CASH",
+                  "TRANSFER"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedRevision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "receiptNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValuePlanRechargeController$SubmitRequest"
       },
       "SubmitRequest_c2f13092c8": {
         "properties": {
@@ -5765,6 +6369,99 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.promotion.dto.UnifiedActivityViews$VersionView"
+      },
+      "View_a11db9045d": {
+        "properties": {
+          "bonusAmountMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "paidAmountMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "planNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "storeNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "totalAmountMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "versionNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValuePlans$View"
       }
     },
     "securitySchemes": {
@@ -7714,6 +8411,96 @@
         "x-permission-expression": "@perm.canBiz('biz:customer')"
       }
     },
+    "/biz/stored-value/account-directory": {
+      "get": {
+        "operationId": "BizStoredValueMerchantQueryController_directory",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "storeNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "keyword",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/CursorPage_18a4b8942c"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:account:read')"
+      }
+    },
     "/biz/stored-value/accounts": {
       "get": {
         "operationId": "BizStoredValueController_balance",
@@ -7757,6 +8544,78 @@
                       "anyOf": [
                         {
                           "$ref": "#/components/schemas/StoredValueBalanceView_a38761fe32"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:account:read')"
+      }
+    },
+    "/biz/stored-value/accounts/{accountRef}": {
+      "get": {
+        "operationId": "BizStoredValueMerchantQueryController_account",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountRef",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "storeNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/AccountView_a2884d5da1"
                         },
                         {
                           "type": "null"
@@ -7931,6 +8790,918 @@
           "biz"
         ],
         "x-permission-expression": "@perm.canBiz('pay:sv:consume:create')"
+      }
+    },
+    "/biz/stored-value/context": {
+      "get": {
+        "operationId": "BizStoredValuePlanController_context",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "storeNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/MarketBrief_2df960aa68"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:plan:read') or @perm.canBiz('pay:sv:plan:manage') or @perm.canBiz('pay:sv:account:read') or @perm.canBiz('pay:sv:recharge:create')"
+      }
+    },
+    "/biz/stored-value/plan-recharges": {
+      "post": {
+        "operationId": "BizStoredValuePlanRechargeController_create",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequest_6c84c85148"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/StoredValueRechargeProgress_ba849030ea"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:recharge:create')"
+      }
+    },
+    "/biz/stored-value/plan-recharges/cancel-create": {
+      "post": {
+        "operationId": "BizStoredValuePlanRechargeController_cancelCreation",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequest_6c84c85148"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/StoredValueRechargeProgress_ba849030ea"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:recharge:create')"
+      }
+    },
+    "/biz/stored-value/plan-recharges/resolve": {
+      "post": {
+        "operationId": "BizStoredValuePlanRechargeController_resolve",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequest_6c84c85148"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ResolveView_e64f88b202"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:recharge:create')"
+      }
+    },
+    "/biz/stored-value/plan-recharges/{rechargeNo}": {
+      "get": {
+        "operationId": "BizStoredValuePlanRechargeController_query",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rechargeNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/StoredValueRechargeProgress_ba849030ea"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:recharge:read') or @perm.canBiz('pay:sv:recharge:create')"
+      }
+    },
+    "/biz/stored-value/plan-recharges/{rechargeNo}/cancel": {
+      "post": {
+        "operationId": "BizStoredValuePlanRechargeController_cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rechargeNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelRequest_55d90a72a8"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/StoredValueRechargeProgress_ba849030ea"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:recharge:create')"
+      }
+    },
+    "/biz/stored-value/plan-recharges/{rechargeNo}/receive": {
+      "post": {
+        "operationId": "BizStoredValuePlanRechargeController_receive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rechargeNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiveRequest_5e3b67ab7f"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/StoredValueRechargeProgress_ba849030ea"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:recharge:receive')"
+      }
+    },
+    "/biz/stored-value/plan-recharges/{rechargeNo}/submit": {
+      "post": {
+        "operationId": "BizStoredValuePlanRechargeController_submit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rechargeNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitRequest_059e35e2b5"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/StoredValueRechargeProgress_ba849030ea"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:recharge:create')"
+      }
+    },
+    "/biz/stored-value/plans": {
+      "get": {
+        "operationId": "BizStoredValuePlanController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "storeNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/CursorPage_1eaf1b8884"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:plan:read') or @perm.canBiz('pay:sv:plan:manage') or @perm.canBiz('pay:sv:recharge:create')"
+      },
+      "post": {
+        "operationId": "BizStoredValuePlanController_create",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Create_e8b2342d73"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/View_a11db9045d"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:plan:manage')"
+      }
+    },
+    "/biz/stored-value/plans/{planNo}": {
+      "get": {
+        "operationId": "BizStoredValuePlanController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "planNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "storeNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/View_a11db9045d"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:plan:read') or @perm.canBiz('pay:sv:plan:manage') or @perm.canBiz('pay:sv:recharge:create')"
+      }
+    },
+    "/biz/stored-value/plans/{planNo}/status": {
+      "put": {
+        "operationId": "BizStoredValuePlanController_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "planNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Status_78f06cee13"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/View_a11db9045d"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:plan:manage')"
       }
     },
     "/biz/stored-value/recharges": {
@@ -8315,6 +10086,213 @@
           "biz"
         ],
         "x-permission-expression": "@perm.canBiz('pay:sv:recharge:create')"
+      }
+    },
+    "/biz/stored-value/records": {
+      "get": {
+        "operationId": "BizStoredValueMerchantQueryController_records",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "storeNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "default": "ALL",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "startDate",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "accountRef",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/CursorPage_196417b701"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:account:read')"
+      }
+    },
+    "/biz/stored-value/records/{recordNo}": {
+      "get": {
+        "operationId": "BizStoredValueMerchantQueryController_record",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recordNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "storeNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/RecordView_c8b429540b"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:account:read')"
       }
     },
     "/mp/entitlement-claims": {

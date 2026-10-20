@@ -1,6 +1,7 @@
 package ai.neargo.shop.paybridge;
 
 import ai.neargo.shop.event.OutboxConsumer;
+import ai.neargo.shop.payclient.StoredValuePlanRechargeAppService;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.promotion.dto.StoredValueRechargePrepared;
 import ai.neargo.shop.promotion.service.RechargeIntentService;
@@ -20,9 +21,10 @@ public class StoredValueRechargeEventConsumer implements OutboxConsumer {
     private final StoredValueRechargeCoordinator coordinator;
     private final RechargeIntentService intents;
     private final ObjectMapper json;
+    private final StoredValuePlanRechargeAppService direct;
     public StoredValueRechargeEventConsumer(StoredValueRechargeCoordinator coordinator, RechargeIntentService intents,
-                                            ObjectMapper json) {
-        this.coordinator = coordinator; this.intents = intents; this.json = json;
+                                            ObjectMapper json, StoredValuePlanRechargeAppService direct) {
+        this.coordinator = coordinator; this.intents = intents; this.json = json; this.direct=direct;
     }
     @Override public boolean supports(String type) {
         return Set.of("STORED_VALUE_RECHARGE_PREPARED", "STORED_VALUE_RECHARGE_RECEIVED",
@@ -55,6 +57,13 @@ public class StoredValueRechargeEventConsumer implements OutboxConsumer {
             default -> throw new IllegalArgumentException("Unsupported recharge recovery event");
         }
         var ctx = new EntitlementContext(tenant, "OUTBOX", no, "0".repeat(64));
+        if (direct.recover(ctx, entity, no)) {
+            var result=direct.query(ctx,entity,no);
+            if (expected!=null && !expected.equals(result.status().name())) {
+                throw new IllegalStateException("Direct recharge recovery is not acknowledged");
+            }
+            return;
+        }
         var result = coordinator.recover(ctx, entity, no);
         if ("PROCESSING".equals(result.status()) || expected != null && !expected.equals(result.status())) {
             throw new IllegalStateException("Original recharge recovery is not acknowledged");

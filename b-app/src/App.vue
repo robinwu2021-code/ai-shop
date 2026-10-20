@@ -178,6 +178,8 @@ onHide(stopUnreadPolling);
 </script>
 
 <style>
+@import "./pages/stored-value/stored-value.css";
+
 /* 全局样式基座两端共用，见 packages/ui/src/styles/base.css */
 @import "@ai-shop/ui/styles/base.css";
 

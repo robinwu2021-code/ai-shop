@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 91,
+      "count": 97,
       "domains": [
         {
           "name": "工作台",
@@ -549,6 +549,72 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/offline-sale/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stored-value/index",
+              "title": "储值管理",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stored-value/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stored-value-plan-edit/index",
+              "title": "新建储值方案",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stored-value-plan-edit/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stored-value-plan-detail/index",
+              "title": "储值方案详情",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stored-value-plan-detail/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stored-value-account/index",
+              "title": "账户详情",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stored-value-account/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stored-value-record/index",
+              "title": "收支详情",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stored-value-record/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stored-value-recharge/index",
+              "title": "办理储值",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stored-value-recharge/index"
             }
           ]
         },
@@ -3521,5 +3587,5 @@
       ]
     }
   ],
-  "total": 278
+  "total": 284
 }

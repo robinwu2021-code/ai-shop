@@ -125,4 +125,17 @@ public final class PayInternalPaths {
     public static final String LEGACY_COUPON_REVERSE="/internal/pay/entitlement/legacy-coupons/reverse";
     public static final String LEGACY_COUPON_QUERY="/internal/pay/entitlement/legacy-coupons/query";
 
+    public static final String SV_PLAN_CREATE = "/internal/pay/stored-value/plans/create";
+    public static final String SV_PLAN_GET = "/internal/pay/stored-value/plans/get";
+    public static final String SV_PLAN_LIST = "/internal/pay/stored-value/plans/list";
+    public static final String SV_PLAN_STATUS = "/internal/pay/stored-value/plans/status";
+    public static final String SV_PLAN_RECHARGE_CREATE = "/internal/pay/stored-value/plan-recharges/create";
+    public static final String SV_PLAN_RECHARGE_QUERY = "/internal/pay/stored-value/plan-recharges/query";
+    public static final String SV_PLAN_RECHARGE_RECOVER = "/internal/pay/stored-value/plan-recharges/recover";
+    public static final String SV_MERCHANT_DIRECTORY="/internal/pay/stored-value/merchant/directory";
+    public static final String SV_MERCHANT_ACCOUNT="/internal/pay/stored-value/merchant/account";
+    public static final String SV_MERCHANT_RECORDS="/internal/pay/stored-value/merchant/records";
+    public static final String SV_MERCHANT_RECORD="/internal/pay/stored-value/merchant/record";
+    public static final String SV_PLAN_RECHARGE_REPLAY="/internal/pay/stored-value/plan-recharges/replay";
+    public static final String SV_PLAN_RECHARGE_CANCEL_CREATION="/internal/pay/stored-value/plan-recharges/cancel-creation";
 }

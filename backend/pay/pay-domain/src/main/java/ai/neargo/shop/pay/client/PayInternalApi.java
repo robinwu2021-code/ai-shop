@@ -16,6 +16,10 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.pay.entitlement.dto.ExceptionViews.ExceptionView;
 import ai.neargo.shop.spi.entitlement.EntitlementSaleReservationPort.SaleView;
 import ai.neargo.shop.common.CursorPage;
+import ai.neargo.shop.spi.storedvalue.StoredValuePlans;
+import ai.neargo.shop.spi.storedvalue.StoredValuePlanRecharges;
+import ai.neargo.shop.spi.storedvalue.StoredValueMerchantViews;
+import ai.neargo.shop.spi.storedvalue.StoredValuePort;
 import ai.neargo.shop.spi.entitlement.EntitlementGrantPort;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort;
@@ -358,4 +362,30 @@ public interface PayInternalApi {
     ai.neargo.shop.spi.entitlement.LegacyCouponUsePort.Operation legacyCouponQuery(
             @RequestBody PayLegacyCouponRequests.Query request);
 
+    @PostExchange(PayInternalPaths.SV_PLAN_CREATE)
+    StoredValuePlans.View svPlanCreate(@RequestBody PayStoredValuePlanRequests.Create request);
+    @PostExchange(PayInternalPaths.SV_PLAN_GET)
+    StoredValuePlans.View svPlanGet(@RequestBody PayStoredValuePlanRequests.Get request);
+    @PostExchange(PayInternalPaths.SV_PLAN_LIST)
+    CursorPage<StoredValuePlans.View> svPlanList(@RequestBody PayStoredValuePlanRequests.List request);
+    @PostExchange(PayInternalPaths.SV_PLAN_STATUS)
+    StoredValuePlans.View svPlanStatus(@RequestBody PayStoredValuePlanRequests.Status request);
+    @PostExchange(PayInternalPaths.SV_PLAN_RECHARGE_CREATE)
+    StoredValuePort.RechargeView svPlanRechargeCreate(@RequestBody PayStoredValuePlanRechargeRequests.Create request);
+    @PostExchange(PayInternalPaths.SV_PLAN_RECHARGE_QUERY)
+    StoredValuePort.RechargeView svPlanRechargeQuery(@RequestBody PayStoredValuePlanRechargeRequests.Query request);
+    @PostExchange(PayInternalPaths.SV_PLAN_RECHARGE_RECOVER)
+    Boolean svPlanRechargeRecover(@RequestBody PayStoredValuePlanRechargeRequests.Query request);
+    @PostExchange(PayInternalPaths.SV_MERCHANT_DIRECTORY)
+    CursorPage<StoredValueMerchantViews.Account> svMerchantDirectory(@RequestBody PayStoredValueMerchantRequests.Directory r);
+    @PostExchange(PayInternalPaths.SV_MERCHANT_ACCOUNT)
+    StoredValueMerchantViews.Account svMerchantAccount(@RequestBody PayStoredValueMerchantRequests.Account r);
+    @PostExchange(PayInternalPaths.SV_MERCHANT_RECORDS)
+    CursorPage<StoredValueMerchantViews.Record> svMerchantRecords(@RequestBody PayStoredValueMerchantRequests.Records r);
+    @PostExchange(PayInternalPaths.SV_MERCHANT_RECORD)
+    StoredValueMerchantViews.Record svMerchantRecord(@RequestBody PayStoredValueMerchantRequests.Record r);
+    @PostExchange(PayInternalPaths.SV_PLAN_RECHARGE_REPLAY)
+    StoredValuePlanRecharges.ReplayResult svPlanRechargeReplay(@RequestBody PayStoredValuePlanRechargeRequests.Replay r);
+    @PostExchange(PayInternalPaths.SV_PLAN_RECHARGE_CANCEL_CREATION)
+    StoredValuePort.RechargeView svPlanRechargeCancelCreation(@RequestBody PayStoredValuePlanRechargeRequests.Replay r);
 }

@@ -14,6 +14,8 @@ public class SvLot extends BaseEntity {
     private String accountNo;
     private String rechargeNo;
     private String activityVersionNo;
+    private String planVersionNo;
+    private String rechargeStoreNo;
     private Long principalMinor;
     private Long bonusMinor;
     private Long heldPrincipalMinor;

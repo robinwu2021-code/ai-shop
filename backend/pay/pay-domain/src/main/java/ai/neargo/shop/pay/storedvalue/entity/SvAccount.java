@@ -12,6 +12,7 @@ public class SvAccount extends BaseEntity {
     private String accountNo;
     private String userNo;
     private String entityNo;
+    private String storeNo;
     private String currency;
     private String status;
     private Long principalMinor;

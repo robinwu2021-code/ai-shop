@@ -13,6 +13,7 @@ import ai.neargo.shop.pay.mapper.storedvalue.SvAccountMapper;
 import ai.neargo.shop.pay.mapper.storedvalue.SvLotMapper;
 import ai.neargo.shop.pay.storedvalue.policy.StoredValueAllocationPolicy;
 import ai.neargo.shop.pay.storedvalue.policy.StoredValueUseFacts;
+import ai.neargo.shop.pay.storedvalue.policy.StoredValueAccountScope;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueRedemptionPostingService;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueRedemptionService;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
@@ -62,7 +63,8 @@ public class StoredValueRedemptionServiceImpl implements StoredValueRedemptionSe
     }
     @Override public Quote quote(EntitlementContext ctx, SourceRef ref) {
         enabled(ctx); var source = source(ctx, ref); long amount = StoredValueUseFacts.amount(source);
-        var account = accounts.findOwner(ctx.tenantNo(), source.userNo(), source.entityNo(), source.currency());
+        StoredValueAccountScope.requireMigrated(accounts, ctx.tenantNo(), source.userNo(), source.entityNo(), source.currency());
+        var account = accounts.findOwner(ctx.tenantNo(), source.userNo(), source.entityNo(), source.currency(), source.storeNo());
         String accountNo = account == null ? null : account.getAccountNo();
         long revision = account == null ? 0 : account.getVersion();
         long applicable = 0; Reason reason = Reason.NO_ACCOUNT;

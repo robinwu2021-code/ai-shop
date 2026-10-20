@@ -1,5 +1,7 @@
 # 活动卡券储值模块API契约
 
+> 2026-10-20 门店版实施修订：余额BalanceQuery必须指定storeNo；/biz/stored-value/accounts返回本店余额，不再返回商家共用余额。独立方案及plan-recharges增量接口按门店开发TDD §1.3实施，旧活动充值保持请求兼容。 详见[TDD-独立储值方案与B端接入](./TDD-独立储值方案与B端接入.md)。
+
 状态：Java后端首期范围已按实现验收；生产切换与前端页面后置 · 2026-10-20
 
 执行状态与先后顺序见[Java后端独立任务表](./任务表-活动卡券储值-Java后端.md)，已实现目录内核直接复用，其余目标设计不视为已完成。
@@ -1050,3 +1052,26 @@ Command包含精确模板Reference、TARGETED/CENTER及人群/标签选择条件
 私有旧发行Command补充`userKey/count/targetDesc`：只有平台身份且TARGETED无商家选择器时可指定单用户数量；Core独立解析活动账户并回传原操作人，Pay使用原数量创建独立grant，不接受公开任意收件人列表。C领取保持仅本人、1张。Snapshot补充`archivedAt/usedCouponCount`，净核销张数为真实已使用实例去重，不将多次券的次数冒充张数。
 
 旧Fission/派生COUPON活动仍引用的来源在完整源评估中报告`LEGACY_PROGRAM_CONVERSION_REQUIRED`，先转换到统一活动，再申请切换；完整源决定重验当前引用事实及hash。Fission新建绑定与启用在Core根栅栏下校验，不能把迁移后的券重新绑定旧事务发奖路径。原未迁移/平台券继续原有逻辑；第三方奖励不能伪装CENTER本人领取，也不能在Core持锁事务下远调pay。
+
+## 门店独立储值增量（2026-10-20）
+
+| ID | 方法 | 路径 | query或body | 业务响应 | 权限 | 说明 |
+|---|---|---|---|---|---|---|
+| P60 | GET | /biz/stored-value/context | storeNo | MarketBrief | pay:sv:plan:read | 商家市场币种/精度/时区；也允许管理/充值/账户权限 |
+| P61 | GET | /biz/stored-value/plans | storeNo,status?,cursor?,size | CursorPage<View> | pay:sv:plan:read | 也允许管理或充值权限；仅充值权限只见启用方案 |
+| P62 | POST | /biz/stored-value/plans | Create + Idempotency-Key | View | pay:sv:plan:manage | 同店同名唯一；金额冻结 |
+| P63 | GET | /biz/stored-value/plans/{planNo} | storeNo | View | pay:sv:plan:read | 也允许管理/充值权限 |
+| P64 | PUT | /biz/stored-value/plans/{planNo}/status | Status + Idempotency-Key | View | pay:sv:plan:manage | expectedRevision；不改变经济规则 |
+| P65 | POST | /biz/stored-value/plan-recharges | CreateRequest + Idempotency-Key | StoredValueRechargeProgress | pay:sv:recharge:create | customerRef仅识别；不依赖活动 |
+| P66 | GET | /biz/stored-value/plan-recharges/{rechargeNo} | 原单号 | StoredValueRechargeProgress | pay:sv:recharge:read | 也允许原办理权限 |
+| P67 | POST | /biz/stored-value/plan-recharges/{rechargeNo}/submit | SubmitRequest + Idempotency-Key | StoredValueRechargeProgress | pay:sv:recharge:create | 实收金额/方式/receiptNo，摘要由BFF生成 |
+| P68 | POST | /biz/stored-value/plan-recharges/{rechargeNo}/receive | ReceiveRequest + Idempotency-Key | StoredValueRechargeProgress | pay:sv:recharge:receive | 商家核实收款；RECEIVED等待到账 |
+| P69 | POST | /biz/stored-value/plan-recharges/{rechargeNo}/cancel | CancelRequest + Idempotency-Key | StoredValueRechargeProgress | pay:sv:recharge:create | 确认收款前可取消 |
+| P70 | POST | /biz/stored-value/plan-recharges/resolve | 原CreateRequest + 原Idempotency-Key | ResolveView | pay:sv:recharge:create | 不依赖过期会员引用重新解析 |
+| P71 | POST | /biz/stored-value/plan-recharges/cancel-create | 原CreateRequest + 原Idempotency-Key | StoredValueRechargeProgress | pay:sv:recharge:create | 持久取消栅栏，拒绝晚到创建 |
+| P72 | GET | /biz/stored-value/account-directory | storeNo,keyword?,cursor?,size | CursorPage<AccountView> | pay:sv:account:read | 仅本店成功充值账户；零余额保留 |
+| P73 | GET | /biz/stored-value/accounts/{accountRef} | storeNo | AccountView | pay:sv:account:read | 签名引用绑定操作人/商家/门店，只读 |
+| P74 | GET | /biz/stored-value/records | storeNo,type?,startDate?,endDate?,accountRef?,cursor?,size | CursorPage<RecordView> | pay:sv:account:read | ALL/RECHARGE/REDEMPTION；日历日期按商家市场时区换算 |
+| P75 | GET | /biz/stored-value/records/{recordNo} | storeNo | RecordView | pay:sv:account:read | 按凭证冻结金额及变动后余额 |
+
+具体字段、错误处理与模块映射见[TDD-门店储值实现与交付](./TDD-门店储值实现与交付.md)。新增接口已接入B端；旧活动/C端/运营的延期条目仍按交付登记管理。

@@ -30,6 +30,23 @@
  * 的那个类 —— 不写「我觉得它按门店」。
  */
 export const STORE_SCOPED_ENDPOINTS: Record<string, string> = {
+  mSvContext: "门店储值BFF：校验资源与当前门店归属",
+  mSvPlans: "门店储值BFF：校验资源与当前门店归属",
+  mSvPlan: "门店储值BFF：校验资源与当前门店归属",
+  mSvCreatePlan: "门店储值BFF：校验资源与当前门店归属",
+  mSvPlanStatus: "门店储值BFF：校验资源与当前门店归属",
+  mSvAccounts: "门店储值BFF：校验资源与当前门店归属",
+  mSvAccount: "门店储值BFF：校验资源与当前门店归属",
+  mSvRecords: "门店储值BFF：校验资源与当前门店归属",
+  mSvRecord: "门店储值BFF：校验资源与当前门店归属",
+  mSvCreateRecharge: "门店储值BFF：校验资源与当前门店归属",
+  mSvRecharge: "门店储值BFF：校验资源与当前门店归属",
+  mSvSubmit: "门店储值BFF：校验资源与当前门店归属",
+  mSvReceive: "门店储值BFF：校验资源与当前门店归属",
+  mSvCancel: "门店储值BFF：校验资源与当前门店归属",
+  mSvResolveRecharge: "门店储值BFF：校验资源与当前门店归属",
+  mSvCancelCreate: "门店储值BFF：校验资源与当前门店归属",
+
   mShipSetting: "路径带 storeNo：这家店的寄件人、寄件地址与默认快递",
   mNotifySetting: "按 X-Store-No：这家店的四条通道开关与企微群",
   mSaveNotifySwitch: "按 X-Store-No：改的是这家店的开关",
@@ -104,6 +121,13 @@ export const NOT_STORE_SCOPED_REASONS: Record<string, string> = {
  * 不想标的页面写进 {@link NOT_STORE_SCOPED_REASONS} 并说明理由。
  */
 export const STORE_SCOPED_PAGES: Record<string, string> = {
+  "stored-value": "门店储值方案、账户与收支均按当前门店",
+  "stored-value-plan-edit": "门店储值方案、账户与收支均按当前门店",
+  "stored-value-plan-detail": "门店储值方案、账户与收支均按当前门店",
+  "stored-value-account": "门店储值方案、账户与收支均按当前门店",
+  "stored-value-record": "门店储值方案、账户与收支均按当前门店",
+  "stored-value-recharge": "门店储值方案、账户与收支均按当前门店",
+
   home: "工作台的统计与待办按当前门店（mStats / mTodo）",
   "goods-list": "在售与库存按店（mGoodsList）",
   orders: "订单列表按当前门店（mOrderList）。门店名缀在标题栏；「全部门店」切换已撤（切店只在工作台与「我的」）",

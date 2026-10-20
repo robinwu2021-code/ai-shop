@@ -17,6 +17,7 @@ import ai.neargo.shop.pay.mapper.storedvalue.SvPostingLineMapper;
 import ai.neargo.shop.pay.mapper.storedvalue.SvRechargeMapper;
 import ai.neargo.shop.pay.mapper.storedvalue.SvVoucherMapper;
 import ai.neargo.shop.pay.storedvalue.entity.SvAccount;
+import ai.neargo.shop.pay.storedvalue.policy.StoredValueAccountScope;
 import ai.neargo.shop.pay.storedvalue.entity.SvEntry;
 import ai.neargo.shop.pay.storedvalue.entity.SvLot;
 import ai.neargo.shop.pay.storedvalue.entity.SvPostingLine;
@@ -25,6 +26,7 @@ import ai.neargo.shop.pay.storedvalue.entity.SvVoucher;
 import ai.neargo.shop.pay.storedvalue.policy.StoredValuePostingPolicy;
 import ai.neargo.shop.pay.storedvalue.service.StoredValuePostingService;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueStoreProjector;
+import ai.neargo.shop.pay.storedvalue.service.StoredValueStatementProjector;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementEvents.StoredValueCredited;
 import ai.neargo.shop.spi.storedvalue.StoredValuePort.CreditRecharge;
@@ -50,11 +52,12 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
     private final StoredValueStoreProjector stores;
     private final PayEntitlementEventPublisher events;
     private final ObjectMapper json;
+    private final StoredValueStatementProjector statements;
     public StoredValuePostingServiceImpl(SvAccountMapper accounts, SvRechargeMapper recharges, SvLotMapper lots,
             SvVoucherMapper vouchers, SvEntryMapper entries, SvPostingLineMapper journal,
-            StoredValueStoreProjector stores, PayEntitlementEventPublisher events, ObjectMapper json) {
+            StoredValueStoreProjector stores, PayEntitlementEventPublisher events, ObjectMapper json, StoredValueStatementProjector statements) {
         this.accounts = accounts; this.recharges = recharges; this.lots = lots; this.vouchers = vouchers;
-        this.entries = entries; this.journal = journal; this.stores = stores; this.events = events; this.json = json;
+        this.entries = entries; this.journal = journal; this.stores = stores; this.events = events; this.json = json; this.statements=statements;
     }
     @Override @Transactional("payTxManager")
     public RechargeView creditReceived(EntitlementContext ctx, CreditRecharge c) {
@@ -63,12 +66,14 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
         var at = LocalDateTime.ofInstant(Instant.ofEpochMilli(System.currentTimeMillis()), ZoneOffset.UTC);
         var claim = new SvAccount(); audit(claim, ctx, at);
         claim.setAccountNo(no("SA", List.of(ctx.tenantNo(), original.getUserNo(), original.getEntityNo(),
-                original.getCurrency()), json));
+                original.getCurrency(), original.getStoreNo()), json));
+        claim.setStoreNo(original.getStoreNo());
         claim.setUserNo(original.getUserNo()); claim.setEntityNo(original.getEntityNo());
         claim.setCurrency(original.getCurrency());
+        StoredValueAccountScope.requireMigrated(accounts, ctx.tenantNo(), original.getUserNo(), original.getEntityNo(), original.getCurrency());
         if (!"CREDITED".equals(original.getStatus())) accounts.ensure(claim);
         var account = accounts.lockOwner(ctx.tenantNo(), original.getUserNo(), original.getEntityNo(),
-                original.getCurrency());
+                original.getCurrency(), original.getStoreNo());
         var recharge = recharges.lock(ctx.tenantNo(), c.rechargeNo());
         var permit = requireReceived(recharge, c, json);
         if (account == null || !recharge.getUserNo().equals(account.getUserNo())
@@ -96,6 +101,7 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
         var lot = new SvLot(); audit(lot, ctx, at);
         lot.setLotNo(no("SL", List.of(ctx.tenantNo(), c.rechargeNo()), json)); lot.setAccountNo(account.getAccountNo());
         lot.setRechargeNo(c.rechargeNo()); lot.setActivityVersionNo(recharge.getActivityVersionNo());
+        lot.setPlanVersionNo(recharge.getPlanVersionNo()); lot.setRechargeStoreNo(recharge.getStoreNo());
         lot.setPrincipalMinor(principal); lot.setBonusMinor(bonus); lot.setHeldPrincipalMinor(0L);
         lot.setHeldBonusMinor(0L); lot.setScopeSnapshot(json.writeValueAsString(permit.redemptionScope()));
         lot.setCreditedAt(at);
@@ -108,6 +114,7 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
         voucher.setAfterPrincipalMinor(afterPrincipal); voucher.setAfterBonusMinor(afterBonus);
         voucher.setOccurredAt(at);
         if (vouchers.insert(voucher) != 1) conflict();
+        statements.recharge(ctx, account, recharge, voucher);
         var entry = new SvEntry(); audit(entry, ctx, at); entry.setVoucherNo(voucher.getVoucherNo());
         entry.setLotNo(lot.getLotNo()); entry.setPrincipalDelta(principal); entry.setBonusDelta(bonus);
         if (entries.insert(entry) != 1) conflict();

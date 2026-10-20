@@ -30,8 +30,10 @@ import ai.neargo.shop.pay.storedvalue.entity.SvVoucher;
 import ai.neargo.shop.pay.storedvalue.policy.StoredValueAllocationPolicy;
 import ai.neargo.shop.pay.storedvalue.policy.StoredValuePostingPolicy;
 import ai.neargo.shop.pay.storedvalue.policy.StoredValueUseFacts;
+import ai.neargo.shop.pay.storedvalue.policy.StoredValueAccountScope;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueRedemptionPostingService;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueStoreProjector;
+import ai.neargo.shop.pay.storedvalue.service.StoredValueStatementProjector;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementEvents.EntitlementUsed;
@@ -68,13 +70,14 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
     private final StoredValueStoreProjector stores;
     private final PayEntitlementEventPublisher events;
     private final ObjectMapper json;
+    private final StoredValueStatementProjector statements;
     public StoredValueRedemptionPostingServiceImpl(EntitlementSourceFence fences, EntUseIntentMapper intents,
             SvAccountMapper accounts, SvLotMapper lots, SvHoldAllocationMapper allocations, SvVoucherMapper vouchers,
             SvEntryMapper entries, SvPostingLineMapper journal, EntUsageMapper usages, StoredValueAllocationPolicy policy,
-            StoredValueStoreProjector stores, PayEntitlementEventPublisher events, ObjectMapper json) {
+            StoredValueStoreProjector stores, PayEntitlementEventPublisher events, ObjectMapper json, StoredValueStatementProjector statements) {
         this.fences = fences; this.intents = intents; this.accounts = accounts; this.lots = lots;
         this.allocations = allocations; this.vouchers = vouchers; this.entries = entries; this.journal = journal;
-        this.usages = usages; this.policy = policy; this.stores = stores; this.events = events; this.json = json;
+        this.usages = usages; this.policy = policy; this.stores = stores; this.events = events; this.json = json; this.statements=statements;
     }
     @Override @Transactional("payTxManager")
     public HoldView prepare(EntitlementContext ctx, Prepared frozen) {
@@ -162,7 +165,7 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
             account.setBonusMinor(account.getBonusMinor() - bonus);
             account.setAccountSeq(Math.addExact(account.getAccountSeq(), 1));
             var at = LocalDateTime.ofInstant(decision.occurredAt(), ZoneOffset.UTC);
-            post(ctx, account, frozen, principal, bonus, parts, at);
+            var voucher=post(ctx, account, frozen, principal, bonus, parts, at);
             row.setUsageNo(no("EU", List.of(ctx.tenantNo(), operation), json));
             row.setCommittedAt(at); row.setSettledSourceKey(source.settledKey());
             var usage = new EntUsage(); audit(usage, ctx, now());
@@ -176,6 +179,7 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
             usage.setServiceStaffName(frozen.source().serviceStaffName()); usage.setSourceOrderNo(source.sourceNo());
             usage.setOperatorNo(ctx.actorNo()); usage.setStatus("COMMITTED"); usage.setOccurredAt(at);
             changed(usages.insert(usage));
+            statements.redemption(ctx, account, usage, voucher);
             stores.consume(ctx, c.userNo(), c.entityNo(), c.storeNo(), frozen.source().storeName(), at);
             events.publish(new EntitlementUsed(no("UE", List.of(ctx.tenantNo(), operation), json), row.getUsageNo(),
                     c.userNo(), c.entityNo(), c.storeNo(), "STORED_VALUE", c.accountNo(), c.amountMinor(), null,
@@ -190,7 +194,7 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
         row.setSourceDecisionNo(decision.decisionNo()); row.setStatus(commit ? "COMMITTED" : "RELEASED");
         row.setUpdatedAt(now()); row.setUpdatedBy(ctx.actorNo()); changed(intents.updateById(row)); return view(row);
     }
-    private void post(EntitlementContext ctx, SvAccount account, Prepared frozen, long principal, long bonus,
+    private SvVoucher post(EntitlementContext ctx, SvAccount account, Prepared frozen, long principal, long bonus,
                        List<SvHoldAllocation> parts, LocalDateTime at) {
         var c = frozen.command();
         var voucher = new SvVoucher(); audit(voucher, ctx, now());
@@ -212,9 +216,11 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
             posting.setLineNo(++index); posting.setPool(line.pool()); posting.setBook(line.book());
             posting.setSide(line.side()); posting.setAmountMinor(line.amountMinor()); changed(journal.insert(posting));
         }
+            return voucher;
     }
     private SvAccount account(EntitlementContext ctx, UseCommand c) {
-        var account = accounts.lockOwner(ctx.tenantNo(), c.userNo(), c.entityNo(), c.currency());
+        StoredValueAccountScope.requireMigrated(accounts, ctx.tenantNo(), c.userNo(), c.entityNo(), c.currency());
+        var account = accounts.lockOwner(ctx.tenantNo(), c.userNo(), c.entityNo(), c.currency(), c.storeNo());
         if (account == null || !account.getAccountNo().equals(c.accountNo())) conflict();
         return account;
     }

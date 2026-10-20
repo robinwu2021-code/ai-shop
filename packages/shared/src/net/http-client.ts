@@ -317,7 +317,7 @@ export const http = {
     request<T>("GET", path, params, headers),
   post: <T>(path: string, data?: object, headers?: Record<string, string>) =>
     request<T>("POST", path, data, headers),
-  put: <T>(path: string, data?: object) => request<T>("PUT", path, data),
+  put: <T>(path: string, data?: object, headers?: Record<string, string>) => request<T>("PUT", path, data, headers),
   del: <T>(path: string, data?: object) => request<T>("DELETE", path, data),
   uploadFile,
   downloadBinary,
