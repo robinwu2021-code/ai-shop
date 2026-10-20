@@ -380,7 +380,7 @@ export const NAV: NavSection[] = [
 
   // ── P-12 结算与资金 ─────────────────────────────────────────────────────
   {
-    key: "finance", label: "结算与资金", icon: "Wallet", modules: ["finance"], href: "/finance", match: ["/finance", "/points"],
+    key: "finance", label: "结算与资金", icon: "Wallet", modules: ["finance"], href: "/finance",
     children: [
       // 分账指令/重试/报备状态都是结算单**行上的动作与列**，不单独成页
       { href: "/finance", label: "结算单与分账", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
@@ -395,12 +395,6 @@ export const NAV: NavSection[] = [
       { href: "/finance?tab=purchase-invoices", label: "进项票", perm: "finance:invoice:read", group: "应付与发票", matrix: "P-12.2", ready: true },
       { href: "/finance?tab=buyer-invoices", label: "买家开票申请", perm: "finance:invoice:read", group: "应付与发票", matrix: "P-12.2", ready: true },
       { href: "/finance?tab=payout-accounts", label: "供应商收款账户", perm: "finance:payout:execute", group: "应付与发票", matrix: "P-12.1", ready: true },
-      { href: "/points?tab=overview", label: "积分资金看板", perm: "finance:settle:read", group: "积分运营", matrix: "P-12.1", ready: true },
-      { href: "/points?tab=configuration", label: "积分类型与协议", perm: "finance:settle:read", group: "积分运营", matrix: "P-12.1", ready: true },
-      { href: "/points?tab=treasury", label: "积分资金工作台", perm: "finance:settle:read", group: "积分运营", matrix: "P-12.1", ready: true },
-      { href: "/points?tab=settlements", label: "积分账单与退款", perm: "finance:settle:read", group: "积分运营", matrix: "P-12.1", ready: true },
-      { href: "/points?tab=queries", label: "积分账务与对账", perm: "finance:settle:read", group: "积分运营", matrix: "P-12.1", ready: true },
-      { href: "/points?tab=switches", label: "积分范围开关", perm: "finance:settle:read", group: "积分运营", matrix: "P-12.1", ready: true },
 
       { href: "/finance?tab=rates", label: "分档费率与服务费", perm: "finance:rate:update", group: "费率", matrix: "P-12.1", ready: true },
       // 与上一条是**两笔钱**：那条是平台向商家收的佣金，这条是通道向我们收的手续费。
@@ -425,6 +419,21 @@ export const NAV: NavSection[] = [
        * 却打不通接口（接口要的是 finance:recon:read），于是变成一个死按钮。
        */
       { href: "/finance?tab=channel-messages", label: "渠道报文", perm: "finance:recon:read", group: "分账结算", matrix: "P-12.1", ready: true },
+    ],
+  },
+
+  // ── 积分运营（配置与接入，原积分菜单从结算与资金独立）───────────────
+  {
+    key: "points", label: "积分运营", icon: "Coins", modules: ["finance"], href: "/points", match: ["/points", "/points/types", "/points/store-access"],
+    children: [
+      { href: "/points", label: "积分总览", perm: "finance:settle:read", group: "配置与接入", matrix: "P-12.1", ready: true },
+      { href: "/points/types", label: "积分类型与规则", perm: "finance:settle:read", group: "配置与接入", matrix: "P-12.1", ready: true },
+      { href: "/points/store-access", label: "门店协议与接入", perm: "finance:settle:read", group: "配置与接入", matrix: "P-12.1", ready: true },
+      // 尚未完成独立页面迁移的现有积分功能继续可用，避免首批拆页期间丢失入口。
+      { href: "/points?tab=switches", label: "积分范围开关", perm: "finance:settle:read", group: "资金与日常（旧版）", matrix: "P-12.1", ready: true },
+      { href: "/points?tab=treasury", label: "积分资金工作台", perm: "finance:settle:read", group: "资金与日常（旧版）", matrix: "P-12.1", ready: true },
+      { href: "/points?tab=settlements", label: "积分账单与退款", perm: "finance:settle:read", group: "资金与日常（旧版）", matrix: "P-12.1", ready: true },
+      { href: "/points?tab=queries", label: "积分账务与对账", perm: "finance:settle:read", group: "资金与日常（旧版）", matrix: "P-12.1", ready: true },
     ],
   },
 
@@ -514,19 +523,6 @@ export const NAV: NavSection[] = [
       { href: "/risk", label: "风险事件", perm: "risk:rule:read", group: "识别", matrix: "P-16.2", ready: true },
       { href: "/risk?tab=blacklist", label: "黑名单与申诉", perm: "risk:blacklist:update", group: "处置", matrix: "P-16.2", ready: true },
       { href: "/risk?tab=rules", label: "拦截规则配置", perm: "risk:rule:update", group: "处置", matrix: "P-16.2", ready: true },
-    ],
-  },
-
-  // ── P-19 电子元器件（独立服务 elec-svc）────────────────────────────────
-  // 接口是 /elec/ops/**，**判权在 elec-svc**（ElecOpsGuard）；菜单与授权照常登在主系统库里（V370）。
-  // 四个子页一个路由、?tab= 深链。询报价在第一个：运营每天最常干的是照着「库里谁有货」报价
-  {
-    key: "elec", label: "元器件", icon: "Cpu", modules: ["elec"], href: "/elec",
-    children: [
-      { href: "/elec", label: "询报价", perm: "elec:rfq:read", group: "撮合", matrix: "P-19.1", ready: true },
-      { href: "/elec?tab=supplier", label: "供应商", perm: "elec:supplier:read", group: "货源", matrix: "P-19.2", ready: true },
-      { href: "/elec?tab=part", label: "料号与库存", perm: "elec:part:read", group: "货源", matrix: "P-19.3", ready: true },
-      { href: "/elec?tab=base", label: "基础数据", perm: "elec:base:manage", group: "主数据", matrix: "P-19.4", ready: true },
     ],
   },
 

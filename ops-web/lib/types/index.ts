@@ -21,7 +21,6 @@ export * from "./message";
 export * from "./content";
 export * from "./system";
 export * from "./job";
-export * from "./elec";
 
 /**
  * 运营侧看到的一条会员（P8）。

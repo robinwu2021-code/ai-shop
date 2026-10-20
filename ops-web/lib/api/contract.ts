@@ -19,7 +19,6 @@ import type { GroupApi } from "./contracts/group";
 import type { ProductApi } from "./contracts/product";
 import type { InventoryApi } from "./contracts/inventory";
 import type { JobApi } from "./contracts/job";
-import type { ElecApi } from "./contracts/elec";
 import type { FinanceApi } from "./contracts/finance";
 import type { IamApi } from "./contracts/iam";
 import type { GrowthApi } from "./contracts/growth";
@@ -35,10 +34,10 @@ export type { LoginResp } from "./contracts/dashboard";
 export type {
   DashboardApi, MerchantApi, OrderApi, PaymentApi, CommunityApi, FulfillmentApi, StoreApi,
   MarketingApi, ReviewApi, AfterSaleApi, GroupApi, ProductApi, FinanceApi, IamApi, GrowthApi, RiskApi, MessageApi, ContentApi, SystemApi,
-  MemberApi, InventoryApi, JobApi, ElecApi,
+  MemberApi, InventoryApi, JobApi,
 };
 
 export interface Api
   extends DashboardApi, MerchantApi, OrderApi, PaymentApi, CommunityApi, FulfillmentApi, StoreApi,
     MarketingApi, ReviewApi, AfterSaleApi, GroupApi, ProductApi, FinanceApi, IamApi, GrowthApi, RiskApi,
-    MessageApi, ContentApi, SystemApi, MemberApi, InventoryApi, JobApi, ElecApi {}
+    MessageApi, ContentApi, SystemApi, MemberApi, InventoryApi, JobApi {}

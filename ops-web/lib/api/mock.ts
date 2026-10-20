@@ -16,7 +16,6 @@ import { groupMock } from "./mocks/group";
 import { productMock } from "./mocks/product";
 import { inventoryMock } from "./mocks/inventory";
 import { jobMock } from "./mocks/job";
-import { elecMock } from "./mocks/elec";
 import { financeMock } from "./mocks/finance";
 import { iamMock } from "./mocks/iam";
 import { growthMock } from "./mocks/growth";
@@ -42,7 +41,6 @@ export const MOCK_SLICES = {
   product: productMock,
   inventory: inventoryMock,
   job: jobMock,
-  elec: elecMock,
   finance: financeMock,
   iam: iamMock,
   growth: growthMock,
@@ -55,5 +53,5 @@ export const MOCK_SLICES = {
 export const mockApi: Api = {
   ...dashboardMock, ...merchantMock, ...orderMock, ...paymentMock,
   ...communityMock, ...fulfillmentMock, ...storeMock,
-  ...marketingMock, ...reviewMock, ...afterSaleMock, ...groupMock, ...productMock, ...financeMock, ...iamMock, ...growthMock, ...riskMock, ...messageMock, ...contentMock, ...systemMock, ...memberMock, ...inventoryMock, ...jobMock, ...elecMock,
+  ...marketingMock, ...reviewMock, ...afterSaleMock, ...groupMock, ...productMock, ...financeMock, ...iamMock, ...growthMock, ...riskMock, ...messageMock, ...contentMock, ...systemMock, ...memberMock, ...inventoryMock, ...jobMock,
 };

@@ -135,19 +135,11 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
      * 与分账明细同一个码，所以超管与财务两行各多出这一条。
      */
     "/finance?tab=settle-stats",
-    "/points?tab=configuration",
     "/points?tab=treasury",
     "/points?tab=queries",
     "/points?tab=settlements",
-    /*
-     * 电子元器件（2026-09-30，P-19）。独立服务 elec-svc 的运营面，新的根菜单。
-     * V370 只授超管；V371 按岗位分配（元器件负责人全部、商家运营询报价/供应商/料号、
-     * 商品运营料号/基础数据、风控供应商、客服询报价），所以这几行各多出其中几条 —— 都是新增。
-     */
-    "/elec",
-    "/elec?tab=supplier",
-    "/elec?tab=part",
-    "/elec?tab=base",
+    "/points/types",
+    "/points/store-access",
 ]);
 
   it("★★★ AC2 · 合并前后每个角色看得见的功能点集合完全不变", () => {
@@ -165,8 +157,11 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
       const perms = backendPermsOf(role);
       const now = new Set<string>();
       for (const s of visibleSections(perms)) for (const l of visibleLeaves(s, perms)) now.add(l.href);
-      // Points stage B moves these two existing authorizations without changing point codes.
-      const moved: Record<string, string> = { "/finance?tab=points": "/points?tab=overview", "/finance?tab=points-policy": "/points?tab=switches" };
+      // Points Operations moves existing finance points entries without changing point codes.
+      const moved: Record<string, string> = {
+        "/finance?tab=points": "/points",
+        "/finance?tab=points-policy": "/points?tab=switches",
+      };
       const was = new Set((baseline[role] ?? []).map((href) => moved[href] ?? href));
       const lost = [...was].filter((h) => !now.has(h));
       const gained = [...now].filter((h) => !was.has(h) && !ADDED_SINCE_MERGE.has(h));
@@ -393,8 +388,6 @@ describe("矩阵覆盖率（docs/requirements/需求矩阵-三端.md §六）", 
     // P-18.5 链路健康：从 P-18.3 对差里**拆出来**的。对差读数据、它读链路 ——
     // 09-02 投递停了六小时，唯一痕迹是对差页上的「待搬 1 个」。
     "P-18.1", "P-18.2", "P-18.3", "P-18.4", "P-18.5",
-    // P-19 电子元器件：独立服务 elec-svc（/elec/ops/**），判权在它那边；菜单仍登在主系统库里
-    "P-19.1", "P-19.2", "P-19.3", "P-19.4",
   ];
 
   const covered = new Set(NAV.flatMap((s) => (s.children ?? []).map((l) => l.matrix).filter(Boolean) as string[]));
@@ -412,7 +405,7 @@ describe("矩阵覆盖率（docs/requirements/需求矩阵-三端.md §六）", 
 
 describe("待建域", () => {
   // 已交付的域清单。**页面存在才允许可点** —— 静态导出下点一个没有的路由就是 404。
-  const BUILT = ["dashboard", "merchant", "order", "community", "fulfillment", "store", "marketing", "review", "aftersale", "group", "product", "finance", "iam", "growth", "risk", "message", "content", "system", "member", "inventory", "jobs", "elec"];
+  const BUILT = ["dashboard", "merchant", "order", "community", "fulfillment", "store", "marketing", "review", "aftersale", "group", "product", "finance", "iam", "growth", "risk", "message", "content", "system", "member", "inventory", "jobs", "points"];
 
   it("未交付的 section 必须 soon（否则 Rail 点进去 404）", () => {
     const clickableButUnbuilt = NAV.filter((s) => !s.soon && !BUILT.includes(s.key)).map((s) => s.key);
@@ -862,5 +855,5 @@ it("已解锁的 ?tab= 叶子，页面必须真的认这个 tab —— 否则点
 
 it("keeps both finance and the points workspace assigned to the finance section", () => {
   expect(findActiveSection("/finance")?.key).toBe("finance");
-  expect(findActiveSection("/points")?.key).toBe("finance");
+  expect(findActiveSection("/points")?.key).toBe("points");
 });

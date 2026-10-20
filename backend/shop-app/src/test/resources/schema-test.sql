@@ -13184,6 +13184,30 @@ VALUES
     ('RISK', 'OPS_ELEC__TAB_SUPPLIER', 'OPS', NOW(), NOW()),
     ('RISK', 'ACT__ELEC_SUPPLIER_MANAGE', 'OPS', NOW(), NOW()),
     ('SUPPORT', 'OPS_ELEC', 'OPS', NOW(), NOW());
+-- Keep this test seed aligned with the production V528/V529 menu state.
+UPDATE sys_function SET enabled=0 WHERE function_code='OPS_ELEC' AND end_code='OPS';
+UPDATE sys_function_point SET deleted=1, ui_ready=0 WHERE function_code='OPS_ELEC';
+UPDATE sys_role_point SET deleted=1 WHERE end_code='OPS' AND point_code IN (
+    'OPS_ELEC', 'OPS_ELEC__TAB_SUPPLIER', 'OPS_ELEC__TAB_PART', 'OPS_ELEC__TAB_BASE',
+    'ACT__ELEC_RFQ_QUOTE', 'ACT__ELEC_SUPPLIER_MANAGE'
+);
+INSERT IGNORE INTO sys_function (function_code, name, end_code, icon, href, sort, enabled, created_at, updated_at)
+VALUES ('OPS_POINTS', '积分运营', 'OPS', 'Coins', '/points', 111, 1, NOW(), NOW());
+UPDATE sys_function_point SET function_code='OPS_POINTS',name='积分总览',group_name='配置与接入',href='/points'
+WHERE point_code='OPS_FINANCE__TAB_POINTS';
+UPDATE sys_function_point SET function_code='OPS_POINTS',name='积分范围开关',group_name='资金与日常（旧版）',href='/points?tab=switches'
+WHERE point_code='OPS_FINANCE__TAB_POINTS_POLICY';
+UPDATE sys_function_point SET function_code='OPS_POINTS',name='积分类型与规则',group_name='配置与接入',href='/points/types'
+WHERE point_code='OPS_POINTS__TAB_CONFIGURATION';
+UPDATE sys_function_point SET function_code='OPS_POINTS',group_name='资金与日常（旧版）'
+WHERE point_code IN ('OPS_POINTS__TAB_TREASURY','OPS_POINTS__TAB_SETTLEMENTS','OPS_POINTS__TAB_QUERIES');
+INSERT IGNORE INTO sys_function_point
+    (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at)
+VALUES ('OPS_POINTS__TAB_STORE_ACCESS','OPS_POINTS','门店协议与接入','配置与接入','/points/store-access',
+        'finance:settle:read','finance:settle:read','IMPLEMENTED',1,'P-12.1','MENU',53,NOW(),NOW());
+INSERT IGNORE INTO sys_role_point (role_code,point_code,end_code,created_at,updated_at)
+SELECT role_code,'OPS_POINTS__TAB_STORE_ACCESS','OPS',NOW(),NOW()
+FROM sys_role_point WHERE point_code='OPS_FINANCE__TAB_POINTS' AND end_code='OPS' AND deleted=0;
 UPDATE notify_scene_channel
 SET enabled = 0
 WHERE scene_code = 'AFTER_SALE_REFUNDED' AND audience = 'C_USER' AND channel = 'WXSUB';
@@ -13555,3 +13579,13 @@ WHERE point_code = 'OPS_PRODUCT__TAB_CATEGORY_POINTS';
 DELETE FROM sys_function_point
 WHERE point_code = 'OPS_PRODUCT__TAB_CATEGORY_POINTS'
    OR href = '/products?tab=category-points';
+
+-- The points seeds above model V451; finish them with the V529 route ownership/labels.
+UPDATE sys_function_point SET function_code='OPS_POINTS',name='积分总览',group_name='配置与接入',href='/points'
+WHERE point_code='OPS_FINANCE__TAB_POINTS';
+UPDATE sys_function_point SET function_code='OPS_POINTS',name='积分范围开关',group_name='资金与日常（旧版）',href='/points?tab=switches'
+WHERE point_code='OPS_FINANCE__TAB_POINTS_POLICY';
+UPDATE sys_function_point SET function_code='OPS_POINTS',name='积分类型与规则',group_name='配置与接入',href='/points/types'
+WHERE point_code='OPS_POINTS__TAB_CONFIGURATION';
+UPDATE sys_function_point SET function_code='OPS_POINTS',group_name='资金与日常（旧版）'
+WHERE point_code IN ('OPS_POINTS__TAB_TREASURY','OPS_POINTS__TAB_SETTLEMENTS','OPS_POINTS__TAB_QUERIES');
