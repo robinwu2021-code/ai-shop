@@ -38,6 +38,13 @@ class PointTypeCurrencyTest {
         assertThat(kwd.currency()).isEqualTo("KWD"); assertThat(kwd.scale()).isEqualTo(3);
         assertThat(kwd.rate()).isEqualTo(new RedeemRate(5, 2));
     }
+    @Test void uae_dirham_uses_two_decimal_fils_units() {
+        var aed = service.create(command("AED", 150, 100), "OPS");
+        assertThat(aed.currency()).isEqualTo("AED");
+        assertThat(aed.scale()).isEqualTo(2);
+        assertThat(aed.rate()).isEqualTo(new RedeemRate(3, 2));
+        verify(config).createType(aed, "OPS");
+    }
     @Test void omitted_settings_remain_compatible_with_the_existing_default() {
         var type = service.create(new PointTypeService.CreateType("DEFAULT", "Default"), "OPS");
         assertThat(type.market()).isEqualTo("CN"); assertThat(type.currency()).isEqualTo("CNY");

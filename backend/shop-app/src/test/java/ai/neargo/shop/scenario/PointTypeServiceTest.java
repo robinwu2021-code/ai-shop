@@ -25,16 +25,22 @@ class PointTypeServiceTest {
     @Autowired @Qualifier("payDataSource") private DataSource dataSource;
 
     @Test
-    void active_unique_rate_locked_and_drain() {
+    void multiple_types_activate_and_drain_without_replacing_the_order_default() {
         String a = no(); String b = no();
         types.create(new PointTypeService.CreateType(a,"CN",new RedeemRate(1,1),3000,365),"maker");
         types.create(new PointTypeService.CreateType(b,"CN",new RedeemRate(3,2),3000,365),"maker");
         try {
             types.activate(a,"maker");
-            assertThatThrownBy(() -> types.activate(b,"maker")).isInstanceOf(IllegalArgumentException.class);
+            types.activate(b,"maker");
+            assertThat(read.type(a).orElseThrow().status()).isEqualTo(PointType.Status.ACTIVE);
+            assertThat(read.type(b).orElseThrow().status()).isEqualTo(PointType.Status.ACTIVE);
+            assertThat(read.activeType("CN").orElseThrow().typeCode()).isEqualTo(a);
+            types.drain(b,"maker");
+            assertThat(read.type(b).orElseThrow().status()).isEqualTo(PointType.Status.DRAINING);
+            assertThat(read.activeType("CN").orElseThrow().typeCode()).isEqualTo(a);
             types.drain(a,"maker");
             assertThat(read.activeType("CN").orElseThrow().status()).isEqualTo(PointType.Status.DRAINING);
-            assertThatThrownBy(() -> types.activate(b,"maker")).isInstanceOf(IllegalArgumentException.class);
+            assertThat(read.activeType("CN").orElseThrow().typeCode()).isEqualTo(a);
             assertThatThrownBy(() -> types.create(new PointTypeService.CreateType(a,"CN",new RedeemRate(3,2),
                     3000,365),"maker")).hasMessageContaining("POINTS_TYPE_DUPLICATE");
             assertThat(read.type(a).orElseThrow().rate()).isEqualTo(new RedeemRate(1,1));

@@ -4,10 +4,12 @@
     ".githooks/pre-push",
     "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/mapper/points/PointsConfigurationMapper.java",
     "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/model/PointType.java",
+    "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/store/PointsReadStore.java",
     "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/store/impl/MybatisPointsConfigurationStore.java",
     "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/store/impl/MybatisPointsReadStore.java",
     "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/type/PointTypeService.java",
     "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/type/impl/PointTypeServiceImpl.java",
+    "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/points/type/PointTypeActivationTest.java",
     "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/points/type/PointTypeCurrencyTest.java",
     "backend/shop-app/src/main/java/ai/neargo/shop/payclient/PointsOpsErrors.java",
     "backend/shop-app/src/main/resources/db/migration/V536__points_ops_four_workspaces_menu.sql",
@@ -71,6 +73,6 @@
     "scripts/release/points-ops.mjs",
     "scripts/release/points-ops.test.mjs"
   ],
-  "releaseBase": "358ab7f3a69e827480d76e2066f4db5a4b0ce028",
-  "releaseAnchor": "358ab7f3a69e827480d76e2066f4db5a4b0ce028"
+  "releaseBase": "8f8fa7851ed444d62571519a9ffbba0375825985",
+  "releaseAnchor": "8f8fa7851ed444d62571519a9ffbba0375825985"
 }

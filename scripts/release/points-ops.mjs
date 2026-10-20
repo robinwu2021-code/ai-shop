@@ -91,7 +91,7 @@ function main() {
   run('npm', ['run', 'typecheck'], ops);
   const backend = files.some(f => f.startsWith('backend/'));
   if (backend) {
-    run('mvn', ['-pl', 'shop-app', '-am', '-Dtest=PointTypeServiceTest,PointTypeCurrencyTest,PointsOpsConfigurationTest', '-Dsurefire.failIfNoSpecifiedTests=false', 'test', '-q'], join(root, 'backend'));
+    run('mvn', ['-pl', 'shop-app', '-am', '-Dtest=PointTypeServiceTest,PointTypeCurrencyTest,PointTypeActivationTest,PointsOpsConfigurationTest', '-Dsurefire.failIfNoSpecifiedTests=false', 'test', '-q'], join(root, 'backend'));
     run('mvn', ['-pl', 'shop-app,pay/pay-svc', '-am', '-DskipTests', 'package', '-q'], join(root, 'backend'));
   }
   process.env.NEXT_PUBLIC_API_BASE = '';

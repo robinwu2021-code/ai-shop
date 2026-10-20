@@ -13,7 +13,7 @@ import java.util.Currency;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Activation is a unique database claim, not a check-then-insert race. */
+/** Types activate independently; the unique market default keeps existing order routing stable. */
 @Service
 @Transactional("payTxManager")
 public class PointTypeServiceImpl implements PointTypeService {
@@ -97,8 +97,22 @@ public class PointTypeServiceImpl implements PointTypeService {
         }
         config.lockTypeAndPool(no);
         PointType type = read.type(no).orElseThrow();
-        config.changeTypeStatus(
-                no, PointType.Status.DRAFT, PointType.Status.ACTIVE, type.market(), actor);
+        // active_market is the legacy order default, not a constraint on all ACTIVE types.
+        boolean matchesMarketCurrency = markets.find(type.market())
+                .filter(m -> m.enabled() && m.currency().equals(type.currency())).isPresent();
+        String defaultMarket = matchesMarketCurrency && read.activeType(type.market()).isEmpty()
+                ? type.market() : null;
+        try {
+            config.changeTypeStatus(
+                    no, PointType.Status.DRAFT, PointType.Status.ACTIVE, defaultMarket, actor);
+        } catch (IllegalArgumentException rejected) {
+            if (defaultMarket == null || !"POINTS_ACTIVE_EXISTS".equals(rejected.getMessage())) {
+                throw rejected;
+            }
+            // Another type owns the default slot; this type can still activate independently.
+            config.changeTypeStatus(
+                    no, PointType.Status.DRAFT, PointType.Status.ACTIVE, null, actor);
+        }
         return read.type(no).orElseThrow();
     }
 
@@ -109,8 +123,11 @@ public class PointTypeServiceImpl implements PointTypeService {
         }
         config.lockTypeAndPool(no);
         PointType type = read.type(no).orElseThrow();
+        String defaultMarket = read.activeType(type.market())
+                .filter(current -> current.typeCode().equals(type.typeCode()))
+                .map(PointType::market).orElse(null);
         config.changeTypeStatus(
-                no, PointType.Status.ACTIVE, PointType.Status.DRAINING, type.market(), actor);
+                no, PointType.Status.ACTIVE, PointType.Status.DRAINING, defaultMarket, actor);
         return read.type(no).orElseThrow();
     }
 }

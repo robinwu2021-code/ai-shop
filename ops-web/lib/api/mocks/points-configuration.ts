@@ -47,7 +47,6 @@ export const pointsConfigurationMock: Pick<FinanceApi,
     const t = type(v.typeCode);
     const target = { ACTIVATE: "ACTIVE", DRAIN: "DRAINING", RETIRE: "RETIRED" } as const;
     if ((v.action === "ACTIVATE" && t.status !== "DRAFT") || (v.action === "DRAIN" && t.status !== "ACTIVE") || (v.action === "RETIRE" && t.status !== "DRAINING")) fail("类型状态不允许此操作", "Type state does not allow this operation");
-    if (v.action === "ACTIVATE" && types.some((x) => x.market === t.market && x.status === "ACTIVE")) fail("该区域已有生效类型", "Market already has an active type");
     t.status = target[v.action];
   }),
   pointsFallback: (code) => { type(code); return wait({ ...(rules.get(code) ?? { revision: 0, mode: "RATIO" as const, value: 0 }) }); },

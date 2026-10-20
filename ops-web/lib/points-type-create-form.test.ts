@@ -43,3 +43,10 @@ it("rejects unit conversion that would silently round fractional points", async 
   await change("unit", "yuan"); await change("points", "150"); await change("unit", "fen");
   expect(field("unit").value).toBe("yuan"); expect(field("points").value).toBe("150"); expect(host.textContent).toContain("整数积分");
 });
+it("supports UAE dirham with fils as the default unit and no market note", async () => {
+  await change("currency", "AED"); expect(field("unit").value).toBe("fils");
+  expect(host.textContent).not.toContain("系统市场");
+  await change("unit", "dirham"); expect(field("points").value).toBe("100");
+  field("name").value = "阿联酋积分"; field("code").value = "UAE_POINTS";
+  await submit(); expect(save).toHaveBeenCalledWith(expect.objectContaining({ currency: "AED", rate: { pointsUnit: 100, minorUnit: 100 } }));
+});

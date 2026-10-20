@@ -3,6 +3,7 @@
   const currencies = {
     CNY: { name: '人民币', major: '元', units: [{ code: 'fen', name: '分', factor: 1n }, { code: 'jiao', name: '角', factor: 10n }, { code: 'yuan', name: '元', factor: 100n }] },
     USD: { name: '美元', major: '美元', units: [{ code: 'cent', name: '美分', factor: 1n }, { code: 'dollar', name: '美元', factor: 100n }] },
+    AED: { name: '阿联酋迪拉姆', major: '迪拉姆', units: [{ code: 'fils', name: '费尔（Fils）', factor: 1n }, { code: 'dirham', name: '迪拉姆', factor: 100n }] },
     KWD: { name: '科威特第纳尔', major: '第纳尔', units: [{ code: 'fils', name: '费尔（Fils）', factor: 1n }, { code: 'dinar', name: '第纳尔', factor: 1000n }] },
   };
   const items = [

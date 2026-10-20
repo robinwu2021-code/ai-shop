@@ -57,6 +57,5 @@ export function PointsTypeCreateForm({ existing, onSubmit, pending = false }: {
       </div>{error("points")}
     </fieldset>
     <label className={label}>{t("备注", "Remark")}<textarea name="remark" maxLength={500} rows={3} disabled={pending} placeholder={t("填写积分用途或补充说明（选填）", "Purpose or additional notes (optional)")} className="focus-ring w-full resize-y rounded-field bg-secondary px-3.5 py-2 txt-body" /></label>
-    <p className="txt-caption text-muted-foreground">{t("系统市场：中国（CN）", "System market: China (CN)")}</p>
   </form>;
 }

@@ -14,6 +14,7 @@ import java.util.Optional;
 public interface PointsReadStore {
     Optional<PointType> type(String typeCode);
 
+    /** Legacy order default, including its draining period; other ACTIVE types are type-scoped. */
     Optional<PointType> activeType(String market);
 
     List<PointType> types();

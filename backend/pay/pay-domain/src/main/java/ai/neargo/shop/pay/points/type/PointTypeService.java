@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.util.Map;
 
-/** One active type per market prevents mixed-rate balances from becoming interchangeable. */
+/** Independent types retain separate balances and rates; market order defaults remain stable. */
 public interface PointTypeService {
     PointType create(CreateType command, String actor);
 
