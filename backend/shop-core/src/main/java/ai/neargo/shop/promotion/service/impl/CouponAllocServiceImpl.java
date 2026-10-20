@@ -1,5 +1,8 @@
 package ai.neargo.shop.promotion.service.impl;
 
+import ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService;
+import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.promotion.CouponCalculation;
@@ -19,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Comparator;
+import java.util.TreeMap;
 
 /**
  * 新模型的算价与核销。
@@ -38,12 +43,14 @@ import java.util.List;
 @Service
 public class CouponAllocServiceImpl implements CouponAllocService {
 
+    private final LegacyCouponSourceFenceService sourceFence;
     private final CouponMapper couponMapper;
     private final UserCouponMapper userCouponMapper;
     private final ApplyMapper applyMapper;
 
     public CouponAllocServiceImpl(CouponMapper couponMapper, UserCouponMapper userCouponMapper,
-                                  ApplyMapper applyMapper) {
+                                  ApplyMapper applyMapper, LegacyCouponSourceFenceService sourceFence) {
+        this.sourceFence = sourceFence;
         this.couponMapper = couponMapper;
         this.userCouponMapper = userCouponMapper;
         this.applyMapper = applyMapper;
@@ -130,6 +137,7 @@ public class CouponAllocServiceImpl implements CouponAllocService {
         }
         PmtUserCoupon uc = require(userNo, userCouponNo);
         PmtCoupon coupon = template(uc.getCouponNo());
+        sourceFence.requireWritable(coupon.getTenantNo(), SourceSystem.PMT, coupon.getCouponNo(), false);
         assertUsable(uc, coupon);
 
         int before = nz(uc.getTimesUsed());
@@ -180,12 +188,28 @@ public class CouponAllocServiceImpl implements CouponAllocService {
         List<PmtUserCoupon> used = DataScopeContext.executeWithoutScope(() ->
                 userCouponMapper.selectList(Wrappers.<PmtUserCoupon>lambdaQuery()
                         .eq(PmtUserCoupon::getOrderNo, orderNo)));
+        var roots = new TreeMap<String, PmtUserCoupon>();
+        used.forEach(row -> roots.put(row.getCouponNo(), row));
+        var originalApplications = DataScopeContext.executeWithoutScope(() -> applyMapper.selectList(
+                Wrappers.<PmtApply>lambdaQuery().eq(PmtApply::getOrderNo, orderNo)
+                        .eq(PmtApply::getPromoType, PmtApply.COUPON).isNull(PmtApply::getRevertedAt)));
+        for (var application : originalApplications) {
+            var instance = DataScopeContext.executeWithoutScope(() -> userCouponMapper.selectOne(
+                    Wrappers.<PmtUserCoupon>lambdaQuery().eq(PmtUserCoupon::getTenantNo, application.getTenantNo())
+                            .eq(PmtUserCoupon::getUserCouponNo, application.getPromoNo())));
+            if (instance != null) roots.put(instance.getCouponNo(), instance);
+        }
+        for (var root : roots.values()) {
+            sourceFence.requireWritable(root.getTenantNo(), SourceSystem.PMT, root.getCouponNo(), true);
+        }
+        used = used.stream().sorted(Comparator.comparing(PmtUserCoupon::getCouponNo)).toList();
         for (PmtUserCoupon uc : used) {
             uc.setTimesUsed(Math.max(0, nz(uc.getTimesUsed()) - 1));
             uc.setStatus(PmtUserCoupon.UNUSED);
             DataScopeContext.executeWithoutScope(() -> userCouponMapper.update(null,
                     Wrappers.<PmtUserCoupon>lambdaUpdate()
                             .eq(PmtUserCoupon::getId, uc.getId())
+                            .eq(PmtUserCoupon::getOrderNo, orderNo)
                             .set(PmtUserCoupon::getStatus, PmtUserCoupon.UNUSED)
                             .set(PmtUserCoupon::getTimesUsed, uc.getTimesUsed())
                             // 必须显式 set null：updateById 默认跳过 null 字段，

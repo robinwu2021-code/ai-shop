@@ -17,4 +17,6 @@ public interface OpsStaffPort {
      * @param permCode {@code Perms} 里的功能点码（如 {@code message:ticket:handle}）
      */
     List<String> staffNosWithPerm(String permCode);
+    /** Entity-sensitive notices require both current permission and a supported entity data scope. */
+    default List<String> staffNosWithPermForEntity(String permCode,String entityNo) { return List.of(); }
 }

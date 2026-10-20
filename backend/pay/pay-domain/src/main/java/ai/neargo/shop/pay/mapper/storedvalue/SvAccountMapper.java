@@ -17,4 +17,10 @@ public interface SvAccountMapper extends BaseMapper<SvAccount> {
     @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
     SvAccount lockOwner(@Param("tenant") String tenant, @Param("user") String user, @Param("entity") String entity,
                          @Param("currency") String currency);
+    @Select("SELECT * FROM sv_account WHERE tenant_no=#{tenant} AND user_no=#{user} AND entity_no=#{entity} "
+            + "AND currency=#{currency} AND deleted=0")
+    @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+    SvAccount findOwner(@Param("tenant") String tenant, @Param("user") String user, @Param("entity") String entity,
+                         @Param("currency") String currency);
+
 }

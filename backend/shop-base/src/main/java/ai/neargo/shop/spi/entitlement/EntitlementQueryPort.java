@@ -19,6 +19,8 @@ public interface EntitlementQueryPort {
 
     UsageDetail usage(EntitlementContext context, UsageQuery query);
 
+    CursorPage<UsageItem> history(EntitlementContext context, UsageHistoryQuery query);
+
     AllowanceView allowances(EntitlementContext context, AllowanceQuery query);
 
     /** Preview only; the first successful use transaction persists activation. */
@@ -80,6 +82,13 @@ public interface EntitlementQueryPort {
             ContractChecks.id(userNo);
             ContractChecks.optionalId(entityNo);
             ContractChecks.id(usageNo);
+        }
+    }
+
+    record UsageHistoryQuery(String userNo,String entityNo,String instanceNo,String cursor,int size) {
+        public UsageHistoryQuery {
+            ContractChecks.id(userNo);ContractChecks.optionalId(entityNo);ContractChecks.optionalId(instanceNo);
+            checkPage(cursor,size);
         }
     }
 

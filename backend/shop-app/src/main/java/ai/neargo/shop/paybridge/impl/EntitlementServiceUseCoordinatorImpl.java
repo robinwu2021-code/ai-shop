@@ -43,6 +43,9 @@ public class EntitlementServiceUseCoordinatorImpl implements EntitlementServiceU
                                          String instance,
                                          LocalDate requestedDay) {
         var order = orders.requireMerchant(ctx, entity, store, no);
+        if (order.preview() != null && order.preview().kind() == AssetKind.STORED_VALUE) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
         if (order.preview() != null && Instant.now().isBefore(order.preview().preview().expiresAt())) {
             if (!instance.equals(order.preview().preview().instanceNo())) throw BizException.of(ErrorCode.CONFLICT);
             if (requestedDay != null && !requestedDay.equals(order.preview().serviceDay())) {

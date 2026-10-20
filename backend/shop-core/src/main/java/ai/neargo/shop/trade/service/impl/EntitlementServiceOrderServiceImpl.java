@@ -23,6 +23,8 @@ import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseCommand;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseItem;
 import ai.neargo.shop.spi.entitlement.EntitlementUseSourcePort.UseSourceFact;
 import ai.neargo.shop.spi.entitlement.SourceRef;
+import ai.neargo.shop.spi.storedvalue.StoredValueUseQuotePort.Quote;
+import ai.neargo.shop.spi.storedvalue.StoredValueUseQuotePort.Selection;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.member.CustomerIdentityPort.ReferenceQuery;
 import ai.neargo.shop.spi.pay.MarketPort;
@@ -95,17 +97,24 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
     }
     @Override @Transactional
     public ServiceOrderSnapshot create(EntitlementContext ctx, String entity, ServiceOrderCreate c, String key) {
-        return createInternal(ctx, entity, c.storeNo(), c.items(), key, hash(json.writeValueAsString(c)),
+        return createInternal(ctx, entity, c.storeNo(), c.items(), key, hash(json.writeValueAsString(c)), false,
                 () -> customers.resolveReference(ctx,
                         new ReferenceQuery(entity, c.storeNo(), c.customerRef())).userNo());
     }
     @Override @Transactional
+    public ServiceOrderSnapshot createMonetary(EntitlementContext ctx, String entity, ServiceOrderCreate c, String key) {
+        return createInternal(ctx, entity, c.storeNo(), c.items(), key,
+                hash(json.writeValueAsString(List.of("STORED_VALUE", c))), true,
+                () -> customers.resolveReference(ctx, new ReferenceQuery(entity, c.storeNo(), c.customerRef())).userNo());
+    }
+    @Override @Transactional
     public ServiceOrderSnapshot createIdentified(EntitlementContext ctx, String entity,
                                                  ServiceOrderIdentifiedCreate c, String key) {
-        return createInternal(ctx, entity, c.storeNo(), c.items(), key, hash(json.writeValueAsString(c)), c::userNo);
+        return createInternal(ctx, entity, c.storeNo(), c.items(), key, hash(json.writeValueAsString(c)), false,
+                c::userNo);
     }
     private ServiceOrderSnapshot createInternal(EntitlementContext ctx, String entity, String storeNo,
-            List<ServiceOrderCreate.Line> items, String key, String payload, Supplier<String> holder) {
+            List<ServiceOrderCreate.Line> items, String key, String payload, boolean monetary, Supplier<String> holder) {
         if (key == null || key.isBlank() || key.length() > 128) badRequest();
         String no = orderNo(ctx, entity, key, json);
         var previous = orders.find(ctx.tenantNo(), no);
@@ -118,6 +127,8 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         if (users.findActive(ctx.tenantNo(), userNo).isEmpty()) notFound();
         var market = markets.find(merchantDetails.marketOf(entity)).filter(MarketPort.MarketBrief::enabled)
                 .orElseThrow(() -> BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE));
+        // The existing product price owner explicitly selects CN SKUs. Never label that price as another currency.
+        if (monetary && (!"CN".equals(market.market()) || !"CNY".equals(market.currency()))) unavailable();
         var selected = goods.snapshot(items.stream().map(ServiceOrderCreate.Line::skuNo).toList(),
                 Map.of(entity, storeNo));
         var lines = new ArrayList<UseItem>(); Map<String, List<String>> categories = new HashMap<>();
@@ -129,7 +140,9 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
                     || !sku.onSale() || !sku.fulfillments().contains(Fulfillments.STORE_VERIFY)
                     || (sku.storeNo() != null && !storeNo.equals(sku.storeNo()))) unavailable();
             String lineNo = "SL" + (++index);
-            lines.add(new UseItem(lineNo, sku.goodsNo(), sku.title(), wanted.quantity(), 0));
+            if (monetary && sku.price() <= 0) conflict();
+            long price = monetary ? Math.multiplyExact(sku.price(), wanted.quantity()) : 0;
+            lines.add(new UseItem(lineNo, sku.goodsNo(), sku.title(), wanted.quantity(), price));
             categories.put(lineNo, productScopes.categoryLineage(ctx.tenantNo(), sku.categoryNo()));
         }
         if (!productScopes.goodsOwned(ctx.tenantNo(), entity,
@@ -197,7 +210,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
                 || !now().isBefore(row.getDeadline())) conflict();
         if (!preview.redeemable()) conflict();
         var view = snapshot(row, json);
-        if (preview.unitsToUse() != units(view.fact())) conflict();
+        if (amount(view.fact()) != 0 || preview.unitsToUse() != units(view.fact())) conflict();
         row.setPreviewSnapshot(json.writeValueAsString(new PreviewBinding(kind, preview, day)));
         row.setPreviewExpiresAt(LocalDateTime.ofInstant(preview.expiresAt(), ZoneOffset.UTC));
         row.setStatus("PREVIEWED"); update(row, ctx.actorNo());
@@ -206,11 +219,33 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         return snapshot(row, json);
     }
     @Override @Transactional
+    public ServiceOrderSnapshot bindMoneyPreview(EntitlementContext ctx, String entity, String store, String no,
+                                                 Quote quote) {
+        var row = lock(ctx.tenantNo(), no); merchant(row, ctx, entity, store); var view = snapshot(row, json);
+        if (!List.of("CREATED", "PREVIEWED").contains(row.getStatus()) || !now().isBefore(row.getDeadline())
+                || !quote.redeemable() || !view.fact().source().equals(quote.sourceRef())
+                || !view.fact().currency().equals(quote.currency()) || amount(view.fact()) != quote.amountMinor()
+                || !Instant.now().isBefore(quote.expiresAt())) conflict();
+        var selection = new Selection(view.fact().source(), view.fact().orderSnapshotHash(), quote.accountNo(),
+                quote.amountMinor(), quote.assetRevision());
+        if (!hash(json.writeValueAsString(selection)).equals(quote.snapshotHash())) conflict();
+        var expiry = quote.expiresAt().isBefore(view.deadline()) ? quote.expiresAt() : view.deadline();
+        var bounded = new Quote(quote.quoteRef(), quote.sourceRef(), quote.accountNo(), quote.currency(),
+                quote.amountMinor(), quote.applicableMinor(), quote.redeemable(), quote.reason(), quote.assetRevision(),
+                quote.snapshotHash(), expiry);
+        row.setPreviewSnapshot(json.writeValueAsString(new PreviewBinding(AssetKind.STORED_VALUE, null, null, bounded)));
+        row.setPreviewExpiresAt(LocalDateTime.ofInstant(expiry, ZoneOffset.UTC));
+        row.setStatus("PREVIEWED"); update(row, ctx.actorNo());
+        consent.stageTrustedIntent(ctx.tenantNo(), no, view.fact().source(), bounded.quoteRef(), bounded.snapshotHash(),
+                bounded.amountMinor(), bounded.currency(), expiry);
+        return snapshot(row, json);
+    }
+    @Override @Transactional
     public ServiceOrderSnapshot stage(EntitlementContext ctx, String entity, String store, ServiceUseSubmit c) {
         var row = lock(ctx.tenantNo(), c.serviceOrderNo()); merchant(row, ctx, entity, store);
         var view = snapshot(row, json); var binding = view.preview();
-        if (binding == null || !binding.preview().previewRef().equals(c.previewRef())
-                || binding.preview().assetRevision() != c.expectedAssetRevision()) conflict();
+        if (binding == null || !binding.ref().equals(c.previewRef())
+                || binding.assetRevision() != c.expectedAssetRevision()) conflict();
         if (view.command() != null) {
             if (c.authorizationRef() != null && !c.authorizationRef().equals(view.command().authorizationRef())) {
                 conflict();
@@ -229,14 +264,17 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
                 || !row.getUserNo().equals(auth.getUserNo()) || !entity.equals(auth.getEntityNo())
                 || !store.equals(auth.getStoreNo())
                 || !view.fact().orderSnapshotHash().equals(auth.getOrderSnapshotHash())
-                || !binding.preview().snapshotHash().equals(auth.getSelectionDigest())
+                || !binding.digest().equals(auth.getSelectionDigest())
                 || !view.fact().source().equals(json.readValue(auth.getSourceSnapshot(), SourceRef.class))
-                || !view.fact().currency().equals(auth.getCurrency()) || auth.getAmountMinor() != 0
+                || !view.fact().currency().equals(auth.getCurrency()) || auth.getAmountMinor() != binding.amountMinor()
                 || !now().isBefore(auth.getExpiresAt())) conflict();
+        boolean monetary = binding.kind() == AssetKind.STORED_VALUE;
+        if (monetary != (amount(view.fact()) > 0)) conflict();
         var use = new UseCommand(row.getOperationNo(), view.fact().source(), row.getUserNo(), entity, store,
-                view.fact().currency(), binding.kind(), binding.preview().instanceNo(), null, binding.serviceDay(),
-                units(view.fact()), null, view.fact().items(), auth.getAuthorizationNo(), null,
-                c.expectedAssetRevision(), c.previewRef(), null);
+                view.fact().currency(), binding.kind(), binding.instanceNo(), binding.accountNo(), binding.serviceDay(),
+                monetary ? null : units(view.fact()), monetary ? binding.amountMinor() : null,
+                view.fact().items(), auth.getAuthorizationNo(), null,
+                c.expectedAssetRevision(), monetary ? null : c.previewRef(), null);
         var original = new EntitlementContext(ctx.tenantNo(), ctx.actorNo(), row.getOperationNo(),
                 hash(json.writeValueAsString(use)));
         row.setContextSnapshot(json.writeValueAsString(original)); row.setCommandSnapshot(json.writeValueAsString(use));
@@ -251,8 +289,11 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         var row = lock(ctx.tenantNo(), known.getServiceOrderNo()); var view = snapshot(row, json);
         if (view.command() == null || !view.command().equals(fact.command())
                 || !view.fact().orderSnapshotHash().equals(fact.orderSnapshotHash())
-                || !Set.of(State.HELD, State.COMMITTED).contains(fact.operation().status())
-                || !"MERCHANT".equals(fact.rule().funder())
+                || !Set.of(State.HELD, State.COMMITTED).contains(fact.operation().status())) conflict();
+        if (view.command().assetKind() == AssetKind.STORED_VALUE) {
+            if (fact.rule() != null || !fact.couponAllocations().isEmpty()
+                    || view.command().amountMinor() != amount(view.fact())) conflict();
+        } else if (fact.rule() == null || !"MERCHANT".equals(fact.rule().funder())
                 || !Set.of("SERVICE_UNITS", "GIFT").contains(fact.rule().benefitMode())
                 || !view.command().assetKind().name().equals(fact.rule().kind())) conflict();
         if (Set.of("COMMIT_DECIDED", "COMMITTED").contains(row.getStatus())) return view;
@@ -282,7 +323,8 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         var decision = decisions.record(row.getTenantNo(), view.fact().source(), "USE",
                 commit ? DecisionRef.DecisionType.USE_COMMIT : DecisionRef.DecisionType.USE_CANCEL,
                 view.command() == null ? null : view.command().authorizationRef(), null, row.getUserNo(),
-                row.getEntityNo(), row.getStoreNo(), view.fact().currency(), 0, row.getSourceHash(), Instant.now());
+                row.getEntityNo(), row.getStoreNo(), view.fact().currency(), amount(view.fact()), row.getSourceHash(),
+                Instant.now());
         row.setDecisionSnapshot(json.writeValueAsString(decision));
         row.setStatus(commit ? "COMMIT_DECIDED" : "CANCEL_DECIDED"); row.setCancellationReason(reason);
         update(row, row.getOperatorNo());
@@ -306,6 +348,9 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
     }
     private void update(OrdEntServiceOrder row, String actor) {
         row.setUpdatedBy(actor); row.setUpdatedAt(now()); if (orders.updateById(row) != 1) conflict();
+    }
+    public static long amount(UseSourceFact fact) {
+        long sum = 0; for (var item : fact.items()) sum = Math.addExact(sum, item.amountMinor()); return sum;
     }
     public static int units(UseSourceFact fact) {
         int sum = 0; for (var item : fact.items()) sum = Math.addExact(sum, item.quantity()); return sum;

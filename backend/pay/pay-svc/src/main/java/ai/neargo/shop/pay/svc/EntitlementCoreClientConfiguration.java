@@ -45,7 +45,7 @@ public class EntitlementCoreClientConfiguration {
         return new CoreEntitlementIssueAudiencePortImpl(api);
     }
     @Bean
-    EntitlementGrantSourcePort coreEntitlementGrantSourcePort(ObjectProvider<CoreEntitlementInternalApi> api) {
+    CoreEntitlementGrantSourcePortImpl coreEntitlementGrantSourcePort(ObjectProvider<CoreEntitlementInternalApi> api) {
         return new CoreEntitlementGrantSourcePortImpl(api);
     }
 
@@ -55,6 +55,29 @@ public class EntitlementCoreClientConfiguration {
         return new CorePayEntitlementEventBridgePortImpl(api, json);
     }
 
+    @Bean
+    ai.neargo.shop.pay.svc.client.port.CoreLegacyCouponFrozenSnapshotPortImpl coreLegacyCouponFrozenSnapshotPort(
+            ObjectProvider<CoreEntitlementInternalApi> api) {
+        return new ai.neargo.shop.pay.svc.client.port.CoreLegacyCouponFrozenSnapshotPortImpl(api);
+    }
+    @Bean
+    ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort coreLegacyCouponCheckoutSourcePort(
+            ObjectProvider<CoreEntitlementInternalApi> api) {
+        return new ai.neargo.shop.pay.svc.client.port.CoreLegacyCouponCheckoutSourcePortImpl(api);
+    }
+    @Bean
+    ai.neargo.shop.spi.entitlement.LegacyCouponSourceCommitPort coreLegacyCouponSourceCommitPort(
+            ObjectProvider<CoreEntitlementInternalApi> api) {
+        return new ai.neargo.shop.pay.svc.client.port.CoreLegacyCouponSourceCommitPortImpl(api);
+    }
+    @Bean
+    ai.neargo.shop.spi.entitlement.LegacyCouponHistoricalReturnSourcePort coreLegacyCouponHistoricalReturnSourcePort(ObjectProvider<CoreEntitlementInternalApi> api) {
+        return new ai.neargo.shop.pay.svc.client.port.CoreLegacyCouponHistoricalReturnSourcePortImpl(api);
+    }
+    @Bean
+    ai.neargo.shop.spi.entitlement.LegacyCouponAudiencePort coreLegacyCouponAudiencePort(ObjectProvider<CoreEntitlementInternalApi> api) {
+        return new ai.neargo.shop.pay.svc.client.port.CoreLegacyCouponAudiencePortImpl(api);
+    }
     @Bean
     RechargeSourcePort coreRechargeSourcePort(ObjectProvider<CoreEntitlementInternalApi> api) {
         return new CoreRechargeSourcePortImpl(api);

@@ -1,6 +1,6 @@
 -- JB-008支撑存储设计草案；不是Flyway，不直接运行于业务数据库。正式core授权/决策迁移为V427。
--- 在原core12/pay26基础表之外增加core4/pay2；恢复任务租约复用既有shedlock。
--- 新表实体与正式迁移分别由JB-011/JB-012/JB-046实施。
+-- 在当前core18/pay29基础47表之外增加core5/pay7支撑12表；恢复任务租约复用既有shedlock。
+-- 新表实体与正式迁移分别由JB-011/JB-012/JB-040/JB-046实施。
 
 CREATE TABLE ord_ent_authorization (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
@@ -105,6 +105,7 @@ CREATE TABLE ord_card_sale_snapshot (
     rule_snapshot JSON NOT NULL COMMENT '原权益定义',
     snapshot_hash CHAR(64) NOT NULL COMMENT '固定定义摘要',
     paid_fact_no VARCHAR(64) NULL COMMENT '真实支付事实后仅单向固化',
+    delivery_status VARCHAR(16) NOT NULL DEFAULT 'PENDING' COMMENT '整单终态恢复确认',
     paid_at DATETIME(3) NULL COMMENT '真实付款时间，不用事件到达时间',
     version BIGINT NOT NULL DEFAULT 0 COMMENT 'BaseEntity乐观锁',
     deleted TINYINT NOT NULL DEFAULT 0 COMMENT '事实禁止删除',
@@ -117,6 +118,8 @@ CREATE TABLE ord_card_sale_snapshot (
     UNIQUE KEY uk_card_sale_source (tenant_no,source_key),
     UNIQUE KEY uk_card_sale_unit (tenant_no,order_line_no,unit_index,entitlement_index),
     KEY ix_card_sale_order (tenant_no,order_no),
+    KEY ix_card_sale_delivery (tenant_no,delivery_status,order_no),
+    CHECK (delivery_status IN ('PENDING','ACKNOWLEDGED')),
     CHECK (unit_index>0 AND entitlement_index>0 AND unit_price_minor>=0),
     CHECK ((paid_fact_no IS NULL AND paid_at IS NULL) OR (paid_fact_no IS NOT NULL AND paid_at IS NOT NULL))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='core不可变售卡来源；付款事实与订单同事务关联';
@@ -211,3 +214,588 @@ CREATE TABLE IF NOT EXISTS mbr_identity_ticket (
         OR (purpose='CUSTOMER_REFERENCE' AND entity_no IS NOT NULL AND store_no IS NOT NULL
         AND actor_no IS NOT NULL AND source_ticket_hash IS NOT NULL))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='统一会员识别凭证，扫码不等于扣款同意';
+
+
+-- JB-040新增pay支撑：付款前容量预留；正式迁移V450。
+-- Pay-owned capacity promises. A transferred promise belongs to the existing grant state machine.
+CREATE TABLE ent_sale_reservation (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
+    tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
+    reservation_no VARCHAR(64) NOT NULL COMMENT '稳定销售预留号',
+    source_key CHAR(64) NOT NULL COMMENT '原单件权益来源键',
+    source_snapshot JSON NOT NULL COMMENT '原来源身份',
+    command_snapshot JSON NOT NULL COMMENT '不可变预留命令',
+    payload_hash CHAR(64) NOT NULL COMMENT '同号异参守卫',
+    template_no VARCHAR(64) NULL COMMENT '原发行控制；取消先到时为空',
+    definition_snapshot JSON NULL COMMENT '原已发布规则；取消先到时为空',
+    user_no VARCHAR(64) NOT NULL COMMENT '受益人',
+    entity_no VARCHAR(64) NOT NULL COMMENT '发行主体',
+    currency VARCHAR(8) NOT NULL COMMENT '原币种',
+    status VARCHAR(24) NOT NULL COMMENT 'RESERVING/RESERVED/TRANSFERRED/RELEASED',
+    grant_no VARCHAR(64) NULL COMMENT '接管容量的原发行号',
+    source_decision_no VARCHAR(64) NULL COMMENT '可信取消决定',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '乐观锁',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '财务承诺禁止删除',
+    created_at DATETIME(3) NOT NULL COMMENT 'UTC创建',
+    updated_at DATETIME(3) NOT NULL COMMENT 'UTC更新',
+    created_by VARCHAR(64) NOT NULL COMMENT '操作者',
+    updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_sale_reservation (tenant_no,reservation_no),
+    UNIQUE KEY uk_sale_reservation_source (tenant_no,source_key),
+    KEY ix_sale_reservation_recovery (tenant_no,status,id),
+    CHECK (status IN ('RESERVING','RESERVED','TRANSFERRED','RELEASED')),
+    CHECK (status NOT IN ('RESERVED','TRANSFERRED') OR (template_no IS NOT NULL AND definition_snapshot IS NOT NULL)),
+    CHECK (status <> 'TRANSFERRED' OR grant_no IS NOT NULL),
+    CHECK (status <> 'RELEASED' OR source_decision_no IS NOT NULL)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='付款前发行容量预留，不创建权益实例';
+
+
+CREATE TABLE pay_ent_exception_action (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ tenant_no VARCHAR(32) NOT NULL,
+ action_no VARCHAR(64) NOT NULL,
+ operation_kind VARCHAR(32) NOT NULL DEFAULT 'RETRY_GRANT',
+ exception_no VARCHAR(64) NOT NULL,
+ request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ payload_hash CHAR(64) NOT NULL,
+ reason VARCHAR(500) NOT NULL,
+ entity_no VARCHAR(64) NOT NULL,
+ actor_no VARCHAR(64) NOT NULL,
+ status VARCHAR(16) NOT NULL,
+ response_snapshot JSON NULL,
+ version BIGINT NOT NULL DEFAULT 0,
+ deleted TINYINT NOT NULL DEFAULT 0,
+ created_at DATETIME(3) NOT NULL,
+ updated_at DATETIME(3) NOT NULL,
+ created_by VARCHAR(64) NOT NULL,
+ updated_by VARCHAR(64) NOT NULL,
+ PRIMARY KEY(id),
+ UNIQUE KEY uk_exception_action (tenant_no,action_no),
+ UNIQUE KEY uk_exception_request (tenant_no,request_key),
+ KEY ix_exception_actions (tenant_no,exception_no,id),
+ CHECK (operation_kind IN ('RETRY_GRANT','QUERY_SOURCE','RETRY_EVENT','QUERY_EVENT')),
+ CHECK (status IN ('PENDING','DONE')),
+ CHECK (status <> 'DONE' OR response_snapshot IS NOT NULL)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='异常原号恢复动作审计';
+
+-- JB-050 source evidence stage; formal migration V462. Never a cutover permit.
+-- Encrypted source evidence only. This state cannot authorize asset import or ownership transfer.
+CREATE TABLE ent_migration_stage (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ tenant_no VARCHAR(32) NOT NULL,
+ stage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ source_system VARCHAR(24) COLLATE utf8mb4_bin NOT NULL,
+ source_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ entity_no VARCHAR(64) NOT NULL,
+ request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ command_hash CHAR(64) NOT NULL,
+ reason VARCHAR(500) NOT NULL,
+ source_schema_version INT NOT NULL,
+ frozen_revision BIGINT NOT NULL,
+ watermark CHAR(64) NOT NULL,
+ content_hash CHAR(64) NOT NULL,
+ crypto_key_id VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+ payload_cipher MEDIUMTEXT NOT NULL,
+ payload_bytes INT NOT NULL,
+ instance_count BIGINT NOT NULL,
+ history_count BIGINT NOT NULL,
+ manifest_version INT NOT NULL DEFAULT 1,
+ history_available TINYINT NULL DEFAULT NULL,
+ status VARCHAR(16) NOT NULL,
+ version BIGINT NOT NULL DEFAULT 0,
+ deleted TINYINT NOT NULL DEFAULT 0,
+ created_at DATETIME(3) NOT NULL,
+ updated_at DATETIME(3) NOT NULL,
+ created_by VARCHAR(64) NOT NULL,
+ updated_by VARCHAR(64) NOT NULL,
+ PRIMARY KEY(id),
+ UNIQUE KEY uk_migration_stage (tenant_no,stage_no),
+ UNIQUE KEY uk_migration_stage_request (tenant_no,request_key),
+ UNIQUE KEY uk_migration_stage_origin (tenant_no,source_system,source_template_no,migration_batch_no),
+ KEY ix_migration_stage_entity (tenant_no,entity_no,id),
+ CHECK (source_system IN ('MKT_LEGACY','PMT')),
+ CHECK (source_schema_version=1 AND frozen_revision>=0),
+ CHECK (payload_bytes BETWEEN 1 AND 8388608),
+ CHECK (CHAR_LENGTH(payload_cipher) BETWEEN 1 AND 12000000),
+ CHECK (instance_count>=0 AND history_count>=0),
+ CHECK (CHAR_LENGTH(TRIM(reason))>0 AND CHAR_LENGTH(TRIM(crypto_key_id))>0),
+ CHECK (CHAR_LENGTH(watermark)=64 AND CHAR_LENGTH(content_hash)=64 AND CHAR_LENGTH(command_hash)=64),
+ CHECK (status='STAGED'),
+ CONSTRAINT ck_migration_manifest_version CHECK (manifest_version IN (1,2)),
+ CONSTRAINT ck_migration_manifest_history CHECK (
+   (manifest_version=1 AND history_available IS NULL)
+   OR (history_available IS NOT NULL AND
+       ((source_system='PMT' AND history_available=1) OR (source_system='MKT_LEGACY' AND history_available=0))))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加密源证据暂存，非导入许可';
+
+-- Explicit identity recognition only; never an asset import or an ownership-transfer decision.
+CREATE TABLE ent_migration_alias (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ tenant_no VARCHAR(32) NOT NULL,
+ alias_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ entity_no VARCHAR(64) NOT NULL,
+ migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ pmt_stage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ mkt_stage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ canonical_stage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ pmt_content_hash CHAR(64) NOT NULL,
+ mkt_content_hash CHAR(64) NOT NULL,
+ comparison_hash CHAR(64) NOT NULL,
+ matched_instance_count BIGINT NOT NULL,
+ compared_at DATETIME(3) NOT NULL,
+ request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ command_hash CHAR(64) NOT NULL,
+ reason VARCHAR(500) NOT NULL,
+ status VARCHAR(16) NOT NULL,
+ version BIGINT NOT NULL DEFAULT 0,
+ deleted TINYINT NOT NULL DEFAULT 0,
+ created_at DATETIME(3) NOT NULL,
+ updated_at DATETIME(3) NOT NULL,
+ created_by VARCHAR(64) NOT NULL,
+ updated_by VARCHAR(64) NOT NULL,
+ PRIMARY KEY(id),
+ UNIQUE KEY uk_migration_alias (tenant_no,alias_no),
+ UNIQUE KEY uk_migration_alias_pmt (tenant_no,pmt_stage_no),
+ UNIQUE KEY uk_migration_alias_mkt (tenant_no,mkt_stage_no),
+ UNIQUE KEY uk_migration_alias_request (tenant_no,request_key),
+ KEY ix_migration_alias_entity (tenant_no,entity_no,id),
+ CHECK (canonical_stage_no=pmt_stage_no AND pmt_stage_no<>mkt_stage_no),
+ CHECK (matched_instance_count>=0),
+ CHECK (CHAR_LENGTH(pmt_content_hash)=64 AND CHAR_LENGTH(mkt_content_hash)=64
+        AND CHAR_LENGTH(comparison_hash)=64 AND CHAR_LENGTH(command_hash)=64),
+ CHECK (CHAR_LENGTH(TRIM(reason))>0),
+ CHECK (status='RECOGNIZED')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='冻结双源同号认领，不是接管许可';
+
+-- Legacy ORDER coupons only. Original asset units/sequence/ledger remain in ent_instance/ent_ledger.
+CREATE TABLE ent_legacy_coupon_operation (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ tenant_no VARCHAR(32) NOT NULL,
+ operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ checkout_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ origin_system VARCHAR(24) COLLATE utf8mb4_bin NOT NULL,
+ origin_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ instance_no VARCHAR(64) NOT NULL,
+ user_no VARCHAR(64) NOT NULL,
+ entity_no VARCHAR(64) NOT NULL,
+ currency VARCHAR(8) NOT NULL,
+ owner_batch_no VARCHAR(64) NOT NULL,
+ owner_plan_hash CHAR(64) NOT NULL,
+ economic_hash CHAR(64) NOT NULL,
+ command_hash CHAR(64) NOT NULL,
+ source_version INT NOT NULL,
+ source_snapshot JSON NOT NULL,
+ context_snapshot JSON NOT NULL,
+ status VARCHAR(16) NOT NULL,
+ ever_held TINYINT NOT NULL DEFAULT 0,
+ discount_minor BIGINT NULL,
+ allocation_snapshot JSON NULL,
+ rule_snapshot JSON NULL,
+ hold_asset_seq BIGINT NULL,
+ commit_asset_seq BIGINT NULL,
+ release_asset_seq BIGINT NULL,
+ reverse_asset_seq BIGINT NULL,
+ commit_decision_no VARCHAR(64) NULL,
+ abort_decision_no VARCHAR(64) NULL,
+ reverse_decision_no VARCHAR(64) NULL,
+ source_order_no VARCHAR(64) NULL,
+ commit_snapshot JSON NULL,
+ abort_snapshot JSON NULL,
+ reverse_snapshot JSON NULL,
+ held_at DATETIME(3) NULL,
+ committed_at DATETIME(3) NULL,
+ released_at DATETIME(3) NULL,
+ reversed_at DATETIME(3) NULL,
+ source_committed_at DATETIME(3) NULL,
+ source_reversed_at DATETIME(3) NULL,
+ version BIGINT NOT NULL DEFAULT 0,
+ deleted TINYINT NOT NULL DEFAULT 0,
+ created_at DATETIME(3) NOT NULL,
+ updated_at DATETIME(3) NOT NULL,
+ created_by VARCHAR(64) NOT NULL,
+ updated_by VARCHAR(64) NOT NULL,
+ PRIMARY KEY(id),
+ UNIQUE KEY uk_legacy_coupon_operation (tenant_no,operation_no),
+ UNIQUE KEY uk_legacy_coupon_checkout (tenant_no,checkout_no),
+ KEY ix_legacy_coupon_holder (tenant_no,user_no,source_committed_at,operation_no),
+ KEY ix_legacy_coupon_order (tenant_no,source_order_no),
+ KEY ix_legacy_coupon_recovery (tenant_no,status,id),
+ CHECK (origin_system IN ('MKT_LEGACY','PMT','PAY') AND source_version=1),
+ CHECK (CHAR_LENGTH(owner_plan_hash)=64 AND CHAR_LENGTH(economic_hash)=64 AND CHAR_LENGTH(command_hash)=64),
+ CHECK (discount_minor IS NULL OR discount_minor>0),
+ CHECK (status IN ('PREPARING','HELD','COMMITTED','RELEASED','REVERSED')),
+ CHECK ((ever_held=0 AND discount_minor IS NULL AND allocation_snapshot IS NULL AND rule_snapshot IS NULL
+         AND hold_asset_seq IS NULL AND held_at IS NULL AND status IN ('PREPARING','RELEASED'))
+     OR (ever_held=1 AND discount_minor IS NOT NULL AND allocation_snapshot IS NOT NULL AND rule_snapshot IS NOT NULL
+         AND hold_asset_seq IS NOT NULL AND hold_asset_seq>0 AND held_at IS NOT NULL AND status<>'PREPARING')),
+ CHECK ((status IN ('COMMITTED','REVERSED') AND commit_asset_seq IS NOT NULL AND commit_asset_seq>hold_asset_seq AND commit_decision_no IS NOT NULL
+         AND source_order_no IS NOT NULL AND commit_snapshot IS NOT NULL AND committed_at IS NOT NULL
+         AND source_committed_at IS NOT NULL)
+     OR (status NOT IN ('COMMITTED','REVERSED') AND commit_asset_seq IS NULL AND commit_decision_no IS NULL
+         AND source_order_no IS NULL AND commit_snapshot IS NULL AND committed_at IS NULL AND source_committed_at IS NULL)),
+ CHECK ((status='RELEASED' AND abort_decision_no IS NOT NULL AND abort_snapshot IS NOT NULL AND released_at IS NOT NULL
+         AND ((ever_held=0 AND release_asset_seq IS NULL) OR (ever_held=1 AND release_asset_seq IS NOT NULL AND release_asset_seq>hold_asset_seq)))
+     OR (status<>'RELEASED' AND abort_decision_no IS NULL AND abort_snapshot IS NULL AND released_at IS NULL
+         AND release_asset_seq IS NULL)),
+ CHECK ((status='REVERSED' AND reverse_asset_seq IS NOT NULL AND reverse_asset_seq>commit_asset_seq AND reverse_decision_no IS NOT NULL
+         AND reverse_snapshot IS NOT NULL AND reversed_at IS NOT NULL AND source_reversed_at IS NOT NULL)
+     OR (status<>'REVERSED' AND reverse_asset_seq IS NULL AND reverse_decision_no IS NULL
+         AND reverse_snapshot IS NULL AND reversed_at IS NULL AND source_reversed_at IS NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='旧ORDER券跨店准备确认与真实源回补';
+
+-- Core owns immutable legacy checkout intent and its terminal business decisions.
+CREATE TABLE ord_legacy_coupon_checkout (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ tenant_no VARCHAR(32) NOT NULL,
+ checkout_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ user_no VARCHAR(64) NOT NULL,
+ entity_no VARCHAR(64) NOT NULL,
+ command_hash CHAR(64) NOT NULL,
+ stage_hash CHAR(64) NOT NULL,
+ economic_hash CHAR(64) NOT NULL,
+ fact_snapshot JSON NOT NULL,
+ status VARCHAR(16) NOT NULL,
+ held_snapshot JSON NULL,
+ decision_snapshot JSON NULL,
+ reversal_snapshot JSON NULL,
+ order_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+ version BIGINT NOT NULL DEFAULT 0,
+ deleted TINYINT NOT NULL DEFAULT 0,
+ created_at DATETIME(3) NOT NULL,
+ updated_at DATETIME(3) NOT NULL,
+ created_by VARCHAR(64) NOT NULL,
+ updated_by VARCHAR(64) NOT NULL,
+ PRIMARY KEY (id),
+ UNIQUE KEY uk_legacy_checkout_no (tenant_no,checkout_no),
+ UNIQUE KEY uk_legacy_checkout_operation (tenant_no,operation_no),
+ UNIQUE KEY uk_legacy_checkout_order (tenant_no,order_no),
+ KEY ix_legacy_checkout_pending (tenant_no,status,id),
+ CONSTRAINT ck_legacy_checkout_state CHECK (
+   (status='OPEN' AND decision_snapshot IS NULL AND order_no IS NULL AND reversal_snapshot IS NULL)
+   OR (status='ABORTED' AND decision_snapshot IS NOT NULL AND order_no IS NULL AND reversal_snapshot IS NULL)
+   OR (status='COMMITTED' AND decision_snapshot IS NOT NULL AND order_no IS NOT NULL AND held_snapshot IS NOT NULL)),
+ CONSTRAINT ck_legacy_checkout_not_deleted CHECK (deleted=0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Technical delivery acknowledgments only; pay remains the owner of units and ledger state.
+ALTER TABLE ord_legacy_coupon_checkout
+ ADD COLUMN pay_state VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+ ADD COLUMN pay_decision_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+ ADD COLUMN pay_acked_at DATETIME(3) NULL,
+ ADD COLUMN recovery_due_at DATETIME(3) NULL,
+ ADD KEY ix_legacy_checkout_recovery (tenant_no,pay_state,recovery_due_at,id),
+ ADD CONSTRAINT ck_legacy_checkout_pay_ack CHECK (
+   (pay_state IN ('PENDING','NONE') AND pay_decision_no IS NULL AND pay_acked_at IS NULL)
+   OR (pay_state='COMMITTED' AND status='COMMITTED' AND reversal_snapshot IS NULL AND pay_decision_no IS NOT NULL AND pay_acked_at IS NOT NULL)
+   OR (pay_state='RELEASED' AND status='ABORTED' AND pay_decision_no IS NOT NULL AND pay_acked_at IS NOT NULL)
+   OR (pay_state='REVERSED' AND status='COMMITTED' AND reversal_snapshot IS NOT NULL AND pay_decision_no IS NOT NULL AND pay_acked_at IS NOT NULL)),
+ ADD CONSTRAINT ck_legacy_checkout_pay_queue CHECK (
+   (pay_state='PENDING' OR recovery_due_at IS NULL)
+   AND (pay_state<>'NONE' OR (status='OPEN' AND held_snapshot IS NULL)));
+
+-- A fixed encrypted target manifest. PLANNED alone grants no import or source cutover authority.
+CREATE TABLE ent_migration_plan (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ tenant_no VARCHAR(32) NOT NULL,
+ plan_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ stage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ alias_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+ source_system VARCHAR(24) COLLATE utf8mb4_bin NOT NULL,
+ source_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ entity_no VARCHAR(64) NOT NULL,
+ request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ command_hash CHAR(64) NOT NULL,
+ reason VARCHAR(500) NOT NULL,
+ plan_hash CHAR(64) NOT NULL,
+ source_bundle_hash CHAR(64) NOT NULL,
+ crypto_key_id VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+ payload_cipher MEDIUMTEXT NOT NULL,
+ payload_bytes INT NOT NULL,
+ asset_count BIGINT NOT NULL,
+ archival_count BIGINT NOT NULL,
+ version_count INT NOT NULL,
+ assessed_at DATETIME(3) NOT NULL,
+ status VARCHAR(16) NOT NULL,
+ version BIGINT NOT NULL DEFAULT 0,
+ deleted TINYINT NOT NULL DEFAULT 0,
+ created_at DATETIME(3) NOT NULL,
+ updated_at DATETIME(3) NOT NULL,
+ created_by VARCHAR(64) NOT NULL,
+ updated_by VARCHAR(64) NOT NULL,
+ PRIMARY KEY(id),
+ UNIQUE KEY uk_migration_plan (tenant_no,plan_no),
+ UNIQUE KEY uk_migration_plan_stage (tenant_no,stage_no),
+ UNIQUE KEY uk_migration_plan_request (tenant_no,request_key),
+ UNIQUE KEY uk_migration_plan_origin (tenant_no,source_system,source_template_no,migration_batch_no),
+ KEY ix_migration_plan_entity (tenant_no,entity_no,id),
+ CHECK (source_system IN ('PMT','MKT_LEGACY')),
+ CHECK (alias_no IS NULL OR source_system='PMT'),
+ CHECK (status='PLANNED' AND deleted=0),
+ CHECK (asset_count>=0 AND archival_count>=0 AND version_count>=1),
+ CHECK (payload_bytes BETWEEN 1 AND 8388608),
+ CHECK (CHAR_LENGTH(payload_cipher) BETWEEN 1 AND 12000000),
+ CHECK (CHAR_LENGTH(TRIM(reason))>0 AND CHAR_LENGTH(TRIM(crypto_key_id))>0),
+ CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(source_bundle_hash)=64 AND CHAR_LENGTH(command_hash)=64)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='固定加密迁入目标清单，非提交或导入许可';
+
+-- Core owns the permanent source decision. No pay asset or ownership registry is written here.
+CREATE TABLE pmt_migration_decision (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ tenant_no VARCHAR(32) NOT NULL,
+ decision_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ plan_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ entity_no VARCHAR(64) NOT NULL,
+ migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ plan_hash CHAR(64) NOT NULL,
+ source_bundle_hash CHAR(64) NOT NULL,
+ plan_snapshot JSON NOT NULL,
+ command_hash CHAR(64) NOT NULL,
+ request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ reason VARCHAR(500) NOT NULL,
+ actor_no VARCHAR(64) NOT NULL,
+ decided_at DATETIME(3) NOT NULL,
+ status VARCHAR(16) NOT NULL,
+ version BIGINT NOT NULL DEFAULT 0,
+ deleted TINYINT NOT NULL DEFAULT 0,
+ created_at DATETIME(3) NOT NULL,
+ updated_at DATETIME(3) NOT NULL,
+ created_by VARCHAR(64) NOT NULL,
+ updated_by VARCHAR(64) NOT NULL,
+ PRIMARY KEY(id),
+ UNIQUE KEY uk_migration_decision (tenant_no,decision_no),
+ UNIQUE KEY uk_migration_decision_plan (tenant_no,plan_no),
+ UNIQUE KEY uk_migration_decision_request (tenant_no,request_key),
+ CHECK (status='COMMITTED' AND deleted=0 AND version=0),
+ CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(source_bundle_hash)=64 AND CHAR_LENGTH(command_hash)=64),
+ CHECK (CHAR_LENGTH(TRIM(reason))>0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='核心源迁移永久提交决定，不是目标导入';
+
+CREATE TABLE pmt_migration_source (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ tenant_no VARCHAR(32) NOT NULL,
+ source_system VARCHAR(24) COLLATE utf8mb4_bin NOT NULL,
+ source_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ decision_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ version BIGINT NOT NULL DEFAULT 0,
+ deleted TINYINT NOT NULL DEFAULT 0,
+ created_at DATETIME(3) NOT NULL,
+ updated_at DATETIME(3) NOT NULL,
+ created_by VARCHAR(64) NOT NULL,
+ updated_by VARCHAR(64) NOT NULL,
+ PRIMARY KEY(id),
+ UNIQUE KEY uk_migration_source (tenant_no,source_system,source_template_no),
+ KEY ix_migration_source_decision (tenant_no,decision_no),
+ CHECK (source_system IN ('PMT','MKT_LEGACY') AND deleted=0 AND version=0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='原模板到永久迁移决定的唯一绑定';
+
+-- Pay import is one atomic baseline and ownership transfer; never a replay of historical grant/use commands.
+CREATE TABLE ent_migration_import (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ tenant_no VARCHAR(32) NOT NULL,
+ import_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ plan_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ entity_no VARCHAR(64) NOT NULL,
+ source_decision_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ plan_hash CHAR(64) NOT NULL,
+ source_bundle_hash CHAR(64) NOT NULL,
+ proof_snapshot JSON NOT NULL,
+ asset_count BIGINT NOT NULL,
+ archival_count BIGINT NOT NULL,
+ historical_record_count BIGINT NOT NULL DEFAULT 0,
+ imported_at DATETIME(3) NOT NULL,
+ status VARCHAR(16) NOT NULL,
+ version BIGINT NOT NULL DEFAULT 0,
+ deleted TINYINT NOT NULL DEFAULT 0,
+ created_at DATETIME(3) NOT NULL,
+ updated_at DATETIME(3) NOT NULL,
+ created_by VARCHAR(64) NOT NULL,
+ updated_by VARCHAR(64) NOT NULL,
+ PRIMARY KEY(id),
+ UNIQUE KEY uk_migration_import (tenant_no,import_no),
+ UNIQUE KEY uk_migration_import_plan (tenant_no,plan_no),
+ UNIQUE KEY uk_migration_import_decision (tenant_no,source_decision_no),
+ CHECK (status='IMPORTED' AND deleted=0 AND version=0),
+ CHECK (asset_count>=0 AND archival_count>=0 AND historical_record_count>=0),
+ CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(source_bundle_hash)=64)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付原子迁入回执，无新发放消息';
+
+CREATE TABLE ent_migration_asset (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ tenant_no VARCHAR(32) NOT NULL,
+ import_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ source_system VARCHAR(24) COLLATE utf8mb4_bin NOT NULL,
+ source_instance_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ instance_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+ baseline_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+ archival_only TINYINT NOT NULL,
+ total_units INT NOT NULL,
+ baseline_remaining_units INT NOT NULL,
+ version BIGINT NOT NULL DEFAULT 0,
+ deleted TINYINT NOT NULL DEFAULT 0,
+ created_at DATETIME(3) NOT NULL,
+ updated_at DATETIME(3) NOT NULL,
+ created_by VARCHAR(64) NOT NULL,
+ updated_by VARCHAR(64) NOT NULL,
+ PRIMARY KEY(id),
+ UNIQUE KEY uk_migration_asset_source (tenant_no,source_system,source_instance_no),
+ UNIQUE KEY uk_migration_asset_target (tenant_no,instance_no),
+ UNIQUE KEY uk_migration_asset_baseline (tenant_no,baseline_no),
+ CHECK (source_system IN ('PMT','MKT_LEGACY') AND deleted=0 AND version=0),
+ CHECK (total_units>0 AND baseline_remaining_units>=0 AND baseline_remaining_units<=total_units),
+ CHECK ((archival_only=1 AND instance_no IS NULL AND baseline_no IS NULL)
+     OR (archival_only=0 AND instance_no IS NOT NULL AND baseline_no IS NOT NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='原实例与迁入基线映射，归档行不建金融实例';
+
+CREATE TABLE ent_migration_usage (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ tenant_no VARCHAR(32) NOT NULL,
+ import_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ source_usage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ source_instance_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ usage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ instance_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+ source_hash CHAR(64) NOT NULL,
+ source_reverted_at DATETIME(3) NULL,
+ version BIGINT NOT NULL DEFAULT 0,
+ deleted TINYINT NOT NULL DEFAULT 0,
+ created_at DATETIME(3) NOT NULL,
+ updated_at DATETIME(3) NOT NULL,
+ created_by VARCHAR(64) NOT NULL,
+ updated_by VARCHAR(64) NOT NULL,
+ PRIMARY KEY(id),
+ UNIQUE KEY uk_migration_usage_source (tenant_no,source_usage_no),
+ UNIQUE KEY uk_migration_usage_target (tenant_no,usage_no),
+ KEY ix_migration_usage_asset (tenant_no,instance_no,id),
+ CHECK (version=0 AND deleted=0 AND CHAR_LENGTH(source_hash)=64)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='原PMT核销到真实历史展示记录的不可变映射';
+
+-- V473: immutable historical return decisions and receipts
+-- New durable decisions reference the frozen original application; original legacy history remains immutable.
+CREATE TABLE pmt_migration_return (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ tenant_no VARCHAR(32) NOT NULL,
+ return_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ source_usage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ entity_no VARCHAR(64) NOT NULL,
+ order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ fact_snapshot JSON NOT NULL,
+ status VARCHAR(16) NOT NULL,
+ pay_state VARCHAR(16) NOT NULL,
+ pay_receipt_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+ pay_acked_at DATETIME(3) NULL,
+ version BIGINT NOT NULL DEFAULT 0,
+ deleted TINYINT NOT NULL DEFAULT 0,
+ created_at DATETIME(3) NOT NULL,
+ updated_at DATETIME(3) NOT NULL,
+ created_by VARCHAR(64) NOT NULL,
+ updated_by VARCHAR(64) NOT NULL,
+ PRIMARY KEY(id),
+ UNIQUE KEY uk_migration_return (tenant_no,return_no),
+ UNIQUE KEY uk_migration_return_source (tenant_no,source_usage_no),
+ KEY ix_migration_return_order (tenant_no,order_no,id),
+ KEY ix_migration_return_pending (tenant_no,pay_state,id),
+ CHECK (status='COMMITTED' AND deleted=0 AND version>=0),
+ CHECK ((pay_state='PENDING' AND pay_receipt_no IS NULL AND pay_acked_at IS NULL)
+     OR (pay_state='RESTORED' AND pay_receipt_no IS NOT NULL AND pay_acked_at IS NOT NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='迁入前旧券核销的真实退回决定及支付确认';
+
+CREATE TABLE ent_migration_return (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ tenant_no VARCHAR(32) NOT NULL,
+ receipt_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ return_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ source_usage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ usage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ instance_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ user_no VARCHAR(64) NOT NULL,
+ entity_no VARCHAR(64) NOT NULL,
+ source_hash CHAR(64) NOT NULL,
+ fact_hash CHAR(64) NOT NULL,
+ restored_units INT NOT NULL,
+ remaining_units INT NOT NULL,
+ asset_seq BIGINT NOT NULL,
+ occurred_at DATETIME(3) NOT NULL,
+ status VARCHAR(16) NOT NULL,
+ version BIGINT NOT NULL DEFAULT 0,
+ deleted TINYINT NOT NULL DEFAULT 0,
+ created_at DATETIME(3) NOT NULL,
+ updated_at DATETIME(3) NOT NULL,
+ created_by VARCHAR(64) NOT NULL,
+ updated_by VARCHAR(64) NOT NULL,
+ PRIMARY KEY(id),
+ UNIQUE KEY uk_migration_return_receipt (tenant_no,receipt_no),
+ UNIQUE KEY uk_migration_pay_return (tenant_no,return_no),
+ UNIQUE KEY uk_migration_returned_source (tenant_no,source_usage_no),
+ CHECK (status='RESTORED' AND deleted=0 AND version=0),
+ CHECK (restored_units=1 AND remaining_units>=0 AND asset_seq>0),
+ CHECK (CHAR_LENGTH(source_hash)=64 AND CHAR_LENGTH(fact_hash)=64)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='迁入前真实核销的支付次数回补回执，不是现金退款';
+
+-- V474 legacy issuance compatibility
+-- Normal pay issuance and its compatibility read projection; never writes frozen legacy coupon rows.
+CREATE TABLE ent_legacy_coupon_issue (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ tenant_no VARCHAR(32) NOT NULL,
+ issue_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ entity_no VARCHAR(64) NOT NULL,
+ source_system VARCHAR(24) NOT NULL,
+ source_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ target_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ template_version_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ actor_no VARCHAR(64) NOT NULL,
+ mode VARCHAR(16) NOT NULL,
+ frozen_snapshot JSON NOT NULL,
+ status VARCHAR(16) NOT NULL,
+ result_snapshot JSON NULL,
+ completed_at DATETIME(3) NULL,
+ version BIGINT NOT NULL DEFAULT 0,
+ deleted TINYINT NOT NULL DEFAULT 0,
+ created_at DATETIME(3) NOT NULL,
+ updated_at DATETIME(3) NOT NULL,
+ created_by VARCHAR(64) NOT NULL,
+ updated_by VARCHAR(64) NOT NULL,
+ PRIMARY KEY(id),
+ UNIQUE KEY uk_legacy_issue_no (tenant_no,issue_no),
+ UNIQUE KEY uk_legacy_issue_batch (tenant_no,batch_no),
+ KEY ix_legacy_issue_template (tenant_no,entity_no,source_system,source_template_no,id),
+ KEY ix_legacy_issue_pending (tenant_no,status,id),
+ CHECK (source_system IN ('PMT','MKT_LEGACY') AND mode IN ('TARGETED','CENTER') AND deleted=0 AND version>=0),
+ CHECK ((status='PREPARED' AND result_snapshot IS NULL AND completed_at IS NULL)
+     OR (status='COMPLETED' AND result_snapshot IS NOT NULL AND completed_at IS NOT NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='原券入口与正常支付发行批次的固定关联';
+
+CREATE TABLE pmt_pay_coupon_projection (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ tenant_no VARCHAR(32) NOT NULL,
+ instance_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ user_no VARCHAR(64) NOT NULL,
+ entity_no VARCHAR(64) NOT NULL,
+ source_system VARCHAR(24) NOT NULL,
+ source_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ target_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ template_version_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ plan_hash CHAR(64) NOT NULL,
+ issue_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ grant_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ actor_no VARCHAR(64) NOT NULL,
+ fact_hash CHAR(64) NOT NULL,
+ occurred_at DATETIME(3) NOT NULL,
+ version BIGINT NOT NULL DEFAULT 0,
+ deleted TINYINT NOT NULL DEFAULT 0,
+ created_at DATETIME(3) NOT NULL,
+ updated_at DATETIME(3) NOT NULL,
+ created_by VARCHAR(64) NOT NULL,
+ updated_by VARCHAR(64) NOT NULL,
+ PRIMARY KEY(id),
+ UNIQUE KEY uk_pay_coupon_projection (tenant_no,instance_no),
+ KEY ix_pay_coupon_holder (tenant_no,user_no,id),
+ KEY ix_pay_coupon_source (tenant_no,source_system,source_template_no,id),
+ CHECK (source_system IN ('PMT','MKT_LEGACY') AND version=0 AND deleted=0),
+ CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(fact_hash)=64)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='实际pay发券完成事实的core身份及券包投影，不是第二份权益账户';

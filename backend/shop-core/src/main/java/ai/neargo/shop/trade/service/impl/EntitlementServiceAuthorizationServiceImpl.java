@@ -50,10 +50,11 @@ public class EntitlementServiceAuthorizationServiceImpl implements EntitlementSe
         enabled(); var row = orders.lock(tenant, no);
         if (row == null) notFound(); var order = snapshot(row, json);
         if (!List.of("PREVIEWED", "PENDING").contains(row.getStatus()) || order.preview() == null
-                || !source.equals(order.fact().source()) || amount != 0 || !currency.equals(order.fact().currency())
-                || !previewRef.equals(order.preview().preview().previewRef())
-                || !selection.equals(order.preview().preview().snapshotHash())
-                || !expiresAt.equals(order.preview().preview().expiresAt())) conflict();
+                || !source.equals(order.fact().source()) || amount != order.preview().amountMinor()
+                || !currency.equals(order.fact().currency())
+                || !previewRef.equals(order.preview().ref())
+                || !selection.equals(order.preview().digest())
+                || !expiresAt.equals(order.preview().expiresAt())) conflict();
         Instant now = Instant.now();
         Instant expiry = expiresAt.isBefore(order.deadline()) ? expiresAt : order.deadline();
         if (expiry.isAfter(now.plusSeconds(600))) expiry = now.plusSeconds(600);
@@ -71,7 +72,7 @@ public class EntitlementServiceAuthorizationServiceImpl implements EntitlementSe
         auth.setSourceRevision(source.sourceRevision()); auth.setOrderNo(no); auth.setUserNo(row.getUserNo());
         auth.setEntityNo(row.getEntityNo()); auth.setStoreNo(row.getStoreNo()); auth.setQuoteRef(previewRef);
         auth.setSelectionDigest(selection); auth.setOrderSnapshotHash(row.getSourceHash());
-        auth.setAmountMinor(0L); auth.setCurrency(currency); auth.setStatus("PENDING");
+        auth.setAmountMinor(amount); auth.setCurrency(currency); auth.setStatus("PENDING");
         auth.setExpiresAt(LocalDateTime.ofInstant(expiry, ZoneOffset.UTC)); auth.setVersion(0L); auth.setDeleted(0);
         auth.setCreatedAt(utcNow()); auth.setUpdatedAt(auth.getCreatedAt());
         auth.setCreatedBy(row.getUserNo()); auth.setUpdatedBy(row.getUserNo());
@@ -97,15 +98,15 @@ public class EntitlementServiceAuthorizationServiceImpl implements EntitlementSe
         var order = snapshot(row, json);
         if (!List.of("PREVIEWED", "PENDING").contains(row.getStatus())
                 || order.preview() == null || !Instant.now().isBefore(order.deadline())
-                || !c.quoteRef().equals(order.preview().preview().previewRef())
-                || !c.selectionDigest().equals(order.preview().preview().snapshotHash())
+                || !c.quoteRef().equals(order.preview().ref())
+                || !c.selectionDigest().equals(order.preview().digest())
                 || c.orderRevision() != order.fact().source().sourceRevision()) conflict();
         var auth = authorizations.selectOne(Wrappers.<OrdEntAuthorization>lambdaQuery()
                 .eq(OrdEntAuthorization::getTenantNo, tenant).eq(OrdEntAuthorization::getOrderNo, no)
                 .eq(OrdEntAuthorization::getQuoteRef, c.quoteRef()).last("FOR UPDATE"));
         if (auth == null || !"PENDING".equals(auth.getStatus()) || !user.equals(auth.getUserNo())
                 || !row.getEntityNo().equals(auth.getEntityNo()) || !row.getStoreNo().equals(auth.getStoreNo())
-                || !Objects.equals(auth.getAmountMinor(), 0L) || !order.fact().currency().equals(auth.getCurrency())
+                || !Objects.equals(auth.getAmountMinor(), order.preview().amountMinor()) || !order.fact().currency().equals(auth.getCurrency())
                 || !order.fact().source().equals(json.readValue(auth.getSourceSnapshot(), SourceRef.class))
                 || !row.getSourceHash().equals(auth.getOrderSnapshotHash())
                 || !utcNow().isBefore(auth.getExpiresAt())) conflict();

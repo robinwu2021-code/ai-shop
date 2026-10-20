@@ -6,6 +6,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.pay.entitlement.dto.CatalogScope;
+import ai.neargo.shop.pay.entitlement.dto.LifecycleViews.FreezeCommand;
+import ai.neargo.shop.pay.entitlement.service.EntitlementLifecycleService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementUseService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementQueryService;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.UsageQuery;
@@ -53,6 +56,8 @@ import tools.jackson.databind.ObjectMapper;
 @ActiveProfiles("test")
 class EntitlementUseFlowTest {
     @Autowired private EntitlementUseService uses;
+    @Autowired private EntitlementLifecycleService lifecycle;
+    @Autowired private ai.neargo.shop.pay.entitlement.service.EntitlementReconciliationService reconciliation;
     @Autowired private EntitlementQueryService query;
     @Autowired private EntitlementUseFactsPort heldFacts;
     @Autowired private JdbcTemplate jdbc;
@@ -189,6 +194,97 @@ class EntitlementUseFlowTest {
                 + "activation_at=NULL,created_at=? "
                 + "WHERE instance_no=?", json.writeValueAsString(d),
                         LocalDateTime.now(ZoneOffset.UTC).minusSeconds(1), instance);
+    }
+
+    @Test void freezingPreservesOriginalHoldCommitAndAuditAndBlocksNewReservation() {
+        dailyCard();
+        var c=command(1); uses.prepare(context,c);
+        var scope=new CatalogScope("MAIN","M1","OP1",true);
+        long revision=jdbc.queryForObject("SELECT version FROM ent_instance WHERE instance_no=?",Long.class,instance);
+        String key=UUID.randomUUID().toString();
+        var command=new FreezeCommand(revision,"FREEZE","复核异常核销");
+        var frozen=lifecycle.freeze(scope,instance,command,key);
+        assertThat(frozen.status()).isEqualTo("FROZEN");
+        assertThat(frozen.reservedUnits()).isEqualTo(1);
+        assertThat(lifecycle.freeze(scope,instance,command,key)).isEqualTo(frozen);
+        assertThatThrownBy(() -> lifecycle.freeze(scope,instance,
+                new FreezeCommand(revision,"FREEZE","改变原因"),key)).isInstanceOf(BizException.class);
+        assertThat(uses.prepare(context,c).status()).isEqualTo(State.HELD);
+        var blocked=uses.preview(context,new PreviewQuery("U1","M1","S1","CNY",instance,null,1,source));
+        assertThat(blocked.redeemable()).isFalse();
+        assertThat(blocked.reason().name()).isEqualTo("FROZEN");
+        var truth=decision(c,true);
+        assertThat(uses.commit(context,new UseDecision(c.operationNo(),c.sourceRef(),truth)).status())
+                .isEqualTo(State.COMMITTED);
+        assertThat(jdbc.queryForObject("SELECT status FROM ent_instance WHERE instance_no=?",String.class,instance))
+                .isEqualTo("FROZEN");
+        assertThat(lifecycle.freeze(scope,instance,command,key)).isEqualTo(frozen);
+        long nowRevision=jdbc.queryForObject("SELECT version FROM ent_instance WHERE instance_no=?",Long.class,instance);
+        var thawed=lifecycle.freeze(scope,instance,new FreezeCommand(nowRevision,"UNFREEZE","核实后恢复"),
+                UUID.randomUUID().toString());
+        assertThat(thawed.status()).isEqualTo("ACTIVE");
+        assertThat(thawed.reservedUnits()).isZero();
+        assertThat(jdbc.queryForObject("SELECT used_units FROM ent_period_bucket WHERE instance_no=?",
+                Integer.class,instance)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT response_snapshot FROM pay_ent_command_dedup WHERE "
+                + "operation_kind='LIFECYCLE_FREEZE' AND request_key=?",String.class,key)).contains("复核异常核销");
+    }
+
+    @Test void unfreezeRecomputesExpiryAndRejectsWrongScopeAndStaleRevision() {
+        var scope=new CatalogScope("MAIN","M1","OP1",true);
+        var cmd=new FreezeCommand(0,"FREEZE","到期前复核");
+        assertThatThrownBy(() -> lifecycle.freeze(new CatalogScope("MAIN","M1","OP1",false),instance,cmd,
+                UUID.randomUUID().toString())).isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> lifecycle.freeze(new CatalogScope("MAIN","OTHER","OP1",true),instance,cmd,
+                UUID.randomUUID().toString())).isInstanceOf(BizException.class);
+        var frozen=lifecycle.freeze(scope,instance,cmd,UUID.randomUUID().toString());
+        jdbc.update("UPDATE ent_instance SET effective_until=DATEADD('DAY',-1,CURRENT_TIMESTAMP) WHERE instance_no=?",
+                instance);
+        assertThatThrownBy(() -> lifecycle.freeze(scope,instance,new FreezeCommand(0,"UNFREEZE","旧版本"),
+                UUID.randomUUID().toString())).isInstanceOf(BizException.class);
+        var result=lifecycle.freeze(scope,instance,new FreezeCommand(frozen.revision(),"UNFREEZE","核实有效期"),
+                UUID.randomUUID().toString());
+        assertThat(result.status()).isEqualTo("EXPIRED");
+        assertThat(result.remainingUnits()).isEqualTo(3);
+        assertThat(result.reservedUnits()).isZero();
+    }
+
+    @Test void expiryKeepsRemainingAndFrozenStateAndRepeatedBatchDoesNotAddEntries() {
+        jdbc.update("UPDATE ent_instance SET effective_until=DATEADD('DAY',-1,CURRENT_TIMESTAMP) WHERE instance_no=?",
+                instance);
+        assertThat(lifecycle.expireDue(context,100)).isGreaterThanOrEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT status FROM ent_instance WHERE instance_no=?",String.class,instance))
+                .isEqualTo("EXPIRED");
+        assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance WHERE instance_no=?",Integer.class,
+                instance)).isEqualTo(3);
+        int entries=jdbc.queryForObject("SELECT COUNT(*) FROM ent_ledger WHERE instance_no=?",Integer.class,instance);
+        lifecycle.expireDue(context,100);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_ledger WHERE instance_no=?",Integer.class,instance))
+                .isEqualTo(entries);
+        var ops=new CatalogScope("MAIN","M1","OP1",true);
+        var state=lifecycle.state(ops,instance);
+        lifecycle.freeze(ops,instance,new FreezeCommand(state.revision(),"FREEZE","expired audit"),
+                UUID.randomUUID().toString());
+        lifecycle.expireDue(context,100);
+        assertThat(lifecycle.state(ops,instance).status()).isEqualTo("FROZEN");
+        assertThat(lifecycle.state(ops,instance).remainingUnits()).isEqualTo(3);
+    }
+
+    @Test void holdReconciliationChecksServiceDayBucketsAndDetectsMissingBucket() {
+        dailyCard();
+        var c=command(1); uses.prepare(context,c);
+        var scope=new ai.neargo.shop.pay.entitlement.dto.CatalogScope("MAIN","M1","OP1",true);
+        var check=new ai.neargo.shop.pay.entitlement.dto.ReconciliationViews.Check("HOLD",null,
+                LocalDate.now(ZoneOffset.UTC),"UTC","",200);
+        assertThat(reconciliation.check(scope,check,UUID.randomUUID().toString()).diffCount()).isZero();
+        jdbc.update("UPDATE ent_period_bucket SET used_units=1 WHERE instance_no=?",instance);
+        var damaged=reconciliation.check(scope,check,UUID.randomUUID().toString());
+        assertThat(reconciliation.differences(scope,damaged.reconNo(),1,100).records())
+                .anyMatch(d -> d.resourceNo().equals(instance));
+        jdbc.update("DELETE FROM ent_period_bucket WHERE instance_no=?",instance);
+        var missing=reconciliation.check(scope,check,UUID.randomUUID().toString());
+        assertThat(reconciliation.differences(scope,missing.reconNo(),1,100).records())
+                .anyMatch(d -> d.resourceNo().equals(instance));
     }
 
     @Test

@@ -11,12 +11,17 @@ import ai.neargo.shop.trade.dto.ServiceOrderCreate;
 import ai.neargo.shop.trade.dto.ServiceOrderIdentifiedCreate;
 import ai.neargo.shop.trade.dto.ServiceOrderSnapshot;
 import ai.neargo.shop.trade.dto.ServiceUseSubmit;
+import ai.neargo.shop.spi.storedvalue.StoredValueUseQuotePort.Quote;
 import java.time.LocalDate;
 import java.util.List;
 
 public interface EntitlementServiceOrderService {
     String operationNoForKey(EntitlementContext context, String entityNo, String key);
     ServiceOrderSnapshot create(EntitlementContext context, String entityNo, ServiceOrderCreate command, String key);
+    ServiceOrderSnapshot createMonetary(EntitlementContext context, String entityNo, ServiceOrderCreate command,
+                                        String key);
+    ServiceOrderSnapshot bindMoneyPreview(EntitlementContext context, String entityNo, String storeNo, String no,
+                                          Quote quote);
     ServiceOrderSnapshot createIdentified(EntitlementContext context, String entityNo,
                                           ServiceOrderIdentifiedCreate command, String key);
     ServiceOrderSnapshot requireMerchant(EntitlementContext context, String entityNo, String storeNo, String no);

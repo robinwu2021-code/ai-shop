@@ -337,6 +337,14 @@ class BizEndpointPermTest {
         put("/biz/entitlement-uses/{operationNo}", BizPerms.ENT_READ);
         put("/biz/entitlement-uses/{operationNo}/cancel", BizPerms.ENT_USE);
         put("/biz/entitlement-usage", BizPerms.ENT_READ);
+        put("/biz/stored-value/accounts", BizPerms.SV_ACCOUNT_READ);
+        put("/biz/stored-value/consumptions", BizPerms.SV_CONSUME_CREATE);
+        put("/biz/stored-value/consumptions/preview", BizPerms.SV_CONSUME_CREATE);
+        put("/biz/stored-value/recharges", BizPerms.SV_RECHARGE_CREATE);
+        put("/biz/stored-value/recharges/{rechargeNo}", BizPerms.SV_RECHARGE_READ);
+        put("/biz/stored-value/recharges/{rechargeNo}/cancel", BizPerms.SV_RECHARGE_CREATE);
+        put("/biz/stored-value/recharges/{rechargeNo}/submit", BizPerms.SV_RECHARGE_CREATE);
+        put("/biz/stored-value/recharges/{rechargeNo}/receive", BizPerms.SV_RECHARGE_RECEIVE);
         put("/biz/entitlements/{instanceNo}", BizPerms.ENT_READ);
 
         // ---- 营销与报价：都是对钱的承诺 ----
@@ -650,7 +658,7 @@ class BizEndpointPermTest {
             if (f.getType() == String.class && java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
                 try {
                     Object v = f.get(null);
-                    if (v instanceof String s && (s.startsWith("biz:") || s.startsWith("pay:ent:"))) {
+                    if (v instanceof String s && (s.startsWith("biz:") || s.startsWith("pay:ent:") || s.startsWith("pay:sv:"))) {
                         out.add(s);
                     }
                 } catch (IllegalAccessException ignored) {

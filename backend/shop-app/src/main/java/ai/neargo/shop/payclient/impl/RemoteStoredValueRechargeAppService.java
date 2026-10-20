@@ -13,6 +13,14 @@ import org.springframework.stereotype.Service;
 import ai.neargo.shop.pay.client.PayInternalApi;
 import ai.neargo.shop.pay.client.PayStoredValueRequests;
 import ai.neargo.shop.payclient.RemoteEntitlementCalls;
+import ai.neargo.shop.spi.storedvalue.StoredValuePort.BalanceQuery;
+import ai.neargo.shop.spi.storedvalue.StoredValuePort.BalanceView;
+import ai.neargo.shop.spi.storedvalue.StoredValuePort.ConsumptionQuery;
+import ai.neargo.shop.spi.storedvalue.StoredValuePort.StoreQuery;
+import ai.neargo.shop.spi.storedvalue.StoredValuePort.StoreItem;
+import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.UsageItem;
+import ai.neargo.shop.common.CursorPage;
+import ai.neargo.shop.pay.client.PayStoredValueRequests;
 
 @Service
 @ConditionalOnProperty(name = "shop.pay.deployment", havingValue = "standalone")
@@ -33,5 +41,17 @@ public class RemoteStoredValueRechargeAppService implements StoredValueRechargeA
     }
     @Override public RechargeView credit(EntitlementContext ctx, CreditRecharge c) {
         return RemoteEntitlementCalls.call(() -> pay.svCredit(new PayStoredValueRequests.Credit(ctx, c)));
+    }
+    @Override public RechargeView query(EntitlementContext ctx, String entity, String no) {
+        return RemoteEntitlementCalls.call(() -> pay.svQuery(new PayStoredValueRequests.QueryRecharge(ctx, entity, no)));
+    }
+    @Override public BalanceView balance(EntitlementContext ctx, BalanceQuery q) {
+        return RemoteEntitlementCalls.call(() -> pay.svBalance(new PayStoredValueRequests.Balance(ctx, q)));
+    }
+    @Override public CursorPage<StoreItem> stores(EntitlementContext ctx, StoreQuery q) {
+        return RemoteEntitlementCalls.call(() -> pay.svStores(new PayStoredValueRequests.Stores(ctx, q)));
+    }
+    @Override public CursorPage<UsageItem> consumptions(EntitlementContext ctx, ConsumptionQuery q) {
+        return RemoteEntitlementCalls.call(() -> pay.svConsumptions(new PayStoredValueRequests.Consumptions(ctx, q)));
     }
 }

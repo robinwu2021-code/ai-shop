@@ -10,6 +10,14 @@ import ai.neargo.shop.pay.entitlement.service.EntitlementSourceFence;
 import ai.neargo.shop.pay.mapper.entitlement.PayEntSourceFenceMapper;
 import ai.neargo.shop.spi.entitlement.SourceDecisionPort.SourceDecision;
 import ai.neargo.shop.pay.entitlement.service.EntitlementUseWriter;
+import ai.neargo.shop.pay.entitlement.service.EntitlementCommandDeduplicator;
+import ai.neargo.shop.pay.entitlement.service.EntitlementLifecycleService;
+import ai.neargo.shop.pay.entitlement.dto.CatalogScope;
+import ai.neargo.shop.pay.entitlement.dto.LifecycleViews.FreezeCommand;
+import ai.neargo.shop.pay.entitlement.dto.LifecycleViews.FreezeView;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.pay.mapper.entitlement.PayEntCommandDedupMapper;
+import ai.neargo.shop.pay.mapper.entitlement.EntMarketingFactMapper;
 import ai.neargo.shop.pay.entitlement.service.impl.EntitlementLifecycleServiceImpl;
 import ai.neargo.shop.pay.mapper.entitlement.EntInstanceMapper;
 import ai.neargo.shop.pay.mapper.entitlement.EntLedgerMapper;
@@ -76,10 +84,13 @@ class EntitlementUseNativeMysqlTest {
         assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/use_native_fixture\\?.*");
         var ds = new DriverManagerDataSource(url, "root", "");
         var jdbc = new JdbcTemplate(ds);
-        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V434__entitlement_grants_and_ledger.sql"),
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V425__entitlement_catalog.sql"),
+                new ClassPathResource("db/migration/V434__entitlement_grants_and_ledger.sql"),
                 new ClassPathResource("db/migration/V429__pay_entitlement_event_outbox_inbox.sql"),
                 new ClassPathResource("db/migration/V436__entitlement_use_and_daily_quota.sql"),
-                new ClassPathResource("db/migration/V437__pay_entitlement_source_fence.sql")).execute(ds);
+                new ClassPathResource("db/migration/V437__pay_entitlement_source_fence.sql"),
+                new ClassPathResource("db/migration/V445__stored_value_credit_ledger.sql"),
+                new ClassPathResource("db/migration/V449__stored_value_hold_allocation.sql")).execute(ds);
         var config = new MybatisConfiguration();
         config.setMapUnderscoreToCamelCase(true);
         var plugin = new MybatisPlusInterceptor();
@@ -106,12 +117,15 @@ class EntitlementUseNativeMysqlTest {
             beans.registerBean(ObjectMapper.class, () -> json);
             for (var mapper : List.of(EntInstanceMapper.class, EntLedgerMapper.class, EntPeriodBucketMapper.class,
                     EntUsageMapper.class, EntUseAllocationMapper.class, EntUseIntentMapper.class,
-                    EntUseProposalMapper.class, PayEntOutboxMapper.class, PayEntSourceFenceMapper.class)) {
+                    EntUseProposalMapper.class, PayEntOutboxMapper.class, PayEntSourceFenceMapper.class,PayEntCommandDedupMapper.class,EntMarketingFactMapper.class)) {
                 register(beans, mapper, factory.getObject());
             }
-            beans.register(EntitlementUseWriter.class, EntitlementLifecycleServiceImpl.class,
+            beans.register(EntitlementCommandDeduplicator.class,EntitlementUseWriter.class, EntitlementLifecycleServiceImpl.class,
                     EntitlementPostingServiceImpl.class, PayEntitlementEventPublisher.class, EntitlementSourceFence.class);
             beans.refresh();
+            var attribution=beans.getBean(EntMarketingFactMapper.class);
+            assertThat(attribution.money("MAIN","M1","MISSING","CNY","",2)).isEmpty();
+            assertThat(attribution.moneyTotal("MAIN","M1","MISSING","CNY")).isEqualByComparingTo("0");
             var writer = beans.getBean(EntitlementUseWriter.class);
             var caller = new EntitlementContext("MAIN", "TEST", "NATIVE", "b".repeat(64));
             var day = LocalDate.now(ZoneOffset.UTC);
@@ -137,10 +151,25 @@ class EntitlementUseNativeMysqlTest {
                     .isInstanceOf(DataAccessException.class);
             assertThatThrownBy(() -> jdbc.update("UPDATE ent_use_intent SET command_snapshot='not-json'"))
                     .isInstanceOf(DataAccessException.class);
+            var lifecycle=beans.getBean(EntitlementLifecycleService.class);
+            var scope=new CatalogScope("MAIN","M1","OP1",true);
+            var freezing=new FreezeCommand(lifecycle.state(scope,"I1").revision(),"FREEZE","native review");
+            var freezes=new ArrayList<Callable<FreezeView>>();
+            for(int i=0;i<20;i++) freezes.add(() -> lifecycle.freeze(scope,"I1",freezing,"FREEZE1"));
+            try(var pool=Executors.newFixedThreadPool(6)) {
+                for(var response:pool.invokeAll(freezes)) assertThat(response.get().status()).isEqualTo("FROZEN");
+            }
+            assertThatThrownBy(() -> writer.prepare(caller,prepared(definition,day,
+                    lifecycle.state(scope,"I1").revision()))).isInstanceOf(BizException.class);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_use_allocation",Integer.class)).isOne();
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_ent_command_dedup",Integer.class)).isOne();
             var cancel = new DecisionRef("C1", Instant.now(), 1, DecisionRef.DecisionType.USE_CANCEL);
             finish(writer, caller, held, cancel, false);
             assertThat(jdbc.queryForObject("SELECT active_source_key FROM ent_use_intent", String.class)).isNull();
-            var tomorrow = prepared(definition, day.plusDays(1), 2);
+            assertThat(lifecycle.state(scope,"I1").status()).isEqualTo("FROZEN");
+            lifecycle.freeze(scope,"I1",new FreezeCommand(lifecycle.state(scope,"I1").revision(),
+                    "UNFREEZE","native release verified"),"UNFREEZE1");
+            var tomorrow = prepared(definition, day.plusDays(1),lifecycle.state(scope,"I1").revision());
             writer.prepare(caller, tomorrow);
             var commit = new DecisionRef("D1", Instant.now(), 1, DecisionRef.DecisionType.USE_COMMIT);
             // Outbox insert must be in the same pay transaction; duplicate event is not used to hide failures.
@@ -164,7 +193,7 @@ class EntitlementUseNativeMysqlTest {
             assertThat(jdbc.queryForObject("SELECT reserved_units FROM ent_instance", Integer.class)).isZero();
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_usage", Integer.class)).isOne();
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_ent_outbox", Integer.class)).isOne();
-            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_ledger", Integer.class)).isEqualTo(4);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_ledger", Integer.class)).isEqualTo(6);
         }
     }
 

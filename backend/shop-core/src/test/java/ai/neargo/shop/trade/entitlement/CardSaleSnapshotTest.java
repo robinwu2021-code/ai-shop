@@ -24,6 +24,22 @@ import org.junit.jupiter.api.Test;
 
 class CardSaleSnapshotTest {
 
+    @Test void persistedCardSaleIdentityUsesPaidOrderIssuanceRulesAndRequiresPaymentProof() {
+        var source = new SourceRef("CORE", "PAID_CARD_ORDER", "O1", "OL1", 1, 1, 0);
+        var command = new ai.neargo.shop.spi.entitlement.EntitlementGrantPort.GrantCommand(
+                "G1", source, null, "V1", "U1", "M1", 1, "a".repeat(64), "PAY1");
+        assertThat(command.issueMode()).isEqualTo("PAID_ORDER");
+        assertThat(command.sourceRef()).isEqualTo(source);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                new ai.neargo.shop.spi.entitlement.EntitlementGrantPort.GrantCommand(
+                        "G1", source, null, "V1", "U1", "M1", 1, "a".repeat(64), null))
+                .isInstanceOf(IllegalArgumentException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                new ai.neargo.shop.spi.entitlement.EntitlementGrantPort.GrantCommand(
+                        "G1", source, null, "V1", "U1", "M1", 2, "a".repeat(64), "PAY1"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
     @Test
     void expandsPurchasedUnitsIntoStablePerEntitlementSources() {
         var facts = new CardSaleSnapshotPlan.OrderFacts("SO20261018001", "U1", "CNY");
@@ -97,7 +113,8 @@ class CardSaleSnapshotTest {
         });
         when(snapshotMapper.findBySource(eq("MAIN"), anyString())).thenAnswer(invocation ->
                 stored.get(invocation.getArgument(1)));
-        var service = new CardSaleSnapshotServiceImpl(snapshotMapper, orderMapper);
+        var service = new CardSaleSnapshotServiceImpl(snapshotMapper, orderMapper,
+                mock(ai.neargo.shop.trade.service.EntitlementSourceDecisionService.class));
         var order = new CardSaleSnapshotPlan.OrderFacts("SO-REPLAY", "U1", "CNY");
         var rule = new CardSaleSnapshotPlan.EntitlementRule("ETV1", "COUNT", "{\"total\":10}");
         var line = new CardSaleSnapshotPlan.SaleLine("OL-1", "SUB-1", "E1", "ST1", "G-1", "SK-1", 12000, 2,
@@ -126,7 +143,8 @@ class CardSaleSnapshotTest {
         });
         when(snapshotMapper.findBySource(eq("MAIN"), anyString())).thenAnswer(invocation ->
                 stored.get(invocation.getArgument(1)));
-        var service = new CardSaleSnapshotServiceImpl(snapshotMapper, orderMapper);
+        var service = new CardSaleSnapshotServiceImpl(snapshotMapper, orderMapper,
+                mock(ai.neargo.shop.trade.service.EntitlementSourceDecisionService.class));
         var order = new CardSaleSnapshotPlan.OrderFacts("SO-MIXED", "U1", "CNY");
         var rule = new CardSaleSnapshotPlan.EntitlementRule("ETV1", "COUNT", "{\"total\":10}");
 
@@ -152,7 +170,8 @@ class CardSaleSnapshotTest {
         when(orderMapper.selectOne(any())).thenReturn(paid);
         when(snapshotMapper.markPaidOnce(anyString(), anyString(), anyString(), any(), any(), anyString()))
                 .thenReturn(1, 0);
-        var service = new CardSaleSnapshotServiceImpl(snapshotMapper, orderMapper);
+        var service = new CardSaleSnapshotServiceImpl(snapshotMapper, orderMapper,
+                mock(ai.neargo.shop.trade.service.EntitlementSourceDecisionService.class));
 
         assertThat(service.recordPaidFromOrder("SO1")).isEqualTo(1);
         assertThat(service.recordPaidFromOrder("SO1")).isZero();

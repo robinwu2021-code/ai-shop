@@ -40,6 +40,8 @@ import ai.neargo.shop.pay.entitlement.dto.IssuePolicyViews.SavePolicy;
 import ai.neargo.shop.pay.entitlement.service.EntitlementCatalogService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementIssuePolicyService;
 import ai.neargo.shop.paybridge.ActivityBenefitCoordinator;
+import ai.neargo.shop.paybridge.EntitlementRecoveryService;
+import ai.neargo.shop.trade.dto.EntitlementRecoveryWork.Kind;
 import ai.neargo.shop.spi.entitlement.CoreEntitlementInternalApi;
 import ai.neargo.shop.spi.entitlement.SourceDecisionPort;
 import ai.neargo.shop.spi.entitlement.EntitlementCoreInternal;
@@ -74,6 +76,7 @@ import org.springframework.test.context.ActiveProfiles;
 class ActivityBenefitCoordinatorFlowTest {
     @LocalServerPort int port;
     @Autowired ActivityBenefitCoordinator coordinator;
+    @Autowired EntitlementRecoveryService recovery;
     @Autowired EntitlementCatalogService catalog;
     @Autowired EntitlementIssuePolicyService policies;
     @Autowired JdbcTemplate jdbc;
@@ -226,7 +229,8 @@ class ActivityBenefitCoordinatorFlowTest {
         assertThat(plan.status()).isEqualTo("PENDING");
         assertThat(pay.query(context, owner[1], plan.grants().getFirst().grantNo()).status())
                 .isEqualTo(EntitlementGrantPort.State.PREPARED);
-        assertThat(coordinator.recover(context, result.intentNo()).status()).isEqualTo("COMMITTED");
+        assertThat(recovery.recover("MAIN",Kind.ACTIVITY_BENEFIT,0,100).completed()).isGreaterThanOrEqualTo(1);
+        assertThat(coordinator.query(context,result.intentNo()).status()).isEqualTo("COMMITTED");
     }
     @Test void centerClaimUsesFrozenCoreOriginAndRetriesTheSameGrant() {
         var owner = owner(); var version = template(owner, "CENTER");

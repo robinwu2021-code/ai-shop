@@ -203,6 +203,7 @@ CREATE TABLE ent_instance (
     UNIQUE KEY uk_grant_unit (tenant_no,grant_no,unit_index),
     UNIQUE KEY uk_source_unit (tenant_no,source_unit_key),
     KEY ix_wallet (tenant_no,user_no,kind,status,id),
+    KEY ix_instance_expiry (tenant_no,status,effective_until,id),
     CHECK (unit_index>0 AND reserved_units>=0),
     CHECK (remaining_units IS NULL OR remaining_units>=reserved_units)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户实际权益和总次数余额';
@@ -291,11 +292,14 @@ CREATE TABLE ent_usage (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
     tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
     usage_no VARCHAR(64) NOT NULL COMMENT '核销记录号',
-    operation_no VARCHAR(64) NOT NULL COMMENT '原意图',
+    operation_no VARCHAR(64) NOT NULL COMMENT '原真实核销操作号',
+    protocol VARCHAR(16) NOT NULL DEFAULT 'STANDARD',
+    legacy_instance_no VARCHAR(64) NULL,
+    migration_import_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
     user_no VARCHAR(64) NOT NULL COMMENT '本人',
     entity_no VARCHAR(64) NOT NULL COMMENT '主体',
-    store_no VARCHAR(64) NOT NULL COMMENT '门店',
-    store_name VARCHAR(100) NOT NULL COMMENT '发生时门店名',
+    store_no VARCHAR(64) NULL COMMENT '真实单门店，跨门店为空',
+    store_name VARCHAR(100) NULL COMMENT '已知门店名称',
     asset_kind VARCHAR(24) NOT NULL COMMENT '资产类别',
     title VARCHAR(100) NOT NULL COMMENT '项目摘要',
     units INT NULL COMMENT '核销次数',
@@ -304,7 +308,7 @@ CREATE TABLE ent_usage (
     items_snapshot JSON NOT NULL COMMENT '服务/商品明细',
     service_staff_name VARCHAR(64) NULL COMMENT '服务人员',
     source_order_no VARCHAR(64) NULL COMMENT '源订单',
-    operator_no VARCHAR(64) NOT NULL COMMENT '经办者',
+    operator_no VARCHAR(64) NULL COMMENT '真实经办者，历史未知为空',
     status VARCHAR(16) NOT NULL COMMENT 'COMMITTED/PARTIAL_REVERSED/REVERSED，回补另记反向账',
     occurred_at DATETIME(3) NOT NULL COMMENT '业务成功时间',
     version BIGINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity乐观锁',
@@ -315,9 +319,14 @@ CREATE TABLE ent_usage (
     updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
     PRIMARY KEY (id),
     UNIQUE KEY uk_usage (tenant_no,usage_no),
-    UNIQUE KEY uk_usage_op (tenant_no,operation_no),
+    UNIQUE KEY uk_usage_protocol_op (tenant_no,protocol,operation_no),
     KEY ix_user_usage (tenant_no,user_no,store_no,asset_kind,occurred_at DESC,usage_no DESC),
-    KEY ix_store_usage (tenant_no,entity_no,store_no,occurred_at DESC)
+    KEY ix_store_usage (tenant_no,entity_no,store_no,occurred_at DESC),
+    KEY ix_usage_legacy_instance (tenant_no,user_no,legacy_instance_no,occurred_at,usage_no),
+    CONSTRAINT ck_usage_protocol CHECK (
+       (protocol='STANDARD' AND legacy_instance_no IS NULL AND migration_import_no IS NULL AND store_no IS NOT NULL AND store_name IS NOT NULL AND operator_no IS NOT NULL)
+       OR (protocol='LEGACY' AND legacy_instance_no IS NOT NULL AND migration_import_no IS NULL AND operator_no IS NOT NULL AND asset_kind='ORDER_COUPON' AND currency IS NOT NULL AND currency='CNY' AND units IS NOT NULL AND units=1 AND amount_minor IS NOT NULL AND amount_minor>0 AND source_order_no IS NOT NULL)
+       OR (protocol='MIGRATED' AND migration_import_no IS NOT NULL AND asset_kind='ORDER_COUPON' AND currency IS NOT NULL AND currency='CNY' AND units IS NOT NULL AND units=1 AND amount_minor IS NOT NULL AND amount_minor>=0 AND status IN ('COMMITTED','REVERSED')))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='核销成功事实，消费者简明查询源';
 
 CREATE TABLE ent_ledger (
@@ -587,7 +596,7 @@ CREATE TABLE ent_owner_registry (
     tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
     source_system VARCHAR(32) NOT NULL COMMENT 'MKT_LEGACY/PMT/PAY',
     source_kind VARCHAR(24) NOT NULL COMMENT 'TEMPLATE/INSTANCE/USAGE',
-    source_no VARCHAR(64) NOT NULL COMMENT '原业务号',
+    source_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL COMMENT '原业务号精确身份',
     target_no VARCHAR(64) NULL COMMENT 'pay目标号',
     owner_system VARCHAR(16) NOT NULL COMMENT 'CORE_LEGACY/PAY',
     migration_batch_no VARCHAR(64) NOT NULL COMMENT '迁移批次',
@@ -600,7 +609,15 @@ CREATE TABLE ent_owner_registry (
     created_by VARCHAR(64) NOT NULL COMMENT '操作者或系统任务',
     updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
     PRIMARY KEY (id),
-    UNIQUE KEY uk_source_owner (tenant_no,source_system,source_kind,source_no)
+    UNIQUE KEY uk_source_owner (tenant_no,source_system,source_kind,source_no),
+    CHECK (source_system IN ('MKT_LEGACY','PMT','PAY')),
+    CHECK (source_kind IN ('TEMPLATE','INSTANCE','USAGE')),
+    CHECK (owner_system IN ('CORE_LEGACY','PAY')),
+    CHECK (status IN ('PREPARING','VERIFIED','CUTOVER','ARCHIVED')),
+    CHECK (owner_system<>'CORE_LEGACY' OR status IN ('PREPARING','VERIFIED')),
+    CHECK (owner_system<>'PAY' OR (status IN ('CUTOVER','ARCHIVED') AND target_no IS NOT NULL AND cutover_watermark IS NOT NULL)),
+    CHECK (status<>'VERIFIED' OR (target_no IS NOT NULL AND cutover_watermark IS NOT NULL)),
+    CHECK (source_system<>'PAY' OR owner_system='PAY')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='迁移时明确唯一权威归属，不靠查不到兜底';
 
 CREATE TABLE pay_ent_outbox (
@@ -666,7 +683,8 @@ CREATE TABLE pay_ent_exception (
     PRIMARY KEY (id),
     UNIQUE KEY uk_pay_exception (tenant_no,exception_no),
     UNIQUE KEY uk_exception_source (tenant_no,kind,biz_no),
-    KEY ix_pay_exception_queue (tenant_no,entity_no,status,created_at)
+    KEY ix_pay_exception_queue (tenant_no,entity_no,status,created_at),
+    CHECK (status IN ('OPEN','PROCESSING','RESOLVED'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='受控异常处置与对账差异';
 
 CREATE TABLE pay_ent_command_dedup (

@@ -58,6 +58,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
+import ai.neargo.shop.pay.storedvalue.service.StoredValueRedemptionService;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
@@ -75,12 +76,18 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
     private final EntitlementReversalService reversals;
     private final EntitlementSourceFence fences;
     private final ObjectMapper json;
+    private final ObjectProvider<StoredValueRedemptionService> storedValue;
+    private StoredValueRedemptionService money() {
+        var service = storedValue.getIfAvailable();
+        if (service == null) unavailable(); return service;
+    }
 
     public EntitlementUseServiceImpl(EntInstanceMapper instances, EntUseIntentMapper intents,
             EntUseProposalMapper proposals, EntPeriodBucketMapper buckets,
             ObjectProvider<EntitlementUseSourcePort> sources, ObjectProvider<SourceDecisionPort> decisions,
             PayEntitlementFeatureGate features, EntitlementUseWriter writer, EntitlementSourceFence fences,
-            EntitlementReversalService reversals, ObjectMapper json) {
+            EntitlementReversalService reversals, ObjectProvider<StoredValueRedemptionService> storedValue,
+            ObjectMapper json) {
         this.instances = instances;
         this.intents = intents;
         this.proposals = proposals;
@@ -91,6 +98,7 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
         this.writer = writer;
         this.reversals = reversals;
         this.fences = fences;
+        this.storedValue = storedValue;
         this.json = json;
     }
 
@@ -142,7 +150,7 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
             return writer.cancelled(fence);
         }
         features.requireUse();
-        if (c.assetKind() == AssetKind.STORED_VALUE) unavailable();
+        if (c.assetKind() == AssetKind.STORED_VALUE) return money().prepare(context, c);
         if (c.assetKind() == AssetKind.ORDER_COUPON) return prepareCoupon(context, c);
         var asset = owned(context, c.userNo(), c.entityNo(), c.instanceNo());
         var d = json.readValue(asset.getRuleSnapshot(), EntitlementDefinition.class);
@@ -217,6 +225,7 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
             row = intents.find(context.tenantNo(), no);
         }
         if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        if ("STORED_VALUE".equals(row.getAssetKind())) return money().finish(context, no, source, ref, commit);
         var frozen = json.readValue(row.getCommandSnapshot(), Prepared.class);
         var c = frozen.command();
         if (!source.equals(c.sourceRef())) conflict();

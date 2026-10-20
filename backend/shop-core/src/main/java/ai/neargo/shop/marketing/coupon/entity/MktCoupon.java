@@ -117,4 +117,9 @@ public class MktCoupon extends BaseEntity {
      * 归档的从列表消失。挤进同一列的话，「暂停后归档」会丢掉其中一个状态。
      */
     private java.time.LocalDateTime archivedAt;
+    /** Root-local source fencing; never supplied by old public coupon DTOs. */
+    private String migrationState;
+    private String migrationBatchNo;
+    private String migrationWatermark;
+    private Long migrationFrozenRevision;
 }

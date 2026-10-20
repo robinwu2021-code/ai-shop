@@ -105,6 +105,12 @@ management:
 shop:
   core:
     entitlement:
+      # Offline source fencing only; an empty key leaves migration transitions closed.
+      legacy-coupon:
+        enabled: ${SHOP_CORE_ENTITLEMENT_LEGACY_COUPON_ENABLED:false}
+      migration-commit:
+        enabled: ${SHOP_CORE_ENTITLEMENT_MIGRATION_COMMIT_ENABLED:false}
+      migration-watermark-key: ${SHOP_CORE_ENTITLEMENT_MIGRATION_WATERMARK_KEY:}
       authorization:
         # C09 and trusted intent staging stay closed until all quote/source owners are wired.
         enabled: ${SHOP_ENTITLEMENT_AUTHORIZATION_ENABLED:false}
@@ -528,6 +534,13 @@ shop:
   pay:
     entitlement:
       # Stable shared random secret (>=32 characters) for scoped query cursors; no development fallback.
+      # Original ORDER-coupon compatibility stays opt-in until core checkout/import acceptance.
+      migration-recovery:
+        enabled: ${SHOP_PAY_ENTITLEMENT_MIGRATION_RECOVERY_ENABLED:false}
+      legacy-coupon:
+        enabled: ${SHOP_PAY_ENTITLEMENT_LEGACY_COUPON_ENABLED:false}
+        usage-repair-enabled: ${SHOP_PAY_LEGACY_COUPON_USAGE_REPAIR_ENABLED:false}
+        issue-recovery-enabled: ${SHOP_PAY_LEGACY_COUPON_ISSUE_RECOVERY_ENABLED:false}
       cursor-key: ${SHOP_PAY_ENTITLEMENT_CURSOR_KEY:}
       code:
         enabled: ${SHOP_PAY_ENTITLEMENT_CODE_ENABLED:false}

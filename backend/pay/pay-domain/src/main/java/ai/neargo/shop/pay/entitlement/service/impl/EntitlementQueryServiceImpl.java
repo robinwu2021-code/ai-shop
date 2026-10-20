@@ -15,6 +15,8 @@ import ai.neargo.shop.pay.entitlement.entity.EntPeriodBucket;
 import ai.neargo.shop.pay.entitlement.entity.EntUsage;
 import ai.neargo.shop.pay.entitlement.entity.EntUseAllocation;
 import ai.neargo.shop.pay.entitlement.service.EntitlementCursorCodec;
+import ai.neargo.shop.pay.storedvalue.service.StoredValueCursorCodec;
+import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.UsageHistoryQuery;
 import ai.neargo.shop.pay.entitlement.service.EntitlementQueryService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementUseWriter;
 import ai.neargo.shop.pay.mapper.entitlement.EntInstanceMapper;
@@ -57,9 +59,10 @@ public class EntitlementQueryServiceImpl implements EntitlementQueryService {
     private final EntLedgerMapper ledger;
     private final EntitlementCursorCodec cursors;
     private final ObjectMapper json;
+    private final StoredValueCursorCodec historyCursors;
     public EntitlementQueryServiceImpl(EntInstanceMapper instances, EntPeriodBucketMapper buckets,
             EntUsageMapper usages, EntUseAllocationMapper allocations, EntLedgerMapper ledger,
-            EntitlementCursorCodec cursors, ObjectMapper json) {
+            EntitlementCursorCodec cursors, ObjectMapper json, StoredValueCursorCodec historyCursors) {
         this.instances = instances;
         this.buckets = buckets;
         this.usages = usages;
@@ -67,6 +70,7 @@ public class EntitlementQueryServiceImpl implements EntitlementQueryService {
         this.ledger = ledger;
         this.cursors = cursors;
         this.json = json;
+        this.historyCursors=historyCursors;
     }
 
     @Override
@@ -123,6 +127,16 @@ public class EntitlementQueryServiceImpl implements EntitlementQueryService {
                 .eq(EntUsage::getUserNo, q.userNo()).eq(q.entityNo() != null, EntUsage::getEntityNo, q.entityNo())
                 .eq(EntUsage::getUsageNo, q.usageNo()));
         if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        if ("MIGRATED".equals(row.getProtocol())) {
+            return new UsageDetail(usageItem(row), List.of(), null, row.getSourceOrderNo(), null);
+        }
+        if ("LEGACY".equals(row.getProtocol())) {
+            var original = ledger.selectOne(Wrappers.<EntLedger>lambdaQuery()
+                    .eq(EntLedger::getTenantNo, context.tenantNo()).eq(EntLedger::getInstanceNo, row.getLegacyInstanceNo())
+                    .eq(EntLedger::getBizKey, "LEGACY_COMMIT:" + row.getOperationNo()));
+            return new UsageDetail(usageItem(row), List.of(), null, row.getSourceOrderNo(),
+                    original == null ? null : original.getAfterUnits());
+        }
         var allocation = allocations.selectOne(Wrappers.<EntUseAllocation>lambdaQuery()
                 .eq(EntUseAllocation::getTenantNo, context.tenantNo())
                 .eq(EntUseAllocation::getOperationNo, row.getOperationNo()).last("LIMIT 1"));
@@ -131,6 +145,23 @@ public class EntitlementQueryServiceImpl implements EntitlementQueryService {
                 .eq(EntLedger::getBizKey, "USE:" + row.getOperationNo()));
         return new UsageDetail(usageItem(row), List.of(json.readValue(row.getItemsSnapshot(), UseItem[].class)),
                 row.getServiceStaffName(), row.getSourceOrderNo(), entry == null ? null : entry.getAfterUnits());
+    }
+
+    @Override
+    public CursorPage<UsageItem> history(EntitlementContext context,UsageHistoryQuery q) {
+        String entity=q.entityNo(),instance=q.instanceNo();
+        if(instance!=null) entity=owned(context,q.userNo(),entity,instance).getEntityNo();
+        String filters=digest(json.writeValueAsString(java.util.Arrays.asList(entity,instance)));
+        var cursor=historyCursors.decode(q.cursor(),"RIGHTS_USAGE",context.tenantNo(),q.userNo(),filters);
+        var rows=usages.history(context.tenantNo(),q.userNo(),entity,instance,
+                cursor==null?null:utc(java.time.Instant.ofEpochMilli(cursor.occurredAtMillis())),
+                cursor==null?null:cursor.sortKey(),q.size()+1);
+        boolean more=rows.size()>q.size();
+        var page=more?rows.subList(0,q.size()):rows;
+        var last=page.isEmpty()?null:page.getLast();
+        String next=more?historyCursors.encode("RIGHTS_USAGE",context.tenantNo(),q.userNo(),filters,
+                instant(last.getOccurredAt()).toEpochMilli(),last.getUsageNo()):null;
+        return new CursorPage<>(page.stream().map(this::usageItem).toList(),next);
     }
 
     @Override

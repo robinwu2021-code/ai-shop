@@ -4,6 +4,8 @@ import ai.neargo.shop.pay.client.PayInternalPaths;
 import ai.neargo.shop.pay.client.PayStoredValueRequests;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueRechargeService;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueCreditService;
+import ai.neargo.shop.pay.storedvalue.service.StoredValueQueryService;
+import ai.neargo.shop.pay.storedvalue.service.StoredValueRedemptionService;
 import ai.neargo.shop.spi.storedvalue.StoredValueRechargeFactsPort;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.InternalServiceResponses;
@@ -19,10 +21,15 @@ public class InternalStoredValueEndpoint {
     private final StoredValueRechargeService recharges;
     private final StoredValueCreditService credits;
     private final StoredValueRechargeFactsPort facts;
+    private final StoredValueQueryService queries;
+    private final StoredValueRedemptionService redemptions;
     private final String token;
     public InternalStoredValueEndpoint(StoredValueRechargeService recharges, StoredValueCreditService credits,
-            StoredValueRechargeFactsPort facts, @Value("${shop.services.internal-token:}") String token) {
-        this.recharges = recharges; this.credits = credits; this.facts = facts; this.token = token;
+            StoredValueRechargeFactsPort facts, StoredValueQueryService queries,
+            StoredValueRedemptionService redemptions,
+            @Value("${shop.services.internal-token:}") String token) {
+        this.recharges = recharges; this.credits = credits; this.facts = facts; this.queries = queries;
+        this.redemptions = redemptions; this.token = token;
     }
     @PostMapping(PayInternalPaths.SV_FACTS)
     public ResponseEntity<?> facts(@RequestBody PayStoredValueRequests.Query r,
@@ -59,5 +66,31 @@ public class InternalStoredValueEndpoint {
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
         return InternalServiceResponses.invoke(token, given,
                 () -> credits.credit(r.context(), r.command()));
+    }
+    @PostMapping(PayInternalPaths.SV_QUERY)
+    public ResponseEntity<?> query(@RequestBody PayStoredValueRequests.QueryRecharge r,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given,
+                () -> recharges.query(r.context(), r.entityNo(), r.rechargeNo()));
+    }
+    @PostMapping(PayInternalPaths.SV_BALANCE)
+    public ResponseEntity<?> balance(@RequestBody PayStoredValueRequests.Balance r,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given, () -> queries.balance(r.context(), r.query()));
+    }
+    @PostMapping(PayInternalPaths.SV_STORES)
+    public ResponseEntity<?> stores(@RequestBody PayStoredValueRequests.Stores r,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given, () -> queries.stores(r.context(), r.query()));
+    }
+    @PostMapping(PayInternalPaths.SV_CONSUMPTIONS)
+    public ResponseEntity<?> consumptions(@RequestBody PayStoredValueRequests.Consumptions r,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given, () -> queries.consumptions(r.context(), r.query()));
+    }
+    @PostMapping(PayInternalPaths.SV_USE_QUOTE)
+    public ResponseEntity<?> useQuote(@RequestBody PayStoredValueRequests.UseQuote r,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given, () -> redemptions.quote(r.context(), r.sourceRef()));
     }
 }

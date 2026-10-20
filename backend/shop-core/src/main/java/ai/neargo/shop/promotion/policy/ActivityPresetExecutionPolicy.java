@@ -10,18 +10,25 @@ import org.springframework.stereotype.Component;
 /** Admission for concrete unified executors, independent of generic capability readiness. */
 @Component
 public class ActivityPresetExecutionPolicy {
+    private static final Set<String> RECHARGE_PRESETS=Set.of("AP008","AP024","AP030","AP034","AP037");
+    private static final Set<String> PAID_PRODUCTS = Set.of("EP001", "EP002", "EP003", "EP004", "EP005", "EP006");
+
     public List<String> missing(ActivityActor actor, String templateCode) {
         List<String> missing = new ArrayList<>();
-        if (!Set.of("AP004", "AP009", "AP010").contains(templateCode)) missing.add("PRESET_EXECUTOR");
+        if (!Set.of("AP004", "AP009", "AP010").contains(templateCode) && !RECHARGE_PRESETS.contains(templateCode) && !PAID_PRODUCTS.contains(templateCode)) missing.add("PRESET_EXECUTOR");
         if (!"MAIN".equals(actor.tenantNo())) missing.add("ORDER_TENANT_UNSUPPORTED");
         return List.copyOf(missing);
     }
 
     public List<String> missing(ActivityActor actor, UnifiedActivityDefinition definition) {
         List<String> missing = new ArrayList<>(missing(actor, definition.templateCode()));
+        if (PAID_PRODUCTS.contains(definition.templateCode())) missing.add("PRESET_EXECUTOR");
         if ("AP004".equals(definition.templateCode())
                 && (!"ENTITLEMENT_GRANT".equals(definition.scene()) || definition.rule() == null
                 || definition.rule().trigger() == null || !"NONE".equals(definition.rule().trigger().type()))) {
+            missing.add("PRESET_EXECUTOR");
+        }
+        if(RECHARGE_PRESETS.contains(definition.templateCode()) && !"RECHARGE".equals(definition.scene())) {
             missing.add("PRESET_EXECUTOR");
         }
         if (!"CNY".equals(definition.currency())) missing.add("ORDER_CURRENCY_UNSUPPORTED");

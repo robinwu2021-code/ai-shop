@@ -7,7 +7,7 @@ import ai.neargo.shop.trade.dto.ServiceOrderSnapshot;
 import java.time.Instant;
 import java.util.List;
 
-/** Explicit consumer projection: no raw identity reference, authorization reference, internal command or cash price. */
+/** Explicit consumer projection: no raw identity reference, authorization reference, internal command or private balance pools. */
 public final class EntitlementServiceViews {
     private EntitlementServiceViews() { }
     /** Business progress may wait for merchant submission even when no pay hold exists yet. */
@@ -23,21 +23,25 @@ public final class EntitlementServiceViews {
     public record Item(String itemNo, String title, int quantity) { }
     public record Asset(String instanceNo, String title, int unitsToUse, Integer remainingAfter) { }
     public record Confirmation(long orderRevision, String quoteRef, String selectionDigest, Instant expiresAt) { }
+    public record Payment(String assetKind, String currency, long amountMinor) { }
     public record ServiceView(String serviceOrderNo, String operationNo, String status, String storeNo, String storeName,
-            String serviceStaffName, List<Item> items, Instant serviceAt, Asset asset, Confirmation confirmation) { }
+            String serviceStaffName, List<Item> items, Instant serviceAt, Asset asset, Confirmation confirmation,
+            Payment payment) { }
     public static ServiceView consumer(ServiceOrderSnapshot s) {
         var p = s.preview() == null ? null : s.preview().preview();
         return new ServiceView(s.serviceOrderNo(), s.operationNo(), status(s), s.fact().storeNo(), s.fact().storeName(),
                 s.fact().serviceStaffName(), s.fact().items().stream().map(i -> new Item(i.itemNo(), i.title(),
                         i.quantity())).toList(), s.fact().serviceAt(),
                 p == null ? null : new Asset(p.instanceNo(), p.title(), p.unitsToUse(), p.remainingAfter()),
-                p == null ? null : new Confirmation(s.fact().source().sourceRevision(), p.previewRef(), p.snapshotHash(),
-                        p.expiresAt()));
+                s.preview() == null ? null : new Confirmation(s.fact().source().sourceRevision(), s.preview().ref(),
+                        s.preview().digest(), s.preview().expiresAt()),
+                s.preview() == null || s.preview().moneyQuote() == null ? null
+                        : new Payment("STORED_VALUE", s.fact().currency(), s.preview().amountMinor()));
     }
     public static String status(ServiceOrderSnapshot s) {
         if (s.command() == null && List.of("CREATED", "PREVIEWED", "AUTHORIZED").contains(s.status())
                 && (!Instant.now().isBefore(s.deadline()) || s.preview() != null
-                && !Instant.now().isBefore(s.preview().preview().expiresAt()))) return "EXPIRED";
+                && !Instant.now().isBefore(s.preview().expiresAt()))) return "EXPIRED";
         return switch (s.status()) {
             case "CREATED", "PREVIEWED" -> "WAIT_AUTH";
             case "AUTHORIZED" -> "WAIT_SUBMIT";

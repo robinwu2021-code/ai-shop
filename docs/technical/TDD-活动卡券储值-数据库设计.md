@@ -10,7 +10,7 @@
 
 每表id为内部自增主键，tenant_no参与业务唯一性；version条件更新（对外expectedRevision映射此列）；created/updated_at用UTC DATETIME(3)，created/updated_by留操作人。资金/核销事实不可物理删除；模板归档不删除历史。沿现有BaseEntity实际审计列对齐后再生成正式迁移，不借设计重命名所有现存列。
 
-公共字段适用于当前基础47张及6张支撑表（core22/pay31，合计53张；含预览、取消栅栏与订单协调增量），DDL逐表展开：
+公共字段适用于当前基础47张及22张支撑表（core27/pay42，合计69张；含预览、取消栅栏、订单协调及销售预留增量），DDL逐表展开：
 
 | 字段 | 类型及空值 | 含义 |
 |---|---|---|
@@ -36,7 +36,7 @@
 - 一个操作多张券的分配可有多行，但全部同pay事务过账；允许组合由业务白名单决定，首期储值不叠券/积分。
 - MySQL唯一键对NULL允许多行，因此settled_source_key仅成功核销时赋值，不能用空串表示未成功。
 
-基础目标逻辑表38张（核心12、支付26），补充支撑表6张（核心4、支付2），合计44张（核心16、支付28）。包含现有表重构和拟新增表，不表示已创建44张生产表；正式迁移V425为目录三表，V426为会员身份凭证，V427为授权与源决策，V428新增售卡权益快照。快照的order_line_no由core将已落库ord_item主键转换成仅内部使用的稳定行身份，不改动公共订单表；主体与门店按子单/订单行可信事实落快照，不能从整张支付主单推断。支撑表字典见第七节。
+当前基础目标逻辑表47张（核心18、支付29），补充支撑表22张（核心9、支付13），合计69张（核心27、支付42）。包含现有表重构和新增表，不表示已创建69张生产表；正式迁移V425为目录三表，V426为会员身份凭证，V427为授权与源决策，V428新增售卡权益快照。快照的order_line_no由core将已落库ord_item主键转换成仅内部使用的稳定行身份，不改动公共订单表；主体与门店按子单/订单行可信事实落快照，不能从整张支付主单推断。支撑表字典见第七节。
 
 ## 二、核心服务完整数据字典
 
@@ -800,7 +800,7 @@ AuditMetaObjectHandler当前使用LocalDateTime.now，不能直接宣称其符�
 
 ## 七、授权、售卡与对账支撑存储
 
-[支撑DDL](./design/活动权益-support-schema.sql)独立于当前基础42表，用于设计校验；各表正式增量迁移另列。公共字段沿第一节。core四表仅core事务写，pay两表仅pay事务写；无跨库外键。授权/源决策由V427交付；售卡快照实体、Mapper、稳定订单行号及V428由JB-012交付；对账表归JB-046。
+[支撑DDL](./design/活动权益-support-schema.sql)独立于当前基础47表，用于设计校验；各表正式增量迁移另列。公共字段沿第一节。当前core七张、pay十张支撑表分别仅本模块事务写；无跨库外键。授权/源决策由V427交付；售卡快照实体、Mapper、稳定订单行号及V428由JB-012交付；对账表归JB-046。
 
 ### ord_ent_authorization
 
@@ -1103,3 +1103,227 @@ V447仅由core拥有`pmt_recharge_intent`。唯一键为tenant+intent、tenant+r
 V448仅修改pay的`sv_recharge`：received_receipt_key为NULL直到有权确认人实收时，写入收款方式和原收款凭据号的摘要；tenant+entity+received_receipt_key唯一，阻止一份人工收款凭据支持两笔到账。原凭据号/摘要和核验备注保持私有。cancelled_at/cancellation_reason记录未实收取消，CHECK禁止无事实的取消状态；已实收/到账不可取消。先取消后创建使用完整真实来源写CANCELLED栅栏，迟到create返回实际取消状态，不能重新提示收款。
 
 实收与取消竞争同一pay行锁及revision；实收决定与Received Outbox同事务，不持有充值行锁调用到账。到账继续遵循account→recharge锁序。已有RECEIVED承诺不因活动停用、会员引用过期、储值开关关闭或新增receipt claim列而失效。独立部署由反向core事实API读取许可，应用通过pay路由门面调用，不跨库JOIN。
+
+付费卡取消决策复用说明：ord_ent_source_decision以purpose=GRANT、原PAID_CARD_ORDER的grantKey逐单件/件内权益记录GRANT_ABORT，paid_fact_ref为空；成功/取消不能互相覆盖，重复取消沿原decisionNo与UTC occurredAt。决策与真实主订单取消/关闭在同一core事务中写入，没有新增表或迁移；pay容量释放仍由后续预留协议消费该可信事实。
+
+### V450：付费卡付款前容量预留（JB-040）
+
+`ent_sale_reservation`归pay，是第7张支撑表。正式迁移为V450，支撑设计DDL同步；V449的`sv_hold_allocation`已在目标基础表中，不重复计数。目标逻辑54表（core22/pay32），迁移生成的H2运行表250张；目标逻辑表与运行表不是同一口径。
+
+| 字段 | 类型 | 约束与用途 |
+|---|---|---|
+| reservation_no/source_key | VARCHAR(64)/CHAR(64) | 各自与tenant组成唯一键；SR+原grantKey前60位；包含单件及件内权益索引 |
+| source_snapshot/command_snapshot/payload_hash | JSON/JSON/CHAR(64) | 冻结来源、预留命令及摘要，拒绝同号异参 |
+| template_no/definition_snapshot | VARCHAR(64)/JSON，可空 | RESERVED/TRANSFERRED必须非空；取消先到的墓碑无需读取今日模板 |
+| user_no/entity_no/currency | VARCHAR(64)/VARCHAR(64)/VARCHAR(8) | 原受益人、发行主体及币种，不接受客户端覆盖 |
+| status | VARCHAR(24) | RESERVING→RESERVED→TRANSFERRED，或RESERVING/RESERVED→RELEASED；中间态不独立提交 |
+| grant_no/source_decision_no | VARCHAR(64)，可空 | TRANSFERRED必有接管grant；RELEASED必有可信取消决定 |
+| 公共审计字段 | 沿第一节 | version/deleted/UTC毫秒/actor齐全，财务承诺禁止删除 |
+
+索引：tenant+reservation、tenant+source唯一；tenant+status+id用于后续恢复扫描。CHECK覆盖状态、必填快照、接管号及取消号。预留事务先claim/锁预留，再调用既有发行策略锁模板/总量/个人量；策略失败连同预留行一起回滚。只支持PAID_CARD/SERVICE_UNITS，单件quantity=1、敞口0，不形成储值资金分录。
+
+付款后发行在同一pay事务内锁grant栅栏→grant→预留，将RESERVED移交TRANSFERRED并保存原grantNo；不再次reserve、不在移交时settle。后续仅grant的commit/abort结算该份容量。取消先到持久RELEASED墓碑，迟到reserve沿原号返回RELEASED；取消与移交锁同一预留，TRANSFERRED不会被销售释放再次减量。不可因超时或付款查不到而释放，必须读取core真实GRANT_ABORT。当前只实现领域内核，本地/远程销售协调与自动恢复仍待JB-040/041。
+
+### V451售卡恢复确认
+
+1档：在core既有ord_card_sale_snapshot追加delivery_status VARCHAR(16) NOT NULL DEFAULT PENDING，CHECK限定PENDING/ACKNOWLEDGED，按tenant+delivery_status+order_no建恢复索引。不新增表，不更改来源键及付款事实；仅由应用协调确认整单已全部发卡或取消释放后写ACKNOWLEDGED。扫描只读真实主单终态，不根据截止时间推断取消。支付与core分库，恢复调用在core事务外，确认失败则原号重放。计划：迁移/源SPI与Mapper→恢复批次与调度→重复发卡/取消/失败继续扫描测试。
+
+### V450/V451原生增量与独立装配验证
+
+新增scripts/tests/paid-card-migrations.test.mjs，仅在无端口、无网络的临时MySQL 9.7.2执行V450及V428→V451，finally清理。验证源键唯一、RESERVED规则快照必填、TRANSFERRED接管grant必填、RELEASED取消决定必填、JSON合法性；旧快照升级后默认PENDING、非法状态拒绝及恢复索引存在。/tmp/paid-card-migrations.log为1项通过，0失败/跳过，约6.8秒。该证据仅覆盖迁移与数据库约束，不冒充真实Writer并发或生产版本升级演练。
+
+PayApplicationBootTest新增saleCapacityAndReverseSourceHaveExactlyOneStandaloneOwner，检查真实独立pay上下文的预留SPI、反向SaleSource及HTTP端点唯一，来源确为core远程适配。结合运行时HTTP与主应用embedded/standalone互斥路由测试验收本批装配；不据此宣称两个真实进程的业务链路已全部验收。
+
+### V452支付异常记录内核
+
+1档，沿既定pay_ent_exception目标表落正式迁移；字段/唯一键与目标DDL一致，补OPEN/PROCESSING/RESOLVED状态CHECK。不新增目标逻辑表，运行表将251。首批只从真实PREPARED发行单捕获GRANT_DELIVERY异常，证据白名单为原grantNo/发行状态/来源类型/固定原因码，不保存paidFactRef、命令JSON或凭证。tenant+kind+bizNo持久幂等，同业务主体不一致拒绝。平台查询同时按tenant+entity收窄，非平台scope拒绝。原号恢复与动作审计/权限/RPC随后接线，本批不开放运营HTTP。
+
+### V453异常恢复动作审计
+
+1档：新增pay_ent_exception_action支撑表，tenant+request_key唯一，冻结主体/操作者/异常号/原因/expectedRevision摘要，PENDING/DONE及最终安全响应JSON。动作认领与异常PROCESSING同pay事务；远程查源/原grant恢复在锁外；完成动作与异常终态同pay事务。中断保留PENDING，同键原参续办，同键异参冲突，其他请求不能抢PROCESSING。动作历史保留，不用last_action覆盖审计。首批仅GRANT_DELIVERY，不开放任意调账/改受益人；新增目标支撑表使逻辑55、运行252。
+
+### V454异常动作类型
+
+1档：pay_ent_exception_action新增operation_kind VARCHAR(32) NOT NULL DEFAULT RETRY_GRANT，限定RETRY_GRANT/QUERY_SOURCE，旧恢复动作升级保持原含义。查源动作复用认领→锁外查事实→审计完成，仅更新异常证据中的sourceStatus，不调用grant commit/abort，不结算容量；动作类型纳入新查源请求摘要，防止查源键被当作恢复键。无新增表。
+
+V455只登记运营异常read/recover/verify三个sys_function_point及SUPER_ADMIN授权，不新增业务表，不给普通FINANCE/CS岗位自动赋权；权限码与Perms、ops-web映射及真实路由一致。后端已落地，界面尚无对应页，ui_ready=0；不添加空菜单。
+
+### V456权益分录对账内核
+
+1档：将既定pay_ent_recon_run/diff转正式V456，不新增目标逻辑表，运行表254。首批RIGHTS轴仅比较ent_instance余次/冻结次数/assetSeq与ent_ledger汇总/max序号，按主体及instanceNo键集分页（每批1–200），每个异常实例计1个差异。pay同一REPEATABLE_READ事务完成来源读取、批次与差异写入；不锁外查源，不调整余额或补发。COMPLETED只表示该页完成，scan_cursor非空须继续下一页，不能当全主体已核完。幂等摘要含范围/操作者/日期时区/游标/数量，同键异参冲突。原金额轴、发行轴与逐服务日额度仍后续独立实现。
+
+对账日期说明：bizDate/marketZone是批次归属日与时区，当前RIGHTS核对的是运行时快照，不回放历史日末状态。scan_cursor关联当前页完成结果，后续页另起原请求号；跨页不宣称同一个全库快照。
+
+
+### N01对账轴实现补充（2026-10-19）
+
+继续复用V456的pay_ent_recon_run/diff，不改已存在迁移。运行行写入真实axis及currency；MONEY必须分币种，其他轴currency为NULL。RIGHTS/HOLD资源为instanceNo，ISSUANCE为grantNo，MONEY为accountNo；同资源多字段差异合并为一条内部快照，保证diff_count<=checked_count。只读事实Mapper归pay数据源，运行/差异与REPEATABLE_READ快照同事务提交；每页独立快照，不能作为跨页全时点一致快照。
+
+
+### N03冻结审计复用（2026-10-19）
+
+不新增权益表。复用ent_instance状态/版本、ent_ledger零delta生命周期流水以及pay_ent_command_dedup持久幂等。operation_kind=LIFECYCLE_FREEZE，request_key沿原请求；payload hash覆盖实例号、完整命令和可信scope。response_snapshot内部保存action/reason/beforeStatus/expectedRevision及公开FreezeView，记录与状态更新、流水在同一pay事务提交。解冻由有效期/激活/余量推导目标状态，无需增加previous_status列，不以过去状态覆盖期间已经发生的使用或到期。
+
+
+### N08效果投影实现细化（2026-10-19）
+
+复用pmt_effect_projection现有amount_minor/currency/units及source_event_no+activity_no+effect_kind唯一键，不新增表或改旧迁移。新增CREDITED/RIGHTS_USED/COUPON_DISCOUNT/COUPON_RESTORED效果码为应用白名单（现有列无枚举CHECK）。sv消费通过现有sv_voucher/entry/lot/recharge的同pay查询精确归因到活动；多活动汇总COUNT(DISTINCT source_event_no)，金额按贡献SUM，数量单列。ORDER_DISCOUNT继续依据pmt_apply未回滚事实查询，不让新投影绕过旧回滚过滤。
+
+
+### N10 owner实际迁移（2026-10-19）
+
+V458落实已有目标表ent_owner_registry，目标逻辑表总数仍55，实际主迁移物理表变为255。source_no用utf8mb4_bin精确匹配，联合唯一键仍tenant/source_system/source_kind/source_no。新增CHECK保证系统/类型/owner/迁移状态合法；PAY必须CUTOVER/ARCHIVED且target_no、水位齐全，CORE_LEGACY仅PREPARING/VERIFIED，VERIFIED也必须目标号和水位齐全。登记使用INSERT…ON DUPLICATE KEY UPDATE取得排他claim，再锁原行比对批次，不覆盖已有映射。
+
+### 到期任务查询索引（V459，2026-10-19）
+
+追加`ent_instance`普通索引`ix_instance_expiry(tenant_no,status,effective_until,id)`，供到期状态任务及24小时提醒窗口查询；不改变已有事实、余次或开关。沿用UTC半开截止语义，H2测试普通索引不承担方言证明，原生迁移测试核对真实索引列顺序。无新增表，目标仍为core22/pay33，实际主库255表。
+
+### 旧券源根写栅栏（V460，2026-10-19）
+
+仅扩展原mkt_coupon/pmt_coupon，各追加migration_state VARCHAR(24) NOT NULL DEFAULT OPEN、migration_batch_no VARCHAR(64) utf8mb4_bin、migration_watermark CHAR(64) utf8mb4_bin、migration_frozen_revision BIGINT。两个根表增加(tenant_no,migration_state,migration_batch_no,id)索引。状态限定OPEN/DRAINING/FROZEN/COMMIT_DECIDED/ABORT_DECIDED；非OPEN需批号，冻结/提交需水位和非负冻结revision。原业务状态、券码、余次和金额没有回填改值；实际主库255表/2374种子、目标逻辑55表不变。
+
+源命令的FenceAudit复用pmt_command_dedup，与源状态同core事务提交，记录原因/操作者。同键异参拒绝；旧成功响应可重放，真实状态须另查，不能把重放的FREEZE结果当作当前提交决定。新BEGIN显式set null清空旧水位/冻结revision，ABORT保留批次墓碑。
+
+LegacyCouponFenceMapper锁读包括已逻辑删除的根，原释放不能绕过已有栅栏。孤儿原释放保留旧行为，但TEMPLATE_MISSING阻止导入；此分支不允许在owner缺失/PAY调用失败时回退。归档时间仅为独立展示元数据，不进入财务水位，不解除根栅栏。
+
+原V1使用MariaDB UCA1400排序规则，缓存MySQL不支持。V460原生测试仅抽取原根建表结构作夹具并明确归一化该旧排序规则，再执行未修改的V460；不冒充V1全库新建/升级。旧迁移未改，完整目标版本演练仍归JB054。
+
+## V461消息恢复动作（2026-10-19）
+
+V461仅将pay_ent_exception_action具名CHECK扩展为RETRY_GRANT/QUERY_SOURCE/RETRY_EVENT/QUERY_EVENT；不修改已验证V454，不新增表。pay_ent_exception沿tenant+kind+bizNo唯一键认领OUTBOX_DELIVERY，bizNo=原eventNo，OPEN→PROCESSING→RESOLVED。动作DONE仅表示重排/核查已完成，异常的PROCESSING仍需原事件真正SENT后关闭；稳定动作响应供原键重放，后续状态读异常详情。
+
+重排原pay_ent_outbox保留不可变事实，DEAD→PENDING、attempts=0、nextAttemptAt=当前UTC，带version CAS；失败defer/markDead同样带读取版本，防止旧投递失败覆盖新一轮重排。事务按原事件→异常→动作锁定，审计与重排同一个pay事务。桥接网络调用在财务/恢复事务之外；捕获死信不再发ExceptionOpened，避免通知失败递归。重启扫描以id有界轮转，补登记DEAD及SENT未关闭异常，单行损坏不阻塞后续行。
+
+H2生成器显式重放DROP CHECK并严格拒绝不存在约束，随后ADD CHECK保留新枚举；运行结构仍255表、2374种子，目标逻辑55表不变。隔离MySQL执行V461并验证新旧动作允许、ADJUST_BALANCE拒绝；该证据不等于全库升级或生产数据库验证。
+
+## 冻结快照读取与事务隔离（2026-10-19）
+
+本切片无新增表或迁移：复用V460根上的migration_state/batch_no/watermark/frozen_revision。现场重算原HMAC，不将已缓存FenceView或幂等命令的历史响应当成当前导入许可。冻结与exportFrozen使用独立RR事务，原root锁保持至证据生成完成；不能继承外层事务已有的一致性快照。requireWritable仍MANDATORY加入原业务事务，旧业务OPEN/ABORT路径不需要迁移密钥。
+
+当前证据只在内存及受认证内部响应中流转，不落明文快照文件或目标数据库。8MiB上限以实际UTF-8字节计数，超限拒绝；未来持久暂存需要独立加密/校验及提交协议，不能把本次读取视为资产导入。运行255表/2374种子、逻辑55表不变。已验证旧码保留但日志脱敏、SHA-256字节一致、批次/事实/终止校验及外层旧快照拒绝。
+
+## S03删除/归档与来源计数（2026-10-19）
+
+复用原mkt/pmt源表，无新增表/迁移。LegacyCouponFenceMapper增加只读库存投影，以显式SQL越过MyBatis的逻辑删除默认过滤；在core迁移服务MAIN检查和executeWithoutScope边界内执行，所有关联仍逐项匹配tenant。LegacyCouponInventoryRow为内部SQL投影，不是第二份源实体或目标账本。
+
+计数包括原模板、实例、发行、pmt_apply及删除子集，保留原软删/归档标记。孤立历史需NOT EXISTS(实例 JOIN 原模板)，不能只判断实例存在。已删除原模板仍是可归属的历史根，孤立指原关联实际缺失。MKT没有对应历史表，返回null而非构造0。模板/来源重叠或孤立计数不是纠错授权；后续导入要求明确规范化与原事实保留。
+
+隔离MySQL以生成的源列形状运行实际Mapper SQL，验证墓碑计数、NULL语义及缺原模板的孤立历史；这只是查询兼容证据，不冒充全库新建/升级。物理255表/2374种子、目标55表不变。
+
+## V462加密迁移证据暂存（2026-10-19）
+
+ent_migration_stage归pay.migration，是第9张支撑表；当前逻辑56表（core22/pay34）、主迁移物理256表、2374种子。该表保存证据，不保存目标资产余额，不允许改成READY或CUTOVER。
+
+| 字段组 | 列与类型 | 含义/约束 |
+|---|---|---|
+| 业务身份 | stage_no VARCHAR64 binary、tenant_no | 稳定暂存业务号；联合唯一 |
+| 精确来源 | source_system VARCHAR24 binary、source_template_no VARCHAR64 binary、migration_batch_no VARCHAR64 binary | 仅MKT_LEGACY/PMT；tenant+系统+模板+批次唯一 |
+| 主体与幂等 | entity_no VARCHAR64、request_key VARCHAR64 binary、command_hash CHAR64 | 同tenant原键唯一；摘要含主体、操作人、原query和原因 |
+| 操作原因 | reason VARCHAR500、公共created_by/created_at | 原操作人及UTC时间；原因非空 |
+| 冻结证据 | source_schema_version INT、frozen_revision BIGINT、watermark CHAR64、content_hash CHAR64 | 首版schema=1、版本非负；SHA/HMAC长度64 |
+| 加密载荷 | crypto_key_id VARCHAR32 binary、payload_cipher MEDIUMTEXT | v1.keyId.nonce.cipher，AES-256-GCM，密文不直传元数据响应 |
+| 大小与数量 | payload_bytes INT、instance_count/history_count BIGINT | 原文1–8MiB；次数均非负，密文最多12000000字符 |
+| 状态 | status VARCHAR16 | CHECK仅STAGED；不表示可导入 |
+| 公共审计 | version/deleted/created/updated字段 | 继承公共字段；本服务不覆盖或删除既有证据 |
+
+AES使用随机12字节nonce和128位认证标签。AAD同时绑定租户、业务号、主体、精确来源/批次、冻结版本/水位、原文摘要、命令摘要、操作人、原键、原因、keyId及计数。审计字段或密文被改，verify拒绝；不重新获取/覆盖原证据来掩盖错误。配置密钥为Base64的32字节，keyId为1–32位字母数字/下划线/连字符，默认空关闭新暂存；不同keyId不盲试旧密文。
+
+编排入口拒绝已有事务，避免挂起后仍持有金融锁再远程读源；新源读取和加密都在pay写事务外，只有唯一认领在短pay事务。stage原键完成响应可在源ABORT后重放，但verify需重新验证当前真实源；UNKNOWN/不可达不当成可导入。首版V1是可见实例证据，importReady恒false，升级完整清单需新协议/批次，不能覆盖旧证据变成导入许可。
+
+V462原生MySQL约束测试1通过；设计56表DDL整体检查1通过。两者都不是生产升级演练。已验证默认密钥关闭前不读源、跨主体/非平台/租户拒绝、同键异参/同批换键冲突、审计篡改拒绝及无财务/owner写入。
+
+## V463清单版本元数据与V1兼容（2026-10-19）
+
+V463在ent_migration_stage追加manifest_version INT NOT NULL DEFAULT 1及history_available TINYINT NULL。新版本CHECK仅允许1/2；V1允许NULL供滚动旧写者省略该列，V2必须明确历史可用性，PMT=1、MKT_LEGACY=0。存量回填只补历史可用性，不改旧密文、hash、原键、版本或审计时间；V462保持原校验和。
+
+source_schema_version=1表示传输信封；manifest_version=1是原可见数组证据，=2是全部已知源家族记录。新V2保留所有删除实例、发行、历史和范围；MKT没有独立历史表时明确不可用，history_count=0只指捕获了0行，不能声称0次消费。V1摘要和AAD保持旧字段字节顺序；V2另用LEGACY_MANIFEST_STAGE_V2域，并追加清单版本/历史可用性。两者原键不可互换，同源批次不可覆盖升级。
+
+原VISIBLE_V1根水位并不签名隐藏/删除记录。完整清单在同一个独立core RR事务及FROZEN根锁内重验水位，再读取完整记录；完整contentHash由认证源读取提供。后续源持久提交必须重新比较完整hash，不得以已有SOURCE_MATCHED或旧水位代替。未排空的删除实例关联订单仍拒绝导出，异常源不推断已取消。
+
+正式/目标DDL保持逻辑56、物理256；生成器现报告2375条种子/DML语句（新增元数据回填），不是2375条新增业务记录。原生V462→V463约束/旧列保留1项及设计56表整体SQL1项通过。实际Java额外独立构造旧AAD/密文并模拟新元数据列NULL，验证旧V1仍能读取及现场核对。
+
+### S03规范化的可信事实（2026-10-20）
+
+本批不新增表/列或修改V460–V463。assessmentFacts属于已有AES-GCM加密payload，字段version/entityActive/market/peerTemplateCount/peerInstanceCount连同完整清单hash校验。编号比对固定读取两套原模板及实例（包括逻辑删除），按tenant限制且不返回另一源消费者资料；不依赖BaseMapper的逻辑删除默认过滤。market从core本地商家主数据取得，再由pay本地sys_market确认币种、精度、时区及启用状态，无默认币种回填。
+
+评估不改变ent_migration_stage.status=STAGED，不写ent_instance、ent_ledger、ent_owner_registry或outbox。源事实变化应使已有暂存验证失败；不能为使评估通过直接更新旧源计数、日期或密文。逻辑56表、运行物理256表口径不变。
+
+S03发行政策不新增列：原total_count、received_count、per_user_limit、budget_minor及包含墓碑的实例是评估输入。拟迁入的ent_issue_policy.issued_count为终身发行数，used_exposure_minor为终身发行承诺敞口，不能拿pmt_apply已消费金额代替；删除/到期不减少历史计数。当前剩余权益最大敞口单独评估，不写回原预算。原MKT total_count=0不限，PMT total_count IS NULL不限、=0为零；预算0/已知NULL不限。上述只是只读评估，尚未写入目标政策或按人发行计数。
+
+## V464同号双源认领记录实施设计（2026-10-20）
+
+新增pay.migration.ent_migration_alias（第10张支撑表，目标逻辑57=core22/pay35；正式迁移V464）。保存alias_no、entity_no、migration_batch_no、pmt_stage_no、mkt_stage_no、canonical_stage_no（严格等于pmt_stage_no）、两方content_hash、comparison_hash、matched_instance_count、compared_at、request_key、reason和公共审计列。状态仅RECOGNIZED；不允许READY/CUTOVER，不存原始用户资料、券码或资产余额。
+
+tenant+alias_no、tenant+pmt_stage_no、tenant+mkt_stage_no及tenant+request_key分别唯一，PMT/MKT角色由服务器根据真实stage核对，防止对调来源绕过成员唯一性。claim在同pay短事务按stage_no稳定顺序锁两行，再校验原版本、内容及密文绑定并写认领/命令幂等结果。来源完整读取和差异比较在事务外，无锁内远程调用。compared_at固定比较口径，之后重验同一摘要不因时间自然流逝失效；实际余额/过期资格仍按本次真实时刻判断。
+
+认领只是操作人声明与一致性证据，不是源提交决定或目标接管。后续操作必须现场重验两份原完整清单；源ABORT、内容变化、额外碰撞均拒绝继续。S04必须两根同事务提交、pay原子导入两源映射一份资产，不能将影子再次导入。
+
+## V465旧ORDER券支付操作实施设计（2026-10-20）
+
+新增pay.migration.ent_legacy_coupon_operation（第11张支撑表，目标逻辑58=core22/pay36）。tenant+operation_no及tenant+checkout_no分别唯一；保存原来源身份、精确实例/持有人/主体/币种、原owner批次/计划摘要、经济摘要、原core事实/上下文、准备命令指纹、原规则/门店分摊、优惠金额及源决定快照。只记录ORDER券余次，不建储值或现金余额。
+
+内部PREPARING仅允许同事务认领后完成，不应单独提交；外部状态HELD/COMMITTED/RELEASED/REVERSED。ever_held区分已真实预占与取消先到：未预占RELEASED的优惠金额/规则/分摊及账序均为NULL，没有伪造0元消费或余额分录。HELD及后续真实财务状态要求正优惠和守恒分摊。hold/commit/release/reverse各保存实际asset_seq，ledger使用LEGACY_HOLD/COMMIT/RELEASE/REVERSE类型和原operation稳定键；反向必须关联原COMMIT分录。
+
+源建单真实COMMIT/ABORT、完整取消/退款回补决定分别保存原号和快照，回补只允许已真实消费的一份单位且原单位最多返回一次。记录source_order_no及源业务发生时刻供原消费记录查询，不把优惠金额叫作实际付款。core远程查源、owner查询及报价准备均在pay锁外；本地短事务按操作→实例顺序锁定，同事务更新原EntInstance/不可变流水/操作状态，不依赖HTTP幂等缓存。新增配置shop.pay.entitlement.legacy-coupon.enabled默认false，且新预占仍需use.enabled；关闭不影响已承诺确认、释放或回补。此为待实施金融存储设计，旧checkout源/入口、通知、对账及恢复后续一起接入。
+
+### N10旧ORDER券core结算日记（V466）
+
+追加`ord_legacy_coupon_checkout`，支撑表增至12（core5/pay7）；当前目标59表=core23/pay36，运行schema259表。`checkout_no`、`operation_no`及成功`order_no`各自租户内唯一；保存不可变fact_snapshot、command/stage/economic摘要及在实际建单事务内写入的held_snapshot。OPEN无终态事实，ABORTED无订单，COMMITTED必须有真实订单引用、原hold和决定。行禁止删除。JSON字段及终态NULL约束已在MySQL执行，V466自此冻结。
+
+`LegacyCouponCheckoutJournal`提供core内部准备、绑定、提交和取消；来源read与pay远程调用分离。`bind/commit`强制加入调用者事务；stage/abort拒绝外层事务并使用短独立事务。prepare重放先读原日记，保持原时刻/金额/窗口；不因重新读当前源生成新意图。暂无客户端准备/取消API。旧下单及售后入口对接另行验收，不能根据表存在认定已接管。
+
+### V467旧券投递确认与恢复索引
+
+仅为既有`ord_legacy_coupon_checkout`追加pay_state、pay_decision_no、pay_acked_at、recovery_due_at及`tenant/pay_state/recovery_due_at/id`索引。PENDING为待查原操作，NONE为非金融报价；COMMITTED/RELEASED/REVERSED必须对应原core终态并有实际确认引用与时间，确认后排期为空。新退回决定必须清除旧确认并重置PENDING。升级不编造成功状态/零日期，旧行保持PENDING及NULL排期，由恢复重读原意图建立。
+
+V466→V467带数据升级、NULL/终态约束及完整59表目标DDL已在MySQL验证，V467冻结；当前仍59逻辑表（core23/pay36）、259运行表、12支撑表。源日记状态更新使用`LegacyCouponCheckoutMapper.StateChange`条件SQL（tenant/checkout/version），显式写NULL、UTC毫秒及真实调用组件身份，避免通用审计填充覆盖；不可变fact/经济摘要不在更新字段中。
+
+### V468：旧券核销统一消费事实
+
+沿用 ent_usage，新增 protocol（STANDARD 默认）及 legacy_instance_no。operation_no 为真实核销操作号：STANDARD 对应原 use intent，LEGACY 对应 ent_legacy_coupon_operation，不产生替代意图。STANDARD 继续强制门店及门店名非空；LEGACY 仅 ORDER_COUPON/CNY、1 次、正优惠额、真实订单，允许未知或跨门店为空。原生 MySQL 已验证升级兼容与约束，V468 冻结。表总数仍 259、活动权益逻辑表仍 59。
+
+### V469：固定加密目标计划（支付服务）
+
+ent_migration_plan 属 pay.migration 支撑表，保存 plan_no、主 stage_no、可选 alias_no、原系统/模板/批次、主体、请求键/命令摘要/原因、完整目标 plan_hash 与 source_bundle_hash、密钥版本/密文/字节数、有效实例和归档实例数量、目标规则版本数、评估时间及审计字段。tenant+plan、stage、request、source+template+batch 各有唯一约束。状态仅 PLANNED、deleted=0，不能写成 COMMIT_DECIDED 或 IMPORTED。
+
+敏感目标清单使用既有 AES-GCM 证据加密机制及独立 LEGACY_TARGET_PLAN_V1 AAD，绑定上述身份、摘要、计数和原操作人；不得明文保存或输出消费者身份。源 bundle 绑定完整 V2 source contentHash、原冻结版本/水位和所有认领来源，不能只信可见 V1 水位。目标清单保存固定模板、规则版本、原实例→目标实例映射及原剩余次数；归档实例只保留证据，无目标金融实例或发放号。规划不补造收款、历史核销或金融流水。
+
+V469 已在隔离原生 MySQL 执行并冻结，60 张目标逻辑表 DDL 一并通过；运行 schema 260 张表、2375 条种子。最终源决定与目标原子导入仍为后续步骤，不能把计划存在当作已导入。
+
+### V470：核心源永久决定及唯一来源绑定
+
+核心服务 pmt_migration_decision 保存 decision/plan/entity/batch、目标及源bundle摘要、非敏感计划头快照、命令摘要/原请求键/原因/操作人、UTC决定时间与审计字段。tenant+decision、plan、request 唯一。仅 COMMITTED、version=0、deleted=0，没有源决定反向撤销写入。
+
+pmt_migration_source 用 tenant+source_system+source_template_no 全生命周期唯一绑定决定；同号 PMT/MKT 来源分别绑定同一决定。与全部原券 FROZEN→COMMIT_DECIDED、决定及命令去重同一核心事务；不关联支付数据库外键，不写金融资产。读证明按来源绑定与决定 JOIN，未知来源返回空证明，网络不可用不得当作未决定。
+
+V470 原生 MySQL 状态/不可删除/绑定唯一约束通过并冻结；完整设计 DDL 62 逻辑表，基础47+支撑15（core25/pay37），运行262表、2375种子。永久源决定仅授权后续按原目标计划滚动完成导入，不代表导入已经完成；提交之后不能用 ABORT 恢复旧写。
+
+### V471：支付迁入回执与原实例基线
+
+ent_migration_import（pay）以 tenant+import、plan、sourceDecision 各自唯一保存实际迁入结果：主体、原核心决定、plan/bundle摘要、完整源证明快照、实际资产/归档数、UTC迁入时间及审计。状态仅 IMPORTED，version=0、deleted=0。
+
+ent_migration_asset（pay）保存 import、主来源系统/原实例号、目标实例号、baseline_no、是否仅归档、原总次数与迁入时真实剩余次数。原来源、目标实例和基线各自唯一；归档行的目标实例和基线必须 NULL，不能为归档记录伪造金融资产。该表存初始基线，不跟写当前可用余额。
+
+目标目录/历史规则版本、发行与逐人历史计数、实际剩余次数、每实例 MIGRATION_BASELINE、全部原别名 owner CUTOVER 与迁入回执同一支付事务；晚期唯一冲突全部回滚。实例 grant_no 此处是该 baseline_no 的技术引用，明确不是重放原grant，普通 ent_grant 不新增。source_paid_at 保持未知 NULL，不发到账/发券通知。初始迁入时发行保持暂停，回执 issuanceEnabledAtImport=false 表示迁入时状态，不代表以后发行策略状态。
+
+V471已在隔离原生MySQL执行冻结，完整64逻辑表DDL通过；生产支付内核的原生MySQL20并发重放也验证只有一套记录。基础47+支撑17（core25/pay39），运行264表、2375种子。当前能力门同时约束源提交准入和目标导入：仅无待迁历史应用流水、净余次未消耗的来源；MKT历史不可用保留未知，有历史的来源等待历史投影完整实现，不能部分导入。
+
+### V472–V473 历史核销与原订单权益退回
+
+原 `pmt_apply` 核销事实投影为 `ent_usage.protocol=MIGRATED`，原核销号作为 operation_no；唯一键按 tenant/protocol/operation 分命名空间。未知门店、操作人及逐次余额保留未知；已知 0 元保留 0，不补造支付或原核销账本。
+
+- pay `ent_migration_usage`：唯一原核销号→展示记录映射，保存来源行哈希、迁入批次、原实例和原退回时间；归档来源允许没有新实例。
+- core `pmt_migration_return`：迁入前核销在真实取消/整单退款后产生的不可变决定，同事务 outbox；唯一原核销号。PENDING→RESTORED 只更新支付回执与确认时间。
+- pay `ent_migration_return`：原核销映射、迁入回执、来源决定与源哈希一致才恢复原实例一次；同 pay 事务写 MIGRATION_RETURN 权益账、历史记录 REVERSED 与回执。没有现金退款能力，也不修改原冻结核销事实。
+
+锁顺序：core 原应用行→退回决定；pay 原核销映射→权益实例→展示记录。跨服务读取和确认均在对方事务之外。消费历史查询始终按登录本人限制，可返回没有新权益实例的归档历史。运行测试 schema 当前 267 表、2375 条种子/DML。
+
+### V474：旧入口接续原生发行与core展示映射
+
+`ent_legacy_coupon_issue`归pay：按唯一兼容操作号和唯一原生batch固定关联来源模板、原生版本、真实core受众快照、调用人及TARGETED/CENTER模式；PREPARED只续原批次，COMPLETED保存实际grant/instance及完成回执。先锁模板与策略，真实账号的逐人计数先ensure再当前读，避免MySQL缺行gap锁；预算整批拒绝时全部预占回滚。
+
+`pmt_pay_coupon_projection`归core：唯一(tenant,instance)保存真实支付完成的grant、实际持有人、原模板来源、原生版本、迁移批次/planHash及真实发放时刻；不是权益账户，不保存余次或写冻结旧券表。核对永久core来源决定后claim唯一键再当前读，同实例异事实拒绝。旧身份解析和券包合并该投影，实余额/效期继续读pay。
+
+正常发放沿用原生grant到账事件。LEGACY_COUPON_ISSUE_COMPLETED只驱动core展示映射，不重复发到账通知。恢复扫描PREPARED原号，不重新解析受众或调用旧发行器；新恢复任务受总job开关及独立开关控制，默认关闭。
+
+V474完整69表DDL已在隔离MySQL执行通过（`/tmp/ent-legacy-issue-schema-native.log`），该版本冻结；后续追加V475+。当前运行269表、2375条种子/DML，基础47及支撑22=core27/pay42。

@@ -44,7 +44,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -149,7 +148,7 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
             var version = new PmtActivityVersion(); audit(version, actor);
-            version.setVersionNo("AV" + UUID.randomUUID().toString().replace("-", ""));
+            version.setVersionNo(BizKey.next(BizKey.ACTIVITY_VERSION));
             int versionIndex = versions.lastIndex(actor.tenantNo(), activityNo) + 1;
             version.setActivityNo(activityNo); version.setVersionIndex(versionIndex); version.setSchemaVersion(1);
             version.setCurrency(definition.currency()); version.setScheduleType(definition.schedule().type());

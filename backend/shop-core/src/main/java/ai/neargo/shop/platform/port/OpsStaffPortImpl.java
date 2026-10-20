@@ -3,6 +3,9 @@ package ai.neargo.shop.platform.port;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.common.security.rbac.Permissions;
 import ai.neargo.shop.platform.entity.SysOpsStaff;
+import ai.neargo.shop.platform.StaffScopes;
+import ai.neargo.shop.auth.ScopeDim;
+import ai.neargo.shop.spi.entitlement.ContractChecks;
 import ai.neargo.shop.platform.mapper.PlatformMappers.StaffMapper;
 import ai.neargo.shop.platform.perm.RolePermResolver;
 import ai.neargo.shop.spi.platform.OpsStaffPort;
@@ -48,6 +51,18 @@ public class OpsStaffPortImpl implements OpsStaffPort {
                         })
                         .map(SysOpsStaff::getStaffNo)
                         .toList());
+    }
+
+    @Override public List<String> staffNosWithPermForEntity(String permCode,String entityNo) {
+        ContractChecks.id(entityNo);
+        return DataScopeContext.executeWithoutScope(() -> staffMapper.selectList(Wrappers.<SysOpsStaff>lambdaQuery()
+                .eq(SysOpsStaff::getTenantNo,"MAIN").eq(SysOpsStaff::getStatus,"ACTIVE")).stream().filter(staff -> {
+                    var perms=rolePermResolver.of(readRoles(staff.getRoles()));
+                    if(perms==null || perms.isEmpty() || !Permissions.matches(perms,permCode)) return false;
+                    var scope=StaffScopes.of(staff.getMerchantNo(),staff.getCommunityNo(),staff.getPickupNo(),perms);
+                    return scope.all() || scope.rules().stream().anyMatch(rule -> ScopeDim.MERCHANT.equals(rule.dim())
+                            && rule.refs()!=null && rule.refs().contains(entityNo));
+                }).map(SysOpsStaff::getStaffNo).distinct().toList());
     }
 
     /** roles 列存的是 JSON 数组（如 {@code ["CS","ADMIN"]}），坏数据当无角色处理。 */

@@ -17,6 +17,8 @@ import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.AssetQuery;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.AssetState;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.DetailQuery;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.UsageQuery;
+import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.UsageHistoryQuery;
+import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.UsageItem;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.AllowanceQuery;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.EntitlementItem;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.EntitlementDetail;
@@ -70,6 +72,18 @@ public class MpEntitlementController {
     public EntitlementDetail detail(@PathVariable String instanceNo, @RequestParam(required = false) String entityNo) {
         var ctx = context("asset-detail", instanceNo);
         return assets.detail(ctx, new DetailQuery(ctx.actorNo(), entityNo, instanceNo, null));
+    }
+    @GetMapping("/mp/entitlement-usage")
+    public CursorPage<UsageItem> historyList(@RequestParam(required=false) String entityNo,
+            @RequestParam(required=false) String cursor,@RequestParam(defaultValue="20") int size) {
+        var ctx=context("usage-history-all","usage-history-all");
+        return assets.history(ctx,new UsageHistoryQuery(ctx.actorNo(),entityNo,null,cursor,size));
+    }
+    @GetMapping("/mp/entitlements/{instanceNo}/usage")
+    public CursorPage<UsageItem> history(@PathVariable String instanceNo,@RequestParam(required=false) String entityNo,
+            @RequestParam(required=false) String cursor,@RequestParam(defaultValue="20") int size) {
+        var ctx=context("usage-history",instanceNo);
+        return assets.history(ctx,new UsageHistoryQuery(ctx.actorNo(),entityNo,instanceNo,cursor,size));
     }
     @GetMapping("/mp/entitlement-usage/{usageNo}")
     public UsageDetail usage(@PathVariable String usageNo, @RequestParam(required = false) String entityNo) {

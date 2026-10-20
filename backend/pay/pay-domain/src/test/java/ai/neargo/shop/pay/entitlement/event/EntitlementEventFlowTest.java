@@ -17,6 +17,7 @@ import ai.neargo.shop.pay.entitlement.entity.PayEntOutbox;
 import ai.neargo.shop.pay.mapper.entitlement.PayEntInboxMapper;
 import ai.neargo.shop.pay.mapper.entitlement.PayEntOutboxMapper;
 import ai.neargo.shop.spi.entitlement.EntitlementEvents;
+import ai.neargo.shop.spi.entitlement.PayEntitlementEventCodec;
 import ai.neargo.shop.spi.entitlement.PayEntitlementEventBridgePort;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -118,7 +119,7 @@ class EntitlementEventFlowTest {
         var json = new ObjectMapper();
         var event = new EntitlementEvents.EntitlementUseReversed("EVT-R", "RV-1", "EU-1", "U-1", "E-1", "S-1",
                 "I-1", 1, 100, "CNY", 1_797_000_000_000L);
-        var row = new PayEntOutbox(); row.setId(1L); row.setStatus("PENDING"); row.setAttempts(0);
+        var row = new PayEntOutbox(); row.setTenantNo("MAIN"); row.setVersion(0L); row.setId(1L); row.setStatus("PENDING"); row.setAttempts(0);
         row.setEventNo(event.eventNo()); row.setEventType(event.eventType()); row.setSchemaVersion(1);
         row.setAggregateNo(event.aggregateId()); row.setPayload(json.writeValueAsString(event));
         row.setPayloadHash(PayEntitlementEventPublisher.hash(event, row.getPayload()));
@@ -138,7 +139,7 @@ class EntitlementEventFlowTest {
         var json = new ObjectMapper();
         var event = new EntitlementEvents.EntitlementGranted("EVT-LOST", "G1", "U1", "M1", "V1", "TARGETED",
                 "B1", 1_797_000_000_000L);
-        var row = new PayEntOutbox(); row.setId(9L); row.setStatus("PENDING"); row.setAttempts(0);
+        var row = new PayEntOutbox(); row.setTenantNo("MAIN"); row.setVersion(0L); row.setId(9L); row.setStatus("PENDING"); row.setAttempts(0);
         row.setEventNo(event.eventNo()); row.setEventType(event.eventType()); row.setSchemaVersion(1);
         row.setAggregateNo(event.aggregateId()); row.setPayload(json.writeValueAsString(event));
         row.setPayloadHash(PayEntitlementEventPublisher.hash(event, row.getPayload()));
@@ -161,5 +162,30 @@ class EntitlementEventFlowTest {
         ObjectProvider<PayEntitlementOutboxRelay> provider = mock(ObjectProvider.class);
         when(provider.getIfAvailable()).thenReturn(relay);
         return provider;
+    }
+    @Test void exceptionEventUsesSharedWhitelistAndRejectsUnknownFailureKind() {
+        var json=new ObjectMapper();
+        var event=new EntitlementEvents.ExceptionOpened("EE1","EX1","M1","GRANT_DELIVERY","G1",1_797_000_000_000L);
+        var encoded=PayEntitlementEventCodec.encode(event,json);
+        assertThat(PayEntitlementEventCodec.decode(encoded,json)).isEqualTo(event);
+        assertThat(encoded.payload()).doesNotContain("paidFactRef","commandSnapshot");
+        assertThatThrownBy(() -> PayEntitlementEventCodec.encode(new EntitlementEvents.ExceptionOpened(
+                "EE1","EX1","M1","UNKNOWN","G1",event.occurredAt()),json)).isInstanceOf(IllegalArgumentException.class);
+    }
+    @Test void exceptionEventIsForwardedFromTheDurablePayOutbox() {
+        var json=new ObjectMapper();
+        var event=new EntitlementEvents.ExceptionOpened("EE1","EX1","M1","GRANT_DELIVERY","G1",1_797_000_000_000L);
+        var row=new PayEntOutbox(); row.setTenantNo("MAIN"); row.setVersion(0L); row.setId(31L); row.setStatus("PENDING"); row.setAttempts(0);
+        row.setEventNo(event.eventNo()); row.setEventType(event.eventType()); row.setSchemaVersion(1);
+        row.setAggregateNo(event.aggregateId()); row.setPayload(json.writeValueAsString(event));
+        row.setPayloadHash(PayEntitlementEventPublisher.hash(event,row.getPayload()));
+        var mapper=mock(PayEntOutboxMapper.class); var bus=mock(OutboxEventBus.class);
+        when(mapper.findByEventNo("MAIN",event.eventNo())).thenReturn(row);
+        var relay=new PayEntitlementOutboxRelay(mapper,bus,json);
+        try {
+            relay.relay(event.eventNo());
+            verify(bus).publish(event.eventNo(),event);
+            verify(mapper).markForwarded(eq(31L),eq("MAIN"),any());
+        } finally { relay.shutdown(); }
     }
 }

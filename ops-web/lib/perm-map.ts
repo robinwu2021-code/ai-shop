@@ -193,6 +193,11 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
    * 而财务角色明明持有这个码。界面上看不出任何异常。
    */
   "finance:recon:read": "finance:recon:read",
+  "ops:pay:ent:read": "ops:pay:ent:read",
+  "ops:pay:ent:recover": "ops:pay:ent:recover",
+  "ops:pay:ent:verify": "ops:pay:ent:verify",
+  "ops:pay:ent:freeze": "ops:pay:ent:freeze",
+
   "finance:settle:read": "finance:settle:read",
   "iam:staff:read": "iam:staff:read",
   "content:material:read": "content:material:read",

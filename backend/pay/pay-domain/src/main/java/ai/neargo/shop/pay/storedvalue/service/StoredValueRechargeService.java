@@ -12,4 +12,5 @@ public interface StoredValueRechargeService {
     RechargeView submit(EntitlementContext context, String entityNo, SubmitRecharge command);
     RechargeView receive(EntitlementContext context, String entityNo, ReceiveRecharge command);
     RechargeView cancel(EntitlementContext context, String entityNo, CancelRecharge command);
+    RechargeView query(EntitlementContext context, String entityNo, String rechargeNo);
 }

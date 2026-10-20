@@ -16,6 +16,7 @@ import java.time.format.DateTimeFormatter;
 public final class BizKey {
 
     /** 前缀是语义的一部分：看到 {@code SUB} 就知道这是子订单，不用去查表。 */
+    public static final String ACTIVITY_VERSION = "AV";
     public static final String ORDER = "SO";
     public static final String SUB_ORDER = "SUB";
     public static final String AFTER_SALE = "AS";

@@ -38,6 +38,7 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("test")
 class CardProductBindingFlowTest {
     @Autowired CardProductBindingService bindings;
+    @Autowired ai.neargo.shop.spi.product.CardProductSalePort saleDefinitions;
     @Autowired OrderService orders;
     @Autowired EntitlementCatalogService catalog;
     @Autowired JdbcTemplate jdbc;
@@ -105,6 +106,10 @@ class CardProductBindingFlowTest {
         var second = bindings.bind(ctx, entity, new ProductEntitlementBinding(goods, sku, 1, v2.versionNo(), 1), id());
         assertThat(second.productRevision()).isEqualTo(2);
         assertThat(bindings.bind(ctx, entity, c, key)).isEqualTo(first);
+        var frozen=saleDefinitions.saleDefinition(entity,goods,sku).orElseThrow();
+        assertThat(frozen.templateVersionNo()).isEqualTo(v2.versionNo());
+        assertThat(json.readValue(frozen.ruleSnapshot(),EntitlementDefinition.class).kind()).isEqualTo("PAID_CARD");
+        assertThat(frozen.unitsPerItem()).isEqualTo(1);
         assertThatThrownBy(() -> bindings.bind(ctx, entity,
                 new ProductEntitlementBinding(goods, sku, 1, v2.versionNo(), 1), key)).isInstanceOf(BizException.class);
         assertThatThrownBy(() -> bindings.bind(ctx, entity, c, id())).isInstanceOf(BizException.class);

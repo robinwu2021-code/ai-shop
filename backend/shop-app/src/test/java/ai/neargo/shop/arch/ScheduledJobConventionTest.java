@@ -11,6 +11,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -133,6 +134,7 @@ class ScheduledJobConventionTest {
         // 声明可以写在任何模块里（进销存那三个的声明在 shop-app/invbridge，
         // 因为 shop-inventory 刻意不依赖 job-api —— 它要能独立交付）
         StringBuilder allSources = new StringBuilder();
+        Set<String> localDeclarations=new java.util.HashSet<>();
         for (Path module : Files.list(BACKEND).filter(Files::isDirectory).toList()) {
             Path src = module.resolve("src/main/java");
             if (!Files.isDirectory(src)) {
@@ -140,14 +142,19 @@ class ScheduledJobConventionTest {
             }
             try (var files = Files.walk(src)) {
                 for (Path f : files.filter(p -> p.toString().endsWith(".java")).toList()) {
-                    allSources.append(stripComments(Files.readString(f, StandardCharsets.UTF_8)));
+                    String source=stripComments(Files.readString(f,StandardCharsets.UTF_8));
+                    allSources.append(source);
+                    if(Pattern.compile("new\\s+JobDeclaration\\(\\s*name\\(\\)\\s*,").matcher(source).find()) {
+                        Matcher identity=Pattern.compile("String\\s+name\\(\\)\\s*\\{\\s*return\\s+\"([^\"]+)\"\\s*;").matcher(source);
+                        if(identity.find()) localDeclarations.add(identity.group(1));
+                    }
                 }
             }
         }
         String declared = allSources.toString();
 
         List<String> undeclared = locks.stream()
-                .filter(n -> !declared.contains("JobDeclaration(\"" + n + "\"")
+                .filter(n -> !localDeclarations.contains(n) && !declared.contains("JobDeclaration(\"" + n + "\"")
                         && !declared.contains("daily(\"" + n + "\""))
                 .toList();
         assertThat(undeclared)

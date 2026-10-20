@@ -26,4 +26,20 @@ class ActivityPresetExecutionPolicyTest {
                 null, null, null, null, null, 1, "USD");
         assertTrue(policy.missing(actor, usd).contains("ORDER_CURRENCY_UNSUPPORTED"));
     }
+    @Test void rechargeExecutorsAdmitOnlyTheFiveSameSchemaPresets() {
+        for(String code:List.of("AP008","AP024","AP030","AP034","AP037")) {
+            assertTrue(policy.missing(actor,code).isEmpty());
+            var wrongScene=new UnifiedActivityDefinition("wrong","ORDER",code,1,null,null,null,null,null,null,1,"CNY");
+            assertTrue(policy.missing(actor,wrongScene).contains("PRESET_EXECUTOR"));
+        }
+        assertTrue(policy.missing(actor,"AP031").contains("PRESET_EXECUTOR"));
+    }
+    @Test void paidProductsAreExecutableRecommendationsButNeverUnifiedActivities() {
+        for (String code : List.of("EP001", "EP002", "EP003", "EP004", "EP005", "EP006")) {
+            assertTrue(policy.missing(actor, code).isEmpty());
+            var invalid = new UnifiedActivityDefinition("card", "ENTITLEMENT_GRANT", code, 1,
+                    null, null, null, null, null, null, 1, "CNY");
+            assertTrue(policy.missing(actor, invalid).contains("PRESET_EXECUTOR"));
+        }
+    }
 }

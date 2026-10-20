@@ -27,6 +27,8 @@ public class EntitlementQueryPortImpl implements EntitlementQueryPort {
         return service.usage(c, q);
     }
     @Override
+    public CursorPage<UsageItem> history(EntitlementContext c,UsageHistoryQuery q) { return service.history(c,q); }
+    @Override
     public AllowanceView allowances(EntitlementContext c, AllowanceQuery q) {
         return service.allowances(c, q);
     }

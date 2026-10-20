@@ -35,6 +35,7 @@ import org.springframework.test.context.ActiveProfiles;
 /** A real HTTP client reads actual core orders, users, stores and durable authorizations, never fake source facts. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "shop.core.entitlement.authorization.enabled=true", "shop.services.internal-token=core-rpc-test",
+        "shop.core.entitlement.migration-watermark-key=core-rpc-migration-key-at-least-thirty-two-characters",
         "spring.datasource.url=jdbc:h2:mem:ent-core-rpc;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"})
 @ActiveProfiles("test")
 class EntitlementCoreFactsHttpFlowTest {
@@ -127,6 +128,39 @@ class EntitlementCoreFactsHttpFlowTest {
         assertThat(unknown.status()).isEqualTo(SourceDecisionPort.AuthorizationState.UNKNOWN);
         assertThat(unknown.userNo()).isNull();
     }
+    @Autowired ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService sourceFences;
+    @Test void frozenLegacyEvidenceUsesAuthenticatedHttpAndCannotOutliveItsSourceFence() {
+        String template="EX"+UUID.randomUUID().toString();
+        jdbc.update("INSERT INTO pmt_coupon(coupon_no,title,benefit_mode,benefit_value,funder,entity_no,tenant_no,"
+                + "created_at,updated_at) VALUES(?,'rpc export','CASH',100,'MERCHANT',?,'MAIN',CURRENT_TIMESTAMP,"
+                + "CURRENT_TIMESTAMP)",template,entity);
+        var source=new ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceIdentity(
+                ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem.PMT,
+                ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceKind.TEMPLATE,template);
+        String batch="B"+UUID.randomUUID();
+        var draining=sourceFences.transition(context,source,new ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService.Command(
+                ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService.Action.BEGIN_DRAIN,batch,0,"rpc rehearsal","D"+batch));
+        var frozen=sourceFences.transition(context,source,new ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService.Command(
+                ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService.Action.FREEZE,batch,draining.revision(),
+                "rpc rehearsal","F"+batch));
+        var q=new ai.neargo.shop.spi.entitlement.LegacyCouponFrozenSnapshotPort.Query(source,batch,frozen.frozenRevision(),frozen.watermark());
+        var request=new EntitlementCoreInternal.FrozenSnapshotQuery(context,q);
+        var snapshot=api("core-rpc-test").frozenLegacySnapshot(request);
+        assertThat(snapshot.watermark()).isEqualTo(frozen.watermark());
+        assertThat(snapshot.entityNo()).isEqualTo(entity);
+        assertThat(snapshot.payload()).contains("LEGACY_SOURCE_V1");
+        var manifest=api("core-rpc-test").frozenLegacyManifest(request);
+        assertThat(json.readTree(manifest.payload()).path("manifestVersion").asInt()).isEqualTo(2);
+        assertThatThrownBy(() -> api("wrong").frozenLegacyManifest(request))
+                .isInstanceOfSatisfying(ServiceCallException.class,e -> assertThat(e.statusCode()).isEqualTo(401));
+        assertThatThrownBy(() -> api("wrong").frozenLegacySnapshot(request))
+                .isInstanceOfSatisfying(ServiceCallException.class,e -> assertThat(e.statusCode()).isEqualTo(401));
+        sourceFences.transition(context,source,new ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService.Command(
+                ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService.Action.ABORT,batch,frozen.revision(),
+                "rehearsal ends","A"+batch));
+        assertThatThrownBy(() -> api("core-rpc-test").frozenLegacySnapshot(request))
+                .isInstanceOfSatisfying(ServiceCallException.class,e -> assertThat(e.statusCode()).isEqualTo(409));
+    }
     @Test void eventHandoffAcknowledgesOnlyDurableIdenticalFacts() {
         String eventNo = UUID.randomUUID().toString();
         var event = new EntitlementEvents.EntitlementGranted(eventNo, "G1", user, entity, "V1", "TARGETED",
@@ -150,4 +184,16 @@ class EntitlementCoreFactsHttpFlowTest {
         assertThatThrownBy(() -> api("wrong").receiveEvent(wire))
                 .isInstanceOfSatisfying(ServiceCallException.class, e -> assertThat(e.statusCode()).isEqualTo(401));
     }
+    @Test void unknownLegacyCheckoutIsNotAnAbortDecisionOverHttp() {
+        var request=new EntitlementCoreInternal.LegacyCheckoutQuery(context,"MISSING-CHECKOUT");
+        assertThatThrownBy(()->api("core-rpc-test").legacyCheckoutSource(request))
+                .isInstanceOfSatisfying(ServiceCallException.class,e->assertThat(e.statusCode()).isEqualTo(404));
+        assertThatThrownBy(()->api("core-rpc-test").legacyCheckoutDecision(request))
+                .isInstanceOfSatisfying(ServiceCallException.class,e->assertThat(e.statusCode()).isEqualTo(404));
+        assertThatThrownBy(()->api("core-rpc-test").legacyCheckoutReversal(request))
+                .isInstanceOfSatisfying(ServiceCallException.class,e->assertThat(e.statusCode()).isEqualTo(404));
+        assertThatThrownBy(()->api("wrong").legacyCheckoutDecision(request))
+                .isInstanceOfSatisfying(ServiceCallException.class,e->assertThat(e.statusCode()).isEqualTo(401));
+    }
+
 }

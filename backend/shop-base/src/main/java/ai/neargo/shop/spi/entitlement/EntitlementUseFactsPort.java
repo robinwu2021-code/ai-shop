@@ -17,7 +17,8 @@ public interface EntitlementUseFactsPort {
             if (operation.status() == EntitlementUsePort.State.HELD
                     || operation.status() == EntitlementUsePort.State.COMMITTED) {
                 ContractChecks.present(command);
-                ContractChecks.present(rule);
+                if (command.assetKind() != EntitlementUsePort.AssetKind.STORED_VALUE) ContractChecks.present(rule);
+                else ContractChecks.require(rule == null && couponAllocations.isEmpty());
                 ContractChecks.hash(orderSnapshotHash);
             }
         }

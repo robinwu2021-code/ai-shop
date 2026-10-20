@@ -10,6 +10,24 @@ import org.springframework.web.service.annotation.PostExchange;
 
 /** Reverse facts and durable event handoff, shared by the real main-app server and pay-svc client. */
 public interface CoreEntitlementInternalApi {
+    @PostExchange(EntitlementCoreInternal.LEGACY_COUPON_AUDIENCE)
+    LegacyCouponAudiencePort.Fact legacyCouponAudience(@RequestBody EntitlementCoreInternal.LegacyAudience request);
+    @PostExchange(EntitlementCoreInternal.HISTORY_RETURN_SOURCE)
+    LegacyCouponHistoricalReturnSourcePort.Fact historicalReturnSource(@RequestBody EntitlementCoreInternal.HistoricalReturnQuery request);
+    @PostExchange(EntitlementCoreInternal.HISTORY_RETURN_ACK)
+    LegacyCouponHistoricalReturnPort.Receipt historicalReturnAck(@RequestBody EntitlementCoreInternal.HistoricalReturnAck request);
+    @PostExchange(EntitlementCoreInternal.LEGACY_MIGRATION_COMMIT)
+    EntitlementCoreInternal.MigrationCommitReply legacyMigrationCommit(@RequestBody EntitlementCoreInternal.MigrationCommitQuery request);
+    @PostExchange(EntitlementCoreInternal.LEGACY_CHECKOUT_SOURCE)
+    LegacyCouponCheckoutSourcePort.CheckoutFact legacyCheckoutSource(@RequestBody EntitlementCoreInternal.LegacyCheckoutQuery request);
+    @PostExchange(EntitlementCoreInternal.LEGACY_CHECKOUT_DECISION)
+    EntitlementCoreInternal.LegacyCheckoutDecision legacyCheckoutDecision(@RequestBody EntitlementCoreInternal.LegacyCheckoutQuery request);
+    @PostExchange(EntitlementCoreInternal.LEGACY_CHECKOUT_REVERSAL)
+    EntitlementCoreInternal.LegacyCheckoutReversal legacyCheckoutReversal(@RequestBody EntitlementCoreInternal.LegacyCheckoutQuery request);
+    @PostExchange(EntitlementCoreInternal.FROZEN_LEGACY_MANIFEST)
+    LegacyCouponFrozenSnapshotPort.Snapshot frozenLegacyManifest(@RequestBody EntitlementCoreInternal.FrozenSnapshotQuery request);
+    @PostExchange(EntitlementCoreInternal.FROZEN_LEGACY_SNAPSHOT)
+    LegacyCouponFrozenSnapshotPort.Snapshot frozenLegacySnapshot(@RequestBody EntitlementCoreInternal.FrozenSnapshotQuery request);
     @PostExchange(EntitlementCoreInternal.USE_SOURCE)
     EntitlementUseSourcePort.UseSourceFact useSource(@RequestBody SourceQuery request);
     @PostExchange(EntitlementCoreInternal.SOURCE_QUERY)
@@ -28,6 +46,9 @@ public interface CoreEntitlementInternalApi {
     @PostExchange(EntitlementCoreInternal.RECHARGE_BY_NO)
     SourceFact rechargeByNo(
             @RequestBody EntitlementCoreInternal.RechargeQuery request);
+
+    @PostExchange(EntitlementCoreInternal.SALE_SOURCE)
+    EntitlementSaleSourcePort.SaleSourceFact saleSource(@RequestBody EntitlementCoreInternal.SaleSourceQuery request);
 
     @PostExchange(EntitlementEventInternal.RECEIVE)
     EntitlementEventInternal.Accepted receiveEvent(@RequestBody EntitlementEventInternal.Envelope event);

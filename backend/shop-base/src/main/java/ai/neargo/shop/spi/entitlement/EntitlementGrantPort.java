@@ -28,7 +28,7 @@ public interface EntitlementGrantPort {
             ContractChecks.require(quantity > 0);
             ContractChecks.hash(benefitSnapshotHash);
             ContractChecks.optionalId(paidFactRef);
-            if ("PAID_ORDER".equals(sourceRef.sourceType())) {
+            if ("PAID_ORDER".equals(sourceRef.sourceType()) || "PAID_CARD_ORDER".equals(sourceRef.sourceType())) {
                 ContractChecks.id(paidFactRef);
                 ContractChecks.require(sourceRef.sourceLineNo() != null && sourceRef.unitIndex() != null
                         && sourceRef.entitlementIndex() != null && quantity == 1 && permit == null);
@@ -37,6 +37,15 @@ public interface EntitlementGrantPort {
                 ContractChecks.require(permit.sourceRef().equals(sourceRef)
                         && permit.userNo().equals(recipientUserNo) && permit.entityNo().equals(entityNo));
             }
+        }
+
+        /** Preserve the persisted sale source key while applying the catalog's paid-order issue policy. */
+        public String issueMode() {
+            return switch (sourceRef.sourceType()) {
+                case "PAID_CARD_ORDER" -> "PAID_ORDER";
+                case "RECHARGE" -> "ACTIVITY";
+                default -> sourceRef.sourceType();
+            };
         }
     }
 

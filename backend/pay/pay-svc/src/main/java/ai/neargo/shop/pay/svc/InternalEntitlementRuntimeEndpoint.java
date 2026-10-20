@@ -110,6 +110,11 @@ public class InternalEntitlementRuntimeEndpoint {
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
         return InternalServiceResponses.invoke(token, given, () -> queries.detail(r.context(), r.query()));
     }
+    @PostMapping(PayInternalPaths.ENT_QUERY_HISTORY)
+    public ResponseEntity<?> entHistory(@RequestBody PayEntitlementRequests.UsageHistory r,
+            @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given) {
+        return InternalServiceResponses.invoke(token,given,()->queries.history(r.context(),r.query()));
+    }
     @PostMapping(PayInternalPaths.ENT_QUERY_USAGE)
     public ResponseEntity<?> entUsage(@RequestBody PayEntitlementRequests.Usage r,
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {

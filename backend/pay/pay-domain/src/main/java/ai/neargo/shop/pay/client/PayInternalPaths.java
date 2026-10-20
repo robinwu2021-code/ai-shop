@@ -8,6 +8,16 @@ package ai.neargo.shop.pay.client;
  * 而测试默认装配的是进程内实现，那个 404 在本地根本碰不到。
  */
 public final class PayInternalPaths {
+    public static final String LEGACY_TEMPLATE_ARCHIVE="/internal/pay/entitlement/legacy-template/archive";
+    public static final String LEGACY_ISSUE_CREATE="/internal/pay/entitlement/legacy-issue/create";
+    public static final String LEGACY_ISSUE_GET="/internal/pay/entitlement/legacy-issue/get";
+    public static final String LEGACY_ISSUE_RESUME="/internal/pay/entitlement/legacy-issue/resume";
+    public static final String LEGACY_ISSUE_LIST="/internal/pay/entitlement/legacy-issue/list";
+    public static final String LEGACY_TEMPLATE_GET="/internal/pay/entitlement/legacy-template/get";
+    public static final String LEGACY_TEMPLATE_STATUS="/internal/pay/entitlement/legacy-template/status";
+    public static final String LEGACY_TEMPLATE_SAVE="/internal/pay/entitlement/legacy-template/save";
+    public static final String HISTORY_RETURN_REVERSE="/internal/pay/entitlement/migration/history-return/reverse";
+    public static final String HISTORY_RETURN_QUERY="/internal/pay/entitlement/migration/history-return/query";
 
     public static final String FEE_RULES = "/internal/pay/fee-rules";
     public static final String FEE_RULES_EFFECTIVE = "/internal/pay/fee-rules/effective";
@@ -40,6 +50,7 @@ public final class PayInternalPaths {
     public static final String ENT_USE_QUERY = "/internal/pay/entitlement/use/query";
     public static final String ENT_QUERY_MINE = "/internal/pay/entitlement/query/mine";
     public static final String ENT_QUERY_DETAIL = "/internal/pay/entitlement/query/detail";
+    public static final String ENT_QUERY_HISTORY = "/internal/pay/entitlement/query/history";
     public static final String ENT_QUERY_USAGE = "/internal/pay/entitlement/query/usage";
     public static final String ENT_QUERY_ALLOWANCES = "/internal/pay/entitlement/query/allowances";
     public static final String ENT_QUERY_ACTIVATION = "/internal/pay/entitlement/query/activation";
@@ -62,5 +73,56 @@ public final class PayInternalPaths {
     public static final String SV_RECEIVE = "/internal/pay/stored-value/receive";
     public static final String SV_CANCEL = "/internal/pay/stored-value/cancel";
     public static final String SV_CREDIT = "/internal/pay/stored-value/credit";
+    public static final String SV_QUERY = "/internal/pay/stored-value/query/recharge";
+    public static final String SV_BALANCE = "/internal/pay/stored-value/query/balance";
+    public static final String SV_STORES = "/internal/pay/stored-value/query/stores";
+    public static final String SV_CONSUMPTIONS = "/internal/pay/stored-value/query/consumptions";
+    public static final String SV_USE_QUOTE = "/internal/pay/stored-value/use/quote";
+
+    public static final String SALE_RESERVE = "/internal/pay/entitlement/sale/reserve";
+    public static final String SALE_RELEASE = "/internal/pay/entitlement/sale/release";
+    public static final String SALE_QUERY = "/internal/pay/entitlement/sale/query";
+    public static final String EXCEPTIONS_RETRY_EVENT="/internal/pay/entitlement/exceptions/retry-event";
+    public static final String EXCEPTIONS_DEAD_LETTERS="/internal/pay/entitlement/exceptions/dead-letters";
+    public static final String EXCEPTIONS_LIST="/internal/pay/entitlement/exceptions/list";
+    public static final String EXCEPTIONS_GET="/internal/pay/entitlement/exceptions/get";
+    public static final String EXCEPTIONS_RETRY="/internal/pay/entitlement/exceptions/retry-grant";
+    public static final String EXCEPTIONS_SOURCE="/internal/pay/entitlement/exceptions/query-source";
+    public static final String RECON_CHECK="/internal/pay/entitlement/reconciliations/check";
+    public static final String RECON_LIST="/internal/pay/entitlement/reconciliations/list";
+    public static final String RECON_GET="/internal/pay/entitlement/reconciliations/get";
+    public static final String RECON_DIFFS="/internal/pay/entitlement/reconciliations/differences";
+    public static final String EXCEPTIONS_ACTIONS="/internal/pay/entitlement/exceptions/actions";
+    public static final String LIFECYCLE_FREEZE="/internal/pay/entitlement/lifecycle/freeze";
+    public static final String LIFECYCLE_STATE="/internal/pay/entitlement/lifecycle/state";
+    public static final String SV_CAPABILITIES="/internal/pay/stored-value/capabilities";
+    public static final String LIFECYCLE_EXPIRE="/internal/pay/entitlement/lifecycle/expire";
+    public static final String MARKETING_USAGE="/internal/pay/entitlement/marketing/usage-effects";
+    public static final String OWNER_RESOLVE="/internal/pay/entitlement/owners/resolve";
+    public static final String ENT_CAPABILITIES = "/internal/pay/entitlement/capabilities";
+    public static final String LIFECYCLE_REMINDERS = "/internal/pay/entitlement/lifecycle/expiring-soon";
+    public static final String EXCEPTIONS_LIST_ACROSS = "/internal/pay/entitlement/exceptions/list-scoped";
+    public static final String MIGRATION_IMPORT="/internal/pay/entitlement/migration/import";
+    public static final String MIGRATION_IMPORT_GET="/internal/pay/entitlement/migration/import/get";
+    public static final String MIGRATION_PLAN="/internal/pay/entitlement/migration/plan";
+    public static final String MIGRATION_PLAN_PREPARED="/internal/pay/entitlement/migration/plan/prepared";
+    public static final String MIGRATION_PLAN_GET="/internal/pay/entitlement/migration/plan/get";
+    public static final String MIGRATION_PLAN_VERIFY="/internal/pay/entitlement/migration/plan/verify";
+    public static final String MIGRATION_STAGE="/internal/pay/entitlement/migration/stage";
+    public static final String MIGRATION_STAGE_GET="/internal/pay/entitlement/migration/stage/get";
+    public static final String MIGRATION_STAGE_VERIFY="/internal/pay/entitlement/migration/stage/verify";
+    public static final String MIGRATION_STAGE_MANIFEST="/internal/pay/entitlement/migration/stage-manifest";
+    public static final String MIGRATION_STAGE_ASSESS="/internal/pay/entitlement/migration/stage/assess";
+    public static final String MIGRATION_ALIAS_COMPARE="/internal/pay/entitlement/migration/alias/compare";
+    public static final String MIGRATION_ALIAS_RECOGNIZE="/internal/pay/entitlement/migration/alias/recognize";
+    public static final String MIGRATION_ALIAS_GET="/internal/pay/entitlement/migration/alias/get";
+    public static final String LEGACY_COUPON_SNAPSHOT="/internal/pay/entitlement/legacy-coupons/snapshot";
+    public static final String LEGACY_COUPON_ESTIMATE="/internal/pay/entitlement/legacy-coupons/estimate";
+    public static final String LEGACY_COUPON_QUOTE="/internal/pay/entitlement/legacy-coupons/quote";
+    public static final String LEGACY_COUPON_PREPARE="/internal/pay/entitlement/legacy-coupons/prepare";
+    public static final String LEGACY_COUPON_COMMIT="/internal/pay/entitlement/legacy-coupons/commit";
+    public static final String LEGACY_COUPON_RELEASE="/internal/pay/entitlement/legacy-coupons/release";
+    public static final String LEGACY_COUPON_REVERSE="/internal/pay/entitlement/legacy-coupons/reverse";
+    public static final String LEGACY_COUPON_QUERY="/internal/pay/entitlement/legacy-coupons/query";
 
 }

@@ -1,4 +1,8 @@
 package ai.neargo.shop.config;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import ai.neargo.shop.auth.ApiAuthEntryPoint;
@@ -109,8 +113,8 @@ public class SecurityConfig {
     private String extraOrigins = "";
 
     @Bean
-    org.springframework.web.cors.CorsConfigurationSource corsSource() {
-        var cfg = new org.springframework.web.cors.CorsConfiguration();
+    CorsConfigurationSource corsSource() {
+        var cfg = new CorsConfiguration();
         /*
          * 开发端口 + 生产域名 + 额外配置的（`shop.cors.extra-origins`，逗号分隔）。
          * 第三项留给将来换域名或加二级域名时**不必改代码**，
@@ -138,7 +142,7 @@ public class SecurityConfig {
         cfg.setAllowedHeaders(java.util.List.of("*"));
         cfg.setAllowCredentials(true);
         cfg.setMaxAge(3600L);
-        var src = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
+        var src = new UrlBasedCorsConfigurationSource();
         src.registerCorsConfiguration("/**", cfg);
         return src;
     }

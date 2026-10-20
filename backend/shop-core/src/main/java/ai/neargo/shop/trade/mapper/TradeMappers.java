@@ -62,6 +62,21 @@ public final class TradeMappers {
     }
 
     public interface CardSaleSnapshotMapper extends BaseMapper<OrdCardSaleSnapshot> {
+        @Select("SELECT DISTINCT s.order_no FROM ord_card_sale_snapshot s JOIN ord_order o "
+                + "ON o.tenant_no=s.tenant_no AND o.order_no=s.order_no WHERE s.tenant_no=#{tenant} "
+                + "AND s.deleted=0 AND o.deleted=0 AND s.delivery_status='PENDING' "
+                + "AND o.status IN ('PAID','CANCELLED','CLOSED') AND s.order_no > #{after} "
+                + "ORDER BY s.order_no LIMIT #{limit}")
+        java.util.List<String> pendingDelivery(@Param("tenant") String tenant,@Param("after") String after,
+                                               @Param("limit") int limit);
+        @Update("UPDATE ord_card_sale_snapshot SET delivery_status='ACKNOWLEDGED',version=version+1,"
+                + "updated_at=#{at},updated_by=#{actor} WHERE tenant_no=#{tenant} AND order_no=#{no} "
+                + "AND deleted=0 AND delivery_status='PENDING' AND EXISTS (SELECT 1 FROM ord_order o "
+                + "WHERE o.tenant_no=#{tenant} AND o.order_no=#{no} AND o.deleted=0 "
+                + "AND o.status IN ('PAID','CANCELLED','CLOSED'))")
+        int acknowledgeDelivery(@Param("tenant") String tenant,@Param("no") String no,
+                @Param("actor") String actor,@Param("at") java.time.LocalDateTime at);
+
         @Insert("INSERT IGNORE INTO ord_card_sale_snapshot (tenant_no,snapshot_no,source_key,order_no,sub_order_no,order_line_no,unit_index,entitlement_index,user_no,entity_no,store_no,goods_no,sku_no,template_version_no,unit_price_minor,currency,rule_snapshot,snapshot_hash,paid_fact_no,paid_at,version,deleted,created_at,updated_at,created_by,updated_by) VALUES (#{tenantNo},#{snapshotNo},#{sourceKey},#{orderNo},#{subOrderNo},#{orderLineNo},#{unitIndex},#{entitlementIndex},#{userNo},#{entityNo},#{storeNo},#{goodsNo},#{skuNo},#{templateVersionNo},#{unitPriceMinor},#{currency},#{ruleSnapshot},#{snapshotHash},NULL,NULL,0,0,#{createdAt},#{updatedAt},#{createdBy},#{updatedBy})")
         int insertIfAbsent(OrdCardSaleSnapshot row);
 

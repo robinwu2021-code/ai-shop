@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /** 真实pay事务/Mapper：草稿可改，发布快照不可改，幂等结果必须与业务同进退。 */
 @SpringBootTest(properties = {
         "shop.pay.entitlement.catalog.enabled=true",
-        "spring.datasource.url=jdbc:h2:mem:ent-catalog-on;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"
+        "spring.datasource.url=jdbc:h2:mem:ent-catalog-flow-on;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"
 })
 @ActiveProfiles("test")
 class EntitlementCatalogFlowTest {

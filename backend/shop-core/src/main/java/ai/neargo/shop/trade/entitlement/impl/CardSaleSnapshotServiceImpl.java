@@ -1,6 +1,12 @@
 package ai.neargo.shop.trade.entitlement.impl;
 
 import ai.neargo.shop.common.BizKey;
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.spi.entitlement.DecisionRef;
+import ai.neargo.shop.spi.entitlement.SourceRef;
+import ai.neargo.shop.trade.service.EntitlementSourceDecisionService;
 import ai.neargo.shop.trade.entitlement.CardSaleSnapshotPlan;
 import ai.neargo.shop.trade.entitlement.CardSaleSnapshotService;
 import ai.neargo.shop.trade.entity.OrdOrder;
@@ -14,16 +20,20 @@ import java.time.ZoneOffset;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 @Service
 public class CardSaleSnapshotServiceImpl implements CardSaleSnapshotService {
     private static final String TENANT = "MAIN";
     private final CardSaleSnapshotMapper snapshots;
     private final OrderMapper orders;
+    private final EntitlementSourceDecisionService decisions;
 
-    public CardSaleSnapshotServiceImpl(CardSaleSnapshotMapper snapshots, OrderMapper orders) {
+    public CardSaleSnapshotServiceImpl(CardSaleSnapshotMapper snapshots, OrderMapper orders,
+                                      EntitlementSourceDecisionService decisions) {
         this.snapshots = snapshots;
         this.orders = orders;
+        this.decisions = decisions;
     }
 
     @Override
@@ -61,6 +71,32 @@ public class CardSaleSnapshotServiceImpl implements CardSaleSnapshotService {
         LocalDateTime paidAt = LocalDateTime.ofInstant(Instant.ofEpochMilli(order.getPaidAt()), ZoneOffset.UTC);
         return snapshots.markPaidOnce(TENANT, orderNo, paidFactNo, paidAt,
                 LocalDateTime.now(ZoneOffset.UTC), "SYSTEM");
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public int recordCancelledFromOrder(String orderNo) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            var order = orders.selectOne(Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getTenantNo, TENANT)
+                    .eq(OrdOrder::getOrderNo, orderNo).last("FOR UPDATE"));
+            if (order == null || !List.of(OrdOrder.CANCELLED, OrdOrder.CLOSED).contains(order.getStatus())) return 0;
+            if (order.getPaidAt() != null && order.getPaidAt() > 0) throw BizException.of(ErrorCode.CONFLICT);
+            var rows = snapshots.selectList(Wrappers.<OrdCardSaleSnapshot>lambdaQuery()
+                    .eq(OrdCardSaleSnapshot::getTenantNo, TENANT).eq(OrdCardSaleSnapshot::getOrderNo, orderNo)
+                    .orderByAsc(OrdCardSaleSnapshot::getOrderLineNo, OrdCardSaleSnapshot::getUnitIndex,
+                            OrdCardSaleSnapshot::getEntitlementIndex));
+            for (var row : rows) {
+                var source = new SourceRef("CORE", "PAID_CARD_ORDER", row.getOrderNo(), row.getOrderLineNo(),
+                        row.getUnitIndex(), row.getEntitlementIndex(), 0);
+                if (!source.grantKey().equals(row.getSourceKey()) || row.getPaidAt() != null
+                        || row.getPaidFactNo() != null || !order.getUserNo().equals(row.getUserNo())
+                        || !order.getCurrency().equals(row.getCurrency())) throw BizException.of(ErrorCode.CONFLICT);
+                decisions.record(TENANT, source, "GRANT", DecisionRef.DecisionType.GRANT_ABORT, null, null,
+                        row.getUserNo(), row.getEntityNo(), row.getStoreNo(), row.getCurrency(), row.getUnitPriceMinor(),
+                        row.getSnapshotHash(), Instant.now());
+            }
+            return rows.size();
+        });
     }
 
     private OrdCardSaleSnapshot toEntity(CardSaleSnapshotPlan.Snapshot snapshot, LocalDateTime now) throws Exception {

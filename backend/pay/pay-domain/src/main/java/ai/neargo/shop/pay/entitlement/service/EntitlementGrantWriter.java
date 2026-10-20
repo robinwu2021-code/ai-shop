@@ -46,9 +46,11 @@ public class EntitlementGrantWriter {
     private final EntitlementIssuePolicyService policies;
     private final PayEntitlementEventPublisher events;
     private final ObjectMapper json;
+    private final EntitlementSaleReservationWriter sales;
     public EntitlementGrantWriter(EntGrantMapper grants, EntInstanceMapper instances, EntLedgerMapper ledger,
             EntitlementIssuePolicyService policies, PayEntitlementEventPublisher events,
-            EntitlementSourceFence fences, ObjectMapper json) {
+            EntitlementSourceFence fences, ObjectMapper json, EntitlementSaleReservationWriter sales) {
+        this.sales = sales;
         this.fences = fences;
         this.grants = grants; this.instances = instances; this.ledger = ledger;
         this.policies = policies; this.events = events; this.json = json;
@@ -68,8 +70,12 @@ public class EntitlementGrantWriter {
         var original = grants.lock(context.tenantNo(), c.grantNo());
         if (original == null || !original.getPayloadHash().equals(row.getPayloadHash())) conflict();
         if (!"PREPARING".equals(original.getStatus())) return view(original);
-        policies.reserve(scope(context, c.entityNo()), prepared.templateNo(), c.recipientUserNo(),
-                c.quantity(), prepared.exposureMinor());
+        if ("PAID_CARD_ORDER".equals(c.sourceRef().sourceType())) {
+            original.setReservationNo(sales.transfer(context, prepared));
+        } else {
+            policies.reserve(scope(context, c.entityNo()), prepared.templateNo(), c.recipientUserNo(),
+                    c.quantity(), prepared.exposureMinor());
+        }
         original.setStatus("PREPARED"); original.setUpdatedAt(now()); original.setUpdatedBy(context.actorNo());
         changed(grants.updateById(original));
         return view(original);

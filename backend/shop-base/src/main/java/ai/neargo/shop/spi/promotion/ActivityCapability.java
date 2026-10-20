@@ -2,6 +2,12 @@ package ai.neargo.shop.spi.promotion;
 
 /** Shared requirement vocabulary, not a declaration that any listed workflow is already implemented or enabled. */
 public enum ActivityCapability {
+    CARD_PRODUCT,
+    PAID_ORDER,
+    IDEMPOTENT_CARD_ISSUE,
+    ENTITLEMENT_LEDGER,
+    ATOMIC_USE_DEDUCT,
+    VALIDITY_POLICY,
     ACTIVITY_VERSION,
     ATOMIC_QUOTA,
     AUDIENCE,

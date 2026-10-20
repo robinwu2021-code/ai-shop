@@ -1,4 +1,6 @@
 package ai.neargo.shop.scenario;
+import java.util.HashSet;
+import java.util.Set;
 
 import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
@@ -225,7 +227,14 @@ class MerchantRoleFlowTest {
         assertThat(body).as("管人的码不下发 —— 与建角色时的拒绝同一份定义")
                 .doesNotContain("biz:store:admin");
         // 少一条就是「有个功能授不出去」，多一条就是提权：数量本身要钉住
-        assertThat(json.readTree(body).get("data").size()).isEqualTo(12);
+        var actual=new HashSet<String>();
+        for(var option:json.readTree(body).get("data")) actual.add(option.get("code").asText());
+        assertThat(actual).containsExactlyInAnyOrderElementsOf(Set.of(
+                "biz:receive","biz:verify","biz:ship","biz:order:view","biz:stock","biz:goods",
+                "biz:campaign","biz:review","biz:aftersale","biz:customer","biz:store","biz:finance",
+                "pay:sv:recharge:create","pay:sv:recharge:receive","pay:sv:recharge:read","pay:sv:account:read",
+                "pay:sv:consume:create","pay:ent:use","pay:ent:issue","pay:ent:read","pay:ent:template:read",
+                "pay:ent:template:write","pay:ent:template:publish","pay:ent:issue:manage"));
     }
 
     @Test

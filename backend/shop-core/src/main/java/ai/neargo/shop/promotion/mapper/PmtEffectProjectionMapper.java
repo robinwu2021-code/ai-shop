@@ -41,4 +41,22 @@ public interface PmtEffectProjectionMapper extends BaseMapper<PmtEffectProjectio
             @Param("stores") List<String> stores, @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
     record EffectTotal(String currency, BigDecimal amountMinor, long events) { }
+    @Select("SELECT * FROM pmt_effect_projection WHERE tenant_no=#{tenant} AND source_event_no=#{event} "
+            + "AND activity_no=#{activity} AND effect_kind=#{kind} AND deleted=0 FOR UPDATE")
+    PmtEffectProjection lockEffect(@Param("tenant") String tenant,@Param("event") String event,
+            @Param("activity") String activity,@Param("kind") String kind);
+
+    @Select({"<script>","SELECT e.effect_kind,e.currency,SUM(e.amount_minor) AS amount_minor,SUM(e.units) AS units,"
+            + "COUNT(DISTINCT e.source_event_no) AS events FROM pmt_effect_projection e "
+            + "WHERE e.tenant_no=#{tenant} AND e.entity_no=#{entity} AND e.deleted=0 "
+            + "AND e.effect_kind&lt;&gt;'ORDER_DISCOUNT' AND e.occurred_at&gt;=#{from} AND e.occurred_at&lt;#{to}",
+            "<if test='stores != null'> AND e.store_no IN "
+            + "<foreach collection='stores' item='store' open='(' separator=',' close=')'>#{store}</foreach></if>",
+            "GROUP BY e.effect_kind,e.currency ORDER BY e.effect_kind,e.currency","</script>"})
+    @ConstructorArgs({@Arg(column="effect_kind",javaType=String.class),@Arg(column="currency",javaType=String.class),
+            @Arg(column="amount_minor",javaType=BigDecimal.class),@Arg(column="units",javaType=BigDecimal.class),
+            @Arg(column="events",javaType=long.class)})
+    List<PayEffectTotal> paySummary(@Param("tenant") String tenant,@Param("entity") String entity,
+            @Param("stores") List<String> stores,@Param("from") LocalDateTime from,@Param("to") LocalDateTime to);
+    record PayEffectTotal(String effectKind,String currency,BigDecimal amountMinor,BigDecimal units,long events) { }
 }

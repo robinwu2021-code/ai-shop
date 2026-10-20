@@ -24,6 +24,8 @@ CREATE TABLE core_commands (
 );
 ALTER TABLE core_commands ADD COLUMN snapshot JSON NULL;
 ALTER TABLE core_commands ADD CONSTRAINT ck_nonnegative CHECK (id >= 0);
+ALTER TABLE core_commands DROP CHECK ck_nonnegative;
+ALTER TABLE core_commands ADD CONSTRAINT ck_nonnegative CHECK (id >= 1);
 CREATE TABLE independent (
     id BIGINT NOT NULL,
     PRIMARY KEY (id),
@@ -35,7 +37,9 @@ CREATE TABLE independent (
         assert.match(schema, /CONSTRAINT pay_commands_uk_command UNIQUE \(source_no\)/);
         assert.match(schema, /CONSTRAINT core_commands_uk_command UNIQUE \(source_no\)/);
         assert.match(schema, /CONSTRAINT uk_independent UNIQUE \(id\)/);
-        assert.match(schema, /CONSTRAINT ck_nonnegative CHECK \(id >= 0\)/);
+        assert.match(schema, /CONSTRAINT ck_nonnegative CHECK \(id >= 1\)/);
+        assert.equal([...schema.matchAll(/CONSTRAINT ck_nonnegative CHECK/g)].length,1);
+        assert.doesNotMatch(schema, /CHECK \(id >= 0\)/);
         assert.match(schema, /snapshot TEXT NULL/);
         assert.doesNotMatch(schema, /snapshot JSON/);
         const names = [...schema.matchAll(/CONSTRAINT (\w+) UNIQUE/g)].map(match => match[1]);

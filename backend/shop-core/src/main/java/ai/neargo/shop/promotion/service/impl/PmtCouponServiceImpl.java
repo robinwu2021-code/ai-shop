@@ -1,5 +1,8 @@
 package ai.neargo.shop.promotion.service.impl;
 
+import ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService;
+import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -46,6 +49,7 @@ public class PmtCouponServiceImpl implements CouponService {
     /** 一天 */
     private static final long DAY = 86_400_000L;
 
+    private final LegacyCouponSourceFenceService sourceFence;
     private final CouponMapper couponMapper;
     private final CouponScopeMapper scopeMapper;
     private final UserCouponMapper userCouponMapper;
@@ -81,7 +85,8 @@ public class PmtCouponServiceImpl implements CouponService {
 
     public PmtCouponServiceImpl(CouponMapper couponMapper, CouponScopeMapper scopeMapper,
                              UserCouponMapper userCouponMapper, CouponIssueMapper issueMapper,
-                             MemberQueryPort memberPort) {
+                             MemberQueryPort memberPort, LegacyCouponSourceFenceService sourceFence) {
+        this.sourceFence = sourceFence;
         this.couponMapper = couponMapper;
         this.scopeMapper = scopeMapper;
         this.userCouponMapper = userCouponMapper;
@@ -244,6 +249,7 @@ public class PmtCouponServiceImpl implements CouponService {
             // 定向券、到店券不能自己领：它们的对象是商家选的，不是谁点到谁拿
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
         if (!PmtCoupon.ACTIVE.equals(c.getStatus()) || !inWindow(c, now)) {
             throw BizException.of(ErrorCode.COUPON_NOT_ACTIVE);
         }
@@ -325,6 +331,7 @@ public class PmtCouponServiceImpl implements CouponService {
         PmtCoupon c = cmd.couponNo() == null || cmd.couponNo().isBlank()
                 ? null : require(entityNo, cmd.couponNo());
         boolean create = c == null;
+        if (!create) sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
         if (create) {
             c = new PmtCoupon();
             c.setCouponNo(BizKey.next(BizKey.PROMO_COUPON));
@@ -491,6 +498,7 @@ public class PmtCouponServiceImpl implements CouponService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         PmtCoupon c = require(entityNo, couponNo);
+        sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
         // 已结束不可复活：券的有效期与预算都是按那个终点算过的
         if (PmtCoupon.ENDED.equals(c.getStatus())) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -502,11 +510,19 @@ public class PmtCouponServiceImpl implements CouponService {
 
     // ---------------------------------------------------------------- 发放
 
+    /** The legacy overload must enter a real transaction before its internal delegation. */
+    @Override
+    @Transactional
+    public CouponIssueVO issue(String entityNo, String couponNo, String segmentNo, String operatorNo) {
+        return issue(entityNo, couponNo, segmentNo, null, operatorNo);
+    }
+
     @Override
     @Transactional
     public CouponIssueVO issue(String entityNo, String couponNo, String segmentNo,
                                List<MemberQueryPort.AudienceItem> audiences, String operatorNo) {
         PmtCoupon c = require(entityNo, couponNo);
+        sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
         if (!PmtCoupon.ACTIVE.equals(c.getStatus())) {
             throw BizException.of(ErrorCode.COUPON_NOT_ACTIVE);
         }

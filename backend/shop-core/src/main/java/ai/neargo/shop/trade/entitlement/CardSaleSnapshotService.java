@@ -8,4 +8,7 @@ public interface CardSaleSnapshotService {
 
     /** Stamps only from the authoritative paid order row; delivery timestamps are deliberately absent. */
     int recordPaidFromOrder(String orderNo);
+
+    /** Must join the order cancellation transaction; records terminal truth without releasing any pay resource. */
+    int recordCancelledFromOrder(String orderNo);
 }

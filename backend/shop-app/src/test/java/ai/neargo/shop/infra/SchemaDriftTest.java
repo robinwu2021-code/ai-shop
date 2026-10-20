@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -59,8 +60,8 @@ class SchemaDriftTest {
      */
     private static final Pattern TABLE = Pattern.compile(
             "CREATE TABLE\\s+(?:IF NOT EXISTS\\s+)?(\\w+)\\s*\\((.*?)\\n\\)", Pattern.DOTALL);
-    private static final Pattern COLUMN = Pattern.compile("^\\s{2,}(\\w+)\\s+[A-Z]", Pattern.MULTILINE);
-    private static final Set<String> NOT_COLUMNS = Set.of("UNIQUE", "KEY", "CONSTRAINT", "PRIMARY", "INDEX");
+    private static final Pattern COLUMN = Pattern.compile("^[\\t ]+(\\w+)\\s+[A-Z]", Pattern.MULTILINE);
+    private static final Set<String> NOT_COLUMNS = Set.of("UNIQUE", "KEY", "CONSTRAINT", "PRIMARY", "INDEX", "CHECK", "FOREIGN", "FULLTEXT", "SPATIAL");
     private static final Pattern RENAME = Pattern.compile(
             "ALTER TABLE\\s+(\\w+)\\s+RENAME COLUMN\\s+(\\w+)\\s+TO\\s+(\\w+)", Pattern.CASE_INSENSITIVE);
     /**
@@ -211,16 +212,43 @@ class SchemaDriftTest {
         return tables;
     }
 
+    /** Split column definitions once, preserving commas inside types, CHECK expressions and quoted comments. */
+    private static List<String> definitions(String body) {
+        var result=new ArrayList<String>();var current=new StringBuilder();int depth=0;char quote=0;
+        for(int i=0;i<body.length();i++) {
+            char ch=body.charAt(i);
+            if(quote!=0) {
+                current.append(ch);
+                if(ch=='\\' && i+1<body.length()) current.append(body.charAt(++i));
+                else if(ch==quote) {
+                    if(i+1<body.length() && body.charAt(i+1)==quote) current.append(body.charAt(++i));
+                    else quote=0;
+                }
+                continue;
+            }
+            if(ch=='-' && i+2<body.length() && body.charAt(i+1)=='-' && Character.isWhitespace(body.charAt(i+2))) {
+                int end=body.indexOf('\n',i);if(end<0) break;i=end;current.append('\n');continue;
+            }
+            if(ch=='/' && i+1<body.length() && body.charAt(i+1)=='*') {
+                int end=body.indexOf("*/",i+2);if(end<0) throw new IllegalArgumentException("Unclosed SQL comment");
+                i=end+1;current.append(' ');continue;
+            }
+            if(ch=='\'' || ch=='"' || ch=='`') quote=ch;
+            else if(ch=='(') depth++;
+            else if(ch==')') depth--;
+            else if(ch==',' && depth==0) {result.add(current.toString());current.setLength(0);continue;}
+            current.append(ch);
+        }
+        result.add(current.toString());return result;
+    }
+
     private void collectCreates(String sql, Map<String, Set<String>> tables) {
         Matcher t = TABLE.matcher(sql);
         while (t.find()) {
             Set<String> columns = new LinkedHashSet<>();
-            Matcher c = COLUMN.matcher(t.group(2));
-            while (c.find()) {
-                String name = c.group(1);
-                if (!NOT_COLUMNS.contains(name.toUpperCase())) {
-                    columns.add(name);
-                }
+            for(String definition:definitions(t.group(2))) {
+                Matcher c=Pattern.compile("^\\s*(\\w+)\\s+[A-Z]",Pattern.CASE_INSENSITIVE).matcher(definition);
+                if(c.find() && !NOT_COLUMNS.contains(c.group(1).toUpperCase())) columns.add(c.group(1));
             }
             tables.put(t.group(1), columns);
         }

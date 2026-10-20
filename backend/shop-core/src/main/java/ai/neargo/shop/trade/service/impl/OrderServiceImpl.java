@@ -6,6 +6,18 @@ import ai.neargo.shop.spi.user.PickupQueryPort;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import ai.neargo.shop.trade.service.CloseRuleService;
 import ai.neargo.shop.trade.service.OrderService;
+import ai.neargo.shop.trade.service.LegacyCouponOrderPricingService;
+import ai.neargo.shop.trade.service.LegacyCouponBoundOrderService;
+import ai.neargo.shop.trade.service.LegacyCouponCheckoutJournal;
+import ai.neargo.shop.trade.service.LegacyCouponOrderCreationCoordinator;
+import ai.neargo.shop.spi.entitlement.EntitlementContext;
+import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.Outcome;
+import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.MerchantGroup;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import ai.neargo.shop.trade.service.EntitlementOrderUseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.ObjectProvider;
@@ -24,6 +36,9 @@ import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.spi.settle.PointsPort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.spi.product.CardProductSalePort;
+import ai.neargo.shop.spi.entitlement.CardSaleEvents;
+import ai.neargo.shop.spi.entitlement.PaidCardPaymentGatePort;
+import ai.neargo.shop.trade.entitlement.CardSaleSnapshotPlan;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.trade.OrderEvents;
@@ -74,7 +89,39 @@ import java.util.stream.Collectors;
  * 否则「预览 2 个包裹、下单变 3 个」这类问题会一直复发。
  */
 @Service
-public class OrderServiceImpl implements OrderService {
+public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingService, LegacyCouponBoundOrderService {
+    @Autowired private LegacyCouponCheckoutJournal legacyCheckoutJournal;
+    @Autowired private ObjectProvider<LegacyCouponOrderCreationCoordinator> legacyCreationCoordinators;
+    @Autowired private ObjectProvider<LegacyCouponBoundOrderService> coreCreationWriters;
+    @Autowired private ObjectMapper legacyCheckoutJson;
+
+    @Override
+    public LegacyCouponOrderPricingService.Snapshot snapshot(String userNo,CreateOrderCommand cmd) {
+        if(userNo==null || userNo.isBlank() || cmd==null) throw BizException.of(ErrorCode.BAD_REQUEST);
+        Split raw=split(cmd);
+        Split priced=repriced(raw,groupQuoteOf(cmd,raw,userNo));
+        Split actual=withFreight(priced,cmd,storesOf(cmd,priced),userNo);
+        var auto=campaignPort.autoDiscount(merchantAmounts(cmd,actual,storesOf(cmd,actual)),cmd.activityChoices());
+        return legacyPricing(userNo,cmd,actual,auto);
+    }
+    private LegacyCouponOrderPricingService.Snapshot legacyPricing(String userNo,CreateOrderCommand cmd,Split split,
+                                                                  CampaignPort.Discount auto) {
+        var groups=split.groups.stream().map(g->new MerchantGroup(g.key(),g.merchantNo,g.storeNo(),
+                Math.subtractExact(g.goodsAmount(),auto.of(g.merchantNo,g.storeNo())))).toList();
+        var lines=split.groups.stream().flatMap(g->g.lines.stream().map(l->new LegacyPricingLine(g.key(),g.merchantNo,
+                g.storeNo(),l.snapshot.goodsNo(),l.skuNo(),l.qty(),l.snapshot.price()))).toList();
+        String payload=legacyCheckoutJson.writer().with(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+                .writeValueAsString(new LegacyPricingSeal(userNo,cmd,lines,groups));
+        try {
+            String digest=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(payload.getBytes(StandardCharsets.UTF_8)));
+            return new LegacyCouponOrderPricingService.Snapshot(CURRENCY_CNY,groups,digest);
+        } catch(java.security.NoSuchAlgorithmException failure) {throw new IllegalStateException("SHA-256 unavailable");}
+    }
+    private record LegacyPricingLine(String groupKey,String merchantNo,String storeNo,String goodsNo,String skuNo,
+                                     int quantity,long priceMinor) { }
+    private record LegacyPricingSeal(String userNo,CreateOrderCommand command,List<LegacyPricingLine> lines,
+                                     List<MerchantGroup> groups) { }
+
 
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(OrderServiceImpl.class);
@@ -175,6 +222,10 @@ public class OrderServiceImpl implements OrderService {
             ai.neargo.shop.trade.entitlement.CardSaleSnapshotService cardSaleSnapshotService) {
         this.cardSaleSnapshotService = cardSaleSnapshotService;
     }
+
+    private PaidCardPaymentGatePort cardPaymentGate;
+    @Autowired(required=false)
+    public void setCardPaymentGate(PaidCardPaymentGatePort gate) { this.cardPaymentGate=gate; }
 
     private ObjectProvider<OrderService> orderServiceProvider;
 
@@ -561,10 +612,11 @@ public class OrderServiceImpl implements OrderService {
         if (sub == null || sub.getDiscountAmount() == null || sub.getDiscountAmount() <= 0) {
             return List.of();
         }
-        return campaignPort.appliedOf(sub.getOrderNo()).stream()
+        var lines=new ArrayList<>(campaignPort.appliedOf(sub.getOrderNo()).stream()
                 .filter(d -> d.merchantNo() == null || d.merchantNo().equals(sub.getEntityNo()))
-                .map(d -> new OrderVO.DiscountLine(d.kind(), d.name(), d.amountMinor(), d.funder()))
-                .toList();
+                .map(d -> new OrderVO.DiscountLine(d.kind(), d.name(), d.amountMinor(), d.funder())).toList());
+        if(legacyCheckoutJournal!=null) lines.addAll(legacyCheckoutJournal.discountLines(sub.getTenantNo(),sub.getSubOrderNo()));
+        return List.copyOf(lines);
     }
 
     @Override
@@ -895,6 +947,9 @@ public class OrderServiceImpl implements OrderService {
      *               取当前登录人会去扣客服自己的券，而且不会有任何报错
      */
     private Discounts discountsOf(CreateOrderCommand cmd, Split split, String userNo) {
+        return discountsOf(cmd,split,userNo,null);
+    }
+    private Discounts discountsOf(CreateOrderCommand cmd,Split split,String userNo,LegacyCouponBoundOrderService.Binding binding) {
         if (split.groups.isEmpty()) {
             return Discounts.none();
         }
@@ -909,6 +964,14 @@ public class OrderServiceImpl implements OrderService {
         // 顾客对活动的选择（批 2）：没选的店按最优；选的那个不成立就拒（ACTIVITY_CHOICE_UNAVAILABLE）
         CampaignPort.Discount auto = campaignPort.autoDiscount(merchantAmounts(cmd, split, stores),
                 cmd.activityChoices());
+        if(binding!=null) {
+            var pricing=legacyPricing(userNo,cmd,split,auto);
+            if(!pricing.commandHash().equals(binding.commandHash())) throw BizException.of(ErrorCode.CONFLICT);
+            var fact=legacyCheckoutJournal.bind(binding.context(),binding.checkoutNo(),userNo,pricing.commandHash(),pricing.groups(),binding.held());
+            if(!java.util.Objects.equals(cmd.couponNo(),fact.origin().sourceNo())) throw BizException.of(ErrorCode.CONFLICT);
+            var shares=binding.held().allocations().stream().map(a->new CouponPort.MerchantDiscount(a.merchantNo(),a.discountMinor(),a.storeNo())).toList();
+            return new Discounts(auto,new CouponPort.Allocation(binding.held().discountMinor(),true,shares,null));
+        }
         if (cmd.couponNo() == null || cmd.couponNo().isBlank()) {
             return new Discounts(auto, CouponPort.Allocation.none());
         }
@@ -1151,27 +1214,54 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
     public OrderVO create(CreateOrderCommand cmd, String idempotencyKey) {
         return createFor(SecurityUtils.currentUserNo(), cmd, idempotencyKey);
     }
 
     @Override
-    @Transactional
     public OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey) {
         return createFor(userNo, cmd, idempotencyKey, null);
     }
 
     @Override
-    @Transactional
     public OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey,
                              Integer payMinutes) {
-        return idempotency.execute(idempotencyKey, "POST /mp/order", userNo, OrderVO.class,
-                () -> doCreate(cmd, userNo, payMinutes));
+        var coordinator=legacyCreationCoordinators==null?null:legacyCreationCoordinators.getIfAvailable();
+        if(coordinator!=null && cmd!=null && cmd.couponNo()!=null && !cmd.couponNo().isBlank())
+            return coordinator.createFor(userNo,cmd,idempotencyKey,payMinutes);
+        // Directly constructed unit fixtures have no Spring proxy, matching their previous transaction behavior.
+        if(coreCreationWriters==null) return createCoreFor(userNo,cmd,idempotencyKey,payMinutes);
+        return coreCreationWriters.getObject().createCoreFor(userNo,cmd,idempotencyKey,payMinutes);
+    }
+
+    @Override @Transactional
+    public OrderVO createCoreFor(String userNo,CreateOrderCommand cmd,String idempotencyKey,Integer payMinutes) {
+        return idempotency.execute(idempotencyKey,"POST /mp/order",userNo,OrderVO.class,()->doCreate(cmd,userNo,payMinutes));
+    }
+
+    @Override @Transactional(readOnly=true)
+    public OrderVO readCreated(EntitlementContext ctx,String checkoutNo,String userNo) {
+        var fact=legacyCheckoutJournal.resolve(ctx,checkoutNo);
+        var decision=legacyCheckoutJournal.decision(ctx,checkoutNo).orElseThrow(()->BizException.of(ErrorCode.CONFLICT));
+        if(!fact.userNo().equals(userNo) || !fact.selectionActorNo().equals(ctx.actorNo()) || decision.outcome()!=Outcome.COMMIT)
+            throw BizException.of(ErrorCode.CONFLICT);
+        return detailOf(decision.orderNo(),userNo,"MP");
+    }
+
+    @Override
+    @Transactional
+    public OrderVO createBound(String userNo,CreateOrderCommand cmd,String idempotencyKey,Integer payMinutes,
+                               LegacyCouponBoundOrderService.Binding binding) {
+        if(binding==null) throw BizException.of(ErrorCode.BAD_REQUEST);
+        var result=idempotency.execute(idempotencyKey,"POST /mp/order",userNo,OrderVO.class,
+                ()->doCreate(cmd,userNo,payMinutes,binding));
+        // Validate the original journal even when the generic order idempotency entry already exists.
+        legacyCheckoutJournal.commit(binding.context(),binding.checkoutNo(),result.payOrderNo(),binding.held());
+        return result;
     }
 
     /**
-     * ⚠️ 事务注解放在 {@link #create} 上而不是这里：本方法是被同类的 lambda 调用的，
+     * 事务位于createCoreFor/createBound代理入口；本方法由同类lambda调用，
      * 自调用不走代理，写在这里的 {@code @Transactional} 完全不生效 ——
      * 那样「锁了库存但订单没落库」会变成常态，且测试很难发现。
      */
@@ -1179,7 +1269,10 @@ public class OrderServiceImpl implements OrderService {
         return doCreate(cmd, userNo, null);
     }
 
-    private OrderVO doCreate(CreateOrderCommand cmd, String userNo, Integer payMinutes) {
+    private OrderVO doCreate(CreateOrderCommand cmd,String userNo,Integer payMinutes) {
+        return doCreate(cmd,userNo,payMinutes,null);
+    }
+    private OrderVO doCreate(CreateOrderCommand cmd,String userNo,Integer payMinutes,LegacyCouponBoundOrderService.Binding binding) {
         Split raw = split(cmd);
         if (raw.items.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -1246,6 +1339,9 @@ public class OrderServiceImpl implements OrderService {
         requirePickupServed(cmd, split);
         requireAppointmentWhenNeeded(cmd, split, storeOfMerchant);
 
+        // Lock and verify the sealed core intent before reserving appointment capacity or stock.
+        Discounts preparedLegacyDiscounts=binding==null?null:discountsOf(cmd,split,userNo,binding);
+
         /*
          * 占预约名额。**一单一次**，不在建子单的循环里 —— 带时段的单只有一个商家
          * （前置校验保证），循环里调会在将来某次放宽限制时变成重复占位。
@@ -1301,8 +1397,8 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // 优惠：与预览同一套规则（discountsOf 是唯一实现）
-        Discounts discounts = discountsOf(cmd, split, userNo);
+        // 普通订单保持原路径；迁移券复用在任何业务写入前已锁定校验的同一份分摊。
+        Discounts discounts = preparedLegacyDiscounts==null?discountsOf(cmd,split,userNo):preparedLegacyDiscounts;
 
         /*
          * 子单号**提前生成**：积分抵扣要落到各个子单上（三家里退了一家时才退得准），
@@ -1577,6 +1673,24 @@ public class OrderServiceImpl implements OrderService {
                 // 二级类目快照：积分按类目发放时读它，不现查商品（商品可以改类目）
                 item.setCategoryNo(line.snapshot.categoryNo());
                 itemMapper.insert(item);
+                if (cardProductSales != null && cardSaleSnapshotService != null) {
+                    var definition=cardProductSales.saleDefinition(g.merchantNo,line.snapshot.goodsNo(),line.skuNo());
+                    if (definition != null && definition.isPresent()) {
+                        var d=definition.get();
+                        if (!java.util.Objects.equals(order.getCurrency(),d.currency())) {
+                            throw BizException.of(ErrorCode.CONFLICT);
+                        }
+                        var rule=new CardSaleSnapshotPlan.EntitlementRule(
+                                d.templateVersionNo(),"PAID_CARD",d.ruleSnapshot());
+                        cardSaleSnapshotService.capture(
+                                new CardSaleSnapshotPlan.OrderFacts(
+                                        orderNo,userNo,order.getCurrency()),
+                                List.of(new CardSaleSnapshotPlan.SaleLine(
+                                        CardSaleSnapshotPlan.orderLineIdentity(item.getId()),
+                                        subOrderNo,g.merchantNo,sub.getStoreNo(),line.snapshot.goodsNo(),line.skuNo(),
+                                        item.getPrice(),line.qty,java.util.Collections.nCopies(d.unitsPerItem(),rule))));
+                    }
+                }
 
                 int giftQty = gifts.getOrDefault(line.snapshot.skuNo(), 0);
                 if (giftQty > 0) {
@@ -1616,7 +1730,8 @@ public class OrderServiceImpl implements OrderService {
          * 而那个数只有这里知道 —— 它是这一单算价的结果，事后重算会因为
          * 券的门槛/封顶被改过而对不上。
          */
-        couponPort.markUsed(userNo, cmd.couponNo(), orderNo, discounts.coupon());
+        if(binding==null) couponPort.markUsed(userNo,cmd.couponNo(),orderNo,discounts.coupon());
+        else legacyCheckoutJournal.commit(binding.context(),binding.checkoutNo(),orderNo,binding.held());
 
         /*
          * 活动扣限量。**放在这里而不是算价那一步**：算价会被反复调用
@@ -1712,6 +1827,7 @@ public class OrderServiceImpl implements OrderService {
         if (order.getPayDeadlineAt() != null && order.getPayDeadlineAt() < System.currentTimeMillis()) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
+        if (cardPaymentGate != null) cardPaymentGate.requireReady(order.getTenantNo(),orderNo);
         /*
          * **先在支付域记一行「发起了」，再把参数给端上。**
          *
@@ -2275,6 +2391,10 @@ public class OrderServiceImpl implements OrderService {
                 new PaymentContext(OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus()), true, true, false));
         order.setCancelReason(reason);
         orderMapper.updateById(order);
+        if (cardSaleSnapshotService != null
+                && cardSaleSnapshotService.recordCancelledFromOrder(order.getOrderNo()) > 0) {
+            eventBus.publish(new CardSaleEvents.Cancelled(order.getOrderNo()));
+        }
         if (entitlementOrderUses != null) {
             entitlementOrderUses.decideForTerminalOrder(order.getTenantNo(), order.getOrderNo());
         }
@@ -2375,6 +2495,10 @@ public class OrderServiceImpl implements OrderService {
         }
         order.setCancelReason(reason);
         orderMapper.updateById(order);
+        if (cardSaleSnapshotService != null
+                && cardSaleSnapshotService.recordCancelledFromOrder(order.getOrderNo()) > 0) {
+            eventBus.publish(new CardSaleEvents.Cancelled(order.getOrderNo()));
+        }
         if (entitlementOrderUses != null) {
             entitlementOrderUses.decideForTerminalOrder(order.getTenantNo(), order.getOrderNo());
         }

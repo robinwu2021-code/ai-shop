@@ -6,17 +6,29 @@ import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.paybridge.EntitlementServiceUseCoordinator;
 import ai.neargo.shop.paybridge.StoredValueRechargeCoordinator;
+import ai.neargo.shop.paybridge.dto.EntitlementServiceViews;
 import ai.neargo.shop.paybridge.dto.StoredValueRechargeProgress;
+import ai.neargo.shop.payclient.StoredValueRechargeAppService;
 import ai.neargo.shop.promotion.dto.RechargeIntentCreate;
 import ai.neargo.shop.promotion.service.ActivityCommandDeduplicator;
 import ai.neargo.shop.promotion.service.RechargeIntentService;
 import ai.neargo.shop.spi.entitlement.ContractChecks;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
+import ai.neargo.shop.spi.member.CustomerIdentityPort;
+import ai.neargo.shop.spi.member.CustomerIdentityPort.ReferenceQuery;
+import ai.neargo.shop.spi.storedvalue.StoredValuePort.BalanceQuery;
+import ai.neargo.shop.spi.storedvalue.StoredValuePort.BalanceView;
 import ai.neargo.shop.spi.storedvalue.StoredValuePort.CancelRecharge;
 import ai.neargo.shop.spi.storedvalue.StoredValuePort.CollectionMethod;
 import ai.neargo.shop.spi.storedvalue.StoredValuePort.ReceiveRecharge;
 import ai.neargo.shop.spi.storedvalue.StoredValuePort.SubmitRecharge;
+import ai.neargo.shop.spi.storedvalue.StoredValueUseQuotePort;
+import ai.neargo.shop.trade.dto.ServiceOrderCreate;
+import ai.neargo.shop.trade.dto.ServiceUseSubmit;
+import ai.neargo.shop.trade.service.EntitlementServiceOrderService;
+import java.util.List;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +36,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Merchant collects outside the platform. Private evidence is submitted to pay and never echoed to consumer DTOs. */
@@ -32,8 +45,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class BizStoredValueController {
     private final StoredValueRechargeCoordinator recharges;
     private final RechargeIntentService intents;
-    public BizStoredValueController(StoredValueRechargeCoordinator recharges, RechargeIntentService intents) {
-        this.recharges = recharges; this.intents = intents;
+    private final StoredValueRechargeAppService storedValue;
+    private final CustomerIdentityPort customers;
+    private final EntitlementServiceOrderService serviceOrders;
+    private final EntitlementServiceUseCoordinator serviceUses;
+    private final StoredValueUseQuotePort useQuotes;
+    public BizStoredValueController(StoredValueRechargeCoordinator recharges, RechargeIntentService intents,
+            StoredValueRechargeAppService storedValue, CustomerIdentityPort customers,
+            EntitlementServiceOrderService serviceOrders, EntitlementServiceUseCoordinator serviceUses,
+            StoredValueUseQuotePort useQuotes) {
+        this.recharges = recharges; this.intents = intents; this.storedValue = storedValue; this.customers = customers;
+        this.serviceOrders = serviceOrders; this.serviceUses = serviceUses; this.useQuotes = useQuotes;
     }
     @PreAuthorize("@perm.canBiz('" + BizPerms.SV_RECHARGE_CREATE + "')")
     @PostMapping("/biz/stored-value/recharges")
@@ -76,6 +98,55 @@ public class BizStoredValueController {
         requireOriginalStore(ctx, entity, rechargeNo, BizPerms.SV_RECHARGE_READ);
         return recharges.query(ctx, entity, rechargeNo);
     }
+    @PreAuthorize("@perm.canBiz('" + BizPerms.SV_ACCOUNT_READ + "')")
+    @GetMapping("/biz/stored-value/accounts")
+    public StoredValueBalanceView balance(@RequestParam String customerRef,
+            @RequestParam(required = false) String storeNo,
+            @RequestParam(defaultValue = "CNY") String currency) {
+        var ctx = context("read-stored-value-account"); String entity = BizContext.requireMerchantNo();
+        String store = storeNo == null ? BizContext.current().currentStoreNo() : storeNo;
+        ContractChecks.id(customerRef); ContractChecks.id(store); ContractChecks.currency(currency);
+        requireStore(store, BizPerms.SV_ACCOUNT_READ);
+        String userNo = customers.resolveReference(ctx, new ReferenceQuery(entity, store, customerRef)).userNo();
+        var balance = storedValue.balance(ctx, new BalanceQuery(userNo, entity, currency, store));
+        return StoredValueBalanceView.from(balance);
+    }
+    @PreAuthorize("@perm.canBiz('" + BizPerms.SV_CONSUME_CREATE + "')")
+    @PostMapping("/biz/stored-value/consumptions/preview")
+    public ConsumptionPreview previewConsumption(@RequestBody ConsumptionPreviewRequest c,
+            @RequestHeader("Idempotency-Key") String key) {
+        var ctx = context(key); String entity = BizContext.requireMerchantNo();
+        requireStore(c.storeNo(), BizPerms.SV_CONSUME_CREATE);
+        // Core resolves the reference only when creating; original-key replay verifies its frozen payload instead.
+        var order = serviceOrders.createMonetary(ctx, entity,
+                new ServiceOrderCreate(c.customerRef(), c.storeNo(), c.items()), key);
+        var quote = order.preview() != null && order.preview().moneyQuote() != null
+                && (order.command() != null || java.time.Instant.now().isBefore(order.preview().expiresAt()))
+                ? order.preview().moneyQuote() : useQuotes.quote(ctx, order.fact().source());
+        if (quote.redeemable() && (order.preview() == null || order.preview().moneyQuote() == null
+                || !quote.quoteRef().equals(order.preview().ref()))) {
+            order = serviceOrders.bindMoneyPreview(ctx, entity, c.storeNo(), order.serviceOrderNo(), quote);
+        }
+        return new ConsumptionPreview(EntitlementServiceViews.consumer(order), StoredValueQuoteView.from(quote));
+    }
+    @PreAuthorize("@perm.canBiz('" + BizPerms.SV_CONSUME_CREATE + "')")
+    @PostMapping("/biz/stored-value/consumptions")
+    public EntitlementServiceViews.Operation consume(@RequestBody StoredValueConsumeRequest c) {
+        var ctx = context(java.util.UUID.randomUUID().toString()); String entity = BizContext.requireMerchantNo();
+        var order = serviceOrders.requireMerchant(ctx, entity, c.orderNo());
+        requireStore(order.fact().storeNo(), BizPerms.SV_CONSUME_CREATE);
+        if (order.fact().source().sourceRevision() != c.orderRevision() || order.preview() == null
+                || order.preview().moneyQuote() == null) throw BizException.of(ErrorCode.CONFLICT);
+        if (order.command() == null) {
+            String userNo = customers.resolveReference(ctx,
+                    new ReferenceQuery(entity, order.fact().storeNo(), c.customerRef())).userNo();
+            if (!userNo.equals(order.fact().userNo())) throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        // Stage validates the original authorization on replay, without relying on an expired short-lived reference.
+        var result = serviceUses.submit(ctx, entity, order.fact().storeNo(), new ServiceUseSubmit(order.serviceOrderNo(),
+                order.preview().ref(), c.authorizationRef(), order.preview().assetRevision()));
+        return EntitlementServiceViews.Operation.from(result);
+    }
     private void requireOriginalStore(EntitlementContext ctx, String entity, String no, String permission) {
         var p = intents.byRechargeNo(ctx.tenantNo(), no);
         if (!entity.equals(p.permit().entityNo())) throw BizException.of(ErrorCode.NOT_FOUND);
@@ -101,4 +172,39 @@ public class BizStoredValueController {
         @Override public String toString() { return "ReceiveRequest[evidence=REDACTED]"; }
     }
     public record CancelRequest(long expectedRevision, String reason) { }
+    public record ConsumptionPreviewRequest(String customerRef, String storeNo, List<ServiceOrderCreate.Line> items) {
+        public ConsumptionPreviewRequest {
+            ContractChecks.id(customerRef); ContractChecks.id(storeNo);
+            items = items == null ? List.of() : List.copyOf(items);
+            ContractChecks.require(!items.isEmpty());
+        }
+        @Override public String toString() { return "ConsumptionPreviewRequest[customerRef=REDACTED, storeNo="
+                + storeNo + ", items=" + items.size() + "]"; }
+    }
+    public record ConsumptionPreview(EntitlementServiceViews.ServiceView service, StoredValueQuoteView quote) { }
+    public record StoredValueQuoteView(String quoteRef, String currency, long amountMinor, long applicableMinor,
+                                       boolean redeemable, StoredValueUseQuotePort.Reason reason,
+                                       long assetRevision, String selectionDigest, java.time.Instant expiresAt) {
+        static StoredValueQuoteView from(StoredValueUseQuotePort.Quote q) {
+            return new StoredValueQuoteView(q.quoteRef(), q.currency(), q.amountMinor(), q.applicableMinor(),
+                    q.redeemable(), q.reason(), q.assetRevision(), q.snapshotHash(), q.expiresAt());
+        }
+    }
+    /** Public merchant view contains totals only; the pay account identifier and pool splits stay internal. */
+    public record StoredValueBalanceView(String currency, long balanceMinor, long heldMinor, long availableMinor,
+                                         Long applicableMinor) {
+        static StoredValueBalanceView from(BalanceView balance) {
+            return new StoredValueBalanceView(balance.currency(), balance.balanceMinor(), balance.heldMinor(),
+                    balance.availableMinor(), balance.applicableMinor());
+        }
+    }
+    public record StoredValueConsumeRequest(String customerRef, String orderNo, long orderRevision,
+                                             String authorizationRef) {
+        public StoredValueConsumeRequest {
+            ContractChecks.id(customerRef); ContractChecks.id(orderNo); ContractChecks.require(orderRevision >= 0);
+            ContractChecks.id(authorizationRef);
+        }
+        @Override public String toString() { return "StoredValueConsumeRequest[customerRef=REDACTED, orderNo="
+                + orderNo + ", authorizationRef=REDACTED]"; }
+    }
 }

@@ -1,5 +1,8 @@
 package ai.neargo.shop.promotion.service.impl;
 
+import ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService;
+import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -38,13 +41,15 @@ public class CouponRedeemServiceImpl implements CouponRedeemService {
     /** 连点窗口。3 秒是收银台前「手抖再按一下」的量级，不是重试策略 */
     private static final long DEDUP_WINDOW_MS = 3_000L;
 
+    private final LegacyCouponSourceFenceService sourceFence;
     private final CouponMapper couponMapper;
     private final UserCouponMapper userCouponMapper;
     private final ApplyMapper applyMapper;
     private final PersonPort personPort;
 
     public CouponRedeemServiceImpl(CouponMapper couponMapper, UserCouponMapper userCouponMapper,
-                                   ApplyMapper applyMapper, PersonPort personPort) {
+                                   ApplyMapper applyMapper, PersonPort personPort, LegacyCouponSourceFenceService sourceFence) {
+        this.sourceFence = sourceFence;
         this.couponMapper = couponMapper;
         this.userCouponMapper = userCouponMapper;
         this.applyMapper = applyMapper;
@@ -71,6 +76,7 @@ public class CouponRedeemServiceImpl implements CouponRedeemService {
     public RedeemResult redeem(String entityNo, String code, String storeNo, String operatorNo) {
         PmtUserCoupon uc = byCode(entityNo, code);
         PmtCoupon c = template(uc.getCouponNo());
+        sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
         long now = System.currentTimeMillis();
 
         /*

@@ -102,4 +102,9 @@ public class PmtCoupon extends BaseEntity {
     public int timesTotalOrOne() {
         return timesTotal == null || timesTotal < 1 ? 1 : timesTotal;
     }
+    /** Root-local source fencing; never supplied by old public coupon DTOs. */
+    private String migrationState;
+    private String migrationBatchNo;
+    private String migrationWatermark;
+    private Long migrationFrozenRevision;
 }

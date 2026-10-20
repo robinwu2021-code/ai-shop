@@ -512,6 +512,16 @@ def _apply_action(table, action, cols):
             raise SystemExit(f"✗ DROP COLUMN {table}.{col}：这一列本来就不存在")
         return
 
+    drop_check = re.fullmatch(r"DROP\s+CHECK\s+(\w+)", action, re.I)
+    if drop_check:
+        name = drop_check.group(1)
+        before = len(cols)
+        cols[:] = [c for c in cols
+                   if not re.match(rf"^\s*CONSTRAINT\s+{name}\s+CHECK\b", c, re.I)]
+        if len(cols) == before:
+            raise SystemExit(f"✗ DROP CHECK {table}.{name}：约束不存在")
+        return
+
     add = re.match(r"ADD COLUMN\s+(?:IF NOT EXISTS\s+)?(.*)", action, re.I | re.S)
     if add:
         # ↑ `IF NOT EXISTS` 要在这里吃掉。不吃的话它会当成**列名**落进建表语句

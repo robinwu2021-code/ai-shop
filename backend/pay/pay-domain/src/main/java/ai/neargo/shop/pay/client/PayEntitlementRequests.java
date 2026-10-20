@@ -181,6 +181,10 @@ public final class PayEntitlementRequests {
         }
     }
 
+    public record UsageHistory(EntitlementContext context,EntitlementQueryPort.UsageHistoryQuery query) {
+        public UsageHistory { Objects.requireNonNull(context);Objects.requireNonNull(query); }
+    }
+
     public record Usage(EntitlementContext context, EntitlementQueryPort.UsageQuery query) {
         public Usage {
             Objects.requireNonNull(context);

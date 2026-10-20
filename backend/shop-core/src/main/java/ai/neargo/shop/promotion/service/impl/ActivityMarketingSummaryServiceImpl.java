@@ -36,10 +36,15 @@ public class ActivityMarketingSummaryServiceImpl implements ActivityMarketingSum
             stores = List.of(storeNo);
         }
         if (stores != null && stores.isEmpty()) return new Summary(from, to, List.of());
-        List<Metric> metrics = effects.summary(actor.tenantNo(), actor.entityNo(), stores,
+        List<Metric> metrics = new ArrayList<>(effects.summary(actor.tenantNo(), actor.entityNo(), stores,
                 LocalDateTime.ofInstant(from, ZoneOffset.UTC), LocalDateTime.ofInstant(to, ZoneOffset.UTC)).stream()
                 .map(row -> new Metric("ORDER_DISCOUNT", row.currency(),
-                        row.amountMinor().longValueExact(), row.events())).toList();
+                        row.amountMinor().longValueExact(), row.events())).toList());
+        metrics.addAll(effects.paySummary(actor.tenantNo(),actor.entityNo(),stores,
+                LocalDateTime.ofInstant(from,ZoneOffset.UTC),LocalDateTime.ofInstant(to,ZoneOffset.UTC)).stream()
+                .map(row -> new Metric(row.effectKind(),row.currency(),
+                        row.amountMinor()==null?null:row.amountMinor().longValueExact(),row.events(),
+                        row.units()==null?null:row.units().longValueExact())).toList());
         return new Summary(from, to, metrics);
     }
 }

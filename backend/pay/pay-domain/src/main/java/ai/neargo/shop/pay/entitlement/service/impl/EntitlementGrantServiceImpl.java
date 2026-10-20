@@ -9,8 +9,12 @@ import ai.neargo.shop.pay.entitlement.policy.EntitlementRuleValidator;
 import ai.neargo.shop.pay.entitlement.policy.PayEntitlementFeatureGate;
 import ai.neargo.shop.pay.entitlement.service.EntitlementCatalogService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementGrantService;
+import ai.neargo.shop.pay.entitlement.service.EntitlementExceptionService;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import ai.neargo.shop.pay.entitlement.service.EntitlementGrantWriter;
 import ai.neargo.shop.pay.entitlement.service.EntitlementSourceFence;
+import ai.neargo.shop.pay.entitlement.service.EntitlementSaleReservationService;
 import ai.neargo.shop.pay.mapper.entitlement.EntGrantMapper;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
@@ -41,9 +45,14 @@ public class EntitlementGrantServiceImpl implements EntitlementGrantService {
     private final List<EntitlementGrantSourcePort> sources;
     private final ObjectProvider<SourceDecisionPort> decisions;
     private final ObjectMapper json;
+    private final EntitlementSaleReservationService sales;
+    private final EntitlementExceptionService exceptions;
     public EntitlementGrantServiceImpl(EntGrantMapper grants, EntitlementCatalogService catalog,
             EntitlementGrantWriter writer, PayEntitlementFeatureGate features, List<EntitlementGrantSourcePort> sources,
-            ObjectProvider<SourceDecisionPort> decisions, EntitlementSourceFence fences, ObjectMapper json) {
+            ObjectProvider<SourceDecisionPort> decisions, EntitlementSourceFence fences, ObjectMapper json,
+            EntitlementSaleReservationService sales,EntitlementExceptionService exceptions) {
+        this.exceptions=exceptions;
+        this.sales = sales;
         this.fences = fences;
         this.grants = grants; this.catalog = catalog; this.writer = writer; this.features = features;
         this.sources = sources; this.decisions = decisions; this.json = json;
@@ -61,13 +70,22 @@ public class EntitlementGrantServiceImpl implements EntitlementGrantService {
             if (!c.recipientUserNo().equals(fence.getUserNo()) || !c.entityNo().equals(fence.getEntityNo())) conflict();
             return writer.cancelled(fence);
         }
+        if ("PAID_CARD_ORDER".equals(c.sourceRef().sourceType())) {
+            var promise = sales.promise(context, c);
+            var owners = sources.stream().filter(p -> p.supports(c.sourceRef())).toList();
+            if (owners.size() != 1) unavailable();
+            var fact = owners.getFirst().resolve(context, c);
+            if (fact == null || !context.tenantNo().equals(fact.tenantNo()) || !c.equals(fact.binding())
+                    || fact.paidAt() == null || c.paidFactRef() == null) conflict();
+            return writer.prepare(context, new PreparedGrant(c, promise.templateNo(), promise.definition(), fact.paidAt(), 0));
+        }
         features.requireIssuance();
         var scope = new CatalogScope(context.tenantNo(), c.entityNo(), context.actorNo(), false);
         var version = catalog.getVersion(scope, c.templateVersionNo()); var d = version.definition();
         var head = catalog.get(scope, version.templateNo());
         if (!"ACTIVE".equals(head.status()) || !"MERCHANT".equals(d.funder())) conflict();
         new EntitlementRuleValidator().validatePublicationTime(d, Instant.now());
-        String mode = "RECHARGE".equals(c.sourceRef().sourceType()) ? "ACTIVITY" : c.sourceRef().sourceType();
+        String mode = c.issueMode();
         if (!d.allowedIssueModes().contains(mode)
                 || ("PAID_CARD".equals(d.kind()) != "PAID_ORDER".equals(mode))
                 || (("ACTIVITY".equals(mode)) != (c.permit() != null))) conflict();
@@ -79,7 +97,9 @@ public class EntitlementGrantServiceImpl implements EntitlementGrantService {
                 || (!"PAID_ORDER".equals(mode) && (fact.paidAt() != null || c.paidFactRef() != null))) conflict();
         return writer.prepare(context, new PreparedGrant(c, version.templateNo(), d, fact.paidAt(), exposure(d, c.quantity())));
     }
-    @Override public GrantView commit(EntitlementContext context, GrantDecision c) {
+    @Override
+    @Transactional(value="payTxManager",propagation=Propagation.NOT_SUPPORTED)
+    public GrantView commit(EntitlementContext context, GrantDecision c) {
         return finish(context, c.grantNo(), c.sourceRef(), c.decisionRef(), true);
     }
     @Override public GrantView abort(EntitlementContext context, AbortGrant c) {
@@ -123,7 +143,16 @@ public class EntitlementGrantServiceImpl implements EntitlementGrantService {
                 || !Objects.equals(truth.currency(), frozen.definition().currency())
                 || !Objects.equals(truth.snapshotHash(), c.benefitSnapshotHash())
                 || truth.status() != (issue ? SourceDecisionPort.State.COMMITTED : SourceDecisionPort.State.CANCELLED)) conflict();
-        return writer.finish(context, no, source, ref, issue, truth);
+        try {
+            return writer.finish(context, no, source, ref, issue, truth);
+        } catch (RuntimeException failure) {
+            // The writer proxy has already rolled back; preserve the original fault if audit storage also fails.
+            if(issue) {
+                try { exceptions.captureGrantFailure(context,c.entityNo(),no); }
+                catch (RuntimeException auditFailure) { failure.addSuppressed(auditFailure); }
+            }
+            throw failure;
+        }
     }
     @Override public GrantView query(EntitlementContext context, String entity, String no) {
         var row = grants.find(context.tenantNo(), no);

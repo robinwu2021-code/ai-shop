@@ -1,0 +1,3 @@
+-- 冻结治理单独授权；不自动赋予财务/客服，不增加尚未交付的前端菜单。
+INSERT INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_ENT_FREEZE','OPS_FINANCE','权益冻结与解冻','仅后端',NULL,'ops:pay:ent:freeze','ops:pay:ent:freeze','IMPLEMENTED',0,NULL,'ACTION',983,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_ENT_FREEZE','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_ENT_FREEZE' AND end_code='OPS');

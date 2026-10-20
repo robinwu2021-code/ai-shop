@@ -8,7 +8,17 @@ import static ai.neargo.shop.pay.entitlement.service.EntitlementRecords.utc;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.pay.entitlement.dto.CatalogScope;
+import ai.neargo.shop.pay.entitlement.dto.LifecycleViews.FreezeCommand;
+import ai.neargo.shop.pay.entitlement.dto.LifecycleViews.FreezeView;
+import ai.neargo.shop.pay.entitlement.dto.LifecycleViews.FreezeAudit;
+import ai.neargo.shop.pay.entitlement.service.EntitlementCommandDeduplicator;
+import ai.neargo.shop.spi.entitlement.ContractChecks;
+import java.util.List;
+import java.util.Set;
 import ai.neargo.shop.pay.entitlement.entity.EntInstance;
+import ai.neargo.shop.pay.entitlement.dto.LifecycleViews.ReminderPage;
+import ai.neargo.shop.pay.entitlement.dto.LifecycleViews.ExpiryReminder;
 import ai.neargo.shop.pay.entitlement.entity.EntPeriodBucket;
 import ai.neargo.shop.pay.entitlement.policy.EntitlementValidityPolicy;
 import ai.neargo.shop.pay.entitlement.policy.PeriodDailyUsagePolicy;
@@ -34,9 +44,11 @@ public class EntitlementLifecycleServiceImpl implements EntitlementLifecycleServ
     private final EntPeriodBucketMapper buckets;
     private final EntInstanceMapper instances;
     private final EntitlementPostingService posting;
+    private final EntitlementCommandDeduplicator dedup;
     private final PeriodDailyUsagePolicy daily = new PeriodDailyUsagePolicy();
     public EntitlementLifecycleServiceImpl(EntPeriodBucketMapper buckets, EntInstanceMapper instances,
-                                           EntitlementPostingService posting) {
+                                           EntitlementPostingService posting,EntitlementCommandDeduplicator dedup) {
+        this.dedup=dedup;
         this.buckets = buckets;
         this.instances = instances;
         this.posting = posting;
@@ -45,6 +57,7 @@ public class EntitlementLifecycleServiceImpl implements EntitlementLifecycleServ
     @Override
     @Transactional("payTxManager")
     public int expireDue(EntitlementContext context, int limit) {
+        if(!"MAIN".equals(context.tenantNo())) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         if (limit < 1 || limit > 100) throw BizException.of(ErrorCode.BAD_REQUEST);
         var at = EntitlementRecords.now();
         var due = instances.selectList(Wrappers.<EntInstance>lambdaQuery()
@@ -127,7 +140,74 @@ public class EntitlementLifecycleServiceImpl implements EntitlementLifecycleServ
                 && !"FROZEN".equals(asset.getStatus())) asset.setStatus("EXHAUSTED");
     }
 
+    @Override
+    @Transactional("payTxManager")
+    public FreezeView freeze(CatalogScope scope,String no,FreezeCommand command,String key) {
+        if(scope==null || !scope.platformActor()) throw BizException.of(ErrorCode.FORBIDDEN);
+        if(!"MAIN".equals(scope.tenantNo())) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        ContractChecks.id(no); ContractChecks.present(command);
+        return dedup.execute(scope,"LIFECYCLE_FREEZE",key,List.of(no,command),no,FreezeAudit.class,() -> {
+            var asset=instances.lock(scope.tenantNo(),no);
+            if(asset==null || !scope.entityNo().equals(asset.getEntityNo())) throw BizException.of(ErrorCode.NOT_FOUND);
+            if(asset.getVersion()!=command.expectedAssetRevision()) conflict();
+            String before=asset.getStatus();
+            if("FREEZE".equals(command.action())) {
+                if(!Set.of("ACTIVE","PENDING_ACTIVATION","EXHAUSTED","EXPIRED").contains(before)) conflict();
+                asset.setStatus("FROZEN");
+            } else {
+                if(!"FROZEN".equals(before)) conflict();
+                asset.setStatus(unfrozenStatus(asset));
+            }
+            asset.setAssetSeq(Math.addExact(asset.getAssetSeq(),1));
+            asset.setUpdatedAt(EntitlementRecords.now()); asset.setUpdatedBy(scope.actorNo());
+            changed(instances.updateById(asset));
+            var ctx=new EntitlementContext(scope.tenantNo(),scope.actorNo(),key,EntitlementRecords.digest(no+":"+key));
+            posting.post(ctx,asset,command.action(),key,0,0,null,null);
+            var result=new FreezeView(no,asset.getStatus(),asset.getVersion(),asset.getRemainingUnits(),
+                    asset.getReservedUnits());
+            return new FreezeAudit(result,command.action(),command.reason(),before,command.expectedAssetRevision());
+        }).result();
+    }
+
+    @Override public FreezeView state(CatalogScope scope,String no) {
+        if(scope==null || !scope.platformActor()) throw BizException.of(ErrorCode.FORBIDDEN);
+        if(!"MAIN".equals(scope.tenantNo())) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        ContractChecks.id(no);
+        var asset=instances.selectOne(Wrappers.<EntInstance>lambdaQuery()
+                .eq(EntInstance::getTenantNo,scope.tenantNo()).eq(EntInstance::getEntityNo,scope.entityNo())
+                .eq(EntInstance::getInstanceNo,no));
+        if(asset==null) throw BizException.of(ErrorCode.NOT_FOUND);
+        return new FreezeView(no,asset.getStatus(),asset.getVersion(),asset.getRemainingUnits(),asset.getReservedUnits());
+    }
+
+    private String unfrozenStatus(EntInstance asset) {
+        if(asset.getEffectiveUntil()!=null && !EntitlementRecords.now().isBefore(asset.getEffectiveUntil())) {
+            return "EXPIRED";
+        }
+        if(asset.getRemainingUnits()!=null && asset.getRemainingUnits()==0) return "EXHAUSTED";
+        return asset.getActivationAt()==null?"PENDING_ACTIVATION":"ACTIVE";
+    }
+
     private UsageQuota.Daily quota(EntPeriodBucket bucket) {
         return new UsageQuota.Daily(bucket.getLimitUnits(), bucket.getReservedUnits(), bucket.getUsedUnits());
+    }
+    @Override
+    @Transactional(value = "payTxManager", readOnly = true)
+    public ReminderPage expiringSoon(EntitlementContext context, long afterId, int limit) {
+        if (!"MAIN".equals(context.tenantNo())) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        if (afterId < 0 || limit < 1 || limit > 100) throw BizException.of(ErrorCode.BAD_REQUEST);
+        var now = EntitlementRecords.now();
+        var due = instances.selectList(Wrappers.<EntInstance>lambdaQuery()
+                .eq(EntInstance::getTenantNo, context.tenantNo()).eq(EntInstance::getStatus, "ACTIVE")
+                .gt(EntInstance::getId, afterId).le(EntInstance::getEffectiveFrom, now)
+                .gt(EntInstance::getEffectiveUntil, now).le(EntInstance::getEffectiveUntil, now.plusHours(24))
+                .and(q -> q.isNull(EntInstance::getRemainingUnits).or()
+                        .apply("remaining_units > reserved_units"))
+                .orderByAsc(EntInstance::getId).last("LIMIT " + (limit + 1)));
+        boolean more = due.size() > limit;
+        var page = due.stream().limit(limit).toList();
+        var records = page.stream().map(row -> new ExpiryReminder(row.getInstanceNo(), row.getUserNo(),
+                instant(row.getEffectiveUntil()))).toList();
+        return new ReminderPage(records, more ? page.getLast().getId() : 0);
     }
 }

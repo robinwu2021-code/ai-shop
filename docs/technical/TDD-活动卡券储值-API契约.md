@@ -22,10 +22,11 @@ HTTP入口在shop-app，core/pay列指业务所有者与事务。C用户从登�
 |---|---|---|---|---|---|---|
 | C01 | GET | /biz/activity-presets | scene?,category?,industryTag? | PresetPage | biz:campaign | 目录，仅可用能力推荐 |
 | C02 | GET | /biz/card-product-presets | industryTag? | PresetPage | biz:goods | 6产品模板，非已发布商品 |
-| C03 | GET | /biz/activities | scene?,status?,page,size | Page<ActivityView> | biz:campaign | 沿用，扩筛选 |
-| C04 | POST | /biz/activities | ActivityDraft | ActivityView | biz:campaign | 沿用保存；只可修改草稿 |
+| C03 | GET | /biz/activities | model=unified,scene?,status?,page,size | Page<ActivityView> | biz:campaign | 沿用，扩筛选 |
+| C03a | GET | /biz/activities/{activityNo} | model=unified | ActivityView | biz:campaign | 已发布版本及草稿详情 |
+| C04 | POST | /biz/activities | model=unified + ActivityDraft | ActivityView | biz:campaign | 沿用保存；只可修改草稿 |
 | C05 | POST | /biz/activities/{activityNo}/publish | PublishCommand | ActivityVersionView | biz:campaign | 新增显式发布/规则版本 |
-| C06 | PUT | /biz/activities/{activityNo}/status | StatusCommand | ActivityView | biz:campaign | 沿用，暂停/结束不撤销参与 |
+| C06 | PUT | /biz/activities/{activityNo}/status | model=unified + StatusCommand | ActivityView | biz:campaign | 沿用，暂停/结束不撤销参与 |
 | C07 | POST | /biz/card-product-bindings | ProductEntitlementBinding | BindingView | biz:goods | 引用已发布pay模板，商品售价仍由商品API保存 |
 | C08 | POST | /biz/member-code/resolve | MemberResolveCommand | CustomerReference | biz:customer | 统一会员域接入契约，若已有等价URL则复用 |
 | C09 | POST | /mp/orders/{orderNo}/entitlement-authorizations | {orderRevision,quoteRef,selectionDigest,requestKey} | {authorizationRef,status,expiresAt} | 登录本人 | 只确认服务端预存的可信pay报价意图；同键原样重放，改价/改选/过期拒绝 |
@@ -61,23 +62,42 @@ HTTP入口在shop-app，core/pay列指业务所有者与事务。C用户从登�
 | P23 | GET | /mp/stored-value/stores | cursor?,size | CursorPage<StoreItem> | 登录本人 | 有成功储值历史门店 |
 | P24 | GET | /mp/stored-value/consumptions | storeNo,cursor?,size | CursorPage<UsageItem> | 登录本人 | 该店本人储值使用历史 |
 | P25 | GET | /mp/entitlement-usage/{usageNo} | entityNo? | UsageDetail | 登录本人 | 本人统一核销详情 |
+| P25a | GET | /mp/entitlements/{instanceNo}/usage | entityNo?,cursor?,size=20 (1-50) | CursorPage<UsageItem> | Login owner | Full history; signed user/asset scoped cursor; occurredAt/usageNo DESC |
+| P25b | GET | /mp/entitlement-usage | entityNo?,cursor?,size=20 (1-50) | CursorPage<UsageItem> | 登录本人 | 统一核销历史，包含无活跃实例的归档记录；不返回未知的逐笔余次 |
 | P26 | GET | /biz/entitlement-usage | storeNo?,assetKind?,from?,to?,page,size | PageData<UsageItem> | pay:ent:read | 只授权主体门店 |
 | P27 | GET | /biz/stored-value/recharges/{rechargeNo} | 无 | RechargeView | pay:sv:recharge:read | 查询入账进度，不能再次确认收款代替查询 |
-| P28 | GET | /biz/stored-value/accounts | customerRef,currency,storeNo? | StoredValueBalanceView | pay:sv:account:read | 总余额、总冻结及当前项目可用额，内部双池不返回 |
+| P28 | GET | /biz/stored-value/accounts | customerRef,currency,storeNo? | StoredValueBalanceView | pay:sv:account:read | 总余额、总冻结及当前项目可用额；不返回accountNo或内部双池 |
 | P29 | GET | /biz/entitlements/{instanceNo} | customerRef,storeNo | EntitlementDetail | pay:ent:read | 本主体已识别本人指定卡余次，不任意枚举其他用户 |
 | P30 | POST | /mp/entitlements/{instanceNo}/redeem-codes | CodeRequest | CodeView | 登录本人 | 仅STORE_EXCHANGE签短期券码，不签储值码 |
+| P31 | POST | /biz/stored-value/consumptions/preview | Idempotency-Key + customerRef,storeNo,items | StoredValueConsumptionPreview | pay:sv:consume:create | 建立计价服务单并读取储值报价；无扣款/预占，C端仍需本人确认 |
+
+P31创建时由core解析会员引用，重放按原key、原操作者/主体/门店及原payload核实，不依赖引用仍在TTL内；已提交服务单返回冻结报价，不重新报价改账。P22首次提交核实本人引用和授权，已有持久命令的重放核实原authorizationRef并返回原操作，短期引用过期不得阻断原结果恢复。新操作仍须有效身份引用；此规则不豁免权限、原门店范围或同号异参校验。
+
+付费卡来源兼容：已有销售快照的来源类型为`PAID_CARD_ORDER`，其sourceRef与grantKey保持原样；GrantCommand.issueMode()仅将其发行模式映射为目录定义的`PAID_ORDER`，不改写来源身份或新增JSON字段。两种付费来源均必须提供paidFactRef、订单行/单件/件内序号，quantity必须为1，不能带活动permit。该适配不替代真实付款事实provider、付款前发行预留或售卡协调器，未接齐前销售能力保持关闭。
+
+付费卡真实来源由core的CardSaleGrantSourcePortImpl读取原销售快照及主订单付款投影。仅接管CORE/PAID_CARD_ORDER，校验租户、原订单行/单件/件内权益、受益人、主体、模板版本、快照hash、付款引用、币种和原付款时间；主订单须已支付且正金额，当前仅接受WECHAT/ALIPAY/OFFLINE现金路径。未确认付款返回PENDING，不推定取消；FREE/POINTS/STORED_VALUE及未知通道拒绝。成功决策号由原来源键稳定派生，occurredAt沿原paidAt，不随事件投递变化。复用既有内部grantSource/grantDecision路由，无新增公网入口；该provider不代表付款前预留、逐件发行及取消已接齐。
+
+付费卡取消来源：买家/平台取消及超时关闭的原订单事务内调用CardSaleSnapshotService.recordCancelledFromOrder，按冻结的单件/件内权益写ord_ent_source_decision的GRANT_ABORT；该方法要求已有core事务，锁定真实主单，已付款或带已付款快照时拒绝。来源查询只有在持久取消决策、主单终态及原快照完整一致时返回CANCELLED，缺决策即使主单已关闭也仍为PENDING。已取消来源若出现迟到/矛盾的付款投影，prepare和decision均拒绝，不翻为成功；查询不生成或修改决策。本项只提供后续预留释放的可信依据，不直接释放pay容量。
 
 ## 四、运营接口
 
 | ID | 方法 | 路径 | query或body | 业务响应 | 权限 | 说明 |
 |---|---|---|---|---|---|---|
 | O01 | GET | /ops/pay/entitlement-exceptions | entityNo?,kind?,status?,page,size | Page<ExceptionView> | ops:pay:ent:read | 支付权威异常 |
-| O02 | GET | /ops/pay/entitlement-exceptions/{exceptionNo} | 无 | ExceptionDetail | ops:pay:ent:read | 证据/源单/动作 |
-| O03 | POST | /ops/pay/entitlement-exceptions/{exceptionNo}/retry-grant | RecoveryCommand | OperationView | ops:pay:ent:recover | 原grantNo恢复，不重发新权益 |
-| O04 | POST | /ops/pay/entitlement-exceptions/{exceptionNo}/query-source | RecoveryCommand | ExceptionDetail | ops:pay:ent:verify | 查事实，不改余次 |
-| O05 | GET | /ops/pay/entitlement-reconciliations | entityNo?,bizDate,page,size | Page<ReconView> | ops:pay:ent:read | 按市场日切 |
-| O06 | GET | /ops/notify-logs | 现有通知查询参数 | 沿用NotifyLogPage | 现有通知权限 | 复用既有通知中心；具体已有子路由沿原契约 |
-| O07 | POST | /ops/pay/entitlements/{instanceNo}/freeze | FreezeCommand | EntitlementDetail | ops:pay:ent:freeze | 异常冻结/解冻需原因及审计；不清余额 |
+| O02 | GET | /ops/pay/entitlement-exceptions/{exceptionNo} | entityNo | ExceptionView | ops:pay:ent:read | 证据/源单/动作 |
+| O02a | GET | /ops/pay/entitlement-exceptions/{exceptionNo}/actions | entityNo,page,size | Page<ActionView> | ops:pay:ent:read | 原操作审计元数据，无内部快照 |
+| O03 | POST | /ops/pay/entitlement-exceptions/{exceptionNo}/retry-grant | entityNo + RecoveryCommand + Idempotency-Key | ExceptionView | ops:pay:ent:recover | 原grantNo恢复，不重发新权益 |
+| O03b | POST | /ops/pay/entitlement-exceptions/{exceptionNo}/retry-event | entityNo + RecoveryCommand + Idempotency-Key | ExceptionView | ops:pay:ent:recover | 只重排原事件，不执行原财务命令 |
+| O04 | POST | /ops/pay/entitlement-exceptions/{exceptionNo}/query-source | entityNo + RecoveryCommand + Idempotency-Key | ExceptionView | ops:pay:ent:verify | 查事实，不改余次 |
+| O05 | GET | /ops/pay/entitlement-reconciliations | entityNo,bizDate?,page,size | Page<RunView> | ops:pay:ent:read | 当前快照按批次日期查询 |
+| O05a | POST | /ops/pay/entitlement-reconciliations | entityNo + Check + Idempotency-Key | RunView | ops:pay:ent:verify | 发起有界单页检查 |
+| O05b | GET | /ops/pay/entitlement-reconciliations/{reconNo} | entityNo | RunView | ops:pay:ent:read | 查询原批次及续扫游标 |
+| O05c | GET | /ops/pay/entitlement-reconciliations/{reconNo}/differences | entityNo,page,size | Page<DiffView> | ops:pay:ent:read | 仅返回安全差异元数据 |
+| O06 | GET | /ops/notify-logs | 现有通知查询参数 | 沿用NotifyLogPage | message:template:read | 外发通道记录，复用既有通知中心 |
+| O06a | GET | /ops/inapp-messages | receiverType?,receiverNo?,from?,to?,page,size | Page<InAppLogVO> | message:template:read | 站内消息到达与已读记录 |
+| O07 | POST | /ops/pay/entitlements/{instanceNo}/freeze | entityNo + FreezeCommand + Idempotency-Key | FreezeView | ops:pay:ent:freeze | 冻结/解冻需原因、版本及审计；不清余额 |
+| O07a | GET | /ops/pay/entitlements/{instanceNo}/lifecycle | entityNo | FreezeView | ops:pay:ent:read | 获取治理操作前的资产版本与状态 |
+| O08 | GET | /ops/pay/entitlement-dead-letters | cursor?,limit? | DeadLetterPage | ops:pay:ent:read | 仅真实ALL运营读取安全元数据，含无法可信归属的损坏事件 |
 
 ## 五、内部SPI（独立部署使用现有内部API适配，不直接公开）
 
@@ -223,12 +243,12 @@ P06发行控制跨版本、跨allowedIssueModes合并计数，删除重复且无
 
 JB-009范围预检落点：EntitlementScopeValidationService通过ProductScopeFactsPort与MerchantScopeFactsPort查询owner事实（显式tenant，分批200条）；门店/商品须属于该主体，类目为有效平台类目。EntitlementScopeResolver从MERCHANT会话/BizContext构造CatalogScope，platformActor固定false；有限门店员工只允许授权STORES子集。完整模板写入必须用resolveDefinition，额外核实GIFT.benefitRef商品归属；仅scope校验不能代替完整定义校验。P01–P05仍未开放，新HTTP实现须调用此守卫，不接受客户端owner/actor字段。配置允许READONLY门店及未上架商品，不代表允许实时交易，核销另查时点状态。
 
-C02/C07统一沿用实际BizPerms.GOODS（biz:goods），不虚设不存在的read/update子权限。其余新增pay权限仍属拟登记清单，必须与真实Handler及角色测试同时交付，不提前给现有角色增权。此调整不增加48条目标外部路由。
+C02/C07统一沿用实际BizPerms.GOODS（biz:goods），不虚设不存在的read/update子权限。其余新增pay权限仍属拟登记清单，必须与真实Handler及角色测试同时交付，不提前给现有角色增权。后续新增的商家储值计价预览已登记为P31。
 
 
 ## 十一、内部事实查询与传输约定（JB-008设计冻结子项）
 
-以下是待JB-041接线的内部路由，不是已注册Handler，不计入48条外部路由。全部POST、JSON，正文为{context,...args}；context为EntitlementContext，其余属性名与SPI方法参数一致。query/quote/preview虽用POST承载带身份范围的正文，仍只读，不能被通用POST重试器当作写命令。返回直接解SPI record，沿既有/internal路径跳过公网ApiResponse包装。目录既有两个方法不改Java签名，远程适配器先验证调用context，再向本地端口传tenant/entity。
+以下是待JB-041接线的内部路由，不是已注册Handler，不计入49条外部路由。全部POST、JSON，正文为{context,...args}；context为EntitlementContext，其余属性名与SPI方法参数一致。query/quote/preview虽用POST承载带身份范围的正文，仍只读，不能被通用POST重试器当作写命令。返回直接解SPI record，沿既有/internal路径跳过公网ApiResponse包装。目录既有两个方法不改Java签名，远程适配器先验证调用context，再向本地端口传tenant/entity。
 
 | 所有者 | 路径 | 对应Java方法 | 参数（除context） |
 |---|---|---|---|
@@ -304,10 +324,16 @@ C02/C07统一沿用实际BizPerms.GOODS（biz:goods），不虚设不存在的re
 
 开关关闭不阻断已存在资产的本人历史查询、已承诺源决策的commit/release、合法原券回补或恢复任务；这些操作仍按原事实及状态机执行，不能形成有扣款无权益。开关不能切换owner或回写旧表。付费卡同时要求权益发行/使用开关和商品、收款、履约、条款验收，不因打开paid-card就跳过底座。运行的本地/远程选择沿既有shop.pay.deployment=embedded/standalone，不能再造第三套部署模式。
 
-预置JSON当前实际引用35个不同能力码；下表固定其归属与验收落点。有关拼团/秒杀/赠品完整履约的额外引擎不因列入目录自动列为本批已交付，未实现时一律保持不可用。
+预置JSON当前实际引用41个不同能力码（35个活动码及6个付费卡产品码）；下表固定其归属与验收落点。有关拼团/秒杀/赠品完整履约的额外引擎不因列入目录自动列为本批已交付，未实现时一律保持不可用。
 
 | 能力码 | owner与验收落点 |
 |---|---|
+| CARD_PRODUCT | core商品/SKU绑定及pay已发布付费权益定义；JB-039/052 |
+| PAID_ORDER | core售卡入口及pay售卡能力门禁；JB-040/052 |
+| IDEMPOTENT_CARD_ISSUE | pay销售预留及按源行/件/权益幂等发行；JB-040/052 |
+| ENTITLEMENT_LEDGER | pay权益发行及使用分录；JB-016/020 |
+| ATOMIC_USE_DEDUCT | pay预占/扣次与core会员身份/本人确认；JB-020/042/052 |
+| VALIDITY_POLICY | pay冻结有效期和首用激活策略；JB-019/042 |
 | ACTIVITY_VERSION | core.promotion；JB-029 |
 | ATOMIC_QUOTA | core活动预算JB-030、pay发行额度JB-015，各自原子 |
 | AUDIENCE | core人群/活动；JB-029/JB-017 |
@@ -368,9 +394,9 @@ pay的catalog/issue/use/stored-value/paid-card由PayEntitlementFeatureGate提供
 
 通用码沿既有ErrorCode及三份messages资源，40040已新增三语并经BackendI18nParityTest验证。未来owner实现若需要细化余额不足等提示，须在该业务任务同步变更契约、枚举、三语与真实失败测试，不自行将异常字符串当用户文案。无码无接口的储值/新付费卡线上退款仍保持禁止，不为它建立可调用公网路由。I11已有券售后受原使用事实白名单控制。
 
-权限码以本文件C01–C11/P01–P30/O01–O07表逐条冻结：新增pay/ops:pay码仅随真实Handler登记，JB-025/026/027/033/038等负责门面，JB-053核对角色与运营五处登记；当前不向Perms及角色表写死权限，避免给没有实现的路由授权。公共DTO不接受tenant/actor/entity/platformActor作为本人身份；service token只证明服务调用方，不能替代业务范围与持久授权。
+权限码以本文件C01–C11/P01–P31/O01–O07表逐条冻结：新增pay/ops:pay码仅随真实Handler登记，JB-025/026/027/033/038等负责门面，JB-053核对角色与运营五处登记；当前不向Perms及角色表写死权限，避免给没有实现的路由授权。公共DTO不接受tenant/actor/entity/platformActor作为本人身份；service token只证明服务调用方，不能替代业务范围与持久授权。
 
-JB-008是协议/配置门禁基础交付。34条内部传输Handler/代理由JB-041实现，48条外部Handler由各业务任务实现；5张支撑设计表的正式迁移/Mapper由JB-011/JB-012/JB-046实现。不能把这些后续运行实现反向作为008的完成条件形成依赖循环，也不能因008完成而宣称它们已可用。JB-010补充统一会员码签发与解析；不能拿登录token或客户端用户号充当会员码。
+JB-008是协议/配置门禁基础交付。34条内部传输Handler/代理由JB-041实现，49条外部Handler由各业务任务实现；5张支撑设计表的正式迁移/Mapper由JB-011/JB-012/JB-046实现。不能把这些后续运行实现反向作为008的完成条件形成依赖循环，也不能因008完成而宣称它们已可用。JB-010补充统一会员码签发与解析；不能拿登录token或客户端用户号充当会员码。
 
 
 ## JB-010统一会员凭证契约
@@ -647,3 +673,376 @@ StoredValueCreditService沿既有CreditRecharge，只接收原`PAY/RECHARGE`与R
 人工实收是持receive权限的商家对原CASH/TRANSFER收款凭据的明确核验，不宣称平台银行核验。提交金额必须等于冻结应收，receive必须匹配原revision及receiptDigest；实际确认人/时间由服务端记录。不同命令键重复操作遵循状态守卫，同键原样重放返回原操作答复；create额外返回当前实际状态，避免已取消原单被旧WAIT_COLLECTION答复重新提示收款。到账可异步，查询不能代替再次确认实收。
 
 商家充值协调当前实现：P18创建后只有实际pay建单应答才返回WAIT_COLLECTION；已有core意图但pay尚无应答，P27返回业务PROCESSING，不能解释为可收款。P20返回实收的当前事实，到账可以继续为RECEIVED；Received Outbox触发原单credit并确认core营销。P27保持纯查询。三个明确权限pay:sv:recharge:create/receive/read均按该笔原门店校验；无新C购买、退款或独立码接口。
+
+### JB-040付款前预留协议（内核已编码，RPC/应用协调待接）
+
+公共端点仍49条；以下是新增内部SPI设计，不计为已上线HTTP端点。`EntitlementSaleReservationPort`与发行`GrantCommand`分离，不以假paidAt/paidFactRef模拟未付款发行。
+
+| 操作 | 输入 | 响应与语义 |
+|---|---|---|
+| reserve | context + ReserveSale(reservationNo,sourceRef,templateVersionNo,userNo,entityNo,benefitSnapshotHash) | SaleView；真实待支付且未过截止、冻结规则等于目录历史版本、发行门禁及总/个人容量通过后RESERVED，不建实例 |
+| release | context + ReleaseSale(原ReserveSale,decisionRef) | core持久GRANT_ABORT并完整匹配才RELEASED；UNKNOWN/PENDING返回PROCESSING且不改容量；可信终态与调用引用不符409 |
+| query | context + entityNo + reservationNo | NOT_FOUND/PROCESSING/RESERVED/TRANSFERRED/RELEASED；不触发支付、发行或释放 |
+| source（反向事实） | context + 原ReserveSale | SaleSourceFact(binding,currency,ruleSnapshot,canReserve,decision)；core真实主单及逐件快照核对，不访问pay表 |
+
+预留号固定为SR+原PAID_CARD_ORDER grantKey前60位；CORE来源revision=0，行/单件/件内权益索引齐全。查询响应只含reservationNo/sourceRef/status/grantNo；TRANSFERRED必须带原grantNo。原号原参重放先于今日开关与发布检查；异参409。已释放原号不重开；缺预付款承诺的已付款来源不能临时占额发行。销售付款前必须等待所有单件预留成功，此应用封口尚未接线，销售入口保持关闭。
+
+发行仍使用既有prepare/commit/abort/query。PAID_CARD_ORDER的prepare先读取冻结预留，再查可信实际付款，移交原容量；模板暂停或停止新发行不阻断既有承诺。事件`ENTITLEMENT_GRANTED`保留原sourceType=PAID_CARD_ORDER，codec明确允许该类型，不篡改来源为PAID_ORDER。RPC适配、订单逐件协调、Outbox与恢复归后续JB-040/041。
+
+### 售卡预留传输适配增量
+
+新增EntitlementSaleReservationPortImpl、本地EntitlementRuntimeRouting与pay-svc Bootstrap装配；standalone由RemoteEntitlementSaleReservationPort调用PayInternalApi，三条POST为/internal/pay/entitlement/sale/{reserve,release,query}，共享PaySaleRequests。InternalSaleReservationEndpoint沿既有内部令牌校验和异常映射，不重试写操作。反向SaleSource RPC及真实HTTP往返专项尚待实现，销售门禁继续关闭。
+
+### 售卡反向来源传输增量（2026-10-19）
+
+新增POST /internal/core/entitlement/source/sale，共享SaleSourceQuery(context,ReserveSale)，返回SaleSourceFact；InternalSaleSourceEndpoint沿内部令牌认证、唯一owner选择与标准错误映射。pay-svc的CoreEntitlementGrantSourcePortImpl同时实现EntitlementSaleSourcePort，经既有CoreEntitlementInternalApi反查，不跨库、不在pay锁内发起网络调用。Bean工厂返回具体类型，使两个SPI在启动时均可发现。三条pay预留POST补真实HTTP测试，覆盖reserve/release/query及错误令牌拒绝调用业务。完整订单销售协调仍未验收，JB040/041保持DOING。
+
+### JB040取消事件与付款前容量校验接线
+
+core OrderServiceImpl的cancelPayment/closeOne在原事务内写GRANT_ABORT，存在售卡快照才发布CardSaleEvents.Cancelled（CARD_SALE_CANCELLED）。CardSaleEventConsumer替代原仅付款消费者，消费取消时必须全部RELEASED才能确认；失败沿统一Outbox重试，不因截止释放。无售卡快照不发布额外事件。
+
+PaidCardPaymentGatePort/Impl在OrderServiceImpl.pay发起支付尝试前调用协调器，零售卡权益不影响原订单；有权益但未全部RESERVED拒绝继续。该调用点无core写事务。此处尚非所有收款路径验收，线下收款等仍待核对；商品售卡门禁保持关闭，真实建单快照尚未接齐，不宣称完整上线。新增测试验证重复取消事件不双释放，取消后的付款预留检查拒绝。
+
+### JB040建单权益快照接线
+
+CardProductSalePort新增saleDefinition内部读取（无绑定返回空），SaleDefinition包含原模板版本、币种、每件权益数、已发布规则JSON。core商品owner从真实商品归属推导tenant，按原商品/SKU查绑定，仅ACTIVE且未删除可读取，不调用pay。OrderServiceImpl在真实OrdItem插入后以稳定OL+主键构建逐件/件内权益快照，检查币种并加入原建单事务；只对购买行展开，不把赠品行当付费卡发行来源。读取/快照失败原建单一起回滚。
+
+requirePurchasable仍拒绝新绑定销售，未因接线而开放。当前测试覆盖真实绑定读取与版本副本、源快照、预留/发卡/取消；尚缺开放门禁后的真实checkout全链路专项。线下收款目前存在事务包围，需要先拆边界再接预留检查，不能在持锁事务里调用pay。
+
+### JB040/051售卡恢复扫描
+
+V451只扩展core原售卡快照delivery_status及恢复索引，不新增表（运行表仍250）。PaidCardSaleRecoveryPort/Impl读取主单已PAID/CANCELLED/CLOSED且待确认的订单，支持afterOrderNo、1–200上限及稳定排序；不扫未付款单、不按TTL释放。CardSaleRecoveryService/Impl在事务外逐单调用原协调器，全部发行或全部释放才acknowledge；失败计数并继续其余订单，原记录保留PENDING。
+
+CardSaleRecoveryJob沿JobHandler/JobDeclaration/JobSupport及ShedLock注册card-sale-recovery，受shop.job.enabled控制；shop.job.card-sale-recovery.cron默认每5分钟。每批100单，游标轮转越过故障单；成功确认持久化，进程重启只重复未完成单。调度失败由既有作业结果记录，恢复不退款、不调平、不更换原预留/发行号。源Port属于core，扫描不读取pay表。此内部扫描无新增公共端点、权限或消费者字段。
+
+新增场景验证：sweepRecoversLostPaidEventAndPersistsAcknowledgement、failedRecoveryRetainsPendingWithoutIssuing。尚待原生迁移、调度故障/并发及最终checkout专项；父任务仍DOING，不据定向测试直接开放销售。
+
+### JB040完整checkout专项与默认关闭准入
+
+新增shop.trade.paid-card-sale.enabled（默认false）显式开关，仅用于允许有效绑定进入core建单；ACTIVE/未删除/真实SKU与规则副本仍校验，pay侧发行/使用/付费卡开关和容量继续独立守卫。默认配置保留旧拒绝行为，不自动修改部署配置。新PaidCardCheckoutFlowTest使用真实商品绑定及真实OrderService.createFor，2件×每件2权益须持久4条来源、付款前0实例、预留4、markPaid状态机/Outbox事件后发行4，重复消费与恢复仍4。markPaid为内部集成测试调用，不代表外部通道实际收款验收。
+
+首轮专项发现测试缺门店导致来源快照校验失败。生产快照门店改为sub.getStoreNo，与真实履约/库存落地一致；测试补真实默认门店，不放松门店必填。尚需独立部署、原生迁移、并发及真实通道演练后才建议开启新开关，父任务不提前标完成。
+
+### JB043交易站内通知切片
+
+EntitlementNotificationSubscriber实现OutboxConsumer，仅处理ENTITLEMENT_GRANTED/ENTITLEMENT_USED/STORED_VALUE_CREDITED。共享codec校验收件人、业务字段，额外匹配eventNo/aggregateType/aggregateId，防止错事件身份发送；dedupKey为EN+SHA256(事件号+USER+收件人)，复用MessageService.push的全局持久去重及既有站内信发送日志。只写TRADE站内信，未开通短信/微信/推送，不新增NotifyScene通道种子，不制造未落地C路由；link为空。不展示双池、账户号、原凭据或会员码，不调用pay资金/权益写服务。失败抛回现有Outbox重投，成功消息重投仍唯一。
+
+EntitlementNotificationFlowTest覆盖到账/发放/核销三类真实消息落库与重复去重、错头/无收件人拒绝、消息首次失败后恢复且未创建账户或发卡。当前是消费者站内通知子项；外发、商家/运营异常通知及完整O06治理仍待后续，JB043不能提前DONE。
+
+### JB045支付异常记录与平台查询内核
+
+V452建既定pay_ent_exception，PayEntException/Mapper归pay数据源。EntitlementExceptionService/Impl实现captureGrantFailure/get/list；只捕获真实PREPARED grant，先锁原grant并按tenant+kind+原grantNo唯一认领，稳定异常号EX+来源摘要，不接收调用方提供的证据或受益人。返回Evidence白名单只含原grantNo、捕获时状态、来源类型和固定DELIVERY_FAILED，不回传付款凭据、用户授权或原命令。捕获不改变容量/实例/分录。
+
+查询限定platformActor且按tenant/entity收窄；分页1–100条，稳定createdAt/id倒序。该内部CatalogScope须后续由运营可信会话/数据域构造，不能直接绑定请求。O01–O04的HTTP/权限、独立pay适配、按原号恢复及动作审计尚待接，本批不开放伪实现的运营端点。新增真实PREPARED发行捕获/重复、脱敏、非平台和跨主体拒绝场景，父任务仍DOING。
+
+### JB045原grant恢复与动作审计内核
+
+V453新增pay_ent_exception_action及实体/Mapper；ExceptionViews.RecoveryCommand只含expectedExceptionRevision/reason，幂等键另传，不接受新受益人、金额或权益。EntitlementExceptionRecoveryService/Impl调用EntitlementExceptionActionWriter.begin认领动作与异常PROCESSING，释放pay锁后读真实来源决定并调用原grant commit/abort；UNKNOWN/PENDING不释放容量，完成动作并将异常回OPEN供下一次核实。成功原grant终态后同事务写RESOLVED与DONE安全响应。原请求中断可用同键原参续办；同键异参或新键抢PROCESSING拒绝；完成响应沿原键稳定重放。
+
+审计冻结操作者、主体、异常号、请求摘要、原因与最终回复，不保存原支付凭据。只捕获/恢复已有grant，不重建发行单。测试模拟begin后进程中断，再同键续办；原grant只发行1次、容量只结算1次、动作只留1条，重复回复稳定，异参/非平台拒绝。当前仍为pay内核，运营权限/会话和本地远程HTTP适配随后接线，不宣称O03已经可公开调用。
+
+### JB045异常管理内部承载实施计划
+
+新增内部POST /internal/pay/entitlement/exceptions/{list,get,retry-grant}，共享请求携带可信CatalogScope；只供已有内部令牌客户端使用。list/get委派异常查询、retry携带原exceptionNo/RecoveryCommand/原key委派恢复。app本地/standalone适配互斥，写请求不自动重试。先补传输及真实HTTP验证，再接运营会话/数据域和权限，不直接将CatalogScope绑定公共HTTP。
+
+### JB045查源动作与内部传输
+
+V454新增operation_kind区分QUERY_SOURCE/RETRY_GRANT，旧动作为RETRY_GRANT。ExceptionViews.Evidence新增可空sourceStatus；旧证据JSON及4参构造兼容。查源复用RecoveryCommand与独立key，锁外读取来源决定后把状态存入异常证据及动作响应；异常回OPEN，不调用grant commit/abort，也不结算占用。原查询键重放原结果；查询键改用于恢复冲突，后续恢复须带最新revision和新key。
+
+新增内部POST /internal/pay/entitlement/exceptions/query-source，沿原内部令牌及共享RetryGrant请求、本地/远程AppService。无新增公开运营Handler，本批仍待O01–O04权限及可信会话/主体范围接线。测试覆盖COMMITTED来源仅查不发、原容量不动、独立动作审计、查源重放与恢复键隔离，然后实际原grant恢复；HTTP验证查源参数完整往返。
+
+### O01–O04首版主体范围收窄
+
+本轮1档实现：四条运营路由都要求entityNo查询参数，替代原O01可省略主体筛选的草案；首版不做跨主体聚合。权限分别ops:pay:ent:read/recover/verify，不自动授予FINANCE等岗位。scope只由当前OPERATOR会话构造，MAIN租户、actor来自会话，主体必须属于ALL或MERCHANT授权集合；缺scope、SELF/COMMUNITY等无法证明商家范围时拒绝。不接受请求体platformActor/tenant/actor。O03/O04带原Idempotency-Key及RecoveryCommand，返回安全ExceptionView（原OperationView草案收敛为含status/revision/bizNo的ExceptionView）。跨主体聚合列表和完整动作历史展示仍后续，不据四条Handler存在宣称父项完成。
+
+### JB046权益次数账实对账内核
+
+V456落既定PayEntReconRun/Diff及两个Mapper；EntitlementReconciliationService/Impl以payTxManager REPEATABLE_READ对同一主体的实例/分录做RIGHTS轴核对。CheckRights冻结日期/市场时区/afterInstanceNo/limit（1–200），RunView仅含批次、主体、量纲、检查数/差异数/下一游标，内部expected/actual JSON不直传页面。SUM余次/占用及MAX序号与实例逐份比较，一份实例无论几个字段异常只留1条BALANCE_MISMATCH，绝不调账。日限无限总次数实例不按虚构total比较余次；仍比占用/序号。
+
+每页一个幂等批次，同键同参回原结果，异参冲突；有nextCursor必须后续用新key继续，不把单页COMPLETED当全主体完成。差异/批次与快照读取同事务，失败全部回滚。仅平台scope且按tenant/entity收窄，无ALL隐式跨主体。测试验证正常、差异、原号重放、差异不重复、余额保持29及非平台/跨主体拒绝。发行/金额/服务日桶对账、O05及本地/远程承载仍后续，JB046不能提前DONE。
+
+
+### 对账扩展执行契约（N01，2026-10-19）
+
+沿用O05 GET `/ops/pay/entitlement-reconciliations`，首版要求显式entityNo；新增GET `/{reconNo}`、GET `/{reconNo}/differences`和POST基础路径发起单页检查。读用`ops:pay:ent:read`，发起用`ops:pay:ent:verify`，均经运营会话数据域构造scope。POST携带Idempotency-Key，body为Check(axis,currency?,bizDate,marketZone,afterResourceNo,limit)，limit为1–200。MONEY必须显式三位大写币种，其他轴拒绝currency。bizDate仅标注批次日期，不承诺历史日终重建。
+
+RIGHTS核对实例与流水；HOLD核对实例总预占、实际HELD分配和服务日bucket（按instance分页，包含该实例全部bucket）；ISSUANCE按grant分页核对COMMITTED数量及实例归属，未提交grant不得已有实例；MONEY按同币种账户分页核对凭证、批次、批次分录、HELD分配与管理账分录。每个扫描资源最多一条差异，具体不同字段仅存在内部快照。公开DiffView仅diffNo/reconNo/entityNo/resourceNo/diffKind/status；禁止直接回传内部快照。
+
+每页幂等事务，axis/currency及完整命令进入指纹。RunView补bizDate/marketZone/currency。批次和差异列表按主体隔离、页大小1–100，稳定排序；不存在或其他主体批次返回NOT_FOUND。本地和standalone经同一类型化请求及内部token校验，内部新增check/list/get/differences四条POST，写失败不自动换键重试。检查不修账、不重发权益、不改变原交易。
+
+
+### N02异常发放自动登记与动作历史（2026-10-19）
+
+真实源决策校验通过后，pay发放writer事务失败时，保留原grant号与原异常，将仍为PREPARED的grant幂等登记为GRANT_DELIVERY。登记在原发放事务回滚之后执行；登记失败不能替换原发放错误。来源伪造、权限拒绝、prepare失败及UNKNOWN/PENDING不据此登记为已确认发放故障。
+
+新增GET `/ops/pay/entitlement-exceptions/{exceptionNo}/actions`，query=entityNo,page,size，权限沿用ops:pay:ent:read；先查同主体异常再读其动作，稳定按id倒序。ActionView字段仅actionNo/exceptionNo/operationKind/status/actorNo/reason/createdAt/updatedAt，不返回requestKey/payloadHash/responseSnapshot。同主体列表仍显式要求entityNo，跨主体聚合查询继续挂账，不借全局列表放宽恢复操作权限。standalone新增POST内部actions端点，沿用token校验与本地/远程AppService适配。
+
+
+### N03冻结治理细化契约（2026-10-19）
+
+O07沿POST `/ops/pay/entitlements/{instanceNo}/freeze`，query显式entityNo，header=Idempotency-Key，body=FreezeCommand(expectedAssetRevision,action=FREEZE/UNFREEZE,reason)。权限ops:pay:ent:freeze单独登记，默认只给SUPER_ADMIN，不随read/verify自动获得。
+
+原草案响应EntitlementDetail缺少下一次治理所需资产revision；本次首次实现细化为FreezeView(instanceNo,status,revision,remainingUnits,reservedUnits)，仅运营端使用。冻结允许ACTIVE/PENDING_ACTIVATION/EXHAUSTED/EXPIRED，拒绝REVOKED或已经FROZEN的新请求；解冻仅FROZEN。解冻按真实有效期、激活事实及剩余量恢复EXPIRED/EXHAUSTED/PENDING_ACTIVATION/ACTIVE，不延长有效期、不恢复额度。原幂等键始终重放原响应，不返回变化后的新余额。
+
+冻结不修改余额/预占/bucket，不撤销原已承诺交易；新核销被状态校验拒绝，原HELD仍可按真实源确认或释放，提交后仍保持FROZEN。以pay_ent_command_dedup保存含reason/action/beforeStatus/expectedRevision及FreezeView的内部审计响应，actor/time用既有审计字段，公开只返回FreezeView；ent_ledger写零额度变化的FREEZE/UNFREEZE记录并递增asset_seq。本地/Remote AppService与类型化内部POST freeze端点行为一致。
+
+N03补充GET lifecycle及内部POST state：运营首次操作前只读取得当前版本；该查询不自动解冻/激活/过期，不改变资产。V457登记冻结权限及超管动作，测试schema生成后仍254表、2374种子。
+
+
+### N04/N05正式储值预置发布接线（2026-10-19）
+
+AP008/AP024/AP030/AP034/AP037复用同一已实现的RECHARGE/NONE/tiers执行器，不开放其余预置；仍检查CNY、商家真实准入、主体/门店、规则、预算及预置enabled。新增StoredValueCapabilityPort.status(tenantNo)，Status(tenantNo,creditReady,redemptionReady)仅内部使用；embedded读pay owner，standalone经token保护的POST `/internal/pay/stored-value/capabilities`。缺失响应、租户不匹配或远端不可用均不能据此宣称可发布。pay提供到账与核销执行器在其既有开关下的证据，core/app提供已实现的活动版本/参与及会员码能力证据；任何开关都不能替代实际执行器实现或商家准入。
+
+无新公网请求字段或活动库表，不修改种子enabled默认值。能力查询及引用预检在锁活动/幂等命令之前完成，写入时继续复核revision和原草稿。新增真实美业链路验收：正式创建发布AP030→统一会员码办理→商家实收→原号到账→本人授权核销→零余额门店保留及消费明细；不得直接插活动版本或调用测试credit夹具代替此验收。
+
+
+### N07后台恢复与到期契约（2026-10-19）
+
+新增core只读EntitlementRecoveryScanService.scan(tenantNo,kind,afterId,limit)，kind限定RECHARGE/SERVICE_USE/ORDER_USE/ACTIVITY_BENEFIT，limit1–100，按持久id keyset扫描非终态指针。只返回原资源号/主体/原操作者，不回传命令快照或凭证；无公网路由。app EntitlementRecoveryService逐项调用原协调器，结果区分completed/deferred/failed；等待实收、待支付及未知源保留，不自动收款、退款或TTL取消。成功原协调器持久确认终态；失败保留原记录，扫描游标继续前进并在尾部归零，重启重新扫描仍靠原业务幂等。
+
+新增内部POST `/internal/pay/entitlement/lifecycle/expire`，body=Expire(EntitlementContext,limit)，response=ExpireResult(changed)，内部token必需，MAIN且limit1–100。沿既有expireDue逐实例加锁重核，余额/预占不清空；冻结不被到期批次改写，解冻时仍重算有效期。无外部到期写接口。
+
+EntitlementRecoveryJob及EntitlementExpiryJob复用JobHandler/JobDeclaration/JobSupport及持久ShedLock租约，仅shop.job.enabled=true加载；新cron配置shop.job.entitlement-recovery.cron默认`30 */2 * * * *`，shop.job.entitlement-expiry.cron默认`45 */5 * * * *`。游标只做调度优化，业务完成状态是恢复真源，不以进程内游标作为唯一完成证据。死信治理与提醒通知另归N02/N08后续子项。
+
+
+### N08异常通知与日志口径（2026-10-19）
+
+新增可加性的schemaVersion=1事件类型ENTITLEMENT_EXCEPTION_OPENED，aggregateType=ENTITLEMENT_EXCEPTION，字段eventNo/exceptionNo/entityNo/kind/bizNo/occurredAt。异常首次成功登记时与pay outbox同事务写入，重放不再发一条新事件。事件不含源命令、付款引用、账户双池或凭证；本地与standalone共用同一codec白名单及桥接校验。
+
+异常提交后发送站内交易待办：B端只给该主体有效店主账号；运营端只给拥有ops:pay:ent:read且数据域允许该主体的在职账号。OpsStaffPort补staffNosWithPermForEntity，复用StaffScopes和实际角色权限，不以角色名猜测或跨主体广播。按事件号+receiverType+receiverNo去重，失败只重试消息，不调用发放/核销/调账。外发SMS/WXSUB/PUSH不在本切片启用。
+
+O06明确沿既有两类日志：当前INAPP消息查GET `/ops/inapp-messages`，权限message:template:read；外部通道记录才查GET `/ops/notify-logs`。站内消息事实本身可查，不向sys_notify_log重复写一条伪外发成功。B/OPS待办正文只提示核实原单，未交付页面不拼造跳转URL。
+
+
+### N08经营效果分量纲投影（2026-10-19）
+
+C10继续复用ActivityMarketingSummaryService，Metric细化为effectKind,currency?,amountMinor?,eventCount,units?；旧ORDER_DISCOUNT四字段构造保留兼容。RECHARGE记录实际实收事件，CREDITED记录到账总额，CONSUMED记录储值消费，COUPON_ISSUED/RIGHTS_USED记录数量，COUPON_DISCOUNT/COUPON_RESTORED记录优惠兑现/受限回补。不同阶段不相加为收益，数量不冒充金额；同一消费跨多个活动分配时，金额按真实批次贡献归因，商家汇总eventCount按源事件去重。
+
+新增内部EntitlementMarketingFactsPort.usage(context,entityNo,usageNo,afterActivityNo,limit)，经token保护POST `/internal/pay/entitlement/marketing/usage-effects`。limit1–100，UsageEffects返回租户/使用号/用户/主体/门店/资产种类及号/币种/原消费金额或次数/发生时间、Attribution(activityNo,amountMinor?,units?)列表和nextCursor。储值按已提交voucher→entry→lot→recharge.activityNo分组，不按最后充值猜测，分币种且全归因金额须等于真实消费；权益按原实例grant冻结的活动permit归因，无活动来源的直接售卡/定向权益不伪造活动归属。不回传本金/赠金、命令、授权、凭证。
+
+app投影订阅者只处理提交后的Received/Credited/Granted/Used/Reversed事实；发放/充值先匹配core原冻结计划，使用先匹配pay原账本安全事实。远程事实查询在core写事务之外，每个活动完整贡献幂等落pmt_effect_projection；重投/乱序不重计、不改财务。统计侧不能重放收款、发放或核销命令。core校验活动主体归属，允许已结束活动与历史门店事实，不用当前活动运行状态改写历史。
+
+
+### N10精确owner登记基础（2026-10-19）
+
+新增EntitlementOwnerRegistryPort.resolve(context,SourceIdentity(sourceSystem,sourceKind,sourceNo))；系统=MKT_LEGACY/PMT/PAY，类型=TEMPLATE/INSTANCE/USAGE，三者共同定位。缺owner返回NOT_FOUND；不能改查另一来源或回退旧写者。OwnerRef仅返回原身份、目标号、ownerSystem、迁移状态、批次、水位和版本；这是路由元数据，不是写入租约或并发切换授权。
+
+迁移域EntitlementOwnerRegistryService.registerLegacy仅受信平台scope可调用，注册原CORE_LEGACY/PREPARING，不创建目标、不发券、不改旧券；同源同批幂等、不同批冲突，不允许以此把PAY来源改成旧owner。该写方法没有公网或内部HTTP入口，后续离线迁移工具调用。只读resolve新增token保护POST `/internal/pay/entitlement/owners/resolve`及本地/Remote适配。PAY owner解析时还检查目标实际存在（TEMPLATE→ent_template，INSTANCE→ent_instance，USAGE→ent_usage），缺目标拒绝，不回退旧系统。
+
+本切片不启用旧券路由切换，不把一次owner读当作跨库写锁。N10后续兼容与离线迁移必须完成冻结/排空/水位核对及原子导入/切owner，禁止在旧写者仍可变更的情况下仅凭登记翻转owner；本计划不执行生产切换。
+
+### 付费卡能力诊断补充（2026-10-19）
+
+新增token保护只读POST `/internal/pay/entitlement/capabilities`，入参`{tenantNo}`，响应`Status(tenantNo,catalogReady,issueReady,useReady,paidCardReady)`。独立开关及MAIN租户共同约束结果；远程适配拒绝空响应或不同租户，不以目录行宣称能力就绪。此接口没有发卡/扣次或开关写入效果。
+
+6类EP属于PAID_PRODUCT目录，不得作为ACTIVITY发布。共享能力词汇补`CARD_PRODUCT/PAID_ORDER/IDEMPOTENT_CARD_ISSUE/ENTITLEMENT_LEDGER/ATOMIC_USE_DEDUCT/VALIDITY_POLICY`；core销售开关、消费者识别/授权与pay发行/扣次必须共同满足，目录才显示可执行。46项默认禁用种子不变；逐项结果见[预置能力验收矩阵](./design/活动权益-预置能力验收矩阵.md)。
+
+### 到期提醒内部读取（2026-10-19）
+
+新增token保护POST `/internal/pay/entitlement/lifecycle/expiring-soon`，入参`Reminders(context,afterId,limit)`，afterId≥0、1≤limit≤100。仅MAIN；时间由pay取UTC当前时刻，固定读取未来24小时内截止的ACTIVE实例，过滤尚未生效/已过期/冻结/次数全耗尽或已全预占。未首用激活且没有真实有效期的实例不返回。日限模型可返回，无总余次不会被当作耗尽。
+
+响应`ReminderPage(records,nextId)`，条目仅`instanceNo/userNo/effectiveUntil`，nextId=0表示本轮结束；这是受信任务内部最小字段，不是C端公开资产接口。core任务先完成pay查询，再写站内消息，二者不在同一事务。稳定消息键包含租户、实例及准确截止时间，重复扫描/重启不重复提示；单行消息失败不阻断后续行，循环扫描重新尝试，不调用发行/核销/到期命令。外部通知渠道不开启。
+
+### 运营异常聚合读取（2026-10-19）
+
+O01的entityNo改为可选筛选。服务端从已登录MAIN运营会话及既有读权限构造OperatorEntityScope：ALL映射entityNos=null，MERCHANT规则合并成明确集合，空集合代表没有任何主体权限；社区/站点范围不隐含商家权限。最多1000个明确商家引用，不能静默截断或在空集合时取消SQL过滤；超限可选择一个已授权主体，或维护合适的会话范围。请求体/查询参数不能声明ALL或传allowedEntities。
+
+pay在计数与分页之前应用租户与允许商家集合，跨主体列表只返回原脱敏ExceptionView。详情、动作历史、查源和恢复接口继续要求entityNo，并按原范围校验。新增内部token保护POST `/internal/pay/entitlement/exceptions/list-scoped`（ListAcross(scope,kind,status,page,size)），旧单主体内部list保留并共用同一查询实现；此扩展不增加恢复权限、不修改任何资产。
+
+### 旧券迁移源预检（本地工具边界，2026-10-19）
+
+core `LegacyCouponMigrationPreflightService.scan(context,source,afterId,limit)`仅供受信离线工具调用，无公网或内部HTTP入口；仅MAIN、MKT_LEGACY/PMT，主键游标分页1–100项，页内一致快照不等于冻结水位。Report输出最小核对事实及blockers，不返回旧券码明文/码摘要，不执行导入或切owner。所有结果保留SOURCE_FENCE_REQUIRED与LEGACY_WRITE_ADAPTER_REQUIRED，禁止把一次预检当作可切换许可。
+
+V232历史回填导致同号mkt/pmt行可能代表一份权利；遇到重叠显式CROSS_SOURCE_NUMBER，不能凭来源不同自动增加两份实例。pmt使用实际用户券expireAt转换为半开截止，核销历史只计未回补pmt_apply COUPON行；历史与timesUsed不符需核对，不编造使用记录补齐。平台承担、旧订单和静态券码需有相应兼容适配后才可迁移。
+
+### Java后端专项契约生成（2026-10-19）
+
+新增[权益后端OpenAPI 3.1](../api/entitlement-backend.openapi.json)与[共享TypeScript类型](../../packages/shared/src/generated/entitlement-backend.ts)，覆盖本表56条已核对公开路由、103个按请求/响应方向区分的DTO schema。已有三端UI契约不被覆盖，内部RPC与旧活动model!=unified不在本专项spec中；统一活动入口显式要求model=unified。
+
+生成源为真实Spring Handler和实际Jackson DTO视图：保留请求头、查询默认值、路径参数、分页泛型、枚举、空值、字段重命名和忽略字段，响应使用真实`{code,msg,data}`包裹。动态JsonNode/任意JSON为unknown，不编造结构。schema包含可获取的Bean Validation，不能代替构造器校验、主体/门店权限、资金范围与上下文规则；缺省/必填仍以实际端点与业务契约为准。LocalDateTime不包含偏移，具体时区沿对应接口规则，不对既有日志时间作全局UTC假设。
+
+执行`JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH=/opt/homebrew/opt/openjdk@21/bin:$PATH node scripts/gen-entitlement-backend-contracts.mjs`会先编译并运行专项Handler检查后生成；加`--check`核对仓库生成物。`--from-spec`仅供已准备target输出后的快速重建，不代替Java验证。Node守卫拒绝悬空DTO引用、路径参数漂移、重复operationId或接口清单明显缺失；输出按确定次序排序，不含生成时间噪音。类型文件只提供后端契约，不自动改客户端调用、页面或运营菜单。
+
+### 旧券源栅栏工具接口（本地，2026-10-19）
+
+LegacyCouponSourceFenceService仅供受信离线工具：transition(context,TEMPLATE来源,Command(action,batchNo,expectedRevision,reason,requestKey))、state，以及原写服务内部requireWritable。仅MAIN/MKT_LEGACY或PMT模板，迁移准备仅商家承担。Action只有BEGIN_DRAIN/FREEZE/ABORT；无COMMIT/翻owner入口，无公网或内部HTTP暴露。普通OPEN旧写不依赖迁移密钥。
+
+FenceView返回sourceSystem/templateNo/entityNo/batchNo/state/watermark/frozenRevision/revision。冻结在根锁内核对当前可见实例、pmt_apply历史及适用范围；未知原订单、未排空支付或非终态子单均阻止冻结。单模板上限5000实例、5000范围、100000历史行，超限拒绝、不截断；不是所有旧券已可导入的声明。
+
+水位在LEGACY_SOURCE_V1域下流式HMAC-SHA256处理，不返回旧码或其可枚举裸摘要。配置shop.core.entitlement.migration-watermark-key（环境变量SHOP_CORE_ENTITLEMENT_MIGRATION_WATERMARK_KEY）至少32字符，默认空禁止新冻结；批次结束前保留同一密钥。ABORT在提交前恢复旧写；COMMIT_DECIDED仅预留状态，本切片无对应写方法。
+
+原领取、定向发放、规则/预算/状态修改、活动同步、markUsed、到店核销、退券及历史回补使用同一根锁。旧4参issue有显式事务入口；回补按原订单条件写，即使用户券orderNo已变，历史apply回补仍须锁根。
+
+## 消息死信恢复闭环（2026-10-19，N02/N07/N08）
+
+O03b对OUTBOX_DELIVERY异常执行RETRY_EVENT，命令仍为expectedExceptionRevision/reason，加原Idempotency-Key；实体、租户、操作人取可信运营范围。只将原DEAD事件改回PENDING并重置本轮尝试次数，保留eventNo、类型、载荷、hash及财务事实。同步响应PROCESSING表示已排队；桥接真实成功并将原事件落为SENT后才RESOLVED。O04对此类异常改查原事件，动作记QUERY_EVENT，不查grant来源。O03拒绝该类型，避免把消息恢复当成重新发放。
+
+O01/O02/O02a复用现有主体数据域查询。Evidence增加可空delivery={eventNo,eventType,status,attempts}，原grant证据字段仍兼容。O08为GET /ops/pay/entitlement-dead-letters，cursor可选、limit默认20且最多100，返回安全DeadLetterPage(records,nextCursor)，nextCursor=null为结束。游标沿现有EntitlementCursorCodec签名并绑定租户、操作人和固定DEAD筛选，不能跨操作人或篡改重放；沿既有shop.pay.entitlement.cursor-key稳定密钥配置，不向公开query/响应暴露物理自增ID。需ENT_EXCEPTION_READ且可信会话实际为ALL，有限MERCHANT/空范围拒绝；因为损坏载荷不能可信推断entity。仅返回事件号、类型、schemaVersion、aggregateNo、尝试数和时间，不返回payload、hash、凭证或用户信息。损坏事件不开放自动修改载荷/重投。
+
+新增内部令牌POST /internal/pay/entitlement/exceptions/retry-event及dead-letters，本地/远程应用实现语义相同；query-source沿原路径分派。公开路由58、pay内部Handler69、core反向Handler10；专项OpenAPI/TypeScript更新为58操作、106 DTO schemas，旧UI契约保持独立。
+
+## I-MIG-01冻结源证据读取（2026-10-19）
+
+所有者core；内部POST /internal/core/entitlement/migration/frozen-snapshot，共享CoreEntitlementInternalApi.frozenLegacySnapshot。请求FrozenSnapshotQuery={context,query}，query={source:{sourceSystem,sourceKind:TEMPLATE,sourceNo},batchNo,frozenRevision,watermark}；sourceSystem仅MKT_LEGACY/PMT。内部令牌先验证，错误/缺失令牌不能执行源读取。
+
+响应Snapshot={schemaVersion:1,source,entityNo,batchNo,frozenRevision,watermark,contentHash,payload}。watermark为当前源根已冻结且现场重新验证的HMAC-SHA256；contentHash为payload原始UTF-8字节的SHA-256。payload为LEGACY_SOURCE_V1的7槽JSON数组：域、精确来源、批次、原模板定义、可见实例数组、关联历史数组、范围数组；不把core实体类泄漏为pay的Java依赖。只在受认证内部迁移协议内传递，包含旧码，禁止出现在C/B/运营公开响应和日志。
+
+缺少密钥/能力返回不可用；源不存在404；非FROZEN、已ABORT、版本/水位/事实不匹配409。导出上限8MiB，固定模板单元；无自动拆分或静默截断。响应不是导入授权，后续暂存/校验/源提交决定仍需单独协议。公开专项接口仍58操作/106 DTO，pay内部69 Handler，core反向增加到11 Handler。
+
+## 内部Java盘点契约补充（S03，2026-10-19）
+
+core LegacyCouponMigrationPreflightService.inventory(context,sourceSystem,afterId,limit)，仅MAIN/MKT_LEGACY/PMT，单页最多100模板。返回InventoryReport(capturedAt,records,nextId,orphanInstances,orphanIssues,orphanHistory)，该游标只用于内部源盘点，不新增公开HTTP。TemplateInventory包含原模板业务号/主体、删除/归档/迁移状态、全量及已删除实例/发行/历史计数、同号来源提示和阻塞原因；不返回旧码或金额明细。
+
+MKT historyCount/deletedHistoryCount/orphanHistory为null，表达源表没有可证实的独立历史；不能把空值推断为0次消费。PMT orphanHistory涵盖缺实例和缺原模板两种情况。所有计数不排除墓碑；可见实例scan和全量计数inventory不可混作同一口径。目标暂存、规范化及提交协议仍未由本次只读方法实现。
+
+## I-MIG-02–04证据暂存接口（2026-10-19）
+
+owner为pay；沿现有内部令牌及统一响应，不新增公开运营/C/B入口。
+
+| 内部POST | 请求 | 响应 | 业务边界 |
+|---|---|---|---|
+| /internal/pay/entitlement/migration/stage | PayMigrationRequests.Stage(scope,StageCommand(query,reason),requestKey) | StageView | scope必须MAIN平台Actor且主体与真实源一致；同键异参及同批换键冲突 |
+| /internal/pay/entitlement/migration/stage/get | Get(scope,stageNo) | StageView | 只按tenant+entity+业务号读取安全元数据 |
+| /internal/pay/entitlement/migration/stage/verify | Get(scope,stageNo) | Verification | 校验原密文/审计绑定，再现场读真实源；不是资产导入操作 |
+
+query沿I-MIG-01原source/batchNo/frozenRevision/watermark。reason非空最多500，原键最多64。StageView包含stageNo、来源系统/模板、主体/批次、STAGED、sourceSchemaVersion、frozenRevision、字节/实例/历史计数、sourceStateAtCapture=FROZEN、createdAt/revision和importReady=false；既有证据重放不宣称源当前仍FROZEN。Verification只有stageNo、SOURCE_MATCHED、importReady=false；真实源ABORT/不匹配/不可达或密文不合法拒绝，不能推定接管成功。DTO亦拒绝把STAGED结果标为importReady。
+
+没有payload、密文、密钥、旧码、消费者身份或付款事实直传响应。embedded用EntitlementMigrationAppServiceImpl委派，standalone用RemoteEntitlementMigrationAppService经PayInternalApi；源读取继续由pay→core反向Port承载。公开58操作/106 DTO保持不变，pay内部Handler增为72，core反向11。密钥配置SHOP_PAY_ENTITLEMENT_MIGRATION_SNAPSHOT_KEY/SHOP_PAY_ENTITLEMENT_MIGRATION_SNAPSHOT_KEY_ID默认空，元数据原键重放不依赖重新取得当前密钥或源冻结状态。
+
+## I-MIG-05/06源家族清单与暂存（2026-10-19）
+
+core新增POST /internal/core/entitlement/migration/frozen-manifest，沿FrozenSnapshotQuery及原内部令牌；由LegacyCouponMigrationManifestPort.exportManifest读取。响应仍为schemaVersion=1的Snapshot信封，payload为manifestVersion=2对象，包含source/batchNo、完整template、instances/issues/applications/scopes数组、historyAvailable和fenceWatermarkKind=VISIBLE_V1。原始删除标记/审计/业务号均保留。8MiB和模板单元上限仍生效，超限拒绝，不截断。MKT的应用数组为空且historyAvailable=false，原已用实例记录仍保留；不能伪造金额或历史。
+
+pay新增POST /internal/pay/entitlement/migration/stage-manifest，请求仍为PayMigrationRequests.Stage；返回ManifestStageView(evidence:StageView,manifestVersion:2,historyAvailable)。原stage/get/verify路径保持，旧stage不自动升级；同键改用另一清单模式冲突。generic get返回原安全证据元数据，verify依据持久manifest版本选择原来源接口并现场比较完整字节/hash。旧服务不认识新路径时失败关闭，不能退回V1并当成完整清单。
+
+app门面增加stageManifest，embedded/standalone分别委派真实owner或类型化RPC。完整清单及SOURCE_MATCHED仍importReady=false；没有公开运营切换/导入接口。当前公开58操作/106 DTO、pay内部73 Handler、core反向12 Handler。
+
+### S03旧权益只读规范化评估（2026-10-20）
+
+内部POST /internal/pay/entitlement/migration/stage/assess，使用PayMigrationRequests.Get(scope,stageNo)。仅内部令牌认证、MAIN及平台操作人，主体必须与暂存记录一致；不开放公网运营写接口。embedded与standalone均经EntitlementMigrationAppService.assess调用。
+
+请求只接受已存在manifestVersion=2暂存。先拒绝外部事务，再验证AES-GCM AAD、明文hash/字节数和当前core完整冻结源；源终止、删除事实变化、新增跨系统重叠或市场事实变化均拒绝旧证据。随后在pay本地读取MarketPort主数据，不在core源根锁内请求pay。
+
+返回Report(stageNo,status,importReady=false,definition,instances,notices,blockers)。status仅NORMALIZED/BLOCKED；NORMALIZED表示规则可表达，不表示已导入或可以接管。instances含sourceInstanceNo、archivalOnly、sourceStatus、remainingUnits、effectiveFrom、effectiveUntil、historicalDefinition，不含消费者号、旧核销码或原始快照。字段异常不会自动补值修复。MKT缺失消费历史明确SOURCE_HISTORY_UNAVAILABLE，缺市场不默认CN/CNY，同号跨系统明确SOURCE_NUMBER_COLLISION。
+
+原始配置与实际行为差异由notices报告：PMT旧订单核销未执行商品范围和最低件数，因此目标有效订单规则scope=ALL、minQty=null，完整旧配置仍留加密证据。STORE_CODE或不支持的优惠、暂停/结束模板、次数/历史不符、无有限原始期限等由blockers明确隔离，不生成新资产、账本或通知。
+
+S03 Report增加issuance汇总：sourceIssuedCount、observedInstanceCount、limitCount、perUserLimit、maxExposureMinor、lifetimeIssuedExposureMinor、activeRemainingExposureMinor、archivalInstanceCount、recipientCount和blockers；不返回逐人配额明细。所有额度/预算/逐人上限冲突并入顶层BLOCKED。lifetimeIssuedExposureMinor是终身发行承诺（原最大优惠×每张总次数×发行数），不是消费者历史已消费金额。两套源总量的“无限”分别是MKT=0、PMT=NULL，PMT=0严格保留为零；预算0/已知NULL为不限，缺失或非法数字另行阻断。删除/过期不返还历史发行额度；当前剩余活跃敞口与终身承诺分列。重复使用的旧PMT预算只按单次优惠计，增加LEGACY_BUDGET_EXCLUDES_REPEAT_USES提醒，禁止自动扩大原预算以通过评估。
+
+### 双源候选比较与认领计划（2026-10-20）
+
+增加内部POST /internal/pay/entitlement/migration/alias/compare、/alias/recognize、/alias/get。仅MAIN平台scope与服务令牌，两个stage必须同主体、同原批次、同模板号，且真实来源分别PMT与MKT_LEGACY。compare返回CANDIDATE_ALIAS/DIFFERENT、差异码及整体摘要，不含消费者身份或原码。recognize要求原stage版本、原因和幂等键，固定PMT为canonical；不是通用合并/覆盖接口，不接受客户端传比较结果、原明文或计数修复值。
+
+返回认领元数据含两个stage/hash、比较摘要、原批次/主体、匹配数与comparedAt，importReady始终false。get和原键重放只是历史认领事实；后续assess仍须重验双方现况。主源通过已认领且现场一致的别名上下文解除“已证明的这一对”碰撞，影子明确ALIAS_SHADOW_SOURCE并保持BLOCKED，防止两次导入。任何实质差异、已有使用历史或额外来源碰撞都不能靠recognize覆盖。
+
+上述三条alias内部工具已接线到pay-svc及embedded/standalone app。已有source-evidence接口统一由LegacyMigrationEvidenceReader读取。recognize仅保存原次声明；原键重放在源已ABORT时仍可返回历史元数据，不能当成当前授权。assess主来源必须重新验证双方hash及按原comparedAt生成的比较摘要，影子即使一致也返回ALIAS_SHADOW_SOURCE；当前时刻的使用期限/剩余敞口另外实时评估。现金封顶字段不生效、空/零门槛等价；两者原始配置继续留在加密源。未新增公网入口或权限码。
+
+N10新增LegacyCouponIdentityPort.ownedOrigins仅为共享SPI，未注册新HTTP。参数为内部context、已鉴权holder、旧实例号，返回Origin列表（source/template/entity/funder/rootState/batch/未来cutoverProofHash/rootPresent/deleted/entityConsistent），不包含holder或旧码。LegacyCouponSourceCommitPort.decided目前只冻结共享只读契约：CommitProof(template,batch,decisionNo,planHash,decidedAt)，没有提交命令实现。普通源OPEN/ABORT仍归CORE，COMMIT无该真实决定不得尝试PAY；Native PAY来源必须精确登记，不依赖ID前缀。只读route不是金融授权。
+
+### 旧ORDER券准备协议记录（2026-10-20）
+
+已新增共享LegacyCouponCheckoutSourcePort（resolve/decision/reversal）及LegacyCouponUsePort（quote/prepare/commit/release/reverse/query）类型，尚无对应HTTP或源生产者/金融实现。CheckoutFact冻结主体/持有人、原来源/目标/owner计划、post-activity多门店组、经济摘要、选择actor及真实时间；terminal Decision和Reversal独立读取，Optional.empty代表未决定，不等于取消。
+
+MerchantGroup以原groupKey和真实可选storeNo描述，不伪造多店门店号。Legacy Quote/Operation只表达ORDER券优惠金额，不能当作实际消费付款或储值借记；RELEASED且从未占用时金额NULL/无分摊。所有有优惠分摊的状态严格金额守恒。仅供后续旧接口协调器内部调用，新储值/付费卡不接此协议。
+
+### 旧ORDER券pay金融内核进展（2026-10-20）
+
+LegacyCouponUseService/Writer现已实现quote/prepare/commit/release/reverse/query领域方法；仍未注册新HTTP或接旧订单入口。CheckoutFact增加明确IntentKind=QUOTE_ONLY/CHECKOUT且protocolVersion=1，只读报价意图可报价但绝不能预占。未作普通会员识别/新卡储值授权入口。
+
+新预占须use.enabled及legacy-coupon.enabled同时开启，后者默认false（环境变量SHOP_PAY_ENTITLEMENT_LEGACY_COUPON_ENABLED）；真实Source与精确PAY owner/主体/持有人/规则匹配后才写原份数。已有操作的重放与承诺完成不受开关关闭/冻结影响；源决定缺失不是取消，金额/原号/快照不一致则拒绝。只针对MAIN/CNY及支持的ORDER券，quote优惠金额不是订单付款金额。
+
+HOLD对账现合并ent_legacy_coupon_operation.HELD+ever_held=1，不将合法新预占误报为差异。取消未占用时保留NULL金额、空分摊且无份数分录。Root真实源/通知/消费历史与全部旧DTO/URL仍待后续接线，不能因为领域接口已实现而开放迁入或切owner。
+
+### N10旧ORDER券内部结算协议
+
+pay新增`/internal/pay/entitlement/legacy-coupons/{quote,prepare,commit,release,reverse,query}`六个令牌鉴权POST，使用共享LegacyCouponUsePort命令和返回类型；embedded直接同域委派，standalone通过PayInternalApi。quote/prepare绑定checkoutNo/operationNo/userNo/entityNo，完成命令还必须绑定真实decisionNo。QUOTE_ONLY不可预占，HELD才占次数，COMMITTED才扣次数；ABORT且未hold没有金额与流水，不能伪造0元扣减。
+
+core新增`/internal/core/entitlement/legacy-checkout/{source,decision,reversal}`三个令牌鉴权POST，只读core日记。查无意图404；未决定为200且`decision:null`或`reversal:null`；服务不可用503；缺少/错误内部令牌401且不调用来源。决策空信封与空传输响应严格区分。公开专项接口仍58操作/106 DTO；pay内部83 Handler、core反向15 Handler。现有URL/DTO写入兼容仍需原交易入口联调后验收。
+
+### N10纯估算及旧券包快照
+
+内部pay新增`legacy-coupons/estimate`及`legacy-coupons/snapshot`。estimate没有checkout/op/经济摘要/核销凭证，不建日记、不预占；snapshot按source/target/batch/proof及买家/主体核验，在pay单一RR快照返回总余次与预占，关闭新使用后仍可读取。两者只有服务令牌入口，旧C端响应形状不变；当前pay内部85、core反向15、公开专项58操作/106 DTO。
+
+`/mp/my-coupons`和`/mp/coupon/mine`通过owner投影读取实际pay数量/状态；ORDER的redeemCode为空。`/mp/coupon/best`改用同一allocate真源，不再按冻结旧表推算已用完资产的优惠。无币款收退、principal/bonus字段或新在线退款入口。源读取SPI由独立Core Port适配Journal，业务写接口不再兼任可替换读Port。
+
+### 消费全历史查询增量（2026-10-20）
+
+P25a 在详情 recentUsage（最近 20 条）之外提供完整分页。消费者只传权益号和可选主体，不接受 userNo；网关从会话构造本人。支付先验证权益归属，再按 tenant/user/entity/instance 查询真实 STANDARD 或 LEGACY 核销。以 occurredAt/usageNo 倒序做 keyset，返回 hasMore/nextCursor，签名游标绑定消费者、主体、权益及 RIGHTS_USAGE 查询类型，禁止跨查询复用。只读查询不激活、不核销、不重发通知。
+
+独立部署使用 `/internal/pay/entitlement/query/history`，请求为 UsageHistory(context,query)，返回同一 CursorPage<UsageItem>；需内部 token。支付内部接口由 85 增为 86，核心反向接口仍 15。公开契约在本批真实映射验证后重新生成。
+
+### 固定目标计划内部 API（2026-10-20）
+
+| 方法 | 支付内部路径 | 请求 | 返回 |
+|---|---|---|---|
+| POST | /internal/pay/entitlement/migration/plan | PayMigrationRequests.Plan(scope,PlanCommand(stageNo,reason),requestKey) | PlanView |
+| POST | /internal/pay/entitlement/migration/plan/get | PlanGet(scope,planNo) | PlanView |
+| POST | /internal/pay/entitlement/migration/plan/verify | PlanGet(scope,planNo) | PlanView |
+
+全部要求内部服务 token、MAIN、平台操作人及主体范围；无公开消费者入口。PlanView 仅返回 plan/stage/entity/batch、PLANNED、目标及源bundle摘要、计数/评估时刻/版本和 importReady=false；不返回身份、密文、目标明细或导入许可。同键同操作人同参重放；异参或跨操作人冲突，跨主体不可见。verify 重新验证密文、全部源证据及同号认领，不改变计划。已有历史元数据重放不等于新的源验证。
+
+本批22模块编译、43项定向测试通过（含真实typed HTTP及三条接口错误token、本地/远程唯一装配、真实冻结来源计划）。支付内部接口89、核心反向15、公开59操作/106 DTO。源端提交和目标原子导入仍未暴露为可用能力。
+
+### 源证明与支付基线迁入内部接口（2026-10-20）
+
+| 方法 | 路径 | 请求 | 返回 |
+|---|---|---|---|
+| POST | /internal/pay/entitlement/migration/plan/prepared | PlanGet(scope,planNo) | LegacyCouponMigrationPlan 固定非敏感计划头 |
+| POST | /internal/core/entitlement/migration/source-commit | MigrationCommitQuery(context,template) | MigrationCommitReply(proof?) |
+| POST | /internal/pay/entitlement/migration/import | Import(scope,ImportCommand(planNo,reason),requestKey) | ImportView |
+| POST | /internal/pay/entitlement/migration/import/get | PlanGet(scope,planNo) | ImportView |
+
+全部要求内部 token；源证明接口只读，不是触发源提交的入口。proof=null 是明确尚无决定；缺失 transport/envelope 为不可用，不能猜测释放或导入。准备头读取校验加密计划完整性；新的源提交由核心锁内重验原完整快照，不能用只读计划头跳过源栅栏。
+
+ImportView 含 import/plan/entity/sourceDecision、planHash、IMPORTED、资产/归档数量、issuanceEnabledAtImport=false、实际导入时刻；不含用户、旧码、密文或虚构的付款时间。历史PMT来源必须认证完整原证据，原净消耗与真实未退回核销条数一致才可提交及迁入；MKT“无可用历史”保留未知，不宣称历史为0。原消费记录作为MIGRATED展示事实复制，不重造旧金融账。迁入时发行保持暂停，不重复普通grant、不重发到账通知，已持有权益的可用性由使用开关及原期限决定。
+
+支付内部92接口、核心反向16接口；公开59操作/106 DTO不变。22模块编译及43项定向测试通过，真实MySQL并发迁入另行验证；未执行生产切换。
+
+### 迁入前核销的原订单退回协议（2026-10-20）
+
+| 所属服务 | 方法/路径 | 输入 | 输出 |
+|---|---|---|---|
+| core | POST /internal/core/entitlement/migration/history-return/source | HistoricalReturnQuery(context,returnNo) | 原核销、原实例、迁移决定/batch/planHash、本人/主体/订单、取消或全退款依据、原优惠金额、来源行哈希、决定时间 |
+| core | POST /internal/core/entitlement/migration/history-return/ack | HistoricalReturnAck(context,Receipt) | 已确认的同一Receipt |
+| pay | POST /internal/pay/entitlement/migration/history-return/reverse | Query(context,entityNo,returnNo) | 唯一退回回执、原核销及新记录/实例号、恢复1次、实际余次、来源哈希和决定时间 |
+| pay | POST /internal/pay/entitlement/migration/history-return/query | 同上 | 既有回执；不存在404 |
+
+仅服务令牌可访问，不新增C端现金退款入口。来源端只读取既有决定或确认回执，不能通过该API创建退款决定。支付在事务外取得不可变来源事实，再在本地同事务回补、更新记录及生成回执；核心确认在支付提交后。已完成回执重读不依赖来源当前可用。拒绝跨租户/主体、来源哈希或迁入决定不一致，以及重复不同身份的退回。
+
+原取消入口和AFTER_SALE_REFUNDED事件根据真实订单状态创建core决定，同事务outbox驱动支付；HISTORICAL_COUPON_RETURN有界恢复扫描只读取PENDING原号，不推断超时取消。公开查询P25b继续只展示登录本人的记录，不暴露来源快照或拆分本金/赠金。
+
+### 旧商家券定义兼容接口（N10续）
+
+公开URL和CouponVO/CouponSaveCmd保持原契约，未迁移继续原core实现。已永久迁移按sourceSystem+TEMPLATE+sourceNo、batch、planHash与精确owner核验后，只访问pay。
+
+| 方法 | 内部支付路径 | 输入 | 输出 |
+|---|---|---|---|
+| POST | /internal/pay/entitlement/legacy-template/get | Get(CatalogScope,Reference) | Snapshot(当前模板、已发布定义、当前发行策略、净使用次数/金额) |
+| POST | /internal/pay/entitlement/legacy-template/status | Status(scope,reference,status,requestKey) | 同上，模板状态和发行启停同本地事务 |
+| POST | /internal/pay/entitlement/legacy-template/save | Save(scope,reference,DefinitionChange,requestKey) | 同上，新版发布与策略额度同本地事务 |
+
+Reference含明确来源、目标模板号、迁移批次和计划摘要。发行保持关闭时旧DTO显示PAUSED，商家显式恢复才启用。保存只改后续版本；旧实例rule_snapshot、期限和余次不重写。当前兼容保存仍限定已支持的MERCHANT/CNY/ORDER_COUPON/COUNT/ALL/CASH或封顶PERCENT，不将旧页面支持的其他类型猜测转换。降额不得低于已发行/预占基线，失败必须回滚同次发布。以上均为服务令牌接口，不向C端开放模板管理。
+
+### 旧发放与本人领取的支付批次协议
+
+| 所属 | 方法/路径 | 输入 | 输出 |
+|---|---|---|---|
+| core | POST /internal/core/entitlement/legacy-coupon/audience | LegacyAudience(context, Query) | 已核验永久来源/主体的真实受众、账号资格与不可触达汇总 |
+| pay | POST /internal/pay/entitlement/legacy-issue/create | Issue(scope, Command, requestKey) | 原兼容操作、原生batch及实际结果 |
+| pay | POST /internal/pay/entitlement/legacy-issue/get | Get(scope, issueNo) | 同主体已接受原号的当前结果 |
+| pay | POST /internal/pay/entitlement/legacy-issue/resume | Resume(scope, issueNo, limit 1–1000) | 只续原受众和原grant |
+| pay | POST /internal/pay/entitlement/legacy-issue/list | History(scope, sourceSystem, sourceTemplateNo?) | 同主体原模板的实际记录，模板可空用于原历史入口 |
+
+Command包含精确模板Reference、TARGETED/CENTER及人群/标签选择条件，不含客户输入的收件人名单。TARGETED由core会员域解析；CENTER只认context实际领取人，账号必须活跃，版本必须允许CENTER。pay真实个人基线计入已迁实例，不能通过切入口重复领取。
+
+原biz发券与mp领券的URL及已有响应字段保留。新发权益仍是原生pay实例；原表不新增券或增发计数。发行暂停、库存、个人额度与预算均在pay生效；C领券中心读当前pay状态及本人已领计数，不能按冻结core计数展示“未领取”。当前私有pay101/core19，公开专项60操作/106DTO；尚未宣称MKT第三方奖励全部接续。
+
+### 原MKT运营与消费者入口兼容（2026-10-20）
+
+`marketing.coupon.CouponService` 原URL、DTO和运营权限保持，已迁移的MERCHANT券按Core永久来源决定及精确TEMPLATE owner读取pay。Ops列表在当前pay状态/归档投影后筛选，不以冻结旧状态预筛；状态显式恢复发行，保存只改未来发布版本，预算走当前发行策略版本，已得权益规则不变。Ops SINGLE_USER解析实际活动账户，1–1000张按统一原生批次的独立券单元发放，个人限领/库存/预算整批校验；不信任自由文案为受众，不模拟消费者领取。历史记录的名称来自真实发行版本，金额来自实际已发行敞口，核销统计来自当前净金融事实。
+
+新增私有pay `POST /internal/pay/entitlement/legacy-template/archive`，请求`PayLegacyTemplateRequests.Archive(scope,reference,archived,requestKey)`，响应`LegacyCouponTemplateViews.Snapshot`，仅platformActor，要求原精确来源引用。内部密钥与其余内部接口一致；归档时间首次固定，重复归档幂等，恢复清空；不修改原Core根或已得券。当前私有pay102/core19、专项公开60操作/106DTO。
+
+私有旧发行Command补充`userKey/count/targetDesc`：只有平台身份且TARGETED无商家选择器时可指定单用户数量；Core独立解析活动账户并回传原操作人，Pay使用原数量创建独立grant，不接受公开任意收件人列表。C领取保持仅本人、1张。Snapshot补充`archivedAt/usedCouponCount`，净核销张数为真实已使用实例去重，不将多次券的次数冒充张数。
+
+旧Fission/派生COUPON活动仍引用的来源在完整源评估中报告`LEGACY_PROGRAM_CONVERSION_REQUIRED`，先转换到统一活动，再申请切换；完整源决定重验当前引用事实及hash。Fission新建绑定与启用在Core根栅栏下校验，不能把迁移后的券重新绑定旧事务发奖路径。原未迁移/平台券继续原有逻辑；第三方奖励不能伪装CENTER本人领取，也不能在Core持锁事务下远调pay。

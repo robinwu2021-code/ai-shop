@@ -30,6 +30,14 @@ public class PayEntitlementFeatureGate {
         require(properties.getEntitlement().getUse().isEnabled());
     }
 
+    /** Explicit old ORDER-coupon compatibility; it never enables card or stored-value authorization. */
+    public boolean legacyCouponEnabled() {
+        return properties.getEntitlement().getUse().isEnabled() && properties.getEntitlement().getLegacyCoupon().isEnabled();
+    }
+    public void requireLegacyCoupon() {
+        requireUse(); require(properties.getEntitlement().getLegacyCoupon().isEnabled());
+    }
+
     /** Optional exchange-code compatibility never enables account-wide or stored-value credentials. */
     public void requireCode() {
         requireUse(); require(properties.getEntitlement().getCode().isEnabled());

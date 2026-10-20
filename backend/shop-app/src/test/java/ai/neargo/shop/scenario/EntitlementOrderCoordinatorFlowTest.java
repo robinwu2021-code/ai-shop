@@ -13,6 +13,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import ai.neargo.shop.paybridge.EntitlementOrderCoordinator;
+import ai.neargo.shop.paybridge.EntitlementRecoveryService;
+import ai.neargo.shop.trade.dto.EntitlementRecoveryWork.Kind;
 import ai.neargo.shop.paybridge.EntitlementOrderUseDecisionConsumer;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
@@ -45,6 +47,7 @@ import tools.jackson.databind.ObjectMapper;
 @ActiveProfiles("test")
 class EntitlementOrderCoordinatorFlowTest {
     @Autowired EntitlementOrderCoordinator coordinator;
+    @Autowired EntitlementRecoveryService recovery;
     @Autowired EntitlementOrderUseService orderUses;
     @Autowired OrderService orderService;
     @Autowired EntitlementAuthorizationService authorizations;
@@ -204,7 +207,8 @@ class EntitlementOrderCoordinatorFlowTest {
         assertThatThrownBy(() -> orderUses.sealForPayment("MAIN", order)).isInstanceOf(BizException.class);
         jdbc.update("UPDATE ord_order SET pay_deadline_at=1 WHERE order_no=?", order);
         orderService.closeExpiredOrders(System.currentTimeMillis());
-        assertThat(coordinator.recover(context, entity, c.operationNo()).status()).isEqualTo(State.RELEASED);
+        assertThat(recovery.recover("MAIN",Kind.ORDER_USE,0,100).completed()).isGreaterThanOrEqualTo(1);
+        assertThat(uses.query(context,entity,c.operationNo()).status()).isEqualTo(State.RELEASED);
         assertThat(uses.prepare(context, c).status()).isEqualTo(State.RELEASED);
         assertThat(jdbc.queryForObject("SELECT reserved_units FROM ent_instance WHERE instance_no=?",
                 Integer.class, instance)).isZero();

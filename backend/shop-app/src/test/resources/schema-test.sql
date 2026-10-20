@@ -258,8 +258,17 @@ CREATE TABLE IF NOT EXISTS mkt_coupon
     scope_desc VARCHAR(255) DEFAULT NULL,
     budget_minor BIGINT(20) NOT NULL DEFAULT 0,
     archived_at DATETIME DEFAULT NULL,
+    migration_state VARCHAR(24) NOT NULL DEFAULT 'OPEN',
+    migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    migration_watermark CHAR(64) COLLATE utf8mb4_bin NULL,
+    migration_frozen_revision BIGINT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_coupon_no UNIQUE (coupon_no)
+    CONSTRAINT uk_coupon_no UNIQUE (coupon_no),
+    CONSTRAINT ck_mkt_migration_state CHECK (
+    migration_state IN ('OPEN','DRAINING','FROZEN','COMMIT_DECIDED','ABORT_DECIDED')
+    AND (migration_state='OPEN' OR migration_batch_no IS NOT NULL)
+    AND (migration_state NOT IN ('FROZEN','COMMIT_DECIDED') OR (migration_watermark IS NOT NULL AND migration_frozen_revision IS NOT NULL))
+    AND (migration_frozen_revision IS NULL OR migration_frozen_revision>=0))
 );
 
 CREATE TABLE IF NOT EXISTS mkt_group_buy
@@ -3511,8 +3520,17 @@ CREATE TABLE IF NOT EXISTS pmt_coupon
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    migration_state VARCHAR(24) NOT NULL DEFAULT 'OPEN',
+    migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    migration_watermark CHAR(64) COLLATE utf8mb4_bin NULL,
+    migration_frozen_revision BIGINT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_pmt_coupon_no UNIQUE (coupon_no)
+    CONSTRAINT uk_pmt_coupon_no UNIQUE (coupon_no),
+    CONSTRAINT ck_pmt_migration_state CHECK (
+    migration_state IN ('OPEN','DRAINING','FROZEN','COMMIT_DECIDED','ABORT_DECIDED')
+    AND (migration_state='OPEN' OR migration_batch_no IS NOT NULL)
+    AND (migration_state NOT IN ('FROZEN','COMMIT_DECIDED') OR (migration_watermark IS NOT NULL AND migration_frozen_revision IS NOT NULL))
+    AND (migration_frozen_revision IS NULL OR migration_frozen_revision>=0))
 );
 
 CREATE TABLE IF NOT EXISTS pmt_coupon_scope
@@ -5034,12 +5052,14 @@ CREATE TABLE IF NOT EXISTS ord_card_sale_snapshot
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    delivery_status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
     PRIMARY KEY (id),
     CONSTRAINT uk_card_sale_snapshot UNIQUE (tenant_no, snapshot_no),
     CONSTRAINT uk_card_sale_source UNIQUE (tenant_no, source_key),
     CONSTRAINT uk_card_sale_unit UNIQUE (tenant_no, order_line_no, unit_index, entitlement_index),
     CHECK (unit_index > 0 AND entitlement_index > 0 AND unit_price_minor >= 0),
-    CHECK ((paid_fact_no IS NULL AND paid_at IS NULL) OR (paid_fact_no IS NOT NULL AND paid_at IS NOT NULL))
+    CHECK ((paid_fact_no IS NULL AND paid_at IS NULL) OR (paid_fact_no IS NOT NULL AND paid_at IS NOT NULL)),
+    CONSTRAINT ck_card_sale_delivery CHECK (delivery_status IN ('PENDING','ACKNOWLEDGED'))
 );
 
 CREATE TABLE IF NOT EXISTS pay_ent_outbox
@@ -5561,8 +5581,8 @@ CREATE TABLE IF NOT EXISTS ent_usage
     operation_no VARCHAR(64) NOT NULL,
     user_no VARCHAR(64) NOT NULL,
     entity_no VARCHAR(64) NOT NULL,
-    store_no VARCHAR(64) NOT NULL,
-    store_name VARCHAR(100) NOT NULL,
+    store_no VARCHAR(64) NULL,
+    store_name VARCHAR(100) NULL,
     asset_kind VARCHAR(24) NOT NULL,
     title VARCHAR(100) NOT NULL,
     units INT NULL,
@@ -5571,7 +5591,7 @@ CREATE TABLE IF NOT EXISTS ent_usage
     items_snapshot TEXT NOT NULL,
     service_staff_name VARCHAR(64) NULL,
     source_order_no VARCHAR(64) NULL,
-    operator_no VARCHAR(64) NOT NULL,
+    operator_no VARCHAR(64) NULL,
     status VARCHAR(16) NOT NULL,
     occurred_at DATETIME(3) NOT NULL,
     version BIGINT NOT NULL DEFAULT 0,
@@ -5580,9 +5600,21 @@ CREATE TABLE IF NOT EXISTS ent_usage
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    protocol VARCHAR(16) NOT NULL DEFAULT 'STANDARD',
+    legacy_instance_no VARCHAR(64) NULL,
+    migration_import_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    CONSTRAINT uk_usage_protocol_op UNIQUE (tenant_no,protocol,operation_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_usage UNIQUE (tenant_no,usage_no),
-    CONSTRAINT uk_usage_op UNIQUE (tenant_no,operation_no)
+    CONSTRAINT ck_usage_protocol CHECK (
+ (protocol='STANDARD' AND legacy_instance_no IS NULL AND migration_import_no IS NULL AND store_no IS NOT NULL AND store_name IS NOT NULL AND operator_no IS NOT NULL)
+ OR (protocol='LEGACY' AND legacy_instance_no IS NOT NULL AND migration_import_no IS NULL AND operator_no IS NOT NULL
+     AND asset_kind='ORDER_COUPON' AND currency IS NOT NULL AND currency='CNY' AND units IS NOT NULL AND units=1
+     AND amount_minor IS NOT NULL AND amount_minor>0 AND source_order_no IS NOT NULL)
+ OR (protocol='MIGRATED' AND migration_import_no IS NOT NULL AND asset_kind='ORDER_COUPON'
+     AND currency IS NOT NULL AND currency='CNY' AND units IS NOT NULL AND units=1
+     AND amount_minor IS NOT NULL AND amount_minor>=0 AND status IN ('COMMITTED','REVERSED'))
+)
 );
 
 CREATE TABLE IF NOT EXISTS ent_use_proposal
@@ -6065,6 +6097,685 @@ CREATE TABLE IF NOT EXISTS pmt_recharge_intent
     CONSTRAINT uk_recharge_intent_pay UNIQUE (tenant_no,recharge_no),
     CONSTRAINT uk_recharge_intent_request UNIQUE (tenant_no,entity_no,operator_no,request_key_hash),
     CHECK (status IN ('PENDING','CREDITED','CANCELLED'))
+);
+
+CREATE TABLE IF NOT EXISTS sv_hold_allocation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    operation_no VARCHAR(64) NOT NULL,
+    lot_no VARCHAR(64) NOT NULL,
+    principal_minor BIGINT NOT NULL,
+    bonus_minor BIGINT NOT NULL,
+    items_allocation TEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sv_alloc UNIQUE (tenant_no,operation_no,lot_no),
+    CHECK (principal_minor>=0 AND bonus_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS ent_sale_reservation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    reservation_no VARCHAR(64) NOT NULL,
+    source_key CHAR(64) NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    command_snapshot TEXT NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    template_no VARCHAR(64) NULL,
+    definition_snapshot TEXT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    grant_no VARCHAR(64) NULL,
+    source_decision_no VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sale_reservation UNIQUE (tenant_no,reservation_no),
+    CONSTRAINT uk_sale_reservation_source UNIQUE (tenant_no,source_key),
+    CHECK (status IN ('RESERVING','RESERVED','TRANSFERRED','RELEASED')),
+    CHECK (status NOT IN ('RESERVED','TRANSFERRED') OR (template_no IS NOT NULL AND definition_snapshot IS NOT NULL)),
+    CHECK (status <> 'TRANSFERRED' OR grant_no IS NOT NULL),
+    CHECK (status <> 'RELEASED' OR source_decision_no IS NOT NULL)
+);
+
+CREATE TABLE IF NOT EXISTS pay_ent_exception
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    exception_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    kind VARCHAR(32) NOT NULL,
+    biz_no VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    evidence TEXT NOT NULL,
+    last_action VARCHAR(64) NULL,
+    handled_by VARCHAR(64) NULL,
+    handled_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_exception UNIQUE (tenant_no,exception_no),
+    CONSTRAINT uk_exception_source UNIQUE (tenant_no,kind,biz_no),
+    CHECK (status IN ('OPEN','PROCESSING','RESOLVED'))
+);
+
+CREATE TABLE IF NOT EXISTS pay_ent_exception_action
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    action_no VARCHAR(64) NOT NULL,
+    exception_no VARCHAR(64) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    response_snapshot TEXT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    operation_kind VARCHAR(32) NOT NULL DEFAULT 'RETRY_GRANT',
+    PRIMARY KEY(id),
+    CONSTRAINT uk_exception_action UNIQUE (tenant_no,action_no),
+    CONSTRAINT uk_exception_request UNIQUE (tenant_no,request_key),
+    CHECK (status IN ('PENDING','DONE')),
+    CHECK (status <> 'DONE' OR response_snapshot IS NOT NULL),
+    CONSTRAINT ck_exception_action_kind CHECK (operation_kind IN ('RETRY_GRANT','QUERY_SOURCE','RETRY_EVENT','QUERY_EVENT'))
+);
+
+CREATE TABLE IF NOT EXISTS pay_ent_recon_run
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    recon_no VARCHAR(64) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    axis VARCHAR(16) NOT NULL,
+    currency VARCHAR(8) NULL,
+    biz_date DATE NOT NULL,
+    market_zone VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    scan_cursor VARCHAR(512) NULL,
+    checked_count BIGINT NOT NULL DEFAULT 0,
+    diff_count BIGINT NOT NULL DEFAULT 0,
+    started_at DATETIME(3) NOT NULL,
+    completed_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ent_recon_no UNIQUE (tenant_no,recon_no),
+    CONSTRAINT uk_ent_recon_request UNIQUE (tenant_no,request_key),
+    CHECK (checked_count>=0 AND diff_count>=0 AND diff_count<=checked_count),
+    CHECK (axis IN ('ISSUANCE','RIGHTS','HOLD','MONEY')),
+    CHECK (axis<>'MONEY' OR currency IS NOT NULL),
+    CHECK (status IN ('RUNNING','COMPLETED','FAILED'))
+);
+
+CREATE TABLE IF NOT EXISTS pay_ent_recon_diff
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    diff_no VARCHAR(64) NOT NULL,
+    recon_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    resource_no VARCHAR(64) NOT NULL,
+    diff_kind VARCHAR(32) NOT NULL,
+    expected_snapshot TEXT NOT NULL,
+    actual_snapshot TEXT NOT NULL,
+    exception_no VARCHAR(64) NULL,
+    status VARCHAR(16) NOT NULL,
+    resolution_note VARCHAR(500) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ent_recon_diff UNIQUE (tenant_no,diff_no),
+    CONSTRAINT uk_ent_recon_resource UNIQUE (tenant_no,recon_no,resource_no,diff_kind),
+    CHECK (status IN ('OPEN','ACKNOWLEDGED','RESOLVED'))
+);
+
+CREATE TABLE IF NOT EXISTS ent_owner_registry
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_kind VARCHAR(24) NOT NULL,
+    source_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    target_no VARCHAR(64) NULL,
+    owner_system VARCHAR(16) NOT NULL,
+    migration_batch_no VARCHAR(64) NOT NULL,
+    cutover_watermark VARCHAR(128) NULL,
+    status VARCHAR(24) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_source_owner UNIQUE (tenant_no,source_system,source_kind,source_no),
+    CHECK (source_system IN ('MKT_LEGACY','PMT','PAY')),
+    CHECK (source_kind IN ('TEMPLATE','INSTANCE','USAGE')),
+    CHECK (owner_system IN ('CORE_LEGACY','PAY')),
+    CHECK (status IN ('PREPARING','VERIFIED','CUTOVER','ARCHIVED')),
+    CHECK (owner_system<>'CORE_LEGACY' OR status IN ('PREPARING','VERIFIED')),
+    CHECK (owner_system<>'PAY' OR (status IN ('CUTOVER','ARCHIVED') AND target_no IS NOT NULL AND cutover_watermark IS NOT NULL)),
+    CHECK (status<>'VERIFIED' OR (target_no IS NOT NULL AND cutover_watermark IS NOT NULL)),
+    CHECK (source_system<>'PAY' OR owner_system='PAY')
+);
+
+CREATE TABLE IF NOT EXISTS ent_migration_stage
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    stage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    source_system VARCHAR(24) COLLATE utf8mb4_bin NOT NULL,
+    source_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    source_schema_version INT NOT NULL,
+    frozen_revision BIGINT NOT NULL,
+    watermark CHAR(64) NOT NULL,
+    content_hash CHAR(64) NOT NULL,
+    crypto_key_id VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    payload_cipher MEDIUMTEXT NOT NULL,
+    payload_bytes INT NOT NULL,
+    instance_count BIGINT NOT NULL,
+    history_count BIGINT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    manifest_version INT NOT NULL DEFAULT 1,
+    history_available TINYINT NULL DEFAULT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_stage UNIQUE (tenant_no,stage_no),
+    CONSTRAINT uk_migration_stage_request UNIQUE (tenant_no,request_key),
+    CONSTRAINT uk_migration_stage_origin UNIQUE (tenant_no,source_system,source_template_no,migration_batch_no),
+    CHECK (source_system IN ('MKT_LEGACY','PMT')),
+    CHECK (source_schema_version=1 AND frozen_revision>=0),
+    CHECK (payload_bytes BETWEEN 1 AND 8388608),
+    CHECK (CHAR_LENGTH(payload_cipher) BETWEEN 1 AND 12000000),
+    CHECK (instance_count>=0 AND history_count>=0),
+    CHECK (CHAR_LENGTH(TRIM(reason))>0 AND CHAR_LENGTH(TRIM(crypto_key_id))>0),
+    CHECK (CHAR_LENGTH(watermark)=64 AND CHAR_LENGTH(content_hash)=64 AND CHAR_LENGTH(command_hash)=64),
+    CHECK (status='STAGED'),
+    CONSTRAINT ck_migration_manifest_version CHECK (manifest_version IN (1,2)),
+    CONSTRAINT ck_migration_manifest_history CHECK (
+   (manifest_version=1 AND history_available IS NULL)
+   OR (history_available IS NOT NULL AND
+       ((source_system='PMT' AND history_available=1) OR (source_system='MKT_LEGACY' AND history_available=0))))
+);
+
+CREATE TABLE IF NOT EXISTS ent_migration_alias
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    alias_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    pmt_stage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    mkt_stage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    canonical_stage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    pmt_content_hash CHAR(64) NOT NULL,
+    mkt_content_hash CHAR(64) NOT NULL,
+    comparison_hash CHAR(64) NOT NULL,
+    matched_instance_count BIGINT NOT NULL,
+    compared_at DATETIME(3) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_alias UNIQUE (tenant_no,alias_no),
+    CONSTRAINT uk_migration_alias_pmt UNIQUE (tenant_no,pmt_stage_no),
+    CONSTRAINT uk_migration_alias_mkt UNIQUE (tenant_no,mkt_stage_no),
+    CONSTRAINT uk_migration_alias_request UNIQUE (tenant_no,request_key),
+    CHECK (canonical_stage_no=pmt_stage_no AND pmt_stage_no<>mkt_stage_no),
+    CHECK (matched_instance_count>=0),
+    CHECK (CHAR_LENGTH(pmt_content_hash)=64 AND CHAR_LENGTH(mkt_content_hash)=64 AND CHAR_LENGTH(comparison_hash)=64 AND CHAR_LENGTH(command_hash)=64),
+    CHECK (CHAR_LENGTH(TRIM(reason))>0),
+    CHECK (status='RECOGNIZED')
+);
+
+CREATE TABLE IF NOT EXISTS ent_legacy_coupon_operation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    checkout_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    origin_system VARCHAR(24) COLLATE utf8mb4_bin NOT NULL,
+    origin_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    instance_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    owner_batch_no VARCHAR(64) NOT NULL,
+    owner_plan_hash CHAR(64) NOT NULL,
+    economic_hash CHAR(64) NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    source_version INT NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    context_snapshot TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    ever_held TINYINT NOT NULL DEFAULT 0,
+    discount_minor BIGINT NULL,
+    allocation_snapshot TEXT NULL,
+    rule_snapshot TEXT NULL,
+    hold_asset_seq BIGINT NULL,
+    commit_asset_seq BIGINT NULL,
+    release_asset_seq BIGINT NULL,
+    reverse_asset_seq BIGINT NULL,
+    commit_decision_no VARCHAR(64) NULL,
+    abort_decision_no VARCHAR(64) NULL,
+    reverse_decision_no VARCHAR(64) NULL,
+    source_order_no VARCHAR(64) NULL,
+    commit_snapshot TEXT NULL,
+    abort_snapshot TEXT NULL,
+    reverse_snapshot TEXT NULL,
+    held_at DATETIME(3) NULL,
+    committed_at DATETIME(3) NULL,
+    released_at DATETIME(3) NULL,
+    reversed_at DATETIME(3) NULL,
+    source_committed_at DATETIME(3) NULL,
+    source_reversed_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_legacy_coupon_operation UNIQUE (tenant_no,operation_no),
+    CONSTRAINT uk_legacy_coupon_checkout UNIQUE (tenant_no,checkout_no),
+    CHECK (origin_system IN ('MKT_LEGACY','PMT','PAY') AND source_version=1),
+    CHECK (CHAR_LENGTH(owner_plan_hash)=64 AND CHAR_LENGTH(economic_hash)=64 AND CHAR_LENGTH(command_hash)=64),
+    CHECK (discount_minor IS NULL OR discount_minor>0),
+    CHECK (status IN ('PREPARING','HELD','COMMITTED','RELEASED','REVERSED')),
+    CHECK ((ever_held=0 AND discount_minor IS NULL AND allocation_snapshot IS NULL AND rule_snapshot IS NULL AND hold_asset_seq IS NULL AND held_at IS NULL AND status IN ('PREPARING','RELEASED')) OR (ever_held=1 AND discount_minor IS NOT NULL AND allocation_snapshot IS NOT NULL AND rule_snapshot IS NOT NULL AND hold_asset_seq IS NOT NULL AND hold_asset_seq>0 AND held_at IS NOT NULL AND status<>'PREPARING')),
+    CHECK ((status IN ('COMMITTED','REVERSED') AND commit_asset_seq IS NOT NULL AND commit_asset_seq>hold_asset_seq AND commit_decision_no IS NOT NULL AND source_order_no IS NOT NULL AND commit_snapshot IS NOT NULL AND committed_at IS NOT NULL AND source_committed_at IS NOT NULL) OR (status NOT IN ('COMMITTED','REVERSED') AND commit_asset_seq IS NULL AND commit_decision_no IS NULL AND source_order_no IS NULL AND commit_snapshot IS NULL AND committed_at IS NULL AND source_committed_at IS NULL)),
+    CHECK ((status='RELEASED' AND abort_decision_no IS NOT NULL AND abort_snapshot IS NOT NULL AND released_at IS NOT NULL AND ((ever_held=0 AND release_asset_seq IS NULL) OR (ever_held=1 AND release_asset_seq IS NOT NULL AND release_asset_seq>hold_asset_seq))) OR (status<>'RELEASED' AND abort_decision_no IS NULL AND abort_snapshot IS NULL AND released_at IS NULL AND release_asset_seq IS NULL)),
+    CHECK ((status='REVERSED' AND reverse_asset_seq IS NOT NULL AND reverse_asset_seq>commit_asset_seq AND reverse_decision_no IS NOT NULL AND reverse_snapshot IS NOT NULL AND reversed_at IS NOT NULL AND source_reversed_at IS NOT NULL) OR (status<>'REVERSED' AND reverse_asset_seq IS NULL AND reverse_decision_no IS NULL AND reverse_snapshot IS NULL AND reversed_at IS NULL AND source_reversed_at IS NULL))
+);
+
+CREATE TABLE IF NOT EXISTS ord_legacy_coupon_checkout
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    checkout_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    stage_hash CHAR(64) NOT NULL,
+    economic_hash CHAR(64) NOT NULL,
+    fact_snapshot TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    held_snapshot TEXT NULL,
+    decision_snapshot TEXT NULL,
+    reversal_snapshot TEXT NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    pay_state VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    pay_decision_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    pay_acked_at DATETIME(3) NULL,
+    recovery_due_at DATETIME(3) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_legacy_checkout_no UNIQUE (tenant_no,checkout_no),
+    CONSTRAINT uk_legacy_checkout_operation UNIQUE (tenant_no,operation_no),
+    CONSTRAINT uk_legacy_checkout_order UNIQUE (tenant_no,order_no),
+    CONSTRAINT ck_legacy_checkout_state CHECK ( (status='OPEN' AND decision_snapshot IS NULL AND order_no IS NULL AND reversal_snapshot IS NULL) OR (status='ABORTED' AND decision_snapshot IS NOT NULL AND order_no IS NULL AND reversal_snapshot IS NULL) OR (status='COMMITTED' AND decision_snapshot IS NOT NULL AND order_no IS NOT NULL AND held_snapshot IS NOT NULL)),
+    CONSTRAINT ck_legacy_checkout_not_deleted CHECK (deleted=0),
+    CONSTRAINT ck_legacy_checkout_pay_ack CHECK (
+   (pay_state IN ('PENDING','NONE') AND pay_decision_no IS NULL AND pay_acked_at IS NULL)
+   OR (pay_state='COMMITTED' AND status='COMMITTED' AND reversal_snapshot IS NULL AND pay_decision_no IS NOT NULL AND pay_acked_at IS NOT NULL)
+   OR (pay_state='RELEASED' AND status='ABORTED' AND pay_decision_no IS NOT NULL AND pay_acked_at IS NOT NULL)
+   OR (pay_state='REVERSED' AND status='COMMITTED' AND reversal_snapshot IS NOT NULL AND pay_decision_no IS NOT NULL AND pay_acked_at IS NOT NULL)),
+    CONSTRAINT ck_legacy_checkout_pay_queue CHECK (
+   (pay_state='PENDING' OR recovery_due_at IS NULL)
+   AND (pay_state<>'NONE' OR (status='OPEN' AND held_snapshot IS NULL)))
+);
+
+CREATE TABLE IF NOT EXISTS ent_migration_plan
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    plan_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    stage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    alias_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    source_system VARCHAR(24) COLLATE utf8mb4_bin NOT NULL,
+    source_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    plan_hash CHAR(64) NOT NULL,
+    source_bundle_hash CHAR(64) NOT NULL,
+    crypto_key_id VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    payload_cipher MEDIUMTEXT NOT NULL,
+    payload_bytes INT NOT NULL,
+    asset_count BIGINT NOT NULL,
+    archival_count BIGINT NOT NULL,
+    version_count INT NOT NULL,
+    assessed_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_plan UNIQUE (tenant_no,plan_no),
+    CONSTRAINT uk_migration_plan_stage UNIQUE (tenant_no,stage_no),
+    CONSTRAINT uk_migration_plan_request UNIQUE (tenant_no,request_key),
+    CONSTRAINT uk_migration_plan_origin UNIQUE (tenant_no,source_system,source_template_no,migration_batch_no),
+    CHECK (source_system IN ('PMT','MKT_LEGACY')),
+    CHECK (alias_no IS NULL OR source_system='PMT'),
+    CHECK (status='PLANNED' AND deleted=0),
+    CHECK (asset_count>=0 AND archival_count>=0 AND version_count>=1),
+    CHECK (payload_bytes BETWEEN 1 AND 8388608),
+    CHECK (CHAR_LENGTH(payload_cipher) BETWEEN 1 AND 12000000),
+    CHECK (CHAR_LENGTH(TRIM(reason))>0 AND CHAR_LENGTH(TRIM(crypto_key_id))>0),
+    CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(source_bundle_hash)=64 AND CHAR_LENGTH(command_hash)=64)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_migration_decision
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    decision_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    plan_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    plan_hash CHAR(64) NOT NULL,
+    source_bundle_hash CHAR(64) NOT NULL,
+    plan_snapshot TEXT NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    decided_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_decision UNIQUE (tenant_no,decision_no),
+    CONSTRAINT uk_migration_decision_plan UNIQUE (tenant_no,plan_no),
+    CONSTRAINT uk_migration_decision_request UNIQUE (tenant_no,request_key),
+    CHECK (status='COMMITTED' AND deleted=0 AND version=0),
+    CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(source_bundle_hash)=64 AND CHAR_LENGTH(command_hash)=64),
+    CHECK (CHAR_LENGTH(TRIM(reason))>0)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_migration_source
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    source_system VARCHAR(24) COLLATE utf8mb4_bin NOT NULL,
+    source_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    decision_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_source UNIQUE (tenant_no,source_system,source_template_no),
+    CHECK (source_system IN ('PMT','MKT_LEGACY') AND deleted=0 AND version=0)
+);
+
+CREATE TABLE IF NOT EXISTS ent_migration_import
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    import_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    plan_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    source_decision_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    plan_hash CHAR(64) NOT NULL,
+    source_bundle_hash CHAR(64) NOT NULL,
+    proof_snapshot TEXT NOT NULL,
+    asset_count BIGINT NOT NULL,
+    archival_count BIGINT NOT NULL,
+    imported_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    historical_record_count BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_import UNIQUE (tenant_no,import_no),
+    CONSTRAINT uk_migration_import_plan UNIQUE (tenant_no,plan_no),
+    CONSTRAINT uk_migration_import_decision UNIQUE (tenant_no,source_decision_no),
+    CHECK (status='IMPORTED' AND deleted=0 AND version=0),
+    CHECK (asset_count>=0 AND archival_count>=0),
+    CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(source_bundle_hash)=64),
+    CONSTRAINT ck_migration_history_count CHECK (historical_record_count>=0)
+);
+
+CREATE TABLE IF NOT EXISTS ent_migration_asset
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    import_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    source_system VARCHAR(24) COLLATE utf8mb4_bin NOT NULL,
+    source_instance_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    instance_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    baseline_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    archival_only TINYINT NOT NULL,
+    total_units INT NOT NULL,
+    baseline_remaining_units INT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_asset_source UNIQUE (tenant_no,source_system,source_instance_no),
+    CONSTRAINT uk_migration_asset_target UNIQUE (tenant_no,instance_no),
+    CONSTRAINT uk_migration_asset_baseline UNIQUE (tenant_no,baseline_no),
+    CHECK (source_system IN ('PMT','MKT_LEGACY') AND deleted=0 AND version=0),
+    CHECK (total_units>0 AND baseline_remaining_units>=0 AND baseline_remaining_units<=total_units),
+    CHECK ((archival_only=1 AND instance_no IS NULL AND baseline_no IS NULL) OR (archival_only=0 AND instance_no IS NOT NULL AND baseline_no IS NOT NULL))
+);
+
+CREATE TABLE IF NOT EXISTS ent_migration_usage
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    import_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    source_usage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    source_instance_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    usage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    instance_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    source_hash CHAR(64) NOT NULL,
+    source_reverted_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_usage_source UNIQUE (tenant_no,source_usage_no),
+    CONSTRAINT uk_migration_usage_target UNIQUE (tenant_no,usage_no),
+    CHECK (version=0 AND deleted=0 AND CHAR_LENGTH(source_hash)=64)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_migration_return
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    return_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    source_usage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    fact_snapshot TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    pay_state VARCHAR(16) NOT NULL,
+    pay_receipt_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    pay_acked_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_return UNIQUE (tenant_no,return_no),
+    CONSTRAINT uk_migration_return_source UNIQUE (tenant_no,source_usage_no),
+    CHECK (status='COMMITTED' AND deleted=0 AND version>=0),
+    CHECK ((pay_state='PENDING' AND pay_receipt_no IS NULL AND pay_acked_at IS NULL) OR (pay_state='RESTORED' AND pay_receipt_no IS NOT NULL AND pay_acked_at IS NOT NULL))
+);
+
+CREATE TABLE IF NOT EXISTS ent_migration_return
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    receipt_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    return_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    source_usage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    usage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    instance_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    source_hash CHAR(64) NOT NULL,
+    fact_hash CHAR(64) NOT NULL,
+    restored_units INT NOT NULL,
+    remaining_units INT NOT NULL,
+    asset_seq BIGINT NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_return_receipt UNIQUE (tenant_no,receipt_no),
+    CONSTRAINT uk_migration_pay_return UNIQUE (tenant_no,return_no),
+    CONSTRAINT uk_migration_returned_source UNIQUE (tenant_no,source_usage_no),
+    CHECK (status='RESTORED' AND deleted=0 AND version=0),
+    CHECK (restored_units=1 AND remaining_units>=0 AND asset_seq>0),
+    CHECK (CHAR_LENGTH(source_hash)=64 AND CHAR_LENGTH(fact_hash)=64)
+);
+
+CREATE TABLE IF NOT EXISTS ent_legacy_coupon_issue
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    issue_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    source_system VARCHAR(24) NOT NULL,
+    source_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    target_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    template_version_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    mode VARCHAR(16) NOT NULL,
+    frozen_snapshot TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    result_snapshot TEXT NULL,
+    completed_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_legacy_issue_no UNIQUE (tenant_no,issue_no),
+    CONSTRAINT uk_legacy_issue_batch UNIQUE (tenant_no,batch_no),
+    CHECK (source_system IN ('PMT','MKT_LEGACY') AND mode IN ('TARGETED','CENTER') AND deleted=0 AND version>=0),
+    CHECK ((status='PREPARED' AND result_snapshot IS NULL AND completed_at IS NULL) OR (status='COMPLETED' AND result_snapshot IS NOT NULL AND completed_at IS NOT NULL))
+);
+
+CREATE TABLE IF NOT EXISTS pmt_pay_coupon_projection
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    instance_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    source_system VARCHAR(24) NOT NULL,
+    source_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    target_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    template_version_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    plan_hash CHAR(64) NOT NULL,
+    issue_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    grant_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    fact_hash CHAR(64) NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_pay_coupon_projection UNIQUE (tenant_no,instance_no),
+    CHECK (source_system IN ('PMT','MKT_LEGACY') AND version=0 AND deleted=0),
+    CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(fact_hash)=64)
 );
 
 -- 种子数据
@@ -11402,3 +12113,12 @@ INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version
 INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','EP004',1,'PAID_PRODUCT','付费权益产品','30次游泳卡','["游泳运动"]','{"templateCode":"EP004","templateVersion":1,"name":"30次游泳卡","industryTags":["游泳运动"],"catalogKind":"PAID_ENTITLEMENT_PRODUCT","usageModel":"COUNT","exampleTotalUses":30,"priceMinor":null,"seedEnabled":false,"publishOnCreate":false,"requiredCapabilities":["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"],"capabilityAssessment":"规划待补，非已实现活动能力","productOwner":"core.product","entitlementDefinitionOwner":"pay.entitlement","instanceAndUsageOwner":"pay.entitlement"}','["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
 INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','EP005',1,'PAID_PRODUCT','付费权益产品','限次游泳月卡','["游泳运动"]','{"templateCode":"EP005","templateVersion":1,"name":"限次游泳月卡","industryTags":["游泳运动"],"catalogKind":"PAID_ENTITLEMENT_PRODUCT","usageModel":"PERIOD_COUNT","exampleTotalUses":null,"priceMinor":null,"seedEnabled":false,"publishOnCreate":false,"requiredCapabilities":["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"],"capabilityAssessment":"规划待补，非已实现活动能力","productOwner":"core.product","entitlementDefinitionOwner":"pay.entitlement","instanceAndUsageOwner":"pay.entitlement"}','["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
 INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','EP006',1,'PAID_PRODUCT','付费权益产品','指定服务次卡','["生活服务"]','{"templateCode":"EP006","templateVersion":1,"name":"指定服务次卡","industryTags":["生活服务"],"catalogKind":"PAID_ENTITLEMENT_PRODUCT","usageModel":"COUNT","exampleTotalUses":null,"priceMinor":null,"seedEnabled":false,"publishOnCreate":false,"requiredCapabilities":["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"],"capabilityAssessment":"规划待补，非已实现活动能力","productOwner":"core.product","entitlementDefinitionOwner":"pay.entitlement","instanceAndUsageOwner":"pay.entitlement"}','["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_ENT_READ','OPS_FINANCE','权益异常查询','仅后端',NULL,'ops:pay:ent:read','ops:pay:ent:read','IMPLEMENTED',0,NULL,'ACTION',980,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_ENT_READ','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_ENT_READ' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_ENT_RECOVER','OPS_FINANCE','原权益发行恢复','仅后端',NULL,'ops:pay:ent:recover','ops:pay:ent:recover','IMPLEMENTED',0,NULL,'ACTION',981,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_ENT_RECOVER','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_ENT_RECOVER' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_ENT_VERIFY','OPS_FINANCE','权益来源核实','仅后端',NULL,'ops:pay:ent:verify','ops:pay:ent:verify','IMPLEMENTED',0,NULL,'ACTION',982,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_ENT_VERIFY','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_ENT_VERIFY' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_ENT_FREEZE','OPS_FINANCE','权益冻结与解冻','仅后端',NULL,'ops:pay:ent:freeze','ops:pay:ent:freeze','IMPLEMENTED',0,NULL,'ACTION',983,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_ENT_FREEZE','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_ENT_FREEZE' AND end_code='OPS');
+UPDATE ent_migration_stage SET history_available=CASE WHEN source_system='PMT' THEN 1 ELSE 0 END;

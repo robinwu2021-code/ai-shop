@@ -25,17 +25,35 @@ public interface PayEntOutboxMapper extends BaseMapper<PayEntOutbox> {
     List<PayEntOutbox> selectPending(@Param("tenant") String tenant, @Param("now") LocalDateTime now,
                                      @Param("limit") int limit);
 
+    @Select("SELECT * FROM pay_ent_outbox o WHERE tenant_no=#{tenant} AND deleted=0 AND id>#{afterId} "
+            + "AND (status='DEAD' OR (status='SENT' AND EXISTS(SELECT 1 FROM pay_ent_exception e "
+            + "WHERE e.tenant_no=o.tenant_no AND e.kind='OUTBOX_DELIVERY' AND e.biz_no=o.event_no "
+            + "AND e.status<>'RESOLVED' AND e.deleted=0))) ORDER BY id LIMIT #{limit}")
+    List<PayEntOutbox> selectDeliveryRecovery(@Param("tenant") String tenant,@Param("afterId") long afterId,
+                                             @Param("limit") int limit);
+
+    @Update("UPDATE pay_ent_outbox SET status='PENDING',attempts=0,next_attempt_at=#{now},updated_at=#{now},"
+            + "updated_by=#{actor},version=version+1 WHERE id=#{id} AND tenant_no=#{tenant} "
+            + "AND status='DEAD' AND version=#{revision} AND deleted=0")
+    int requeue(@Param("id") long id,@Param("tenant") String tenant,@Param("revision") long revision,
+                @Param("now") LocalDateTime now,@Param("actor") String actor);
+
+    @Select("SELECT id,event_no,event_type,schema_version,aggregate_no,attempts,occurred_at,updated_at "
+            + "FROM pay_ent_outbox WHERE tenant_no=#{tenant} AND deleted=0 AND status='DEAD' AND id>#{afterId} "
+            + "ORDER BY id LIMIT #{limit}")
+    List<PayEntOutbox> selectDeadMetadata(@Param("tenant") String tenant,@Param("afterId") long afterId,@Param("limit") int limit);
+
     @Update("UPDATE pay_ent_outbox SET status='SENT',updated_at=#{now},updated_by='SYSTEM',version=version+1 "
             + "WHERE id=#{id} AND tenant_no=#{tenant} AND status='PENDING' AND deleted=0")
     int markForwarded(@Param("id") long id, @Param("tenant") String tenant, @Param("now") LocalDateTime now);
 
     @Update("UPDATE pay_ent_outbox SET attempts=attempts+1,next_attempt_at=#{next},updated_at=#{now},"
             + "updated_by='SYSTEM',version=version+1 WHERE id=#{id} AND tenant_no=#{tenant} "
-            + "AND status='PENDING' AND deleted=0")
+            + "AND status='PENDING' AND version=#{revision} AND deleted=0")
     int defer(@Param("id") long id, @Param("tenant") String tenant, @Param("now") LocalDateTime now,
-              @Param("next") LocalDateTime next);
+              @Param("next") LocalDateTime next,@Param("revision") long revision);
 
     @Update("UPDATE pay_ent_outbox SET status='DEAD',attempts=attempts+1,updated_at=#{now},updated_by='SYSTEM',"
-            + "version=version+1 WHERE id=#{id} AND tenant_no=#{tenant} AND status='PENDING' AND deleted=0")
-    int markDead(@Param("id") long id, @Param("tenant") String tenant, @Param("now") LocalDateTime now);
+            + "version=version+1 WHERE id=#{id} AND tenant_no=#{tenant} AND status='PENDING' AND version=#{revision} AND deleted=0")
+    int markDead(@Param("id") long id, @Param("tenant") String tenant, @Param("now") LocalDateTime now,@Param("revision") long revision);
 }

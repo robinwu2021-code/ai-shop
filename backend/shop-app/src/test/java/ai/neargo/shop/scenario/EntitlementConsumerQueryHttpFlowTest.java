@@ -143,6 +143,49 @@ class EntitlementConsumerQueryHttpFlowTest {
         jdbc.update("UPDATE ent_usage SET user_no='OTHER' WHERE usage_no=?", usage);
         assertThat(read("/mp/entitlement-usage/" + usage).path("code").asInt()).isNotZero();
     }
+    @Test void fullHistoryPagesPastTwentyWithStableTiesAndBoundMemberAndAssetCursors() throws Exception {
+        var at=LocalDateTime.now(ZoneOffset.UTC).withNano(0);
+        for(int i=0;i<31;i++) {
+            String no="H"+String.format("%02d",i)+instance;
+            jdbc.update("INSERT INTO ent_usage(usage_no,operation_no,user_no,entity_no,store_no,store_name,asset_kind,title,units,currency,items_snapshot,operator_no,status,occurred_at,tenant_no,created_at,updated_at,created_by,updated_by) "
+                    +"VALUES(?,?,?,?,'S1','Swimming pool','PAID_CARD','Swimming',1,'CNY','[]','T','COMMITTED',?,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'T','T')",
+                    no,no,user,entity,at);
+            jdbc.update("INSERT INTO ent_use_allocation(tenant_no,operation_no,instance_no,period_key,service_day,units,currency,items_allocation,created_at,updated_at,created_by,updated_by) "
+                    +"VALUES('MAIN',?,?,'NONE',CURRENT_DATE,1,'CNY','[]',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'T','T')",no,instance);
+        }
+        String path="/mp/entitlements/"+instance+"/usage?size=10";
+        var first=read(path);assertThat(first.path("code").asInt()).isZero();
+        assertThat(first.path("data").path("records").size()).isEqualTo(10);
+        String cursor=first.path("data").path("nextCursor").asText();
+        var all=new java.util.HashSet<String>();int pages=0;var page=first;
+        do {
+            page.path("data").path("records").forEach(row->assertThat(all.add(row.path("usageNo").asText())).isTrue());
+            pages++;
+            if(!page.path("data").path("hasMore").asBoolean()) break;
+            page=read(path+"&cursor="+page.path("data").path("nextCursor").asText());
+            assertThat(page.path("code").asInt()).isZero();
+        } while(pages<6);
+        assertThat(all).hasSize(31);assertThat(pages).isEqualTo(4);
+        assertThat(read(path+"&cursor=x"+cursor).path("code").asInt()).isNotZero();
+        String another=UUID.randomUUID().toString();seed(another,user);
+        assertThat(read("/mp/entitlements/"+another+"/usage?size=10&cursor="+cursor).path("code").asInt()).isNotZero();
+        jdbc.update("UPDATE ent_instance SET user_no='OTHER' WHERE instance_no=?",instance);
+        assertThat(read(path).path("code").asInt()).isNotZero();
+    }
+    @Test void archivedMigratedConsumptionIsVisibleWithoutInventingAnAssetOrPostUseBalance() throws Exception {
+        String usage="H"+UUID.randomUUID();
+        jdbc.update("INSERT INTO ent_usage(usage_no,operation_no,protocol,migration_import_no,user_no,entity_no,asset_kind,title,units,amount_minor,currency,items_snapshot,operator_no,status,occurred_at,tenant_no,created_at,updated_at,created_by,updated_by) "
+                +"VALUES(?,?,'MIGRATED','MI1',?,?,'ORDER_COUPON','Historical coupon',1,0,'CNY','[]',NULL,'REVERSED',?,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'T','T')",
+                usage,"AP"+usage,user,entity,LocalDateTime.now(ZoneOffset.UTC).withNano(0));
+        var page=read("/mp/entitlement-usage?size=1");
+        assertThat(page.path("code").asInt()).isZero();assertThat(page.path("data").path("records").size()).isEqualTo(1);
+        assertThat(page.path("data").path("records").get(0).path("usageNo").asText()).isEqualTo(usage);
+        var detail=read("/mp/entitlement-usage/"+usage);
+        assertThat(detail.path("data").path("remainingUnits").isNull()).isTrue();
+        assertThat(detail.path("data").path("items").isEmpty()).isTrue();
+        jdbc.update("UPDATE ent_usage SET user_no='FOREIGN' WHERE usage_no=?",usage);
+        assertThat(read("/mp/entitlement-usage?size=1").path("data").path("records").isEmpty()).isTrue();
+    }
     @Test void consumerQueriesRequireAuthenticationAndOptionalCodesRemainOff() throws Exception {
         assertThat(mvc.perform(get("/mp/entitlements")).andReturn().getResponse().getStatus()).isEqualTo(401);
         var response = mvc.perform(post("/mp/entitlements/" + instance + "/redeem-codes")

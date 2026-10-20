@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 23 个权限点 × 247 个受控端点**。
+统计：**6 个角色 × 25 个权限点 × 255 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -30,17 +30,19 @@
 | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 3 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
+| `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
+| `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 2 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
+| `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
+| `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
+| `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
-| `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
-| `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
-| `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 
-**只有 OWNER 能碰的 12 项**：`STORE_ADMIN`、`FINANCE`、`ENT_READ`、`ENT_USE`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`SV_RECHARGE_CREATE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`ENT_TEMPLATE_READ`
+**只有 OWNER 能碰的 14 项**：`STORE_ADMIN`、`FINANCE`、`ENT_READ`、`SV_RECHARGE_CREATE`、`ENT_USE`、`SV_CONSUME_CREATE`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`SV_ACCOUNT_READ`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`ENT_TEMPLATE_READ`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点
@@ -325,11 +327,22 @@
 - `/biz/review/{reviewNo}/appeal`
 - `/biz/review/{reviewNo}/reply`
 
+### `SV_RECHARGE_CREATE`　（OWNER）
+
+- `/biz/stored-value/recharges`
+- `/biz/stored-value/recharges/{rechargeNo}/cancel`
+- `/biz/stored-value/recharges/{rechargeNo}/submit`
+
 ### `ENT_USE`　（OWNER）
 
 - `/biz/entitlement-uses`
 - `/biz/entitlement-uses/preview`
 - `/biz/entitlement-uses/{operationNo}/cancel`
+
+### `SV_CONSUME_CREATE`　（OWNER）
+
+- `/biz/stored-value/consumptions`
+- `/biz/stored-value/consumptions/preview`
 
 ### `ENT_TEMPLATE_WRITE`　（OWNER）
 
@@ -340,6 +353,18 @@
 
 - `/biz/entitlement-templates/{templateNo}/publish`
 - `/biz/entitlement-templates/{templateNo}/status`
+
+### `SV_RECHARGE_RECEIVE`　（OWNER）
+
+- `/biz/stored-value/recharges/{rechargeNo}/receive`
+
+### `SV_RECHARGE_READ`　（OWNER）
+
+- `/biz/stored-value/recharges/{rechargeNo}`
+
+### `SV_ACCOUNT_READ`　（OWNER）
+
+- `/biz/stored-value/accounts`
 
 ### `ENT_ISSUE`　（OWNER）
 

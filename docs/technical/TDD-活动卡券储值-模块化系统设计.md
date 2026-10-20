@@ -17,7 +17,7 @@
 - [功能矩阵](../requirements/活动卡券储值-模块功能矩阵.md)：三端、模块、模板、接口及数据映射。
 - [数据库设计](./TDD-活动卡券储值-数据库设计.md)：核心/支付分别拥有的数据字典、约束、迁移。
 - [API契约](./TDD-活动卡券储值-API契约.md)：沿用接口和新增接口、请求响应、权限与内部协议。
-- [核心建表草案](./design/活动权益-core-schema.sql)、[支付建表草案](./design/活动权益-pay-schema.sql)、[支撑表草案](./design/活动权益-support-schema.sql)：合计44张设计DDL，不是Flyway迁移。
+- [核心建表草案](./design/活动权益-core-schema.sql)、[支付建表草案](./design/活动权益-pay-schema.sql)、[支撑表草案](./design/活动权益-support-schema.sql)：当前合计58张设计DDL（core22/pay36），不是Flyway迁移。
 - [ADR-038](./ADR/ADR-038-活动归核心权益归支付.md)。
 - [40项活动及6项产品模板](../requirements/预期活动预置清单.md)、[预置JSON](./design/活动预置模板-目录草案.json)。
 - [统一UI功能矩阵](../requirements/活动卡券储值-统一入口功能矩阵.md)、[29屏原型](../../prototypes/marketing-assets-unified.html)。原型未覆盖6项付费卡完整购买/激活/核销界面，其页面补齐列为设计交付后的独立工作，不冒充已画完。
@@ -111,6 +111,10 @@ model/policy无Spring/MyBatis；业务接口与实现分开；资金/余次变�
 
 ### 2.2 执行基线与已核实落点
 
+JB-040销售容量预留子批次（2026-10-19，1档，沿既有付费卡需求）：新增pay支撑表V450及独立ReserveSale协议，先验证真实未付款单及原模板，事务占既有发行容量；付款后由原grant事务接管，取消只凭core持久GRANT_ABORT释放。实施顺序为：来源/协议→预留Service/Writer→grant移交→定向验证→任务及三份设计同步。公共销售入口与新的RPC/应用协调本批不开放。完整字段、契约、类分别见数据库/API/类清单的JB-040增量。
+
+验收映射：`PaidCardReservationFlowTest.prepaymentHoldTransfersWithoutReservingTwiceAndSurvivesTemplatePause`对应原承诺履约和不双占；`onlyDurableCancellationReleasesAndAnEarlierReleaseFencesLateReserve`对应可信释放；`cancellationBeforeAnyReservePersistsANegativeClaimWithoutTouchingCapacity`对应乱序栅栏；`paidOrderWithoutPrepaymentPromiseCannotAllocateCapacityAfterCollection`对应无预留拒绝；`capacityFailureRollsBackReservationAndSameNumberCanRetryAfterCancellation`对应原子回滚/原号重试。每轮Java21编译和受影响基本测试，最终输出登记独立任务表，不用全量测试代替切片验收。
+
 计划状态：执行中，已完成源码盘点及支付权益目录内核，任务级状态与验收见§6。独立开发分支为codex/stored-value-entitlement-dev，工作区为/Users/robin/.codex/worktrees/stored-value-entitlement-dev，基线00d04e580。需求/设计文档已以d0b199bb6同步并提交至开发分支；原工作区的其他未提交修改未带入。
 
 档位：2；依据为本TDD、ADR-038与U01–U30。计划不预分配Flyway版本，也不将线上数据盘点视为已完成。
@@ -151,7 +155,7 @@ model/policy无Spring/MyBatis；业务接口与实现分开；资金/余次变�
 | D04.4 / D04.2/D02.6 | ActivityBenefitCoordinator、MarketingEffectProjector | core资格→pay发行→core确认；事件派生分项统计，C10 | 重投不多发；事件乱序不倒退；储值赠金不计订单折扣 |
 | D05.1 / D04.2/D02.1/D01.3 | RechargeService/Coordinator | sv_recharge、account、lot、voucher、entry；P18–P21/P27，保存活动快照与实收证据 | 未实收可取消，实收/取消竞争唯一结果；客户端不能指定赠金 |
 | D05.2 / D05.1 | CreditService、StoredValuePostingService | I12到账；余额/批次/双池分录/事件同事务，营销按成功事实确认 | 重复receive/credit不重复到账；实收后异常持续恢复；账户=批次=分录 |
-| D05.3 / D05.2/D02.4/D01.3 | RedemptionService、AllocationPolicy | sv_hold_allocation接统一intent/usage；P22/P28，校验本人授权与真实服务订单 | 同源并发不重复扣；金额不超余额；释放回原批次；未知不盲目重扣 |
+| D05.3 / D05.2/D02.4/D01.3 | RedemptionService、AllocationPolicy | sv_hold_allocation接统一intent/usage；P22/P28/P31，校验本人授权与真实服务订单；P31只计价报价不扣款 | 同源并发不重复扣；金额不超余额；释放回原批次；未知不盲目重扣 |
 | D05.4 / D05.3 | StoredValueQueryService/StoreProjector | sv_user_store_index；P23/P24及C明细 | 只列有成功储值历史门店；max储值/核销时间倒序；耗尽保留、等时稳定 |
 | D05.5 / D05.2/D05.3 | NotificationSubscriber、既有MessageService | 到账/核销/异常待办通知，O06复用；订阅模板和通道授权接线 | 提交后发送、事件去重、失败只重试消息；C通知无内部双池/明码 |
 | D06.1 / D02.2/D04.3 | CARD商品UI、core.product、CardProductBindingService | C07，商品SKU售价引用pay已发布版本；补售卡/激活/余次/日额度原型 | 6种产品预置字段明确；不以储值余额购买冒充真实现金付款 |
@@ -709,3 +713,203 @@ JB034与035采用合并编码/分层验收：先实现pay自身已实收原单�
 OrderService.split的预览/自助/代客公用路径、锁库存与任何订单写入前识别新绑定；当前尚缺完整付款前发行
 预留与付款后发卡时明确拒绝。无绑定的旧CARD沿原流程；禁用或软删的新绑定也不能自动退回旧售卖路径。
 这只完成040的未就绪拒绝分支，不把能力关闭实现冒称售卡成功；实际资金/发行协议仍按040剩余交付推进。
+
+### JB040逐件售卡协调实现切片
+
+新增shop-base PaidCardSalePlanPort，由core CardSaleGrantSourcePortImpl按tenant/order读取原快照并按行、单件、件内权益排序；app CardSaleCoordinator/Impl仅消费可信计划，不接受外部传入权益清单。逐件预留沿SR+sourceKey，发卡沿CG+sourceKey；全部RESERVED才readyForPayment，部分成功保留原占用并可按原号恢复，不将超时猜作取消。真实COMMITTED来源后prepare→commit；可信CANCELLED后release；未知继续pending。所有pay调用均在core事务之外，不建立跨库事务。
+
+本批未开放公共入口。尚须在真实建单路径冻结快照、付款入口强制封口、支付/取消Outbox投递和定时原号恢复接齐后才能开放售卡；协调器存在不表示这些调用点已接齐。验证目标包括重复付款恢复、取消释放、2件×2权益不漏不重。JB040/041仍进行中。
+
+### JB040线下收款事务边界
+
+MerchantOrderServiceImpl.confirmOfflinePay以NOT_SUPPORTED挂起调用方事务，先require商家/门店权限与待线下收款状态，再调用PaidCardPaymentGatePort。随后通过core transactionManager的TransactionTemplate进入原收款事务，重复require并FOR UPDATE锁主单后再次检查WAIT_OFFLINE_PAY，才写确认人/时刻并复用markPaid。并发取消在预检后成功，则锁内拒绝确认，原取消不被覆写；全部本地收款审计和付款事件仍与主单同事务。预留失败不写收款审计，已经预留但取消须沿可信取消事件释放。
+
+验证映射：PaidCardReservationFlowTest.offlinePrepaymentRunsOutsideTransactionAndCancellationWinsBeforeCollection断言pay预检无core事务、插入并发取消后收款拒绝且无确认人/发卡；既有OfflinePayFlowTest验证普通线下收款路径兼容。当前无新增HTTP字段、表或权限，销售门禁仍待完整checkout专项。
+
+### 售卡checkout显式准入验证
+
+1档：新增core配置shop.trade.paid-card-sale.enabled，默认false。显式开启仅允许ACTIVE/未删除且有合法规则的绑定建单；发行仍须pay自身门禁、总/个人容量及真实付款，未打开时沿原拒绝行为。先通过真实绑定→建单→逐件预留→本地付款状态机→Outbox发卡→重复恢复的定向验证；不将测试中的内部付款确认当作真实通道收款验收。
+
+### JB043提交后站内通知实施
+
+沿既有需求先交付消费者交易站内信：只消费已提交ENTITLEMENT_GRANTED、ENTITLEMENT_USED、STORED_VALUE_CREDITED，不订阅预占/实收未到账/报价。复用MessageService.push及原站内信审计，不新增营销场景或默认开启外发通道。按原事件号+收件人摘要去重，严格核对事件头/载荷及共享codec字段校验；不调用发放、使用或到账服务。通知失败由Outbox重试消息，已有资产不重做。C消息不展示本金/赠金、原收款凭据或会员明码；当前无新页面路由，link留空。阶段顺序：subscriber→真实消息落库/重复/无效事件/失败重试测试→三份文档和任务表同步。外发通道及运营异常通知仍待后续验收。
+
+### 旧券源冻结协议细化（JB049/050，2026-10-19）
+
+本段细化既有“冻结/排空/水位/唯一写者”实施项，沿用已批准的core持久源决定与pay独立提交边界，不增加跨库事务。用户已授权按计划连续执行；仅实现和离线演练，不启用生产迁移。
+
+采用模板为一个迁移批次的冻结单元，owner仍按模板/实例/使用精确来源登记。直接按owner读结果分流无法拦住旧库中已开始的写操作；一次性停整个商家会扩大影响。因此先在原mkt_coupon/pmt_coupon根记录上建立局部写栅栏，让每个既有写路径在原core事务内锁定同一个模板根。
+
+状态为OPEN→DRAINING→FROZEN→COMMIT_DECIDED；未形成导入提交决定前可转ABORT_DECIDED，之后旧业务恢复可写。DRAINING只允许原绑定订单的释放/退券，新领取、发放、修改、核销、旧券markUsed都拒绝；FROZEN及COMMIT_DECIDED拒绝全部旧财务/规则写。ABORT_DECIDED保留原批号作为墓碑，同批重试不能复活迁移，新批必须带新批号和当前revision。COMMIT_DECIDED以后不得直接解冻回旧写者。
+
+先完成源栅栏、旧写路径接线、排空检查及冻结快照，再实现pay暂存/比对和core导入决定，最后接目标导入与旧HTTP/SPI兼容路由。当前source方法不开放公网或内部HTTP提交决定入口；未有pay暂存与兼容证明前，不能提供单方面翻owner的运行命令。
+
+冻结检查仅接受MAIN商家承担的模板；原平台承担/缺主体、静态码、重复影子和历史缺口仍由预检逐项核对，未支持的模板保持原owner。所有本批实例的原订单必须能查到、支付不在途，且子单已终态；未知绑定与未排空不按时间猜测释放。根锁串行化新使用、原释放和冻结判断；完成冻结后保存独立水位及冻结revision，元数据后续变更不改变原快照身份。
+
+水位涉及旧静态码，不能公开裸SHA摘要供枚举。core单独使用受控的迁移水位HMAC密钥（至少32字符，无默认开发值）；只在迁移工具明确配置时启用冻结，普通旧券写在OPEN不依赖该密钥。只读预检仍不返回码或码摘要。源实例和历史记录进入完整受信快照，导出时不把静态码当普通日志字段。
+
+分批上限及超限错误必须明确，禁止截断实例/历史后宣布已冻结。增量迁移只加原模板元数据列，保留原业务状态、余额/余次、券码与历史事实；普通路径没有新远程调用，不在持有core锁时请求pay。后续pay导入只接受core已持久化的原提交决定，导入与owner切换同一个pay事务；不走普通发行Service，不新增通知或伪造付款事实。
+
+## N11冻结源证据协议（2026-10-19）
+
+core的LegacyCouponSourceFenceServiceImpl同时实现共享LegacyCouponFrozenSnapshotPort。exportFrozen接受精确模板来源、原批号、frozenRevision及HMAC水位，在根锁内核对当前FROZEN状态，再以相同LEGACY_SOURCE_V1字节序列重新计算HMAC；源事实不一致、批次终止、批号/版本/水位不匹配都拒绝。返回快照是源证据，不能代替后续持久导入提交决定或允许单方面切owner。
+
+冻结命令与导出各自使用独立REPEATABLE_READ事务，避免复用调用方旧快照。真实回归用例先在外层RR事务读旧余次，另一线程直接改源数据，然后导出：原实现错误接受旧事实，REQUIRES_NEW修正后拒绝。迁移协调必须在持有原业务/源根金融锁之前调用，不能在既有金融事务里等待迁移操作。
+
+证据包含原模板财务字段、当前可见实例、关联pmt_apply历史和范围；当前V1并不是已完成的全量迁移清单，删除/归档存量、发放来源、V232重叠规范化及全部历史映射仍需后续迁移校验。内部payload保留原码，不制造新码/权益/付款；Snapshot与私有捕获记录的toString隐藏载荷。源HMAC密钥仍默认空，至少32字符才开放冻结/导出。单次导出最多8MiB UTF-8，超限失败，不截断后宣布可导入。
+
+standalone的pay-svc以CoreLegacyCouponFrozenSnapshotPortImpl经现有InternalHttp/服务定位/内部令牌读取；不依赖core业务类或Mapper。core提供专用内部读取Endpoint。本切片未创建目标暂存、未生成导入提交决定、未导入资产或切换owner；这些仍属于JB-049/050后续验收。
+
+## S03来源全量计数盘点（2026-10-19）
+
+LegacyCouponMigrationPreflightService.inventory与原scan分开：scan仍是可见实例的兼容样本，inventory按原模板根分页，包含删除/归档根、删除实例、发行记录及已删除核销历史。各页保留同一core RR快照；跨页只是盘点，不是已冻结的整库清单，后续仍须逐模板冻结与提交校验。
+
+同时返回孤立实例、孤立发行和孤立历史计数。核销历史通过“实例→原模板”整条关联确认归属，实例虽存在但模板缺失的历史同样列为孤立，不能藏在未归属的中间层。所有查询含tenant条件，原删除/归档标记不更改。MKT没有可证明的独立核销历史及逐实例发行关联时，historyCount/orphanHistory保持null并明确阻塞，不能填0假装已经迁移完整。
+
+模板同号跨来源、墓碑、归档、孤立关系及缺发行关联都列为后续规范化/保全要求，不自动合并、修补或导入。现有FROZEN标记仅产生SOURCE_FENCE_REVALIDATION_REQUIRED，仍需源owner现场证明；无状态或计数自动变成可导入许可。
+
+## S02证据暂存实现约束（2026-10-19，编码入口）
+
+pay新增ent_migration_stage作为支撑表，保存精确来源/批次/原冻结版本/水位/内容摘要、命令指纹、操作人原因、计数和加密证据。首版状态只有STAGED，importReady恒false；可见实例V1证据不能因通过字节校验而宣称完整清单或可接管owner。暂存不创建grant/实例/账本/owner，不发布财务事件。
+
+读取已完成同键响应时先核实主体/操作人及命令摘要；新请求先验证独立配置的32字节AES密钥和keyId，再于pay事务外调用真实core源Port，验证来源、版本、水位、UTF-8摘要和载荷绑定，在事务外加密，最后以短pay事务唯一认领。tenant+requestKey及tenant+来源系统+模板+批次都唯一，同键异参/同批换键冲突。完成响应可在源批次终止后沿原键重放，但不代表源当前仍冻结。
+
+AES-256-GCM使用随机12字节nonce；AAD绑定租户、主体、精确来源、批次、版本、水位和内容摘要。只保存密文，日志/查询只返回元数据。配置shop.pay.entitlement.migration-snapshot-key为Base64的32字节密钥，migration-snapshot-key-id为明确版本；默认空不可新暂存，不使用开发回退密钥。密钥变更不能覆盖已有证据；无法解密时明确拒绝。verify先验证原密文，再在pay事务外现场读源并比较，不将查询变成导入或修账。
+
+## S03源家族清单版本化约束（2026-10-19，编码入口）
+
+保持既有V1可见证据与原键摘要/AAD不变。新增manifestVersion=2的源家族清单，仍用schemaVersion=1传输信封；在同一个独立core RR事务和FROZEN根锁内重验原VISIBLE_V1栅栏水位，再捕获全部实例、发行、历史与范围（包括删除标记）。MKT历史不可证实则historyAvailable=false，不伪造消费流水。
+
+完整清单使用独立内部读取/暂存方法，旧路径不自动升级或降级。新暂存记录保留manifest版本及历史可用性；同一家族已暂存V1时需新批次，不覆盖旧密文。V463只追加元数据列并兼容原V1写/读，不能重写V462。V2的GCM AAD包含新版本/可用性，V1保持旧字节序列。
+
+VISIBLE_V1水位不是完整清单签名；完整内容由认证core读取及contentHash绑定。后续源持久提交决定必须在根锁内重新比较完整contentHash，不能只查旧水位。清单及SOURCE_MATCHED仍不代表可导入，目标翻译、规范化、原入口兼容和提交协议保持独立门禁。
+
+## S03规范化评估约束（2026-10-20，编码入口）
+
+规范化评估只读取已认证/加密且现场重验的V2清单，不生成资产或owner决定，importReady仍false。源端补assessmentFacts：真实MAIN主体是否有效、其明确市场、同号另一来源的模板/实例冲突计数；缺事实不默认大陆/CNY。pay从自己的市场主数据确认币种/小数位/时区，首期仅MAIN/CNY。
+
+首先覆盖两代来源的订单现金/折扣券。按实际旧执行代码保全：MKT范围描述不是规则；当前PMT订单allocate也没有执行scope_type/min_qty，不能迁入后突然约束旧权益。保留原始配置，在评估notice中报告有效规则差异。每个持有实例的期限按原事实独立规范化（PMT已有券不受模板start_at约束），毫秒闭区间截止转换+1ms；不补造收款或旧消费金额。原非ACTIVE模板、缺历史/计数差异、跨来源同号、到店码专用流程等明确阻塞或待兼容，不自动合并或修补。
+
+目标规则冻结是批准的目标语义：后改模板不重写已得权益。已迁入的历史版本可按原实例期限分别生成，不能用一个当前模板日期覆盖全部旧券。评估报告只返回规则和业务号/次数/期限等必要元数据，不返回消费者身份或旧码。NORMALIZED仅指规则数据可表达，实际导入仍依赖旧入口写兼容、源持久提交和目标原子接管。
+
+S03实现补充：core完整清单assessmentFacts.version=1签入真实商家激活状态、market及另一源同号模板/实例计数（包括删除行），缺事实不默认成立。pay只读assess先重验完整源，再读取本地市场主数据；第一期仅接受启用的CNY/2位市场。旧V2没有assessmentFacts时不能规范化为可表达权益，应重新采集新批次证据，不覆写原密文。合法历史过期定义只做结构校验，不执行新发布时效校验。旧有效期闭区间转换为原终点+1ms的半开区间，溢出或超出数据库时间范围明确隔离；删除实例只列档案计划，不能重新发行。
+
+### S03发行基线评估实施计划（2026-10-20）
+
+后续导入还需发行政策基线，单独实现纯LegacyCouponIssuanceAssessor并纳入只读Report。按包含墓碑的实际实例核对原receivedCount，保留原totalCount/perUserLimit/budgetMinor含义；总量语义按原系统区分：MKT的0为不限，PMT的NULL为不限而0为零额度；两者预算0为不限，不统一套一个默认值。原生issuedCount是终身发行数，usedExposureMinor是历史发行承诺敞口，不是已经消费的优惠金额；按每次最大优惠×原总次数×原发行数精确相乘。剩余活跃权益敞口独立计算，删除档案数量分列、过期权益从活跃敞口剔除，不冲回终身发行数。
+
+缺次数/金额/封顶、原计数与完整记录不符、单人累计超限、额度/预算不能容纳原承诺、Long溢出均报告阻断，不修源、不替用户扩预算。报告仅给汇总，不含消费者号或身份列表；原始逐人资料仍由加密清单保全供最终原子导入。依次实现定向RED用例、纯算法、与报告/两种部署JSON接线，编译及基础测试后再进入下一子项。
+
+S03历史及有效期继续约束：PMT的ACTIVITY发行模式保留ACTIVITY并维持旧定向发放入口可用，未知模式明确阻断；历史包括已撤销行，promoNo与userNo必须对应原实例，不能因已撤销而跳过归属校验。旧PMT相对有效期按receivedAt + validDays×24小时计算；模板预览使用UTC滚动天表达固定时长（无夏令时变化），原实例仍直接使用原expireAt+1ms半开区间。新相对发放规则的原闭区间终点差异以notice明确提示，不能声称旧规则与新规则完全等价或据此开放迁入后的新发行。
+
+### S03 V232双源认领实施计划（2026-10-20）
+
+首期只处理严格一致且未产生使用历史的PMT/MKT同号家族：两根均已冻结并完整暂存、同MAIN主体与批次；实例业务号集合、消费者归属、删除标记、状态、原有效期、余次、有效规则与发行基线一致。两源归一化仅有“同号冲突”时才可进入候选；已用/已撤销使用历史、额外编号冲突或任何规则/额度/期限/归属差异均隔离，不自动选数量较多的一边。
+
+先实现纯LegacyCouponAliasComparator，结果是候选/差异及整体摘要，隐藏消费者身份和原码。候选不是同一身份的充分证明，更不是导入授权。随后用专门的pay持久认领记录保存平台操作人选择PMT为canonical、两个已核验stage/hash、比较摘要、原因及幂等键；不改旧源、不发行/翻owner。后续源提交必须同时锁定并重验两根，目标两源业务号映射到同一份权益，不能重复计算额度或资产。
+
+同号事实不一致仍保留CORE，报告供数据核对；不提供以“确认”为名覆盖余次/历史差异的写接口。仅离线演练，不执行生产数据认领或切换。
+
+### N10旧订单PAY兼容执行调整（2026-10-20）
+
+Ruling：实际旧OrderService按门店拆组，支持跨店券和积分组合，券在core建单事务内markUsed，取消/售后再退回；现有ORDER_USE只针对一张子单且拒绝已分配积分，不能直接当成完整旧券适配器。旧路径改为独立的迁入券协调协议：锁外准备可信core结算意图→pay预占1份已迁入券并返回原算法门店分摊→core沿原计价/积分/库存流程校验这份分摊并建单、同事务固化COMMIT决定→锁外pay确认，失联按原操作恢复。Core创建失败必须先有真实源ABORT，不能以超时猜测释放。取消/售后由core真实终态产生独立回补决定，不将新储值/付费卡绕过本人同意。
+
+先落来源和owner读路由。新增共享LegacyCouponIdentityPort，只返回按tenant+userNo+原券号读取的来源身份、原根状态/主体及未来持久提交计划摘要，不含旧码或消费者资料。core以同一RR快照显式读PMT/MKT（包含墓碑、能识别孤立实例）。OPEN/ABORT_DECIDED是旧core仍可写的明确源状态，保留原PMT优先规则；DRAINING/FROZEN拒绝新操作。COMMIT_DECIDED必须有新的持久提交摘要，且registry的精确来源/批次/摘要/目标一致；别名双方必须同指一个目标。缺owner、混合阶段、来源缺失或证明不足均不回退到另一个实现。无旧来源的号只允许精确PAY来源登记，不能按前缀或表中查不到就假定PAY。
+
+App LegacyCouponRouteResolver只解析元数据，不是金融授权。需要pay查registry的路径先拒绝环境事务，保留普通CORE只读来源解析；这一步不接现有CouponPortRouter的实际扣券分支。S04源持久决定和旧完整协调/查询适配均完成前，继续禁止切owner。
+
+### N10支付旧ORDER券协议首批计划（2026-10-20）
+
+新增LegacyCouponCheckoutSourcePort（core真源）和LegacyCouponUsePort（pay权益账），第一批先冻结共享记录及纯跨店报价策略，再落pay持久操作/余次流水，最后接core结算意图和原Controller/OrderService。不是复用STORE_CODE或新储值的身份凭证。
+
+结算事实为immutable CheckoutFact：tenant/checkoutNo/operationNo/holder/entity、原SourceIdentity、精确targetInstance、owner批次/planHash、币种、按原次序的post-activity MerchantGroup、经济摘要、真实选择actor、创建/截止时刻。Core真实COMMIT/ABORT及完整取消/退款回补决定独立读取，状态变化不重写原经济事实。pay每次锁外读取真实事实，不能用客户端自报组金额代替源；报价只算折扣，预占才变余次。
+
+纯报价仅支持已批准的MERCHANT/ORDER_COUPON/COUNT/CASH或有限封顶PERCENT、有效scope=ALL和无最低件数。按原商家范围筛组、先总额算折扣再复用CouponCalculation按门店分摊，保留整数舍入与原组顺序；不为多店伪造一个物理storeNo，不扩展新卡/储值授权，不消费优惠为0的券。源组/分摊金额精确守恒，异常金额和溢出拒绝。
+
+后续pay操作以checkoutNo及operationNo唯一，准备/确认/释放/回补同现有EntInstance与EntitlementPostingService使用一份余次/账序。关闭新入口不阻断已承诺确认/释放。ABORT先到须有无财务效果墓碑（未知优惠金额保持NULL），迟到prepare不得再占；确认只认core建单同事务真实决定；新消费与售后回补记录和对账/恢复接线随领域实现一起完成。当前没有该金融入口实现或源生产者，不启用owner切换。
+
+### 旧ORDER券结算源日记（N10补充，实施中）
+
+core新增`ord_legacy_coupon_checkout`保存可信交易定价形成的不可变意图、终态决定与整券退回决定。仅core内部服务可准备意图；不提供客户端写入事实的接口。pay通过三个鉴权只读接口读取原始快照、COMMIT/ABORT及退回决定；空决定通过非空信封表达，来源不可用不能转换为ABORT。
+
+意图准备位于支付hold之前；实际建单在原core事务内锁意图并校验同一份跨店金额/分摊，订单与COMMIT一起提交。创建失败后独立写入ABORT；ABORT与创建通过同一行锁互斥，禁止晚到创建。已存在COMMIT不得改成ABORT。整单取消或承担该券优惠的全部子单完成退款后才可写退回决定；不得以客户端请求或不明状态推断退款完成。
+
+验收：同号重放不重新定价；冲突指纹拒绝；ABORT先于创建则创建不能提交；来源缺失返回404，服务不可用返回503，未决定返回空信封；QUOTE_ONLY不得提交；COMMIT必须有同事务真实订单且买家/币种/优惠匹配；原决定在新入口关闭后仍可读取及完成。新增源日记本身不代表旧下单入口已完成对接。
+
+### 原订单入口的事务边界实现（N10补充）
+
+`OrderService.create/createFor`先完成应用协调，再通过独立Spring代理方法`createCoreFor/createBound`进入原订单事务。无券及CORE_LEGACY继续原逻辑；已认领PAY的旧券由应用层先取得真实pay预占，再把不可变分摊交给core。core在预约占位/库存写入前验证实际SKU、单价、数量、活动后门店金额及所选原券，使用原有积分、运费、子单及幂等逻辑；提交决定与订单、outbox一起提交。全程不通过ThreadLocal携带金融凭证，也不在core金融锁内调用pay。
+
+稳定checkout/operation由租户、买家、原下单幂等键和规范化请求摘要派生；PAY旧券需要幂等键。已提交原意图优先读取与完成，不因商品价格变化或新使用开关关闭重算。原订单通用幂等命中也必须再次匹配日记，避免把别的原订单认领成新的扣券决定。pay预占调用失败保留未知状态供原键重试，不能仅凭超时写ABORT；已进入core的业务创建失败通过同一日记行锁确定ABORT，释放原预占。COMMIT之后pay回包失败保留真实订单与决定，由`LEGACY_COUPON_CHECKOUT_DECIDED`原事件继续完成。
+
+这批只完成已证明来源的旧ORDER券创建；旧列表/详情/预览、取消/售后、开放意图超时恢复、消息账单以及目标导入与owner切换仍须继续验收。原STORE_CODE及新储值/月卡身份授权不复用此通道。
+
+### 旧券取消与整单退款接线约束（N10下一批次）
+
+未付款取消/超时关单在原core事务内依据真实主单与全部子单终态写一次退回决定；pay恢复由原outbox在锁外执行。整单退款沿用现有`refund.return-coupon`控制和全部子单退款／取消口径，部分退款不恢复整券。退款完成事件在提交后读取新core快照，验证原售后确已REFUNDED、主体/买家/订单绑定和子单退款账本，不把申请/退款中或单纯改状态当作现金已退事实。并行子单退款时，至少最后一个实际提交的退款事件能看见全部终态；重复事件以原journal reversal互斥，不额外发一张券。已记录的原退回决定不受新入口开关阻断。
+
+### 旧券未决恢复与技术确认（N10下一批次）
+
+追加V467技术字段pay_state/pay_decision_no/pay_acked_at/recovery_due_at，不增加业务表。pay_state是依据真实pay返回缓存的投递确认，不是资金或银行状态。QUOTE_ONLY为NONE，不进入金融恢复；CHECKOUT初始到期时间取原不可变源期限，COMMIT/ABORT/退回决定重置为待确认且立即可恢复；成功确认后移出有界队列。升级前未知排期为NULL，由恢复读取原源后建立，不伪造零日期。
+
+复用既有恢复任务新增LEGACY_COUPON分类。core只在原结算意图的有效窗口届满、同一行锁下确认尚无订单COMMIT时，才落真实ABORT并阻止晚到建单；已有COMMIT优先保留。随后在core事务外释放原pay操作，无hold时仅NULL金额墓碑。原pay已完成但core确认丢失则重读/重放原操作，不重新扣券。技术确认必须匹配原checkout/operation/asset/entity/currency/economicHash及最新源决定；退回决定与旧COMMIT确认竞态不得吞掉退回。任务开关仍默认关闭。
+
+### 旧预览与best只读估算（N10下一批次）
+
+原预览明确不落库。新增pay内部只读estimate类型，传递已验证owner身份与报价分组，返回优惠及原券名；不提供checkoutNo、operationNo、源经济摘要、授权或可核销凭证，也不能转为prepare。原订单preview仍以core真实SKU/活动后金额调用，旧best保留其只读试算语义。实际建单必须重新经过独立持久core意图及真实pay预占，不能拿估算金额扣次数。
+
+CouponPortRouter按真实来源分流只读allocate；CORE_LEGACY原调用保持，PAY须精确来源/目标/批次/水位、同一买家/承担主体、有效期、有限COUNT及可用次数都成立。pay在锁外校验registry，只读实际实例及规则，估算不写core意图、pay操作/流水/余额。关闭新使用入口停止新估算，既有账单与原完成操作继续可读/可重放。未知来源不得猜测owner。
+
+### 旧券包只读投影（N10下一批次）
+
+旧MyCouponVO/UserCouponVO形状保留，迁移后的次数、当前状态、有效期和最近实际使用时刻来自pay同一只读RR快照；总余次与预占分开，不能用“可用次数”反推已消费数。来源/目标/批次/水位及持有人继续精确核对，读取不要求新使用开关打开。CORE_LEGACY保持原数据；PAY不回落到冻结旧表的余额，未知owner不显示伪造的0次。ORDER券返回redeemCode=null。
+
+增加内部snapshot查询，无可核销凭证、无金融写入。只读事务在owner校验之后开始，事务内不调core/registry。旧券包按实际pay余额更新，冻结旧行不跟写；旧源只承担原业务键及历史文本的兼容，不作为迁移后的余额真源。
+
+### 原订单优惠明细的本地读取（N10下一批次）
+
+订单详情读取core已提交日记中的原分摊，按真实子单主体与门店精确过滤，不把同主体跨店合计复制到每张子单。原券名从保留的对应PMT/MKT冻结源读取，缺失则保持空值，不编造名称；不为缺门店的数据伪造物理门店。读取可加入当前core事务以看到刚提交的本事务订单，不调用pay或registry。已写退回决定的原优惠不继续当作当前生效优惠展示；“已回券包”仅在实际pay返回REVERSED且core技术确认落库后显示，避免把未完成退回提前显示为成功。
+
+### 旧券消费事实与通知补齐（2026-10-20）
+
+旧接口仍由核心订单定价、选择、提交或取消；支付持有原核销及账本。在支付 COMMIT 同事务建立统一 ent_usage 消费事实，REVERSE 同事务标记原事实 REVERSED；两者写入 pay_ent_outbox 的 LEGACY_COUPON_USAGE_CHANGED。提交后沿既有支付→核心事件桥、站内交易消息消费，重复投递按事件/接收者幂等；通知不再次调用金融命令。消费者收到「核销成功」或「核销已退回」，消息不暴露内部证明、账户分池或假现金支付信息。
+
+该事件只含真实 usageNo/userNo/entityNo/instanceNo/orderNo、状态和源业务时间，支持跨门店汇总，不放宽现有 STANDARD 核销事件的门店约束。预占、未提交释放、未知远端结果均不通知核销成功。历史缺失事实修复只回填查询事实，不补发历史通知。
+
+#### 历史消费投影补齐
+
+LegacyCouponUsageRepairService 在支付侧按内部 id 做有界扫描，每批 1–100 条、单条独立支付事务，先锁原核销操作，再验证原 LEGACY_COMMIT 账本，只有真实 COMMITTED/REVERSED 才可重建 ent_usage。无金融增量、无历史消息补发、无远端查询；保留源业务时间与原选择操作人，修复执行人进入审计。失败计数可见并推进本轮游标，扫尾回到起点重试，不由单个坏数据阻塞后续记录。
+
+LegacyCouponUsageRepairJob 接入现有 JobHandler/JobSupport/ShedLock，默认关闭；需同时打开 shop.job.enabled 与 SHOP_PAY_LEGACY_COUPON_USAGE_REPAIR_ENABLED 才注册。新使用功能开关可以保持关闭。修复报告区分 scanned/repaired/failed；失败必须核查原核销和账本，不自动补造金融事实。当前未在任何真实商家或生产账户执行，也未打开开关。
+
+### 源端永久提交（N11）
+
+app LegacyCouponMigrationCommitCoordinator 在核心事务外从支付读取、校验固定计划头；核心 LegacyCouponSourceCommitService 在一个独立短事务中按稳定顺序锁所有来源根、重新验证可见水位及完整 V2 快照（含认领两来源），验证全部通过后原子更新根状态并持久化决定和来源绑定。中途失败必须连同根、绑定、决定和命令去重一起回滚。
+
+计划头不含消费者身份或目标敏感清单。核心事务内不调用支付；窄 LegacyCouponSourceCommitPort 只读原决定，本地及独立支付反向 HTTP 同形，空证明与不可用严格区分。SOURCE_COMMIT 默认为关闭（SHOP_CORE_ENTITLEMENT_MIGRATION_COMMIT_ENABLED=false）；已接受的原命令先查幂等结果，不受新提交开关影响。规划、源提交、目标导入是三个独立阶段；当前代码不自动执行生产切换。
+
+### 已提交迁移自动恢复
+
+LegacyCouponMigrationRecoveryService 在支付侧按内部 id 有界扫描无回执计划；每项独立按原计划读取核心永久证明后再迁入。没有证明或源不可用只计待确认，不能自动替核心提交、不能推断源ABORT。单项冲突计失败并推进游标，不阻塞后续计划。已完成回执在任何解密及远端查询之前按主体读取；原键仍先做命令指纹核对，避免异参假重放。
+
+LegacyCouponMigrationRecoveryJob 接入统一 JobHandler/JobSupport/ShedLock，需 shop.job.enabled 与 SHOP_PAY_ENTITLEMENT_MIGRATION_RECOVERY_ENABLED 同时打开，默认关闭。每轮最多10项，5分钟调度，timeout1500秒、锁1800秒（PT30M）；只对已存在永久决定滚动完成支付迁入。源新提交开关仍由核心独立控制，关闭后原已提交工作仍可恢复。
+
+### 旧定义入口兼容执行约束（N10续，2026-10-20）
+
+原商家CouponService接口及URL继续作为兼容入口。未迁移模板完全复用原实现；核心永久来源决定与精确TEMPLATE registry、batch、planHash全部一致后，商家定义读取与变更只能委托pay。核心旧表保持冻结，不以旧状态或不存在映射推断写者。
+
+兼容读必须展示pay当前定义/发行暂停状态/发行基线。旧保存命令转换为同一EntitlementDefinition与发行策略，pay本地事务完成新版发布和额度约束；原已得实例保留原规则快照。恢复发行是商家显式动作，迁入本身不得启用。后续旧发券/领券使用同一支付发行内核和核心可信资格/受众，不接受客户端伪造收件人或本金信息。
+
+执行先验证旧详情迁入后不再误报可发行、原URL状态变更不改冻结源、定义修改不重写已得券；再完成发放及领取兼容与独立部署接线。任何迁入未完成/未知归属都阻止旧写，不能回落旧实现补发。
+
+### N10 迁入后旧发放/领取接续执行方案
+
+复用支付现有EntitlementIssueBatchWriter、GrantService、发行额度与逐人额度，不另建一套发券账。旧B端只传人群/标签等选择条件；core解析真实受众及账号资格，pay在锁外取得结果后冻结到现有发行批次。C领取只允许实际登录本人，core核验活跃账号，pay同时核验不可变版本允许CENTER。不能把C领取改成任意目标用户发券。
+
+新增两类技术记录：pay旧发行兼容关联（原操作号、精确模板owner、原生batch、不可变选择条件/事实及完成结果）；core支付券展示映射（真实grant/instance/user与原模板来源），不改被冻结的pmt/mkt原实例、发行计数及应用流水。Core映射只在取得真实pay完成回执后建立，核对原永久迁移决定及批次摘要。旧身份解析和券包并入这些映射，后续下单继续同一唯一pay写者。
+
+发行先按pay既有总额/个人基线分类ALREADY_HAS、SOLD_OUT；不可触达只记真实汇总，不补造虚假收件人。预算不足整批失败，不残留预占或部分发券。每个原兼容操作号固定原生batch；丢响应只续原批次。原接口没有幂等键时保留原来的多次业务调用语义，不能宣称其支持跨请求去重；同一已接受操作的恢复必须幂等。
+
+完成时依现有正常grant发送到账事件；额外耐久事件只驱动core展示映射，不重复发送到账通知。原生批次续跑与兼容完成/映射失败恢复必须有界；未知状态不回落旧发行器。旧MKT第三方奖励还需真实业务源去重，不能直接将user+coupon拼成虚假奖励源。
+
+验证顺序：已迁来源恢复发行→真实注册会员与线索受众→旧已领者跳过→一笔原生grant→原表不写→旧券包能见→同一操作/丢确认恢复→重复新批次不越个人限额；再做C本人领取、MKT运营和奖励源兼容。

@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** Real database facts, including actor isolation; removing its predicate must break referenceBinding. */
 @SpringBootTest(properties = {"shop.member-code.enabled=true",
-        "spring.datasource.url=jdbc:h2:mem:member-code;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"})
+        "spring.datasource.url=jdbc:h2:mem:member-code-resolve;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"})
 @ActiveProfiles("test")
 class MemberCodeResolveFlowTest {
     @Autowired private JdbcTemplate jdbc;

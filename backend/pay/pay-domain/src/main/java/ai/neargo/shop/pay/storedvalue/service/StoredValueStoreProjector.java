@@ -34,4 +34,23 @@ public class StoredValueStoreProjector {
         row.setUpdatedAt(at); row.setUpdatedBy(ctx.actorNo());
         if (index.updateById(row) != 1) StoredValueFacts.conflict();
     }
+    @Transactional(transactionManager = "payTxManager", propagation = Propagation.MANDATORY)
+    public void consume(EntitlementContext ctx, String user, String entity, String store, String storeName,
+                         LocalDateTime at) {
+        var claim = new SvUserStoreIndex(); StoredValueFacts.audit(claim, ctx, at);
+        claim.setUserNo(user); claim.setEntityNo(entity); claim.setStoreNo(store); claim.setStoreName(storeName);
+        claim.setLastConsumeAt(at); claim.setLastActivityAt(at); index.ensureConsumption(claim);
+        var row = index.lock(ctx.tenantNo(), user, store);
+        if (row == null || !entity.equals(row.getEntityNo())) StoredValueFacts.conflict();
+        boolean newest = !at.isBefore(row.getLastActivityAt());
+        if (row.getLastConsumeAt() == null || at.isAfter(row.getLastConsumeAt())) row.setLastConsumeAt(at);
+        boolean consumption = row.getLastRechargeAt() == null
+                || !row.getLastConsumeAt().isBefore(row.getLastRechargeAt());
+        row.setLastActivityAt(consumption ? row.getLastConsumeAt() : row.getLastRechargeAt());
+        row.setLastActivityType(consumption ? "CONSUMPTION" : "RECHARGE");
+        if (newest) row.setStoreName(storeName);
+        row.setUpdatedAt(at); row.setUpdatedBy(ctx.actorNo());
+        if (index.updateById(row) != 1) StoredValueFacts.conflict();
+    }
+
 }

@@ -30,6 +30,13 @@ shop:
   pay:
     entitlement:
       # Stable shared random secret (>=32 characters) for scoped query cursors; no development fallback.
+      # Original ORDER-coupon compatibility stays opt-in until core checkout/import acceptance.
+      migration-recovery:
+        enabled: ${SHOP_PAY_ENTITLEMENT_MIGRATION_RECOVERY_ENABLED:false}
+      legacy-coupon:
+        enabled: ${SHOP_PAY_ENTITLEMENT_LEGACY_COUPON_ENABLED:false}
+        usage-repair-enabled: ${SHOP_PAY_LEGACY_COUPON_USAGE_REPAIR_ENABLED:false}
+        issue-recovery-enabled: ${SHOP_PAY_LEGACY_COUPON_ISSUE_RECOVERY_ENABLED:false}
       cursor-key: ${SHOP_PAY_ENTITLEMENT_CURSOR_KEY:}
       code:
         enabled: ${SHOP_PAY_ENTITLEMENT_CODE_ENABLED:false}

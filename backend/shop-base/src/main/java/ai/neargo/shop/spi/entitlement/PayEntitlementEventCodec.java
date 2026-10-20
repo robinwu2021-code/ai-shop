@@ -19,20 +19,7 @@ public final class PayEntitlementEventCodec {
     }
     public static PayEntitlementEvent decode(Envelope wire, ObjectMapper json) {
         if (!"MAIN".equals(wire.tenantNo())) throw new IllegalArgumentException("Event tenant is not enabled");
-        PayEntitlementEvent event = switch (wire.eventType()) {
-            case "ENTITLEMENT_BATCH_PREPARED" ->
-                    json.readValue(wire.payload(), EntitlementEvents.EntitlementBatchPrepared.class);
-            case "ENTITLEMENT_GRANTED" -> json.readValue(wire.payload(), EntitlementEvents.EntitlementGranted.class);
-            case "ENTITLEMENT_USED" -> json.readValue(wire.payload(), EntitlementEvents.EntitlementUsed.class);
-            case "ENTITLEMENT_USE_REVERSED" ->
-                    json.readValue(wire.payload(), EntitlementEvents.EntitlementUseReversed.class);
-            case "STORED_VALUE_RECHARGE_RECEIVED" ->
-                    json.readValue(wire.payload(), EntitlementEvents.StoredValueRechargeReceived.class);
-            case "STORED_VALUE_RECHARGE_CANCELLED" ->
-                    json.readValue(wire.payload(), EntitlementEvents.StoredValueRechargeCancelled.class);
-            case "STORED_VALUE_CREDITED" -> json.readValue(wire.payload(), EntitlementEvents.StoredValueCredited.class);
-            default -> throw new IllegalArgumentException("Unsupported entitlement event type");
-        };
+        PayEntitlementEvent event = read(wire.eventType(),wire.payload(),json);
         validate(event);
         String canonical = json.writeValueAsString(event);
         if (!wire.eventNo().equals(event.eventNo()) || !wire.eventType().equals(event.eventType())
@@ -44,21 +31,53 @@ public final class PayEntitlementEventCodec {
         }
         return event;
     }
+    /** Central allowlist; callers must also validate immutable headers and hashes. */
+    public static PayEntitlementEvent read(String type,String payload,ObjectMapper json) {
+        return switch (type) {
+            case "LEGACY_COUPON_ISSUE_COMPLETED" -> json.readValue(payload,EntitlementEvents.LegacyCouponIssueCompleted.class);
+            case "ENTITLEMENT_BATCH_PREPARED" ->
+                    json.readValue(payload, EntitlementEvents.EntitlementBatchPrepared.class);
+            case "ENTITLEMENT_EXCEPTION_OPENED" -> json.readValue(payload,EntitlementEvents.ExceptionOpened.class);
+            case "ENTITLEMENT_GRANTED" -> json.readValue(payload, EntitlementEvents.EntitlementGranted.class);
+            case "ENTITLEMENT_USED" -> json.readValue(payload, EntitlementEvents.EntitlementUsed.class);
+            case "ENTITLEMENT_USE_REVERSED" ->
+                    json.readValue(payload, EntitlementEvents.EntitlementUseReversed.class);
+            case "STORED_VALUE_RECHARGE_RECEIVED" ->
+                    json.readValue(payload, EntitlementEvents.StoredValueRechargeReceived.class);
+            case "STORED_VALUE_RECHARGE_CANCELLED" ->
+                    json.readValue(payload, EntitlementEvents.StoredValueRechargeCancelled.class);
+            case "LEGACY_COUPON_USAGE_CHANGED" -> json.readValue(payload, EntitlementEvents.LegacyCouponUsageChanged.class);
+            case "STORED_VALUE_CREDITED" -> json.readValue(payload, EntitlementEvents.StoredValueCredited.class);
+            default -> throw new IllegalArgumentException("Unsupported entitlement event type");
+        };
+    }
     public static void validate(PayEntitlementEvent event) {
         if (event == null || !id(event.eventNo()) || !id(event.aggregateId()) || event.schemaVersion() != 1
                 || event.occurredAt() <= 0) {
             throw new IllegalArgumentException("Entitlement event identity is incomplete");
         }
-        if (event instanceof EntitlementEvents.EntitlementBatchPrepared prepared) {
+        if(event instanceof EntitlementEvents.LegacyCouponIssueCompleted completed) {
+            if(!"MAIN".equals(completed.tenantNo()) || !id(completed.issueNo()) || !id(completed.entityNo()) || !id(completed.actorNo()))
+                throw new IllegalArgumentException("Legacy issue completion identity is incomplete");
+        } else if (event instanceof EntitlementEvents.EntitlementBatchPrepared prepared) {
             if (!"MAIN".equals(prepared.tenantNo()) || !id(prepared.batchNo()) || !id(prepared.entityNo())
                     || !id(prepared.actorNo())) {
                 throw new IllegalArgumentException("Batch prepared identity is incomplete");
             }
+        } else if(event instanceof EntitlementEvents.ExceptionOpened opened) {
+            if(!id(opened.exceptionNo()) || !id(opened.entityNo()) || !id(opened.bizNo())
+                    || !"GRANT_DELIVERY".equals(opened.kind())) {
+                throw new IllegalArgumentException("Entitlement exception event identity is incomplete");
+            }
         } else if (event instanceof EntitlementEvents.EntitlementGranted granted) {
             if (!id(granted.grantNo()) || !id(granted.userNo()) || !id(granted.entityNo())
                     || !id(granted.templateVersionNo()) || !oneOf(granted.sourceType(), "ACTIVITY", "CENTER",
-                    "TARGETED", "PAID_ORDER", "RECHARGE" ) || !id(granted.sourceNo()))
+                    "TARGETED", "PAID_ORDER", "PAID_CARD_ORDER", "RECHARGE" ) || !id(granted.sourceNo()))
                 throw new IllegalArgumentException("Entitlement grant event fields are incomplete");
+        } else if (event instanceof EntitlementEvents.LegacyCouponUsageChanged legacy) {
+            if(!id(legacy.usageNo()) || !id(legacy.userNo()) || !id(legacy.entityNo())
+                    || !id(legacy.instanceNo()) || !id(legacy.orderNo()) || !oneOf(legacy.status(),"COMMITTED","REVERSED"))
+                throw new IllegalArgumentException("Legacy usage event fields are incomplete");
         } else if (event instanceof EntitlementEvents.EntitlementUsed used) {
             boolean storedValue = "STORED_VALUE".equals(used.assetKind());
             if (!id(used.usageNo()) || !id(used.userNo()) || !id(used.entityNo()) || !id(used.storeNo())

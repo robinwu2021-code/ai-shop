@@ -1,5 +1,9 @@
 package ai.neargo.shop.pay.svc;
 
+import ai.neargo.shop.spi.entitlement.EntitlementSaleReservationPort;
+import ai.neargo.shop.spi.entitlement.EntitlementSaleSourcePort;
+import ai.neargo.shop.spi.entitlement.SourceRef;
+import ai.neargo.shop.pay.svc.client.port.CoreEntitlementGrantSourcePortImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,5 +77,13 @@ class PayApplicationBootTest {
         assertThat(ctx.getBeanNamesForType(InternalPayEndpoint.class))
                 .as("内部端点没装上，这个进程起来了也没人能和它说话")
                 .hasSize(1);
+    }
+    @Test void saleCapacityAndReverseSourceHaveExactlyOneStandaloneOwner() {
+        assertThat(ctx.getBeansOfType(EntitlementSaleReservationPort.class)).hasSize(1);
+        assertThat(ctx.getBeansOfType(EntitlementSaleSourcePort.class)).hasSize(1);
+        var source=ctx.getBean(EntitlementSaleSourcePort.class);
+        assertThat(source).isInstanceOf(CoreEntitlementGrantSourcePortImpl.class);
+        assertThat(source.supports(new SourceRef("CORE","PAID_CARD_ORDER","O1","L1",1,1,0))).isTrue();
+        assertThat(ctx.getBeanNamesForType(InternalSaleReservationEndpoint.class)).hasSize(1);
     }
 }

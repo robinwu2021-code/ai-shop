@@ -12,6 +12,9 @@ import lombok.Setter;
 @TableName("ent_usage")
 public class EntUsage extends BaseEntity {
     private String usageNo;
+    private String protocol;
+    private String migrationImportNo;
+    private String legacyInstanceNo;
     private String operationNo;
     private String userNo;
     private String entityNo;

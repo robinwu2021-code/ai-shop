@@ -27,6 +27,9 @@ public class RemoteEntitlementQueryPort implements EntitlementQueryPort {
     @Override public UsageDetail usage(EntitlementContext c, UsageQuery q) {
         return RemoteEntitlementCalls.call(() -> pay.entUsage(new PayEntitlementRequests.Usage(c, q)));
     }
+    @Override public CursorPage<UsageItem> history(EntitlementContext c,UsageHistoryQuery q) {
+        return RemoteEntitlementCalls.call(()->pay.entHistory(new PayEntitlementRequests.UsageHistory(c,q)));
+    }
     @Override public AllowanceView allowances(EntitlementContext c, AllowanceQuery q) {
         return RemoteEntitlementCalls.call(() -> pay.entAllowances(new PayEntitlementRequests.Allowances(c, q)));
     }

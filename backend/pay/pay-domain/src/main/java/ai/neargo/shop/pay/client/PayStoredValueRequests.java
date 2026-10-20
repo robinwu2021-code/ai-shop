@@ -7,6 +7,10 @@ import ai.neargo.shop.spi.storedvalue.StoredValuePort.CreateRecharge;
 import ai.neargo.shop.spi.storedvalue.StoredValuePort.CreditRecharge;
 import ai.neargo.shop.spi.storedvalue.StoredValuePort.ReceiveRecharge;
 import ai.neargo.shop.spi.storedvalue.StoredValuePort.SubmitRecharge;
+import ai.neargo.shop.spi.storedvalue.StoredValuePort.BalanceQuery;
+import ai.neargo.shop.spi.storedvalue.StoredValuePort.StoreQuery;
+import ai.neargo.shop.spi.storedvalue.StoredValuePort.ConsumptionQuery;
+import ai.neargo.shop.spi.entitlement.SourceRef;
 
 public final class PayStoredValueRequests {
     private PayStoredValueRequests() { }
@@ -28,7 +32,25 @@ public final class PayStoredValueRequests {
     public record Credit(EntitlementContext context, CreditRecharge command) {
         public Credit { ContractChecks.present(context); ContractChecks.present(command); }
     }
+    public record QueryRecharge(EntitlementContext context, String entityNo, String rechargeNo) {
+        public QueryRecharge { check(context, entityNo); ContractChecks.id(rechargeNo); }
+    }
+    public record Balance(EntitlementContext context, BalanceQuery query) {
+        public Balance { ContractChecks.present(context); ContractChecks.present(query); }
+    }
+    public record Stores(EntitlementContext context, StoreQuery query) {
+        public Stores { ContractChecks.present(context); ContractChecks.present(query); }
+    }
+    public record Consumptions(EntitlementContext context, ConsumptionQuery query) {
+        public Consumptions { ContractChecks.present(context); ContractChecks.present(query); }
+    }
+    public record UseQuote(EntitlementContext context, SourceRef sourceRef) {
+        public UseQuote { ContractChecks.present(context); ContractChecks.present(sourceRef); }
+    }
     private static void check(EntitlementContext ctx, String entity) {
         ContractChecks.present(ctx); ContractChecks.id(entity);
+    }
+    public record Capabilities(String tenantNo) {
+        public Capabilities { ContractChecks.id(tenantNo); }
     }
 }

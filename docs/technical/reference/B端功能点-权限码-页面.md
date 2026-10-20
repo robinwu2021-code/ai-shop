@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**23 个权限码 × 6 个角色 × 247 个受控功能点**
+统计：**25 个权限码 × 6 个角色 × 255 个受控功能点**
 （另有 39 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -35,14 +35,16 @@
 | `pay:ent:read` | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 3 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `biz:review` | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
+| `pay:sv:recharge:create` | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `pay:ent:use` | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
+| `pay:sv:consume:create` | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `pay:ent:template:write` | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 2 | ✅ | — | — | — | — | — |
 | `pay:ent:template:publish` | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
+| `pay:sv:recharge:receive` | `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
+| `pay:sv:recharge:read` | `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
+| `pay:sv:account:read` | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `pay:ent:issue` | `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `pay:ent:issue:manage` | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
-| `pay:sv:recharge:create` | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
-| `pay:sv:recharge:receive` | `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
-| `pay:sv:recharge:read` | `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 | `pay:ent:template:read` | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 
 > `OWNER` 是 `*`：**不走这张表**。新增权限码时老板自动有，其余角色要显式加。
@@ -417,6 +419,16 @@
 | 申诉差评 | POST | `/biz/review/:reviewNo/appeal` | `mAppealReview` | reviews |
 | 回复评价 | POST | `/biz/review/:reviewNo/reply` | `mReplyReview` | reviews |
 
+### `pay:sv:recharge:create`　查看主体级权益目录，不授予变更能力
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/stored-value/recharges` | — | — |
+| —（b-app 未接） | — | `/biz/stored-value/recharges/{}/cancel` | — | — |
+| —（b-app 未接） | — | `/biz/stored-value/recharges/{}/submit` | — | — |
+
 ### `pay:ent:use`　查看主体级权益目录，不授予变更能力
 
 **可用角色**：老板
@@ -426,6 +438,15 @@
 | —（b-app 未接） | — | `/biz/entitlement-uses/preview` | — | — |
 | —（b-app 未接） | — | `/biz/entitlement-uses` | — | — |
 | —（b-app 未接） | — | `/biz/entitlement-uses/{}/cancel` | — | — |
+
+### `pay:sv:consume:create`　查看主体级权益目录，不授予变更能力
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/stored-value/consumptions` | — | — |
+| —（b-app 未接） | — | `/biz/stored-value/consumptions/preview` | — | — |
 
 ### `pay:ent:template:write`　编辑权益草稿，不能发布
 
@@ -444,6 +465,30 @@
 |---|---|---|---|---|
 | —（b-app 未接） | — | `/biz/entitlement-templates/{}/publish` | — | — |
 | —（b-app 未接） | — | `/biz/entitlement-templates/{}/status` | — | — |
+
+### `pay:sv:recharge:receive`　查看主体级权益目录，不授予变更能力
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/stored-value/recharges/{}/receive` | — | — |
+
+### `pay:sv:recharge:read`　查看主体级权益目录，不授予变更能力
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/stored-value/recharges/{}` | — | — |
+
+### `pay:sv:account:read`　查看主体级权益目录，不授予变更能力
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/stored-value/accounts` | — | — |
 
 ### `pay:ent:issue`　查看主体级权益目录，不授予变更能力
 
@@ -583,6 +628,14 @@
 | `/biz/marketing-summary` | `biz:campaign` | 老板、店长 |
 | `/biz/quote/{}/revise` | `biz:campaign` | 老板、店长 |
 | `/biz/settle/bills/{}` | `biz:finance` | 老板 |
+| `/biz/stored-value/accounts` | `pay:sv:account:read` | 老板 |
+| `/biz/stored-value/consumptions` | `pay:sv:consume:create` | 老板 |
+| `/biz/stored-value/consumptions/preview` | `pay:sv:consume:create` | 老板 |
+| `/biz/stored-value/recharges` | `pay:sv:recharge:create` | 老板 |
+| `/biz/stored-value/recharges/{}` | `pay:sv:recharge:read` | 老板 |
+| `/biz/stored-value/recharges/{}/cancel` | `pay:sv:recharge:create` | 老板 |
+| `/biz/stored-value/recharges/{}/receive` | `pay:sv:recharge:receive` | 老板 |
+| `/biz/stored-value/recharges/{}/submit` | `pay:sv:recharge:create` | 老板 |
 
 > 这些是「写了、测了、没人调用」—— 要么排期接上，要么从 `REQUIRED` 删掉。
 > `noStaleEntries` 只拦已删除的端点，**拦不住「端点还在但没人用」**。

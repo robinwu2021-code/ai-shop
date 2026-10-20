@@ -9,6 +9,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.promotion.entity.PmtApply;
 import ai.neargo.shop.promotion.entity.PmtEffectProjection;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ApplyMapper;
+import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityMapper;
 import ai.neargo.shop.promotion.mapper.PmtEffectProjectionMapper;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -18,7 +19,8 @@ import org.junit.jupiter.api.Test;
 class MarketingEffectProjectorTest {
     private final PmtEffectProjectionMapper effects = mock(PmtEffectProjectionMapper.class);
     private final ApplyMapper applies = mock(ApplyMapper.class);
-    private final MarketingEffectProjector projector = new MarketingEffectProjector(effects, applies);
+    private final MarketingEffectProjector projector = new MarketingEffectProjector(effects, applies,
+            mock(ActivityMapper.class));
     private final Instant at = Instant.parse("2026-10-19T00:00:00Z");
 
     @Test void exactReplayAcceptedButChangedPersistedAmountRejected() {

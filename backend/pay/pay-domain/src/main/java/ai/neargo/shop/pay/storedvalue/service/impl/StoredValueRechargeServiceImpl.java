@@ -51,6 +51,9 @@ public class StoredValueRechargeServiceImpl implements StoredValueRechargeServic
                 || !c.rechargeNo().equals(source.rechargeNo()))) throw BizException.of(ErrorCode.NOT_FOUND);
         return writer.cancel(ctx, entity, c, source);
     }
+    @Override public RechargeView query(EntitlementContext ctx, String entity, String rechargeNo) {
+        main(ctx); return writer.query(ctx, entity, rechargeNo);
+    }
     private static void main(EntitlementContext ctx) {
         if (!"MAIN".equals(ctx.tenantNo())) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
     }

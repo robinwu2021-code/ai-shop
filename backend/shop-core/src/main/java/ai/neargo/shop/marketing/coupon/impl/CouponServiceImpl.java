@@ -1,5 +1,8 @@
 package ai.neargo.shop.marketing.coupon.impl;
 
+import ai.neargo.shop.spi.entitlement.LegacyCouponWriteFencePort;
+import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
+
 import ai.neargo.shop.marketing.coupon.CouponService;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -27,6 +30,7 @@ import java.util.Map;
 @Service
 public class CouponServiceImpl implements CouponService {
 
+    private final LegacyCouponWriteFencePort sourceFence;
     private final CouponMapper couponMapper;
     private final UserCouponMapper userCouponMapper;
     private final GoodsQueryPort goodsPort;
@@ -39,7 +43,8 @@ public class CouponServiceImpl implements CouponService {
                              GoodsQueryPort goodsPort,
                              ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponIssueMapper issueMapper,
                              ai.neargo.shop.spi.user.UserQueryPort userPort,
-                             ai.neargo.shop.spi.user.MerchantQueryPort merchantPort) {
+                             ai.neargo.shop.spi.user.MerchantQueryPort merchantPort, LegacyCouponWriteFencePort sourceFence) {
+        this.sourceFence = sourceFence;
         this.couponMapper = couponMapper;
         this.userCouponMapper = userCouponMapper;
         this.goodsPort = goodsPort;
@@ -90,6 +95,7 @@ public class CouponServiceImpl implements CouponService {
     @Transactional
     public UserCouponVO grantTo(String userNo, String couponNo) {
         MktCoupon coupon = template(couponNo);
+        sourceFence.requireWritable(coupon.getTenantNo(), SourceSystem.MKT_LEGACY, coupon.getCouponNo(), false);
 
         long now = System.currentTimeMillis();
         if (!"ACTIVE".equals(coupon.getStatus()) || nz(coupon.getStartAt()) > now
@@ -315,6 +321,7 @@ public class CouponServiceImpl implements CouponService {
         if (!isNew && c == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        if (!isNew) sourceFence.requireWritable(c.getTenantNo(), SourceSystem.MKT_LEGACY, c.getCouponNo(), false);
         if (cmd.title() == null || cmd.title().isBlank()
                 || cmd.totalCount() == null || cmd.endAt() == null || cmd.startAt() == null
                 || cmd.endAt() <= cmd.startAt()) {
@@ -405,6 +412,7 @@ public class CouponServiceImpl implements CouponService {
         if (c == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        sourceFence.requireWritable(c.getTenantNo(), SourceSystem.MKT_LEGACY, c.getCouponNo(), false);
         /*
          * **不能改到低于已发放金额**：那等于人为造出一个「已经超支」的状态，
          * 而超支之后没有任何补救动作可做 —— 券已经在用户手里了，收不回来。
@@ -434,6 +442,7 @@ public class CouponServiceImpl implements CouponService {
         if (c == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        sourceFence.requireWritable(c.getTenantNo(), SourceSystem.MKT_LEGACY, c.getCouponNo(), false);
         /*
          * **只有 SINGLE_USER 能真发**。不是后端偷懒 —— 另外三种的收件人
          * 在入口处就不存在：ops-web 的「定向说明」是自由文本（「锦绣花园」），
@@ -569,6 +578,7 @@ public class CouponServiceImpl implements CouponService {
         if (c == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        sourceFence.requireWritable(c.getTenantNo(), SourceSystem.MKT_LEGACY, c.getCouponNo(), false);
         if (MktCoupon.ENDED.equals(c.getStatus())) {
             // 已结束不可恢复：把它改回 ACTIVE 等于让一批过期券重新可领，
             // 而发行量与预算的账早就按「结束」结过了

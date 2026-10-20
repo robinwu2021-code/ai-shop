@@ -1,6 +1,12 @@
 package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.shop.trade.service.MerchantOrderService;
+import ai.neargo.shop.spi.entitlement.PaidCardPaymentGatePort;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import ai.neargo.shop.spi.user.UserQueryPort;
 
 import ai.neargo.shop.common.PageData;
@@ -37,6 +43,15 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     /** 叫 LOG 不叫 log：这个类里已经有一个 {@code log(sub, ...)} 方法，同名字段读起来会打架 */
     private static final org.slf4j.Logger LOG =
             org.slf4j.LoggerFactory.getLogger(MerchantOrderServiceImpl.class);
+
+    private PaidCardPaymentGatePort cardPaymentGate;
+    private TransactionTemplate offlineTransactions;
+    @Autowired(required=false)
+    public void setCardPaymentGate(PaidCardPaymentGatePort gate) { this.cardPaymentGate=gate; }
+    @Autowired
+    public void setOfflineTransactions(@Qualifier("transactionManager") PlatformTransactionManager manager) {
+        this.offlineTransactions=new TransactionTemplate(manager);
+    }
 
     private final SubOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
@@ -260,9 +275,21 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation=Propagation.NOT_SUPPORTED)
     public OrderVO confirmOfflinePay(String merchantNo, String storeNo, String subOrderNo,
                                      String operator) {
+        var sub=require(merchantNo,storeNo,subOrderNo);
+        var order=DataScopeContext.executeWithoutScope(() -> orderMapper.selectOne(
+                Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getOrderNo,sub.getOrderNo()).last("LIMIT 1")));
+        if(order==null || !OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus())) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+        // Source/pay checks run before acquiring a core write lock. Repeat ownership/state checks under the lock.
+        if(cardPaymentGate!=null) cardPaymentGate.requireReady(order.getTenantNo(),order.getOrderNo());
+        return offlineTransactions.execute(status -> confirmOfflinePayLocked(merchantNo,storeNo,subOrderNo,operator));
+    }
+
+    private OrderVO confirmOfflinePayLocked(String merchantNo,String storeNo,String subOrderNo,String operator) {
         OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
         /*
          * ⚠️ **必须绕过数据域**。B 端会话是 SELF 维度，而 ord_order 按买家登记 ——
@@ -273,7 +300,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
          */
         OrdOrder order = DataScopeContext.executeWithoutScope(() ->
                 orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
-                        .eq(OrdOrder::getOrderNo, sub.getOrderNo()).last("LIMIT 1")));
+                        .eq(OrdOrder::getOrderNo, sub.getOrderNo()).last("FOR UPDATE")));
         if (order == null || !OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus())) {
             /*
              * 不是「等确认收款」的单一律拒。包括线上单 —— 否则商家点一下

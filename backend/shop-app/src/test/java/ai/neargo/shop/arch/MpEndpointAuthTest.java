@@ -71,8 +71,12 @@ class MpEndpointAuthTest {
             "POST /mp/entitlement-quotes",
             "GET /mp/entitlement-service-orders",
             "GET /mp/entitlement-service-orders/{serviceOrderNo}",
+            "GET /mp/stored-value/stores",
+            "GET /mp/stored-value/consumptions",
             "GET /mp/entitlements",
             "GET /mp/entitlements/{instanceNo}",
+            "GET /mp/entitlements/{instanceNo}/usage",
+            "GET /mp/entitlement-usage",
             "GET /mp/entitlement-usage/{usageNo}",
             "GET /mp/entitlements/{instanceNo}/allowances",
             "POST /mp/entitlements/{instanceNo}/activation-quotes",
@@ -506,6 +510,10 @@ class MpEndpointAuthTest {
             case "PATCH" -> MockMvcRequestBuilders.patch(url);
             default -> MockMvcRequestBuilders.get(url);
         };
+        if(endpoint.equals("GET /mp/stored-value/consumptions")) {
+            // Query arguments, like PROBE_BODY, must reach the authentication layer rather than fail binding.
+            req.param("entityNo","M1").param("storeNo","S1");
+        }
         try {
             return mvc().perform(req.header("Idempotency-Key", "AUTH-PROBE").contentType(MediaType.APPLICATION_JSON)
                             .content(PROBE_BODY.getOrDefault(endpoint, "{}")))

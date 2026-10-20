@@ -26643,9 +26643,86 @@
       "package": "ai.neargo.shop.pay.entitlement.entity"
     },
     {
+      "table": "ent_legacy_coupon_issue",
+      "class": "EntLegacyCouponIssue",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_legacy_coupon_operation",
+      "class": "EntLegacyCouponOperation",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_migration_alias",
+      "class": "EntMigrationAlias",
+      "zh": "Audited identity declaration tied to both encrypted source evidences; never a cutover permit.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_migration_asset",
+      "class": "EntMigrationAsset",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_migration_import",
+      "class": "EntMigrationImport",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_migration_plan",
+      "class": "EntMigrationPlan",
+      "zh": "Fixed encrypted target mapping; never a financial or ownership decision.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_migration_return",
+      "class": "EntMigrationReturn",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_migration_stage",
+      "class": "EntMigrationStage",
+      "zh": "Immutable encrypted source evidence。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_migration_usage",
+      "class": "EntMigrationUsage",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_owner_registry",
+      "class": "EntOwnerRegistry",
+      "zh": "Persistent ownership identity: equal source numbers in different protocols are independent resources.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
       "table": "ent_period_bucket",
       "class": "EntPeriodBucket",
       "zh": "Pay-owned durable use fact; never written through a core transaction.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_sale_reservation",
+      "class": "EntSaleReservation",
+      "zh": "",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.entitlement.entity"
     },
@@ -27476,6 +27553,13 @@
       "package": "ai.neargo.shop.trade.entity"
     },
     {
+      "table": "ord_legacy_coupon_checkout",
+      "class": "OrdLegacyCouponCheckout",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entitlement.entity"
+    },
+    {
       "table": "ord_order",
       "class": "OrdOrder",
       "zh": "主订单：**用户视角**——一次支付、一个支付单号（ADR-002 / E3）。",
@@ -27511,6 +27595,20 @@
       "package": "ai.neargo.shop.pay.entitlement.entity"
     },
     {
+      "table": "pay_ent_exception",
+      "class": "PayEntException",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "pay_ent_exception_action",
+      "class": "PayEntExceptionAction",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
       "table": "pay_ent_inbox",
       "class": "PayEntInbox",
       "zh": "Idempotency ledger for committed cross-domain events applied by pay.",
@@ -27521,6 +27619,20 @@
       "table": "pay_ent_outbox",
       "class": "PayEntOutbox",
       "zh": "Pay-owned durable source event; system outbox is only the delivery adapter.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "pay_ent_recon_diff",
+      "class": "PayEntReconDiff",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "pay_ent_recon_run",
+      "class": "PayEntReconRun",
+      "zh": "",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.entitlement.entity"
     },
@@ -27670,6 +27782,27 @@
       "zh": "报名的商品。",
       "module": "shop-core",
       "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_migration_decision",
+      "class": "PmtMigrationDecision",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.migration"
+    },
+    {
+      "table": "pmt_migration_return",
+      "class": "PmtMigrationReturn",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "pmt_pay_coupon_projection",
+      "class": "PmtPayCouponProjection",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.migration"
     },
     {
       "table": "pmt_period",
@@ -28080,6 +28213,13 @@
     {
       "table": "sv_entry",
       "class": "SvEntry",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_hold_allocation",
+      "class": "SvHoldAllocation",
       "zh": "",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.storedvalue.entity"
@@ -29362,6 +29502,34 @@
         "module": "pay/pay-domain"
       },
       {
+        "host": "EntitlementMigrationAliasWriter",
+        "name": "OPERATION",
+        "value": "MIGRATION_ALIAS",
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "EntitlementMigrationPlanWriter",
+        "name": "OPERATION",
+        "value": "MIGRATION_PLAN",
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "LegacyCouponIssueWriter",
+        "name": "OPERATION",
+        "value": "LEGACY_COUPON_ISSUE",
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "LegacyCouponMigrationImportWriter",
+        "name": "OPERATION",
+        "value": "MIGRATION_IMPORT",
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
         "host": "FundRisk",
         "name": "PASS",
         "value": "PASS",
@@ -29559,9 +29727,16 @@
       },
       {
         "host": "BizKey",
+        "name": "ACTIVITY_VERSION",
+        "value": "AV",
+        "zh": "前缀是语义的一部分：看到 SUB 就知道这是子订单，不用去查表。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
         "name": "ORDER",
         "value": "SO",
-        "zh": "前缀是语义的一部分：看到 SUB 就知道这是子订单，不用去查表。",
+        "zh": "",
         "module": "shop-base"
       },
       {
@@ -35377,6 +35552,16 @@
     ],
     "javaEnums": [
       {
+        "name": "Action",
+        "values": [
+          "BEGIN_DRAIN",
+          "FREEZE",
+          "ABORT"
+        ],
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "name": "ActivationAction",
         "values": [
           "NONE",
@@ -35388,6 +35573,12 @@
       {
         "name": "ActivityCapability",
         "values": [
+          "CARD_PRODUCT",
+          "PAID_ORDER",
+          "IDEMPOTENT_CARD_ISSUE",
+          "ENTITLEMENT_LEDGER",
+          "ATOMIC_USE_DEDUCT",
+          "VALIDITY_POLICY",
           "ACTIVITY_VERSION",
           "ATOMIC_QUOTA",
           "AUDIENCE",
@@ -35878,6 +36069,15 @@
         "module": "shop-core"
       },
       {
+        "name": "IntentKind",
+        "values": [
+          "QUOTE_ONLY",
+          "CHECKOUT"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "JobStatus",
         "values": [
           "SUCCESS",
@@ -35904,6 +36104,19 @@
       {
         "name": "Kind",
         "values": [
+          "RECHARGE",
+          "SERVICE_USE",
+          "ORDER_USE",
+          "ACTIVITY_BENEFIT",
+          "LEGACY_COUPON",
+          "HISTORICAL_COUPON_RETURN"
+        ],
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "name": "Kind",
+        "values": [
           "COUPON",
           "MERCHANT",
           "PICKUP",
@@ -35925,6 +36138,17 @@
         ],
         "zh": "登录审计里记的是哪一类事。",
         "module": "shop-auth-store"
+      },
+      {
+        "name": "MigrationState",
+        "values": [
+          "PREPARING",
+          "VERIFIED",
+          "CUTOVER",
+          "ARCHIVED"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "MoveDirection",
@@ -35998,6 +36222,24 @@
         "module": "logistics"
       },
       {
+        "name": "Outcome",
+        "values": [
+          "COMMIT",
+          "ABORT"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "OwnerSystem",
+        "values": [
+          "CORE_LEGACY",
+          "PAY"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "PaidOutcome",
         "values": [
           "JOINED",
@@ -36057,6 +36299,17 @@
         "module": "shop-base-auth"
       },
       {
+        "name": "Reason",
+        "values": [
+          "OK",
+          "NO_ACCOUNT",
+          "FROZEN",
+          "INSUFFICIENT_APPLICABLE_BALANCE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "RechargeState",
         "values": [
           "NOT_FOUND",
@@ -36079,6 +36332,15 @@
         ],
         "zh": "退款进度：与订单状态正交 —— 部分退款不改订单状态，只改它。",
         "module": "shop-core"
+      },
+      {
+        "name": "ReverseReason",
+        "values": [
+          "CANCELLED",
+          "FULL_REFUND"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "RevokeReason",
@@ -36118,6 +36380,26 @@
         "module": "shop-core"
       },
       {
+        "name": "SourceKind",
+        "values": [
+          "TEMPLATE",
+          "INSTANCE",
+          "USAGE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "SourceSystem",
+        "values": [
+          "MKT_LEGACY",
+          "PMT",
+          "PAY"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "State",
         "values": [
           "NOT_FOUND",
@@ -36134,12 +36416,35 @@
         "name": "State",
         "values": [
           "NOT_FOUND",
+          "PROCESSING",
+          "RESERVED",
+          "TRANSFERRED",
+          "RELEASED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
+          "NOT_FOUND",
           "WAIT_AUTH",
           "HELD",
           "COMMITTED",
           "RELEASED",
           "PROCESSING",
           "EXCEPTION"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
+          "HELD",
+          "COMMITTED",
+          "RELEASED",
+          "REVERSED"
         ],
         "zh": "",
         "module": "shop-base"
@@ -39131,6 +39436,86 @@
     },
     {
       "host": "PayInternalPaths",
+      "name": "LEGACY_TEMPLATE_ARCHIVE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-template/archive\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_ISSUE_CREATE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-issue/create\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_ISSUE_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-issue/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_ISSUE_RESUME",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-issue/resume\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_ISSUE_LIST",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-issue/list\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_TEMPLATE_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-template/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_TEMPLATE_STATUS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-template/status\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_TEMPLATE_SAVE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-template/save\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "HISTORY_RETURN_REVERSE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/history-return/reverse\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "HISTORY_RETURN_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/history-return/query\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
       "name": "FEE_RULES",
       "type": "String",
       "value": "\"/internal/pay/fee-rules\"",
@@ -39355,6 +39740,14 @@
     },
     {
       "host": "PayInternalPaths",
+      "name": "ENT_QUERY_HISTORY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/query/history\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
       "name": "ENT_QUERY_USAGE",
       "type": "String",
       "value": "\"/internal/pay/entitlement/query/usage\"",
@@ -39494,6 +39887,406 @@
       "name": "SV_CREDIT",
       "type": "String",
       "value": "\"/internal/pay/stored-value/credit\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/query/recharge\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_BALANCE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/query/balance\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_STORES",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/query/stores\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CONSUMPTIONS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/query/consumptions\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_USE_QUOTE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/use/quote\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SALE_RESERVE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/sale/reserve\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SALE_RELEASE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/sale/release\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SALE_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/sale/query\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "EXCEPTIONS_RETRY_EVENT",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/exceptions/retry-event\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "EXCEPTIONS_DEAD_LETTERS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/exceptions/dead-letters\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "EXCEPTIONS_LIST",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/exceptions/list\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "EXCEPTIONS_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/exceptions/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "EXCEPTIONS_RETRY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/exceptions/retry-grant\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "EXCEPTIONS_SOURCE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/exceptions/query-source\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "RECON_CHECK",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/reconciliations/check\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "RECON_LIST",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/reconciliations/list\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "RECON_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/reconciliations/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "RECON_DIFFS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/reconciliations/differences\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "EXCEPTIONS_ACTIONS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/exceptions/actions\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LIFECYCLE_FREEZE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/lifecycle/freeze\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LIFECYCLE_STATE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/lifecycle/state\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CAPABILITIES",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/capabilities\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LIFECYCLE_EXPIRE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/lifecycle/expire\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MARKETING_USAGE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/marketing/usage-effects\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "OWNER_RESOLVE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/owners/resolve\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_CAPABILITIES",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/capabilities\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LIFECYCLE_REMINDERS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/lifecycle/expiring-soon\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "EXCEPTIONS_LIST_ACROSS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/exceptions/list-scoped\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_IMPORT",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/import\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_IMPORT_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/import/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_PLAN",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/plan\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_PLAN_PREPARED",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/plan/prepared\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_PLAN_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/plan/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_PLAN_VERIFY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/plan/verify\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_STAGE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/stage\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_STAGE_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/stage/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_STAGE_VERIFY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/stage/verify\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_STAGE_MANIFEST",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/stage-manifest\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_STAGE_ASSESS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/stage/assess\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_ALIAS_COMPARE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/alias/compare\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_ALIAS_RECOGNIZE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/alias/recognize\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_ALIAS_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/alias/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_COUPON_SNAPSHOT",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-coupons/snapshot\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_COUPON_ESTIMATE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-coupons/estimate\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_COUPON_QUOTE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-coupons/quote\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_COUPON_PREPARE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-coupons/prepare\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_COUPON_COMMIT",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-coupons/commit\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_COUPON_RELEASE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-coupons/release\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_COUPON_REVERSE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-coupons/reverse\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_COUPON_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-coupons/query\"",
       "zh": "",
       "module": "pay/pay-domain"
     },
@@ -39803,6 +40596,78 @@
     },
     {
       "host": "EntitlementCoreInternal",
+      "name": "LEGACY_COUPON_AUDIENCE",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/legacy-coupon/audience\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "HISTORY_RETURN_SOURCE",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/migration/history-return/source\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "HISTORY_RETURN_ACK",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/migration/history-return/ack\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "LEGACY_MIGRATION_COMMIT",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/migration/source-commit\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "FROZEN_LEGACY_MANIFEST",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/migration/frozen-manifest\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "FROZEN_LEGACY_SNAPSHOT",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/migration/frozen-snapshot\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "LEGACY_CHECKOUT_SOURCE",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/legacy-checkout/source\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "LEGACY_CHECKOUT_DECISION",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/legacy-checkout/decision\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "LEGACY_CHECKOUT_REVERSAL",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/legacy-checkout/reversal\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
       "name": "USE_SOURCE",
       "type": "String",
       "value": "\"/internal/core/entitlement/source/use\"",
@@ -39854,6 +40719,14 @@
       "name": "RECHARGE_BY_NO",
       "type": "String",
       "value": "\"/internal/core/stored-value/source-by-recharge\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "SALE_SOURCE",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/source/sale\"",
       "zh": "",
       "module": "shop-base"
     },
@@ -40043,6 +40916,22 @@
     },
     {
       "host": "BizPerms",
+      "name": "SV_ACCOUNT_READ",
+      "type": "String",
+      "value": "\"pay:sv:account:read\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "SV_CONSUME_CREATE",
+      "type": "String",
+      "value": "\"pay:sv:consume:create\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
       "name": "ENT_USE",
       "type": "String",
       "value": "\"pay:ent:use\"",
@@ -40101,7 +40990,7 @@
       "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },
@@ -40263,6 +41152,38 @@
       "type": "String",
       "value": "\"fulfillment:logistics:replay\"",
       "zh": "物流重放：重新订阅（可点名渠道）/ 重新换微信 token（TDD-物流模块 O3）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "ENT_EXCEPTION_READ",
+      "type": "String",
+      "value": "\"ops:pay:ent:read\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "ENT_EXCEPTION_RECOVER",
+      "type": "String",
+      "value": "\"ops:pay:ent:recover\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "ENT_EXCEPTION_VERIFY",
+      "type": "String",
+      "value": "\"ops:pay:ent:verify\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "ENT_FREEZE",
+      "type": "String",
+      "value": "\"ops:pay:ent:freeze\"",
+      "zh": "Freezing restricts new use; read or recovery permission alone must not authorize it.",
       "module": "shop-base-auth"
     },
     {

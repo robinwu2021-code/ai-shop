@@ -47,6 +47,11 @@ public class StoredValueRechargeWriterImpl implements StoredValueRechargeWriter 
         var r = recharges.find(ctx.tenantNo(), rechargeNo(c)); if (r == null) return null;
         requireCreate(r, ctx, entity, c); return view(r);
     }
+    @Override public RechargeView query(EntitlementContext ctx, String entity, String no) {
+        var r = recharges.find(ctx.tenantNo(), no);
+        if (r == null || !entity.equals(r.getEntityNo())) throw BizException.of(ErrorCode.NOT_FOUND);
+        return view(r);
+    }
     @Override public boolean exists(EntitlementContext ctx, String entity, String no) {
         var r = recharges.find(ctx.tenantNo(), no);
         if (r != null && !entity.equals(r.getEntityNo())) throw BizException.of(ErrorCode.NOT_FOUND);

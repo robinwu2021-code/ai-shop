@@ -1,4 +1,6 @@
 package ai.neargo.shop.config;
+import org.springframework.core.io.FileSystemResource;
+
 
 import ai.neargo.shop.media.SysMediaAsset;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,7 +50,7 @@ public class UploadResourceConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // addResourceLocations 收 Resource；末尾的 "/" 不能省，否则它会被当成文件名而不是目录
-        var location = new org.springframework.core.io.FileSystemResource(
+        var location = new FileSystemResource(
                 Path.of(dir).toAbsolutePath().normalize() + "/");
         registry.addResourceHandler(publicPrefix + "/**").addResourceLocations(location);
     }

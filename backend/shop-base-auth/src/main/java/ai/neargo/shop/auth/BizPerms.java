@@ -80,6 +80,8 @@ public final class BizPerms {
     public static final String SV_RECHARGE_CREATE = "pay:sv:recharge:create";
     public static final String SV_RECHARGE_RECEIVE = "pay:sv:recharge:receive";
     public static final String SV_RECHARGE_READ = "pay:sv:recharge:read";
+    public static final String SV_ACCOUNT_READ = "pay:sv:account:read";
+    public static final String SV_CONSUME_CREATE = "pay:sv:consume:create";
     public static final String ENT_USE = "pay:ent:use";
     public static final String ENT_ISSUE = "pay:ent:issue";
     public static final String ENT_READ = "pay:ent:read";
@@ -151,6 +153,8 @@ public final class BizPerms {
             Map.entry(SV_RECHARGE_CREATE, "办理与取消未实收储值"),
             Map.entry(SV_RECHARGE_RECEIVE, "核验储值实收"),
             Map.entry(SV_RECHARGE_READ, "查看储值办理进度"),
+            Map.entry(SV_ACCOUNT_READ, "查看顾客储值可用余额"),
+            Map.entry(SV_CONSUME_CREATE, "使用储值核销服务"),
             Map.entry(ENT_USE, "核销权益"),
             Map.entry(ENT_ISSUE, "定向发放权益"),
             Map.entry(ENT_READ, "查看权益与核销记录"),

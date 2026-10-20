@@ -30,7 +30,7 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
         assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '47');
         assert.ok(sql("SHOW COLUMNS FROM ent_template LIKE 'draft_snapshot'"), 'template draft needs persisted editable rules');
         sql(readFileSync(new URL('../../docs/technical/design/活动权益-support-schema.sql', import.meta.url), 'utf8'));
-        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '53');
+        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '69');
         const serviceMigration = readFileSync(new URL(
             '../../backend/shop-app/src/main/resources/db/migration/V442__entitlement_service_order.sql', import.meta.url),
             'utf8');
