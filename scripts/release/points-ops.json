@@ -59,5 +59,6 @@
     "scripts/release/points-ops.json",
     "scripts/release/points-ops.mjs",
     "scripts/release/points-ops.test.mjs"
-  ]
+  ],
+  "releaseBase": "10df1af13b42d8026ca6122d50620044e90e04fb"
 }

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, mkdirSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, mkdirSync, writeFileSync, mkdtempSync, rmSync, realpathSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -61,7 +61,8 @@ function main() {
       return;
     }
   } catch { /* No successful receipt for this exact commit and base. */ }
-  const files = git('diff', '--name-only', '--no-renames', base, head).split('\n').filter(Boolean);
+  git('merge-base', '--is-ancestor', manifest.releaseBase, base);
+  const files = git('diff', '--name-only', '--no-renames', manifest.releaseBase, head).split('\n').filter(Boolean);
   validateFiles(files);
   run('git', ['diff', '--check', base, head]);
   run('node', ['--test', 'scripts/release/points-ops.test.mjs']);
@@ -83,7 +84,7 @@ function main() {
   run('node', [join(root, 'node_modules/next/dist/bin/next'), 'build', '--webpack'], ops);
   run('node', ['scripts/assert-prod-build.mjs'], ops);
   mkdirSync(receiptDir, { recursive: true });
-  writeFileSync(join(receiptDir, `${head}.json`), JSON.stringify({ profile: 'points-ops', head, base, files, backend, checkedAt: new Date().toISOString() }, null, 2));
+  writeFileSync(join(receiptDir, `${head}.json`), JSON.stringify({ profile: 'points-ops', head, base, releaseBase: manifest.releaseBase, files, backend, checkedAt: new Date().toISOString() }, null, 2));
   console.log(`✓ points-ops 发布检查通过：${head}（B/C 未变更）`);
 }
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) main();

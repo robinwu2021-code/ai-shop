@@ -22,3 +22,17 @@ test('empty releases and removed/renamed unrelated paths cannot pass', () => {
   assert.throws(() => validateFiles([]));
   assert.throws(() => validateFiles(['ops-web/app/points/types-tab.tsx', 'b-app/deleted.vue']));
 });
+test('CLI executes validation, including when launched through a symlink path', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const { mkdtempSync, symlinkSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const dir = mkdtempSync(join(tmpdir(), 'points-cli-'));
+  try {
+    const link = join(dir, 'check.mjs');
+    symlinkSync(fileURLToPath(new URL('./points-ops.mjs', import.meta.url)), link);
+    const result = spawnSync(process.execPath, [link], { input: '', encoding: 'utf8' });
+    assert.notEqual(result.status, 0, 'invalid input must fail; a no-op CLI must never pass');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
