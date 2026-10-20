@@ -78,7 +78,7 @@
   function showChargeTier(i){const t=(state.publishedRecharge?.tiers??defaultTiers())[i];$('#charge-values').innerHTML=ruleRow('实收金额',esc(t.paid)+'元')+ruleRow('活动赠送',esc(t.bonus)+'元')+ruleRow('到账合计',tierTotal(t));}
   document.addEventListener('input',e=>{const x=e.target.closest('[data-tier]');if(!x)return;const i=Number(x.dataset.tier);state.tiers[i][x.dataset.field]=x.value;$('[data-tier-total="'+i+'"]').textContent=tierTotal(state.tiers[i]);});
   document.addEventListener('change',e=>{if(e.target.id==='charge-tier')showChargeTier(Number(e.target.value));});
-  function navigate(id){
+  function navigate(id){if(id==='s14')id='s25';
     if(!document.getElementById(id))id='s01';
     document.querySelectorAll('figure').forEach(x=>x.classList.toggle('is-active',x.id===id));
     document.querySelectorAll('.review-links a').forEach(x=>x.getAttribute('href')==='#'+id?x.setAttribute('aria-current','page'):x.removeAttribute('aria-current'));

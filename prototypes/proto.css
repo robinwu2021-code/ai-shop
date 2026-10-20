@@ -1210,3 +1210,9 @@ a{color:inherit}
 .member-sv-sheet .sv-plan-option>span{display:flex;flex-direction:column;gap:4px}
 .member-sv-sheet .sv-plan-option[aria-checked="true"]{background:var(--sh-primary-tint);color:var(--sh-primary-text)}
 .member-sv-sheet .btn:disabled{background:var(--sh-faint);color:var(--sh-disabled);cursor:default}
+/* One member lookup in the stored-value customer directory. */
+.sv-directory-search{display:flex;align-items:center;gap:8px}
+.sv-directory-search .sv-search{flex:1;min-width:0}
+.sv-directory-search .btn{flex:0 0 auto;width:auto;min-width:64px}
+.sv-member-result>.meta,.sv-member-result>.sv-split{display:block;margin-top:0}
+.sv-member-result>.sv-split{display:flex}
