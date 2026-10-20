@@ -139,6 +139,11 @@ public class MybatisPointsOperationsStore implements PointsOperationsStore {
     }
 
     @Override
+    public String eventFailure(String type, long event) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.eventFailure(type,event));
+    }
+
+    @Override
     public List<Map<String, Object>> page(String type, Kind kind, long after, int limit) {
         require(kind != null && after >= 0 && limit > 0 && limit <= 200, "POINTS_PAGE_INVALID");
         return DataScopeContext.executeWithoutScope(

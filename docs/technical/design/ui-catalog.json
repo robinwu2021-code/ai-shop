@@ -1617,7 +1617,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 146,
+      "count": 147,
       "domains": [
         {
           "name": "经营看板",
@@ -2898,6 +2898,19 @@
             },
             {
               "app": "ops-web",
+              "route": "/points/earning-rules",
+              "title": "赠送规则",
+              "domain": "积分运营",
+              "group": "积分配置",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/points/earning-rules"
+            },
+            {
+              "app": "ops-web",
               "route": "/points/budget",
               "title": "平台预算",
               "domain": "积分运营",
@@ -3548,5 +3561,5 @@
       ]
     }
   ],
-  "total": 281
+  "total": 282
 }

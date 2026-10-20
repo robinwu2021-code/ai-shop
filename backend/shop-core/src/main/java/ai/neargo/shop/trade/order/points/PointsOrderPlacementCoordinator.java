@@ -86,11 +86,17 @@ public interface PointsOrderPlacementCoordinator {
     }
 
     record EarningSnapshot(
-            int schemaVersion, long fallbackRevision, List<PointsEarnPort.EarnLine> lines) {
+            int schemaVersion, long fallbackRevision, List<PointsEarnPort.EarnLine> lines, List<RuleTrace> ruleTraces) {
         public EarningSnapshot {
             lines = List.copyOf(lines);
+            ruleTraces = ruleTraces == null ? List.of() : List.copyOf(ruleTraces);
+        }
+        public EarningSnapshot(int schemaVersion, long fallbackRevision, List<PointsEarnPort.EarnLine> lines) {
+            this(schemaVersion, fallbackRevision, lines, List.of());
         }
     }
+
+    record RuleTrace(String itemId, String categoryNo, String matchedScope, long revision) {}
 
     record Resolved(
             List<OrderPointsBindingService.Admission> admissions,

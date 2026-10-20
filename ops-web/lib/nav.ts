@@ -424,9 +424,10 @@ export const NAV: NavSection[] = [
 
   // ── 积分运营：按配置 → 资金 → 账户 → 流水查看的运营顺序排列 ──────────
   {
-    key: "points", label: "积分运营", icon: "Coins", modules: ["finance"], href: "/points/types", match: ["/points", "/points/types", "/points/budget", "/points/accounts", "/points/transactions"],
+    key: "points", label: "积分运营", icon: "Coins", modules: ["finance"], href: "/points/types", match: ["/points", "/points/types", "/points/earning-rules", "/points/budget", "/points/accounts", "/points/transactions"],
     children: [
       { href: "/points/types", label: "积分设置", perm: "finance:settle:read", group: "积分配置", matrix: "P-12.1", ready: true },
+      { href: "/points/earning-rules", label: "赠送规则", perm: "finance:settle:read", group: "积分配置", matrix: "P-12.1", ready: true },
       { href: "/points/budget", label: "平台预算", perm: "finance:settle:read", group: "积分资金", matrix: "P-12.1", ready: true },
       { href: "/points/accounts", label: "积分账户", perm: "finance:settle:read", group: "积分账务", matrix: "P-12.1", ready: true },
       { href: "/points/transactions", label: "发放与核销", perm: "finance:settle:read", group: "积分账务", matrix: "P-12.1", ready: true },

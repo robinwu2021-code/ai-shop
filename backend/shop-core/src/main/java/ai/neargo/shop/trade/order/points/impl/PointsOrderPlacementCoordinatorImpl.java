@@ -28,6 +28,8 @@ public class PointsOrderPlacementCoordinatorImpl implements PointsOrderPlacement
     private final ObjectProvider<PointsOrderTermsPort> terms;
     private final ObjectProvider<OrderPointsFactService> journal;
     private final TransactionTemplate tx;
+    private final ai.neargo.shop.trade.order.points.earning.PointsEarningRules earningRules;
+    private final ai.neargo.shop.spi.product.PointsEarningCatalogPort earningCatalog;
     private final ObjectMapper json = new ObjectMapper();
 
     public PointsOrderPlacementCoordinatorImpl(
@@ -37,8 +39,12 @@ public class PointsOrderPlacementCoordinatorImpl implements PointsOrderPlacement
             ObjectProvider<PointsRedeemPort> redeem,
             ObjectProvider<PointsOrderTermsPort> terms,
             ObjectProvider<OrderPointsFactService> journal,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            ai.neargo.shop.trade.order.points.earning.PointsEarningRules earningRules,
+            ai.neargo.shop.spi.product.PointsEarningCatalogPort earningCatalog) {
         this.mapper = mapper;
+        this.earningRules = earningRules;
+        this.earningCatalog = earningCatalog;
         this.bindings = bindings;
         this.orders = orders;
         this.redeem = redeem;
@@ -382,6 +388,9 @@ public class PointsOrderPlacementCoordinatorImpl implements PointsOrderPlacement
                         deduct,
                         items.stream().mapToLong(PointsRedeemPort.Item::goodsMinor).toArray());
         List<PointsEarnPort.EarnLine> frozen = new ArrayList<>();
+        List<RuleTrace> traces = new ArrayList<>();
+        earningRules.ensureDefault(terms.typeCode(), terms.fallback(), terms.fallbackRevision());
+        var publishedRules = earningRules.all(terms.typeCode());
         for (int i = 0; i < items.size(); i++) {
             var item = items.get(i);
             var line = supplied.get(item.itemId());
@@ -391,17 +400,20 @@ public class PointsOrderPlacementCoordinatorImpl implements PointsOrderPlacement
                             && line.goodsCashMinor() == item.goodsMinor()
                             && line.refundedBeforeGrantMinor() == 0,
                     "POINTS_PLACEMENT_LINES_INVALID");
+            String category = earningCatalog.goodsCategory(line.goodsNo());
+            var matched = ai.neargo.shop.trade.order.points.earning.PointsEarningRules.match(publishedRules, earningCatalog.ancestry(category));
+            traces.add(new RuleTrace(line.itemId(),category,matched.scope(),matched.revision()));
             frozen.add(
                     new PointsEarnPort.EarnLine(
                             line.itemId(),
                             line.goodsNo(),
-                            line.categoryNo(),
+                            category,
                             line.quantity(),
                             item.goodsMinor() - deductions[i],
                             0,
-                            line.rule() == null ? terms.fallback() : line.rule()));
+                            matched.rule()));
         }
-        return new EarningSnapshot(1, terms.fallbackRevision(), frozen);
+        return new EarningSnapshot(2, terms.fallbackRevision(), frozen, traces);
     }
 
     @Override

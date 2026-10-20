@@ -47,7 +47,8 @@ class PointsOrderPlacementFlowTest {
                         new ClassPathResource("db/migration/V452__order_points_integration.sql"),
                         new ClassPathResource("db/migration/V453__order_points_binding.sql"),
                         new ClassPathResource("db/migration/V454__order_points_source_facts.sql"),
-                        new ClassPathResource("db/migration/V455__order_points_placement.sql"))
+                        new ClassPathResource("db/migration/V455__order_points_placement.sql"),
+                        new ClassPathResource("db/migration/V540__online_points_earning_rules.sql"))
                 .execute(data);
     }
 
@@ -272,6 +273,20 @@ class PointsOrderPlacementFlowTest {
         verify(redeem, times(1)).hold(any());
     }
 
+    @Test
+    void categoryAndRuleAreResolvedByServerAndFrozenWithRevision() {
+        var d=draft();var original=d.candidates().getFirst();
+        var supplied=new PointsEarnPort.EarnLine("ITEM","G","FORGED_CATEGORY",1,100,0,new PointsEarnPort.EarnRule(PointsEarnPort.RuleMode.FIXED,999));
+        var candidate=new Candidate(original.target(),original.policyVersion(),original.earning(),original.redemption(),List.of(supplied));
+        var changed=new Draft(d.orderNo(),d.userNo(),d.market(),d.currency(),d.scene(),d.client(),d.wantPoints(),d.basePayMinor(),d.requestHash(),List.of(candidate),d.allSubOrderNos(),d.paymentStores());
+        stage(changed);var result=placement.resume(changed.orderNo());
+        var snapshot=new tools.jackson.databind.ObjectMapper().readValue(result.resolved().admissions().getFirst().snapshot().ruleSnapshot(),EarningSnapshot.class);
+        assertThat(snapshot.lines().getFirst().categoryNo()).isEqualTo("C");
+        assertThat(snapshot.lines().getFirst().rule().value()).isZero();
+        assertThat(snapshot.ruleTraces().getFirst().matchedScope()).isEqualTo("DEFAULT");
+        assertThat(snapshot.schemaVersion()).isEqualTo(2);
+    }
+
     static class Sources implements SourceOrders {
         final Map<String, SourceOrder> roots = new ConcurrentHashMap<>();
         final AtomicBoolean failNext = new AtomicBoolean();
@@ -298,8 +313,16 @@ class PointsOrderPlacementFlowTest {
     }
 
     @org.springframework.boot.test.context.TestConfiguration(proxyBeanMethods = false)
-    @Import({PointsOrderSourceOutboxTest.Config.class, PointsOrderPlacementCoordinatorImpl.class})
+    @Import({PointsOrderSourceOutboxTest.Config.class, PointsOrderPlacementCoordinatorImpl.class, ai.neargo.shop.trade.order.points.earning.PointsEarningRules.class})
     static class Config {
+        @Bean
+        ai.neargo.shop.spi.product.PointsEarningCatalogPort earningCatalog() {
+            return new ai.neargo.shop.spi.product.PointsEarningCatalogPort() {
+                public java.util.List<Category> categories() { return java.util.List.of(new Category("C",null,"测试","测试")); }
+                public String goodsCategory(String goods) { return "C"; }
+                public java.util.List<String> ancestry(String category) { return java.util.List.of("C"); }
+            };
+        }
         @Bean
         Sources orders() {
             return new Sources();

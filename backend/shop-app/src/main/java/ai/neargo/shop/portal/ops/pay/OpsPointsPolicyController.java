@@ -68,7 +68,7 @@ public class OpsPointsPolicyController {
     @PostMapping("/ops/points/fallback-rule")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
     public ChangeResult saveFallback(@Valid @RequestBody FallbackChange request) {
-        return configuration.saveFallback(request, SecurityUtils.currentUserNo());
+        return ai.neargo.shop.payclient.PointsOpsErrors.call(() -> { throw new IllegalArgumentException("POINTS_EARN_USE_RULES_PAGE"); });
     }
 
     @GetMapping("/ops/points/switches")

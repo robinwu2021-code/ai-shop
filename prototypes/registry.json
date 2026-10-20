@@ -2,6 +2,27 @@
  "_readme": "界面原型登记表（真源，手工维护）。每份原型一条；screens[].client/route 让界面清单（gen-ui-catalog.py）能从页面跳到那一屏，路由还不存在的屏会在清单里列成「原型」行；同一路由被多份登记时，排在前面的赢。status: 在建 | 已落地 | 参考 | 作废（作废要写 supersededBy）。生成总览：python3 scripts/gen-proto-index.py；screens[].pageTitle 是清单里那一行的页名（屏名与页名不同时才写）",
  "prototypes": [
   {
+   "slug": "points-earning-rules",
+   "file": "points-earning-rules.html",
+   "title": "线上交易积分：默认与品类赠送规则",
+   "kind": "pages",
+   "clients": [
+    "ops-web"
+   ],
+   "status": "已落地",
+   "date": "2026-10-20",
+   "summary": "独立列表、品类覆盖、明确不赠送、草稿生效和计算预览；复用当前积分运营组件与抽屉交互。",
+   "screens": [
+    {
+     "id": "s01",
+     "title": "赠送规则列表与抽屉",
+     "client": "ops-web",
+     "route": "/points/earning-rules",
+     "pageTitle": "赠送规则"
+    }
+   ]
+  },
+  {
    "slug": "points-type-valuation",
    "file": "points-type-valuation.html",
    "title": "积分设置：币种、单位与兑换配置",

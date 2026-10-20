@@ -17,7 +17,7 @@ const LEGACY_ROUTES: Record<string, { href: string; name: string; group: string;
   "/points?tab=queries": { href: "/points/accounts", name: "积分账户", group: "积分运营", pointCode: "OPS_POINTS__TAB_ACCOUNTS" },
   "/points?tab=settlements": { href: "/points/transactions", name: "发放与核销", group: "积分运营", pointCode: "OPS_POINTS__TAB_TRANSACTIONS" },
 };
-const NEW_POINTS_ROUTES = new Set(["/points/types", "/points/budget", "/points/accounts", "/points/transactions"]);
+const NEW_POINTS_ROUTES = new Set(["/points/types", "/points/earning-rules", "/points/budget", "/points/accounts", "/points/transactions"]);
 
 /** Existing database menu rows used to authorize the corresponding frontend routes until its migration ships. */
 export function pointsLegacyServerMenuHref(href: string): string {

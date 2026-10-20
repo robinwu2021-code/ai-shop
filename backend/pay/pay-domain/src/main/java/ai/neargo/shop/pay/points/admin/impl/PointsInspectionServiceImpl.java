@@ -235,6 +235,20 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
     }
 
     @Override
+    @Transactional(value = "payTxManager", readOnly = true)
+    public EarningView earning(String type, String subOrderNo) {
+        type(type);
+        require(nonblank(subOrderNo), "POINTS_EARN_INPUT_INVALID");
+        var row = read.position(PositionMove.Kind.GRANT.table(), PointsKeys.position("G", type, subOrderNo));
+        if (row == null) return null;
+        var grant = json.readValue(text(row,"payload_json"), ai.neargo.shop.pay.points.earn.impl.EarnServiceImpl.GrantSnapshot.class);
+        return new EarningView(text(row,"state"), grant.decision().expectedPoints(), grant.outcome().grantedPoints(),
+                Math.max(0, grant.activatedPoints()-grant.reclaimedAvailable()),
+                Math.max(0, grant.outcome().grantedPoints()-grant.activatedPoints()-grant.reclaimedPending()),
+                Math.addExact(grant.reclaimedPending(),grant.reclaimedAvailable()),grant.outcome().reason());
+    }
+
+    @Override
     public PositionView position(String type, PositionMove.Kind kind, String reference) {
         type(type);
         require(kind != null && nonblank(reference), "POINTS_POSITION_INPUT_INVALID");

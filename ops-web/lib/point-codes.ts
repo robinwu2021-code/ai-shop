@@ -89,6 +89,7 @@ export const POINT_CODES: Record<string, string> = {
   "/finance?tab=payables": "OPS_FINANCE__TAB_PAYABLES",
   "/finance?tab=purchase-invoices": "OPS_FINANCE__TAB_PURCHASE_INVOICES",
   "/finance?tab=buyer-invoices": "OPS_FINANCE__TAB_BUYER_INVOICES",
+  "/points/earning-rules": "OPS_POINTS__TAB_EARNING_RULES",
   "/points/types": "OPS_POINTS__TAB_CONFIGURATION",
   "/points/budget": "OPS_POINTS__TAB_TREASURY",
   "/points/accounts": "OPS_POINTS__TAB_QUERIES",

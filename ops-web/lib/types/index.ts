@@ -326,3 +326,5 @@ export interface OpsPromoActivity {
   /** 风险标记。商家自己看不出来 —— 他只看得到他那一张，跨商家排在一起才看得见 */
   flags: string[];
 }
+
+export type { EarningContext, EarningRule, EarningRulePage, EarningChange, EarningCalculation, OrderEarningInspection, EarningCategory } from "../points-earning";

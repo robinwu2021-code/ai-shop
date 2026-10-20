@@ -10,6 +10,7 @@ describe("Points Operations first-group navigation", () => {
     expect(points?.modules).toEqual(["finance"]);
     expect(points?.children?.map((leaf) => leaf.href)).toEqual([
       "/points/types",
+      "/points/earning-rules",
       "/points/budget",
       "/points/accounts",
       "/points/transactions",

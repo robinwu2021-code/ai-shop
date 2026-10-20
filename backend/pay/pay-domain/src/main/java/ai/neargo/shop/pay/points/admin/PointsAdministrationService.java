@@ -15,6 +15,8 @@ import java.util.List;
 public interface PointsAdministrationService {
     List<PointType> types();
 
+    PointType orderDefault(String market);
+
     ChangeResult create(Create request, String actor);
 
     ChangeResult transition(TypeChange request, String actor);

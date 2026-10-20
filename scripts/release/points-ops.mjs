@@ -87,12 +87,12 @@ function main() {
   generatedCheck('ops-web/scripts/gen-openapi.mjs', 'docs/api/openapi-ops.yaml');
   schemaCheck();
   const ops = join(root, 'ops-web');
-  run('npm', ['test', '--', 'lib/points-language.test.ts', 'lib/points-types-page.test.ts', 'lib/points-type-create-form.test.ts', 'lib/points-ops-routes.test.ts', 'lib/api/points-operations-api.test.ts', 'lib/api/points-configuration.test.ts', 'lib/points-command.test.ts', 'lib/points-configuration-ui.test.ts', 'lib/points-store-access-page.test.ts'], ops);
+  run('npm', ['test', '--', 'lib/points-earning.test.ts', 'lib/points-earning-page.test.ts', 'lib/nav.test.ts', 'lib/points-language.test.ts', 'lib/points-types-page.test.ts', 'lib/points-type-create-form.test.ts', 'lib/points-ops-routes.test.ts', 'lib/api/points-operations-api.test.ts', 'lib/api/points-configuration.test.ts', 'lib/points-command.test.ts', 'lib/points-configuration-ui.test.ts', 'lib/points-store-access-page.test.ts'], ops);
   run('npm', ['run', 'typecheck'], ops);
   const backend = files.some(f => f.startsWith('backend/'));
   if (backend) {
-    run('mvn', ['-pl', 'shop-app', '-am', '-Dtest=PointTypeServiceTest,PointTypeCurrencyTest,PointTypeActivationTest,PointsOpsConfigurationTest', '-Dsurefire.failIfNoSpecifiedTests=false', 'test', '-q'], join(root, 'backend'));
-    run('mvn', ['-pl', 'shop-app,pay/pay-svc', '-am', '-DskipTests', 'package', '-q'], join(root, 'backend'));
+    run('mvn', ['-o', '-pl', 'shop-app', '-am', '-Dtest=PointsEarningRulesTest,PointsEarningRulesStoreTest,PointsOrderPlacementFlowTest,DelayedEarnPolicyTest,AcceptedEarnBudgetTest,UnfundedEarnRefundTest,PointsOrderTermsPortTest,EarnPolicyTest,PointsOpsWorkbenchTest#manual_event_retry_keeps_its_identity_requires_current_version_and_never_exposes_payload', '-Dsurefire.failIfNoSpecifiedTests=false', 'test', '-q'], join(root, 'backend'));
+    run('mvn', ['-o', '-pl', 'shop-app,pay/pay-svc', '-am', '-DskipTests', 'package', '-q'], join(root, 'backend'));
   }
   process.env.NEXT_PUBLIC_API_BASE = '';
   process.env.NEXT_PUBLIC_USE_MOCK = '0';

@@ -1,3 +1,4 @@
+import type { EarningContext, EarningRule, EarningRulePage, EarningChange, EarningCalculation, OrderEarningInspection } from "@/lib/points-earning";
 import type { PointsAdjustmentSubmission, PointsAdjustmentReview, PointsAdjustmentPage } from "../points-adjustment-types";
 import type { PointsAccountQ, PointsAccountView, PointsAccountsQ, PointsFreeze, PointsCursorPage, PointsVoucherView, PointsEntriesQ, PointsEntryView, PointsFlowView, PointsPositionQ, PointsPositionView, PointsStatsQ, PointsStats, PointsStatsRebuild, PointsReconRun, PointsRecon, PointsTransactionsQ, PointsTransactionView, PointsTransactionDirection } from "@/lib/types";
 import type { PointsStatementPage, PointsStatementDraft, PointsStatementChange, PointsReference, PointsRevision, PointsRefundView, PointsReceivableRecovery, PointsFundsReference, PointsFundsView, PointsRecovery, PointsRecoveryExecution, PointsEventPage, PointsEventRetry } from "@/lib/types";
@@ -38,6 +39,12 @@ export interface FinanceApi {
    */
   pointsReceivables(q: PointsReceivableQ): Promise<PointsReceivablePage>;
 
+  pointsOrderEarning(subOrderNo: string): Promise<OrderEarningInspection>;
+  pointsEarningContext(): Promise<EarningContext>;
+  pointsEarningRules(q: {page: number; size: number}): Promise<EarningRulePage>;
+  pointsEarningHistory(scope: string): Promise<EarningRule[]>;
+  changePointsEarningRule(v: EarningChange): Promise<EarningRule>;
+  previewPointsEarning(v: {categoryNo: string | null; cashMinor: number}): Promise<EarningCalculation>;
   pointsTypes(): Promise<PointsTypeConfig[]>;
   createPointsType(v: PointsCreate): Promise<PointsChangeResult>;
   transitionPointsType(v: PointsTypeChange): Promise<PointsChangeResult>;

@@ -136,6 +136,8 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
      * 与分账明细同一个码，所以超管与财务两行各多出这一条。
      */
     "/finance?tab=settle-stats",
+    // Category earning rules add a dedicated points workspace.
+    "/points/earning-rules",
     // Four dedicated points workspaces replace the old tabbed points page.
     "/points/budget",
     "/points/accounts",

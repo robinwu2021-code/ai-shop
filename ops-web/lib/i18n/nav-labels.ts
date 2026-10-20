@@ -69,6 +69,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   // 以下七条是 V251 / V253 两轮菜单合入时漏补的译文，守卫一直红着 —— 恒红的守卫
   // 挡不住下一次漏登记，所以一并补上（只加行，不动既有行）。
   当面付禁用类目: { en: "Pay-on-site deny list" },
+  赠送规则: { en: "Reward rules" },
   "类目 × 积分": { en: "Category × points" },
   积分范围开关: { en: "Points availability switches" },
   积分账单与退款: { en: "Points statements and refunds" },

@@ -1622,6 +1622,8 @@ export interface PointsRecoveryExecution {
   status: PointsExecutionStatus;
 }
 export interface PointsEventView {
+  subOrderNo?: string | null;
+  reason?: string | null;
   /** 持久记录主键 */
   id: number;
   /** 源事实事件编号 */

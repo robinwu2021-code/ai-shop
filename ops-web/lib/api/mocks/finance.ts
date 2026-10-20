@@ -12,6 +12,7 @@ const mockPayouts: Payout[] = [];
 import { pointsInspectionMock } from "./points-inspection";
 import { pointsWorkbenchMock } from "./points-workbench";
 import { pointsTreasuryMock } from "./points-treasury";
+import { pointsEarningMock } from "./points-earning";
 import { pointsConfigurationMock } from "./points-configuration";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
@@ -38,6 +39,7 @@ function mustBill(settleNo: string) {
 }
 
 export const financeMock: FinanceApi = {
+  ...pointsEarningMock,
   pointsAdjustments: (q) => wait({ rows: [], next: q.after ?? 0, hasMore: false }),
   submitPointsAdjustment: () => fail("演示环境不支持积分调账", "Adjustment requires a connected backend"),
   reviewPointsAdjustment: () => fail("演示环境不支持积分调账", "Adjustment requires a connected backend"),

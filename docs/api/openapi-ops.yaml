@@ -9639,6 +9639,14 @@ components:
     PointsEventView:
       type: "object"
       properties:
+        subOrderNo:
+          type:
+            - "string"
+            - "null"
+        reason:
+          type:
+            - "string"
+            - "null"
         id:
           type: "number"
           description: "持久记录主键"
@@ -13073,6 +13081,306 @@ components:
         - "flags"
       additionalProperties: false
       description: "运营看到的一场活动（新模型）。`audienceCount === 0` 表示对所有人生效"
+    EarningContext:
+      type: "object"
+      properties:
+        type:
+          anyOf:
+            - "$ref": "#/components/schemas/PointsTypeConfig"
+            - type: "null"
+        categories:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/EarningCategory"
+      required:
+        - "type"
+        - "categories"
+      additionalProperties: false
+    EarningCategory:
+      type: "object"
+      properties:
+        categoryNo:
+          type: "string"
+        parentNo:
+          type:
+            - "string"
+            - "null"
+        name:
+          type: "string"
+        path:
+          type: "string"
+      required:
+        - "categoryNo"
+        - "parentNo"
+        - "name"
+        - "path"
+      additionalProperties: false
+    EarningRule:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+        scope:
+          type: "string"
+        revision:
+          type: "number"
+        activeRevision:
+          type:
+            - "number"
+            - "null"
+        mode:
+          type: "string"
+          enum:
+            - "RATIO"
+            - "FIXED"
+        value:
+          type: "number"
+        activeMode:
+          type:
+            - "string"
+            - "null"
+          enum:
+            - "RATIO"
+            - "FIXED"
+            - null
+        activeValue:
+          type:
+            - "number"
+            - "null"
+        actor:
+          type: "string"
+        remark:
+          type: "string"
+        at:
+          type: "number"
+        action:
+          type: "string"
+          enum:
+            - "IMPORT"
+            - "SAVE"
+            - "PUBLISH"
+            - "DISABLE"
+      required:
+        - "typeCode"
+        - "scope"
+        - "revision"
+        - "activeRevision"
+        - "mode"
+        - "value"
+        - "activeMode"
+        - "activeValue"
+        - "actor"
+        - "remark"
+        - "at"
+      additionalProperties: false
+    EarningRulePage:
+      type: "object"
+      properties:
+        rows:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/EarningRule"
+        total:
+          type: "number"
+        page:
+          type: "number"
+        size:
+          type: "number"
+      required:
+        - "rows"
+        - "total"
+        - "page"
+        - "size"
+      additionalProperties: false
+    EarningChange:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+        typeCode:
+          type: "string"
+        scope:
+          type: "string"
+        expectedRevision:
+          type: "number"
+        action:
+          type: "string"
+          enum:
+            - "SAVE"
+            - "PUBLISH"
+            - "DISABLE"
+        ratioBp:
+          type:
+            - "number"
+            - "null"
+        remark:
+          type: "string"
+      required:
+        - "requestId"
+        - "typeCode"
+        - "scope"
+        - "expectedRevision"
+        - "action"
+        - "ratioBp"
+        - "remark"
+      additionalProperties: false
+    EarningCalculation:
+      type: "object"
+      properties:
+        matched:
+          type: "object"
+          properties:
+            scope:
+              type: "string"
+            revision:
+              type: "number"
+            rule:
+              type: "object"
+              properties:
+                mode:
+                  type: "string"
+                  enum:
+                    - "RATIO"
+                    - "FIXED"
+                value:
+                  type: "number"
+              required:
+                - "mode"
+                - "value"
+              additionalProperties: false
+          required:
+            - "scope"
+            - "revision"
+            - "rule"
+          additionalProperties: false
+        cashMinor:
+          type: "number"
+        points:
+          type: "number"
+      required:
+        - "matched"
+        - "cashMinor"
+        - "points"
+      additionalProperties: false
+    OrderEarningInspection:
+      type: "object"
+      properties:
+        orderNo:
+          type: "string"
+        subOrderNo:
+          type: "string"
+        typeCode:
+          type: "string"
+        currency:
+          type: "string"
+        snapshot:
+          type: "object"
+          properties:
+            schemaVersion:
+              type: "number"
+            ruleTraces:
+              type: "array"
+              items:
+                type: "object"
+                properties:
+                  itemId:
+                    type: "string"
+                  categoryNo:
+                    type:
+                      - "string"
+                      - "null"
+                  matchedScope:
+                    type: "string"
+                  revision:
+                    type: "number"
+                required:
+                  - "itemId"
+                  - "categoryNo"
+                  - "matchedScope"
+                  - "revision"
+                additionalProperties: false
+            lines:
+              type: "array"
+              items:
+                type: "object"
+                properties:
+                  itemId:
+                    type: "string"
+                  goodsNo:
+                    type: "string"
+                  categoryNo:
+                    type:
+                      - "string"
+                      - "null"
+                  quantity:
+                    type: "number"
+                  goodsCashMinor:
+                    type: "number"
+                  rule:
+                    type: "object"
+                    properties:
+                      mode:
+                        type: "string"
+                        enum:
+                          - "RATIO"
+                          - "FIXED"
+                      value:
+                        type: "number"
+                    required:
+                      - "mode"
+                      - "value"
+                    additionalProperties: false
+                required:
+                  - "itemId"
+                  - "goodsNo"
+                  - "categoryNo"
+                  - "quantity"
+                  - "goodsCashMinor"
+                  - "rule"
+                additionalProperties: false
+          required:
+            - "schemaVersion"
+            - "ruleTraces"
+            - "lines"
+          additionalProperties: false
+        ledger:
+          anyOf:
+            - type: "object"
+              properties:
+                state:
+                  type: "string"
+                expectedPoints:
+                  type: "number"
+                grantedPoints:
+                  type: "number"
+                availablePoints:
+                  type: "number"
+                pendingPoints:
+                  type: "number"
+                reclaimedPoints:
+                  type: "number"
+                reason:
+                  type:
+                    - "string"
+                    - "null"
+              required:
+                - "state"
+                - "expectedPoints"
+                - "grantedPoints"
+                - "availablePoints"
+                - "pendingPoints"
+                - "reclaimedPoints"
+                - "reason"
+              additionalProperties: false
+            - type: "null"
+      required:
+        - "orderNo"
+        - "subOrderNo"
+        - "typeCode"
+        - "currency"
+        - "snapshot"
+        - "ledger"
+      additionalProperties: false
 security:
   - bearerAuth: []
 paths:
@@ -15477,6 +15785,175 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/order-earning":
+    get:
+      operationId: "pointsOrderEarning"
+      summary: "pointsOrderEarning"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/OrderEarningInspection"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/earning-context":
+    get:
+      operationId: "pointsEarningContext"
+      summary: "pointsEarningContext"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/EarningContext"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/earning-rules":
+    get:
+      operationId: "pointsEarningRules"
+      summary: "pointsEarningRules"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/EarningRulePage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "changePointsEarningRule"
+      summary: "changePointsEarningRule"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/EarningRule"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/earning-rule-history":
+    get:
+      operationId: "pointsEarningHistory"
+      summary: "pointsEarningHistory"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/EarningRule"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/earning-preview":
+    post:
+      operationId: "previewPointsEarning"
+      summary: "previewPointsEarning"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/EarningCalculation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/points/types":
     get:
       operationId: "pointsTypes"

@@ -134,6 +134,11 @@ public interface PointsInspectionService {
         }
     }
 
+    EarningView earning(String typeCode, String subOrderNo);
+
+    record EarningView(String state, long expectedPoints, long grantedPoints, long availablePoints,
+                       long pendingPoints, long reclaimedPoints, String reason) {}
+
     record PositionView(
             String typeCode,
             PositionMove.Kind kind,

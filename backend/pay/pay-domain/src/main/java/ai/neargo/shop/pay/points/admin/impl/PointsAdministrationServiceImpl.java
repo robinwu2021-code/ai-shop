@@ -66,6 +66,11 @@ public class PointsAdministrationServiceImpl implements PointsAdministrationServ
     }
 
     @Override
+    public PointType orderDefault(String market) {
+        return read.activeType(market).orElse(null);
+    }
+
+    @Override
     public ChangeResult create(Create r, String actor) {
         require(r.command() != null, "POINTS_TYPE_INVALID");
         return execute(

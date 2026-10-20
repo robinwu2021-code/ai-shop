@@ -3,20 +3,19 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { PointsCreate, PointsFallbackChange, PointsTypeChange, PointsTypeConfig } from "@/lib/types";
+import type { PointsCreate, PointsTypeChange, PointsTypeConfig } from "@/lib/types";
 import { PointsTypeCreateForm } from "./type-create-form";
 import { pointsCurrency } from "@/lib/points-currency";
 import { pointsCommand } from "@/lib/points-command";
 import { usePointsText } from "@/lib/points-i18n";
-import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { Drawer } from "@/components/ui/drawer";
 import { Notice } from "@/components/ui/notice";
 import { SectionHeader } from "@/components/ui/section-header";
 
-type Command = { kind: "CREATE"; value: PointsCreate } | { kind: "STATE"; value: PointsTypeChange } |
-  { kind: "RULE"; value: PointsFallbackChange };
+type Command = { kind: "CREATE"; value: PointsCreate } | { kind: "STATE"; value: PointsTypeChange };
 
 export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
   const { t } = usePointsText();
@@ -25,20 +24,17 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
   const [selectedCode, setSelectedCode] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const selected = types.data?.find((item) => item.typeCode === selectedCode);
-  const fallback = useQuery({ queryKey: ["points-fallback", selectedCode], queryFn: () => api.pointsFallback(selectedCode), enabled: !!selectedCode });
   const intent = useRef<{ body: string; requestId: string } | undefined>(undefined);
   const save = useMutation({
     mutationFn: (command: Command) => {
       switch (command.kind) {
         case "CREATE": return api.createPointsType(command.value);
         case "STATE": return api.transitionPointsType(command.value);
-        case "RULE": return api.savePointsFallback(command.value);
       }
     },
     onSuccess: (_result, command) => {
       intent.current = undefined;
       void qc.invalidateQueries({ queryKey: ["points-types"] });
-      void qc.invalidateQueries({ queryKey: ["points-fallback"] });
       if (command.kind === "CREATE") {
         setCreateOpen(false);
         setSelectedCode(command.value.command.typeCode);
@@ -66,7 +62,7 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
     { header: "", cell: () => <span className="text-muted-foreground">{t("查看详情 →", "View details →")}</span> },
   ];
   const card = "space-y-3 rounded-card border border-border p-4";
-  const error = types.error || fallback.error;
+  const error = types.error;
 
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -98,9 +94,9 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
 
     <Drawer open={!!selected} onOpenChange={(open) => { if (!open) { setSelectedCode(""); save.reset(); } }}
       title={selected ? `${selected.name} · ${selected.typeCode} · ${selected.status}` : ""}
-      desc={t("维护积分类型状态和兜底规则。", "Manage points type state and fallback rule.")}
+      desc={t("维护积分类型和兑换配置。", "Manage points type state and conversion settings.")}
       width="w-[760px]">
-      {error && <Notice tone="warning">{t(error.message, error.message)}<Button onClick={() => { void fallback.refetch(); }}>{t("重试", "Retry")}</Button></Notice>}
+      {error && <Notice tone="warning">{t(error.message, error.message)}<Button onClick={() => { void types.refetch(); }}>{t("重试", "Retry")}</Button></Notice>}
       {save.isError && <Notice tone="warning">{t(save.error.message, save.error.message)}</Notice>}
       {save.isSuccess && <Notice>{t("已保存，操作号：", "Saved, request ID: ")}{save.data.requestId}</Notice>}
       {selected && <div className={card}>
@@ -128,20 +124,7 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
           {canEdit && selected.status !== "RETIRED" && <Button disabled={save.isPending} type="submit">{t("提交状态变更", "Change state")}</Button>}
         </form>
       </div>}
-      {selected && fallback.data && <form key={`fallback:${selectedCode}:${fallback.data.revision}`} className={card} onSubmit={(event) => {
-        event.preventDefault(); const form = new FormData(event.currentTarget);
-        submit({ kind: "RULE", value: { requestId: "", typeCode: selectedCode, expectedRevision: fallback.data.revision,
-          mode: String(form.get("mode")) as PointsFallbackChange["mode"], value: Number(form.get("value")), reason: String(form.get("reason")).trim() } });
-      }}>
-        <h3 className="txt-heading">{t("平台兜底规则 · 修订", "Platform fallback rule · revision")} {fallback.data.revision}</h3>
-        <p dir="auto">{t("商品例外和类目规则在商品管理维护；此处设置最终兜底。RATIO 使用万分比，FIXED 使用积分数量。", "Product exceptions and category rules are managed in Products; this is the final fallback. RATIO uses basis points, FIXED uses points.")}</p>
-        <div className="flex flex-wrap gap-3">
-          <label>{t("方式", "Mode")}<Select name="mode" defaultValue={fallback.data.mode} disabled={!canEdit}><option>RATIO</option><option>FIXED</option></Select></label>
-          <label>{t("数值", "Value")}<Input dir="auto" name="value" type="number" min={0} max={Number.MAX_SAFE_INTEGER} step={1} required defaultValue={fallback.data.value} disabled={!canEdit} /></label>
-          <label>{t("原因", "Reason")}<Input dir="auto" name="reason" required disabled={!canEdit} /></label>
-        </div>
-        {canEdit && <Button type="submit" disabled={save.isPending}>{t("保存新修订", "Save new revision")}</Button>}
-      </form>}
+
 
     </Drawer>
   </div>;

@@ -135,6 +135,26 @@ public class EarnServiceImpl implements EarnService {
             }
             finalized = state.path("finalized").asBoolean(false);
         }
+        if (accepted && fact != null) {
+            var state = json.readTree((String) fact.get("payload_json"));
+            if (state.hasNonNull("paidFact")) {
+                var paid = json.treeToValue(state.get("paidFact"), ai.neargo.shop.spi.points.PointsFactPort.LifecycleFact.class);
+                if (!c.userNo().equals(paid.userNo())) throw new IllegalArgumentException("POINTS_FACT_SUBJECT_MISMATCH");
+                var goods = new java.util.HashMap<String,Long>();
+                for (var line : paid.lines()) {
+                    if (goods.put(line.itemId(),line.goodsMinor()) != null) throw new IllegalArgumentException("POINTS_EARN_INPUT_INVALID");
+                }
+                var returned = new java.util.HashMap<String,Long>();
+                var refunds = read.confirmedRefunds(c.typeCode(),c.subOrderNo());
+                if (refunds.size()>10000) throw new IllegalArgumentException("POINTS_REFUND_HISTORY_LIMIT");
+                for (var row : refunds) {
+                    var refund = json.readValue((String) row.get("payload_json"), ai.neargo.shop.pay.points.refund.impl.PointsRefundPreparationServiceImpl.RefundSnapshot.class);
+                    if (!c.userNo().equals(refund.command().userNo())) throw new IllegalArgumentException("POINTS_FACT_SUBJECT_MISMATCH");
+                    for (var line : refund.command().lines()) returned.merge(line.itemId(),line.cumulativeGoodsMinor(),Math::max);
+                }
+                decision = ai.neargo.shop.pay.points.policy.DelayedEarnPolicy.apply(decision,goods,returned,type.rate());
+            }
+        }
         if (reason == null
                 && !accepted
                 && (!enabled
@@ -150,10 +170,12 @@ public class EarnServiceImpl implements EarnService {
                                         Flow.EARN)))) {
             reason = "POINTS_DISABLED";
         }
-        if (reason == null && !"ACTIVE".equals(type.status().name())) {
+        if (reason == null && type.status() != PointType.Status.ACTIVE
+                && !(accepted && type.status() == PointType.Status.DRAINING)) {
             reason = "POINTS_TYPE_NOT_ACTIVE";
         }
-        if (reason == null && ("OFFLINE".equals(c.payChannel()) || c.payChannel() == null)) {
+        if (reason == null && ("OFFLINE".equals(c.payChannel()) || c.payChannel() == null
+                        || (accepted && !"ONLINE".equals(c.payScene())))) {
             reason = "POINTS_OFFLINE";
         }
         var account = read.currentUser(c.typeCode(), c.userNo());
@@ -164,10 +186,12 @@ public class EarnServiceImpl implements EarnService {
             throw new IllegalArgumentException("POINTS_ACCOUNT_EXPIRY_PENDING");
         }
         if (reason == null && decision.grantedPoints() == 0) {
-            reason = "POINTS_RULE_ZERO";
+            reason = decision.expectedPoints()>0 ? "POINTS_REFUNDED_BEFORE_GRANT" : "POINTS_RULE_ZERO";
         }
         long amount = type.rate().toMinor(decision.grantedPoints());
         if (reason == null && read.pool(c.typeCode()).freeU() < amount) {
+            // Accepted source events remain retryable; no permanent SKIPPED voucher consumes this promise.
+            if (accepted) throw new IllegalStateException("POINTS_POOL_INSUFFICIENT");
             reason = "POINTS_POOL_INSUFFICIENT";
         }
         boolean granted = reason == null;
