@@ -91,6 +91,8 @@ docs/technical/ADR/ADR-*.md     ← 只为不可逆决策
 2. **改已经在跑的功能前，先说影响范围。** 已应用的 Flyway 迁移是冻结的：改一个字符 checksum 就对不上（见 references/java.md §2）。
 3. **生成物改完要重新生成。** 闸门读的是产物；跑生成器前看 `git status`，它会把别人未提交的改动一起读进去。
 
+包规划、完整类名及命名的统一入口是 [references/java.md §七](references/java.md#七包规划类名与业务边界)，各业务清单只引用，不另立规范。
+
 Java 见 [references/java.md](references/java.md)：Google Java Style + 本仓库两处有意偏离 + 十几条这里反复出事的工程约束。
 
 ---

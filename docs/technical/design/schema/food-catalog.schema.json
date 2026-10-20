@@ -1,0 +1,1331 @@
+{
+  "title": "餐饮菜品数据模型 Food catalog data model",
+  "status": "PROPOSED / 待评审",
+  "tables": [
+    {
+      "name": "prd_goods",
+      "label": "基础商品 Base product",
+      "existing": true,
+      "fields": [
+        {
+          "name": "goods_no",
+          "type": "varchar(32)",
+          "label": "商品编号 Product ID",
+          "key": "UK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "label": "主体 Merchant",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "title",
+          "type": "varchar(255)",
+          "label": "商品名称 Name",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "prd_sku",
+      "label": "销售规格 Sales SKU",
+      "existing": true,
+      "fields": [
+        {
+          "name": "sku_no",
+          "type": "varchar(32)",
+          "label": "规格编号 SKU ID",
+          "key": "UK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "goods_no",
+          "type": "varchar(32)",
+          "label": "所属商品 Product",
+          "key": "FK",
+          "ref": "prd_goods.goods_no",
+          "nullable": false
+        },
+        {
+          "name": "price",
+          "type": "bigint",
+          "label": "基础售价 Minor units",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "spec",
+          "type": "varchar(255)",
+          "label": "规格说明 Specification",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "mch_store",
+      "label": "门店 Store",
+      "existing": true,
+      "fields": [
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "门店编号 Store ID",
+          "key": "UK",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "ord_item",
+      "label": "基础订单行 Order item",
+      "existing": true,
+      "fields": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "label": "行主键 Item ID",
+          "key": "PK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "sku_no",
+          "type": "varchar(32)",
+          "label": "成交规格 SKU",
+          "key": "FK",
+          "ref": "prd_sku.sku_no",
+          "nullable": false
+        },
+        {
+          "name": "qty",
+          "type": "int",
+          "label": "成交数量 Quantity",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "amount",
+          "type": "bigint",
+          "label": "成交金额 Amount",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_dish",
+      "label": "餐饮菜品 Dish",
+      "existing": false,
+      "fields": [
+        {
+          "name": "goods_no",
+          "type": "varchar(32)",
+          "label": "基础商品 Product",
+          "key": "PK,FK",
+          "ref": "prd_goods.goods_no",
+          "nullable": false
+        },
+        {
+          "name": "dish_kind",
+          "type": "varchar(16)",
+          "label": "类型 SINGLE / BUNDLE / ADDON",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "prep_seconds",
+          "type": "int",
+          "label": "建议制作秒数 Prep seconds",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "配置状态 Status",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_bundle",
+      "label": "套餐规格 Bundle SKU",
+      "existing": false,
+      "fields": [
+        {
+          "name": "sku_no",
+          "type": "varchar(32)",
+          "label": "套餐规格 Bundle SKU",
+          "key": "PK,FK",
+          "ref": "prd_sku.sku_no",
+          "nullable": false
+        },
+        {
+          "name": "config_version",
+          "type": "bigint",
+          "label": "配置版本 Version",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "状态 Status",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_bundle_group",
+      "label": "套餐选购组 Bundle group",
+      "existing": false,
+      "fields": [
+        {
+          "name": "group_no",
+          "type": "varchar(32)",
+          "label": "选购组编号 Group ID",
+          "key": "PK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "bundle_sku_no",
+          "type": "varchar(32)",
+          "label": "所属套餐 Bundle",
+          "key": "FK",
+          "ref": "fnb_bundle.sku_no",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "varchar(64)",
+          "label": "组名 Group name",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "min_qty",
+          "type": "int",
+          "label": "最少选几份 Minimum",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "max_qty",
+          "type": "int",
+          "label": "最多选几份 Maximum",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "base_sku_no",
+          "type": "varchar(32)",
+          "label": "差价基准 SKU",
+          "key": "FK",
+          "ref": "prd_sku.sku_no",
+          "nullable": true
+        },
+        {
+          "name": "sort_no",
+          "type": "int",
+          "label": "展示顺序 Sort",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_bundle_choice",
+      "label": "套餐可选项 Bundle choice",
+      "existing": false,
+      "fields": [
+        {
+          "name": "choice_no",
+          "type": "varchar(32)",
+          "label": "选项编号 Choice ID",
+          "key": "PK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "group_no",
+          "type": "varchar(32)",
+          "label": "所属组 Group",
+          "key": "FK",
+          "ref": "fnb_bundle_group.group_no",
+          "nullable": false
+        },
+        {
+          "name": "sku_no",
+          "type": "varchar(32)",
+          "label": "成员规格 Member SKU",
+          "key": "FK",
+          "ref": "prd_sku.sku_no",
+          "nullable": false
+        },
+        {
+          "name": "units_per_pick",
+          "type": "decimal(12,3)",
+          "label": "每次选择份数 Units",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "min_qty",
+          "type": "int",
+          "label": "单项最少选择 Min picks",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "max_qty",
+          "type": "int",
+          "label": "单项最多选择 Max picks",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "default_qty",
+          "type": "int",
+          "label": "默认选择 Default picks",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "price_mode",
+          "type": "varchar(24)",
+          "label": "计价 INCLUDED / ADD_SKU / DIFF_BASE",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "sort_no",
+          "type": "int",
+          "label": "顺序 Sort",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "group_no",
+          "sku_no"
+        ]
+      ]
+    },
+    {
+      "name": "fnb_modifier",
+      "label": "口味与配料 Modifier",
+      "existing": false,
+      "fields": [
+        {
+          "name": "modifier_no",
+          "type": "varchar(32)",
+          "label": "配料编号 Modifier ID",
+          "key": "PK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "varchar(64)",
+          "label": "名称 Name",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "kind",
+          "type": "varchar(16)",
+          "label": "类型 FLAVOR / ADDON / COMBO",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "sales_sku_no",
+          "type": "varchar(32)",
+          "label": "计价规格 Pricing SKU",
+          "key": "FK",
+          "ref": "prd_sku.sku_no",
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "状态 Status",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_modifier_component",
+      "label": "配料组合明细 Modifier component",
+      "existing": false,
+      "fields": [
+        {
+          "name": "component_no",
+          "type": "varchar(32)",
+          "label": "组合明细编号 Component ID",
+          "key": "PK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "combo_no",
+          "type": "varchar(32)",
+          "label": "组合配料 Combo",
+          "key": "FK",
+          "ref": "fnb_modifier.modifier_no",
+          "nullable": false
+        },
+        {
+          "name": "member_no",
+          "type": "varchar(32)",
+          "label": "单项配料 Member",
+          "key": "FK",
+          "ref": "fnb_modifier.modifier_no",
+          "nullable": false
+        },
+        {
+          "name": "quantity",
+          "type": "decimal(12,3)",
+          "label": "每组合用量 Quantity",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "combo_no",
+          "member_no"
+        ]
+      ]
+    },
+    {
+      "name": "fnb_option_group",
+      "label": "选配组 Option group",
+      "existing": false,
+      "fields": [
+        {
+          "name": "group_no",
+          "type": "varchar(32)",
+          "label": "组编号 Group ID",
+          "key": "PK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "varchar(64)",
+          "label": "名称 Name",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "min_qty",
+          "type": "int",
+          "label": "最少选几项 Minimum",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "max_qty",
+          "type": "int",
+          "label": "最多选几项 Maximum",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_option_group_item",
+      "label": "组内选项 Group option",
+      "existing": false,
+      "fields": [
+        {
+          "name": "group_no",
+          "type": "varchar(32)",
+          "label": "选配组 Group",
+          "key": "PK,FK",
+          "ref": "fnb_option_group.group_no",
+          "nullable": false
+        },
+        {
+          "name": "modifier_no",
+          "type": "varchar(32)",
+          "label": "口味或配料 Modifier",
+          "key": "PK,FK",
+          "ref": "fnb_modifier.modifier_no",
+          "nullable": false
+        },
+        {
+          "name": "max_qty",
+          "type": "int",
+          "label": "单项最多几份 Max units",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "default_qty",
+          "type": "int",
+          "label": "默认几份 Default units",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "sort_no",
+          "type": "int",
+          "label": "顺序 Sort",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_dish_option_group",
+      "label": "菜品选配绑定 Dish options",
+      "existing": false,
+      "fields": [
+        {
+          "name": "goods_no",
+          "type": "varchar(32)",
+          "label": "菜品 Product",
+          "key": "PK,FK",
+          "ref": "fnb_dish.goods_no",
+          "nullable": false
+        },
+        {
+          "name": "group_no",
+          "type": "varchar(32)",
+          "label": "选配组 Group",
+          "key": "PK,FK",
+          "ref": "fnb_option_group.group_no",
+          "nullable": false
+        },
+        {
+          "name": "sort_no",
+          "type": "int",
+          "label": "顺序 Sort",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_menu",
+      "label": "餐牌 Menu",
+      "existing": false,
+      "fields": [
+        {
+          "name": "menu_no",
+          "type": "varchar(32)",
+          "label": "餐牌编号 Menu ID",
+          "key": "PK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "varchar(64)",
+          "label": "名称 Name",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "menu_type",
+          "type": "varchar(16)",
+          "label": "类型 STANDARD / TIME / SEASON / EVENT",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "timezone",
+          "type": "varchar(64)",
+          "label": "时区 Time zone",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "valid_from",
+          "type": "date",
+          "label": "生效日 Valid from",
+          "key": "",
+          "ref": "",
+          "nullable": true
+        },
+        {
+          "name": "valid_to",
+          "type": "date",
+          "label": "结束日 Valid to",
+          "key": "",
+          "ref": "",
+          "nullable": true
+        },
+        {
+          "name": "priority",
+          "type": "int",
+          "label": "互斥组内优先级 Priority",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "exclusive_group",
+          "type": "varchar(32)",
+          "label": "互斥餐牌组 Exclusive group",
+          "key": "",
+          "ref": "",
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "DRAFT / PUBLISHED / DISABLED",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "config_version",
+          "type": "bigint",
+          "label": "配置版本 Version",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_menu_store",
+      "label": "餐牌门店 Menu stores",
+      "existing": false,
+      "fields": [
+        {
+          "name": "menu_no",
+          "type": "varchar(32)",
+          "label": "餐牌 Menu",
+          "key": "PK,FK",
+          "ref": "fnb_menu.menu_no",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "门店 Store",
+          "key": "PK,FK",
+          "ref": "mch_store.store_no",
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_menu_context",
+      "label": "餐牌入口 Menu context",
+      "existing": false,
+      "fields": [
+        {
+          "name": "context_no",
+          "type": "varchar(32)",
+          "label": "范围编号 Context ID",
+          "key": "PK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "menu_no",
+          "type": "varchar(32)",
+          "label": "餐牌 Menu",
+          "key": "FK",
+          "ref": "fnb_menu.menu_no",
+          "nullable": false
+        },
+        {
+          "name": "order_source",
+          "type": "varchar(24)",
+          "label": "下单来源 Source",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "fulfillment",
+          "type": "varchar(24)",
+          "label": "履约方式 Fulfillment",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "menu_no",
+          "order_source",
+          "fulfillment"
+        ]
+      ]
+    },
+    {
+      "name": "fnb_menu_schedule",
+      "label": "餐牌时段 Menu schedule",
+      "existing": false,
+      "fields": [
+        {
+          "name": "schedule_no",
+          "type": "varchar(32)",
+          "label": "时段编号 Schedule ID",
+          "key": "PK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "menu_no",
+          "type": "varchar(32)",
+          "label": "餐牌 Menu",
+          "key": "FK",
+          "ref": "fnb_menu.menu_no",
+          "nullable": false
+        },
+        {
+          "name": "weekday",
+          "type": "tinyint",
+          "label": "周一至周日 1-7",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "start_time",
+          "type": "time",
+          "label": "开始时间 Start",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "end_time",
+          "type": "time",
+          "label": "结束时间 End",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "end_day_offset",
+          "type": "tinyint",
+          "label": "跨日偏移 0 / 1",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_menu_exception",
+      "label": "餐牌例外日 Menu exception",
+      "existing": false,
+      "fields": [
+        {
+          "name": "exception_no",
+          "type": "varchar(32)",
+          "label": "例外编号 Exception ID",
+          "key": "PK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "menu_no",
+          "type": "varchar(32)",
+          "label": "餐牌 Menu",
+          "key": "FK",
+          "ref": "fnb_menu.menu_no",
+          "nullable": false
+        },
+        {
+          "name": "local_date",
+          "type": "date",
+          "label": "本地日期 Local date",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "mode",
+          "type": "varchar(16)",
+          "label": "CLOSED / OPEN",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "start_time",
+          "type": "time",
+          "label": "营业开始 Start",
+          "key": "",
+          "ref": "",
+          "nullable": true
+        },
+        {
+          "name": "end_time",
+          "type": "time",
+          "label": "营业结束 End",
+          "key": "",
+          "ref": "",
+          "nullable": true
+        },
+        {
+          "name": "end_day_offset",
+          "type": "tinyint",
+          "label": "跨日偏移 Offset",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "menu_no",
+          "local_date"
+        ]
+      ]
+    },
+    {
+      "name": "fnb_menu_category",
+      "label": "餐牌分类 Menu category",
+      "existing": false,
+      "fields": [
+        {
+          "name": "category_no",
+          "type": "varchar(32)",
+          "label": "分类编号 Category ID",
+          "key": "PK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "menu_no",
+          "type": "varchar(32)",
+          "label": "所属餐牌 Menu",
+          "key": "FK",
+          "ref": "fnb_menu.menu_no",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "varchar(64)",
+          "label": "名称 Name",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "sort_no",
+          "type": "int",
+          "label": "顺序 Sort",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_menu_item",
+      "label": "餐牌菜品 Menu item",
+      "existing": false,
+      "fields": [
+        {
+          "name": "menu_item_no",
+          "type": "varchar(32)",
+          "label": "条目编号 Item ID",
+          "key": "PK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "category_no",
+          "type": "varchar(32)",
+          "label": "所属分类 Category",
+          "key": "FK",
+          "ref": "fnb_menu_category.category_no",
+          "nullable": false
+        },
+        {
+          "name": "goods_no",
+          "type": "varchar(32)",
+          "label": "基础商品 Product",
+          "key": "FK",
+          "ref": "prd_goods.goods_no",
+          "nullable": false
+        },
+        {
+          "name": "sort_no",
+          "type": "int",
+          "label": "顺序 Sort",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "label": "是否启用 Enabled",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "category_no",
+          "goods_no"
+        ]
+      ]
+    },
+    {
+      "name": "fnb_menu_item_sku",
+      "label": "餐牌可售规格 Menu SKU",
+      "existing": false,
+      "fields": [
+        {
+          "name": "menu_item_no",
+          "type": "varchar(32)",
+          "label": "餐牌条目 Menu item",
+          "key": "PK,FK",
+          "ref": "fnb_menu_item.menu_item_no",
+          "nullable": false
+        },
+        {
+          "name": "sku_no",
+          "type": "varchar(32)",
+          "label": "可售规格 SKU",
+          "key": "PK,FK",
+          "ref": "prd_sku.sku_no",
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_station",
+      "label": "制作工位 Kitchen station",
+      "existing": false,
+      "fields": [
+        {
+          "name": "station_no",
+          "type": "varchar(32)",
+          "label": "工位编号 Station ID",
+          "key": "PK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "所属门店 Store",
+          "key": "FK",
+          "ref": "mch_store.store_no",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "varchar(64)",
+          "label": "名称 Name",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "station_type",
+          "type": "varchar(24)",
+          "label": "HOT / COLD / BAR / PACK",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "label": "启用 Enabled",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_sku_station",
+      "label": "规格工位路由 SKU routing",
+      "existing": false,
+      "fields": [
+        {
+          "name": "sku_no",
+          "type": "varchar(32)",
+          "label": "菜品或配料规格 SKU",
+          "key": "PK,FK",
+          "ref": "prd_sku.sku_no",
+          "nullable": false
+        },
+        {
+          "name": "station_no",
+          "type": "varchar(32)",
+          "label": "制作工位 Station",
+          "key": "PK,FK",
+          "ref": "fnb_station.station_no",
+          "nullable": false
+        },
+        {
+          "name": "task_role",
+          "type": "varchar(16)",
+          "label": "MAKE / ASSEMBLE / PACK",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "route_version",
+          "type": "bigint",
+          "label": "路由版本 Version",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_order_line",
+      "label": "餐饮点单行 Food order line",
+      "existing": false,
+      "fields": [
+        {
+          "name": "food_line_no",
+          "type": "varchar(32)",
+          "label": "餐饮源行 Food line ID",
+          "key": "PK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "order_item_id",
+          "type": "bigint",
+          "label": "基础成交行 Core item",
+          "key": "FK",
+          "ref": "ord_item.id",
+          "nullable": false
+        },
+        {
+          "name": "sku_no",
+          "type": "varchar(32)",
+          "label": "成交规格 Sales SKU",
+          "key": "FK",
+          "ref": "prd_sku.sku_no",
+          "nullable": false
+        },
+        {
+          "name": "qty",
+          "type": "int",
+          "label": "成交份数 Quantity",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "config_version",
+          "type": "bigint",
+          "label": "配置版本 Version",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "menu_snapshot",
+          "type": "json",
+          "label": "餐牌来源快照 Menu snapshot",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_order_component",
+      "label": "套餐选择快照 Bundle selection",
+      "existing": false,
+      "fields": [
+        {
+          "name": "component_no",
+          "type": "varchar(32)",
+          "label": "成员行编号 Component ID",
+          "key": "PK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "food_line_no",
+          "type": "varchar(32)",
+          "label": "餐饮源行 Food line",
+          "key": "FK",
+          "ref": "fnb_order_line.food_line_no",
+          "nullable": false
+        },
+        {
+          "name": "choice_no",
+          "type": "varchar(32)",
+          "label": "原套餐选项 Choice",
+          "key": "FK",
+          "ref": "fnb_bundle_choice.choice_no",
+          "nullable": false
+        },
+        {
+          "name": "sku_no",
+          "type": "varchar(32)",
+          "label": "成员规格 SKU",
+          "key": "FK",
+          "ref": "prd_sku.sku_no",
+          "nullable": false
+        },
+        {
+          "name": "quantity",
+          "type": "decimal(12,3)",
+          "label": "成员数量 Quantity",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "selection_snapshot",
+          "type": "json",
+          "label": "名称计价快照 Selection snapshot",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    },
+    {
+      "name": "fnb_order_modifier",
+      "label": "实际选配快照 Modifier selection",
+      "existing": false,
+      "fields": [
+        {
+          "name": "selection_no",
+          "type": "varchar(32)",
+          "label": "选择编号 Selection ID",
+          "key": "PK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "food_line_no",
+          "type": "varchar(32)",
+          "label": "餐饮源行 Food line",
+          "key": "FK",
+          "ref": "fnb_order_line.food_line_no",
+          "nullable": false
+        },
+        {
+          "name": "component_no",
+          "type": "varchar(32)",
+          "label": "套餐成员范围 Component",
+          "key": "FK",
+          "ref": "fnb_order_component.component_no",
+          "nullable": true
+        },
+        {
+          "name": "modifier_no",
+          "type": "varchar(32)",
+          "label": "原配料 Modifier",
+          "key": "FK",
+          "ref": "fnb_modifier.modifier_no",
+          "nullable": false
+        },
+        {
+          "name": "quantity",
+          "type": "decimal(12,3)",
+          "label": "选择数量 Quantity",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "modifier_snapshot",
+          "type": "json",
+          "label": "口味配料及展开快照 Snapshot",
+          "key": "",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": []
+    }
+  ],
+  "groups": [
+    {
+      "id": "bundle",
+      "title": "菜品与套餐 Dishes & Bundles",
+      "tables": [
+        "prd_goods",
+        "prd_sku",
+        "fnb_dish",
+        "fnb_bundle",
+        "fnb_bundle_group",
+        "fnb_bundle_choice"
+      ]
+    },
+    {
+      "id": "modifier",
+      "title": "口味配料与组合 Modifiers & Combos",
+      "tables": [
+        "prd_sku",
+        "fnb_dish",
+        "fnb_dish_option_group",
+        "fnb_option_group",
+        "fnb_option_group_item",
+        "fnb_modifier",
+        "fnb_modifier_component"
+      ]
+    },
+    {
+      "id": "menu",
+      "title": "多种餐牌与时段 Menus & Schedules",
+      "tables": [
+        "prd_goods",
+        "prd_sku",
+        "mch_store",
+        "fnb_menu",
+        "fnb_menu_store",
+        "fnb_menu_context",
+        "fnb_menu_schedule",
+        "fnb_menu_exception",
+        "fnb_menu_category",
+        "fnb_menu_item",
+        "fnb_menu_item_sku"
+      ]
+    },
+    {
+      "id": "snapshot",
+      "title": "工位与成交快照 Stations & Snapshots",
+      "tables": [
+        "mch_store",
+        "prd_sku",
+        "ord_item",
+        "fnb_station",
+        "fnb_sku_station",
+        "fnb_order_line",
+        "fnb_order_component",
+        "fnb_order_modifier"
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "title": "套餐 Bundle",
+      "body": "套餐自身有基础商品和销售 SKU；每个套餐 SKU 有多个选购组（主食、饮料、小吃），每组配置最少/最多份数及可选 SKU。固定套餐把唯一成员设为必选，任选套餐通过多个候选和数量上下限表达。第一版禁止套餐嵌套套餐，避免价格与耗用递归。例：午餐套餐 39 元，主食任选 1、饮料任选 1、小吃最多 2；最终选择另存订单成员快照。"
+    },
+    {
+      "title": "配料与组合 Modifiers and combos",
+      "body": "FLAVOR 是免费做法，例如少冰；ADDON 是单项加料，例如珍珠，对应基础销售 SKU；COMBO 是有独立计价 SKU 的配料组合，例如珍珠+椰果。组合明细指向单项 ADDON 并保存用量。选配组表达糖度单选、配料多选及数量上限；菜品绑定可复用的选配组。成员配料不再叠加收费，组合价格仅收一次。可选的配料组合用选配组让顾客自由组合，固定组合用 COMBO 明细表达；不需要嵌套组。"
+    },
+    {
+      "title": "餐牌 Menu types",
+      "body": "STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一模型。门店、下单来源、履约方式独立限定适用范围；TIME 可配多个周时段，季节/活动使用日期范围，节假日用例外日覆盖。晚 22:00 至次日 02:00 用 end_day_offset=1。餐牌分类与基础商品分类分开，菜单不存另一套价格。"
+    },
+    {
+      "title": "计价与库存 Pricing and stock",
+      "body": "套餐基础价、单项配料价、组合配料价都读基础 SKU 的门店/活动有效价格。套餐选项可 INCLUDED（已含）、ADD_SKU（追加成员当前价）、DIFF_BASE（相对组内基准 SKU 的非负差价）。金额必须由交易基座认可的报价扩展统一计算并冻结，不能让餐饮直接覆盖订单金额；当前核心没有完整组合计价接线，本设计不是零改动即可运行。套餐和组合按实际选中的叶子 SKU 汇总库存需求，容器 SKU 不同时扣同一份成员库存；配料数量单位与库存单位必须一致，存在原料克重换算时另接配方/物料系统。"
+    },
+    {
+      "title": "下单快照 Order snapshots",
+      "body": "基础 ord_item 保留成交事实；fnb_order_line 关联它；套餐成员与选配分别存快照。每个套餐实例的不同选择保留独立 food_line_no：同 SKU 两份套餐选了不同饮料时，不能合并成丢失归属的一组选择。配料可作用于整道菜，也可绑定某个套餐成员；口味、成员展开、当时价格、分摊与配置版本都需要冻结。按成员制作与库存展开，不重复增加套餐销售笔数。"
+    }
+  ],
+  "groupNotes": {
+    "bundle": "同一基础商品下可有多个套餐规格；套餐按 SKU 定义选购组。组和候选均有数量约束；两个指向 SKU 的关系分别表达候选商品与差价基准。",
+    "modifier": "菜品和选配组是多对多，组和配料也是多对多。组合表两次引用配料表，分别表示组合头与成员；只允许 COMBO → ADDON。免费口味不需要销售 SKU。",
+    "menu": "餐牌通过门店和入口范围决定在哪可见，通过周时段和例外日决定何时可售。餐牌条目引用商品，可通过白名单限制 SKU；同一商品可以进入多份餐牌。",
+    "snapshot": "工位按店定义，SKU 与工位为多对多。订单快照独立于当前配置，生产历史不随配置变化。图中仅展示本分组内部关联，套餐选项/配料的跨组引用见字段表。打印设备与任务沿独立打印域，本模型不复制打印表。"
+  },
+  "rules": [
+    "所有新增配置表按 entity_no 隔离；关联商品、配料、门店和工位须属于同一主体。SKU 必须属于引用的商品；跨租户关系禁止写入。",
+    "已存在表字段类型为设计引用投影，不是 ALTER TABLE；新表 PK/FK 为逻辑合同，实施需按仓库主键、数据域、审计及软删除规范落迁移。",
+    "发布套餐必须有至少一个组，每组有可用候选；0≤min_qty≤max_qty，max_qty>0，默认选择满足组和候选上下限。固定项 min=max；按套餐每份计算，再乘购买份数。",
+    "fnb_bundle 的 SKU 必须属于 dish_kind=BUNDLE 的餐饮商品。成员候选不允许 BUNDLE；配料组合禁止自引用、嵌套 COMBO 和重复成员，quantity>0。",
+    "FLAVOR.sales_sku_no 必须为空；ADDON/COMBO 必填有效 SKU。COMBO 必须至少一个成员。收费组合的成员只展开制作/耗用，不再累加成员售价。",
+    "组内同配料唯一；default_qty 在 0..max_qty 内。组 min/max 按选择份数求和，不按不同选项个数求和。要限制单选可令 max_qty=1。",
+    "price_mode=DIFF_BASE 时所属组 base_sku_no 必填；差价=max(0,候选有效单价-基准有效单价)，按 units_per_pick 和选择份数计算；基准与候选须同币种、可比销售单位。不支持负差价退款，另行设计折让规则。",
+    "成交总额由核心报价产生：套餐基价+候选追加/差价+所选配料费用，再应用统一优惠分摊；内部金额使用最小货币单位，数量计算及舍入规则由核心统一。金额只计一次；库存按展开的叶子需求聚合一次。",
+    "门店价、上架与库存使用现有基础规则；菜单展示不绕过下单校验。复杂组合下单必须先扩展报价、行关联与库存需求合同，不能只保存几张扩展表即宣称可售。",
+    "一个餐牌发布后必须显式绑定门店和 context；context 可用受控 ALL 枚举表示不限，不用空值猜测。来源包括扫码、H5、点餐机、店员、第三方；履约方式必须来自基座合法取值。",
+    "非 TIME 餐牌无 schedule 表示营业日内全天；TIME 必须有时段。日期范围按时区中的营业起始日计算；区间左闭右开，跨午夜归开始日。例外日 CLOSED 禁售，OPEN 的起止时间必填并替换该开始日周规则；每个开始日仅一条例外。",
+    "无 exclusive_group 的餐牌可同时展示；同店、同入口、同履约且同互斥组时取最高 priority，可能重叠且同优先级的配置发布时拒绝。跨餐牌相同商品可分别展示，提交时必须携带准确 menu_item_no。",
+    "menu_item_sku 无行表示该商品的全部可售 SKU；有行表示严格白名单，不能引用其他商品的 SKU。停售由统一可售校验处理，不通过菜单恢复实际库存。",
+    "套餐候选和配料不要求另作为餐牌独立条目显示，但必须通过其门店基础上架/可售与库存校验；已下架的成员不能因在套餐里就绕过基础限制。",
+    "各 SKU 工位路由按 station 所属门店过滤，允许多工位协作；发布时校验需要制作的 SKU 有可用路由。工位快照与实际改派记录属于制作任务域，不在本图重复建表。",
+    "fnb_order_component.choice_no 必须属于该订单行套餐配置；fnb_order_modifier.component_no 非空时必须属于同 food_line_no，所选组须绑定该成员菜品。消费与补打只读冻结快照，不依赖配置当前名称。",
+    "所有金额快照都引用核心核定的结果，JSON 仅存不可变事实；配置查询/关联用关系表。订单快照存配置号、版本、名称、价格依据和数量单位，禁止只存 JSON 而无可追溯编号。",
+    "当前售后仍按已有整门店订单退款边界；套餐成员不因有快照行就自动拥有独立退款权。开放部分退套餐需另行确认并建设分摊与权益逆向。",
+    "建议索引：所有引用列；menu(status,entity_no)、menu_store(store_no,menu_no)、menu_schedule(menu_no,weekday)、station(store_no,enabled)、order_line(order_item_id)、order_component(food_line_no)、order_modifier(food_line_no,component_no)。业务唯一键见各表；停用保留记录，重新启用更新原配置避免软删除重复键。"
+  ]
+}

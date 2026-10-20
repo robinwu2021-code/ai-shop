@@ -1,5 +1,7 @@
 # ai-shop 整体架构与技术栈
 
+> Java包规划、类与方法命名以[平台Java规范 §七](../../../.claude/skills/ai-shop-dev-standards/references/java.md#七包规划类名与业务边界)为统一入口，业务方案只登记应用清单。
+
 > 状态：草稿（**待确认**）· 创建 2026-08-05
 > 关联需求：[../requirements/C端功能清单.md](../../requirements/C端功能清单.md)
 > 参考工程：`powerbank`（ShareHub）—— C 端载体、请求层、ports 抽象、后端分层直接沿用其已验证地基。

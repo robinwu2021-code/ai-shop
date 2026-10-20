@@ -118,3 +118,43 @@ JAVA_HOME=... mvn -o -f backend/pom.xml -pl shop-app -am test -Dtest=Architectur
 
 `backend/known-failures.txt` 是 2026-08-24 立闸门那天就存在的失败（1126 跑 / 128 红），
 **只准变短**。恒红的闸门等于没有闸门 —— 它既是噪声掩体，也盖住了欠账的真实规模。
+
+---
+
+## 七、包规划、类名与业务边界
+
+本节将既有ArchitectureTest和core实际结构收敛为统一书面规则，适用于零售、餐饮及其他新增业务；不允许业务设计文档再维护平行规范。现有代码的历史欠账不作为新增代码的命名依据。业务词汇另遵循[全域命名基准](../../../../docs/technical/reference/全域命名基准.md)。
+
+### 7.1 包规划
+
+| 类型 | 统一位置 | 例子/约束 |
+|---|---|---|
+| 单域Controller | `ai.neargo.shop.<domain>.api.biz/mp/ops/internal` | 业务域随功能走，不按收银/厨房设备单独复制业务域 |
+| 跨域入口组合 | `ai.neargo.shop.portal.<端>`，宿主shop-app | 只做组合，不能借此形成域间Service互相引用 |
+| Service接口 | `<domain>.service` | 接口`XxxService` |
+| Service实现 | `<domain>.service.impl` | `XxxServiceImpl implements XxxService` |
+| 持久化实体 | `<domain>.entity` | 表名完整驼峰，`fnb_check`→`FnbCheck`；沿BaseEntity |
+| Mapper | `<domain>.mapper` | `FoodMappers.CheckMapper extends BaseMapper<FnbCheck>`；集合内去掉表域前缀，不建Repository转发层 |
+| 请求和响应 | `<domain>.dto`；简单record可在对应Controller/Service中 | `CreateCheckReq`、`CheckVO`，不与持久化Entity混用 |
+| 跨域Port接口/跨域事件 | `ai.neargo.shop.spi.<能力所属域>` | 放既有shop-base/spi；独立契约jar也保持spi命名和唯一接口，不因调用方是餐饮就复制商品Port |
+| Port实现 | `<提供实现的域或桥接>.port` | `GoodsQueryPortImpl`；远程实现可`RemoteGoodsQueryPortImpl`，同一部署只激活一种 |
+| 协议客户端 | 通道模块的`client`/`adapter` | Http Interface/RestClient只处理协议；不冒充Port契约或Service |
+| 业务辅助 | `<domain>.policy/statemachine/assembler/event/job/config` | 有真实职责才建；域与模块划分独立，不强制每种辅助都建模块 |
+
+Controller、Service、Mapper各尽其责；ServiceImpl直接调本域Mapper。模块只因部署、数据源或明确可复用契约边界拆分，不把每层或每个业务对象都建成Maven模块。普通DTO不强制三次等义转换。
+
+### 7.2 类及方法命名
+
+1. 按**业务资源**命名Controller，格式为`Biz/Mp/Ops/Internal + 资源 + Controller`，例如`BizMenuController`、`BizReservationController`。避免宽泛的`BizFoodCatalogController`或`XxxManagerController`承载多个独立资源。是否再限定业务词以避免同名不同义，按全域词汇规则判断，不能机械加Food/Core前缀。
+2. Service按业务能力命名，如`MenuService`、`KitchenTaskService`、`DiningCheckoutService`。`DiningCheckout`与资金结算`Settlement`不同，不能因为餐饮表叫settlement就再造同义`SettlementService`；不加没有语义增量的`Core/Application/Domain`。
+3. Entity是表的驼峰；Mapper按对象命名；集合按域命名，如`FoodMappers.MenuMapper`。共享打印、报表的Entity/DAO/Mapper归其原域，并沿该域技术栈，不在food复制。已有报表使用JdbcClient/DAO，不为统一餐饮强制改MyBatis。
+4. 请求以`Req`、响应以`VO`表达边界用途；查询可复用`PageData`和Query record，Command按实际用例需要创建。存量`Request`命名不在本次批量迁移；新增同类类型先查同域已有名字，禁止同义Req/Request并存。
+5. 方法用业务动词，如`openCheck`、`place`、`quote`、`transfer`、`approve`、`sign`；不得用`api001`、序号后缀或技术动词排列掩盖语义。接口编号只用于文档追踪，不能成为Java命名的一部分。
+6. 类名必须同时给出完整包名/模块才可作为实施清单。纯业务词`Menu`、`Check`等登记在领域文档不意味着必须再生成独立领域实体；按实际逻辑选择Entity、DTO、策略或状态机承载。
+7. `merchant`仅用于支付收款商户新概念，经营主体用entity；既有BizContext.requireMerchantNo等历史兼容名在适配处明确语义，不顺便重命名已实现接口。
+
+### 7.3 设计清单的检查
+
+需求到类清单至少核对：模块→包→完整类名→表/API→所有者；每个跨域Port只能有一个权威接口；Controller按资源、Service接口实现分包、Port接口在spi且实现在port、共享表不误落餐饮；物理id不对外；请求不接受调用方自报主体身份。
+
+ArchitectureTest已有规则为依据，但目前扫描范围不能自动覆盖所有独立reactor。新增工程实施时必须显式登记架构扫描与Controller资源内聚检查，不得仅凭文档或脚本绿就声明Java架构测试已通过。餐饮应用清单见[餐饮代码结构](../../../../docs/technical/design/餐饮系统-代码结构与对象清单.md)，该清单引用本规范，不反过来定义规范。

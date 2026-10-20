@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">餐饮多终端接入目标架构</title>
+  <desc id="desc">顾客手机、服务员和点餐机进入门店写入主控，厨房屏和打印消费制作事实。云端餐饮行业包通过应用适配复用订单、支付与库存。第三方经适配器接入，边缘服务断网时保存本地账并在恢复后认领，每个业务分区只有一个写主控。</desc>
+  <defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto-start-reverse"><path d="M0 0L8 4L0 8Z" fill="#66758b"/></marker></defs>
+  <rect width="1200" height="720" fill="#f5f7fb"/>
+  <g font-family="system-ui, sans-serif" fill="#1e293b">
+    <text x="40" y="42" font-size="25" font-weight="700">餐饮接入：统一交易基座，门店唯一写主控</text>
+    <text x="40" y="69" font-size="15" fill="#526179">目标设计 · 在线、第三方与断网营业均通过版本化契约连接</text>
+    <rect x="30" y="95" width="500" height="535" rx="18" fill="#eaf2ff" stroke="#a7c2ee"/>
+    <text x="50" y="127" font-size="20" font-weight="600">门店与终端</text>
+    <rect x="55" y="150" width="450" height="65" rx="10" fill="white"/>
+    <text x="78" y="178" font-size="17">扫码 / H5 / 小程序 · 服务员 · 点餐机</text>
+    <text x="78" y="201" font-size="14" fill="#526179">统一点单命令，按人、设备、门店授权</text>
+    <rect x="55" y="260" width="450" height="115" rx="10" fill="#245fc6"/>
+    <text x="78" y="291" fill="white" font-size="20" font-weight="600">门店业务写入主控</text>
+    <text x="78" y="321" fill="white" font-size="16">边缘模式：本地 API、台账、持久日志</text>
+    <text x="78" y="347" fill="white" font-size="15">同店单写 / epoch 交接 / 授权与库存份额</text>
+    <rect x="55" y="425" width="215" height="80" rx="10" fill="white"/>
+    <text x="75" y="457" font-size="18">厨房屏 KDS</text><text x="75" y="482" font-size="14" fill="#526179">接单 · 出品 · 划菜</text>
+    <rect x="290" y="425" width="215" height="80" rx="10" fill="white"/>
+    <text x="310" y="457" font-size="18">打印与收银终端</text><text x="310" y="482" font-size="14" fill="#526179">本地出票 · 现金登记</text>
+    <text x="55" y="553" font-size="15">公网中断：局域网设备继续营业</text>
+    <text x="55" y="580" font-size="14" fill="#526179">在线支付需真实凭据；手机须能访问本地服务</text>
+    <rect x="640" y="95" width="530" height="535" rx="18" fill="#edf7f2" stroke="#a3cfb9"/>
+    <text x="660" y="127" font-size="20" font-weight="600">云端统一业务与资金</text>
+    <rect x="665" y="155" width="480" height="80" rx="10" fill="white"/>
+    <text x="685" y="186" font-size="18">餐饮行业包与基座应用适配</text>
+    <text x="685" y="213" font-size="15" fill="#526179">桌台 / 批次 / 制作 / 收银编排 / 事实认领</text>
+    <rect x="665" y="285" width="145" height="85" rx="10" fill="#20775a"/>
+    <text x="686" y="317" font-size="18" fill="white">订单基座</text><text x="679" y="345" font-size="14" fill="white">门店交易 / 售后</text>
+    <rect x="831" y="285" width="145" height="85" rx="10" fill="#20775a"/>
+    <text x="851" y="317" font-size="18" fill="white">支付基座</text><text x="845" y="345" font-size="14" fill="white">实收 / 分配 / 退款</text>
+    <rect x="997" y="285" width="148" height="85" rx="10" fill="#20775a"/>
+    <text x="1017" y="317" font-size="18" fill="white">库存基座</text><text x="1009" y="345" font-size="14" fill="white">预占 / 耗用 / 退回</text>
+    <rect x="665" y="425" width="480" height="85" rx="10" fill="white"/>
+    <text x="685" y="456" font-size="18">第三方适配器与外部对象映射</text>
+    <text x="685" y="484" font-size="15" fill="#526179">厂商能力 / 主控模式 / 幂等 / 回调 / 对账</text>
+    <text x="665" y="554" font-size="15">真实资金唯一记账；同步不重复下单和出票</text>
+    <text x="665" y="581" font-size="14" fill="#526179">厂商主控与平台主控须按业务范围明确划分</text>
+    <g fill="none" stroke="#66758b" stroke-width="2" marker-end="url(#arrow)">
+      <path d="M280 215V256"/><path d="M160 375V421"/><path d="M397 375V421"/>
+      <path d="M505 300H580V195H660"/>
+      <path d="M740 235V280"/><path d="M905 235V280"/><path d="M1070 235V280"/>
+      <path d="M1145 195H1155V464H1149"/>
+    </g>
+    <text x="541" y="331" font-size="14" fill="#526179">版本化同步</text>
+    <text x="541" y="355" font-size="14" fill="#526179">恢复与回执</text>
+    <text x="40" y="674" font-size="17" font-weight="600">一致性边界：一笔交易、一份资金凭据、一次制作；禁止云端与失联门店自动双主写入</text>
+  </g>
+</svg>

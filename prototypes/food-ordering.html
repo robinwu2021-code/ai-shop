@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>餐饮点餐 App · 桌台到结账</title>
+<link rel="stylesheet" href="proto.css">
+<div class="wrap workbench-sheet">
+<header class="top"><div class="eyebrow">DINING WORKBENCH / 服务员点餐 APP / 2026-10-20</div><h1>从开台到结账，一手掌握。</h1><p class="sub">以「虹选小馆 · 文三路店」为例，串联桌台、选菜、上菜与预结账。手机作业界面沿用 B 端扁平色块、品牌红与胶囊按钮。以下为本地交互演示。</p></header>
+<div class="workbench-mode" role="group" aria-label="付款模式"><button aria-pressed="true" data-mode="post">先吃后付</button><button aria-pressed="false" data-mode="pre">加菜先付后做</button><button id="reset-demo">重置演示</button></div>
+<div class="workbench-grid">
+<figure id="s01"><div class="ph ph--full">
+<div class="workbench-status"><span>18:30</span><span>●●●　▰</span></div>
+<div class="nav"><span class="bk">⌂</span><span class="t">桌台</span><span>⌕</span></div>
+<div class="scr"><div class="workbench-heading"><div><h3>文三路店⌄</h3><p>晚市 · 服务员 小林</p></div><span class="workbench-badge workbench-badge--success">营业中</span></div>
+<div class="workbench-surface"><div class="workbench-heading"><span>12 桌空闲</span><span class="workbench-note">6 桌用餐 · 2 桌待结</span></div></div>
+<div class="workbench-filters" aria-label="桌台状态"><button class="workbench-filter" aria-pressed="true" data-filter="all">全部 20</button><button class="workbench-filter" aria-pressed="false" data-filter="free">空闲 12</button><button class="workbench-filter" aria-pressed="false" data-filter="busy">用餐 6</button><button class="workbench-filter" aria-pressed="false" data-filter="pay">待结 2</button></div>
+<div class="workbench-heading"><h3>大厅</h3><span class="workbench-note">展示 6 张示例桌台</span></div>
+<div class="workbench-tables">
+<button class="workbench-table is-selected" data-table="A03" data-status="busy"><span class="workbench-badge workbench-badge--primary">当前桌台</span><strong>A03</strong><p>4 人 · 已用餐 26 分钟</p><p>已点 <span class="num" data-total>¥112</span></p></button>
+<button class="workbench-table" data-table="A01" data-status="free"><span class="workbench-badge workbench-badge--success">空闲</span><strong>A01</strong><p>2–4 人桌</p><p>点击开台</p></button>
+<button class="workbench-table" data-table="A02" data-status="busy"><span class="workbench-badge">用餐中</span><strong>A02</strong><p>2 人 · 18 分钟</p><p>已点 ¥96</p></button>
+<button class="workbench-table" data-table="A05" data-status="pay"><span class="workbench-badge workbench-badge--warning">待结账</span><strong>A05</strong><p>6 人 · 58 分钟</p><p>应收 ¥368</p></button>
+<button class="workbench-table" data-table="A06" data-status="free"><span class="workbench-badge workbench-badge--success">空闲</span><strong>A06</strong><p>2 人桌</p><p>点击开台</p></button>
+<button class="workbench-table" data-table="A08" data-status="busy"><span class="workbench-badge">用餐中</span><strong>A08</strong><p>4 人 · 12 分钟</p><p>已点 ¥168</p></button>
+</div><p class="workbench-note">包间、拼桌和转台从桌台详情进入。</p></div>
+<div class="workbench-tabs"><a class="on" href="#s01">▦ 桌台</a><a href="#s02">＋ 点餐</a><a href="#s03">☷ 订单</a><a href="#s04">◎ 结账</a></div>
+</div><figcaption class="cap"><b>01 桌台总览</b>状态、人数、用餐时长、已点金额同时可见。点 A03 进入当前示例；其他桌台只演示状态提示。</figcaption></figure>
+<figure id="s02"><div class="ph ph--full">
+<div class="workbench-status"><span>18:30</span><span>●●●　▰</span></div><div class="nav"><a class="bk" href="#s01">‹</a><span class="t">A03 · 点餐</span><a href="#s03">已点</a></div>
+<div class="scr"><div class="workbench-heading"><span>4 人用餐</span><span class="workbench-badge workbench-badge--primary" data-mode-label>先吃后付</span></div><input class="workbench-search" id="dish-search" placeholder="搜索菜名 / 拼音" aria-label="搜索菜品">
+<div class="workbench-menu"><aside class="workbench-categories" aria-label="菜品分类"><button aria-pressed="true" data-category="all">全部</button><button aria-pressed="false" data-category="signature">招牌菜</button><button aria-pressed="false" data-category="hot">热菜</button><button aria-pressed="false" data-category="vegetable">时蔬</button><button aria-pressed="false" data-category="staple">主食</button></aside>
+<div class="workbench-dishes">
+<article class="workbench-dish" data-name="松鼠桂鱼 songshuguiyu" data-cat="signature"><h4>松鼠桂鱼</h4><p>酸甜酥脆 · 门店招牌<br>已点 1 份，制作中</p><div class="workbench-heading"><span class="workbench-price">¥88</span><div class="workbench-counter"><button data-sku="fish" data-delta="-1" aria-label="减少松鼠桂鱼">−</button><span data-count="fish">0</span><button data-sku="fish" data-delta="1" aria-label="增加松鼠桂鱼">＋</button></div></div></article>
+<article class="workbench-dish" data-name="宫保鸡丁 gongbaojiding" data-cat="hot"><h4>宫保鸡丁</h4><p>微辣 · 含花生<br><button class="workbench-mini-action" id="flavor">口味：正常辣⌄</button></p><div class="workbench-heading"><span class="workbench-price">¥38</span><div class="workbench-counter"><button data-sku="chicken" data-delta="-1" aria-label="减少宫保鸡丁">−</button><span data-count="chicken">1</span><button data-sku="chicken" data-delta="1" aria-label="增加宫保鸡丁">＋</button></div></div></article>
+<article class="workbench-dish" data-name="上汤时蔬 shangtangshishu" data-cat="vegetable"><h4>上汤时蔬</h4><p>当季鲜蔬 · 清淡鲜香</p><div class="workbench-heading"><span class="workbench-price">¥28</span><div class="workbench-counter"><button data-sku="greens" data-delta="-1" aria-label="减少上汤时蔬">−</button><span data-count="greens">1</span><button data-sku="greens" data-delta="1" aria-label="增加上汤时蔬">＋</button></div></div></article>
+<article class="workbench-dish" data-name="米饭 mifan" data-cat="staple"><h4>米饭</h4><p>按碗 · 已点 4 碗</p><div class="workbench-heading"><span class="workbench-price">¥3</span><div class="workbench-counter"><button data-sku="rice" data-delta="-1" aria-label="减少米饭">−</button><span data-count="rice">0</span><button data-sku="rice" data-delta="1" aria-label="增加米饭">＋</button></div></div></article>
+</div></div></div>
+<div class="workbench-toolbar"><div><span class="workbench-price" id="cart-total">¥66</span><p><span id="cart-count">2</span> 份待提交 · 未送厨</p></div><button class="btn" id="submit-order">确认送厨</button></div>
+</div><figcaption class="cap"><b>02 按桌点餐</b>分类、搜索、口味、加减数量和底部待提交金额。先付模式下改为发起付款，未付不送厨。</figcaption></figure>
+<figure id="s03"><div class="ph ph--full">
+<div class="workbench-status"><span>18:30</span><span>●●●　▰</span></div><div class="nav"><a class="bk" href="#s01">‹</a><span class="t">A03 · 已点菜品</span><span>···</span></div>
+<div class="scr"><div class="workbench-heading"><div><h3>4 人 · 用餐中</h3><p>18:04 开台 · 服务员 小林</p></div><span class="workbench-badge workbench-badge--primary" data-mode-label>先吃后付</span></div>
+<div class="workbench-surface"><div class="workbench-heading"><span>已点金额</span><span class="workbench-price" data-total>¥112</span></div><p class="workbench-note" id="draft-note">另有 2 份菜待提交，尚未送厨</p></div>
+<div class="workbench-surface"><div class="workbench-heading"><h3>第一轮</h3><span class="workbench-note">18:06 · 已受理</span></div>
+<div class="workbench-orderline"><div><h4>松鼠桂鱼 ×1</h4><p>正常做法 · ¥88</p></div><span class="workbench-badge workbench-badge--warning">制作中</span></div>
+<div class="workbench-orderline"><div><h4>米饭 ×4</h4><p>¥3 / 碗 · 小计 ¥12</p></div><button class="workbench-mini-action" id="serve-rice">确认上菜</button></div>
+<div class="workbench-orderline"><div><h4>茶位 ×4</h4><p>¥3 / 人 · 小计 ¥12</p></div><span class="workbench-badge">服务费用</span></div>
+</div>
+<div class="workbench-surface" data-new-batch hidden><div class="workbench-heading"><h3>本次加菜</h3><span class="workbench-badge workbench-badge--primary">已送厨</span></div><div id="new-lines"></div></div>
+<div class="workbench-surface"><div class="workbench-heading"><span>桌台服务</span><button class="workbench-mini-action" data-message="已记录催菜申请，请关注厨房处理结果">催菜</button><button class="workbench-mini-action" data-message="退菜需选择菜品、数量及原因，提交授权审批">退菜申请</button></div></div>
+<p class="workbench-note">出品与上菜分别确认。退菜申请不代表退款成功。</p></div>
+<div class="foot"><a class="btn sec" href="#s02">继续加菜</a><a class="btn main" href="#s04">查看预结单</a></div>
+</div><figcaption class="cap"><b>03 已点与上菜进度</b>按点单轮次组织，展示制作与上菜状态。支持确认米饭上菜、催菜及退菜入口提示。</figcaption></figure>
+<figure id="s04"><div class="ph ph--full">
+<div class="workbench-status"><span>18:30</span><span>●●●　▰</span></div><div class="nav"><a class="bk" href="#s03">‹</a><span class="t">A03 · 预结账</span><span></span></div>
+<div class="scr"><div class="workbench-summary"><span class="workbench-badge workbench-badge--warning">预结单 · 尚未付款</span><h3>当前应收</h3><div class="amount num" data-total>¥112</div><p>A03 · 4 人 · 文三路店</p></div>
+<div class="group"><div class="frow"><span class="k">菜品与主食</span><span class="v num" id="goods-total">¥100</span></div><div class="frow"><span class="k">茶位费 · 4 人</span><span class="v num">¥12</span></div><div class="frow"><span class="k">优惠</span><span class="v num">¥0</span></div><div class="frow"><span class="k">已收款</span><span class="v num">¥0</span></div></div>
+<div class="workbench-surface"><div class="workbench-heading"><h3>请顾客核对</h3><a href="#s03">菜品明细 ›</a></div><p class="workbench-note">金额按已提交菜品计算，购物车中的新菜尚未计入。</p></div>
+<div class="workbench-surface"><div class="workbench-heading"><span>收款方式</span><span class="workbench-badge workbench-badge--primary">顾客扫码</span></div><p class="workbench-note">生成付款入口后，以实际支付结果为准。服务员不能手动标记已付款。</p></div>
+<p class="workbench-note">现金或其他结算方式，请联系收银台。预结单不是收款凭条。</p></div>
+<div class="foot"><button class="btn sec" data-message="预结单打印申请已演示；未连接打印机，不代表已出纸">打印预结单</button><button class="btn main" id="request-pay">请顾客付款</button></div>
+</div><figcaption class="cap"><b>04 预结账与收款入口</b>应收、已收、费用单列。演示只发起付款提示，不伪造支付成功或整桌结清。</figcaption></figure>
+</div>
+<div class="workbench-flow"><span>体验顺序</span><a href="#s01">01 选择 A03</a><span>→</span><a href="#s02">02 选菜送厨</a><span>→</span><a href="#s03">03 查看上菜</a><span>→</span><a href="#s04">04 核对预结单</a></div>
+<footer>需求：餐饮系统完整需求文档 / D 点餐 · E 制作上菜 · F 结账。金额为演示数据，所有交互仅发生在浏览器本地。顾客点餐端、西餐分道上菜、套餐选择与收银工作台后续扩展。</footer>
+</div><div class="workbench-toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script>
+const prices={fish:88,chicken:38,greens:28,rice:3},names={fish:'松鼠桂鱼',chicken:'宫保鸡丁',greens:'上汤时蔬',rice:'米饭'};
+let cart={fish:0,chicken:1,greens:1,rice:0},total=112,mode='post',timer,category='all',flavor='正常辣';
+function toast(t){const e=document.querySelector('#toast');e.textContent=t;e.hidden=false;clearTimeout(timer);timer=setTimeout(()=>e.hidden=true,3500)}
+function render(){let count=0,amount=0;Object.keys(cart).forEach(k=>{count+=cart[k];amount+=cart[k]*prices[k];document.querySelector(`[data-count="${k}"]`).textContent=cart[k]});document.querySelector('#cart-count').textContent=count;document.querySelector('#cart-total').textContent='¥'+amount;document.querySelectorAll('[data-total]').forEach(e=>e.textContent='¥'+total);document.querySelector('#goods-total').textContent='¥'+(total-12);document.querySelector('#draft-note').textContent=count?`另有 ${count} 份菜待提交，尚未送厨`:'当前没有待提交菜品';document.querySelector('#submit-order').textContent=mode==='post'?'确认送厨':'请顾客付款';document.querySelectorAll('[data-mode-label]').forEach(e=>e.textContent=e.closest('#s02')?(mode==='post'?'先吃后付':'本次加菜先付'):'先吃后付')}
+document.querySelectorAll('[data-delta]').forEach(b=>b.onclick=()=>{cart[b.dataset.sku]=Math.max(0,cart[b.dataset.sku]+Number(b.dataset.delta));render()});
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{if(b.dataset.mode==='pre'){toast('切换为先付模式演示：既有台账不变，新点菜品付款后才送厨')}mode=b.dataset.mode;document.querySelectorAll('[data-mode]').forEach(x=>x.setAttribute('aria-pressed',x===b));render()});
+document.querySelector('#submit-order').onclick=()=>{if(!Object.values(cart).some(Boolean))return toast('请先选择菜品');if(mode==='pre')return toast('已演示发起本次付款；尚无可信支付结果，不送厨');let holder=document.querySelector('#new-lines');Object.keys(cart).filter(k=>cart[k]).forEach(k=>{const row=document.createElement('div');row.className='workbench-orderline';const text=document.createElement('div');const title=document.createElement('h4');title.textContent=names[k]+' ×'+cart[k];const info=document.createElement('p');info.textContent=(k==='chicken'?flavor+' · ':'')+'¥'+prices[k]*cart[k];text.append(title,info);const status=document.createElement('span');status.className='workbench-badge workbench-badge--primary';status.textContent='待制作';row.append(text,status);holder.append(row);total+=prices[k]*cart[k];cart[k]=0});document.querySelector('[data-new-batch]').hidden=false;render();toast('本地演示：本次加菜已送厨，付款状态未改变');document.querySelector('#s03').scrollIntoView({behavior:'smooth',block:'center'})};
+document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-filter]').forEach(x=>x.setAttribute('aria-pressed',x===b));document.querySelectorAll('[data-table]').forEach(t=>t.hidden=b.dataset.filter!=='all'&&t.dataset.status!==b.dataset.filter)});
+document.querySelectorAll('[data-table]').forEach(b=>b.onclick=()=>{if(b.dataset.table==='A03')document.querySelector('#s02').scrollIntoView({behavior:'smooth',block:'center'});else toast(b.dataset.table+'：当前只开放 A03 的完整点餐演示')});
+function filterDishes(){const q=document.querySelector('#dish-search').value.toLowerCase().replaceAll(' ','');document.querySelectorAll('.workbench-dish').forEach(d=>d.hidden=!(category==='all'||d.dataset.cat===category)||!d.dataset.name.replaceAll(' ','').includes(q))}
+document.querySelector('#dish-search').oninput=filterDishes;document.querySelectorAll('[data-category]').forEach(b=>b.onclick=()=>{category=b.dataset.category;document.querySelectorAll('[data-category]').forEach(x=>x.setAttribute('aria-pressed',x===b));filterDishes()});
+document.querySelector('#flavor').onclick=()=>{flavor=flavor==='正常辣'?'少辣':'正常辣';document.querySelector('#flavor').textContent='口味：'+flavor+'⌄'};
+document.querySelector('#serve-rice').onclick=e=>{e.target.textContent='已上菜';e.target.disabled=true;toast('米饭 4 碗已确认上菜，不改变收款状态')};document.querySelectorAll('[data-message]').forEach(b=>b.onclick=()=>toast(b.dataset.message));document.querySelector('#request-pay').onclick=()=>toast('已演示发起 ¥'+total+' 顾客扫码付款；尚未付款，未结清台账');document.querySelector('#reset-demo').onclick=()=>location.reload();render();
+</script></html>
