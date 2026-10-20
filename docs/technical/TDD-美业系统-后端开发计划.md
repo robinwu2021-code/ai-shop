@@ -1,10 +1,10 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-20 · 已完成工程/迁移基础、政策/定义业务及预约/工单任务数据层；全量业务未完成。
+> 状态：实施中 · 2026-10-21 · 已完成首批P1数据层及政策/定义业务；全量业务未完成。
 > **执行方式：** 使用`superpowers:executing-plans`逐任务实施，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
-## 当前执行记录（2026-10-20）
+## 当前执行记录（2026-10-21）
 
 实现位于独立 beauty-data worktree，保护原工作区未提交的餐饮与前端变更。代码入口：[美业工程](../../backend-plugins/shop-industry-beauty/README.md)。
 
@@ -14,12 +14,13 @@
 | ENG-02 | 完成 | 默认关闭、显式部署形态；宿主retail/embedded/standalone验证；独立服务无用户入口；实际JAR无数据库启动及200/503探针 |
 | DATA-01 | 完成 | 首批16表归属、BaseEntity字段、tenant/entity索引、源行guard身份与可空唯一键审计；共享14项及P3/P4留在原任务 |
 | DATA-02 | 完成 | 冻结V1、专属历史；MySQL实际DDL与Flyway重入/漂移测试；拒绝无归属旧美业表；平台Flyway共存 |
-| DATA-03 | 部分完成 | 主工厂/主事务/审计接线与13项实体数据域；其余来源聚合随DATA-07联验 |
+| DATA-03 | P1完成 | 主工厂/主事务/审计接线、16项P1实体数据域及真实SQL父链范围验证完成；后续阶段随各批联验 |
 | DATA-04 | 本批切片完成 | 政策/定义5项实体Mapper；不可变发布、版本CAS、历史查询和父链范围已真实SQL验收，实际记录见§8 |
 | ENG-03 | 部分完成 | 政策/定义可信入口、幂等/审计/outbox及双部署已验收，后续聚合仍须各自完成业务级前置 |
 | POL-01 / DEF-01 | 部分完成 / 主接口完成 | 政策查询发布、定义查询发布已交付；POL-01公开营业信息BAPI-144未在本批范围 |
 | DATA-05/06 | 数据层完成 | 7项实体、15个原始Mapper方法、25项真实MySQL用例；见§9，不含预约/工单业务Service与工作台API |
-| DATA-07及后续 | 未完成 | 来源编排与预约/日历/任务业务闭环仍待实施，不以数据层通过计作营业可用 |
+| DATA-07 | 数据层完成 | 3项新实体、9条原始Mapper方法，复用已有动作日志；21项真实MySQL通过，见§10 |
+| 后续业务 | 未完成 | 共用人员/资源、来源恢复与预约/日历/任务业务闭环仍待实施，不以数据层通过计作营业可用 |
 
 首批基础阶段验证（后续批次增量见§8、§9）：独立reactor 42项测试通过，Node生成器6项通过，隔离MySQL DDL约束通过，23项真实JDBC IT通过。
 宿主retail/embedded各6通过＋1个不适用形态用例跳过，standalone 7项全部通过；无H2替代MySQL约束结论。
@@ -171,14 +172,14 @@ CAL-01可先开发资源占用视图，但完整准出依赖TASK-01任务摘要�
 | DATA-04 政策/定义5项 | entity/BtyStorePolicy、BtyStorePolicyVersion、BtyServiceDefinition、BtyServiceDefinitionVersion、BtyServiceRequirement及同对象内嵌Mapper | selectScopedForUpdate、switchCurrentVersion；发布版本与要求追加；头指针CAS、唯一门店/SKU范围 | `PolicyDefinitionPersistenceTest#rejectsStalePointerSwitch`、`#keepsPublishedSnapshotImmutable`、`#rejectsCrossEntityRequirement` |
 | DATA-05 预约3项 | entity/BtyAppointment、BtyAppointmentItem、BtyAppointmentAssignment及对应Mapper | changeSchedule、markArrived、changeStatus、selectByAppointmentRevision；原安排不覆盖，指定意愿不当实际执行 | `AppointmentPersistenceIT#keepsPreviousAssignmentRevisionAndRequestedPersonSeparate`、`#rejectsStaleScheduleAndWrongStoreOrTerminalState`、`#limitsAssignmentsToAuthorizedUndeletedParentChain` |
 | DATA-06 工单任务4项 | entity/BtyWorkOrder、BtyServiceTask、BtyServiceStep、BtyServiceParticipation及对应Mapper | freezeScope、advanceScope、closeFrozenScope、recordCompletion、switchBindingRevision、endParticipation；范围/绑定/根版本分开，参与区间追加 | `ServiceTaskPersistenceIT#rejectsOverCompletionAndStaleBindingAndKeepsPartialWorkOpen`、`#freezeBlocksTaskMutationAndScopeAdvance`、`#closesOnlyCurrentParticipationAndNeverOverwritesPersonnel` |
-| DATA-07 来源编排4项 | entity/BtyServiceSubmission、BtyTradeBinding、BtyActionLog、BtySourceAllocationGuard及对应Mapper | selectByRequestKey、advanceProgress、selectSourceForUpdate、allocateQuantity、releaseUnconsumedQuantity、refreshSourceSnapshot；同源guard跨任务累计上限，原号/原绑定留存 | `SourceAllocationConcurrencyTest#allocatesWithinOriginalQuantity`、`#sharesGuardAcrossSourceRevisions`、`#rejectsChangedPayloadForSameKey`、`#doesNotReleaseConsumedQuantity` |
+| DATA-07 来源编排4项 | entity/BtyServiceSubmission、BtyTradeBinding、BtyActionLog、BtySourceAllocationGuard及对应Mapper | selectByRequestKey、advanceProgress、selectSourceForUpdate、allocateQuantity、releaseUnconsumedQuantity、refreshSourceSnapshot；同源guard跨任务累计上限，原号/原绑定留存 | `SourceAllocationConcurrencyIT#allocatesOnlyWithinOriginalQuantityAndExactRevision`、`#sourceRevisionsCannotCreateAnotherGuardForSameCanonicalLine`、`ServiceSubmissionPersistenceIT#sameRequestReturnsOriginalPayloadAndFrozenSourceCommand`、`SourceAllocationConcurrencyIT#doesNotReleaseConsumedQuantityEvenWhenHistoricalBindingWasSoftDeleted` |
 
 每批具体步骤：
 
 - [ ] 先用本批真实表在隔离数据库写失败测试：范围/唯一键/版本/数量/历史/审计；跨事务并发使用独立连接和稳定仲裁行。
 - [ ] 新增当批实体，继承BaseEntity，字段/表名完整驼峰一致；JSON快照按既有序列化约定，私有护理字段尚未进入本批。
 - [ ] 新增当批嵌套BaseMapper；继承insert/select/update不重写空方法，自定义SQL只为实际锁/CAS/批量查询，影响行数为0必须转明确冲突而非成功。
-- [ ] 按root→稳定排序的task→子行/guard等已定锁序联验；自定义标量更新明确写审计/version；不能用synchronized、空SELECT FOR UPDATE或无版本update替代约束。
+- [ ] 纯任务按root→稳定排序task→子行；涉及来源统一按排序guard→root→task→绑定/提交锁序联验（§10收敛此前guard位置歧义）；自定义标量更新明确写审计/version；不能用synchronized、空SELECT FOR UPDATE或无版本update替代约束。
 - [ ] 绿灯后复跑当批依赖和数据层套件，挑关键断言做消融，记录真实命令及结果；无业务Service时仅标数据合同通过，不声称开工/扣款/资源已可营业。
 
 ### 2.8 数据层首批完成的界线
@@ -434,3 +435,67 @@ Ruling：本批复用V1已存在的trade_binding表做只读局部守卫，不�
 
 最终双部署补验：BeautyStandaloneEndToEndIT实际TCP→业务→MySQL1项通过；BeautyPolicyEndToEndIT宿主HTTP→MySQL1项通过。
 实际可执行JAR关闭态无数据库启动，liveness200/readiness503；全部以最终源码构建后执行。
+
+## §10 DATA-07：来源分配与提交意图数据层
+
+基线a0965d62d；沿冻结V1实现ServiceSubmission、TradeBinding、SourceAllocationGuard三个新Entity，ActionLog已实现不重复创建。
+新增3个嵌套Mapper、9条原始签名方法及数据域注册；没有新增表、公开API、资金/资源权限或恢复业务Service。
+
+### 10.1 规则与先行取舍
+
+- F1 提交：tenant/entity/store显式范围；有workOrderNo时还须同范围有效工单。requestKeyHash查回原payload/frozenCommand，不能修改原意图。
+  原签名不带action，但数据库唯一键带action；同一摘要匹配多行时由MyBatis单行合同拒绝歧义，不LIMIT1选任意记录。
+  后续Service必须将action纳入规范键摘要，并比较payloadHash；本批不假装单纯读取已完成异参业务错误映射。
+  固定迁移：RECEIVED→SOURCE_PENDING/REJECTED；SOURCE_PENDING→BOUND/RECOVERING/REJECTED；
+  RECOVERING→SOURCE_PENDING/BOUND/REJECTED。三个非终态允许自身CAS用于认领租约；BOUND/REJECTED不能重新激活。
+  活动态nextRetryAt按DATETIME(3)实际持久化精度严格晚于updatedAt；终态清空retry，REJECTED须非空failureCode。未知结果必须RECOVERING，
+  只有后续Service查到权威明确拒绝后才可REJECTED，Mapper状态CAS不代表外部证明。
+  selectDueForUpdate只取三个非终态、nextRetryAt非空且到期的行，稳定排序、limit1..100、FOR UPDATE SKIP LOCKED；
+  认领者必须同短事务advanceProgress延后retry并提交，外部调用不持锁。无retry的行不擅自视作可恢复。
+- F2 来源guard：同主体规范sourceKind/sourceNo/sourceLineRef唯一，不按store/sourceRevision复制；缺行由唯一键仲裁，空SELECT不是锁。
+  allocateQuantity只接受正六位数量、expectedVersion/sourceRevision一致、不超sourceQty；refresh只接受更高来源修订、
+  新数量不少于已分配量和64位摘要，保持累计allocatedQty。来源权威/门店/uom由后续Service核验。
+- F3 释放：正六位数量、不超已分配量、CAS与审计；保留原绑定历史。
+  原签名没有目标binding或消费水位，因此采用保守整guard守卫：所有历史绑定（包括软删）都必须拥有可验证的本主体任务/工单/提交，
+  来源三元组/uom一致、同门店父链、任务从未开始且全量VOIDED、提交仅BOUND/REJECTED，否则拒绝整次释放。
+  无绑定的预留量可释放；已消费、在途、残缺父链不释放。代价：存在一项受保护分配时，暂不能局部释放该guard其他空闲量，
+  待SRC业务有正式目标绑定/消费事实合同再扩展，不能靠估算消费量放行。冻结命令尚未形成绑定的在途引用必须由未来协调Service验证。
+- F4 绑定批查：按taskNos/bindingRevision读取；空/null列表返回空，沿binding→task→workOrder与binding→submission双父链确认tenant/entity/store，
+  支持不同任务按版本分组批查；不覆盖旧绑定。
+- 多根锁序：涉及来源时先按规范身份排序锁guard，再排序工单根→任务→绑定/提交；纯任务仍沿§9根→任务→子行。
+  恢复扫描先在独立短事务认领并提交，不带扫描所得submission锁进入guard业务事务，以免与上述顺序反转。
+
+### 10.2 任务与验证
+
+| 任务 | 文件范围 | 行为证据 |
+|---|---|---|
+| F1 | BtyServiceSubmission、ServiceSubmissionMapper | 原请求/冻结命令恢复、歧义拒绝、状态CAS/审计/租约、到期范围与SKIP LOCKED、终态禁止重启 |
+| F2/F3 | BtySourceAllocationGuard、SourceAllocationGuardMapper | 共享guard跨任务并发上限、版本跨修订唯一、精度/陈旧修订拒绝、刷新兼容、释放消费/在途/异常父链拒绝、回滚 |
+| F4 | BtyTradeBinding、TradeBindingMapper及数据域注册 | 双父链、批查空参/指定版本、历史保留、真实Mapper主库审计和主体域 |
+| F5 | verify-beauty-persistence.mjs、README、TDD/ledger | 先缺类RED、实际MySQL GREEN，完整reactor与原66项回归、双部署端到端、消融、一次独立审查及本地提交 |
+
+数据层冲突仍以影响行0返回，后续Service必须转为明确业务冲突。完整跨域恢复、源行权限/消费证明、调度Job与公开API尚未交付。
+
+### 10.3 实际交付与验证对账
+
+| AC | 实际测试方法 | 结果 |
+|---|---|---|
+| F1 原请求/参数/冻结命令保留、歧义拒绝 | ServiceSubmissionPersistenceIT#sameRequestReturnsOriginalPayloadAndFrozenSourceCommand、#rejectsAmbiguousRequestHashAcrossActionsInsteadOfPickingOne | 实际Mapper插入同action同键异参被唯一约束拒绝，原payload保持；跨action摘要歧义拒绝 |
+| F1 固定状态与审计 | #progressCasRetainsOriginalIntentAndRejectsTerminalRestart、#activeLeaseNeedsFutureRetryAndRejectedNeedsFailureCode | 陈旧版本/非法迁移/终态重启均0，成功显式审计，原号/命令不替换 |
+| F1 恢复认领 | #dueRowsAreBoundedScopedAndLeasedInSameTransaction、#concurrentRecoverySkipsLockedIntent | 实际双连接SKIP LOCKED、限额/范围、同事务租约已验证 |
+| F1 持久化租约精度 | #leaseMustRemainFutureAtPersistedMillisecondPrecision | 亚毫秒先RED：expected0/actual1；按DATETIME(3)比较后GREEN |
+| F2 共享来源行上限 | SourceAllocationConcurrencyIT#concurrentTasksShareOneGuardAndCannotExceedSourceQuantity、#sourceRevisionsCannotCreateAnotherGuardForSameCanonicalLine、#refreshPreservesAllocatedQuantityAndRequiresNewerCompatibleSnapshot | 并发仅一个1.5分配成功，来源2数量不超限；修订不另建guard，刷新保留已分配量 |
+| F3 释放保护 | #doesNotReleaseConsumedQuantityEvenWhenHistoricalBindingWasSoftDeleted、#doesNotReleaseAllocationReferencedByRecoveryInFlight、#malformedParentChainCannotAuthorizeRelease、#releasesFullyVoidedNeverStartedTaskWithoutDeletingBindingHistory | 已消费/在途/异常父链拒绝，从未开始全量作废可收口且历史保留 |
+| F4 批读与主库数据域 | #batchReadsOnlyRequestedBindingRevisionAndAuthorizedDoubleParent、#entityMapperInsertUsesPrimaryAuditAndSubjectDataScope；ServiceSubmissionPersistenceIT#actualEntityInsertUsesPrimaryAudit | 指定版本/空列表/错门店/错主体、实际审计与数据域通过 |
+
+首轮缺类20项断言失败、0错误；实现后20/20通过。独立审查指出持久化租约精度，按合同影响升级为P2，补反例RED→GREEN。
+最终普通reactor54/54、真实MySQL87/87（新增21＋原66），全部0失败/错误/跳过；不以H2或mock冒充实际约束。
+消融仅移除来源修订单调守卫，21项中1断言失败/0错误；finally恢复后完整回归通过。
+五组设计生成器、冻结V1、Node6项及SQL方言无新增检查通过；方法JSON及生成清单已同步实施边界，9条原签名不变。
+
+文件对账：beauty-core新增3Entity、2个IT；改Mapper集合和数据域注册；改MySQL验证脚本；README、TDD、方法JSON/对应生成方法清单及ledger同步。
+ActionLog复用已有类，未新建Repository/转发Service、未加公共接口/表/错误码/配置，不修改零售或餐饮代码。
+首批16项P1持久化合同完成；49任务整体、SHR共用人员/资源及跨域恢复/预约工作台仍待后续，readiness503不变。
+
+最终双部署与可执行验证：BeautyStandaloneEndToEndIT实际TCP→业务→MySQL1项通过；BeautyPolicyEndToEndIT宿主HTTP→MySQL1项通过，全部0失败/错误/跳过。
+实际最终JAR关闭态无数据库启动，liveness200/readiness503。本地检查点保留在美业隔离工作树，不合并/推送。

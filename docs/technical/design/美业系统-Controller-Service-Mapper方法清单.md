@@ -2885,7 +2885,7 @@ int update(BtyServiceSubmission row, Wrapper<BtyServiceSubmission> updateWrapper
 BtyServiceSubmission selectByRequestKey(String entityNo, String storeNo, String requestKeyHash);
 ```
 
-READ守卫：请求唯一键冲突后比对payloadHash，异参拒绝；同参返回原意图。
+READ守卫：请求唯一键冲突后比对payloadHash，异参拒绝；同参返回原意图。 原签名不含action，未来Service将action纳入规范键摘要；若库内跨action同摘要多行，单行读取拒绝歧义，禁止LIMIT1任取。
 
 ```java
 BtyServiceSubmission selectScopedForUpdate(String entityNo, String storeNo, String submissionNo);
@@ -2897,13 +2897,13 @@ LOCK守卫：只锁已存在根；未查到不等于建立互斥锁。创建靠�
 List<BtyServiceSubmission> selectDueForUpdate(String entityNo, String storeNo, LocalDateTime now, int limit);
 ```
 
-LOCK守卫：短事务有界FOR UPDATE SKIP LOCKED，取走时同事务推进nextRetryAt/version；外部调用不持锁，幂等原号抗重入。
+LOCK守卫：短事务有界FOR UPDATE SKIP LOCKED，取走时同事务推进nextRetryAt/version；外部调用不持锁，幂等原号抗重入。 limit只接受1..100，空retry不视为到期。
 
 ```java
 int advanceProgress(String entityNo, String storeNo, String submissionNo, long expectedVersion, String expectedStatus, String targetStatus, LocalDateTime nextRetryAt, String failureCode, String actorNo, LocalDateTime updatedAt);
 ```
 
-CAS守卫：按固定状态迁移推进；未知不能写成失败后另起来源；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+CAS守卫：按固定状态迁移推进；未知不能写成失败后另起来源；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。 活动态租约按DATETIME(3)持久化精度严格晚于updatedAt；终态清空retry，REJECTED需安全错误码。
 
 ### ai.neargo.shop.beauty.mapper.BeautyMappers.TradeBindingMapper
 
@@ -3155,19 +3155,19 @@ LOCK守卫：主体内规范来源行共用一把锁，不按store/version复制
 int allocateQuantity(String entityNo, String guardNo, long expectedVersion, long expectedSourceRevision, BigDecimal incrementQty, String actorNo, LocalDateTime updatedAt);
 ```
 
-CAS守卫：incrementQty>0且allocated_qty+incrementQty<=source_qty；唯一来源行、版本和可信快照匹配；受权来源/门店在Service验证。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+CAS守卫：incrementQty>0且allocated_qty+incrementQty<=source_qty；唯一来源行、版本和可信快照匹配；受权来源/门店在Service验证。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。 数量须能以六位小数精确表示，不允许舍入成零仍报告成功。
 
 ```java
 int releaseUnconsumedQuantity(String entityNo, String guardNo, long expectedVersion, BigDecimal releaseQty, String actorNo, LocalDateTime updatedAt);
 ```
 
-CAS守卫：只释放已确认未消费且不被在途提交引用的分配；0<releaseQty<=allocated_qty，不回退已履约数量。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+CAS守卫：只释放已确认未消费且不被在途提交引用的分配；0<releaseQty<=allocated_qty，不回退已履约数量。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。 现有签名无目标binding/消费水位，数据层保守要求全部历史绑定（含软删）均有合法双父链、从未开始且全量VOIDED任务和BOUND/REJECTED提交；否则整guard拒绝释放。局部空闲量释放及未形成绑定的在途引用由后续正式Service/合同解决。
 
 ```java
 int refreshSourceSnapshot(String entityNo, String guardNo, long expectedVersion, long expectedSourceRevision, long newSourceRevision, BigDecimal newSourceQty, String sourceHash, String actorNo, LocalDateTime updatedAt);
 ```
 
-CAS守卫：只接受权威新来源修订，newSourceQty>=allocated_qty且修订单调；未知状态不替换来源。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+CAS守卫：只接受权威新来源修订，newSourceQty>=allocated_qty且修订单调；未知状态不替换来源。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。 newSourceQty最多六位小数，sourceHash为64位摘要。
 
 ## 五、54个共用CONTRACT及既有方法证据
 

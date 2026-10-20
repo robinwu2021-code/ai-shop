@@ -9,9 +9,12 @@ import ai.neargo.shop.beauty.entity.BtyServiceDefinitionVersion;
 import ai.neargo.shop.beauty.entity.BtyServiceParticipation;
 import ai.neargo.shop.beauty.entity.BtyServiceRequirement;
 import ai.neargo.shop.beauty.entity.BtyServiceStep;
+import ai.neargo.shop.beauty.entity.BtyServiceSubmission;
 import ai.neargo.shop.beauty.entity.BtyServiceTask;
+import ai.neargo.shop.beauty.entity.BtySourceAllocationGuard;
 import ai.neargo.shop.beauty.entity.BtyStorePolicy;
 import ai.neargo.shop.beauty.entity.BtyStorePolicyVersion;
+import ai.neargo.shop.beauty.entity.BtyTradeBinding;
 import ai.neargo.shop.beauty.entity.BtyWorkOrder;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.math.BigDecimal;
@@ -428,6 +431,191 @@ public final class BeautyMappers {
                 @Param("participationNo") String participationNo, @Param("expectedVersion") long expectedVersion,
                 @Param("endedAt") LocalDateTime endedAt, @Param("reason") String reason,
                 @Param("actorNo") String actorNo, @Param("updatedAt") LocalDateTime updatedAt);
+    }
+
+
+    /** 提交与恢复意图；外部权威结果由业务Service验证，不持锁调用外部。 */
+    public interface ServiceSubmissionMapper extends BaseMapper<BtyServiceSubmission> {
+        /** 只读取已授权本地事实；不存在的行不提供创建互斥。 */
+        @Select("""
+                SELECT * FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                AND store_no=#{storeNo} AND request_key_hash=#{requestKeyHash} AND deleted=0
+                AND (work_order_no IS NULL OR EXISTS (SELECT 1 FROM bty_work_order w
+                WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo} AND w.store_no=#{storeNo} AND w.deleted=0
+                AND w.work_order_no=bty_service_submission.work_order_no))
+                """)
+        BtyServiceSubmission selectByRequestKey(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo, @Param("requestKeyHash") String requestKeyHash);
+
+        /** 只读取已授权本地事实；不存在的行不提供创建互斥。 */
+        @Select("""
+                SELECT * FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                AND store_no=#{storeNo} AND submission_no=#{submissionNo} AND deleted=0
+                AND (work_order_no IS NULL OR EXISTS (SELECT 1 FROM bty_work_order w
+                WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo} AND w.store_no=#{storeNo} AND w.deleted=0
+                AND w.work_order_no=bty_service_submission.work_order_no))
+                FOR UPDATE
+                """)
+        BtyServiceSubmission selectScopedForUpdate(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo, @Param("submissionNo") String submissionNo);
+
+        /** 只读取已授权本地事实；不存在的行不提供创建互斥。 */
+        @Select("""
+                <script>
+                SELECT * FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                AND store_no=#{storeNo} AND deleted=0 AND status IN ('RECEIVED','SOURCE_PENDING','RECOVERING')
+                AND next_retry_at IS NOT NULL AND next_retry_at &lt;= #{now}
+                AND (work_order_no IS NULL OR EXISTS (SELECT 1 FROM bty_work_order w
+                WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo} AND w.store_no=#{storeNo} AND w.deleted=0
+                AND w.work_order_no=bty_service_submission.work_order_no))
+                ORDER BY next_retry_at, id
+                LIMIT <choose><when test="limit &gt; 0 and limit &lt;=
+                100">#{limit}</when><otherwise>0</otherwise></choose>
+                FOR UPDATE SKIP LOCKED
+                </script>
+                """)
+        List<BtyServiceSubmission> selectDueForUpdate(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo, @Param("now") LocalDateTime now, @Param("limit") int limit);
+
+        /** 范围或版本不符返回0；标量SQL显式写审计，Service须检查结果与外部证明。 */
+        @Update("""
+                UPDATE bty_service_submission SET status=#{targetStatus}, next_retry_at=#{nextRetryAt},
+                failure_code=#{failureCode}, version=version+1, updated_by=#{actorNo}, updated_at=#{updatedAt}
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0
+                AND submission_no=#{submissionNo} AND version=#{expectedVersion} AND status=#{expectedStatus}
+                AND ((status='RECEIVED' AND #{targetStatus} IN ('RECEIVED','SOURCE_PENDING','REJECTED'))
+                OR (status='SOURCE_PENDING' AND #{targetStatus} IN
+                ('SOURCE_PENDING','RECOVERING','BOUND','REJECTED'))
+                OR (status='RECOVERING' AND #{targetStatus} IN
+                ('RECOVERING','SOURCE_PENDING','BOUND','REJECTED')))
+                AND ((#{targetStatus} IN ('RECEIVED','SOURCE_PENDING','RECOVERING') AND
+                CAST(#{nextRetryAt} AS DATETIME(3))>CAST(#{updatedAt} AS DATETIME(3)))
+                OR (#{targetStatus} IN ('BOUND','REJECTED') AND #{nextRetryAt} IS NULL))
+                AND (#{targetStatus}<>'REJECTED' OR (#{failureCode} IS NOT NULL AND
+                LENGTH(TRIM(#{failureCode}))>0))
+                AND (#{targetStatus}<>'BOUND' OR #{failureCode} IS NULL)
+                AND (work_order_no IS NULL OR EXISTS (SELECT 1 FROM bty_work_order w
+                WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo} AND w.store_no=#{storeNo} AND w.deleted=0
+                AND w.work_order_no=bty_service_submission.work_order_no))
+                AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
+                """)
+        int advanceProgress(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("submissionNo") String submissionNo, @Param("expectedVersion") long expectedVersion,
+                @Param("expectedStatus") String expectedStatus, @Param("targetStatus") String targetStatus,
+                @Param("nextRetryAt") LocalDateTime nextRetryAt, @Param("failureCode") String failureCode,
+                @Param("actorNo") String actorNo, @Param("updatedAt") LocalDateTime updatedAt);
+
+    }
+
+    /** 不可变来源绑定历史；从双父链确认范围，按版本批读。 */
+    public interface TradeBindingMapper extends BaseMapper<BtyTradeBinding> {
+        /** 只读取已授权本地事实；不存在的行不提供创建互斥。 */
+        @Select("""
+                <script>
+                SELECT b.* FROM bty_trade_binding b
+                JOIN bty_service_task t ON t.tenant_no=b.tenant_no AND t.entity_no=b.entity_no AND
+                t.task_no=b.task_no
+                JOIN bty_work_order w ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no AND
+                w.work_order_no=t.work_order_no
+                JOIN bty_service_submission s ON s.tenant_no=b.tenant_no AND s.entity_no=b.entity_no
+                AND s.submission_no=b.submission_no
+                WHERE b.tenant_no='MAIN' AND b.entity_no=#{entityNo} AND b.deleted=0 AND t.deleted=0 AND
+                w.deleted=0
+                AND s.deleted=0 AND w.store_no=#{storeNo} AND s.store_no=#{storeNo}
+                AND (s.work_order_no IS NULL OR s.work_order_no=w.work_order_no) AND
+                b.binding_revision=#{bindingRevision}
+                <choose><when test="taskNos != null and !taskNos.isEmpty()">
+                AND b.task_no IN <foreach collection="taskNos" item="task" open="(" separator=","
+                close=")">#{task}</foreach>
+                </when><otherwise>AND 1=0</otherwise></choose>
+                ORDER BY b.task_no, b.binding_no
+                </script>
+                """)
+        List<BtyTradeBinding> selectByTaskRevisions(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo, @Param("taskNos") List<String> taskNos,
+                @Param("bindingRevision") long bindingRevision);
+
+    }
+
+    /** 主体内规范来源行仲裁；涉及来源先锁guard，再锁工单与任务。 */
+    public interface SourceAllocationGuardMapper extends BaseMapper<BtySourceAllocationGuard> {
+        /** 只读取已授权本地事实；不存在的行不提供创建互斥。 */
+        @Select("""
+                SELECT * FROM bty_source_allocation_guard WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                AND source_kind=#{sourceKind} AND source_no=#{sourceNo} AND source_line_ref=#{sourceLineRef}
+                AND deleted=0 FOR UPDATE
+                """)
+        BtySourceAllocationGuard selectSourceForUpdate(@Param("entityNo") String entityNo,
+                @Param("sourceKind") String sourceKind, @Param("sourceNo") String sourceNo,
+                @Param("sourceLineRef") String sourceLineRef);
+
+        /** 范围或版本不符返回0；标量SQL显式写审计，Service须检查结果与外部证明。 */
+        @Update("""
+                UPDATE bty_source_allocation_guard SET allocated_qty=allocated_qty+#{incrementQty},
+                version=version+1,
+                updated_by=#{actorNo}, updated_at=#{updatedAt}
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND guard_no=#{guardNo} AND deleted=0
+                AND version=#{expectedVersion} AND source_revision=#{expectedSourceRevision}
+                AND #{incrementQty}>0 AND #{incrementQty}=ROUND(#{incrementQty},6)
+                AND allocated_qty+#{incrementQty}<=source_qty
+                AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
+                """)
+        int allocateQuantity(@Param("entityNo") String entityNo, @Param("guardNo") String guardNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("expectedSourceRevision") long expectedSourceRevision,
+                @Param("incrementQty") BigDecimal incrementQty, @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
+
+        /** 范围或版本不符返回0；标量SQL显式写审计，Service须检查结果与外部证明。 */
+        @Update("""
+                UPDATE bty_source_allocation_guard SET allocated_qty=allocated_qty-#{releaseQty},
+                version=version+1,
+                updated_by=#{actorNo}, updated_at=#{updatedAt}
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND guard_no=#{guardNo} AND deleted=0
+                AND version=#{expectedVersion} AND #{releaseQty}>0 AND #{releaseQty}=ROUND(#{releaseQty},6)
+                AND #{releaseQty}<=allocated_qty
+                AND NOT EXISTS (SELECT 1 FROM bty_trade_binding b
+                LEFT JOIN bty_service_task t ON t.tenant_no=b.tenant_no AND t.entity_no=b.entity_no AND
+                t.task_no=b.task_no
+                LEFT JOIN bty_work_order w ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no
+                AND w.work_order_no=t.work_order_no
+                LEFT JOIN bty_service_submission s ON s.tenant_no=b.tenant_no AND s.entity_no=b.entity_no
+                AND s.submission_no=b.submission_no
+                WHERE b.tenant_no='MAIN' AND b.entity_no=#{entityNo} AND b.guard_no=#{guardNo}
+                AND (t.id IS NULL OR w.id IS NULL OR s.id IS NULL OR t.deleted<>0 OR w.deleted<>0 OR s.deleted<>0
+                OR b.source_kind<>bty_source_allocation_guard.source_kind
+                OR b.source_no<>bty_source_allocation_guard.source_no
+                OR b.source_line_ref<>bty_source_allocation_guard.source_line_ref OR
+                b.uom<>bty_source_allocation_guard.uom
+                OR b.source_revision>bty_source_allocation_guard.source_revision
+                OR w.store_no<>s.store_no OR (s.work_order_no IS NOT NULL AND s.work_order_no<>w.work_order_no)
+                OR t.status<>'VOIDED' OR t.done_qty<>0 OR t.voided_qty<>t.qty OR t.started_at IS NOT NULL
+                OR s.status NOT IN ('BOUND','REJECTED')))
+                AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
+                """)
+        int releaseUnconsumedQuantity(@Param("entityNo") String entityNo, @Param("guardNo") String guardNo,
+                @Param("expectedVersion") long expectedVersion, @Param("releaseQty") BigDecimal releaseQty,
+                @Param("actorNo") String actorNo, @Param("updatedAt") LocalDateTime updatedAt);
+
+        /** 范围或版本不符返回0；标量SQL显式写审计，Service须检查结果与外部证明。 */
+        @Update("""
+                UPDATE bty_source_allocation_guard SET source_revision=#{newSourceRevision},
+                source_qty=#{newSourceQty},
+                source_hash=#{sourceHash}, version=version+1, updated_by=#{actorNo}, updated_at=#{updatedAt}
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND guard_no=#{guardNo} AND deleted=0
+                AND version=#{expectedVersion} AND source_revision=#{expectedSourceRevision}
+                AND #{newSourceRevision}>source_revision AND #{newSourceQty}>=allocated_qty
+                AND #{newSourceQty}=ROUND(#{newSourceQty},6) AND #{sourceHash} IS NOT NULL AND
+                LENGTH(#{sourceHash})=64
+                AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
+                """)
+        int refreshSourceSnapshot(@Param("entityNo") String entityNo, @Param("guardNo") String guardNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("expectedSourceRevision") long expectedSourceRevision,
+                @Param("newSourceRevision") long newSourceRevision, @Param("newSourceQty") BigDecimal newSourceQty,
+                @Param("sourceHash") String sourceHash, @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
+
     }
 
 }
