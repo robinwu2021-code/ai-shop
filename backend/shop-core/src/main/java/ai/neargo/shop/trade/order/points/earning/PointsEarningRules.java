@@ -33,9 +33,15 @@ public class PointsEarningRules {
     public PointsEarningRules(@Qualifier("dataSource") DataSource source, PointsEarningCatalogPort catalog) {
         this.jdbc = new JdbcTemplate(source); this.catalog = catalog;
     }
+    public void ensureZeroDefault(String type) {
+        ensureDefault(type, new EarnRule(RuleMode.RATIO,0), 0, "新积分默认不赠送，发布规则后生效");
+    }
     public void ensureDefault(String type, EarnRule legacy, long legacyRevision) {
+        ensureDefault(type,legacy,legacyRevision,"迁入原兜底规则，原修订 " + legacyRevision);
+    }
+    private void ensureDefault(String type, EarnRule legacy, long legacyRevision, String remark) {
         var value = new Rule(type, "DEFAULT", 1, 1L, legacy.mode().name(), legacy.value(),
-                legacy.mode().name(), legacy.value(), "SYSTEM", "迁入原兜底规则，原修订 " + legacyRevision, System.currentTimeMillis());
+                legacy.mode().name(), legacy.value(), "SYSTEM", remark, System.currentTimeMillis());
         int created = jdbc.update("INSERT IGNORE INTO ord_points_earn_rule(type_code,scope_no,version,payload_json) VALUES(?, 'DEFAULT', 1, ?)", type, encode(value));
         if (created == 1) jdbc.update("INSERT INTO ord_points_earn_rule_revision(request_id,type_code,scope_no,revision,command_json,payload_json) VALUES(?,?,'DEFAULT',1,?,?)",
                 "EARN:IMPORT:" + type, type, "IMPORT", encode(value));
@@ -46,9 +52,9 @@ public class PointsEarningRules {
     }
     public Page page(String type, long page, int size) {
         require(page >= 1 && page <= 1000000 && size >= 1 && size <= 100, "POINTS_EARN_PAGE_INVALID");
-        long total = jdbc.queryForObject("SELECT COUNT(*) FROM ord_points_earn_rule WHERE type_code=?", Long.class, type);
-        var rows = jdbc.query("SELECT payload_json FROM ord_points_earn_rule WHERE type_code=? ORDER BY CASE WHEN scope_no='DEFAULT' THEN 0 ELSE 1 END,scope_no LIMIT ? OFFSET ?",
-                (r,n) -> decode(r.getString(1)), type, size, (page-1)*size);
+        long total = jdbc.queryForObject("SELECT COUNT(*) FROM ord_points_earn_rule WHERE (? IS NULL OR type_code=?)", Long.class, type, type);
+        var rows = jdbc.query("SELECT payload_json FROM ord_points_earn_rule WHERE (? IS NULL OR type_code=?) ORDER BY type_code,CASE WHEN scope_no='DEFAULT' THEN 0 ELSE 1 END,scope_no LIMIT ? OFFSET ?",
+                (r,n) -> decode(r.getString(1)), type, type, size, (page-1)*size);
         return new Page(rows,total,page,size);
     }
     public List<Rule> history(String type, String scope) {

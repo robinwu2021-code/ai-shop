@@ -41,10 +41,10 @@ export interface FinanceApi {
 
   pointsOrderEarning(subOrderNo: string): Promise<OrderEarningInspection>;
   pointsEarningContext(): Promise<EarningContext>;
-  pointsEarningRules(q: {page: number; size: number}): Promise<EarningRulePage>;
-  pointsEarningHistory(scope: string): Promise<EarningRule[]>;
+  pointsEarningRules(q: {page: number; size: number; typeCode?: string; all?: boolean}): Promise<EarningRulePage>;
+  pointsEarningHistory(scope: string, typeCode?: string): Promise<EarningRule[]>;
   changePointsEarningRule(v: EarningChange): Promise<EarningRule>;
-  previewPointsEarning(v: {categoryNo: string | null; cashMinor: number}): Promise<EarningCalculation>;
+  previewPointsEarning(v: {categoryNo: string | null; cashMinor: number; typeCode?: string; currency?: string}): Promise<EarningCalculation>;
   pointsTypes(): Promise<PointsTypeConfig[]>;
   createPointsType(v: PointsCreate): Promise<PointsChangeResult>;
   transitionPointsType(v: PointsTypeChange): Promise<PointsChangeResult>;

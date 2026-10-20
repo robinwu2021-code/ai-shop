@@ -13092,9 +13092,14 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/EarningCategory"
+        types:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PointsTypeConfig"
       required:
         - "type"
         - "categories"
+        - "types"
       additionalProperties: false
     EarningCategory:
       type: "object"
@@ -13227,6 +13232,32 @@ components:
     EarningCalculation:
       type: "object"
       properties:
+        type:
+          type: "object"
+          properties:
+            typeCode:
+              type: "string"
+            name:
+              type: "string"
+            market:
+              type: "string"
+            currency:
+              type: "string"
+            scale:
+              type: "number"
+            ratePoints:
+              type: "number"
+            rateMinor:
+              type: "number"
+          required:
+            - "typeCode"
+            - "name"
+            - "market"
+            - "currency"
+            - "scale"
+            - "ratePoints"
+            - "rateMinor"
+          additionalProperties: false
         matched:
           type: "object"
           properties:
@@ -13258,6 +13289,7 @@ components:
         points:
           type: "number"
       required:
+        - "type"
         - "matched"
         - "cashMinor"
         - "points"

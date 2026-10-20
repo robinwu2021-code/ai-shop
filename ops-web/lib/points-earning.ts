@@ -1,6 +1,6 @@
 import type { PointsTypeConfig } from "@/lib/types";
 export interface EarningCategory { categoryNo: string; parentNo: string | null; name: string; path: string }
-export interface EarningContext { type: PointsTypeConfig | null; categories: EarningCategory[] }
+export interface EarningContext { type: PointsTypeConfig | null; categories: EarningCategory[]; types: PointsTypeConfig[] }
 export interface EarningRule {
   typeCode: string; scope: string; revision: number; activeRevision: number | null;
   mode: "RATIO" | "FIXED"; value: number; activeMode: "RATIO" | "FIXED" | null; activeValue: number | null;
@@ -8,7 +8,7 @@ export interface EarningRule {
 }
 export interface EarningRulePage { rows: EarningRule[]; total: number; page: number; size: number }
 export interface EarningChange { requestId: string; typeCode: string; scope: string; expectedRevision: number; action: "SAVE" | "PUBLISH" | "DISABLE"; ratioBp: number | null; remark: string }
-export interface EarningCalculation { matched: { scope: string; revision: number; rule: {mode: "RATIO" | "FIXED"; value: number} }; cashMinor: number; points: number }
+export interface EarningCalculation { type: {typeCode:string;name:string;market:string;currency:string;scale:number;ratePoints:number;rateMinor:number}; matched: { scope: string; revision: number; rule: {mode: "RATIO" | "FIXED"; value: number} }; cashMinor: number; points: number }
 /** Decimal text is checked before conversion; no implicit rounding of operator input. */
 export function percentToBasisPoints(input: string): number {
   if (!/^\d{1,3}(?:\.\d{1,2})?$/.test(input.trim())) throw new Error("比例需为 0～100%，最多两位小数");
