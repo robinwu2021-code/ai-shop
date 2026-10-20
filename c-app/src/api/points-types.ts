@@ -8,7 +8,7 @@ export type OrderPointsQuoteState = "AVAILABLE" | "UNAVAILABLE";
 export type BuyerPointsAccountStatus = "DRAFT" | "ACTIVE" | "DRAINING" | "RETIRED";
 
 /** BuyerPointsEntry 的 bucket 取值域，按服务端契约校验。 */
-export type BuyerPointsEntryBucket = "AVAILABLE" | "PENDING" | "HELD";
+export type BuyerPointsEntryBucket = "AVAILABLE" | "PENDING" | "HELD" | "REFUND_RESERVED";
 
 export interface PointsOrderState {
   /** 源下单处理阶段 */
@@ -48,6 +48,8 @@ export interface OrderPointsQuote {
 }
 
 export interface BuyerPointsAccount {
+  /** 积分名称 */
+  name: string;
   /** 积分类型唯一编码 */
   typeCode: string;
   /** 市场代码 */
@@ -77,6 +79,10 @@ export interface BuyerPointsAccount {
 }
 
 export interface BuyerPointsEntry {
+  voucherNo?: string | null;
+  voucherDocumentNo?: string | null;
+  direction?: string | null;
+  businessRef?: string | null;
   /** 不可变积分分录编号 */
   entryNo: string;
   /** 积分账本或资金池分桶 */

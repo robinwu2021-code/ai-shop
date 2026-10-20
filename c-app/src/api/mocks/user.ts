@@ -39,7 +39,7 @@ export const userMock: Pick<ShopApi,
   // ---------------------------------------------------------------- 积分
   async pointsAccounts() {
     const account = buildAccount(db.points);
-    return delay([{ typeCode: "CN", market: "CN", currency: "CNY", status: "ACTIVE" as const,
+    return delay([{ typeCode: "CN", name: "平台积分", market: "CN", currency: "CNY", status: "ACTIVE" as const,
       balance: account.balance, pendingBalance: account.pendingBalance, heldBalance: 0,
       ratePoints: 2, rateMinor: 1, deductRatioBp: 3000, idleDays: POINTS.inactiveDays,
       frozen: false, expireAt: account.expiringAt ?? null }]);

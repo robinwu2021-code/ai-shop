@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService;
 import ai.neargo.shop.pay.points.admin.PointsInspectionService;
 import ai.neargo.shop.pay.points.admin.PointsInspectionService.AccountView;
-import ai.neargo.shop.pay.points.admin.PointsInspectionService.EntryPage;
 import ai.neargo.shop.pay.points.model.HolderType;
 import ai.neargo.shop.pay.points.model.PointType;
 import java.util.List;
@@ -52,13 +51,25 @@ public class BizStorePointsController {
 
   @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
   @GetMapping("/biz/points/store-entries")
-  public EntryPage entries(
+  public StoreEntryPage entries(
       @RequestParam String typeCode,
       @RequestParam(defaultValue = "0") long after,
       @RequestParam(defaultValue = "20") int limit) {
-    return inspection.entries(
-        typeCode, HolderType.STORE, BizContext.requireStoreNo(), null, after, limit);
+    if (typeCode.isBlank() || after < 0 || limit < 1 || limit > 50)
+      throw new IllegalArgumentException("POINTS_ENTRIES_QUERY_INVALID");
+    var page = inspection.entries(typeCode, HolderType.STORE, BizContext.requireStoreNo(), null, after, limit);
+    var metadata = new ai.neargo.shop.payclient.PointsEntryMetadata(inspection, typeCode);
+    return new StoreEntryPage(page.rows().stream().map(row -> new StoreEntry(
+        row.id(), row.entryNo(), row.voucherNo(), row.voucherDocumentNo(), row.holderType(),
+        row.holderNo(), row.bucket(), row.deltaPoints(), row.afterPoints(), row.at(),
+        metadata.forVoucher(row.voucherNo()).direction(), metadata.forVoucher(row.voucherNo()).businessRef()
+    )).toList(), page.next(), page.hasMore());
   }
+  public record StoreEntry(long id, String entryNo, String voucherNo, String voucherDocumentNo,
+      HolderType holderType, String holderNo, ai.neargo.shop.pay.points.model.Bucket bucket,
+      long deltaPoints, long afterPoints, long at, String direction, String businessRef) {}
+  public record StoreEntryPage(List<StoreEntry> rows, long next, boolean hasMore) {}
+
   @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
   @GetMapping("/biz/points/store-statements")
   public BizPointsStatementService.Page statements(@RequestParam String typeCode,

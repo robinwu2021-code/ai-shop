@@ -14,10 +14,11 @@ const moreLoading = ref(false);
 const loaded = ref(false);
 const failed = ref(false);
 let requestNo = 0;
+let loadNo = 0;
 
 const account = computed(() => accounts.value.find((a) => a.typeCode === typeCode.value));
 const tabs = computed(() => accounts.value.map((a) => ({
-  key: a.typeCode, label: `${a.market} · ${a.typeCode}`,
+  key: a.typeCode, label: a.name || a.typeCode,
 })));
 
 async function selectType(next: string) {
@@ -26,6 +27,7 @@ async function selectType(next: string) {
   nextCursor.value = 0;
   hasMore.value = false;
   loaded.value = false;
+  moreLoading.value = false;
   const current = ++requestNo;
   try {
     const page = await api.pointsEntries(next);
@@ -48,31 +50,30 @@ async function loadMore() {
   try {
     const page = await api.pointsEntries(typeCode.value, nextCursor.value);
     if (current !== requestNo) return;
-    records.value = [...records.value, ...page.rows];
+    records.value = [...records.value, ...page.rows.filter(row => !records.value.some(old => old.entryNo === row.entryNo))];
     nextCursor.value = page.next;
     hasMore.value = page.hasMore;
   } catch {
     if (current === requestNo) failed.value = true;
   } finally {
-    moreLoading.value = false;
+    if (current === requestNo) moreLoading.value = false;
   }
 }
 
 async function load() {
+  const token = ++loadNo;
+  ++requestNo; moreLoading.value = false;
+  accounts.value = []; records.value = []; loaded.value = false; failed.value = false; hasMore.value = false;
   try {
-    accounts.value = await api.pointsAccounts();
-    const next = accounts.value.some((a) => a.typeCode === typeCode.value)
-      ? typeCode.value : accounts.value[0]?.typeCode;
+    const result = await api.pointsAccounts();
+    if (token !== loadNo) return;
+    accounts.value = result;
+    const next = result.some(a => a.typeCode === typeCode.value) ? typeCode.value : result[0]?.typeCode;
     if (next) await selectType(next);
-    else {
-      typeCode.value = "";
-      records.value = [];
-      loaded.value = true;
-      failed.value = false;
-    }
+    else { typeCode.value = ""; loaded.value = true; }
   } catch {
-    loaded.value = true;
-    failed.value = true;
+    if (token !== loadNo) return;
+    loaded.value = true; failed.value = true;
   }
 }
 
@@ -80,16 +81,18 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold :title-key="'points.title'">
+  <sh-scaffold :title-key="'points.title'" :failed="failed" @retry="load">
     <sh-tabs v-if="tabs.length > 1" :items="tabs" :active="typeCode" @change="selectType"></sh-tabs>
     <view v-if="account" class="sh-card hero">
+      <text class="txt-title">{{ account.name || account.typeCode }}</text>
       <text class="txt-caption hero__label">{{ $t("points.balance") }}</text>
       <text class="txt-hero hero__v sh-num">{{ account.balance }}</text>
-      <text class="txt-caption hero__scope">{{ account.market }} · {{ account.typeCode }} · {{ account.currency }}</text>
-      <text v-if="account.pendingBalance" class="txt-caption hero__pending txt-primary sh-num">
+      <text class="txt-caption hero__scope">{{ $t("points.code") }}: {{ account.typeCode }}</text>
+      <text class="txt-caption hero__scope">{{ $t("points.currency") }}: {{ account.currency }}</text>
+      <text class="txt-caption hero__pending txt-primary sh-num">
         {{ $t("points.pendingCount", { n: account.pendingBalance }) }}
       </text>
-      <text v-if="account.heldBalance" class="txt-caption hero__pending txt-primary sh-num">
+      <text class="txt-caption hero__pending txt-primary sh-num">
         {{ $t("points.held", { n: account.heldBalance }) }}
       </text>
       <text v-if="account.frozen" class="txt-caption hero__pending txt-primary">{{ $t("points.frozen") }}</text>
@@ -116,7 +119,10 @@ onShow(load);
       <text class="txt-title">{{ $t("points.records") }}</text>
       <view v-for="r in records" :key="r.entryNo" class="rec sh-row">
         <view class="sh-fill">
-          <text class="txt-sub rec__title">{{ $t(`points.bucket${r.bucket}`) }}</text>
+          <text class="txt-sub rec__title">{{ $t(`points.direction${r.direction || "OTHER"}`) }} · {{ $t(`points.bucket${r.bucket}`) }}</text>
+          <text v-if="r.businessRef" class="txt-caption rec__at">{{ r.businessRef }}</text>
+          <text v-if="r.voucherDocumentNo || r.voucherNo" class="txt-caption rec__at">{{ r.voucherDocumentNo || r.voucherNo }}</text>
+          <text class="txt-caption rec__at">{{ $t("points.posted") }}</text>
           <text class="txt-caption rec__at sh-num">{{ datetime(r.at) }}</text>
         </view>
         <view class="rec__right">

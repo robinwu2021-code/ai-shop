@@ -68,6 +68,7 @@ class BuyerPointsAppServiceTest {
         var service = new BuyerPointsAppServiceImpl(types, inspection);
         var accounts = service.accounts("U1");
         assertThat(accounts).hasSize(2);
+        assertThat(accounts.get(0).name()).isEqualTo("CN");
         assertThat(accounts.get(0).balance()).isEqualTo(20);
         assertThat(accounts.get(0).pendingBalance()).isEqualTo(5);
         assertThat(accounts.get(0).ratePoints()).isEqualTo(2);

@@ -855,6 +855,28 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
 
 
   points: {
+    directionHOLD: "حجز",
+    directionRELEASE: "تحرير",
+
+    bucketISSUABLE: "نقاط قابلة للإصدار",
+    bucketISSUED: "نقاط مصدرة",
+    bucketRECIRCULATABLE: "نقاط قابلة لإعادة التداول",
+
+    bucketAVAILABLE: "نقاط متاحة",
+    bucketPENDING: "نقاط معلقة",
+    bucketHELD: "نقاط محجوزة",
+    bucketREFUND_RESERVED: "نقاط محجوزة للاسترداد",
+    directionEARN: "منح",
+    directionREDEEM: "استخدام",
+    directionREVERSAL: "عكس / إرجاع",
+    directionOTHER: "تغيير محاسبي",
+    historyTerms: "الشروط السابقة (للقراءة فقط)",
+    noHistoryTerms: "لا توجد شروط سابقة",
+    accountFrozen: "الحساب مجمد",
+    accountExpiry: "تاريخ الانتهاء",
+    posted: "تم القيد",
+    code: "رمز النقاط",
+    currency: "العملة",
     statementStateBuilding: "جارٍ الإنشاء",
     statementStateDraft: "بانتظار التأكيد",
     statementStateDisputed: "يوجد اعتراض",

@@ -4016,6 +4016,9 @@ components:
     StorePointType:
       type: "object"
       properties:
+        name:
+          type: "string"
+          description: "积分名称"
         deductRatioBp:
           type: "number"
           description: "最大抵扣比例，万分比"
@@ -4052,6 +4055,7 @@ components:
           "$ref": "#/components/schemas/StorePointTypeStatus"
           description: "服务端业务状态"
       required:
+        - "name"
         - "deductRatioBp"
         - "idleDays"
         - "typeCode"
@@ -4134,6 +4138,18 @@ components:
               voucherNo:
                 type: "string"
                 description: "原记账凭证编号"
+              voucherDocumentNo:
+                type:
+                  - "string"
+                  - "null"
+              direction:
+                type:
+                  - "string"
+                  - "null"
+              businessRef:
+                type:
+                  - "string"
+                  - "null"
               holderType:
                 type: "string"
                 const: "STORE"

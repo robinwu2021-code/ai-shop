@@ -70,7 +70,8 @@ function generatorFor(file) {
   });
 }
 
-let schemas = { ...collectAll(typesFile), ...collectAll(reqFile) };
+let schemas = { ...collectAll(typesFile), ...collectAll(reqFile),
+  ...collectAll(path.resolve(root, "src/api/points-types.ts")) };
 // 支付协议声明在 C 端合同中，响应不能引用共享类型里不存在的组件。
 for (const name of ["PayInit", "PayMethodList"]) {
   const schema = generatorFor(path.resolve(root, "src/api/contract.ts")).createSchema(name);

@@ -1020,6 +1020,28 @@ export default {
 
 
   points: {
+    directionHOLD: "预占",
+    directionRELEASE: "释放",
+
+    bucketISSUABLE: "可发放积分",
+    bucketISSUED: "已发行积分",
+    bucketRECIRCULATABLE: "可回收积分",
+
+    bucketAVAILABLE: "可用积分",
+    bucketPENDING: "待入账积分",
+    bucketHELD: "占用积分",
+    bucketREFUND_RESERVED: "退款预留积分",
+    directionEARN: "发放",
+    directionREDEEM: "核销",
+    directionREVERSAL: "冲正 / 退回",
+    directionOTHER: "账务变动",
+    historyTerms: "历史条款（只读）",
+    noHistoryTerms: "暂无历史条款",
+    accountFrozen: "账户已冻结",
+    accountExpiry: "到期时间",
+    posted: "已记账",
+    code: "积分代码",
+    currency: "币种",
     statementStateBuilding: "生成中",
     statementStateDraft: "待确认",
     statementStateDisputed: "有异议",

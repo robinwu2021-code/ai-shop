@@ -35,6 +35,7 @@ public class BuyerPointsAppServiceImpl implements BuyerPointsAppService {
             accounts.add(
                     new Account(
                             type.typeCode(),
+                            type.name(),
                             type.market(),
                             type.currency(),
                             type.status().name(),
@@ -56,6 +57,7 @@ public class BuyerPointsAppServiceImpl implements BuyerPointsAppService {
         if (userNo == null || userNo.isBlank())
             throw new IllegalArgumentException("POINTS_BUYER_REQUIRED");
         var page = inspection.entries(typeCode, HolderType.USER, userNo, null, after, limit);
+        var metadata = new ai.neargo.shop.payclient.PointsEntryMetadata(inspection, typeCode);
         return new EntryPage(
                 page.rows().stream()
                         .map(
@@ -65,7 +67,9 @@ public class BuyerPointsAppServiceImpl implements BuyerPointsAppService {
                                                 row.bucket().name(),
                                                 row.deltaPoints(),
                                                 row.afterPoints(),
-                                                row.at()))
+                                                row.at(), row.voucherNo(), row.voucherDocumentNo(),
+                                                metadata.forVoucher(row.voucherNo()).direction(),
+                                                metadata.forVoucher(row.voucherNo()).businessRef()))
                         .toList(),
                 page.next(),
                 page.hasMore());

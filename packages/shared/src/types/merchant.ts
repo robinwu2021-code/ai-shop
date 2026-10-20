@@ -21,6 +21,8 @@ import type { AfterSaleStatus, AfterSaleType, Order } from "./trade";
 
 /** Pay ledger views are scoped to the authenticated current store and one points type. */
 export interface StorePointType {
+  /** 积分名称 */
+  name: string;
   /** 最大抵扣比例，万分比 */
   deductRatioBp: number;
   /** 无活动失效天数 */
@@ -78,6 +80,8 @@ export interface StorePointEntryPage {
     /** 原记账凭证编号 */
     voucherNo: string;
     voucherDocumentNo?: string | null;
+    direction?: string | null;
+    businessRef?: string | null;
     /** 账本持有人类型 */
     holderType: "STORE";
     /** 账本持有人编号，与持有人类型联合定位 */

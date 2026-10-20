@@ -855,6 +855,28 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
 
 
   points: {
+    directionHOLD: "Hold",
+    directionRELEASE: "Release",
+
+    bucketISSUABLE: "Issuable points",
+    bucketISSUED: "Issued points",
+    bucketRECIRCULATABLE: "Recirculatable points",
+
+    bucketAVAILABLE: "Available points",
+    bucketPENDING: "Pending points",
+    bucketHELD: "Held points",
+    bucketREFUND_RESERVED: "Refund reserved points",
+    directionEARN: "Earning",
+    directionREDEEM: "Redemption",
+    directionREVERSAL: "Reversal / return",
+    directionOTHER: "Ledger adjustment",
+    historyTerms: "Historical terms (read only)",
+    noHistoryTerms: "No historical terms",
+    accountFrozen: "Account frozen",
+    accountExpiry: "Expires at",
+    posted: "Posted",
+    code: "Points code",
+    currency: "Currency",
     statementStateBuilding: "Generating",
     statementStateDraft: "Awaiting confirmation",
     statementStateDisputed: "Disputed",

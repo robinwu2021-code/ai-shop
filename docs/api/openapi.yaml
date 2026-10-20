@@ -4017,6 +4017,9 @@ components:
     StorePointType:
       type: "object"
       properties:
+        name:
+          type: "string"
+          description: "积分名称"
         deductRatioBp:
           type: "number"
           description: "最大抵扣比例，万分比"
@@ -4053,6 +4056,7 @@ components:
           "$ref": "#/components/schemas/StorePointTypeStatus"
           description: "服务端业务状态"
       required:
+        - "name"
         - "deductRatioBp"
         - "idleDays"
         - "typeCode"
@@ -4135,6 +4139,18 @@ components:
               voucherNo:
                 type: "string"
                 description: "原记账凭证编号"
+              voucherDocumentNo:
+                type:
+                  - "string"
+                  - "null"
+              direction:
+                type:
+                  - "string"
+                  - "null"
+              businessRef:
+                type:
+                  - "string"
+                  - "null"
               holderType:
                 type: "string"
                 const: "STORE"
@@ -12325,6 +12341,251 @@ components:
       type: "object"
       additionalProperties:
         type: "string"
+    BuyerPointsAccount:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+          description: "积分名称"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        market:
+          type: "string"
+          description: "市场代码"
+        currency:
+          type: "string"
+          description: "ISO 货币代码"
+        status:
+          "$ref": "#/components/schemas/BuyerPointsAccountStatus"
+          description: "服务端业务状态"
+        balance:
+          type: "number"
+          description: "可用积分余额"
+        pendingBalance:
+          type: "number"
+          description: "待激活积分余额"
+        heldBalance:
+          type: "number"
+          description: "当前占用积分余额"
+        ratePoints:
+          type: "number"
+          description: "换算比例的积分数量"
+        rateMinor:
+          type: "number"
+          description: "换算比例的最小货币单位数量"
+        deductRatioBp:
+          type: "number"
+          description: "最大抵扣比例，万分比"
+        idleDays:
+          type: "number"
+          description: "账户无活动失效天数"
+        frozen:
+          type: "boolean"
+          description: "是否冻结该账户新增使用"
+        expireAt:
+          type:
+            - "number"
+            - "null"
+          description: "服务端计算的过期时间，Unix 毫秒；无则为空"
+      required:
+        - "name"
+        - "typeCode"
+        - "market"
+        - "currency"
+        - "status"
+        - "balance"
+        - "pendingBalance"
+        - "heldBalance"
+        - "ratePoints"
+        - "rateMinor"
+        - "deductRatioBp"
+        - "idleDays"
+        - "frozen"
+        - "expireAt"
+      additionalProperties: false
+
+    BuyerPointsEntry:
+      type: "object"
+      properties:
+        voucherNo:
+          type:
+            - "string"
+            - "null"
+        voucherDocumentNo:
+          type:
+            - "string"
+            - "null"
+        direction:
+          type:
+            - "string"
+            - "null"
+        businessRef:
+          type:
+            - "string"
+            - "null"
+        entryNo:
+          type: "string"
+          description: "不可变积分分录编号"
+        bucket:
+          "$ref": "#/components/schemas/BuyerPointsEntryBucket"
+          description: "积分账本或资金池分桶"
+        points:
+          type: "number"
+          description: "积分数量"
+        balanceAfter:
+          type: "number"
+          description: "该分录完成后的账本余额"
+        at:
+          type: "number"
+          description: "服务端事件时间，Unix 毫秒"
+      required:
+        - "entryNo"
+        - "bucket"
+        - "points"
+        - "balanceAfter"
+        - "at"
+      additionalProperties: false
+
+    BuyerPointsEntryPage:
+      type: "object"
+      properties:
+        rows:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/BuyerPointsEntry"
+          description: "本页记录"
+        next:
+          type: "number"
+          description: "下一页游标"
+        hasMore:
+          type: "boolean"
+          description: "是否还有后续记录"
+      required:
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+
+    BuyerPointsAccountStatus:
+      type: "string"
+      enum:
+        - "DRAFT"
+        - "ACTIVE"
+        - "DRAINING"
+        - "RETIRED"
+      description: "BuyerPointsAccount 的 status 取值域，按服务端契约校验。"
+
+    BuyerPointsEntryBucket:
+      type: "string"
+      enum:
+        - "AVAILABLE"
+        - "PENDING"
+        - "HELD"
+        - "REFUND_RESERVED"
+      description: "BuyerPointsEntry 的 bucket 取值域，按服务端契约校验。"
+
+    PointsOrderState:
+      type: "object"
+      properties:
+        phase:
+          "$ref": "#/components/schemas/PointsOrderStatePhase"
+          description: "源下单处理阶段"
+        reason:
+          type:
+            - "string"
+            - "null"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "phase"
+        - "reason"
+      additionalProperties: false
+
+    PointsOrderStatePhase:
+      type: "string"
+      enum:
+        - "NONE"
+        - "RAW"
+        - "ADMITTED"
+        - "UNKNOWN"
+        - "READY"
+        - "RECONFIRM"
+        - "CANCEL_REQUESTED"
+        - "CANCELLED"
+      description: "PointsOrderState 的 phase 取值域，按服务端契约校验。"
+
+    OrderPointsQuote:
+      type: "object"
+      properties:
+        state:
+          "$ref": "#/components/schemas/OrderPointsQuoteState"
+          description: "服务端处理状态"
+        reason:
+          type:
+            - "string"
+            - "null"
+          description: "服务端不可用原因或操作审计原因"
+        pointsUsed:
+          type: "number"
+          description: "按服务端报价使用的积分数量"
+        deductMinor:
+          type: "number"
+          description: "积分抵扣金额，最小货币单位"
+        ratePoints:
+          type: "number"
+          description: "换算比例的积分数量"
+        rateMinor:
+          type: "number"
+          description: "换算比例的最小货币单位数量"
+        basePayMinor:
+          type: "number"
+          description: "积分抵扣前的应付金额，最小货币单位"
+        stores:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              storeNo:
+                type: "string"
+                description: "积分业务隔离的门店编号"
+              merchantNo:
+                type: "string"
+                description: "门店归属主体编号，不作为积分隔离维度"
+              policyVersion:
+                type: "number"
+                description: "报价所绑定的门店策略版本"
+              pointsUsed:
+                type: "number"
+                description: "按服务端报价使用的积分数量"
+              deductMinor:
+                type: "number"
+                description: "积分抵扣金额，最小货币单位"
+            required:
+              - "storeNo"
+              - "merchantNo"
+              - "policyVersion"
+              - "pointsUsed"
+              - "deductMinor"
+            additionalProperties: false
+          description: "按门店拆分的服务端报价"
+      required:
+        - "state"
+        - "reason"
+        - "pointsUsed"
+        - "deductMinor"
+        - "ratePoints"
+        - "rateMinor"
+        - "basePayMinor"
+        - "stores"
+      additionalProperties: false
+
+    OrderPointsQuoteState:
+      type: "string"
+      enum:
+        - "AVAILABLE"
+        - "UNAVAILABLE"
+      description: "OrderPointsQuote 的 state 取值域，按服务端契约校验。"
+
 paths:
   "/mp/user/otp/send":
     post:

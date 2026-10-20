@@ -2,11 +2,10 @@
 import { computed, ref, watch } from "vue";
 import StorePointStatements from "@/components/points/StorePointStatements.vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
-import { useI18n } from "vue-i18n";
 import { api } from "@/api";
-import { confirm as confirmDialog } from "@ai-shop/ui/prompt";
+import { datetime } from "@shared/utils/datetime";
 import { useMerchantStore } from "@/stores/merchant";
-import type { PaymentApplyment, StorePointAccount, StorePointAgreement, StorePointTerms, StorePointType } from "@shared/types";
+import type { StorePointAccount, StorePointAgreement, StorePointType } from "@shared/types";
 
 import { preparePointStatementLink } from "@/shared/points-statement-link";
 const merchant = useMerchantStore();
@@ -18,106 +17,69 @@ onLoad((query) => {
     linkQuery.value = { storeNo: query.storeNo, typeCode: query.typeCode, statementNo: query.statementNo };
   }
 });
-const { t } = useI18n();
+
 const canView = computed(() => merchant.can("biz:finance"));
-const isOwner = computed(() => merchant.perms.includes("*"));
+const showStatements = ref(false);
+const showHistory = ref(false);
+let epoch = 0;
+let selectionEpoch = 0;
 const types = ref<StorePointType[]>([]);
 const selected = ref("");
 const account = ref<StorePointAccount | null>(null);
-const terms = ref<StorePointTerms | null>(null);
 const agreement = ref<StorePointAgreement | null>(null);
-const payments = ref<PaymentApplyment[]>([]);
-const channel = ref("");
-const settleMode = ref<"PER_ORDER" | "PERIODIC">("PER_ORDER");
-const accepted = ref(false);
-const saving = ref(false);
 const failed = ref(false);
 const loading = ref(false);
 const current = computed(() => types.value.find((x) => x.typeCode === selected.value));
-const buckets = computed(() => Object.entries(account.value?.snapshot.buckets ?? {}));
-const channels = computed(() => [...new Map(payments.value.filter((p) => p.canReceiveMoney
-  && (!p.storeNo || p.storeNo === merchant.storeNo)).map((p) => [p.payChannel, p.channelName])).entries()]);
+const buckets = computed(() => ["AVAILABLE", "PENDING"].map(key => [key, account.value?.snapshot.buckets[key] ?? 0] as const));
 
 async function selectType(typeCode: string) {
+  const token = ++selectionEpoch;
   const store = merchant.storeNo;
   selected.value = typeCode;
-  account.value = null;
-  terms.value = null;
-  agreement.value = null;
-  accepted.value = false;
+  account.value = null; agreement.value = null; showHistory.value = false;
+  showStatements.value = !!targetStatement.value;
   failed.value = false;
   try {
-    const result = await Promise.all([
-      api.mStorePointAccount(typeCode), api.mStorePointTerms(typeCode), api.mStorePointAgreement(typeCode),
-    ]);
-    if (merchant.storeNo !== store || selected.value !== typeCode) return;
-    [account.value, terms.value, agreement.value] = result;
-  } catch {
-    failed.value = true;
-  }
+    const result = await api.mStorePointAccount(typeCode);
+    if (token !== selectionEpoch || merchant.storeNo !== store || !canView.value) return;
+    account.value = result;
+  } catch { if (token === selectionEpoch && merchant.storeNo === store) failed.value = true; }
 }
-
+async function history() {
+  const token = selectionEpoch; const store = merchant.storeNo;
+  showHistory.value = !showHistory.value;
+  if (!showHistory.value) return;
+  try {
+    const result = await api.mStorePointAgreement(selected.value);
+    if (token === selectionEpoch && merchant.storeNo === store && canView.value) agreement.value = result;
+  } catch { if (token === selectionEpoch && merchant.storeNo === store) failed.value = true; }
+}
 async function load() {
-  pageReady.value = false;
-  account.value = null; terms.value = null; agreement.value = null; types.value = [];
-  loading.value = true;
+  const token = ++epoch;
+  ++selectionEpoch;
+  pageReady.value = false; account.value = null; agreement.value = null; types.value = [];
+  loading.value = true; failed.value = false;
   try {
     if (linkQuery.value) {
       const target = await preparePointStatementLink(merchant, linkQuery.value);
+      if (token !== epoch) return;
       selected.value = target.typeCode; targetStatement.value = target.statementNo;
     } else {
       await Promise.all([merchant.ensureStores(), merchant.ensureScope()]);
       targetStatement.value = "";
     }
-    if (!canView.value || !merchant.storeNo) return;
-    const loadedStore = merchant.storeNo;
-    types.value = await api.mStorePointTypes();
-    if (linkQuery.value && !types.value.some(type => type.typeCode === selected.value)) throw new Error("POINTS_LINK_TYPE_UNKNOWN");
-    payments.value = await api.mPayments().catch(() => []);
-    if (!channels.value.some(([code]) => code === channel.value)) channel.value = channels.value[0]?.[0] ?? "";
-    const choice = types.value.find((x) => x.typeCode === selected.value)
-      ?? types.value.find((x) => x.status === "ACTIVE") ?? types.value[0];
+    if (token !== epoch || !canView.value || !merchant.storeNo) return;
+    const store = merchant.storeNo;
+    const result = await api.mStorePointTypes();
+    if (token !== epoch || store !== merchant.storeNo || !canView.value) return;
+    types.value = result;
+    if (linkQuery.value && !result.some(type => type.typeCode === selected.value)) throw new Error("POINTS_LINK_TYPE_UNKNOWN");
+    const choice = result.find(x => x.typeCode === selected.value) ?? result.find(x => x.status === "ACTIVE") ?? result[0];
     if (choice) await selectType(choice.typeCode);
-    else { selected.value = ""; failed.value = false; }
-    if (merchant.storeNo !== loadedStore) {
-      account.value = null; terms.value = null; agreement.value = null; types.value = [];
-      failed.value = true;
-      return;
-    }
-    pageReady.value = true;
-  } catch {
-    failed.value = true;
-  } finally {
-    loading.value = false;
-  }
-}
-
-function confirm(content: string): Promise<boolean> {
-  return confirmDialog({ title: String(t("points.title")), hint: content });
-}
-
-async function sign() {
-  if (!isOwner.value || !terms.value || !selected.value || !channel.value || !accepted.value || saving.value) return;
-  if (!await confirm(String(t("points.signConfirm")))) return;
-  saving.value = true;
-  try {
-    agreement.value = await api.mSignStorePointAgreement({ typeCode: selected.value,
-      termsVersion: terms.value.version, termsHash: terms.value.hash,
-      settleMode: settleMode.value, channel: channel.value });
-    accepted.value = false;
-  } catch { uni.showToast({ title: String(t("points.actionFailed")), icon: "none" }); }
-  finally { saving.value = false; }
-}
-
-async function terminate() {
-  if (!isOwner.value || !agreement.value || saving.value) return;
-  if (!await confirm(String(t("points.terminateConfirm")))) return;
-  saving.value = true;
-  try {
-    await api.mTerminateStorePointAgreement(selected.value);
-    agreement.value = await api.mStorePointAgreement(selected.value);
-  } catch { uni.showToast({ title: String(t("points.actionFailed")), icon: "none" }); }
-  finally { saving.value = false; }
+    else selected.value = "";
+    if (token === epoch && store === merchant.storeNo) pageReady.value = true;
+  } catch { if (token === epoch) failed.value = true; }
+  finally { if (token === epoch) loading.value = false; }
 }
 
 function openEntries() {
@@ -126,10 +88,8 @@ function openEntries() {
 }
 
 watch(() => merchant.storeNo, () => {
-  if (loading.value) return;
-  // A manual store change leaves the notification context and reloads only the selected store.
+  if (loading.value && linkQuery.value) return;
   linkQuery.value = null; targetStatement.value = "";
-  pageReady.value = false; account.value = null; terms.value = null; agreement.value = null;
   void load();
 });
 onShow(() => { void load(); });
@@ -149,11 +109,11 @@ onShow(() => { void load(); });
       <view class="sh-wrap sh-mt-xs">
         <view v-for="p in types" :key="p.typeCode" class="sh-chip"
           :class="{ 'sh-chip--primary': selected === p.typeCode }" @tap="selectType(p.typeCode)">
-          {{ p.typeCode }} · {{ p.market }}
+          {{ p.name || p.typeCode }}
         </view>
       </view>
       <text v-if="current" class="txt-caption sh-muted note">
-        {{ current.currency }} · {{ current.rate.pointsUnit }} {{ $t("points.pointsUnit") }} =
+        {{ current.typeCode }} · {{ current.currency }} · {{ current.rate.pointsUnit }} {{ $t("points.pointsUnit") }} =
         {{ current.rate.minorUnit }} {{ $t("points.minorUnit") }} · {{ current.status }}
       </text>
     </view>
@@ -161,39 +121,18 @@ onShow(() => { void load(); });
       <text class="txt-title">{{ $t("points.accountBuckets") }}</text>
       <text v-if="!account.exists" class="sh-muted note">{{ $t("points.emptyAccount") }}</text>
       <view v-for="[bucket, value] in buckets" :key="bucket" class="sh-row sh-row--between sh-mt-xs">
-        <text class="sh-muted">{{ bucket }}</text><text class="sh-num">{{ value }}</text>
+        <text class="sh-muted">{{ $t(`points.bucket${bucket}`) }}</text><text class="sh-num">{{ value }}</text>
       </view>
       <view class="sh-btn sh-btn--muted sh-mt-sm" @tap="openEntries">{{ $t("points.records") }}</view>
     </view>
-    <StorePointStatements v-if="selected && canView" :type-code="selected" :store-no="merchant.storeNo" :target-statement="targetStatement" />
-    <view v-if="current" class="sh-card sh-mt-sm">
-      <text class="txt-title">{{ $t("points.agreement") }}</text>
-      <view v-if="agreement" class="note">
-        <text>{{ $t("points.activeAgreement") }} · {{ agreement.termsVersion }} · {{ agreement.settleMode }}</text>
-        <view class="terms">{{ agreement.termsText }}</view>
-        <view v-if="isOwner" class="sh-btn sh-btn--muted sh-mt-sm" @tap="terminate">{{ $t("points.terminate") }}</view>
-      </view>
-      <view v-else-if="terms" class="note">
-        <text class="txt-caption sh-muted">{{ $t("points.termsVersion") }} {{ terms.version }}</text>
-        <view class="terms">{{ terms.text }}</view>
-        <template v-if="isOwner && current.status === 'ACTIVE'">
-          <text class="txt-caption sh-muted note">{{ $t("points.signHint") }}</text>
-          <view class="sh-wrap sh-mt-xs">
-            <view v-for="[code, name] in channels" :key="code" class="sh-chip"
-              :class="{ 'sh-chip--primary': channel === code }" @tap="channel = code">{{ name }}</view>
-          </view>
-          <view class="sh-wrap sh-mt-xs">
-            <view class="sh-chip" :class="{ 'sh-chip--primary': settleMode === 'PER_ORDER' }"
-              @tap="settleMode = 'PER_ORDER'">{{ $t("points.perOrder") }}</view>
-            <view class="sh-chip" :class="{ 'sh-chip--primary': settleMode === 'PERIODIC' }"
-              @tap="settleMode = 'PERIODIC'">{{ $t("points.periodic") }}</view>
-          </view>
-          <view class="note" @tap="accepted = !accepted">{{ accepted ? '☑' : '□' }} {{ $t("points.acceptTerms") }}</view>
-          <view class="sh-btn sh-mt-sm" :class="{ 'is-dim': !accepted || !channel || saving }" @tap="sign">
-            {{ $t("points.sign") }}</view>
-        </template>
-      </view>
-      <text v-else class="sh-muted note">{{ $t("points.noTerms") }}</text>
+    <view v-if="account?.snapshot.frozen" class="sh-card sh-mt-sm">{{ $t("points.accountFrozen") }}</view>
+    <view v-if="account?.snapshot.expireAt" class="sh-card sh-mt-sm">{{ $t("points.accountExpiry") }}: {{ datetime(account.snapshot.expireAt) }}</view>
+    <view v-if="selected" class="sh-btn sh-btn--muted sh-mt-sm" @tap="showStatements = !showStatements">{{ $t("points.statements") }}</view>
+    <StorePointStatements v-if="showStatements && selected && canView" :key="`${merchant.storeNo}:${selected}`" :type-code="selected" :store-no="merchant.storeNo" :target-statement="targetStatement" />
+    <view v-if="selected" class="sh-btn sh-btn--muted sh-mt-sm" @tap="history">{{ $t("points.historyTerms") }}</view>
+    <view v-if="showHistory" class="sh-card sh-mt-sm">
+      <template v-if="agreement"><text>{{ agreement.termsVersion }} · {{ agreement.settleMode }}</text><view class="terms">{{ agreement.termsText }}</view></template>
+      <text v-else>{{ $t("points.noHistoryTerms") }}</text>
     </view>
     </template>
   </sh-scaffold>
