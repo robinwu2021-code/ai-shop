@@ -566,7 +566,7 @@ function refreshMe() {
     // 登出之后不该还挂着别人的邀请进度
     fission.value = null;
   }
-  if (FEATURES.points && user.isPhoneLogin) {
+  if (config.flag("points") && user.isPhoneLogin) {
     api.pointsAccounts().then((accounts) => { if (user.token === token) pointAccounts.value = accounts; })
       .catch(() => { if (user.token === token) pointAccounts.value = []; });
   } else pointAccounts.value = [];
@@ -675,7 +675,7 @@ watch(() => user.isPhoneLogin ? user.token : "", () => {
       <view class="sh-cell sh-row sh-row--between" @tap="gotoAddress">
         <text class="txt-body cell__label">{{ $t("address.title") }}</text>
       </view>
-      <view v-if="FEATURES.points" class="sh-cell sh-row sh-row--between" @tap="gotoPoints">
+      <view v-if="config.flag('points')" class="sh-cell sh-row sh-row--between" @tap="gotoPoints">
         <text class="txt-body cell__label">{{ $t("points.title") }}</text>
         <text class="txt-caption cell__value sh-num">{{ pointsHint }}</text>
       </view>

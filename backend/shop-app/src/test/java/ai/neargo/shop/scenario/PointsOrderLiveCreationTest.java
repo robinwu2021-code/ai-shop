@@ -190,6 +190,12 @@ class PointsOrderLiveCreationTest {
                         .andReturn()
                         .getResponse()
                         .getContentAsString();
+        String capability=mvc().perform(post("/mp/order/capability")
+            .header("Authorization","Bearer "+f.buyer).header("X-Client","H5")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"items\":[{\"goodsNo\":\""+f.goods+"\",\"skuNo\":\""+f.sku+"\",\"qty\":1}],\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
+            .andReturn().getResponse().getContentAsString();
+        assertThat(dataRoot(capability).get("data").get("pointsEnabled").asBoolean()).isTrue();
         var quote = dataRoot(raw).get("data");
         assertThat(quote.get("state").asString()).isEqualTo("AVAILABLE");
         assertThat(quote.get("pointsUsed").asLong()).isEqualTo(20);
@@ -537,17 +543,8 @@ class PointsOrderLiveCreationTest {
         assertThat(merchants.paymentRouteOf(entity, store, "TEST")).isPresent();
         assertThat(merchants.activeChannelsOf(entity, store)).contains("TEST");
         assertThat(channels.payableChannels(merchants.marketOf(entity))).contains("TEST");
-        policies.change(
-                new PointsIntegrationPolicyService.IntegrationPolicyChange(
-                        "QA-ACTIVE-" + tag,
-                        store,
-                        "ONLINE",
-                        PointsIntegrationPolicyService.Mode.ACTIVE,
-                        true,
-                        true,
-                        -1,
-                        "synthetic test"),
-                "QA_OPS");
+        // All stores participate by system policy; no per-store signing/activation fixture.
+        assertThat(policies.policy(store,"ONLINE").mode()).isEqualTo(PointsIntegrationPolicyService.Mode.ACTIVE);
         String buyer = TestLogin.consumer(mvc(), json, otp, buyerPhone);
         return new Fixture(buyer, store, goods, sku);
     }

@@ -254,6 +254,7 @@ describe("结算页", () => {
 
   it("门店积分报价按服务端的 2:1 比例显示，提交意愿取已报价积分", async () => {
     useConfigStore().features.points = true;
+    orderCapability.mockResolvedValue({ merchants: [], usablePayMethods: null, usablePayModes: ["ONLINE"], pointsEnabled: true });
     orderPointsQuote.mockResolvedValue({ state: "AVAILABLE", reason: null,
       pointsUsed: 20, deductMinor: 10, ratePoints: 2, rateMinor: 1, basePayMinor: 2980,
       stores: [{ storeNo: "ST1", merchantNo: "M1", policyVersion: 3, pointsUsed: 20, deductMinor: 10 }] });

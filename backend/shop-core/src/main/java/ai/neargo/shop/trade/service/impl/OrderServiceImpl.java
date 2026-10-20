@@ -627,7 +627,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         return new ai.neargo.shop.trade.dto.CheckoutCapabilityVO(
                 usable == null ? null : new ArrayList<>(usable), anyNoInvoice, rows,
                 payModes == null ? List.of(ai.neargo.shop.common.PayModes.ONLINE)
-                        : new ArrayList<>(payModes));
+                        : new ArrayList<>(payModes),
+                pointsEnabled && pointsQuoteRedeem != null && pointsQuoteTerms != null);
     }
 
     /**
