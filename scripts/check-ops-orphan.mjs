@@ -17,6 +17,7 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { scanEndpoints } from "./gen-perm-endpoint-matrix.mjs";
+import { readDeferredDelivery } from "./lib/backend-ui-delivery.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const HTTP_DIR = join(ROOT, "ops-web/lib/api/https");
@@ -82,7 +83,11 @@ export function orphans() {
   return scanEndpoints().filter((e) => !called.has(norm(e.path)));
 }
 
-const rows = orphans();
+const allRows = orphans();
+const deferred = readDeferredDelivery(ROOT, 'docs/api/backend-ops-ui-delivery.json', {
+  app: 'ops-web', prefix: '/ops', handlers: scanEndpoints(), missing: allRows,
+});
+const rows = allRows.filter(row => !deferred.has(`${row.method} ${norm(row.path)}`));
 const check = process.argv.includes("--check");
 const known = existsSync(BASELINE)
   ? new Set(readFileSync(BASELINE, "utf8").split("\n").map((l) => l.trim())
@@ -91,7 +96,7 @@ const known = existsSync(BASELINE)
 
 const fresh = rows.filter((r) => !known.has(`${r.method} ${r.path}`));
 
-console.log(`/ops 端点 ${scanEndpoints().length}｜运营端有出口 ${scanEndpoints().length - rows.length}｜无出口 ${rows.length}（已知欠账 ${known.size}）`);
+console.log(`/ops 端点 ${scanEndpoints().length}｜运营端有出口 ${scanEndpoints().length - allRows.length}｜后端先行待接入 ${deferred.size}｜未分类无出口 ${rows.length}（已知欠账 ${known.size}）`);
 for (const r of rows) {
   console.log(`   ${fresh.includes(r) ? "★新增" : "     "} ${r.method} ${r.path}`);
 }

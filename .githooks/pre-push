@@ -159,6 +159,9 @@ if ! gate_run node scripts/check-app-orphan.mjs --check; then
   exit 1
 fi
 
+if ! gate_run node scripts/tests/backend-ui-delivery.test.mjs; then
+  exit 1
+fi
 if ! gate_run node scripts/check-ops-orphan.mjs --check; then
   exit 1
 fi

@@ -100,7 +100,7 @@
 
 ## 实施裁决完整留档（按发生顺序）
 
-以下记录各阶段当时的决策和代价。阶段性暂存/迁入限制已由后续条目取代；当前交付边界以迁移与回退章节为准。
+以下保留各阶段当时的决策与代价。阶段性限制以之后的实现和最终验收结果为准。
 
 - Ruling: each axis scan page remains an independent current snapshot; bizDate is attribution, not historic day-end replay — matches the existing RIGHTS implementation and avoids claiming unimplemented temporal reconstruction — cost if wrong: historical balance reconstruction needs a separate design.
 - Ruling: first-implementation O07 response is FreezeView with revision instead of draft EntitlementDetail; add read-only lifecycle state — operators need a trusted revision before their first CAS write — cost if wrong: an unimplemented prototype response shape needs updating; no existing live caller is changed.
@@ -134,6 +134,7 @@
 - Final: Ruling: entitlement and coordination tables use explicit domain authorization, not newly injected request-thread scope predicates — Pay standalone callers must carry authenticated tenant/owner facts, and Core records use trusted order/activity source IDs; arbitrary SELF predicates break merchant handling/recovery — cost if wrong: every new domain query must maintain explicit owner filters and denial tests. Guard registrations document this boundary without increasing debt baselines. Existing identity/use coordination tokens remain fail-closed for COMMUNITY/PICKUP-only Ops.
 - Final: Ruling: enum registrations with no independent client declaration keep clients empty, not DISMISSED — Java/OpenAPI-generated DTO remains authoritative and UI is deferred — cost if wrong: future client enum must be bound when introduced. Preset AP/EP values are ID prefixes, not a two-value enum; usage protocol includes actual MIGRATED despite frozen old comment.
 - Final: Ruling: frontend-first orphan debt cannot classify an explicitly authorized Java-backend-first delivery — add a separate exact staged API manifest checked against live handlers, published contracts and a concrete frontend task table; connected/deleted entries must leave the manifest, new entries are never automatically exempt — cost if wrong: 43 B/C endpoints still lack actual pages and must not be presented as UI-complete. Legacy orphan baseline unchanged; unit negative cases are a required push gate.
+- Final: Ruling: backend-first staged UI accounting applies to Ops as well as B/C — 43 B/C plus13 Ops remain56 real frontend integrations across7 tasks — cost if wrong: consumers/operators cannot use new pages until that independent UI delivery; APIs/metadata are not UI completion.
 
 ### 推送门禁收口
 
@@ -152,3 +153,9 @@ B端189项、C端547项单测通过，双方类型检查通过。生成物24项�
 Java任务55 DONE/0 DOING/0 TODO。前端7项接入任务和43条B/C接口仍待实际页面开发。只推送当前开发分支，不合并、不部署、不执行生产切换。
 
 延期minor：冻结V449末尾空行保留，格式不影响执行，不能为消除空白警告修改历史校验和。
+
+### 运营端推送守卫补齐
+
+首次正式推送被13条运营端无页面入口拦下，未将失败推送计作成功。与B/C后端先行边界保持一致，新增`backend-ops-ui-delivery.json`精确登记13条，并逐项核验真实Handler、64操作公开契约和独立FE-06接入任务；已接入或删除必须移出，重复/错误端/无契约或Handler均拒绝。新增3项单测RED→GREEN并纳入pre-push。运营端真实有出口412条、后端先行待接入13条、历史无出口欠账10条；不增加历史基线，也不将待接入列算作已有页面。
+
+当前前端实际待接入共56条（B/C 43、运营13），仍归7项前端任务。Java代码没有改变，27模块4019项完整回归证据继续对应`684b0f074`；本次仅补齐守卫、元数据与交付说明，最终推送仍须实际pre-push通过。
