@@ -216,6 +216,9 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <!-- 用属性而不是写死：空的 <excludedGroups/> 在 profile 合并时不会覆盖父值 -->
+                    <systemPropertyVariables>
+                        <food.build.shape>${food.build.shape}</food.build.shape>
+                    </systemPropertyVariables>
                     <groups>${surefire.groups}</groups>
                     <excludedGroups>${surefire.excludedGroups}</excludedGroups>
                 </configuration>
@@ -225,12 +228,74 @@
 
     <properties>
         <!-- 默认：跑全部非 e2e 的用例 -->
+        <food.build.shape>retail</food.build.shape>
         <git.sha>unknown</git.sha>
         <surefire.groups></surefire.groups>
         <surefire.excludedGroups>e2e</surefire.excludedGroups>
     </properties>
 
     <profiles>
+        <!-- 显式构建形态；运行时仍必须设置 shop.food.enabled/deployment。 -->
+        <profile>
+            <id>food-embedded</id>
+            <properties>
+                <food.build.shape>embedded</food.build.shape>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>ai.neargo.shop</groupId>
+                    <artifactId>food-web</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>ai.neargo.shop</groupId>
+                    <artifactId>food-core</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <!-- 显式构建形态；运行时仍必须设置 shop.food.enabled/deployment。 -->
+        <profile>
+            <id>food-standalone</id>
+            <properties>
+                <food.build.shape>standalone</food.build.shape>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>ai.neargo.shop</groupId>
+                    <artifactId>food-web</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-enforcer-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>food-standalone-no-local-writer</id>
+                                <goals>
+                                    <goal>enforce</goal>
+                                </goals>
+                                <configuration>
+                                    <rules>
+                                        <bannedDependencies>
+                                            <excludes>
+                                                <exclude>ai.neargo.shop:food-core</exclude>
+                                                <exclude>ai.neargo.shop:food-server</exclude>
+                                            </excludes>
+                                            <searchTransitive>true</searchTransitive>
+                                        </bannedDependencies>
+                                    </rules>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <profile>
             <id>e2e</id>
             <properties>

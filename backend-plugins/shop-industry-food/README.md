@@ -1,7 +1,7 @@
-# 餐饮业务工程 · NEXT-01～02
+# 餐饮业务工程 · NEXT-01～03
 
 本工程复用平台 `shop-parent → neargo-parent`、Java 21 与统一依赖版本管理。
-已实现五模块独立构建、依赖守卫和条件装配骨架，未实现营业 API、数据库装配或支付/库存联调。
+已实现五模块独立构建、条件装配、宿主可选挂载及内部服务安全骨架，未实现营业 API、数据库装配或支付/库存联调。
 
 | 构件 | 职责 | 当前直接依赖 |
 |---|---|---|
@@ -9,11 +9,11 @@
 | food-core | 后续业务实现、实体、Mapper | food-api、shop-base、shop-store-mybatis；Boot/AutoConfigure、spring-context |
 | food-web | 后续 C/B/平台 Controller、远程 Service 适配 | food-api、shop-base、shop-base-auth；Boot AutoConfigure、spring-context |
 | food-channel | 后续跨服务协议与 Port 适配 | food-api、shop-base、svc-client |
-| food-server | 独立进程启动入口 | food-core、food-channel、spring-boot-starter-web |
+| food-server | 独立进程启动入口 | food-core、food-channel；Web/Actuator starter、MySQL runtime |
 
 子模块直接继承平台父 POM；聚合不承担第二套 BOM。只有 server 打为可执行 jar。
 food-web 不依赖 core，channel 不依赖 web/core；不引入零售、支付或库存业务实现。
-store 传递带入共享 auth 基础构件，启动入口仅扫描自己的 server 包，不代表已接通鉴权或业务配置。
+store 传递带入共享 auth 基础构件；独立入口仅扫描自己的 server 包，内部密钥控制见 NEXT-03，营业接线尚未完成。
 
 ## 构建
 
@@ -56,7 +56,7 @@ Web 在两种部署模式均保留接入职责，本轮未创建远程 Service �
 
 后续新增组件须在组件自身应用对应开关；三端 Controller 同时沿平台使用 `@Profile("api")` 或 `@Profile("ops")`。
 不能只依赖自动配置入口的条件保护宿主全包扫描。当前自动配置不做包级扫描或 Mapper 扫描，不提前注册空 Service/Job。
-两个模块分别发布自己的 `AutoConfiguration.imports`，尚不代表已被 shop-app 挂载。
+两个模块分别发布自己的 `AutoConfiguration.imports`；宿主可选接入见 NEXT-03。
 
 验证范围：
 
@@ -67,8 +67,58 @@ Web 在两种部署模式均保留接入职责，本轮未创建远程 Service �
 - Controller/Service/Mapper/Job 探针均在 src/test，未打入生产 jar；Mapper 探针验证组件条件，不是 MyBatis 工厂绑定测试。
 - 认证测试的安全链由测试宿主定义，复用真实共享过滤器和内存会话；未新增生产安全链，尚不替代 NEXT-03 的真实宿主启动验证。
 
+## NEXT-03 宿主与独立进程 · 2026-10-20
+
+### 构建与运行形态
+
+| 宿主构建 | 餐饮构件 | 启用时运行配置 |
+|---|---|---|
+| 默认零售 | 无 | food 必须关闭 |
+| Maven -Pfood-embedded | food-web + food-core（及 api） | shop.food.enabled=true、shop.food.deployment=embedded（缺省 embedded） |
+| Maven -Pfood-standalone | food-web（及 api），禁止 core/server | shop.food.enabled=true、shop.food.deployment=standalone |
+| 独立 food-server | food-core + food-channel，不含 web/shop-app | 默认 enabled=true、deployment=standalone |
+
+Maven profile 只选择构件，不替代运行配置。宿主 FoodDeploymentConfiguration 在开启时核对 Web、Core 的实际 classpath；错配、缺构件或非法 deployment 拒绝启动。
+两个 host profile 不可同时启用。standalone 的 Enforcer 禁令检查传递依赖；餐饮依赖不声明 Maven optional，因为实测 Enforcer 3.5.0 会过滤 optional 根依赖，导致混合构建漏检。默认零售不激活 profile，依赖保持原样。
+
+平台全局 Mapper 扫描增加 food 排除，原 inventory/pay 排除、主 sqlSessionFactory 及数据域→分页→乐观锁拦截器保持。
+餐饮自己的条件 Mapper 注册在 NEXT-05 实现；当前未添加 Mapper 或业务写者。
+
+宿主矩阵验证前安装同版本餐饮库（需要 JDK21，本机 Maven 缓存可写）：
+
+```sh
+mvn -o -f backend-plugins/shop-industry-food/pom.xml -pl food-api,food-core,food-web,food-channel -am install
+mvn -o -f backend/pom.xml -pl shop-app -am test -Dtest=FoodEmbeddedWiringTest,PayDeploymentModePairingTest,ConditionalBeanWiringTest -Dsurefire.failIfNoSpecifiedTests=false
+mvn -o -f backend/pom.xml -pl shop-app -am -Pfood-embedded test -Dtest=FoodEmbeddedWiringTest -Dsurefire.failIfNoSpecifiedTests=false
+mvn -o -f backend/pom.xml -pl shop-app -am -Pfood-standalone test -Dtest=FoodEmbeddedWiringTest -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+### 独立服务边界
+
+FoodApplication 只扫描 `ai.neargo.shop.food.server`，导入 FoodAutoConfiguration；排除共享用户 Security/Session/RBAC 自动配置及默认用户密码装配。
+内部安全链无用户登录、会话签发或三端过滤器：`/internal/food/**` 校验既有 `X-Internal-Token`，缺失配置、缺请求头、错误密钥都拒绝；匿名可读三个 health 路径，其余路径拒绝。
+服务密钥仅校验调用方，未来各 typed 内部合同仍须验证主体、门店及资源范围。
+
+配置沿 `spring.datasource.*` 指向商品/订单同一主库，环境入口为 FOOD_DB_URL/FOOD_DB_USER/FOOD_DB_PASSWORD，无开发密码回退；默认端口 8086，可由 FOOD_SERVER_PORT 设置。
+SHOP_INTERNAL_TOKEN 接既有 shop.services.internal-token。独立进程明确关闭默认 core Flyway，不执行共享主库迁移。
+
+`foodReadiness` 目前固定 OUT_OF_SERVICE，readiness 返回 503；schema 与远程 Port 就绪尚未实现，后续必须以真实检查替换本阶段阻塞指示器。
+当前没有营业 Controller；内部路由及三端扫描陷阱均为 src/test 探针，不进入生产 jar。
+
+验证结果：
+
+- FoodDeploymentContractTest 5 项：核对真实 RequestMappingHandlerMapping；无公开三端映射、有内部正例；GET/POST 密钥校验、默认用户认证缺席、非营业 readiness。
+- 餐饮 reactor verify 共 35 项通过，0 失败、0 错误、0 跳过。
+- 宿主默认与 embedded 各执行 7 项，standalone 执行 8 项，均通过；前两种形态各有 1 项 standalone 专用测试按条件跳过。
+- 实际依赖树确认 embedded 有 web/core，standalone 只有 web/api；同时启用两 profile 的 validate 必须因禁止 food-core 失败。
+- 删除密钥校验或扩大 server 扫描范围，各有 1 个目标断言失败，0 错误；恢复后完整 verify。
+- 宿主关闭测试启动真实 PlatformDataSourceConfig/MybatisPlusConfig，使用隔离 H2 核验主工厂、连接与三拦截器；不代表完整 ShopApplication 营业验收。
+- 全量后端 `mvn -o -f backend/pom.xml -pl shop-app -am test` 最初被沙箱阻止 svc-client 的本地测试端口；允许本地端口后重跑，发现 SchemaDriftTest.migrationAndTestSchemaMatch 失败（pay_ent_exception_action 列比对）及 SchemaSeedReplayTest.full_schema_and_extra_seeds_can_be_replayed 错误（pmt_preset_template 种子重复回放约束）。
+- 为区分本轮影响，复制原两个测试和原 SQL 到独立临时 Maven 工程，仅依赖 Spring JDBC/H2/JUnit，不依赖 host 或 food：3 项中 1 失败、1 错误，复现相同原因。未改支付/活动 SQL；全量回归在确认这两项失败后主动中止，不能标记全量通过。
+- 未连接共享业务数据库，未运行真实 jar 联调；完整营业、迁移与独立支付/库存合同验收仍在 NEXT-05/07/10。
+
 ## 后续边界
 
-下一步是 NEXT-03 宿主挂载与仅内部独立启动，再接迁移、主库与可信范围，最后实现首个桌区切片。
-Actuator、MySQL 驱动、Flyway 及业务协议在对应接线任务实际需要时加入，不生成空业务实现。
+下一步是 NEXT-04 冻结迁移资源归餐饮，再接 NEXT-05 主库校验与可信范围，最后实现首个桌区切片。
+Actuator 与 MySQL 驱动已随独立进程加入；餐饮 Flyway 校验与业务协议按对应接线任务落地，不生成空业务实现。
 当前不新增 Controller/Service/Mapper 壳，不移动冻结 V1，不连接或修改数据库。

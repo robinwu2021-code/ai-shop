@@ -41,10 +41,13 @@ import java.util.List;
         // 见 PlatformDataSourceConfig 的类注释。
         sqlSessionFactoryRef = "sqlSessionFactory",
         /*
-         * 两个域走各自的 SqlSessionFactory，所以都要从全局扫描里排除：
+         * 业务域需要显式管理扫描，所以从全局扫描里排除：
          *   inventory —— 另一个库（InventoryDataSourceConfig）
          *   pay       —— 同一个库但**独立的事务管理器**（PayDataSourceConfig），
          *                目的是让跨域事务在物理上写不出来
+         *
+         *   food      —— 与商品订单共主库，但只允许由餐饮 enabled 条件配置注册，
+         *                防止关闭餐饮时全局扫描提前装入 Mapper。
          *
          * 漏掉哪一个，那个域的 Mapper 都会被注册到平台工厂上。
          * inventory 漏了会报「表不存在」；**pay 漏了什么都不会报** ——
@@ -53,7 +56,7 @@ import java.util.List;
          */
         excludeFilters = @ComponentScan.Filter(
                 type = FilterType.REGEX,
-                pattern = "ai\\.neargo\\.shop\\.(inventory|pay)\\..*"))
+                pattern = "ai\\.neargo\\.shop\\.(inventory|pay|food)\\..*"))
 /*
  * 第二个 @MapperScan：**不继承 BaseMapper 的 Mapper**。
  *
