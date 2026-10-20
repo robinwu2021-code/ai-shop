@@ -123,21 +123,21 @@ if [ -f "$GATE_FILE" ]; then
         # 行为一致」—— 方向反了。闸门验的是更新的那一版，它通过不代表更早的这一版通过
         # （2026-09-29 发 986da6a83 时，闸门记录是 a65beed13，就打出了那句假话）。
         if [ "${ALLOW_GATE_DRIFT:-}" = "1" ]; then
-            say "⚠ 闸门验的是更新的 $GATE_SHA，本次发它的祖先 $HEAD_SHA —— 这一版没被闸门直接验过（ALLOW_GATE_DRIFT=1 放行）"
+            say "⚠ 闸门验的是更新的 ${GATE_SHA}，本次发它的祖先 ${HEAD_SHA} —— 这一版没被闸门直接验过（ALLOW_GATE_DRIFT=1 放行）"
         else
-            die "闸门验的是更新的 $GATE_SHA，本次要发的 $HEAD_SHA 是它的祖先 —— 这一版没被闸门直接验过。
-  先跑 scripts/check-head-compiles.sh $HEAD_SHA，或确认过之后 ALLOW_GATE_DRIFT=1 再跑本脚本。"
+            die "闸门验的是更新的 ${GATE_SHA}，本次要发的 ${HEAD_SHA} 是它的祖先 —— 这一版没被闸门直接验过。
+  先跑 scripts/check-head-compiles.sh ${HEAD_SHA}，或确认过之后 ALLOW_GATE_DRIFT=1 再跑本脚本。"
         fi
     else
         DRIFT="$(git log --oneline "$GATE_SHA..$HEAD_SHA" -- backend 2>/dev/null || true)"
         if [ -z "$DRIFT" ]; then
-            say "闸门验的是 $GATE_SHA，本次构建 $HEAD_SHA —— 其间**没有 backend 改动**，jar 行为一致"
+            say "闸门验的是 ${GATE_SHA}，本次构建 ${HEAD_SHA} —— 其间**没有 backend 改动**，jar 行为一致"
         elif [ "${ALLOW_GATE_DRIFT:-}" = "1" ]; then
-            say "⚠ 闸门验的是 $GATE_SHA，而这几笔 backend 改动没被它验过（ALLOW_GATE_DRIFT=1 放行）："
+            say "⚠ 闸门验的是 ${GATE_SHA}，而这几笔 backend 改动没被它验过（ALLOW_GATE_DRIFT=1 放行）："
             echo "$DRIFT" | sed 's/^/    /'
         else
             printf '%s\n' "$DRIFT" | sed 's/^/    /' >&2
-            die "闸门验的是 $GATE_SHA，本次要建 $HEAD_SHA —— 上面这几笔 backend 改动**没被闸门验过**。
+            die "闸门验的是 ${GATE_SHA}，本次要建 ${HEAD_SHA} —— 上面这几笔 backend 改动**没被闸门验过**。
   两条路：重跑一次 scripts/check-head-compiles.sh（推荐），
   或者确认过它们无害之后 ALLOW_GATE_DRIFT=1 再跑本脚本。"
         fi
