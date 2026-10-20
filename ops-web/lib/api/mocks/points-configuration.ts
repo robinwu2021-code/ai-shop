@@ -1,3 +1,4 @@
+import { pointsCurrency } from "@/lib/points-currency";
 import type { FinanceApi } from "../contracts/finance";
 import type { PointsTypeConfig, PointsFallback, PointsSwitchView, PointsTerms, PointsChangeResult } from "@/lib/types";
 import { fail } from "@/lib/biz-error";
@@ -34,7 +35,13 @@ export const pointsConfigurationMock: Pick<FinanceApi,
   pointsTypes: () => wait(structuredClone(types)),
   createPointsType: (v) => command("CREATE", { ...v, typeCode: v.command.typeCode }, () => {
     if (types.some((t) => t.typeCode.toLocaleLowerCase() === v.command.typeCode.trim().toLocaleLowerCase() || t.name.trim().toLocaleLowerCase() === v.command.name.trim().toLocaleLowerCase())) fail("积分代码或名称已存在，请修改后重试。", "This points code or name already exists. Change it and try again.");
-    types.push({ ...v.command, typeCode: v.command.typeCode.trim(), name: v.command.name.trim(), market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "DRAFT" });
+    const currency = pointsCurrency(v.command.currency ?? "CNY");
+    if (!currency) fail("货币类型无效", "Invalid currency");
+    const rate = v.command.rate ?? { pointsUnit: 1, minorUnit: 1 };
+    if (![rate.pointsUnit, rate.minorUnit].every((n) => Number.isSafeInteger(n) && n > 0)) fail("兑换比例无效", "Invalid conversion rate");
+    let a = rate.pointsUnit, b = rate.minorUnit;
+    while (b) { const rest = a % b; a = b; b = rest; }
+    types.push({ ...v.command, typeCode: v.command.typeCode.trim(), name: v.command.name.trim(), market: "CN", currency: currency.code, scale: currency.scale, rate: { pointsUnit: rate.pointsUnit / a, minorUnit: rate.minorUnit / a }, deductRatioBp: 3000, idleDays: 365, status: "DRAFT" });
   }),
   transitionPointsType: (v) => command("STATE", v, () => {
     const t = type(v.typeCode);

@@ -1092,6 +1092,10 @@ export interface PointsCreate {
     typeCode: string;
     /** 积分名称 */
     name: string;
+    /** ISO 货币代码；省略时使用系统市场币种 */
+    currency?: string;
+    /** 每 minorUnit 个最小货币单位可兑换 pointsUnit 积分 */
+    rate?: { pointsUnit: number; minorUnit: number };
   };
   /** 服务端不可用原因或操作审计原因 */
   reason: string;

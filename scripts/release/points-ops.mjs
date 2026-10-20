@@ -82,15 +82,16 @@ function main() {
   run('git', ['diff', '--check', base, head]);
   run('node', ['--test', 'scripts/release/points-ops.test.mjs']);
   run('python3', ['scripts/gen-ui-catalog.py', '--check']);
+  run('python3', ['scripts/gen-proto-index.py', '--check']);
   run('node', ['scripts/check-ops-contract.mjs', '--check']);
   generatedCheck('ops-web/scripts/gen-openapi.mjs', 'docs/api/openapi-ops.yaml');
   schemaCheck();
   const ops = join(root, 'ops-web');
-  run('npm', ['test', '--', 'lib/points-language.test.ts', 'lib/points-types-page.test.ts', 'lib/points-ops-routes.test.ts', 'lib/api/points-operations-api.test.ts', 'lib/api/points-configuration.test.ts', 'lib/points-command.test.ts', 'lib/points-configuration-ui.test.ts', 'lib/points-store-access-page.test.ts'], ops);
+  run('npm', ['test', '--', 'lib/points-language.test.ts', 'lib/points-types-page.test.ts', 'lib/points-type-create-form.test.ts', 'lib/points-ops-routes.test.ts', 'lib/api/points-operations-api.test.ts', 'lib/api/points-configuration.test.ts', 'lib/points-command.test.ts', 'lib/points-configuration-ui.test.ts', 'lib/points-store-access-page.test.ts'], ops);
   run('npm', ['run', 'typecheck'], ops);
   const backend = files.some(f => f.startsWith('backend/'));
   if (backend) {
-    run('mvn', ['-pl', 'shop-app', '-am', '-Dtest=PointTypeServiceTest', '-Dsurefire.failIfNoSpecifiedTests=false', 'test', '-q'], join(root, 'backend'));
+    run('mvn', ['-pl', 'shop-app', '-am', '-Dtest=PointTypeServiceTest,PointTypeCurrencyTest,PointsOpsConfigurationTest', '-Dsurefire.failIfNoSpecifiedTests=false', 'test', '-q'], join(root, 'backend'));
     run('mvn', ['-pl', 'shop-app,pay/pay-svc', '-am', '-DskipTests', 'package', '-q'], join(root, 'backend'));
   }
   process.env.NEXT_PUBLIC_API_BASE = '';

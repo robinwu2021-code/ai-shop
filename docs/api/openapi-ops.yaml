@@ -8316,6 +8316,21 @@ components:
             name:
               type: "string"
               description: "积分名称"
+            currency:
+              type: "string"
+              description: "ISO 货币代码；省略时使用系统市场币种"
+            rate:
+              type: "object"
+              properties:
+                pointsUnit:
+                  type: "number"
+                minorUnit:
+                  type: "number"
+              required:
+                - "pointsUnit"
+                - "minorUnit"
+              additionalProperties: false
+              description: "每 minorUnit 个最小货币单位可兑换 pointsUnit 积分"
           required:
             - "typeCode"
             - "name"

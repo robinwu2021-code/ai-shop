@@ -58,21 +58,23 @@ it("keeps the settings page focused on its own list and rule details", async () 
   expect(host.textContent).not.toContain("积分退款待处理");
 });
 
-it("creates a named CN points type with the fixed 1 point to 1 fen rate", async () => {
+it("creates a named points type with the selected currency and conversion rate", async () => {
   await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
   const create = [...host.querySelectorAll("button")].find((button) => button.textContent?.includes("新建积分类型"));
   expect(create).toBeDefined();
   await act(async () => create?.click());
 
-  expect(host.textContent).toContain("新建积分");
+  expect(host.textContent).toContain("新增积分类型");
   expect(host.textContent).not.toContain("草稿");
-  expect(host.textContent).toContain("1 积分 = 1 分");
+  expect(host.textContent).not.toContain("1 积分 = 1 分");
+  expect(host.querySelector('[name="currency"]')).not.toBeNull();
+  expect(host.querySelector('[name="unit"]')).not.toBeNull();
   expect(host.querySelector('[name="name"]')).not.toBeNull();
   expect(host.querySelector('[name="code"]')).not.toBeNull();
   expect(host.querySelector('[name="remark"]')).not.toBeNull();
   expect(host.querySelector('[name="market"]')).toBeNull();
   expect(host.querySelector('[name="days"]')).toBeNull();
-  expect(host.querySelector('[name="points"]')).toBeNull();
+  expect(host.querySelector('[name="points"]')).not.toBeNull();
   expect(host.querySelector('[name="minor"]')).toBeNull();
 
   (host.querySelector('[name="name"]') as HTMLInputElement).value = "会员积分";
@@ -80,7 +82,7 @@ it("creates a named CN points type with the fixed 1 point to 1 fen rate", async 
   (host.querySelector('[name="remark"]') as HTMLInputElement).value = "首期积分";
   await act(async () => host.querySelector("form#points-type-create")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   expect(mock.create).toHaveBeenCalledWith(expect.objectContaining({
-    command: { typeCode: "CODE1", name: "会员积分" },
+    command: { typeCode: "CODE1", name: "会员积分", currency: "CNY", rate: { pointsUnit: 1, minorUnit: 1 } },
     reason: "首期积分",
   }));
 });
@@ -96,4 +98,20 @@ it("shows a clear message when the backend rejects a duplicate code or name", as
   await act(async () => host.querySelector("form#points-type-create")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
   expect(await host.textContent).toContain("积分代码或名称已存在，请修改后重试。");
+});
+
+it("sends non-default currency and rate through the page without dropping the settings", async () => {
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => [...host.querySelectorAll("button")].find((b) => b.textContent?.includes("新建积分类型"))!.click());
+  const currency = host.querySelector('[name="currency"]') as HTMLSelectElement;
+  await act(async () => { currency.value = "KWD"; currency.dispatchEvent(new Event("change", { bubbles: true })); });
+  const unit = host.querySelector('[name="unit"]') as HTMLSelectElement;
+  await act(async () => { unit.value = "dinar"; unit.dispatchEvent(new Event("change", { bubbles: true })); });
+  (host.querySelector('[name="name"]') as HTMLInputElement).value = "第纳尔积分";
+  (host.querySelector('[name="code"]') as HTMLInputElement).value = "KWD_POINTS";
+  await act(async () => host.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(mock.create).toHaveBeenCalledWith(expect.objectContaining({
+    command: { typeCode: "KWD_POINTS", name: "第纳尔积分", currency: "KWD", rate: { pointsUnit: 1000, minorUnit: 1000 } },
+    reason: "创建积分类型",
+  }));
 });

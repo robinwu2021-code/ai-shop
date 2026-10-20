@@ -89,8 +89,16 @@ class PointsOpsConfigurationTest {
     private final List<String> created = new ArrayList<>();
 
     @BeforeAll
-    void schema() {
+    void schema() throws java.sql.SQLException {
         PointsPostingDatabaseTest.initializeSchema(data);
+        try (var connection = data.getConnection();
+                var columns = connection.getMetaData().getColumns(connection.getCatalog(), null, "pts_point_type", "name")) {
+            if (!columns.next()) {
+                new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
+                        new org.springframework.core.io.ClassPathResource("db/migration/V537__points_type_name_unique.sql"))
+                        .execute(data);
+            }
+        }
     }
 
     @AfterEach
@@ -271,6 +279,26 @@ class PointsOpsConfigurationTest {
                                         Long.class,
                                         type))
                 .isEqualTo(2);
+    }
+
+    @Test
+    void selected_currency_and_rate_survive_persistence_and_operator_replay() {
+        String code = "FX" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+        var request = new Create("CREATE:" + code,
+                new PointTypeService.CreateType(code, "Dinar " + code, "KWD", new RedeemRate(2500, 1000)),
+                "CUSTOM_CURRENCY");
+        var first = admin.create(request, "OPS");
+        assertThat(admin.create(request, "OPS")).isEqualTo(first);
+        var saved = read.type(code).orElseThrow();
+        assertThat(saved.currency()).isEqualTo("KWD");
+        assertThat(saved.scale()).isEqualTo(3);
+        assertThat(saved.rate()).isEqualTo(new RedeemRate(5, 2));
+        assertThat(read.pool(code).currency()).isEqualTo("KWD");
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_point_type WHERE type_code=?", Long.class, code)).isEqualTo(1);
+        assertThatThrownBy(() -> admin.create(new Create(request.requestId(),
+                new PointTypeService.CreateType(code, "Dinar " + code, "KWD", new RedeemRate(3, 1)),
+                request.reason()), "OPS")).hasMessage("POINTS_OPERATOR_REQUEST_CONFLICT");
+        assertThat(read.type(code).orElseThrow().rate()).isEqualTo(new RedeemRate(5, 2));
     }
 
     private String type() {

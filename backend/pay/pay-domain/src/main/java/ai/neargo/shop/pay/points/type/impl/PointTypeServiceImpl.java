@@ -8,6 +8,8 @@ import ai.neargo.shop.pay.points.store.PointsConfigurationStore;
 import ai.neargo.shop.pay.points.store.PointsReadStore;
 import ai.neargo.shop.pay.points.type.PointTypeService;
 
+import java.util.Currency;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,14 +64,25 @@ public class PointTypeServiceImpl implements PointTypeService {
         if (!"CN".equals(market.market()) || !"CNY".equals(market.currency())) {
             throw new IllegalArgumentException("POINTS_MARKET_UNSUPPORTED");
         }
+        String currencyCode = c.currency() == null ? market.currency() : c.currency();
+        Currency currency;
+        try {
+            currency = Currency.getInstance(currencyCode);
+            if (!currencyCode.matches("[A-Z]{3}") || currency.getDefaultFractionDigits() < 0) {
+                throw new IllegalArgumentException("POINTS_CURRENCY_INVALID");
+            }
+        } catch (IllegalArgumentException invalid) {
+            throw new IllegalArgumentException("POINTS_CURRENCY_INVALID", invalid);
+        }
+        RedeemRate rate = c.rate() == null ? new RedeemRate(1, 1) : c.rate();
         PointType type =
                 new PointType(
                         typeCode,
                         name,
                         market.market(),
-                        market.currency(),
-                        market.currencyScale(),
-                        new RedeemRate(1, 1),
+                        currency.getCurrencyCode(),
+                        currency.getDefaultFractionDigits(),
+                        rate,
                         3000,
                         365,
                         PointType.Status.DRAFT);
