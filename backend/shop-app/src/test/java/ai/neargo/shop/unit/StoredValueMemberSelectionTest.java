@@ -44,4 +44,14 @@ class StoredValueMemberSelectionTest {
         assertThatThrownBy(()->service.select(ctx,"ENTITY","STORE",new Source("MEMBER","FOREIGN",null))).isInstanceOf(BizException.class);
         verifyNoInteractions(codes,accounts);
     }
+    @Test void accountWithoutAPersonDoesNotCreateASyntheticCanonicalBinding() {
+        var account=new ai.neargo.shop.spi.storedvalue.StoredValueMerchantViews.Account("REF","USER","CNY",100,0,100,java.time.Instant.now());
+        when(accounts.account(any(),eq("STORE"),eq("REF"))).thenReturn(account);
+        when(accounts.directory(any(),eq("STORE"),eq(List.of("USER")),anyString(),isNull(),eq(1))).thenReturn(new CursorPage<>(List.of(account),null));
+        when(codes.selectCustomer(any(),eq("USER"),eq("USER"))).thenReturn(new ai.neargo.shop.member.dto.MemberCodeViews.CustomerReference("cr1_ref","顾客",java.time.Instant.now().plusSeconds(120)));
+        var service=new StoredValueMemberSelectionService(members,people,codes,accounts,direct);
+        assertThat(service.select(ctx,"ENTITY","STORE",new Source("ACCOUNT",null,"REF")).account()).isNotNull();
+        verifyNoInteractions(direct);
+    }
+
 }

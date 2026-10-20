@@ -42,19 +42,19 @@ public class StoredValueMemberSelectionService {
         return PageData.of(List.of(new Candidate(m.getMemberNo(),name(m.getRemark()),person.get().phoneMasked(),m.getStatus(),active,reason,account)),1,1,20);
     }
     public Selection select(EntitlementContext ctx,String entity,String store,Source source){
-        String user;String customer;String memberNo=null,display="顾客",phone="";
+        boolean verifiedPerson=false;String user;String customer;String memberNo=null,display="顾客",phone="";
         if("MEMBER".equals(source.type())){
             var m=DataScopeContext.executeWithoutScope(()->members.detail(entity,source.memberNo()))
                     .orElseThrow(()->BizException.of(ErrorCode.NOT_FOUND)).member();
             if(!MbrMember.ACTIVE.equals(m.status())&&!MbrMember.LEAD.equals(m.status()))throw BizException.of(ErrorCode.CONFLICT);
             var person=people.find(m.personNo()).orElseThrow(()->BizException.of(ErrorCode.NOT_FOUND));
-            user=person.userNo();customer=person.personNo();memberNo=m.memberNo();display=name(m.remark());phone=person.phoneMasked();
+            verifiedPerson=true;user=person.userNo();customer=person.personNo();memberNo=m.memberNo();display=name(m.remark());phone=person.phoneMasked();
         }else{
             var a=accounts.account(new CatalogScope(ctx.tenantNo(),entity,ctx.actorNo(),false),store,source.accountRef());
             user=a.userNo();customer=a.customerNo()==null?user:a.customerNo();var person=user==null?people.find(customer):people.findByUser(user);
-            if(person.isPresent()){phone=person.get().phoneMasked();customer=person.get().personNo();}
+            if(person.isPresent()){verifiedPerson=true;phone=person.get().phoneMasked();customer=person.get().personNo();}
         }
-        if(user!=null)direct.bindCustomer(ctx,customer,user);
+        if(user!=null&&verifiedPerson)direct.bindCustomer(ctx,customer,user);
         var ref=codes.selectCustomer(new MemberCodeScope(ctx.tenantNo(),entity,store,ctx.actorNo()),customer,user);
         return new Selection(ref.customerRef(),ref.expiresAt(),memberNo,display,phone,account(ctx,entity,store,customer));
     }
