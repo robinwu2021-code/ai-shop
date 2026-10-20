@@ -9,6 +9,7 @@ import { BACKEND_ROLE_PERMS, backendPermsOf } from "./permissions";
 import { NAV, activeLeafIndex, breadcrumb, findActiveSection, groupedLeaves, isLeafDisabled, leafParts, matchesQuery, navSearchEntries, navTabs, normPath, overlayNav, visibleTabKeys, sectionDefaultHref, visibleLeaves, visibleSections } from "./nav";
 import { permsOf, ROLE_LABEL } from "./permissions";
 import { UI_PERM_MAP } from "./perm-map";
+import { pointsLegacyServerMenuHref } from "./points-ops-routes";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 import type { Role } from "./auth";
@@ -649,7 +650,10 @@ describe("路由归属与面包屑", () => {
       if (s.soon) continue;                       // 未交付的域本来就还没有菜单行
       for (const l of s.children ?? []) {
         if (!l.ready) continue;                   // 没上的功能同理
-        if (!sql.includes(`'${l.href}'`)) missing.push(`${s.key} → ${l.href}（${l.label}）`);
+        const liveHref = pointsLegacyServerMenuHref(l.href);
+        if (!sql.includes(`'${l.href}'`) && !sql.includes(`'${liveHref}'`)) {
+          missing.push(`${s.key} → ${l.href}（${l.label}）`);
+        }
       }
     }
     expect(missing, `这些叶子在 db/migration 里找不到 sys_function_point 行。`
