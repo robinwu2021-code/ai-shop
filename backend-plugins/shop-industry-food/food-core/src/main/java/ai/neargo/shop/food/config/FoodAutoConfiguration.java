@@ -17,6 +17,11 @@ import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.OptionGroupService;
 import ai.neargo.shop.food.service.ModifierService;
+import ai.neargo.shop.food.service.RecipeService;
+import ai.neargo.shop.food.service.impl.RecipeServiceImpl;
+import ai.neargo.shop.food.mapper.FoodMappers.RecipeMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.RecipeLineMapper;
+import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
 import ai.neargo.shop.food.service.BundleService;
 import ai.neargo.shop.food.policy.BundlePublicationSource;
 import java.time.Clock;
@@ -95,6 +100,28 @@ public class FoodAutoConfiguration {
                 publisher, json, manager, catalog, (entity, numbers) -> specs.getObject().getValues(entity, numbers),
                 Clock.systemUTC(), new BundlePublicationSource(bundles, bundleGroups, bundleChoices,
                         () -> bundlePublicationEnabled));
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(RecipeService.class)
+    RecipeService recipeService(RecipeMapper heads, RecipeLineMapper lines, ActionLogMapper actions,
+            IdempotencyService idem, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
+            ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager,
+            ObjectProvider<GoodsCatalogQueryPort> catalogs, ObjectProvider<MaterialCatalogQueryPort> materials) {
+        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
+            @Override public SkuIdentityFact getSku(String entity, String store, String sku) {
+                return catalogs.getObject().getSku(entity, store, sku);
+            }
+            @Override public GoodsFact getGoods(String entity, String store, String goods) {
+                return catalogs.getObject().getGoods(entity, store, goods);
+            }
+            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
+                return catalogs.getObject().getGoodsBatch(entity, store, numbers);
+            }
+        };
+        return new RecipeServiceImpl(heads, lines, actions, idem, publisher, json, manager, catalog,
+                (entity, ids) -> materials.getObject().getMaterials(entity, ids));
     }
 
     @Bean

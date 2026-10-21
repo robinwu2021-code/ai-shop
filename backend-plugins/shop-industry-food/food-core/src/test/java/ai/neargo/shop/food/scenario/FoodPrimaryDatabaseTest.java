@@ -83,7 +83,7 @@ class FoodPrimaryDatabaseTest {
         sql.update("INSERT INTO fnb_option_group_item(entity_no,created_at,created_by,updated_at,updated_by,"
                 + "option_item_no,group_no,source_kind,spec_value_no,min_qty,max_qty,default_qty,sort_no) "
                 + "VALUES('E',NOW(),'SYSTEM',NOW(),'SYSTEM','OLD','OG','SPEC_VALUE','OLD_VALUE',0,1,0,0)");
-        assertThat(validator.initialize(source, FoodProperties.MigrationMode.MIGRATE).version()).isEqualTo("3");
+        assertThat(validator.initialize(source, FoodProperties.MigrationMode.MIGRATE).version()).isEqualTo("4");
         assertThat(sql.queryForObject("SELECT spec_value_no FROM fnb_option_group_item", String.class))
                 .isEqualTo("OLD_VALUE");
         sql.update("UPDATE fnb_option_group_item SET spec_value_no=?", "V".repeat(64));
@@ -110,7 +110,7 @@ class FoodPrimaryDatabaseTest {
                 +"occupancy_no,table_no,check_no,seats,started_at) VALUES('E',NOW(),'SYSTEM',NOW(),'SYSTEM',"
                 +"'OLD_OCC','OLD_TABLE','OLD_CHECK',4,NOW())");
         var result=validator.initialize(source,FoodProperties.MigrationMode.MIGRATE);
-        assertThat(result.version()).isEqualTo("3");
+        assertThat(result.version()).isEqualTo("4");
         assertThat(sql.queryForObject("SELECT sharing_mode FROM fnb_table_occupancy",String.class)).isEqualTo("EXCLUSIVE");
         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_flyway_history WHERE version IN ('1','2') AND success=1",Integer.class)).isEqualTo(2);
     }
@@ -124,7 +124,9 @@ class FoodPrimaryDatabaseTest {
     }
     @Test void explicitPublishMigratesOnlyFood() {
         assertThat(validator.initialize(source, FoodProperties.MigrationMode.MIGRATE).ready()).isTrue();
-        assertThat(sql.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name LIKE 'fnb\\_%'", Integer.class)).isEqualTo(74);
+        assertThat(sql.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name LIKE 'fnb\\_%'", Integer.class)).isEqualTo(76);
+        assertThat(tableExists("fnb_recipe")).isTrue();
+        assertThat(tableExists("fnb_recipe_line")).isTrue();
         assertThat(tableExists("flyway_schema_history")).isFalse();
     }
     @Test void similarlyNamedTablesCannotSupplyMissingColumns() {

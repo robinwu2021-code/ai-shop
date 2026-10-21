@@ -54,7 +54,7 @@ public final class FoodSchemaValidator {
             require(state.equals("SUCCESS") || state.equals("BASELINE"), "food migration state: " + state);
         }
         var current = flyway.info().current();
-        require(current != null && "3".equals(current.getVersion().getVersion()), "food migration version must be 3");
+        require(current != null && "4".equals(current.getVersion().getVersion()), "food migration version must be 4");
         try (var connection = source.getConnection();
                 var column = connection.getMetaData().getColumns(connection.getCatalog(), connection.getSchema(),
                         "fnb_option_group_item", "spec_value_no")) {
@@ -71,7 +71,7 @@ public final class FoodSchemaValidator {
         missing.addAll(missingCoreCapabilities(actual));
         missing.addAll(missingCoreUniqueKeys(source, actual));
         Collections.sort(missing);
-        return new FoodSchemaReady(true, "3", missing);
+        return new FoodSchemaReady(true, "4", missing);
     }
 
     private static List<String> missingCoreCapabilities(Map<String, Set<String>> actual) {
@@ -92,6 +92,8 @@ public final class FoodSchemaValidator {
 
     private static List<String> missingCoreUniqueKeys(DataSource source, Map<String, Set<String>> actual) {
         Map<String, List<String>> required = Map.of(
+                "fnb_recipe", List.of("recipe_no", "store_no,sku_no,recipe_code"),
+                "fnb_recipe_line", List.of("line_no", "recipe_no,line_no"),
                 "sys_idempotent", List.of("idem_key,endpoint"),
                 "sys_outbox", List.of("event_no", "source_system,source_event_no", "stream_key,stream_sequence"),
                 "sys_outbox_stream", List.of("stream_key"),
@@ -178,6 +180,16 @@ public final class FoodSchemaValidator {
             }
             require(expected.size() == 73 && expected.values().stream().noneMatch(Set::isEmpty), "food V1 manifest incomplete");
             expected.get("fnb_table_occupancy").add("sharing_mode");
+            var common = List.of("id", "tenant_no", "entity_no", "created_at", "created_by", "updated_at",
+                    "updated_by", "version", "deleted");
+            var recipe = new TreeSet<>(common);
+            recipe.addAll(List.of("recipe_no", "store_no", "sku_no", "recipe_code", "yield_qty", "yield_unit",
+                    "config_version", "published_revision_no", "status"));
+            expected.put("fnb_recipe", recipe);
+            var line = new TreeSet<>(common);
+            line.addAll(List.of("line_no", "recipe_no", "item_ref", "qty", "unit", "conversion_ref", "loss_rate",
+                    "material_definition_hash", "sort_no"));
+            expected.put("fnb_recipe_line", line);
             return expected;
         } catch (IllegalStateException ex) { throw ex; }
         catch (Exception ex) { throw new IllegalStateException("Cannot read immutable food V1 manifest"); }

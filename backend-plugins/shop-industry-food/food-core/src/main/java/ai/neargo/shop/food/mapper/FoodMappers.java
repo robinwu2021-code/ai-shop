@@ -1,6 +1,8 @@
 package ai.neargo.shop.food.mapper;
 
 import ai.neargo.shop.food.entity.FnbActionLog;
+import ai.neargo.shop.food.entity.FnbRecipe;
+import ai.neargo.shop.food.entity.FnbRecipeLine;
 import ai.neargo.shop.food.entity.FnbBundle;
 import ai.neargo.shop.food.entity.FnbBundleGroup;
 import ai.neargo.shop.food.entity.FnbBundleChoice;
@@ -35,6 +37,12 @@ import org.apache.ibatis.annotations.Update;
 /** 按实际落地的持久化资源增加嵌套 Mapper，不预生成全域空壳。 */
 public final class FoodMappers {
     private FoodMappers() {
+    }
+
+    public interface RecipeMapper extends BaseMapper<FnbRecipe> { }
+    public interface RecipeLineMapper extends BaseMapper<FnbRecipeLine> {
+        @Delete("DELETE FROM fnb_recipe_line WHERE entity_no=#{entity} AND recipe_no=#{recipe}")
+        int replaceDraftRows(@Param("entity") String entity, @Param("recipe") String recipe);
     }
 
     public interface BundleMapper extends BaseMapper<FnbBundle> { }

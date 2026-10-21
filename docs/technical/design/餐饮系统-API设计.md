@@ -1,6 +1,6 @@
 # 餐饮系统API设计
 
-> 状态：待评审 · 2026-10-20 · V1含73张fnb_业务表；增强目标82张（9张PLANNED），当前迁移版本3；目标API不代表已交付，prn/rpt保持共享候选。
+> 状态：待评审 · 2026-10-20 · V1含73张fnb_业务表；增强目标82张，V4新增2张配方草稿表、另7张PLANNED；当前迁移版本4；目标API不代表全部交付，prn/rpt保持共享候选。
 > 由 `node scripts/gen-food-system-design.mjs` 生成，勿手改；真源：[领域数据库API设计源](./schema/food-system-design.json)。生成依赖沿用 @viz-js/viz，可用 FOOD_ER_VIZ_MODULE 指定模块路径。
 > 业务入口：[后端业务模块功能清单](../../requirements/餐饮系统-后端业务模块功能清单.md) · [数据库与API评审对齐](../TDD-餐饮系统-数据库与API评审对齐.md)。按桌台→菜品→订单查阅，A–L仍保留为持久化分域编号。
 > 项目约束：[底座兼容对齐](./餐饮系统-项目底座兼容对齐.md)，账号、门店、营业时间、公共实体及协议冲突时优先按该对齐说明修订。
@@ -194,7 +194,7 @@
 | B | FOOD-API-148 | POST `/biz/x/food/stores/{storeNo}/recipes` | 创建配方工作头 |
 | B | FOOD-API-149 | GET `/biz/x/food/stores/{storeNo}/recipes` | 配方列表 |
 | B | FOOD-API-150 | GET `/biz/x/food/recipes/{recipeNo}` | 配方详情 |
-| B | FOOD-API-151 | PUT `/biz/x/food/recipes/{recipeNo}/definition` | 维护配方物料与调整 |
+| B | FOOD-API-151 | PUT `/biz/x/food/recipes/{recipeNo}/definition` | 维护配方基础物料（选配调整待后续） |
 | B | FOOD-API-152 | POST `/biz/x/food/recipes/{recipeNo}:publish` | 发布配方 |
 | E | FOOD-API-153 | GET `/biz/x/food/stores/{storeNo}/production-consumptions` | 制作耗用列表 |
 | E | FOOD-API-154 | GET `/biz/x/food/production-consumptions/{consumptionNo}` | 制作耗用详情 |
@@ -782,26 +782,23 @@
 | recipeNo | string | 是 | 配方 |
 | storeNo | string | 是 | 门店 |
 | skuNo | string | 是 | SKU |
-| recipeCode | string | 是 | DEFAULT或变体 |
-| yieldQty | decimal | 是 | 正产出 |
-| yieldUnit | string | 是 | 受控单位 |
-| status | string | 是 | 草稿或启用 |
+| recipeCode | string | 是 | DEFAULT或受控变体 |
+| yieldQty | decimal | 是 | 正配置份数 |
+| yieldUnit | string | 是 | 固定EA，非物理单位 |
+| status | string | 是 | 本批DRAFT |
 | configVersion | int64 | 是 | 内容版本 |
 | version | int64 | 是 | CAS |
-| lines | RecipeLineInput[] | 是 | 物料 |
-| adjustments | RecipeAdjustmentInput[] | 是 | 选配调整 |
-| publishedRevisionNo | string | 否 | 已发布修订 |
+| lines | RecipeLineVO[] | 是 | 保存的物料事实 |
 
 ### RecipeLineInput
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| lineNo | string | 否 | 创建省略服务端发号 |
-| itemRef | string | 是 | 获准库存物料 |
-| qty | decimal | 是 | 正净用量 |
-| unit | string | 是 | 物料单位 |
-| conversionRef | string | 是 | 权威换算版本 |
-| lossRate | decimal | 是 | 投入损失比例非负且小于1 |
+| lineNo | string | 否 | 新行省略服务端发号，既有行不能换物料 |
+| itemRef | string | 是 | 32位内获准库存物料 |
+| qty | decimal | 是 | 正净用量18,6 |
+| unit | string | 是 | 必须等于物料baseUom |
+| lossRate | decimal | 是 | 0至1间损失比例，最多6位小数 |
 
 ### RecipeAdjustmentInput
 
@@ -1172,6 +1169,17 @@
 | entityNo | string | 是 | 权威经营主体 |
 | storeNo | string | 是 | 验真门店 |
 | version | int64 | 是 | 严格非负整数身份版本 |
+
+### RecipeLineVO
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| lineNo | string | 是 | 行号 |
+| itemRef | string | 是 | 物料 |
+| qty | decimal | 是 | 净用量 |
+| unit | string | 是 | 保存基础单位 |
+| lossRate | decimal | 是 | 损失比例 |
+| materialDefinitionHash | string | 是 | 真实物料定义摘要，不是CAS或换算版本 |
 
 ## 四、逐接口输入输出
 
@@ -5475,9 +5483,9 @@
 
 `POST /biz/x/food/stores/{storeNo}/recipes`
 
-权限与守卫：原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。单位与物料目录未联通时不得假校验。。
+权限与守卫：原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；本批仅EA计份、真实物料baseUom；无库存命令；内部Token不替代B端门店权限。单位与物料目录未联通时不得假校验。。
 
-能力依赖：餐饮新增，未实现；按P1/P2/P4/P5所属切片验收。
+能力依赖：RECIPE-01A基础草稿已实现：本地及typed远程一致；选配调整和发布未实现。。
 
 路径输入：
 
@@ -5504,9 +5512,9 @@
 
 `GET /biz/x/food/stores/{storeNo}/recipes`
 
-权限与守卫：原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。。
+权限与守卫：原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；本批仅EA计份、真实物料baseUom；无库存命令；内部Token不替代B端门店权限。。
 
-能力依赖：餐饮新增，未实现；按P1/P2/P4/P5所属切片验收。
+能力依赖：RECIPE-01A基础草稿已实现：本地及typed远程一致；选配调整和发布未实现。。
 
 路径输入：
 
@@ -5536,9 +5544,9 @@
 
 `GET /biz/x/food/recipes/{recipeNo}`
 
-权限与守卫：原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。。
+权限与守卫：原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；本批仅EA计份、真实物料baseUom；无库存命令；内部Token不替代B端门店权限。。
 
-能力依赖：餐饮新增，未实现；按P1/P2/P4/P5所属切片验收。
+能力依赖：RECIPE-01A基础草稿已实现：本地及typed远程一致；选配调整和发布未实现。。
 
 路径输入：
 
@@ -5556,13 +5564,13 @@
 |---|---|---|---|
 | recipe | Recipe | 是 | 获准配置 |
 
-### FOOD-API-151 · 维护配方物料与调整
+### FOOD-API-151 · 维护配方基础物料（选配调整待后续）
 
 `PUT /biz/x/food/recipes/{recipeNo}/definition`
 
-权限与守卫：原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。目标行属于本配方；先SET后ADD，REMOVE互斥；权威单位/损失比例；禁止改历史发布。。
+权限与守卫：原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；本批仅EA计份、真实物料baseUom；无库存命令；内部Token不替代B端门店权限。目标行属于本配方；先SET后ADD，REMOVE互斥；权威单位/损失比例；禁止改历史发布。。
 
-能力依赖：餐饮新增，未实现；按P1/P2/P4/P5所属切片验收。
+能力依赖：RECIPE-01A基础草稿已实现：本地及typed远程一致；选配调整和发布未实现。。
 
 路径输入：
 
@@ -5576,9 +5584,8 @@
 |---|---|---|---|
 | version | int64 | 是 | CAS |
 | yieldQty | decimal | 是 | 正产出 |
-| yieldUnit | string | 是 | 单位 |
-| lines | RecipeLineInput[] | 是 | 物料 |
-| adjustments | RecipeAdjustmentInput[] | 是 | 调整 |
+| yieldUnit | string | 是 | 固定EA配置份数 |
+| lines | RecipeLineInput[] | 是 | 基础物料，最多100行；adjustments本批拒绝 |
 
 成功输出（data）：
 

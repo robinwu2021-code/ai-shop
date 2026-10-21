@@ -20,6 +20,8 @@ import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.OptionGroupService;
 import ai.neargo.shop.food.service.ModifierService;
 import ai.neargo.shop.food.service.BundleService;
+import ai.neargo.shop.food.service.RecipeService;
+import ai.neargo.shop.food.api.biz.BizRecipeController;
 import ai.neargo.shop.food.api.biz.BizBundleController;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.api.biz.BizConfigRevisionController;
@@ -58,6 +60,16 @@ public class FoodWebAutoConfiguration {
     BizConfigRevisionController configRevisionController(ConfigRevisionService service, StoreDirectoryPort stores,
             FoodRequestScopeValidator scope) {
         return new BizConfigRevisionController(service, stores, scope);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({RecipeService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizRecipeController.class)
+    BizRecipeController recipeController(RecipeService service, StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) {
+        return new BizRecipeController(service, stores, scope);
     }
 
     @Bean

@@ -43,7 +43,7 @@ def main():
         env.update(FOOD_TEST_DISPOSABLE='true', FOOD_TEST_JDBC_URL='jdbc:mysql://' + binding + '/mysql')
         with tempfile.NamedTemporaryFile(prefix='food-primary-tests-', suffix='.log', delete=False) as log:
             result = subprocess.run(['mvn', '-o', '-f', 'backend-plugins/shop-industry-food/pom.xml',
-                                     '-pl', 'food-server', '-am', 'test', '-Dtest=FoodPrimaryDatabaseTest,FoodIdempotencyTest,FoodOutboxWiringTest,StoreOperationServiceTest,StorePolicyPublicationTest,ServiceCalendarServiceTest,TableServiceTest,TableConfigurationTest,DiningSessionTest,CheckServiceTest,ReservationServiceTest,DishServiceTest,OptionGroupServiceTest,OptionGroupItemsTest,SelectionRuleTest,ModifierServiceTest,FoodModifierPrimaryDatabaseTest,ConfigRevisionServiceTest,OptionPublicationPolicyTest,FoodConfigPublicationPrimaryDatabaseTest,BundleServiceTest,BundleDefinitionPolicyTest,FoodBundlePrimaryDatabaseTest,BundlePublicationServiceTest,FoodBundlePublicationPrimaryDatabaseTest,FoodOptionGroupPrimaryDatabaseTest,FoodDishPrimaryDatabaseTest,FoodServerPrimaryDatabaseTest',
+                                     '-pl', 'food-server', '-am', 'test', '-Dtest=FoodPrimaryDatabaseTest,FoodIdempotencyTest,FoodOutboxWiringTest,StoreOperationServiceTest,StorePolicyPublicationTest,ServiceCalendarServiceTest,TableServiceTest,TableConfigurationTest,DiningSessionTest,CheckServiceTest,ReservationServiceTest,DishServiceTest,OptionGroupServiceTest,OptionGroupItemsTest,SelectionRuleTest,ModifierServiceTest,FoodModifierPrimaryDatabaseTest,ConfigRevisionServiceTest,OptionPublicationPolicyTest,FoodConfigPublicationPrimaryDatabaseTest,BundleServiceTest,BundleDefinitionPolicyTest,FoodBundlePrimaryDatabaseTest,BundlePublicationServiceTest,RecipeServiceTest,FoodRecipePrimaryDatabaseTest,FoodBundlePublicationPrimaryDatabaseTest,FoodOptionGroupPrimaryDatabaseTest,FoodDishPrimaryDatabaseTest,FoodServerPrimaryDatabaseTest',
                                      '-Dsurefire.failIfNoSpecifiedTests=false'], cwd=ROOT, env=env,
                                     stdout=log, stderr=subprocess.STDOUT)
         print('Test log:', log.name)
@@ -82,8 +82,13 @@ def main():
         bundle_publication = ET.parse(bundle_publication_report).getroot()
         if int(bundle_publication.attrib['tests']) != 1 or any(int(bundle_publication.attrib[k]) for k in ['failures', 'errors', 'skipped']):
             raise RuntimeError('Standalone bundle publication MySQL typed test did not execute and pass')
+        recipe_report = ROOT / ('backend-plugins/shop-industry-food/food-server/target/surefire-reports/'
+                                'TEST-ai.neargo.shop.food.scenario.FoodRecipePrimaryDatabaseTest.xml')
+        recipe = ET.parse(recipe_report).getroot()
+        if int(recipe.attrib['tests']) != 1 or any(int(recipe.attrib[k]) for k in ['failures', 'errors', 'skipped']):
+            raise RuntimeError('Standalone recipe MySQL typed test did not execute and pass')
         guards = 0
-        for name, minimum in [('FoodIdempotencyTest', 7), ('FoodOutboxWiringTest', 7), ('StoreOperationServiceTest', 5), ('StorePolicyPublicationTest', 10), ('ServiceCalendarServiceTest', 6), ('TableServiceTest', 14), ('TableConfigurationTest', 18), ('DiningSessionTest', 10), ('CheckServiceTest', 22), ('ReservationServiceTest', 3), ('DishServiceTest', 4), ('OptionGroupServiceTest', 5), ('OptionGroupItemsTest', 6), ('SelectionRuleTest', 6), ('ModifierServiceTest', 7), ('ConfigRevisionServiceTest', 10), ('OptionPublicationPolicyTest', 4), ('BundleServiceTest', 7), ('BundleDefinitionPolicyTest', 4), ('BundlePublicationServiceTest', 8)]:
+        for name, minimum in [('FoodIdempotencyTest', 7), ('FoodOutboxWiringTest', 7), ('StoreOperationServiceTest', 5), ('StorePolicyPublicationTest', 10), ('ServiceCalendarServiceTest', 6), ('TableServiceTest', 14), ('TableConfigurationTest', 18), ('DiningSessionTest', 10), ('CheckServiceTest', 22), ('ReservationServiceTest', 3), ('DishServiceTest', 4), ('OptionGroupServiceTest', 5), ('OptionGroupItemsTest', 6), ('SelectionRuleTest', 6), ('ModifierServiceTest', 7), ('ConfigRevisionServiceTest', 10), ('OptionPublicationPolicyTest', 4), ('BundleServiceTest', 7), ('BundleDefinitionPolicyTest', 4), ('BundlePublicationServiceTest', 8), ('RecipeServiceTest', 7)]:
             report = ROOT / ('backend-plugins/shop-industry-food/food-core/target/surefire-reports/'
                              + 'TEST-ai.neargo.shop.food.scenario.' + name + '.xml')
             guard = ET.parse(report).getroot()
@@ -105,7 +110,7 @@ def main():
             raise RuntimeError('Expected executed original spec authority guards')
         print('Original spec authority MySQL:', spec.attrib['tests'], 'passed; no skipped tests')
         print('Food primary MySQL:', suite.attrib['tests'], '+ guards', guards,
-              '+ standalone', int(server.attrib['tests']) + int(dish.attrib['tests']) + int(group.attrib['tests']) + int(modifier.attrib['tests']) + int(publication.attrib['tests']) + int(bundle.attrib['tests']) + int(bundle_publication.attrib['tests']), 'passed; no skipped tests')
+              '+ standalone', int(server.attrib['tests']) + int(dish.attrib['tests']) + int(group.attrib['tests']) + int(modifier.attrib['tests']) + int(publication.attrib['tests']) + int(bundle.attrib['tests']) + int(bundle_publication.attrib['tests']) + int(recipe.attrib['tests']), 'passed; no skipped tests')
     finally:
         if created:
             docker('rm', '-f', NAME)

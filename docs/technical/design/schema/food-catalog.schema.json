@@ -1596,8 +1596,8 @@
           "recipe_code"
         ]
       ],
-      "rules": "同门店SKU只有一个DEFAULT；变体经菜单SKU显式引用；历史内容冻结在ConfigRevision，不从当前工作头回算旧单。",
-      "deployment": "PLANNED"
+      "rules": "同门店SKU只有一个DEFAULT；变体经菜单SKU显式引用；历史内容冻结在ConfigRevision，不从当前工作头回算旧单。 RECIPE-01A只维护DRAFT；yield_unit=EA表示SKU配置份数，不是物理单位权威；选配调整与发布待后续。",
+      "deployment": "MIGRATION_V4"
     },
     {
       "name": "fnb_recipe_line",
@@ -1620,7 +1620,7 @@
         },
         {
           "name": "item_ref",
-          "type": "varchar(64)",
+          "type": "varchar(32)",
           "label": "进销存物料引用 Inventory item",
           "ref": null,
           "nullable": false
@@ -1642,14 +1642,28 @@
         {
           "name": "conversion_ref",
           "type": "varchar(64)",
-          "label": "权威换算版本 Conversion reference",
+          "label": "保留真实换算引用；本批NULL Reserved true conversion reference",
           "ref": null,
-          "nullable": false
+          "nullable": true
         },
         {
           "name": "loss_rate",
           "type": "decimal(12,6)",
           "label": "投入损失比例 0<=rate<1",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "material_definition_hash",
+          "type": "varchar(64)",
+          "label": "物料定义内容摘要 Material definition hash (not CAS/conversion)",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "sort_no",
+          "type": "int",
+          "label": "草稿行顺序 Draft line order",
           "ref": null,
           "nullable": false
         }
@@ -1663,8 +1677,8 @@
           "line_no"
         ]
       ],
-      "rules": "qty为净用量，毛需求=净需求/(1-loss_rate)；损失不混用加成比例；单位/精度归进销存，不能截断；物料不是另建销售商品。",
-      "deployment": "PLANNED"
+      "rules": "qty为净用量，毛需求=净需求/(1-loss_rate)；损失不混用加成比例；单位/精度归进销存，不能截断；物料不是另建销售商品。 RECIPE-01A仅baseUom，definitionHash独立保存不是换算修订，conversion_ref为NULL；小数草稿不代表整数库存可扣料。",
+      "deployment": "MIGRATION_V4"
     },
     {
       "name": "fnb_recipe_adjustment",

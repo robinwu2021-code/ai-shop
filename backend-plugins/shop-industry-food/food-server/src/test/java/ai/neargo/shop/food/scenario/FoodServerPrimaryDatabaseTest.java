@@ -298,7 +298,7 @@ class FoodServerPrimaryDatabaseTest {
                         tableCall(mvc,DiningSessionInternalApi.RESOLVE_PATH,new DiningSessionInternalApi.ResolveCommand(raw),json)
                                 .andExpect(status().isNotFound());
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_guest_session WHERE revoked_at IS NULL",Integer.class)).isZero();
-                        assertThat(context.getBean(FoodSchemaReady.class).version()).isEqualTo("3");
+                        assertThat(context.getBean(FoodSchemaReady.class).version()).isEqualTo("4");
                         var extraTables=new ArrayList<String>();
                         for(String code:List.of("T03","T04")) extraTables.add(json.readTree(tableCall(mvc,
                                 TableInternalApi.TABLE_CREATE_PATH,new TableInternalApi.TableCreateCommand("E","A",

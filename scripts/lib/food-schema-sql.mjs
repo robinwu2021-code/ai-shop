@@ -26,7 +26,7 @@ export function renderFoodSchema(s){
  validateFoodDesign(s);
  const tables=s.tables.filter(t=>t.name.startsWith('fnb_'));
  const spec=tables.find(t=>t.name==='fnb_option_group_item')?.fields.find(f=>f.name==='spec_value_no');
- const version=spec?.type==='varchar(64)'?3:tables.some(t=>t.name==='fnb_table_occupancy'&&t.fields.some(f=>f.name==='sharing_mode'))?2:1;
+ const version=tables.some(t=>t.deployment==='MIGRATION_V4')?4:spec?.type==='varchar(64)'?3:tables.some(t=>t.name==='fnb_table_occupancy'&&t.fields.some(f=>f.name==='sharing_mode'))?2:1;
  let sql='-- Food-owned tables only; use the existing product/order database.\n-- Flyway location: db/industry/food; history: fnb_flyway_history; version: '+version+'.\n-- Frozen after application. Add a new migration for any subsequent change.\n-- No cross-domain physical foreign keys; services must enforce ownership and concurrency.\n\n';
  if(s.catalogEnhancement)sql='-- TARGET DESIGN ONLY; planned objects are not applied migrations.\n'+sql;
  for(const t of tables){
@@ -93,4 +93,15 @@ export function renderFoodV1(s){
   throw Error('V2 sharing_mode contract differs; create a reviewed migration instead');
  table.fields=table.fields.filter(f=>f.name!=='sharing_mode');
  return renderFoodSchema(v1);
+}
+
+/** V4 owns exactly the two recipe draft tables; no conversion or execution state is invented. */
+export function renderRecipeDraftV4(s){
+ const ddl=renderFoodSchema(s);
+ const blocks=['fnb_recipe','fnb_recipe_line'].map(name=>{
+  const start=ddl.indexOf('CREATE TABLE `'+name+'`');
+  if(start<0)throw Error('Missing recipe table '+name);
+  return ddl.slice(start,ddl.indexOf(';',start)+1);
+ });
+ return '-- Recipe drafts only; preserve V1-V3. No stock execution or conversion authority.\n\n'+blocks.join('\n\n')+'\n';
 }

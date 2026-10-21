@@ -86,7 +86,10 @@ export function validateFoodDesign(s) {
     must(tables.get('fnb_menu_context').fields.some(f => f.name === 'channel_scope_key' && !f.nullable), 'Nullable channel scope');
     must(hasKey('fnb_external_mapping', 'provider,store_no,channel_scope_key,object_type,external_no,mapping_revision_no'), 'Missing immutable channel mapping scope');
     must(e.plannedTables.length === 9 && new Set(e.plannedTables).size === 9, 'Incomplete planned enhancement tables');
-    for (const name of e.plannedTables) must(tables.get(name)?.deployment === 'PLANNED', `Unverified deployment ${name}`);
+    const migrated=new Set(e.migrationV4Tables||[]);
+    must(migrated.size===2 && migrated.has('fnb_recipe') && migrated.has('fnb_recipe_line'), 'Invalid recipe V4 scope');
+    for (const name of e.plannedTables)
+      must(tables.get(name)?.deployment === (migrated.has(name)?'MIGRATION_V4':'PLANNED'), `Unverified deployment ${name}`);
     must(s.tables.filter(t => t.name.startsWith('fnb_')).length === e.targetBusinessTableCount, 'Stale target table count');
     for (const name of ['fnb_recipe_line', 'fnb_recipe_adjustment'])
       must(tables.get(name)?.fields.some(f => f.name === 'qty' && f.type === 'decimal(18,6)'), 'Recipe quantity precision differs');
