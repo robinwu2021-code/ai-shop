@@ -51,6 +51,19 @@ public class ManagementQueryService {
   var items=chosen.stream().filter(g->manage?scopes.canDelegate(a,m,str(g,"resource_type"),str(g,"resource_no"),str(g,"permission_code")):scopes.valid(a,g,new HashSet<>())).map(db::view).toList();
   return new Page(items,raw.size()>size?tokens.encode("RESOURCE_CURSOR",Map.of("scope",fingerprint,"before",num(chosen.getLast(),"id")),900):null);
  }
+ public Page recipients(Actor a,String m,String cursor,int size){
+  scopes.resolve(a,m);scopes.require(a,m,"SPACE",m,"management.resource.read");
+  scopes.require(a,m,"SPACE",m,"management.grant.manage");if(size<1||size>100)throw BizException.of(ErrorCode.BAD_REQUEST);
+  var entities=new TreeSet<String>();for(var owner:scopes.ownerAccounts(a))entities.add(str(owner,"entity_no"));
+  for(var g:db.rows("SELECT * FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND deleted=0",a.tenantNo(),m,a.actorKey()))if(bool(g,"delegatable")&&scopes.valid(a,g,new HashSet<>())){String e=scopes.resourceEntity(a,str(g,"resource_type"),str(g,"resource_no"));if(!e.isEmpty())entities.add(e);}
+  if(entities.isEmpty())return new Page(List.of(),null);
+  String fingerprint=hash(db.encode(List.of(a.tenantNo(),a.actorKey(),m,entities)));String after="";
+  if(cursor!=null){var c=tokens.decode("RECIPIENT_CURSOR",cursor);if(!fingerprint.equals(c.get("scope")))throw BizException.of(ErrorCode.CONFLICT);after=(String)c.get("after");}
+  var args=new ArrayList<Object>(List.of(a.tenantNo(),after));args.addAll(entities);args.add(size+1);
+  var rows=db.rows("SELECT mch_account_no,display_name FROM mch_account WHERE tenant_no=? AND mch_account_no>? AND status='ACTIVE' AND deleted=0 AND entity_no IN ("+String.join(",",Collections.nCopies(entities.size(),"?"))+") ORDER BY mch_account_no LIMIT ?",args.toArray());
+  var chosen=rows.stream().limit(size).toList();var items=chosen.stream().map(x->Map.<String,Object>of("actorNo","MCH:"+str(x,"mch_account_no"),"displayName",Objects.toString(x.get("display_name"),"—"))).toList();
+  return new Page(items,rows.size()>size?tokens.encode("RECIPIENT_CURSOR",Map.of("scope",fingerprint,"after",str(chosen.getLast(),"mch_account_no")),900):null);
+ }
  public Map<String,Object> operating(Actor a,String m,String store){
   scopes.resolve(a,m);scopes.require(a,m,"STORE",store,"store.read");var row=db.one("SELECT store_no,entity_no,name,status,version FROM mch_store WHERE tenant_no=? AND store_no=? AND deleted=0",a.tenantNo(),store);if(row==null)throw BizException.of(ErrorCode.NOT_FOUND);
   var binding=db.one("SELECT b.brand_no,b.scope_revision,r.name,r.status FROM mch_brand_store_binding b JOIN mch_brand r ON r.tenant_no=b.tenant_no AND r.brand_no=b.brand_no WHERE b.tenant_no=? AND b.store_no=? AND b.status='ACTIVE' AND b.deleted=0",a.tenantNo(),store);

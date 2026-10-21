@@ -1418,6 +1418,21 @@
       ],
       "status": "NEW",
       "notes": "路线随issuerVersion冻结；修改通过IS04新配置版本，不能原地替换历史商户"
+    },
+    {
+      "id": "MG09",
+      "group": "管理空间",
+      "module": "Merchant/BFF",
+      "method": "GET",
+      "path": "/biz/management/spaces/{managementNo}/recipients",
+      "request": "cursor?,size=20",
+      "response": "CursorPage<ManagementRecipient>",
+      "permission": "management.resource.read + management.grant.manage",
+      "screens": [
+        "s24"
+      ],
+      "status": "NEW",
+      "notes": "管理空间内可控主体的有效成员；仅返回actorNo/displayName，不依赖当前门店，不跨主体遍历人员"
     }
   ],
   "screenCoverage": {

@@ -29,7 +29,7 @@ public class BrandService {
    if(old!=null){if(!digest.equals(str(old,"create_hash")))throw BizException.of(ErrorCode.CONFLICT);return db.view(old);}
    var row=db.base(a);String no=BizKey.next(BizKey.BRAND);row.put("brand_no",no);row.put("management_no",c.managementNo());row.put("name",name);row.put("name_key",name);row.put("logo",c.logo());row.put("status",status);row.put("scope_revision",0);row.put("create_key",key);row.put("create_hash",digest);db.insert("mch_brand",row);
    // Creator receives only this brand, not any entity financial rights.
-   for(String perm:List.of("brand.read","brand.manage","brand.audit.read","brand.change.read","brand.change.decide"))scopes.grant(a,c.managementNo(),new GrantCommand(a.actorKey(),"BRAND",no,perm,null,null,true,null,false));
+   scopes.seedBrandCreator(a,c.managementNo(),no);
    var result=db.view(row);db.emit(a,db.commandId(a,c.managementNo(),"BRAND_CREATE",key),no,"BRAND_CREATE",digest,result);return result;
   });
  }
@@ -42,8 +42,9 @@ public class BrandService {
    return db.update("UPDATE mch_brand SET status=?,version=version+1,updated_at=?,updated_by=? WHERE tenant_no=? AND brand_no=? AND version=?",c.targetStatus(),Timestamp.from(Instant.now()),a.actorKey(),a.tenantNo(),no,c.expectedRevision());
   });
  }
- private Map<String,Object> mutate(Actor a,String no,String action,String key,String body,long revision,java.util.function.IntSupplier update){return db.write(()->{
-  var row=raw(a,no);var m=str(row,"management_no");scopes.lock(a,m);scopes.resolve(a,m);scopes.require(a,m,"BRAND",no,"brand.manage");
+ private Map<String,Object> mutate(Actor a,String no,String action,String key,String body,long revision,java.util.function.IntSupplier update){
+  var m=str(raw(a,no),"management_no");return db.write(()->{
+  scopes.lock(a,m);var row=raw(a,no);if(!m.equals(str(row,"management_no")))throw BizException.of(ErrorCode.CONFLICT);scopes.resolve(a,m);scopes.require(a,m,"BRAND",no,"brand.manage");
   var id=db.commandId(a,no,action,key);var digest=hash(body);var replay=db.replay(id,digest);if(replay!=null)return replay;
   row=db.one("SELECT * FROM mch_brand WHERE tenant_no=? AND brand_no=? FOR UPDATE",a.tenantNo(),no);
   if(num(row,"version")!=revision||update.getAsInt()!=1)throw BizException.of(ErrorCode.CONFLICT);
@@ -120,6 +121,7 @@ public class BrandService {
      if(db.update("UPDATE mch_store SET version=version+1 WHERE tenant_no=? AND store_no=? AND version=?",a.tenantNo(),store,num(current,"expected_store_version"))!=1)throw BizException.of(ErrorCode.CONFLICT);
     }
    }
+   if("APPROVE".equals(c.decision()))db.update("UPDATE mch_brand_change SET check_snapshot=? WHERE tenant_no=? AND change_no=?",db.encode(Map.of("facts",frozen,"impact",impact)),a.tenantNo(),no);
    db.update("UPDATE mch_brand_change SET status=?,decision=?,decision_key=?,decision_hash=?,decided_by=?,decided_at=?,reason=?,version=version+1,updated_at=?,updated_by=? WHERE tenant_no=? AND change_no=? AND version=?",state,c.decision(),key,digest,a.actorKey(),Timestamp.from(Instant.now()),c.reason(),Timestamp.from(Instant.now()),a.actorKey(),a.tenantNo(),no,c.expectedRevision());
    var result=change(a,no);result.put("blockers",impact.blocker()==null?List.of():List.of(impact.blocker()));db.emit(a,id,store,"BRAND_CHANGE_DECIDED",digest,result);
    if("COMPLETED".equals(state))for(String brand:new String[]{str(current,"from_brand_no"),to})if(brand!=null)db.emit(a,hash(id+"|"+brand),brand,"BRAND_STORE_CHANGED",digest,result);

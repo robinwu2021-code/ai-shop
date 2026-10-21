@@ -15,6 +15,7 @@ export interface EndpointDef {
 
 /** key 与 MerchantApi 的方法名一一对应，缺一个就编译不过 */
 export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
+  mManagementRecipients: {method:"GET",path:"/biz/management/spaces/{m}/recipients",auth:true,summary:"管理空间可授权人员"},
   mManagementContext: {method:"GET",path:"/biz/management/context",auth:true,summary:"管理空间上下文"},
   mCreateManagementSpace: {method:"POST",path:"/biz/management/spaces",auth:true,summary:"创建管理空间"},
   mManagementResources: {method:"GET",path:"/biz/management/spaces/:m/resources",auth:true,summary:"资源与授权列表"},

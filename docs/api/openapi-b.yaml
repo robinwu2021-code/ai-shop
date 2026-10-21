@@ -13817,9 +13817,34 @@ components:
                 type: "string"
               entityName:
                 type: "string"
+              stores:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    storeNo:
+                      type: "string"
+                    name:
+                      type: "string"
+                  required:
+                    - "storeNo"
+                    - "name"
+                  additionalProperties: false
+              paymentMerchants:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    payMerchantNo:
+                      type: "string"
+                  required:
+                    - "payMerchantNo"
+                  additionalProperties: false
             required:
               - "accountNo"
               - "entityNo"
+              - "stores"
+              - "paymentMerchants"
             additionalProperties: false
       required:
         - "actorKey"
@@ -14155,6 +14180,17 @@ components:
         - "actorKey"
         - "occurredAt"
       additionalProperties: false
+    ManagementRecipient:
+      type: "object"
+      properties:
+        actorNo:
+          type: "string"
+        displayName:
+          type: "string"
+      required:
+        - "actorNo"
+        - "displayName"
+      additionalProperties: false
     ManagementGrantPage:
       "$ref": "#/components/schemas/ManagementPage_ManagementGrant"
     ManagementResourcePage:
@@ -14475,6 +14511,8 @@ components:
         - "found"
         - "recharge"
       additionalProperties: false
+    ManagementRecipientPage:
+      "$ref": "#/components/schemas/ManagementPage_ManagementRecipient"
     Record_Lang_string:
       type: "object"
       properties:
@@ -14625,7 +14663,78 @@ components:
         - "nextCursor"
         - "hasMore"
       additionalProperties: false
+    ManagementPage_ManagementRecipient:
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/ManagementRecipient"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "items"
+        - "nextCursor"
+      additionalProperties: false
 paths:
+  "/biz/management/spaces/{m}/recipients":
+    get:
+      operationId: "mManagementRecipients"
+      summary: "管理空间可授权人员"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "resourceType"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "view"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - "EFFECTIVE"
+              - "GRANTS"
+        - name: "actorNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ManagementRecipientPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/management/context":
     get:
       operationId: "mManagementContext"

@@ -1,6 +1,6 @@
 # P1 经营组织、品牌与支付商户 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 按当前会话直接执行，未经明确要求不派生子代理。
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking. 按当前会话直接执行，未经明确要求不派生子代理。
 
 **Goal:** 按业务模块分阶段交付B端品牌与门店双线储值，每阶段完成整体定向验收后独立上线。
 
@@ -30,7 +30,7 @@
 4. 改草稿、规则收紧、切门店及替换账户不得复用旧审批/授权；P4 changedDraftOrPolicyInvalidatesDecision、P5 wrongIssuerAuthorizationRejected锁定。
 5. 支付登记不能冒充到账，统计不得重复计活动或混入别的发行方；P6 paymentIsNotReceipt／generateBillTwiceConsumesClearingOnce锁定。
 
-[P1详细设计](../../technical/TDD-P1-经营组织与品牌管理-详细设计.md)：5张表完整字段、20项API、授权来源、绑定状态机、幂等及上线验收。
+[P1详细设计](../../technical/TDD-P1-经营组织与品牌管理-详细设计.md)：5张表完整字段、21项API、授权来源、绑定状态机、幂等及上线验收。
 
 ## 阶段交付
 
@@ -38,58 +38,58 @@
 
 依赖：设计冻结及存量盘点。原型：s01, s02, s03, s04, s05, s06, s07, s08, s09, s24。
 
-API主交付编号：MG01, MG02, MG03, MG04, MG05, MG06, MG07, BR01, BR02, BR03, BR04, BR05, BR06, BR07, ST01, ST02, ST03, ST04, ST05, MG08。
+API主交付编号：MG01, MG02, MG03, MG04, MG05, MG06, MG07, BR01, BR02, BR03, BR04, BR05, BR06, BR07, ST01, ST02, ST03, ST04, ST05, MG08, MG09。
 
 新表：`mch_management_space`, `mch_management_grant`, `mch_brand`, `mch_brand_store_binding`, `mch_brand_change`。只迁移本阶段需要结构，不一次上线26张表。
 
 ### P1-T01 管理空间与资源授权
 
-**Files（新增或改造位置，尚未实现）：**
+**Files（已实现位置）：**
 - `backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementScopeService.java`
 
 **Interfaces:**
 - Consumes: 现有认证身份。
 - Produces: `ManagementContext resolve(ActorContext actor, String managementNo)`；显式品牌、门店、主体及支付商户授权；同tenant不等于全资源授权。
 
-- [ ] 写本任务负责的新行为断言；测试名及数据采用下方阶段验收用例，不能写只检查实现字段存在的镜像测试。
-- [ ] 只运行本任务基本定向测试，确认旧行为不足；新类尚未存在时先确认编译错误指向本任务，而不是无关基线。
-- [ ] 实现以上接口与对应API/DTO、迁移/权限种子；迁移号在本阶段开工盘点后分配；所有接口范围按Spec校验。
-- [ ] 运行本轮受影响模块编译和基本定向测试；前端同步使用统一UI及三语词条，记录真实结果。
-- [ ] 提交本任务及更新任务表；阶段联调留本阶段编码完成后统一执行，不在任务之间重复整个链路。
+- [x] 写本任务负责的新行为断言；测试名及数据采用下方阶段验收用例，不能写只检查实现字段存在的镜像测试。
+- [x] 只运行本任务基本定向测试，确认旧行为不足；新类尚未存在时先确认编译错误指向本任务，而不是无关基线。
+- [x] 实现以上接口与对应API/DTO、迁移/权限种子；迁移号在本阶段开工盘点后分配；所有接口范围按Spec校验。
+- [x] 运行本轮受影响模块编译和基本定向测试；前端同步使用统一UI及三语词条，记录真实结果。
+- [x] 提交本任务及更新任务表；阶段联调留本阶段编码完成后统一执行，不在任务之间重复整个链路。
 
 ### P1-T02 品牌及门店配置
 
-**Files（新增或改造位置，尚未实现）：**
+**Files（已实现位置）：**
 - `backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/BrandService.java`
 
 **Interfaces:**
 - Consumes: ManagementContext。
 - Produces: `BrandChangeResult change(StoreContext store, BrandChangeCommand command)`；品牌CRUD、有效绑定唯一性、影响检查及可恢复变更单；不直接改资金归属。
 
-- [ ] 写本任务负责的新行为断言；测试名及数据采用下方阶段验收用例，不能写只检查实现字段存在的镜像测试。
-- [ ] 只运行本任务基本定向测试，确认旧行为不足；新类尚未存在时先确认编译错误指向本任务，而不是无关基线。
-- [ ] 实现以上接口与对应API/DTO、迁移/权限种子；迁移号在本阶段开工盘点后分配；所有接口范围按Spec校验。
-- [ ] 运行本轮受影响模块编译和基本定向测试；前端同步使用统一UI及三语词条，记录真实结果。
-- [ ] 提交本任务及更新任务表；阶段联调留本阶段编码完成后统一执行，不在任务之间重复整个链路。
+- [x] 写本任务负责的新行为断言；测试名及数据采用下方阶段验收用例，不能写只检查实现字段存在的镜像测试。
+- [x] 只运行本任务基本定向测试，确认旧行为不足；新类尚未存在时先确认编译错误指向本任务，而不是无关基线。
+- [x] 实现以上接口与对应API/DTO、迁移/权限种子；迁移号在本阶段开工盘点后分配；所有接口范围按Spec校验。
+- [x] 运行本轮受影响模块编译和基本定向测试；前端同步使用统一UI及三语词条，记录真实结果。
+- [x] 提交本任务及更新任务表；阶段联调留本阶段编码完成后统一执行，不在任务之间重复整个链路。
 
 ### P1-T03 支付商户候选
 
-**Files（新增或改造位置，尚未实现）：**
+**Files（已实现位置）：**
 - `backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/PaymentMerchantScopeService.java`
 
 **Interfaces:**
 - Consumes: 主体财务／配置授权。
 - Produces: `List<PaymentMerchantBrief> candidates(EntityContext entity, String channel, String scene)`；复用MchPaymentMerchant，检查主体归属、ACTIVE进件及授权支付方式。
 
-- [ ] 写本任务负责的新行为断言；测试名及数据采用下方阶段验收用例，不能写只检查实现字段存在的镜像测试。
-- [ ] 只运行本任务基本定向测试，确认旧行为不足；新类尚未存在时先确认编译错误指向本任务，而不是无关基线。
-- [ ] 实现以上接口与对应API/DTO、迁移/权限种子；迁移号在本阶段开工盘点后分配；所有接口范围按Spec校验。
-- [ ] 运行本轮受影响模块编译和基本定向测试；前端同步使用统一UI及三语词条，记录真实结果。
-- [ ] 提交本任务及更新任务表；阶段联调留本阶段编码完成后统一执行，不在任务之间重复整个链路。
+- [x] 写本任务负责的新行为断言；测试名及数据采用下方阶段验收用例，不能写只检查实现字段存在的镜像测试。
+- [x] 只运行本任务基本定向测试，确认旧行为不足；新类尚未存在时先确认编译错误指向本任务，而不是无关基线。
+- [x] 实现以上接口与对应API/DTO、迁移/权限种子；迁移号在本阶段开工盘点后分配；所有接口范围按Spec校验。
+- [x] 运行本轮受影响模块编译和基本定向测试；前端同步使用统一UI及三语词条，记录真实结果。
+- [x] 提交本任务及更新任务表；阶段联调留本阶段编码完成后统一执行，不在任务之间重复整个链路。
 
 ### P1-T04 B端顶层与门店入口
 
-**Files（新增或改造位置，尚未实现）：**
+**Files（已实现位置）：**
 - `b-app/src/pages/management/index.vue`
 - `b-app/src/pages/brand-list/index.vue`
 - `b-app/src/pages/brand-edit/index.vue`
@@ -99,11 +99,11 @@ API主交付编号：MG01, MG02, MG03, MG04, MG05, MG06, MG07, BR01, BR02, BR03,
 - Consumes: 前三任务接口。
 - Produces: `ManagementApi/BrandApi DTO与MG/BR/ST契约一致`；品牌、主体、支付商户、门店平级；store配置品牌底部弹框；同页不重复切店。
 
-- [ ] 写本任务负责的新行为断言；测试名及数据采用下方阶段验收用例，不能写只检查实现字段存在的镜像测试。
-- [ ] 只运行本任务基本定向测试，确认旧行为不足；新类尚未存在时先确认编译错误指向本任务，而不是无关基线。
-- [ ] 实现以上接口与对应API/DTO、迁移/权限种子；迁移号在本阶段开工盘点后分配；所有接口范围按Spec校验。
-- [ ] 运行本轮受影响模块编译和基本定向测试；前端同步使用统一UI及三语词条，记录真实结果。
-- [ ] 提交本任务及更新任务表；阶段联调留本阶段编码完成后统一执行，不在任务之间重复整个链路。
+- [x] 写本任务负责的新行为断言；测试名及数据采用下方阶段验收用例，不能写只检查实现字段存在的镜像测试。
+- [x] 只运行本任务基本定向测试，确认旧行为不足；新类尚未存在时先确认编译错误指向本任务，而不是无关基线。
+- [x] 实现以上接口与对应API/DTO、迁移/权限种子；迁移号在本阶段开工盘点后分配；所有接口范围按Spec校验。
+- [x] 运行本轮受影响模块编译和基本定向测试；前端同步使用统一UI及三语词条，记录真实结果。
+- [x] 提交本任务及更新任务表；阶段联调留本阶段编码完成后统一执行，不在任务之间重复整个链路。
 
 ## 阶段末统一验收用例
 

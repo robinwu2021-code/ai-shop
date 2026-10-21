@@ -172,6 +172,7 @@ const RESPONSE_TYPES = {
   mSvReceive: "SvProgress",
   mSvCancel: "SvProgress",
 
+  mManagementRecipients: "ManagementRecipientPage",
   mManagementContext: "ManagementContext",
   mCreateManagementSpace: "ManagementSpace",
   mManagementResources: "ManagementGrantPage",
@@ -568,6 +569,7 @@ const REQUEST_TYPES = {
   mSvCancel: "SvCancelReq",
 
   mCreateManagementSpace: "ManagementSpaceCreateReq",
+  mManagementRecipients: "ManagementResourcesQuery",
   mManagementResources: "ManagementResourcesQuery",
   mManagementGrant: "ManagementGrantReq",
   mRevokeManagementGrant: "ManagementRevokeQuery",

@@ -1,7 +1,7 @@
 export interface ManagementPage<T> {items:T[];nextCursor:string|null}
 export interface ManagementResource {canManageLegacy?:boolean;canConfigureBrand?:boolean;resourceType?:string;resourceNo?:string;name:string;status:string;revision:number;brandNo?:string;entityNo?:string;storeNo?:string;scopeRevision?:number}
 export interface ManagementSpace extends ManagementResource {managementNo:string;actions:string[]}
-export interface ManagementContext {actorKey:string;spaces:ManagementSpace[];canBootstrap:boolean;bootstrapSources:Array<{accountNo:string;entityNo:string;entityName?:string}>}
+export interface ManagementContext {actorKey:string;spaces:ManagementSpace[];canBootstrap:boolean;bootstrapSources:Array<{accountNo:string;entityNo:string;entityName?:string;stores:Array<{storeNo:string;name:string}>;paymentMerchants:Array<{payMerchantNo:string}>}>}
 export interface Brand extends ManagementResource {brandNo:string;managementNo:string;scopeRevision:number;logo?:string;storeCount?:number;createdAt?:string;updatedAt?:string;createdByLabel?:string;updatedByLabel?:string;actions?:string[]}
 export interface ManagementGrant {actorLabel?:string;resourceName?:string;grantNo:string;managementNo:string;actorNo:string;resourceType:string;resourceNo:string;permissionCode:string;status:string;delegatable:boolean|number;revision:number}
 export interface GrantCommand {actorNo:string;resourceType:string;resourceNo:string;permissionCode:string;delegatable?:boolean;validFrom?:string;validTo?:string;expectedRevision?:number;reactivate?:boolean}
@@ -13,7 +13,9 @@ export interface BrandChange {changeNo:string;managementNo:string;storeNo:string
 export interface OperatingContext {storeNo:string;entityNo:string;name:string;status:string;revision:number;managementNo:string;brand:{brandNo:string;name:string;scopeRevision:number}|null;actions:string[];pendingChange?:{changeNo:string;status:string;revision:number}|null}
 export interface PaymentMerchant {payMerchantNo:string;entityNo:string;storeNo:string;payChannel:string;applyStatus:string;payMethods:string[]}
 export interface ManagementAudit {action:string;actorKey:string;occurredAt:string}
+export interface ManagementRecipient {actorNo:string;displayName:string}
 export interface ManagementApi {
+ mManagementRecipients(m:string,cursor?:string):Promise<ManagementPage<ManagementRecipient>>;
  mManagementContext():Promise<ManagementContext>;
  mCreateManagementSpace(body:{name:string;sourceAccountNo:string},key:string):Promise<ManagementSpace>;
  mManagementResources(m:string,query?:{resourceType?:string;view?:'EFFECTIVE'|'GRANTS';actorNo?:string;cursor?:string}):Promise<ManagementPage<ManagementGrant>>;

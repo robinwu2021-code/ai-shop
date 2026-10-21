@@ -327,6 +327,21 @@
       ],
       "status": "NEW",
       "notes": "主体1:N支付商户；本接口仅返回ACTIVE且方式和资源授权均满足的候选，不提供任意状态遍历；storeNo用于核验适用店，不得返回密钥或结算账号"
+    },
+    {
+      "id": "MG09",
+      "group": "管理空间",
+      "module": "Merchant/BFF",
+      "method": "GET",
+      "path": "/biz/management/spaces/{managementNo}/recipients",
+      "request": "cursor?,size=20",
+      "response": "CursorPage<ManagementRecipient>",
+      "permission": "management.resource.read + management.grant.manage",
+      "screens": [
+        "s24"
+      ],
+      "status": "NEW",
+      "notes": "管理空间内可控主体的有效成员；仅返回actorNo/displayName，不依赖当前门店，不跨主体遍历人员"
     }
   ],
   "common": {

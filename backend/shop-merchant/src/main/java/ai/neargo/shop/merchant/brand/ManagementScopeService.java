@@ -77,7 +77,7 @@ public class ManagementScopeService {
   var spaces=db.rows("SELECT DISTINCT s.* FROM mch_management_space s WHERE s.tenant_no=? AND s.status='ACTIVE' AND s.deleted=0 AND (s.owner_actor_no=? OR EXISTS (SELECT 1 FROM mch_management_grant g WHERE g.tenant_no=s.tenant_no AND g.management_no=s.management_no AND g.actor_no=? AND g.status='ACTIVE' AND g.deleted=0)) ORDER BY s.id DESC",a.tenantNo(),a.actorKey(),a.actorKey()).stream()
    .filter(s->can(a,str(s,"management_no"),"SPACE",str(s,"management_no"),"management.enter"))
    .map(s->{var v=db.view(s);v.put("actions",PERMISSIONS.get("SPACE").stream().filter(p->can(a,str(s,"management_no"),"SPACE",str(s,"management_no"),p)).sorted().toList());return v;}).toList();
-  return Map.of("actorKey",a.actorKey(),"spaces",spaces,"canBootstrap",!ownerAccounts(a).isEmpty(),"bootstrapSources",ownerAccounts(a).stream().map(x->{var entity=db.one("SELECT name FROM mch_entity WHERE tenant_no=? AND entity_no=? AND deleted=0",a.tenantNo(),str(x,"entity_no"));return Map.of("accountNo",str(x,"mch_account_no"),"entityNo",str(x,"entity_no"),"entityName",entity==null?"—":str(entity,"name"));}).toList());
+  return Map.of("actorKey",a.actorKey(),"spaces",spaces,"canBootstrap",!ownerAccounts(a).isEmpty(),"bootstrapSources",ownerAccounts(a).stream().map(x->{var entity=db.one("SELECT name FROM mch_entity WHERE tenant_no=? AND entity_no=? AND deleted=0",a.tenantNo(),str(x,"entity_no"));return Map.of("accountNo",str(x,"mch_account_no"),"entityNo",str(x,"entity_no"),"entityName",entity==null?"—":str(entity,"name"),"stores",db.rows("SELECT store_no AS storeNo,name FROM mch_store WHERE tenant_no=? AND entity_no=? AND deleted=0",a.tenantNo(),str(x,"entity_no")),"paymentMerchants",db.rows("SELECT pay_merchant_no AS payMerchantNo FROM mch_payment_merchant WHERE tenant_no=? AND entity_no=? AND deleted=0",a.tenantNo(),str(x,"entity_no")));}).toList());
  }
  public Map<String,Object> create(Actor a,String name,String source,String key){
   name=text(name,64);key=text(key,64);final String n=name,k=key;
@@ -90,8 +90,17 @@ public class ManagementScopeService {
    if(existing!=null){if(!hash.equals(str(existing,"bootstrap_hash")))throw BizException.of(ErrorCode.CONFLICT);return db.view(existing);}
    var row=db.base(a);String no=BizKey.next(BizKey.MANAGEMENT_SPACE);
    row.put("management_no",no);row.put("name",n);row.put("owner_actor_no",a.actorKey());row.put("status","ACTIVE");row.put("bootstrap_source_account_no",source);row.put("bootstrap_key",k);row.put("bootstrap_hash",hash);row.put("auth_revision",0);
-   db.insert("mch_management_space",row);var result=db.view(row);db.emit(a,db.commandId(a,no,"SPACE_CREATE",k),no,"SPACE_CREATE",hash,result);return result;
+   db.insert("mch_management_space",row);seedOwnedResource(a,no,"SPACE",no,PERMISSIONS.get("SPACE"));var result=db.view(row);db.emit(a,db.commandId(a,no,"SPACE_CREATE",k),no,"SPACE_CREATE",hash,result);return result;
   });
+ }
+ // Called only inside the authorized creation transaction, never from a grant API.
+ void seedBrandCreator(Actor a,String m,String brand){
+  require(a,m,"SPACE",m,"brand.manage");
+  if(db.one("SELECT brand_no FROM mch_brand WHERE tenant_no=? AND management_no=? AND brand_no=? AND created_by=? AND deleted=0",a.tenantNo(),m,brand,a.actorKey())==null)throw BizException.of(ErrorCode.FORBIDDEN);
+  seedOwnedResource(a,m,"BRAND",brand,PERMISSIONS.get("BRAND"));
+ }
+ private void seedOwnedResource(Actor a,String m,String type,String no,Set<String> permissions){
+  for(String permission:permissions){var g=db.base(a);g.put("grant_no",BizKey.next(BizKey.MANAGEMENT_GRANT));g.put("management_no",m);g.put("actor_no",a.actorKey());g.put("resource_type",type);g.put("resource_no",no);g.put("permission_code",permission);g.put("status","ACTIVE");g.put("valid_from",Timestamp.from(Instant.now()));g.put("delegatable",1);g.put("authority_source_type","SPACE_OWNER");g.put("authority_source_no",m);g.put("authority_snapshot",db.encode(Map.of("actor",a.actorKey(),"creationAuthorized",true)));db.insert("mch_management_grant",g);}
  }
  public Map<String,Object> grant(Actor a,String m,GrantCommand c){return db.write(()->{
   lock(a,m);require(a,m,"SPACE",m,"management.grant.manage");
@@ -134,6 +143,7 @@ public class ManagementScopeService {
   if(row==null)throw BizException.of(ErrorCode.NOT_FOUND);
   // The revoker must also control the grant's actual resource, not just its space.
   if(!canDelegate(a,m,str(row,"resource_type"),str(row,"resource_no"),str(row,"permission_code")))throw BizException.of(ErrorCode.FORBIDDEN);
+  if("SPACE".equals(str(row,"resource_type"))&&str(row,"actor_no").equals(str(space(a,m),"owner_actor_no")))throw BizException.of(ErrorCode.CONFLICT);
   if("REVOKED".equals(str(row,"status")))return db.view(row);
   if(num(row,"version")!=revision)throw BizException.of(ErrorCode.CONFLICT);
   db.update("UPDATE mch_management_grant SET status='REVOKED',version=version+1,updated_at=?,updated_by=? WHERE tenant_no=? AND grant_no=? AND version=?",Timestamp.from(Instant.now()),a.actorKey(),a.tenantNo(),no,revision);

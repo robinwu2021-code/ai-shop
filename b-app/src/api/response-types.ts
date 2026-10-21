@@ -152,8 +152,8 @@ export interface MerchantInventoryTrace {
 }
 
 // P1 organization management response contracts.
-export type {ManagementContext,ManagementSpace,ManagementGrant,ManagementResource,Brand,BrandImpact,BrandChange,OperatingContext,PaymentMerchant,ManagementAudit} from './management-types';
-import type {ManagementPage,ManagementGrant,ManagementResource,Brand,ManagementAudit} from './management-types';
+export type {ManagementContext,ManagementSpace,ManagementGrant,ManagementResource,Brand,BrandImpact,BrandChange,OperatingContext,PaymentMerchant,ManagementAudit,ManagementRecipient} from './management-types';
+import type {ManagementPage,ManagementGrant,ManagementResource,Brand,ManagementAudit,ManagementRecipient} from './management-types';
 export type ManagementGrantPage=ManagementPage<ManagementGrant>;
 export type ManagementResourcePage=ManagementPage<ManagementResource>;
 export type ManagementBrandPage=ManagementPage<Brand>;
@@ -166,3 +166,5 @@ export type SvPlanPage=SvPage<SvPlan>;
 export type SvAccountPage=SvPage<SvAccount>;
 export type SvRecordPage=SvPage<SvRecord>;
 export interface SvRechargeResolve {found:boolean;recharge:SvProgress|null}
+
+export type ManagementRecipientPage=ManagementPage<ManagementRecipient>;

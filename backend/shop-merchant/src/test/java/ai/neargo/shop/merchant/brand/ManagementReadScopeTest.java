@@ -27,4 +27,10 @@ class ManagementReadScopeTest {
   assertThat(q.resources(staff,m,null,"GRANTS",null,null,20).items()).noneMatch(row->"ENTITY".equals(row.get("resourceType")));
   assertThatThrownBy(()->f.scopes.revoke(staff,m,f.no(original,"grantNo"),0,"无委派权")).isInstanceOf(ai.neargo.shop.common.BizException.class);
  }
+ @Test void recipientsAreManagementScopedAndDoNotExposeUncontrolledEntities() throws Exception {
+  var f=new BrandFixture();String m=f.no(f.space(),"managementNo");var q=new ManagementQueryService(f.repo,f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",f.repo.json));
+  assertThat(q.recipients(f.owner,m,null,20).items()).extracting(row->row.get("actorNo")).containsExactly("MCH:MA1","MCH:MA3");
+  for(String permission:new String[]{"management.enter","management.resource.read","management.grant.manage"})f.scopes.grant(f.owner,m,new GrantCommand("MCH:MA3","SPACE",m,permission,null,null,false,null,false));
+  assertThat(q.recipients(new Actor("MAIN","MCH:MA3"),m,null,20).items()).isEmpty();
+ }
 }

@@ -232,7 +232,7 @@
 - IN05：端点为设计建议，落地优先扩展现有payclient AppService契约；防重、签名、范围及版本均服务端核实
 - IN06：端点为设计建议，落地优先扩展现有payclient AppService契约；防重、签名、范围及版本均服务端核实
 
-[P1组织与品牌详细设计](TDD-P1-经营组织与品牌管理-详细设计.md)细化本阶段20项接口、DTO与状态。MG03使用EFFECTIVE/GRANTS两种视图；MG08仅返回有效已授权商户候选。
+[P1组织与品牌详细设计](TDD-P1-经营组织与品牌管理-详细设计.md)细化本阶段21项接口、DTO与状态。MG03使用EFFECTIVE/GRANTS两种视图；MG08仅返回有效已授权商户候选。
 
 ## 3. 核心请求字段与响应
 
@@ -360,3 +360,7 @@ AuthorizedPaymentMerchant返回payMerchantRef、entityNo、payChannel、applySta
 充值请求仍提交受控rechargeOptionRef和原收款确认引用，不允许调用者自报任意商户或“成功的渠道流水”。collectionPaymentNo来自已有支付系统内部的可信关联；线上回执按原支付号及实际商户验签防重，线下仅记录有权岗位确认事实，不假称银行核验成功。
 
 新增2个查询操作后总计90个操作（86新增、3扩展、1复用）；34屏覆盖不变。结算账单的主体维度不改为payMerchantNo，顾客账户唯一键也不加payMerchantNo或payChannel。
+
+### MG09 管理空间可授权人员（P1补充）
+
+`GET /biz/management/spaces/{managementNo}/recipients`，参数cursor/size；响应items[{actorNo,displayName}]/nextCursor。需要management.resource.read及management.grant.manage；仅当前操作者可控主体的有效成员，不使用当前门店上下文。

@@ -103,13 +103,15 @@
         "ST03",
         "ST04",
         "ST05",
-        "MG08"
+        "MG08",
+        "MG09"
       ],
       "planFile": "2026-10-21-brand-stored-value-organization.md",
-      "status": "AWAITING_FINAL_REVIEW",
+      "status": "RELEASE_READY",
       "implementationNotes": [
-        "20 business APIs and one internal Pay read dependency implemented",
-        "5 Merchant tables allocated V544; explicit existing unicode_520 collation",
+        "21 business APIs and one internal Pay read dependency implemented",
+        "5 Merchant tables V544; MySQL 9.7.2 scoped rehearsal passed",
+        "Final review fixes verified: snapshot/revocation, delegated creator, bootstrap grants, management-scoped discovery, persisted blockers",
         "No real customer stored-value transaction executed"
       ]
     },
@@ -694,7 +696,8 @@
     "IN05": "P4",
     "IN06": "P3",
     "MG08": "P1",
-    "IS06": "P3"
+    "IS06": "P3",
+    "MG09": "P1"
   },
   "apiLaterScopeExtensions": {
     "P5": [

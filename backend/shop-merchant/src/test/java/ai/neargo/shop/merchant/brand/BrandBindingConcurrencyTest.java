@@ -59,4 +59,26 @@ class BrandBindingConcurrencyTest {
   var forged=new ChangeSubmit(s.management,s.brand,c.checkToken(),0,0,null,999L,"修改版本");
   assertThatThrownBy(()->s.brands.submit(s.f.owner,"S1",forged,"forged")).isInstanceOf(ai.neargo.shop.common.BizException.class);
  }
+ @Test void approvalBlockerSurvivesReload() throws Exception {
+  var s=setup();var c=command(s);var original=s.brands.submit(s.f.owner,"S1",c,"before-debt");String no=s.f.no(original,"changeNo");
+  var indebted=new BrandService(s.f.repo,s.f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",s.f.repo.json),(a,e,st)->new BrandChangeImpactPort.Impact(true,false,1,0,0,0),s.f.numbers());
+  indebted.decide(s.f.owner,no,new ChangeDecision("APPROVE",0,"确认"),"after-debt");
+  assertThat(indebted.change(s.f.owner,no).get("blockers")).asList().containsExactly("STORED_VALUE_UNRESOLVED");
+ }
+ @Test void revocationCommittedWhileMutationWaitsIsObserved() throws Exception {
+  org.junit.jupiter.api.Assumptions.assumeTrue(System.getProperty("p1.mysql.url")!=null,"MySQL repeatable-read regression");
+  var s=setup();var staff=new Actor("MAIN","MCH:MA3");
+  s.f.scopes.grant(s.f.owner,s.management,new GrantCommand(staff.actorKey(),"SPACE",s.management,"management.enter",null,null,false,null,false));
+  var grant=s.f.scopes.grant(s.f.owner,s.management,new GrantCommand(staff.actorKey(),"BRAND",s.brand,"brand.manage",null,null,false,null,false));
+  var started=new CountDownLatch(1);var pool=Executors.newSingleThreadExecutor();
+  try{var future=s.f.repo.write(()->{
+   s.f.scopes.lock(s.f.owner,s.management);
+   var task=pool.submit(()->{started.countDown();return s.brands.edit(staff,s.brand,new BrandEdit("不得修改",null,0),"revoked-edit");});
+   try{started.await();Thread.sleep(300);}catch(InterruptedException e){throw new RuntimeException(e);}
+   s.f.scopes.revoke(s.f.owner,s.management,(String)grant.get("grantNo"),0,"撤回授权");return task;
+  });
+  assertThatThrownBy(()->future.get(10,TimeUnit.SECONDS)).isInstanceOf(ExecutionException.class).hasCauseInstanceOf(ai.neargo.shop.common.BizException.class);
+  assertThat(s.brands.detail(s.f.owner,s.brand)).containsEntry("name","示例品牌");
+  }finally{pool.shutdownNow();}
+ }
 }

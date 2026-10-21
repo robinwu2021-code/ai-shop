@@ -3,6 +3,7 @@ import {buildPath,ENDPOINTS as E} from './endpoints';
 import type {ManagementApi} from './management-types';
 const headers=(key:string)=>({'Idempotency-Key':key});
 export const managementHttpApi:ManagementApi={
+ mManagementRecipients:(m,cursor)=>http.get(buildPath(E.mManagementRecipients.path,{m}),{cursor}),
  mManagementContext:()=>http.get(E.mManagementContext.path),
  mCreateManagementSpace:(body,key)=>http.post(E.mCreateManagementSpace.path,body,headers(key)),
  mManagementResources:(m,query)=>http.get(buildPath(E.mManagementResources.path,{m}),query),

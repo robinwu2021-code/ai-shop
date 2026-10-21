@@ -37,4 +37,18 @@ class BrandScopeAuthorizationTest {
   assertThat(f.scopes.can(new ManagementModels.Actor("OTHER","MCH:MA1"),m,"SPACE",m,"management.enter")).isFalse();
   assertThat(f.scopes.can(new ManagementModels.Actor("MAIN","USER:MA1"),m,"SPACE",m,"management.enter")).isFalse();
  }
+ @Test void bootstrapPersistsDelegatableEntryAndIndependentDiscovery() throws Exception {
+  var f=new BrandFixture();String m=f.no(f.space(),"managementNo");
+  assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM mch_management_grant WHERE management_no=? AND resource_type='SPACE' AND delegatable=1",Long.class,m)).isEqualTo(6);
+  var sources=(java.util.List<java.util.Map<String,Object>>)f.scopes.context(new ManagementModels.Actor("MAIN","USER:U1")).get("bootstrapSources");
+  assertThat(sources.getFirst()).containsKey("stores").containsKey("paymentMerchants");
+ }
+ @Test void delegatedCreatorGetsOnlyNewBrandAuthority() throws Exception {
+  var f=new BrandFixture();String m=f.no(f.space(),"managementNo");var staff=new ManagementModels.Actor("MAIN","MCH:MA3");
+  for(String permission:new String[]{"management.enter","brand.manage"})f.scopes.grant(f.owner,m,new ManagementModels.GrantCommand(staff.actorKey(),"SPACE",m,permission,null,null,false,null,false));
+  var service=new BrandService(f.repo,f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",f.repo.json),(a,e,s)->new BrandChangeImpactPort.Impact(true,false,0,0,0,0),f.numbers());
+  var brand=service.create(staff,new ManagementModels.BrandCreate(m,"受托品牌",null,"ACTIVE"),"delegated-create");
+  assertThat(f.scopes.can(staff,m,"BRAND",(String)brand.get("brandNo"),"brand.manage")).isTrue();
+  assertThat(f.scopes.can(staff,m,"ENTITY","E1","entity.read")).isFalse();
+ }
 }

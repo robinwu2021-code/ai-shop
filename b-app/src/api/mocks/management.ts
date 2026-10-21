@@ -4,6 +4,7 @@ export const managementMock:ManagementApi={
  mManagementContext:async()=>({actorKey:'',spaces:[],canBootstrap:false,bootstrapSources:[]}),
  mCreateManagementSpace: unavailable,
  mManagementResources: unavailable,
+ mManagementRecipients: unavailable,
  mManagementGrant: unavailable,
  mRevokeManagementGrant: unavailable,
  mManagementEntities: unavailable,
