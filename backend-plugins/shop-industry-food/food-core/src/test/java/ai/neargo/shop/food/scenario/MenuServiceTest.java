@@ -12,6 +12,9 @@ import ai.neargo.shop.food.dto.ListMenusQuery;
 import ai.neargo.shop.food.dto.UpdateMenuReq;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.MenuMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.MenuScheduleMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.MenuExceptionMapper;
+import ai.neargo.shop.food.config.FoodDataScopeRegistration;
 import ai.neargo.shop.food.mapper.FoodMappers.MenuStoreMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
 import ai.neargo.shop.food.service.MenuService;
@@ -36,9 +39,10 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Exercises actual working rows, native V1 shape, original idempotency and atomic outbox. */
 class MenuServiceTest extends FoodWriteGuardFixture {
-    record Menus(Fixture fixture, MenuService service, AtomicBoolean fail) { }
+    record Menus(Fixture fixture, MenuService service, AtomicBoolean fail, SqlSessionTemplate template) { }
     void run(Consumer<Menus> action) {
-        runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class).run(c -> {
+        runner().withBean(FoodDataScopeRegistration.class, FoodDataScopeRegistration::new)
+                .withUserConfiguration(StorePolicyPublicationTest.Publication.class).run(c -> {
             var f = prepare(c);
             StorePolicyPublicationTest.createPolicyTables(f);
             String common = "id BIGINT AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) DEFAULT 'MAIN',"
@@ -48,7 +52,8 @@ class MenuServiceTest extends FoodWriteGuardFixture {
                 try {
                     String ddl = new ClassPathResource("db/industry/food/V1__food_business_tables.sql")
                             .getContentAsString(StandardCharsets.UTF_8);
-                    for (String table : List.of("fnb_menu", "fnb_menu_store")) {
+                    for (String table : List.of("fnb_menu", "fnb_menu_store",
+                            "fnb_menu_schedule", "fnb_menu_exception")) {
                         var match = Pattern.compile("CREATE TABLE `" + table + "` \\(.*?;", Pattern.DOTALL)
                                 .matcher(ddl);
                         assertThat(match.find()).isTrue();
@@ -63,10 +68,18 @@ class MenuServiceTest extends FoodWriteGuardFixture {
                 f.sql().execute("CREATE TABLE fnb_menu_store (" + common + "menu_no VARCHAR(32),store_no VARCHAR(32),"
                         + "override_revision_no VARCHAR(32),UNIQUE(menu_no,store_no))");
             }
+            if (!"true".equals(System.getenv("FOOD_TEST_DISPOSABLE"))) {
+                f.sql().execute("CREATE TABLE fnb_menu_schedule (" + common + "schedule_no VARCHAR(32) UNIQUE,"
+                        + "menu_no VARCHAR(32),weekday INT,start_time TIME,end_time TIME,end_day_offset INT)");
+                f.sql().execute("CREATE TABLE fnb_menu_exception (" + common + "exception_no VARCHAR(32) UNIQUE,"
+                        + "menu_no VARCHAR(32),local_date DATE,mode VARCHAR(16),start_time TIME,end_time TIME,"
+                        + "end_day_offset INT,UNIQUE(menu_no,local_date))");
+            }
             f.sql().update("INSERT INTO fnb_store_policy(entity_no,policy_no,store_no,timezone,effective_from) "
                     + "VALUES('E','P1','A','Asia/Shanghai','2026-01-01 00:00:00')");
             var template = c.getBean(SqlSessionTemplate.class);
-            for (var type : List.of(MenuMapper.class, MenuStoreMapper.class, StorePolicyMapper.class)) {
+            for (var type : List.of(MenuMapper.class, MenuStoreMapper.class, StorePolicyMapper.class,
+                    MenuScheduleMapper.class, MenuExceptionMapper.class)) {
                 if (!template.getConfiguration().hasMapper(type)) template.getConfiguration().addMapper(type);
             }
             var outbox = c.getBean("foodOutboxPublisher", OutboxPublisher.class);
@@ -79,8 +92,9 @@ class MenuServiceTest extends FoodWriteGuardFixture {
                         if (fail.get()) throw new IllegalStateException("after-menu-outbox");
                         return receipt;
                     }, c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class),
-                    Clock.fixed(Instant.parse("2026-10-21T12:00:00Z"), ZoneOffset.UTC));
-            action.accept(new Menus(f, service, fail));
+                    Clock.fixed(Instant.parse("2026-10-21T12:00:00Z"), ZoneOffset.UTC),
+                    template.getMapper(MenuScheduleMapper.class), template.getMapper(MenuExceptionMapper.class));
+            action.accept(new Menus(f, service, fail, template));
         });
     }
     static CreateMenuReq input(String name) { return new CreateMenuReq(name, "TIME", "Asia/Shanghai", 10, "MEAL"); }

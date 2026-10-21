@@ -2,6 +2,8 @@ package ai.neargo.shop.food.mapper;
 
 import ai.neargo.shop.food.entity.FnbActionLog;
 import ai.neargo.shop.food.entity.FnbMenu;
+import ai.neargo.shop.food.entity.FnbMenuSchedule;
+import ai.neargo.shop.food.entity.FnbMenuException;
 import ai.neargo.shop.food.entity.FnbMenuStore;
 import ai.neargo.shop.food.entity.FnbBundle;
 import ai.neargo.shop.food.entity.FnbBundleChoice;
@@ -44,6 +46,15 @@ public final class FoodMappers {
     public interface RecipeAdjustmentMapper extends BaseMapper<FnbRecipeAdjustment> {
         @Delete("DELETE FROM fnb_recipe_adjustment WHERE entity_no=#{entity} AND recipe_no=#{recipe}")
         int replaceDraftRows(@Param("entity") String entity, @Param("recipe") String recipe);
+    }
+
+    public interface MenuScheduleMapper extends BaseMapper<FnbMenuSchedule> {
+        @Delete("DELETE FROM fnb_menu_schedule WHERE entity_no=#{entity} AND menu_no=#{menu}")
+        int replaceDraftRows(@Param("entity") String entity, @Param("menu") String menu);
+    }
+    public interface MenuExceptionMapper extends BaseMapper<FnbMenuException> {
+        @Delete("DELETE FROM fnb_menu_exception WHERE entity_no=#{entity} AND menu_no=#{menu}")
+        int replaceDraftRows(@Param("entity") String entity, @Param("menu") String menu);
     }
 
     public interface MenuMapper extends BaseMapper<FnbMenu> { }

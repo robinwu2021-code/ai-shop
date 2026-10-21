@@ -13,6 +13,10 @@ import ai.neargo.shop.food.dto.MenuConfigResultVO;
 import ai.neargo.shop.food.dto.MenuResultVO;
 import ai.neargo.shop.food.dto.MenuVO;
 import ai.neargo.shop.food.dto.UpdateMenuReq;
+import ai.neargo.shop.food.dto.ReplaceMenuScheduleReq;
+import ai.neargo.shop.food.dto.MenuScheduleResultVO;
+import ai.neargo.shop.food.dto.MenuScheduleVO;
+import ai.neargo.shop.food.dto.WeekScheduleInput;
 import ai.neargo.shop.food.foodclient.RemoteMenuService;
 import ai.neargo.shop.food.spi.MenuInternalApi;
 import java.util.List;
@@ -73,6 +77,32 @@ class RemoteMenuServiceTest {
                 (long) Integer.MAX_VALUE, 100L));
         assertThat(service.listMenus("E", "A", new ListMenusQuery(Integer.MAX_VALUE, 100, null, null)).records())
                 .isEmpty();
+    }
+
+    @Test void scheduleReceiptsMustContainExactDefinitionWhileLegacyDetailStaysUnknown() {
+        var api = mock(MenuInternalApi.class); var service = new RemoteMenuService(api);
+        var week = new WeekScheduleInput(1, "22:00", "02:00", 1);
+        var input = new ReplaceMenuScheduleReq("SCHEDULE", 0L, List.of(week), List.of(), null, null);
+        var schedule = new MenuScheduleVO(null, null, List.of(week), List.of());
+        when(api.replaceSchedule(any())).thenReturn(new MenuScheduleResultVO(view("A", "早餐", 1), schedule));
+        assertThat(service.replaceSchedule("E", "A", "M1", "actor", input, "key").schedule()).isEqualTo(schedule);
+        for (var bad : List.of(new MenuScheduleResultVO(view("A", "早餐", 1), null),
+                new MenuScheduleResultVO(view("B", "早餐", 1), schedule),
+                new MenuScheduleResultVO(view("A", "早餐", 1), new MenuScheduleVO(null, null, List.of(), List.of())))) {
+            when(api.replaceSchedule(any())).thenReturn(bad);
+            assertThatThrownBy(() -> service.replaceSchedule("E", "A", "M1", "actor", input, "key"))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+        when(api.getMenu(any())).thenReturn(new MenuConfigResultVO(view("A", "早餐", 0)));
+        assertThat(service.getMenu("E", "A", "M1").schedule()).isNull();
+        when(api.getMenu(any())).thenReturn(new MenuConfigResultVO(view("A", "早餐", 0),
+                new MenuScheduleVO(null, null, null, List.of())));
+        assertThatThrownBy(() -> service.getMenu("E", "A", "M1")).isInstanceOf(IllegalStateException.class);
+        var json = new ObjectMapper();
+        String encoded = json.writeValueAsString(new MenuInternalApi.ScheduleCommand("E", "A", "M1", "actor",
+                "key", input));
+        assertThatThrownBy(() -> json.readValue(encoded.replace("\"weekday\":1", "\"weekday\":\"1\""),
+                MenuInternalApi.ScheduleCommand.class)).isInstanceOf(RuntimeException.class);
     }
 
     @Test void jsonDoesNotCoerceTextVersionsPriorityOrPaginationAndMissingMetadataIsRejected() {

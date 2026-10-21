@@ -25,6 +25,9 @@ import ai.neargo.shop.food.spi.MenuInternalApi;
 import ai.neargo.shop.food.dto.CreateMenuReq;
 import ai.neargo.shop.food.dto.UpdateMenuReq;
 import ai.neargo.shop.food.dto.ListMenusQuery;
+import ai.neargo.shop.food.dto.ReplaceMenuScheduleReq;
+import ai.neargo.shop.food.dto.WeekScheduleInput;
+import ai.neargo.shop.food.dto.ExceptionInput;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 import ai.neargo.shop.spi.inventory.MaterialCatalogInternalApi;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
@@ -138,7 +141,7 @@ class FoodRecipePrimaryDatabaseTest {
                         for (String path : List.of(RecipeInternalApi.CREATE_PATH, RecipeInternalApi.REPLACE_PATH,
                                 RecipeInternalApi.LIST_PATH, RecipeInternalApi.GET_PATH,
                                 MenuInternalApi.CREATE_PATH, MenuInternalApi.UPDATE_PATH,
-                                MenuInternalApi.LIST_PATH, MenuInternalApi.GET_PATH)) {
+                                MenuInternalApi.LIST_PATH, MenuInternalApi.GET_PATH, MenuInternalApi.SCHEDULE_PATH)) {
                             mvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content("{}"))
                                     .andExpect(status().isUnauthorized());
                             mvc.perform(post(path).header(InternalHttp.TOKEN_HEADER, "wire")
@@ -312,6 +315,25 @@ class FoodRecipePrimaryDatabaseTest {
                         .isEqualTo(404));
         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_menu_store", Integer.class)).isEqualTo(1);
         assertThat(sql.queryForObject("SELECT exclusive_group FROM fnb_menu", String.class)).isNull();
+        var rules = new ReplaceMenuScheduleReq("SCHEDULE", 1L,
+                List.of(new WeekScheduleInput(1, "22:00", "02:00", 1)),
+                List.of(new ExceptionInput("2026-10-19", "CLOSED", null, null, 0)),
+                "2026-10-01", "2026-10-31");
+        var command = new MenuInternalApi.ScheduleCommand("E", "A", id, "operator", "menu-schedule", rules);
+        var scheduled = api.replaceSchedule(command);
+        assertThat(api.replaceSchedule(command)).isEqualTo(scheduled);
+        assertThat(scheduled.menu().version()).isEqualTo(2);
+        assertThat(api.getMenu(new MenuInternalApi.GetQuery("E", "A", id)).schedule()).isEqualTo(scheduled.schedule());
+        assertThat(sql.queryForObject("SELECT end_day_offset FROM fnb_menu_schedule", Integer.class)).isEqualTo(1);
+        assertThatThrownBy(() -> api.replaceSchedule(new MenuInternalApi.ScheduleCommand("E", "B", id,
+                "operator", "bad-store", rules))).isInstanceOfSatisfying(ServiceCallException.class,
+                        failure -> assertThat(failure.statusCode()).isEqualTo(404));
+        var cleared = api.replaceSchedule(new MenuInternalApi.ScheduleCommand("E", "A", id, "operator", "clear",
+                new ReplaceMenuScheduleReq("SCHEDULE", 2L, List.of(), List.of(), null, null)));
+        assertThat(cleared.schedule().weekSchedules()).isEmpty();
+        assertThat(api.replaceSchedule(command)).isEqualTo(scheduled);
+        assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_menu_schedule", Integer.class)).isZero();
+        assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_menu_exception", Integer.class)).isZero();
     }
 
     @Configuration(proxyBeanMethods=false)

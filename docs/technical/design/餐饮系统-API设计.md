@@ -407,19 +407,19 @@
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | weekday | int32 | 是 | 1至7 |
-| startTime | string | 是 | HH:mm |
-| endTime | string | 是 | HH:mm |
-| endDayOffset | int32 | 是 | 0或1 |
+| startTime | string | 是 | 严格HH:mm |
+| endTime | string | 是 | 严格HH:mm |
+| endDayOffset | int32 | 是 | 0或1；时长大于0不超过24小时，周内含跨周重叠拒绝 |
 
 ### ExceptionInput
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| localDate | date | 是 | 日期 |
+| localDate | date | 是 | 本地开始日期且在适用范围内 |
 | mode | string | 是 | OPEN或CLOSED |
 | startTime | string | 否 | OPEN必填 |
 | endTime | string | 否 | OPEN必填 |
-| endDayOffset | int32 | 是 | 跨日标记 |
+| endDayOffset | int32 | 是 | 0或1，CLOSED为0且无时间；日期唯一 |
 
 ### ContextInput
 
@@ -1255,6 +1255,26 @@
 | exclusiveGroup | string | 否 | 1到32文本；禁止自报主体/门店/状态/价格 |
 | version | int64 | 是 | 非负且小于Long.MAX_VALUE |
 
+### MenuSchedule
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| validFrom | date | 否 | 含起始日 |
+| validTo | date | 否 | 含结束日 |
+| weekSchedules | WeekScheduleInput[] | 是 | 实际规则 |
+| exceptions | ExceptionInput[] | 是 | 实际例外；whole schedule缺省为旧提供方未知，数组为空才表示已清空 |
+
+### ReplaceMenuScheduleReq
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| section | string | 是 | 本批仅SCHEDULE |
+| version | int64 | 是 | 草稿CAS |
+| weekSchedules | WeekScheduleInput[] | 是 | 必需，允许[]不允许null |
+| exceptions | ExceptionInput[] | 是 | 必需，允许[]不允许null |
+| validFrom | date | 否 | 含首日 |
+| validTo | date | 否 | 含末日；完整storeNos/contexts/categories分支尚未实现，不接受这些字段 |
+
 ## 四、逐接口输入输出
 
 ### FOOD-API-001 · 查询营业策略
@@ -1411,6 +1431,7 @@
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | config | Menu | 是 | 当前授权店的工作头，不等于生效发布 |
+| schedule | MenuSchedule | 否 | 新提供方返回，旧提供方缺省表示未知 |
 
 ### FOOD-API-006 · 发布menus
 
@@ -1725,9 +1746,9 @@
 
 `PUT /biz/x/food/menus/{menuNo}/definition`
 
-权限与守卫：仅更新草稿；分类/菜项同属本餐牌；SKU须属于商品；时段跨日及例外完整校验；渠道绑定/价格引用同主体门店验真；INHERIT或REPLACE显式，不能客户端提交scopeKey；特定配方SKU必须白名单；同组同优先级重叠拒绝。。
+权限与守卫：CAT-02B仅SCHEDULE分段；GOODS/BizContext/StoreDirectory/实际同主体当前店；单店无override/CAS/幂等/审计Outbox同事务；当前策略时区一致；跨周重叠拒绝/区间左闭右开/日期例外优先；不改变不可变历史；完整组成及发布冲突校验仍待后续。
 
-能力依赖：餐饮新增。
+能力依赖：CAT-02B已实现SCHEDULE分段；API017完整门店/入口/分类菜项定义仍待实现，不表示可售。
 
 路径输入：
 
@@ -1739,20 +1760,19 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| version | int64 | 是 | 草稿版本 |
-| storeNos | string[] | 是 | 适用门店 |
-| contexts | ContextInput[] | 是 | 渠道与履约 |
-| weekSchedules | WeekScheduleInput[] | 是 | weekday起止时间和跨日标记 |
-| exceptions | ExceptionInput[] | 是 | 日期及OPEN或CLOSED和时间 |
-| categories | MenuCategoryInput[] | 是 | 分类号名称排序及商品SKU白名单 |
-| validFrom | date | 否 | 适用首日 |
-| validTo | date | 否 | 适用末日 |
+| section | string | 是 | 本批仅SCHEDULE |
+| version | int64 | 是 | 草稿CAS |
+| weekSchedules | WeekScheduleInput[] | 是 | 必需，允许[]不允许null |
+| exceptions | ExceptionInput[] | 是 | 必需，允许[]不允许null |
+| validFrom | date | 否 | 含首日 |
+| validTo | date | 否 | 含末日；完整storeNos/contexts/categories分支尚未实现，不接受这些字段 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | menu | Menu | 是 | 草稿头 |
+| schedule | MenuSchedule | 是 | 规范化时段及例外 |
 
 ### FOOD-API-018 · 套餐选择组配置
 

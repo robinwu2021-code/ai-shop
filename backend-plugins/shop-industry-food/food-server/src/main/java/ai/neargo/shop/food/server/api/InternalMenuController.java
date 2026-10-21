@@ -8,6 +8,8 @@ import ai.neargo.shop.food.dto.MenuResultVO;
 import ai.neargo.shop.food.dto.CreateMenuResultVO;
 import ai.neargo.shop.food.dto.MenuConfigResultVO;
 import ai.neargo.shop.food.dto.MenuVO;
+import ai.neargo.shop.food.dto.ReplaceMenuScheduleReq;
+import ai.neargo.shop.food.dto.MenuScheduleResultVO;
 import ai.neargo.shop.food.service.MenuService;
 import ai.neargo.shop.food.spi.MenuInternalApi;
 import jakarta.validation.Valid;
@@ -35,6 +37,11 @@ public class InternalMenuController {
     @PostMapping(MenuInternalApi.UPDATE_PATH)
     public MenuResultVO updateMenu(@Valid @RequestBody MenuInternalApi.UpdateCommand c) {
         return service.updateMenu(c.entityNo(), c.storeNo(), c.menuNo(), c.actorNo(),
+                c.definition(), c.idempotencyKey());
+    }
+    @PostMapping(MenuInternalApi.SCHEDULE_PATH)
+    public MenuScheduleResultVO replaceSchedule(@Valid @RequestBody MenuInternalApi.ScheduleCommand c) {
+        return service.replaceSchedule(c.entityNo(), c.storeNo(), c.menuNo(), c.actorNo(),
                 c.definition(), c.idempotencyKey());
     }
     @PostMapping(MenuInternalApi.GET_PATH)

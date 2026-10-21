@@ -6808,7 +6808,7 @@
       "method": "GET",
       "path": "/biz/x/food/stores/{storeNo}/menus/{configNo}",
       "input": "",
-      "output": "config:Menu:当前授权店的工作头，不等于生效发布",
+      "output": "config:Menu:当前授权店的工作头，不等于生效发布;schedule?:MenuSchedule:新提供方返回，旧提供方缺省表示未知",
       "guard": "原GOODS权限/BizContext/StoreDirectory与实际同主体门店绑定；未知字段拒绝；写操作CAS/幂等/审计/Outbox同事务；timezone与当前生效门店策略一致；只写单店无override头，多店编辑409；完成回执优先重放",
       "needs": "CAT-02A已实现餐牌头管理；时段规则、菜项与发布仍待后续，不表示可售"
     },
@@ -6939,10 +6939,10 @@
       "name": "菜单组成与时段配置",
       "method": "PUT",
       "path": "/biz/x/food/menus/{menuNo}/definition",
-      "input": "version:int64:草稿版本;storeNos:string[]:适用门店;contexts:ContextInput[]:渠道与履约;weekSchedules:WeekScheduleInput[]:weekday起止时间和跨日标记;exceptions:ExceptionInput[]:日期及OPEN或CLOSED和时间;categories:MenuCategoryInput[]:分类号名称排序及商品SKU白名单;validFrom?:date:适用首日;validTo?:date:适用末日",
-      "output": "menu:Menu:草稿头",
-      "guard": "仅更新草稿；分类/菜项同属本餐牌；SKU须属于商品；时段跨日及例外完整校验；渠道绑定/价格引用同主体门店验真；INHERIT或REPLACE显式，不能客户端提交scopeKey；特定配方SKU必须白名单；同组同优先级重叠拒绝。",
-      "needs": "餐饮新增"
+      "input": "section:string:本批仅SCHEDULE;version:int64:草稿CAS;weekSchedules:WeekScheduleInput[]:必需，允许[]不允许null;exceptions:ExceptionInput[]:必需，允许[]不允许null;validFrom?:date:含首日;validTo?:date:含末日；完整storeNos/contexts/categories分支尚未实现，不接受这些字段",
+      "output": "menu:Menu:草稿头;schedule:MenuSchedule:规范化时段及例外",
+      "guard": "CAT-02B仅SCHEDULE分段；GOODS/BizContext/StoreDirectory/实际同主体当前店；单店无override/CAS/幂等/审计Outbox同事务；当前策略时区一致；跨周重叠拒绝/区间左闭右开/日期例外优先；不改变不可变历史；完整组成及发布冲突校验仍待后续",
+      "needs": "CAT-02B已实现SCHEDULE分段；API017完整门店/入口/分类菜项定义仍待实现，不表示可售"
     },
     {
       "id": "FOOD-API-018",
@@ -8471,8 +8471,8 @@
     "Page": "records:object[]:该端点明确的业务VO;total:int64:总数;page:int32:页码;size:int32:每页条数",
     "MenuCategoryInput": "categoryNo:string:分类;name:string:名称;sortNo:int32:排序;items:MenuItemInput[]:商品项",
     "MenuItemInput": "menuItemNo:string:项号;goodsNo:string:商品;sortNo:int32:排序;enabled:boolean:启用;skuScope:string:ALL或EXPLICIT;skuNos:string[]:EXPLICIT必须非空且属于商品;optionMode:string:INHERIT或REPLACE;optionGroupNos:string[]:REPLACE显式组，空表示禁选;skuRecipes:MenuSkuRecipeInput[]:特定SKU配方，必须EXPLICIT白名单",
-    "WeekScheduleInput": "weekday:int32:1至7;startTime:string:HH:mm;endTime:string:HH:mm;endDayOffset:int32:0或1",
-    "ExceptionInput": "localDate:date:日期;mode:string:OPEN或CLOSED;startTime?:string:OPEN必填;endTime?:string:OPEN必填;endDayOffset:int32:跨日标记",
+    "WeekScheduleInput": "weekday:int32:1至7;startTime:string:严格HH:mm;endTime:string:严格HH:mm;endDayOffset:int32:0或1；时长大于0不超过24小时，周内含跨周重叠拒绝",
+    "ExceptionInput": "localDate:date:本地开始日期且在适用范围内;mode:string:OPEN或CLOSED;startTime?:string:OPEN必填;endTime?:string:OPEN必填;endDayOffset:int32:0或1，CLOSED为0且无时间；日期唯一",
     "ContextInput": "orderSource:string:受控来源;fulfillment:string:受控履约;channelBindingNo?:string:受权渠道绑定，本地省略;pricePolicyRef?:string:权威价格策略引用，不接受金额",
     "BundleGroupInput": "groupNo:string:组号;name:string:名称;minQty:decimal:最少;maxQty:decimal:最多;baseSkuNo?:string:补差基准;sortNo:int32:排序",
     "BundleChoiceInput": "choiceNo:string:选项;groupNo:string:组;skuNo:string:SKU;unitsPerPick:decimal:每选用量;priceMode:string:INCLUDED或ADD_SKU或DIFF_BASE;defaultQty:decimal:默认;minQty:decimal:下限;maxQty:decimal:上限;sortNo:int32:排序",
@@ -8551,7 +8551,9 @@
     "MaterialFact": "itemId:string:原库存物料;entityNo:string:所属主体;name:string:来源名称;baseUom:string:基础单位;weighed:int32:原计量标记;dataSource:string:原来源;unitSupport:string:BASE_ONLY;postingSupport:string:INTEGER_ONLY;definitionHash:string:语义摘要非CAS",
     "RecipeOptionGroupSnapshot": "goodsNo:string:实际根商品绑定;publication:PublicationDependency:不可变依赖;definition:object:完整schema1组选项文档",
     "CreateMenuReq": "name:string:1到64文本;menuType:string:STANDARD或TIME或SEASON或EVENT;timezone:string:门店当前生效IANA时区;priority:int32:必需;exclusiveGroup?:string:1到32文本；禁止自报主体/门店/状态/价格",
-    "UpdateMenuReq": "name:string:1到64文本;menuType:string:STANDARD或TIME或SEASON或EVENT;timezone:string:门店当前生效IANA时区;priority:int32:必需;exclusiveGroup?:string:1到32文本；禁止自报主体/门店/状态/价格;version:int64:非负且小于Long.MAX_VALUE"
+    "UpdateMenuReq": "name:string:1到64文本;menuType:string:STANDARD或TIME或SEASON或EVENT;timezone:string:门店当前生效IANA时区;priority:int32:必需;exclusiveGroup?:string:1到32文本；禁止自报主体/门店/状态/价格;version:int64:非负且小于Long.MAX_VALUE",
+    "MenuSchedule": "validFrom?:date:含起始日;validTo?:date:含结束日;weekSchedules:WeekScheduleInput[]:实际规则;exceptions:ExceptionInput[]:实际例外；whole schedule缺省为旧提供方未知，数组为空才表示已清空",
+    "ReplaceMenuScheduleReq": "section:string:本批仅SCHEDULE;version:int64:草稿CAS;weekSchedules:WeekScheduleInput[]:必需，允许[]不允许null;exceptions:ExceptionInput[]:必需，允许[]不允许null;validFrom?:date:含首日;validTo?:date:含末日；完整storeNos/contexts/categories分支尚未实现，不接受这些字段"
   },
   "commonFields": [
     [

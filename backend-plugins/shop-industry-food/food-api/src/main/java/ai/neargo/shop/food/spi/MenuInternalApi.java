@@ -6,6 +6,8 @@ import ai.neargo.shop.food.dto.MenuConfigResultVO;
 import ai.neargo.shop.food.dto.ListMenusQuery;
 import ai.neargo.shop.food.dto.MenuResultVO;
 import ai.neargo.shop.food.dto.MenuVO;
+import ai.neargo.shop.food.dto.ReplaceMenuScheduleReq;
+import ai.neargo.shop.food.dto.MenuScheduleResultVO;
 import ai.neargo.shop.food.dto.UpdateMenuReq;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 import ai.neargo.shop.spi.product.CatalogRevisionDeserializer;
@@ -22,6 +24,7 @@ import tools.jackson.databind.annotation.JsonDeserialize;
 public interface MenuInternalApi {
     String CREATE_PATH = "/internal/food/menus/create";
     String UPDATE_PATH = "/internal/food/menus/update";
+    String SCHEDULE_PATH = "/internal/food/menus/replace-schedule";
     String GET_PATH = "/internal/food/menus/get";
     String LIST_PATH = "/internal/food/menus/list";
 
@@ -29,6 +32,8 @@ public interface MenuInternalApi {
     CreateMenuResultVO createMenu(@RequestBody CreateCommand command);
     @PostExchange(UPDATE_PATH)
     MenuResultVO updateMenu(@RequestBody UpdateCommand command);
+    @PostExchange(SCHEDULE_PATH)
+    MenuScheduleResultVO replaceSchedule(@RequestBody ScheduleCommand command);
     @PostExchange(GET_PATH)
     MenuConfigResultVO getMenu(@RequestBody GetQuery query);
     @PostExchange(LIST_PATH)
@@ -60,6 +65,17 @@ public interface MenuInternalApi {
             @NotBlank @Size(max=128)
             @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String idempotencyKey,
             @NotNull @Valid UpdateMenuReq definition) { }
+    record ScheduleCommand(@NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String entityNo,
+            @NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String storeNo,
+            @NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String menuNo,
+            @NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String actorNo,
+            @NotBlank @Size(max=128)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String idempotencyKey,
+            @NotNull @Valid ReplaceMenuScheduleReq definition) { }
     record GetQuery(@NotBlank @Size(max=32)
             @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String entityNo,
             @NotBlank @Size(max=32)

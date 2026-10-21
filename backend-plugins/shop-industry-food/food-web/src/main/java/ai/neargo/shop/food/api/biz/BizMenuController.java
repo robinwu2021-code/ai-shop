@@ -16,6 +16,8 @@ import ai.neargo.shop.food.dto.MenuResultVO;
 import ai.neargo.shop.food.dto.CreateMenuResultVO;
 import ai.neargo.shop.food.dto.MenuConfigResultVO;
 import ai.neargo.shop.food.dto.MenuVO;
+import ai.neargo.shop.food.dto.ReplaceMenuScheduleReq;
+import ai.neargo.shop.food.dto.MenuScheduleResultVO;
 import ai.neargo.shop.food.dto.UpdateMenuReq;
 import ai.neargo.shop.food.service.MenuService;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
@@ -75,6 +77,20 @@ public class BizMenuController {
         if (context.currentStoreNo() == null) throw BizException.of(ErrorCode.BAD_REQUEST);
         requireStore(context.currentStoreNo(), request);
         return service.updateMenu(context.merchantNo(), context.currentStoreNo(), menuNo,
+                SecurityUtils.currentUserNo(), req, key);
+    }
+
+    /** Only the explicit schedule section is supported until composition contracts are implemented. */
+    @PutMapping("/biz/x/food/menus/{menuNo}/definition")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    public MenuScheduleResultVO replaceSchedule(@PathVariable("menuNo") @NotBlank @Size(max=32) String number,
+            @Valid @RequestBody ReplaceMenuScheduleReq req,
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) String key, HttpServletRequest request) {
+        queryFields(request, Set.of());
+        var context = BizContext.current();
+        if (context.currentStoreNo() == null) throw BizException.of(ErrorCode.BAD_REQUEST);
+        requireStore(context.currentStoreNo(), request);
+        return service.replaceSchedule(context.merchantNo(), context.currentStoreNo(), number,
                 SecurityUtils.currentUserNo(), req, key);
     }
 

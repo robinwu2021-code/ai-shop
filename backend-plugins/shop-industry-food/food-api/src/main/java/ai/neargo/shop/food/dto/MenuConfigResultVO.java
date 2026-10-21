@@ -1,4 +1,6 @@
 package ai.neargo.shop.food.dto;
 
-/** Retains the established menu management response shape. */
-public record MenuConfigResultVO(MenuVO config) { }
+/** Additive schedule remains unknown when reading a legacy provider without this field. */
+public record MenuConfigResultVO(MenuVO config, MenuScheduleVO schedule) {
+    public MenuConfigResultVO(MenuVO config) { this(config, null); }
+}

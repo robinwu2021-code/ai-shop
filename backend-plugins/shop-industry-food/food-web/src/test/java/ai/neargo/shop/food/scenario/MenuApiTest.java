@@ -18,6 +18,9 @@ import ai.neargo.shop.food.dto.MenuConfigResultVO;
 import ai.neargo.shop.food.dto.MenuResultVO;
 import ai.neargo.shop.food.dto.MenuVO;
 import ai.neargo.shop.food.dto.UpdateMenuReq;
+import ai.neargo.shop.food.dto.ReplaceMenuScheduleReq;
+import ai.neargo.shop.food.dto.MenuScheduleResultVO;
+import ai.neargo.shop.food.policy.MenuScheduleDefinitions;
 import ai.neargo.shop.food.service.MenuService;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -78,6 +81,26 @@ class MenuApiTest {
             assertThat(c.getBean(AtomicInteger.class)).hasValue(0);
         });
     }
+    @Test void scheduleSectionUsesExistingDefinitionRouteAndRejectsForeignFieldsAndMalformedTokens() {
+        runner.run(c -> {
+            var mvc = mvc(c); var auth = token(c, "staff");
+            String body = "{\"section\":\"SCHEDULE\",\"version\":0,\"weekSchedules\":["
+                    + "{\"weekday\":1,\"startTime\":\"22:00\",\"endTime\":\"02:00\",\"endDayOffset\":1}],"
+                    + "\"exceptions\":[]}";
+            mvc.perform(put("/biz/x/food/menus/M1/definition").header("Authorization", auth)
+                    .header("Idempotency-Key", "schedule").contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(jsonPath("$.data.schedule.weekSchedules[0].endDayOffset").value(1));
+            for (String bad : List.of(body.replace("\"weekday\":1", "\"weekday\":1.5"),
+                    body.replace("{", "{\"categories\":[],"), body.replace("\"exceptions\":[]",
+                            "\"exceptions\":null"))) {
+                mvc.perform(put("/biz/x/food/menus/M1/definition").header("Authorization", auth)
+                        .header("Idempotency-Key", "bad").contentType(MediaType.APPLICATION_JSON).content(bad))
+                        .andExpect(jsonPath("$.code").value(10400));
+            }
+            assertThat(c.getBean(AtomicInteger.class)).hasValue(1);
+        });
+    }
+
     private String token(WebApplicationContext c, String actor) {
         return "Bearer " + c.getBean(MemoryTokenStore.class)
                 .issue(TokenStore.SessionData.of(LoginUser.merchant(actor, actor)));
@@ -104,6 +127,12 @@ class MenuApiTest {
                         UpdateMenuReq req, String key) {
                     assertThat(actor).isEqualTo("staff"); assertThat(menu).isEqualTo("M1");
                     return new MenuResultVO(view(entity, store, 1));
+                }
+                @Override public MenuScheduleResultVO replaceSchedule(String entity, String store, String menu,
+                        String actor, ReplaceMenuScheduleReq req, String key) {
+                    assertThat(actor).isEqualTo("staff"); assertThat(menu).isEqualTo("M1");
+                    var rules = MenuScheduleDefinitions.normalize(req);
+                    return new MenuScheduleResultVO(view(entity, store, 1), rules);
                 }
                 @Override public MenuConfigResultVO getMenu(String entity, String store, String menu) {
                     assertThat(menu).isEqualTo("M1"); return new MenuConfigResultVO(view(entity, store, 0));

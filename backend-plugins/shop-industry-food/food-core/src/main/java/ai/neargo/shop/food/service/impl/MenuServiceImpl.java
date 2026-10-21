@@ -13,6 +13,16 @@ import ai.neargo.shop.food.dto.MenuConfigResultVO;
 import ai.neargo.shop.food.dto.MenuResultVO;
 import ai.neargo.shop.food.dto.MenuVO;
 import ai.neargo.shop.food.dto.UpdateMenuReq;
+import ai.neargo.shop.food.dto.MenuScheduleVO;
+import ai.neargo.shop.food.dto.MenuScheduleResultVO;
+import ai.neargo.shop.food.dto.ReplaceMenuScheduleReq;
+import ai.neargo.shop.food.dto.WeekScheduleInput;
+import ai.neargo.shop.food.dto.ExceptionInput;
+import ai.neargo.shop.food.entity.FnbMenuSchedule;
+import ai.neargo.shop.food.entity.FnbMenuException;
+import ai.neargo.shop.food.mapper.FoodMappers.MenuScheduleMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.MenuExceptionMapper;
+import ai.neargo.shop.food.policy.MenuScheduleDefinitions;
 import ai.neargo.shop.food.entity.FnbActionLog;
 import ai.neargo.shop.food.entity.FnbMenu;
 import ai.neargo.shop.food.entity.FnbMenuStore;
@@ -30,6 +40,8 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import org.springframework.dao.ConcurrencyFailureException;
@@ -42,6 +54,8 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Single-store editing cannot silently mutate shared menus or reinterpret their published snapshots. */
 public class MenuServiceImpl implements MenuService {
+    private final MenuScheduleMapper weeks;
+    private final MenuExceptionMapper exceptions;
     private final MenuMapper heads;
     private final MenuStoreMapper bindings;
     private final StorePolicyMapper policies;
@@ -55,7 +69,9 @@ public class MenuServiceImpl implements MenuService {
 
     public MenuServiceImpl(MenuMapper heads, MenuStoreMapper bindings, StorePolicyMapper policies,
             ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
-            PlatformTransactionManager manager, Clock clock) {
+            PlatformTransactionManager manager, Clock clock, MenuScheduleMapper weeks,
+            MenuExceptionMapper exceptions) {
+        this.weeks = weeks; this.exceptions = exceptions;
         this.heads = heads; this.bindings = bindings; this.policies = policies; this.actions = actions;
         this.idem = idem; this.publisher = publisher; this.json = json; this.clock = clock;
         write = new TransactionTemplate(manager);
@@ -103,16 +119,7 @@ public class MenuServiceImpl implements MenuService {
         try {
             return write.execute(tx -> idem.execute(key, scope, actor, hash, MenuResultVO.class, () -> {
                 var row = head(entity, store, number, true);
-                var all = bindings.selectList(Wrappers.<FnbMenuStore>lambdaQuery()
-                        .eq(FnbMenuStore::getEntityNo, entity).eq(FnbMenuStore::getMenuNo, number)
-                        .last("FOR UPDATE"));
-                if (all.size() != 1 || !store.equals(all.getFirst().getStoreNo())
-                        || all.getFirst().getOverrideRevisionNo() != null
-                        || !req.version().equals(row.getVersion()) || row.getConfigVersion() == null
-                        || row.getConfigVersion() < 0 || row.getConfigVersion() == Long.MAX_VALUE
-                        || !List.of("DRAFT", "PUBLISHED").contains(row.getStatus() == null ? "" : row.getStatus())) {
-                    throw BizException.of(ErrorCode.CONFLICT);
-                }
+                editable(entity, store, row, req.version());
                 timezone(entity, store, req.timezone());
                 var before = view(row, store);
                 int affected = heads.update(null, Wrappers.<FnbMenu>lambdaUpdate()
@@ -136,9 +143,96 @@ public class MenuServiceImpl implements MenuService {
     }
 
     @Override
+    public MenuScheduleResultVO replaceSchedule(String entity, String store, String number, String actor,
+            ReplaceMenuScheduleReq req, String key) {
+        context(entity, store, actor, key); MenuDefinitionPolicy.key(number);
+        var definition = MenuScheduleDefinitions.normalize(req);
+        String scope = FoodCommandFingerprint.scope("REPLACE_MENU_SCHEDULE", entity, store);
+        String hash = FoodCommandFingerprint.hash("menu-schedule:v1", number, req.version().toString(),
+                json.writeValueAsString(definition));
+        var replay = read.execute(tx -> idem.findCompleted(key, scope, actor, hash, MenuScheduleResultVO.class));
+        if (replay.isPresent()) return replay.get();
+        try {
+            return write.execute(tx -> idem.execute(key, scope, actor, hash, MenuScheduleResultVO.class, () -> {
+                var row = head(entity, store, number, true);
+                editable(entity, store, row, req.version());
+                var before = view(row, store);
+                timezone(entity, store, row.getTimezone());
+                var beforeRules = schedule(entity, number);
+                weeks.replaceDraftRows(entity, number); exceptions.replaceDraftRows(entity, number);
+                for (var rule : definition.weekSchedules()) {
+                    var child = new FnbMenuSchedule(); child.setEntityNo(entity); child.setMenuNo(number);
+                    child.setScheduleNo(BizKey.next("FSCH")); child.setWeekday(rule.weekday());
+                    child.setStartTime(LocalTime.parse(rule.startTime()));
+                    child.setEndTime(LocalTime.parse(rule.endTime()));
+                    child.setEndDayOffset(rule.endDayOffset()); weeks.insert(child);
+                }
+                for (var rule : definition.exceptions()) {
+                    var child = new FnbMenuException(); child.setEntityNo(entity); child.setMenuNo(number);
+                    child.setExceptionNo(BizKey.next("FMEX")); child.setLocalDate(LocalDate.parse(rule.localDate()));
+                    child.setMode(rule.mode());
+                    child.setStartTime(rule.startTime() == null ? null : LocalTime.parse(rule.startTime()));
+                    child.setEndTime(rule.endTime() == null ? null : LocalTime.parse(rule.endTime()));
+                    child.setEndDayOffset(rule.endDayOffset()); exceptions.insert(child);
+                }
+                if (heads.update(null, Wrappers.<FnbMenu>lambdaUpdate().eq(FnbMenu::getEntityNo, entity)
+                        .eq(FnbMenu::getMenuNo, number).eq(FnbMenu::getVersion, req.version())
+                        .set(FnbMenu::getValidFrom, definition.validFrom() == null ? null
+                                : LocalDate.parse(definition.validFrom()))
+                        .set(FnbMenu::getValidTo, definition.validTo() == null ? null
+                                : LocalDate.parse(definition.validTo()))
+                        .set(FnbMenu::getStatus, "DRAFT").set(FnbMenu::getVersion, req.version() + 1)
+                        .set(FnbMenu::getConfigVersion, row.getConfigVersion() + 1)
+                        .set(FnbMenu::getUpdatedAt, LocalDateTime.now()).set(FnbMenu::getUpdatedBy, actor)) != 1) {
+                    throw BizException.of(ErrorCode.CONFLICT);
+                }
+                var after = view(head(entity, store, number, false), store);
+                record(entity, store, actor, key, "REPLACE_MENU_SCHEDULE", before, after, beforeRules, definition);
+                return new MenuScheduleResultVO(after, definition);
+            }));
+        } catch (ConcurrencyFailureException | DuplicateKeyException failure) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    private void editable(String entity, String store, FnbMenu row, long version) {
+        var all = bindings.selectList(Wrappers.<FnbMenuStore>lambdaQuery()
+                .eq(FnbMenuStore::getEntityNo, entity).eq(FnbMenuStore::getMenuNo, row.getMenuNo()).last("FOR UPDATE"));
+        if (all.size() != 1 || !store.equals(all.getFirst().getStoreNo())
+                || all.getFirst().getOverrideRevisionNo() != null || row.getVersion() == null
+                || row.getVersion() != version || row.getConfigVersion() == null || row.getConfigVersion() < 0
+                || row.getConfigVersion() == Long.MAX_VALUE
+                || !List.of("DRAFT", "PUBLISHED").contains(row.getStatus() == null ? "" : row.getStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    private MenuScheduleVO schedule(String entity, String number) {
+        var row = heads.selectOne(Wrappers.<FnbMenu>lambdaQuery().eq(FnbMenu::getEntityNo, entity)
+                .eq(FnbMenu::getMenuNo, number));
+        var scheduled = weeks.selectList(Wrappers.<FnbMenuSchedule>lambdaQuery()
+                .eq(FnbMenuSchedule::getEntityNo, entity).eq(FnbMenuSchedule::getMenuNo, number));
+        var excepted = exceptions.selectList(Wrappers.<FnbMenuException>lambdaQuery()
+                .eq(FnbMenuException::getEntityNo, entity).eq(FnbMenuException::getMenuNo, number));
+        try {
+            return MenuScheduleDefinitions.normalize(new MenuScheduleVO(
+                    row.getValidFrom() == null ? null : row.getValidFrom().toString(),
+                    row.getValidTo() == null ? null : row.getValidTo().toString(), scheduled.stream().map(r ->
+                            new WeekScheduleInput(r.getWeekday(), r.getStartTime().toString(),
+                                    r.getEndTime().toString(),
+                                    r.getEndDayOffset())).toList(), excepted.stream().map(r -> new ExceptionInput(
+                                            r.getLocalDate().toString(), r.getMode(),
+                                            r.getStartTime() == null ? null : r.getStartTime().toString(),
+                                            r.getEndTime() == null ? null : r.getEndTime().toString(),
+                                            r.getEndDayOffset())).toList()));
+        } catch (RuntimeException invalid) { throw new IllegalStateException("Invalid stored menu schedule", invalid); }
+    }
+
+    @Override
     public MenuConfigResultVO getMenu(String entity, String store, String number) {
         queryContext(entity, store); MenuDefinitionPolicy.key(number);
-        return read.execute(tx -> new MenuConfigResultVO(view(head(entity, store, number, false), store)));
+        return read.execute(tx -> new MenuConfigResultVO(
+                view(head(entity, store, number, false), store), schedule(entity, number)));
     }
 
     @Override
@@ -188,14 +282,21 @@ public class MenuServiceImpl implements MenuService {
 
     private void record(String entity, String store, String actor, String key, String action, MenuVO before,
             MenuVO after) {
+        record(entity, store, actor, key, action, before, after, null, null);
+    }
+
+    private void record(String entity, String store, String actor, String key, String action, MenuVO before,
+            MenuVO after, MenuScheduleVO beforeRules, MenuScheduleVO afterRules) {
         var audit = new FnbActionLog(); audit.setEntityNo(entity); audit.setStoreNo(store);
         audit.setActionNo(BizKey.next("FACT")); audit.setObjectType("MENU"); audit.setObjectNo(after.menuNo());
         audit.setAction(action); audit.setOperatorNo(actor);
         audit.setRequestNo(FoodCommandFingerprint.hash(FoodCommandFingerprint.scope(action, entity, store), key));
-        if (before != null) audit.setBeforeRef(FoodCommandFingerprint.hash(json.writeValueAsString(before)));
-        audit.setAfterRef(FoodCommandFingerprint.hash(json.writeValueAsString(after))); actions.insert(audit);
+        if (before != null) audit.setBeforeRef(FoodCommandFingerprint.hash(json.writeValueAsString(
+                beforeRules == null ? before : new MenuScheduleResultVO(before, beforeRules))));
+        audit.setAfterRef(FoodCommandFingerprint.hash(json.writeValueAsString(
+                afterRules == null ? after : new MenuScheduleResultVO(after, afterRules)))); actions.insert(audit);
         publisher.publish(new MenuChanged(entity, store, after.menuNo(), action, after.version(), audit.getActionNo(),
-                after), new PublishOptions("FOOD_MENU:" + after.menuNo(), 1));
+                after, afterRules), new PublishOptions("FOOD_MENU:" + after.menuNo(), 1));
     }
 
     private static void context(String entity, String store, String actor, String key) {

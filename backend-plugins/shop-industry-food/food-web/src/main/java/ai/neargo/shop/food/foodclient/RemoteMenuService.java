@@ -9,8 +9,12 @@ import ai.neargo.shop.food.dto.ListMenusQuery;
 import ai.neargo.shop.food.dto.MenuConfigResultVO;
 import ai.neargo.shop.food.dto.MenuResultVO;
 import ai.neargo.shop.food.dto.MenuVO;
+import ai.neargo.shop.food.dto.ReplaceMenuScheduleReq;
+import ai.neargo.shop.food.dto.MenuScheduleResultVO;
 import ai.neargo.shop.food.dto.UpdateMenuReq;
 import ai.neargo.shop.food.policy.MenuDefinitionPolicy;
+import ai.neargo.shop.food.policy.MenuScheduleDefinitions;
+import ai.neargo.shop.food.dto.MenuScheduleVO;
 import ai.neargo.shop.food.service.MenuService;
 import ai.neargo.shop.food.spi.MenuInternalApi;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
@@ -54,6 +58,27 @@ public class RemoteMenuService implements MenuService {
     }
 
     @Override
+    public MenuScheduleResultVO replaceSchedule(String entity, String store, String menu, String actor,
+            ReplaceMenuScheduleReq req, String key) {
+        context(entity, store, actor, key); MenuDefinitionPolicy.key(menu);
+        var expected = MenuScheduleDefinitions.normalize(req);
+        var result = call(() -> api.replaceSchedule(
+                new MenuInternalApi.ScheduleCommand(entity, store, menu, actor, key, req)));
+        var head = result == null ? null : result.menu();
+        if (!MenuDefinitionPolicy.valid(head, store) || !menu.equals(head.menuNo())
+                || head.version() != req.version() + 1 || !"DRAFT".equals(head.status())
+                || !expected.equals(receivedSchedule(result.schedule()))) {
+            throw new IllegalStateException("Invalid menu schedule receipt");
+        }
+        return new MenuScheduleResultVO(head, expected);
+    }
+
+    private static MenuScheduleVO receivedSchedule(MenuScheduleVO schedule) {
+        try { return MenuScheduleDefinitions.normalize(schedule); }
+        catch (RuntimeException invalid) { throw new IllegalStateException("Invalid menu schedule receipt", invalid); }
+    }
+
+    @Override
     public MenuConfigResultVO getMenu(String entity, String store, String menu) {
         MenuDefinitionPolicy.key(entity); MenuDefinitionPolicy.key(store); MenuDefinitionPolicy.key(menu);
         var result = call(() -> api.getMenu(new MenuInternalApi.GetQuery(entity, store, menu)));
@@ -61,7 +86,8 @@ public class RemoteMenuService implements MenuService {
                 || !menu.equals(result.config().menuNo())) {
             throw new IllegalStateException("Invalid menu detail receipt");
         }
-        return result;
+        return new MenuConfigResultVO(result.config(), result.schedule() == null ? null
+                : receivedSchedule(result.schedule()));
     }
 
     @Override

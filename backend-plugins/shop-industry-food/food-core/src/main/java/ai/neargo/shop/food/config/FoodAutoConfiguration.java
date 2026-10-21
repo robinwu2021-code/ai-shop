@@ -39,6 +39,8 @@ import ai.neargo.shop.food.service.RecipeService;
 import ai.neargo.shop.food.service.MenuService;
 import ai.neargo.shop.food.service.impl.MenuServiceImpl;
 import ai.neargo.shop.food.mapper.FoodMappers.MenuMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.MenuScheduleMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.MenuExceptionMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.MenuStoreMapper;
 import ai.neargo.shop.food.service.ReservationService;
 import ai.neargo.shop.food.service.StoreOperationService;
@@ -118,11 +120,12 @@ public class FoodAutoConfiguration {
     @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
     @ConditionalOnMissingBean(MenuService.class)
     MenuService menuService(MenuMapper heads, MenuStoreMapper bindings, StorePolicyMapper policies,
+            MenuScheduleMapper weeks, MenuExceptionMapper exceptions,
             ActionLogMapper actions, IdempotencyService idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new MenuServiceImpl(heads, bindings, policies, actions, idem, publisher, json, manager,
-                Clock.systemUTC());
+                Clock.systemUTC(), weeks, exceptions);
     }
 
     @Bean
