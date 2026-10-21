@@ -1,6 +1,6 @@
 # SHR-02b 共用资源容量与组合占用：详细需求与方案
 
-> 状态：**详细提案，待评审；未开始本批编码** · 2026-10-21 · 档位2。
+> 状态：**实施中；02b-1a需求归一已实现，其余仲裁尚未实现** · 2026-10-21 · 档位2。
 > 基线：美业隔离分支378a5f2f7；只读核验最新本地餐饮ca71f6092，共用merchant/base及平台迁移相对8e732eeb7无新增。
 > 上游：[多端功能矩阵](../requirements/美业系统-多端功能矩阵.md) D01–D05、H04–H07；[主执行计划](./TDD-美业系统-后端开发计划.md) §11–13。
 > 既有设计：[字段真源](./design/schema/beauty-database-design.json) · [日历设计](./design/美业系统-预约工作台与日历API设计.md) · [旧资源方案](./design/TDD-预约资源域-多行业完整方案.md)。
@@ -100,20 +100,79 @@
 
 每部分启动前按本文件冻结其字段、方法/错误结果及测试用例；正式DDL版本实施时重新核对，不预占V535或修改V532–V534。
 
+
+### 2.2 可执行开发计划（2026-10-21）
+
+**目标：** 先形成零售/餐饮/美业共用的确定性需求计划，再开发持久仲裁；本轮完整实施02b-1a。
+**执行：** executing-plans原会话实施，测试先行；沿用隔离worktree。规格为本文件R03–R05及§3.2。
+**技术：** Java21、JUnit5；纯领域算法，不加Spring Bean、Controller、配置、依赖或空转Service。
+
+| 顺序 | 开发单元与接口 | 验收/下一步输入 |
+|---|---|---|
+| 1a（本轮） | `merchant.policy.ResourceDemandNormalizer.normalize(List<Demand>, List<ResourceFact>) -> Plan` | 固定UTC5分钟；规范资源/稳定组；单位列表与桶汇总；R03–R05及R04规模保护 |
+| 1b | 冻结五表字段及schema JSON：owner、command、bucket、hold、hold_unit；追加新DDL、Entity及MerchantMappers | 正式MySQL约束、作用域、并发唯一性；不预占迁移号 |
+| 1c | owner根锁/CAS与持久命令接受、冲突、查询/恢复方法，复用规范摘要和审计 | 同键异参、不同键同来源、未知提交恢复；事务协议不得用空壳模拟 |
+| 2 | 02b-2：冻结来源许可接口及实现reserve全事务，再protect/confirm/renew/release/expire/reconcile | 同资源/同来源/过期竞争，实际MySQL事务验收；无真实来源协议不接收费 |
+| 3–6 | 02b-3～6逐批按§2.1启动前细化 | 替换→交接/开放占用→超时调整→查询/对账与三行业接入 |
+
+#### 1a冻结的输入、输出与约束
+
+代码路径：`backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/policy/ResourceDemandNormalizer.java`。
+测试路径：`backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/policy/ResourceDemandNormalizerTest.java`。
+
+- 内嵌输入`Demand(String resourceNo, String sourceLineRef, int quantity, List<Interval> intervals)`，
+  `Interval(Instant startAt, Instant endAt)`；行业预先合并准备/服务/清洁为同组的多段输入。
+- facts必须是调用方可信范围内的owner规范资源快照；resourceNo必须精确匹配规范号，未知/别名拒绝，
+  **不在Java里猜数据库CI/AI身份**。同规范资源只出现一个fact，capacity正整数且STAFF=1。
+- 同resourceNo/sourceLineRef只能出现一个Demand；同组重复区间或数量矛盾拒绝。
+  sourceLineRef为区分大小写的稳定不透明引用（1..128字符，首尾不含空白），后续持久化必须保持相同精确语义。
+- 时间为UTC毫秒精度，拒绝纳秒截断；范围沿班表安全边界`1000-01-03T00:00Z`至`9999-12-29T00:00Z`，
+  start<end。固定300000毫秒网格，开始floor、结束ceil，半开端点不多占一桶。
+- 输出`Plan(List<Unit> units, List<BucketDemand> buckets)`，
+  `Unit(resourceNo, sourceLineRef, startAt, endAt, quantity)`逐组逐桶保留证据；
+  `BucketDemand(resourceNo, startAt, endAt, quantity)`按资源桶汇总用于后续锁内检查；全部列表不可变。
+- 同组重叠、相邻、甚至不相邻但落入同桶的片段不重复计量；独立组同桶累计。
+  输入顺序不影响输出，按规范资源号、桶开始、组引用排序；不修改调用方列表。
+- 最多10资源、10000组/原始区间总数/归一单位；先验证规模、合并桶区间再展开，避免长区间或重叠片段消耗无界内存。
+  qty与同桶累计不得超过fact.capacity；用long累计避免int溢出。完整组合一处失败则返回失败，不输出半计划。
+- 本算法不访问数据库、不写容量、不授予准入；服务端当前时间/提前量、任职、取整后班表覆盖、跨店范围、
+  缓冲定义、开放阻断和锁内最新事实复核属于后续业务协调。facts不是调用方自由传入的公开API。
+
+#### 1a执行与验收清单
+
+- [x] 写反射调用真实算法的测试，先运行看到缺少实现导致的断言RED，避免把编译错误当RED。
+- [x] 实现上述类型及normalize；测试证明：边界取整、毫秒、负epoch、UTC/DST、同组并集、组间累计、
+  精确规范号、重复/矛盾、正数量、容量溢出、10资源和10000单位/输入上限、确定性与不可变输出。
+- [x] `mvn -o -f backend/pom.xml -pl shop-merchant -am test`全相关模块测试GREEN；正常输入、拒绝输入都测真实算法。
+- [x] 消融独立组累计守卫，相应用例必须RED，恢复后全套GREEN。
+- [x] 独立审查一次；重要发现补RED→GREEN。核对需求→实现→测试，记录真实命令/结果并本地检查点提交。
+
+**Review Focus：** 负epoch取整、边缘毫秒漏桶、同桶不同组被错误合并、大输入/整数溢出、大小写别名被错误当规范号。
+上述五项各有独立行为测试；后续数据库排序规则与权限不由纯算法测试替代。
+
+### 2.3 本轮需求对账
+
+| 需求 | 实现落点 | 验收证据 |
+|---|---|---|
+| R03 UTC半开区间及固定桶 | ResourceDemandNormalizer | roundsOutwardWithoutAddingAnAlignedEnd；handlesPreEpochAndDstAsUtc |
+| R04完整集合、qty及上限 | normalize输入验证及桶汇总 | rejectsCapacityOverflowAcrossGroups；enforcesResourceAndUnitLimits |
+| R05并集、累计、重复拒绝 | 同组桶区间合并与逐桶汇总 | mergesOneGroupButAddsIndependentGroups；rejectsDuplicateOrContradictoryGroups |
+| R01/R02/R06–R34 | 不属于1a验收完成范围 | 1b及后续继续；事实精确匹配不等于作用域/班表/容量仲裁 |
+
 ## §3 桶、区间与完整组合
 
 ### 3.1 候选工程参数
 
-| 参数 | 推荐起点，尚待评审/压测 | 理由与边界 |
+| 参数 | 本批冻结或后续候选 | 理由与边界 |
 |---|---|---|
-| 桶粒度 | 全租户资源模式统一5分钟UTC网格 | 不能同一STAFF在A店5分钟、B店15分钟产生两套容量；后续改粒度须迁移而非动态切换 |
+| 桶粒度 | 1a算法冻结5分钟UTC网格，后续仲裁沿用 | 不能同一STAFF在A店5分钟、B店15分钟产生两套容量；后续改粒度须迁移而非动态切换 |
 | HELD初始TTL | 10分钟，普通续期累计上限建议30分钟 | 付款/权益保护后的未知恢复不靠该上限盲目释放 |
 | 单命令范围 | 最多10规范资源、10000桶单位，qty为正整数 | 服务端归一后再检查，超限拒绝；不据此开放P4多人排程 |
 | 查询窗口 | 沿既有31天上限，分页/密度另限 | 不允许把不完整结果解释为空闲 |
 | 新预约前瞻 | 建议90天，后台按资源/日滚动准备 | 不是一次调用现有31天ScheduleWindowsPort生成90天快照 |
 | 时间/容量 | UTC毫秒、qty不超过当前资源容量；STAFF固定1 | 容量上限保护值需压测冻结，禁浮点计数 |
 
-以上是本方案推荐默认值，不是当前已有配置，不在本轮新增配置项。
+除1a冻结的网格及输入/输出规模上限外，其余仍是建议值；不在本轮新增配置项。容量事实为int正数，聚合使用long。
 
 ### 3.2 映射与归一
 
@@ -213,6 +272,28 @@ open指针或单位父链残缺、阻断原因不一致时失败关闭并进入�
 来源不能在冻结期间允许相反动作绕过fence；仅在查询前读到一次“已付/已取消”不足以防后续并发变化。
 该冻结/回查合同未实现时，收费/权益场景不得接通；只能验证无外部副作用的受控场景和资源本地域，不能以模拟许可宣称完整营业闭环。
 
+### 5.4 02b-1a实际验收（2026-10-21）
+
+需求→设计→测试对应§2.3。归一测试15项，使用真实算法，无mock，无数据库替身。
+
+| 运行 | 真实结果 | 证据 |
+|---|---|---|
+| 首次测试先行 | Tests run:15, Failures:15, Errors:0, Skipped:0；缺少算法类型的断言失败 | `/tmp/resource-normalizer-red.log` |
+| 相关模块首轮全套 | 268通过、0失败/错误/跳过，BUILD SUCCESS | `/tmp/resource-normalizer-green.log` |
+| 消融组间总量守卫 | Tests run:1, Failures:1, Errors:0；应拒绝超容量却未拒绝 | `/tmp/resource-normalizer-ablation.log` |
+| 恢复后的最终全套 | 268通过、0失败/错误/跳过，BUILD SUCCESS | `/tmp/resource-normalizer-final.log` |
+
+全套命令：`JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home mvn -o -f backend/pom.xml -pl shop-merchant -am test`。
+定向RED附加`-Dtest=ResourceDemandNormalizerTest -Dsurefire.failIfNoSpecifiedTests=false`，
+消融仅运行`ResourceDemandNormalizerTest#rejectsCapacityOverflowAcrossGroups`，随后恢复源码再跑全套。
+五组美业设计生成检查、冻结V1检查、Node生成器6项、SQL无新增方言、Java120列与diff空白检查通过。
+分层/文档索引已重新生成；分层输出保持原样，索引仅更新本文件状态。
+本次未运行MySQL、完整宿主或美业独立reactor；未改其数据库/部署/接入，不沿用旧结果作本批验收。
+
+独立审查无Critical/Important；1个Minor待补：非修改输入的测试应在每次调用后立即比对原列表快照，
+并增加乱序可变interval列表的断言。目前实现不修改输入，但该断言增强尚未交付，不宣称该故障已被测试完整排除。
+审查范围明确不含身份/数据库CI解析、业务准入/班表、事务并发/MySQL及预约生命周期，这些仍由后续各批验收。
+
 ## §6 替换、实际交接与超时
 
 ### 6.1 未开工整计划原子替换
@@ -255,6 +336,18 @@ block不能替代实际容量台账：保留原单位计数，超出原窗口的
 同资源延长只补新增桶并延展原occupation；换人追加新occupation，不覆盖原段。hold保留创建请求摘要，并单独推进currentPlanHash/planRevision；新单位用allocationRevision留历史，已经释放或已绑定旧执行的unitNo不重新复用。未受影响组不跟随释放或改写。
 失败保留原活动占用及阻断；成功后行业追加参与/交接历史，通过原意图恢复，不覆盖旧技师、原指定或实际时间。
 延长遇已确认未来预约必须返回冲突并生成协调事项，店长权限不等于可超容量双约；资源调整不自动扣钱、退款或返疗程次数。
+
+### 6.6 02b-1a实现文件对账
+
+| §2计划 | 实际文件 | 交付边界 |
+|---|---|---|
+| 归一类型/算法 | `backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/policy/ResourceDemandNormalizer.java` | 纯策略；规范计划与汇总，不预留容量 |
+| 行为验收 | `backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/policy/ResourceDemandNormalizerTest.java` | 15项测试及消融证据 |
+| 设计/执行记录 | 本文件§2/§5/§6、主执行计划§15、ADR043、README、原ledger | 按原计划记录，不新建平行计划目录 |
+
+相对本批基线d838f8ebf核对新增/修改文件；不改Controller/Service/Mapper/SPI、DDL、schema JSON或依赖。
+偏差：将02b-1细分为1a/1b/1c，先交付确定性算法，五表及持久仲裁后续；不是原02b-1整体完成。
+原worktree/ledger保留供后续实施，无合并/推送/营业库执行。
 
 ## §7 数据结构补充提案
 
@@ -370,7 +463,7 @@ owner、command、hold、unit、occupation、block的跨父链校验需实际SQL
 ### 10.1 推荐基线与正式冻结
 
 本提案推荐采用8表仲裁模型、5分钟UTC网格、先内部Port、根锁序列化、完整组合/单位交接、未知来源保护及正常open/超时block分离。
-这些是可评审选择，并非已确认产品参数；正式编码前在02b-1冻结下列项目并同步相应设计真源：
+1a已冻结网格与算法规模限制，其余仍是可评审选择；相关子批编码前继续冻结下列项目并同步相应设计真源：
 
 | 冻结项 | 本文建议 | 后续动作 |
 |---|---|---|
@@ -381,4 +474,4 @@ owner、command、hold、unit、occupation、block的跨父链校验需实际SQL
 | 锁序/维护写守卫 | §4.3统一根锁与人员顺序 | 同步人员/排班/资源维护；未参加守卫的写入口不开放 |
 | 正常open/超时处理 | capacity1正常open；超时多原因全资源保守block | 实测餐饮/美业冲突协调，不能假定预计结束释放 |
 
-本轮仅细化需求/方案和入口文档，不写Java/迁移、不访问营业库、不将任何02b子阶段标完成。已有V532–V534及49任务定义保持不变。
+本轮在方案基础上实施02b-1a纯算法；未写迁移或访问营业库，02b-1整体及后续仍未完成。已有V532–V534、39表真源及49任务定义保持不变。
