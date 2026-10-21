@@ -18,6 +18,7 @@ final class BeautyServiceCalls {
                 case 403 -> ErrorCode.FORBIDDEN;
                 case 404 -> ErrorCode.NOT_FOUND;
                 case 409 -> ErrorCode.CONFLICT;
+                case 422 -> ErrorCode.BEAUTY_SEARCH_INCOMPLETE;
                 default -> null;
             };
             if (code != null) { throw BizException.of(code); }

@@ -1,6 +1,6 @@
 {
-  "status": "DESIGN_REVIEW_PENDING",
-  "date": "2026-10-20",
+  "status": "PARTIALLY_IMPLEMENTED_MODULE_ACCEPTANCE_PENDING",
+  "date": "2026-10-21",
   "featureSource": "docs/requirements/美业系统-多端功能矩阵.md",
   "features": {
     "BTY-A01": {
@@ -638,7 +638,7 @@
             "BTY-B05"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         },
         {
           "id": "BAPI-011",
@@ -677,7 +677,7 @@
             "BTY-B05"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         }
       ]
     },
@@ -1066,7 +1066,7 @@
             "BTY-F02"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         },
         {
           "id": "BAPI-039",
@@ -1080,7 +1080,7 @@
             "BTY-F02"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         },
         {
           "id": "BAPI-040",
@@ -1093,7 +1093,7 @@
             "BTY-F03"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         },
         {
           "id": "BAPI-041",
@@ -1106,7 +1106,7 @@
             "BTY-F03"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         },
         {
           "id": "BAPI-042",
@@ -1119,7 +1119,7 @@
             "BTY-F04"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         },
         {
           "id": "BAPI-043",
@@ -1132,7 +1132,7 @@
             "BTY-F04"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         },
         {
           "id": "BAPI-044",
@@ -1145,7 +1145,7 @@
             "BTY-F05"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         },
         {
           "id": "BAPI-045",
@@ -1158,7 +1158,7 @@
             "BTY-F05"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         },
         {
           "id": "BAPI-046",
@@ -1184,7 +1184,7 @@
             "BTY-F01"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         },
         {
           "id": "BAPI-148",
@@ -1197,7 +1197,7 @@
             "BTY-F01"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         },
         {
           "id": "BAPI-149",
@@ -1210,7 +1210,7 @@
             "BTY-F03"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         },
         {
           "id": "BAPI-150",
@@ -1223,7 +1223,7 @@
             "BTY-F03"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         },
         {
           "id": "BAPI-151",
@@ -1236,7 +1236,7 @@
             "BTY-F04"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         },
         {
           "id": "BAPI-152",
@@ -1249,7 +1249,7 @@
             "BTY-F04"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         },
         {
           "id": "BAPI-153",
@@ -1262,7 +1262,7 @@
             "BTY-F05"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         }
       ]
     },
@@ -2737,7 +2737,7 @@
             "BTY-T04"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53"
         }
       ]
     }
@@ -2790,6 +2790,254 @@
       "purpose": "当前成员biz:order:view核验后按完整Binding读取原命令；无写入或解冻能力",
       "request": "ResourceSourceAuthorityPort.Request(binding,operatorNo,realm,subjectKind)",
       "response": "ResourceCommandFactsPort.Lookup(command?)；原状态/版本/结果及稳定终态摘要，ACCEPTED不携终态，缺失显式空，失败400/403/409/5xx；command字段必需，null显式序列化，{}和200错误信封拒绝；未知owner运行异常空503"
+    },
+    {
+      "method": "POST",
+      "path": "/biz/x/beauty/operations/{operationNo}/recoveries",
+      "owner": "beauty-web → ServiceOperationRecoveryService",
+      "purpose": "BM03明确增量：当前MANAGE成员按原操作号手动恢复；GET仅只读；不改原160基线",
+      "request": "operationNo路径；可信BizContext与原始X-Store-No、当前MERCHANT MCH/USR",
+      "response": "OperationVO；UNKNOWN/PENDING保留，不伪造终态"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/queryAvailability",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.QueryAvailability",
+      "response": "AvailabilityVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/queryPublicAvailability",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.QueryPublicAvailability",
+      "response": "PublicAvailabilityVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/previewAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.PreviewAppointment",
+      "response": "AppointmentPreviewVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/createAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.CreateAppointment",
+      "response": "AppointmentVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/listAppointments",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.ListAppointments",
+      "response": "PageData<AppointmentSummaryVO>；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/getAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.GetAppointment",
+      "response": "AppointmentDetailVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/previewAppointmentChange",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.PreviewAppointmentChange",
+      "response": "AppointmentChangePreviewVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/changeAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.ChangeAppointment",
+      "response": "AppointmentVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/cancelAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.CancelAppointment",
+      "response": "CancellationVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/recordNoShow",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.RecordNoShow",
+      "response": "NoShowVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/previewMyAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.PreviewMyAppointment",
+      "response": "AppointmentPreviewVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/createMyAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.CreateMyAppointment",
+      "response": "MyAppointmentVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/listMyAppointments",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.ListMyAppointments",
+      "response": "PageData<MyAppointmentVO>；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/getMyAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.GetMyAppointment",
+      "response": "MyAppointmentDetailVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/previewMyAppointmentChange",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.PreviewMyAppointmentChange",
+      "response": "AppointmentChangePreviewVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/changeMyAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.ChangeMyAppointment",
+      "response": "MyAppointmentVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/cancelMyAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.CancelMyAppointment",
+      "response": "CancellationVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/getOperation",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.GetOperation",
+      "response": "OperationVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/recoverOperation",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "purpose": "机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份）",
+      "request": "BeautyBookingInternalApi.RecoverOperation",
+      "response": "OperationVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/appointment-source/freeze",
+      "owner": "beauty-server / 实际AppointmentSourceAuthorityPortImpl",
+      "purpose": "仅BEAUTY_APPOINTMENT；完整持久Binding与当前身份；HOST反向回调，无core旁路",
+      "request": "BeautySourceInternalApi.Delegation(identity,request)",
+      "response": "Decision；UNKNOWN非许可；完整Binding比对"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/appointment-source/query",
+      "owner": "beauty-server / 实际AppointmentSourceAuthorityPortImpl",
+      "purpose": "仅BEAUTY_APPOINTMENT；完整持久Binding与当前身份；HOST反向回调，无core旁路",
+      "request": "BeautySourceInternalApi.Delegation(identity,request)",
+      "response": "Decision；UNKNOWN非许可；完整Binding比对"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/resource-booking/accept",
+      "owner": "PLATFORM / InternalResourceBookingController → 共用真实resource owner",
+      "purpose": "中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务",
+      "request": "Acceptance",
+      "response": "Receipt；错误不作为空事实"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/resource-booking/query",
+      "owner": "PLATFORM / InternalResourceBookingController → 共用真实resource owner",
+      "purpose": "中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务",
+      "request": "Command",
+      "response": "Lookup(Boolean found,Receipt)；错误不作为空事实"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/resource-booking/execute",
+      "owner": "PLATFORM / InternalResourceBookingController → 共用真实resource owner",
+      "purpose": "中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务",
+      "request": "Command",
+      "response": "Receipt；错误不作为空事实"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/resource-booking/hold",
+      "owner": "PLATFORM / InternalResourceBookingController → 共用真实resource owner",
+      "purpose": "中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务",
+      "request": "HoldQuery",
+      "response": "BoundHold；错误不作为空事实"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/resource-booking/reconcile",
+      "owner": "PLATFORM / InternalResourceBookingController → 共用真实resource owner",
+      "purpose": "中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务",
+      "request": "Binding",
+      "response": "Lookup(Boolean found,Receipt)；错误不作为空事实"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/resource-booking/reconcile-hold",
+      "owner": "PLATFORM / InternalResourceBookingController → 共用真实resource owner",
+      "purpose": "中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务",
+      "request": "BoundHoldQuery",
+      "response": "BoundHold；错误不作为空事实"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/resource-booking/candidates",
+      "owner": "PLATFORM / InternalResourceBookingController → 共用真实resource owner",
+      "purpose": "中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务",
+      "request": "ResourceCandidatesPort.Query",
+      "response": "List<ResourceFact>；错误不作为空事实"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/resource-booking/capacity",
+      "owner": "PLATFORM / InternalResourceBookingController → 共用真实resource owner",
+      "purpose": "中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务",
+      "request": "ResourceCandidatesPort.CapacityQuery（独立factAt、Replacement完整Binding+Target）",
+      "response": "List<Capacity>；错误不作为空事实"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/customer-identity/resolve-reference",
+      "owner": "PLATFORM / InternalCustomerIdentityController → MemberCustomerIdentityPortImpl",
+      "purpose": "只读原actor绑定成员识别票据；保留EntitlementContext和委托身份；无guest/扣款许可降级",
+      "request": "CustomerIdentityInternalApi.Request(identity,context,query)",
+      "response": "Resolution含完整身份/上下文/query与ResolvedCustomer；远端比对并验证userNo"
     }
   ]
 }

@@ -210,7 +210,7 @@ ServiceDetailVO getService(String entityNo, String currentStoreNo, String actorN
 Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAvailabilityController`
 
 ```java
-AvailabilityVO queryAvailability(@Valid @RequestBody AvailabilityQuery query);
+AvailabilityVO queryAvailability(@Valid @RequestBody AvailabilityQuery query, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentAvailabilityService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentAvailabilityServiceImpl`
@@ -558,7 +558,7 @@ PrivacyRequestVO requestCarePrivacy(String entityNo, String currentStoreNo, Stri
 Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
 
 ```java
-AppointmentPreviewVO previewAppointment(@Valid @RequestBody PreviewAppointmentReq req);
+AppointmentPreviewVO previewAppointment(@Valid @RequestBody PreviewAppointmentReq req, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
@@ -582,7 +582,7 @@ AppointmentPreviewVO previewAppointment(String entityNo, String currentStoreNo, 
 Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
 
 ```java
-AppointmentVO createAppointment(@Valid @RequestBody CreateAppointmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+AppointmentVO createAppointment(@Valid @RequestBody CreateAppointmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
@@ -606,7 +606,7 @@ AppointmentVO createAppointment(String entityNo, String currentStoreNo, String a
 Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
 
 ```java
-PageData<AppointmentSummaryVO> listAppointments(@Valid @ModelAttribute AppointmentQuery query);
+PageData<AppointmentSummaryVO> listAppointments(@Valid @ModelAttribute AppointmentQuery query, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
@@ -630,7 +630,7 @@ PageData<AppointmentSummaryVO> listAppointments(String entityNo, String currentS
 Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
 
 ```java
-AppointmentDetailVO getAppointment(@PathVariable("appointmentNo") String appointmentNo);
+AppointmentDetailVO getAppointment(@PathVariable("appointmentNo") String appointmentNo, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
@@ -656,7 +656,7 @@ AppointmentDetailVO getAppointment(String entityNo, String currentStoreNo, Strin
 Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
 
 ```java
-AppointmentChangePreviewVO previewAppointmentChange(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody PreviewAppointmentChangeReq req);
+AppointmentChangePreviewVO previewAppointmentChange(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody PreviewAppointmentChangeReq req, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
@@ -680,7 +680,7 @@ AppointmentChangePreviewVO previewAppointmentChange(String entityNo, String curr
 Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
 
 ```java
-AppointmentVO changeAppointment(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody ChangeAppointmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+AppointmentVO changeAppointment(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody ChangeAppointmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
@@ -706,7 +706,7 @@ AppointmentVO changeAppointment(String entityNo, String currentStoreNo, String a
 Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
 
 ```java
-CancellationVO cancelAppointment(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody CancelAppointmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+CancellationVO cancelAppointment(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody CancelAppointmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
@@ -732,7 +732,7 @@ CancellationVO cancelAppointment(String entityNo, String currentStoreNo, String 
 Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
 
 ```java
-NoShowVO recordNoShow(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody RecordNoShowReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+NoShowVO recordNoShow(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody RecordNoShowReq req, @RequestHeader("Idempotency-Key") String idempotencyKey, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
@@ -2394,7 +2394,7 @@ RecoveryRequestVO requestRecovery(String entityNo, Set<String> authorizedStoreNo
 Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceOperationController`
 
 ```java
-OperationVO getOperation(@PathVariable("operationNo") String operationNo);
+OperationVO getOperation(@PathVariable("operationNo") String operationNo, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceOperationQueryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceOperationQueryServiceImpl`
@@ -3399,3 +3399,74 @@ a2仍须实现正式权限、持久预约生成计划、同Binding幂等及可�
 内部Lookup必须显式command字段，允许显式null；缺字段/200错误信封拒绝，未知owner运行异常503；只读OperatorAccessMapper显式@Mapper由宿主实际注解扫描注册。
 
 接口、owner及远程适配均在事务外读取；事实只说明读取时状态，不是来源许可。未新增可授权provider/预约Controller，待a2-2基于真实持久业务计划与来源根锁继续实现。
+
+
+## Task52 BM03端点与独立双向机器协议增量（2026-10-21）
+
+以下仅为已编码/协议测试的增量；原160项设计编号保留。Task53负责实际JAR/进程部署验收，BM04/06未打开。
+
+| API / 方法 | Controller / 实际Service | 状态 |
+|---|---|---|
+| BAPI-010 / `queryAvailability` | ai.neargo.shop.beauty.api.biz.BizAvailabilityController<br>ai.neargo.shop.beauty.service.AppointmentAvailabilityService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-146 / `queryPublicAvailability` | ai.neargo.shop.beauty.api.mp.MpAvailabilityController<br>ai.neargo.shop.beauty.service.AppointmentAvailabilityService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-038 / `previewAppointment` | ai.neargo.shop.beauty.api.biz.BizAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-039 / `createAppointment` | ai.neargo.shop.beauty.api.biz.BizAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-040 / `listAppointments` | ai.neargo.shop.beauty.api.biz.BizAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-041 / `getAppointment` | ai.neargo.shop.beauty.api.biz.BizAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-042 / `previewAppointmentChange` | ai.neargo.shop.beauty.api.biz.BizAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-043 / `changeAppointment` | ai.neargo.shop.beauty.api.biz.BizAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-044 / `cancelAppointment` | ai.neargo.shop.beauty.api.biz.BizAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-045 / `recordNoShow` | ai.neargo.shop.beauty.api.biz.BizAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-147 / `previewMyAppointment` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-148 / `createMyAppointment` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-149 / `listMyAppointments` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-150 / `getMyAppointment` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-151 / `previewMyAppointmentChange` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-152 / `changeMyAppointment` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-153 / `cancelMyAppointment` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-160 / `getOperation` | ai.neargo.shop.beauty.api.biz.BizServiceOperationController<br>ai.neargo.shop.beauty.service.ServiceOperationQueryService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| `POST /biz/x/beauty/operations/{operationNo}/recoveries`<br>`OperationVO recoverOperation(String entityNo,String currentStoreNo,String actorNo,String operationNo)` | ai.neargo.shop.beauty.api.biz.BizServiceOperationController<br>ai.neargo.shop.beauty.service.ServiceOperationRecoveryService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+
+| 内部方法 / 路径 | 所有者 | 请求 | 返回 |
+|---|---|---|---|
+| `POST /internal/beauty/booking/queryAvailability` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.QueryAvailability | AvailabilityVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/queryPublicAvailability` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.QueryPublicAvailability | PublicAvailabilityVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/previewAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.PreviewAppointment | AppointmentPreviewVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/createAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.CreateAppointment | AppointmentVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/listAppointments` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.ListAppointments | PageData<AppointmentSummaryVO>；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/getAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.GetAppointment | AppointmentDetailVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/previewAppointmentChange` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.PreviewAppointmentChange | AppointmentChangePreviewVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/changeAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.ChangeAppointment | AppointmentVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/cancelAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.CancelAppointment | CancellationVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/recordNoShow` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.RecordNoShow | NoShowVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/previewMyAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.PreviewMyAppointment | AppointmentPreviewVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/createMyAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.CreateMyAppointment | MyAppointmentVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/listMyAppointments` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.ListMyAppointments | PageData<MyAppointmentVO>；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/getMyAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.GetMyAppointment | MyAppointmentDetailVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/previewMyAppointmentChange` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.PreviewMyAppointmentChange | AppointmentChangePreviewVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/changeMyAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.ChangeMyAppointment | MyAppointmentVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/cancelMyAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.CancelMyAppointment | CancellationVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/getOperation` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.GetOperation | OperationVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/recoverOperation` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.RecoverOperation | OperationVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/appointment-source/freeze` | beauty-server / 实际AppointmentSourceAuthorityPortImpl | BeautySourceInternalApi.Delegation(identity,request) | Decision；UNKNOWN非许可；完整Binding比对 |
+| `POST /internal/beauty/appointment-source/query` | beauty-server / 实际AppointmentSourceAuthorityPortImpl | BeautySourceInternalApi.Delegation(identity,request) | Decision；UNKNOWN非许可；完整Binding比对 |
+| `POST /internal/resource-booking/accept` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | Acceptance | Receipt；错误不作为空事实 |
+| `POST /internal/resource-booking/query` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | Command | Lookup(Boolean found,Receipt)；错误不作为空事实 |
+| `POST /internal/resource-booking/execute` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | Command | Receipt；错误不作为空事实 |
+| `POST /internal/resource-booking/hold` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | HoldQuery | BoundHold；错误不作为空事实 |
+| `POST /internal/resource-booking/reconcile` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | Binding | Lookup(Boolean found,Receipt)；错误不作为空事实 |
+| `POST /internal/resource-booking/reconcile-hold` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | BoundHoldQuery | BoundHold；错误不作为空事实 |
+| `POST /internal/resource-booking/candidates` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | ResourceCandidatesPort.Query | List<ResourceFact>；错误不作为空事实 |
+| `POST /internal/resource-booking/capacity` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | ResourceCandidatesPort.CapacityQuery（独立factAt、Replacement完整Binding+Target） | List<Capacity>；错误不作为空事实 |
+| `POST /internal/customer-identity/resolve-reference` | PLATFORM / InternalCustomerIdentityController → MemberCustomerIdentityPortImpl | CustomerIdentityInternalApi.Request(identity,context,query) | Resolution含完整身份/上下文/query与ResolvedCustomer；远端比对并验证userNo |
+
+| 部署形态 | 唯一来源provider | owner / 装配 |
+|---|---|---|
+| embedded HOST | beauty-core / ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl | 本地ResourceBookingPortImpl/ResourceCandidatesPortImpl/MemberCustomerIdentityPortImpl<br>唯一local source；channel自动配置因core class存在不注册remote source |
+| standalone HOST | beauty-channel / ai.neargo.shop.beauty.port.RemoteAppointmentSourceAuthorityPort | 平台本地真实共用owner；无beauty-core<br>BeautyChannelAutoConfiguration；真实反向BEAUTY目标；四个typed Remote*Service |
+| standalone SERVER | beauty-core / ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl | BeautyMerchantClientConfiguration / RemoteResourceBookingPort,RemoteResourceCandidatesPort,RemoteCustomerIdentityPort<br>core存在；HOST remote source不注册；api默认profile使恢复Job接线 |
+| disabled / ops / no API | disabled无新增source provider | 不改变共用owner<br>public controllers仅api+enabled；恢复Job仅api；独立SERVER默认api且没有beauty-web |
+
+机器身份为shop-base的DelegatedIdentity与shop-base-auth的DelegatedIdentityContext；只在令牌校验后以consumer/merchantByUser/merchant恢复精确命名空间，finally恢复先前上下文。无存储用户名伪造身份。
+BOOKING VIEW或MANAGE可读、MANAGE写；C私有入口显式CONSUMER/USR；公开availability匿名。search incomplete独立ErrorCode80104（三语），内部422保留语义，availability返回complete=false。
+所有远程请求在事务外；Lookup显式found，失败不作为absence；source完整Binding和owner完整返回身份校验，capacity透传独立factAt及完整Replacement。CustomerIdentity只读真实成员所有者，不增加金融许可。

@@ -246,6 +246,24 @@ def generate():
         '| beauty-channel / ai.neargo.shop.beauty.config.BeautyMerchantClientConfiguration | 条件缺失时接远程两个Port，embedded仍使用本地owner |', '',
         '内部Lookup必须显式command字段，允许显式null；缺字段/200错误信封拒绝，未知owner运行异常503；只读OperatorAccessMapper显式@Mapper由宿主实际注解扫描注册。', '',
         '接口、owner及远程适配均在事务外读取；事实只说明读取时状态，不是来源许可。未新增可授权provider/预约Controller，待a2-2基于真实持久业务计划与来源根锁继续实现。', '']
+    booking_increment = ['', '## Task52 BM03端点与独立双向机器协议增量（2026-10-21）', '',
+        '以下仅为已编码/协议测试的增量；原160项设计编号保留。Task53负责实际JAR/进程部署验收，BM04/06未打开。', '',
+        '| API / 方法 | Controller / 实际Service | 状态 |', '|---|---|---|']
+    for e in eps:
+        if e.get('implementationStatus', '').startswith('IMPLEMENTED_TASK52'):
+            booking_increment.append(f'| {e["apiId"]} / `{e["method"]}` | {e["controller"]}<br>{e["service"]} | {e["implementationStatus"]} |')
+    for e in d.get('implementationHttpMethods', []):
+        booking_increment.append(f'| `{e["method"]} {e["path"]}`<br>`{e["signature"]}` | {e["controller"]}<br>{e["service"]} | {e["status"]} |')
+    booking_increment += ['', '| 内部方法 / 路径 | 所有者 | 请求 | 返回 |', '|---|---|---|---|']
+    for e in d.get('implementationProtocols', []):
+        booking_increment.append(f'| `{e["method"]} {e["path"]}` | {e["owner"]} | {e["request"]} | {e["response"]} |')
+    booking_increment += ['', '| 部署形态 | 唯一来源provider | owner / 装配 |', '|---|---|---|']
+    for e in d.get('implementationTopology', []):
+        booking_increment.append(f'| {e["deployment"]} | {e["sourceProvider"]} | {e["owner"]}<br>{e["rule"]} |')
+    booking_increment += ['', '机器身份为shop-base的DelegatedIdentity与shop-base-auth的DelegatedIdentityContext；只在令牌校验后以consumer/merchantByUser/merchant恢复精确命名空间，finally恢复先前上下文。无存储用户名伪造身份。',
+        'BOOKING VIEW或MANAGE可读、MANAGE写；C私有入口显式CONSUMER/USR；公开availability匿名。search incomplete独立ErrorCode80104（三语），内部422保留语义，availability返回complete=false。',
+        '所有远程请求在事务外；Lookup显式found，失败不作为absence；source完整Binding和owner完整返回身份校验，capacity透传独立factAt及完整Replacement。CustomerIdentity只读真实成员所有者，不增加金融许可。', '']
+    increment += booking_increment
     classes += increment
     methods += increment
     stats={'controllers':len(controllers),'services':len(services),'serviceMethods':method_count,'dtos':len(dtos),'mappers':len(mappers),'customMapperMethods':sum(len(m['customMethods']) for m in mappers),'ownedHttp':len(eps),'sharedHttp':len(d['sharedHttpMethods'])}

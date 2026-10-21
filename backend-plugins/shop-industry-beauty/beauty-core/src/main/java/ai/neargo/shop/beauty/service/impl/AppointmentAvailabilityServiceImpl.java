@@ -50,10 +50,9 @@ public final class AppointmentAvailabilityServiceImpl implements AppointmentAvai
                 result.add(new AppointmentPreviewVO(null, OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(1),
                         match.policyVersionNo(), match.startAt(), match.endAt(), match.snapshot().items(),
                         match.snapshot().assignments(), match.snapshot().priceMinor()));
-            } catch (AppointmentMatching.IncompleteSearch incomplete) {
-                complete = false;
             } catch (BizException unavailable) {
-                if (unavailable.errorCode() != ErrorCode.CONFLICT) { throw unavailable; }
+                if (unavailable.errorCode() == ErrorCode.BEAUTY_SEARCH_INCOMPLETE) { complete = false; }
+                else if (unavailable.errorCode() != ErrorCode.CONFLICT) { throw unavailable; }
             }
         }
         return new AvailabilityVO(result, OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(1), complete &&

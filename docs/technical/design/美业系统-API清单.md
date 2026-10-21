@@ -84,10 +84,10 @@
 | BAPI-007<br>BTY-B04<br>P1 | `GET /biz/x/beauty/service-definitions` | 查项目作业定义<br>storeNo,skuNo,at,page?,size? | PageData<ServiceDefinitionVO><br>已实现；部署与验收边界见后端开发计划§8 |
 | BAPI-008<br>BTY-B04<br>P1 | `POST /biz/x/beauty/service-definitions/versions` | 提交项目时长缓冲资格资源要求<br>skuNo,expectedRevision,duration,requirements,notes?(最多20条非空文本，每条最多500字符；默认空列表) | ServiceDefinitionVersionVO<br>已实现；部署与验收边界见后端开发计划§8 |
 | BAPI-009<br>BTY-B05<br>P1 | `GET /biz/x/beauty/services/{skuNo}` | 查项目展示及适用须知<br>storeNo | ServiceDetailVO<br>代码已实现；BM-01后端模块隔离部署通过，详见主TDD§22 |
-| BAPI-010<br>BTY-B05<br>P1 | `POST /biz/x/beauty/availability/queries` | 查询项目可约组合<br>storeNo,items,from,to,requestedPersonnelNo | AvailabilityVO含候选组合与过期时间<br>美业候选新接口 |
+| BAPI-010<br>BTY-B05<br>P1 | `POST /biz/x/beauty/availability/queries` | 查询项目可约组合<br>storeNo,items,from,to,requestedPersonnelNo | AvailabilityVO含候选组合与过期时间<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
 | BAPI-011<br>BTY-B06<br>P4 | `CONTRACT quote.configured-options` | 复杂选配与补差报价<br>正规SKU与选配版本,买家 | QuoteVO须正式合同开放<br>共用合同接入，路径待核对 |
 | BAPI-145<br>BTY-B05<br>P1 | `GET /mp/x/beauty/services/{skuNo}` | 读取公开服务详情<br>storeNo,skuNo | PublicServiceVO<br>代码已实现；BM-01后端模块隔离部署通过，详见主TDD§22 |
-| BAPI-146<br>BTY-B05<br>P1 | `POST /mp/x/beauty/availability/queries` | 查询公开可约时段及可选技师<br>storeNo,items,from,to | PublicAvailabilityVO<br>美业候选新接口 |
+| BAPI-146<br>BTY-B05<br>P1 | `POST /mp/x/beauty/availability/queries` | 查询公开可约时段及可选技师<br>storeNo,items,from,to | PublicAvailabilityVO<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
 
 ### C 共用人员与权限
 
@@ -142,22 +142,22 @@
 
 | 编号 / 功能 / 阶段 | 方法与路径或合同 | 操作与关键入参 | 返回 / 状态 |
 |---|---|---|---|
-| BAPI-038<br>BTY-F01、BTY-F02<br>P1 | `POST /biz/x/beauty/appointments/previews` | 校验预约要求并预览资源组合<br>storeNo,customerRef,items,requestedAssignments,startAt | AppointmentPreviewVO无占位承诺<br>美业候选新接口 |
-| BAPI-039<br>BTY-F01、BTY-F02<br>P1 | `POST /biz/x/beauty/appointments` | 占齐完整资源并创建无交易或有来源预约<br>previewNo,customerRef,sourceRefs?,consentRef? | AppointmentVO与资源确认结果<br>美业候选新接口 |
-| BAPI-040<br>BTY-F03<br>P1 | `GET /biz/x/beauty/appointments` | 查预约列表<br>storeNo,from,to,status,personnelNo,page,size,assignmentState | PageData<AppointmentSummaryVO><br>美业候选新接口 |
-| BAPI-041<br>BTY-F03<br>P1 | `GET /biz/x/beauty/appointments/{appointmentNo}` | 查预约任务资源时间线详情<br>appointmentNo | AppointmentDetailVO含版本与可用动作<br>美业候选新接口 |
-| BAPI-042<br>BTY-F04<br>P1 | `POST /biz/x/beauty/appointments/{appointmentNo}/changes/previews` | 改时段/项目/指定人员预览<br>expectedRevision,items,startAt,assignments | AppointmentChangePreviewVO含报价影响<br>美业候选新接口 |
-| BAPI-043<br>BTY-F04<br>P1 | `POST /biz/x/beauty/appointments/{appointmentNo}/changes` | 原子改约及资源替换<br>previewNo,expectedRevision,reason,consentRef? | AppointmentVO保留旧安排版本<br>美业候选新接口 |
-| BAPI-044<br>BTY-F05<br>P1 | `POST /biz/x/beauty/appointments/{appointmentNo}/cancellations` | 取消预约释放资源并协调来源<br>expectedRevision,reason | CancellationVO含来源处理进度<br>美业候选新接口 |
-| BAPI-045<br>BTY-F05<br>P1 | `POST /biz/x/beauty/appointments/{appointmentNo}/no-shows` | 记录爽约事实<br>expectedRevision,reason,evidenceRef? | NoShowVO不自动扣款扣次<br>美业候选新接口 |
+| BAPI-038<br>BTY-F01、BTY-F02<br>P1 | `POST /biz/x/beauty/appointments/previews` | 校验预约要求并预览资源组合<br>storeNo,customerRef,items,requestedAssignments,startAt | AppointmentPreviewVO无占位承诺<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
+| BAPI-039<br>BTY-F01、BTY-F02<br>P1 | `POST /biz/x/beauty/appointments` | 占齐完整资源并创建无交易或有来源预约<br>previewNo,customerRef,sourceRefs?,consentRef? | AppointmentVO与资源确认结果<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
+| BAPI-040<br>BTY-F03<br>P1 | `GET /biz/x/beauty/appointments` | 查预约列表<br>storeNo,from,to,status,personnelNo,page,size,assignmentState | PageData<AppointmentSummaryVO><br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
+| BAPI-041<br>BTY-F03<br>P1 | `GET /biz/x/beauty/appointments/{appointmentNo}` | 查预约任务资源时间线详情<br>appointmentNo | AppointmentDetailVO含版本与可用动作<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
+| BAPI-042<br>BTY-F04<br>P1 | `POST /biz/x/beauty/appointments/{appointmentNo}/changes/previews` | 改时段/项目/指定人员预览<br>expectedRevision,items,startAt,assignments | AppointmentChangePreviewVO含报价影响<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
+| BAPI-043<br>BTY-F04<br>P1 | `POST /biz/x/beauty/appointments/{appointmentNo}/changes` | 原子改约及资源替换<br>previewNo,expectedRevision,reason,consentRef? | AppointmentVO保留旧安排版本<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
+| BAPI-044<br>BTY-F05<br>P1 | `POST /biz/x/beauty/appointments/{appointmentNo}/cancellations` | 取消预约释放资源并协调来源<br>expectedRevision,reason | CancellationVO含来源处理进度<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
+| BAPI-045<br>BTY-F05<br>P1 | `POST /biz/x/beauty/appointments/{appointmentNo}/no-shows` | 记录爽约事实<br>expectedRevision,reason,evidenceRef? | NoShowVO不自动扣款扣次<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
 | BAPI-046<br>BTY-F06<br>P4 | `CONTRACT booking.deposit-and-penalty-policy` | 定金尾款与违约合同<br>policyVersion,sourceRef,customerConsent | 合同待定默认关闭<br>共用合同接入，路径待核对 |
-| BAPI-147<br>BTY-F01<br>P1 | `POST /mp/x/beauty/appointments/previews` | 本人预约预览<br>storeNo,items,startAt,requestedPersonnelNo | AppointmentPreviewVO<br>美业候选新接口 |
-| BAPI-148<br>BTY-F01<br>P1 | `POST /mp/x/beauty/appointments` | 本人提交预约并占齐资源<br>previewNo,sourceRefs?,consentRef? | MyAppointmentVO<br>美业候选新接口 |
-| BAPI-149<br>BTY-F03<br>P1 | `GET /mp/x/beauty/appointments` | 我的预约列表<br>from,to,status,page,size | PageData<MyAppointmentVO><br>美业候选新接口 |
-| BAPI-150<br>BTY-F03<br>P1 | `GET /mp/x/beauty/appointments/{appointmentNo}` | 本人预约详情<br>appointmentNo | MyAppointmentDetailVO<br>美业候选新接口 |
-| BAPI-151<br>BTY-F04<br>P1 | `POST /mp/x/beauty/appointments/{appointmentNo}/changes/previews` | 本人改约预览<br>expectedRevision,startAt,items,requestedPersonnelNo | AppointmentChangePreviewVO<br>美业候选新接口 |
-| BAPI-152<br>BTY-F04<br>P1 | `POST /mp/x/beauty/appointments/{appointmentNo}/changes` | 本人提交改约<br>previewNo,expectedRevision,consentRef? | MyAppointmentVO<br>美业候选新接口 |
-| BAPI-153<br>BTY-F05<br>P1 | `POST /mp/x/beauty/appointments/{appointmentNo}/cancellations` | 本人取消预约<br>expectedRevision,reason | CancellationVO<br>美业候选新接口 |
+| BAPI-147<br>BTY-F01<br>P1 | `POST /mp/x/beauty/appointments/previews` | 本人预约预览<br>storeNo,items,startAt,requestedPersonnelNo | AppointmentPreviewVO<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
+| BAPI-148<br>BTY-F01<br>P1 | `POST /mp/x/beauty/appointments` | 本人提交预约并占齐资源<br>previewNo,sourceRefs?,consentRef? | MyAppointmentVO<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
+| BAPI-149<br>BTY-F03<br>P1 | `GET /mp/x/beauty/appointments` | 我的预约列表<br>from,to,status,page,size | PageData<MyAppointmentVO><br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
+| BAPI-150<br>BTY-F03<br>P1 | `GET /mp/x/beauty/appointments/{appointmentNo}` | 本人预约详情<br>appointmentNo | MyAppointmentDetailVO<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
+| BAPI-151<br>BTY-F04<br>P1 | `POST /mp/x/beauty/appointments/{appointmentNo}/changes/previews` | 本人改约预览<br>expectedRevision,startAt,items,requestedPersonnelNo | AppointmentChangePreviewVO<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
+| BAPI-152<br>BTY-F04<br>P1 | `POST /mp/x/beauty/appointments/{appointmentNo}/changes` | 本人提交改约<br>previewNo,expectedRevision,consentRef? | MyAppointmentVO<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
+| BAPI-153<br>BTY-F05<br>P1 | `POST /mp/x/beauty/appointments/{appointmentNo}/cancellations` | 本人取消预约<br>expectedRevision,reason | CancellationVO<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
 
 ### G 到店与接待
 
@@ -359,7 +359,7 @@
 | BAPI-141<br>BTY-T06<br>P3 | `CONTRACT governance.privacy-config-backup` | 隐私配置发布备份恢复受控流程<br>scope,changeNo,purpose,approvalRef | GovernanceJobVO不提供任意表写入<br>共用合同接入，路径待核对 |
 | BAPI-142<br>BTY-T07<br>P4 | `CONTRACT integration.external-booking` | 第三方预约来源映射签名去重冲突<br>provider,externalNo,revision,signedPayload | ExternalBindingVO需独立合同<br>共用合同接入，路径待核对 |
 | BAPI-143<br>BTY-T08<br>P4 | `CONTRACT offline.claim-and-sync` | 断网事实认领去重同步<br>deviceNo,localIntentNo,evidence | SyncClaimVO未验收不开放营业<br>共用合同接入，路径待核对 |
-| BAPI-160<br>BTY-T03、BTY-T04<br>P1 | `GET /biz/x/beauty/operations/{operationNo}` | 查询异步命令的原号进度和阻断原因<br>operationNo | OperationVO含目标引用和恢复入口<br>美业候选新接口 |
+| BAPI-160<br>BTY-T03、BTY-T04<br>P1 | `GET /biz/x/beauty/operations/{operationNo}` | 查询异步命令的原号进度和阻断原因<br>operationNo | OperationVO含目标引用和恢复入口<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
 
 ## 五、既有路由证据与兼容边界
 
@@ -504,7 +504,7 @@ P1完成人员/资源统一、单次先付服务、无交易预约、接待工�
 
 ## 八、实施补充入口（独立于原160项设计编号）
 
-以下补充P1周规则写入与内部事实协议，不将P3例外审批冒充P1，也不改变原设计任务编号。实际交付以主TDD模块关口为准。
+以下补充P1周规则、BM03显式手动恢复及双向机器协议，不将P3例外审批冒充P1，也不改变原160项设计编号。Task52协议已实现；BM03实际部署验收待Task53。
 
 | 方法 / 路径 | 所有者 / 用途 | 请求 | 返回 |
 |---|---|---|---|
@@ -514,3 +514,34 @@ P1完成人员/资源统一、单次先付服务、无交易预约、接待工�
 | `POST /internal/merchant/facts/schedules` | PLATFORM portal/internal → 共用schedule所有者<br>受内部凭证保护；跨店冲突不能隐藏为空闲 | ScheduleWindowsPort.Query | List<Window> |
 | `POST /internal/merchant/recovery/operator-access` | PLATFORM portal/internal → merchant权限所有者，零售/餐饮/美业共用<br>机器令牌保护的当前成员/当店权限事实；无会话快照/业务岗位推导，不是持续许可 | MerchantOperatorAccessPort.Query(tenantNo,entityNo,storeNo,operatorNo,realm,subjectKind,permission) | Boolean；真实拒绝false，错误不伪装false |
 | `POST /internal/merchant/recovery/commands` | PLATFORM portal/internal → merchant资源命令所有者，零售/餐饮/美业共用<br>当前成员biz:order:view核验后按完整Binding读取原命令；无写入或解冻能力 | ResourceSourceAuthorityPort.Request(binding,operatorNo,realm,subjectKind) | ResourceCommandFactsPort.Lookup(command?)；原状态/版本/结果及稳定终态摘要，ACCEPTED不携终态，缺失显式空，失败400/403/409/5xx；command字段必需，null显式序列化，{}和200错误信封拒绝；未知owner运行异常空503 |
+| `POST /biz/x/beauty/operations/{operationNo}/recoveries` | beauty-web → ServiceOperationRecoveryService<br>BM03明确增量：当前MANAGE成员按原操作号手动恢复；GET仅只读；不改原160基线 | operationNo路径；可信BizContext与原始X-Store-No、当前MERCHANT MCH/USR | OperationVO；UNKNOWN/PENDING保留，不伪造终态 |
+| `POST /internal/beauty/booking/queryAvailability` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.QueryAvailability | AvailabilityVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/queryPublicAvailability` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.QueryPublicAvailability | PublicAvailabilityVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/previewAppointment` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.PreviewAppointment | AppointmentPreviewVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/createAppointment` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.CreateAppointment | AppointmentVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/listAppointments` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.ListAppointments | PageData<AppointmentSummaryVO>；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/getAppointment` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.GetAppointment | AppointmentDetailVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/previewAppointmentChange` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.PreviewAppointmentChange | AppointmentChangePreviewVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/changeAppointment` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.ChangeAppointment | AppointmentVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/cancelAppointment` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.CancelAppointment | CancellationVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/recordNoShow` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.RecordNoShow | NoShowVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/previewMyAppointment` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.PreviewMyAppointment | AppointmentPreviewVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/createMyAppointment` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.CreateMyAppointment | MyAppointmentVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/listMyAppointments` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.ListMyAppointments | PageData<MyAppointmentVO>；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/getMyAppointment` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.GetMyAppointment | MyAppointmentDetailVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/previewMyAppointmentChange` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.PreviewMyAppointmentChange | AppointmentChangePreviewVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/changeMyAppointment` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.ChangeMyAppointment | MyAppointmentVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/cancelMyAppointment` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.CancelMyAppointment | CancellationVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/getOperation` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.GetOperation | OperationVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/recoverOperation` | beauty-server / InternalBeautyBookingController<br>机器令牌先验；完整当前tenant/realm/subjectKind/actor与真实Service授权（公开availability无伪身份） | BeautyBookingInternalApi.RecoverOperation | OperationVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/appointment-source/freeze` | beauty-server / 实际AppointmentSourceAuthorityPortImpl<br>仅BEAUTY_APPOINTMENT；完整持久Binding与当前身份；HOST反向回调，无core旁路 | BeautySourceInternalApi.Delegation(identity,request) | Decision；UNKNOWN非许可；完整Binding比对 |
+| `POST /internal/beauty/appointment-source/query` | beauty-server / 实际AppointmentSourceAuthorityPortImpl<br>仅BEAUTY_APPOINTMENT；完整持久Binding与当前身份；HOST反向回调，无core旁路 | BeautySourceInternalApi.Delegation(identity,request) | Decision；UNKNOWN非许可；完整Binding比对 |
+| `POST /internal/resource-booking/accept` | PLATFORM / InternalResourceBookingController → 共用真实resource owner<br>中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务 | Acceptance | Receipt；错误不作为空事实 |
+| `POST /internal/resource-booking/query` | PLATFORM / InternalResourceBookingController → 共用真实resource owner<br>中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务 | Command | Lookup(Boolean found,Receipt)；错误不作为空事实 |
+| `POST /internal/resource-booking/execute` | PLATFORM / InternalResourceBookingController → 共用真实resource owner<br>中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务 | Command | Receipt；错误不作为空事实 |
+| `POST /internal/resource-booking/hold` | PLATFORM / InternalResourceBookingController → 共用真实resource owner<br>中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务 | HoldQuery | BoundHold；错误不作为空事实 |
+| `POST /internal/resource-booking/reconcile` | PLATFORM / InternalResourceBookingController → 共用真实resource owner<br>中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务 | Binding | Lookup(Boolean found,Receipt)；错误不作为空事实 |
+| `POST /internal/resource-booking/reconcile-hold` | PLATFORM / InternalResourceBookingController → 共用真实resource owner<br>中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务 | BoundHoldQuery | BoundHold；错误不作为空事实 |
+| `POST /internal/resource-booking/candidates` | PLATFORM / InternalResourceBookingController → 共用真实resource owner<br>中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务 | ResourceCandidatesPort.Query | List<ResourceFact>；错误不作为空事实 |
+| `POST /internal/resource-booking/capacity` | PLATFORM / InternalResourceBookingController → 共用真实resource owner<br>中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务 | ResourceCandidatesPort.CapacityQuery（独立factAt、Replacement完整Binding+Target） | List<Capacity>；错误不作为空事实 |
+| `POST /internal/customer-identity/resolve-reference` | PLATFORM / InternalCustomerIdentityController → MemberCustomerIdentityPortImpl<br>只读原actor绑定成员识别票据；保留EntitlementContext和委托身份；无guest/扣款许可降级 | CustomerIdentityInternalApi.Request(identity,context,query) | Resolution含完整身份/上下文/query与ResolvedCustomer；远端比对并验证userNo |

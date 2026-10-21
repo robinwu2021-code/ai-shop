@@ -1,6 +1,14 @@
 package ai.neargo.shop.beauty.config;
 
 import ai.neargo.shop.beauty.port.RemoteMerchantOperatorAccessPort;
+import ai.neargo.shop.beauty.port.RemoteResourceBookingPort;
+import ai.neargo.shop.beauty.port.RemoteResourceCandidatesPort;
+import ai.neargo.shop.beauty.port.RemoteCustomerIdentityPort;
+import ai.neargo.shop.spi.resource.ResourceBookingPort;
+import ai.neargo.shop.spi.resource.ResourceCandidatesPort;
+import ai.neargo.shop.spi.resource.ResourceBookingInternalApi;
+import ai.neargo.shop.spi.member.CustomerIdentityPort;
+import ai.neargo.shop.spi.member.CustomerIdentityInternalApi;
 import ai.neargo.shop.beauty.port.RemoteResourceCommandFactsPort;
 import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 import ai.neargo.shop.spi.resource.ResourceCommandFactsPort;
@@ -52,5 +60,24 @@ public class BeautyMerchantClientConfiguration {
     }
     private MerchantFactsInternalApi api(InternalHttp http) {
         return http.client(ServiceName.PLATFORM, MerchantFactsInternalApi.class, Duration.ofSeconds(5));
+    }
+    @Bean
+    @ConditionalOnMissingBean(ResourceBookingPort.class)
+    ResourceBookingPort beautyRemoteResourceBookingPort(InternalHttp http) {
+        return new RemoteResourceBookingPort(bookingApi(http));
+    }
+    @Bean
+    @ConditionalOnMissingBean(ResourceCandidatesPort.class)
+    ResourceCandidatesPort beautyRemoteResourceCandidatesPort(InternalHttp http) {
+        return new RemoteResourceCandidatesPort(bookingApi(http));
+    }
+    @Bean
+    @ConditionalOnMissingBean(CustomerIdentityPort.class)
+    CustomerIdentityPort beautyRemoteCustomerIdentityPort(InternalHttp http) {
+        return new RemoteCustomerIdentityPort(http.client(ServiceName.PLATFORM, CustomerIdentityInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
+    private ResourceBookingInternalApi bookingApi(InternalHttp http) {
+        return http.client(ServiceName.PLATFORM, ResourceBookingInternalApi.class, Duration.ofSeconds(5));
     }
 }

@@ -26,6 +26,7 @@ import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Profile;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 import tools.jackson.databind.ObjectMapper;
@@ -98,6 +99,7 @@ public class BeautyAppointmentConfiguration {
         return new AppointmentRecovery(db, coordinator);
     }
     @Bean
+    @Profile("api")
     AppointmentRecoveryJob appointmentRecoveryJob(AppointmentRecovery recovery) {
         return new AppointmentRecoveryJob(recovery);
     }

@@ -72,6 +72,12 @@ public final class AppointmentMatching {
     public Matched match(Scope scope, boolean publicOnly, List<AppointmentItemReq> requested,
             List<AppointmentAssignmentReq> specified, String requestedPerson, OffsetDateTime startAt,
             ResourceCandidatesPort.Replacement replacement) {
+        try { return matchComplete(scope, publicOnly, requested, specified, requestedPerson, startAt, replacement); }
+        catch (IncompleteSearch incomplete) { throw BizException.of(ErrorCode.BEAUTY_SEARCH_INCOMPLETE); }
+    }
+    private Matched matchComplete(Scope scope, boolean publicOnly, List<AppointmentItemReq> requested,
+            List<AppointmentAssignmentReq> specified, String requestedPerson, OffsetDateTime startAt,
+            ResourceCandidatesPort.Replacement replacement) {
         if (requested == null || requested.isEmpty() || requested.size() > 10 || startAt == null
                 || !startAt.toInstant().isAfter(Instant.now()) || startAt.getNano() != 0
                 || Math.floorMod(startAt.toEpochSecond(), 300) != 0) { bad(); }

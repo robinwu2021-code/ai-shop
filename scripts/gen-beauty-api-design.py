@@ -83,7 +83,7 @@ def render():
         assert len({(x['method'], x['path']) for x in supplemental}) == len(supplemental)
         assert not ({(x['method'], x['path']) for x in supplemental} & {(x['method'], x['path']) for x in apis})
         lines += ['## 八、实施补充入口（独立于原160项设计编号）', '',
-                  '以下补充P1周规则写入与内部事实协议，不将P3例外审批冒充P1，也不改变原设计任务编号。实际交付以主TDD模块关口为准。', '',
+                  '以下补充P1周规则、BM03显式手动恢复及双向机器协议，不将P3例外审批冒充P1，也不改变原160项设计编号。Task52协议已实现；BM03实际部署验收待Task53。', '',
                   '| 方法 / 路径 | 所有者 / 用途 | 请求 | 返回 |', '|---|---|---|---|']
         for x in supplemental:
             lines.append(f'| `{x["method"]} {x["path"]}` | {x["owner"]}<br>{x["purpose"]} | {x["request"]} | {x["response"]} |')

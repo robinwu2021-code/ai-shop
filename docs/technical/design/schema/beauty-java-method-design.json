@@ -1,6 +1,6 @@
 {
-  "status": "DESIGN_METHODS_NOT_IMPLEMENTED",
-  "date": "2026-10-20",
+  "status": "PARTIALLY_IMPLEMENTED_MODULE_ACCEPTANCE_PENDING",
+  "date": "2026-10-21",
   "sourceApis": "beauty-api-design.json",
   "sourceStructure": "beauty-java-project-design.json",
   "endpoints": [
@@ -364,6 +364,12 @@
           "name": "query",
           "annotation": "@Valid @RequestBody",
           "source": "BODY"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)",
+          "source": "HEADER"
         }
       ],
       "serviceParameters": [
@@ -391,7 +397,8 @@
       "inputType": "AvailabilityQuery",
       "flow": "availability",
       "readOnly": true,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-145",
@@ -456,7 +463,8 @@
       "inputType": "PublicAvailabilityQuery",
       "flow": "availability",
       "readOnly": true,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-025",
@@ -1054,6 +1062,12 @@
           "name": "req",
           "annotation": "@Valid @RequestBody",
           "source": "BODY"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)",
+          "source": "HEADER"
         }
       ],
       "serviceParameters": [
@@ -1081,7 +1095,8 @@
       "inputType": "PreviewAppointmentReq",
       "flow": "appointmentPreview",
       "readOnly": true,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-039",
@@ -1101,6 +1116,12 @@
           "type": "String",
           "name": "idempotencyKey",
           "annotation": "@RequestHeader(\"Idempotency-Key\")",
+          "source": "HEADER"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)",
           "source": "HEADER"
         }
       ],
@@ -1134,7 +1155,8 @@
       "inputType": "CreateAppointmentReq",
       "flow": "appointmentCreate",
       "readOnly": false,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-040",
@@ -1149,6 +1171,12 @@
           "name": "query",
           "annotation": "@Valid @ModelAttribute",
           "source": "QUERY"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)",
+          "source": "HEADER"
         }
       ],
       "serviceParameters": [
@@ -1176,7 +1204,8 @@
       "inputType": "AppointmentQuery",
       "flow": "appointmentRead",
       "readOnly": true,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-041",
@@ -1191,6 +1220,12 @@
           "name": "appointmentNo",
           "annotation": "@PathVariable(\"appointmentNo\")",
           "source": "PATH"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)",
+          "source": "HEADER"
         }
       ],
       "serviceParameters": [
@@ -1218,7 +1253,8 @@
       "inputType": null,
       "flow": "appointmentDetail",
       "readOnly": true,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-042",
@@ -1239,6 +1275,12 @@
           "name": "req",
           "annotation": "@Valid @RequestBody",
           "source": "BODY"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)",
+          "source": "HEADER"
         }
       ],
       "serviceParameters": [
@@ -1271,7 +1313,8 @@
       "inputType": "PreviewAppointmentChangeReq",
       "flow": "appointmentPreview",
       "readOnly": true,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-043",
@@ -1297,6 +1340,12 @@
           "type": "String",
           "name": "idempotencyKey",
           "annotation": "@RequestHeader(\"Idempotency-Key\")",
+          "source": "HEADER"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)",
           "source": "HEADER"
         }
       ],
@@ -1335,7 +1384,8 @@
       "inputType": "ChangeAppointmentReq",
       "flow": "appointmentChange",
       "readOnly": false,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-044",
@@ -1361,6 +1411,12 @@
           "type": "String",
           "name": "idempotencyKey",
           "annotation": "@RequestHeader(\"Idempotency-Key\")",
+          "source": "HEADER"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)",
           "source": "HEADER"
         }
       ],
@@ -1399,7 +1455,8 @@
       "inputType": "CancelAppointmentReq",
       "flow": "appointmentCancel",
       "readOnly": false,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-045",
@@ -1425,6 +1482,12 @@
           "type": "String",
           "name": "idempotencyKey",
           "annotation": "@RequestHeader(\"Idempotency-Key\")",
+          "source": "HEADER"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)",
           "source": "HEADER"
         }
       ],
@@ -1463,7 +1526,8 @@
       "inputType": "RecordNoShowReq",
       "flow": "appointmentCancel",
       "readOnly": false,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-147",
@@ -1495,7 +1559,8 @@
       "inputType": "PreviewMyAppointmentReq",
       "flow": "appointmentPreview",
       "readOnly": true,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-148",
@@ -1538,7 +1603,8 @@
       "inputType": "CreateMyAppointmentReq",
       "flow": "appointmentCreate",
       "readOnly": false,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-149",
@@ -1570,7 +1636,8 @@
       "inputType": "MyAppointmentQuery",
       "flow": "appointmentRead",
       "readOnly": true,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-150",
@@ -1602,7 +1669,8 @@
       "inputType": null,
       "flow": "appointmentDetail",
       "readOnly": true,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-151",
@@ -1645,7 +1713,8 @@
       "inputType": "PreviewMyAppointmentChangeReq",
       "flow": "appointmentPreview",
       "readOnly": true,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-152",
@@ -1699,7 +1768,8 @@
       "inputType": "ChangeAppointmentReq",
       "flow": "appointmentChange",
       "readOnly": false,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-153",
@@ -1753,7 +1823,8 @@
       "inputType": "CancelAppointmentReq",
       "flow": "appointmentCancel",
       "readOnly": false,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     },
     {
       "apiId": "BAPI-047",
@@ -4752,6 +4823,12 @@
           "name": "operationNo",
           "annotation": "@PathVariable(\"operationNo\")",
           "source": "PATH"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)",
+          "source": "HEADER"
         }
       ],
       "serviceParameters": [
@@ -4779,7 +4856,8 @@
       "inputType": null,
       "flow": "operationRead",
       "readOnly": true,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
     }
   ],
   "flows": {
@@ -10751,6 +10829,259 @@
         }
       ],
       "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
+    }
+  ],
+  "implementationHttpMethods": [
+    {
+      "method": "POST",
+      "path": "/biz/x/beauty/operations/{operationNo}/recoveries",
+      "owner": "beauty-web → ServiceOperationRecoveryService",
+      "purpose": "BM03明确增量：当前MANAGE成员按原操作号手动恢复；GET仅只读；不改原160基线",
+      "request": "operationNo路径；可信BizContext与原始X-Store-No、当前MERCHANT MCH/USR",
+      "response": "OperationVO；UNKNOWN/PENDING保留，不伪造终态",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceOperationController",
+      "service": "ai.neargo.shop.beauty.service.ServiceOperationRecoveryService",
+      "impl": "ai.neargo.shop.beauty.service.impl.ServiceOperationRecoveryServiceImpl",
+      "signature": "OperationVO recoverOperation(String entityNo,String currentStoreNo,String actorNo,String operationNo)",
+      "status": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
+    }
+  ],
+  "implementationProtocols": [
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/queryAvailability",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.QueryAvailability",
+      "response": "AvailabilityVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/queryPublicAvailability",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.QueryPublicAvailability",
+      "response": "PublicAvailabilityVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/previewAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.PreviewAppointment",
+      "response": "AppointmentPreviewVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/createAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.CreateAppointment",
+      "response": "AppointmentVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/listAppointments",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.ListAppointments",
+      "response": "PageData<AppointmentSummaryVO>；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/getAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.GetAppointment",
+      "response": "AppointmentDetailVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/previewAppointmentChange",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.PreviewAppointmentChange",
+      "response": "AppointmentChangePreviewVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/changeAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.ChangeAppointment",
+      "response": "AppointmentVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/cancelAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.CancelAppointment",
+      "response": "CancellationVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/recordNoShow",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.RecordNoShow",
+      "response": "NoShowVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/previewMyAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.PreviewMyAppointment",
+      "response": "AppointmentPreviewVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/createMyAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.CreateMyAppointment",
+      "response": "MyAppointmentVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/listMyAppointments",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.ListMyAppointments",
+      "response": "PageData<MyAppointmentVO>；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/getMyAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.GetMyAppointment",
+      "response": "MyAppointmentDetailVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/previewMyAppointmentChange",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.PreviewMyAppointmentChange",
+      "response": "AppointmentChangePreviewVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/changeMyAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.ChangeMyAppointment",
+      "response": "MyAppointmentVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/cancelMyAppointment",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.CancelMyAppointment",
+      "response": "CancellationVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/getOperation",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.GetOperation",
+      "response": "OperationVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/booking/recoverOperation",
+      "owner": "beauty-server / InternalBeautyBookingController",
+      "request": "BeautyBookingInternalApi.RecoverOperation",
+      "response": "OperationVO；403/409/422/503显式失败；字段及返回对象号校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/appointment-source/freeze",
+      "owner": "beauty-server / 实际AppointmentSourceAuthorityPortImpl",
+      "request": "BeautySourceInternalApi.Delegation(identity,request)",
+      "response": "Decision；UNKNOWN非许可；完整Binding比对"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/appointment-source/query",
+      "owner": "beauty-server / 实际AppointmentSourceAuthorityPortImpl",
+      "request": "BeautySourceInternalApi.Delegation(identity,request)",
+      "response": "Decision；UNKNOWN非许可；完整Binding比对"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/resource-booking/accept",
+      "owner": "PLATFORM / InternalResourceBookingController → 共用真实resource owner",
+      "request": "Acceptance",
+      "response": "Receipt；错误不作为空事实"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/resource-booking/query",
+      "owner": "PLATFORM / InternalResourceBookingController → 共用真实resource owner",
+      "request": "Command",
+      "response": "Lookup(Boolean found,Receipt)；错误不作为空事实"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/resource-booking/execute",
+      "owner": "PLATFORM / InternalResourceBookingController → 共用真实resource owner",
+      "request": "Command",
+      "response": "Receipt；错误不作为空事实"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/resource-booking/hold",
+      "owner": "PLATFORM / InternalResourceBookingController → 共用真实resource owner",
+      "request": "HoldQuery",
+      "response": "BoundHold；错误不作为空事实"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/resource-booking/reconcile",
+      "owner": "PLATFORM / InternalResourceBookingController → 共用真实resource owner",
+      "request": "Binding",
+      "response": "Lookup(Boolean found,Receipt)；错误不作为空事实"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/resource-booking/reconcile-hold",
+      "owner": "PLATFORM / InternalResourceBookingController → 共用真实resource owner",
+      "request": "BoundHoldQuery",
+      "response": "BoundHold；错误不作为空事实"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/resource-booking/candidates",
+      "owner": "PLATFORM / InternalResourceBookingController → 共用真实resource owner",
+      "request": "ResourceCandidatesPort.Query",
+      "response": "List<ResourceFact>；错误不作为空事实"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/resource-booking/capacity",
+      "owner": "PLATFORM / InternalResourceBookingController → 共用真实resource owner",
+      "request": "ResourceCandidatesPort.CapacityQuery（独立factAt、Replacement完整Binding+Target）",
+      "response": "List<Capacity>；错误不作为空事实"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/customer-identity/resolve-reference",
+      "owner": "PLATFORM / InternalCustomerIdentityController → MemberCustomerIdentityPortImpl",
+      "request": "CustomerIdentityInternalApi.Request(identity,context,query)",
+      "response": "Resolution含完整身份/上下文/query与ResolvedCustomer；远端比对并验证userNo"
+    }
+  ],
+  "implementationTopology": [
+    {
+      "deployment": "embedded HOST",
+      "sourceProvider": "beauty-core / ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl",
+      "owner": "本地ResourceBookingPortImpl/ResourceCandidatesPortImpl/MemberCustomerIdentityPortImpl",
+      "rule": "唯一local source；channel自动配置因core class存在不注册remote source"
+    },
+    {
+      "deployment": "standalone HOST",
+      "sourceProvider": "beauty-channel / ai.neargo.shop.beauty.port.RemoteAppointmentSourceAuthorityPort",
+      "owner": "平台本地真实共用owner；无beauty-core",
+      "rule": "BeautyChannelAutoConfiguration；真实反向BEAUTY目标；四个typed Remote*Service"
+    },
+    {
+      "deployment": "standalone SERVER",
+      "sourceProvider": "beauty-core / ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl",
+      "owner": "BeautyMerchantClientConfiguration / RemoteResourceBookingPort,RemoteResourceCandidatesPort,RemoteCustomerIdentityPort",
+      "rule": "core存在；HOST remote source不注册；api默认profile使恢复Job接线"
+    },
+    {
+      "deployment": "disabled / ops / no API",
+      "sourceProvider": "disabled无新增source provider",
+      "owner": "不改变共用owner",
+      "rule": "public controllers仅api+enabled；恢复Job仅api；独立SERVER默认api且没有beauty-web"
     }
   ]
 }

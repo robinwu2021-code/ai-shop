@@ -26,6 +26,7 @@ public final class InternalServiceResponses {
                 case NOT_FOUND -> 404;
                 case CONFLICT -> 409;
                 case ENTITLEMENT_FEATURE_UNAVAILABLE -> 503;
+                case BEAUTY_SEARCH_INCOMPLETE -> 422;
                 default -> 500;
             };
             return ResponseEntity.status(status).build();

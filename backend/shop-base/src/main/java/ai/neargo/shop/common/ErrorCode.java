@@ -1293,7 +1293,10 @@ public enum ErrorCode {
      * <b>刻意不用 FORBIDDEN(10403)</b>：那个在前端 FORBIDDEN_CODES 里会触发全局「无权限」处理（跳登录），
      * 而「非本人」要的是页面提示「这单不是寄给你的」，不是登出 —— 用它会把人踢进登录死循环。
      */
-    TRACK_NOT_RECIPIENT(80103, "err.track.not_recipient");
+    TRACK_NOT_RECIPIENT(80103, "err.track.not_recipient"),
+
+    /** Bounded appointment search cannot prove that capacity is unavailable. */
+    BEAUTY_SEARCH_INCOMPLETE(80104, "err.beauty.search_incomplete");
 
     // ---- 9xxxx 保留给电子元器件，**本仓库不要再用** ----
     // 2026-09-30 元器件独立成项目 ai-hxkey，9xxxx 整段搬到 ai-hxkey 的 ElecErrorCode（码值不变，端上按码分流）。
