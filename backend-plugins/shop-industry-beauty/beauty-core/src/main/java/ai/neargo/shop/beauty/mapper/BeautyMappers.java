@@ -4,6 +4,8 @@ import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentAssignment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentItem;
+import ai.neargo.shop.beauty.entity.BtyAppointmentResourceFence;
+import ai.neargo.shop.beauty.entity.BtyAppointmentResourceIntent;
 import ai.neargo.shop.beauty.entity.BtyServiceDefinition;
 import ai.neargo.shop.beauty.entity.BtyServiceDefinitionVersion;
 import ai.neargo.shop.beauty.entity.BtyServiceParticipation;
@@ -119,6 +121,9 @@ public final class BeautyMappers {
                 version=version+1, updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
                 appointment_no=#{appointmentNo} AND version=#{expectedVersion}
+                AND NOT EXISTS (SELECT 1 FROM bty_appointment_resource_fence f
+                  WHERE f.tenant_no=bty_appointment.tenant_no AND f.entity_no=bty_appointment.entity_no
+                  AND f.appointment_no=bty_appointment.appointment_no AND f.active_intent_no IS NOT NULL)
                 AND status=#{expectedStatus} AND status IN ('HELD','CONFIRMED')
                 AND #{startAt} IS NOT NULL AND #{endAt}> #{startAt}
                 AND #{holdNo} IS NOT NULL AND LENGTH(TRIM(#{holdNo}))>0 AND #{actorNo} IS NOT NULL AND
@@ -135,6 +140,9 @@ public final class BeautyMappers {
                 updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
                 appointment_no=#{appointmentNo} AND version=#{expectedVersion}
+                AND NOT EXISTS (SELECT 1 FROM bty_appointment_resource_fence f
+                  WHERE f.tenant_no=bty_appointment.tenant_no AND f.entity_no=bty_appointment.entity_no
+                  AND f.appointment_no=bty_appointment.appointment_no AND f.active_intent_no IS NOT NULL)
                 AND status=#{expectedStatus}
                 AND ((status='HELD' AND #{targetStatus} IN ('CANCELLED','EXPIRED'))
                 OR (status='HELD' AND #{targetStatus}='CONFIRMED' AND hold_no IS NOT NULL AND
@@ -152,6 +160,9 @@ public final class BeautyMappers {
                 updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
                 appointment_no=#{appointmentNo} AND version=#{expectedVersion}
+                AND NOT EXISTS (SELECT 1 FROM bty_appointment_resource_fence f
+                  WHERE f.tenant_no=bty_appointment.tenant_no AND f.entity_no=bty_appointment.entity_no
+                  AND f.appointment_no=bty_appointment.appointment_no AND f.active_intent_no IS NOT NULL)
                 AND status=#{expectedStatus} AND status='CONFIRMED' AND checked_in_at IS NULL
                 AND #{checkedInAt} IS NOT NULL AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND
                 #{updatedAt} IS NOT NULL
@@ -159,6 +170,117 @@ public final class BeautyMappers {
         int markArrived(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
                 @Param("appointmentNo") String appointmentNo, @Param("expectedVersion") long expectedVersion,
                 @Param("expectedStatus") String expectedStatus, @Param("checkedInAt") LocalDateTime checkedInAt,
+                @Param("actorNo") String actorNo, @Param("updatedAt") LocalDateTime updatedAt);
+    }
+
+    /** 永久预约根栅栏；调用者事务先锁预约，再锁栅栏及意图。禁止按TTL释放。 */
+    public interface AppointmentResourceFenceMapper extends BaseMapper<BtyAppointmentResourceFence> {
+        @Select("""
+                SELECT * FROM bty_appointment_resource_fence
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND appointment_no=#{appointmentNo} AND deleted=0 FOR UPDATE
+                """)
+        BtyAppointmentResourceFence selectScopedForUpdate(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo, @Param("appointmentNo") String appointmentNo);
+
+        /** 持久化原语：不校验操作者权限，不发放业务许可。 */
+        @Update("""
+                UPDATE bty_appointment_resource_fence f
+                JOIN bty_appointment p ON p.tenant_no=f.tenant_no AND p.entity_no=f.entity_no
+                  AND p.store_no=f.store_no AND p.appointment_no=f.appointment_no AND p.deleted=0
+                JOIN bty_appointment_resource_intent i ON i.tenant_no=f.tenant_no AND i.entity_no=f.entity_no
+                  AND i.store_no=f.store_no AND i.appointment_no=f.appointment_no AND i.deleted=0
+                SET f.active_intent_no=i.intent_no, f.version=f.version+1,
+                    f.updated_by=#{actorNo}, f.updated_at=#{updatedAt}
+                WHERE f.tenant_no='MAIN' AND f.entity_no=#{entityNo} AND f.store_no=#{storeNo}
+                  AND f.appointment_no=#{appointmentNo} AND f.deleted=0 AND f.active_intent_no IS NULL
+                  AND f.version=#{expectedFenceVersion} AND f.version<9223372036854775807
+                  AND i.intent_no=#{intentNo} AND i.phase_code=0 AND i.source_revision=p.version
+                  AND p.status IN ('HELD','CONFIRMED')
+                  AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
+                """)
+        int acquire(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo, @Param("intentNo") String intentNo,
+                @Param("expectedFenceVersion") long expectedFenceVersion, @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
+
+        /** 仅允许已对账的活动意图置空；终态权威证据由未来来源Service核验。 */
+        @Update("""
+                UPDATE bty_appointment_resource_fence f
+                JOIN bty_appointment_resource_intent i ON i.tenant_no=f.tenant_no AND i.entity_no=f.entity_no
+                  AND i.store_no=f.store_no AND i.appointment_no=f.appointment_no
+                  AND i.intent_no=f.active_intent_no AND i.deleted=0
+                JOIN bty_appointment p ON p.tenant_no=f.tenant_no AND p.entity_no=f.entity_no
+                  AND p.store_no=f.store_no AND p.appointment_no=f.appointment_no AND p.deleted=0
+                SET f.active_intent_no=NULL, f.version=f.version+1,
+                    f.updated_by=#{actorNo}, f.updated_at=#{updatedAt}
+                WHERE f.tenant_no='MAIN' AND f.entity_no=#{entityNo} AND f.store_no=#{storeNo}
+                  AND f.appointment_no=#{appointmentNo} AND f.deleted=0 AND f.active_intent_no=#{intentNo}
+                  AND f.version=#{expectedFenceVersion} AND f.version<9223372036854775807
+                  AND i.phase_code=3 AND i.terminal_code IN (1,2) AND i.terminal_hash IS NOT NULL
+                  AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
+                """)
+        int releaseReconciled(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo, @Param("intentNo") String intentNo,
+                @Param("expectedFenceVersion") long expectedFenceVersion, @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
+    }
+
+    /** 原始计划与来源决定持久化；不能作为资源授权或回执真实性的证明。 */
+    public interface AppointmentResourceIntentMapper extends BaseMapper<BtyAppointmentResourceIntent> {
+        @Select("""
+                SELECT * FROM bty_appointment_resource_intent
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND command_no=#{commandNo} AND deleted=0 FOR UPDATE
+                """)
+        BtyAppointmentResourceIntent selectByCommandForUpdate(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo, @Param("commandNo") String commandNo);
+
+        /** 来源Service先验实际权限及计划；该方法只负责CAS保存决定。 */
+        @Update("""
+                UPDATE bty_appointment_resource_intent i
+                JOIN bty_appointment_resource_fence f ON f.tenant_no=i.tenant_no AND f.entity_no=i.entity_no
+                  AND f.store_no=i.store_no AND f.appointment_no=i.appointment_no
+                  AND f.active_intent_no=i.intent_no AND f.deleted=0
+                JOIN bty_appointment p ON p.tenant_no=i.tenant_no AND p.entity_no=i.entity_no
+                  AND p.store_no=i.store_no AND p.appointment_no=i.appointment_no AND p.deleted=0
+                SET i.phase_code=1, i.decision_no=#{decisionNo}, i.issued_at=#{issuedAt},
+                    i.valid_until=#{validUntil}, i.version=i.version+1,
+                    i.updated_by=#{actorNo}, i.updated_at=#{updatedAt}
+                WHERE i.tenant_no='MAIN' AND i.entity_no=#{entityNo} AND i.store_no=#{storeNo}
+                  AND i.intent_no=#{intentNo} AND i.deleted=0 AND i.phase_code=0
+                  AND i.version=#{expectedVersion} AND i.version<9223372036854775807
+                  AND i.source_revision=p.version AND p.status IN ('HELD','CONFIRMED')
+                  AND #{decisionNo} IS NOT NULL AND LENGTH(TRIM(#{decisionNo}))>0
+                  AND #{issuedAt} IS NOT NULL AND #{validUntil}>#{issuedAt}
+                  AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
+                """)
+        int authorize(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("intentNo") String intentNo, @Param("expectedVersion") long expectedVersion,
+                @Param("decisionNo") String decisionNo, @Param("issuedAt") LocalDateTime issuedAt,
+                @Param("validUntil") LocalDateTime validUntil, @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
+
+        /** 来源Service核验可信命令终态后调用；传入终态参数本身不构成权威证据。 */
+        @Update("""
+                UPDATE bty_appointment_resource_intent i
+                JOIN bty_appointment_resource_fence f ON f.tenant_no=i.tenant_no AND f.entity_no=i.entity_no
+                  AND f.store_no=i.store_no AND f.appointment_no=i.appointment_no
+                  AND f.active_intent_no=i.intent_no AND f.deleted=0
+                JOIN bty_appointment p ON p.tenant_no=i.tenant_no AND p.entity_no=i.entity_no
+                  AND p.store_no=i.store_no AND p.appointment_no=i.appointment_no AND p.deleted=0
+                SET i.phase_code=3, i.terminal_code=#{terminalCode}, i.terminal_hash=#{terminalHash},
+                    i.version=i.version+1, i.updated_by=#{actorNo}, i.updated_at=#{updatedAt}
+                WHERE i.tenant_no='MAIN' AND i.entity_no=#{entityNo} AND i.store_no=#{storeNo}
+                  AND i.intent_no=#{intentNo} AND i.deleted=0 AND i.phase_code IN (1,2)
+                  AND i.version=#{expectedVersion} AND i.version<9223372036854775807
+                  AND (i.reason_code IS NULL OR #{terminalCode}=2)
+                  AND #{terminalCode} IN (1,2) AND #{terminalHash} IS NOT NULL AND LENGTH(#{terminalHash})=64
+                  AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
+                """)
+        int reconcile(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("intentNo") String intentNo, @Param("expectedVersion") long expectedVersion,
+                @Param("terminalCode") int terminalCode, @Param("terminalHash") String terminalHash,
                 @Param("actorNo") String actorNo, @Param("updatedAt") LocalDateTime updatedAt);
     }
 

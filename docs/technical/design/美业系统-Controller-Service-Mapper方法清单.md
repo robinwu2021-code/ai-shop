@@ -3348,3 +3348,32 @@ Fact get(String entityNo, String storeNo, String skuNo);
 - 关闭范围：freezeScope后复查任务/绑定版本并锁定对应完成事实；不能只靠工单缓存计数。所有范围变更和任务动作须遵守同一锁序与冻结规则。
 - SourceAllocationGuard唯一键不含sourceRevision，当前门店经来源归属验证；CAS累计分配不超过sourceQty，未知来源不可替换，已消费数量不任意回退。
 - 方法清单检查只证明接口/归属/表列引用一致，不证明SQL锁、HTTP鉴权、审计填充或并发正确。实施需架构扫描覆盖整个美业reactor、Bean/路由测试、隔离库事务并发和跨域故障恢复验证；不得把文档生成通过称为Java编译通过。
+
+## BM03-a1增量实施清单（2026-10-21）
+
+原目标JSON/49任务保持基线；本节是私有V2的内部存储增量，未注册来源provider、Service或预约Controller。完整状态见[主TDD§2.15/§26](../TDD-美业系统-后端开发计划.md)。
+
+| 类 | 实际职责 |
+|---|---|
+| beauty.entity.BtyAppointmentResourceIntent | 原始计划LONGTEXT、命令/来源修订/摘要、决定与对账阶段；继承BaseEntity |
+| beauty.entity.BtyAppointmentResourceFence | 预约永久根、单一活动意图指针及版本；继承BaseEntity |
+| BeautyMappers.AppointmentResourceIntentMapper | scoped command锁读、authorize/reconcile CAS；调用参数不能证明权限或终态真实性 |
+| BeautyMappers.AppointmentResourceFenceMapper | scoped root锁读、acquire/releaseReconciled CAS；不按许可TTL释放 |
+| BeautyMappers.AppointmentMapper | changeSchedule/changeStatus/markArrived统一检查活动fence，含确认/取消 |
+
+以下方法均在原beauty-core包；每个写事务先锁预约根→永久fence→intent，Mapper仅持久化。
+
+```java
+BtyAppointmentResourceFence selectScopedForUpdate(String entityNo, String storeNo, String appointmentNo);
+int acquire(String entityNo, String storeNo, String appointmentNo, String intentNo,
+        long expectedFenceVersion, String actorNo, LocalDateTime updatedAt);
+int releaseReconciled(String entityNo, String storeNo, String appointmentNo, String intentNo,
+        long expectedFenceVersion, String actorNo, LocalDateTime updatedAt);
+BtyAppointmentResourceIntent selectByCommandForUpdate(String entityNo, String storeNo, String commandNo);
+int authorize(String entityNo, String storeNo, String intentNo, long expectedVersion, String decisionNo,
+        LocalDateTime issuedAt, LocalDateTime validUntil, String actorNo, LocalDateTime updatedAt);
+int reconcile(String entityNo, String storeNo, String intentNo, long expectedVersion,
+        int terminalCode, String terminalHash, String actorNo, LocalDateTime updatedAt);
+```
+
+a2仍须实现正式权限、持久预约生成计划、同Binding幂等及可信资源终态核实；本批不增加可调用预约HTTP。

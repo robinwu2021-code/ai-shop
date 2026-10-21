@@ -16,12 +16,13 @@ try {
   const address = docker(['port', name, '3306/tcp']);
   assert.match(address, /^127\.0\.0\.1:[0-9]+$/);
   const jdbc = `jdbc:mysql://${address}/mysql?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC`;
-  const selection = process.argv.includes('--publication-only') ? 'BeautyPolicyPublicationIT'
+  const selection = process.argv.includes('--resource-intent-only') ? 'ResourceIntentPersistenceIT,ResourceIntentMigrationIT'
+    : process.argv.includes('--publication-only') ? 'BeautyPolicyPublicationIT'
     : process.argv.includes('--public-catalog-only') ? 'PublicCatalogIT'
     : process.argv.includes('--source-only') ? 'SourceAllocationConcurrencyIT,ServiceSubmissionPersistenceIT'
     : process.argv.includes('--execution-only') ? 'AppointmentPersistenceIT,ServiceTaskPersistenceIT'
     : process.argv.includes('--catalog-only') ? 'BeautyCatalogIT'
-    : 'BeautySchemaMigrationIT,PolicyDefinitionPersistenceIT,BeautyPlatformFlywayIT,BeautyPolicyPublicationIT,BeautyCatalogIT,PublicCatalogIT,AppointmentPersistenceIT,ServiceTaskPersistenceIT,SourceAllocationConcurrencyIT,ServiceSubmissionPersistenceIT';
+    : 'ResourceIntentPersistenceIT,ResourceIntentMigrationIT,BeautySchemaMigrationIT,PolicyDefinitionPersistenceIT,BeautyPlatformFlywayIT,BeautyPolicyPublicationIT,BeautyCatalogIT,PublicCatalogIT,AppointmentPersistenceIT,ServiceTaskPersistenceIT,SourceAllocationConcurrencyIT,ServiceSubmissionPersistenceIT';
   const result = spawnSync('mvn', ['-o', '-f', root + 'backend-plugins/shop-industry-beauty/pom.xml', '-pl', 'beauty-core', '-am', 'test', `-Dtest=${selection}`, '-Dsurefire.failIfNoSpecifiedTests=false', `-Dbeauty.test.admin-url=${jdbc}`], {cwd: root, env: process.env, stdio: 'inherit'});
   assert.equal(result.status, 0, 'Beauty disposable JDBC integration tests failed');
   if (process.argv.includes('--include-server')) {

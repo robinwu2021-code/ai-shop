@@ -90,6 +90,14 @@ final class BeautyCheckExpression {
         require(position < tokens.size());
         String token = tokens.get(position++);
         require(token.matches("[a-z_][a-z0-9_]*|[0-9]+"));
+        if (take("(")) {
+            require(Set.of("json_valid", "octet_length", "length").contains(token));
+            String argument = primary();
+            expect(")");
+            // MySQL stores OCTET_LENGTH as its byte-length synonym LENGTH in CHECK_CLAUSE.
+            String function = "octet_length".equals(token) ? "length" : token;
+            return function + "(" + argument + ")";
+        }
         return token;
     }
 

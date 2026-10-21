@@ -82,6 +82,14 @@ def generate():
                   '普通索引：' + ('；'.join('`' + ', '.join(k) + '`' for k in t['indexes']) or '按主关系及业务号访问，不另预建') + '。', '',
                   '业务约束：' + t['rules'], '']
     lines += ['## 四、边界', '', '字段、索引及表名为候选设计；实施前核对现有迁移、引用键类型、原子SQL、实际查询计划和存量。禁止按本字典直接覆盖既有表或执行资金迁移。', '']
+    lines += ['## BM03-a1增量字段（私有V2）', '',
+              '原41项结构/16项V1保持冻结；另追加2项私有结构，合计43项设计、18项已迁移私表。增量真源：[beauty-resource-intent-schema.json](./schema/beauty-resource-intent-schema.json)，生命周期与验收见主TDD§2.15/§26。以下是内部存储，不代表已支持预约营业。', '']
+    increment = json.loads((SOURCE.parent / 'beauty-resource-intent-schema.json').read_text())
+    for table in increment['tables']:
+        lines += ['### ' + table['name'], '', '| 字段 | 类型 | 可空 | 含义 |', '|---|---|---|---|']
+        for field in table['fields']:
+            lines.append(f'| {field["name"]} | {field["type"]} | {field["nullable"]} | {field["description"]} |')
+        lines += ['', '唯一键均含tenant_no/entity_no：' + '；'.join(', '.join(key) for key in table['unique']) + '。', '']
     outputs[OUTPUT] = '\n'.join(lines)
     return outputs, tables
 

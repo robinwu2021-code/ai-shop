@@ -68,7 +68,7 @@ class BeautySchemaMigrationIT {
         initialize("migrate");
         initialize("validate");
         initialize("migrate");
-        assertEquals(17, count("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"));
+        assertEquals(19, count("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"));
         assertEquals(1, count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='1' AND success=1"));
         assertEquals(0, count("SELECT COUNT(*) FROM information_schema.tables "
                 + "WHERE table_schema=DATABASE() AND table_name='flyway_schema_history'"));

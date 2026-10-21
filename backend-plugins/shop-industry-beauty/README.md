@@ -8,7 +8,7 @@
 | 构件 | 职责 | 当前实现 |
 |---|---|---|
 | beauty-api | DTO / Service 接口 | 政策及项目定义的请求、响应、Service与内部HTTP合同 |
-| beauty-core | 领域实现、实体、Mapper | 首批16表迁移、结构校验、主库接线；政策/定义、操作日志及预约/工单任务、来源分配及提交意图16个实体与Mapper、政策与项目定义发布/历史查询事务 |
+| beauty-core | 领域实现、实体、Mapper | 首批16表V1及预约来源2表V2迁移、结构校验、主库接线；政策/定义、操作日志及预约/工单任务、来源分配及提交意图及预约来源18个实体与Mapper、政策与项目定义发布/历史查询事务 |
 | beauty-web | 用户端 HTTP 入口 | 独立条件配置、api/ops profile隔离；政策和项目定义查询/发布 Controller |
 | beauty-channel | 内部协议适配 | standalone 的政策/定义远程Service；商品事实反向适配 |
 | beauty-server | 独立内部服务 | 可执行启动、内部政策/定义端点、服务令牌安全链、主库与PLATFORM outbox接线 |
@@ -37,7 +37,7 @@ mvn -o -f backend/pom.xml -pl shop-app -am -Pbeauty-standalone test -Dtest=Beaut
 
 ## 数据所有权与迁移
 
-V1仅创建16项P1美业私有表，不包含14项共用人员/资源结构、P3护理业绩提成或P4疗程计划。
+V1仅创建16项P1美业私有表；V2追加预约来源意图/永久栅栏2项私表，当前schema版本2，不包含14项共用人员/资源结构、P3护理业绩提成或P4疗程计划。
 业务唯一键带 tenant/entity 前缀；源行分配 guard 身份不含 source_revision；数量守恒、时间区间由数据库 CHECK 约束保护。
 
 `shop.beauty.migration.mode` 默认 validate，仅校验；migrate 仅供部署时单一受控执行者显式使用。
@@ -199,3 +199,9 @@ BM02-c班表/远程事实及整模块隔离构件部署已通过主TDD§25关口
 整模块验证：沿BM-01的真实构件环境变量，执行`node scripts/verify-beauty-bm02-deployment.mjs`，可设`BEAUTY_BM02_EVIDENCE_DIR`保存证据。
 部署脚本复用原隔离框架并扩展人员/资源/周规则用例；`scripts/fixtures/BeautyMerchantFactsProbe.java`只在验收中对已提取且记录摘要的实际server类路径启动原BeautyApplication，调用真实远程Bean。它不是生产路由，不替代普通server/host JAR启动，不声称BM03尚未实现的预约消费入口已完成。
 模块隔离部署已通过；实际范围/构件摘要/延期项见主TDD§25。内部事实冲突映射HTTP409；任职变更遇本店ACTIVE规则时须先显式停用，包含历史日期规则。
+
+### BM03-a1预约来源存储
+
+`node scripts/gen-beauty-resource-intent-schema.mjs --check`核对独立增量真源及冻结V2，原V1生成检查保持16表。
+`node scripts/verify-beauty-persistence.mjs --resource-intent-only`在独占MySQL8.4中验证V1→V2显式升级、原始计划字节、并发单栅栏、相反写者、终态前禁止释放和回滚。
+现阶段无来源授权provider或新预约HTTP，不能把Mapper参数当可信许可/资源结果；BM-03大模块部署关口尚未达到，实际记录见主TDD§26。

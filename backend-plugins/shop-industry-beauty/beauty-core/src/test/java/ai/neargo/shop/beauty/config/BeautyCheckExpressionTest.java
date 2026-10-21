@@ -48,6 +48,18 @@ class BeautyCheckExpressionTest {
     }
 
     @Test
+    void recognizesOnlyApprovedPayloadFunctions() {
+        assertEquals(canonical("JSON_VALID(frozen_plan) AND OCTET_LENGTH(frozen_plan) <= 65536"),
+                canonical("(json_valid(`frozen_plan`) and (octet_length(`frozen_plan`) <= 65536))"));
+        assertEquals(canonical("OCTET_LENGTH(frozen_plan) <= 65536"),
+                canonical("length(`frozen_plan`) <= 65536"));
+        assertNotEquals(canonical("OCTET_LENGTH(frozen_plan) <= 65536"),
+                canonical("OCTET_LENGTH(frozen_plan) <= 65535"));
+        assertThrows(IllegalStateException.class, () -> canonical("sleep(1)"));
+        assertThrows(IllegalStateException.class, () -> canonical("JSON_VALID(a,b)"));
+    }
+
+    @Test
     void rejectsUnknownOrIncompleteExpressions() {
         assertThrows(IllegalStateException.class, () -> canonical("a > 0; SELECT 1"));
         assertThrows(IllegalStateException.class, () -> canonical("a >="));

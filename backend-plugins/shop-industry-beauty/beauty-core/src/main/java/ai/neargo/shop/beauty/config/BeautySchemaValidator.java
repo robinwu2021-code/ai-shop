@@ -27,6 +27,9 @@ public final class BeautySchemaValidator {
     private static final String RESOURCE = "db/industry/beauty/V1__beauty_p1_tables.sql";
     private static final String SHA256 = "ac2a539664c42fdb7e4893f1359879fc5affbe4b24f95aae1809cd25f11061a4";
 
+    private static final String V2 = "db/industry/beauty/V2__beauty_appointment_resource_fence.sql";
+    private static final String V2_SHA256 = "5b6768928018b68635c9c081b200a2cb6202d40645c5db62c91c558cc49d4114";
+
     /** Migration must be explicitly requested by a single deployment executor; validation is read only. */
     public void initialize(DataSource dataSource, String mode) {
         require("validate".equals(mode) || "migrate".equals(mode), "Beauty schema mode must be validate or migrate");
@@ -50,7 +53,7 @@ public final class BeautySchemaValidator {
         }
         flyway.validate();
         var current = flyway.info().current();
-        require(current != null && "1".equals(current.getVersion().getVersion()), "Beauty schema version must be 1");
+        require(current != null && "2".equals(current.getVersion().getVersion()), "Beauty schema version must be 2");
         for (var migration : flyway.info().all()) {
             String state = migration.getState().name();
             require("SUCCESS".equals(state) || "BASELINE".equals(state), "Unexpected beauty migration state: " + state);
@@ -59,15 +62,23 @@ public final class BeautySchemaValidator {
     }
 
     private static Map<String, TableContract> manifest() {
+        Map<String, TableContract> result = new LinkedHashMap<>(manifest(RESOURCE, SHA256, 16));
+        manifest(V2, V2_SHA256, 2).forEach((table, contract) -> {
+            require(result.putIfAbsent(table, contract) == null, "Duplicate beauty migration table");
+        });
+        return result;
+    }
+
+    private static Map<String, TableContract> manifest(String resource, String expectedHash, int expectedTables) {
         try {
-            var resources = Collections.list(BeautySchemaValidator.class.getClassLoader().getResources(RESOURCE));
-            require(resources.size() == 1, "Beauty V1 must have exactly one resource owner");
+            var resources = Collections.list(BeautySchemaValidator.class.getClassLoader().getResources(resource));
+            require(resources.size() == 1, "Beauty migration must have exactly one resource owner: " + resource);
             byte[] bytes;
             try (var stream = resources.getFirst().openStream()) {
                 bytes = stream.readAllBytes();
             }
             String checksum = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
-            require(SHA256.equals(checksum), "Frozen beauty V1 checksum changed; append a migration");
+            require(expectedHash.equals(checksum), "Frozen beauty migration changed; append a migration: " + resource);
             var tables = Pattern.compile("CREATE TABLE `([^`]+)`\\s*\\((.*?)\\) ENGINE", Pattern.DOTALL)
                     .matcher(new String(bytes, StandardCharsets.UTF_8));
             Map<String, TableContract> contracts = new LinkedHashMap<>();
@@ -121,7 +132,7 @@ public final class BeautySchemaValidator {
                 contracts.put(tables.group(1), new TableContract(columns, uniqueKeys, columnDefinitions,
                         checks, modifiers, allIndexes));
             }
-            require(contracts.size() == 16, "Beauty P1 manifest must contain sixteen tables");
+            require(contracts.size() == expectedTables, "Beauty migration table count differs: " + resource);
             return contracts;
         } catch (IllegalStateException ex) {
             throw ex;
