@@ -7707,27 +7707,27 @@
     {
       "apiId": "BAPI-012",
       "owner": "共用人员/资源所有者",
-      "status": "SHARED_CANDIDATE_HTTP"
+      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
     },
     {
       "apiId": "BAPI-013",
       "owner": "共用人员/资源所有者",
-      "status": "SHARED_CANDIDATE_HTTP"
+      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
     },
     {
       "apiId": "BAPI-014",
       "owner": "共用人员/资源所有者",
-      "status": "SHARED_CANDIDATE_HTTP"
+      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
     },
     {
       "apiId": "BAPI-015",
       "owner": "共用人员/资源所有者",
-      "status": "SHARED_CANDIDATE_HTTP"
+      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
     },
     {
       "apiId": "BAPI-016",
       "owner": "共用人员/资源所有者",
-      "status": "SHARED_CANDIDATE_HTTP"
+      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
     },
     {
       "apiId": "BAPI-017",
@@ -10032,6 +10032,11 @@
           "type": "PersonnelQuery",
           "name": "query",
           "annotation": "@Valid @ModelAttribute"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)"
         }
       ],
       "serviceParameters": [
@@ -10052,7 +10057,7 @@
           "name": "query"
         }
       ],
-      "status": "CANDIDATE_SHARED_OWNER_NOT_EXISTING_API"
+      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
     },
     {
       "apiId": "BAPI-013",
@@ -10065,13 +10070,18 @@
       "parameters": [
         {
           "type": "CreatePersonnelReq",
-          "name": "req",
+          "name": "request",
           "annotation": "@Valid @RequestBody"
         },
         {
           "type": "String",
-          "name": "idempotencyKey",
+          "name": "key",
           "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)"
         }
       ],
       "serviceParameters": [
@@ -10089,14 +10099,14 @@
         },
         {
           "type": "CreatePersonnelReq",
-          "name": "req"
+          "name": "request"
         },
         {
           "type": "String",
           "name": "idempotencyKey"
         }
       ],
-      "status": "CANDIDATE_SHARED_OWNER_NOT_EXISTING_API"
+      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
     },
     {
       "apiId": "BAPI-014",
@@ -10114,13 +10124,18 @@
         },
         {
           "type": "ChangePersonnelStatusReq",
-          "name": "req",
+          "name": "request",
           "annotation": "@Valid @RequestBody"
         },
         {
           "type": "String",
-          "name": "idempotencyKey",
+          "name": "key",
           "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)"
         }
       ],
       "serviceParameters": [
@@ -10142,14 +10157,14 @@
         },
         {
           "type": "ChangePersonnelStatusReq",
-          "name": "req"
+          "name": "request"
         },
         {
           "type": "String",
           "name": "idempotencyKey"
         }
       ],
-      "status": "CANDIDATE_SHARED_OWNER_NOT_EXISTING_API"
+      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
     },
     {
       "apiId": "BAPI-015",
@@ -10167,13 +10182,18 @@
         },
         {
           "type": "LinkPersonnelAccountReq",
-          "name": "req",
+          "name": "request",
           "annotation": "@Valid @RequestBody"
         },
         {
           "type": "String",
-          "name": "idempotencyKey",
+          "name": "key",
           "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)"
         }
       ],
       "serviceParameters": [
@@ -10195,14 +10215,14 @@
         },
         {
           "type": "LinkPersonnelAccountReq",
-          "name": "req"
+          "name": "request"
         },
         {
           "type": "String",
           "name": "idempotencyKey"
         }
       ],
-      "status": "CANDIDATE_SHARED_OWNER_NOT_EXISTING_API"
+      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
     },
     {
       "apiId": "BAPI-016",
@@ -10220,13 +10240,18 @@
         },
         {
           "type": "AssignPersonnelReq",
-          "name": "req",
+          "name": "request",
           "annotation": "@Valid @RequestBody"
         },
         {
           "type": "String",
-          "name": "idempotencyKey",
+          "name": "key",
           "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)"
         }
       ],
       "serviceParameters": [
@@ -10248,14 +10273,14 @@
         },
         {
           "type": "AssignPersonnelReq",
-          "name": "req"
+          "name": "request"
         },
         {
           "type": "String",
           "name": "idempotencyKey"
         }
       ],
-      "status": "CANDIDATE_SHARED_OWNER_NOT_EXISTING_API"
+      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
     },
     {
       "apiId": "BAPI-018",
@@ -10592,6 +10617,44 @@
         "void onResourceImpact(String eventNo, String entityNo, String storeNo, String resourceOperationNo);"
       ],
       "note": "资源所有者事实触发本域协调/待办；不直接释放共用容量桶"
+    }
+  ],
+  "sharedDtoContracts": [
+    {
+      "class": "ai.neargo.shop.merchant.dto.PersonnelQuery",
+      "contract": "Integer page,size; String status,keyword,storeNo,skill（有效资格goodsNo）"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.dto.CreatePersonnelReq",
+      "contract": "String displayName,avatarRef; AssignPersonnelReq assignment（expectedRevision=0且assignmentNo=null）"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.dto.AssignPersonnelReq",
+      "contract": "Long expectedRevision; String assignmentNo,storeNo; OffsetDateTime validFrom,validTo; Boolean publicVisible; String levelCode; Integer sortOrder; List<String> positions; List<Skill> skills；Skill(goodsNo,skuNo,levelCode)"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.dto.LinkPersonnelAccountReq",
+      "contract": "Long expectedRevision; String accountNo（null为解绑）"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.dto.ChangePersonnelStatusReq",
+      "contract": "Long expectedRevision; String status,reason（1..500字符；完整审计，不广播到事件）"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.dto.PersonnelVO",
+      "contract": "personnelNo,displayName,avatarRef,status,revision,resourceNo,List<Assignment>,List<Qualification>；当前/未来有效配置，无账号/联系资料/物理id；历史存储保留"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.dto.PersonnelAssignmentVO",
+      "contract": "personnelNo,revision,assignmentNo"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.dto.PersonnelAccountLinkVO",
+      "contract": "personnelNo,revision,accountNo"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.dto.PersonnelChangeVO",
+      "contract": "personnelNo,revision,status,accountDisabled（仅实际账号停用已回查后true）"
     }
   ]
 }

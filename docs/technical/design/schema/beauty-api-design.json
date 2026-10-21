@@ -692,68 +692,68 @@
           "method": "GET",
           "path": "/biz/personnel",
           "purpose": "查人员公开或内部档案",
-          "request": "storeNo,status,skill,page,size",
+          "request": "PersonnelQuery(page,size,status,keyword,storeNo?,skill?=goodsNo)；当前店、biz:store:admin",
           "response": "PageData<PersonnelVO>按用途脱敏",
           "functions": [
             "BTY-C01",
             "BTY-C03"
           ],
           "phase": "P1",
-          "status": "共用候选新接口"
+          "status": "BM02-a已实现并测试通过；BM02-b/c、完整模块及部署未完成，详见主TDD§23"
         },
         {
           "id": "BAPI-013",
           "method": "POST",
           "path": "/biz/personnel",
           "purpose": "建立可无登录的业务人员",
-          "request": "displayName,contact,storeAssignments",
+          "request": "CreatePersonnelReq(displayName,avatarRef?,assignment)；无登录建档，初始当前店任职/岗位/资格/STAFF原子写",
           "response": "PersonnelVO",
           "functions": [
             "BTY-C01"
           ],
           "phase": "P1",
-          "status": "共用候选新接口"
+          "status": "BM02-a已实现并测试通过；BM02-b/c、完整模块及部署未完成，详见主TDD§23"
         },
         {
           "id": "BAPI-014",
           "method": "POST",
           "path": "/biz/personnel/{personnelNo}/status-changes",
           "purpose": "人员停用与在途影响协调",
-          "request": "expectedRevision,status,handoverPlan",
+          "request": "ChangePersonnelStatusReq(expectedRevision,status,reason)；owner，未处理影响409，账号根锁与实际停用回查",
           "response": "PersonnelChangeVO含受影响预约/任务",
           "functions": [
             "BTY-C01",
             "BTY-C05"
           ],
           "phase": "P1",
-          "status": "共用候选新接口"
+          "status": "BM02-a已实现并测试通过；BM02-b/c、完整模块及部署未完成，详见主TDD§23"
         },
         {
           "id": "BAPI-015",
           "method": "POST",
           "path": "/biz/personnel/{personnelNo}/account-links",
           "purpose": "绑定/解绑可选登录账号",
-          "request": "accountNo,action,expectedRevision",
+          "request": "LinkPersonnelAccountReq(expectedRevision,accountNo?)；owner；null显式解绑，保留旧/新关联审计",
           "response": "PersonnelAccountLinkVO",
           "functions": [
             "BTY-C01"
           ],
           "phase": "P1",
-          "status": "共用候选新接口"
+          "status": "BM02-a已实现并测试通过；BM02-b/c、完整模块及部署未完成，详见主TDD§23"
         },
         {
           "id": "BAPI-016",
           "method": "POST",
           "path": "/biz/personnel/{personnelNo}/assignments",
           "purpose": "维护任职岗位与资格有效期",
-          "request": "storeNo,positions,skills,validFrom,validTo",
+          "request": "AssignPersonnelReq(expectedRevision,assignmentNo?,storeNo,validFrom,validTo?,publicVisible,levelCode?,sortOrder,positions,skills[goodsNo,skuNo,levelCode?])",
           "response": "PersonnelAssignmentVO",
           "functions": [
             "BTY-C01",
             "BTY-C03"
           ],
           "phase": "P1",
-          "status": "共用候选新接口"
+          "status": "BM02-a已实现并测试通过；BM02-b/c、完整模块及部署未完成，详见主TDD§23"
         },
         {
           "id": "BAPI-017",

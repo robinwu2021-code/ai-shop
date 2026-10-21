@@ -168,3 +168,14 @@ DST缺失/重复端点影响请求时拒绝，不猜测偏移；数据库规范�
 平台历史结构使用显式测试夹具，再执行真实V536；不代表完整平台历史Flyway重放或生产迁移批准。
 独立服务整体readiness仍为503；模块运行用例通过不代表预约/工作流整体可营业。
 完整范围、最终证据和延期项见主TDD§22；下一业务模块为人员、排班与资源维护。
+
+
+## BM02-a共用人员维护内部检查点
+
+BAPI012～016实际入口归shop-merchant的`/biz/personnel`，使用现有`biz:store:admin`和可信当前店；
+主体级账号关联及停用另限owner。无登录人员、跨店任职岗位/SKU资格和全主体唯一STAFF复用同一身份。
+停用联动原成员服务，先锁成员行并回查DISABLED；业务岗位不写成员角色，恢复业务人员不自动恢复登录。
+默认严格要求事件路由；无实际消费者的证据归档仅显式`shop.personnel.publication.archive-only=true`启用。
+验证脚本`node scripts/verify-personnel-maintenance.mjs`使用自建/自动清理MySQL8.4；
+`--race-only`、`--directory-only`、`--impact-only`可聚焦竞态、目录和影响补验。产品事实与部分OTP/成员构造边界的替身范围见主TDD§23。
+本批是BM02-a检查点；资源/周班表维护、standalone事实接入及BM-02整模块部署尚未完成，不计作可预约或开工。

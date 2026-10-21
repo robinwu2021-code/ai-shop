@@ -95,11 +95,11 @@
 
 | 编号 / 功能 / 阶段 | 方法与路径或合同 | 操作与关键入参 | 返回 / 状态 |
 |---|---|---|---|
-| BAPI-012<br>BTY-C01、BTY-C03<br>P1 | `GET /biz/personnel` | 查人员公开或内部档案<br>storeNo,status,skill,page,size | PageData<PersonnelVO>按用途脱敏<br>共用候选新接口 |
-| BAPI-013<br>BTY-C01<br>P1 | `POST /biz/personnel` | 建立可无登录的业务人员<br>displayName,contact,storeAssignments | PersonnelVO<br>共用候选新接口 |
-| BAPI-014<br>BTY-C01、BTY-C05<br>P1 | `POST /biz/personnel/{personnelNo}/status-changes` | 人员停用与在途影响协调<br>expectedRevision,status,handoverPlan | PersonnelChangeVO含受影响预约/任务<br>共用候选新接口 |
-| BAPI-015<br>BTY-C01<br>P1 | `POST /biz/personnel/{personnelNo}/account-links` | 绑定/解绑可选登录账号<br>accountNo,action,expectedRevision | PersonnelAccountLinkVO<br>共用候选新接口 |
-| BAPI-016<br>BTY-C01、BTY-C03<br>P1 | `POST /biz/personnel/{personnelNo}/assignments` | 维护任职岗位与资格有效期<br>storeNo,positions,skills,validFrom,validTo | PersonnelAssignmentVO<br>共用候选新接口 |
+| BAPI-012<br>BTY-C01、BTY-C03<br>P1 | `GET /biz/personnel` | 查人员公开或内部档案<br>PersonnelQuery(page,size,status,keyword,storeNo?,skill?=goodsNo)；当前店、biz:store:admin | PageData<PersonnelVO>按用途脱敏<br>BM02-a已实现并测试通过；BM02-b/c、完整模块及部署未完成，详见主TDD§23 |
+| BAPI-013<br>BTY-C01<br>P1 | `POST /biz/personnel` | 建立可无登录的业务人员<br>CreatePersonnelReq(displayName,avatarRef?,assignment)；无登录建档，初始当前店任职/岗位/资格/STAFF原子写 | PersonnelVO<br>BM02-a已实现并测试通过；BM02-b/c、完整模块及部署未完成，详见主TDD§23 |
+| BAPI-014<br>BTY-C01、BTY-C05<br>P1 | `POST /biz/personnel/{personnelNo}/status-changes` | 人员停用与在途影响协调<br>ChangePersonnelStatusReq(expectedRevision,status,reason)；owner，未处理影响409，账号根锁与实际停用回查 | PersonnelChangeVO含受影响预约/任务<br>BM02-a已实现并测试通过；BM02-b/c、完整模块及部署未完成，详见主TDD§23 |
+| BAPI-015<br>BTY-C01<br>P1 | `POST /biz/personnel/{personnelNo}/account-links` | 绑定/解绑可选登录账号<br>LinkPersonnelAccountReq(expectedRevision,accountNo?)；owner；null显式解绑，保留旧/新关联审计 | PersonnelAccountLinkVO<br>BM02-a已实现并测试通过；BM02-b/c、完整模块及部署未完成，详见主TDD§23 |
+| BAPI-016<br>BTY-C01、BTY-C03<br>P1 | `POST /biz/personnel/{personnelNo}/assignments` | 维护任职岗位与资格有效期<br>AssignPersonnelReq(expectedRevision,assignmentNo?,storeNo,validFrom,validTo?,publicVisible,levelCode?,sortOrder,positions,skills[goodsNo,skuNo,levelCode?]) | PersonnelAssignmentVO<br>BM02-a已实现并测试通过；BM02-b/c、完整模块及部署未完成，详见主TDD§23 |
 | BAPI-017<br>BTY-C02<br>P1 | `CONTRACT merchant.roles-and-permissions` | 维护账号门店角色及操作范围<br>accountNo,storeNo,roleCode,permissionScope | RoleGrantVO不改变业务岗位<br>共用合同接入，路径待核对 |
 | BAPI-018<br>BTY-C04<br>P3 | `POST /biz/personnel-cooperations` | 维护技师助理顾问与顾客负责范围<br>personnelNos,customerScope,validity | PersonnelCooperationVO<br>共用候选新接口 |
 | BAPI-019<br>BTY-C05<br>P1 | `CONTRACT identity.session-revoke` | 撤销离职人员关联账号会话<br>accountNo,reason | SessionRevocationVO与审计<br>共用合同接入，路径待核对 |

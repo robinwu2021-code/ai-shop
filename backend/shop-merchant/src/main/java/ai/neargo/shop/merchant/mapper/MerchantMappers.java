@@ -427,6 +427,12 @@ public final class MerchantMappers {
 
     /** 商家子账号：账号 ↔ 主体的成员关系。**身份来源**（取代 mch_entity.owner_user_no）。 */
     public interface MchAccountMapper extends BaseMapper<MchAccount> {
+        /** Personnel account linking and suspension serialize on the existing canonical membership row. */
+        @Select("SELECT * FROM mch_account WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND mch_account_no=#{account} AND deleted=0 FOR UPDATE")
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        MchAccount lockPersonnelAccount(@Param("entity") String entity, @Param("account") String account);
+
     }
 
     /** 子账号在各门店的角色（每店一个角色）。 */
@@ -507,6 +513,32 @@ public final class MerchantMappers {
 
     /** Shared personnel master; login accounts are optional independent associations. */
     public interface PersonnelMapper extends BaseMapper<MchPersonnel> {
+        /** Parent CAS serializes every employment, account and status maintenance command. */
+        @Update("UPDATE mch_personnel SET status=#{status},version=version+1,updated_at=#{at},updated_by=#{actor} "
+                + "WHERE tenant_no='MAIN' AND entity_no=#{entity} AND personnel_no=#{personnel} "
+                + "AND version=#{expected} AND version<9223372036854775807 AND deleted=0")
+        int advanceMaintenance(@Param("entity") String entity, @Param("personnel") String personnel,
+                @Param("expected") long expected, @Param("status") String status, @Param("actor") String actor,
+                @Param("at") LocalDateTime at);
+
+        /** Conservatively block maintenance until every unresolved command in the subject has recovered. */
+        @Select("SELECT COUNT(*) FROM mch_resource_command WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND status='ACCEPTED' AND deleted=0")
+        long countPendingMaintenance(@Param("entity") String entity);
+
+        /** Counter evidence and actual unreleased units both block; broken orphan evidence also fails closed. */
+        @Select("""
+                SELECT (SELECT COUNT(*) FROM mch_resource_bucket b WHERE b.tenant_no='MAIN'
+                    AND b.entity_no=#{entity} AND b.resource_no=#{resource}
+                    AND (b.held_qty>0 OR b.confirmed_qty>0 OR EXISTS
+                    (SELECT 1 FROM mch_booking_hold_unit u WHERE u.tenant_no=b.tenant_no
+                     AND u.entity_no=b.entity_no AND u.bucket_no=b.bucket_no AND u.released_at IS NULL)))
+                + (SELECT COUNT(*) FROM mch_booking_hold_unit u LEFT JOIN mch_resource_bucket b
+                    ON b.tenant_no=u.tenant_no AND b.entity_no=u.entity_no AND b.bucket_no=u.bucket_no
+                    WHERE u.tenant_no='MAIN' AND u.entity_no=#{entity} AND u.released_at IS NULL AND b.id IS NULL)
+                """)
+        long countResourceWork(@Param("entity") String entity, @Param("resource") String resource);
+
         /** Resolve database-canonical personnel before sorting roots; do not emulate collation in Java. */
         @Select("""
                 SELECT * FROM mch_personnel WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}

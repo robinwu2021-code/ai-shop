@@ -2411,19 +2411,21 @@ OperationVO getOperation(String entityNo, String currentStoreNo, String actorNo,
 
 守卫：仅美业操作原号；资金原号仍由其所有者查询。
 
-## 三、11条共用候选HTTP的方法归属
+## 三、11条共用HTTP目标与实施对照
 
-以下为人员/资源所有者的候选类名与签名，尚未新增；不在beauty-web/api/core生成这些类。归shop-merchant自身既有包边界，Service接口/Impl按原规范分包；Controller不得转而依赖人员Mapper。具体共享实现要同步共享契约评审与独立架构扫描。
+以下为人员/资源所有者的目标及部分已实施签名；逐项状态见API清单与主TDD。五个人员维护入口已编码，资源/班表等仍待实施；这些类不在beauty-web/api/core中生成。归shop-merchant自身既有包边界，Service接口/Impl按原规范分包；Controller不得转而依赖人员Mapper。具体共享实现要同步共享契约评审与独立架构扫描。
 
 ### BAPI-012 · GET /biz/personnel
 
-候选Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；候选输入类型：`ai.neargo.shop.merchant.dto.PersonnelQuery`。返回VO沿同域merchant.dto；非美业DTO。
+状态：IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；输入类型：`ai.neargo.shop.merchant.dto.PersonnelQuery`。返回VO沿同域merchant.dto；非美业DTO。
 
 ```java
-PageData<PersonnelVO> listPersonnel(@Valid @ModelAttribute PersonnelQuery query);
+PageData<PersonnelVO> listPersonnel(@Valid @ModelAttribute PersonnelQuery query, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
-候选Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
+Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
 
 ```java
 PageData<PersonnelVO> listPersonnel(String entityNo, String currentStoreNo, String actorNo, PersonnelQuery query);
@@ -2431,69 +2433,79 @@ PageData<PersonnelVO> listPersonnel(String entityNo, String currentStoreNo, Stri
 
 ### BAPI-013 · POST /biz/personnel
 
-候选Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；候选输入类型：`ai.neargo.shop.merchant.dto.CreatePersonnelReq`。返回VO沿同域merchant.dto；非美业DTO。
+状态：IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；输入类型：`ai.neargo.shop.merchant.dto.CreatePersonnelReq`。返回VO沿同域merchant.dto；非美业DTO。
 
 ```java
-PersonnelVO createPersonnel(@Valid @RequestBody CreatePersonnelReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+PersonnelVO createPersonnel(@Valid @RequestBody CreatePersonnelReq request, @RequestHeader("Idempotency-Key") String key, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
-候选Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
+Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
 
 ```java
-PersonnelVO createPersonnel(String entityNo, String currentStoreNo, String actorNo, CreatePersonnelReq req, String idempotencyKey);
+PersonnelVO createPersonnel(String entityNo, String currentStoreNo, String actorNo, CreatePersonnelReq request, String idempotencyKey);
 ```
 
 ### BAPI-014 · POST /biz/personnel/{personnelNo}/status-changes
 
-候选Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；候选输入类型：`ai.neargo.shop.merchant.dto.ChangePersonnelStatusReq`。返回VO沿同域merchant.dto；非美业DTO。
+状态：IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；输入类型：`ai.neargo.shop.merchant.dto.ChangePersonnelStatusReq`。返回VO沿同域merchant.dto；非美业DTO。
 
 ```java
-PersonnelChangeVO changePersonnelStatus(@PathVariable("personnelNo") String personnelNo, @Valid @RequestBody ChangePersonnelStatusReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+PersonnelChangeVO changePersonnelStatus(@PathVariable("personnelNo") String personnelNo, @Valid @RequestBody ChangePersonnelStatusReq request, @RequestHeader("Idempotency-Key") String key, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
-候选Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
+Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
 
 ```java
-PersonnelChangeVO changePersonnelStatus(String entityNo, String currentStoreNo, String actorNo, String personnelNo, ChangePersonnelStatusReq req, String idempotencyKey);
+PersonnelChangeVO changePersonnelStatus(String entityNo, String currentStoreNo, String actorNo, String personnelNo, ChangePersonnelStatusReq request, String idempotencyKey);
 ```
 
 ### BAPI-015 · POST /biz/personnel/{personnelNo}/account-links
 
-候选Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；候选输入类型：`ai.neargo.shop.merchant.dto.LinkPersonnelAccountReq`。返回VO沿同域merchant.dto；非美业DTO。
+状态：IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；输入类型：`ai.neargo.shop.merchant.dto.LinkPersonnelAccountReq`。返回VO沿同域merchant.dto；非美业DTO。
 
 ```java
-PersonnelAccountLinkVO linkPersonnelAccount(@PathVariable("personnelNo") String personnelNo, @Valid @RequestBody LinkPersonnelAccountReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+PersonnelAccountLinkVO linkPersonnelAccount(@PathVariable("personnelNo") String personnelNo, @Valid @RequestBody LinkPersonnelAccountReq request, @RequestHeader("Idempotency-Key") String key, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
-候选Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
+Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
 
 ```java
-PersonnelAccountLinkVO linkPersonnelAccount(String entityNo, String currentStoreNo, String actorNo, String personnelNo, LinkPersonnelAccountReq req, String idempotencyKey);
+PersonnelAccountLinkVO linkPersonnelAccount(String entityNo, String currentStoreNo, String actorNo, String personnelNo, LinkPersonnelAccountReq request, String idempotencyKey);
 ```
 
 ### BAPI-016 · POST /biz/personnel/{personnelNo}/assignments
 
-候选Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；候选输入类型：`ai.neargo.shop.merchant.dto.AssignPersonnelReq`。返回VO沿同域merchant.dto；非美业DTO。
+状态：IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；输入类型：`ai.neargo.shop.merchant.dto.AssignPersonnelReq`。返回VO沿同域merchant.dto；非美业DTO。
 
 ```java
-PersonnelAssignmentVO assignPersonnel(@PathVariable("personnelNo") String personnelNo, @Valid @RequestBody AssignPersonnelReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+PersonnelAssignmentVO assignPersonnel(@PathVariable("personnelNo") String personnelNo, @Valid @RequestBody AssignPersonnelReq request, @RequestHeader("Idempotency-Key") String key, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
-候选Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
+Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
 
 ```java
-PersonnelAssignmentVO assignPersonnel(String entityNo, String currentStoreNo, String actorNo, String personnelNo, AssignPersonnelReq req, String idempotencyKey);
+PersonnelAssignmentVO assignPersonnel(String entityNo, String currentStoreNo, String actorNo, String personnelNo, AssignPersonnelReq request, String idempotencyKey);
 ```
 
 ### BAPI-018 · POST /biz/personnel-cooperations
 
-候选Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelCooperationController`；候选输入类型：`ai.neargo.shop.merchant.dto.SetPersonnelCooperationReq`。返回VO沿同域merchant.dto；非美业DTO。
+状态：CANDIDATE_SHARED_OWNER_NOT_EXISTING_API。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelCooperationController`；输入类型：`ai.neargo.shop.merchant.dto.SetPersonnelCooperationReq`。返回VO沿同域merchant.dto；非美业DTO。
 
 ```java
 PersonnelCooperationVO setCooperation(@Valid @RequestBody SetPersonnelCooperationReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
 ```
 
-候选Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
+Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
 
 ```java
 PersonnelCooperationVO setCooperation(String entityNo, String currentStoreNo, String actorNo, SetPersonnelCooperationReq req, String idempotencyKey);
@@ -2501,13 +2513,15 @@ PersonnelCooperationVO setCooperation(String entityNo, String currentStoreNo, St
 
 ### BAPI-020 · GET /biz/resources
 
-候选Controller：`ai.neargo.shop.merchant.api.biz.BizResourceController`；候选输入类型：`ai.neargo.shop.merchant.dto.ResourceQuery`。返回VO沿同域merchant.dto；非美业DTO。
+状态：CANDIDATE_SHARED_OWNER_NOT_EXISTING_API。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizResourceController`；输入类型：`ai.neargo.shop.merchant.dto.ResourceQuery`。返回VO沿同域merchant.dto；非美业DTO。
 
 ```java
 PageData<ResourceVO> listResources(@Valid @ModelAttribute ResourceQuery query);
 ```
 
-候选Service：`ai.neargo.shop.merchant.service.ResourceService`；Impl：`ai.neargo.shop.merchant.service.impl.ResourceServiceImpl`。
+Service：`ai.neargo.shop.merchant.service.ResourceService`；Impl：`ai.neargo.shop.merchant.service.impl.ResourceServiceImpl`。
 
 ```java
 PageData<ResourceVO> listResources(String entityNo, String currentStoreNo, String actorNo, ResourceQuery query);
@@ -2515,13 +2529,15 @@ PageData<ResourceVO> listResources(String entityNo, String currentStoreNo, Strin
 
 ### BAPI-021 · POST /biz/resources
 
-候选Controller：`ai.neargo.shop.merchant.api.biz.BizResourceController`；候选输入类型：`ai.neargo.shop.merchant.dto.SaveResourceReq`。返回VO沿同域merchant.dto；非美业DTO。
+状态：CANDIDATE_SHARED_OWNER_NOT_EXISTING_API。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizResourceController`；输入类型：`ai.neargo.shop.merchant.dto.SaveResourceReq`。返回VO沿同域merchant.dto；非美业DTO。
 
 ```java
 ResourceVO saveResource(@Valid @RequestBody SaveResourceReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
 ```
 
-候选Service：`ai.neargo.shop.merchant.service.ResourceService`；Impl：`ai.neargo.shop.merchant.service.impl.ResourceServiceImpl`。
+Service：`ai.neargo.shop.merchant.service.ResourceService`；Impl：`ai.neargo.shop.merchant.service.impl.ResourceServiceImpl`。
 
 ```java
 ResourceVO saveResource(String entityNo, String currentStoreNo, String actorNo, SaveResourceReq req, String idempotencyKey);
@@ -2529,13 +2545,15 @@ ResourceVO saveResource(String entityNo, String currentStoreNo, String actorNo, 
 
 ### BAPI-022 · GET /biz/schedules
 
-候选Controller：`ai.neargo.shop.merchant.api.biz.BizScheduleController`；候选输入类型：`ai.neargo.shop.merchant.dto.PersonnelScheduleQuery`。返回VO沿同域merchant.dto；非美业DTO。
+状态：CANDIDATE_SHARED_OWNER_NOT_EXISTING_API。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizScheduleController`；输入类型：`ai.neargo.shop.merchant.dto.PersonnelScheduleQuery`。返回VO沿同域merchant.dto；非美业DTO。
 
 ```java
 ScheduleVO getSchedules(@Valid @ModelAttribute PersonnelScheduleQuery query);
 ```
 
-候选Service：`ai.neargo.shop.merchant.service.PersonnelScheduleService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelScheduleServiceImpl`。
+Service：`ai.neargo.shop.merchant.service.PersonnelScheduleService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelScheduleServiceImpl`。
 
 ```java
 ScheduleVO getSchedules(String entityNo, String currentStoreNo, String actorNo, PersonnelScheduleQuery query);
@@ -2543,13 +2561,15 @@ ScheduleVO getSchedules(String entityNo, String currentStoreNo, String actorNo, 
 
 ### BAPI-023 · POST /biz/schedule-changes/previews
 
-候选Controller：`ai.neargo.shop.merchant.api.biz.BizScheduleChangeController`；候选输入类型：`ai.neargo.shop.merchant.dto.PreviewScheduleChangeReq`。返回VO沿同域merchant.dto；非美业DTO。
+状态：CANDIDATE_SHARED_OWNER_NOT_EXISTING_API。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizScheduleChangeController`；输入类型：`ai.neargo.shop.merchant.dto.PreviewScheduleChangeReq`。返回VO沿同域merchant.dto；非美业DTO。
 
 ```java
 ScheduleImpactVO previewScheduleChange(@Valid @RequestBody PreviewScheduleChangeReq req);
 ```
 
-候选Service：`ai.neargo.shop.merchant.service.PersonnelScheduleService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelScheduleServiceImpl`。
+Service：`ai.neargo.shop.merchant.service.PersonnelScheduleService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelScheduleServiceImpl`。
 
 ```java
 ScheduleImpactVO previewScheduleChange(String entityNo, String currentStoreNo, String actorNo, PreviewScheduleChangeReq req);
@@ -2557,17 +2577,35 @@ ScheduleImpactVO previewScheduleChange(String entityNo, String currentStoreNo, S
 
 ### BAPI-024 · POST /biz/schedule-changes
 
-候选Controller：`ai.neargo.shop.merchant.api.biz.BizScheduleChangeController`；候选输入类型：`ai.neargo.shop.merchant.dto.ChangeScheduleReq`。返回VO沿同域merchant.dto；非美业DTO。
+状态：CANDIDATE_SHARED_OWNER_NOT_EXISTING_API。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizScheduleChangeController`；输入类型：`ai.neargo.shop.merchant.dto.ChangeScheduleReq`。返回VO沿同域merchant.dto；非美业DTO。
 
 ```java
 ScheduleChangeVO changeSchedule(@Valid @RequestBody ChangeScheduleReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
 ```
 
-候选Service：`ai.neargo.shop.merchant.service.PersonnelScheduleService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelScheduleServiceImpl`。
+Service：`ai.neargo.shop.merchant.service.PersonnelScheduleService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelScheduleServiceImpl`。
 
 ```java
 ScheduleChangeVO changeSchedule(String entityNo, String currentStoreNo, String actorNo, ChangeScheduleReq req, String idempotencyKey);
 ```
+
+### 本批已冻结的共用人员DTO
+
+| 类（shop-merchant） | 字段合同 |
+|---|---|
+| `ai.neargo.shop.merchant.dto.PersonnelQuery` | Integer page,size; String status,keyword,storeNo,skill（有效资格goodsNo） |
+| `ai.neargo.shop.merchant.dto.CreatePersonnelReq` | String displayName,avatarRef; AssignPersonnelReq assignment（expectedRevision=0且assignmentNo=null） |
+| `ai.neargo.shop.merchant.dto.AssignPersonnelReq` | Long expectedRevision; String assignmentNo,storeNo; OffsetDateTime validFrom,validTo; Boolean publicVisible; String levelCode; Integer sortOrder; List<String> positions; List<Skill> skills；Skill(goodsNo,skuNo,levelCode) |
+| `ai.neargo.shop.merchant.dto.LinkPersonnelAccountReq` | Long expectedRevision; String accountNo（null为解绑） |
+| `ai.neargo.shop.merchant.dto.ChangePersonnelStatusReq` | Long expectedRevision; String status,reason（1..500字符；完整审计，不广播到事件） |
+| `ai.neargo.shop.merchant.dto.PersonnelVO` | personnelNo,displayName,avatarRef,status,revision,resourceNo,List<Assignment>,List<Qualification>；当前/未来有效配置，无账号/联系资料/物理id；历史存储保留 |
+| `ai.neargo.shop.merchant.dto.PersonnelAssignmentVO` | personnelNo,revision,assignmentNo |
+| `ai.neargo.shop.merchant.dto.PersonnelAccountLinkVO` | personnelNo,revision,accountNo |
+| `ai.neargo.shop.merchant.dto.PersonnelChangeVO` | personnelNo,revision,status,accountDisabled（仅实际账号停用已回查后true） |
+
+实际字段校验和修订语义以同域源码及主TDD§2.12为准；不加入美业私有DTO/表统计。
 
 共用MerchantMappers与mch表的具体增量不在美业BeautyMappers中生成；人员同主体稳定号、账号可选关联、跨店统一STAFF资源、任职资格有效期及完整资源原子仲裁，沿数据库/工作台方案验证。
 
