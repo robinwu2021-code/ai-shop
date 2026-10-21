@@ -104,13 +104,13 @@ function date(at: number) { return new Date(at).toLocaleDateString(); }
 </script>
 <template>
   <view class="sh-card sh-mt-sm">
-    <text class="txt-title">{{ t("points.statements") }}</text>
-    <text v-if="typeName" class="sh-muted sh-mt-xs">{{ typeName }}</text>
+    <view class="txt-title">{{ t("points.statements") }}</view>
+    <view v-if="typeName" class="sh-muted sh-mt-xs">{{ typeName }}</view>
     <view v-if="failed" class="sh-muted sh-mt-sm">
       <text>{{ t("points.statementFailed") }}</text>
       <view class="sh-btn sh-btn--muted" @click="load()">{{ t("points.statementRefresh") }}</view>
     </view>
-    <text v-if="!loading && !failed && !rows.length" class="sh-muted">{{ t("points.noStatements") }}</text>
+    <view v-if="!loading && !failed && !rows.length" class="sh-muted sh-mt-xs">{{ t("points.noStatements") }}</view>
     <view v-for="row in rows" :key="row.statementNo" class="sh-mt-sm">
       <text>{{ row.statementNo }} · {{ date(row.fromMillis) }} — {{ date(row.toMillis) }}</text>
       <view>{{ t("points.statementRevision") }} {{ row.revision }} · {{ row.points }} {{ t("points.pointsUnit") }} · {{ stateLabel(row.state) }}</view>
