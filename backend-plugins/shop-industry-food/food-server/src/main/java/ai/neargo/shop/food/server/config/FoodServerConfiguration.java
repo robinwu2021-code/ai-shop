@@ -1,6 +1,7 @@
 package ai.neargo.shop.food.server.config;
 
 import ai.neargo.shop.food.config.FoodAutoConfiguration;
+import ai.neargo.shop.food.channel.config.FoodCatalogClientConfiguration;
 import ai.neargo.shop.food.config.FoodSchemaReady;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
@@ -15,7 +16,7 @@ import org.springframework.context.annotation.Import;
 
 /** 独立服务仅导入餐饮本域；主库使用平台公共装配，远程 Port 后续切片接线。 */
 @Configuration(proxyBeanMethods = false)
-@Import({PrimaryPersistenceConfiguration.class, FoodAutoConfiguration.class})
+@Import({PrimaryPersistenceConfiguration.class, FoodAutoConfiguration.class, FoodCatalogClientConfiguration.class})
 public class FoodServerConfiguration {
 
     @Bean

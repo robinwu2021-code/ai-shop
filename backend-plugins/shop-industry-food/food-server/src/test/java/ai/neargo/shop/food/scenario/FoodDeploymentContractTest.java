@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import ai.neargo.shop.auth.AbstractTokenAuthFilter;
 import ai.neargo.shop.food.server.FoodApplication;
 import ai.neargo.shop.svc.InternalHttp;
+import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
+import ai.neargo.shop.food.channel.port.CoreGoodsCatalogQueryPortImpl;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -38,7 +40,8 @@ class FoodDeploymentContractTest {
     void disabledFoodStillExposesNotReadyHealthWithoutPersistence() {
         runner.withPropertyValues("shop.food.enabled=false", "shop.services.internal-token=" + TOKEN).run(context -> {
             assertThat(context).hasNotFailed().doesNotHaveBean(ai.neargo.shop.food.config.FoodSchemaReady.class)
-                    .doesNotHaveBean(ai.neargo.shop.food.mapper.FoodMappers.TableAreaMapper.class);
+                    .doesNotHaveBean(ai.neargo.shop.food.mapper.FoodMappers.TableAreaMapper.class)
+                    .doesNotHaveBean(GoodsCatalogQueryPort.class);
             mvc(context).perform(get("/actuator/health/readiness")).andExpect(status().isServiceUnavailable());
         });
     }
@@ -49,7 +52,10 @@ class FoodDeploymentContractTest {
                 "ai/neargo/shop/food/config/FoodWebAutoConfiguration.class")).isNull();
         runner.withPropertyValues("spring.profiles.active=api,ops", "shop.services.internal-token=" + TOKEN)
                 .run(context -> {
-                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasNotFailed().hasSingleBean(GoodsCatalogQueryPort.class);
+                    assertThat(context.getBean(GoodsCatalogQueryPort.class)).isInstanceOf(CoreGoodsCatalogQueryPortImpl.class);
+                    assertThat(getClass().getClassLoader().getResource(
+                            "ai/neargo/shop/product/port/GoodsCatalogQueryPortImpl.class")).isNull();
                     var routes = context.getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping.class).getHandlerMethods().keySet()
                             .stream().flatMap(info -> info.getPatternValues().stream()).collect(Collectors.toSet());
                     assertThat(routes).contains("/internal/food/test-probe", "/internal/food/test-write-probe")

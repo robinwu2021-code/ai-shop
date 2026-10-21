@@ -3789,11 +3789,12 @@
 
 > 状态：待评审 · 2026-10-19 · 本文件是API生成输入片段；正式阅读入口为技术设计目录中的《餐饮系统API设计》。
 
-以下名称为目标端口，不是已存在Java类。集成部署实现为宿主桥接，独立部署实现为服务调用；不将跨库实现细节传入餐饮领域。字段中的ref均须受权查询，不允许客户端自造已付或已退款凭据。
+Catalog.goodsMetadata已实现为GoodsCatalogQueryPort及typed内部查询；其余名称仍为目标端口，不是已存在Java类。集成部署实现为宿主桥接，独立部署实现为服务调用；不将跨库实现细节传入餐饮领域。字段中的ref均须受权查询，不允许客户端自造已付或已退款凭据。
 
 | 端口 | 输入（必填，?为可选） | 输出 | 当前边界 |
 |---|---|---|---|
 | Identity.authorize | actorToken:string, entityNo:string, storeNo:string, action:string, objectRef?:string | actorNo:string, buyerScope:string[], allowed:boolean, limits:Money[] | 复用身份；匿名就餐主体与代办需正式合同 |
+| Catalog.goodsMetadata | entityNo:string, storeNo:string, goodsNo:string | GoodsFact:{goodsNo,entityNo,storeNo,title,cover?,baseOnSale,auditStatus?,version,skus:{skuNo,spec?,version}[]} | CAT-01A基础管理事实；明确商品真实归属及全部CN规格，无价格库存，不表示最终可售；独立经GoodsCatalogInternalApi读取PLATFORM |
 | Catalog.snapshot | entityNo:string, storeNo:string, skuNos:string[], channel:string, at:datetime | items:{goodsNo,skuNo,title,unit,currency,priceMinor,onSale,availableQty,version}[] | 读取商品服务，不直接跨库JOIN |
 | Catalog.validateSelections | skuNo:string, selections:Selection[], configVersion:int64 | valid:boolean, normalized:Selection[], recipeRef?:string | 强销售约束提交前校验及收费组合为缺口 |
 | Order.quote | buyerNo:string, storeNo:string, fulfillment:string, channel:string, lines:OrderLineInput[] | Quote及sourceLineRef到报价行映射 | 当前preview可适配基础SKU；选配小数不直接传Item |
