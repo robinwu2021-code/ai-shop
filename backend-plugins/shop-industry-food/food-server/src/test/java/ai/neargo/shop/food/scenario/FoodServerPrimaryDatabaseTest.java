@@ -9,23 +9,38 @@ import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.config.FoodSchemaReady;
+import ai.neargo.shop.food.dto.ArchiveTableReq;
+import ai.neargo.shop.food.dto.ClearCheckReq;
+import ai.neargo.shop.food.dto.CombineTablesReq;
+import ai.neargo.shop.food.dto.CreateTableReq;
+import ai.neargo.shop.food.dto.ListReservationsQuery;
+import ai.neargo.shop.food.dto.OpenCheckReq;
+import ai.neargo.shop.food.dto.OpenSharedCheckReq;
+import ai.neargo.shop.food.dto.RevokeTableTokenReq;
+import ai.neargo.shop.food.dto.RotateTableTokenReq;
+import ai.neargo.shop.food.dto.SaveCheckSeatsReq;
+import ai.neargo.shop.food.dto.SaveTableReq;
+import ai.neargo.shop.food.dto.SeatReq;
+import ai.neargo.shop.food.dto.SetStatusTableAreaReq;
+import ai.neargo.shop.food.dto.SetStatusTableReq;
+import ai.neargo.shop.food.dto.StartDiningSessionReq;
+import ai.neargo.shop.food.dto.TableVersionReq;
+import ai.neargo.shop.food.dto.TransferCheckReq;
 import ai.neargo.shop.food.mapper.FoodMappers;
 import ai.neargo.shop.food.server.FoodApplication;
-import ai.neargo.shop.food.spi.ServiceCalendarInternalApi;
-import ai.neargo.shop.food.spi.TableInternalApi;
 import ai.neargo.shop.food.service.TableService;
-import ai.neargo.shop.food.dto.SetStatusTableAreaReq;
-import ai.neargo.shop.food.dto.CreateTableReq;
-import ai.neargo.shop.food.dto.SaveTableReq;
-import ai.neargo.shop.food.dto.SetStatusTableReq;
-import ai.neargo.shop.food.dto.ArchiveTableReq;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
+import ai.neargo.shop.food.spi.CheckInternalApi;
+import ai.neargo.shop.food.spi.DiningSessionInternalApi;
+import ai.neargo.shop.food.spi.ReservationInternalApi;
+import ai.neargo.shop.food.spi.ServiceCalendarInternalApi;
 import ai.neargo.shop.food.spi.StoreOperationInternalApi;
 import ai.neargo.shop.food.spi.StorePolicyPublicationInternalApi;
+import ai.neargo.shop.food.spi.TableInternalApi;
 import ai.neargo.shop.svc.InternalHttp;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -44,6 +59,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.web.FilterChainProxy;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.PlatformTransactionManager;
 import tools.jackson.databind.ObjectMapper;
@@ -255,6 +272,94 @@ class FoodServerPrimaryDatabaseTest {
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_action_log",Integer.class)).isEqualTo(11);
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox",Integer.class)).isEqualTo(11);
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_idempotent",Integer.class)).isEqualTo(12);
+                        String diningTable=json.readTree(tableCall(mvc,TableInternalApi.TABLE_CREATE_PATH,
+                                new TableInternalApi.TableCreateCommand("E","A","trusted-actor","dining-table",
+                                        new CreateTableReq(areaNo,"T02","扫码桌",4,0,null)),json)
+                                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                                .get("table").get("tableNo").asString();
+                        var rotate=new DiningSessionInternalApi.RotateCommand("E","A",diningTable,"trusted-actor",
+                                "rotate",new RotateTableTokenReq(Instant.now().plusSeconds(3600),0L));
+                        String raw=json.readTree(tableCall(mvc,DiningSessionInternalApi.ROTATE_PATH,rotate,json)
+                                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).get("token").asString();
+                        tableCall(mvc,DiningSessionInternalApi.ROTATE_PATH,rotate,json).andExpect(status().isConflict());
+                        tableCall(mvc,DiningSessionInternalApi.RESOLVE_PATH,new DiningSessionInternalApi.ResolveCommand(raw),json)
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.storeNo").value("A"));
+                        var started=json.readTree(tableCall(mvc,DiningSessionInternalApi.START_PATH,
+                                new DiningSessionInternalApi.StartCommand("E","A",null,"start",
+                                        new StartDiningSessionReq(raw,null)),json).andExpect(status().isOk())
+                                .andReturn().getResponse().getContentAsString());
+                        var end=new DiningSessionInternalApi.EndCommand(started.get("sessionNo").asString(),
+                                started.get("accessToken").asString(),null,"end");
+                        tableCall(mvc,DiningSessionInternalApi.END_PATH,end,json).andExpect(status().isOk());
+                        tableCall(mvc,DiningSessionInternalApi.END_PATH,end,json).andExpect(status().isOk());
+                        tableCall(mvc,DiningSessionInternalApi.REVOKE_PATH,new DiningSessionInternalApi.RevokeCommand(
+                                "E","A",diningTable,"trusted-actor","revoke",new RevokeTableTokenReq(1L,"撤销")),json)
+                                .andExpect(status().isOk());
+                        tableCall(mvc,DiningSessionInternalApi.RESOLVE_PATH,new DiningSessionInternalApi.ResolveCommand(raw),json)
+                                .andExpect(status().isNotFound());
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_guest_session WHERE revoked_at IS NULL",Integer.class)).isZero();
+                        assertThat(context.getBean(FoodSchemaReady.class).version()).isEqualTo("2");
+                        var extraTables=new ArrayList<String>();
+                        for(String code:List.of("T03","T04")) extraTables.add(json.readTree(tableCall(mvc,
+                                TableInternalApi.TABLE_CREATE_PATH,new TableInternalApi.TableCreateCommand("E","A",
+                                        "trusted-actor","check-table-"+code,new CreateTableReq(areaNo,code,code,4,0,null)),json)
+                                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                                .get("table").get("tableNo").asString());
+                        var checkOpen=new CheckInternalApi.OpenCommand("E","A","trusted-actor","check-open",
+                                new OpenCheckReq(List.of(diningTable),2,"PREPAY",null,
+                                        List.of(new TableVersionReq(diningTable,2L)),"SHARED",List.of(new SeatReq(null,"1",null)),null));
+                        String openedBody=tableCall(mvc,CheckInternalApi.OPEN_PATH,checkOpen,json).andExpect(status().isOk())
+                                .andReturn().getResponse().getContentAsString();
+                        String checkNo=json.readTree(openedBody).get("check").get("checkNo").asString();
+                        tableCall(mvc,CheckInternalApi.OPEN_PATH,checkOpen,json).andExpect(status().isOk())
+                                .andExpect(r -> assertThat(r.getResponse().getContentAsString()).isEqualTo(openedBody));
+                        tableCall(mvc,CheckInternalApi.SHARE_PATH,new CheckInternalApi.ShareCommand("E","A",diningTable,
+                                "trusted-actor","check-share",new OpenSharedCheckReq(3L,1,"PREPAY")),json).andExpect(status().isOk());
+                        tableCall(mvc,CheckInternalApi.LIST_PATH,new CheckInternalApi.Lookup("E","A",null),json)
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2));
+                        tableCall(mvc,CheckInternalApi.SEATS_PATH,new CheckInternalApi.SeatsCommand("E","A",checkNo,
+                                "trusted-actor","check-seats",new SaveCheckSeatsReq(0L,3,List.of(new SeatReq(null,"1",null)),"增加人数")),json)
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.check.partySize").value(3));
+                        var moveCommand=new CheckInternalApi.TransferCommand("E","A",checkNo,"trusted-actor","check-move",
+                                new TransferCheckReq(1L,"换台",null,List.of(extraTables.get(0)),
+                                        List.of(new TableVersionReq(diningTable,5L),new TableVersionReq(extraTables.get(0),0L))));
+                        String movedBody=tableCall(mvc,CheckInternalApi.TRANSFER_PATH,moveCommand,json).andExpect(status().isOk())
+                                .andReturn().getResponse().getContentAsString();
+                        tableCall(mvc,CheckInternalApi.TRANSFER_PATH,moveCommand,json).andExpect(status().isOk())
+                                .andExpect(r -> assertThat(r.getResponse().getContentAsString()).isEqualTo(movedBody));
+                        tableCall(mvc,CheckInternalApi.COMBINE_PATH,new CheckInternalApi.CombineCommand("E","A",checkNo,
+                                "trusted-actor","check-combine",new CombineTablesReq(2L,
+                                        List.of(new TableVersionReq(extraTables.get(1),0L)),"增加桌台")),json).andExpect(status().isOk());
+                        var detail=json.readTree(tableCall(mvc,CheckInternalApi.GET_PATH,new CheckInternalApi.Identity("E","A",checkNo),json)
+                                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+                        var occupancyNos=new ArrayList<String>();
+                        detail.get("occupancies").forEach(node -> occupancyNos.add(node.get("occupancyNo").asString()));
+                        assertThat(occupancyNos).hasSize(2);
+                        var clear=new CheckInternalApi.ClearCommand("E","A",checkNo,"trusted-actor","check-clear",
+                                new ClearCheckReq(3L,"已清洁",null,occupancyNos));
+                        tableCall(mvc,CheckInternalApi.CLEAR_PATH,clear,json).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SUCCEEDED"));
+                        tableCall(mvc,CheckInternalApi.CLEAR_PATH,clear,json).andExpect(status().isOk());
+                        String movedOperation=json.readTree(movedBody).get("operation").get("operationNo").asString();
+                        tableCall(mvc,CheckInternalApi.OPERATION_PATH,new CheckInternalApi.OperationLookup("E","A",movedOperation),json)
+                                .andExpect(status().isOk()).andExpect(r -> assertThat(r.getResponse().getContentAsString()).isEqualTo(movedBody));
+                        tableCall(mvc,CheckInternalApi.ACTIONS_PATH,new CheckInternalApi.ActionsLookup("E","A",checkNo,null),json)
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(5));
+                        tableCall(mvc,CheckInternalApi.GET_PATH,new CheckInternalApi.Identity("E","OTHER",checkNo),json)
+                                .andExpect(status().isNotFound());
+                        for(String target:extraTables) assertThat(sql.queryForObject("SELECT turnover_state FROM fnb_table WHERE table_no=?",String.class,target)).isEqualTo("IDLE");
+                        sql.update("INSERT INTO fnb_reservation(entity_no,created_at,created_by,updated_at,updated_by,"
+                                +"reservation_no,store_no,contact_ref,party_size,start_at,end_at,status) VALUES"
+                                +"('E',NOW(3),'SYSTEM',NOW(3),'SYSTEM','RES1','A','protected-contact',2,"
+                                +"'2026-10-21 11:00:00','2026-10-21 13:00:00','CONFIRMED')");
+                        String reservations=tableCall(mvc,ReservationInternalApi.LIST_PATH,new ReservationInternalApi.Lookup("E","A",
+                                new ListReservationsQuery(null,null,Instant.parse("2026-10-21T12:00:00Z"),
+                                        Instant.parse("2026-10-21T14:00:00Z"),null)),json).andExpect(status().isOk())
+                                .andExpect(jsonPath("$.records[0].reservationNo").value("RES1"))
+                                .andReturn().getResponse().getContentAsString();
+                        assertThat(reservations).doesNotContain("protected-contact").doesNotContain("contactRef");
+                        for(String text:sql.queryForList("SELECT result_json FROM sys_idempotent",String.class))
+                            assertThat(text).doesNotContain(raw).doesNotContain(started.get("accessToken").asString());
+
                     });
         } finally { admin.execute("DROP DATABASE " + database); }
     }
@@ -271,7 +376,7 @@ class FoodServerPrimaryDatabaseTest {
             var facade = new UnifiedOutboxFacade(json);
             facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
             facade.setArchiveOnly(Set.of("PLATFORM:FOOD_STORE_POLICY_PUBLISHED",
-                    "PLATFORM:FOOD_SERVICE_CALENDAR_SAVED", "PLATFORM:FOOD_TABLE_AREA_CHANGED", "PLATFORM:FOOD_TABLE_CHANGED"));
+                    "PLATFORM:FOOD_SERVICE_CALENDAR_SAVED", "PLATFORM:FOOD_TABLE_AREA_CHANGED", "PLATFORM:FOOD_TABLE_CHANGED", "PLATFORM:FOOD_DINING_SESSION_CHANGED", "PLATFORM:FOOD_CHECK_CHANGED"));
             return facade;
         }
     }

@@ -1830,7 +1830,8 @@
           "token_hash"
         ]
       ],
-      "rules": "只存哈希，不把长期桌码当登录凭据"
+      "rules": "只存哈希，不把长期桌码当登录凭据",
+      "constraints": "仅保存SHA-256哈希，明文只在首次成功响应返回；幂等收据/audit/outbox不存原始token，桌码不作为平台登录凭据。"
     },
     {
       "domain": "C",
@@ -2046,6 +2047,13 @@
           "ref": null
         },
         {
+          "name": "sharing_mode",
+          "type": "varchar(16)",
+          "label": "EXCLUSIVE / SHARED；V2新增，历史占用按EXCLUSIVE回填",
+          "nullable": false,
+          "ref": null
+        },
+        {
           "name": "started_at",
           "type": "datetime(3)",
           "label": "开始",
@@ -2072,7 +2080,8 @@
           "occupancy_no"
         ]
       ],
-      "rules": "锁定桌台仲裁行检查容量；不设活动table_no唯一以支持拼桌"
+      "rules": "锁定桌台仲裁行检查容量；不设活动table_no唯一以支持拼桌",
+      "constraints": "V2新增sharing_mode持久化EXCLUSIVE/SHARED，历史行保守回填EXCLUSIVE。锁桌区及桌台仲裁行检查容量；不设活动table_no唯一以支持拼桌；独占标志不因扩容丢失。"
     },
     {
       "domain": "C",
@@ -2218,7 +2227,8 @@
           "token_hash"
         ]
       ],
-      "rules": "终端结束即失效，不存明文token"
+      "rules": "终端结束即失效，不存明文token",
+      "constraints": "TABLE_MENU受限会话不自动加入check，最长30分钟且不超过桌码到期；只存哈希，轮换/吊销旧桌码撤销旧会话，退出不取消订单。"
     },
     {
       "domain": "C",
@@ -6273,7 +6283,7 @@
       "path": "/biz/x/food/tables/{tableNo}:rotate-token",
       "input": "expiresAt:datetime:到期;version:int64:版本",
       "output": "token:string:仅本次返回明文;expiresAt:datetime:到期",
-      "guard": "桌台管理权限与CAS；轮换吊销旧码及按策略撤销旧会话；token仅本次返回，日志不记明文",
+      "guard": "原STORE权限及主体门店范围；桌区→桌台稳定锁和CAS；轮换撤销旧码及该桌旧会话；只保存SHA-256，明文仅首次响应；幂等收据不存凭证，同键重放CONFLICT且不再次轮换。",
       "needs": "餐饮新增"
     },
     {
@@ -6284,7 +6294,7 @@
       "path": "/mp/x/food/sessions",
       "input": "tableToken:string:桌码;deviceCredential?:string:可验证设备凭据，不信任deviceNo自报",
       "output": "sessionNo:string:会话;accessToken:string:短期令牌;expiresAt:datetime:到期;checkNo?:string:获准台账",
-      "guard": "桌码哈希/有效期/吊销及店状态校验；只签发桌级受限会话，不凭桌码自动获取同桌所有台账",
+      "guard": "桌码哈希校验后才解析主体门店，经原StoreDirectoryPort确认ACTIVE；签发最长30分钟且不超过桌码到期的TABLE_MENU会话；不自动绑定现有check。明文只首次返回，同键重放CONFLICT；设备认证合同未齐时非空deviceCredential拒绝。",
       "needs": "餐饮新增"
     },
     {
@@ -6295,7 +6305,7 @@
       "path": "/biz/x/food/stores/{storeNo}/reservations",
       "input": "resourceNo:string:资源;startAt:datetime:开始;endAt:datetime:结束;partySize:int32:人数;buyerNo?:string:顾客;contactRef:string:加密联系人;depositQuoteRef?:string:订金报价",
       "output": "reservationNo:string:预约;resourceHoldNo:string:占位;status:string:状态",
-      "guard": "资源与代办授权",
+      "guard": "目标沿共享resourceNo/hold权威做预约、释放和到店接力，资源取消不等于订金退款；当前共享资源合同未验收，此写入口未开放，不生成假hold引用。资源与代办授权",
       "needs": "共享预约订金契约"
     },
     {
@@ -6306,7 +6316,7 @@
       "path": "/biz/x/food/reservations/{reservationNo}:cancel",
       "input": "version:int64:版本;reason:string:取消或爽约原因",
       "output": "operation:Operation:资源释放和资金处理进度",
-      "guard": "预约权限及版本；订金退款/没收单独走资金审批合同，资源取消不意味着已退款",
+      "guard": "目标沿共享resourceNo/hold权威做预约、释放和到店接力，资源取消不等于订金退款；当前共享资源合同未验收，此写入口未开放，不生成假hold引用。预约权限及版本；订金退款/没收单独走资金审批合同，资源取消不意味着已退款",
       "needs": "餐饮新增"
     },
     {
@@ -6317,7 +6327,7 @@
       "path": "/biz/x/food/reservations/{reservationNo}:no-show",
       "input": "version:int64:版本;reason:string:取消或爽约原因",
       "output": "operation:Operation:资源释放和资金处理进度",
-      "guard": "预约权限及版本；订金退款/没收单独走资金审批合同，资源取消不意味着已退款",
+      "guard": "目标沿共享resourceNo/hold权威做预约、释放和到店接力，资源取消不等于订金退款；当前共享资源合同未验收，此写入口未开放，不生成假hold引用。预约权限及版本；订金退款/没收单独走资金审批合同，资源取消不意味着已退款",
       "needs": "餐饮新增"
     },
     {
@@ -6328,7 +6338,7 @@
       "path": "/biz/x/food/reservations/{reservationNo}:arrive",
       "input": "version:int64:预约版本;tableNos:string[]:占桌;tableVersions:TableVersionInput[]:资源版本;partySize:int32:实际人数",
       "output": "operationNo:string:操作;status:string:状态;checkNo?:string:开台结果",
-      "guard": "新占用失败保留原预约资源；到店只生成一个台账；原预约和资金凭据保留",
+      "guard": "目标沿共享resourceNo/hold权威做预约、释放和到店接力，资源取消不等于订金退款；当前共享资源合同未验收，此写入口未开放，不生成假hold引用。新占用失败保留原预约资源；到店只生成一个台账；原预约和资金凭据保留",
       "needs": "餐饮新增"
     },
     {
@@ -6339,7 +6349,7 @@
       "path": "/biz/x/food/stores/{storeNo}/checks",
       "input": "tableNos:string[]:空为无桌;partySize:int32:正人数;payMode:string:PREPAY或POSTPAY;reservationNo?:string:来源预约;tableVersions:TableVersionInput[]:所有目标桌版本;sharingMode:string:EXCLUSIVE或SHARED;seats:SeatInput[]:座位;serviceEmployeeNo?:string:获准员工",
       "output": "check:Check:台账",
-      "guard": "开台权限与店级资源仲裁；共享容量核验；后付须能力开通；操作人来自认证",
+      "guard": "原VERIFY权限及门店范围；所有目标桌完整CAS，桌区→桌台有序锁后原子新增check/occupancy/seat/audit/outbox；V2持久化EXCLUSIVE/SHARED；营业日复用门店策略。当前只开放无交易PREPAY，POSTPAY及未经验证的预约/员工/顾客引用拒绝；空tableNos支持无桌接待。",
       "needs": "餐饮新增"
     },
     {
@@ -6350,7 +6360,7 @@
       "path": "/biz/x/food/stores/{storeNo}/checks",
       "input": "status?:string:过滤;businessDate?:date:营业日;page?:int32:默认1;size?:int32:默认20最大100",
       "output": "records:Check[]:列表;total:int64:总数;page:int32:当前页;size:int32:每页条数",
-      "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
+      "guard": "原ORDER_VIEW权限；主体及当前门店固定过滤，状态/营业日与records/total同口径，分页1/20最大100。",
       "needs": "餐饮新增"
     },
     {
@@ -6361,7 +6371,7 @@
       "path": "/biz/x/food/checks/{checkNo}:transfer",
       "input": "version:int64:版本;reason:string:原因;approvalRef?:string:审批;targetTableNos:string[]:转入桌台;tableVersions:TableVersionInput[]:所有来源目标桌版本",
       "output": "operation:Operation:转台受理及恢复结果",
-      "guard": "逐动作权限；动作相关目标必填；先占新再放旧；不直接拆核心已付订单",
+      "guard": "原VERIFY权限、check CAS及全部来源/目标桌CAS；当前仅无批次/结账/退餐/权益/未完成草稿的PREPAY台账；先核验并占完整目标再结束原占用，同主库事务回滚不丢原桌；approvalRef未核验时拒绝；不搬订单或资金。 外部resourceNo/resourceClaimNo或未完成资源意图拒绝本地变更。",
       "needs": "餐饮新增"
     },
     {
@@ -6372,7 +6382,7 @@
       "path": "/biz/x/food/checks/{checkNo}:merge",
       "input": "version:int64:来源版本;targetCheckNo:string:目标台账;targetVersion:int64:目标版本;tableVersions:TableVersionInput[]:桌台版本;reason:string:原因;approvalRef?:string:审批",
       "output": "operation:Operation:协作结果",
-      "guard": "仅合并服务/占用展示归属；原批次check及核心资金归属不改；结账冻结/未知资金时拒绝；合账收款另走settlement",
+      "guard": "目标保留原批次及资金归属，按完整membership与冻结合同合拆；当前ORD-03/PAY-01未齐，此写入口未开放。仅合并服务/占用展示归属；原批次check及核心资金归属不改；结账冻结/未知资金时拒绝；合账收款另走settlement",
       "needs": "餐饮桌台操作意图及追加归属；资金合账取决于核心收银"
     },
     {
@@ -6383,7 +6393,7 @@
       "path": "/biz/x/food/checks/{checkNo}:split",
       "input": "version:int64:来源版本;targetCheckNo:string:目标台账;targetVersion:int64:目标版本;selectedBatchNos:string[]:允许调整展示归属的完整批次;reason:string:原因;approvalRef?:string:审批",
       "output": "operation:Operation:协作结果",
-      "guard": "仅调整批次服务归属，不改成交和资金；需锁批次且拒绝冻结/未知资金范围；按菜拆账走核心应收分摊",
+      "guard": "目标保留原批次及资金归属，按完整membership与冻结合同合拆；当前ORD-03/PAY-01未齐，此写入口未开放。仅调整批次服务归属，不改成交和资金；需锁批次且拒绝冻结/未知资金范围；按菜拆账走核心应收分摊",
       "needs": "餐饮新增"
     },
     {
@@ -6394,7 +6404,7 @@
       "path": "/biz/x/food/checks/{checkNo}:clear",
       "input": "version:int64:版本;reason:string:原因;approvalRef?:string:审批;occupancyNos:string[]:结束占用不删除未收应收",
       "output": "operationNo:string:操作号;status:string:操作状态;version:int64:对象版本;resultRef?:string:结果业务号",
-      "guard": "清台权限及占用版本校验；仅结束指定占用；未结应收/制作任务以异常移交保留，不以清台关闭资金台账",
+      "guard": "原VERIFY权限及check CAS；仅释放本check明确occupancyNos，空数组只允许本来无桌；任何交易事实或未完成/未知草稿拒绝普通清台。当前只验收无交易接待，最后释放记VOIDED/RELEASED，其他客组保留；已清洁空桌IDLE；不声称资金结清或支持异常放行。 外部resourceNo/resourceClaimNo或未完成资源意图拒绝本地变更。 部分清台先锁全部现有桌位，按原人数重分配剩余占座；剩余容量不足则整笔拒绝。",
       "needs": "餐饮新增"
     },
     {
@@ -7010,7 +7020,7 @@
       "path": "/biz/x/food/stores/{storeNo}/table-areas",
       "input": "page?:int32:默认1;size?:int32:默认20最大100;status?:string:状态",
       "output": "records:TableArea[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
-      "guard": "主体门店对象一致；列表与total同时按主体及当前门店过滤；page默认1、size默认20最大100；status省略含ACTIVE和DISABLED；按sortNo、areaNo升序；不暴露物理id",
+      "guard": "原canAnyBiz(STORE,ORDER_VIEW)读取桌区/桌台配置元数据；配置写入仍需STORE。客组占用沿获准check详情，不在Table配置对象内嵌；主体门店及原始请求头继续一致核验。主体门店对象一致；列表与total同时按主体及当前门店过滤；page默认1、size默认20最大100；status省略含ACTIVE和DISABLED；按sortNo、areaNo升序；不暴露物理id",
       "needs": "餐饮新增"
     },
     {
@@ -7054,7 +7064,7 @@
       "path": "/biz/x/food/stores/{storeNo}/tables",
       "input": "page?:int32:默认1;size?:int32:默认20最大100;areaNo?:string:桌区;status?:string:配置状态;turnoverState?:string:资源状态;keyword?:string:编码名称",
       "output": "records:Table[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
-      "guard": "主体及当前门店过滤records与total；默认page1/size20最大100；areaNo/status/turnoverState及字面关键词过滤；按sortNo/tableNo稳定排序；排除归档，不以支付状态代替桌态",
+      "guard": "原canAnyBiz(STORE,ORDER_VIEW)读取桌区/桌台配置元数据；配置写入仍需STORE。客组占用沿获准check详情，不在Table配置对象内嵌；主体门店及原始请求头继续一致核验。主体及当前门店过滤records与total；默认page1/size20最大100；areaNo/status/turnoverState及字面关键词过滤；按sortNo/tableNo稳定排序；排除归档，不以支付状态代替桌态",
       "needs": "餐饮新增"
     },
     {
@@ -7065,7 +7075,7 @@
       "path": "/biz/x/food/tables/{tableNo}",
       "input": "",
       "output": "table:Table:桌台详情",
-      "guard": "主体及当前门店与对象一致；沿原STORE权限和目录；归档不显示，不暴露物理id",
+      "guard": "原canAnyBiz(STORE,ORDER_VIEW)读取桌区/桌台配置元数据；配置写入仍需STORE。客组占用沿获准check详情，不在Table配置对象内嵌；主体门店及原始请求头继续一致核验。主体及当前门店与对象一致；沿原门店目录核验；归档不显示，不暴露物理id",
       "needs": "餐饮新增"
     },
     {
@@ -7109,7 +7119,7 @@
       "path": "/biz/x/food/tables/{tableNo}:revoke-token",
       "input": "version:int64:桌台版本;reason:string:原因",
       "output": "operation:Operation:吊销结果",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；吊销有效码和旧会话，不取消原订单",
+      "guard": "原STORE权限、主体门店及桌台CAS；同事务撤销有效码及该桌旧会话，不取消订单；安全操作收据可重放，不返回凭证。",
       "needs": "餐饮新增"
     },
     {
@@ -7120,7 +7130,7 @@
       "path": "/biz/x/food/checks/{checkNo}",
       "input": "",
       "output": "check:Check:台账;seats:SeatInput[]:座位;occupancies:Occupancy[]:占用",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "guard": "原ORDER_VIEW权限，台账主体门店与当前门店一致；返回该check的活动占用和座位，不混入同桌其他客组。",
       "needs": "餐饮新增"
     },
     {
@@ -7131,7 +7141,7 @@
       "path": "/biz/x/food/checks/{checkNo}/seats",
       "input": "version:int64:台账版本;partySize:int32:人数;seats:SeatInput[]:完整座位;reason:string:原因",
       "output": "check:Check:台账",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；容量仲裁；已成交引用座位不可删除，只能保留历史别名",
+      "guard": "原VERIFY权限及check CAS；共用稳定容量锁，保留座位号/标签历史，创建省略seatNo由服务端发号，已有seatNo必须属于本check；未验证guestRef拒绝。当前有正式交易或未完成/未知草稿则拒绝，等待成交座位合同；不挤占他组座位。 外部resourceNo/resourceClaimNo或未完成资源意图拒绝本地变更。 无交易座位改名保留seatNo与变更前后快照；标签唯一冲突整笔回滚。",
       "needs": "餐饮新增"
     },
     {
@@ -7142,7 +7152,7 @@
       "path": "/biz/x/food/checks/{checkNo}:combine-tables",
       "input": "version:int64:台账版本;tableVersions:TableVersionInput[]:新增桌台;reason:string:原因",
       "output": "operation:Operation:并桌结果",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；一个台账多桌，不合账不改付款",
+      "guard": "原VERIFY权限、check CAS及新增桌CAS；同check并用多桌，共用有序资源锁与容量仲裁；当前限无交易台账，同事务完成并可按原operationNo查询；不合并资金/订单。 外部resourceNo/resourceClaimNo或未完成资源意图拒绝本地变更。",
       "needs": "餐饮新增"
     },
     {
@@ -7153,7 +7163,7 @@
       "path": "/biz/x/food/tables/{tableNo}:share",
       "input": "version:int64:桌版本;partySize:int32:正人数;payMode:string:获准先后付",
       "output": "check:Check:新独立台账",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；共享容量原子检查；不继承原台账支付/顾客权限",
+      "guard": "原VERIFY权限、桌版本和SHARED容量原子仲裁；EXCLUSIVE占用即使桌容量扩大仍拒绝拼桌；新check独立，不继承原客组/购物车/支付权限；当前只PREPAY无交易接待。",
       "needs": "餐饮新增"
     },
     {
@@ -7164,7 +7174,7 @@
       "path": "/biz/x/food/table-operations/{operationNo}",
       "input": "",
       "output": "operation:Operation:受权操作进度",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "guard": "原ORDER_VIEW及主体门店范围；读取真实fnb_table_operation及冻结结果版本，原operationNo结果稳定。当前本地无交易拓扑仅APPLIED，不伪造外部资源恢复成功。 既存未完成操作返回真实持久化状态及操作版本，不伪造已落定的check版本。",
       "needs": "餐饮新增"
     },
     {
@@ -7175,7 +7185,7 @@
       "path": "/biz/x/food/stores/{storeNo}/reservations",
       "input": "page?:int32:默认1;size?:int32:默认20最大100;from:datetime:起含;to:datetime:止不含;status?:string:状态",
       "output": "records:Reservation[]:预约;total:int64:总数;page:int32:页;size:int32:页长",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "guard": "原ORDER_VIEW及主体门店范围；from/to为UTC毫秒半开窗口，按`startAt < to`且`endAt > from`重叠筛选；起止合法、状态白名单与分页同过滤；不返回联系人或buyer，depositRef仅引用不表示订金已结。创建/释放仍待共享资源合同。",
       "needs": "餐饮新增"
     },
     {
@@ -7186,7 +7196,7 @@
       "path": "/biz/x/food/checks/{checkNo}/actions",
       "input": "page?:int32:默认1;size?:int32:默认20最大100",
       "output": "records:ActionLog[]:获准审计;total:int64:总数;page:int32:页;size:int32:页长",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；联系人/令牌/敏感凭据脱敏",
+      "guard": "原ORDER_VIEW及台账主体门店范围；真实fnb_action_log分页，保留可信操作人及原因，不输出令牌、联系人或幂等原文。",
       "needs": "餐饮新增"
     },
     {
@@ -7516,7 +7526,7 @@
       "path": "/mp/x/food/checks/{checkNo}",
       "input": "",
       "output": "check:Check:获准视图;foodLines:FoodLine[]:仅获准行;financialStatus:string:权限过滤的资金状态",
-      "guard": "会话/本人台账范围；不返回其他顾客联系方式或隐私凭据",
+      "guard": "目标仅显式获准的本人check/session membership，不能扫码即读取同桌其他客组；当前入席、正式批次/资金视图合同未齐，本入口未开放。",
       "needs": "餐饮新增"
     },
     {
@@ -7527,7 +7537,7 @@
       "path": "/mp/x/food/sessions/{sessionNo}:end",
       "input": "",
       "output": "operation:Operation:吊销结果",
-      "guard": "仅本人会话或获准设备；清除设备本次会话，不取消已下订单",
+      "guard": "X-Food-Session短凭证及原Idempotency-Key必需；只允许有效本人/匿名持有人会话，已绑定buyer须匹配平台CONSUMER，匿名持有人登录后可结束但不自动认领买家身份。过期或撤销拒绝新命令，已成功安全收据可重放；不取消原订单。",
       "needs": "餐饮新增"
     },
     {
@@ -7583,9 +7593,9 @@
     "VersionInput": "checkNo:string:台账;version:int64:版本",
     "DeliveryLineInput": "foodLineNo:string:餐饮行;qty:decimal:交付量",
     "TableArea": "areaNo:string:桌区号;storeNo:string:门店;code:string:编码;name:string:名称;sortNo:int32:排序;status:string:启停;version:int64:版本",
-    "Table": "tableNo:string:桌号;storeNo:string:门店;areaNo:string:桌区;code:string:店内编码;name:string:名称;capacity:int32:容量;sortNo:int32:排序;status:string:ACTIVE或DISABLED;turnoverState:string:IDLE或IN_USE或NEEDS_CLEANING;occupancies:Occupancy[]:权限过滤后的活动占用;version:int64:版本",
+    "Table": "tableNo:string:桌号;storeNo:string:门店;areaNo:string:桌区;code:string:店内编码;name:string:名称;capacity:int32:容量;sortNo:int32:排序;status:string:ACTIVE或DISABLED;turnoverState:string:IDLE或IN_USE或NEEDS_CLEANING;resourceNo?:string:共享资源引用，绑定写入待权威合同;version:int64:版本",
     "Occupancy": "occupancyNo:string:占用号;tableNo:string:桌台;checkNo:string:获准台账;seats:int32:占座;startedAt:datetime:开始",
-    "SeatInput": "seatNo:string:座位业务号;label:string:台账内唯一座位标签;guestRef?:string:获准匿名或顾客引用",
+    "SeatInput": "seatNo?:string:创建省略由服务端发号，更新只能引用本台账座位;label:string:台账内唯一座位标签;guestRef?:string:获准匿名或顾客引用",
     "Dish": "goodsNo:string:商品;dishKind:string:SINGLE或BUNDLE或ADDON;prepSeconds:int32:制作时间;presentation:DishPresentation:覆盖展示;measurement:MeasurementPolicy:计量;configVersion:int64:规则版本;version:int64:并发版本",
     "DishPresentation": "displayName?:string:餐饮别名;localizedNames:LocalizedName[]:语言名称;imageRefs:string[]:已有媒资引用;tags:string[]:标签;allergenNotes:string[]:食材过敏提示非医疗保证",
     "LocalizedName": "locale:string:受控语言;name:string:名称",
@@ -9922,6 +9932,10 @@
     "migrationSha256": "215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9",
     "sharedTablesCreated": false,
     "apiImplemented": false,
-    "executionRecord": "docs/technical/TDD-餐饮系统-数据库初始化.md"
+    "executionRecord": "docs/technical/TDD-餐饮系统-数据库初始化.md",
+    "additionalMigrations": [
+      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V2__table_occupancy_sharing_mode.sql"
+    ],
+    "targetSchemaVersion": 2
   }
 }

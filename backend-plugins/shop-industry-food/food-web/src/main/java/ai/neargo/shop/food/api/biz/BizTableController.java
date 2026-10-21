@@ -56,7 +56,7 @@ public class BizTableController {
 
     /** Pagination and filters cannot select another owner's table data. */
     @GetMapping("/biz/x/food/stores/{storeNo}/tables")
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    @PreAuthorize("@perm.canAnyBiz('" + BizPerms.STORE + "','" + BizPerms.ORDER_VIEW + "')")
     public PageData<TableVO> listTables(@PathVariable("storeNo") @NotBlank @Size(max=32) String storeNo,
             @Valid @ModelAttribute ListTablesQuery query, HttpServletRequest request) {
         var context=requireStore(storeNo,request);
@@ -65,7 +65,7 @@ public class BizTableController {
 
     /** Object lookup remains bound to the user's current store. */
     @GetMapping("/biz/x/food/tables/{tableNo}")
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    @PreAuthorize("@perm.canAnyBiz('" + BizPerms.STORE + "','" + BizPerms.ORDER_VIEW + "')")
     public TableResultVO getTable(@PathVariable("tableNo") @NotBlank @Size(max=32) String tableNo,
             HttpServletRequest request) {
         var context=requireStore(BizContext.current().currentStoreNo(),request);

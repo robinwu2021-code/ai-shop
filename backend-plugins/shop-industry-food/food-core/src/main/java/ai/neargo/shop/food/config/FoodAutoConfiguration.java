@@ -2,12 +2,25 @@ package ai.neargo.shop.food.config;
 
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.CheckMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ReservationMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.SeatMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ServiceCalendarMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableAreaMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.TableOccupancyMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.TableOperationMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.TableTokenMapper;
+import ai.neargo.shop.food.service.CheckService;
+import ai.neargo.shop.food.service.DiningSessionService;
+import ai.neargo.shop.food.service.ReservationService;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.service.TableService;
+import ai.neargo.shop.food.service.impl.CheckServiceImpl;
+import ai.neargo.shop.food.service.impl.DiningSessionServiceImpl;
+import ai.neargo.shop.food.service.impl.ReservationServiceImpl;
 import ai.neargo.shop.food.service.impl.StoreOperationServiceImpl;
 import ai.neargo.shop.food.service.impl.TableServiceImpl;
 import ai.neargo.shop.idem.IdempotencyService;
@@ -48,6 +61,39 @@ public class FoodAutoConfiguration {
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new TableServiceImpl(areas, tables, actions, idem, publisher, manager);
     }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(DiningSessionService.class)
+    DiningSessionService diningSessionService(TableAreaMapper areas, TableMapper tables,
+            TableTokenMapper tokens,
+            GuestSessionMapper sessions, ActionLogMapper actions,
+            IdempotencyService idem, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new DiningSessionServiceImpl(
+                areas,tables,tokens,sessions,actions,idem,publisher,manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(CheckService.class)
+    CheckService checkService(
+            CheckMapper checks,TableAreaMapper areas,TableMapper tables,
+            TableOccupancyMapper occupancy,
+            SeatMapper seats,
+            TableOperationMapper operations,
+            GuestSessionMapper sessions,ActionLogMapper actions,
+            StoreOperationService policies,IdempotencyService idem,
+            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,ObjectMapper json,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new CheckServiceImpl(checks,areas,tables,occupancy,seats,operations,
+                sessions,actions,policies,idem,publisher,json,manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(ReservationService.class)
+    ReservationService reservationService(ReservationMapper mapper) { return new ReservationServiceImpl(mapper); }
 
     @Bean
     @ConditionalOnProperty(prefix = "shop.food.migration", name = "mode", havingValue = "off")

@@ -7,28 +7,33 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import ai.neargo.shop.auth.BizContextFilter;
+import ai.neargo.shop.auth.LoginUser;
+import ai.neargo.shop.auth.TokenStore;
+import ai.neargo.shop.auth.store.MemoryTokenStore;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.food.config.FoodWebAutoConfiguration;
 import ai.neargo.shop.food.dto.ArchiveTableReq;
+import ai.neargo.shop.food.dto.CreateTableAreaReq;
 import ai.neargo.shop.food.dto.CreateTableReq;
+import ai.neargo.shop.food.dto.ListTableAreasQuery;
 import ai.neargo.shop.food.dto.ListTablesQuery;
-import ai.neargo.shop.food.dto.SaveTableReq;
-import ai.neargo.shop.food.dto.SetStatusTableReq;
-import ai.neargo.shop.food.dto.TableVO;
-import ai.neargo.shop.food.dto.TableResultVO;
 import ai.neargo.shop.food.dto.OperationResultVO;
 import ai.neargo.shop.food.dto.OperationVO;
-import ai.neargo.shop.food.dto.CreateTableAreaReq;
-import ai.neargo.shop.food.dto.ListTableAreasQuery;
 import ai.neargo.shop.food.dto.SaveTableAreaReq;
+import ai.neargo.shop.food.dto.SaveTableReq;
 import ai.neargo.shop.food.dto.SetStatusTableAreaReq;
+import ai.neargo.shop.food.dto.SetStatusTableReq;
 import ai.neargo.shop.food.dto.TableAreaResultVO;
 import ai.neargo.shop.food.dto.TableAreaVO;
+import ai.neargo.shop.food.dto.TableResultVO;
+import ai.neargo.shop.food.dto.TableVO;
 import ai.neargo.shop.food.service.TableService;
-import ai.neargo.shop.food.spi.TableInternalApi;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,12 +42,6 @@ import org.springframework.security.web.FilterChainProxy;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
-import ai.neargo.shop.auth.BizContextFilter;
-import ai.neargo.shop.auth.LoginUser;
-import ai.neargo.shop.auth.TokenStore;
-import ai.neargo.shop.auth.store.MemoryTokenStore;
-import ai.neargo.shop.food.config.FoodWebAutoConfiguration;
-import org.springframework.boot.autoconfigure.AutoConfigurations;
 
 class TableConfigurationApiTest {
     private final WebApplicationContextRunner runner = new WebApplicationContextRunner()
@@ -134,7 +133,8 @@ class TableConfigurationApiTest {
                     return new OperationResultVO(new OperationVO("OP1","SUCCEEDED",1,"T1"));
                 }
                 public PageData<TableAreaVO> listTableAreas(String e,String s,ListTableAreasQuery q) {
-                    throw new AssertionError("Unexpected area");
+                    assertThat(e).isEqualTo("E");assertThat(s).isEqualTo("A");
+                    return PageData.of(List.of(),0,1,20);
                 }
                 public TableAreaResultVO createTableArea(String e,String s,String a,CreateTableAreaReq r,String k) {
                     throw new AssertionError("Unexpected area");

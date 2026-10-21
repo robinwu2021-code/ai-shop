@@ -1,13 +1,13 @@
 # 餐饮系统API设计
 
-> 状态：待评审 · 2026-10-19 · 目标设计，未执行迁移或实现端点。
+> 状态：待评审 · 2026-10-20 · V1含73张fnb_业务表；增量迁移及已交付API见M0验收，prn/rpt保持共享候选。
 > 由 `node scripts/gen-food-system-design.mjs` 生成，勿手改；真源：[领域数据库API设计源](./schema/food-system-design.json)。生成依赖沿用 @viz-js/viz，可用 FOOD_ER_VIZ_MODULE 指定模块路径。
 > 项目约束：[底座兼容对齐](./餐饮系统-项目底座兼容对齐.md)，账号、门店、营业时间、公共实体及协议冲突时优先按该对齐说明修订。
 > 产品依据：[完整需求文档](../../requirements/餐饮系统-完整需求文档.md) · [109项需求矩阵](../../requirements/餐饮系统-需求矩阵.md)。
 
 ## 一、协议与能力边界
 
-100个目标端点，统一JSON语义；路径为建议合同，未全部注册在当前Controller。本地适配器和远程适配器遵守相同DTO、权限和幂等。
+110个目标端点，统一JSON语义；路径为建议合同，未全部注册在当前Controller。本地适配器和远程适配器遵守相同DTO、权限和幂等。
 
 - /biz为商家作业，/mp为顾客，/ops为平台，/internal仅服务身份。老板App/收银/厨房复用biz服务，按角色门店工位鉴权，不把平台管理员当商家收银员。
 - Authorization为获准身份；X-Request-Id用于追踪。所有有副作用操作必需Idempotency-Key；作用域含entity/store/operation/key，规范payload哈希同键异参返回409。operator/entity从身份获取，不接受客户端冒充。
@@ -121,6 +121,16 @@
 | C | FOOD-API-098 | PUT `/biz/x/food/tables/{tableNo}` | 编辑桌台 |
 | C | FOOD-API-099 | POST `/biz/x/food/tables/{tableNo}:set-status` | 桌台启停 |
 | C | FOOD-API-100 | POST `/biz/x/food/tables/{tableNo}:archive` | 归档桌台 |
+| C | FOOD-API-101 | POST `/biz/x/food/tables/{tableNo}:revoke-token` | 吊销桌码 |
+| C | FOOD-API-102 | GET `/biz/x/food/checks/{checkNo}` | 就餐台账详情 |
+| C | FOOD-API-103 | PUT `/biz/x/food/checks/{checkNo}/seats` | 修改人数与座位 |
+| C | FOOD-API-104 | POST `/biz/x/food/checks/{checkNo}:combine-tables` | 并入桌台 |
+| C | FOOD-API-105 | POST `/biz/x/food/tables/{tableNo}:share` | 同桌新开独立台账 |
+| C | FOOD-API-106 | GET `/biz/x/food/table-operations/{operationNo}` | 桌台操作恢复查询 |
+| C | FOOD-API-107 | GET `/biz/x/food/stores/{storeNo}/reservations` | 预约列表 |
+| C | FOOD-API-108 | GET `/biz/x/food/checks/{checkNo}/actions` | 就餐操作历史 |
+| C | FOOD-API-138 | GET `/mp/x/food/checks/{checkNo}` | 顾客就餐进度 |
+| C | FOOD-API-139 | POST `/mp/x/food/sessions/{sessionNo}:end` | 主动结束顾客会话 |
 
 ## 三、公共DTO输入输出字段
 
@@ -404,6 +414,102 @@
 |---|---|---|---|
 | foodLineNo | string | 是 | 餐饮行 |
 | qty | decimal | 是 | 交付量 |
+
+### Table
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| tableNo | string | 是 | 桌号 |
+| storeNo | string | 是 | 门店 |
+| areaNo | string | 是 | 桌区 |
+| code | string | 是 | 店内编码 |
+| name | string | 是 | 名称 |
+| capacity | int32 | 是 | 容量 |
+| sortNo | int32 | 是 | 排序 |
+| status | string | 是 | ACTIVE或DISABLED |
+| turnoverState | string | 是 | IDLE或IN_USE或NEEDS_CLEANING |
+| resourceNo | string | 否 | 共享资源引用，绑定写入待权威合同 |
+| version | int64 | 是 | 版本 |
+
+
+### SeatInput
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| seatNo | string | 否 | 创建省略由服务端发号，更新只能引用本台账座位 |
+| label | string | 是 | 台账内唯一座位标签 |
+| guestRef | string | 否 | 获准匿名或顾客引用 |
+
+
+### TableVersionInput
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| tableNo | string | 是 | 桌台 |
+| version | int64 | 是 | 资源版本 |
+
+
+### Occupancy
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| occupancyNo | string | 是 | 占用号 |
+| tableNo | string | 是 | 桌台 |
+| checkNo | string | 是 | 获准台账 |
+| seats | int32 | 是 | 占座 |
+| startedAt | datetime | 是 | 开始 |
+
+
+### ActionLog
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| actionNo | string | 是 | 记录 |
+| action | string | 是 | 动作 |
+| actorRef | string | 是 | 审计操作人 |
+| occurredAt | datetime | 是 | 时间 |
+| reason | string | 否 | 原因 |
+
+
+### Reservation
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| reservationNo | string | 是 | 预约 |
+| partySize | int32 | 是 | 人数 |
+| startAt | datetime | 是 | 开始 |
+| endAt | datetime | 是 | 结束 |
+| status | string | 是 | 资源状态 |
+| depositRef | string | 否 | 获准订金凭据 |
+| checkNo | string | 否 | 到店台账 |
+| version | int64 | 是 | 版本 |
+
+
+### Operation
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| operationNo | string | 是 | 操作 |
+| status | string | 是 | 含处理中未知失败 |
+| version | int64 | 是 | 当前版本 |
+| resultRef | string | 否 | 结果号 |
+
+
+### FoodLine
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| foodLineNo | string | 是 | 餐饮行 |
+| sourceLineRef | string | 是 | 原源行 |
+| goodsNo | string | 是 | 商品 |
+| skuNo | string | 是 | SKU |
+| qty | decimal | 是 | 数量 |
+| unit | string | 是 | 单位 |
+| seatNo | string | 否 | 座位 |
+| configRevisionNos | string[] | 是 | 发布版本 |
+| displaySnapshot | object | 是 | 受控历史展示 |
+| coreAllocations | CoreLineAllocation[] | 是 | 受权核心分配 |
+
 
 ## 四、逐接口输入输出
 
@@ -1130,7 +1236,7 @@
 
 `POST /biz/x/food/tables/{tableNo}:rotate-token`
 
-权限与守卫：门店范围与对象权限；写操作CAS版本及幂等。
+权限与守卫：原STORE权限及主体门店范围；桌区→桌台稳定锁和CAS；轮换撤销旧码及该桌旧会话；只保存SHA-256，明文仅首次响应；幂等收据不存凭证，同键重放CONFLICT且不再次轮换。。
 
 能力依赖：餐饮新增。
 
@@ -1158,7 +1264,7 @@
 
 `POST /mp/x/food/sessions`
 
-权限与守卫：限流及桌码哈希校验，不返回他人私密资料。
+权限与守卫：桌码哈希校验后才解析主体门店，经原StoreDirectoryPort确认ACTIVE；签发最长30分钟且不超过桌码到期的TABLE_MENU会话；不自动绑定现有check。明文只首次返回，同键重放CONFLICT；设备认证合同未齐时非空deviceCredential拒绝。。
 
 能力依赖：餐饮新增。
 
@@ -1167,7 +1273,7 @@
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | tableToken | string | 是 | 桌码 |
-| deviceNo | string | 否 | 设备 |
+| deviceCredential | string | 否 | 可验证设备凭据，不信任deviceNo自报 |
 
 成功输出（data）：
 
@@ -1182,7 +1288,7 @@
 
 `POST /biz/x/food/stores/{storeNo}/reservations`
 
-权限与守卫：资源与代办授权。
+权限与守卫：目标沿共享resourceNo/hold权威做预约、释放和到店接力，资源取消不等于订金退款；当前共享资源合同未验收，此写入口未开放，不生成假hold引用。资源与代办授权。
 
 能力依赖：共享预约订金契约。
 
@@ -1216,7 +1322,7 @@
 
 `POST /biz/x/food/reservations/{reservationNo}:cancel`
 
-权限与守卫：预约权限及资源接力，失败保留可恢复意图。
+权限与守卫：目标沿共享resourceNo/hold权威做预约、释放和到店接力，资源取消不等于订金退款；当前共享资源合同未验收，此写入口未开放，不生成假hold引用。预约权限及版本；订金退款/没收单独走资金审批合同，资源取消不意味着已退款。
 
 能力依赖：餐饮新增。
 
@@ -1231,22 +1337,19 @@
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | version | int64 | 是 | 版本 |
-| reason | string | 否 | 取消原因 |
-| tableNos | string[] | 否 | 到店占桌 |
+| reason | string | 是 | 取消或爽约原因 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| operationNo | string | 是 | 操作 |
-| status | string | 是 | 状态 |
-| checkNo | string | 否 | 开台结果 |
+| operation | Operation | 是 | 资源释放和资金处理进度 |
 
 ### FOOD-API-029 · 预约no-show
 
 `POST /biz/x/food/reservations/{reservationNo}:no-show`
 
-权限与守卫：预约权限及资源接力，失败保留可恢复意图。
+权限与守卫：目标沿共享resourceNo/hold权威做预约、释放和到店接力，资源取消不等于订金退款；当前共享资源合同未验收，此写入口未开放，不生成假hold引用。预约权限及版本；订金退款/没收单独走资金审批合同，资源取消不意味着已退款。
 
 能力依赖：餐饮新增。
 
@@ -1261,22 +1364,19 @@
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | version | int64 | 是 | 版本 |
-| reason | string | 否 | 取消原因 |
-| tableNos | string[] | 否 | 到店占桌 |
+| reason | string | 是 | 取消或爽约原因 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| operationNo | string | 是 | 操作 |
-| status | string | 是 | 状态 |
-| checkNo | string | 否 | 开台结果 |
+| operation | Operation | 是 | 资源释放和资金处理进度 |
 
 ### FOOD-API-030 · 预约arrive
 
 `POST /biz/x/food/reservations/{reservationNo}:arrive`
 
-权限与守卫：预约权限及资源接力，失败保留可恢复意图。
+权限与守卫：目标沿共享resourceNo/hold权威做预约、释放和到店接力，资源取消不等于订金退款；当前共享资源合同未验收，此写入口未开放，不生成假hold引用。新占用失败保留原预约资源；到店只生成一个台账；原预约和资金凭据保留。
 
 能力依赖：餐饮新增。
 
@@ -1290,9 +1390,10 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| version | int64 | 是 | 版本 |
-| reason | string | 否 | 取消原因 |
-| tableNos | string[] | 否 | 到店占桌 |
+| version | int64 | 是 | 预约版本 |
+| tableNos | string[] | 是 | 占桌 |
+| tableVersions | TableVersionInput[] | 是 | 资源版本 |
+| partySize | int32 | 是 | 实际人数 |
 
 成功输出（data）：
 
@@ -1306,7 +1407,7 @@
 
 `POST /biz/x/food/stores/{storeNo}/checks`
 
-权限与守卫：门店范围与对象权限；写操作CAS版本及幂等。
+权限与守卫：原VERIFY权限及门店范围；所有目标桌完整CAS，桌区→桌台有序锁后原子新增check/occupancy/seat/audit/outbox；V2持久化EXCLUSIVE/SHARED；营业日复用门店策略。当前只开放无交易PREPAY，POSTPAY及未经验证的预约/员工/顾客引用拒绝；空tableNos支持无桌接待。。
 
 能力依赖：餐饮新增。
 
@@ -1320,10 +1421,14 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| tableNos | string[] | 是 | 可空无桌 |
-| partySize | int32 | 是 | 人数 |
-| payMode | string | 是 | 先后付 |
+| tableNos | string[] | 是 | 空为无桌 |
+| partySize | int32 | 是 | 正人数 |
+| payMode | string | 是 | PREPAY或POSTPAY |
 | reservationNo | string | 否 | 来源预约 |
+| tableVersions | TableVersionInput[] | 是 | 所有目标桌版本 |
+| sharingMode | string | 是 | EXCLUSIVE或SHARED |
+| seats | SeatInput[] | 是 | 座位 |
+| serviceEmployeeNo | string | 否 | 获准员工 |
 
 成功输出（data）：
 
@@ -1335,7 +1440,7 @@
 
 `GET /biz/x/food/stores/{storeNo}/checks`
 
-权限与守卫：门店范围与对象权限；写操作CAS版本及幂等。
+权限与守卫：原ORDER_VIEW权限；主体及当前门店固定过滤，状态/营业日与records/total同口径，分页1/20最大100。。
 
 能力依赖：餐饮新增。
 
@@ -1367,7 +1472,7 @@
 
 `POST /biz/x/food/checks/{checkNo}:transfer`
 
-权限与守卫：逐动作权限；动作相关目标必填；先占新再放旧；不直接拆核心已付订单。
+权限与守卫：原VERIFY权限、check CAS及全部来源/目标桌CAS；当前仅无批次/结账/退餐/权益/未完成草稿的PREPAY台账；先核验并占完整目标再结束原占用，同主库事务回滚不丢原桌；approvalRef未核验时拒绝；不搬订单或资金。 外部resourceNo/resourceClaimNo或未完成资源意图拒绝本地变更。。
 
 能力依赖：餐饮新增。
 
@@ -1385,23 +1490,21 @@
 | reason | string | 是 | 原因 |
 | approvalRef | string | 否 | 审批 |
 | targetTableNos | string[] | 是 | 转入桌台 |
+| tableVersions | TableVersionInput[] | 是 | 所有来源目标桌版本 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| operationNo | string | 是 | 操作号 |
-| status | string | 是 | 操作状态 |
-| version | int64 | 是 | 对象版本 |
-| resultRef | string | 否 | 结果业务号 |
+| operation | Operation | 是 | 转台受理及恢复结果 |
 
-### FOOD-API-034 · 台账merge
+### FOOD-API-034 · 合并就餐服务台账
 
 `POST /biz/x/food/checks/{checkNo}:merge`
 
-权限与守卫：逐动作权限；动作相关目标必填；先占新再放旧；不直接拆核心已付订单。
+权限与守卫：目标保留原批次及资金归属，按完整membership与冻结合同合拆；当前ORD-03/PAY-01未齐，此写入口未开放。仅合并服务/占用展示归属；原批次check及核心资金归属不改；结账冻结/未知资金时拒绝；合账收款另走settlement。
 
-能力依赖：餐饮新增。
+能力依赖：餐饮桌台操作意图及追加归属；资金合账取决于核心收银。
 
 路径输入：
 
@@ -1413,25 +1516,24 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| version | int64 | 是 | 版本 |
+| version | int64 | 是 | 来源版本 |
+| targetCheckNo | string | 是 | 目标台账 |
+| targetVersion | int64 | 是 | 目标版本 |
+| tableVersions | TableVersionInput[] | 是 | 桌台版本 |
 | reason | string | 是 | 原因 |
 | approvalRef | string | 否 | 审批 |
-| targetCheckNo | string | 是 | 目标台账 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| operationNo | string | 是 | 操作号 |
-| status | string | 是 | 操作状态 |
-| version | int64 | 是 | 对象版本 |
-| resultRef | string | 否 | 结果业务号 |
+| operation | Operation | 是 | 协作结果 |
 
-### FOOD-API-035 · 台账split
+### FOOD-API-035 · 拆分就餐服务台账
 
 `POST /biz/x/food/checks/{checkNo}:split`
 
-权限与守卫：逐动作权限；动作相关目标必填；先占新再放旧；不直接拆核心已付订单。
+权限与守卫：目标保留原批次及资金归属，按完整membership与冻结合同合拆；当前ORD-03/PAY-01未齐，此写入口未开放。仅调整批次服务归属，不改成交和资金；需锁批次且拒绝冻结/未知资金范围；按菜拆账走核心应收分摊。
 
 能力依赖：餐饮新增。
 
@@ -1445,26 +1547,24 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| version | int64 | 是 | 版本 |
+| version | int64 | 是 | 来源版本 |
+| targetCheckNo | string | 是 | 目标台账 |
+| targetVersion | int64 | 是 | 目标版本 |
+| selectedBatchNos | string[] | 是 | 允许调整展示归属的完整批次 |
 | reason | string | 是 | 原因 |
 | approvalRef | string | 否 | 审批 |
-| selectedBatchNos | string[] | 是 | 仅未结且允许迁移的批次 |
-| targetCheckNo | string | 是 | 目标台账 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| operationNo | string | 是 | 操作号 |
-| status | string | 是 | 操作状态 |
-| version | int64 | 是 | 对象版本 |
-| resultRef | string | 否 | 结果业务号 |
+| operation | Operation | 是 | 协作结果 |
 
 ### FOOD-API-036 · 台账clear
 
 `POST /biz/x/food/checks/{checkNo}:clear`
 
-权限与守卫：逐动作权限；动作相关目标必填；先占新再放旧；不直接拆核心已付订单。
+权限与守卫：原VERIFY权限及check CAS；仅释放本check明确occupancyNos，空数组只允许本来无桌；任何交易事实或未完成/未知草稿拒绝普通清台。当前只验收无交易接待，最后释放记VOIDED/RELEASED，其他客组保留；已清洁空桌IDLE；不声称资金结清或支持异常放行。 外部resourceNo/resourceClaimNo或未完成资源意图拒绝本地变更。 部分清台先锁全部现有桌位，按原人数重分配剩余占座；剩余容量不足则整笔拒绝。。
 
 能力依赖：餐饮新增。
 
@@ -3131,7 +3231,7 @@
 
 `GET /biz/x/food/stores/{storeNo}/table-areas`
 
-权限与守卫：主体门店对象一致；列表与total同时按主体及当前门店过滤；page默认1、size默认20最大100；status省略含ACTIVE和DISABLED；按sortNo、areaNo升序；不暴露物理id。
+权限与守卫：原canAnyBiz(STORE,ORDER_VIEW)读取桌区/桌台配置元数据；配置写入仍需STORE。客组占用沿获准check详情，不在Table配置对象内嵌；主体门店及原始请求头继续一致核验。主体门店对象一致；列表与total同时按主体及当前门店过滤；page默认1、size默认20最大100；status省略含ACTIVE和DISABLED；按sortNo、areaNo升序；不暴露物理id。
 
 能力依赖：餐饮新增。
 
@@ -3247,7 +3347,7 @@
 
 `GET /biz/x/food/stores/{storeNo}/tables`
 
-权限与守卫：主体及当前门店过滤records与total；默认page1/size20最大100；areaNo/status/turnoverState及字面关键词过滤；按sortNo/tableNo稳定排序；排除归档，不以支付状态代替桌态。
+权限与守卫：原canAnyBiz(STORE,ORDER_VIEW)读取桌区/桌台配置元数据；配置写入仍需STORE。客组占用沿获准check详情，不在Table配置对象内嵌；主体门店及原始请求头继续一致核验。主体及当前门店过滤records与total；默认page1/size20最大100；areaNo/status/turnoverState及字面关键词过滤；按sortNo/tableNo稳定排序；排除归档，不以支付状态代替桌态。
 
 能力依赖：餐饮新增。
 
@@ -3281,7 +3381,7 @@
 
 `GET /biz/x/food/tables/{tableNo}`
 
-权限与守卫：主体及当前门店与对象一致；沿原STORE权限和目录；归档不显示，不暴露物理id。
+权限与守卫：原canAnyBiz(STORE,ORDER_VIEW)读取桌区/桌台配置元数据；配置写入仍需STORE。客组占用沿获准check详情，不在Table配置对象内嵌；主体门店及原始请求头继续一致核验。主体及当前门店与对象一致；沿原门店目录核验；归档不显示，不暴露物理id。
 
 能力依赖：餐饮新增。
 
@@ -3385,6 +3485,282 @@
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | operation | Operation | 是 | 归档记录 |
+
+
+### FOOD-API-101 · 吊销桌码
+
+`POST /biz/x/food/tables/{tableNo}:revoke-token`
+
+权限与守卫：原STORE权限、主体门店及桌台CAS；同事务撤销有效码及该桌旧会话，不取消订单；安全操作收据可重放，不返回凭证。。
+
+能力依赖：餐饮新增。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| tableNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Body：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| version | int64 | 是 | 桌台版本 |
+| reason | string | 是 | 原因 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| operation | Operation | 是 | 吊销结果 |
+
+### FOOD-API-102 · 就餐台账详情
+
+`GET /biz/x/food/checks/{checkNo}`
+
+权限与守卫：原ORDER_VIEW权限，台账主体门店与当前门店一致；返回该check的活动占用和座位，不混入同桌其他客组。。
+
+能力依赖：餐饮新增。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| checkNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Query：
+
+无额外参数。
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| check | Check | 是 | 台账 |
+| seats | SeatInput[] | 是 | 座位 |
+| occupancies | Occupancy[] | 是 | 占用 |
+
+### FOOD-API-103 · 修改人数与座位
+
+`PUT /biz/x/food/checks/{checkNo}/seats`
+
+权限与守卫：原VERIFY权限及check CAS；共用稳定容量锁，保留座位号/标签历史，创建省略seatNo由服务端发号，已有seatNo必须属于本check；未验证guestRef拒绝。当前有正式交易或未完成/未知草稿则拒绝，等待成交座位合同；不挤占他组座位。 外部resourceNo/resourceClaimNo或未完成资源意图拒绝本地变更。 无交易座位改名保留seatNo与变更前后快照；标签唯一冲突整笔回滚。。
+
+能力依赖：餐饮新增。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| checkNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Body：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| version | int64 | 是 | 台账版本 |
+| partySize | int32 | 是 | 人数 |
+| seats | SeatInput[] | 是 | 完整座位 |
+| reason | string | 是 | 原因 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| check | Check | 是 | 台账 |
+
+### FOOD-API-104 · 并入桌台
+
+`POST /biz/x/food/checks/{checkNo}:combine-tables`
+
+权限与守卫：原VERIFY权限、check CAS及新增桌CAS；同check并用多桌，共用有序资源锁与容量仲裁；当前限无交易台账，同事务完成并可按原operationNo查询；不合并资金/订单。 外部resourceNo/resourceClaimNo或未完成资源意图拒绝本地变更。。
+
+能力依赖：餐饮新增。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| checkNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Body：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| version | int64 | 是 | 台账版本 |
+| tableVersions | TableVersionInput[] | 是 | 新增桌台 |
+| reason | string | 是 | 原因 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| operation | Operation | 是 | 并桌结果 |
+
+### FOOD-API-105 · 同桌新开独立台账
+
+`POST /biz/x/food/tables/{tableNo}:share`
+
+权限与守卫：原VERIFY权限、桌版本和SHARED容量原子仲裁；EXCLUSIVE占用即使桌容量扩大仍拒绝拼桌；新check独立，不继承原客组/购物车/支付权限；当前只PREPAY无交易接待。。
+
+能力依赖：餐饮新增。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| tableNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Body：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| version | int64 | 是 | 桌版本 |
+| partySize | int32 | 是 | 正人数 |
+| payMode | string | 是 | 获准先后付 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| check | Check | 是 | 新独立台账 |
+
+### FOOD-API-106 · 桌台操作恢复查询
+
+`GET /biz/x/food/table-operations/{operationNo}`
+
+权限与守卫：原ORDER_VIEW及主体门店范围；读取真实fnb_table_operation及冻结结果版本，原operationNo结果稳定。当前本地无交易拓扑仅APPLIED，不伪造外部资源恢复成功。 既存未完成操作返回真实持久化状态及操作版本，不伪造已落定的check版本。。
+
+能力依赖：餐饮新增。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| operationNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Query：
+
+无额外参数。
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| operation | Operation | 是 | 受权操作进度 |
+
+### FOOD-API-107 · 预约列表
+
+`GET /biz/x/food/stores/{storeNo}/reservations`
+
+权限与守卫：原ORDER_VIEW及主体门店范围；from/to为UTC毫秒半开窗口，按`startAt < to`且`endAt > from`重叠筛选；起止合法、状态白名单与分页同过滤；不返回联系人或buyer，depositRef仅引用不表示订金已结。创建/释放仍待共享资源合同。。
+
+能力依赖：餐饮新增。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| storeNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Query：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| page | int32 | 否 | 默认1 |
+| size | int32 | 否 | 默认20最大100 |
+| from | datetime | 是 | 起含 |
+| to | datetime | 是 | 止不含 |
+| status | string | 否 | 状态 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| records | Reservation[] | 是 | 预约 |
+| total | int64 | 是 | 总数 |
+| page | int32 | 是 | 页 |
+| size | int32 | 是 | 页长 |
+
+### FOOD-API-108 · 就餐操作历史
+
+`GET /biz/x/food/checks/{checkNo}/actions`
+
+权限与守卫：原ORDER_VIEW及台账主体门店范围；真实fnb_action_log分页，保留可信操作人及原因，不输出令牌、联系人或幂等原文。。
+
+能力依赖：餐饮新增。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| checkNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Query：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| page | int32 | 否 | 默认1 |
+| size | int32 | 否 | 默认20最大100 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| records | ActionLog[] | 是 | 获准审计 |
+| total | int64 | 是 | 总数 |
+| page | int32 | 是 | 页 |
+| size | int32 | 是 | 页长 |
+
+### FOOD-API-138 · 顾客就餐进度
+
+`GET /mp/x/food/checks/{checkNo}`
+
+权限与守卫：目标仅显式获准的本人check/session membership，不能扫码即读取同桌其他客组；当前入席、正式批次/资金视图合同未齐，本入口未开放。。
+
+能力依赖：餐饮新增。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| checkNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Query：
+
+无额外参数。
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| check | Check | 是 | 获准视图 |
+| foodLines | FoodLine[] | 是 | 仅获准行 |
+| financialStatus | string | 是 | 权限过滤的资金状态 |
+
+### FOOD-API-139 · 主动结束顾客会话
+
+`POST /mp/x/food/sessions/{sessionNo}:end`
+
+权限与守卫：X-Food-Session短凭证及原Idempotency-Key必需；只允许有效本人/匿名持有人会话，已绑定buyer须匹配平台CONSUMER，匿名持有人登录后可结束但不自动认领买家身份。过期或撤销拒绝新命令，已成功安全收据可重放；不取消原订单。。
+
+能力依赖：餐饮新增。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| sessionNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Body：
+
+无额外参数。
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| operation | Operation | 是 | 吊销结果 |
 
 
 ## 五、顾客与设备端复用

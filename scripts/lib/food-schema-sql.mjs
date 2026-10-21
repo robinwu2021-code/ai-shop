@@ -14,6 +14,7 @@ function checks(t){
  if(t.name==='fnb_option_group_item')out.push("(`source_kind` = 'SPEC_VALUE' AND `spec_value_no` IS NOT NULL AND `modifier_no` IS NULL) OR (`source_kind` = 'MODIFIER' AND `modifier_no` IS NOT NULL AND `spec_value_no` IS NULL)");
  if(names.has('end_day_offset'))out.push('`end_day_offset` IN (0, 1)');
  if(names.has('weekday'))out.push('`weekday` BETWEEN 1 AND 7');
+ if(t.name==='fnb_table_occupancy'&&names.has('sharing_mode'))out.push("`sharing_mode` IN ('EXCLUSIVE', 'SHARED')");
  if(names.has('cutover_minute'))out.push('`cutover_minute` BETWEEN 0 AND 1439');
  if(t.name==='fnb_modifier_component')out.push('`combo_no` <> `member_no`');
  return out;
@@ -21,14 +22,15 @@ function checks(t){
 export function renderFoodSchema(s){
  validateFoodDesign(s);
  const tables=s.tables.filter(t=>t.name.startsWith('fnb_'));
- let sql='-- Food-owned tables only; use the existing product/order database.\n-- Flyway location: db/industry/food; history: fnb_flyway_history; version: 1.\n-- Frozen after application. Add a new migration for any subsequent change.\n-- No cross-domain physical foreign keys; services must enforce ownership and concurrency.\n\n';
+ const version=tables.some(t=>t.name==='fnb_table_occupancy'&&t.fields.some(f=>f.name==='sharing_mode'))?2:1;
+ let sql='-- Food-owned tables only; use the existing product/order database.\n-- Flyway location: db/industry/food; history: fnb_flyway_history; version: '+version+'.\n-- Frozen after application. Add a new migration for any subsequent change.\n-- No cross-domain physical foreign keys; services must enforce ownership and concurrency.\n\n';
  for(const t of tables){
   const own=new Set(t.fields.map(f=>f.name));
   const fields=[...s.commonFields.filter(f=>!own.has(f[0])).map(([name,type,label])=>({name,type,label,nullable:false})),...t.fields];
   const lines=fields.map(f=>{
    if(!/^(bigint|int|tinyint|boolean|json|text|date|time|datetime\(3\)|varchar\(\d+\)|char\(\d+\)|varbinary\(\d+\)|decimal\(\d+,\d+\))$/.test(f.type))throw Error(`Unsupported type ${t.name}.${f.name}`);
    const binary=/^(var)?char/.test(f.type)&&(/_no$|_ref$|_key$|_hash$|^code$|^source_line_ref$/.test(f.name));
-   const extra=f.name==='id'?' AUTO_INCREMENT':f.name==='version'?' DEFAULT 0':f.name==='deleted'?' DEFAULT 0':f.name==='tenant_no'?" DEFAULT 'MAIN'":'';
+   const extra=f.name==='id'?' AUTO_INCREMENT':f.name==='version'?' DEFAULT 0':f.name==='deleted'?' DEFAULT 0':f.name==='tenant_no'?" DEFAULT 'MAIN'":t.name==='fnb_table_occupancy'&&f.name==='sharing_mode'?" DEFAULT 'EXCLUSIVE'":'';
    return '    '+id(f.name)+' '+f.type.toUpperCase()+(binary?' CHARACTER SET utf8mb4 COLLATE utf8mb4_bin':'')+(f.nullable?' NULL':' NOT NULL')+extra+' COMMENT '+literal(f.label);
   });
   lines.push('    PRIMARY KEY (`id`)');
@@ -53,4 +55,15 @@ const FOOD_V1_SHA256='215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc
 export function assertFrozenFoodV1(sql){
  if(createHash('sha256').update(sql).digest('hex')!==FOOD_V1_SHA256)
   throw Error('Frozen V1 SHA-256 differs; create a new migration instead');
+}
+
+/** Project only the reviewed V2 addition; all original V1 bytes remain covered by the pinned SHA-256. */
+export function renderFoodV1(s){
+ const v1=structuredClone(s);
+ const table=v1.tables.find(t=>t.name==='fnb_table_occupancy');
+ const field=table?.fields.find(f=>f.name==='sharing_mode');
+ if(!field||field.type!=='varchar(16)'||field.nullable!==false)
+  throw Error('V2 sharing_mode contract differs; create a reviewed migration instead');
+ table.fields=table.fields.filter(f=>f.name!=='sharing_mode');
+ return renderFoodSchema(v1);
 }

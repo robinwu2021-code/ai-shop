@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import path from 'node:path';
 import os from 'node:os';
 import {spawnSync} from 'node:child_process';
-import {renderFoodSchema,writeFrozenMigration} from '../lib/food-schema-sql.mjs';
+import {renderFoodSchema,renderFoodV1,assertFrozenFoodV1,writeFrozenMigration} from '../lib/food-schema-sql.mjs';
 const s=JSON.parse(fs.readFileSync(new URL('../../docs/technical/design/schema/food-system-design.json',import.meta.url)));
 test('creates exactly the 73 food-owned tables and never existing core/shared tables',()=>{
  const sql=renderFoodSchema(s);const names=[...sql.matchAll(/CREATE TABLE `([^`]+)`/g)].map(m=>m[1]);
@@ -70,4 +70,14 @@ test('generator cannot bless a changed V1 even when design and SQL change togeth
    assert.deepEqual(fs.readFileSync(file),before,'generator must not modify the rejected file');
   }
  }finally{fs.rmSync(fixture,{recursive:true,force:true});}
+});
+
+test('V2 sharing mode preserves pinned V1 and cannot silently change shape',()=>{
+ const v1=renderFoodV1(s);assertFrozenFoodV1(v1);assert(!v1.includes('sharing_mode'));
+ const latest=renderFoodSchema(s);
+ assert(latest.includes("`sharing_mode` VARCHAR(16) NOT NULL DEFAULT 'EXCLUSIVE'"));
+ assert(latest.includes("`sharing_mode` IN ('EXCLUSIVE', 'SHARED')"));
+ const changed=structuredClone(s);
+ changed.tables.find(t=>t.name==='fnb_table_occupancy').fields.find(f=>f.name==='sharing_mode').type='varchar(32)';
+ assert.throws(()=>renderFoodV1(changed),/V2 sharing_mode contract differs/);
 });

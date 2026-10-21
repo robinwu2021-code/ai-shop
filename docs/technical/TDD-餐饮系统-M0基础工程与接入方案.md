@@ -1,6 +1,6 @@
 # 餐饮系统 M0 基础工程与接入方案
 
-> 状态：实施中，NEXT-01～05已完成；NEXT-06基础接线完成，业务AC随NEXT-08/09验收；NEXT-07源码核验完成，独立交易验收阻塞；NEXT-08A读取、NEXT-08B受限策略发布、NEXT-08C接单日历、NEXT-09桌区管理及TBL-02桌台配置已完成 · 2026-10-20。按用户最新要求，严格沿现有平台三端接入和独立业务服务架构。
+> 状态：桌区、桌台配置及无交易接待切片已实现；完整MOD-01仍待共享资源、入席、正式订单/冻结/后付合同 · 2026-10-21。继续沿平台三端接入及独立业务服务架构。
 > **本版替代上一版独立food-server三端鉴权、远程用户session解析的设计。** 独立餐饮只提供内部接口，C/B/平台运营Controller源码均归餐饮food-web，由shop-app挂载。
 > [独立项目、包及依赖清单](./TDD-餐饮系统-独立项目与包依赖方案.md) · [统一架构及三端完整清单](./TDD-餐饮系统-三端API与独立服务对齐.md) · [总计划](./TDD-餐饮系统-后端开发计划.md) · [平台Java规范](../../.claude/skills/ai-shop-dev-standards/references/java.md)。
 
@@ -10,9 +10,20 @@
 
 - 同一food-api Service接口及DTO支持本地food-core和远程餐饮服务；包名类名沿既有规范。
 - 餐饮food-web提供C端mp、B端biz、平台ops Controller，shop-app引入并挂载，沿原api/ops profile、realm、BizContext、权限、数据域及信封。
-- food-server只有/internal/food/**，沿服务密钥和显式可信范围，不签发token、不运行三端登录或远程用户判权链。
+- food-server只有/internal/food/**，沿服务密钥和显式可信范围，不签发平台登录token（桌码/受限会话是独立业务凭证）、不运行三端登录或远程用户判权链。
 - 商品订单与餐饮fnb复用主库；支付/进销存经权威Port联通其独立系统，不能因餐饮embedded而改为本地账写入。
-- 已建73张fnb表与冻结V1保持，业务API141不变。当前独立支付/库存完整交易远程合同仍需补齐，见统一对齐TDD。
+- 73张fnb表与冻结V1保持；V2只追加occupancy.sharing_mode，现有业务库未执行V2。业务目标API仍141个。当前独立支付/库存完整交易远程合同仍需补齐，见统一对齐TDD。
+
+### 本轮桌台需求与实现对账
+
+| 需求AC | API/表与实际实现 | 实际覆盖测试 |
+|---|---|---|
+| 凭证及受限会话 | 025/026/101/139；DiningSessionService，token/session两表 | DiningSessionTest：哈希、轮换撤销、本人退出、到期、原SELF范围、登录接管边界、flush回滚及MySQL竞争 |
+| 开台/人数/共享容量 | 031/032/102/103/105；CheckService；check/occupancy/seat | CheckServiceTest：无桌接待、独占/共享、扩容后独占、座位增减/改名快照及4种MySQL并发 |
+| 清台和拓扑 | 033/036/104/106/108；operation/action及原占用 | CheckServiceTest：原号结果、部分清台容量、失败不丢源占用、外部引用/未完成意图拒绝、真实状态查询、全6种写操作flush回滚 |
+| 预约读取 | 107；ReservationService及fnb_reservation | ReservationServiceTest：半开重叠、分页同过滤、主体门店/联系人隔离、参数拒绝 |
+| 平台兼容 | 原身份/权限/目录与数据域，不复制账号门店 | CheckApiTest：原认证链+实际DataScopeHandler SQL谓词、范围恢复、员工只读配置；FoodEmbeddedWiringTest三形态 |
+| 不可声称完成 | 027～030/034/035/138，POSTPAY及带单/异常清台、设备认证 | 缺共享resource/hold、ORD-01/03、CORE-02、PAY-01及审批合同；没有成功桩或假余额 |
 
 ## §1 当前底座与文件责任
 
@@ -444,6 +455,65 @@ TableAreaResultVO setStatusTableArea(String entityNo, String currentStoreNo, Str
 
 **设计→实现对账：** 新增8个DTO/VO、FnbTable、TableChanged、BizTableController、InternalTableController及3个资源测试；扩展原TableService/Impl、TableInternalApi、RemoteTableService、原Mapper集合/装配/范围注册和既有夹具/真实server测试；MySQL脚本纳入18项桌台测试。保持原OperationResultVO(operation)，归档为Mapper显式CAS逻辑更新，唯一键不变。API真源仅补6条guard；隔离生成，仅提交024替换和096～100新增章节/目录，不收其他待提交设计。旧桌区替身继续显式拒绝非预期桌台调用。共享资源非空拒绝、后续占用必须共用锁顺序、平台授权和支付库存交易就绪仍单列未交付。
 
+#### MOD-01 桌台阶段自动实施 · 2026-10-21
+
+范围沿后端计划TBL-01～08推进，01/02保留既有交付。新增能力遵循现有Service接口、嵌套Mapper、独立typed HTTP与原平台入口，不增加冻结表或修改零售核心。阶段完成以实际验收为准，外域合同缺失不返回虚构成功。
+
+| 单元 | 需求与落点 | 验收与依赖 |
+|---|---|---|
+| TBL-03 | API025/026/101/139；DiningSessionService；fnb_table_token/fnb_guest_session | 轮换/吊销、哈希存储、到期、本人退出、跨店隔离；同事务撤销旧会话，桌码不授予既有check访问权 |
+| TBL-04 | API031/032/102/103；CheckService；check/occupancy/seat | 稳定桌区→桌台锁，容量/独占/共享仲裁、原策略营业日、无桌快餐；后付需权威能力 |
+| TBL-05 | API036/108；部分清台与审计 | 保留历史；无交易清台先验，非空交易和未知应收须权威守卫 |
+| TBL-06 | API027～030/107；预约与资源保留 | 先核验共享时段资源合同；不伪造resourceHoldNo，不把订金引用当已支付 |
+| TBL-07 | API033/104/106；转台、多桌和原操作恢复 | 无正式批次资源拓扑先验，失败原占用不丢；历史订单/资金不搬迁 |
+| TBL-08 | API034/035/105及138 | 拼桌复用容量仲裁及独立check；批次合拆须ORD-03和冻结合同，顾客进度须授权membership |
+
+实施顺序：会话核心RED→GREEN→三入口；开台与资源仲裁RED→GREEN→三入口；清台/拓扑及共享；对预约/带单合拆逐项核验实际合同并实现可验收部分；最后全量餐饮、一次性MySQL、宿主三形态、设计守卫、消融及独立只读审查。每单元定向提交，不收工作区其他修改。
+
+桌码/短会话凭证只保存SHA-256哈希。凭证仅在首次成功响应返回；幂等收据只保存安全编号，重复同key不再次变更且返回CONFLICT，客户端若丢失首次响应，用最新桌台版本和新key重发轮换。禁止把原始token写入幂等响应、审计或outbox。短会话最长30分钟且不超过桌码有效期；轮换和吊销撤销该桌旧会话，退出保留原订单。扫码只建立TABLE_MENU范围，不能自动绑定同桌任何现有check；顾客进度后续必须显式授权。已登录顾客仍沿平台CONSUMER身份，桌台短凭据只用X-Food-Session请求头，不进入平台TokenStore。设备凭证未核实前拒绝，不将客户端deviceNo当设备认证。
+
+公共扫码先由哈希找到唯一桌码/桌台，之后由原StoreDirectoryPort确认门店/主体ACTIVE；请求不能传entity/store。创建时再次校验哈希、锁桌区/桌台/凭证并检查门店范围，避免轮换并发建立旧会话。业务Instant沿既有餐饮策略以UTC写业务时间列；BaseEntity审计由原AuditMetaObjectHandler按JVM本地时区填充，流水occurredAt按同一平台时区转Instant。不新增时区/账号模型。
+
+#### TBL-04/05/07/08：开台与无交易桌位闭环实施细化
+
+已发现旧表的真实缺口：API031有sharingMode，fnb_table_occupancy却没有持久化独占/共享标志。仅把独占占座数写为当时capacity，在桌容量扩大后会错误允许拼桌。新增V2迁移，只给占用加sharing_mode（EXCLUSIVE/SHARED），历史行按EXCLUSIVE保守回填；V1保持原校验和。验证器同步要求私有历史2及新字段，validate仍只读、不会自动迁移现有业务库。
+
+SeatInput的seatNo调整为创建时可省略，由服务端发号；更新时提供已有seatNo且必须属于本check。guestRef、reservationNo、serviceEmployeeNo在权威引用核验未具备时明确拒绝，不接受自报关联。后付正式交易依赖CORE-02；当前只验收PREPAY无交易接待，POSTPAY拒绝，不能把门店策略的字符串当资金能力授权。
+
+| AC | 实施规则 | 实际验收目标 |
+|---|---|---|
+| 开台 | 固定area→table有序锁，再创建check/occupancy/seat/audit/outbox；请求桌版本完整且无重复；无桌允许空数组 | 双终端独占只一成功；共享容量守恒；非法参数/外店/禁用/待清洁拒绝；整体回滚 |
+| 查询/人数 | 同主体门店，既有策略时区/切点确定businessDate；人数变化重新分配本check占座且不挤占别组 | records/total一致、详情不返回他组；多桌座位合计等于人数；旧版本拒绝 |
+| 座位 | 无交易时完整更新座位；有正式批次/结账事实则拒绝，等待订单合同后再细化已成交引用 | 历史座位号不复用到其他台账；归档标签可恢复原座位 |
+| 清台 | 锁check及资源，只释放明确指定occupancy；无任何正式批次/结账事实/未完成草稿才可无交易清台；剩余占用不丢 | 原占用保留endedAt；最后占用释放不等于款项已结；保留审计与操作号，旧会话撤销 |
+| 换台/并桌 | 来源+目标桌完整版本校验，先验证并取得所有目标容量再结束原占用；无正式交易限定；一个DB事务完成 | 失败不丢原桌；同原key原operationNo恢复；目标冲突/旧版拒绝；不改任何核心订单/资金 |
+| 拼桌 | 独立check复用SHARED容量仲裁；既有EXCLUSIVE占用禁止加入 | 不继承他组顾客、草稿、订单、付款权限 |
+| 历史/恢复 | fnb_table_operation记录APPLIED意图、输入版本/目标范围，审计不含敏感凭证 | 只读查询稳定操作号；跨主体门店拒绝；不伪造跨系统CLAIMING/RECOVERING |
+
+无资金预约仍需共享resourceNo/hold合同；带批次合拆及顾客进度仍需ORD-03/PAY-01/显式会话membership。先实现上述独立部分，逐项记录不可启用入口，不能为凑完整模块返回空成功。
+
+TBL-06的独立可交付部分为API107预约查询：ReservationService/Impl、FnbReservation/ReservationMapper，biz ORDER_VIEW权限及原门店范围，typed内部及远程合同。查询窗口按半开区间重叠（startAt<to且endAt>from）筛选，可显示跨日预约；起止必填且先后合法，状态白名单，分页total与records同过滤。不返回联系人/buyer身份或接触真实订金余额，depositRef仅原不透明凭据引用。原预约创建/取消/爽约/到店不得在缺资源释放/占位合同情况下返回成功。验收覆盖跨店/跨主体、区间边界、排序/分页、未知状态/非法区间、B端及独立服务原协议。
+
+#### MOD-01 实际代码清单及与旧清单对齐
+
+包根仍为ai.neargo.shop.food；Controller归food-web，内部Controller归food-server，Service接口/DTO及typed SPI归food-api，Impl/Entity/嵌套Mapper归food-core。未增加Maven模块，不改商品/订单/支付/库存核心实现。
+
+| 实际全限定类/组 | 方法/归属与对齐说明 |
+|---|---|
+| ai.neargo.shop.food.service.DiningSessionService及service.impl.DiningSessionServiceImpl | rotateTableToken、revokeTableToken、resolveTableToken、startSession、endSession；凭证不再塞进配置TableService，避免会话职责扩散 |
+| ai.neargo.shop.food.service.CheckService及service.impl.CheckServiceImpl | openCheck/listChecks/getCheck/saveSeats/clearCheck/transferCheck/combineTables/openSharedCheck/getTableOperation/listActions；同一接口支持本地及远程 |
+| ai.neargo.shop.food.service.ReservationService及service.impl.ReservationServiceImpl | 只有实际可独立验收的listReservations，资源变更不预生成空方法 |
+| ai.neargo.shop.food.dto.SeatReq/TableVersionReq/OpenSharedCheckReq等23个实际请求/响应 | 对应协议SeatInput/TableVersionInput；统一Req/VO后缀，JSON字段不因机械类名改变；旧rotateTokenTable/combineTablesCheck等机械名采用清晰业务动词 |
+| ai.neargo.shop.food.entity.FnbCheck/FnbTableOccupancy/FnbSeat/FnbTableOperation/FnbTableToken/FnbGuestSession/FnbReservation | 沿BaseEntity；FoodMappers内7个对应Mapper；普通CRUD直接本域Mapper，不建Repository |
+| ai.neargo.shop.food.api.biz.BizTableTokenController/BizCheckController/BizCheckSeatController/BizTableSharingController/BizTableOperationController/BizCheckActionController/BizReservationController | 按资源内聚；读取原ORDER_VIEW，日常接待原VERIFY，配置写入原STORE。桌区/桌台元数据GET沿canAnyBiz(STORE,ORDER_VIEW)，不把配置权限扩大成台账读取权限 |
+| ai.neargo.shop.food.api.mp.MpDiningSessionController | 原CONSUMER可选登录；X-Food-Session只作桌台受限凭证，不进入平台TokenStore |
+| ai.neargo.shop.food.api.FoodBizDataScopeInterceptor | 原B登录是SELF账户，餐饮SQL注册MERCHANT主体；仅餐饮biz已映射Handler从原BizContext适配SQL维度，响应/异常后恢复原范围，不改LoginUser或平台过滤器 |
+| ai.neargo.shop.food.spi.DiningSessionInternalApi/CheckInternalApi/ReservationInternalApi及foodclient.Remote*Service | 原InternalHttp/ServiceCalls/FOOD寻址、令牌和超时，无写重试或本地降级；15个新增业务入口对应16个内部操作（多1个凭证解析） |
+| ai.neargo.shop.food.server.api.InternalDiningSessionController/InternalCheckController/InternalTableSharingController/InternalTableOperationController/InternalReservationController | 只有内部服务鉴权；无B/C/ops登录端点。操作未完成时只读真实状态，不伪造外部恢复成功 |
+| ai.neargo.shop.spi.food.CheckChanged/DiningSessionChanged | 原统一outbox；台账和座位前后快照及审计指纹，业务operatorNo可信，BaseEntity由原handler填充；raw CAS/bulk SQL沿原归档方式显式填写actor及平台本地审计时间 |
+
+实际差异：Table配置响应保持现有元数据（含可空resourceNo），客组占用通过获准check详情读取；不生成平行DiningAuditService、空状态机或Assembler转发层。已成交座位/带单迁移继续按合同关闭；无交易改名保留seatNo及事件前后快照，标签冲突整笔回滚。部分清台锁全部现有桌，按原人数分配剩余占座，容量不足拒绝；不擅自减少人数。
+
 #### 依赖与里程碑
 
 | 里程碑 | 完成项 | 可声称的结果 | 不能声称 |
@@ -566,3 +636,21 @@ API002原CAS声明缺version输入，已在food-system-design.json补齐并在�
 完整命令、当前输出、裁定及代价回填餐饮工程README；API003/081及真实支付库存营业验收继续待办，本轮不声称NEXT-08整体完成，也不升级既有主库。
 
 最终验证：餐饮reactor含打包106项实际通过、17项专用条件跳过；另一次性MySQL44项全部实际通过，宿主三形态5/5/6通过，设计守卫30通过。独立审查无Critical/Important/Minor遗留；真实生产消费者和交易readiness未交付。冻结V1 SHA256仍为215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9。
+
+### MOD-01 桌台接待实施回填 · 2026-10-21
+
+本次落地§0对账矩阵中的可独立切片，新增15个业务入口、16个typed内部操作；与既有配置合计28/29。实际类、方法、输入输出及V2在§2.7列明。只处理PREPAY无交易接待；未具备合同的后付、带单清台、资源预约命令、批次合拆及AA、顾客进度和设备认证仍未完成。现有业务数据库未连接或执行迁移。
+
+兼容性修订：B入口保留原认证/权限/BizContext，通过food专用MVC拦截器将SELF SQL范围适配为当前MERCHANT主体，结束后恢复原范围；真实认证MVC与原DataScopeHandler断言通过，真实mapper另经MySQL覆盖。桌区桌台GET沿原canAnyBiz(STORE,ORDER_VIEW)，写仍需STORE。C侧仅持有效凭证哈希并显式校验主体/门店/买家时使用原executeWithoutScope，不将桌码解释为客组会员身份。普通实体审计沿原填充器，原始CAS/bulk操作显式可信actor和平台本地审计时间。
+
+桌位变更使用check锁及桌区→桌台稳定锁；独占/共享模式持久化，部分清台重新校验剩余容量并保持人数守恒。外部资源引用以及来源或目标check存在未完成/外部意图时拒绝本地变更，含逻辑归档的意图事实。操作GET返回持久化状态，不能把待处理意图视为成功。座位标识稳定，改名保留前后快照，唯一键冲突整笔回滚。
+
+唯一一次最终只读审查发现1项Important、无Critical：待处理意图原先仅检查来源check，目标check仍可清台。已先复现失败，再扩展为来源或目标匹配，补充清台/人数座位/转台/并桌拒绝及无副作用断言。审查未执行测试，以下测试由实施方实际运行；本轮不再循环审查。
+
+设计裁定及代价：①凭证只首次明文返回，持久化安全收据，同键不补发，丢失响应需最新版本/新key；②会话仅TABLE_MENU，不自动入席，后续需显式membership；③设备凭证未验真前拒绝，设备引导暂不可用；④V2追加sharing_mode，旧值EXCLUSIVE，启用前须明确迁移；⑤无权威交易合同仅开放无交易PREPAY接待，带单/后付等不开放；⑥生成冻结V1仅显式投影已审查V2字段，未来增量须继续明确处理；⑦Table保留配置元数据，客组占用由授权check查询获取，调用端多一次获准查询。
+
+最终验证：JDK21离线clean install成功，237项中204项实际执行、33项条件跳过，零失败/错误（含独立打包资源3项）。四组设计测试31/31通过，生成器冻结校验通过，V1 SHA-256仍为`215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9`。消融验证曾移除独占占用守卫，`expandingExclusiveTableNeverAllowsSharing`按预期失败，恢复后完整测试通过。真实MySQL与宿主三种装配结果在下方补录，不以条件跳过代替联验。
+
+宿主三种构建形态复验：FoodEmbeddedWiringTest在retail/embedded/standalone分别实际执行5/5/6项，零失败；前两种各1项独立模式专属断言按条件跳过。新Service/Remote接口在两种餐饮构建可见，实现类仅内嵌可见；独立宿主不含food-core。
+
+真实可销毁MySQL最终复验：主库17项 + 业务守卫101项 + 独立服务1项，共119项实际执行，零失败/错误/跳过。覆盖冻结V1及V2迁移、旧库只读校验拒绝、真实mapper/并发、完整内部传输和原幂等/outbox。容器仅监听回环且临时数据已销毁，未接触业务库。不是全仓后端/前端回归，也不证明缺失支付库存/资源合同已联通。

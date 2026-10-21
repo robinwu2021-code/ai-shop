@@ -4,7 +4,18 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
@@ -43,7 +54,7 @@ public final class FoodSchemaValidator {
             require(state.equals("SUCCESS") || state.equals("BASELINE"), "food migration state: " + state);
         }
         var current = flyway.info().current();
-        require(current != null && "1".equals(current.getVersion().getVersion()), "food migration version must be 1");
+        require(current != null && "2".equals(current.getVersion().getVersion()), "food migration version must be 2");
         var actual = columns(source);
         List<String> missing = new ArrayList<>();
         expected.forEach((table, fields) -> fields.forEach(field -> {
@@ -53,7 +64,7 @@ public final class FoodSchemaValidator {
         missing.addAll(missingCoreCapabilities(actual));
         missing.addAll(missingCoreUniqueKeys(source, actual));
         Collections.sort(missing);
-        return new FoodSchemaReady(true, "1", missing);
+        return new FoodSchemaReady(true, "2", missing);
     }
 
     private static List<String> missingCoreCapabilities(Map<String, Set<String>> actual) {
@@ -159,6 +170,7 @@ public final class FoodSchemaValidator {
                 expected.put(tables.group(1), fields);
             }
             require(expected.size() == 73 && expected.values().stream().noneMatch(Set::isEmpty), "food V1 manifest incomplete");
+            expected.get("fnb_table_occupancy").add("sharing_mode");
             return expected;
         } catch (IllegalStateException ex) { throw ex; }
         catch (Exception ex) { throw new IllegalStateException("Cannot read immutable food V1 manifest"); }

@@ -6,18 +6,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.dto.ArchiveTableReq;
-import ai.neargo.shop.food.dto.CreateTableAreaReq;
 import ai.neargo.shop.food.dto.CreateTableReq;
 import ai.neargo.shop.food.dto.ListTablesQuery;
 import ai.neargo.shop.food.dto.SaveTableReq;
 import ai.neargo.shop.food.dto.SetStatusTableAreaReq;
 import ai.neargo.shop.food.dto.SetStatusTableReq;
+import ai.neargo.shop.food.dto.TableAreaResultVO;
 import ai.neargo.shop.food.dto.TableResultVO;
 import ai.neargo.shop.food.dto.TableVO;
-import ai.neargo.shop.food.dto.TableAreaResultVO;
 import ai.neargo.shop.food.service.TableService;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.MappedStatement;
@@ -28,9 +30,6 @@ import org.apache.ibatis.plugin.Signature;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
 import org.apache.ibatis.session.SqlSessionFactory;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
@@ -38,7 +37,7 @@ import org.springframework.boot.test.context.runner.ContextConsumer;
 import tools.jackson.databind.ObjectMapper;
 
 class TableConfigurationTest extends FoodWriteGuardFixture {
-    private Fixture fixture(AssertableApplicationContext c) {
+    Fixture fixture(AssertableApplicationContext c) {
         var f = prepare(c);
         StorePolicyPublicationTest.createPolicyTables(f);
         String common = "id BIGINT AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) DEFAULT 'MAIN',"

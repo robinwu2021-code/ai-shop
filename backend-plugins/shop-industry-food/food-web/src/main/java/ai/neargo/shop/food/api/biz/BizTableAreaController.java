@@ -55,7 +55,7 @@ public class BizTableAreaController {
 
     /** Only the authorized store contributes both rows and pagination total. */
     @GetMapping("/biz/x/food/stores/{storeNo}/table-areas")
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    @PreAuthorize("@perm.canAnyBiz('" + BizPerms.STORE + "','" + BizPerms.ORDER_VIEW + "')")
     public PageData<TableAreaVO> listTableAreas(@PathVariable("storeNo") @NotBlank @Size(max=32) String storeNo,
             @Valid @ModelAttribute ListTableAreasQuery query, HttpServletRequest request) {
         var context = requireStore(storeNo, request);

@@ -1,11 +1,23 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.food.api.FoodBizDataScopeInterceptor;
 import ai.neargo.shop.food.api.FoodRequestScopeValidator;
+import ai.neargo.shop.food.api.biz.BizCheckActionController;
+import ai.neargo.shop.food.api.biz.BizCheckController;
+import ai.neargo.shop.food.api.biz.BizCheckSeatController;
+import ai.neargo.shop.food.api.biz.BizReservationController;
 import ai.neargo.shop.food.api.biz.BizServiceCalendarController;
 import ai.neargo.shop.food.api.biz.BizStoreOperationPolicyController;
 import ai.neargo.shop.food.api.biz.BizTableAreaController;
 import ai.neargo.shop.food.api.biz.BizTableController;
+import ai.neargo.shop.food.api.biz.BizTableOperationController;
+import ai.neargo.shop.food.api.biz.BizTableSharingController;
+import ai.neargo.shop.food.api.biz.BizTableTokenController;
+import ai.neargo.shop.food.api.mp.MpDiningSessionController;
 import ai.neargo.shop.food.foodclient.FoodClientConfiguration;
+import ai.neargo.shop.food.service.CheckService;
+import ai.neargo.shop.food.service.DiningSessionService;
+import ai.neargo.shop.food.service.ReservationService;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.service.TableService;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
@@ -19,6 +31,8 @@ import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.type.AnnotatedTypeMetadata;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /** 餐饮模块装配入口。 */
 @AutoConfiguration(afterName = "ai.neargo.shop.food.config.FoodAutoConfiguration")
@@ -64,6 +78,98 @@ public class FoodWebAutoConfiguration {
     BizTableController tableController(TableService service, StoreDirectoryPort stores,
             FoodRequestScopeValidator scope) {
         return new BizTableController(service, stores, scope);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({DiningSessionService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizTableTokenController.class)
+    BizTableTokenController tableTokenController(
+            DiningSessionService service, StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) {
+        return new BizTableTokenController(service,stores,scope);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({DiningSessionService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(MpDiningSessionController.class)
+    MpDiningSessionController diningSessionController(
+            DiningSessionService service, StoreDirectoryPort stores) {
+        return new MpDiningSessionController(service,stores);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({CheckService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizCheckController.class)
+    BizCheckController bizCheckController(
+            CheckService service,StoreDirectoryPort stores,FoodRequestScopeValidator scope) {
+        return new BizCheckController(service,stores,scope);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({CheckService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizCheckSeatController.class)
+    BizCheckSeatController bizCheckSeatController(
+            CheckService service,StoreDirectoryPort stores,FoodRequestScopeValidator scope) {
+        return new BizCheckSeatController(service,stores,scope);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({CheckService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizTableSharingController.class)
+    BizTableSharingController bizTableSharingController(
+            CheckService service,StoreDirectoryPort stores,FoodRequestScopeValidator scope) {
+        return new BizTableSharingController(service,stores,scope);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({CheckService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizTableOperationController.class)
+    BizTableOperationController bizTableOperationController(
+            CheckService service,StoreDirectoryPort stores,FoodRequestScopeValidator scope) {
+        return new BizTableOperationController(service,stores,scope);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({CheckService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizCheckActionController.class)
+    BizCheckActionController bizCheckActionController(
+            CheckService service,StoreDirectoryPort stores,FoodRequestScopeValidator scope) {
+        return new BizCheckActionController(service,stores,scope);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({ReservationService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizReservationController.class)
+    BizReservationController reservationController(
+            ReservationService service,StoreDirectoryPort stores,FoodRequestScopeValidator scope) {
+        return new BizReservationController(service,stores,scope);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    WebMvcConfigurer foodBizDataScopeConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override public void addInterceptors(InterceptorRegistry registry) {
+                registry.addInterceptor(new FoodBizDataScopeInterceptor()).addPathPatterns("/biz/x/food/**");
+            }
+        };
     }
 
     /** OFF is a nonbusiness skeleton mode; never expose a policy endpoint through it. */

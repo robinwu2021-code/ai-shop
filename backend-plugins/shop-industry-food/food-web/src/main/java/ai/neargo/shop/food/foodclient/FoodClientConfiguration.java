@@ -2,8 +2,14 @@ package ai.neargo.shop.food.foodclient;
 
 import ai.neargo.shop.food.config.ConditionalOnFoodWebEnabled;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration.PolicyEnabled;
+import ai.neargo.shop.food.service.CheckService;
+import ai.neargo.shop.food.service.DiningSessionService;
+import ai.neargo.shop.food.service.ReservationService;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.service.TableService;
+import ai.neargo.shop.food.spi.CheckInternalApi;
+import ai.neargo.shop.food.spi.DiningSessionInternalApi;
+import ai.neargo.shop.food.spi.ReservationInternalApi;
 import ai.neargo.shop.food.spi.ServiceCalendarInternalApi;
 import ai.neargo.shop.food.spi.StoreOperationInternalApi;
 import ai.neargo.shop.food.spi.StorePolicyPublicationInternalApi;
@@ -27,6 +33,27 @@ import org.springframework.context.annotation.Profile;
 @Conditional(PolicyEnabled.class)
 @Profile({"api", "ops"})
 public class FoodClientConfiguration {
+    @Bean
+    @ConditionalOnMissingBean(DiningSessionService.class)
+    DiningSessionService remoteDiningSessionService(InternalHttp http) {
+        return new RemoteDiningSessionService(http.client(ServiceName.FOOD,
+                DiningSessionInternalApi.class, Duration.ofSeconds(5)));
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(CheckService.class)
+    CheckService remoteCheckService(InternalHttp http) {
+        return new RemoteCheckService(http.client(ServiceName.FOOD,
+                CheckInternalApi.class, Duration.ofSeconds(5)));
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(ReservationService.class)
+    ReservationService remoteReservationService(InternalHttp http) {
+        return new RemoteReservationService(http.client(ServiceName.FOOD,
+                ReservationInternalApi.class, Duration.ofSeconds(5)));
+    }
+
     @Bean
     @ConditionalOnMissingBean(TableService.class)
     TableService remoteTableService(InternalHttp http) {

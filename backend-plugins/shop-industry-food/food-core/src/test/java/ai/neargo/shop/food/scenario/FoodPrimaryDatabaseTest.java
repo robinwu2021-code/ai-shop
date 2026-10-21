@@ -2,19 +2,31 @@ package ai.neargo.shop.food.scenario;
 
 import static org.assertj.core.api.Assertions.*;
 
-import ai.neargo.common.data.scope.*;
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.common.data.scope.DataScopeSpec;
 import ai.neargo.shop.auth.ScopeDim;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
-import ai.neargo.shop.food.config.*;
+import ai.neargo.shop.food.config.FoodAutoConfiguration;
+import ai.neargo.shop.food.config.FoodProperties;
+import ai.neargo.shop.food.config.FoodSchemaReady;
+import ai.neargo.shop.food.config.FoodSchemaValidator;
 import ai.neargo.shop.food.entity.FnbTableArea;
 import ai.neargo.shop.food.mapper.FoodMappers;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
-import tools.jackson.databind.ObjectMapper;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import javax.sql.DataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.flywaydb.core.Flyway;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -26,6 +38,7 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.ObjectMapper;
 
 /** Run only against the disposable container created by verify-food-primary-mysql.py. */
 @EnabledIfEnvironmentVariable(named = "FOOD_TEST_DISPOSABLE", matches = "true")
@@ -61,6 +74,25 @@ class FoodPrimaryDatabaseTest {
                 .withBean(ObjectMapper.class, ObjectMapper::new)
                 .withPropertyValues("shop.food.enabled=true", "spring.datasource.url=" + ((DriverManagerDataSource)source).getUrl(),
                         "spring.datasource.username=root", "spring.datasource.password=");
+    }
+    @Test void sharingMigrationBackfillsExistingOccupancyWithoutChangingV1() {
+        Flyway.configure().dataSource(source).table("fnb_flyway_history").locations("classpath:db/industry/food")
+                .baselineOnMigrate(true).baselineVersion("0").target("1").load().migrate();
+        sql.update("INSERT INTO fnb_table_occupancy(entity_no,created_at,created_by,updated_at,updated_by,"
+                +"occupancy_no,table_no,check_no,seats,started_at) VALUES('E',NOW(),'SYSTEM',NOW(),'SYSTEM',"
+                +"'OLD_OCC','OLD_TABLE','OLD_CHECK',4,NOW())");
+        var result=validator.initialize(source,FoodProperties.MigrationMode.MIGRATE);
+        assertThat(result.version()).isEqualTo("2");
+        assertThat(sql.queryForObject("SELECT sharing_mode FROM fnb_table_occupancy",String.class)).isEqualTo("EXCLUSIVE");
+        assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_flyway_history WHERE version IN ('1','2') AND success=1",Integer.class)).isEqualTo(2);
+    }
+    @Test void validateRefusesOldOccupancySchemaWithoutMigratingIt() {
+        Flyway.configure().dataSource(source).table("fnb_flyway_history").locations("classpath:db/industry/food")
+                .baselineOnMigrate(true).baselineVersion("0").target("1").load().migrate();
+        assertThatThrownBy(() -> validator.initialize(source,FoodProperties.MigrationMode.VALIDATE))
+                .isInstanceOf(RuntimeException.class);
+        assertThat(columnExists("fnb_table_occupancy","sharing_mode")).isFalse();
+        assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_flyway_history WHERE version='2'",Integer.class)).isZero();
     }
     @Test void explicitPublishMigratesOnlyFood() {
         assertThat(validator.initialize(source, FoodProperties.MigrationMode.MIGRATE).ready()).isTrue();
@@ -117,7 +149,7 @@ class FoodPrimaryDatabaseTest {
             assertThat(a.getCreatedBy()).isEqualTo("SYSTEM");
             a = mapper.selectById(a.getId());
             assertThat(a.getTenantNo()).isEqualTo("MAIN");
-            DataScopeContext.set(DataScopeSpec.of(ScopeDim.MERCHANT, java.util.Set.of("A")));
+            DataScopeContext.set(DataScopeSpec.of(ScopeDim.MERCHANT, Set.of("A")));
             assertThat(mapper.selectList(null)).extracting(FnbTableArea::getEntityNo).containsExactly("A");
             var stale = mapper.selectById(a.getId());
             a.setName("changed"); assertThat(mapper.updateById(a)).isOne();
@@ -134,21 +166,21 @@ class FoodPrimaryDatabaseTest {
             var mapper = context.getBean(FoodMappers.TableAreaMapper.class);
             var original = area("A", "race"); mapper.insert(original);
             var first = mapper.selectById(original.getId()); var second = mapper.selectById(original.getId());
-            var start = new java.util.concurrent.CountDownLatch(1);
-            try (var pool = java.util.concurrent.Executors.newFixedThreadPool(2)) {
-                var futures = new java.util.ArrayList<java.util.concurrent.Future<Integer>>();
-                for (var row : java.util.List.of(first, second)) futures.add(pool.submit(() -> {
-                    DataScopeContext.set(DataScopeSpec.of(ScopeDim.MERCHANT, java.util.Set.of("A")));
+            var start = new CountDownLatch(1);
+            try (var pool = Executors.newFixedThreadPool(2)) {
+                var futures = new ArrayList<Future<Integer>>();
+                for (var row : List.of(first, second)) futures.add(pool.submit(() -> {
+                    DataScopeContext.set(DataScopeSpec.of(ScopeDim.MERCHANT, Set.of("A")));
                     try {
-                        if (!start.await(5, java.util.concurrent.TimeUnit.SECONDS)) throw new IllegalStateException("race timeout");
+                        if (!start.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("race timeout");
                         return new TransactionTemplate(context.getBean(PlatformTransactionManager.class)).execute(status -> {
                             row.setName("race-winner"); return mapper.updateById(row);
                         });
                     } finally { DataScopeContext.clear(); }
                 }));
                 start.countDown();
-                assertThat(futures.get(0).get(10, java.util.concurrent.TimeUnit.SECONDS)
-                        + futures.get(1).get(10, java.util.concurrent.TimeUnit.SECONDS)).isOne();
+                assertThat(futures.get(0).get(10, TimeUnit.SECONDS)
+                        + futures.get(1).get(10, TimeUnit.SECONDS)).isOne();
             }
             assertThat(mapper.selectById(original.getId()).getVersion()).isEqualTo(1);
         });
