@@ -1,9 +1,13 @@
 package ai.neargo.shop.food.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import ai.neargo.shop.auth.LoginUser;
@@ -11,20 +15,16 @@ import ai.neargo.shop.auth.TokenStore;
 import ai.neargo.shop.auth.store.MemoryTokenStore;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration;
+import ai.neargo.shop.food.dto.ConfigRevisionVO;
 import ai.neargo.shop.food.dto.CreateModifierReq;
-import ai.neargo.shop.food.dto.UpdateModifierReq;
-import ai.neargo.shop.food.dto.ModifierMutationVO;
 import ai.neargo.shop.food.dto.CreateModifierResultVO;
 import ai.neargo.shop.food.dto.ListModifiersQuery;
 import ai.neargo.shop.food.dto.ModifierConfigVO;
-import ai.neargo.shop.food.service.ConfigRevisionService;
-import ai.neargo.shop.food.dto.ConfigRevisionVO;
+import ai.neargo.shop.food.dto.ModifierMutationVO;
 import ai.neargo.shop.food.dto.PublishConfigResultVO;
+import ai.neargo.shop.food.dto.UpdateModifierReq;
+import ai.neargo.shop.food.service.ConfigRevisionService;
 import java.time.OffsetDateTime;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -62,6 +62,24 @@ class ConfigRevisionApiTest {
                         .andExpect(jsonPath("$.code").value(10400));
             }
             assertThat(c.getBean(Calls.class).count).hasValue(2);
+        });
+    }
+    @Test void recipePublicationUsesCurrentAuthorizedStoreAndRejectsClientOwnedContents() {
+        runner.run(c -> {
+            var mvc = mvc(c); var auth = token(c, "staff");
+            String path = "/biz/x/food/recipes/R:publish";
+            mvc.perform(post(path).header("Authorization", auth).header("Idempotency-Key", "publish")
+                    .contentType(MediaType.APPLICATION_JSON).content(BODY))
+                    .andExpect(jsonPath("$.data.publication.configKind").value("RECIPE"));
+            mvc.perform(post(path).header("Authorization", token(c, "cashier"))
+                    .header("Idempotency-Key", "cashier").contentType(MediaType.APPLICATION_JSON).content(BODY))
+                    .andExpect(jsonPath("$.code").value(70006));
+            for (String field : List.of("entityNo", "actorNo", "definitionSnapshot", "scopeStoreNos")) {
+                mvc.perform(post(path).header("Authorization", auth).header("Idempotency-Key", "bad")
+                        .contentType(MediaType.APPLICATION_JSON).content(BODY.replace("{", "{\"" + field + "\":{},")))
+                        .andExpect(jsonPath("$.code").value(10400));
+            }
+            assertThat(c.getBean(Calls.class).count).hasValue(1);
         });
     }
     private static final String ROOT = "/biz/x/food/stores/A/modifiers";
@@ -129,6 +147,16 @@ class ConfigRevisionApiTest {
                         assertThat((String)i.getArgument(3)).isEqualTo("staff");
                         calls.count.incrementAndGet();
                         return new PublishConfigResultVO(new ConfigRevisionVO("BUNDLE_REV", "BUNDLE", "MEAL", 1,
+                                OffsetDateTime.parse("2026-10-21T08:00:00Z"), "a".repeat(64), "EFFECTIVE"));
+                    });
+            when(service.publishRecipe(anyString(), anyString(), anyString(), anyString(), any(), anyString()))
+                    .thenAnswer(i -> {
+                        assertThat((String) i.getArgument(0)).isEqualTo("E");
+                        assertThat((String) i.getArgument(1)).isEqualTo("A");
+                        assertThat((String) i.getArgument(2)).isEqualTo("R");
+                        assertThat((String) i.getArgument(3)).isEqualTo("staff");
+                        calls.count.incrementAndGet();
+                        return new PublishConfigResultVO(new ConfigRevisionVO("R_REV", "RECIPE", "R", 1,
                                 OffsetDateTime.parse("2026-10-21T08:00:00Z"), "a".repeat(64), "EFFECTIVE"));
                     });
             var receipt = new PublishConfigResultVO(new ConfigRevisionVO("REV", "MODIFIER", "MOD", 1,

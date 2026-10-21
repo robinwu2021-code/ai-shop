@@ -5,16 +5,15 @@ import ai.neargo.shop.auth.BizContextFilter;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.food.dto.ConfigRevisionVO;
-import ai.neargo.shop.food.dto.ListConfigRevisionsQuery;
-
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.food.api.FoodRequestScopeValidator;
 import ai.neargo.shop.food.config.ConditionalOnFoodWebEnabled;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration.PolicyEnabled;
-import ai.neargo.shop.food.dto.PublishConfigResultVO;
+import ai.neargo.shop.food.dto.ConfigRevisionVO;
+import ai.neargo.shop.food.dto.ListConfigRevisionsQuery;
 import ai.neargo.shop.food.dto.PublishConfigReq;
+import ai.neargo.shop.food.dto.PublishConfigResultVO;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,9 +26,9 @@ import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -51,6 +50,21 @@ public class BizConfigRevisionController {
         this.service = service;
         this.stores = stores;
         this.scope = scope;
+    }
+
+    /** Recipe ownership remains a store fact even though the public path omits the store number. */
+    @PostMapping("/biz/x/food/recipes/{recipeNo}:publish")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    public PublishConfigResultVO publishRecipe(
+            @PathVariable("recipeNo") @NotBlank @Size(max=32) String recipeNo,
+            @Valid @RequestBody PublishConfigReq req,
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) String key, HttpServletRequest request) {
+        var context = BizContext.current();
+        if (context.currentStoreNo() == null) throw BizException.of(ErrorCode.BAD_REQUEST);
+        requireStore(context.currentStoreNo(), request);
+        queryFields(request, Set.of());
+        return service.publishRecipe(context.merchantNo(), context.currentStoreNo(), recipeNo,
+                SecurityUtils.currentUserNo(), req, key);
     }
 
     /** Publishes a complete bundle for the authorized store through the original configuration revision owner. */

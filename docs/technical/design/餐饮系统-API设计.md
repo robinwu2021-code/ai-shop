@@ -586,7 +586,7 @@
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | revisionNo | string | 是 | 冻结发布号 |
-| configKind | string | 是 | OPTION_GROUP或MODIFIER或BUNDLE |
+| configKind | string | 是 | OPTION_GROUP或MODIFIER或BUNDLE或RECIPE |
 | configNo | string | 是 | 对象 |
 | revision | int64 | 是 | 发布修订非工作CAS |
 | effectiveAt | datetime | 是 | 生效时刻 |
@@ -785,7 +785,7 @@
 | recipeCode | string | 是 | DEFAULT或受控变体 |
 | yieldQty | decimal | 是 | 正配置份数 |
 | yieldUnit | string | 是 | 固定EA，非物理单位 |
-| status | string | 是 | 本批DRAFT |
+| status | string | 是 | DRAFT或ACTIVE；发布后编辑回DRAFT |
 | configVersion | int64 | 是 | 内容版本 |
 | version | int64 | 是 | CAS |
 | lines | RecipeLineVO[] | 是 | 保存的物料事实 |
@@ -1193,6 +1193,42 @@
 | qty | decimal | 否 | SET/ADD非负，REMOVE省略 |
 | unit | string | 是 | 与目标一致 |
 | optionIdentityHash | string | 是 | 服务端保存来源身份摘要，非物理行号或CAS |
+
+### RecipePublicationSnapshot
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| contentSchema | int32 | 是 | 固定3 |
+| configKind | string | 是 | RECIPE |
+| configNo | string | 是 | 配方号 |
+| sourceVersion | int64 | 是 | 工作CAS |
+| recipe | Recipe | 是 | 完整工作定义 |
+| skuFacts | SkuIdentityFact[] | 是 | 根规格 |
+| materialFacts | MaterialFact[] | 是 | 真实基础单位物料 |
+| optionGroups | RecipeOptionGroupSnapshot[] | 是 | 完整组选项依赖 |
+| approvalRef | string | 否 | 审批依据 |
+
+### MaterialFact
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| itemId | string | 是 | 原库存物料 |
+| entityNo | string | 是 | 所属主体 |
+| name | string | 是 | 来源名称 |
+| baseUom | string | 是 | 基础单位 |
+| weighed | int32 | 是 | 原计量标记 |
+| dataSource | string | 是 | 原来源 |
+| unitSupport | string | 是 | BASE_ONLY |
+| postingSupport | string | 是 | INTEGER_ONLY |
+| definitionHash | string | 是 | 语义摘要非CAS |
+
+### RecipeOptionGroupSnapshot
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| goodsNo | string | 是 | 实际根商品绑定 |
+| publication | PublicationDependency | 是 | 不可变依赖 |
+| definition | object | 是 | 完整schema1组选项文档 |
 
 ## 四、逐接口输入输出
 
@@ -5611,9 +5647,9 @@
 
 `POST /biz/x/food/recipes/{recipeNo}:publish`
 
-权限与守卫：原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。RECIPE schema校验及物料/单位验真，冻结转换；不意味着库存扣料合同已就绪。。
+权限与守卫：原商品权限/可信主体门店/actor/幂等/CAS；recipe-publication-enabled默认false；schema3冻结基础单位物料事实和实际绑定的已发布组选项；来源身份/hash变化拒绝，锁内重捕获；不意味着报价/扣料已就绪。。
 
-能力依赖：餐饮新增，未实现；按P1/P2/P4/P5所属切片验收。
+能力依赖：RECIPE-01C已实现：原ConfigRevisionService单店定时不可变发布及schema3读；写入默认关闭，部署须先升级读者。。
 
 路径输入：
 
@@ -5627,6 +5663,7 @@
 |---|---|---|---|
 | version | int64 | 是 | CAS |
 | effectiveAt | datetime | 是 | 生效时间 |
+| approvalRef | string | 否 | 可选审批依据 |
 
 成功输出（data）：
 

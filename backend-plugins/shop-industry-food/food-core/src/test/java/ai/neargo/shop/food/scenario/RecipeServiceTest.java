@@ -61,7 +61,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Real primary tables and atomic outbox verify editable recipes without any stock command. */
 class RecipeServiceTest extends FoodWriteGuardFixture {
-    private void run(BiConsumer<AssertableApplicationContext, Fixture> action) {
+    void run(BiConsumer<AssertableApplicationContext, Fixture> action) {
         runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class, Recipes.class).run(c -> {
             var f = prepare(c);
             StorePolicyPublicationTest.createPolicyTables(f);
@@ -269,7 +269,7 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
                 + "\"optionItemNo\":\"" + option + "\",\"targetLineNo\":\"" + line
                 + "\",\"action\":\"" + action + "\",\"qty\":" + qty + ",\"unit\":\"" + unit + "\"}]";
     }
-    private static void options(Fixture f) {
+    static void options(Fixture f) {
         String common = "id BIGINT AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) DEFAULT 'MAIN',"
                 + "entity_no VARCHAR(32),created_at DATETIME(3),created_by VARCHAR(32),updated_at DATETIME(3),"
                 + "updated_by VARCHAR(32),version BIGINT DEFAULT 0,deleted INT DEFAULT 0,";

@@ -27,6 +27,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.TableOccupancyMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableOperationMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableTokenMapper;
 import ai.neargo.shop.food.policy.BundlePublicationSource;
+import ai.neargo.shop.food.policy.RecipePublicationSource;
 import ai.neargo.shop.food.service.BundleService;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.ConfigRevisionService;
@@ -85,7 +86,10 @@ public class FoodAutoConfiguration {
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectProvider<GoodsCatalogQueryPort> goods, ObjectProvider<SpecValueCatalogQueryPort> specs,
-            @Value("${shop.food.bundle-publication-enabled:false}") boolean bundlePublicationEnabled) {
+            @Value("${shop.food.bundle-publication-enabled:false}") boolean bundlePublicationEnabled,
+            RecipeMapper recipeHeads, RecipeLineMapper recipeLines, RecipeAdjustmentMapper recipeAdjustments,
+            DishOptionGroupMapper recipeBindings, ObjectProvider<MaterialCatalogQueryPort> materialCatalog,
+            @Value("${shop.food.recipe-publication-enabled:false}") boolean recipePublicationEnabled) {
         GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
             @Override public SkuIdentityFact getSku(String entity, String store, String sku) {
                 return goods.getObject().getSku(entity, store, sku);
@@ -100,7 +104,10 @@ public class FoodAutoConfiguration {
         return new ConfigRevisionServiceImpl(revisions, modifiers, components, groups, items, actions, idem,
                 publisher, json, manager, catalog, (entity, numbers) -> specs.getObject().getValues(entity, numbers),
                 Clock.systemUTC(), new BundlePublicationSource(bundles, bundleGroups, bundleChoices,
-                        () -> bundlePublicationEnabled));
+                        () -> bundlePublicationEnabled),
+                new RecipePublicationSource(recipeHeads, recipeLines, recipeAdjustments, items, groups,
+                        recipeBindings, () -> recipePublicationEnabled, json),
+                (entity, numbers) -> materialCatalog.getObject().getMaterials(entity, numbers));
     }
 
     @Bean

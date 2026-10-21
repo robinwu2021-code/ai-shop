@@ -124,7 +124,8 @@ public class RecipeServiceImpl implements RecipeService {
                 var row = head(entity, store, number, true);
                 if (!req.version().equals(row.getVersion()) || row.getVersion() == Long.MAX_VALUE
                         || row.getConfigVersion() == null || row.getConfigVersion() == Long.MAX_VALUE
-                        || !original.getSkuNo().equals(row.getSkuNo()) || !"DRAFT".equals(row.getStatus())) {
+                        || !original.getSkuNo().equals(row.getSkuNo())
+                        || !("DRAFT".equals(row.getStatus()) || "ACTIVE".equals(row.getStatus()))) {
                     throw BizException.of(ErrorCode.CONFLICT);
                 }
                 var before = view(entity, row);
@@ -168,6 +169,7 @@ public class RecipeServiceImpl implements RecipeService {
                     adjustment.setSortNo(adjustmentOrder++);
                     adjustments.insert(adjustment);
                 }
+                row.setStatus("DRAFT");
                 row.setYieldQty(req.yieldQty()); row.setYieldUnit(req.yieldUnit());
                 row.setConfigVersion(row.getConfigVersion() + 1);
                 if (heads.updateById(row) != 1) throw BizException.of(ErrorCode.CONFLICT);

@@ -5,20 +5,28 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
+import ai.neargo.shop.food.dto.ConfigRevisionContentVO;
 import ai.neargo.shop.food.dto.CreateRecipeReq;
 import ai.neargo.shop.food.dto.ListRecipesQuery;
+import ai.neargo.shop.food.dto.PublishConfigReq;
 import ai.neargo.shop.food.dto.RecipeAdjustmentInput;
 import ai.neargo.shop.food.dto.RecipeLineInput;
 import ai.neargo.shop.food.dto.ReplaceRecipeDefinitionReq;
 import ai.neargo.shop.food.server.FoodApplication;
+import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.service.RecipeService;
+import ai.neargo.shop.food.spi.ConfigRevisionInternalApi;
 import ai.neargo.shop.food.spi.RecipeInternalApi;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 import ai.neargo.shop.spi.inventory.MaterialCatalogInternalApi;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
 import ai.neargo.shop.spi.product.GoodsCatalogInternalApi;
+import ai.neargo.shop.spi.product.SpecValueCatalogInternalApi;
+import ai.neargo.shop.spi.product.SpecValueCatalogQueryPort;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.ServiceName;
 import ai.neargo.svc.client.ServiceCallException;
@@ -28,6 +36,9 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -88,6 +99,16 @@ class FoodRecipePrimaryDatabaseTest {
             ex.getResponseHeaders().set("Content-Type", "application/json");
             ex.sendResponseHeaders(200, bytes.length); ex.getResponseBody().write(bytes); ex.close();
         });
+        server.createContext(SpecValueCatalogInternalApi.BATCH_PATH, ex -> {
+            assertThat(ex.getRequestHeaders().getFirst(InternalHttp.TOKEN_HEADER)).isEqualTo("wire");
+            byte[] query = ex.getRequestBody().readAllBytes();
+            assertThat(new String(query, StandardCharsets.UTF_8)).contains("V1");
+            byte[] bytes = new ObjectMapper().writeValueAsBytes(List.of(new SpecValueCatalogQueryPort.SpecValueFact(
+                    "V1", "D", "No sugar", "Sugar", "ENUM", "PROP", "MERCHANT", "E", "PLATFORM", null, 0, 0)));
+            ex.getResponseHeaders().set("Content-Type", "application/json");
+            ex.sendResponseHeaders(200, bytes.length); ex.getResponseBody().write(bytes); ex.close();
+        });
+        var frozen = new AtomicReference<ConfigRevisionContentVO>();
         server.start();
         try {
             String url = adminUrl.replace("/mysql", "/" + database);
@@ -101,6 +122,7 @@ class FoodRecipePrimaryDatabaseTest {
                     .withUserConfiguration(FoodApplication.class, Route.class)
                     .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
                             "spring.datasource.password=", "shop.services.internal-token=wire",
+                            "shop.food.recipe-publication-enabled=true",
                             "shop.services.targets.PLATFORM=http://127.0.0.1:" + server.getAddress().getPort(),
                             "spring.autoconfigure.exclude=org.springframework.boot.data.redis.autoconfigure."
                                     + "DataRedisAutoConfiguration,org.springframework.boot.data.redis.autoconfigure."
@@ -198,10 +220,57 @@ class FoodRecipePrimaryDatabaseTest {
                                 .containsExactly(adjusted.recipe());
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_recipe_adjustment", Integer.class))
                                 .isOne();
+                        var revisions = http.client(ServiceName.FOOD, ConfigRevisionInternalApi.class,
+                                Duration.ofSeconds(5));
+                        var now = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS);
+                        sql.update("UPDATE fnb_option_group SET selection_rules='{\"mutexSets\":[],\"requires\":[]}'");
+                        sql.update("INSERT INTO fnb_dish_option_group(entity_no,created_at,created_by,updated_at,"
+                                + "updated_by,goods_no,group_no,sort_no) VALUES('E',CURRENT_TIMESTAMP(3),'operator',"
+                                + "CURRENT_TIMESTAMP(3),'operator','G','SUGAR',0)");
+                        revisions.publishOptionGroup(new ConfigRevisionInternalApi.Command("E", "A", "SUGAR",
+                                "operator", "group-publish", new PublishConfigReq(0L, now, null)));
+                        var publish = new ConfigRevisionInternalApi.Command("E", "A", id, "operator", "publish",
+                                new PublishConfigReq(2L, now, null));
+                        var publication = revisions.publishRecipe(publish);
+                        assertThat(revisions.publishRecipe(publish)).isEqualTo(publication);
+                        var content = revisions.getRevision(new ConfigRevisionInternalApi.Identity(
+                                "E", "A", publication.publication().revisionNo()));
+                        frozen.set(content);
+                        var tree = new ObjectMapper().readTree(content.definitionSnapshot());
+                        assertThat(tree.get("contentSchema").asInt()).isEqualTo(3);
+                        assertThat(tree.get("recipe").get("lines").get(0).get("qty").isString()).isTrue();
+                        assertThat(tree.get("recipe").get("lines").get(0).get("qty").asText()).isEqualTo("0.123456");
+                        assertThat(tree.get("optionGroups").size()).isEqualTo(1);
+                        assertThat(revisions.resolveRevision(new ConfigRevisionInternalApi.Resolve("E", "A",
+                                "RECIPE", id, now.plusMinutes(1))).publication().revisionNo())
+                                .isEqualTo(publication.publication().revisionNo());
+                        assertThatThrownBy(() -> revisions.getRevision(new ConfigRevisionInternalApi.Identity(
+                                "E", "B", publication.publication().revisionNo())))
+                                .isInstanceOfSatisfying(ServiceCallException.class,
+                                        e -> assertThat(e.statusCode()).isEqualTo(404));
                         assertThat(bridgeFailure.get()).isNull();
                         for (String table : List.of("prd_goods", "ord_order")) {
                             assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
                         }
+                    });
+            new WebApplicationContextRunner().withInitializer(new ConfigDataApplicationContextInitializer())
+                    .withUserConfiguration(FoodApplication.class, Route.class)
+                    .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
+                            "spring.datasource.password=", "shop.services.internal-token=wire",
+                            "spring.autoconfigure.exclude=org.springframework.boot.data.redis.autoconfigure."
+                                    + "DataRedisAutoConfiguration,org.springframework.boot.data.redis.autoconfigure."
+                                    + "DataRedisRepositoriesAutoConfiguration")
+                    .run(c -> {
+                        assertThat(c).hasNotFailed();
+                        var service = c.getBean(ConfigRevisionService.class);
+                        var before = frozen.get();
+                        assertThat(service.getRevision("E", "A", before.publication().revisionNo())).isEqualTo(before);
+                        assertThatThrownBy(() -> service.publishRecipe("E", "A", before.publication().configNo(),
+                                "operator", new PublishConfigReq(3L,
+                                        OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS), null),
+                                "closed"))
+                                .isInstanceOfSatisfying(BizException.class,
+                                        e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.NOT_FOUND));
                     });
         } finally {
             server.stop(0);
@@ -215,7 +284,7 @@ class FoodRecipePrimaryDatabaseTest {
         @Bean UnifiedOutboxFacade facade(DataSource source, PlatformTransactionManager manager, ObjectMapper json) {
             var facade = new UnifiedOutboxFacade(json);
             facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
-            facade.setArchiveOnly(Set.of("PLATFORM:FOOD_RECIPE_CHANGED"));
+            facade.setArchiveOnly(Set.of("PLATFORM:FOOD_RECIPE_CHANGED", "PLATFORM:FOOD_CONFIG_PUBLISHED"));
             return facade;
         }
     }

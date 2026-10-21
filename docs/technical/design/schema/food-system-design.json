@@ -5795,7 +5795,7 @@
         {
           "name": "config_kind",
           "type": "varchar(24)",
-          "label": "MENU / BUNDLE / OPTION_GROUP / MODIFIER / STATION",
+          "label": "MENU / BUNDLE / OPTION_GROUP / MODIFIER / STATION / RECIPE",
           "ref": null,
           "nullable": false
         },
@@ -8424,10 +8424,10 @@
       "name": "发布配方",
       "method": "POST",
       "path": "/biz/x/food/recipes/{recipeNo}:publish",
-      "input": "version:int64:CAS;effectiveAt:datetime:生效时间",
+      "input": "version:int64:CAS;effectiveAt:datetime:生效时间;approvalRef?:string:可选审批依据",
       "output": "publication:ConfigRevision:不可变修订",
-      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。RECIPE schema校验及物料/单位验真，冻结转换；不意味着库存扣料合同已就绪。",
-      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+      "guard": "原商品权限/可信主体门店/actor/幂等/CAS；recipe-publication-enabled默认false；schema3冻结基础单位物料事实和实际绑定的已发布组选项；来源身份/hash变化拒绝，锁内重捕获；不意味着报价/扣料已就绪。",
+      "needs": "RECIPE-01C已实现：原ConfigRevisionService单店定时不可变发布及schema3读；写入默认关闭，部署须先升级读者。"
     },
     {
       "id": "FOOD-API-153",
@@ -8489,7 +8489,7 @@
     "DishPresentation": "displayName?:string:餐饮别名;localizedNames:LocalizedName[]:语言名称;imageRefs:string[]:已有媒资引用;tags:string[]:标签;allergenNotes:string[]:食材过敏提示非医疗保证",
     "LocalizedName": "locale:string:受控语言;name:string:名称",
     "MeasurementPolicy": "unit:string:受控单位;mode:string:COUNT或WEIGHT;scale:int32:精度;allowedDeviation?:decimal:需顾客确认的允差",
-    "ConfigRevision": "revisionNo:string:冻结发布号;configKind:string:OPTION_GROUP或MODIFIER或BUNDLE;configNo:string:对象;revision:int64:发布修订非工作CAS;effectiveAt:datetime:生效时刻;contentHash:string:规范摘要;status:string:SCHEDULED或EFFECTIVE或CANCELLED",
+    "ConfigRevision": "revisionNo:string:冻结发布号;configKind:string:OPTION_GROUP或MODIFIER或BUNDLE或RECIPE;configNo:string:对象;revision:int64:发布修订非工作CAS;effectiveAt:datetime:生效时刻;contentHash:string:规范摘要;status:string:SCHEDULED或EFFECTIVE或CANCELLED",
     "Menu": "menuNo:string:餐牌;name:string:名称;status:string:草稿头状态;configVersion:int64:草稿规则版;publishedRevision?:ConfigRevision:已生效发布;version:int64:并发版",
     "BatchDetail": "batch:Batch:批次;lines:FoodLine[]:冻结源行;financialStatus:string:核心资金投影;fulfillmentStatus:string:核心履约投影;pendingOperationNos:string[]:未知操作",
     "FoodLine": "foodLineNo:string:餐饮行;sourceLineRef:string:原源行;goodsNo:string:商品;skuNo:string:SKU;qty:decimal:数量;unit:string:单位;seatNo?:string:座位;configRevisionNos:string[]:发布版本;displaySnapshot:object:受控历史展示;coreAllocations:CoreLineAllocation[]:受权核心分配",
@@ -8507,7 +8507,7 @@
     "MenuChannelBinding": "bindingNo:string:绑定;menuNo:string:餐牌;storeNo:string:门店;provider:string:提供方;channelAccountRef:string:已有账号引用;externalStoreRef:string:外部门店;status:string:ACTIVE或DISABLED;version:int64:CAS",
     "CatalogSync": "syncNo:string:任务;bindingNo:string:绑定;revisionNo:string:冻结修订;status:string:真实同步状态;items:CatalogSyncItem[]:分项结果;version:int64:CAS",
     "CatalogSyncItem": "lineNo:int32:行;menuItemNo:string:菜项;status:string:状态;externalObjectRef?:string:外部编号;errorCode?:string:脱敏错误;confirmedRevisionNo?:string:确认修订",
-    "Recipe": "recipeNo:string:配方;storeNo:string:门店;skuNo:string:SKU;recipeCode:string:DEFAULT或受控变体;yieldQty:decimal:正配置份数;yieldUnit:string:固定EA，非物理单位;status:string:本批DRAFT;configVersion:int64:内容版本;version:int64:CAS;lines:RecipeLineVO[]:保存的物料事实;adjustments:RecipeAdjustmentVO[]:选配工作调整，旧回执缺失时空数组",
+    "Recipe": "recipeNo:string:配方;storeNo:string:门店;skuNo:string:SKU;recipeCode:string:DEFAULT或受控变体;yieldQty:decimal:正配置份数;yieldUnit:string:固定EA，非物理单位;status:string:DRAFT或ACTIVE；发布后编辑回DRAFT;configVersion:int64:内容版本;version:int64:CAS;lines:RecipeLineVO[]:保存的物料事实;adjustments:RecipeAdjustmentVO[]:选配工作调整，旧回执缺失时空数组",
     "RecipeLineInput": "lineNo?:string:新行省略服务端发号，既有行不能换物料;itemRef:string:32位内获准库存物料;qty:decimal:正净用量18,6;unit:string:必须等于物料baseUom;lossRate:decimal:0至1间损失比例，最多6位小数",
     "RecipeAdjustmentInput": "adjustmentNo?:string:创建省略服务端发号;optionItemNo:string:选项;targetLineNo:string:本配方行;action:string:SET或ADD或REMOVE;qty?:decimal:SET/ADD非负，REMOVE省略;unit:string:与目标一致",
     "ProductionConsumption": "consumptionNo:string:耗用号;storeNo:string:门店;sourceEventNo:string:原制作事件;purpose:string:耗用目的;status:string:真实状态;businessDate:date:营业日;inventoryOperationRef?:string:库存原操作;lines:ConsumptionLine[]:明细",
@@ -8546,7 +8546,10 @@
     "BundlePublicationSnapshot": "contentSchema:int32:固定2;configKind:string:固定BUNDLE;configNo:string:主SKU;sourceVersion:int64:严格整数工作CAS;bundle:BundleConfigVO:完整冻结定义;skuFacts:SkuIdentityFact[]:所有显式SKU身份版本;approvalRef?:string:仅审批引用",
     "SkuIdentityFact": "skuNo:string:原SKU;goodsNo:string:原商品;entityNo:string:权威经营主体;storeNo:string:验真门店;version:int64:严格非负整数身份版本",
     "RecipeLineVO": "lineNo:string:行号;itemRef:string:物料;qty:decimal:净用量;unit:string:保存基础单位;lossRate:decimal:损失比例;materialDefinitionHash:string:真实物料定义摘要，不是CAS或换算版本",
-    "RecipeAdjustmentVO": "adjustmentNo:string:服务端稳定调整编号;optionItemNo:string:选项;targetLineNo:string:本配方行;action:string:SET或ADD或REMOVE;qty?:decimal:SET/ADD非负，REMOVE省略;unit:string:与目标一致;optionIdentityHash:string:服务端保存来源身份摘要，非物理行号或CAS"
+    "RecipeAdjustmentVO": "adjustmentNo:string:服务端稳定调整编号;optionItemNo:string:选项;targetLineNo:string:本配方行;action:string:SET或ADD或REMOVE;qty?:decimal:SET/ADD非负，REMOVE省略;unit:string:与目标一致;optionIdentityHash:string:服务端保存来源身份摘要，非物理行号或CAS",
+    "RecipePublicationSnapshot": "contentSchema:int32:固定3;configKind:string:RECIPE;configNo:string:配方号;sourceVersion:int64:工作CAS;recipe:Recipe:完整工作定义;skuFacts:SkuIdentityFact[]:根规格;materialFacts:MaterialFact[]:真实基础单位物料;optionGroups:RecipeOptionGroupSnapshot[]:完整组选项依赖;approvalRef?:string:审批依据",
+    "MaterialFact": "itemId:string:原库存物料;entityNo:string:所属主体;name:string:来源名称;baseUom:string:基础单位;weighed:int32:原计量标记;dataSource:string:原来源;unitSupport:string:BASE_ONLY;postingSupport:string:INTEGER_ONLY;definitionHash:string:语义摘要非CAS",
+    "RecipeOptionGroupSnapshot": "goodsNo:string:实际根商品绑定;publication:PublicationDependency:不可变依赖;definition:object:完整schema1组选项文档"
   },
   "commonFields": [
     [

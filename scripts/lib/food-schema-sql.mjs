@@ -85,6 +85,9 @@ export function renderFoodV1(s){
   for(const row of v1.requirementAlignment)row.tables=row.tables.filter(name=>!planned.has(name));
   delete v1.catalogEnhancement;
  }
+ const publicationKind=v1.tables.find(t=>t.name==='fnb_config_revision').fields.find(f=>f.name==='config_kind');
+ if(publicationKind.label==='MENU / BUNDLE / OPTION_GROUP / MODIFIER / STATION / RECIPE')
+  publicationKind.label='MENU / BUNDLE / OPTION_GROUP / MODIFIER / STATION';
  const spec=v1.tables.find(t=>t.name==='fnb_option_group_item')?.fields.find(f=>f.name==='spec_value_no');
  if(!spec||spec.type!=='varchar(64)')throw Error('V3 spec_value_no contract differs; create a reviewed migration instead');
  spec.type='varchar(32)';

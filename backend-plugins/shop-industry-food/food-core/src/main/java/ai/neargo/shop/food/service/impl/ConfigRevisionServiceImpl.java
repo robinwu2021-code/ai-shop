@@ -6,16 +6,16 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.PublishOptions;
-import ai.neargo.shop.food.dto.ConfigRevisionContentVO;
 import ai.neargo.shop.food.dto.BundleConfigVO;
 import ai.neargo.shop.food.dto.BundlePublicationSnapshot;
+import ai.neargo.shop.food.dto.ConfigRevisionContentVO;
 import ai.neargo.shop.food.dto.ConfigRevisionVO;
 import ai.neargo.shop.food.dto.ListConfigRevisionsQuery;
 import ai.neargo.shop.food.dto.ModifierConfigVO;
 import ai.neargo.shop.food.dto.OptionGroupConfigVO;
 import ai.neargo.shop.food.dto.OptionItemInput;
-import ai.neargo.shop.food.dto.PublicationSnapshot;
 import ai.neargo.shop.food.dto.PublicationSnapshot.Dependency;
+import ai.neargo.shop.food.dto.PublicationSnapshot;
 import ai.neargo.shop.food.dto.PublishConfigReq;
 import ai.neargo.shop.food.dto.PublishConfigResultVO;
 import ai.neargo.shop.food.dto.ReplaceOptionGroupItemsReq;
@@ -28,22 +28,26 @@ import ai.neargo.shop.food.entity.FnbOptionGroup;
 import ai.neargo.shop.food.entity.FnbOptionGroupItem;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ConfigRevisionMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.ModifierMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ModifierComponentMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ModifierMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper;
+import ai.neargo.shop.food.policy.BundlePublicationSource;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
+import ai.neargo.shop.food.policy.OptionPublicationPolicy;
 import ai.neargo.shop.food.policy.OptionSelectionPolicy;
 import ai.neargo.shop.food.policy.PublicationDocuments;
-import ai.neargo.shop.food.policy.OptionPublicationPolicy;
-import ai.neargo.shop.food.policy.BundlePublicationSource;
+import ai.neargo.shop.food.policy.RecipePublicationDocuments;
+import ai.neargo.shop.food.policy.RecipePublicationSource;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.food.ConfigPublished;
-import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
+import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort.MaterialFact;
+import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort.SkuIdentityFact;
-import ai.neargo.shop.spi.product.SpecValueCatalogQueryPort;
+import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import ai.neargo.shop.spi.product.SpecValueCatalogQueryPort.SpecValueFact;
+import ai.neargo.shop.spi.product.SpecValueCatalogQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -84,6 +88,8 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
     private final TransactionTemplate write;
     private final TransactionTemplate bundleWrite;
     private final BundlePublicationSource bundles;
+    private final RecipePublicationSource recipes;
+    private final MaterialCatalogQueryPort materials;
 
     public ConfigRevisionServiceImpl(ConfigRevisionMapper revisions, ModifierMapper modifiers,
             ModifierComponentMapper components, OptionGroupMapper groups, OptionGroupItemMapper items,
@@ -107,6 +113,17 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
             ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort goods, SpecValueCatalogQueryPort specs,
             Clock clock, BundlePublicationSource bundles) {
+        this(revisions, modifiers, components, groups, items, actions, idem, publisher, json, manager,
+                goods, specs, clock, bundles, null, null);
+    }
+
+    public ConfigRevisionServiceImpl(ConfigRevisionMapper revisions, ModifierMapper modifiers,
+            ModifierComponentMapper components, OptionGroupMapper groups, OptionGroupItemMapper items,
+            ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            PlatformTransactionManager manager, GoodsCatalogQueryPort goods, SpecValueCatalogQueryPort specs,
+            Clock clock, BundlePublicationSource bundles, RecipePublicationSource recipes,
+            MaterialCatalogQueryPort materials) {
+        this.recipes = recipes; this.materials = materials;
         this.revisions = revisions; this.modifiers = modifiers; this.components = components;
         this.groups = groups; this.items = items; this.actions = actions; this.idem = idem;
         this.publisher = publisher; this.json = json; this.goods = goods; this.specs = specs; this.clock = clock;
@@ -118,6 +135,12 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
         this.bundles = bundles;
         bundleWrite = new TransactionTemplate(manager);
         bundleWrite.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
+    }
+
+    @Override
+    public PublishConfigResultVO publishRecipe(String entity, String store, String number, String actor,
+            PublishConfigReq req, String key) {
+        return publish(entity, store, "RECIPE", number, actor, req, key);
     }
 
     @Override
@@ -169,8 +192,14 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
         List<SpecValueFact> specFacts = candidate.specNos().isEmpty() ? List.of()
                 : specs.getValues(entity, candidate.specNos());
         validateSpecs(entity, candidate.specNos(), specFacts);
+        List<MaterialFact> materialFacts = candidate.recipe() == null ? List.of()
+                : materials.getMaterials(entity, candidate.recipe().recipe().lines().stream()
+                        .map(line -> line.itemRef()).distinct().sorted().toList());
+        if (candidate.recipe() != null) {
+            recipes.validateAuthorities(entity, candidate.recipe(), skuFacts, materialFacts);
+        }
         try {
-            var transaction = "BUNDLE".equals(kind) ? bundleWrite : write;
+            var transaction = "BUNDLE".equals(kind) || "RECIPE".equals(kind) ? bundleWrite : write;
             return transaction.execute(tx -> idem.execute(key, endpoint, actor, fingerprint,
                     PublishConfigResultVO.class, () -> {
                 if (requested.isBefore(now.minusMinutes(5))) throw bad();
@@ -180,24 +209,31 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                     throw BizException.of(ErrorCode.CONFLICT);
                 }
                 boolean bundle = "BUNDLE".equals(kind);
-                String document = bundle ? PublicationDocuments.freeze(json, new BundlePublicationSnapshot(
+                boolean recipe = "RECIPE".equals(kind);
+                String document = recipe ? PublicationDocuments.freeze(json,
+                        recipes.document(locked.recipe(), skuFacts, materialFacts, approval))
+                        : bundle ? PublicationDocuments.freeze(json,
+                                new BundlePublicationSnapshot(
                         2, kind, number, locked.version(), locked.bundle(), skuFacts, approval))
                         : PublicationDocuments.freeze(json, new PublicationSnapshot(1, kind, number, locked.version(),
                         locked.modifier(), locked.optionGroup(), locked.dependencies(), skuFacts,
                         specFacts.stream().sorted(Comparator.comparing(SpecValueFact::valueNo)).toList(), approval));
                 if (document.getBytes(StandardCharsets.UTF_8).length > 1_048_576) throw bad();
+                if (recipe) RecipePublicationDocuments.scope(
+                        RecipePublicationDocuments.validate(json, number, document), entity, store);
                 var history = revisions.findObject(entity, kind, number);
                 long sequence = history.isEmpty() ? 1 : Math.addExact(history.getFirst().getRevision(), 1);
                 var row = new FnbConfigRevision();
                 row.setEntityNo(entity); row.setCreatedBy(actor); row.setRevisionNo(BizKey.next("FREV"));
                 row.setConfigKind(kind); row.setConfigNo(number); row.setRevision(sequence);
-                row.setContentSchema(bundle ? 2 : 1);
+                row.setContentSchema(recipe ? 3 : bundle ? 2 : 1);
                 row.setDefinitionSnapshot(document); row.setContentHash(hash(document));
                 row.setEffectiveAt(effective.toLocalDateTime()); row.setScopeStoreNos(json.writeValueAsString(List.of(store)));
                 row.setStatus(effective.isAfter(now) ? "SCHEDULED" : "EFFECTIVE");
                 row.setPreviousRevisionNo(history.isEmpty() ? null : history.getFirst().getRevisionNo());
                 if (revisions.append(row) != 1) throw new IllegalStateException("Missing publication append");
-                advance(entity, kind, number, req.version(), row);
+                if (recipe) recipes.advance(entity, store, number, req.version(), row);
+                else advance(entity, kind, number, req.version(), row);
                 var result = new PublishConfigResultVO(view(row, now));
                 var audit = new FnbActionLog();
                 audit.setEntityNo(entity); audit.setStoreNo(store); audit.setActionNo(BizKey.next("FACT"));
@@ -216,15 +252,23 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
 
     private record Candidate(long version, ModifierConfigVO modifier, OptionGroupConfigVO optionGroup,
             BundleConfigVO bundle,
-            List<Dependency> dependencies, List<String> skuNos, List<String> specNos) { }
+            List<Dependency> dependencies, List<String> skuNos, List<String> specNos,
+            RecipePublicationSource.Captured recipe) { }
 
     private Candidate capture(String entity, String store, String kind, String number, OffsetDateTime at, boolean lock) {
         var deps = new ArrayList<Dependency>(); var skuNos = new TreeSet<String>(); var specNos = new TreeSet<String>();
+        if ("RECIPE".equals(kind)) {
+            if (recipes == null) throw BizException.of(ErrorCode.NOT_FOUND);
+            var value = recipes.capture(entity, store, number, lock,
+                    group -> selected(entity, store, "OPTION_GROUP", group, at));
+            return new Candidate(value.recipe().version(), null, null, null, List.of(),
+                    List.of(value.recipe().skuNo()), List.of(), value);
+        }
         if ("BUNDLE".equals(kind)) {
             if (bundles == null) throw BizException.of(ErrorCode.NOT_FOUND);
             var value = bundles.capture(entity, number, lock);
             return new Candidate(value.definition().version(), null, null, value.definition(), List.of(),
-                    value.skuNos(), List.of());
+                    value.skuNos(), List.of(), null);
         }
         if ("MODIFIER".equals(kind)) {
             var query = Wrappers.<FnbModifier>lambdaQuery().eq(FnbModifier::getEntityNo, entity)
@@ -250,7 +294,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                     new ModifierConfigVO.Data(row.getName(), row.getSalesSkuNo(), row.getPublishedRevisionNo(),
                             children.stream().map(p -> new ModifierConfigVO.Component(p.getComponentNo(),
                                     p.getMemberNo(), p.getQuantity())).toList()));
-            return new Candidate(row.getVersion(), definition, null, null, deps, List.copyOf(skuNos), List.of());
+            return new Candidate(row.getVersion(), definition, null, null, deps, List.copyOf(skuNos), List.of(), null);
         }
         var query = Wrappers.<FnbOptionGroup>lambdaQuery().eq(FnbOptionGroup::getEntityNo, entity)
                 .eq(FnbOptionGroup::getGroupNo, number);
@@ -278,7 +322,8 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                                 p.sourceKind(), p.specValueNo(), p.modifierNo(), p.minQty(), p.maxQty(),
                                 p.defaultQty(), p.sortNo())).toList()));
         deps.sort(Comparator.comparing(Dependency::configNo));
-        return new Candidate(row.getVersion(), null, definition, null, deps, List.copyOf(skuNos), List.copyOf(specNos));
+        return new Candidate(row.getVersion(), null, definition, null, deps, List.copyOf(skuNos),
+                List.copyOf(specNos), null);
     }
 
     private void dependency(String entity, String store, String number, OffsetDateTime at, boolean addon,
@@ -386,6 +431,15 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                 row.getDefinitionSnapshot()) != row.getContentSchema()) {
             throw new IllegalStateException("Invalid frozen configuration document");
         }
+        if ("RECIPE".equals(row.getConfigKind())) {
+            var body = RecipePublicationDocuments.validate(json, row.getConfigNo(), row.getDefinitionSnapshot());
+            List<String> stores = json.readValue(row.getScopeStoreNos(),
+                    json.getTypeFactory().constructCollectionType(List.class, String.class));
+            if (!stores.equals(List.of(body.recipe().storeNo()))) {
+                throw new IllegalStateException("Invalid recipe publication store scope");
+            }
+            RecipePublicationDocuments.scope(body, row.getEntityNo(), body.recipe().storeNo());
+        }
     }
 
     private static void validateSpecs(String entity, List<String> requested, List<SpecValueFact> facts) {
@@ -421,7 +475,8 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
         }
     }
     private static void kind(String value) {
-        if (!("MODIFIER".equals(value) || "OPTION_GROUP".equals(value) || "BUNDLE".equals(value))) throw bad();
+        if (!("MODIFIER".equals(value) || "OPTION_GROUP".equals(value)
+                || "BUNDLE".equals(value) || "RECIPE".equals(value))) throw bad();
     }
     private static void identifier(String value) { if (!validKey(value, 32)) throw bad(); }
     private static boolean validKey(String value, int max) {

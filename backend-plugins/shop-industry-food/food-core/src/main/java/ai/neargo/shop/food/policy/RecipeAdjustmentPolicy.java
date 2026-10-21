@@ -20,8 +20,7 @@ public final class RecipeAdjustmentPolicy {
         boolean valid = "SPEC_VALUE".equals(kind) && MaterialCatalogFacts.validKey(spec, 64) && modifier == null
                 || "MODIFIER".equals(kind) && MaterialCatalogFacts.validKey(modifier, 32) && spec == null;
         if (!valid) throw BizException.of(ErrorCode.BAD_REQUEST);
-        return FoodCommandFingerprint.hash("recipe-option-identity:v1", entity, group, option, kind,
-                spec == null ? "" : spec, modifier == null ? "" : modifier);
+        return RecipePublicationDocuments.optionIdentity(entity, group, option, kind, spec, modifier);
     }
 
     public static List<RecipeAdjustmentInput> normalize(List<RecipeAdjustmentInput> inputs) {

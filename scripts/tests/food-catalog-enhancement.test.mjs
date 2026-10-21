@@ -42,9 +42,9 @@ test('menu item overrides and quote provenance are explicit API fields',()=>{
 test('no recipe or channel management endpoint is accidentally exposed as a consumer write',()=>{
  const s=source();const apis=s.apis.filter(a=>Number(a.id.slice(-3))>=142);
  assert.equal(apis.length,13);assert(apis.every(a=>a.path.startsWith('/biz/x/food/')));
- const draftIds=new Set(['FOOD-API-148','FOOD-API-149','FOOD-API-150','FOOD-API-151']);
+ const draftIds=new Set(['FOOD-API-152','FOOD-API-148','FOOD-API-149','FOOD-API-150','FOOD-API-151']);
  assert(apis.filter(a=>!draftIds.has(a.id)).every(a=>a.needs.includes('未实现')));
- assert(apis.filter(a=>draftIds.has(a.id)).every(a=>a.needs.startsWith('RECIPE-01A')));
+ assert(apis.filter(a=>draftIds.has(a.id)).every(a=>a.needs.startsWith('RECIPE-01A')||a.needs.startsWith('RECIPE-01C')));
  assert.equal(s.requirementAlignment.length,109);assert.equal(validateFoodDesign(s),true);
 });
 test('legacy catalog is an explicit projection and cannot reintroduce FLAVOR or implicit all SKUs',()=>{

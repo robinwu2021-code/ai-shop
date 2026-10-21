@@ -1,19 +1,20 @@
 package ai.neargo.shop.food.policy;
 
+import ai.neargo.shop.food.dto.BundlePublicationSnapshot;
+import ai.neargo.shop.food.dto.PublicationSnapshot;
+import ai.neargo.shop.food.dto.RecipePublicationSnapshot;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
-import java.util.Set;
-import ai.neargo.shop.food.dto.PublicationSnapshot;
-import ai.neargo.shop.food.dto.BundlePublicationSnapshot;
-import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.SerializationFeature;
@@ -29,6 +30,9 @@ public final class PublicationDocuments {
     public static String freeze(ObjectMapper json, BundlePublicationSnapshot value) {
         return freezeValue(json, value);
     }
+    public static String freeze(ObjectMapper json, RecipePublicationSnapshot value) {
+        return freezeValue(json, value);
+    }
     private static String freezeValue(ObjectMapper json, Object value) {
         Object tree = json.readerFor(Object.class).with(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
                 .readValue(json.writeValueAsString(value));
@@ -38,7 +42,8 @@ public final class PublicationDocuments {
         if (value instanceof Map<?,?> map) {
             var sorted = new TreeMap<String,Object>();
             map.forEach((key, item) -> sorted.put((String) key,
-                    Set.of("minQty", "maxQty", "defaultQty", "quantity", "unitsPerPick").contains(key)
+                    Set.of("minQty", "maxQty", "defaultQty", "quantity", "unitsPerPick",
+                            "qty", "yieldQty", "lossRate").contains(key)
                             && item instanceof Number number
                             ? new BigDecimal(number.toString()).stripTrailingZeros().toPlainString() : quantities(item)));
             return sorted;
@@ -61,6 +66,10 @@ public final class PublicationDocuments {
                     throw malformed();
                 }
                 return 1;
+            }
+            if (version == 3 && "RECIPE".equals(kind)) {
+                RecipePublicationDocuments.validate(json, number, document);
+                return 3;
             }
             if (version != 2 || !"BUNDLE".equals(kind)) throw malformed();
             exactQuantities(envelope);

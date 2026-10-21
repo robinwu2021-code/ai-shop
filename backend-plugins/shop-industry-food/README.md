@@ -418,3 +418,7 @@ B端入口复用原STORE权限、可信操作人和目录范围；内部typed合
 新增商品权威GoodsCatalogQueryPort及typed内部查询，内嵌读取原商品Mapper，独立餐饮通过原PLATFORM服务发现和密钥读取。返回主体门店、基础图文、下架审核标志和全部CN规格；不返回价格库存，不改原交易GoodsQueryPort，不代表当前可成交。配置仅由food-server显式导入，内嵌不创建远程商品实现。
 
 菜品业务API016/112/113仍待后续切片；需求、精确类清单和测试证据见[CAT01实施方案](../../docs/technical/TDD-餐饮系统-CAT01菜品基础实施方案.md)。
+
+### 配方发布读写顺序（RECIPE-01C）
+
+`shop.food.recipe-publication-enabled`默认false，仅控制新RECIPE发布；历史schema1/2/3读取与完成幂等回执不受关闭影响。部署应先升级全部读者，再由运营显式开启写入；首条schema3写入后保留支持该格式的读者。本批仅提供配置发布，不启用报价、库存需求/扣料、渠道同步或生产Outbox消费者。沿V5 schema，无新迁移。

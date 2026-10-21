@@ -1778,7 +1778,7 @@
         {
           "name": "config_kind",
           "type": "varchar(24)",
-          "label": "MENU / BUNDLE / OPTION_GROUP / MODIFIER / STATION",
+          "label": "MENU / BUNDLE / OPTION_GROUP / MODIFIER / STATION / RECIPE",
           "ref": null,
           "nullable": false
         },

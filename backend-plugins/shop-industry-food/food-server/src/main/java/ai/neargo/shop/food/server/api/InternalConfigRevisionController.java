@@ -2,11 +2,10 @@ package ai.neargo.shop.food.server.api;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.food.dto.ConfigRevisionContentVO;
-import ai.neargo.shop.food.dto.ConfigRevisionVO;
-
 import ai.neargo.shop.food.config.ConditionalOnFoodEnabled;
 import ai.neargo.shop.food.config.FoodPersistenceConfiguration.PersistenceEnabled;
+import ai.neargo.shop.food.dto.ConfigRevisionContentVO;
+import ai.neargo.shop.food.dto.ConfigRevisionVO;
 import ai.neargo.shop.food.dto.PublishConfigResultVO;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.spi.ConfigRevisionInternalApi;
@@ -27,6 +26,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class InternalConfigRevisionController {
     private final ConfigRevisionService service;
     public InternalConfigRevisionController(ConfigRevisionService service) { this.service = service; }
+
+    @PostMapping(ConfigRevisionInternalApi.RECIPE_PATH)
+    public PublishConfigResultVO publishRecipe(@Valid @RequestBody ConfigRevisionInternalApi.Command c) {
+        return service.publishRecipe(c.entityNo(), c.storeNo(), c.configNo(), c.actorNo(),
+                c.publication(), c.idempotencyKey());
+    }
 
     @PostMapping(ConfigRevisionInternalApi.BUNDLE_PATH)
     public PublishConfigResultVO publishBundle(@Valid @RequestBody ConfigRevisionInternalApi.Command c) {

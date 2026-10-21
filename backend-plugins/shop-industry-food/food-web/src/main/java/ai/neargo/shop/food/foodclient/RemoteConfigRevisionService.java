@@ -9,6 +9,7 @@ import ai.neargo.shop.food.dto.ListConfigRevisionsQuery;
 import ai.neargo.shop.food.dto.PublishConfigReq;
 import ai.neargo.shop.food.dto.PublishConfigResultVO;
 import ai.neargo.shop.food.policy.PublicationDocuments;
+import ai.neargo.shop.food.policy.RecipePublicationDocuments;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.spi.ConfigRevisionInternalApi;
 import ai.neargo.shop.svc.ServiceName;
@@ -16,6 +17,7 @@ import ai.neargo.svc.client.ServiceCallException;
 import ai.neargo.svc.client.ServiceCalls;
 import java.time.OffsetDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 import tools.jackson.databind.json.JsonMapper;
@@ -25,6 +27,13 @@ public class RemoteConfigRevisionService implements ConfigRevisionService {
     private final ConfigRevisionInternalApi api;
     private final JsonMapper json = JsonMapper.builder().findAndAddModules().build();
     public RemoteConfigRevisionService(ConfigRevisionInternalApi api) { this.api = api; }
+
+    @Override
+    public PublishConfigResultVO publishRecipe(String entity, String store, String number, String actor,
+            PublishConfigReq req, String key) {
+        return publication(invoke(() -> api.publishRecipe(new ConfigRevisionInternalApi.Command(
+                entity, store, number, actor, key, req))), "RECIPE", number);
+    }
 
     @Override
     public PublishConfigResultVO publishBundle(String entity, String store, String number, String actor,
@@ -53,18 +62,19 @@ public class RemoteConfigRevisionService implements ConfigRevisionService {
         var page = invoke(() -> api.listRevisions(new ConfigRevisionInternalApi.Lookup(entity, store, query)));
         int p = query.page() == null ? 1 : query.page(), size = query.size() == null ? 20 : query.size();
         var seen = new HashSet<String>(); var versions = new HashSet<Long>();
-        if (page == null || page.page() != p || page.size() != size || page.records() == null
+        if (page == null || page.page() == null || page.size() == null || page.total() == null
+                || page.page() != p || page.size() != size || page.records() == null
                 || page.records().size() > size || page.total() < page.records().size()
                 || page.records().stream().anyMatch(v -> !valid(v) || !query.configKind().equals(v.configKind())
                         || !query.configNo().equals(v.configNo()) || !seen.add(v.revisionNo()) || !versions.add(v.revision()))) {
             throw malformed();
         }
-        return page;
+        return PageData.of(List.copyOf(page.records()), page.total(), p, size);
     }
     @Override
     public ConfigRevisionContentVO getRevision(String entity, String store, String number) {
         var result = invoke(() -> api.getRevision(new ConfigRevisionInternalApi.Identity(entity, store, number)));
-        content(result);
+        content(result, entity, store);
         if (!number.equals(result.publication().revisionNo())) throw malformed();
         return result;
     }
@@ -72,7 +82,7 @@ public class RemoteConfigRevisionService implements ConfigRevisionService {
     public ConfigRevisionContentVO resolveRevision(String entity, String store, String kind, String number,
             OffsetDateTime asOf) {
         var result = invoke(() -> api.resolveRevision(new ConfigRevisionInternalApi.Resolve(entity, store, kind, number, asOf)));
-        content(result);
+        content(result, entity, store);
         var meta = result.publication();
         if (!kind.equals(meta.configKind()) || !number.equals(meta.configNo()) || meta.effectiveAt().isAfter(asOf)
                 || !"EFFECTIVE".equals(meta.status())) throw malformed();
@@ -85,7 +95,7 @@ public class RemoteConfigRevisionService implements ConfigRevisionService {
         }
         return result;
     }
-    private void content(ConfigRevisionContentVO result) {
+    private void content(ConfigRevisionContentVO result, String entity, String store) {
         if (result == null || !valid(result.publication()) || result.definitionSnapshot() == null
                 || result.definitionSnapshot().length() > 1_048_576
                 || !PublicationDocuments.hash(json, result.definitionSnapshot()).equals(result.publication().contentHash())) {
@@ -93,10 +103,14 @@ public class RemoteConfigRevisionService implements ConfigRevisionService {
         }
         PublicationDocuments.validate(json, result.publication().configKind(), result.publication().configNo(),
                 result.definitionSnapshot());
+        if ("RECIPE".equals(result.publication().configKind())) {
+            RecipePublicationDocuments.scope(RecipePublicationDocuments.validate(json,
+                    result.publication().configNo(), result.definitionSnapshot()), entity, store);
+        }
     }
     private static boolean valid(ConfigRevisionVO v) {
         return v != null && key(v.revisionNo()) && key(v.configNo()) && v.configKind() != null
-                && Set.of("MODIFIER", "OPTION_GROUP", "BUNDLE").contains(v.configKind()) && v.revision() > 0
+                && Set.of("MODIFIER", "OPTION_GROUP", "BUNDLE", "RECIPE").contains(v.configKind()) && v.revision() > 0
                 && v.effectiveAt() != null && v.contentHash() != null && v.contentHash().matches("[a-f0-9]{64}")
                 && v.status() != null && Set.of("SCHEDULED", "EFFECTIVE", "CANCELLED").contains(v.status());
     }
