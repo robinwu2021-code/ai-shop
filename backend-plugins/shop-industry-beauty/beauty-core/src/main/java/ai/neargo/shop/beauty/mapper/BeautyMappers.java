@@ -2,6 +2,11 @@ package ai.neargo.shop.beauty.mapper;
 
 import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
+import ai.neargo.shop.beauty.entity.BtyAppointmentResourceDecision;
+import ai.neargo.shop.beauty.entity.BtyAppointmentPreparation;
+import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
+import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
+import ai.neargo.shop.beauty.entity.BtyAppointmentCurrent;
 import ai.neargo.shop.beauty.entity.BtyAppointmentAssignment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentItem;
 import ai.neargo.shop.beauty.entity.BtyAppointmentResourceFence;
@@ -740,4 +745,22 @@ public final class BeautyMappers {
 
     }
 
+
+    /** Persistent server previews; bytes must not be accepted from a public binding. */
+    public interface AppointmentPreparationMapper extends BaseMapper<BtyAppointmentPreparation> { }
+    public interface AppointmentArrangementMapper extends BaseMapper<BtyAppointmentArrangement> { }
+    public interface AppointmentCurrentMapper extends BaseMapper<BtyAppointmentCurrent> { }
+    /** Durable operation claim; CAS leases are independent of actor authority and never authorize commands. */
+    public interface AppointmentOperationMapper extends BaseMapper<BtyAppointmentOperation> {
+        @Update("""
+                UPDATE bty_appointment_operation SET lease_until=#{until},version=version+1
+                WHERE tenant_no='MAIN' AND entity_no=#{entity} AND operation_no=#{operation}
+                  AND version=#{version} AND state='PENDING' AND deleted=0
+                  AND (lease_until IS NULL OR lease_until<#{now})
+                """)
+        int claim(@Param("entity") String entity, @Param("operation") String operation,
+                @Param("version") long version, @Param("now") LocalDateTime now,
+                @Param("until") LocalDateTime until);
+    }
+    public interface AppointmentResourceDecisionMapper extends BaseMapper<BtyAppointmentResourceDecision> { }
 }

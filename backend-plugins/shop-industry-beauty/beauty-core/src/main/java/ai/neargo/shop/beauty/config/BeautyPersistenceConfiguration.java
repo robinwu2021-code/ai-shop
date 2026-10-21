@@ -29,14 +29,14 @@ public class BeautyPersistenceConfiguration {
     BeautySchemaReady beautySchemaReady(@Qualifier("dataSource") DataSource source,
             @Value("${shop.beauty.migration.mode:validate}") String mode) {
         new BeautySchemaValidator().initialize(source, mode);
-        return new BeautySchemaReady("2");
+        return new BeautySchemaReady("4");
     }
 
     @Bean
     SqlSessionTemplate beautySqlSessionTemplate(@Qualifier("sqlSessionFactory") SqlSessionFactory factory,
             @Qualifier("dataSource") DataSource source,
             @Qualifier("transactionManager") PlatformTransactionManager manager, BeautySchemaReady schema) {
-        if (!"2".equals(schema.version()) || factory.getConfiguration().getEnvironment().getDataSource() != source
+        if (!"4".equals(schema.version()) || factory.getConfiguration().getEnvironment().getDataSource() != source
                 || !(manager instanceof DataSourceTransactionManager primary) || primary.getDataSource() != source) {
             throw new IllegalStateException("Beauty requires the platform primary factory and transaction manager");
         }

@@ -41,11 +41,11 @@ class ServiceProductFactsPortTest {
         runner().run(context -> {
             var sql = new JdbcTemplate(context.getBean(DataSource.class));
             sql.execute("CREATE TABLE prd_sku (sku_no VARCHAR(32), goods_no VARCHAR(32), entity_no VARCHAR(32),"
-                    + "tenant_no VARCHAR(32), deleted INT, market VARCHAR(8))");
+                    + "tenant_no VARCHAR(32), deleted INT, market VARCHAR(8),version BIGINT DEFAULT 0)");
             sql.execute("CREATE TABLE prd_goods (goods_no VARCHAR(32),entity_no VARCHAR(32),store_no VARCHAR(32),"
-                    + "type VARCHAR(32),duration_min INT,tenant_no VARCHAR(32),deleted INT)");
-            sql.execute("INSERT INTO prd_sku VALUES ('SKU','G','E','MAIN',0,'CN')");
-            sql.execute("INSERT INTO prd_goods VALUES ('G','E','S','SERVICE',60,'MAIN',0)");
+                    + "type VARCHAR(32),duration_min INT,tenant_no VARCHAR(32),deleted INT,version BIGINT DEFAULT 0)");
+            sql.execute("INSERT INTO prd_sku VALUES ('SKU','G','E','MAIN',0,'CN',0)");
+            sql.execute("INSERT INTO prd_goods VALUES ('G','E','S','SERVICE',60,'MAIN',0,7)");
             if (mutation != null) { sql.execute(mutation); }
             var factory = context.getBean(SqlSessionFactory.class);
             factory.getConfiguration().addMapper(SkuMapper.class);
@@ -60,6 +60,11 @@ class ServiceProductFactsPortTest {
                 var fact = port.get("E", "S", "SKU");
                 assertThat(fact.durationMin()).isEqualTo(60);
                 assertThat(fact.priceMinor()).isEqualTo(9900);
+                assertThat(fact.goodsRevision()).isEqualTo(7);
+                assertThat(fact.skuRevision()).isZero();
+                var legacy = new ServiceProductFactsPort.Fact("E", "S", "SKU", "G", 9900, 60);
+                assertThat(legacy.goodsRevision()).isNull();
+                assertThat(legacy.skuRevision()).isNull();
             } else { assertThatThrownBy(() -> port.get("E", "S", "SKU")).isInstanceOf(BizException.class); }
         });
     }
@@ -68,7 +73,7 @@ class ServiceProductFactsPortTest {
     @Test void rejectsForeignStore() { verify("UPDATE prd_goods SET store_no='OTHER'", true, false); }
     @Test void rejectsNonServiceProduct() { verify("UPDATE prd_goods SET type='PHYSICAL'", true, false); }
     @Test void isolatesCnMarketFromOtherSkuMarkets() {
-        assertDoesNotThrow(() -> verify("INSERT INTO prd_sku VALUES ('SKU','G','E','MAIN',0,'AE')", true, true));
+        assertDoesNotThrow(() -> verify("INSERT INTO prd_sku VALUES ('SKU','G','E','MAIN',0,'AE',0)", true, true));
     }
     @Test void rejectsOffSaleService() { verify(null, false, false); }
 }

@@ -55,7 +55,8 @@ class PublicCatalogIT extends BeautyExecutionFixture {
                     "09:00-18:00", "地址", new StoreSalesCatalogPort.Snapshot(
                             owner, "S", null, 0, null, 0, null, false, null, null));
             if (method.getName().equals("store")) { return store; }
-            return Class.forName(port.getName() + "$Service").getConstructors()[0]
+            return Class.forName(port.getName() + "$Service").getConstructor(storeType, String.class, String.class,
+                    String.class, String.class, long.class, int.class)
                     .newInstance(store, sku, "G", "护理", "cover", 9900L, minutes);
         });
         return runner().withUserConfiguration(required("config.BeautyCatalogConfiguration"))

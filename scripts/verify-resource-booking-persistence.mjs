@@ -17,7 +17,9 @@ try {
   assert.match(address, /^127\.0\.0\.1:[0-9]+$/);
   const jdbc = `jdbc:mysql://${address}/mysql?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC`;
   const result = spawnSync('mvn', ['-o', '-Dmaven.repo.local=/tmp/codex-beauty-bm01-m2', '-f', root + 'backend/pom.xml', '-pl', 'shop-app', '-am', 'test',
-    '-Dtest=ResourceBookingPersistenceIT,ResourceBookingExecutionIT', '-Dsurefire.failIfNoSpecifiedTests=false',
+    process.argv.includes('--adapter-only')
+      ? '-Dtest=ResourceBookingExecutionIT#trustedBookingAdapterPreservesConsumerAndMerchantUserNamespacesAndOriginalBytes+ownerCandidateAdapterHonorsPublicVisibilityScopeAndExpiredProtectedCapacity'
+      : '-Dtest=ResourceBookingPersistenceIT,ResourceBookingExecutionIT', '-Dsurefire.failIfNoSpecifiedTests=false',
     `-Dresource-booking.test.admin-url=${jdbc}`], {cwd: root, env: process.env, stdio: 'inherit'});
   assert.equal(result.status, 0, 'Resource booking foundation actual MySQL tests failed');
 } finally {

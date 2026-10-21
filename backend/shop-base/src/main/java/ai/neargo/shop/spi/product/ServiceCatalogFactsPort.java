@@ -9,6 +9,13 @@ public interface ServiceCatalogFactsPort {
 
     record Store(String entityNo, String storeNo, String name, String logo, String status,
                  String openHours, String address, StoreSalesCatalogPort.Snapshot catalog) { }
+    /** Master revisions do not version store/campaign price overlays or promise an atomic quote. */
     record Service(Store store, String skuNo, String goodsNo, String title, String cover,
-                   long priceMinor, int durationMin) { }
+                   long priceMinor, int durationMin, Long goodsRevision, Long skuRevision) {
+        /** Existing catalog readers remain compatible; booking requires observed master revisions. */
+        public Service(Store store, String skuNo, String goodsNo, String title, String cover,
+                long priceMinor, int durationMin) {
+            this(store, skuNo, goodsNo, title, cover, priceMinor, durationMin, null, null);
+        }
+    }
 }

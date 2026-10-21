@@ -19,6 +19,12 @@ import ai.neargo.shop.merchant.service.ResourceCommandService.Scope;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Status;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Target;
 import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
+import ai.neargo.shop.spi.resource.ResourceBookingPort;
+import ai.neargo.shop.spi.resource.ResourceCandidatesPort;
+import ai.neargo.shop.spi.resource.ResourceFactsPort;
+import ai.neargo.shop.merchant.port.ResourceBookingPortImpl;
+import ai.neargo.shop.merchant.port.ResourceCandidatesPortImpl;
+import ai.neargo.shop.merchant.port.ResourceFactsPortImpl;
 import com.baomidou.mybatisplus.core.incrementer.DefaultIdentifierGenerator;
 import com.baomidou.mybatisplus.core.incrementer.IdentifierGenerator;
 import java.lang.reflect.InvocationTargetException;
@@ -38,6 +44,7 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Set;
 import java.util.stream.Stream;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -148,7 +155,8 @@ class ResourceBookingExecutionIT {
     private ApplicationContextRunner runner() {
         try {
             return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
-                    Mappers.class, Class.forName("ai.neargo.shop.merchant.config.PersonnelDataScopeRegistration"),
+                    Mappers.class, ResourceBookingPortImpl.class, ResourceCandidatesPortImpl.class,
+                    ResourceFactsPortImpl.class, Class.forName("ai.neargo.shop.merchant.config.PersonnelDataScopeRegistration"),
                     Class.forName("ai.neargo.shop.merchant.service.impl.ResourceCommandServiceImpl"),
                     Class.forName("ai.neargo.shop.merchant.service.impl.ResourceAdmissionServiceImpl"),
                     Class.forName("ai.neargo.shop.merchant.service.impl.ResourceSourceAuthorizationServiceImpl"),
@@ -168,6 +176,64 @@ class ResourceBookingExecutionIT {
     void clear() {
         DataScopeContext.clear();
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void trustedBookingAdapterPreservesConsumerAndMerchantUserNamespacesAndOriginalBytes() {
+        runner().run(ctx -> {
+            var port = ctx.getBean(ResourceBookingPort.class);
+            var scoped = new ResourceBookingPort.Scope("MAIN", "E", "S");
+            String bytes = ResourcePlanCodec.encode(List.of(new Demand("B", "LINE", 1,
+                    List.of(new Interval(NOW.plusSeconds(3600), NOW.plusSeconds(4200))))), List.of());
+            for (var user : List.of(LoginUser.consumer("C", "customer"), LoginUser.merchantByUser("U", "owner"))) {
+                SecurityContextHolder.getContext().setAuthentication(
+                        new UsernamePasswordAuthenticationToken(user, null, List.of()));
+                var actor = new ResourceBookingPort.Actor(user.userNo(), user.realm().name(), user.subjectKind().name());
+                var request = new ResourceBookingPort.Accept(scoped, "RESERVE", "KEY-" + user.userNo(), "TEST_BOOKING",
+                        user.userNo(), 0, 1, null, bytes);
+                var accepted = port.accept(actor, request);
+                assertThat(port.accept(actor, request)).isEqualTo(accepted);
+                assertThat(accepted.frozenPayload()).isEqualTo(bytes);
+                register(commands(ctx).find(S, accepted.binding().commandNo()).orElseThrow());
+                var terminal = port.execute(actor, scoped, accepted.binding().commandNo());
+                assertThat(terminal.status()).isEqualTo("SUCCEEDED");
+                var holdNo = ctx.getBean(ObjectMapper.class).readTree(terminal.resultPayload()).get("holdNo").asString();
+                var hold = port.queryHold(actor, terminal.binding(), holdNo);
+                assertThat(hold.status()).isEqualTo("HELD");
+                assertThat(hold.ownerVersion()).isEqualTo(1);
+                assertThatThrownBy(() -> port.query(new ResourceBookingPort.Actor(user.userNo(), "MERCHANT", "MCH"),
+                        scoped, accepted.binding().commandNo())).isInstanceOf(RuntimeException.class);
+                SecurityContextHolder.clearContext();
+                assertThat(port.reconcile(accepted.binding()).orElseThrow()).isEqualTo(terminal);
+                // Separate later raw interval prevents capacity contention between namespace cases.
+                sql.update("UPDATE mch_resource SET capacity=2 WHERE resource_no='B'");
+                sql.update("UPDATE mch_resource_bucket SET capacity=2 WHERE resource_no='B'");
+            }
+        });
+    }
+
+    @Test
+    void ownerCandidateAdapterHonorsPublicVisibilityScopeAndExpiredProtectedCapacity() {
+        runner().run(ctx -> {
+            var port = ctx.getBean(ResourceCandidatesPort.class);
+            var scope = new ResourceBookingPort.Scope("MAIN", "E", "S");
+            assertThat(port.candidates(new ResourceCandidatesPort.Query(scope, true, NOW, 50)))
+                    .extracting(ResourceFactsPort.ResourceFact::resourceNo).contains("R", "B", "C");
+            sql.update("UPDATE mch_personnel_store SET public_visible=0 WHERE store_no='S'");
+            assertThat(port.candidates(new ResourceCandidatesPort.Query(scope, true, NOW, 50)))
+                    .extracting(ResourceFactsPort.ResourceFact::resourceNo).doesNotContain("R");
+            assertThat(port.candidates(new ResourceCandidatesPort.Query(scope, false, NOW, 50)))
+                    .extracting(ResourceFactsPort.ResourceFact::resourceNo).contains("R");
+            var accepted = accept(ctx, S, Action.RESERVE, "A", 0, 1, null, "B");
+            assertThat(execute(ctx, accepted).status()).isEqualTo(Status.SUCCEEDED);
+            sql.update("UPDATE mch_booking_hold SET expires_at='2020-01-01'");
+            var capacity = port.capacity(new ResourceCandidatesPort.CapacityQuery(scope, Set.of("B"),
+                    NOW.plusSeconds(3600), NOW.plusSeconds(4200)));
+            assertThat(capacity).hasSize(2).allSatisfy(row -> assertThat(row.used()).isEqualTo(1));
+            assertThat(port.candidates(new ResourceCandidatesPort.Query(
+                    new ResourceBookingPort.Scope("MAIN", "E", "OTHER"), false, NOW, 50)))
+                    .extracting(ResourceFactsPort.ResourceFact::resourceNo).doesNotContain("B", "C");
+        });
     }
 
     @Test

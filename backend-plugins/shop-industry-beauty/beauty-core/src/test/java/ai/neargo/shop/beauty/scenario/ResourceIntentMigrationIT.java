@@ -17,13 +17,13 @@ class ResourceIntentMigrationIT extends BeautyExecutionFixture {
         sql = new JdbcTemplate(database.source);
     }
     @Test
-    void freshMigrateInstallsV2AndValidateDoesNotRepeatIt() {
+    void freshMigratePreservesV2AndInstallsLatestWithoutRepeating() {
         database.initialize("migrate");
         database.initialize("validate");
         assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_flyway_history WHERE version='2' AND success=1",
                 Integer.class)).isOne();
         assertThat(sql.queryForObject("SELECT COUNT(*) FROM information_schema.tables "
-                + "WHERE table_schema=DATABASE()", Integer.class)).isEqualTo(19);
+                + "WHERE table_schema=DATABASE()", Integer.class)).isEqualTo(24);
     }
     @Test
     void v1RequiresExplicitUpgradeAndRetainsExistingAppointments() {
@@ -40,5 +40,19 @@ class ResourceIntentMigrationIT extends BeautyExecutionFixture {
                 .isEqualTo("HOLD");
         assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_flyway_history WHERE version IN ('1','2') "
                 + "AND success=1", Integer.class)).isEqualTo(2);
+    }
+    @Test
+    void trackedV2RequiresExplicitUpgradeAndPreservesFenceHistory() {
+        Flyway.configure().dataSource(database.source).locations("classpath:db/industry/beauty")
+                .table("bty_flyway_history").target("2").baselineVersion("0").baselineOnMigrate(true)
+                .createSchemas(false).placeholderReplacement(false).load().migrate();
+        appointment("A", "S");
+        seed("bty_appointment_resource_fence", "fence_no", "F", "appointment_no", "A", "store_no", "S");
+        assertThatThrownBy(() -> database.initialize("validate")).isInstanceOf(RuntimeException.class);
+        database.initialize("migrate");
+        database.initialize("validate");
+        assertThat(sql.queryForObject("SELECT fence_no FROM bty_appointment_resource_fence", String.class)).isEqualTo("F");
+        assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_flyway_history WHERE version IN ('1','2','3','4') "
+                + "AND success=1", Integer.class)).isEqualTo(4);
     }
 }

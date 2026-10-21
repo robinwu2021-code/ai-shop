@@ -30,13 +30,13 @@ public class ServiceProductFactsPortImpl implements ServiceProductFactsPort {
         if (!valid(entityNo) || !valid(storeNo) || !valid(skuNo)) { throw BizException.of(ErrorCode.BAD_REQUEST); }
         return DataScopeContext.executeWithoutScope(() -> {
             var sku = skus.selectOne(Wrappers.<PrdSku>lambdaQuery()
-                    .select(PrdSku::getSkuNo, PrdSku::getGoodsNo, PrdSku::getEntityNo)
+                    .select(PrdSku::getSkuNo, PrdSku::getGoodsNo, PrdSku::getEntityNo, PrdSku::getVersion)
                     .eq(PrdSku::getTenantNo, "MAIN").eq(PrdSku::getEntityNo, entityNo)
                     .eq(PrdSku::getMarket, "CN").eq(PrdSku::getSkuNo, skuNo));
             if (sku == null) { throw BizException.of(ErrorCode.NOT_FOUND); }
             var product = goods.selectOne(Wrappers.<PrdGoods>lambdaQuery()
                     .select(PrdGoods::getGoodsNo, PrdGoods::getEntityNo, PrdGoods::getStoreNo,
-                            PrdGoods::getType, PrdGoods::getDurationMin)
+                            PrdGoods::getType, PrdGoods::getDurationMin, PrdGoods::getVersion)
                     .eq(PrdGoods::getTenantNo, "MAIN").eq(PrdGoods::getEntityNo, entityNo)
                     .eq(PrdGoods::getGoodsNo, sku.getGoodsNo()).eq(PrdGoods::getStoreNo, storeNo));
             if (product == null || !"SERVICE".equals(product.getType())) {
@@ -51,7 +51,8 @@ public class ServiceProductFactsPortImpl implements ServiceProductFactsPort {
                     || !product.getGoodsNo().equals(quote.goodsNo()) || !skuNo.equals(quote.skuNo())) {
                 throw BizException.of(ErrorCode.FORBIDDEN);
             }
-            return new Fact(entityNo, storeNo, skuNo, product.getGoodsNo(), quote.price(), product.getDurationMin());
+            return new Fact(entityNo, storeNo, skuNo, product.getGoodsNo(), quote.price(), product.getDurationMin(),
+                    product.getVersion(), sku.getVersion());
         });
     }
     private boolean valid(String value) { return value != null && !value.isBlank() && value.length() <= 32; }

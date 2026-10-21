@@ -93,6 +93,11 @@ public final class BizPerms {
     /** 调整发行容量，不直接发放实例。 */
     public static final String ENT_ISSUE_MANAGE = "pay:ent:issue:manage";
 
+    /** Cross-industry appointment reading; grants no management capability. */
+    public static final String BOOKING_VIEW = "biz:booking:view";
+    /** Explicit appointment management, independently assignable from fulfillment permissions. */
+    public static final String BOOKING_MANAGE = "biz:booking:manage";
+
     // ---------------------------------------------------------------- 角色
 
     public static final String OWNER = "OWNER";
@@ -138,6 +143,8 @@ public final class BizPerms {
      * {@code BizRoleSeedTest} 断言这里覆盖了全部权限码 —— 加码忘了加说明就红。
      */
     public static final Map<String, String> LABELS = Map.ofEntries(
+            Map.entry(BOOKING_VIEW, "查看预约"),
+            Map.entry(BOOKING_MANAGE, "创建、调整及取消预约"),
             Map.entry(RECEIVE, "到货登记与分拣"),
             Map.entry(VERIFY, "核销取货"),
             Map.entry(SHIP, "发货与标记送达"),

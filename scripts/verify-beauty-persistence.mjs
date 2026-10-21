@@ -16,24 +16,26 @@ try {
   const address = docker(['port', name, '3306/tcp']);
   assert.match(address, /^127\.0\.0\.1:[0-9]+$/);
   const jdbc = `jdbc:mysql://${address}/mysql?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC`;
-  const selection = process.argv.includes('--resource-intent-only') ? 'ResourceIntentPersistenceIT,ResourceIntentMigrationIT'
+  const selection = process.argv.includes('--appointment-business-only') ? 'AppointmentBusinessIT'
+    : process.argv.includes('--appointment-migrations-only') ? 'BeautySchemaMigrationIT,ResourceIntentMigrationIT'
+    : process.argv.includes('--resource-intent-only') ? 'ResourceIntentPersistenceIT,ResourceIntentMigrationIT'
     : process.argv.includes('--publication-only') ? 'BeautyPolicyPublicationIT'
     : process.argv.includes('--public-catalog-only') ? 'PublicCatalogIT'
     : process.argv.includes('--source-only') ? 'SourceAllocationConcurrencyIT,ServiceSubmissionPersistenceIT'
     : process.argv.includes('--execution-only') ? 'AppointmentPersistenceIT,ServiceTaskPersistenceIT'
     : process.argv.includes('--catalog-only') ? 'BeautyCatalogIT'
     : 'ResourceIntentPersistenceIT,ResourceIntentMigrationIT,BeautySchemaMigrationIT,PolicyDefinitionPersistenceIT,BeautyPlatformFlywayIT,BeautyPolicyPublicationIT,BeautyCatalogIT,PublicCatalogIT,AppointmentPersistenceIT,ServiceTaskPersistenceIT,SourceAllocationConcurrencyIT,ServiceSubmissionPersistenceIT';
-  const result = spawnSync('mvn', ['-o', '-f', root + 'backend-plugins/shop-industry-beauty/pom.xml', '-pl', 'beauty-core', '-am', 'test', `-Dtest=${selection}`, '-Dsurefire.failIfNoSpecifiedTests=false', `-Dbeauty.test.admin-url=${jdbc}`], {cwd: root, env: process.env, stdio: 'inherit'});
+  const result = spawnSync('mvn', ['-o', '-Dmaven.repo.local=/tmp/codex-beauty-bm01-m2', '-f', root + 'backend-plugins/shop-industry-beauty/pom.xml', '-pl', 'beauty-core', '-am', 'test', `-Dtest=${selection}`, '-Dsurefire.failIfNoSpecifiedTests=false', `-Dbeauty.test.admin-url=${jdbc}`], {cwd: root, env: process.env, stdio: 'inherit'});
   assert.equal(result.status, 0, 'Beauty disposable JDBC integration tests failed');
   if (process.argv.includes('--include-server')) {
-    const server = spawnSync('mvn', ['-o', '-f', root + 'backend-plugins/shop-industry-beauty/pom.xml',
+    const server = spawnSync('mvn', ['-o', '-Dmaven.repo.local=/tmp/codex-beauty-bm01-m2', '-f', root + 'backend-plugins/shop-industry-beauty/pom.xml',
       '-pl', 'beauty-server', '-am', 'test', '-Dtest=BeautyStandaloneEndToEndIT',
       '-Dsurefire.failIfNoSpecifiedTests=false', `-Dbeauty.test.admin-url=${jdbc}`],
       {cwd: root, env: process.env, stdio: 'inherit'});
     assert.equal(server.status, 0, 'Beauty standalone real TCP-to-database integration failed');
   }
   if (process.argv.includes('--include-host')) {
-    const host = spawnSync('mvn', ['-o', '-f', root + 'backend/pom.xml', '-pl', 'shop-app', '-am',
+    const host = spawnSync('mvn', ['-o', '-Dmaven.repo.local=/tmp/codex-beauty-bm01-m2', '-f', root + 'backend/pom.xml', '-pl', 'shop-app', '-am',
       '-Pbeauty-embedded', 'test', '-Dtest=BeautyPolicyEndToEndIT', '-Dsurefire.failIfNoSpecifiedTests=false',
       `-Dbeauty.test.admin-url=${jdbc}`], {cwd: root, env: process.env, stdio: 'inherit'});
     assert.equal(host.status, 0, 'Beauty real HTTP-to-database integration failed');

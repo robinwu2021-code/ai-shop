@@ -863,6 +863,29 @@ public final class MerchantMappers {
         List<ResourceFactRow> selectEffectiveFacts(@Param("tenantNo") String tenantNo,
                 @Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
                 @Param("resourceNos") Set<String> resourceNos, @Param("at") LocalDateTime at);
+        /** Owner-scoped enumeration; public staff visibility is filtered before any reference leaves the owner. */
+        @Select("""
+                SELECT r.resource_no FROM mch_resource r
+                JOIN mch_entity e ON e.tenant_no=r.tenant_no AND e.entity_no=r.entity_no
+                JOIN mch_store s ON s.tenant_no=r.tenant_no AND s.entity_no=r.entity_no AND s.store_no=#{store}
+                WHERE r.tenant_no=#{tenant} AND r.entity_no=#{entity} AND r.deleted=0 AND r.status='ACTIVE'
+                  AND e.deleted=0 AND e.status='ACTIVE' AND e.archived_at IS NULL
+                  AND s.deleted=0 AND s.status='ACTIVE'
+                  AND ((r.resource_type IN ('ROOM','SEAT','DEVICE') AND r.store_no=s.store_no)
+                    OR (r.resource_type='STAFF' AND EXISTS (SELECT 1 FROM mch_personnel p
+                      JOIN mch_personnel_store a ON a.tenant_no=p.tenant_no AND a.entity_no=p.entity_no
+                        AND a.personnel_no=p.personnel_no
+                      WHERE p.tenant_no=r.tenant_no AND p.entity_no=r.entity_no AND p.personnel_no=r.personnel_no
+                        AND p.deleted=0 AND p.status='ACTIVE' AND a.deleted=0 AND a.status='ACTIVE'
+                        AND a.store_no=s.store_no AND a.valid_from<=#{at}
+                        AND (a.valid_to IS NULL OR a.valid_to>#{at})
+                        AND (#{publicOnly}=FALSE OR a.public_visible=1))))
+                ORDER BY r.resource_no LIMIT #{limit}
+                """)
+        List<String> selectCandidateIds(@Param("tenant") String tenant, @Param("entity") String entity,
+                @Param("store") String store, @Param("at") LocalDateTime at,
+                @Param("publicOnly") boolean publicOnly, @Param("limit") int limit);
+
     }
 
 

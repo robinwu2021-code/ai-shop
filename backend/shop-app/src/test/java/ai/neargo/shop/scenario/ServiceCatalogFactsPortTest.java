@@ -55,6 +55,16 @@ class ServiceCatalogFactsPortTest {
         assertThat(service.priceMinor()).isEqualTo(9900);
         assertThat(service.title()).isEqualTo("护理项目");
         assertThat(service.durationMin()).isEqualTo(60);
+        assertThat(service.goodsRevision()).isZero();
+        assertThat(service.skuRevision()).isZero();
+        sql.update("UPDATE prd_goods SET version=7 WHERE goods_no='BM01-G'");
+        sql.update("UPDATE prd_sku SET version=9 WHERE sku_no='BM01-SKU'");
+        var versioned = catalog.service("ST-M0001", "BM01-SKU");
+        assertThat(versioned.goodsRevision()).isEqualTo(7);
+        assertThat(versioned.skuRevision()).isEqualTo(9);
+        var legacy = new ServiceCatalogFactsPort.Service(store, "SKU", "G", "title", null, 1, 1);
+        assertThat(legacy.goodsRevision()).isNull();
+        assertThat(legacy.skuRevision()).isNull();
         sql.update("UPDATE prd_sku SET price=12900 WHERE sku_no='BM01-SKU'");
         assertThat(catalog.service("ST-M0001", "BM01-SKU").priceMinor()).isEqualTo(12900);
     }

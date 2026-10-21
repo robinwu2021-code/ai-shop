@@ -30,6 +30,12 @@ public final class BeautySchemaValidator {
     private static final String V2 = "db/industry/beauty/V2__beauty_appointment_resource_fence.sql";
     private static final String V2_SHA256 = "5b6768928018b68635c9c081b200a2cb6202d40645c5db62c91c558cc49d4114";
 
+    private static final String V3 = "db/industry/beauty/V3__beauty_appointment_business.sql";
+    private static final String V3_SHA256 = "c8d54df07cabc5b0903e0dd4fba73e2b7fc4aa75539a148837cc5837deaa8da7";
+
+    private static final String V4 = "db/industry/beauty/V4__beauty_appointment_resource_decision.sql";
+    private static final String V4_SHA256 = "7df4e8d2e3aeeb57bf1e704004957d996912a17021c5f58842ac91152e7a003a";
+
     /** Migration must be explicitly requested by a single deployment executor; validation is read only. */
     public void initialize(DataSource dataSource, String mode) {
         require("validate".equals(mode) || "migrate".equals(mode), "Beauty schema mode must be validate or migrate");
@@ -53,7 +59,7 @@ public final class BeautySchemaValidator {
         }
         flyway.validate();
         var current = flyway.info().current();
-        require(current != null && "2".equals(current.getVersion().getVersion()), "Beauty schema version must be 2");
+        require(current != null && "4".equals(current.getVersion().getVersion()), "Beauty schema version must be 4");
         for (var migration : flyway.info().all()) {
             String state = migration.getState().name();
             require("SUCCESS".equals(state) || "BASELINE".equals(state), "Unexpected beauty migration state: " + state);
@@ -64,6 +70,12 @@ public final class BeautySchemaValidator {
     private static Map<String, TableContract> manifest() {
         Map<String, TableContract> result = new LinkedHashMap<>(manifest(RESOURCE, SHA256, 16));
         manifest(V2, V2_SHA256, 2).forEach((table, contract) -> {
+            require(result.putIfAbsent(table, contract) == null, "Duplicate beauty migration table");
+        });
+        manifest(V3, V3_SHA256, 4).forEach((table, contract) -> {
+            require(result.putIfAbsent(table, contract) == null, "Duplicate beauty migration table");
+        });
+        manifest(V4, V4_SHA256, 1).forEach((table, contract) -> {
             require(result.putIfAbsent(table, contract) == null, "Duplicate beauty migration table");
         });
         return result;

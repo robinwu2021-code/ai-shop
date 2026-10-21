@@ -57,6 +57,6 @@ public class ServiceCatalogFactsPortImpl implements ServiceCatalogFactsPort {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         return new Service(store, fact.skuNo(), fact.goodsNo(), quote.title(), quote.cover(),
-                quote.price(), fact.durationMin());
+                quote.price(), fact.durationMin(), fact.goodsRevision(), fact.skuRevision());
     }
 }
