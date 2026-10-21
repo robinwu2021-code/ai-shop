@@ -6,22 +6,26 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.beauty.config.BeautyAppointmentConfiguration;
 import ai.neargo.shop.beauty.config.BeautyCatalogConfiguration;
+import ai.neargo.shop.beauty.config.BeautyWriteGuardConfiguration;
 import ai.neargo.shop.beauty.dto.AppointmentItemReq;
-import ai.neargo.shop.beauty.dto.PreviewAppointmentReq;
-import ai.neargo.shop.beauty.dto.CreateAppointmentReq;
-import ai.neargo.shop.beauty.dto.RecordNoShowReq;
 import ai.neargo.shop.beauty.dto.AppointmentQuery;
-import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.beauty.dto.CancelAppointmentReq;
 import ai.neargo.shop.beauty.dto.ChangeAppointmentReq;
+import ai.neargo.shop.beauty.dto.CreateAppointmentReq;
 import ai.neargo.shop.beauty.dto.CreateMyAppointmentReq;
+import ai.neargo.shop.beauty.dto.PreviewAppointmentReq;
 import ai.neargo.shop.beauty.dto.PreviewMyAppointmentChangeReq;
 import ai.neargo.shop.beauty.dto.PreviewMyAppointmentReq;
+import ai.neargo.shop.beauty.dto.RecordNoShowReq;
 import ai.neargo.shop.beauty.service.AppointmentService;
 import ai.neargo.shop.beauty.service.ServiceOperationRecoveryService;
 import ai.neargo.shop.beauty.service.impl.AppointmentRecovery;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.event.outbox.OutboxPublisher;
+import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
+import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.idem.IdempotencyScope;
+import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.personnel.PersonnelFactsPort;
 import ai.neargo.shop.spi.product.ServiceCatalogFactsPort;
 import ai.neargo.shop.spi.product.StoreSalesCatalogPort;
@@ -41,15 +45,29 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.sql.DataSource;
+import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
 
@@ -61,14 +79,29 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
     private final ControlledOwner owner = new ControlledOwner();
     private boolean allowed = true;
     private String revokedActor;
+    private boolean occupied;
+    private boolean otherOccupied;
+    private boolean failOutbox;
     private long quotePrice = 1000;
     private Long goodsRevision = 7L;
     private final OffsetDateTime start = OffsetDateTime.now(ZoneOffset.UTC).plusDays(1)
             .truncatedTo(ChronoUnit.DAYS).plusHours(10);
 
+    @Configuration(proxyBeanMethods = false)
+    static class OutboxRoute {
+        @Bean
+        UnifiedOutboxFacade facade(DataSource source, PlatformTransactionManager manager, ObjectMapper mapper) {
+            var facade = new UnifiedOutboxFacade(mapper);
+            facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, mapper), List.of());
+            facade.setArchiveOnly(Set.of("PLATFORM:BEAUTY_APPOINTMENT_OPERATION_COMPLETED"));
+            return facade;
+        }
+    }
+
     @BeforeEach
     void database() throws Exception {
         initialize("BtyAppointmentPreparation", "BtyAppointmentOperation");
+        new ResourceDatabasePopulator(new ClassPathResource("platform-write-fixture.sql")).execute(database.source);
         login(LoginUser.consumer("USR1", "customer"));
         seed("bty_store_policy", "policy_no", "P", "store_no", "S", "current_policy_version_no", "PV",
                 "status", "ACTIVE", "version", 1L);
@@ -90,7 +123,8 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
                 List.of()));
     }
     private ApplicationContextRunner business() {
-        return runner().withUserConfiguration(BeautyCatalogConfiguration.class, BeautyAppointmentConfiguration.class)
+        return runner().withUserConfiguration(BeautyCatalogConfiguration.class, BeautyAppointmentConfiguration.class,
+                        BeautyWriteGuardConfiguration.class, OutboxRoute.class)
                 .withBean(ObjectMapper.class, () -> json)
                 .withBean(ResourceBookingPort.class, () -> owner)
                 .withBean(CustomerIdentityPort.class, () -> (context, q) -> {
@@ -120,7 +154,22 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
                                 new ResourceFactsPort.ResourceFact("R2", ResourceFactsPort.Type.STAFF,
                                 null, "P2", "Second", 1, false));
                     }
-                    @Override public List<Capacity> capacity(CapacityQuery query) { outside(); return List.of(); }
+                    @Override public List<Capacity> capacity(CapacityQuery query) {
+                        outside();
+                        if (!occupied) { return List.of(); }
+                        boolean excluded = query.replacement() != null;
+                        if (excluded) {
+                            var proof = query.replacement();
+                            assertThat(proof.binding().sourceType()).isEqualTo("BEAUTY_APPOINTMENT");
+                            assertThat(owner.receipts.values()).anySatisfy(receipt ->
+                                    assertThat(receipt.binding()).isEqualTo(proof.binding()));
+                            assertThat(owner.allHolds.get(proof.target().holdNo()).status()).isEqualTo("CONFIRMED");
+                        }
+                        assertThat(query.factAt()).isAfter(query.from());
+                        int used = (excluded ? 0 : 1) + (otherOccupied ? 1 : 0);
+                        return List.of(new Capacity("R1", start.minusMinutes(5).toInstant(),
+                                start.plusMinutes(25).toInstant(), 1, used));
+                    }
                 })
                 .withBean(PersonnelFactsPort.class, () -> q -> {
                     outside(); return List.of("P1", "P2").stream().map(p -> new PersonnelFactsPort.PersonnelFact(p,
@@ -428,6 +477,129 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
         });
     }
 
+
+    @Test
+    void terminalSourceOutboxRollsBackWithFenceAndReplaysExactlyOnce() {
+        business().withInitializer(application -> application.getBeanFactory().addBeanPostProcessor(
+                new BeanPostProcessor() {
+                    @Override
+                    public Object postProcessAfterInitialization(Object bean, String name) {
+                        if (!name.equals("beautyOutboxPublisher")) { return bean; }
+                        OutboxPublisher delegate = (OutboxPublisher) bean;
+                        return (OutboxPublisher) (event, options) -> {
+                            var receipt = delegate.publish(event, options);
+                            if (failOutbox) {
+                                TransactionSynchronizationManager.registerSynchronization(
+                                        new TransactionSynchronization() {
+                                            @Override public void beforeCommit(boolean readOnly) {
+                                                throw new IllegalStateException("source-outbox-rollback");
+                                            }
+                                        });
+                            }
+                            return receipt;
+                        };
+                    }
+                })).run(context -> {
+            owner.authority = context.getBean(ResourceSourceAuthorityPort.class);
+            var service = context.getBean(AppointmentService.class);
+            var p = service.previewMyAppointment("USR1", preview(1));
+            var req = new CreateMyAppointmentReq(p.previewNo(), List.of(), null);
+            failOutbox = true;
+            assertThatThrownBy(() -> service.createMyAppointment("USR1", req, "OUTBOX"))
+                    .hasMessage("source-outbox-rollback");
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
+            assertThat(sql.queryForObject("SELECT status FROM bty_appointment", String.class)).isEqualTo("HELD");
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_resource_fence "
+                    + "WHERE active_intent_no IS NOT NULL", Integer.class)).isOne();
+            failOutbox = false;
+            var done = service.createMyAppointment("USR1", req, "OUTBOX");
+            assertThat(done.status()).isEqualTo("CONFIRMED");
+            service.createMyAppointment("USR1", req, "OUTBOX");
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isOne();
+            assertThat(sql.queryForObject("SELECT payload FROM sys_outbox", String.class))
+                    .contains(done.operationNo()).doesNotContain("USR1", "MEMBER_TICKET", "demands", "priceMinor");
+        });
+    }
+
+    @Test
+    void overlappingReplacementExcludesOnlyItsVerifiedCurrentHold() {
+        business().run(context -> {
+            owner.authority = context.getBean(ResourceSourceAuthorityPort.class);
+            var service = context.getBean(AppointmentService.class);
+            var p = service.previewMyAppointment("USR1", preview(1));
+            var root = service.createMyAppointment("USR1", new CreateMyAppointmentReq(p.previewNo(), List.of(), null),
+                    "OVERLAP");
+            occupied = true;
+            var req = new PreviewMyAppointmentChangeReq(root.revision(), start.plusMinutes(5),
+                    List.of(new AppointmentItemReq("SKU", 1)), "P1");
+            assertThat(service.previewMyAppointmentChange("USR1", root.appointmentNo(), req).previewNo()).isNotBlank();
+            otherOccupied = true;
+            assertThatThrownBy(() -> service.previewMyAppointmentChange("USR1", root.appointmentNo(), req))
+                    .isInstanceOf(BizException.class);
+        });
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    void recoveryFailureDoesNotStarveLaterOriginalTerminal(CapturedOutput output) {
+        business().run(context -> {
+            owner.authority = context.getBean(ResourceSourceAuthorityPort.class);
+            var service = context.getBean(AppointmentService.class);
+            for (String key : List.of("BROKEN", "LATER")) {
+                var p = service.previewMyAppointment("USR1", preview(1));
+                owner.loseExecute = true;
+                service.createMyAppointment("USR1", new CreateMyAppointmentReq(p.previewNo(), List.of(), null), key);
+            }
+            owner.brokenSource = owner.receipts.values().iterator().next().binding().sourceNo();
+            sql.update("UPDATE bty_appointment_operation SET next_retry_at='2020-01-01'");
+            SecurityContextHolder.clearContext();
+            assertThat(context.getBean(AppointmentRecovery.class).scan()).isEqualTo(1);
+            assertThat(output).contains("Appointment recovery deferred operation=", "failure=IllegalStateException")
+                    .doesNotContain("unavailable original");
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_operation "
+                    + "WHERE appointment_no=? AND lease_until IS NULL "
+                    + "AND next_retry_at>UTC_TIMESTAMP()+INTERVAL 40 SECOND",
+                    Integer.class, owner.brokenSource)).isOne();
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_operation "
+                    + "WHERE receipt IS NULL AND accept_payload LIKE '%CONFIRM%'", Integer.class)).isOne();
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_resource_fence "
+                    + "WHERE active_intent_no IS NOT NULL", Integer.class)).isOne();
+        });
+    }
+
+    @Test
+    void preservedLegacyRootReadsWithoutInventingArrangementEvidence() throws Exception {
+        database = new BeautySchemaMigrationIT();
+        database.isolatedDatabase();
+        sql = new JdbcTemplate(database.source);
+        Flyway.configure().dataSource(database.source).locations("classpath:db/industry/beauty")
+                .table("bty_flyway_history").target("2").baselineVersion("0").baselineOnMigrate(true)
+                .createSchemas(false).placeholderReplacement(false).load().migrate();
+        appointment("LEGACY", "S");
+        sql.update("UPDATE bty_appointment SET customer_ref='USR1'");
+        database.initialize("migrate");
+        new ResourceDatabasePopulator(new ClassPathResource("platform-write-fixture.sql")).execute(database.source);
+        business().run(context -> {
+            login(LoginUser.merchantByUser("OWNER_USER", "owner"));
+            var service = context.getBean(AppointmentService.class);
+            var page = service.listAppointments("E", "S", "OWNER_USER",
+                    new AppointmentQuery("S", null, null, null, null, 1, 20, null));
+            assertThat(page.total()).isOne();
+            var detail = service.getAppointment("E", "S", "OWNER_USER", "LEGACY");
+            assertThat(detail.appointment().status()).isEqualTo("CONFIRMED");
+            assertThat((Object) detail.appointment().arrangementRevision()).isNull();
+            assertThat(detail.items()).isEmpty();
+            assertThat(detail.availableActions()).isEmpty();
+            assertThat(sql.queryForObject("SELECT hold_no FROM bty_appointment", String.class)).isEqualTo("HOLD");
+            login(LoginUser.consumer("USR1", "customer"));
+            assertThat(service.getMyAppointment("USR1", "LEGACY").availableActions()).isEmpty();
+            assertThatThrownBy(() -> service.cancelMyAppointment("USR1", "LEGACY",
+                    new CancelAppointmentReq(0L, "legacy"), "LEGACY-CANCEL")).isInstanceOf(BizException.class);
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_current", Integer.class)).isZero();
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_operation", Integer.class)).isZero();
+        });
+    }
+
     /** An explicit external-owner fixture. It is never installed as a production provider or admission proof. */
     private final class ControlledOwner implements ResourceBookingPort {
         ResourceSourceAuthorityPort authority;
@@ -439,6 +611,8 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
         boolean loseAccept; boolean loseExecute; boolean loseQuery; boolean freezeOnly; String reject;
         CountDownLatch entered; CountDownLatch proceed;
         Hold hold;
+        String brokenSource;
+        final Map<String, Hold> allHolds = new LinkedHashMap<>();
         @Override public Receipt accept(Actor actor, Accept req) {
             outside();
             if (entered != null) {
@@ -485,6 +659,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
                         hold.holdNo();
                 hold = new Hold(no, state, hold == null ? 0 : hold.version() + 1, 1, b.sourceRevision(),
                         original.expectedOwnerVersion() + 1, b.planHash());
+                allHolds.put(no, hold);
                 result = json.writeValueAsString(Map.of("holdNo", no, "status", state, "ownerRevision",
                         hold.ownerVersion()));
             }
@@ -500,10 +675,12 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
             outside(); assertThat(hold.holdNo()).isEqualTo(no); return hold;
         }
         @Override public Optional<Receipt> reconcile(ResourceSourceAuthorityPort.Binding binding) {
-            outside(); return receipts.values().stream().filter(r -> r.binding().equals(binding)).findFirst();
+            outside();
+            if (binding.sourceNo().equals(brokenSource)) { throw new IllegalStateException("unavailable original"); }
+            return receipts.values().stream().filter(r -> r.binding().equals(binding)).findFirst();
         }
         @Override public Hold reconcileHold(ResourceSourceAuthorityPort.Binding binding, String no) {
-            outside(); return hold;
+            outside(); return allHolds.get(no);
         }
     }
 }

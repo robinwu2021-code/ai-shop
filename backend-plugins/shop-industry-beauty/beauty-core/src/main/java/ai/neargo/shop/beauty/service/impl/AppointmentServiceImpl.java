@@ -106,8 +106,10 @@ public final class AppointmentServiceImpl implements AppointmentService {
     }
     private AppointmentChangePreviewVO changePreview(BtyAppointment root, Long expected, List<AppointmentItemReq> items,
             OffsetDateTime start, List<AppointmentAssignmentReq> assignments, String person, boolean publicOnly) {
-        revision(root, expected); AppointmentPersistence.require("CONFIRMED".equals(root.getStatus()));
-        var match = matching.match(matching.scope(root.getStoreNo()), publicOnly, items, assignments, person, start);
+        revision(root, expected);
+        AppointmentPersistence.require(db.current(root) != null && "CONFIRMED".equals(root.getStatus()));
+        var match = matching.match(matching.scope(root.getStoreNo()), publicOnly, items, assignments, person, start,
+                coordinator.replacement(root));
         var preview = preparations.save(match, root.getCustomerRef(), root, expected);
         return new AppointmentChangePreviewVO(preview.previewNo(), expected, preview);
     }
@@ -167,6 +169,7 @@ public final class AppointmentServiceImpl implements AppointmentService {
                 .orderByDesc(BtyAppointmentOperation::getId).last("LIMIT 1")));
         AppointmentPersistence.require(last != null && root.getHoldNo() != null);
         var pointer = db.current(root);
+        AppointmentPersistence.require(pointer != null);
         var arrangement = db.read(() -> db.arrangements.selectOne(Wrappers.<BtyAppointmentArrangement>lambdaQuery()
                 .eq(BtyAppointmentArrangement::getTenantNo, "MAIN")
                 .eq(BtyAppointmentArrangement::getEntityNo, root.getEntityNo())
@@ -198,11 +201,12 @@ public final class AppointmentServiceImpl implements AppointmentService {
     private AppointmentDetailVO detail(BtyAppointment root) {
         var s = snapshot(root);
         return new AppointmentDetailVO(summary(root), s == null ? List.of() : s.items(),
-                s == null ? List.of() : s.assignments(), "CONFIRMED".equals(root.getStatus())
+                s == null ? List.of() : s.assignments(), s != null && "CONFIRMED".equals(root.getStatus())
                         ? List.of("CHANGE", "CANCEL") : List.of());
     }
     private AppointmentMatching.Snapshot snapshot(BtyAppointment root) {
         var current = db.current(root);
+        if (current == null) { return null; }
         var arrangement = db.read(() -> db.arrangements.selectOne(Wrappers.<BtyAppointmentArrangement>lambdaQuery()
                 .eq(BtyAppointmentArrangement::getTenantNo, "MAIN")
                 .eq(BtyAppointmentArrangement::getEntityNo, root.getEntityNo())
@@ -244,7 +248,7 @@ public final class AppointmentServiceImpl implements AppointmentService {
         var page = page(query(q.from(), q.to(), q.status()).eq(BtyAppointment::getCustomerRef, user), q.page(),
                 q.size());
         return new PageData<>(page.getRecords().stream().map(root -> new MyAppointmentVO(root.getAppointmentNo(),
-                root.getVersion(), root.getStatus(), db.current(root).getOperationNo(), null)).toList(),
+                root.getVersion(), root.getStatus(), currentOperation(root), null)).toList(),
                 page.getTotal(), page.getCurrent(), page.getSize());
     }
     private LambdaQueryWrapper<BtyAppointment> query(OffsetDateTime from, OffsetDateTime to, String status) {
@@ -261,10 +265,15 @@ public final class AppointmentServiceImpl implements AppointmentService {
         AppointmentPersistence.require(p > 0 && p <= 10000 && n > 0 && n <= 100);
         return db.read(() -> db.roots.selectPage(new Page<>(p, n), query));
     }
+    private String currentOperation(BtyAppointment root) {
+        var current = db.current(root);
+        return current == null ? null : current.getOperationNo();
+    }
     private AppointmentSummaryVO summary(BtyAppointment root) {
+        var current = db.current(root);
         return new AppointmentSummaryVO(root.getAppointmentNo(), root.getStoreNo(), root.getVersion(), root.getStatus(),
                 root.getStartAt().atOffset(ZoneOffset.UTC), root.getEndAt().atOffset(ZoneOffset.UTC),
-                db.current(root).getArrangementRevision());
+                current == null ? null : current.getArrangementRevision());
     }
     private BtyAppointment merchantRoot(String entity, String store, String actor, String number, boolean write) {
         access.merchant(entity, store, actor, write); var root = owned(number, write);

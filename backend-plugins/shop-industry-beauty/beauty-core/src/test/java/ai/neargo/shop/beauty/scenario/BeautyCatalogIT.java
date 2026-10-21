@@ -67,8 +67,8 @@ class BeautyCatalogIT {
             if (method.getName().equals("toString")) { return "product-authority-fixture"; }
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             if (!productAvailable) { throw new IllegalStateException("product unavailable"); }
-            return port.getClasses()[0].getConstructors()[0].newInstance(productEntity, "S", "SKU", "G", 9900L,
-                    productDuration);
+            return port.getClasses()[0].getConstructor(String.class, String.class, String.class, String.class,
+                    long.class, int.class).newInstance(productEntity, "S", "SKU", "G", 9900L, productDuration);
         });
         return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
                 type("ai.neargo.shop.beauty.config.BeautyPersistenceConfiguration"),

@@ -93,3 +93,44 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home node sc
 - P1 matching is bounded deterministic greedy matching, not exhaustive optimization. It makes no reservation guarantee. Pricing observations are revalidated but are not an atomic commercial quote or financial proof.
 - Full work-order/payment/entitlement lifecycle remains BM04/BM05 by the approved plan.
 - Unrelated repository-wide architecture baseline debt was not changed or claimed fixed.
+
+## Review round 1: six Important findings
+
+Completed against base `1293e87e6`; controller-owned main TDD and `progress.md` are excluded from this commit. Task52/Task53 and deployed external-owner evidence remain later work.
+
+| Review finding | Change and regression evidence |
+| --- | --- |
+| 1. Atomic source outbox | `AppointmentCoordinator.finish` publishes `BeautyAppointmentOperationCompleted` via existing `beautyOutboxPublisher` in the same source transaction as terminal operation/root/history/intent/fence changes. Safe fields are appointment/entity/store/operation/action/state/status/revisions; no customer, money or raw plan. Stable operation identity plus the locked reconciled-intent gate prevents terminal replay publication. `terminalSourceOutboxRollsBackWithFenceAndReplaysExactlyOnce` injects a before-commit failure after outbox flush, proves root/fence/outbox rollback, then replays to exactly one source event. Existing explicit archive mode accepts this immutable event; normal delivery still requires a registered platform route. |
+| 2. Overlapping replacement capacity | Source-owned root/current arrangement and the latest successful CREATE/CHANGE original receipt establish an exact `Replacement(Binding, Target)` after current hold verification. Owner revalidates the complete original command binding, scoped current owner head/revision, hold version/lease/source revision/plan hash, and subtracts only that hold's unreleased bucket units. Business regression permits the 5-minute overlap and still rejects another occupied hold. Native owner regression checks exact self-exclusion, other-hold preservation, foreign hold, forged source, stale hold/lease and released original rejection. |
+| 3. Effective staff fact time | `CapacityQuery.factAt` is independent of `from/to`. Matching supplies actual appointment start as fact time while retaining widened buffer/schedule/capacity lookback. `candidateCapacityUsesEffectiveServiceTimeInsteadOfLookback` exercises an actual staff assignment effective on the service day. Existing four-argument callers retain their previous nonreplacement semantics. |
+| 4. Recovery isolation | Each claimed operation catches and reports its own runtime failure, persists a 60-second failed-attempt backoff versus normal 30 seconds, clears the lease by CAS and continues. `recoveryFailureDoesNotStarveLaterOriginalTerminal` makes the first original lookup fail and reconciles the second, preserving the first fence. It also asserts persisted backoff/lease clearing and captures/asserts the safe warning without the raw owner error. |
+| 5. Legacy upgraded roots | No synthetic pointer, arrangement, hold or original command is inserted. Summaries expose nullable `arrangementRevision`; details show real root state/time with empty verified arrangement/actions; mutation requires real evidence. `preservedLegacyRootReadsWithoutInventingArrangementEvidence` seeds the appointment at actual tracked V2, upgrades to V4, reads B list/detail and C detail, preserves the legacy hold bytes, and rejects cancellation without new operation/current rows. No V5 is needed. |
+| 6. Shared frozen SQL renderer | V3/V4 generators retain separate schema inputs/targets and call shared `renderBeautyAppointmentTables` in the existing helper. Eight renderer tests include byte-exact V3/V4 output and rejection of unsafe identifiers/key/checks. All V1–V4 `--check` commands and direct byte comparison to the base pass; migration SQL files are unchanged. |
+
+The Minor default-suite omission is fixed: unflagged `verify-beauty-persistence.mjs` includes `AppointmentBusinessIT`.
+
+### RED, ablation and corrected harness evidence
+
+- `/tmp/task51-r1-red.log`: 16 business tests, 1 failure + 3 errors, reproducing missing outbox rollback, overlap conflict, recovery starvation and legacy-pointer NPE before these fixes.
+- `/tmp/task51-r1-owner-red.log`: 3 actual owner adapter tests, 1 error (`unknown scoped resources`) reproducing the effective staff/lookback mismatch.
+- `/tmp/task51-r1-owner-ablation.log`: controlled removal of only the own-hold capacity subtraction, 4 tests with exactly 1 expected failure in `replacementCapacityExcludesOnlyExactCurrentOriginalUnreleasedUnits` (expected used=1, actual=2). Production source restored in `finally`; final full owner suite passed.
+- First default-suite attempt `/tmp/task51-r1-full-beauty.log` stopped at test compilation because the strengthened upgrade fixture lacked a `JdbcTemplate` import; corrected before rerun.
+- Next full default run `/tmp/task51-r1-full-beauty-final.log` ran 122 tests and exposed an existing `BeautyCatalogIT` reflection fixture defect: `getConstructors()[0]` chose the additive 8-argument Fact constructor while the fixture supplied 6 arguments, causing 2 failures + 6 errors. The precise fixture fix selects the explicitly retained 6-argument signature. Production Fact and its legacy null revision semantics are unchanged. This harness defect is distinct from the business RED cases above. Final default run below is green.
+
+### Final verification
+
+All Maven runs use Java21 at `/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`, offline mode and isolated `/tmp/codex-beauty-bm01-m2`. Changed shared artifacts were installed into that cache before the independent beauty reactor (`/tmp/task51-r1-shared-install.log`). Native wrappers own private tmpfs MySQL8.4 containers, `--pull never`, TCP readiness and `finally` cleanup; no shared DB or dependency download.
+
+| Command | Final result | Log |
+| --- | --- | --- |
+| `node scripts/verify-beauty-persistence.mjs` | 122 tests, 0 failures/errors/skips; includes 16 business and 17 migration tests | `/tmp/task51-r1-full-beauty-final2.log` |
+| `node scripts/verify-resource-booking-persistence.mjs` | 50 tests, 0 failures/errors/skips (17 persistence + 33 execution) | `/tmp/task51-r1-full-owner.log` |
+| `mvn -o -Dmaven.repo.local=/tmp/codex-beauty-bm01-m2 -f backend-plugins/shop-industry-beauty/pom.xml test` | 72 tests, 0 failures/errors/skips across API/core/web/channel/server; includes 13 beauty architecture tests | `/tmp/task51-r1-reactor.log` |
+| `node --test scripts/tests/beauty-schema-sql.test.mjs` | 8 passed | `/tmp/task51-r1-renderer-final.log` |
+| V1/V2/V3/V4 generators `--check`, direct base byte comparison, SQL portability, `git diff --check` | Passed; no new SQL dialect dependency | `/tmp/task51-r1-static.log` |
+
+Final XML reports remain under the existing module `target/surefire-reports` paths; native IT reports and normal reactor Test reports all record zero failures/errors. The normal reactor module totals are API2/core24/web15/channel10/server21.
+
+Remaining output warnings are explicitly not claimed pristine: pinned Flyway support metadata knows MySQL through8.1 while fixtures intentionally use8.4; MyBatis Sequence can report slow local ID initialization; the owner reactor compilation reports pre-existing deprecated APIs; normal reactor negative-context tests intentionally report invalid configuration/missing primary datasource or manager, and Mockito/ByteBuddy reports dynamic-agent notices. The new recovery warning is expected, captured and asserted. No warnings are treated as deployed configuration validation. Prior unrelated product/H2/duplicate-mapper warnings were not used as evidence for this fix round.
+
+Capacity remains advisory, legacy roots remain read-only without real arrangement/original command evidence, and normal appointment event delivery requires a registered platform route. Task52 transport and Task53 startup/scheduling/real external-owner chain are still unverified here. No deployment, push, merge or financial lifecycle claim is made.

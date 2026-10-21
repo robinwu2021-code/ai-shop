@@ -1,32 +1,34 @@
 package ai.neargo.shop.beauty.config;
 
+import ai.neargo.shop.beauty.job.AppointmentRecoveryJob;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
-import ai.neargo.shop.beauty.service.impl.ServiceOperationRecoveryServiceImpl;
+import ai.neargo.shop.beauty.policy.AppointmentAccess;
+import ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl;
 import ai.neargo.shop.beauty.service.ServiceCatalogQueryService;
-import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
-import ai.neargo.shop.spi.product.ServiceCatalogFactsPort;
-import ai.neargo.shop.spi.personnel.PersonnelFactsPort;
-import ai.neargo.shop.spi.schedule.ScheduleWindowsPort;
-import ai.neargo.shop.spi.resource.ResourceCandidatesPort;
-import ai.neargo.shop.spi.resource.ResourceBookingPort;
+import ai.neargo.shop.beauty.service.impl.AppointmentAvailabilityServiceImpl;
+import ai.neargo.shop.beauty.service.impl.AppointmentCoordinator;
+import ai.neargo.shop.beauty.service.impl.AppointmentMatching;
+import ai.neargo.shop.beauty.service.impl.AppointmentPersistence;
+import ai.neargo.shop.beauty.service.impl.AppointmentPreparationService;
+import ai.neargo.shop.beauty.service.impl.AppointmentRecovery;
+import ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl;
+import ai.neargo.shop.beauty.service.impl.AppointmentSourceAuthority;
+import ai.neargo.shop.beauty.service.impl.ServiceOperationQueryServiceImpl;
+import ai.neargo.shop.beauty.service.impl.ServiceOperationRecoveryServiceImpl;
+import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
+import ai.neargo.shop.spi.personnel.PersonnelFactsPort;
+import ai.neargo.shop.spi.product.ServiceCatalogFactsPort;
+import ai.neargo.shop.spi.resource.ResourceBookingPort;
+import ai.neargo.shop.spi.resource.ResourceCandidatesPort;
+import ai.neargo.shop.spi.schedule.ScheduleWindowsPort;
+import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 import tools.jackson.databind.ObjectMapper;
-import ai.neargo.shop.beauty.service.impl.AppointmentPersistence;
-import ai.neargo.shop.beauty.policy.AppointmentAccess;
-import ai.neargo.shop.beauty.service.impl.AppointmentMatching;
-import ai.neargo.shop.beauty.service.impl.AppointmentPreparationService;
-import ai.neargo.shop.beauty.service.impl.AppointmentCoordinator;
-import ai.neargo.shop.beauty.service.impl.AppointmentSourceAuthority;
-import ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl;
-import ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl;
-import ai.neargo.shop.beauty.service.impl.AppointmentAvailabilityServiceImpl;
-import ai.neargo.shop.beauty.service.impl.ServiceOperationQueryServiceImpl;
-import ai.neargo.shop.beauty.service.impl.AppointmentRecovery;
-import ai.neargo.shop.beauty.job.AppointmentRecoveryJob;
 
 /** Source authority has no eager executor dependency; external provider capabilities resolve per call. */
 @Configuration(proxyBeanMethods = false)
@@ -62,8 +64,9 @@ public class BeautyAppointmentConfiguration {
     }
     @Bean
     AppointmentCoordinator appointmentCoordinator(AppointmentPersistence db, AppointmentAccess access,
-            ObjectProvider<ResourceBookingPort> owner) {
-        return new AppointmentCoordinator(db, access, owner);
+            ObjectProvider<ResourceBookingPort> owner,
+            @Qualifier("beautyOutboxPublisher") OutboxPublisher publisher) {
+        return new AppointmentCoordinator(db, access, owner, publisher);
     }
     @Bean
     AppointmentSourceAuthority appointmentSourceAuthority(AppointmentPersistence db, AppointmentAccess access,

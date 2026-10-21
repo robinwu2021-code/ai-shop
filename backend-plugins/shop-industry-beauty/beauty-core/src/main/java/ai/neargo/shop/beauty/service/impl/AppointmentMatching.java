@@ -67,6 +67,11 @@ public final class AppointmentMatching {
     }
     public Matched match(Scope scope, boolean publicOnly, List<AppointmentItemReq> requested,
             List<AppointmentAssignmentReq> specified, String requestedPerson, OffsetDateTime startAt) {
+        return match(scope, publicOnly, requested, specified, requestedPerson, startAt, null);
+    }
+    public Matched match(Scope scope, boolean publicOnly, List<AppointmentItemReq> requested,
+            List<AppointmentAssignmentReq> specified, String requestedPerson, OffsetDateTime startAt,
+            ResourceCandidatesPort.Replacement replacement) {
         if (requested == null || requested.isEmpty() || requested.size() > 10 || startAt == null
                 || !startAt.toInstant().isAfter(Instant.now()) || startAt.getNano() != 0
                 || Math.floorMod(startAt.toEpochSecond(), 300) != 0) { bad(); }
@@ -90,7 +95,8 @@ public final class AppointmentMatching {
         Instant to = startAt.toInstant().plus(10, ChronoUnit.DAYS);
         var windows = schedules.getObject().getBatch(new ScheduleWindowsPort.Query(scope.tenantNo(), scope.entityNo(),
                 scope.storeNo(), ids, from, to));
-        var capacity = candidates.getObject().capacity(new ResourceCandidatesPort.CapacityQuery(scope, ids, from, to));
+        var capacity = candidates.getObject().capacity(new ResourceCandidatesPort.CapacityQuery(
+                scope, ids, from, to, startAt.toInstant(), replacement));
         List<AppointmentPlanItemVO> items = new ArrayList<>();
         List<AppointmentAssignmentVO> assignments = new ArrayList<>();
         List<ResourcePlanContract.Demand> demands = new ArrayList<>();

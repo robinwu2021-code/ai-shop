@@ -1,17 +1,17 @@
 package ai.neargo.shop.beauty.config;
 
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.OutboxConsumer;
+import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.runtime.PlatformPublicationPublisher;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.idem.SysIdempotentMapper;
-import org.mybatis.spring.SqlSessionTemplate;
 import java.util.Set;
 import javax.sql.DataSource;
-import org.springframework.beans.factory.annotation.Value;
+import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -48,6 +48,7 @@ public class BeautyWriteGuardConfiguration {
         }
         return PlatformPublicationPublisher.create(facades::getIfAvailable, manager, sources::getObject, json,
                 consumers::orderedStream, Set.of("BEAUTY_STORE_POLICY_VERSION_PUBLISHED",
-                        "BEAUTY_SERVICE_DEFINITION_VERSION_PUBLISHED"), archiveOnly, maintenance);
+                        "BEAUTY_SERVICE_DEFINITION_VERSION_PUBLISHED",
+                        "BEAUTY_APPOINTMENT_OPERATION_COMPLETED"), archiveOnly, maintenance);
     }
 }

@@ -24,7 +24,7 @@ try {
     : process.argv.includes('--source-only') ? 'SourceAllocationConcurrencyIT,ServiceSubmissionPersistenceIT'
     : process.argv.includes('--execution-only') ? 'AppointmentPersistenceIT,ServiceTaskPersistenceIT'
     : process.argv.includes('--catalog-only') ? 'BeautyCatalogIT'
-    : 'ResourceIntentPersistenceIT,ResourceIntentMigrationIT,BeautySchemaMigrationIT,PolicyDefinitionPersistenceIT,BeautyPlatformFlywayIT,BeautyPolicyPublicationIT,BeautyCatalogIT,PublicCatalogIT,AppointmentPersistenceIT,ServiceTaskPersistenceIT,SourceAllocationConcurrencyIT,ServiceSubmissionPersistenceIT';
+    : 'AppointmentBusinessIT,ResourceIntentPersistenceIT,ResourceIntentMigrationIT,BeautySchemaMigrationIT,PolicyDefinitionPersistenceIT,BeautyPlatformFlywayIT,BeautyPolicyPublicationIT,BeautyCatalogIT,PublicCatalogIT,AppointmentPersistenceIT,ServiceTaskPersistenceIT,SourceAllocationConcurrencyIT,ServiceSubmissionPersistenceIT';
   const result = spawnSync('mvn', ['-o', '-Dmaven.repo.local=/tmp/codex-beauty-bm01-m2', '-f', root + 'backend-plugins/shop-industry-beauty/pom.xml', '-pl', 'beauty-core', '-am', 'test', `-Dtest=${selection}`, '-Dsurefire.failIfNoSpecifiedTests=false', `-Dbeauty.test.admin-url=${jdbc}`], {cwd: root, env: process.env, stdio: 'inherit'});
   assert.equal(result.status, 0, 'Beauty disposable JDBC integration tests failed');
   if (process.argv.includes('--include-server')) {

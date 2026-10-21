@@ -10,49 +10,45 @@ import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import ai.neargo.shop.merchant.policy.ResourceDemandNormalizer.Demand;
 import ai.neargo.shop.merchant.policy.ResourceDemandNormalizer.Interval;
 import ai.neargo.shop.merchant.policy.ResourcePlanCodec;
+import ai.neargo.shop.merchant.port.ResourceBookingPortImpl;
+import ai.neargo.shop.merchant.port.ResourceCandidatesPortImpl;
+import ai.neargo.shop.merchant.port.ResourceFactsPortImpl;
 import ai.neargo.shop.merchant.service.ResourceAdmissionService.Qualification;
-import ai.neargo.shop.merchant.service.ResourceCommandService;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Accept;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Action;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Receipt;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Scope;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Status;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Target;
-import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
+import ai.neargo.shop.merchant.service.ResourceCommandService;
 import ai.neargo.shop.spi.resource.ResourceBookingPort;
 import ai.neargo.shop.spi.resource.ResourceCandidatesPort;
 import ai.neargo.shop.spi.resource.ResourceFactsPort;
-import ai.neargo.shop.merchant.port.ResourceBookingPortImpl;
-import ai.neargo.shop.merchant.port.ResourceCandidatesPortImpl;
-import ai.neargo.shop.merchant.port.ResourceFactsPortImpl;
+import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
 import com.baomidou.mybatisplus.core.incrementer.DefaultIdentifierGenerator;
 import com.baomidou.mybatisplus.core.incrementer.IdentifierGenerator;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import org.springframework.beans.factory.config.BeanPostProcessor;
-import org.springframework.jdbc.datasource.AbstractDataSource;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.Set;
-import java.util.stream.Stream;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
+import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,11 +58,13 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.AbstractDataSource;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -75,6 +73,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /** Real owner/admission/capacity transactions; only an explicitly registered test source may authorize. */
 class ResourceBookingExecutionIT {
@@ -233,6 +233,62 @@ class ResourceBookingExecutionIT {
             assertThat(port.candidates(new ResourceCandidatesPort.Query(
                     new ResourceBookingPort.Scope("MAIN", "E", "OTHER"), false, NOW, 50)))
                     .extracting(ResourceFactsPort.ResourceFact::resourceNo).doesNotContain("B", "C");
+        });
+    }
+
+    @Test
+    void replacementCapacityExcludesOnlyExactCurrentOriginalUnreleasedUnits() {
+        runner().run(ctx -> {
+            sql.update("UPDATE mch_resource SET capacity=2 WHERE resource_no='B'");
+            var first = accept(ctx, S, Action.RESERVE, "A", 0, 1, null, "B");
+            assertThat(execute(ctx, first).status()).isEqualTo(Status.SUCCEEDED);
+            String own = current();
+            var other = accept(ctx, S, Action.RESERVE, "OTHER", 0, 1, null, "B");
+            assertThat(execute(ctx, other).status()).isEqualTo(Status.SUCCEEDED);
+            var port = ctx.getBean(ResourceCandidatesPort.class);
+            var scope = new ResourceBookingPort.Scope("MAIN", "E", "S");
+            var binding = source.allowed.get(first.commandNo()).binding();
+            var ownTarget = target(own);
+            var proof = new ResourceCandidatesPort.Replacement(binding, new ResourceBookingPort.Target(own,
+                    ownTarget.holdVersion(), ownTarget.leaseRevision()));
+            var query = new ResourceCandidatesPort.CapacityQuery(scope, Set.of("B"), NOW.plusSeconds(3600),
+                    NOW.plusSeconds(4200), NOW, proof);
+            assertThat(port.capacity(query)).hasSize(2).allSatisfy(row -> assertThat(row.used()).isOne());
+            assertThat(port.capacity(new ResourceCandidatesPort.CapacityQuery(scope, Set.of("B"), query.from(),
+                    query.to(), NOW, null))).allSatisfy(row -> assertThat(row.used()).isEqualTo(2));
+            String otherHold = sql.queryForObject(
+                    "SELECT current_hold_no FROM mch_booking_owner WHERE source_no='OTHER'", String.class);
+            for (var wrong : List.of(new ResourceBookingPort.Target(otherHold, 0, 1),
+                    new ResourceBookingPort.Target(own, ownTarget.holdVersion() + 1, ownTarget.leaseRevision()),
+                    new ResourceBookingPort.Target(own, ownTarget.holdVersion(), ownTarget.leaseRevision() + 1))) {
+                assertThatThrownBy(() -> port.capacity(new ResourceCandidatesPort.CapacityQuery(scope, Set.of("B"),
+                        query.from(), query.to(), NOW, new ResourceCandidatesPort.Replacement(binding, wrong))))
+                        .isInstanceOf(IllegalArgumentException.class);
+            }
+            var forged = new ResourceSourceAuthorityPort.Binding(binding.tenantNo(), binding.entityNo(),
+                    binding.storeNo(), binding.commandNo(), binding.sourceType(), "OTHER", binding.sourceRevision(),
+                    binding.action(), binding.commandHash(), binding.planHash());
+            assertThatThrownBy(() -> port.capacity(new ResourceCandidatesPort.CapacityQuery(scope, Set.of("B"),
+                    query.from(), query.to(), NOW, new ResourceCandidatesPort.Replacement(forged, proof.target()))))
+                    .isInstanceOf(RuntimeException.class);
+            assertThat(execute(ctx, accept(ctx, S, Action.RELEASE, "A", 1, 2, target(own), "B")).status())
+                    .isEqualTo(Status.SUCCEEDED);
+            assertThatThrownBy(() -> port.capacity(query)).isInstanceOf(IllegalArgumentException.class);
+            assertThat(port.capacity(new ResourceCandidatesPort.CapacityQuery(scope, Set.of("B"), query.from(),
+                    query.to(), NOW, null))).allSatisfy(row -> assertThat(row.used()).isOne());
+        });
+    }
+
+    @Test
+    void candidateCapacityUsesEffectiveServiceTimeInsteadOfLookback() {
+        runner().run(ctx -> {
+            sql.update("UPDATE mch_personnel_store SET valid_from=? WHERE store_no='S'", NOW.minusSeconds(60));
+            var port = ctx.getBean(ResourceCandidatesPort.class);
+            var scope = new ResourceBookingPort.Scope("MAIN", "E", "S");
+            assertThat(port.candidates(new ResourceCandidatesPort.Query(scope, true, NOW, 50)))
+                    .extracting(ResourceFactsPort.ResourceFact::resourceNo).contains("R");
+            assertThat(port.capacity(new ResourceCandidatesPort.CapacityQuery(scope, Set.of("R", "B"),
+                    NOW.minusSeconds(86400), NOW.plusSeconds(4200), NOW, null))).isEmpty();
         });
     }
 

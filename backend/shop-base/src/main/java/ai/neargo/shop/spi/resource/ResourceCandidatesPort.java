@@ -16,10 +16,22 @@ public interface ResourceCandidatesPort {
             }
         }
     }
-    record CapacityQuery(ResourceBookingPort.Scope scope, Set<String> resourceNos, Instant from, Instant to) {
+    /** Trusted source proof of the exact current allocation; never populated directly from public request data. */
+    record Replacement(ResourceSourceAuthorityPort.Binding binding, ResourceBookingPort.Target target) {
+        public Replacement {
+            if (binding == null || target == null || target.holdNo() == null) {
+                throw new IllegalArgumentException("original binding and current hold required");
+            }
+        }
+    }
+    record CapacityQuery(ResourceBookingPort.Scope scope, Set<String> resourceNos, Instant from, Instant to,
+            Instant factAt, Replacement replacement) {
+        public CapacityQuery(ResourceBookingPort.Scope scope, Set<String> resourceNos, Instant from, Instant to) {
+            this(scope, resourceNos, from, to, from, null);
+        }
         public CapacityQuery {
             if (scope == null || resourceNos == null || resourceNos.isEmpty() || resourceNos.size() > 50
-                    || from == null || to == null || !to.isAfter(from)
+                    || from == null || to == null || factAt == null || !to.isAfter(from)
                     || Duration.between(from, to).compareTo(Duration.ofDays(31)) > 0) {
                 throw new IllegalArgumentException("bounded capacity scope required");
             }

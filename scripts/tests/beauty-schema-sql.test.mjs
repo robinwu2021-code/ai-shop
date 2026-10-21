@@ -39,3 +39,27 @@ test('write-once migration rejects drift and preserves existing bytes',async()=>
  const {writeFrozenMigration}=await implementation();const dir=fs.mkdtempSync(path.join(os.tmpdir(),'beauty-frozen-'));const file=path.join(dir,'V1.sql');
  try{writeFrozenMigration(file,'first');writeFrozenMigration(file,'first');assert.throws(()=>writeFrozenMigration(file,'changed'),/new migration|frozen/i);assert.equal(fs.readFileSync(file,'utf8'),'first');}finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+test('shared appointment renderer retains the frozen V3 and V4 bytes', async () => {
+ const {renderBeautyAppointmentTables}=await implementation();
+ for (const [schema,migration,header] of [
+  ['business','V3__beauty_appointment_business.sql','-- Beauty appointment preparations, durable operations and immutable arrangement pointers.'],
+  ['decision','V4__beauty_appointment_resource_decision.sql','-- Immutable original source decision fence metadata; V1/V2/V3 remain frozen.']
+ ]) {
+  const input=JSON.parse(fs.readFileSync(new URL(`../../docs/technical/design/schema/beauty-appointment-${schema}-schema.json`,import.meta.url)));
+  const actual=header+'\n-- Frozen V1 remains unchanged; permission and resource authority live in services.\n\n'
+   +renderBeautyAppointmentTables(input).join('\n\n')+'\n';
+  const frozen=fs.readFileSync(new URL(`../../backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/${migration}`,import.meta.url),'utf8');
+  assert.equal(actual,frozen);
+ }
+});
+test('shared appointment renderer rejects unsafe identifiers, missing key columns and check expressions', async () => {
+ const {renderBeautyAppointmentTables}=await implementation();
+ const input=JSON.parse(fs.readFileSync(new URL('../../docs/technical/design/schema/beauty-appointment-decision-schema.json',import.meta.url)));
+ for (const [mutate,expected] of [
+  [schema=>{schema.tables[0].name='unsafe;drop';},/identifier/i],
+  [schema=>{schema.tables[0].unique.push(['missing']);},/unknown.*column/i],
+  [schema=>{schema.tables[0].checks.push('version >= 0; DROP TABLE x');},/check/i]
+ ]) {
+  const broken=structuredClone(input);mutate(broken);assert.throws(()=>renderBeautyAppointmentTables(broken),expected);
+ }
+});
