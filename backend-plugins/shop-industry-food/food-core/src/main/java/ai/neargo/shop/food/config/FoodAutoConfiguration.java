@@ -15,6 +15,8 @@ import ai.neargo.shop.food.mapper.FoodMappers.TableOperationMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableTokenMapper;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.DishService;
+import ai.neargo.shop.food.service.OptionGroupService;
+import ai.neargo.shop.food.service.impl.OptionGroupServiceImpl;
 import ai.neargo.shop.food.service.impl.DishServiceImpl;
 import ai.neargo.shop.food.mapper.FoodMappers.DishMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.DishOptionGroupMapper;
@@ -51,6 +53,16 @@ import tools.jackson.databind.ObjectMapper;
 @ConditionalOnFoodEnabled
 @EnableConfigurationProperties(FoodProperties.class)
 public class FoodAutoConfiguration {
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(OptionGroupService.class)
+    OptionGroupService optionGroupService(OptionGroupMapper groups, OptionGroupItemMapper items,
+            ActionLogMapper actions, IdempotencyService idem,
+            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new OptionGroupServiceImpl(groups, items, actions, idem, publisher, json, manager);
+    }
+
     @Bean
     @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
     @ConditionalOnMissingBean(DishService.class)
