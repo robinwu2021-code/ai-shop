@@ -112,6 +112,26 @@ class GoodsCatalogQueryPortTest {
         });
     }
 
+    @Test void skuLookupUsesBothSkuAndGoodsOwnershipWithoutRequiringSale() {
+        run((service, sql) -> {
+            var fact = service.getSku("E", "S", "SKU1");
+            assertThat(fact.skuNo()).isEqualTo("SKU1");
+            assertThat(fact.goodsNo()).isEqualTo("G");
+            assertThat(fact.entityNo()).isEqualTo("E");
+            assertThat(fact.storeNo()).isEqualTo("S");
+            assertThat(fact.version()).isEqualTo(1);
+            for (String sku : List.of("ARCHIVED", "FOREIGN", "OTHER_MARKET", "MISSING")) {
+                code(() -> service.getSku("E", "S", sku), ErrorCode.NOT_FOUND);
+            }
+            code(() -> service.getSku("E", "OTHER", "SKU1"), ErrorCode.NOT_FOUND);
+            code(() -> service.getSku("OTHER", "S", "SKU1"), ErrorCode.NOT_FOUND);
+            sql.update("UPDATE prd_goods SET on_sale=FALSE,audit_status='PENDING'");
+            assertThat(service.getSku("E", "S", "SKU1").goodsNo()).isEqualTo("G");
+            sql.update("UPDATE prd_goods SET deleted=1");
+            code(() -> service.getSku("E", "S", "SKU1"), ErrorCode.NOT_FOUND);
+        });
+    }
+
     private static void code(Runnable command,ErrorCode expected) {
         assertThatThrownBy(command::run).isInstanceOfSatisfying(BizException.class,
                 e -> assertThat(e.errorCode()).isEqualTo(expected));

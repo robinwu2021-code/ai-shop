@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.HashSet;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 /** Pure product metadata: explicit owner predicates also protect service-token and consumer callers. */
 @Component
@@ -23,6 +24,28 @@ public class GoodsCatalogQueryPortImpl implements GoodsCatalogQueryPort {
     public GoodsCatalogQueryPortImpl(GoodsMapper goods, SkuMapper skus) {
         this.goods = goods;
         this.skus = skus;
+    }
+
+    @Override
+    @Transactional(transactionManager = "transactionManager", readOnly = true,
+            isolation = Isolation.REPEATABLE_READ)
+    public SkuIdentityFact getSku(String entity, String store, String number) {
+        key(entity); key(store); key(number);
+        return DataScopeContext.executeWithoutScope(() -> {
+            var sku = skus.selectOne(Wrappers.<PrdSku>lambdaQuery()
+                    .select(PrdSku::getSkuNo, PrdSku::getGoodsNo, PrdSku::getEntityNo,
+                            PrdSku::getMarket, PrdSku::getVersion).eq(PrdSku::getEntityNo, entity)
+                    .eq(PrdSku::getSkuNo, number).eq(PrdSku::getMarket, "CN"));
+            if (sku == null || !entity.equals(sku.getEntityNo()) || !number.equals(sku.getSkuNo())
+                    || !"CN".equals(sku.getMarket())) throw BizException.of(ErrorCode.NOT_FOUND);
+            var owner = goods.selectOne(Wrappers.<PrdGoods>lambdaQuery()
+                    .select(PrdGoods::getGoodsNo, PrdGoods::getEntityNo, PrdGoods::getStoreNo)
+                    .eq(PrdGoods::getGoodsNo, sku.getGoodsNo())
+                    .eq(PrdGoods::getEntityNo, entity).eq(PrdGoods::getStoreNo, store));
+            if (owner == null || !entity.equals(owner.getEntityNo()) || !store.equals(owner.getStoreNo())
+                    || !sku.getGoodsNo().equals(owner.getGoodsNo())) throw BizException.of(ErrorCode.NOT_FOUND);
+            return new SkuIdentityFact(sku.getSkuNo(), owner.getGoodsNo(), entity, store, sku.getVersion());
+        });
     }
 
     @Override

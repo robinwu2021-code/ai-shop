@@ -5,6 +5,8 @@ import ai.neargo.shop.food.config.FoodWebAutoConfiguration.PolicyEnabled;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.OptionGroupService;
+import ai.neargo.shop.food.service.ModifierService;
+import ai.neargo.shop.food.spi.ModifierInternalApi;
 import ai.neargo.shop.food.spi.OptionGroupInternalApi;
 import ai.neargo.shop.food.spi.DishInternalApi;
 import ai.neargo.shop.food.service.DiningSessionService;
@@ -37,6 +39,13 @@ import org.springframework.context.annotation.Profile;
 @Conditional(PolicyEnabled.class)
 @Profile({"api", "ops"})
 public class FoodClientConfiguration {
+    @Bean
+    @ConditionalOnMissingBean(ModifierService.class)
+    ModifierService remoteModifierService(InternalHttp http) {
+        return new RemoteModifierService(http.client(ServiceName.FOOD, ModifierInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
+
     @Bean
     @ConditionalOnMissingBean(OptionGroupService.class)
     OptionGroupService remoteOptionGroupService(InternalHttp http) {

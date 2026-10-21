@@ -11,6 +11,13 @@ public interface GoodsCatalogQueryPort {
     record GoodsSummary(String goodsNo, String entityNo, String storeNo, String title, String cover,
             boolean baseOnSale, String auditStatus, long version) { }
 
+    /** Pure identity lookup for configuration; optional older providers must fail closed, never invent facts. */
+    default SkuIdentityFact getSku(String entityNo, String storeNo, String skuNo) {
+        throw new UnsupportedOperationException("SKU identity lookup is unavailable");
+    }
+
+    record SkuIdentityFact(String skuNo, String goodsNo, String entityNo, String storeNo, long version) { }
+
     GoodsFact getGoods(String entityNo, String storeNo, String goodsNo);
 
     record GoodsFact(String goodsNo, String entityNo, String storeNo, String title, String cover,

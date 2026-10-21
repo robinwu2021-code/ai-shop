@@ -11,6 +11,13 @@ import org.springframework.web.service.annotation.PostExchange;
 
 /** Shared product metadata wire contract, with no restaurant runtime dependency. */
 public interface GoodsCatalogInternalApi {
+    String SKU_PATH = "/internal/product/catalog/goods/sku";
+    @PostExchange(SKU_PATH)
+    GoodsCatalogQueryPort.SkuIdentityFact lookupSku(@RequestBody SkuLookup request);
+
+    record SkuLookup(@NotBlank @Size(max=32) String entityNo, @NotBlank @Size(max=32) String storeNo,
+            @NotBlank @Size(max=32) String skuNo) { }
+
     String LOOKUP_PATH = "/internal/product/catalog/goods/lookup";
 
     @PostExchange(LOOKUP_PATH)

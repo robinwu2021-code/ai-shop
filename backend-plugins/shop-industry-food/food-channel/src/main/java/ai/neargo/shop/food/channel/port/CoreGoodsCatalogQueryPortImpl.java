@@ -20,6 +20,33 @@ public class CoreGoodsCatalogQueryPortImpl implements GoodsCatalogQueryPort {
     public CoreGoodsCatalogQueryPortImpl(Supplier<GoodsCatalogInternalApi> api) { this.api = api; }
 
     @Override
+    public SkuIdentityFact getSku(String entity, String store, String sku) {
+        try {
+            return ServiceCalls.call(ServiceName.PLATFORM, () -> {
+                var fact = api.get().lookupSku(new GoodsCatalogInternalApi.SkuLookup(entity, store, sku));
+                if (fact == null || !Objects.equals(entity, fact.entityNo()) || !Objects.equals(store, fact.storeNo())
+                        || !Objects.equals(sku, fact.skuNo()) || fact.goodsNo() == null || fact.goodsNo().isBlank()
+                        || fact.goodsNo().length() > 32 || !fact.goodsNo().equals(fact.goodsNo().trim())
+                        || fact.version() < 0) {
+                    throw new ServiceCallException(CallOutcome.REMOTE_ERROR, ServiceName.PLATFORM, 0,
+                            "Invalid SKU identity response");
+                }
+                return fact;
+            });
+        } catch (ServiceCallException failure) {
+            ErrorCode code = switch (failure.statusCode()) {
+                case 400 -> ErrorCode.BAD_REQUEST;
+                case 403 -> ErrorCode.FORBIDDEN;
+                case 404 -> ErrorCode.NOT_FOUND;
+                case 409 -> ErrorCode.CONFLICT;
+                default -> null;
+            };
+            if (code != null) throw BizException.of(code);
+            throw failure;
+        }
+    }
+
+    @Override
     public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
         try {
             return ServiceCalls.call(ServiceName.PLATFORM, () -> {

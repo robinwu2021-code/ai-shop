@@ -240,3 +240,7 @@ P1选项维护的原字典依赖单独落地：SpecValueCatalogQueryPort及真�
 ### 5.6 CAT-04C选项维护
 
 API019实现组选项、互斥依赖、当前门店商品绑定的草稿维护，SPEC_VALUE使用原权威ENUM值，MODIFIER引用同主体有效工作头。V3将规格引用扩为64，与原字典一致，V1/V2冻结；原历史初始化记录不改写。规则、物理工作行替换和门店绑定保留策略、完整类方法和验证见[CAT-04C实施说明](./TDD-餐饮系统-CAT-04C-选项维护实施.md)。收费配料创建/COMBO管理及不可变发布继续后续P1，不据此开放可售。
+
+### 5.7 CAT-05A 配料组合草稿管理
+
+API141/020/120实现ADDON/COMBO创建、修改及分页，复用fnb_modifier/component与原商品SKU身份，组合不嵌套，kind不可变；当前工作头修改与不可变发布分开。原GoodsCatalogQueryPort新增只读getSku，主体/门店与原SKU归属双重校验，包含独立部署typed端点及food-channel实现。输入输出、类方法与验证见[CAT-05A实施说明](./TDD-餐饮系统-CAT-05A-配料组合管理实施.md)。API009/117与ConfigRevisionService仍待后续，不开放草稿报价、库存或Keeta实际同步。

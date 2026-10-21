@@ -16,6 +16,9 @@ import ai.neargo.shop.food.mapper.FoodMappers.TableTokenMapper;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.OptionGroupService;
+import ai.neargo.shop.food.service.ModifierService;
+import ai.neargo.shop.food.service.impl.ModifierServiceImpl;
+import ai.neargo.shop.food.mapper.FoodMappers.ModifierComponentMapper;
 import ai.neargo.shop.food.service.impl.OptionGroupServiceImpl;
 import ai.neargo.shop.food.service.impl.DishServiceImpl;
 import ai.neargo.shop.food.mapper.FoodMappers.DishMapper;
@@ -55,6 +58,28 @@ import tools.jackson.databind.ObjectMapper;
 @ConditionalOnFoodEnabled
 @EnableConfigurationProperties(FoodProperties.class)
 public class FoodAutoConfiguration {
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(ModifierService.class)
+    ModifierService modifierService(ModifierMapper heads, ModifierComponentMapper components,
+            ActionLogMapper actions, IdempotencyService idem,
+            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
+            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            ObjectProvider<GoodsCatalogQueryPort> catalogs) {
+        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
+            @Override public SkuIdentityFact getSku(String entity, String store, String sku) {
+                return catalogs.getObject().getSku(entity, store, sku);
+            }
+            @Override public GoodsFact getGoods(String entity, String store, String goods) {
+                return catalogs.getObject().getGoods(entity, store, goods);
+            }
+            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
+                return catalogs.getObject().getGoodsBatch(entity, store, numbers);
+            }
+        };
+        return new ModifierServiceImpl(heads, components, actions, idem, publisher, json, manager, catalog);
+    }
+
     @Bean
     @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
     @ConditionalOnMissingBean(OptionGroupService.class)

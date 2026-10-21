@@ -1032,6 +1032,40 @@
 | status | string | 是 | 管理状态 |
 | data | DishOptionData | 是 | 实际工作头与条目 |
 
+### ModifierComponentInput
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| memberNo | string | 是 | 单项配料业务号 |
+| quantity | decimal | 是 | 正组合份数DECIMAL12,3 |
+
+### ModifierComponentVO
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| componentNo | string | 是 | 服务端生成明细业务号 |
+| memberNo | string | 是 | 单项配料 |
+| quantity | decimal | 是 | 每组合份数 |
+
+### ModifierConfigData
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| name | string | 是 | 名称 |
+| salesSkuNo | string | 否 | 原计价SKU |
+| publishedRevisionNo | string | 否 | 已有发布引用 |
+| components | ModifierComponentVO[] | 是 | 当前工作成员 |
+
+### ModifierConfigVO
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| configNo | string | 是 | 配料业务号 |
+| kind | string | 是 | ADDON或COMBO |
+| version | int64 | 是 | 工作头CAS |
+| status | string | 是 | DRAFT或ACTIVE或DISABLED |
+| data | ModifierConfigData | 是 | 管理定义 |
+
 ## 四、逐接口输入输出
 
 ### FOOD-API-001 · 查询营业策略
@@ -1594,9 +1628,9 @@
 
 `PUT /biz/x/food/modifiers/{modifierNo}`
 
-权限与守卫：已存在配料同主体且CAS更新；新建使用141由服务端生成业务号；ADDON/COMBO结构及递归防循环；叶子单位一致或有正式换算合同。
+权限与守卫：已实现草稿管理；同主体CAS更新，kind不可改变；COMBO仅同主体有效ADDON成员，拒重复/嵌套；仅组合份数，不承担物料单位换算；SKU原权威主体门店校验。
 
-能力依赖：餐饮新增。
+能力依赖：已实现草稿管理；发布与收费成交待后续P1/P3。
 
 路径输入：
 
@@ -1609,10 +1643,10 @@
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | name | string | 是 | 名称 |
-| kind | string | 是 | ADDON或COMBO |
-| salesSkuNo | string | 否 | 收费SKU |
-| components | ComponentInput[] | 是 | 成员及正数量 |
-| version | int64 | 是 | 现有对象CAS |
+| kind | string | 是 | ADDON或COMBO创建后不可改变 |
+| salesSkuNo | string | 否 | 原计价SKU可显式清空 |
+| components | ModifierComponentInput[] | 是 | ≤100成员及正数量 |
+| version | int64 | 是 | 工作头CAS |
 
 成功输出（data）：
 
@@ -4533,9 +4567,9 @@
 
 `GET /biz/x/food/stores/{storeNo}/modifiers`
 
-权限与守卫：主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id。
+权限与守卫：已实现管理查询；原GOODS及门店入口权限；主体过滤先于count分页，批量读回真实成员；不含价格库存或可售授权。
 
-能力依赖：餐饮新增。
+能力依赖：已实现草稿管理；门店可售目录待发布及交易校验。
 
 路径输入：
 
@@ -4554,7 +4588,7 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| records | Config[] | 是 | 授权列表 |
+| records | ModifierConfigVO[] | 是 | 主体共享配料管理列表 |
 | total | int64 | 是 | 总数 |
 | page | int32 | 是 | 页 |
 | size | int32 | 是 | 页长 |
@@ -5138,9 +5172,9 @@
 
 `POST /biz/x/food/stores/{storeNo}/modifiers`
 
-权限与守卫：主体门店权限与创建幂等；SKU同主体；COMBO引用已存在配料并拒循环；不接受客户端伪造业务号或价格。
+权限与守卫：已实现草稿创建；原GOODS与门店权限、主体共享库、创建幂等；SKU原权威主体门店校验；COMBO仅同主体有效ADDON且不重复/嵌套；服务端生成业务号，拒客户端价格库存。
 
-能力依赖：餐饮配置；收费成交需核心报价。
+能力依赖：已实现草稿管理；发布与收费成交待后续P1/P3。
 
 路径输入：
 
@@ -5154,8 +5188,8 @@
 |---|---|---|---|
 | name | string | 是 | 名称 |
 | kind | string | 是 | ADDON或COMBO |
-| salesSkuNo | string | 否 | 收费SKU |
-| components | ComponentInput[] | 是 | 组合成员或空 |
+| salesSkuNo | string | 否 | 原计价SKU |
+| components | ModifierComponentInput[] | 是 | 组合成员或空 |
 
 成功输出（data）：
 

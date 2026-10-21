@@ -30,6 +30,26 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class CoreGoodsCatalogQueryPortTest {
+    @Test void skuLookupValidatesIdentityOwnerAndTransportWithoutRetry() {
+        var api = mock(GoodsCatalogInternalApi.class);
+        var expected = new GoodsCatalogQueryPort.SkuIdentityFact("SKU", "G", "E", "S", 2);
+        when(api.lookupSku(any())).thenReturn(expected);
+        var port = new CoreGoodsCatalogQueryPortImpl(() -> api);
+        assertThat(port.getSku("E", "S", "SKU")).isEqualTo(expected);
+        for (var wrong : List.of(new GoodsCatalogQueryPort.SkuIdentityFact("OTHER", "G", "E", "S", 2),
+                new GoodsCatalogQueryPort.SkuIdentityFact("SKU", "G", "OTHER", "S", 2),
+                new GoodsCatalogQueryPort.SkuIdentityFact("SKU", "G", "E", "OTHER", 2),
+                new GoodsCatalogQueryPort.SkuIdentityFact("SKU", "", "E", "S", 2))) {
+            when(api.lookupSku(any())).thenReturn(wrong);
+            assertThatThrownBy(() -> port.getSku("E", "S", "SKU")).isInstanceOf(ServiceCallException.class);
+        }
+        when(api.lookupSku(any())).thenReturn(null);
+        assertThatThrownBy(() -> port.getSku("E", "S", "SKU")).isInstanceOf(ServiceCallException.class);
+        when(api.lookupSku(any())).thenThrow(new ServiceCallException(CallOutcome.REMOTE_ERROR,
+                ServiceName.PLATFORM, 404, "safe"));
+        assertThatThrownBy(() -> port.getSku("E", "S", "SKU")).isInstanceOf(BizException.class);
+    }
+
     @Test void standaloneConfigurationQueriesPlatformWithOriginalToken() throws Exception {
         var count=new AtomicInteger();var server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
         server.createContext(GoodsCatalogInternalApi.LOOKUP_PATH,exchange -> {

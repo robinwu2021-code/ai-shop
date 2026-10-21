@@ -18,6 +18,8 @@ import ai.neargo.shop.food.foodclient.FoodClientConfiguration;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.OptionGroupService;
+import ai.neargo.shop.food.service.ModifierService;
+import ai.neargo.shop.food.api.biz.BizModifierController;
 import ai.neargo.shop.food.api.biz.BizOptionGroupController;
 import ai.neargo.shop.food.api.biz.BizDishController;
 import ai.neargo.shop.food.service.DiningSessionService;
@@ -44,6 +46,16 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @ConditionalOnFoodWebEnabled
 @Profile({"api", "ops"})
 public class FoodWebAutoConfiguration {
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({ModifierService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizModifierController.class)
+    BizModifierController modifierController(ModifierService service, StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) {
+        return new BizModifierController(service, stores, scope);
+    }
+
     @Bean
     @Profile("api")
     @Conditional(PolicyEnabled.class)

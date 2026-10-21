@@ -5,6 +5,7 @@ import ai.neargo.shop.food.entity.FnbDish;
 import ai.neargo.shop.food.entity.FnbDishOptionGroup;
 import ai.neargo.shop.food.entity.FnbOptionGroup;
 import ai.neargo.shop.food.entity.FnbModifier;
+import ai.neargo.shop.food.entity.FnbModifierComponent;
 import ai.neargo.shop.food.entity.FnbOptionGroupItem;
 
 import ai.neargo.shop.food.entity.FnbCheck;
@@ -45,6 +46,11 @@ public final class FoodMappers {
         int replaceDraftRows(@Param("entity") String entity, @Param("group") String group);
     }
     public interface ModifierMapper extends BaseMapper<FnbModifier> { }
+    public interface ModifierComponentMapper extends BaseMapper<FnbModifierComponent> {
+        // Replace only the editable composition, never a published revision or transaction fact.
+        @Delete("DELETE FROM fnb_modifier_component WHERE entity_no=#{entity} AND combo_no=#{combo}")
+        int replaceDraftRows(@Param("entity") String entity, @Param("combo") String combo);
+    }
 
     public interface DishMapper extends BaseMapper<FnbDish> { }
 

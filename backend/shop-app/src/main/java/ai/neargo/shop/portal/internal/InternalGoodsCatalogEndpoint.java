@@ -31,6 +31,15 @@ public class InternalGoodsCatalogEndpoint {
         this.validator = validator;
     }
 
+    @PostMapping(GoodsCatalogInternalApi.SKU_PATH)
+    public ResponseEntity<?> lookupSku(@RequestBody(required=false) GoodsCatalogInternalApi.SkuLookup request,
+            @RequestHeader(value=InternalHttp.TOKEN_HEADER, required=false) String given) {
+        return InternalServiceResponses.invoke(token, given, () -> {
+            if (request == null || !validator.validate(request).isEmpty()) throw BizException.of(ErrorCode.BAD_REQUEST);
+            return catalog.getSku(request.entityNo(), request.storeNo(), request.skuNo());
+        });
+    }
+
     @PostMapping(GoodsCatalogInternalApi.LOOKUP_PATH)
     public ResponseEntity<?> lookup(@RequestBody(required = false) GoodsCatalogInternalApi.Lookup request,
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
@@ -45,6 +54,14 @@ public class InternalGoodsCatalogEndpoint {
         return InternalServiceResponses.invoke(token, given, () -> {
             if (request == null || !validator.validate(request).isEmpty()) throw BizException.of(ErrorCode.BAD_REQUEST);
             return catalog.getGoodsBatch(request.entityNo(), request.storeNo(), request.goodsNos());
+        });
+    }
+
+    /** Infrastructure failures retain a raw internal failure status; token validation still runs first. */
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<?> unavailable(RuntimeException failure, HttpServletRequest request) {
+        return InternalServiceResponses.invoke(token, request.getHeader(InternalHttp.TOKEN_HEADER), () -> {
+            throw BizException.of(ErrorCode.INTERNAL_ERROR);
         });
     }
 

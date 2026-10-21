@@ -2,6 +2,8 @@ package ai.neargo.shop.food.entity;
 
 import ai.neargo.shop.common.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,6 +16,7 @@ public class FnbModifier extends BaseEntity {
     private String modifierNo;
     private String name;
     private String kind;
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String salesSkuNo;
     private String publishedRevisionNo;
     private String status;

@@ -6944,10 +6944,10 @@
       "name": "配料组合配置",
       "method": "PUT",
       "path": "/biz/x/food/modifiers/{modifierNo}",
-      "input": "name:string:名称;kind:string:ADDON或COMBO;salesSkuNo?:string:收费SKU;components:ComponentInput[]:成员及正数量;version:int64:现有对象CAS",
+      "input": "name:string:名称;kind:string:ADDON或COMBO创建后不可改变;salesSkuNo?:string:原计价SKU可显式清空;components:ModifierComponentInput[]:≤100成员及正数量;version:int64:工作头CAS",
       "output": "configNo:string:配料;version:int64:新版本",
-      "guard": "已存在配料同主体且CAS更新；新建使用141由服务端生成业务号；ADDON/COMBO结构及递归防循环；叶子单位一致或有正式换算合同",
-      "needs": "餐饮新增"
+      "guard": "已实现草稿管理；同主体CAS更新，kind不可改变；COMBO仅同主体有效ADDON成员，拒重复/嵌套；仅组合份数，不承担物料单位换算；SKU原权威主体门店校验",
+      "needs": "已实现草稿管理；发布与收费成交待后续P1/P3"
     },
     {
       "id": "FOOD-API-021",
@@ -8045,9 +8045,9 @@
       "method": "GET",
       "path": "/biz/x/food/stores/{storeNo}/modifiers",
       "input": "page?:int32:默认1;size?:int32:默认20最大100",
-      "output": "records:Config[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
-      "needs": "餐饮新增"
+      "output": "records:ModifierConfigVO[]:主体共享配料管理列表;total:int64:总数;page:int32:页;size:int32:页长",
+      "guard": "已实现管理查询；原GOODS及门店入口权限；主体过滤先于count分页，批量读回真实成员；不含价格库存或可售授权",
+      "needs": "已实现草稿管理；门店可售目录待发布及交易校验"
     },
     {
       "id": "FOOD-API-121",
@@ -8275,10 +8275,10 @@
       "name": "创建配料或配料组合",
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/modifiers",
-      "input": "name:string:名称;kind:string:ADDON或COMBO;salesSkuNo?:string:收费SKU;components:ComponentInput[]:组合成员或空",
+      "input": "name:string:名称;kind:string:ADDON或COMBO;salesSkuNo?:string:原计价SKU;components:ModifierComponentInput[]:组合成员或空",
       "output": "configNo:string:服务端生成配料业务号;version:int64:草稿CAS版本;status:string:DRAFT",
-      "guard": "主体门店权限与创建幂等；SKU同主体；COMBO引用已存在配料并拒循环；不接受客户端伪造业务号或价格",
-      "needs": "餐饮配置；收费成交需核心报价"
+      "guard": "已实现草稿创建；原GOODS与门店权限、主体共享库、创建幂等；SKU原权威主体门店校验；COMBO仅同主体有效ADDON且不重复/嵌套；服务端生成业务号，拒客户端价格库存",
+      "needs": "已实现草稿管理；发布与收费成交待后续P1/P3"
     },
     {
       "id": "FOOD-API-142",
@@ -8499,7 +8499,11 @@
     "DishCatalogItem": "dish:Dish:餐饮属性;product:ProductSummary:当前门店商品权威图文与管理状态",
     "DishOptionItem": "optionItemNo:string:当前组条目;sourceKind:string:SPEC_VALUE或MODIFIER;specValueNo?:string:原口味值;modifierNo?:string:餐饮配料;minQty:decimal:下限;maxQty:decimal:上限;defaultQty:decimal:默认量;sortNo:int32:顺序",
     "DishOptionData": "name:string:组名称;minQty:decimal:组下限;maxQty:decimal:组上限;publishedRevisionNo?:string:已发布引用独立于当前草稿;selectionRules:object:存储的管理选择规则非执行授权;items:DishOptionItem[]:真实当前条目",
-    "DishOptionGroup": "configNo:string:选择组编号;kind:string:固定OPTION_GROUP;revision:int64:当前管理草稿并发版本;status:string:管理状态;data:DishOptionData:实际工作头与条目"
+    "DishOptionGroup": "configNo:string:选择组编号;kind:string:固定OPTION_GROUP;revision:int64:当前管理草稿并发版本;status:string:管理状态;data:DishOptionData:实际工作头与条目",
+    "ModifierComponentInput": "memberNo:string:单项配料业务号;quantity:decimal:正组合份数DECIMAL12,3",
+    "ModifierComponentVO": "componentNo:string:服务端生成明细业务号;memberNo:string:单项配料;quantity:decimal:每组合份数",
+    "ModifierConfigData": "name:string:名称;salesSkuNo?:string:原计价SKU;publishedRevisionNo?:string:已有发布引用;components:ModifierComponentVO[]:当前工作成员",
+    "ModifierConfigVO": "configNo:string:配料业务号;kind:string:ADDON或COMBO;version:int64:工作头CAS;status:string:DRAFT或ACTIVE或DISABLED;data:ModifierConfigData:管理定义"
   },
   "commonFields": [
     [

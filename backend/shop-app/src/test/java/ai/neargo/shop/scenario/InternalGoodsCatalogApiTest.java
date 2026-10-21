@@ -43,6 +43,38 @@ class InternalGoodsCatalogApiTest {
     private static final GoodsFact FACT=new GoodsFact("G","E","S","菜品",null,false,"PENDING",3,
             List.of(new SkuFact("SKU1","小份",0),new SkuFact("SKU2","大份",1)));
 
+    @Test void skuInfrastructureFailuresKeepInternal500AndDoNotBypassToken() throws Exception {
+        var port = mock(GoodsCatalogQueryPort.class);
+        when(port.getSku("E", "S", "SKU")).thenThrow(new IllegalStateException("private database failure"));
+        var mvc = MockMvcBuilders.standaloneSetup(new InternalGoodsCatalogEndpoint(port, "secret", VALIDATION.getValidator()))
+                .setControllerAdvice(new GlobalExceptionHandler(), new ApiResponseWrapper()).build();
+        String body = "{\"entityNo\":\"E\",\"storeNo\":\"S\",\"skuNo\":\"SKU\"}";
+        mvc.perform(post(GoodsCatalogInternalApi.SKU_PATH).header(InternalHttp.TOKEN_HEADER, "wrong")
+                .contentType("application/json").content(body)).andExpect(status().isUnauthorized());
+        verifyNoInteractions(port);
+        var response = mvc.perform(post(GoodsCatalogInternalApi.SKU_PATH).header(InternalHttp.TOKEN_HEADER, "secret")
+                .contentType("application/json").content(body)).andExpect(status().isInternalServerError())
+                .andReturn().getResponse();
+        assertThat(response.getContentAsString()).isEmpty();
+    }
+
+    @Test void skuLookupAuthenticatesAndReturnsRawScopedIdentity() throws Exception {
+        var port = mock(GoodsCatalogQueryPort.class);
+        when(port.getSku("E", "S", "SKU")).thenReturn(
+                new GoodsCatalogQueryPort.SkuIdentityFact("SKU", "G", "E", "S", 2));
+        var mvc = MockMvcBuilders.standaloneSetup(new InternalGoodsCatalogEndpoint(port, "secret", VALIDATION.getValidator()))
+                .setControllerAdvice(new GlobalExceptionHandler(), new ApiResponseWrapper()).build();
+        String body = "{\"entityNo\":\"E\",\"storeNo\":\"S\",\"skuNo\":\"SKU\"}";
+        mvc.perform(post(GoodsCatalogInternalApi.SKU_PATH).contentType("application/json").content(body))
+                .andExpect(status().isUnauthorized());
+        verifyNoInteractions(port);
+        mvc.perform(post(GoodsCatalogInternalApi.SKU_PATH).header(InternalHttp.TOKEN_HEADER, "secret")
+                .contentType("application/json").content(body)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.skuNo").value("SKU")).andExpect(jsonPath("$.version").value(2));
+        mvc.perform(post(GoodsCatalogInternalApi.SKU_PATH).header(InternalHttp.TOKEN_HEADER, "secret")
+                .contentType("application/json").content("{}")).andExpect(status().isBadRequest());
+    }
+
     @Test void missingWrongOrUnconfiguredTokenNeverInvokesPort() throws Exception {
         var port=mock(GoodsCatalogQueryPort.class);
         var mvc=MockMvcBuilders.standaloneSetup(new InternalGoodsCatalogEndpoint(port,"secret",VALIDATION.getValidator())).setControllerAdvice(new GlobalExceptionHandler(),new ApiResponseWrapper()).build();
@@ -85,6 +117,8 @@ class InternalGoodsCatalogApiTest {
         });
         when(port.getGoodsBatch(anyString(),anyString(),anyList())).thenReturn(List.of(
                 new GoodsSummary("G","E","S","菜品",null,false,"PENDING",3)));
+        var skuIdentity = new GoodsCatalogQueryPort.SkuIdentityFact("SKU1", "G", "E", "S", 1);
+        when(port.getSku("E", "S", "SKU1")).thenReturn(skuIdentity);
         var mvc=MockMvcBuilders.standaloneSetup(new InternalGoodsCatalogEndpoint(port,"secret",VALIDATION.getValidator())).setControllerAdvice(new GlobalExceptionHandler(),new ApiResponseWrapper()).build();
         var server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
         server.createContext("/internal/product/catalog/goods/",exchange -> {
@@ -109,6 +143,7 @@ class InternalGoodsCatalogApiTest {
             assertThat(api.lookupBatch(new GoodsCatalogInternalApi.BatchLookup("E","S",List.of("G"))))
                     .extracting(GoodsSummary::goodsNo).containsExactly("G");
             assertThat(api.lookup(new GoodsCatalogInternalApi.Lookup("E","S","G"))).isEqualTo(FACT);
+            assertThat(api.lookupSku(new GoodsCatalogInternalApi.SkuLookup("E", "S", "SKU1"))).isEqualTo(skuIdentity);
             assertThatThrownBy(() -> api.lookup(new GoodsCatalogInternalApi.Lookup("E","","G")))
                     .isInstanceOfSatisfying(ServiceCallException.class,e -> assertThat(e.statusCode()).isEqualTo(400));
             assertThatThrownBy(() -> api.lookup(new GoodsCatalogInternalApi.Lookup("E","OTHER","G")))
