@@ -1,10 +1,12 @@
 # 统一试算引擎与餐饮结算
 
-> 状态：设计提案，未实现 · 2026-10-22 · 档位2。用户已确认：前端统一调用Java后端API。本篇是可评审的接口、对象与执行方案，不代表接口、表或SDK已经存在。不改冻结V1–V7迁移。
+> 状态：设计提案，未实现 · 2026-10-22 · 档位2。用户已确认：当前统一调用Java后端API；进一步要求未来前端也可计算、核心支持多行业，并先冻结优惠冲突规则。本篇是可评审的接口、对象与执行方案，不代表接口、表或SDK已经存在。不改冻结V1–V7迁移。
 >
 > 需求：[餐饮完整需求](../requirements/餐饮系统-完整需求文档.md)「报价、结账、资金与报表」；[后端计划](./TDD-餐饮系统-后端开发计划.md) ORD-02；边界：[ADR-040](./ADR/ADR-040-餐饮销售配置与耗用权威边界.md)；前置：[ORD-01](./TDD-餐饮系统-ORD01共享购物车实施.md)。
 
 ## L1 定位与结论
+
+本轮规则补充作为本篇上层约束：[多行业规则、冲突矩阵、公式与类图](./TDD-统一试算引擎-规则公式与多行业模型.md)。原有表/API/资金权威边界继续有效；新行业默认规则不能自动替换存量零售规则。机器可读设计源：[pricing-rule-design.json](./design/schema/pricing-rule-design.json)。
 
 封装一套Java试算引擎，前端选菜、选券、选择储值支付、现金实收变化时都调用后端。订单正式确认、后付结账和收款确认使用同一套计算内核，但按阶段选择“当前权威事实”或“已冻结订单事实”。支付成功后只核对原资金证据，不按今天的菜单和优惠重新定价。
 
@@ -61,6 +63,7 @@
 | Q08 | 已下单后，基于冻结订单及已成功收款继续算剩余，不读取今天的菜单重算旧菜，不重复应用优惠 | FrozenOrderPricingSourceResolver / RemainingDuePolicy |
 | Q09 | AA、并单或重复支付竞争，冻结获准范围，已付/未知份额不能再收；优惠与支付分摊按源行可追溯 | ScopeAllocationPolicy / 原核心结账冻结协议 |
 | Q10 | 前端请求乱序/报价失效/远端UNKNOWN，不能用旧报价付款或换键重试；幂等查询返回原结果 | SDK交互约定 / 原意图恢复 |
+| Q12 | 多行业适配与将来客户端计算使用同一规则规范及一致性向量，不把餐饮/券权限硬编码进内核 | IndustryPricingAdapter / ConflictResolver / ClientPricingRuntime |
 | Q11 | 退款时按原价格、原优惠和原资金分摊反向处理，不按现规则重算、不给储值现金找零 | 原退款编排 / 冻结quote allocation |
 
 ## L3 详细设计
@@ -106,7 +109,7 @@
 9. **可选现金币值舍入**：只作用于最终现金剩余，单列调整并反映回receivable。其他工具金额先冻结，不再反复自动“最大储值→现金舍入→再最大储值”。修正应收后保持非现金计划不变，刷新现金应付、找零和remaining，并再次校验守恒。当前无已验证现金币值政策时不启用，不能把它当通用抹零。
 10. **找零与全量校验**：现金实收比较现金应收；校验所有分摊和金额守恒、能力门禁、范围版本、来源指纹和有效期。
 
-顺序写成不可变`PricingProfile`，例如`FOOD_STANDARD_V1`；策略可替换，依赖次序不能由前端传。试算响应返回具体profileVersion与ruleSetHash。
+顺序写成不可变`PricingProfile`，例如`FOOD_STANDARD_V1`；行业规则档案由通用模板及行业适配产生，冲突规避先于金额执行；策略可替换，依赖次序不能由前端传。试算响应返回具体profileVersion与ruleSetHash。
 
 ### 1.4 储值卡与优惠券
 
@@ -151,6 +154,8 @@ public record PricingInput(
         PricingScope scope,
         PricingFacts facts,
         PricingProfile profile,
+        RuleSet rules,
+        RuleSelection selection,
         List<BenefitDecision> benefits,
         List<ApprovedAdjustment> adjustments,
         FundingFacts funding) { }
@@ -162,7 +167,10 @@ public record PricingResult(
         FundingPlan funding,
         CashTenderQuote cash,
         String economicsHash,
-        List<PricingIssue> issues) { }
+        List<PricingIssue> issues,
+        List<AppliedRule> appliedRules,
+        List<ExcludedRule> excludedRules,
+        List<RuleConflict> conflicts) { }
 
 // shop-core: ai.neargo.shop.trade.service
 public interface OrderPricingService {
@@ -203,7 +211,7 @@ public interface OrderPricingService {
 | food.service.DiningQuoteService/impl | quoteCart、quoteBill、revalidate | 餐饮授权/版本与源引用；不持有核心Service实现 |
 | food.api.biz.BizQuoteController / mp.MpQuoteController | quoteCart、quoteBill | 放food-web，复用原身份、范围、权限和返回壳 |
 
-**权威报价的编排**：先解析商品/人工调整并用相同内核得到优惠基数，再在事务外问原活动/券及PAY，取得绑定该基数的决定；把完整事实作为PricingInput再次调用同一内核并核对baseFingerprint。决策依赖支付方式时先冻结“支付工具选择”，再获取决策；出现循环依赖的规则组合直接不支持，不能反复扣到结果收敛。
+**权威报价的编排**：先解析商品/人工调整并用相同内核得到优惠基数，再在事务外问原活动/券及PAY，取得绑定该基数的决定；基数预计算只是阶段结果，不能标记为可确认报价。把完整事实作为PricingInput再次调用同一内核，先解冲突再执行已解析计划，并核对baseFingerprint。决策依赖支付方式时先冻结“支付工具选择”，再获取决策；出现循环依赖的规则组合直接不支持，不能反复扣到结果收敛。
 
 ### 1.7 API与前端调用合同
 
@@ -238,6 +246,8 @@ B/C分别定义Req；不能用同一个包含approvalRef/cash字段的“大DTO�
 上述可编辑金额仅是受限意图，必须经原权限/审批/账户适用能力重新认定；浏览器不上传商品最终单价、券优惠额、已付金额或最终应收。购物车完整行由cartNo+CAS加载，废止原目标041中“cart与任意lines并列且无主从”的歧义。若保留即时行试算，单独定义quoteLines模式及源hash，不能混合覆盖购物车。
 
 **报价响应关键形状**：
+
+本例假定原券明确允许获准人工改价商品、活动后用券与受限抹零，且所有资金合同均已具备；不是新行业默认允许人工折扣再叠券。
 
 ```json
 {
@@ -287,7 +297,7 @@ async function submitOrder() {
 }
 ```
 
-以上http返回的是现有封装解包后的data；前端不得再减券、减储值或算另一份应收。选菜/选券/调价/付款工具改变时清除可确认标记，防抖150～300ms只是体验参数；用请求序号或AbortController丢弃乱序响应。时间仅用于展示，过期由服务端判定。提交期间同一命令保留原幂等键；重新确认新的经济版本生成新命令，不能复用旧键异参。源版本冲突先刷新购物车，不偷偷用旧行重新试算。
+以上http返回的是现有封装解包后的data；当前前端展示后端报价，不再自行拼一份应收。未来前端可通过符合统一规则规范的ClientPricingRuntime进行本地估算，必须带快照/规则/运行时版本并通过同一组一致性向量；仍由服务端重算确认。选菜/选券/调价/付款工具改变时清除可确认标记，防抖150～300ms只是体验参数；用请求序号或AbortController丢弃乱序响应。时间仅用于展示，过期由服务端判定。提交期间同一命令保留原幂等键；重新确认新的经济版本生成新命令，不能复用旧键异参。源版本冲突先刷新购物车，不偷偷用旧行重新试算。
 
 ### 1.8 下单后仍复用同一逻辑，如何最终确认
 
@@ -361,5 +371,5 @@ QUOTE的存储不会冻结远端余额；保留quote并不代替prepare。快照
 - 在现有shop-base新增common.pricing包，而非首期单独部署引擎服务；金额结果仍由原核心报价权威确认，food部署方式不改变这一点。代价是核心增加一个清晰门面及共享纯计算对象。
 - 不在本轮抽空4000行OrderServiceImpl；先为餐饮提供经批准的新合同、向量和旁路验证，再单独评估零售迁移，避免隐性改变活动/积分/旧券行为。
 - 固定默认顺序和版本化策略，保留原活动/券分摊；不采用任意规则脚本/DAG重排，也不把“优雅”变成大量空接口和链节点。
-- 前端仅调用Java API已由用户确认。断网可继续编辑本地草稿，但本篇不提供前端权威定价、余额承诺或离线收款确认。
+- 当前前端统一调用Java API；用户补充未来前端也可计算，因此预留有限规则规范和ClientPricingRuntime。断网本地结果仅为估算，不提供权威余额承诺、券核销或离线收款确认。
 - 税费具体规则、经营抹零权限/上限及可用储值/券叠加能力由原商户政策及权威配置输入，不臆定一个全平台统一金额。缺配置/缺合同时显式不可确认。
