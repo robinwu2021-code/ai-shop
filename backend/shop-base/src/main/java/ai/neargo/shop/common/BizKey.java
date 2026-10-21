@@ -15,6 +15,10 @@ import java.time.format.DateTimeFormatter;
  * 真撞了也有唯一索引兜底（业务键在库里一律建 UNIQUE）。
  */
 public final class BizKey {
+    public static final String MANAGEMENT_SPACE = "MGS";
+    public static final String MANAGEMENT_GRANT = "MGG";
+    public static final String BRAND = "BR";
+    public static final String BRAND_BINDING = "BRB";
 
     /** 前缀是语义的一部分：看到 {@code SUB} 就知道这是子订单，不用去查表。 */
     public static final String ACTIVITY_VERSION = "AV";

@@ -1,0 +1,1588 @@
+{
+  "status": "DESIGN_ONLY",
+  "prototype": "prototypes/brand-stored-value-b.html",
+  "prototypeScreens": 34,
+  "endpoints": [
+    {
+      "id": "MG01",
+      "group": "管理空间",
+      "module": "Merchant/BFF",
+      "method": "GET",
+      "path": "/biz/management/context",
+      "request": "—",
+      "response": "ManagementContext",
+      "permission": "management.enter",
+      "screens": [
+        "s01"
+      ],
+      "status": "NEW",
+      "notes": "只列出当前主体真实获授管理空间，不能以账号所有人身份遍历整个tenant"
+    },
+    {
+      "id": "MG02",
+      "group": "管理空间",
+      "module": "Merchant",
+      "method": "POST",
+      "path": "/biz/management/spaces",
+      "request": "ManagementSpaceCreate",
+      "response": "ManagementSpace",
+      "permission": "management.bootstrap",
+      "screens": [
+        "s01"
+      ],
+      "status": "NEW",
+      "notes": "创建不自动授予所有主体权限；由已验证所有人启动"
+    },
+    {
+      "id": "MG03",
+      "group": "管理空间",
+      "module": "Merchant",
+      "method": "GET",
+      "path": "/biz/management/spaces/{managementNo}/resources",
+      "request": "resourceType?,view=EFFECTIVE|GRANTS,actorNo?,cursor,size",
+      "response": "CursorPage<GrantedResource>",
+      "permission": "management.resource.read",
+      "screens": [
+        "s01",
+        "s24"
+      ],
+      "status": "NEW",
+      "notes": "EFFECTIVE仅本人有效资源；GRANTS需空间授权管理权，按可委派范围返回授权记录，不能遍历tenant"
+    },
+    {
+      "id": "MG04",
+      "group": "管理空间",
+      "module": "Merchant",
+      "method": "POST",
+      "path": "/biz/management/spaces/{managementNo}/grants",
+      "request": "GrantCreate",
+      "response": "GrantView",
+      "permission": "management.grant.manage",
+      "screens": [
+        "s24"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "MG05",
+      "group": "管理空间",
+      "module": "Merchant",
+      "method": "DELETE",
+      "path": "/biz/management/spaces/{managementNo}/grants/{grantNo}",
+      "request": "expectedRevision,reason",
+      "response": "GrantView",
+      "permission": "management.grant.manage",
+      "screens": [
+        "s24"
+      ],
+      "status": "NEW",
+      "notes": "逻辑撤销，不物理删除审计"
+    },
+    {
+      "id": "MG06",
+      "group": "管理空间",
+      "module": "Merchant",
+      "method": "GET",
+      "path": "/biz/management/spaces/{managementNo}/entities",
+      "request": "cursor,size",
+      "response": "CursorPage<EntityBrief>",
+      "permission": "entity.read",
+      "screens": [
+        "s01",
+        "s13"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "MG07",
+      "group": "管理空间",
+      "module": "Merchant",
+      "method": "GET",
+      "path": "/biz/management/spaces/{managementNo}/stores",
+      "request": "brandNo?,cursor,size",
+      "response": "CursorPage<StoreBrief>",
+      "permission": "store.read",
+      "screens": [
+        "s05"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "BR01",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "GET",
+      "path": "/biz/management/brands",
+      "request": "managementNo,status?,keyword?,cursor,size",
+      "response": "CursorPage<Brand>",
+      "permission": "brand.read",
+      "screens": [
+        "s02",
+        "s03",
+        "s04"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "BR02",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "POST",
+      "path": "/biz/management/brands",
+      "request": "BrandCreate",
+      "response": "Brand",
+      "permission": "brand.manage",
+      "screens": [
+        "s02",
+        "s03",
+        "s04"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "BR03",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}",
+      "request": "—",
+      "response": "BrandDetail",
+      "permission": "brand.read",
+      "screens": [
+        "s02",
+        "s03",
+        "s04"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "BR04",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "PUT",
+      "path": "/biz/management/brands/{brandNo}",
+      "request": "BrandEdit",
+      "response": "Brand",
+      "permission": "brand.manage",
+      "screens": [
+        "s02",
+        "s03",
+        "s04"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "BR05",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "POST",
+      "path": "/biz/management/brands/{brandNo}/status-changes",
+      "request": "StatusChange",
+      "response": "ChangeResult",
+      "permission": "brand.manage",
+      "screens": [
+        "s02",
+        "s03",
+        "s04"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "BR06",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}/stores",
+      "request": "cursor,size",
+      "response": "CursorPage<BrandStore>",
+      "permission": "brand.read",
+      "screens": [
+        "s02",
+        "s03",
+        "s04"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "BR07",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}/audit-events",
+      "request": "cursor,size",
+      "response": "CursorPage<AuditEvent>",
+      "permission": "brand.audit.read",
+      "screens": [
+        "s02",
+        "s03",
+        "s04"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "ST01",
+      "group": "品牌与门店",
+      "module": "Merchant/BFF",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/operating-context",
+      "request": "—",
+      "response": "StoreOperatingContext",
+      "permission": "store.read",
+      "screens": [
+        "s06",
+        "s09"
+      ],
+      "status": "NEW",
+      "notes": "P1返回真实组织上下文；发行信息NOT_ENABLED或LEGACY_STORE，不伪造品牌issuer；后续阶段才填已开通issuer"
+    },
+    {
+      "id": "ST02",
+      "group": "品牌与门店",
+      "module": "Merchant/BFF",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/brand-changes/check",
+      "request": "BrandChangeCheck",
+      "response": "BrandChangeImpact",
+      "permission": "store.brand.change",
+      "screens": [
+        "s06",
+        "s08"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "ST03",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/brand-changes",
+      "request": "BrandChangeSubmit",
+      "response": "BrandChange",
+      "permission": "store.brand.change",
+      "screens": [
+        "s08"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "ST04",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "GET",
+      "path": "/biz/management/brand-changes/{changeNo}",
+      "request": "—",
+      "response": "BrandChange",
+      "permission": "brand.change.read",
+      "screens": [
+        "s08"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "ST05",
+      "group": "品牌与门店",
+      "module": "Merchant/BFF",
+      "method": "POST",
+      "path": "/biz/management/brand-changes/{changeNo}/decisions",
+      "request": "BrandChangeDecision",
+      "response": "BrandChange",
+      "permission": "brand.change.decide",
+      "screens": [
+        "s08"
+      ],
+      "status": "NEW",
+      "notes": "批准不等于立即改brandNo；范围双向激活及历史资金检查完成才COMPLETED"
+    },
+    {
+      "id": "PL01",
+      "group": "管控与发行设置",
+      "module": "Pay/BFF",
+      "method": "GET",
+      "path": "/biz/management/stored-value/policies",
+      "request": "managementNo,targetType?,targetNo?,currency",
+      "response": "List<Policy>",
+      "permission": "sv.policy.read",
+      "screens": [
+        "s25"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "PL02",
+      "group": "管控与发行设置",
+      "module": "Pay/BFF",
+      "method": "PUT",
+      "path": "/biz/management/stored-value/policies/{policyNo}",
+      "request": "PolicyEdit",
+      "response": "PolicyVersion",
+      "permission": "sv.policy.manage",
+      "screens": [
+        "s26"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "PL03",
+      "group": "管控与发行设置",
+      "module": "Pay/BFF",
+      "method": "POST",
+      "path": "/biz/management/stored-value/policies",
+      "request": "PolicyCreate",
+      "response": "PolicyVersion",
+      "permission": "sv.policy.manage",
+      "screens": [
+        "s26"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "PL04",
+      "group": "管控与发行设置",
+      "module": "Pay/BFF",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/stored-value/effective-policy",
+      "request": "currency",
+      "response": "EffectivePolicy",
+      "permission": "sv.store.activity.read",
+      "screens": [
+        "s10",
+        "s23"
+      ],
+      "status": "NEW",
+      "notes": "返回来源版本和生效上下限，store-only；不是brand发行限制"
+    },
+    {
+      "id": "PL05",
+      "group": "管控与发行设置",
+      "module": "Pay/BFF",
+      "method": "GET",
+      "path": "/biz/management/stored-value/settlement-entity-candidates",
+      "request": "managementNo,scopeType,scopeNo",
+      "response": "List<AuthorizedEntity>",
+      "permission": "sv.issuer.configure",
+      "screens": [
+        "s13"
+      ],
+      "status": "NEW",
+      "notes": "只返回有权配置且主体接受已确认的收款配置，不返回密钥"
+    },
+    {
+      "id": "IS01",
+      "group": "管控与发行设置",
+      "module": "Pay/BFF",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}/stored-value/issuer",
+      "request": "—",
+      "response": "Issuer",
+      "permission": "sv.brand.issuer.read",
+      "screens": [
+        "s13",
+        "s17"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "IS02",
+      "group": "管控与发行设置",
+      "module": "Pay/BFF",
+      "method": "POST",
+      "path": "/biz/management/brands/{brandNo}/stored-value/issuer",
+      "request": "IssuerCreate",
+      "response": "Issuer",
+      "permission": "sv.brand.issuer.configure",
+      "screens": [
+        "s13",
+        "s17"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "IS03",
+      "group": "管控与发行设置",
+      "module": "Pay/BFF",
+      "method": "POST",
+      "path": "/biz/management/stored-value/issuers/{issuerNo}/configuration-checks",
+      "request": "IssuerConfigCheck",
+      "response": "ConfigurationImpact",
+      "permission": "sv.issuer.configure",
+      "screens": [
+        "s13",
+        "s17"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "IS04",
+      "group": "管控与发行设置",
+      "module": "Pay/BFF",
+      "method": "POST",
+      "path": "/biz/management/stored-value/issuers/{issuerNo}/configuration-versions",
+      "request": "IssuerConfigCreate",
+      "response": "IssuerVersion",
+      "permission": "sv.issuer.configure",
+      "screens": [
+        "s13",
+        "s17"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "IS05",
+      "group": "管控与发行设置",
+      "module": "Pay/BFF",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/stored-value/issuers",
+      "request": "—",
+      "response": "StoreIssuerOptions",
+      "permission": "sv.account.read",
+      "screens": [
+        "s13",
+        "s17"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "BA01",
+      "group": "活动生命周期",
+      "module": "Core/Pay coordinator",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}/stored-value/activities",
+      "request": "status?,cursor,size",
+      "response": "CursorPage<StoredValueActivity>",
+      "permission": "sv.brand.activity.read",
+      "screens": [
+        "s12",
+        "s14"
+      ],
+      "status": "NEW",
+      "notes": "URL固定发行范围；brandNo不能被storeNo或body覆盖；submit可能PENDING_APPROVAL或PREPARING，只有Pay激活后才可办理"
+    },
+    {
+      "id": "BA02",
+      "group": "活动生命周期",
+      "module": "Core/Pay coordinator",
+      "method": "POST",
+      "path": "/biz/management/brands/{brandNo}/stored-value/activities",
+      "request": "ActivityDraftCreate",
+      "response": "ActivityDraft",
+      "permission": "sv.brand.activity.manage",
+      "screens": [
+        "s12",
+        "s14"
+      ],
+      "status": "NEW",
+      "notes": "URL固定发行范围；brandNo不能被storeNo或body覆盖；submit可能PENDING_APPROVAL或PREPARING，只有Pay激活后才可办理"
+    },
+    {
+      "id": "BA03",
+      "group": "活动生命周期",
+      "module": "Core/Pay coordinator",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}",
+      "request": "—",
+      "response": "ActivityDetail",
+      "permission": "sv.brand.activity.read",
+      "screens": [
+        "s12",
+        "s14"
+      ],
+      "status": "NEW",
+      "notes": "URL固定发行范围；brandNo不能被storeNo或body覆盖；submit可能PENDING_APPROVAL或PREPARING，只有Pay激活后才可办理"
+    },
+    {
+      "id": "BA04",
+      "group": "活动生命周期",
+      "module": "Core/Pay coordinator",
+      "method": "PUT",
+      "path": "/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/draft",
+      "request": "ActivityDraftEdit",
+      "response": "ActivityDraft",
+      "permission": "sv.brand.activity.manage",
+      "screens": [
+        "s12",
+        "s14"
+      ],
+      "status": "NEW",
+      "notes": "URL固定发行范围；brandNo不能被storeNo或body覆盖；submit可能PENDING_APPROVAL或PREPARING，只有Pay激活后才可办理"
+    },
+    {
+      "id": "BA05",
+      "group": "活动生命周期",
+      "module": "Core/Pay coordinator",
+      "method": "POST",
+      "path": "/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/checks",
+      "request": "ActivityCheck",
+      "response": "ActivityCheckResult",
+      "permission": "sv.brand.activity.manage",
+      "screens": [
+        "s12",
+        "s14"
+      ],
+      "status": "NEW",
+      "notes": "URL固定发行范围；brandNo不能被storeNo或body覆盖；submit可能PENDING_APPROVAL或PREPARING，只有Pay激活后才可办理"
+    },
+    {
+      "id": "BA06",
+      "group": "活动生命周期",
+      "module": "Core/Pay coordinator",
+      "method": "POST",
+      "path": "/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/submissions",
+      "request": "ActivitySubmit",
+      "response": "ActivitySubmission",
+      "permission": "sv.brand.activity.publish",
+      "screens": [
+        "s12",
+        "s14"
+      ],
+      "status": "NEW",
+      "notes": "URL固定发行范围；brandNo不能被storeNo或body覆盖；submit可能PENDING_APPROVAL或PREPARING，只有Pay激活后才可办理"
+    },
+    {
+      "id": "BA07",
+      "group": "活动生命周期",
+      "module": "Core/Pay coordinator",
+      "method": "POST",
+      "path": "/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/stop-issuance",
+      "request": "StopIssuance",
+      "response": "ActivityStatus",
+      "permission": "sv.brand.activity.manage",
+      "screens": [
+        "s12",
+        "s14"
+      ],
+      "status": "NEW",
+      "notes": "URL固定发行范围；brandNo不能被storeNo或body覆盖；submit可能PENDING_APPROVAL或PREPARING，只有Pay激活后才可办理"
+    },
+    {
+      "id": "BA08",
+      "group": "活动生命周期",
+      "module": "Core/Pay coordinator",
+      "method": "POST",
+      "path": "/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/copies",
+      "request": "ActivityCopy",
+      "response": "ActivityDraft",
+      "permission": "sv.brand.activity.manage",
+      "screens": [
+        "s12",
+        "s14"
+      ],
+      "status": "NEW",
+      "notes": "URL固定发行范围；brandNo不能被storeNo或body覆盖；submit可能PENDING_APPROVAL或PREPARING，只有Pay激活后才可办理"
+    },
+    {
+      "id": "SA01",
+      "group": "活动生命周期",
+      "module": "Core/Pay coordinator",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/stored-value/activities",
+      "request": "status?,cursor,size",
+      "response": "CursorPage<StoredValueActivity>",
+      "permission": "sv.store.activity.read",
+      "screens": [
+        "s23",
+        "s33"
+      ],
+      "status": "NEW",
+      "notes": "URL固定发行范围；brandNo不能被storeNo或body覆盖；submit可能PENDING_APPROVAL或PREPARING，只有Pay激活后才可办理"
+    },
+    {
+      "id": "SA02",
+      "group": "活动生命周期",
+      "module": "Core/Pay coordinator",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/stored-value/activities",
+      "request": "ActivityDraftCreate",
+      "response": "ActivityDraft",
+      "permission": "sv.store.activity.manage",
+      "screens": [
+        "s23",
+        "s33"
+      ],
+      "status": "NEW",
+      "notes": "URL固定发行范围；brandNo不能被storeNo或body覆盖；submit可能PENDING_APPROVAL或PREPARING，只有Pay激活后才可办理"
+    },
+    {
+      "id": "SA03",
+      "group": "活动生命周期",
+      "module": "Core/Pay coordinator",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/stored-value/activities/{activityNo}",
+      "request": "—",
+      "response": "ActivityDetail",
+      "permission": "sv.store.activity.read",
+      "screens": [
+        "s23",
+        "s33"
+      ],
+      "status": "NEW",
+      "notes": "URL固定发行范围；brandNo不能被storeNo或body覆盖；submit可能PENDING_APPROVAL或PREPARING，只有Pay激活后才可办理"
+    },
+    {
+      "id": "SA04",
+      "group": "活动生命周期",
+      "module": "Core/Pay coordinator",
+      "method": "PUT",
+      "path": "/biz/stores/{storeNo}/stored-value/activities/{activityNo}/draft",
+      "request": "ActivityDraftEdit",
+      "response": "ActivityDraft",
+      "permission": "sv.store.activity.manage",
+      "screens": [
+        "s23",
+        "s33"
+      ],
+      "status": "NEW",
+      "notes": "URL固定发行范围；brandNo不能被storeNo或body覆盖；submit可能PENDING_APPROVAL或PREPARING，只有Pay激活后才可办理"
+    },
+    {
+      "id": "SA05",
+      "group": "活动生命周期",
+      "module": "Core/Pay coordinator",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/stored-value/activities/{activityNo}/checks",
+      "request": "ActivityCheck",
+      "response": "ActivityCheckResult",
+      "permission": "sv.store.activity.manage",
+      "screens": [
+        "s23",
+        "s33"
+      ],
+      "status": "NEW",
+      "notes": "URL固定发行范围；brandNo不能被storeNo或body覆盖；submit可能PENDING_APPROVAL或PREPARING，只有Pay激活后才可办理"
+    },
+    {
+      "id": "SA06",
+      "group": "活动生命周期",
+      "module": "Core/Pay coordinator",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/stored-value/activities/{activityNo}/submissions",
+      "request": "ActivitySubmit",
+      "response": "ActivitySubmission",
+      "permission": "sv.store.activity.publish",
+      "screens": [
+        "s23",
+        "s33"
+      ],
+      "status": "NEW",
+      "notes": "URL固定发行范围；brandNo不能被storeNo或body覆盖；submit可能PENDING_APPROVAL或PREPARING，只有Pay激活后才可办理"
+    },
+    {
+      "id": "SA07",
+      "group": "活动生命周期",
+      "module": "Core/Pay coordinator",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/stored-value/activities/{activityNo}/stop-issuance",
+      "request": "StopIssuance",
+      "response": "ActivityStatus",
+      "permission": "sv.store.activity.manage",
+      "screens": [
+        "s23",
+        "s33"
+      ],
+      "status": "NEW",
+      "notes": "URL固定发行范围；brandNo不能被storeNo或body覆盖；submit可能PENDING_APPROVAL或PREPARING，只有Pay激活后才可办理"
+    },
+    {
+      "id": "SA08",
+      "group": "活动生命周期",
+      "module": "Core/Pay coordinator",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/stored-value/activities/{activityNo}/copies",
+      "request": "ActivityCopy",
+      "response": "ActivityDraft",
+      "permission": "sv.store.activity.manage",
+      "screens": [
+        "s23",
+        "s33"
+      ],
+      "status": "NEW",
+      "notes": "URL固定发行范围；brandNo不能被storeNo或body覆盖；submit可能PENDING_APPROVAL或PREPARING，只有Pay激活后才可办理"
+    },
+    {
+      "id": "AP01",
+      "group": "活动审批",
+      "module": "Core",
+      "method": "GET",
+      "path": "/biz/management/stored-value/activity-approvals",
+      "request": "managementNo,status?,cursor,size",
+      "response": "CursorPage<Approval>",
+      "permission": "sv.store.activity.approve",
+      "screens": [
+        "s28"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "AP02",
+      "group": "活动审批",
+      "module": "Core/BFF",
+      "method": "GET",
+      "path": "/biz/management/stored-value/activity-approvals/{approvalNo}",
+      "request": "—",
+      "response": "ApprovalDetail",
+      "permission": "sv.store.activity.approve",
+      "screens": [
+        "s29"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "AP03",
+      "group": "活动审批",
+      "module": "Core/Pay coordinator",
+      "method": "POST",
+      "path": "/biz/management/stored-value/activity-approvals/{approvalNo}/decisions",
+      "request": "ApprovalDecision",
+      "response": "ApprovalDecisionResult",
+      "permission": "sv.store.activity.approve",
+      "screens": [
+        "s29"
+      ],
+      "status": "NEW",
+      "notes": "批准重查最新策略并锁定draftHash；硬超限返回BLOCKED_POLICY，不允许强批；禁止同人审批自身申请为默认岗位规则"
+    },
+    {
+      "id": "MB01",
+      "group": "会员与办理",
+      "module": "Core/BFF",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/stored-value/customer-candidates",
+      "request": "keyword?,cursor,size",
+      "response": "CursorPage<MemberAccountSummary>",
+      "permission": "sv.customer.select",
+      "screens": [
+        "s16"
+      ],
+      "status": "NEW",
+      "notes": "一个搜索入口，默认已有成功储值会员按最近充值；品牌识别不等于他店资金查询权限"
+    },
+    {
+      "id": "MB02",
+      "group": "会员与办理",
+      "module": "Core/BFF",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/stored-value/customer-selections",
+      "request": "CustomerSelect",
+      "response": "CustomerSelection",
+      "permission": "sv.customer.select",
+      "screens": [
+        "s17"
+      ],
+      "status": "NEW",
+      "notes": "只收memberNo/accountRef/统一会员码，不收可伪造customerNo；ref绑定当前店及操作者"
+    },
+    {
+      "id": "MB03",
+      "group": "会员与办理",
+      "module": "Core",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/members",
+      "request": "MemberCreate",
+      "response": "ScopeMember",
+      "permission": "member.manage",
+      "screens": [
+        "s16"
+      ],
+      "status": "EXTEND",
+      "notes": "会员模块原有入口，储值页面不新增；先匹配平台顾客再建品牌或单店关系"
+    },
+    {
+      "id": "MB04",
+      "group": "会员与办理",
+      "module": "Core/BFF",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts",
+      "request": "—",
+      "response": "List<AvailableAccount>",
+      "permission": "sv.account.read",
+      "screens": [
+        "s17",
+        "s32"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "RC01",
+      "group": "会员与办理",
+      "module": "Pay/BFF",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/stored-value/recharge-options",
+      "request": "customerRef,scopeType=STORE|BRAND",
+      "response": "RechargeOptions",
+      "permission": "sv.recharge.create",
+      "screens": [
+        "s17"
+      ],
+      "status": "NEW",
+      "notes": "仅已激活发行版本；范围显式，未开账户返回account=null，不伪造accountRef"
+    },
+    {
+      "id": "RC02",
+      "group": "会员与办理",
+      "module": "Pay/BFF",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/stored-value/issuer-recharges/confirm-offline",
+      "request": "IssuerRechargeCreate",
+      "response": "RechargeProgress",
+      "permission": "sv.recharge.create + sv.recharge.receive",
+      "screens": [
+        "s17"
+      ],
+      "status": "NEW",
+      "notes": "校验实际收款方，品牌统一收款时门店人员须有该收款配置核验权；不得默认把门店现金认成总部到账"
+    },
+    {
+      "id": "RC03",
+      "group": "会员与办理",
+      "module": "Pay/BFF",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}",
+      "request": "—",
+      "response": "RechargeProgress",
+      "permission": "sv.recharge.read",
+      "screens": [
+        "s17"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "RC04",
+      "group": "会员与办理",
+      "module": "Pay/BFF",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/stored-value/issuer-recharges/resolve",
+      "request": "RechargeReplay",
+      "response": "RechargeResolve",
+      "permission": "sv.recharge.create",
+      "screens": [
+        "s17"
+      ],
+      "status": "NEW",
+      "notes": "原幂等键和指纹找原单，不重复收款或再开账户"
+    },
+    {
+      "id": "RC05",
+      "group": "会员与办理",
+      "module": "Pay/BFF",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/stored-value/issuer-recharges/cancel-create",
+      "request": "RechargeReplayCancel",
+      "response": "CancelResult",
+      "permission": "sv.recharge.create",
+      "screens": [
+        "s17"
+      ],
+      "status": "NEW",
+      "notes": "只允许未收款未知创建的持久取消栅栏；已收款须原单恢复"
+    },
+    {
+      "id": "RC06",
+      "group": "会员与办理",
+      "module": "Pay/BFF",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}/cancel",
+      "request": "CancelRequest",
+      "response": "RechargeProgress",
+      "permission": "sv.recharge.cancel",
+      "screens": [
+        "s17"
+      ],
+      "status": "NEW",
+      "notes": "只允许未收款；不提供C端线上退款"
+    },
+    {
+      "id": "US01",
+      "group": "核销与收支",
+      "module": "Core/Pay",
+      "method": "POST",
+      "path": "/biz/stored-value/consumptions/preview",
+      "request": "ConsumePreviewV2",
+      "response": "ConsumePreview",
+      "permission": "sv.consume.create",
+      "screens": [
+        "s32"
+      ],
+      "status": "EXTEND",
+      "notes": "增加accountRef/issuerRef，在报价冻结；一次只允许一个账户；旧客户端省略时只选本店账户，不自动选品牌"
+    },
+    {
+      "id": "US02",
+      "group": "核销与收支",
+      "module": "Core/Pay",
+      "method": "POST",
+      "path": "/biz/stored-value/consumptions",
+      "request": "ConsumeV2",
+      "response": "ConsumptionResult",
+      "permission": "sv.consume.create",
+      "screens": [
+        "s32"
+      ],
+      "status": "EXTEND",
+      "notes": "沿用订单、预览及消费者授权；必须匹配选定issuer和account，禁止混扣"
+    },
+    {
+      "id": "US03",
+      "group": "核销与收支",
+      "module": "Core",
+      "method": "POST",
+      "path": "/mp/orders/{orderNo}/entitlement-authorizations",
+      "request": "ExistingAuthorizationRequest",
+      "response": "Authorization",
+      "permission": "consumer.self",
+      "screens": [
+        "s32"
+      ],
+      "status": "REUSE",
+      "notes": "消费者确认内容扩展为发行范围和选定账户，不用customerRef代替扣款授权"
+    },
+    {
+      "id": "RD01",
+      "group": "核销与收支",
+      "module": "Pay/BFF",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/stored-value/issuer-records",
+      "request": "scopeType,type=ALL|RECHARGE|REDEMPTION,startDate?,endDate?,accountRef?,cursor,size",
+      "response": "CursorPage<IssuerRecord>",
+      "permission": "sv.record.read",
+      "screens": [
+        "s18"
+      ],
+      "status": "NEW",
+      "notes": "门店上下文不加第二个店筛选；品牌时只返回本店实际办理/核销，全集需总部权限"
+    },
+    {
+      "id": "RD02",
+      "group": "核销与收支",
+      "module": "Pay/BFF",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/stored-value/issuer-records/{recordNo}",
+      "request": "scopeType",
+      "response": "IssuerRecordDetail",
+      "permission": "sv.record.read",
+      "screens": [
+        "s18"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "RP01",
+      "group": "汇总",
+      "module": "Pay readmodel/BFF",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}/stored-value/summary",
+      "request": "activityNo?,startDate,endDate,currency",
+      "response": "BrandSummary",
+      "permission": "sv.brand.report",
+      "screens": [
+        "s19"
+      ],
+      "status": "NEW",
+      "notes": "返回asOf/projectionWatermark及范围；不跨币种求和，活动余额按来源批次"
+    },
+    {
+      "id": "RP02",
+      "group": "汇总",
+      "module": "Pay readmodel/BFF",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}/stored-value/store-breakdown",
+      "request": "activityNo?,startDate,endDate,currency,cursor,size",
+      "response": "CursorPage<StoreAttribution>",
+      "permission": "sv.brand.report",
+      "screens": [
+        "s20"
+      ],
+      "status": "NEW",
+      "notes": "返回asOf/projectionWatermark及范围；不跨币种求和，活动余额按来源批次"
+    },
+    {
+      "id": "RP03",
+      "group": "汇总",
+      "module": "Pay readmodel/BFF",
+      "method": "GET",
+      "path": "/biz/management/stored-value/store-issuer-summary",
+      "request": "managementNo,startDate,endDate,currency,cursor,size",
+      "response": "StoreIssuerBusinessSummary",
+      "permission": "sv.store.report.all",
+      "screens": [
+        "s34"
+      ],
+      "status": "NEW",
+      "notes": "返回asOf/projectionWatermark及范围；不跨币种求和，活动余额按来源批次"
+    },
+    {
+      "id": "RP04",
+      "group": "汇总",
+      "module": "Pay readmodel/BFF",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/stored-value/store-summary",
+      "request": "activityNo?,startDate,endDate,currency",
+      "response": "StoreSummary",
+      "permission": "sv.store.report",
+      "screens": [
+        "s31"
+      ],
+      "status": "NEW",
+      "notes": "返回asOf/projectionWatermark及范围；不跨币种求和，活动余额按来源批次"
+    },
+    {
+      "id": "RP05",
+      "group": "汇总",
+      "module": "Pay readmodel/BFF",
+      "method": "GET",
+      "path": "/biz/management/stored-value/activities/{activityNo}/summary",
+      "request": "startDate,endDate,currency",
+      "response": "ActivityLotSummary",
+      "permission": "sv.activity.report",
+      "screens": [
+        "s15"
+      ],
+      "status": "NEW",
+      "notes": "返回asOf/projectionWatermark及范围；不跨币种求和，活动余额按来源批次"
+    },
+    {
+      "id": "CL01",
+      "group": "结算与对账",
+      "module": "Pay/BFF",
+      "method": "GET",
+      "path": "/biz/management/stored-value/settlement-bills",
+      "request": "managementNo,scopeType,issuerNo?,periodFrom,periodTo,currency,status?,cursor,size",
+      "response": "CursorPage<SettlementBill>",
+      "permission": "sv.settlement.read",
+      "screens": [
+        "s21",
+        "s22"
+      ],
+      "status": "NEW",
+      "notes": "付款登记不调用银行；收款确认必须为收款主体岗位；同主体账单只内部对账"
+    },
+    {
+      "id": "CL02",
+      "group": "结算与对账",
+      "module": "Pay/BFF",
+      "method": "POST",
+      "path": "/biz/management/stored-value/settlement-bills/generations",
+      "request": "BillGeneration",
+      "response": "GenerationProgress",
+      "permission": "sv.settlement.generate",
+      "screens": [
+        "s21",
+        "s22"
+      ],
+      "status": "NEW",
+      "notes": "付款登记不调用银行；收款确认必须为收款主体岗位；同主体账单只内部对账"
+    },
+    {
+      "id": "CL03",
+      "group": "结算与对账",
+      "module": "Pay/BFF",
+      "method": "GET",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}",
+      "request": "—",
+      "response": "BillDetail",
+      "permission": "sv.settlement.read",
+      "screens": [
+        "s21",
+        "s22"
+      ],
+      "status": "NEW",
+      "notes": "付款登记不调用银行；收款确认必须为收款主体岗位；同主体账单只内部对账"
+    },
+    {
+      "id": "CL04",
+      "group": "结算与对账",
+      "module": "Pay/BFF",
+      "method": "GET",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}/items",
+      "request": "cursor,size",
+      "response": "CursorPage<ClearingItem>",
+      "permission": "sv.settlement.read",
+      "screens": [
+        "s21",
+        "s22"
+      ],
+      "status": "NEW",
+      "notes": "付款登记不调用银行；收款确认必须为收款主体岗位；同主体账单只内部对账"
+    },
+    {
+      "id": "CL05",
+      "group": "结算与对账",
+      "module": "Pay/BFF",
+      "method": "POST",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}/reconciliation-confirmations",
+      "request": "BillConfirm",
+      "response": "BillDetail",
+      "permission": "sv.settlement.reconcile",
+      "screens": [
+        "s21",
+        "s22"
+      ],
+      "status": "NEW",
+      "notes": "付款登记不调用银行；收款确认必须为收款主体岗位；同主体账单只内部对账"
+    },
+    {
+      "id": "CL06",
+      "group": "结算与对账",
+      "module": "Pay/BFF",
+      "method": "POST",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}/disputes",
+      "request": "BillDispute",
+      "response": "BillDetail",
+      "permission": "sv.settlement.dispute",
+      "screens": [
+        "s21",
+        "s22"
+      ],
+      "status": "NEW",
+      "notes": "付款登记不调用银行；收款确认必须为收款主体岗位；同主体账单只内部对账"
+    },
+    {
+      "id": "CL07",
+      "group": "结算与对账",
+      "module": "Pay/BFF",
+      "method": "POST",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}/dispute-resolutions",
+      "request": "DisputeResolution",
+      "response": "BillDetail",
+      "permission": "sv.settlement.dispute.resolve",
+      "screens": [
+        "s21",
+        "s22"
+      ],
+      "status": "NEW",
+      "notes": "付款登记不调用银行；收款确认必须为收款主体岗位；同主体账单只内部对账"
+    },
+    {
+      "id": "CL08",
+      "group": "结算与对账",
+      "module": "Pay/BFF",
+      "method": "POST",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}/adjustments",
+      "request": "BillAdjustment",
+      "response": "BillDetail",
+      "permission": "sv.settlement.adjust",
+      "screens": [
+        "s21",
+        "s22"
+      ],
+      "status": "NEW",
+      "notes": "付款登记不调用银行；收款确认必须为收款主体岗位；同主体账单只内部对账"
+    },
+    {
+      "id": "CL09",
+      "group": "结算与对账",
+      "module": "Pay/BFF",
+      "method": "POST",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}/payments",
+      "request": "PaymentRegistration",
+      "response": "PaymentDetail",
+      "permission": "sv.settlement.payment.register",
+      "screens": [
+        "s21",
+        "s22"
+      ],
+      "status": "NEW",
+      "notes": "付款登记不调用银行；收款确认必须为收款主体岗位；同主体账单只内部对账"
+    },
+    {
+      "id": "CL10",
+      "group": "结算与对账",
+      "module": "Pay/BFF",
+      "method": "POST",
+      "path": "/biz/management/stored-value/settlement-payments/{paymentNo}/receipt-confirmations",
+      "request": "ReceiptConfirm",
+      "response": "BillDetail",
+      "permission": "sv.settlement.receipt.confirm",
+      "screens": [
+        "s21",
+        "s22"
+      ],
+      "status": "NEW",
+      "notes": "付款登记不调用银行；收款确认必须为收款主体岗位；同主体账单只内部对账"
+    },
+    {
+      "id": "CL11",
+      "group": "结算与对账",
+      "module": "Pay/BFF",
+      "method": "POST",
+      "path": "/biz/management/stored-value/settlement-payments/{paymentNo}/voids",
+      "request": "PaymentVoid",
+      "response": "BillDetail",
+      "permission": "sv.settlement.payment.void",
+      "screens": [
+        "s21",
+        "s22"
+      ],
+      "status": "NEW",
+      "notes": "付款登记不调用银行；收款确认必须为收款主体岗位；同主体账单只内部对账"
+    },
+    {
+      "id": "CL12",
+      "group": "结算与对账",
+      "module": "Pay/BFF",
+      "method": "GET",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}/events",
+      "request": "cursor,size",
+      "response": "CursorPage<SettlementEvent>",
+      "permission": "sv.settlement.audit",
+      "screens": [
+        "s21",
+        "s22"
+      ],
+      "status": "NEW",
+      "notes": "付款登记不调用银行；收款确认必须为收款主体岗位；同主体账单只内部对账"
+    },
+    {
+      "id": "MP01",
+      "group": "C端兼容影响",
+      "module": "Pay/BFF",
+      "method": "GET",
+      "path": "/mp/stored-value/issuers",
+      "request": "cursor,size",
+      "response": "CursorPage<MyIssuer>",
+      "permission": "consumer.self",
+      "screens": [
+        "s17"
+      ],
+      "status": "NEW",
+      "notes": "品牌账户只出现一次，单店账户单列；只返回本人成功储值记录"
+    },
+    {
+      "id": "MP02",
+      "group": "C端兼容影响",
+      "module": "Pay/BFF",
+      "method": "GET",
+      "path": "/mp/stored-value/issuers/{issuerRef}/records",
+      "request": "type,startDate?,endDate?,focusDocumentNo?,cursor,size",
+      "response": "MyIssuerRecords",
+      "permission": "consumer.self",
+      "screens": [
+        "s18"
+      ],
+      "status": "NEW",
+      "notes": "无本金赠金拆分，无购买/退款；时区跟发行方，跨店记录带实际发生店"
+    },
+    {
+      "id": "IN01",
+      "group": "内部契约",
+      "module": "Core↔Pay",
+      "method": "POST",
+      "path": "/internal/stored-value/issuers/access-revisions",
+      "request": "StoreAccessRevision",
+      "response": "AccessAck",
+      "permission": "service.identity",
+      "screens": [
+        "s08",
+        "s14",
+        "s29"
+      ],
+      "status": "NEW",
+      "notes": "端点为设计建议，落地优先扩展现有payclient AppService契约；防重、签名、范围及版本均服务端核实"
+    },
+    {
+      "id": "IN02",
+      "group": "内部契约",
+      "module": "Core↔Pay",
+      "method": "POST",
+      "path": "/internal/stored-value/releases/prepare",
+      "request": "ReleasePrepare",
+      "response": "PreparedRelease",
+      "permission": "service.identity",
+      "screens": [
+        "s08",
+        "s14",
+        "s29"
+      ],
+      "status": "NEW",
+      "notes": "端点为设计建议，落地优先扩展现有payclient AppService契约；防重、签名、范围及版本均服务端核实"
+    },
+    {
+      "id": "IN03",
+      "group": "内部契约",
+      "module": "Core↔Pay",
+      "method": "POST",
+      "path": "/internal/stored-value/releases/{releaseNo}/activate",
+      "request": "ReleaseActivate",
+      "response": "ReleaseState",
+      "permission": "service.identity",
+      "screens": [
+        "s08",
+        "s14",
+        "s29"
+      ],
+      "status": "NEW",
+      "notes": "端点为设计建议，落地优先扩展现有payclient AppService契约；防重、签名、范围及版本均服务端核实"
+    },
+    {
+      "id": "IN04",
+      "group": "内部契约",
+      "module": "Core↔Pay",
+      "method": "POST",
+      "path": "/internal/stored-value/releases/{releaseNo}/stop",
+      "request": "ReleaseStop",
+      "response": "ReleaseState",
+      "permission": "service.identity",
+      "screens": [
+        "s08",
+        "s14",
+        "s29"
+      ],
+      "status": "NEW",
+      "notes": "端点为设计建议，落地优先扩展现有payclient AppService契约；防重、签名、范围及版本均服务端核实"
+    },
+    {
+      "id": "IN05",
+      "group": "内部契约",
+      "module": "Core↔Pay",
+      "method": "POST",
+      "path": "/internal/stored-value/policies/evaluations",
+      "request": "PolicyEvaluate",
+      "response": "EffectivePolicyResult",
+      "permission": "service.identity",
+      "screens": [
+        "s08",
+        "s14",
+        "s29"
+      ],
+      "status": "NEW",
+      "notes": "端点为设计建议，落地优先扩展现有payclient AppService契约；防重、签名、范围及版本均服务端核实"
+    },
+    {
+      "id": "IN06",
+      "group": "内部契约",
+      "module": "Core↔Pay",
+      "method": "GET",
+      "path": "/internal/stored-value/commands/{commandNo}",
+      "request": "—",
+      "response": "OriginalCommandResult",
+      "permission": "service.identity",
+      "screens": [
+        "s08",
+        "s14",
+        "s29"
+      ],
+      "status": "NEW",
+      "notes": "端点为设计建议，落地优先扩展现有payclient AppService契约；防重、签名、范围及版本均服务端核实"
+    },
+    {
+      "id": "MG08",
+      "group": "管理空间",
+      "module": "Merchant/BFF",
+      "method": "GET",
+      "path": "/biz/management/entities/{entityNo}/payment-merchants",
+      "request": "managementNo,payChannel?,payScene?,storeNo?",
+      "response": "List<AuthorizedPaymentMerchant>",
+      "permission": "payment.merchant.read",
+      "screens": [
+        "s01",
+        "s13"
+      ],
+      "status": "NEW",
+      "notes": "主体1:N支付商户；本接口仅返回ACTIVE且方式和资源授权均满足的候选，不提供任意状态遍历；storeNo用于核验适用店，不得返回密钥或结算账号"
+    },
+    {
+      "id": "IS06",
+      "group": "管控与发行设置",
+      "module": "Pay/BFF",
+      "method": "GET",
+      "path": "/biz/management/stored-value/issuers/{issuerNo}/collection-routes",
+      "request": "payChannel?,payScene?",
+      "response": "IssuerCollectionRoutes",
+      "permission": "sv.issuer.configure",
+      "screens": [
+        "s13"
+      ],
+      "status": "NEW",
+      "notes": "路线随issuerVersion冻结；修改通过IS04新配置版本，不能原地替换历史商户"
+    }
+  ],
+  "screenCoverage": {
+    "s01": [
+      "MG01",
+      "MG03",
+      "MG06",
+      "MG07",
+      "MG08"
+    ],
+    "s02": [
+      "BR01"
+    ],
+    "s03": [
+      "BR02"
+    ],
+    "s04": [
+      "BR03",
+      "BR04",
+      "BR05",
+      "BR06",
+      "BR07"
+    ],
+    "s05": [
+      "MG07",
+      "ST01"
+    ],
+    "s06": [
+      "ST01",
+      "ST02"
+    ],
+    "s07": [
+      "BR01"
+    ],
+    "s08": [
+      "ST02",
+      "ST03",
+      "ST04",
+      "ST05"
+    ],
+    "s09": [
+      "ST01"
+    ],
+    "s10": [
+      "SA01",
+      "PL04"
+    ],
+    "s11": [
+      "BR01",
+      "IS01",
+      "BA01"
+    ],
+    "s12": [
+      "BA02",
+      "BA04"
+    ],
+    "s13": [
+      "IS02",
+      "IS03",
+      "IS04",
+      "PL05",
+      "MG08",
+      "IS06"
+    ],
+    "s14": [
+      "BA05",
+      "BA06"
+    ],
+    "s15": [
+      "BA03",
+      "BA07",
+      "BA08",
+      "RP05"
+    ],
+    "s16": [
+      "MB01"
+    ],
+    "s17": [
+      "MB02",
+      "MB04",
+      "RC01",
+      "RC02",
+      "RC03",
+      "RC04"
+    ],
+    "s18": [
+      "RD01",
+      "RD02"
+    ],
+    "s19": [
+      "RP01"
+    ],
+    "s20": [
+      "RP02"
+    ],
+    "s21": [
+      "CL01",
+      "CL02"
+    ],
+    "s22": [
+      "CL03",
+      "CL04",
+      "CL05",
+      "CL06",
+      "CL07",
+      "CL08",
+      "CL09",
+      "CL10",
+      "CL11",
+      "CL12"
+    ],
+    "s23": [
+      "SA02",
+      "SA04",
+      "PL04"
+    ],
+    "s24": [
+      "MG03",
+      "MG04",
+      "MG05"
+    ],
+    "s25": [
+      "PL01"
+    ],
+    "s26": [
+      "PL02",
+      "PL03"
+    ],
+    "s27": [
+      "SA05",
+      "PL04"
+    ],
+    "s28": [
+      "AP01"
+    ],
+    "s29": [
+      "AP02",
+      "AP03"
+    ],
+    "s30": [
+      "SA03",
+      "SA07",
+      "SA08",
+      "RP05"
+    ],
+    "s31": [
+      "RP04"
+    ],
+    "s32": [
+      "US01",
+      "US02",
+      "US03",
+      "MB04"
+    ],
+    "s33": [
+      "SA05",
+      "SA06"
+    ],
+    "s34": [
+      "RP03"
+    ]
+  },
+  "terminology": {
+    "entityNo": "经营主体",
+    "payMerchantNo": "主体旗下的支付渠道商户",
+    "issuerNo": "储值发行方，不能等同payMerchantNo"
+  }
+}

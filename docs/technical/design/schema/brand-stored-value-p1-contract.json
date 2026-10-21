@@ -1,0 +1,340 @@
+{
+  "status": "DESIGN_NOT_IMPLEMENTED",
+  "phase": "P1",
+  "databaseTables": [
+    "mch_management_space",
+    "mch_management_grant",
+    "mch_brand",
+    "mch_brand_store_binding",
+    "mch_brand_change"
+  ],
+  "endpoints": [
+    {
+      "id": "MG01",
+      "group": "管理空间",
+      "module": "Merchant/BFF",
+      "method": "GET",
+      "path": "/biz/management/context",
+      "request": "—",
+      "response": "ManagementContext",
+      "permission": "management.enter",
+      "screens": [
+        "s01"
+      ],
+      "status": "NEW",
+      "notes": "只列出当前主体真实获授管理空间，不能以账号所有人身份遍历整个tenant"
+    },
+    {
+      "id": "MG02",
+      "group": "管理空间",
+      "module": "Merchant",
+      "method": "POST",
+      "path": "/biz/management/spaces",
+      "request": "ManagementSpaceCreate",
+      "response": "ManagementSpace",
+      "permission": "management.bootstrap",
+      "screens": [
+        "s01"
+      ],
+      "status": "NEW",
+      "notes": "创建不自动授予所有主体权限；由已验证所有人启动"
+    },
+    {
+      "id": "MG03",
+      "group": "管理空间",
+      "module": "Merchant",
+      "method": "GET",
+      "path": "/biz/management/spaces/{managementNo}/resources",
+      "request": "resourceType?,view=EFFECTIVE|GRANTS,actorNo?,cursor,size",
+      "response": "CursorPage<GrantedResource>",
+      "permission": "management.resource.read",
+      "screens": [
+        "s01",
+        "s24"
+      ],
+      "status": "NEW",
+      "notes": "EFFECTIVE仅本人有效资源；GRANTS需空间授权管理权，按可委派范围返回授权记录，不能遍历tenant"
+    },
+    {
+      "id": "MG04",
+      "group": "管理空间",
+      "module": "Merchant",
+      "method": "POST",
+      "path": "/biz/management/spaces/{managementNo}/grants",
+      "request": "GrantCreate",
+      "response": "GrantView",
+      "permission": "management.grant.manage",
+      "screens": [
+        "s24"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "MG05",
+      "group": "管理空间",
+      "module": "Merchant",
+      "method": "DELETE",
+      "path": "/biz/management/spaces/{managementNo}/grants/{grantNo}",
+      "request": "expectedRevision,reason",
+      "response": "GrantView",
+      "permission": "management.grant.manage",
+      "screens": [
+        "s24"
+      ],
+      "status": "NEW",
+      "notes": "逻辑撤销，不物理删除审计"
+    },
+    {
+      "id": "MG06",
+      "group": "管理空间",
+      "module": "Merchant",
+      "method": "GET",
+      "path": "/biz/management/spaces/{managementNo}/entities",
+      "request": "cursor,size",
+      "response": "CursorPage<EntityBrief>",
+      "permission": "entity.read",
+      "screens": [
+        "s01",
+        "s13"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "MG07",
+      "group": "管理空间",
+      "module": "Merchant",
+      "method": "GET",
+      "path": "/biz/management/spaces/{managementNo}/stores",
+      "request": "brandNo?,cursor,size",
+      "response": "CursorPage<StoreBrief>",
+      "permission": "store.read",
+      "screens": [
+        "s05"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "BR01",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "GET",
+      "path": "/biz/management/brands",
+      "request": "managementNo,status?,keyword?,cursor,size",
+      "response": "CursorPage<Brand>",
+      "permission": "brand.read",
+      "screens": [
+        "s02",
+        "s03",
+        "s04"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "BR02",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "POST",
+      "path": "/biz/management/brands",
+      "request": "BrandCreate",
+      "response": "Brand",
+      "permission": "brand.manage",
+      "screens": [
+        "s02",
+        "s03",
+        "s04"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "BR03",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}",
+      "request": "—",
+      "response": "BrandDetail",
+      "permission": "brand.read",
+      "screens": [
+        "s02",
+        "s03",
+        "s04"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "BR04",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "PUT",
+      "path": "/biz/management/brands/{brandNo}",
+      "request": "BrandEdit",
+      "response": "Brand",
+      "permission": "brand.manage",
+      "screens": [
+        "s02",
+        "s03",
+        "s04"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "BR05",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "POST",
+      "path": "/biz/management/brands/{brandNo}/status-changes",
+      "request": "StatusChange",
+      "response": "ChangeResult",
+      "permission": "brand.manage",
+      "screens": [
+        "s02",
+        "s03",
+        "s04"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "BR06",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}/stores",
+      "request": "cursor,size",
+      "response": "CursorPage<BrandStore>",
+      "permission": "brand.read",
+      "screens": [
+        "s02",
+        "s03",
+        "s04"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "BR07",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}/audit-events",
+      "request": "cursor,size",
+      "response": "CursorPage<AuditEvent>",
+      "permission": "brand.audit.read",
+      "screens": [
+        "s02",
+        "s03",
+        "s04"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "ST01",
+      "group": "品牌与门店",
+      "module": "Merchant/BFF",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/operating-context",
+      "request": "—",
+      "response": "StoreOperatingContext",
+      "permission": "store.read",
+      "screens": [
+        "s06",
+        "s09"
+      ],
+      "status": "NEW",
+      "notes": "P1返回真实组织上下文；发行信息NOT_ENABLED或LEGACY_STORE，不伪造品牌issuer；后续阶段才填已开通issuer"
+    },
+    {
+      "id": "ST02",
+      "group": "品牌与门店",
+      "module": "Merchant/BFF",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/brand-changes/check",
+      "request": "BrandChangeCheck",
+      "response": "BrandChangeImpact",
+      "permission": "store.brand.change",
+      "screens": [
+        "s06",
+        "s08"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "ST03",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/brand-changes",
+      "request": "BrandChangeSubmit",
+      "response": "BrandChange",
+      "permission": "store.brand.change",
+      "screens": [
+        "s08"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "ST04",
+      "group": "品牌与门店",
+      "module": "Merchant",
+      "method": "GET",
+      "path": "/biz/management/brand-changes/{changeNo}",
+      "request": "—",
+      "response": "BrandChange",
+      "permission": "brand.change.read",
+      "screens": [
+        "s08"
+      ],
+      "status": "NEW",
+      "notes": ""
+    },
+    {
+      "id": "ST05",
+      "group": "品牌与门店",
+      "module": "Merchant/BFF",
+      "method": "POST",
+      "path": "/biz/management/brand-changes/{changeNo}/decisions",
+      "request": "BrandChangeDecision",
+      "response": "BrandChange",
+      "permission": "brand.change.decide",
+      "screens": [
+        "s08"
+      ],
+      "status": "NEW",
+      "notes": "批准不等于立即改brandNo；范围双向激活及历史资金检查完成才COMPLETED"
+    },
+    {
+      "id": "MG08",
+      "group": "管理空间",
+      "module": "Merchant/BFF",
+      "method": "GET",
+      "path": "/biz/management/entities/{entityNo}/payment-merchants",
+      "request": "managementNo,payChannel?,payScene?,storeNo?",
+      "response": "List<AuthorizedPaymentMerchant>",
+      "permission": "payment.merchant.read",
+      "screens": [
+        "s01",
+        "s13"
+      ],
+      "status": "NEW",
+      "notes": "主体1:N支付商户；本接口仅返回ACTIVE且方式和资源授权均满足的候选，不提供任意状态遍历；storeNo用于核验适用店，不得返回密钥或结算账号"
+    }
+  ],
+  "common": {
+    "tenant": "server resolved",
+    "managementNo": "explicit authorized context; never inferred from X-Store-No",
+    "mutationRevision": "expectedRevision",
+    "mutationIdempotency": "Idempotency-Key; body hash conflict rejected",
+    "pagination": "opaque cursor; size default20 max100",
+    "audit": "same transaction outbox; no sensitive payment data"
+  }
+}

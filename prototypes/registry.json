@@ -2,6 +2,208 @@
  "_readme": "界面原型登记表（真源，手工维护）。每份原型一条；screens[].client/route 让界面清单（gen-ui-catalog.py）能从页面跳到那一屏，路由还不存在的屏会在清单里列成「原型」行；同一路由被多份登记时，排在前面的赢。status: 在建 | 已落地 | 参考 | 作废（作废要写 supersededBy）。生成总览：python3 scripts/gen-proto-index.py；screens[].pageTitle 是清单里那一行的页名（屏名与页名不同时才写）",
  "prototypes": [
   {
+   "slug": "brand-stored-value-b",
+   "file": "brand-stored-value-b.html",
+   "title": "B端品牌与门店双线储值：管理空间、管控及结算",
+   "kind": "pages",
+   "clients": [
+    "b-app"
+   ],
+   "status": "在建",
+   "date": "2026-10-21",
+   "summary": "34屏：顶层品牌发行与店内单店发行独立；上层额度与审批、顾客双账户、分类报表及清分对账。",
+   "docs": [
+    {
+     "label": "功能矩阵与规则",
+     "path": "docs/requirements/B端品牌与跨店储值-功能矩阵与原型.md"
+    },
+    {
+     "label": "系统设计",
+     "path": "docs/technical/TDD-品牌与门店双线储值-系统设计.md"
+    },
+    {
+     "label": "API清单",
+     "path": "docs/technical/TDD-品牌与门店双线储值-API清单.md"
+    },
+    {
+     "label": "数据库设计",
+     "path": "docs/technical/TDD-品牌与门店双线储值-数据库设计.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "经营管理",
+     "client": "b-app"
+    },
+    {
+     "id": "s02",
+     "title": "品牌管理",
+     "client": "b-app"
+    },
+    {
+     "id": "s03",
+     "title": "新建品牌",
+     "client": "b-app"
+    },
+    {
+     "id": "s04",
+     "title": "品牌详情",
+     "client": "b-app"
+    },
+    {
+     "id": "s05",
+     "title": "门店管理",
+     "client": "b-app"
+    },
+    {
+     "id": "s06",
+     "title": "门店配置",
+     "client": "b-app"
+    },
+    {
+     "id": "s07",
+     "title": "选择品牌",
+     "client": "b-app"
+    },
+    {
+     "id": "s08",
+     "title": "品牌变更检查",
+     "client": "b-app"
+    },
+    {
+     "id": "s09",
+     "title": "门店工作台",
+     "client": "b-app"
+    },
+    {
+     "id": "s10",
+     "title": "门店储值",
+     "client": "b-app"
+    },
+    {
+     "id": "s11",
+     "title": "品牌储值",
+     "client": "b-app"
+    },
+    {
+     "id": "s12",
+     "title": "新建品牌储值",
+     "client": "b-app"
+    },
+    {
+     "id": "s13",
+     "title": "品牌发行设置",
+     "client": "b-app"
+    },
+    {
+     "id": "s14",
+     "title": "确认品牌发行",
+     "client": "b-app"
+    },
+    {
+     "id": "s15",
+     "title": "品牌活动详情",
+     "client": "b-app"
+    },
+    {
+     "id": "s16",
+     "title": "会员与储值账户",
+     "client": "b-app"
+    },
+    {
+     "id": "s17",
+     "title": "顾客详情",
+     "client": "b-app"
+    },
+    {
+     "id": "s18",
+     "title": "门店储值收支",
+     "client": "b-app"
+    },
+    {
+     "id": "s19",
+     "title": "品牌储值汇总",
+     "client": "b-app"
+    },
+    {
+     "id": "s20",
+     "title": "品牌跨店归因",
+     "client": "b-app"
+    },
+    {
+     "id": "s21",
+     "title": "储值结算",
+     "client": "b-app"
+    },
+    {
+     "id": "s22",
+     "title": "品牌结算单",
+     "client": "b-app"
+    },
+    {
+     "id": "s23",
+     "title": "新建门店储值",
+     "client": "b-app"
+    },
+    {
+     "id": "s24",
+     "title": "权限边界",
+     "client": "b-app"
+    },
+    {
+     "id": "s25",
+     "title": "门店储值管控",
+     "client": "b-app"
+    },
+    {
+     "id": "s26",
+     "title": "门店发行规则",
+     "client": "b-app"
+    },
+    {
+     "id": "s27",
+     "title": "发布检查未通过",
+     "client": "b-app"
+    },
+    {
+     "id": "s28",
+     "title": "门店活动审批",
+     "client": "b-app"
+    },
+    {
+     "id": "s29",
+     "title": "审批门店活动",
+     "client": "b-app"
+    },
+    {
+     "id": "s30",
+     "title": "门店活动详情",
+     "client": "b-app"
+    },
+    {
+     "id": "s31",
+     "title": "门店储值汇总",
+     "client": "b-app"
+    },
+    {
+     "id": "s32",
+     "title": "核销选择账户",
+     "client": "b-app"
+    },
+    {
+     "id": "s33",
+     "title": "确认门店活动",
+     "client": "b-app"
+    },
+    {
+     "id": "s34",
+     "title": "各店独立储值汇总",
+     "client": "b-app"
+    }
+   ]
+  },
+  {
    "slug": "consumer-stored-value",
    "file": "consumer-stored-value.html",
    "title": "C端储值：统一门店入口与收支记录",

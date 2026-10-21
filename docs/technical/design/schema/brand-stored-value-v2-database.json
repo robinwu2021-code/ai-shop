@@ -1,0 +1,2386 @@
+{
+  "status": "DESIGN_ONLY_NOT_APPLIED",
+  "version": "v2",
+  "tables": [
+    {
+      "name": "mch_management_space",
+      "module": "shop-merchant",
+      "purpose": "经营管理授权空间，不是资金账户或品牌与主体归属关系",
+      "columns": [
+        {
+          "name": "management_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "管理空间号"
+        },
+        {
+          "name": "name",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "空间名称"
+        },
+        {
+          "name": "owner_actor_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "有效所有人，变更需审计"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ACTIVE/SUSPENDED"
+        },
+        {
+          "name": "bootstrap_source_account_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "创建时验证的现有所有人账号关系，不授予其余主体权限"
+        },
+        {
+          "name": "bootstrap_key",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "创建幂等键，同一所有人相同键返回原空间"
+        },
+        {
+          "name": "bootstrap_hash",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "创建请求规范化摘要"
+        },
+        {
+          "name": "auth_revision",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "空间授权版本，授予及撤销递增"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "management_no"
+        ],
+        [
+          "tenant_no",
+          "owner_actor_no",
+          "bootstrap_key"
+        ]
+      ],
+      "indexes": [],
+      "checks": []
+    },
+    {
+      "name": "mch_management_grant",
+      "module": "shop-merchant",
+      "purpose": "独立授予品牌、门店及主体管理权限",
+      "columns": [
+        {
+          "name": "grant_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "授权号"
+        },
+        {
+          "name": "management_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "空间号"
+        },
+        {
+          "name": "actor_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "现有认证主体标识"
+        },
+        {
+          "name": "resource_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "SPACE/BRAND/STORE/ENTITY/PAYMENT_MERCHANT，各自授权"
+        },
+        {
+          "name": "resource_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "资源号"
+        },
+        {
+          "name": "permission_code",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "能力码，复用权限注册机制"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ACTIVE/REVOKED"
+        },
+        {
+          "name": "valid_from",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "UTC生效"
+        },
+        {
+          "name": "valid_to",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "UTC失效"
+        },
+        {
+          "name": "authority_source_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "OWNER_ACCOUNT/PARENT_GRANT/SPACE_OWNER，实时复核授权来源"
+        },
+        {
+          "name": "authority_source_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "原始账号关系号、父授权号或空间号"
+        },
+        {
+          "name": "delegatable",
+          "sqlType": "TINYINT NOT NULL DEFAULT 0",
+          "meaning": "可否继续委派本资源本能力"
+        },
+        {
+          "name": "authority_snapshot",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "创建时来源摘要，仅审计不代替实时权限"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "grant_no"
+        ],
+        [
+          "tenant_no",
+          "management_no",
+          "actor_no",
+          "resource_type",
+          "resource_no",
+          "permission_code"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "actor_no",
+          "status"
+        ],
+        [
+          "tenant_no",
+          "resource_type",
+          "resource_no",
+          "status"
+        ]
+      ],
+      "checks": []
+    },
+    {
+      "name": "mch_brand",
+      "module": "shop-merchant",
+      "purpose": "经营品牌，不直接归属经营主体",
+      "columns": [
+        {
+          "name": "brand_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "品牌号"
+        },
+        {
+          "name": "management_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "所属经营授权空间，非经营主体"
+        },
+        {
+          "name": "name",
+          "sqlType": "VARCHAR(100) NOT NULL",
+          "meaning": "品牌名"
+        },
+        {
+          "name": "logo",
+          "sqlType": "VARCHAR(512) NULL",
+          "meaning": "标识资源"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "DRAFT/ACTIVE/INACTIVE"
+        },
+        {
+          "name": "scope_revision",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "门店范围版本"
+        },
+        {
+          "name": "name_key",
+          "sqlType": "VARCHAR(100) NOT NULL",
+          "meaning": "名称trim及Unicode NFC规范化，唯一性按目标库排序规则"
+        },
+        {
+          "name": "create_key",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "同空间创建幂等键"
+        },
+        {
+          "name": "create_hash",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "创建请求规范化摘要"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "brand_no"
+        ],
+        [
+          "tenant_no",
+          "management_no",
+          "name_key"
+        ],
+        [
+          "tenant_no",
+          "management_no",
+          "create_key"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "management_no",
+          "status",
+          "id"
+        ]
+      ],
+      "checks": []
+    },
+    {
+      "name": "mch_brand_store_binding",
+      "module": "shop-merchant",
+      "purpose": "门店品牌有效期关系；品牌与主体无直接关系表",
+      "columns": [
+        {
+          "name": "binding_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "绑定号"
+        },
+        {
+          "name": "brand_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "品牌"
+        },
+        {
+          "name": "store_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "门店"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PREPARING/ACTIVE/ENDED"
+        },
+        {
+          "name": "effective_from",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "UTC生效"
+        },
+        {
+          "name": "effective_to",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "UTC结束"
+        },
+        {
+          "name": "scope_revision",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "品牌范围版本"
+        },
+        {
+          "name": "change_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "关联变更单"
+        },
+        {
+          "name": "active_store_no",
+          "sqlType": "VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN status='ACTIVE' THEN store_no ELSE NULL END) STORED",
+          "meaning": "当前绑定唯一辅助键"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "binding_no"
+        ],
+        [
+          "tenant_no",
+          "active_store_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "brand_no",
+          "status",
+          "store_no"
+        ],
+        [
+          "tenant_no",
+          "store_no",
+          "effective_from"
+        ]
+      ],
+      "checks": [
+        "status IN ('PREPARING','ACTIVE','ENDED')"
+      ]
+    },
+    {
+      "name": "mch_brand_change",
+      "module": "shop-merchant",
+      "purpose": "加入退出品牌及独立影响检查，不迁移资金",
+      "columns": [
+        {
+          "name": "change_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "变更号"
+        },
+        {
+          "name": "management_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "管理上下文"
+        },
+        {
+          "name": "store_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "门店"
+        },
+        {
+          "name": "from_brand_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "原品牌"
+        },
+        {
+          "name": "to_brand_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "目标品牌，NULL退出"
+        },
+        {
+          "name": "expected_scope_revision",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "提交时范围版本"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "DRAFT/CHECKED/BLOCKED/PREPARING/COMPLETED/REJECTED"
+        },
+        {
+          "name": "check_snapshot",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "会员、预占、原发行方、账单检查结果"
+        },
+        {
+          "name": "authorization_snapshot",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "品牌与门店双方授权依据"
+        },
+        {
+          "name": "reason",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "原因"
+        },
+        {
+          "name": "expected_store_version",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "提交时门店乐观锁版本，不改变门店经营主体"
+        },
+        {
+          "name": "expected_from_brand_revision",
+          "sqlType": "BIGINT NULL",
+          "meaning": "原品牌范围版本，首次加入可空"
+        },
+        {
+          "name": "expected_to_brand_revision",
+          "sqlType": "BIGINT NULL",
+          "meaning": "目标品牌范围版本，退出可空"
+        },
+        {
+          "name": "command_key",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "同店提交幂等键"
+        },
+        {
+          "name": "command_hash",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "规范化提交摘要"
+        },
+        {
+          "name": "check_expires_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "检查时效，到期或数据变化必须重新检查"
+        },
+        {
+          "name": "submitted_by",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "发起认证身份"
+        },
+        {
+          "name": "decision",
+          "sqlType": "VARCHAR(16) NULL",
+          "meaning": "APPROVE/REJECT；批准不等于已生效"
+        },
+        {
+          "name": "decided_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "决定认证身份"
+        },
+        {
+          "name": "decided_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "UTC决定时间"
+        },
+        {
+          "name": "decision_key",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "决定命令幂等键"
+        },
+        {
+          "name": "decision_hash",
+          "sqlType": "CHAR(64) NULL",
+          "meaning": "决定命令摘要"
+        },
+        {
+          "name": "pending_store_no",
+          "sqlType": "VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN status IN ('CHECKED','PREPARING') THEN store_no ELSE NULL END) STORED",
+          "meaning": "同店最多一笔待决或执行中变更"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "change_no"
+        ],
+        [
+          "tenant_no",
+          "store_no",
+          "command_key"
+        ],
+        [
+          "tenant_no",
+          "pending_store_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "store_no",
+          "status",
+          "id"
+        ]
+      ],
+      "checks": []
+    },
+    {
+      "name": "mbr_scope_member",
+      "module": "shop-core/member",
+      "purpose": "品牌或独立门店会员关系，不替换平台人档",
+      "columns": [
+        {
+          "name": "scope_member_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "新关系号"
+        },
+        {
+          "name": "scope_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "BRAND/STORE"
+        },
+        {
+          "name": "scope_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "品牌或独立门店号"
+        },
+        {
+          "name": "customer_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "统一可信人档canonical identity"
+        },
+        {
+          "name": "first_store_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "首次来源店"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "LEAD/ACTIVE/BLOCKED"
+        },
+        {
+          "name": "joined_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "UTC入会"
+        },
+        {
+          "name": "shared_profile",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "仅允许共享的品牌资料"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "scope_member_no"
+        ],
+        [
+          "tenant_no",
+          "scope_type",
+          "scope_no",
+          "customer_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "scope_type",
+          "scope_no",
+          "joined_at",
+          "scope_member_no"
+        ]
+      ],
+      "checks": [
+        "scope_type IN ('BRAND','STORE')"
+      ]
+    },
+    {
+      "name": "mbr_store_profile",
+      "module": "shop-core/member",
+      "purpose": "本店私有关系和资料，跨店不默认共享",
+      "columns": [
+        {
+          "name": "store_profile_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "关系号"
+        },
+        {
+          "name": "customer_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "可信人档"
+        },
+        {
+          "name": "store_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "本店"
+        },
+        {
+          "name": "remark",
+          "sqlType": "VARCHAR(500) NULL",
+          "meaning": "私有备注"
+        },
+        {
+          "name": "advisor_actor_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "顾问"
+        },
+        {
+          "name": "first_seen_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "首次服务"
+        },
+        {
+          "name": "last_seen_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "最近服务"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "store_profile_no"
+        ],
+        [
+          "tenant_no",
+          "store_no",
+          "customer_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "store_no",
+          "last_seen_at",
+          "customer_no"
+        ]
+      ],
+      "checks": []
+    },
+    {
+      "name": "mbr_scope_legacy_link",
+      "module": "shop-core/member",
+      "purpose": "历史主体会员到运营范围的审计映射，不能按手机号直接合并",
+      "columns": [
+        {
+          "name": "link_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "映射号"
+        },
+        {
+          "name": "legacy_member_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "原mbr_member号"
+        },
+        {
+          "name": "scope_member_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "新关系号"
+        },
+        {
+          "name": "migration_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "迁移批次"
+        },
+        {
+          "name": "identity_evidence",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "脱敏核实依据"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "VERIFIED/CONFLICT"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "link_no"
+        ],
+        [
+          "tenant_no",
+          "legacy_member_no",
+          "scope_member_no"
+        ]
+      ],
+      "indexes": [],
+      "checks": []
+    },
+    {
+      "name": "pmt_sv_release_link",
+      "module": "shop-core/promotion",
+      "purpose": "Core活动版本到Pay唯一发行配置及发布状态",
+      "columns": [
+        {
+          "name": "link_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "关联号"
+        },
+        {
+          "name": "activity_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "现有pmt_activity"
+        },
+        {
+          "name": "activity_version_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "现有不可变发布版本"
+        },
+        {
+          "name": "issuer_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "Pay发行方引用"
+        },
+        {
+          "name": "release_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "Pay不可变发行配置引用"
+        },
+        {
+          "name": "release_hash",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "只存内容摘要，金额真源在Pay"
+        },
+        {
+          "name": "publish_command_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "稳定跨域幂等命令"
+        },
+        {
+          "name": "state",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PREPARING/PAY_READY/ACTIVE/STOP_REQUESTED/STOPPED/FAILED"
+        },
+        {
+          "name": "permission_snapshot",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "发布／审批依据"
+        },
+        {
+          "name": "policy_versions",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "Pay复核过的限制版本"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "link_no"
+        ],
+        [
+          "tenant_no",
+          "activity_version_no"
+        ],
+        [
+          "tenant_no",
+          "release_no"
+        ],
+        [
+          "tenant_no",
+          "publish_command_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "state",
+          "updated_at"
+        ]
+      ],
+      "checks": []
+    },
+    {
+      "name": "pmt_sv_approval",
+      "module": "shop-core/promotion",
+      "purpose": "仅门店发行审批，独立于已发布版本",
+      "columns": [
+        {
+          "name": "approval_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "审批单"
+        },
+        {
+          "name": "activity_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "活动"
+        },
+        {
+          "name": "draft_revision_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "精确草稿修订号"
+        },
+        {
+          "name": "draft_hash",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "申请内容摘要"
+        },
+        {
+          "name": "store_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "申请门店"
+        },
+        {
+          "name": "management_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "有权审批空间"
+        },
+        {
+          "name": "submitted_by",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "申请人"
+        },
+        {
+          "name": "decided_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "审批人"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PENDING/APPROVED/RETURNED/STALE"
+        },
+        {
+          "name": "policy_versions",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "提交时策略版本，仅审计，批准重新检查"
+        },
+        {
+          "name": "decision_reason",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "审批理由"
+        },
+        {
+          "name": "decided_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "决定时间"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "approval_no"
+        ],
+        [
+          "tenant_no",
+          "activity_no",
+          "draft_revision_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "management_no",
+          "status",
+          "created_at",
+          "approval_no"
+        ]
+      ],
+      "checks": []
+    },
+    {
+      "name": "sv_issuer",
+      "module": "pay/storedvalue",
+      "purpose": "品牌与单店发行方各自唯一",
+      "columns": [
+        {
+          "name": "issuer_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "发行方号"
+        },
+        {
+          "name": "scope_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "BRAND/STORE"
+        },
+        {
+          "name": "scope_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "品牌或门店"
+        },
+        {
+          "name": "name",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "发行方名称"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "DRAFT/ACTIVE/ISSUE_STOPPED"
+        },
+        {
+          "name": "current_issuer_version_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "当前结算和清分版本"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "issuer_no"
+        ],
+        [
+          "tenant_no",
+          "scope_type",
+          "scope_no"
+        ]
+      ],
+      "indexes": [],
+      "checks": [
+        "scope_type IN ('BRAND','STORE')"
+      ]
+    },
+    {
+      "name": "sv_issuer_version",
+      "module": "pay/storedvalue",
+      "purpose": "不可变收款与结算规则；不是品牌主体组织关系",
+      "columns": [
+        {
+          "name": "issuer_version_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "配置版本"
+        },
+        {
+          "name": "issuer_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "发行方"
+        },
+        {
+          "name": "version_index",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "递增版本"
+        },
+        {
+          "name": "settlement_entity_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "指定责任／结算主体"
+        },
+        {
+          "name": "collection_mode",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "CENTRALIZED/STORE_LOCAL"
+        },
+        {
+          "name": "clearing_mode",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PRINCIPAL_COMPONENT/INTERNAL_RECON"
+        },
+        {
+          "name": "debit_allocation_mode",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PRO_RATA/LEGACY_SNAPSHOT"
+        },
+        {
+          "name": "bonus_bearer",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ISSUER"
+        },
+        {
+          "name": "currency",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "一个规则版本一种币种"
+        },
+        {
+          "name": "market_zone",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "账期时区"
+        },
+        {
+          "name": "collection_config",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "版本化routes[{payChannel,payScene,payMerchantNo,merchantRevision}]；引用既有mch_payment_merchant，不存密钥；线下方式独立"
+        },
+        {
+          "name": "clearing_rule",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "舍入及承担规则版本"
+        },
+        {
+          "name": "entity_acceptance",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "结算主体授权确认依据"
+        },
+        {
+          "name": "content_hash",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "canonical JSON摘要"
+        },
+        {
+          "name": "effective_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "UTC生效"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "issuer_version_no"
+        ],
+        [
+          "tenant_no",
+          "issuer_no",
+          "version_index"
+        ]
+      ],
+      "indexes": [],
+      "checks": []
+    },
+    {
+      "name": "sv_issuer_store_access",
+      "module": "pay/storedvalue",
+      "purpose": "Core范围事实的Pay生效镜像，非第二个品牌管理系统",
+      "columns": [
+        {
+          "name": "access_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "准入号"
+        },
+        {
+          "name": "issuer_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "发行方"
+        },
+        {
+          "name": "store_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "门店"
+        },
+        {
+          "name": "operating_entity_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "当前经营主体事实"
+        },
+        {
+          "name": "source_binding_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "Core品牌绑定或单店事实"
+        },
+        {
+          "name": "source_revision",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "源范围修订"
+        },
+        {
+          "name": "can_issue",
+          "sqlType": "TINYINT NOT NULL",
+          "meaning": "能否办理新充值"
+        },
+        {
+          "name": "can_redeem",
+          "sqlType": "TINYINT NOT NULL",
+          "meaning": "能否核销"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PREPARING/ACTIVE/SUSPENDED/ENDED"
+        },
+        {
+          "name": "effective_from",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "UTC生效"
+        },
+        {
+          "name": "effective_to",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "UTC结束"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "access_no"
+        ],
+        [
+          "tenant_no",
+          "issuer_no",
+          "store_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "store_no",
+          "status",
+          "issuer_no"
+        ]
+      ],
+      "checks": []
+    },
+    {
+      "name": "sv_issue_policy",
+      "module": "pay/storedvalue",
+      "purpose": "门店独立发行限制的作用范围",
+      "columns": [
+        {
+          "name": "policy_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "策略号"
+        },
+        {
+          "name": "management_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "经营管控空间"
+        },
+        {
+          "name": "target_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "SPACE/BRAND_STORES/STORE"
+        },
+        {
+          "name": "target_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "作用对象"
+        },
+        {
+          "name": "currency",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "金额上限币种"
+        },
+        {
+          "name": "current_version_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "当前不可变策略版本"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ACTIVE/INACTIVE"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "policy_no"
+        ],
+        [
+          "tenant_no",
+          "management_no",
+          "target_type",
+          "target_no",
+          "currency"
+        ]
+      ],
+      "indexes": [],
+      "checks": [
+        "target_type IN ('SPACE','BRAND_STORES','STORE')"
+      ]
+    },
+    {
+      "name": "sv_issue_policy_version",
+      "module": "pay/storedvalue",
+      "purpose": "仅允许收紧的额度与审批规则",
+      "columns": [
+        {
+          "name": "policy_version_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "策略版本"
+        },
+        {
+          "name": "policy_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "策略"
+        },
+        {
+          "name": "version_index",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "递增"
+        },
+        {
+          "name": "allow_issue",
+          "sqlType": "TINYINT NOT NULL",
+          "meaning": "允许单店新发行"
+        },
+        {
+          "name": "require_approval",
+          "sqlType": "TINYINT NOT NULL",
+          "meaning": "要求审批，父子OR"
+        },
+        {
+          "name": "max_bonus_bps",
+          "sqlType": "INT NOT NULL",
+          "meaning": "比例万分比，20%=2000"
+        },
+        {
+          "name": "max_paid_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "单笔实收上限"
+        },
+        {
+          "name": "max_bonus_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "单笔赠送上限"
+        },
+        {
+          "name": "max_active_days",
+          "sqlType": "INT NOT NULL",
+          "meaning": "最大活动自然日数"
+        },
+        {
+          "name": "max_outstanding_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "未消费余额上限，含赠金和已收款占位"
+        },
+        {
+          "name": "effect_mode",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "NEW_ISSUANCE_ONLY"
+        },
+        {
+          "name": "parent_version_refs",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "继承规则版本"
+        },
+        {
+          "name": "content_hash",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "摘要"
+        },
+        {
+          "name": "effective_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "生效时间"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "policy_version_no"
+        ],
+        [
+          "tenant_no",
+          "policy_no",
+          "version_index"
+        ]
+      ],
+      "indexes": [],
+      "checks": [
+        "max_bonus_bps>=0 AND max_bonus_bps<=10000",
+        "max_paid_minor>0 AND max_bonus_minor>=0 AND max_outstanding_minor>0",
+        "max_active_days>0"
+      ]
+    },
+    {
+      "name": "sv_release",
+      "module": "pay/storedvalue",
+      "purpose": "活动版本对应的不可变金融发行配置",
+      "columns": [
+        {
+          "name": "release_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "发行配置号"
+        },
+        {
+          "name": "issuer_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "发行方"
+        },
+        {
+          "name": "issuer_version_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "冻结收款及清分版本"
+        },
+        {
+          "name": "activity_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "V2的Core活动；旧PLAN历史为NULL，不伪造活动"
+        },
+        {
+          "name": "activity_version_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "Core发布版本；草稿为NULL，发布只绑定一次"
+        },
+        {
+          "name": "draft_revision_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "V2草稿修订；历史PLAN为NULL"
+        },
+        {
+          "name": "release_index",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "发行版本序号"
+        },
+        {
+          "name": "source_kind",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "V2_ACTIVITY/LEGACY_PLAN"
+        },
+        {
+          "name": "legacy_plan_version_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "原单档方案版本"
+        },
+        {
+          "name": "currency",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "币种"
+        },
+        {
+          "name": "starts_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "UTC开始"
+        },
+        {
+          "name": "ends_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "UTC结束"
+        },
+        {
+          "name": "state",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PREPARED/ACTIVE/ISSUE_STOPPED/ABORTED"
+        },
+        {
+          "name": "redemption_scope_mode",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "BRAND_DYNAMIC/STORE_ONLY"
+        },
+        {
+          "name": "scope_snapshot",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "范围类型及资格规则；动态品牌不是固定门店名单"
+        },
+        {
+          "name": "policy_versions",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "提交及批准检查版本"
+        },
+        {
+          "name": "content_hash",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "规范化内容摘要"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "release_no"
+        ],
+        [
+          "tenant_no",
+          "activity_version_no"
+        ],
+        [
+          "tenant_no",
+          "activity_no",
+          "draft_revision_no"
+        ],
+        [
+          "tenant_no",
+          "issuer_no",
+          "activity_no",
+          "release_index"
+        ],
+        [
+          "tenant_no",
+          "legacy_plan_version_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "issuer_no",
+          "state",
+          "starts_at"
+        ]
+      ],
+      "checks": [
+        "(source_kind='V2_ACTIVITY' AND activity_no IS NOT NULL AND draft_revision_no IS NOT NULL) OR (source_kind='LEGACY_PLAN' AND legacy_plan_version_no IS NOT NULL)"
+      ]
+    },
+    {
+      "name": "sv_release_tier",
+      "module": "pay/storedvalue",
+      "purpose": "V2档位金额唯一真源，不在Core再维护一份",
+      "columns": [
+        {
+          "name": "tier_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "档位号"
+        },
+        {
+          "name": "release_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "冻结发行版本"
+        },
+        {
+          "name": "ordinal",
+          "sqlType": "INT NOT NULL",
+          "meaning": "显示次序"
+        },
+        {
+          "name": "paid_amount_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "实收"
+        },
+        {
+          "name": "bonus_amount_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "赠送"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "tier_no"
+        ],
+        [
+          "tenant_no",
+          "release_no",
+          "paid_amount_minor"
+        ],
+        [
+          "tenant_no",
+          "release_no",
+          "ordinal"
+        ]
+      ],
+      "indexes": [],
+      "checks": [
+        "paid_amount_minor>0 AND bonus_amount_minor>=0",
+        "paid_amount_minor<=9223372036854775807-bonus_amount_minor"
+      ]
+    },
+    {
+      "name": "sv_issue_quota",
+      "module": "pay/storedvalue",
+      "purpose": "同事务额度计数器，按门店独立发行池及币种串行检查",
+      "columns": [
+        {
+          "name": "quota_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "额度池"
+        },
+        {
+          "name": "store_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "单店发行门店"
+        },
+        {
+          "name": "currency",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "币种"
+        },
+        {
+          "name": "outstanding_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "已到账未消费合计，冻结部分已含其中"
+        },
+        {
+          "name": "reserved_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "未到账但已占用发行额度"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "quota_no"
+        ],
+        [
+          "tenant_no",
+          "store_no",
+          "currency"
+        ]
+      ],
+      "indexes": [],
+      "checks": [
+        "outstanding_minor>=0 AND reserved_minor>=0",
+        "outstanding_minor<=9223372036854775807-reserved_minor"
+      ]
+    },
+    {
+      "name": "sv_issue_quota_reservation",
+      "module": "pay/storedvalue",
+      "purpose": "原充值单额度占用及恢复栅栏",
+      "columns": [
+        {
+          "name": "reservation_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "占用号"
+        },
+        {
+          "name": "quota_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "额度池"
+        },
+        {
+          "name": "recharge_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "原充值单"
+        },
+        {
+          "name": "amount_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "实收+赠送占额"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "RESERVED/COMMITTED/RELEASED"
+        },
+        {
+          "name": "policy_versions",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "办理检查版本"
+        },
+        {
+          "name": "expires_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "未收款可释放；已收款未知不得TTL释放"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "reservation_no"
+        ],
+        [
+          "tenant_no",
+          "recharge_no"
+        ]
+      ],
+      "indexes": [],
+      "checks": [
+        "amount_minor>0"
+      ]
+    },
+    {
+      "name": "sv_customer_issuer_index",
+      "module": "pay/storedvalue",
+      "purpose": "顾客发行方目录，含零余额有历史账户",
+      "columns": [
+        {
+          "name": "customer_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "canonical顾客"
+        },
+        {
+          "name": "issuer_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "发行方"
+        },
+        {
+          "name": "account_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "账户"
+        },
+        {
+          "name": "currency",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "币种"
+        },
+        {
+          "name": "has_recharge",
+          "sqlType": "TINYINT NOT NULL",
+          "meaning": "成功到账资格"
+        },
+        {
+          "name": "last_recharge_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "B端默认排序"
+        },
+        {
+          "name": "last_activity_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "C端最近储值或核销"
+        },
+        {
+          "name": "last_occurrence_store_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "最近实际发生门店"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "customer_no",
+          "issuer_no",
+          "currency"
+        ],
+        [
+          "tenant_no",
+          "account_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "issuer_no",
+          "has_recharge",
+          "last_recharge_at",
+          "account_no"
+        ],
+        [
+          "tenant_no",
+          "customer_no",
+          "has_recharge",
+          "last_activity_at",
+          "issuer_no"
+        ]
+      ],
+      "checks": []
+    },
+    {
+      "name": "sv_clearing_entry",
+      "module": "pay/storedvalue",
+      "purpose": "从已过账核销分配生成不可变清分事实，不执行打款",
+      "columns": [
+        {
+          "name": "clearing_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "清分行"
+        },
+        {
+          "name": "issuer_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "资金发行方"
+        },
+        {
+          "name": "usage_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "原核销号"
+        },
+        {
+          "name": "allocation_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "原批次分配引用"
+        },
+        {
+          "name": "lot_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "资金批次"
+        },
+        {
+          "name": "release_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "来源活动发行版本"
+        },
+        {
+          "name": "issuer_version_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "原结算规则"
+        },
+        {
+          "name": "recharge_store_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "原办理店"
+        },
+        {
+          "name": "redemption_store_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "核销店"
+        },
+        {
+          "name": "payer_entity_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "结算付款主体"
+        },
+        {
+          "name": "payee_entity_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "服务收款主体"
+        },
+        {
+          "name": "currency",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "币种"
+        },
+        {
+          "name": "principal_used_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "核销本金分量"
+        },
+        {
+          "name": "bonus_used_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "赠送分量"
+        },
+        {
+          "name": "payable_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "本规则应付金额，允许冲正为负"
+        },
+        {
+          "name": "issuer_borne_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "发行方承担分量"
+        },
+        {
+          "name": "entry_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "USE/REVERSAL/ADJUSTMENT"
+        },
+        {
+          "name": "original_clearing_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "冲正或调整的原行"
+        },
+        {
+          "name": "decision_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "退款／调整的已确认决定"
+        },
+        {
+          "name": "occurred_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "原账务事实时间"
+        },
+        {
+          "name": "source_event_key",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "非空稳定事件摘要键，USE/usage/allocation或REVERSAL/decision/allocation"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "clearing_no"
+        ],
+        [
+          "tenant_no",
+          "usage_no",
+          "allocation_no",
+          "entry_type",
+          "decision_no"
+        ],
+        [
+          "tenant_no",
+          "source_event_key"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "issuer_no",
+          "currency",
+          "occurred_at",
+          "clearing_no"
+        ],
+        [
+          "tenant_no",
+          "payee_entity_no",
+          "occurred_at",
+          "clearing_no"
+        ]
+      ],
+      "checks": []
+    },
+    {
+      "name": "sv_settlement_bill",
+      "module": "pay/storedvalue",
+      "purpose": "发行方账期对手主体结算，与按订单stl_bill分离",
+      "columns": [
+        {
+          "name": "bill_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "业务单号"
+        },
+        {
+          "name": "issuer_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "发行方"
+        },
+        {
+          "name": "payer_entity_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "付款主体"
+        },
+        {
+          "name": "payee_entity_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "收款主体"
+        },
+        {
+          "name": "currency",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "币种"
+        },
+        {
+          "name": "period_from",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "UTC起含"
+        },
+        {
+          "name": "period_to",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "UTC止不含"
+        },
+        {
+          "name": "bill_kind",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "CROSS_ENTITY/INTERNAL_RECON"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "DRAFT/PENDING_RECON/DISPUTED/PENDING_PAYMENT/PENDING_RECEIPT/SETTLED"
+        },
+        {
+          "name": "base_payable_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "原清分合计"
+        },
+        {
+          "name": "adjustment_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "有据调整合计"
+        },
+        {
+          "name": "registered_payment_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "未撤销已登记付款合计"
+        },
+        {
+          "name": "confirmed_receipt_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "收款方确认金额合计"
+        },
+        {
+          "name": "cutoff_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "生成截止水位"
+        },
+        {
+          "name": "confirmed_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "对账确认人"
+        },
+        {
+          "name": "confirmed_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "对账时间"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "bill_no"
+        ],
+        [
+          "tenant_no",
+          "issuer_no",
+          "payer_entity_no",
+          "payee_entity_no",
+          "currency",
+          "period_from",
+          "period_to",
+          "bill_kind"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "payer_entity_no",
+          "status",
+          "period_from",
+          "bill_no"
+        ],
+        [
+          "tenant_no",
+          "payee_entity_no",
+          "status",
+          "period_from",
+          "bill_no"
+        ]
+      ],
+      "checks": [
+        "period_from<period_to",
+        "registered_payment_minor>=0 AND confirmed_receipt_minor>=0",
+        "confirmed_receipt_minor<=registered_payment_minor"
+      ]
+    },
+    {
+      "name": "sv_settlement_bill_item",
+      "module": "pay/storedvalue",
+      "purpose": "清分事实只进入一个正常结算账单",
+      "columns": [
+        {
+          "name": "item_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "明细号"
+        },
+        {
+          "name": "bill_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "账单"
+        },
+        {
+          "name": "clearing_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "原清分行"
+        },
+        {
+          "name": "amount_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "原金额快照"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "item_no"
+        ],
+        [
+          "tenant_no",
+          "clearing_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "bill_no",
+          "item_no"
+        ]
+      ],
+      "checks": []
+    },
+    {
+      "name": "sv_settlement_payment",
+      "module": "pay/storedvalue",
+      "purpose": "付款登记和收款确认分别记录，无银行执行器",
+      "columns": [
+        {
+          "name": "payment_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "付款登记单"
+        },
+        {
+          "name": "bill_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "账单"
+        },
+        {
+          "name": "payer_entity_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "支付方"
+        },
+        {
+          "name": "payee_entity_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "收款方"
+        },
+        {
+          "name": "currency",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "币种"
+        },
+        {
+          "name": "amount_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "本次付款金额"
+        },
+        {
+          "name": "paid_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "实际付款时间"
+        },
+        {
+          "name": "receipt_ciphertext",
+          "sqlType": "VARBINARY(2048) NOT NULL",
+          "meaning": "凭据编号加密，列表脱敏"
+        },
+        {
+          "name": "receipt_digest",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "主体/通道/编号规范化摘要"
+        },
+        {
+          "name": "evidence_refs",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "私有授权附件引用"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "REGISTERED/RECEIPT_CONFIRMED/VOIDED"
+        },
+        {
+          "name": "registered_by",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "付款侧岗位"
+        },
+        {
+          "name": "received_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "收款侧岗位"
+        },
+        {
+          "name": "received_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "实际到账确认"
+        },
+        {
+          "name": "void_reason",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "撤销原因；已确认不得直接撤销"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "payment_no"
+        ],
+        [
+          "tenant_no",
+          "payer_entity_no",
+          "receipt_digest"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "bill_no",
+          "status",
+          "payment_no"
+        ]
+      ],
+      "checks": [
+        "amount_minor>0"
+      ]
+    },
+    {
+      "name": "sv_settlement_event",
+      "module": "pay/storedvalue",
+      "purpose": "对账、争议、调整、付款确认的只追加审计事件",
+      "columns": [
+        {
+          "name": "event_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "事件号"
+        },
+        {
+          "name": "bill_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "账单"
+        },
+        {
+          "name": "event_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "RECON_CONFIRM/DISPUTE/DISPUTE_RESOLVE/ADJUST/PAYMENT/RECEIPT"
+        },
+        {
+          "name": "command_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "稳定幂等命令"
+        },
+        {
+          "name": "event_snapshot",
+          "sqlType": "JSON NOT NULL",
+          "meaning": "事件事实及引用，不存明文凭据"
+        },
+        {
+          "name": "bill_revision",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "事件后的账单版本"
+        },
+        {
+          "name": "reason",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "争议或调整依据"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "event_no"
+        ],
+        [
+          "tenant_no",
+          "command_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "bill_no",
+          "bill_revision"
+        ]
+      ],
+      "checks": []
+    },
+    {
+      "name": "sv_activity_daily_summary",
+      "module": "pay/storedvalue/readmodel",
+      "purpose": "来源批次活动统计，不把共享账户余额复制到活动",
+      "columns": [
+        {
+          "name": "issuer_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "发行方"
+        },
+        {
+          "name": "activity_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "V2的Core活动，历史PLAN为NULL"
+        },
+        {
+          "name": "source_kind",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "V2_ACTIVITY/LEGACY_PLAN"
+        },
+        {
+          "name": "release_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "发行版本"
+        },
+        {
+          "name": "occurrence_store_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "实际发生门店"
+        },
+        {
+          "name": "currency",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "币种"
+        },
+        {
+          "name": "business_date",
+          "sqlType": "DATE NOT NULL",
+          "meaning": "发行方时区日期"
+        },
+        {
+          "name": "credited_paid_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "当日入账实收"
+        },
+        {
+          "name": "credited_bonus_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "入账赠送"
+        },
+        {
+          "name": "used_principal_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "按本活动批次核销本金"
+        },
+        {
+          "name": "used_bonus_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "按本活动批次核销赠金"
+        },
+        {
+          "name": "reversed_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "冲正额"
+        },
+        {
+          "name": "clearing_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "清分金额"
+        },
+        {
+          "name": "recharge_count",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "笔数"
+        },
+        {
+          "name": "redemption_count",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "笔数"
+        },
+        {
+          "name": "projection_watermark",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "投影水位／对账批次"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "tenant_no",
+          "issuer_no",
+          "release_no",
+          "occurrence_store_no",
+          "currency",
+          "business_date"
+        ]
+      ],
+      "indexes": [],
+      "checks": []
+    }
+  ],
+  "existingTableAdditions": {
+    "pmt_activity": [
+      [
+        "management_no",
+        "VARCHAR(64) NULL",
+        "经营授权范围"
+      ],
+      [
+        "owner_scope_type",
+        "VARCHAR(24) NOT NULL DEFAULT 'LEGACY_ENTITY'",
+        "LEGACY_ENTITY/BRAND/STORE"
+      ],
+      [
+        "owner_scope_no",
+        "VARCHAR(64) NULL",
+        "品牌或门店"
+      ],
+      [
+        "issuer_no",
+        "VARCHAR(64) NULL",
+        "Pay发行方"
+      ]
+    ],
+    "sv_account": [
+      [
+        "issuer_no",
+        "VARCHAR(64) NULL",
+        "迁移完成后非空"
+      ],
+      [
+        "issuer_version_no",
+        "VARCHAR(64) NULL",
+        "开户时配置快照"
+      ]
+    ],
+    "sv_recharge": [
+      [
+        "issuer_no",
+        "VARCHAR(64) NULL",
+        "原发行方"
+      ],
+      [
+        "issuer_version_no",
+        "VARCHAR(64) NULL",
+        "冻结收款/清分版本"
+      ],
+      [
+        "release_no",
+        "VARCHAR(64) NULL",
+        "新发行版本"
+      ],
+      [
+        "tier_no",
+        "VARCHAR(64) NULL",
+        "新档位"
+      ],
+      [
+        "collection_entity_no",
+        "VARCHAR(64) NULL",
+        "实际收款主体"
+      ],
+      [
+        "settlement_entity_no",
+        "VARCHAR(64) NULL",
+        "指定结算主体"
+      ],
+      [
+        "quota_reservation_no",
+        "VARCHAR(64) NULL",
+        "单店额度占位"
+      ],
+      [
+        "collection_pay_merchant_no",
+        "VARCHAR(64) NULL",
+        "实际渠道收款商户，归属collection_entity_no；线下可空"
+      ],
+      [
+        "collection_pay_channel",
+        "VARCHAR(24) NULL",
+        "实际收款渠道；不能改变顾客钱包归属"
+      ],
+      [
+        "collection_payment_no",
+        "VARCHAR(64) NULL",
+        "现有支付流水内部引用，服务端核验，不信任客户端自报渠道流水"
+      ]
+    ],
+    "sv_lot": [
+      [
+        "issuer_no",
+        "VARCHAR(64) NULL",
+        "发行方"
+      ],
+      [
+        "issuer_version_no",
+        "VARCHAR(64) NULL",
+        "冻结结算规则"
+      ],
+      [
+        "release_no",
+        "VARCHAR(64) NULL",
+        "来源发行版本"
+      ],
+      [
+        "tier_no",
+        "VARCHAR(64) NULL",
+        "来源档位"
+      ],
+      [
+        "collection_entity_no",
+        "VARCHAR(64) NULL",
+        "原实际收款主体"
+      ],
+      [
+        "settlement_entity_no",
+        "VARCHAR(64) NULL",
+        "原结算主体"
+      ],
+      [
+        "collection_pay_merchant_no",
+        "VARCHAR(64) NULL",
+        "实际渠道收款商户，归属collection_entity_no；线下可空"
+      ],
+      [
+        "collection_pay_channel",
+        "VARCHAR(24) NULL",
+        "实际收款渠道；不能改变顾客钱包归属"
+      ]
+    ],
+    "sv_statement": [
+      [
+        "issuer_no",
+        "VARCHAR(64) NULL",
+        "账务范围"
+      ],
+      [
+        "scope_type",
+        "VARCHAR(24) NULL",
+        "BRAND/STORE"
+      ],
+      [
+        "scope_no",
+        "VARCHAR(64) NULL",
+        "归属品牌或门店"
+      ],
+      [
+        "release_no",
+        "VARCHAR(64) NULL",
+        "充值来源，混合批次核销使用分配表归集"
+      ],
+      [
+        "operating_entity_no",
+        "VARCHAR(64) NULL",
+        "发生时经营主体"
+      ],
+      [
+        "settlement_entity_no",
+        "VARCHAR(64) NULL",
+        "原结算主体"
+      ]
+    ],
+    "sv_voucher": [
+      [
+        "issuer_no",
+        "VARCHAR(64) NULL",
+        "跟账户范围一致"
+      ]
+    ],
+    "sv_recharge_plan": [
+      [
+        "issuer_no",
+        "VARCHAR(64) NULL",
+        "旧单店方案到单店发行方映射"
+      ],
+      [
+        "migrated_release_no",
+        "VARCHAR(64) NULL",
+        "历史版本兼容发行配置"
+      ]
+    ],
+    "sv_hold_allocation": [
+      [
+        "allocation_no",
+        "VARCHAR(64) NULL",
+        "可追溯稳定分配号"
+      ],
+      [
+        "issuer_no",
+        "VARCHAR(64) NULL",
+        "明确单账户发行方"
+      ],
+      [
+        "release_no",
+        "VARCHAR(64) NULL",
+        "来源批次版本"
+      ]
+    ],
+    "ord_ent_service_order": [
+      [
+        "selected_issuer_no",
+        "VARCHAR(64) NULL",
+        "预览及授权绑定的发行方"
+      ],
+      [
+        "selected_account_no",
+        "VARCHAR(64) NULL",
+        "内部稳定账户引用；客户端仍用opaque引用"
+      ]
+    ],
+    "mbr_identity_ticket": [
+      [
+        "operator_scope_type",
+        "VARCHAR(24) NULL",
+        "STORE/BRAND_VIEW"
+      ],
+      [
+        "issuer_no",
+        "VARCHAR(64) NULL",
+        "办理指定资金范围"
+      ],
+      [
+        "brand_scope_revision",
+        "BIGINT NULL",
+        "识别时品牌版本"
+      ]
+    ]
+  },
+  "notes": [
+    "No ALTER of already-applied Flyway scripts",
+    "No production SQL executed",
+    "Core/Pay logical references only; no cross-domain physical FKs"
+  ],
+  "reusedPaymentMerchant": {
+    "table": "mch_payment_merchant",
+    "entity": "MchPaymentMerchant",
+    "ownerKey": "entity_no",
+    "businessKey": "pay_merchant_no",
+    "channelKey": "pay_channel",
+    "cardinality": "ENTITY 1:N PAYMENT_MERCHANT",
+    "notes": [
+      "品牌与支付商户无直接归属",
+      "账户唯一键不包含支付商户或支付渠道",
+      "既有门店pay_merchant_no是门店默认配置，不自动用于总部统一收款"
+    ]
+  }
+}
