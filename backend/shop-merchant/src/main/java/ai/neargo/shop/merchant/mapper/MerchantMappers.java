@@ -3,6 +3,7 @@ package ai.neargo.shop.merchant.mapper;
 import ai.neargo.shop.merchant.dto.PersonnelAssignmentFactRow;
 import ai.neargo.shop.merchant.dto.PersonnelPositionFactRow;
 import ai.neargo.shop.merchant.dto.PersonnelQualificationFactRow;
+import ai.neargo.shop.merchant.dto.ResourceFactRow;
 import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
@@ -14,6 +15,7 @@ import ai.neargo.shop.merchant.entity.MchPersonnelPosition;
 import ai.neargo.shop.merchant.entity.MchPersonnelSkill;
 import ai.neargo.shop.merchant.entity.MchPersonnelStore;
 import ai.neargo.shop.merchant.entity.MchQualification;
+import ai.neargo.shop.merchant.entity.MchResource;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -413,4 +415,40 @@ public final class MerchantMappers {
                 @Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
                 @Param("personnelNos") Set<String> personnelNos, @Param("at") LocalDateTime at);
     }
+
+    /** Canonical resources; a staff resource is shared by all valid store assignments of one personnel. */
+    public interface ResourceMapper extends BaseMapper<MchResource> {
+        /** Keep joined employment rows to reject overlaps rather than DISTINCT away inconsistent staffing. */
+        @Select("""
+                <script>
+                SELECT r.resource_no,
+                CASE WHEN r.resource_type='STAFF' THEN 'STAFF' WHEN r.resource_type='ROOM' THEN 'ROOM'
+                WHEN r.resource_type='SEAT' THEN 'SEAT' WHEN r.resource_type='DEVICE' THEN 'DEVICE'
+                ELSE r.resource_type END AS resource_type,
+                CASE WHEN r.resource_type='STAFF' THEN NULL ELSE s.store_no END AS store_no,
+                p.personnel_no, r.name, r.capacity, (r.open_occupation_no IS NOT NULL) AS open_occupied
+                FROM mch_resource r
+                JOIN mch_entity e ON e.tenant_no=r.tenant_no AND e.entity_no=r.entity_no
+                JOIN mch_store s ON s.tenant_no=r.tenant_no AND s.entity_no=r.entity_no AND s.store_no=#{storeNo}
+                LEFT JOIN mch_personnel p ON r.resource_type='STAFF' AND p.tenant_no=r.tenant_no
+                AND p.entity_no=r.entity_no AND p.personnel_no=r.personnel_no AND p.deleted=0 AND p.status='ACTIVE'
+                LEFT JOIN mch_personnel_store a ON r.resource_type='STAFF' AND a.tenant_no=p.tenant_no
+                AND a.entity_no=p.entity_no AND a.personnel_no=p.personnel_no AND a.store_no=s.store_no
+                AND a.deleted=0 AND a.status='ACTIVE' AND a.valid_from &lt;= #{at}
+                AND (a.valid_to IS NULL OR a.valid_to>#{at})
+                WHERE r.tenant_no=#{tenantNo} AND r.entity_no=#{entityNo} AND r.deleted=0 AND r.status='ACTIVE'
+                AND e.deleted=0 AND e.status='ACTIVE' AND e.archived_at IS NULL AND s.deleted=0 AND s.status='ACTIVE'
+                AND ((r.resource_type='STAFF' AND a.assignment_no IS NOT NULL)
+                OR (r.resource_type IN ('ROOM','SEAT','DEVICE') AND r.store_no=s.store_no))
+                AND r.resource_no IN
+                <foreach collection="resourceNos" item="resource" open="(" separator="," close=")">
+                #{resource}</foreach>
+                ORDER BY r.resource_no, a.assignment_no LIMIT 201
+                </script>
+                """)
+        List<ResourceFactRow> selectEffectiveFacts(@Param("tenantNo") String tenantNo,
+                @Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("resourceNos") Set<String> resourceNos, @Param("at") LocalDateTime at);
+    }
+
 }

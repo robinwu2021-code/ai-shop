@@ -280,7 +280,7 @@ const NAME_COLLISIONS: Record<string, string> = {
   biz_no: "通道消息、储值凭证和权益异常各自按biz_type解释的多态业务号。",
   account_no: "mch_payout_account为银行出款账户；sv_account为储值账户。",
   version_no: "活动版本和权益模板版本各自发号；活动子表指pmt_activity_version，ent_template_version自持权益版本。",
-  resource_no: "幂等结果和对账差异按对应资源类型解释，不是同一实体。",
+  resource_no: "共用人员或物理资源在mch_resource；幂等结果与对账差异按各自资源类型解释，不可仅按同名字段关联。",
   actor_no: "审计操作人可为商家账号、运营或系统，必须结合actor_type解释。",
   decision_no: "Core订单源决定与旧券迁移永久源决定分别发号。",
   reservation_no: "活动资源占用与Pay售卡承诺分别发号，关联必须结合业务协议。",

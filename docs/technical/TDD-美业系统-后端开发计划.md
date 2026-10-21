@@ -21,6 +21,7 @@
 | DATA-05/06 | 数据层完成 | 7项实体、15个原始Mapper方法、25项真实MySQL用例；见§9，不含预约/工单业务Service与工作台API |
 | DATA-07 | 数据层完成 | 3项新实体、9条原始Mapper方法，复用已有动作日志；21项真实MySQL通过，见§10 |
 | SHR-01a | 基础切片完成 | 共用人员5表及内部事实查询，见§11；SHR-01/02整体、写维护和远程接入仍未完成 |
+| SHR-02a | 基础切片完成 | 规范资源主档及内部事实查询，见§12；排班/占用仲裁及维护入口后续 |
 | 后续业务 | 未完成 | 共用资源、排班、来源恢复与预约/日历/任务业务闭环仍待实施，不以数据层通过计作营业可用 |
 
 首批基础阶段验证（后续批次增量见§8、§9）：独立reactor 42项测试通过，Node生成器6项通过，隔离MySQL DDL约束通过，23项真实JDBC IT通过。
@@ -95,6 +96,8 @@ CAL-01可先开发资源占用视图，但完整准出依赖TASK-01任务摘要�
 | 换人、超时、关闭冻结竞争 | 保留历史参与，未交接不静默变人，未知来源不强关工单 | TASK-02/03、RECOVER-01 |
 
 ## §2 首批工程及数据层详细任务
+
+后续共用资源SHR-02a的当批实施计划见[§12.2](#122-实施计划本会话直接执行)，验收见§12.3。
 
 本节是实际编码前的领取粒度；其余任务总表及全部160项入口见索引。下述为任务目标，实际交付和未完成项以本页执行记录为准。每个任务开始先复核相关需求、方法和真实提供方；若字段/行为调整，先更新设计真源及受影响验收，不把原草稿当永远不变的事实。
 
@@ -579,3 +582,83 @@ RR消融切换为READ_COMMITTED时20项中1断言失败、0错误；finally恢�
 本批仅SHR-01a基础切片完成。SHR-01/02整体、人员写维护/账号绑定守卫、美业远程消费、排班、资源占用和预约日历均未完成。
 接续顺序：SHR-02a规范资源身份→SHR-01b排班→SHR-02b组合占用仲裁，再接美业预约任务与工作元占用日历；保持零售既有账号和预约槽兼容。
 只在美业隔离工作树本地提交，不合并、不推送、不执行营业库迁移。
+
+
+## §12 SHR-02a：共用规范资源身份
+
+### 12.0 需求与范围
+
+架构决定：[ADR-041](./ADR/ADR-041-共用规范资源身份与跨店人员唯一.md)。
+
+基线5c360212c；只读核对最新本地餐饮分支8e732eeb7（新增桌台配置，共用merchant/base与平台迁移未变）。
+延续已批准的多行业架构及§11.3接续顺序；需求为功能矩阵D01与共用服务人员结论，设计真源为数据库JSON的mch_resource。
+目标是为零售服务人员、餐饮服务员与房间/座位、美业技师和设备提供一致资源身份，供后续班表和仲裁引用。
+本批仅规范资源主档和内部批量事实，不交付维护HTTP/写Service、排班、容量桶、hold、现场占用、迁移旧slot或独立美业远程入口。
+既有STAFF人员模型已存在；不引入第二份技师、桌台或工作流对象。餐饮床位等命名仍由行业展示，本期物理类型遵循ROOM/SEAT/DEVICE。
+
+### 12.1 合同与实现设计
+
+- shop-merchant拥有mch_resource及MchResource、ResourceMapper。V533只增该表，复用BaseEntity并显式entityNo；冻结V532及旧slot不改。
+  STAFF的storeNo为空、personnelNo非空且capacity=1；物理资源必须有storeNo且personnelNo为空，capacity>0。
+  tenant/entity/resourceNo与tenant/entity/personnelNo唯一；保留软删行的唯一身份，不能按门店或状态再复制同一STAFF。
+  CHECK显式验证NULL结构，避免SQL UNKNOWN放过非法组合；状态仅ACTIVE/SUSPENDED，继承数据库排序规则，无跨域FK。
+- shop-base/spi/resource/ResourceFactsPort.getBatch(Query)：Query(tenantNo,entityNo,storeNo,Set<String> resourceNos,Instant at)，
+  明确1..200名单，时间截到UTC毫秒；at筛选任职有效期，主档姓名/状态/容量读取当前值，不提供历史主档重建。ResourceFact(resourceNo,Type resourceType,storeNo,personnelNo,name,capacity,boolean openOccupied)。
+  STAFF返回同一规范号和规范personnelNo，storeNo仍为空。物理门店号来自有效store父行；不输出物理id、账号、联系资料或开放占用凭证号。
+- ResourceFactsPortImpl查询本域ResourceMapper，单条批量SELECT关联主体/门店及人员任职。STAFF必须有该店该时点ACTIVE任职和有效人员；
+  所有路径显式tenant/entity/store和未删/启用/未归档父链。单SQL已形成一致语句快照，无多步读取事务；不新增空转Service。
+  SQL返回父行规范人员号和本表规范资源号；类型用数据库相同比较语义投影成固定枚举值，避免合法CI/AI类别导致Java转换错误；同一规范资源出现多个有效任职或超过200行明确拒绝，LIMIT201作哨兵。
+  openOccupied只代表主档存在阻断指针，不证明占用可释放或没有未来hold；所有事实都不代表整个服务时段可约、资格许可或开工许可。
+- 新表登记merchant主体数据域；内部可信查询暂绕过通用数据域但完整显式范围，并恢复原上下文。调用方不得直接把不可信HTTP主体传入Port。
+
+### 12.2 实施计划（本会话直接执行）
+
+Spec：既有资源数据库结构/字段字典及本节。Java21/Boot4/MyBatis-Plus，零新依赖；沿用隔离工作树。
+Review Focus：SQL NULL约束绕过、CI引用身份、软删后重复人员资源、跨主体/店父链、重叠任职不静默折叠；各在真实MySQL验证。
+
+| 任务 | 文件与接口 | 验证 |
+|---|---|---|
+| R1 | shop-app/.../scenario/ResourceFactsPersistenceIT.java；scripts/verify-resource-persistence.mjs | 正式MySQL反例先RED，缺类而非编译失败；资源查询/DDL/审计与数据域 |
+| R2 | shop-base/.../spi/resource/ResourceFactsPort.java；merchant/entity/MchResource.java、mapper/MerchantMappers.ResourceMapper、dto/ResourceFactRow.java、port/ResourceFactsPortImpl.java；config/PersonnelDataScopeRegistration增资源注册 | 同人跨店同一resourceNo、物理范围/多类型、时间端点、停用/错误父链、NULL/唯一键、CI规范号、重叠拒绝及上限 |
+| R3 | shop-app/.../V533__shared_resource_identity.sql | 正式迁移CHECK/唯一键，不修改旧迁移；实际审计与主体隔离 |
+| R4 | 本TDD、ADR-041、README、ledger、派生schema/ER/表/词汇/分层 | 原人员20项与旧账号/slot/商品37项、merchant依赖、SQL/生成检查、消融、独立审查后本地提交 |
+
+- [x] 写R1并运行缺类RED；字段来自现有设计，不新建行业私表。
+- [x] 实现R2/R3使实际MySQL GREEN；逐条核对上述Review Focus。
+- [x] 消融人员资源不按店复制的守卫（唯一键）应触发原反例，再恢复GREEN。
+- [x] 完成R4并回填AC与真实方法/结果，只完成SHR-02a，不标SHR-02整体完成。
+
+
+### 12.3 AC与真实验证方法
+
+| AC | ResourceFactsPersistenceIT实际方法 | 验证行为 |
+|---|---|---|
+| 同主体同人跨店只有一个规范资源 | staffHasOneCanonicalResourceAcrossEffectiveStoreAssignmentsWithoutLogin、onePersonnelResourceSurvivesSuspensionAndSoftDeletionAndUsesScopedUniqueness | 跨店同resourceNo、无账号可用，停用/软删不释放唯一号，跨主体/租户各自隔离 |
+| 物理资源店归属与结构 | physicalResourcesUseTheirStoreAndDoNotInventPersonnel、formalMigrationRejectsInvalidResourceShapesIncludingNullCombinations | ROOM/SEAT/DEVICE按店返回，NULL非法组合、STAFF容量及类型/状态/version/deleted拒绝 |
+| 任职端点与有效父链 | missingAssignmentAndHalfOpenValidityCannotMatchStaff、inactivePersonnelAndAssignmentBlockStaffFacts、inactiveForeignOrDeletedStoreBlocksPhysicalAndStaffResources、archivedOrInactiveEntityCannotReturnAnyResource、personnelAndAssignmentParentChainsCannotCrossEntityOrTenant | [from,to)端点、未删/启用/同域父链 |
+| 范围及失败语义 | explicitScopeAndExplicitNamesDoNotReturnOtherResources、suspendedOrDeletedResourcesAreOmitted、queryFailurePropagatesInsteadOfBeingReportedAsNoMatchingResource | 只返回明确名单及有效同域事实，数据库错误传播 |
+| 数据库等价身份/类别 | caseEquivalentReferencesKeepCanonicalPersonnelResourceAndStoreIdentity、databaseEquivalentTypeValuesProduceCanonicalSharedCategories | P/p、S/s、R/r父链规范号和CI/AI类别均按数据库语义投影 |
+| 脏数据与边界 | overlappingAssignmentsCannotBeSilentlyCollapsedIntoAnEligibleResource、oversizedJoinResultsFailInsteadOfTruncatingOrDeduplicating、queryIsExplicitBoundedImmutableAndNormalizedToPersistedMilliseconds | 重叠/超200行拒绝，显式1..200名单、毫秒规范化、不可变输入/输出 |
+| 隐私与阻断事实 | openOccupationIsOnlyABlockingFactAndItsPrivateReferenceIsNotExported | 仅布尔阻断标记，不外传占用凭证或联系人/账号 |
+| 主库审计与主体域 | actualMapperInsertUsesAuditAndSubjectScopeRestoresAfterTrustedLookup | 实际Entity插入审计ACTOR、BaseMapper主体隔离、可信查询恢复外层范围 |
+
+首次缺类RED为17断言失败/0错误；初次实现18项中17通过，唯一失败为测试预设CHECK报告顺序。
+非法类别同时违反type/shape，测试改为接受任一实际约束拒绝，不削弱DDL。补CI/AI类别反例19项中1断言失败/0错误；
+SQL按同一比较语义投影类别后19/19通过。唯一人员资源约束消融19项中1断言失败/0错误，finally原样恢复正式V533。
+
+
+最终验证：资源实际MySQL19/19（/tmp/resource-final-native.log）；原人员实际MySQL20/20；
+merchant及依赖253/253；原账号/slot/商品事实兼容37/37；美业普通reactor54/54，均0失败/0错误/0跳过。
+一次独立只读审查未发现需修复项；没有遗留Minor，不请求重复审查。测试未连接营业库。
+五组设计生成器、冻结V1、Node6项、SQL无新增方言检查、词汇生成检查及git diff --check通过。
+完整schema-lineage14通过/2失败，与§11已复现的基线一致：旧跨表业务键分类、旧ER键归属不一致；未声称全局闸门全绿。
+新增表已进入H2派生schema（共346平台表）、表清单、ER、词汇及后端分层；resource_no在幂等/对账中仍有多态含义，登记冲突解释，不错误指定全局唯一归属。
+
+文件对账：新增1个平台迁移、1个Entity、1个共用SPI、1个本域事实投影、1个Port实现、1个IT和1个一次性MySQL脚本；
+修改既有MerchantMappers增加1接口、既有主体域注册增加1表；README、ADR041、本TDD、ledger及上述派生物同步。
+未修改旧迁移、旧slot/账号/餐饮桌台实现、已冻结美业V1或设计任务JSON状态；无新增公开接口、权限、配置或通用依赖。
+
+阶段边界：SHR-02a基础切片完成，SHR-01/02整体仍未完成。接下来实施SHR-01b排班，再完成组合资源占用仲裁与美业远程接入/预约日历。
+资源创建/重分配/恢复及其维护鉴权仍为后续写业务；可信内部Port不等于公开或远程授权入口。
+at只选择有效任职，不能重建历史姓名/状态/容量；本批真实DDL验证使用最小父表fixture，未重放全部平台历史迁移或验证所有部署排序规则。
+未来部署仍须按目标环境验收；本批没有合并、推送或营业库发布。保留当前隔离分支与ledger用于后续49任务实施。

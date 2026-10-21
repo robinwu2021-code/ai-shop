@@ -255,6 +255,7 @@ const TOPICS = [
  * 而守卫只查集合不查文档，漏了两天没人发现。
  */
 const NAME_COLLISIONS_WHY = {
+  resource_no: "共用人员或物理资源在mch_resource；幂等结果与对账差异按各自资源类型解释，不可仅按同名字段关联。",
   parent_no: "不同层级树的父节点，必须结合所属树。",
   provider_no: "通道回执需结合通道、资金方向与原请求。",
   scope_no: "角色授权范围与积分开关统计范围，须按各自范围类型解释。",

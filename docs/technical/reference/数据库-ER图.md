@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **345** 张表、**509** 条引用关系，分 **16** 个域。
+全库 **346** 张表、**512** 条引用关系，分 **16** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -14,7 +14,7 @@
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
 | 消费者账号 | `usr_*` | 11 | 17 |
-| 商家主体与门店 | `mch_*` | 36 | 15 |
+| 商家主体与门店 | `mch_*` | 37 | 15 |
 | 社区与自提点 | `cmt_*` | 3 | 7 |
 | 商品与类目 | `prd_*` | 33 | 8 |
 | 购物车 | `trd_*` | 2 | 0 |
@@ -54,7 +54,7 @@
 
 **跨域引用**：`usr_store_favorite.entity_no` → `mch_entity`、`usr_store_favorite.store_no` → `mch_store`、`usr_account.community_no` → `cmt_community`、`usr_account.pickup_no` → `cmt_pickup_point`、`usr_account.entity_no` → `mch_entity`、`usr_store_view.store_no` → `mch_store`、`usr_store_view.entity_no` → `mch_entity`
 
-### 商家主体与门店 `mch_*`（36 张）
+### 商家主体与门店 `mch_*`（37 张）
 
 ![商家主体与门店表关系](../diagrams/db-mch.svg)
 
@@ -96,6 +96,7 @@
 | `mch_personnel_store` | 跨门店业务任职 |
 | `mch_personnel_position` | 任职上的业务岗位 |
 | `mch_personnel_skill` | 项目服务资格 |
+| `mch_resource` | 人员或物理资源 |
 
 **跨域引用**：`mch_entity_apply.user_no` → `usr_account`、`mch_entity_community.community_no` → `cmt_community`、`mch_account.user_no` → `usr_account`、`mch_store_category.category_no` → `prd_category`、`mch_channel_pickup.pickup_no` → `cmt_pickup_point`、`mch_session.user_no` → `usr_account`、`mch_login_log.user_no` → `usr_account`、`mch_personnel_skill.goods_no` → `prd_goods`、`mch_personnel_skill.sku_no` → `prd_sku`
 
@@ -461,6 +462,7 @@ Markdown 里铺开会有近两千行，那不是给人读的。
 
 | 列 | 为什么 |
 |---|---|
+| `resource_no` | 共用人员或物理资源在mch_resource；幂等结果与对账差异按各自资源类型解释，不可仅按同名字段关联。 |
 | `parent_no` | 不同层级树的父节点，必须结合所属树。 |
 | `provider_no` | 通道回执需结合通道、资金方向与原请求。 |
 | `scope_no` | 角色授权范围与积分开关统计范围，须按各自范围类型解释。 |

@@ -28362,6 +28362,13 @@
       "package": "ai.neargo.shop.merchant.entity"
     },
     {
+      "table": "mch_resource",
+      "class": "MchResource",
+      "zh": "人员或物理资源的稳定主档。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
       "table": "mch_role",
       "class": "MchRole",
       "zh": "商家角色：6 个平台预置（只读）+ 商家自定义（V71）。",
@@ -38525,6 +38532,17 @@
         ],
         "zh": "这一轮是怎么被触发的。",
         "module": "job"
+      },
+      {
+        "name": "Type",
+        "values": [
+          "STAFF",
+          "ROOM",
+          "SEAT",
+          "DEVICE"
+        ],
+        "zh": "Stable shared categories; industry names and workflows are not separate resource identities.",
+        "module": "shop-base"
       },
       {
         "name": "TypeAction",
