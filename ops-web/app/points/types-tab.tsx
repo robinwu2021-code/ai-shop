@@ -114,8 +114,8 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
           setNameError("");
           submit({ kind: "RENAME", value: { requestId: "", typeCode: selected.typeCode, expectedName: selected.name, name, reason: String(form.get("remark") ?? "").trim() } });
         }}>
-          <label className="space-y-2">{t("积分名称", "Points name")}<Input type="text" name="name" dir="auto" required maxLength={80} defaultValue={selected.name} disabled={save.isPending} onChange={() => setNameError("")} /></label>
-          <label className="space-y-2">{t("备注", "Remark")}<Input type="text" name="remark" dir="auto" required maxLength={1000} disabled={save.isPending} /></label>
+          <label className="flex flex-col gap-2">{t("积分名称", "Points name")}<Input type="text" name="name" dir="auto" required maxLength={80} defaultValue={selected.name} disabled={save.isPending} onChange={() => setNameError("")} /></label>
+          <label className="flex flex-col gap-2">{t("备注", "Remark")}<Input type="text" name="remark" dir="auto" required maxLength={1000} disabled={save.isPending} /></label>
           <Button type="submit" disabled={save.isPending}>{t("保存名称", "Save name")}</Button>
         </form>}
         {nameError && <Notice tone="warning">{nameError}</Notice>}
