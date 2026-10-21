@@ -1,6 +1,6 @@
 # C端储值记录 · UI与接口设计
 
-状态：已实现并发布后端与C端H5；已完成真实一分钱接口全链路及C端小程序账单、消息跳转验收。小程序尚未上传或发布，真实微信发送待模板配置。日期：2026-10-21。
+状态：已实现并发布后端与C端H5；已完成真实一分钱接口全链路及C端小程序账单、消息跳转验收。小程序0.1.151已上传体验版，尚未提审或正式发布；真实微信发送待模板配置。日期：2026-10-21。
 原型：[9屏交互稿](../../prototypes/consumer-stored-value.html)。
 
 ## §0 需求与界面对账
@@ -346,3 +346,13 @@ H2新增V543段使用scoped generator生成并追加；全量schema generator受
 本次交易创建、消费者授权及核销采用真实B/C公开API；C端小程序实际验证门店、账单、类型筛选、消息定位，不将接口验证描述为所有B/C办理页面交互已验收。小程序未上传、提审或发布；真实微信授权和发送继续等待已批准模板配置。
 
 定向编译及测试沿用11.7的4项快照单测、1项储值消费HTTP测试及消融证据，没有重复全量回归。真实接口日志：/tmp/consumer-sv-e2e-use-final.log；小程序截图：/tmp/consumer-sv-simulator/real-full-flow-focused-record.png；发布日志：/tmp/consumer-sv-json-deploy.log。本地临时消费者会话文件和预览授权引用已清除，不提交任何票据、会话或客户身份信息。
+
+
+### 11.9 C端部署及小程序体验版上传（2026-10-21）
+
+- 后端只读核对仍运行shop-app-20261021-1040-d366cd156.jar，health=200；相对于该修复版本，本轮没有新增后端代码，不重复重启或部署Pay。
+- C端H5通过标准deploy-frontend脚本从干净cdd1205af副本构建并部署。线上/c/VERSION匹配cdd1205af，首页3个资源逐一200；备份c-app.bak-20261021-1125。
+- 版本提交c6852d608将manifest.versionName从0.1.150递增到0.1.151，已推送指定远端分支。vue-tsc通过，不重复此前已通过的全量回归或真实交易。
+- 使用既有release:mp:with-biz流程构建，保留pkg-biz全部98页。产物核对AppID wx3201250c28393850，储值列表、收支记录、消息页面存在，无本地回环API地址；主包不require分包检查通过。
+- 服务器既有miniprogram-ci上传器返回完成，版本0.1.151，备注“储值账单与消费通知定位，修复小程序导航及兼容问题”；体验版已更新。不提审、不正式发布，不改变微信模板或发送配置。
+- 构建并包临时改动已自动还原，无App.vue、pages.json或pkg-biz残留。发布日志：/tmp/consumer-sv-release-h5.log、/tmp/consumer-sv-mp-upload-0151.log；类型检查日志：/tmp/consumer-sv-upload-types.log。
