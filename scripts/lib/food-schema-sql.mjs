@@ -27,7 +27,7 @@ export function renderFoodSchema(s){
  validateFoodDesign(s);
  const tables=s.tables.filter(t=>t.name.startsWith('fnb_'));
  const spec=tables.find(t=>t.name==='fnb_option_group_item')?.fields.find(f=>f.name==='spec_value_no');
- const version=tables.some(t=>t.deployment==='MIGRATION_V5')?5:tables.some(t=>t.deployment==='MIGRATION_V4')?4:spec?.type==='varchar(64)'?3:tables.some(t=>t.name==='fnb_table_occupancy'&&t.fields.some(f=>f.name==='sharing_mode'))?2:1;
+ const version=tables.some(t=>t.deployment==='MIGRATION_V7')?7:tables.some(t=>t.deployment==='MIGRATION_V6')?6:tables.some(t=>t.deployment==='MIGRATION_V5')?5:tables.some(t=>t.deployment==='MIGRATION_V4')?4:spec?.type==='varchar(64)'?3:tables.some(t=>t.name==='fnb_table_occupancy'&&t.fields.some(f=>f.name==='sharing_mode'))?2:1;
  let sql='-- Food-owned tables only; use the existing product/order database.\n-- Flyway location: db/industry/food; history: fnb_flyway_history; version: '+version+'.\n-- Frozen after application. Add a new migration for any subsequent change.\n-- No cross-domain physical foreign keys; services must enforce ownership and concurrency.\n\n';
  if(s.catalogEnhancement)sql='-- TARGET DESIGN ONLY; planned objects are not applied migrations.\n'+sql;
  for(const t of tables){
@@ -71,6 +71,7 @@ export function renderFoodV1(s){
   const planned=new Set(v1.catalogEnhancement.plannedTables);
   v1.tables=v1.tables.filter(t=>!planned.has(t.name));
   const fields={
+   fnb_sales_restriction:['order_source','fulfillment'],
    fnb_menu_context:['channel_binding_no','channel_scope_key','price_policy_ref'],
    fnb_menu_item:['option_mode'],fnb_menu_item_sku:['recipe_no'],
    fnb_external_mapping:['channel_scope_key','mapping_revision_no'],
@@ -115,5 +116,26 @@ export function renderRecipeAdjustmentV5(s){
  const ddl=renderFoodSchema(s),start=ddl.indexOf('CREATE TABLE `fnb_recipe_adjustment`');
  if(start<0)throw Error('Missing recipe adjustment table');
  return '-- Recipe adjustment drafts only; preserve V1-V4. No selection execution or inventory commands.\n\n'
+  +ddl.slice(start,ddl.indexOf(';',start)+1)+'\n';
+}
+
+/** V6 applies composition-only working rows. V1-V5 remain immutable. */
+export function renderMenuCompositionV6(s){
+ const ddl=renderFoodSchema(s),start=ddl.indexOf('CREATE TABLE `fnb_menu_item_option_group`');
+ if(start<0)throw Error('Missing menu item option table');
+ return "-- Restaurant menu composition only; preserve all applied V1-V5 bytes.\n"
+  +"ALTER TABLE fnb_menu_item ADD COLUMN option_mode VARCHAR(16) NOT NULL DEFAULT 'INHERIT' COMMENT 'INHERIT / REPLACE; empty REPLACE forbids options';\n"
+  +"ALTER TABLE fnb_menu_item_sku ADD COLUMN recipe_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL COMMENT 'Same-store same-SKU recipe variant';\n\n"
+  +ddl.slice(start,ddl.indexOf(';',start)+1)+'\n';
+}
+
+/** V7 adds restaurant context scopes and channel planning, never external credentials or inventory balances. */
+export function renderMenuContextV7(s){
+ const ddl=renderFoodSchema(s),start=ddl.indexOf('CREATE TABLE `fnb_menu_channel_binding`');
+ if(start<0)throw Error('Missing menu channel binding table');
+ return "-- Menu contexts, verified channel activation and scoped local sales restrictions.\n"
+  +"ALTER TABLE fnb_menu_context ADD COLUMN channel_binding_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL, ADD COLUMN channel_scope_key VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'LOCAL', ADD COLUMN price_policy_ref VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL;\n"
+  +"ALTER TABLE fnb_menu_context DROP INDEX uk_food_1, ADD UNIQUE KEY uk_food_1 (menu_no,order_source,fulfillment,channel_scope_key);\n"
+  +"ALTER TABLE fnb_sales_restriction ADD COLUMN order_source VARCHAR(32) NULL, ADD COLUMN fulfillment VARCHAR(32) NULL;\n\n"
   +ddl.slice(start,ddl.indexOf(';',start)+1)+'\n';
 }

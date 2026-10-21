@@ -1,7 +1,16 @@
 package ai.neargo.shop.food.mapper;
 
+import ai.neargo.shop.food.entity.FnbStation;
+import ai.neargo.shop.food.entity.FnbSkuStation;
+import ai.neargo.shop.food.entity.FnbSalesRestriction;
 import ai.neargo.shop.food.entity.FnbActionLog;
 import ai.neargo.shop.food.entity.FnbMenu;
+import ai.neargo.shop.food.entity.FnbMenuItemOptionGroup;
+import ai.neargo.shop.food.entity.FnbMenuItemSku;
+import ai.neargo.shop.food.entity.FnbMenuItem;
+import ai.neargo.shop.food.entity.FnbMenuContext;
+import ai.neargo.shop.food.entity.FnbMenuChannelBinding;
+import ai.neargo.shop.food.entity.FnbMenuCategory;
 import ai.neargo.shop.food.entity.FnbMenuSchedule;
 import ai.neargo.shop.food.entity.FnbMenuException;
 import ai.neargo.shop.food.entity.FnbMenuStore;
@@ -46,6 +55,41 @@ public final class FoodMappers {
     public interface RecipeAdjustmentMapper extends BaseMapper<FnbRecipeAdjustment> {
         @Delete("DELETE FROM fnb_recipe_adjustment WHERE entity_no=#{entity} AND recipe_no=#{recipe}")
         int replaceDraftRows(@Param("entity") String entity, @Param("recipe") String recipe);
+    }
+
+    public interface MenuCategoryMapper extends BaseMapper<FnbMenuCategory> {
+        @Delete("DELETE FROM fnb_menu_category WHERE entity_no=#{entity} AND menu_no=#{menu}")
+        int replaceDraftRows(@Param("entity") String entity, @Param("menu") String menu);
+    }
+
+    public interface MenuItemMapper extends BaseMapper<FnbMenuItem> {
+        @Delete("DELETE FROM fnb_menu_item WHERE entity_no=#{entity} AND category_no IN (SELECT categor"
+                + "y_no FROM fnb_menu_category WHERE entity_no=#{entity} AND menu_no=#{menu})")
+        int replaceDraftRows(@Param("entity") String entity, @Param("menu") String menu);
+    }
+
+    public interface MenuItemSkuMapper extends BaseMapper<FnbMenuItemSku> {
+        @Delete("DELETE FROM fnb_menu_item_sku WHERE entity_no=#{entity} AND menu_item_no IN (SELECT me"
+                + "nu_item_no FROM fnb_menu_item WHERE entity_no=#{entity} AND category_no IN (SELECT cat"
+                + "egory_no FROM fnb_menu_category WHERE entity_no=#{entity} AND menu_no=#{menu}))")
+        int replaceDraftRows(@Param("entity") String entity, @Param("menu") String menu);
+
+        @Select("SELECT COUNT(*) FROM fnb_recipe WHERE entity_no=#{entity} AND store_no=#{store} "
+                + "AND recipe_no=#{recipe} AND sku_no=#{sku} AND deleted=0 AND status IN ('DRAFT','ACTIVE')")
+        long recipeForSku(@Param("entity") String entity, @Param("store") String store,
+                @Param("recipe") String recipe, @Param("sku") String sku);
+    }
+
+    public interface MenuItemOptionGroupMapper extends BaseMapper<FnbMenuItemOptionGroup> {
+        @Delete("DELETE FROM fnb_menu_item_option_group WHERE entity_no=#{entity} AND menu_item_no IN ("
+                + "SELECT menu_item_no FROM fnb_menu_item WHERE entity_no=#{entity} AND category_no IN (S"
+                + "ELECT category_no FROM fnb_menu_category WHERE entity_no=#{entity} AND menu_no=#{menu}"
+                + "))")
+        int replaceDraftRows(@Param("entity") String entity, @Param("menu") String menu);
+
+        @Select("SELECT COUNT(*) FROM fnb_option_group WHERE entity_no=#{entity} AND group_no=#{group} "
+                + "AND deleted=0 AND status IN ('DRAFT','ACTIVE')")
+        long availableGroup(@Param("entity") String entity, @Param("group") String group);
     }
 
     public interface MenuScheduleMapper extends BaseMapper<FnbMenuSchedule> {
@@ -93,6 +137,17 @@ public final class FoodMappers {
     }
     /** No generic update/delete API is exposed for publication facts. */
     public interface ConfigRevisionMapper {
+        // Fetch only timeline metadata; materialize large immutable JSON only for intersecting effective windows.
+        @Select("SELECT r.revision_no,r.entity_no,r.config_kind,r.config_no,r.revision,r.effective_at,"
+                + "r.status,r.scope_store_nos FROM fnb_config_revision r "
+                + "JOIN fnb_menu_store ms ON ms.entity_no=r.entity_no AND ms.menu_no=r.config_no "
+                + "AND ms.store_no=#{store} AND ms.deleted=0 "
+                + "JOIN fnb_menu m ON m.entity_no=r.entity_no AND m.menu_no=r.config_no "
+                + "AND m.deleted=0 AND m.status!='DISABLED' "
+                + "WHERE r.entity_no=#{entity} AND r.config_kind='MENU' AND r.deleted=0 "
+                + "AND r.status!='CANCELLED' ORDER BY r.config_no,r.effective_at,r.revision")
+        List<FnbConfigRevision> menuTimeline(@Param("entity") String entity, @Param("store") String store);
+
         @Select("SELECT * FROM fnb_config_revision WHERE entity_no=#{entity} AND config_kind=#{kind} "
                 + "AND config_no=#{number} AND deleted=0 ORDER BY revision DESC")
         List<FnbConfigRevision> findObject(@Param("entity") String entity, @Param("kind") String kind,
@@ -188,4 +243,35 @@ public final class FoodMappers {
                 + "AND t.area_no=#{area} AND o.ended_at IS NULL")
         long liveOccupancies(@Param("entity") String entity, @Param("store") String store, @Param("area") String area);
     }
+    public interface MenuContextMapper extends BaseMapper<FnbMenuContext> {
+        @Delete("DELETE FROM fnb_menu_context WHERE entity_no=#{entity} AND menu_no=#{menu}")
+        int replaceDraftRows(@Param("entity") String entity, @Param("menu") String menu);
+    }
+    public interface MenuChannelBindingMapper extends BaseMapper<FnbMenuChannelBinding> { }
+    public interface StationMapper extends BaseMapper<FnbStation> {
+        @Select("SELECT id FROM fnb_store_policy WHERE entity_no=#{entity} AND store_no=#{store} "
+                + "AND deleted=0 ORDER BY id FOR UPDATE")
+        List<Long> lockStore(@Param("entity") String entity, @Param("store") String store);
+    }
+    public interface SkuStationMapper extends BaseMapper<FnbSkuStation> {
+        @Select("SELECT * FROM fnb_sku_station WHERE entity_no=#{entity} AND store_no=#{store} "
+                + "AND sku_no=#{sku} ORDER BY id FOR UPDATE")
+        List<FnbSkuStation> lockRoutes(@Param("entity") String entity, @Param("store") String store,
+                @Param("sku") String sku);
+        @Select("SELECT * FROM fnb_sku_station WHERE entity_no=#{entity} AND store_no=#{store} "
+                + "AND sku_no=#{sku} ORDER BY id")
+        List<FnbSkuStation> readRoutes(@Param("entity") String entity, @Param("store") String store,
+                @Param("sku") String sku);
+        @Update("UPDATE fnb_sku_station SET route_version=#{next},deleted=#{deleted},version=version+1 "
+                + "WHERE entity_no=#{entity} AND store_no=#{store} AND sku_no=#{sku} AND id=#{id}")
+        int retainRoute(@Param("entity") String entity, @Param("store") String store,
+                @Param("sku") String sku, @Param("id") Long id, @Param("next") long next,
+                @Param("deleted") int deleted);
+        @Select("SELECT * FROM fnb_sku_station WHERE entity_no=#{entity} AND store_no=#{store} "
+                + "AND station_no=#{station} AND deleted=0 ORDER BY sku_no,task_role")
+        List<FnbSkuStation> stationRoutes(@Param("entity") String entity, @Param("store") String store,
+                @Param("station") String station);
+    }
+
+    public interface SalesRestrictionMapper extends BaseMapper<FnbSalesRestriction> { }
 }

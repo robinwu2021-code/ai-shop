@@ -3,7 +3,11 @@ package ai.neargo.shop.food.dto;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import java.util.List;
 
-/** Restaurant display overrides only; empty imageRefs keeps the authoritative product cover. */
+/**
+ * Restaurant display overrides only; empty imageRefs keeps the authoritative product cover.
+ * Image references are at most 20 unique canonical assetKey values returned by the original uploader;
+ * the media authority must confirm active public GOODS assets owned by the same entity and store.
+ */
 public record DishPresentation(String displayName, List<LocalizedName> localizedNames, List<String> imageRefs,
         List<String> tags, List<String> allergenNotes) {
     public DishPresentation {

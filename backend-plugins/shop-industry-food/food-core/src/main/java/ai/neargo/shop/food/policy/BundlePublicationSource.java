@@ -73,6 +73,18 @@ public final class BundlePublicationSource {
     }
 
     /** Publishing advances only the working CAS and management hint, never the definition counter. */
+    public long currentVersion(String entity, String store, String number, boolean lock) {
+        if (!enabled.getAsBoolean()) throw BizException.of(ErrorCode.NOT_FOUND);
+        var query = Wrappers.<FnbBundle>lambdaQuery().eq(FnbBundle::getEntityNo, entity)
+                .eq(FnbBundle::getSkuNo, number);
+        if (lock) query.last("FOR UPDATE");
+        var row = heads.selectOne(query);
+        if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        if (row.getVersion() == null || !("DRAFT".equals(row.getStatus()) || "ACTIVE".equals(row.getStatus()))) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        return row.getVersion();
+    }
     public void advance(String entity, String number, long version, FnbConfigRevision revision) {
         var row = heads.selectOne(Wrappers.<FnbBundle>lambdaQuery().eq(FnbBundle::getEntityNo, entity)
                 .eq(FnbBundle::getSkuNo, number));

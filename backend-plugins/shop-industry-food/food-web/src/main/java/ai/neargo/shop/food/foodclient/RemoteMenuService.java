@@ -3,6 +3,15 @@ package ai.neargo.shop.food.foodclient;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.food.dto.MenuItemInput;
+import ai.neargo.shop.food.dto.MenuCompositionVO;
+import ai.neargo.shop.food.dto.MenuCompositionResultVO;
+import ai.neargo.shop.food.dto.ReplaceMenuCompositionReq;
+import ai.neargo.shop.food.policy.MenuCompositionDefinitions;
+import ai.neargo.shop.food.dto.ReplaceMenuContextsReq;
+import ai.neargo.shop.food.dto.MenuContextsResultVO;
+import ai.neargo.shop.food.dto.DisableMenuReq;
+import ai.neargo.shop.food.policy.MenuContextDefinitions;
 import ai.neargo.shop.food.dto.CreateMenuReq;
 import ai.neargo.shop.food.dto.CreateMenuResultVO;
 import ai.neargo.shop.food.dto.ListMenusQuery;
@@ -22,6 +31,8 @@ import ai.neargo.shop.svc.ServiceName;
 import ai.neargo.svc.client.ServiceCallException;
 import ai.neargo.svc.client.ServiceCalls;
 import java.util.HashSet;
+import java.util.List;
+import ai.neargo.shop.food.dto.MenuContextInput;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -73,6 +84,95 @@ public class RemoteMenuService implements MenuService {
         return new MenuScheduleResultVO(head, expected);
     }
 
+    @Override
+    public MenuCompositionResultVO replaceComposition(String entity, String store, String menu, String actor,
+            ReplaceMenuCompositionReq req, String key) {
+        context(entity, store, actor, key); MenuDefinitionPolicy.key(menu);
+        var expected = MenuCompositionDefinitions.normalize(req);
+        var result = call(() -> api.replaceComposition(
+                new MenuInternalApi.CompositionCommand(entity, store, menu, actor, key, req)));
+        var head = result == null ? null : result.menu();
+        if (!MenuDefinitionPolicy.valid(head, store) || !menu.equals(head.menuNo())
+                || head.version() != req.version() + 1 || !"DRAFT".equals(head.status())) {
+            throw new IllegalStateException("Invalid menu composition receipt");
+        }
+        var actual = receivedComposition(result.composition());
+        if (expected.categories().size() != actual.categories().size()) {
+            throw new IllegalStateException("Invalid menu composition category count");
+        }
+        for (int c = 0; c < expected.categories().size(); c++) {
+            var want = expected.categories().get(c); var got = actual.categories().get(c);
+            if (want.categoryNo() != null && !want.categoryNo().equals(got.categoryNo())
+                    || !want.name().equals(got.name()) || !want.sortNo().equals(got.sortNo())
+                    || want.items().size() != got.items().size()) {
+                throw new IllegalStateException("Invalid menu composition category receipt");
+            }
+            for (int i = 0; i < want.items().size(); i++) {
+                var w = want.items().get(i); var g = got.items().get(i);
+                var filled = new MenuItemInput(g.menuItemNo(), w.goodsNo(), w.sortNo(),
+                        w.enabled(), w.skuScope(), w.skuNos(), w.optionMode(), w.optionGroupNos(), w.skuRecipes());
+                if (w.menuItemNo() != null && !w.menuItemNo().equals(g.menuItemNo()) || !filled.equals(g)) {
+                    throw new IllegalStateException("Invalid menu composition item receipt");
+                }
+            }
+        }
+        return new MenuCompositionResultVO(head, actual);
+    }
+
+    private static MenuCompositionVO receivedComposition(MenuCompositionVO definition) {
+        try {
+            var normalized = MenuCompositionDefinitions.normalize(definition);
+            for (var category : normalized.categories()) {
+                if (category.categoryNo() == null || category.items().stream().anyMatch(i -> i.menuItemNo() == null)) {
+                    throw new IllegalStateException("Missing generated menu identity");
+                }
+            }
+            return normalized;
+        } catch (RuntimeException invalid) {
+            throw new IllegalStateException("Invalid menu composition receipt", invalid);
+        }
+    }
+
+    @Override
+    public MenuContextsResultVO replaceContexts(String entity, String store, String menu, String actor,
+            ReplaceMenuContextsReq req, String key) {
+        context(entity, store, actor, key); MenuDefinitionPolicy.key(menu);
+        var expected = MenuContextDefinitions.normalize(req);
+        var result = call(() -> api.replaceContexts(
+                new MenuInternalApi.ContextsCommand(entity, store, menu, actor, key, req)));
+        var head = result == null ? null : result.menu();
+        if (!MenuDefinitionPolicy.valid(head, store) || !menu.equals(head.menuNo())
+                || head.version() != req.version() + 1 || !"DRAFT".equals(head.status())
+                || !expected.equals(result.contexts())) {
+            throw new IllegalStateException("Invalid menu contexts receipt");
+        }
+        return result;
+    }
+
+    @Override
+    public MenuResultVO disableMenu(String entity, String store, String menu, String actor, DisableMenuReq req,
+            String key) {
+        context(entity, store, actor, key); MenuDefinitionPolicy.key(menu);
+        if (req == null || req.version() == null || req.version() < 0 || req.version() == Long.MAX_VALUE
+                || req.reason() == null || req.reason().isBlank() || req.reason().length() > 255) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        var result = call(() -> api.disableMenu(
+                new MenuInternalApi.DisableCommand(entity, store, menu, actor, key, req)));
+        var head = result == null ? null : result.menu();
+        if (!MenuDefinitionPolicy.valid(head, store) || !menu.equals(head.menuNo())
+                || head.version() != req.version() + 1 || !"DISABLED".equals(head.status())) {
+            throw new IllegalStateException("Invalid menu disable receipt");
+        }
+        return result;
+    }
+
+    private static List<MenuContextInput> receivedContexts(
+            List<MenuContextInput> definition) {
+        try { return MenuContextDefinitions.normalize(definition); }
+        catch (RuntimeException invalid) { throw new IllegalStateException("Invalid menu contexts receipt", invalid); }
+    }
+
     private static MenuScheduleVO receivedSchedule(MenuScheduleVO schedule) {
         try { return MenuScheduleDefinitions.normalize(schedule); }
         catch (RuntimeException invalid) { throw new IllegalStateException("Invalid menu schedule receipt", invalid); }
@@ -87,7 +187,9 @@ public class RemoteMenuService implements MenuService {
             throw new IllegalStateException("Invalid menu detail receipt");
         }
         return new MenuConfigResultVO(result.config(), result.schedule() == null ? null
-                : receivedSchedule(result.schedule()));
+                : receivedSchedule(result.schedule()), result.composition() == null ? null
+                : receivedComposition(result.composition()), result.contexts() == null ? null
+                : receivedContexts(result.contexts()));
     }
 
     @Override

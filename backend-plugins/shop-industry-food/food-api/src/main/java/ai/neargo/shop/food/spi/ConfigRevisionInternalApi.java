@@ -3,6 +3,7 @@ package ai.neargo.shop.food.spi;
 import ai.neargo.shop.food.dto.ConfigRevisionContentVO;
 import ai.neargo.shop.food.dto.ConfigRevisionVO;
 import ai.neargo.shop.food.dto.ListConfigRevisionsQuery;
+import ai.neargo.shop.food.dto.RepublishConfigReq;
 import ai.neargo.shop.food.dto.PublishConfigReq;
 import ai.neargo.shop.food.dto.PublishConfigResultVO;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
@@ -19,6 +20,9 @@ import tools.jackson.databind.annotation.JsonDeserialize;
 
 /** Publication and immutable reads travel through the existing FOOD service-token channel. */
 public interface ConfigRevisionInternalApi {
+    String REPUBLISH_PATH = "/internal/food/config-revisions/republish";
+    String MENU_PATH = "/internal/food/config-revisions/publish-menu";
+    String STATION_PATH = "/internal/food/config-revisions/publish-station";
     String RECIPE_PATH = "/internal/food/config-revisions/publish-recipe";
     String MODIFIER_PATH = "/internal/food/config-revisions/publish-modifier";
     String BUNDLE_PATH = "/internal/food/config-revisions/publish-bundle";
@@ -26,6 +30,12 @@ public interface ConfigRevisionInternalApi {
     String LIST_PATH = "/internal/food/config-revisions/list";
     String GET_PATH = "/internal/food/config-revisions/get";
     String RESOLVE_PATH = "/internal/food/config-revisions/resolve";
+    @PostExchange(REPUBLISH_PATH)
+    PublishConfigResultVO republishRevision(@RequestBody RepublishCommand command);
+    @PostExchange(MENU_PATH)
+    PublishConfigResultVO publishMenu(@RequestBody Command command);
+    @PostExchange(STATION_PATH)
+    PublishConfigResultVO publishStation(@RequestBody Command command);
     @PostExchange(RECIPE_PATH)
     PublishConfigResultVO publishRecipe(@RequestBody Command command);
     @PostExchange(MODIFIER_PATH)
@@ -57,6 +67,17 @@ public interface ConfigRevisionInternalApi {
             @NotBlank @Size(max=128)
             @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String idempotencyKey,
             @NotNull @Valid PublishConfigReq publication) { }
+    record RepublishCommand(@NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String entityNo,
+            @NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String storeNo,
+            @NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String revisionNo,
+            @NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String actorNo,
+            @NotBlank @Size(max=128)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String idempotencyKey,
+            @NotNull @Valid RepublishConfigReq publication) { }
     record Lookup(@NotBlank @Size(max=32)
             @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String entityNo,
             @NotBlank @Size(max=32)

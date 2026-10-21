@@ -32,6 +32,7 @@ import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.food.DishChanged;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
+import ai.neargo.shop.spi.media.MediaAssetQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.HashSet;
 import java.util.HashMap;
@@ -58,6 +59,7 @@ public class DishServiceImpl implements DishService {
     private final ObjectMapper json;
     private final TransactionTemplate transaction;
     private final GoodsCatalogQueryPort catalog;
+    private final MediaAssetQueryPort media;
     private final DishOptionGroupMapper bindings;
     private final OptionGroupMapper groups;
     private final OptionGroupItemMapper items;
@@ -67,6 +69,15 @@ public class DishServiceImpl implements DishService {
             OutboxPublisher publisher, ObjectMapper json, PlatformTransactionManager manager,
             GoodsCatalogQueryPort catalog, DishOptionGroupMapper bindings, OptionGroupMapper groups,
             OptionGroupItemMapper items) {
+        this(dishes, actions, idempotency, publisher, json, manager, catalog, bindings, groups, items,
+                (entity, store, keys) -> { throw new IllegalStateException("Media ownership authority unavailable"); });
+    }
+
+    public DishServiceImpl(DishMapper dishes, ActionLogMapper actions, IdempotencyService idempotency,
+            OutboxPublisher publisher, ObjectMapper json, PlatformTransactionManager manager,
+            GoodsCatalogQueryPort catalog, DishOptionGroupMapper bindings, OptionGroupMapper groups,
+            OptionGroupItemMapper items, MediaAssetQueryPort media) {
+        this.media = media;
         this.dishes = dishes;
         this.actions = actions;
         this.idempotency = idempotency;
@@ -191,6 +202,7 @@ public class DishServiceImpl implements DishService {
         var fact = catalog.getGoods(entity, store, goods);
         if (fact == null || !entity.equals(fact.entityNo()) || !store.equals(fact.storeNo())
                 || !goods.equals(fact.goodsNo())) throw BizException.of(ErrorCode.FORBIDDEN);
+        verifyMedia(entity, store, normalized.presentation().imageRefs());
         // Draft management is allowed before audit/on-sale; it does not grant sellability.
         String scope = FoodCommandFingerprint.scope("SAVE_DISH", entity, store);
         String hash = FoodCommandFingerprint.hash("save-dish:v1", goods, json.writeValueAsString(normalized));
@@ -200,6 +212,18 @@ public class DishServiceImpl implements DishService {
         } catch (ConcurrencyFailureException | DuplicateKeyException conflict) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
+    }
+
+    private void verifyMedia(String entity, String store, List<String> keys) {
+        if (keys.isEmpty()) return;
+        MediaAssetQueryPort.validateLookup(entity, store, keys);
+        var facts = media.getAssets(entity, store, keys);
+        var seen = new HashSet<String>();
+        if (facts == null || facts.size() > keys.size() || facts.stream().anyMatch(fact ->
+                !MediaAssetQueryPort.validFact(fact, entity, store, keys) || !seen.add(fact.assetKey()))) {
+            throw new IllegalStateException("Invalid media ownership response");
+        }
+        if (seen.size() != keys.size()) throw BizException.of(ErrorCode.FORBIDDEN);
     }
 
     private DishResultVO save(String entity, String store, String goods, String actor, String key, SaveDishReq req) {
@@ -263,8 +287,11 @@ public class DishServiceImpl implements DishService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         var p = req.presentation();
-        // Custom media awaits an ownership-capable asset contract; the base cover stays in the product facts.
-        if (!p.imageRefs().isEmpty() || p.localizedNames().size() > 20) throw BizException.of(ErrorCode.BAD_REQUEST);
+        if (p.localizedNames().size() > 20) throw BizException.of(ErrorCode.BAD_REQUEST);
+        var imageRefs = texts(p.imageRefs(), 20, 512);
+        if (imageRefs.stream().anyMatch(key -> !MediaAssetQueryPort.validKey(key))) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         var locales = new HashSet<String>();
         var names = p.localizedNames().stream().map(n -> {
             String locale = text(n.locale(), 35).toLowerCase(Locale.ROOT);
@@ -274,7 +301,7 @@ public class DishServiceImpl implements DishService {
             return new LocalizedName(locale, text(n.name(), 128));
         }).toList();
         String name = p.displayName() == null || p.displayName().isBlank() ? null : text(p.displayName(), 128);
-        var presentation = new DishPresentation(name, names, List.of(), texts(p.tags(), 20, 32),
+        var presentation = new DishPresentation(name, names, imageRefs, texts(p.tags(), 20, 32),
                 texts(p.allergenNotes(), 20, 255));
         var m = req.measurement();
         if (!"COUNT".equals(m.mode()) || !"EA".equals(m.unit()) || !Integer.valueOf(0).equals(m.scale())

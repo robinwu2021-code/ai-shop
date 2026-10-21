@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.policy;
 
+import ai.neargo.shop.food.dto.MenuPublicationSnapshot;
+import ai.neargo.shop.food.dto.StationPublicationSnapshot;
 import ai.neargo.shop.food.dto.BundlePublicationSnapshot;
 import ai.neargo.shop.food.dto.PublicationSnapshot;
 import ai.neargo.shop.food.dto.RecipePublicationSnapshot;
@@ -32,6 +34,12 @@ public final class PublicationDocuments {
     }
     public static String freeze(ObjectMapper json, RecipePublicationSnapshot value) {
         return freezeValue(json, value);
+    }
+    public static String freeze(ObjectMapper json, StationPublicationSnapshot value) {
+        return freezeValue(json, value);
+    }
+    public static String freeze(ObjectMapper json, MenuPublicationSnapshot value) {
+        return MenuPublicationDocuments.freeze(json, value);
     }
     private static String freezeValue(ObjectMapper json, Object value) {
         Object tree = json.readerFor(Object.class).with(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
@@ -66,6 +74,13 @@ public final class PublicationDocuments {
                     throw malformed();
                 }
                 return 1;
+            }
+            if (version == 4 && "MENU".equals(kind)) {
+                return MenuPublicationDocuments.validate(json, number, document);
+            }
+            if (version == 5 && "STATION".equals(kind)) {
+                StationPublicationDocuments.validate(json, number, document);
+                return 5;
             }
             if (version == 3 && "RECIPE".equals(kind)) {
                 RecipePublicationDocuments.validate(json, number, document);

@@ -6,6 +6,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import ai.neargo.shop.food.dto.MenuCompositionVO;
+import ai.neargo.shop.food.dto.MenuCompositionResultVO;
+import ai.neargo.shop.food.dto.MenuCategoryInput;
+import ai.neargo.shop.food.dto.MenuItemInput;
+import ai.neargo.shop.food.dto.ReplaceMenuCompositionReq;
 import ai.neargo.shop.food.dto.CreateMenuReq;
 import ai.neargo.shop.food.dto.CreateMenuResultVO;
 import ai.neargo.shop.food.dto.ListMenusQuery;
@@ -103,6 +108,28 @@ class RemoteMenuServiceTest {
                 "key", input));
         assertThatThrownBy(() -> json.readValue(encoded.replace("\"weekday\":1", "\"weekday\":\"1\""),
                 MenuInternalApi.ScheduleCommand.class)).isInstanceOf(RuntimeException.class);
+    }
+
+    @Test void compositionReceiptMustPreserveRequestedGoodsAndHaveGeneratedUniqueIdentities() {
+        var api = mock(MenuInternalApi.class); var service = new RemoteMenuService(api);
+        var item = new MenuItemInput(null, "G1", 0, true, "ALL", List.of(), "INHERIT", List.of(), List.of());
+        var input = new ReplaceMenuCompositionReq("COMPOSITION", 0L,
+                List.of(new MenuCategoryInput(null, "饮料", 0, List.of(item))));
+        var saved = new MenuItemInput("I1", "G1", 0, true, "ALL", List.of(), "INHERIT", List.of(), List.of());
+        var output = new MenuCompositionVO(List.of(new MenuCategoryInput("C1", "饮料", 0, List.of(saved))));
+        when(api.replaceComposition(any())).thenReturn(new MenuCompositionResultVO(view("A", "早餐", 1), output));
+        assertThat(service.replaceComposition("E", "A", "M1", "actor", input, "key").composition()).isEqualTo(output);
+        for (var bad : List.of(new MenuCompositionVO(input.categories()),
+                new MenuCompositionVO(List.of(new MenuCategoryInput("C1", "其他", 0, List.of(saved)))),
+                new MenuCompositionVO(List.of()))) {
+            when(api.replaceComposition(any())).thenReturn(new MenuCompositionResultVO(view("A", "早餐", 1), bad));
+            assertThatThrownBy(() -> service.replaceComposition("E", "A", "M1", "actor", input, "key"))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+        when(api.getMenu(any())).thenReturn(new MenuConfigResultVO(view("A", "早餐", 1), null, output));
+        assertThat(service.getMenu("E", "A", "M1").composition()).isEqualTo(output);
+        when(api.getMenu(any())).thenReturn(new MenuConfigResultVO(view("A", "早餐", 1)));
+        assertThat(service.getMenu("E", "A", "M1").composition()).isNull();
     }
 
     @Test void jsonDoesNotCoerceTextVersionsPriorityOrPaginationAndMissingMetadataIsRejected() {

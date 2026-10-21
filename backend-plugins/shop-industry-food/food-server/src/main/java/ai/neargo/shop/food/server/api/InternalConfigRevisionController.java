@@ -27,6 +27,23 @@ public class InternalConfigRevisionController {
     private final ConfigRevisionService service;
     public InternalConfigRevisionController(ConfigRevisionService service) { this.service = service; }
 
+    @PostMapping(ConfigRevisionInternalApi.REPUBLISH_PATH)
+    public PublishConfigResultVO republishRevision(@Valid @RequestBody ConfigRevisionInternalApi.RepublishCommand c) {
+        return service.republishRevision(c.entityNo(), c.storeNo(), c.revisionNo(), c.actorNo(),
+                c.publication(), c.idempotencyKey());
+    }
+    @PostMapping(ConfigRevisionInternalApi.MENU_PATH)
+    public PublishConfigResultVO publishMenu(@Valid @RequestBody ConfigRevisionInternalApi.Command c) {
+        return service.publishMenu(c.entityNo(), c.storeNo(), c.configNo(), c.actorNo(),
+                c.publication(), c.idempotencyKey());
+    }
+
+    @PostMapping(ConfigRevisionInternalApi.STATION_PATH)
+    public PublishConfigResultVO publishStation(@Valid @RequestBody ConfigRevisionInternalApi.Command c) {
+        return service.publishStation(c.entityNo(), c.storeNo(), c.configNo(), c.actorNo(),
+                c.publication(), c.idempotencyKey());
+    }
+
     @PostMapping(ConfigRevisionInternalApi.RECIPE_PATH)
     public PublishConfigResultVO publishRecipe(@Valid @RequestBody ConfigRevisionInternalApi.Command c) {
         return service.publishRecipe(c.entityNo(), c.storeNo(), c.configNo(), c.actorNo(),

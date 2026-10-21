@@ -1,0 +1,3137 @@
+{
+  "status": "TARGET_NOT_IMPLEMENTED",
+  "date": "2026-10-21",
+  "apiFlows": {
+    "FOOD-API-001": {
+      "readTables": [
+        "fnb_store_policy"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "StoreDirectoryPort"
+      ],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-002": {
+      "readTables": [
+        "fnb_store_policy"
+      ],
+      "writeTables": [
+        "fnb_store_policy",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "StoreDirectoryPort",
+        "ApprovalPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_store_policy": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-003": {
+      "readTables": [
+        "fnb_store_policy",
+        "fnb_service_calendar"
+      ],
+      "writeTables": [
+        "fnb_service_calendar",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_service_calendar": [
+          "insert",
+          "update"
+        ]
+      }
+    },
+    "FOOD-API-004": {
+      "readTables": [
+        "fnb_menu"
+      ],
+      "writeTables": [
+        "fnb_menu",
+        "fnb_menu_store",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_menu": [
+          "insert"
+        ]
+      },
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-005": {
+      "readTables": [
+        "fnb_menu",
+        "fnb_menu_store",
+        "fnb_menu_context",
+        "fnb_menu_schedule",
+        "fnb_menu_exception",
+        "fnb_menu_category",
+        "fnb_menu_item",
+        "fnb_menu_item_sku",
+        "fnb_config_revision"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {},
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-006": {
+      "readTables": [
+        "fnb_menu",
+        "fnb_menu_store",
+        "fnb_menu_context",
+        "fnb_menu_schedule",
+        "fnb_menu_exception",
+        "fnb_menu_category",
+        "fnb_menu_item",
+        "fnb_menu_item_sku"
+      ],
+      "writeTables": [
+        "fnb_menu",
+        "fnb_config_revision",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "GoodsCatalogQueryPort"
+      ],
+      "customMethods": [
+        "fnb_config_revision.insertImmutableRevision"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "由所属资源Service校验，调用ConfigRevisionService发布；冻结子定义和依赖版本，短事务CAS头。",
+      "baseWriteOverrides": {},
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-007": {
+      "readTables": [
+        "fnb_option_group"
+      ],
+      "writeTables": [
+        "fnb_option_group",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_option_group": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-008": {
+      "readTables": [
+        "fnb_option_group",
+        "fnb_option_group_item",
+        "fnb_dish_option_group",
+        "fnb_config_revision"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-009": {
+      "readTables": [
+        "fnb_option_group",
+        "fnb_option_group_item",
+        "fnb_dish_option_group"
+      ],
+      "writeTables": [
+        "fnb_option_group",
+        "fnb_config_revision",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "GoodsQueryPort"
+      ],
+      "customMethods": [
+        "fnb_config_revision.insertImmutableRevision"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "由所属资源Service校验，调用ConfigRevisionService发布；冻结子定义和依赖版本，短事务CAS头。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-010": {
+      "readTables": [
+        "fnb_bundle"
+      ],
+      "writeTables": [
+        "fnb_bundle",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_bundle": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-011": {
+      "readTables": [
+        "fnb_bundle",
+        "fnb_bundle_group",
+        "fnb_bundle_choice",
+        "fnb_config_revision"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-012": {
+      "readTables": [
+        "fnb_bundle",
+        "fnb_bundle_group",
+        "fnb_bundle_choice"
+      ],
+      "writeTables": [
+        "fnb_bundle",
+        "fnb_config_revision",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "GoodsQueryPort"
+      ],
+      "customMethods": [
+        "fnb_config_revision.insertImmutableRevision"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "由所属资源Service校验，调用ConfigRevisionService发布；冻结子定义和依赖版本，短事务CAS头。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-013": {
+      "readTables": [
+        "fnb_station"
+      ],
+      "writeTables": [
+        "fnb_station",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_station": [
+          "insert"
+        ]
+      },
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-014": {
+      "readTables": [
+        "fnb_station",
+        "fnb_config_revision"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {},
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-015": {
+      "readTables": [
+        "fnb_station",
+        "fnb_sku_station"
+      ],
+      "writeTables": [
+        "fnb_station",
+        "fnb_config_revision",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "GoodsCatalogQueryPort"
+      ],
+      "customMethods": [
+        "fnb_config_revision.insertImmutableRevision"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "由所属资源Service校验，调用ConfigRevisionService发布；冻结子定义和依赖版本，短事务CAS头。",
+      "baseWriteOverrides": {},
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-016": {
+      "readTables": [
+        "fnb_dish"
+      ],
+      "writeTables": [
+        "fnb_dish",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "GoodsCatalogQueryPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_dish": [
+          "insert",
+          "update"
+        ]
+      }
+    },
+    "FOOD-API-017": {
+      "readTables": [
+        "fnb_menu",
+        "fnb_menu_store",
+        "fnb_menu_context",
+        "fnb_menu_schedule",
+        "fnb_menu_exception",
+        "fnb_menu_category",
+        "fnb_menu_item",
+        "fnb_menu_item_sku",
+        "fnb_menu_item_option_group"
+      ],
+      "writeTables": [
+        "fnb_menu",
+        "fnb_menu_store",
+        "fnb_menu_context",
+        "fnb_menu_schedule",
+        "fnb_menu_exception",
+        "fnb_menu_category",
+        "fnb_menu_item",
+        "fnb_menu_item_sku",
+        "fnb_action_log",
+        "fnb_menu_item_option_group"
+      ],
+      "portConcepts": [
+        "GoodsCatalogQueryPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "ALL显式SCHEDULE/COMPOSITION/CONTEXT分支；原身份在事务外，CAS锁内重捕获；只替换本分段，不改发布历史",
+      "baseWriteOverrides": {
+        "fnb_menu_store": [
+          "insert",
+          "update"
+        ],
+        "fnb_menu_context": [
+          "insert",
+          "update"
+        ],
+        "fnb_menu_schedule": [
+          "insert",
+          "update"
+        ],
+        "fnb_menu_exception": [
+          "insert",
+          "update"
+        ],
+        "fnb_menu_category": [
+          "insert",
+          "update"
+        ],
+        "fnb_menu_item": [
+          "insert",
+          "update"
+        ],
+        "fnb_menu_item_sku": [
+          "insert",
+          "update"
+        ]
+      },
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-018": {
+      "readTables": [
+        "fnb_bundle",
+        "fnb_bundle_group",
+        "fnb_bundle_choice"
+      ],
+      "writeTables": [
+        "fnb_bundle",
+        "fnb_bundle_group",
+        "fnb_bundle_choice",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "GoodsQueryPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_bundle_group": [
+          "insert",
+          "update"
+        ],
+        "fnb_bundle_choice": [
+          "insert",
+          "update"
+        ]
+      }
+    },
+    "FOOD-API-019": {
+      "readTables": [
+        "fnb_option_group",
+        "fnb_option_group_item",
+        "fnb_dish_option_group"
+      ],
+      "writeTables": [
+        "fnb_option_group",
+        "fnb_option_group_item",
+        "fnb_dish_option_group",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "GoodsQueryPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_option_group_item": [
+          "insert",
+          "update"
+        ],
+        "fnb_dish_option_group": [
+          "insert",
+          "update"
+        ]
+      }
+    },
+    "FOOD-API-020": {
+      "readTables": [
+        "fnb_modifier",
+        "fnb_modifier_component"
+      ],
+      "writeTables": [
+        "fnb_modifier",
+        "fnb_modifier_component",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "GoodsQueryPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_modifier_component": [
+          "insert",
+          "update"
+        ]
+      }
+    },
+    "FOOD-API-021": {
+      "readTables": [
+        "fnb_sku_station",
+        "fnb_station"
+      ],
+      "writeTables": [
+        "fnb_sku_station",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "GoodsCatalogQueryPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_sku_station": [
+          "insert",
+          "update"
+        ]
+      },
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-022": {
+      "readTables": [
+        "fnb_sales_restriction"
+      ],
+      "writeTables": [
+        "fnb_sales_restriction",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "CLEAR只解除指定限制；并发覆盖规则串行化，不更新实物库存。",
+      "baseWriteOverrides": {
+        "fnb_sales_restriction": [
+          "insert",
+          "update"
+        ]
+      },
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-023": {
+      "readTables": [
+        "fnb_menu",
+        "fnb_menu_store",
+        "fnb_menu_context",
+        "fnb_menu_schedule",
+        "fnb_menu_exception",
+        "fnb_menu_category",
+        "fnb_menu_item",
+        "fnb_menu_item_sku",
+        "fnb_config_revision",
+        "fnb_dish",
+        "fnb_option_group",
+        "fnb_option_group_item",
+        "fnb_modifier",
+        "fnb_modifier_component",
+        "fnb_sales_restriction"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "StoreDirectoryPort",
+        "GoodsCatalogQueryPort",
+        "DishOfferQueryPort"
+      ],
+      "customMethods": [
+        "fnb_config_revision.selectEffectiveByConfigAndTime"
+      ],
+      "transaction": "READ_ONLY",
+      "note": "已发布冻结定义及服务器当前时点，读取当前原价格及PLATFORM物理可售；UNKNOWN/null不伪造值；复杂配置需报价且公开输出不含渠道账号/价格策略",
+      "baseWriteOverrides": {},
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-024": {
+      "readTables": [
+        "fnb_table_area",
+        "fnb_table"
+      ],
+      "writeTables": [
+        "fnb_table",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "StoreDirectoryPort",
+        "ResourcePort"
+      ],
+      "customMethods": [
+        "fnb_table_area.selectScopedByKeyForUpdate"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_table": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-025": {
+      "readTables": [
+        "fnb_table",
+        "fnb_table_token",
+        "fnb_guest_session"
+      ],
+      "writeTables": [
+        "fnb_table_token",
+        "fnb_guest_session",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_table.selectForUpdateByStoreAndTableNo"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_table_token": [
+          "insert",
+          "update"
+        ]
+      }
+    },
+    "FOOD-API-026": {
+      "readTables": [
+        "fnb_table_token",
+        "fnb_table",
+        "fnb_check",
+        "fnb_table_occupancy"
+      ],
+      "writeTables": [
+        "fnb_guest_session"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_table_token.selectValidByTokenHash"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "桌码只授予桌级短会话，不自动授予同桌所有台账。 启动会话尚无BizContext，先以不可逆桌码哈希作唯一令牌查验，再从有效记录解析主体/门店；不接受Body自报entityNo。",
+      "baseWriteOverrides": {},
+      "replaceReadTables": [
+        "fnb_table_token"
+      ]
+    },
+    "FOOD-API-027": {
+      "readTables": [
+        "fnb_reservation"
+      ],
+      "writeTables": [
+        "fnb_reservation",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ResourcePort",
+        "CashierPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "资源hold与订金/预付款分别恢复；不伪造资源或资金成功。",
+      "baseWriteOverrides": {
+        "fnb_reservation": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-028": {
+      "readTables": [
+        "fnb_reservation"
+      ],
+      "writeTables": [
+        "fnb_reservation",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ResourcePort",
+        "AfterSalePort",
+        "ApprovalPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-029": {
+      "readTables": [
+        "fnb_reservation"
+      ],
+      "writeTables": [
+        "fnb_reservation",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ResourcePort",
+        "AfterSalePort",
+        "ApprovalPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-030": {
+      "readTables": [
+        "fnb_reservation",
+        "fnb_table",
+        "fnb_table_occupancy"
+      ],
+      "writeTables": [
+        "fnb_reservation",
+        "fnb_check",
+        "fnb_seat",
+        "fnb_table_occupancy",
+        "fnb_table_operation",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ResourcePort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "到店只生成一个台账，新占用失败保留原预约。",
+      "baseWriteOverrides": {
+        "fnb_check": [
+          "insert"
+        ],
+        "fnb_seat": [
+          "insert"
+        ],
+        "fnb_table_occupancy": [
+          "insert"
+        ],
+        "fnb_table_operation": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-031": {
+      "readTables": [
+        "fnb_table",
+        "fnb_table_occupancy",
+        "fnb_store_policy"
+      ],
+      "writeTables": [
+        "fnb_check",
+        "fnb_table_occupancy",
+        "fnb_seat",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ResourcePort"
+      ],
+      "customMethods": [
+        "fnb_table.selectForUpdateByStoreAndTableNo",
+        "fnb_table_occupancy.selectActiveByTableForUpdate"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_table_occupancy": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-032": {
+      "readTables": [
+        "fnb_check",
+        "fnb_table_occupancy"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-033": {
+      "readTables": [
+        "fnb_check",
+        "fnb_table",
+        "fnb_table_occupancy",
+        "fnb_settlement",
+        "fnb_settlement_item"
+      ],
+      "writeTables": [
+        "fnb_table",
+        "fnb_check",
+        "fnb_table_occupancy",
+        "fnb_table_operation",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ResourcePort",
+        "CashierPort"
+      ],
+      "customMethods": [
+        "fnb_table.selectForUpdateByStoreAndTableNo",
+        "fnb_table_occupancy.endOccupancyIfActive",
+        "fnb_table_operation.insertOperationIfAbsent",
+        "fnb_table_operation.advanceOperationIfVersion"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "仅调整桌台占用与服务状态，不移动批次归属、不改结清事实；清台不删除未结应收。",
+      "baseWriteOverrides": {
+        "fnb_table_occupancy": [
+          "insert",
+          "update"
+        ]
+      }
+    },
+    "FOOD-API-034": {
+      "readTables": [
+        "fnb_check",
+        "fnb_table",
+        "fnb_table_occupancy",
+        "fnb_check_batch_membership",
+        "fnb_order_batch",
+        "fnb_settlement",
+        "fnb_settlement_item"
+      ],
+      "writeTables": [
+        "fnb_check",
+        "fnb_table",
+        "fnb_table_occupancy",
+        "fnb_check_relation",
+        "fnb_check_batch_membership",
+        "fnb_table_operation",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ResourcePort",
+        "CashierPort"
+      ],
+      "customMethods": [
+        "fnb_order_batch.selectScopedByKeyForUpdate",
+        "fnb_table_operation.insertOperationIfAbsent",
+        "fnb_table_operation.advanceOperationIfVersion",
+        "fnb_check_batch_membership.selectActiveByBatchForUpdate",
+        "fnb_check_batch_membership.detachMembershipIfActive"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "锁定批次/台账及资源仲裁者；先占后放；服务归属协作不改核心资金归属。具体动作只写对应变化行。",
+      "baseWriteOverrides": {
+        "fnb_table_occupancy": [
+          "insert",
+          "update"
+        ],
+        "fnb_check_batch_membership": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-035": {
+      "readTables": [
+        "fnb_check",
+        "fnb_table",
+        "fnb_table_occupancy",
+        "fnb_check_batch_membership",
+        "fnb_order_batch",
+        "fnb_settlement",
+        "fnb_settlement_item"
+      ],
+      "writeTables": [
+        "fnb_check",
+        "fnb_table",
+        "fnb_table_occupancy",
+        "fnb_check_relation",
+        "fnb_check_batch_membership",
+        "fnb_table_operation",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ResourcePort",
+        "CashierPort"
+      ],
+      "customMethods": [
+        "fnb_order_batch.selectScopedByKeyForUpdate",
+        "fnb_table_operation.insertOperationIfAbsent",
+        "fnb_table_operation.advanceOperationIfVersion",
+        "fnb_check_batch_membership.selectActiveByBatchForUpdate",
+        "fnb_check_batch_membership.detachMembershipIfActive"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "锁定批次/台账及资源仲裁者；先占后放；服务归属协作不改核心资金归属。具体动作只写对应变化行。",
+      "baseWriteOverrides": {
+        "fnb_table_occupancy": [
+          "insert",
+          "update"
+        ],
+        "fnb_check_batch_membership": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-036": {
+      "readTables": [
+        "fnb_check",
+        "fnb_table",
+        "fnb_table_occupancy",
+        "fnb_settlement",
+        "fnb_settlement_item"
+      ],
+      "writeTables": [
+        "fnb_table",
+        "fnb_check",
+        "fnb_table_occupancy",
+        "fnb_table_operation",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ResourcePort",
+        "CashierPort"
+      ],
+      "customMethods": [
+        "fnb_table.selectForUpdateByStoreAndTableNo",
+        "fnb_table_occupancy.endOccupancyIfActive",
+        "fnb_table_operation.insertOperationIfAbsent",
+        "fnb_table_operation.advanceOperationIfVersion"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "仅调整桌台占用与服务状态，不移动批次归属、不改结清事实；清台不删除未结应收。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-037": {
+      "readTables": [
+        "fnb_check_cart",
+        "fnb_check_cart_item"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-038": {
+      "readTables": [
+        "fnb_check",
+        "fnb_guest_session"
+      ],
+      "writeTables": [
+        "fnb_check_cart"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-039": {
+      "readTables": [
+        "fnb_check_cart",
+        "fnb_check_cart_item"
+      ],
+      "writeTables": [
+        "fnb_check_cart",
+        "fnb_check_cart_item"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_check_cart.lockCartIfVersion"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-040": {
+      "readTables": [
+        "fnb_check_cart",
+        "fnb_check_cart_item"
+      ],
+      "writeTables": [
+        "fnb_check_cart",
+        "fnb_check_cart_item"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_check_cart.lockCartIfVersion"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-041": {
+      "readTables": [
+        "fnb_check_cart",
+        "fnb_check_cart_item",
+        "fnb_config_revision",
+        "fnb_sales_restriction"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "GoodsQueryPort",
+        "OrderPlacementPort"
+      ],
+      "customMethods": [],
+      "transaction": "NO_LOCAL_WRITE",
+      "note": "报价由核心返回，绑定车版本、源行与规则指纹；不能餐饮重算价格。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-042": {
+      "readTables": [
+        "fnb_check_cart",
+        "fnb_check_cart_item",
+        "fnb_check",
+        "fnb_config_revision",
+        "fnb_sales_restriction"
+      ],
+      "writeTables": [
+        "fnb_order_batch",
+        "fnb_order_line",
+        "fnb_order_component",
+        "fnb_order_modifier",
+        "fnb_core_order_binding",
+        "fnb_core_line_allocation",
+        "fnb_check_batch_membership",
+        "fnb_sales_quota_claim",
+        "fnb_sales_restriction",
+        "fnb_check_cart",
+        "fnb_check_cart_item",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "OrderPlacementPort",
+        "InventoryCommitmentPort"
+      ],
+      "customMethods": [
+        "fnb_check_cart.lockCartIfVersion",
+        "fnb_check_cart_item.selectSelectedLinesForUpdate",
+        "fnb_check_cart_item.archiveSelectedSubmittedLines",
+        "fnb_order_batch.insertBatchIfAbsent",
+        "fnb_order_batch.bindCoreResultIfVersion",
+        "fnb_order_batch.advancePlacementIfStatus",
+        "fnb_core_line_allocation.insertAllocationIfAbsent",
+        "fnb_sales_restriction.reserveQuotaIfCapacity",
+        "fnb_sales_restriction.consumeQuotaIfReserved",
+        "fnb_sales_restriction.releaseQuotaIfReserved",
+        "fnb_sales_quota_claim.insertClaimIfAbsent",
+        "fnb_sales_quota_claim.advanceClaimIfStatus"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "意图与冻结源行本地提交后调用核心；UNKNOWN查同键；结果绑定再清理此次草稿，后付合同未齐禁用。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-043": {
+      "readTables": [
+        "fnb_order_batch",
+        "fnb_order_line",
+        "fnb_order_component",
+        "fnb_order_modifier",
+        "fnb_core_order_binding",
+        "fnb_core_line_allocation"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "OrderPlacementPort",
+        "PaymentQueryPort"
+      ],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-044": {
+      "readTables": [
+        "fnb_kitchen_task",
+        "fnb_kitchen_ticket",
+        "fnb_order_line"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-045": {
+      "readTables": [
+        "fnb_kitchen_task",
+        "fnb_kitchen_ticket"
+      ],
+      "writeTables": [
+        "fnb_kitchen_task",
+        "fnb_service_event",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_kitchen_task.advanceTaskQuantityIfVersion",
+        "fnb_service_event.appendEventIfAbsent"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "start/ready/serve推进数量；hold/fire/urge不增加销量；void必须退餐授权。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-046": {
+      "readTables": [
+        "fnb_kitchen_task",
+        "fnb_kitchen_ticket"
+      ],
+      "writeTables": [
+        "fnb_kitchen_task",
+        "fnb_service_event",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_kitchen_task.advanceTaskQuantityIfVersion",
+        "fnb_service_event.appendEventIfAbsent"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "start/ready/serve推进数量；hold/fire/urge不增加销量；void必须退餐授权。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-047": {
+      "readTables": [
+        "fnb_kitchen_task",
+        "fnb_kitchen_ticket"
+      ],
+      "writeTables": [
+        "fnb_kitchen_task",
+        "fnb_service_event",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_kitchen_task.advanceTaskQuantityIfVersion",
+        "fnb_service_event.appendEventIfAbsent"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "start/ready/serve推进数量；hold/fire/urge不增加销量；void必须退餐授权。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-048": {
+      "readTables": [
+        "fnb_kitchen_task",
+        "fnb_kitchen_ticket"
+      ],
+      "writeTables": [
+        "fnb_kitchen_task",
+        "fnb_service_event",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_kitchen_task.changePendingStateIfVersion",
+        "fnb_service_event.appendEventIfAbsent"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "start/ready/serve推进数量；hold/fire/urge不增加销量；void必须退餐授权。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-049": {
+      "readTables": [
+        "fnb_kitchen_task",
+        "fnb_kitchen_ticket"
+      ],
+      "writeTables": [
+        "fnb_kitchen_task",
+        "fnb_service_event",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_kitchen_task.changePendingStateIfVersion",
+        "fnb_service_event.appendEventIfAbsent"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "start/ready/serve推进数量；hold/fire/urge不增加销量；void必须退餐授权。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-050": {
+      "readTables": [
+        "fnb_kitchen_task",
+        "fnb_kitchen_ticket"
+      ],
+      "writeTables": [
+        "fnb_service_event",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_service_event.appendEventIfAbsent"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "仅追加催菜事实/审计；不推进任务数量，不重复派工或计销量。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-051": {
+      "readTables": [
+        "fnb_kitchen_task",
+        "fnb_kitchen_ticket",
+        "fnb_return",
+        "fnb_return_item"
+      ],
+      "writeTables": [
+        "fnb_kitchen_task",
+        "fnb_service_event",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_kitchen_task.advanceTaskQuantityIfVersion",
+        "fnb_service_event.appendEventIfAbsent"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "start/ready/serve推进数量；hold/fire/urge不增加销量；void必须退餐授权。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-052": {
+      "readTables": [
+        "fnb_kitchen_task",
+        "fnb_kitchen_ticket"
+      ],
+      "writeTables": [
+        "fnb_kitchen_ticket",
+        "fnb_kitchen_task",
+        "fnb_service_event",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ApprovalPort"
+      ],
+      "customMethods": [
+        "fnb_kitchen_ticket.insertDispatchIfAbsent",
+        "fnb_service_event.appendEventIfAbsent"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-053": {
+      "readTables": [
+        "fnb_check",
+        "fnb_course"
+      ],
+      "writeTables": [
+        "fnb_course"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-054": {
+      "readTables": [
+        "fnb_course",
+        "fnb_kitchen_task"
+      ],
+      "writeTables": [
+        "fnb_course",
+        "fnb_kitchen_task",
+        "fnb_service_event"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_kitchen_task.advanceTaskQuantityIfVersion"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-055": {
+      "readTables": [
+        "fnb_order_batch",
+        "fnb_order_line",
+        "fnb_kitchen_task"
+      ],
+      "writeTables": [
+        "fnb_order_batch",
+        "fnb_service_event",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "DiningFulfillmentPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "核心核销/配送交接为权威，部分交付与制作状态不能混写。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-056": {
+      "readTables": [
+        "fnb_check",
+        "fnb_order_batch",
+        "fnb_core_order_binding",
+        "fnb_settlement_item"
+      ],
+      "writeTables": [
+        "fnb_settlement",
+        "fnb_settlement_item",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "CashierPort"
+      ],
+      "customMethods": [
+        "fnb_settlement.insertFrozenScope"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "跨结账/跨根应收独占由核心持有；本地唯一键不等于防双收。",
+      "baseWriteOverrides": {
+        "fnb_settlement_item": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-057": {
+      "readTables": [
+        "fnb_settlement",
+        "fnb_settlement_item",
+        "fnb_charge_intent"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "CashierPort",
+        "PaymentQueryPort"
+      ],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-058": {
+      "readTables": [
+        "fnb_settlement",
+        "fnb_settlement_item",
+        "fnb_cash_shift",
+        "fnb_charge_intent"
+      ],
+      "writeTables": [
+        "fnb_charge_intent",
+        "fnb_cash_payment_link",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "CashierPort",
+        "PaymentQueryPort",
+        "MemberAssetPort"
+      ],
+      "customMethods": [
+        "fnb_charge_intent.insertIntentIfAbsent",
+        "fnb_charge_intent.confirmIntentFromCoreIfStatus",
+        "fnb_cash_payment_link.linkCorePaymentIfAbsent"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-059": {
+      "readTables": [
+        "fnb_settlement",
+        "fnb_charge_intent"
+      ],
+      "writeTables": [
+        "fnb_settlement",
+        "fnb_charge_intent",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "CashierPort",
+        "PaymentQueryPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "仅核心确认无成功/未知不可撤销资金才能解冻。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-060": {
+      "readTables": [
+        "fnb_settlement",
+        "fnb_settlement_item",
+        "fnb_charge_intent"
+      ],
+      "writeTables": [
+        "fnb_settlement",
+        "fnb_check",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "CashierPort",
+        "PaymentQueryPort"
+      ],
+      "customMethods": [
+        "fnb_settlement.finalizeIfCoreConfirmed",
+        "fnb_check.closeIfSettlementConfirmed"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-061": {
+      "readTables": [
+        "fnb_settlement",
+        "fnb_charge_intent"
+      ],
+      "writeTables": [
+        "fnb_charge_intent",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "OrderAdjustmentPort",
+        "ApprovalPort",
+        "AccountsReceivablePort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-062": {
+      "readTables": [
+        "fnb_order_line",
+        "fnb_core_line_allocation",
+        "fnb_return",
+        "fnb_return_item"
+      ],
+      "writeTables": [
+        "fnb_return",
+        "fnb_return_item",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ApprovalPort"
+      ],
+      "customMethods": [
+        "fnb_order_line.selectScopedByKeyForUpdate",
+        "fnb_return_item.selectActiveReturnQuantityByFoodLine"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "锁来源行后核对有效申请退量再插入；Mapper不按现菜单价算退款。",
+      "baseWriteOverrides": {
+        "fnb_return": [
+          "insert"
+        ],
+        "fnb_return_item": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-063": {
+      "readTables": [
+        "fnb_return",
+        "fnb_return_item",
+        "fnb_order_line",
+        "fnb_kitchen_task"
+      ],
+      "writeTables": [
+        "fnb_return",
+        "fnb_kitchen_task",
+        "fnb_service_event",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "AfterSalePort",
+        "OrderAdjustmentPort",
+        "ApprovalPort"
+      ],
+      "customMethods": [
+        "fnb_order_line.selectScopedByKeyForUpdate",
+        "fnb_return_item.selectActiveReturnQuantityByFoodLine"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "核心财务与厨房两条轨道，部分退款能力未齐禁用。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-064": {
+      "readTables": [
+        "fnb_return",
+        "fnb_return_item"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "AfterSalePort"
+      ],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-065": {
+      "readTables": [
+        "prn_device",
+        "prn_route",
+        "prn_template"
+      ],
+      "writeTables": [
+        "prn_job"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "共享打印持有队列，food只冻结票面；此段是共享模块目标方法，不在food-core实现其Mapper。 共享PrintService经受控票面提供者取得冻结内容，再本地写队列/outbox；不回调自己实现的PrintPort。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-066": {
+      "readTables": [
+        "prn_job",
+        "prn_attempt"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-067": {
+      "readTables": [
+        "prn_job",
+        "prn_device"
+      ],
+      "writeTables": [
+        "prn_job"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "创建新补打任务并引用原任务，不再次派工。 共享PrintService经受控票面提供者取得冻结内容，再本地写队列/outbox；不回调自己实现的PrintPort。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-068": {
+      "readTables": [
+        "fnb_cash_shift"
+      ],
+      "writeTables": [
+        "fnb_cash_shift",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ResourcePort"
+      ],
+      "customMethods": [
+        "fnb_cash_shift.selectActiveDrawerForUpdate"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "钱箱无活动行时不能靠SELECT FOR UPDATE锁空结果；须共享资源/稳定钱箱仲裁者，否则禁用并发开班。",
+      "baseWriteOverrides": {
+        "fnb_cash_shift": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-069": {
+      "readTables": [
+        "fnb_cash_shift"
+      ],
+      "writeTables": [
+        "fnb_cash_entry",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ApprovalPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-070": {
+      "readTables": [
+        "fnb_cash_shift",
+        "fnb_cash_entry",
+        "fnb_cash_payment_link"
+      ],
+      "writeTables": [
+        "fnb_cash_count",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ReconciliationPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "先冻结权威收款水位核对后短事务记录实盘；盲盘前不泄露应有现金。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-071": {
+      "readTables": [
+        "fnb_cash_shift",
+        "fnb_cash_count"
+      ],
+      "writeTables": [
+        "fnb_cash_shift",
+        "fnb_cash_count",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ApprovalPort"
+      ],
+      "customMethods": [
+        "fnb_cash_shift.handoverIfVersion"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-072": {
+      "readTables": [
+        "fnb_business_day",
+        "fnb_order_batch",
+        "fnb_charge_intent",
+        "fnb_return",
+        "fnb_cash_shift",
+        "fnb_sync_batch"
+      ],
+      "writeTables": [
+        "fnb_business_day",
+        "fnb_close_run",
+        "fnb_close_balance",
+        "fnb_close_exception"
+      ],
+      "portConcepts": [
+        "ReconciliationPort",
+        "DiningReportPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "事实冻结水位，未决资金/离线同步列明；不把报表结果当收款。",
+      "baseWriteOverrides": {
+        "fnb_business_day": [
+          "insert"
+        ],
+        "fnb_close_run": [
+          "insert"
+        ],
+        "fnb_close_balance": [
+          "insert"
+        ],
+        "fnb_close_exception": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-073": {
+      "readTables": [
+        "fnb_close_run",
+        "fnb_close_balance",
+        "fnb_close_exception"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-074": {
+      "readTables": [
+        "fnb_close_run",
+        "fnb_close_exception",
+        "fnb_business_day"
+      ],
+      "writeTables": [
+        "fnb_close_exception",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ApprovalPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-075": {
+      "readTables": [
+        "fnb_business_day",
+        "fnb_close_run",
+        "fnb_close_balance",
+        "fnb_close_exception"
+      ],
+      "writeTables": [
+        "fnb_business_day",
+        "fnb_close_run",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ReconciliationPort",
+        "ApprovalPort"
+      ],
+      "customMethods": [
+        "fnb_close_run.signIfVersionHashAndWatermark",
+        "fnb_business_day.replaceCurrentCloseIfVersion"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-076": {
+      "readTables": [
+        "fnb_close_run",
+        "fnb_business_day"
+      ],
+      "writeTables": [
+        "fnb_close_adjustment",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ReconciliationPort",
+        "ApprovalPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_close_adjustment": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-077": {
+      "readTables": [
+        "fnb_metric_definition",
+        "fnb_report_run"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "DiningReportPort"
+      ],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-078": {
+      "readTables": [
+        "fnb_metric_definition"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "DiningReportPort"
+      ],
+      "customMethods": [],
+      "transaction": "SHARED_JOB",
+      "note": "导出任务由共享任务/报表服务创建，餐饮没有导出任务表，不得用fnb_report_run冒充导出任务。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-079": {
+      "readTables": [],
+      "writeTables": [],
+      "portConcepts": [
+        "DiningReportPort"
+      ],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "查询共享导出任务，验证本人/授权范围。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-080": {
+      "readTables": [
+        "fnb_metric_definition",
+        "fnb_report_run"
+      ],
+      "writeTables": [
+        "fnb_report_run"
+      ],
+      "portConcepts": [
+        "DiningReportPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "报表投影写入在shop-report由DAO执行，food只跟踪运行引用；不重开营业日。",
+      "baseWriteOverrides": {
+        "fnb_report_run": [
+          "insert",
+          "update"
+        ]
+      }
+    },
+    "FOOD-API-081": {
+      "readTables": [
+        "fnb_store_policy"
+      ],
+      "writeTables": [
+        "fnb_store_policy",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "平台授权工单与CAS，能力变更发布新策略版本，不覆盖旧营业快照。",
+      "baseWriteOverrides": {
+        "fnb_store_policy": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-082": {
+      "readTables": [
+        "fnb_external_mapping"
+      ],
+      "writeTables": [
+        "fnb_external_mapping",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_external_mapping": [
+          "insert",
+          "update"
+        ]
+      }
+    },
+    "FOOD-API-083": {
+      "readTables": [
+        "fnb_integration_exception"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-084": {
+      "readTables": [
+        "fnb_edge_lease",
+        "fnb_sync_batch",
+        "fnb_external_mapping"
+      ],
+      "writeTables": [
+        "fnb_sync_batch",
+        "fnb_integration_exception"
+      ],
+      "portConcepts": [
+        "ExternalRestaurantPort"
+      ],
+      "customMethods": [
+        "fnb_edge_lease.selectLeaseByStoreEpochForUpdate",
+        "fnb_sync_batch.insertSyncBatchIfAbsent",
+        "fnb_sync_batch.selectAcceptedThrough"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "同步入口仅验签/认领/排入恢复；消费合法事件须走业务Service，不能直接批写ord/prd/pay。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-085": {
+      "readTables": [
+        "fnb_check",
+        "fnb_dining_entitlement"
+      ],
+      "writeTables": [
+        "fnb_dining_entitlement"
+      ],
+      "portConcepts": [
+        "OrderPlacementPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_dining_entitlement": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-086": {
+      "readTables": [
+        "fnb_dining_entitlement"
+      ],
+      "writeTables": [
+        "fnb_dining_entitlement",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "OrderAdjustmentPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-087": {
+      "readTables": [
+        "fnb_reservation"
+      ],
+      "writeTables": [
+        "fnb_banquet_plan"
+      ],
+      "portConcepts": [
+        "OrderPlacementPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-088": {
+      "readTables": [
+        "fnb_banquet_plan"
+      ],
+      "writeTables": [
+        "fnb_banquet_plan",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "OrderPlacementPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-089": {
+      "readTables": [
+        "fnb_bottle_custody"
+      ],
+      "writeTables": [
+        "fnb_bottle_custody",
+        "fnb_custody_entry",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_bottle_custody": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-090": {
+      "readTables": [
+        "fnb_bottle_custody"
+      ],
+      "writeTables": [
+        "fnb_bottle_custody",
+        "fnb_custody_entry",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ApprovalPort"
+      ],
+      "customMethods": [
+        "fnb_bottle_custody.withdrawIfRemaining"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-091": {
+      "readTables": [
+        "fnb_settlement",
+        "fnb_room_charge_intent"
+      ],
+      "writeTables": [
+        "fnb_room_charge_intent",
+        "fnb_charge_intent",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "AccountsReceivablePort",
+        "RoomAccountPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-092": {
+      "readTables": [
+        "fnb_table_area"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-093": {
+      "readTables": [
+        "fnb_table_area"
+      ],
+      "writeTables": [
+        "fnb_table_area",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_table_area": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-094": {
+      "readTables": [
+        "fnb_table_area"
+      ],
+      "writeTables": [
+        "fnb_table_area",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-095": {
+      "readTables": [
+        "fnb_table_area",
+        "fnb_table",
+        "fnb_table_occupancy"
+      ],
+      "writeTables": [
+        "fnb_table_area",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_table_area.selectScopedByKeyForUpdate"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-096": {
+      "readTables": [
+        "fnb_table",
+        "fnb_table_area",
+        "fnb_table_occupancy"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-097": {
+      "readTables": [
+        "fnb_table",
+        "fnb_table_area",
+        "fnb_table_occupancy"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-098": {
+      "readTables": [
+        "fnb_table",
+        "fnb_table_area",
+        "fnb_table_occupancy"
+      ],
+      "writeTables": [
+        "fnb_table",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_table_area.selectScopedByKeyForUpdate",
+        "fnb_table.selectForUpdateByStoreAndTableNo",
+        "fnb_table.updateCapacityIfVersion"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-099": {
+      "readTables": [
+        "fnb_table",
+        "fnb_table_occupancy"
+      ],
+      "writeTables": [
+        "fnb_table",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_table.selectForUpdateByStoreAndTableNo"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-100": {
+      "readTables": [
+        "fnb_table",
+        "fnb_table_occupancy"
+      ],
+      "writeTables": [
+        "fnb_table",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_table.selectForUpdateByStoreAndTableNo"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-101": {
+      "readTables": [
+        "fnb_table",
+        "fnb_table_token",
+        "fnb_guest_session"
+      ],
+      "writeTables": [
+        "fnb_table_token",
+        "fnb_guest_session",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_table.selectForUpdateByStoreAndTableNo"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-102": {
+      "readTables": [
+        "fnb_check",
+        "fnb_table_occupancy",
+        "fnb_seat"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-103": {
+      "readTables": [
+        "fnb_check",
+        "fnb_table",
+        "fnb_table_occupancy",
+        "fnb_seat"
+      ],
+      "writeTables": [
+        "fnb_check",
+        "fnb_table_occupancy",
+        "fnb_seat",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ResourcePort"
+      ],
+      "customMethods": [
+        "fnb_check.updatePartySizeIfVersion"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-104": {
+      "readTables": [
+        "fnb_check",
+        "fnb_table",
+        "fnb_table_occupancy"
+      ],
+      "writeTables": [
+        "fnb_table_operation",
+        "fnb_table_occupancy",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ResourcePort"
+      ],
+      "customMethods": [
+        "fnb_table_operation.insertOperationIfAbsent",
+        "fnb_table_operation.advanceOperationIfVersion"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_table_occupancy": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-105": {
+      "readTables": [
+        "fnb_table",
+        "fnb_table_occupancy",
+        "fnb_store_policy"
+      ],
+      "writeTables": [
+        "fnb_check",
+        "fnb_table_occupancy",
+        "fnb_seat",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ResourcePort"
+      ],
+      "customMethods": [
+        "fnb_table.selectForUpdateByStoreAndTableNo",
+        "fnb_table_occupancy.selectActiveByTableForUpdate"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_table_occupancy": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-106": {
+      "readTables": [
+        "fnb_table_operation"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-107": {
+      "readTables": [
+        "fnb_reservation"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-108": {
+      "readTables": [
+        "fnb_action_log"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-109": {
+      "readTables": [
+        "fnb_menu",
+        "fnb_menu_store",
+        "fnb_config_revision"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-110": {
+      "readTables": [
+        "fnb_menu"
+      ],
+      "writeTables": [
+        "fnb_menu",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {},
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-111": {
+      "readTables": [
+        "fnb_menu"
+      ],
+      "writeTables": [
+        "fnb_menu",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {},
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-112": {
+      "readTables": [
+        "fnb_dish",
+        "fnb_dish_option_group",
+        "fnb_option_group",
+        "fnb_option_group_item"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "GoodsCatalogQueryPort"
+      ],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-113": {
+      "readTables": [
+        "fnb_dish",
+        "fnb_dish_option_group",
+        "fnb_option_group",
+        "fnb_option_group_item"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "GoodsCatalogQueryPort"
+      ],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-114": {
+      "readTables": [
+        "fnb_menu",
+        "fnb_menu_store",
+        "fnb_menu_context",
+        "fnb_menu_schedule",
+        "fnb_menu_exception",
+        "fnb_menu_category",
+        "fnb_menu_item",
+        "fnb_menu_item_sku",
+        "fnb_config_revision",
+        "fnb_dish",
+        "fnb_option_group",
+        "fnb_option_group_item",
+        "fnb_modifier",
+        "fnb_modifier_component",
+        "fnb_sales_restriction"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "StoreDirectoryPort",
+        "GoodsCatalogQueryPort",
+        "DishOfferQueryPort"
+      ],
+      "customMethods": [
+        "fnb_config_revision.selectEffectiveByConfigAndTime"
+      ],
+      "transaction": "READ_ONLY",
+      "note": "已发布冻结定义及服务器当前时点，读取当前原价格及PLATFORM物理可售；UNKNOWN/null不伪造值；复杂配置需报价且公开输出不含渠道账号/价格策略",
+      "baseWriteOverrides": {},
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-115": {
+      "readTables": [
+        "fnb_config_revision"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-116": {
+      "readTables": [
+        "fnb_config_revision",
+        "fnb_menu",
+        "fnb_bundle",
+        "fnb_option_group",
+        "fnb_modifier",
+        "fnb_station"
+      ],
+      "writeTables": [
+        "fnb_config_revision",
+        "fnb_action_log",
+        "fnb_menu",
+        "fnb_bundle",
+        "fnb_option_group",
+        "fnb_modifier",
+        "fnb_station"
+      ],
+      "portConcepts": [
+        "GoodsQueryPort",
+        "ApprovalPort"
+      ],
+      "customMethods": [
+        "fnb_config_revision.insertImmutableRevision"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "按被冻结configKind的固定白名单分派，仅更新对应一种头；Mapper禁止动态SQL表名。以旧内容生成新发布，不覆盖旧快照、不形成Service互相注入循环。",
+      "baseWriteOverrides": {},
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-117": {
+      "readTables": [
+        "fnb_modifier",
+        "fnb_modifier_component"
+      ],
+      "writeTables": [
+        "fnb_modifier",
+        "fnb_config_revision",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "GoodsQueryPort"
+      ],
+      "customMethods": [
+        "fnb_config_revision.insertImmutableRevision"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-118": {
+      "readTables": [
+        "fnb_option_group"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-119": {
+      "readTables": [
+        "fnb_bundle"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-120": {
+      "readTables": [
+        "fnb_modifier",
+        "fnb_modifier_component"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-121": {
+      "readTables": [
+        "fnb_station"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {},
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-122": {
+      "readTables": [
+        "fnb_sales_restriction"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {},
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-123": {
+      "readTables": [
+        "fnb_order_batch",
+        "fnb_check_batch_membership",
+        "fnb_core_order_binding"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-124": {
+      "readTables": [
+        "fnb_order_batch",
+        "fnb_order_line",
+        "fnb_sales_quota_claim"
+      ],
+      "writeTables": [
+        "fnb_order_batch",
+        "fnb_sales_quota_claim",
+        "fnb_sales_restriction",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "OrderPlacementPort",
+        "InventoryCommitmentPort"
+      ],
+      "customMethods": [
+        "fnb_order_batch.advancePlacementIfStatus",
+        "fnb_sales_restriction.releaseQuotaIfReserved",
+        "fnb_sales_quota_claim.advanceClaimIfStatus"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-125": {
+      "readTables": [
+        "fnb_order_batch"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "OrderPlacementPort"
+      ],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "查询原意图/操作状态；除显式恢复任务外GET不补写业务状态。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-126": {
+      "readTables": [
+        "fnb_check_cart",
+        "fnb_order_batch"
+      ],
+      "writeTables": [
+        "fnb_check_cart"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_check_cart.closeCartIfNoPlacingBatch"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-127": {
+      "readTables": [
+        "fnb_check_cart",
+        "fnb_check_cart_item"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-128": {
+      "readTables": [
+        "fnb_check",
+        "fnb_guest_session"
+      ],
+      "writeTables": [
+        "fnb_check_cart"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-129": {
+      "readTables": [
+        "fnb_check_cart",
+        "fnb_check_cart_item"
+      ],
+      "writeTables": [
+        "fnb_check_cart",
+        "fnb_check_cart_item"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_check_cart.lockCartIfVersion"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-130": {
+      "readTables": [
+        "fnb_check_cart",
+        "fnb_check_cart_item"
+      ],
+      "writeTables": [
+        "fnb_check_cart",
+        "fnb_check_cart_item"
+      ],
+      "portConcepts": [],
+      "customMethods": [
+        "fnb_check_cart.lockCartIfVersion"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-131": {
+      "readTables": [
+        "fnb_check_cart",
+        "fnb_check_cart_item",
+        "fnb_config_revision",
+        "fnb_sales_restriction"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "GoodsQueryPort",
+        "OrderPlacementPort"
+      ],
+      "customMethods": [],
+      "transaction": "NO_LOCAL_WRITE",
+      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。报价由核心返回，绑定车版本、源行与规则指纹；不能餐饮重算价格。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-132": {
+      "readTables": [
+        "fnb_check_cart",
+        "fnb_check_cart_item",
+        "fnb_check",
+        "fnb_config_revision",
+        "fnb_sales_restriction"
+      ],
+      "writeTables": [
+        "fnb_order_batch",
+        "fnb_order_line",
+        "fnb_order_component",
+        "fnb_order_modifier",
+        "fnb_core_order_binding",
+        "fnb_core_line_allocation",
+        "fnb_check_batch_membership",
+        "fnb_sales_quota_claim",
+        "fnb_sales_restriction",
+        "fnb_check_cart",
+        "fnb_check_cart_item",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "OrderPlacementPort",
+        "InventoryCommitmentPort"
+      ],
+      "customMethods": [
+        "fnb_check_cart.lockCartIfVersion",
+        "fnb_check_cart_item.selectSelectedLinesForUpdate",
+        "fnb_check_cart_item.archiveSelectedSubmittedLines",
+        "fnb_order_batch.insertBatchIfAbsent",
+        "fnb_order_batch.bindCoreResultIfVersion",
+        "fnb_order_batch.advancePlacementIfStatus",
+        "fnb_core_line_allocation.insertAllocationIfAbsent",
+        "fnb_sales_restriction.reserveQuotaIfCapacity",
+        "fnb_sales_restriction.consumeQuotaIfReserved",
+        "fnb_sales_restriction.releaseQuotaIfReserved",
+        "fnb_sales_quota_claim.insertClaimIfAbsent",
+        "fnb_sales_quota_claim.advanceClaimIfStatus"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。意图与冻结源行本地提交后调用核心；UNKNOWN查同键；结果绑定再清理此次草稿，后付合同未齐禁用。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-133": {
+      "readTables": [
+        "fnb_order_batch",
+        "fnb_order_line",
+        "fnb_order_component",
+        "fnb_order_modifier",
+        "fnb_core_order_binding",
+        "fnb_core_line_allocation"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "OrderPlacementPort",
+        "PaymentQueryPort"
+      ],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-134": {
+      "readTables": [
+        "fnb_settlement",
+        "fnb_settlement_item",
+        "fnb_charge_intent"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "CashierPort",
+        "PaymentQueryPort"
+      ],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-135": {
+      "readTables": [
+        "fnb_settlement",
+        "fnb_settlement_item",
+        "fnb_charge_intent"
+      ],
+      "writeTables": [
+        "fnb_charge_intent",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "CashierPort",
+        "PaymentQueryPort",
+        "MemberAssetPort"
+      ],
+      "customMethods": [
+        "fnb_charge_intent.insertIntentIfAbsent",
+        "fnb_charge_intent.confirmIntentFromCoreIfStatus"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-136": {
+      "readTables": [
+        "fnb_order_line",
+        "fnb_core_line_allocation",
+        "fnb_return",
+        "fnb_return_item"
+      ],
+      "writeTables": [
+        "fnb_return",
+        "fnb_return_item",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "ApprovalPort"
+      ],
+      "customMethods": [
+        "fnb_return_item.selectActiveReturnQuantityByFoodLine"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。锁来源行后核对有效申请退量再插入；Mapper不按现菜单价算退款。",
+      "baseWriteOverrides": {
+        "fnb_return": [
+          "insert"
+        ],
+        "fnb_return_item": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-137": {
+      "readTables": [
+        "fnb_return",
+        "fnb_return_item"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "AfterSalePort"
+      ],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-138": {
+      "readTables": [
+        "fnb_check",
+        "fnb_order_batch",
+        "fnb_order_line",
+        "fnb_core_line_allocation",
+        "fnb_kitchen_task"
+      ],
+      "writeTables": [],
+      "portConcepts": [
+        "PaymentQueryPort"
+      ],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-139": {
+      "readTables": [
+        "fnb_guest_session"
+      ],
+      "writeTables": [
+        "fnb_guest_session"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "结束本次会话，不取消正式订单。",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-140": {
+      "readTables": [
+        "fnb_check",
+        "fnb_order_batch",
+        "fnb_core_order_binding",
+        "fnb_settlement_item"
+      ],
+      "writeTables": [
+        "fnb_settlement",
+        "fnb_settlement_item",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "CashierPort"
+      ],
+      "customMethods": [
+        "fnb_settlement.insertFrozenScope"
+      ],
+      "transaction": "ORCHESTRATED",
+      "note": "顾客仅获准源行/应收范围；不接受任意核心单号。跨结账/跨根应收独占由核心持有；本地唯一键不等于防双收。",
+      "baseWriteOverrides": {
+        "fnb_settlement_item": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-141": {
+      "readTables": [
+        "fnb_modifier",
+        "fnb_modifier_component"
+      ],
+      "writeTables": [
+        "fnb_modifier",
+        "fnb_modifier_component",
+        "fnb_action_log"
+      ],
+      "portConcepts": [
+        "GoodsQueryPort"
+      ],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "",
+      "baseWriteOverrides": {
+        "fnb_modifier": [
+          "insert"
+        ],
+        "fnb_modifier_component": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-142": {
+      "readTables": [
+        "fnb_menu_channel_binding",
+        "fnb_menu"
+      ],
+      "writeTables": [
+        "fnb_menu_channel_binding",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_WRITE",
+      "note": "已实现草稿和授权启停；Keeta仅规划，缺真实提供方ACTIVE拒绝；公开目录禁止泄漏账号引用",
+      "baseWriteOverrides": {},
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-143": {
+      "readTables": [
+        "fnb_menu_channel_binding",
+        "fnb_menu"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "已实现草稿和授权启停；Keeta仅规划，缺真实提供方ACTIVE拒绝；公开目录禁止泄漏账号引用",
+      "baseWriteOverrides": {},
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-144": {
+      "readTables": [
+        "fnb_menu_channel_binding",
+        "fnb_menu"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "已实现草稿和授权启停；Keeta仅规划，缺真实提供方ACTIVE拒绝；公开目录禁止泄漏账号引用",
+      "baseWriteOverrides": {},
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-145": {
+      "readTables": [
+        "fnb_menu_channel_binding",
+        "fnb_menu"
+      ],
+      "writeTables": [
+        "fnb_menu_channel_binding",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_WRITE",
+      "note": "已实现草稿和授权启停；Keeta仅规划，缺真实提供方ACTIVE拒绝；公开目录禁止泄漏账号引用",
+      "baseWriteOverrides": {},
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-146": {
+      "readTables": [
+        "fnb_catalog_sync_job",
+        "fnb_catalog_sync_item",
+        "fnb_menu_channel_binding",
+        "fnb_config_revision"
+      ],
+      "writeTables": [
+        "fnb_catalog_sync_job",
+        "fnb_catalog_sync_item",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_WRITE",
+      "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-147": {
+      "readTables": [
+        "fnb_catalog_sync_job",
+        "fnb_catalog_sync_item",
+        "fnb_menu_channel_binding",
+        "fnb_config_revision"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-148": {
+      "readTables": [
+        "fnb_recipe",
+        "fnb_recipe_line",
+        "fnb_recipe_adjustment"
+      ],
+      "writeTables": [
+        "fnb_recipe",
+        "fnb_recipe_line",
+        "fnb_recipe_adjustment",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_WRITE",
+      "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-149": {
+      "readTables": [
+        "fnb_recipe",
+        "fnb_recipe_line",
+        "fnb_recipe_adjustment"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-150": {
+      "readTables": [
+        "fnb_recipe",
+        "fnb_recipe_line",
+        "fnb_recipe_adjustment"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-151": {
+      "readTables": [
+        "fnb_recipe",
+        "fnb_recipe_line",
+        "fnb_recipe_adjustment"
+      ],
+      "writeTables": [
+        "fnb_recipe",
+        "fnb_recipe_line",
+        "fnb_recipe_adjustment",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_WRITE",
+      "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-152": {
+      "readTables": [
+        "fnb_recipe",
+        "fnb_recipe_line",
+        "fnb_recipe_adjustment"
+      ],
+      "writeTables": [
+        "fnb_recipe",
+        "fnb_recipe_line",
+        "fnb_recipe_adjustment",
+        "fnb_config_revision",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_WRITE",
+      "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-153": {
+      "readTables": [
+        "fnb_production_consumption",
+        "fnb_production_consumption_line"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-154": {
+      "readTables": [
+        "fnb_production_consumption",
+        "fnb_production_consumption_line"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-155": {
+      "readTables": [
+        "fnb_sku_station"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "ALL-04实际只读当前关系；空路由保留整体关系计数，主体门店隔离",
+      "baseWriteOverrides": {},
+      "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    }
+  },
+  "scopeRule": "Controller沿既有身份/门店/工单/设备会话鉴权；Service参数的entity/当前门店/操作者均为可信解析值，不能从Body自报；Mapper只接收服务端构建的Wrapper/实体。",
+  "internalServiceMethods": [
+    {
+      "class": "CheckService",
+      "name": "recoverTableOperation",
+      "signature": "OperationVO recoverTableOperation(String entityNo, String storeNo, String operationNo)",
+      "purpose": "查询原Resource操作，短事务应用占用；失败保留恢复状态"
+    },
+    {
+      "class": "ConfigRevisionService",
+      "name": "publishRevision",
+      "signature": "ConfigRevisionVO publishRevision(String entityNo, String configKind, String configNo, long expectedVersion, java.util.Map<String,Object> validatedDefinition, java.time.Instant effectiveAt, String idempotencyKey)",
+      "purpose": "输入是所属资源Service完成校验的定义，冻结不可变内容及依赖版本"
+    },
+    {
+      "class": "SalesRestrictionService",
+      "name": "reserveBatchQuota",
+      "signature": "java.util.List<String> reserveBatchQuota(String entityNo, String storeNo, String batchNo, java.util.Map<String,java.math.BigDecimal> restrictionQuantities)",
+      "purpose": "按批次/限制唯一键预占；额度数量来自已验证源行"
+    },
+    {
+      "class": "SalesRestrictionService",
+      "name": "consumeBatchQuota",
+      "signature": "void consumeBatchQuota(String entityNo, String storeNo, String batchNo)",
+      "purpose": "仅已受理批次从RESERVED一次转CONSUMED"
+    },
+    {
+      "class": "SalesRestrictionService",
+      "name": "releaseBatchQuota",
+      "signature": "void releaseBatchQuota(String entityNo, String storeNo, String batchNo)",
+      "purpose": "核心确认失败/取消才释放，UNKNOWN保留"
+    },
+    {
+      "class": "DiningOrderService",
+      "name": "recoverPlacement",
+      "signature": "BatchDetailVO recoverPlacement(String entityNo, String storeNo, String batchNo)",
+      "purpose": "从冻结请求查原键结果，不能另造请求"
+    },
+    {
+      "class": "KitchenTaskService",
+      "name": "dispatchAcceptedBatch",
+      "signature": "java.util.List<String> dispatchAcceptedBatch(String entityNo, String storeNo, String batchNo, String acceptedEventNo)",
+      "purpose": "受理合法后按冻结路由派工；无组件任务也可去重"
+    },
+    {
+      "class": "DiningCheckoutService",
+      "name": "recoverChargeIntent",
+      "signature": "OperationVO recoverChargeIntent(String entityNo, String storeNo, String intentNo)",
+      "purpose": "查询核心资金状态再条件回写，不换键重复收费"
+    },
+    {
+      "class": "DiningReturnService",
+      "name": "recoverReturn",
+      "signature": "OperationVO recoverReturn(String entityNo, String storeNo, String returnNo)",
+      "purpose": "财务与厨房独立恢复"
+    },
+    {
+      "class": "DiningAuditService",
+      "name": "appendAction",
+      "signature": "void appendAction(String entityNo, String storeNo, String actorNo, String objectType, String objectNo, String action, String reason)",
+      "purpose": "真实操作者与敏感原因，接共享审计，不包含口令令牌"
+    },
+    {
+      "class": "RoomChargeService",
+      "name": "recoverRoomCharge",
+      "signature": "OperationVO recoverRoomCharge(String entityNo, String storeNo, String intentNo)",
+      "purpose": "查原PMS/应收凭据，UNKNOWN不标结清"
+    }
+  ],
+  "auxiliaryMethods": {
+    "TableOccupancyPolicy": [
+      "void validateCapacity(FnbTable table, java.util.List<FnbTableOccupancy> activeOccupancies, int requestedSeats)"
+    ],
+    "FoodCheckStateMachine": [
+      "void assertTransition(String from, String to)"
+    ],
+    "TableViewAssembler": [
+      "TableVO toTableVO(FnbTable table, java.util.List<FnbTableOccupancy> authorizedOccupancies)"
+    ],
+    "MenuAvailabilityPolicy": [
+      "boolean isAvailable(FnbMenu menu, java.time.Instant at, String orderSource, String fulfillment)"
+    ],
+    "SelectionRulePolicy": [
+      "void validate(SelectionRules rules, java.util.List<SelectionReq> selections)"
+    ],
+    "ConfigPublicationPolicy": [
+      "void validateSnapshot(String configKind, java.util.Map<String,Object> validatedDefinition)"
+    ],
+    "SalesQuotaPolicy": [
+      "void validateRemaining(FnbSalesRestriction restriction, java.math.BigDecimal requestedQty)"
+    ],
+    "OrderPlacementPolicy": [
+      "void validateSubmission(CartVO cart, QuoteVO quote, java.util.List<OrderLineReq> selectedLines)"
+    ],
+    "OrderBatchStateMachine": [
+      "void assertTransition(String from, String to)"
+    ],
+    "OrderLineAllocationPolicy": [
+      "void validateConservation(java.util.List<FnbOrderLine> sourceLines, java.util.List<FnbCoreLineAllocation> verifiedAllocations)"
+    ],
+    "CoreSubOrderPaidConsumer": [
+      "void onSubOrderPaid(String eventNo, String storeOrderNo, java.time.Instant occurredAt)"
+    ],
+    "KitchenTaskPolicy": [
+      "void validateAction(FnbKitchenTask task, String action, java.math.BigDecimal qty)"
+    ],
+    "KitchenDispatchConsumer": [
+      "void onBatchAccepted(String eventNo, String batchNo, long batchVersion)"
+    ],
+    "SettlementPolicy": [
+      "void validateFinalization(FnbSettlement settlement, java.util.List<FnbChargeIntent> intents, boolean coreConfirmedSettled)"
+    ],
+    "FoodReturnPolicy": [
+      "void validateQuantity(java.math.BigDecimal originalQty, java.math.BigDecimal activeReturnQty, java.math.BigDecimal requestedQty)"
+    ],
+    "FoodPrintDocumentAssembler": [
+      "java.util.Map<String,Object> freezeDocument(String scene, java.util.Map<String,Object> verifiedSnapshot, long contentVersion)"
+    ],
+    "CashDrawerPolicy": [
+      "void validateCount(FnbCashShift shift, long countedMinor, long expectedMinor)"
+    ],
+    "BusinessClosePolicy": [
+      "void validateSignature(FnbCloseRun close, String expectedHash, String expectedWatermark)"
+    ],
+    "DiningEntitlementPolicy": [
+      "void validateOrdering(FnbDiningEntitlement entitlement, java.time.Instant at)"
+    ],
+    "CustodyQuantityPolicy": [
+      "void validateWithdrawal(FnbBottleCustody custody, java.math.BigDecimal qty)"
+    ],
+    "EdgeWriterLeasePolicy": [
+      "void validateWriter(FnbEdgeLease lease, String edgeNo, long epoch, java.time.Instant now)"
+    ]
+  },
+  "bootstrapApis": {
+    "FOOD-API-023": "PUBLIC_STORE_DIRECTORY",
+    "FOOD-API-026": "PUBLIC_TABLE_TOKEN"
+  }
+}

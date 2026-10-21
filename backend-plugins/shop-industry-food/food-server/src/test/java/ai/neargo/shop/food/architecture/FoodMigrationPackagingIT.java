@@ -38,6 +38,10 @@ class FoodMigrationPackagingIT {
                         "db/industry/food/V4__recipe_draft_tables.sql") != null);
                 assertEquals(module.equals("food-core"), jar.getEntry(
                         "db/industry/food/V5__recipe_adjustment_table.sql") != null);
+                assertEquals(module.equals("food-core"), jar.getEntry(
+                        "db/industry/food/V6__menu_composition.sql") != null);
+                assertEquals(module.equals("food-core"), jar.getEntry(
+                        "db/industry/food/V7__menu_context_channels.sql") != null);
                 var entries = jar.stream().filter(entry -> isV1(entry.getName())).toList();
                 assertEquals(module.equals("food-core") ? 1 : 0, entries.size(), module);
                 if (!entries.isEmpty()) {
@@ -56,6 +60,8 @@ class FoodMigrationPackagingIT {
         int v3 = 0;
         int v4 = 0;
         int v5 = 0;
+        int v6 = 0;
+        int v7 = 0;
         try (var server = new ZipFile(artifact("food-server").toFile())) {
             for (var entry : server.stream().toList()) {
                 assertFalse(isV1(entry.getName()), "server must not copy V1 into its own classes");
@@ -77,6 +83,14 @@ class FoodMigrationPackagingIT {
                             v5++;
                             assertTrue(entry.getName().startsWith("BOOT-INF/lib/food-core-"));
                         }
+                        if (resource.getName().equals("db/industry/food/V6__menu_composition.sql")) {
+                            v6++;
+                            assertTrue(entry.getName().startsWith("BOOT-INF/lib/food-core-"));
+                        }
+                        if (resource.getName().equals("db/industry/food/V7__menu_context_channels.sql")) {
+                            v7++;
+                            assertTrue(entry.getName().startsWith("BOOT-INF/lib/food-core-"));
+                        }
                         if (isV1(resource.getName())) {
                             count++;
                             assertTrue(entry.getName().startsWith("BOOT-INF/lib/food-core-"));
@@ -87,6 +101,8 @@ class FoodMigrationPackagingIT {
                 }
             }
         }
+        assertEquals(1, v7, "one V7 through food-core");
+        assertEquals(1, v6, "one V6 through food-core");
         assertEquals(1, v5, "one V5 through food-core");
         assertEquals(1, v3, "one V3 through food-core");
         assertEquals(1, v4, "one V4 through food-core");

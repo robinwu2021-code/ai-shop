@@ -11,13 +11,25 @@ import ai.neargo.shop.food.dto.CreateMenuReq;
 import ai.neargo.shop.food.dto.ListMenusQuery;
 import ai.neargo.shop.food.dto.UpdateMenuReq;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.MenuContextMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.MenuChannelBindingMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.MenuMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.MenuItemOptionGroupMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.MenuItemSkuMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.MenuItemMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.MenuCategoryMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.MenuScheduleMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.MenuExceptionMapper;
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.common.data.scope.DataScopeSpec;
+import ai.neargo.shop.auth.ScopeDim;
 import ai.neargo.shop.food.config.FoodDataScopeRegistration;
 import ai.neargo.shop.food.mapper.FoodMappers.MenuStoreMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
 import ai.neargo.shop.food.service.MenuService;
+import ai.neargo.shop.food.policy.MenuCompositionSource;
+import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import ai.neargo.shop.food.service.impl.MenuServiceImpl;
 import ai.neargo.shop.idem.IdempotencyService;
 import java.io.IOException;
@@ -35,6 +47,7 @@ import org.junit.jupiter.api.Test;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
 
 /** Exercises actual working rows, native V1 shape, original idempotency and atomic outbox. */
@@ -53,7 +66,8 @@ class MenuServiceTest extends FoodWriteGuardFixture {
                     String ddl = new ClassPathResource("db/industry/food/V1__food_business_tables.sql")
                             .getContentAsString(StandardCharsets.UTF_8);
                     for (String table : List.of("fnb_menu", "fnb_menu_store",
-                            "fnb_menu_schedule", "fnb_menu_exception")) {
+                            "fnb_menu_schedule", "fnb_menu_exception", "fnb_menu_category", "fnb_menu_item",
+                                    "fnb_menu_item_sku")) {
                         var match = Pattern.compile("CREATE TABLE `" + table + "` \\(.*?;", Pattern.DOTALL)
                                 .matcher(ddl);
                         assertThat(match.find()).isTrue();
@@ -75,16 +89,50 @@ class MenuServiceTest extends FoodWriteGuardFixture {
                         + "menu_no VARCHAR(32),local_date DATE,mode VARCHAR(16),start_time TIME,end_time TIME,"
                         + "end_day_offset INT,UNIQUE(menu_no,local_date))");
             }
+            if ("true".equals(System.getenv("FOOD_TEST_DISPOSABLE"))) {
+                new ResourceDatabasePopulator(new ClassPathResource(
+                        "db/industry/food/V6__menu_composition.sql")).execute(f.source());
+            } else {
+                f.sql().execute("CREATE TABLE fnb_menu_category (" + common + "menu_no VARCHAR(32),"
+                        + "category_no VARCHAR(32) UNIQUE,name VARCHAR(64),sort_no INT)");
+                f.sql().execute("CREATE TABLE fnb_menu_item (" + common + "menu_item_no VARCHAR(32) UNIQUE,"
+                        + "category_no VARCHAR(32),goods_no VARCHAR(32),sort_no INT,enabled BOOLEAN,"
+                        + "sku_scope VARCHAR(16),option_mode VARCHAR(16),UNIQUE(category_no,goods_no))");
+                f.sql().execute("CREATE TABLE fnb_menu_item_sku (" + common + "menu_item_no VARCHAR(32),"
+                        + "sku_no VARCHAR(32),selection_mode VARCHAR(16),recipe_no VARCHAR("
+                                + "32),UNIQUE(menu_item_no,sku_no))");
+                f.sql().execute("CREATE TABLE fnb_menu_item_option_group (" + common + "menu_item_no VARCHAR(32),"
+                        + "group_no VARCHAR(32),sort_no INT,UNIQUE(menu_item_no,group_no))");
+            }
+            f.sql().execute("CREATE TABLE fnb_menu_context (" + common + "context_no VARCHAR(32),menu_no VARCHAR(32),"
+                    + "order_source VARCHAR(24),fulfillment VARCHAR(24),channel_binding_no VARCHAR(32),"
+                    + "channel_scope_key VARCHAR(32),price_policy_ref VARCHAR(64))");
+            f.sql().execute("CREATE TABLE fnb_menu_channel_binding (" + common + "binding_no VARCHAR(32),"
+                    + "menu_no VARCHAR(32),store_no VARCHAR(32),provider VARCHAR(32),channel_account_ref VARCHAR(64),"
+                    + "external_store_ref VARCHAR(64),status VARCHAR(16))");
             f.sql().update("INSERT INTO fnb_store_policy(entity_no,policy_no,store_no,timezone,effective_from) "
                     + "VALUES('E','P1','A','Asia/Shanghai','2026-01-01 00:00:00')");
             var template = c.getBean(SqlSessionTemplate.class);
             for (var type : List.of(MenuMapper.class, MenuStoreMapper.class, StorePolicyMapper.class,
-                    MenuScheduleMapper.class, MenuExceptionMapper.class)) {
+                    MenuScheduleMapper.class, MenuExceptionMapper.class, MenuContextMapper.class,
+                    MenuChannelBindingMapper.class, MenuCategoryMapper.class,
+                    MenuItemMapper.class, MenuItemSkuMapper.class, MenuItemOptionGroupMapper.class)) {
                 if (!template.getConfiguration().hasMapper(type)) template.getConfiguration().addMapper(type);
             }
             var outbox = c.getBean("foodOutboxPublisher", OutboxPublisher.class);
             c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_MENU_CHANGED"));
             var fail = new AtomicBoolean();
+            GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
+                @Override public GoodsFact getGoods(String entity, String store, String number) {
+                    assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+                    return new GoodsFact(number, entity, store, "茶", null, true, "APPROVED", 0,
+                            List.of(new SkuFact(number.equals("G2") ? "S3" : "S1", "中", 0),
+                                    new SkuFact("S2", "大", 0)));
+                }
+                @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> ids) {
+                    throw new UnsupportedOperationException();
+                }
+            };
             var service = new MenuServiceImpl(template.getMapper(MenuMapper.class),
                     template.getMapper(MenuStoreMapper.class), template.getMapper(StorePolicyMapper.class),
                     c.getBean(ActionLogMapper.class), c.getBean(IdempotencyService.class), (event, options) -> {
@@ -93,10 +141,32 @@ class MenuServiceTest extends FoodWriteGuardFixture {
                         return receipt;
                     }, c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class),
                     Clock.fixed(Instant.parse("2026-10-21T12:00:00Z"), ZoneOffset.UTC),
-                    template.getMapper(MenuScheduleMapper.class), template.getMapper(MenuExceptionMapper.class));
+                    template.getMapper(MenuScheduleMapper.class), template.getMapper(MenuExceptionMapper.class),
+                    new MenuCompositionSource(template.getMapper(MenuCategoryMapper.class),
+                            template.getMapper(MenuItemMapper.class), template.getMapper(MenuItemSkuMapper.class),
+                            template.getMapper(MenuItemOptionGroupMapper.class), catalog),
+                    template.getMapper(MenuContextMapper.class), template.getMapper(MenuChannelBindingMapper.class),
+                    () -> null);
             action.accept(new Menus(f, service, fail, template));
         });
     }
+    @Test void restrictedScopePaginatesBoundMenusWithTheSameFilteredTotal() {
+        run(m -> {
+            for (int n = 0; n < 3; n++) m.service().createMenu("E", "A", "actor", input("餐牌" + n), "menu-" + n);
+            var scoped = DataScopeSpec.of(ScopeDim.MERCHANT, Set.of("E"));
+            DataScopeContext.set(scoped);
+            try {
+                var first = m.service().listMenus("E", "A", new ListMenusQuery(1, 2, "DRAFT", null));
+                var last = m.service().listMenus("E", "A", new ListMenusQuery(2, 2, "DRAFT", null));
+                assertThat(first.total()).isEqualTo(3); assertThat(last.total()).isEqualTo(3);
+                assertThat(first.records()).hasSize(2); assertThat(last.records()).hasSize(1);
+                assertThat(first.records()).doesNotContainAnyElementsOf(last.records());
+                assertThat(m.service().listMenus("E", "B", null).total()).isZero();
+                assertThat(DataScopeContext.current()).isSameAs(scoped);
+            } finally { DataScopeContext.clear(); }
+        });
+    }
+
     static CreateMenuReq input(String name) { return new CreateMenuReq(name, "TIME", "Asia/Shanghai", 10, "MEAL"); }
     static UpdateMenuReq update(long version, String name, String group) {
         return new UpdateMenuReq(name, "EVENT", "Asia/Shanghai", -1, group, version);

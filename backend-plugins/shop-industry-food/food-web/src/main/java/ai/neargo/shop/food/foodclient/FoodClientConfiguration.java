@@ -9,6 +9,14 @@ import ai.neargo.shop.food.service.ModifierService;
 import ai.neargo.shop.food.service.BundleService;
 import ai.neargo.shop.food.service.RecipeService;
 import ai.neargo.shop.food.service.MenuService;
+import ai.neargo.shop.food.spi.CatalogInternalApi;
+import ai.neargo.shop.food.service.CatalogService;
+import ai.neargo.shop.food.spi.MenuChannelBindingInternalApi;
+import ai.neargo.shop.food.service.MenuChannelBindingService;
+import ai.neargo.shop.food.spi.StationInternalApi;
+import ai.neargo.shop.food.spi.SalesRestrictionInternalApi;
+import ai.neargo.shop.food.service.StationService;
+import ai.neargo.shop.food.service.SalesRestrictionService;
 import ai.neargo.shop.food.spi.MenuInternalApi;
 import ai.neargo.shop.food.spi.RecipeInternalApi;
 import ai.neargo.shop.food.spi.BundleInternalApi;
@@ -47,6 +55,28 @@ import org.springframework.context.annotation.Profile;
 @Conditional(PolicyEnabled.class)
 @Profile({"api", "ops"})
 public class FoodClientConfiguration {
+    @Bean
+    @ConditionalOnMissingBean(CatalogService.class)
+    CatalogService remoteCatalogService(InternalHttp http) {
+        return new RemoteCatalogService(http.client(ServiceName.FOOD, CatalogInternalApi.class, Duration.ofSeconds(5)));
+    }
+    @Bean
+    @ConditionalOnMissingBean(MenuChannelBindingService.class)
+    MenuChannelBindingService remoteMenuChannelBindingService(InternalHttp http) {
+        return new RemoteMenuChannelBindingService(http.client(ServiceName.FOOD, MenuChannelBindingInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
+    @Bean
+    @ConditionalOnMissingBean(StationService.class)
+    StationService remoteStationService(InternalHttp http) {
+        return new RemoteStationService(http.client(ServiceName.FOOD, StationInternalApi.class, Duration.ofSeconds(5)));
+    }
+    @Bean
+    @ConditionalOnMissingBean(SalesRestrictionService.class)
+    SalesRestrictionService remoteSalesRestrictionService(InternalHttp http) {
+        return new RemoteSalesRestrictionService(http.client(ServiceName.FOOD, SalesRestrictionInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
     @Bean
     @ConditionalOnMissingBean(ConfigRevisionService.class)
     ConfigRevisionService remoteConfigRevisionService(InternalHttp http) {

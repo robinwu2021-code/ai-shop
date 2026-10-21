@@ -9,7 +9,7 @@ const {instance}=await import(process.env.FOOD_ER_VIZ_MODULE||'@viz-js/viz');con
 const dir=path.join(root,'docs/technical/design');
 const e=x=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const parse=x=>x?x.split(';').map(p=>{const [name,type,...d]=p.split(':');return {name:name.replace(/\?$/,''),type,desc:d.join(':'),required:!name.endsWith('?')}}):[];
-const header=title=>`# ${title}\n\n> 状态：待评审 · ${s.reviewDate||'2026-10-19'} · ${s.databaseInitialization?"V1含73张fnb_业务表；增强目标82张，V4新增2张配方草稿表、V5新增1张调整表、另6张PLANNED；当前迁移版本5；目标API不代表全部交付，prn/rpt保持共享候选":"目标设计，未执行迁移或实现端点"}。\n> 由 \`node scripts/gen-food-system-design.mjs\` 生成，勿手改；真源：[领域数据库API设计源](./schema/food-system-design.json)。生成依赖沿用 @viz-js/viz，可用 FOOD_ER_VIZ_MODULE 指定模块路径。\n> 业务入口：[后端业务模块功能清单](../../requirements/餐饮系统-后端业务模块功能清单.md) · [数据库与API评审对齐](../TDD-餐饮系统-数据库与API评审对齐.md)。按桌台→菜品→订单查阅，A–L仍保留为持久化分域编号。\n> 项目约束：[底座兼容对齐](./餐饮系统-项目底座兼容对齐.md)，账号、门店、营业时间、公共实体及协议冲突时优先按该对齐说明修订。
+const header=title=>`# ${title}\n\n> 状态：待评审 · ${s.reviewDate||'2026-10-19'} · ${s.databaseInitialization?"V1含73张fnb_业务表；增强目标82张，V4新增2张配方草稿表、V5新增1张调整表、V6新增1张餐牌选配表、V7新增1张渠道草稿表、另4张PLANNED；可用迁移版本7，历史经营库执行证据仍V1/73；目标API不代表全部交付，prn/rpt保持共享候选":"目标设计，未执行迁移或实现端点"}。\n> 由 \`node scripts/gen-food-system-design.mjs\` 生成，勿手改；真源：[领域数据库API设计源](./schema/food-system-design.json)。生成依赖沿用 @viz-js/viz，可用 FOOD_ER_VIZ_MODULE 指定模块路径。\n> 业务入口：[后端业务模块功能清单](../../requirements/餐饮系统-后端业务模块功能清单.md) · [数据库与API评审对齐](../TDD-餐饮系统-数据库与API评审对齐.md)。按桌台→菜品→订单查阅，A–L仍保留为持久化分域编号。\n> 项目约束：[底座兼容对齐](./餐饮系统-项目底座兼容对齐.md)，账号、门店、营业时间、公共实体及协议冲突时优先按该对齐说明修订。
 > 产品依据：[完整需求文档](../../requirements/餐饮系统-完整需求文档.md) · [109项需求矩阵](../../requirements/餐饮系统-需求矩阵.md)。\n\n`;
 const statusNames={DEFINED:'目标已定义',CORE_CONTRACT:'依赖共享/核心合同',DESIGN_GAP:'尚缺专项设计'};
 const counts=Object.fromEntries(Object.keys(statusNames).map(k=>[k,s.requirementAlignment.filter(r=>r.status===k).length]));
@@ -59,7 +59,7 @@ apiDoc+=`\n## 八、逐需求与业务模块对齐\n\n目标已定义仅表示�
 for(const m of s.businessModules){apiDoc+=`\n### ${m.id} ${m.name}\n\n| 需求 | 对齐状态 | 表/权威事实 | API编号 | 结论与残余工作 |\n|---|---|---|---|---|\n`;for(const r of s.requirementAlignment.filter(r=>r.moduleId===m.id))apiDoc+=`| ${r.requirementId} | ${statusNames[r.status]} | ${r.tables.map(t=>'`'+t+'`').join('、')||'共享服务/运行合同'} | ${r.apiIds.join('、')||'待专项合同，不假造端点'} | ${r.note} |\n`;}
 
 if(s.catalogEnhancement){
- apiDoc+='\n## 九、增强跨域合同（设计定义，未实现）\n\n字段类型见上方DTO字典。主体、渠道由可信服务身份解析；终端不可自报价格策略授权。\n\n| 权威 | 输入DTO | 输出DTO | 实现状态 | 失败与恢复 |\n|---|---|---|---|---|\n';
+ apiDoc+='\n## 九、增强跨域合同（目标交易合同与已实现只读管理分开验收）\n\n字段类型见上方DTO字典。主体、渠道由可信服务身份解析；终端不可自报价格策略授权。\n\n| 权威 | 输入DTO | 输出DTO | 实现状态 | 失败与恢复 |\n|---|---|---|---|---|\n';
  for(const [name,c] of Object.entries(s.catalogEnhancement.contracts))apiDoc+=`| ${name} / ${c.authority} | ${c.inputDto} | ${c.outputDto} | ${c.implementation} | ${c.errors.join('/')}；${c.queryRecovery} |\n`;
  apiDoc+='\nKeeta：首批规划渠道，按用户决定暂不接入；不注册真实适配器或同步任务。真实报价和库存合同未验收前，增强交易保持关闭。\n';
 }

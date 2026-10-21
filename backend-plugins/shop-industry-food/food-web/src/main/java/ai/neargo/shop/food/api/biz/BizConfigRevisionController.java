@@ -12,6 +12,7 @@ import ai.neargo.shop.food.config.ConditionalOnFoodWebEnabled;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration.PolicyEnabled;
 import ai.neargo.shop.food.dto.ConfigRevisionVO;
 import ai.neargo.shop.food.dto.ListConfigRevisionsQuery;
+import ai.neargo.shop.food.dto.RepublishConfigReq;
 import ai.neargo.shop.food.dto.PublishConfigReq;
 import ai.neargo.shop.food.dto.PublishConfigResultVO;
 import ai.neargo.shop.food.service.ConfigRevisionService;
@@ -52,6 +53,20 @@ public class BizConfigRevisionController {
         this.scope = scope;
     }
 
+    /** Restores immutable historical contents as another publication, preserving every existing revision. */
+    @PostMapping("/biz/x/food/config-revisions/{revisionNo}:republish")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    public PublishConfigResultVO republishRevision(
+            @PathVariable("revisionNo") @NotBlank @Size(max=32) String revisionNo,
+            @Valid @RequestBody RepublishConfigReq req,
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) String key, HttpServletRequest request) {
+        var context = BizContext.current();
+        if (context.currentStoreNo() == null) throw BizException.of(ErrorCode.BAD_REQUEST);
+        requireStore(context.currentStoreNo(), request); queryFields(request, Set.of());
+        return service.republishRevision(context.merchantNo(), context.currentStoreNo(), revisionNo,
+                SecurityUtils.currentUserNo(), req, key);
+    }
+
     /** Recipe ownership remains a store fact even though the public path omits the store number. */
     @PostMapping("/biz/x/food/recipes/{recipeNo}:publish")
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
@@ -78,6 +93,34 @@ public class BizConfigRevisionController {
         queryFields(request, Set.of());
         var context = requireStore(storeNo, request);
         return service.publishBundle(context.merchantNo(), storeNo, configNo,
+                SecurityUtils.currentUserNo(), req, key);
+    }
+
+    /** Publishes a complete menu for the authorized store through the original configuration revision owner. */
+    @PostMapping("/biz/x/food/stores/{storeNo}/menus/{configNo}:publish")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    public PublishConfigResultVO publishMenu(
+            @PathVariable("storeNo") @NotBlank @Size(max=32) String storeNo,
+            @PathVariable("configNo") @NotBlank @Size(max=32) String configNo,
+            @Valid @RequestBody PublishConfigReq req,
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) String key, HttpServletRequest request) {
+        queryFields(request, Set.of());
+        var context = requireStore(storeNo, request);
+        return service.publishMenu(context.merchantNo(), storeNo, configNo,
+                SecurityUtils.currentUserNo(), req, key);
+    }
+
+    /** Publishes a complete station for the authorized store through the original configuration revision owner. */
+    @PostMapping("/biz/x/food/stores/{storeNo}/stations/{configNo}:publish")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    public PublishConfigResultVO publishStation(
+            @PathVariable("storeNo") @NotBlank @Size(max=32) String storeNo,
+            @PathVariable("configNo") @NotBlank @Size(max=32) String configNo,
+            @Valid @RequestBody PublishConfigReq req,
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) String key, HttpServletRequest request) {
+        queryFields(request, Set.of());
+        var context = requireStore(storeNo, request);
+        return service.publishStation(context.merchantNo(), storeNo, configNo,
                 SecurityUtils.currentUserNo(), req, key);
     }
 

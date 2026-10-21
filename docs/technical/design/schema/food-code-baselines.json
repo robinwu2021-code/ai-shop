@@ -1,0 +1,3415 @@
+{
+  "committedBaseline": {
+    "commit": "8d093b207",
+    "controllers": [
+      "BizStoreOperationPolicyController",
+      "BizServiceCalendarController",
+      "BizMenuController",
+      "BizOptionGroupController",
+      "BizBundleController",
+      "BizStationController",
+      "BizDishController",
+      "BizModifierController",
+      "BizKitchenRouteController",
+      "BizSalesRestrictionController",
+      "MpMenuCatalogController",
+      "BizTableController",
+      "MpDiningSessionController",
+      "BizReservationController",
+      "BizCheckController",
+      "BizCheckCartController",
+      "BizDiningQuoteController",
+      "BizOrderBatchController",
+      "BizKitchenTaskController",
+      "BizCourseController",
+      "BizDiningCheckoutController",
+      "BizDiningAdjustmentController",
+      "BizDiningReturnController",
+      "BizPrintJobController",
+      "BizCashShiftController",
+      "BizCashEntryController",
+      "BizBusinessCloseController",
+      "BizCloseExceptionController",
+      "BizDiningReportController",
+      "BizDiningReportExportController",
+      "OpsDiningReportRebuildController",
+      "OpsDiningCapabilityController",
+      "BizExternalMappingController",
+      "OpsIntegrationExceptionController",
+      "InternalSyncBatchController",
+      "BizDiningEntitlementController",
+      "BizBanquetPlanController",
+      "BizBottleCustodyController",
+      "BizRoomChargeController"
+    ],
+    "methods": [
+      {
+        "apiId": "FOOD-API-001",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizStoreOperationPolicyController",
+        "controller": "BizStoreOperationPolicyController",
+        "method": "getPolicy",
+        "serviceClass": "ai.neargo.shop.food.service.StoreOperationService",
+        "request": "GetPolicyQuery",
+        "response": "StoreOperationPolicyVO"
+      },
+      {
+        "apiId": "FOOD-API-002",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizStoreOperationPolicyController",
+        "controller": "BizStoreOperationPolicyController",
+        "method": "createPolicy",
+        "serviceClass": "ai.neargo.shop.food.service.StoreOperationService",
+        "request": "CreatePolicyReq",
+        "response": "StoreOperationPolicyVO"
+      },
+      {
+        "apiId": "FOOD-API-003",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizServiceCalendarController",
+        "controller": "BizServiceCalendarController",
+        "method": "saveCalendar",
+        "serviceClass": "ai.neargo.shop.food.service.StoreOperationService",
+        "request": "SaveCalendarReq",
+        "response": "ServiceCalendarVO"
+      },
+      {
+        "apiId": "FOOD-API-004",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizMenuController",
+        "controller": "BizMenuController",
+        "method": "createMenu",
+        "serviceClass": "ai.neargo.shop.food.service.MenuService",
+        "request": "CreateMenuReq",
+        "response": "MenuVO"
+      },
+      {
+        "apiId": "FOOD-API-005",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizMenuController",
+        "controller": "BizMenuController",
+        "method": "getMenu",
+        "serviceClass": "ai.neargo.shop.food.service.MenuService",
+        "request": null,
+        "response": "MenuVO"
+      },
+      {
+        "apiId": "FOOD-API-006",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizMenuController",
+        "controller": "BizMenuController",
+        "method": "PublishMenu",
+        "serviceClass": "ai.neargo.shop.food.service.MenuService",
+        "request": "PublishMenuReq",
+        "response": "MenuVO"
+      },
+      {
+        "apiId": "FOOD-API-007",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOptionGroupController",
+        "controller": "BizOptionGroupController",
+        "method": "createOptionGroup",
+        "serviceClass": "ai.neargo.shop.food.service.OptionGroupService",
+        "request": "CreateOptionGroupReq",
+        "response": "OptionGroupVO"
+      },
+      {
+        "apiId": "FOOD-API-008",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOptionGroupController",
+        "controller": "BizOptionGroupController",
+        "method": "getOptionGroup",
+        "serviceClass": "ai.neargo.shop.food.service.OptionGroupService",
+        "request": null,
+        "response": "OptionGroupVO"
+      },
+      {
+        "apiId": "FOOD-API-009",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOptionGroupController",
+        "controller": "BizOptionGroupController",
+        "method": "PublishOptionGroup",
+        "serviceClass": "ai.neargo.shop.food.service.OptionGroupService",
+        "request": "PublishOptionGroupReq",
+        "response": "OptionGroupVO"
+      },
+      {
+        "apiId": "FOOD-API-010",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBundleController",
+        "controller": "BizBundleController",
+        "method": "createBundle",
+        "serviceClass": "ai.neargo.shop.food.service.BundleService",
+        "request": "CreateBundleReq",
+        "response": "BundleVO"
+      },
+      {
+        "apiId": "FOOD-API-011",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBundleController",
+        "controller": "BizBundleController",
+        "method": "getBundle",
+        "serviceClass": "ai.neargo.shop.food.service.BundleService",
+        "request": null,
+        "response": "BundleVO"
+      },
+      {
+        "apiId": "FOOD-API-012",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBundleController",
+        "controller": "BizBundleController",
+        "method": "PublishBundle",
+        "serviceClass": "ai.neargo.shop.food.service.BundleService",
+        "request": "PublishBundleReq",
+        "response": "BundleVO"
+      },
+      {
+        "apiId": "FOOD-API-013",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizStationController",
+        "controller": "BizStationController",
+        "method": "createStation",
+        "serviceClass": "ai.neargo.shop.food.service.StationService",
+        "request": "CreateStationReq",
+        "response": "StationVO"
+      },
+      {
+        "apiId": "FOOD-API-014",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizStationController",
+        "controller": "BizStationController",
+        "method": "getStation",
+        "serviceClass": "ai.neargo.shop.food.service.StationService",
+        "request": null,
+        "response": "StationVO"
+      },
+      {
+        "apiId": "FOOD-API-015",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizStationController",
+        "controller": "BizStationController",
+        "method": "PublishStation",
+        "serviceClass": "ai.neargo.shop.food.service.StationService",
+        "request": "PublishStationReq",
+        "response": "StationVO"
+      },
+      {
+        "apiId": "FOOD-API-016",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDishController",
+        "controller": "BizDishController",
+        "method": "saveDishe",
+        "serviceClass": "ai.neargo.shop.food.service.DishService",
+        "request": "SaveDisheReq",
+        "response": "DishVO"
+      },
+      {
+        "apiId": "FOOD-API-017",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizMenuController",
+        "controller": "BizMenuController",
+        "method": "saveMenuDefinition",
+        "serviceClass": "ai.neargo.shop.food.service.MenuService",
+        "request": "SaveMenuDefinitionReq",
+        "response": "MenuVO"
+      },
+      {
+        "apiId": "FOOD-API-018",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBundleController",
+        "controller": "BizBundleController",
+        "method": "saveBundleDefinition",
+        "serviceClass": "ai.neargo.shop.food.service.BundleService",
+        "request": "SaveBundleDefinitionReq",
+        "response": "BundleVO"
+      },
+      {
+        "apiId": "FOOD-API-019",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOptionGroupController",
+        "controller": "BizOptionGroupController",
+        "method": "saveItem",
+        "serviceClass": "ai.neargo.shop.food.service.OptionGroupService",
+        "request": "SaveItemReq",
+        "response": "OptionGroupVO"
+      },
+      {
+        "apiId": "FOOD-API-020",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizModifierController",
+        "controller": "BizModifierController",
+        "method": "saveModifier",
+        "serviceClass": "ai.neargo.shop.food.service.ModifierService",
+        "request": "SaveModifierReq",
+        "response": "ModifierVO"
+      },
+      {
+        "apiId": "FOOD-API-021",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenRouteController",
+        "controller": "BizKitchenRouteController",
+        "method": "saveSkuRoute",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenRouteService",
+        "request": "SaveSkuRouteReq",
+        "response": "KitchenRouteVO"
+      },
+      {
+        "apiId": "FOOD-API-022",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizSalesRestrictionController",
+        "controller": "BizSalesRestrictionController",
+        "method": "createSalesRestriction",
+        "serviceClass": "ai.neargo.shop.food.service.SalesRestrictionService",
+        "request": "CreateSalesRestrictionReq",
+        "response": "SalesRestrictionVO"
+      },
+      {
+        "apiId": "FOOD-API-023",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpMenuCatalogController",
+        "controller": "MpMenuCatalogController",
+        "method": "getCatalog",
+        "serviceClass": "ai.neargo.shop.food.service.MenuService",
+        "request": "GetCatalogQuery",
+        "response": "MenuCatalogVO"
+      },
+      {
+        "apiId": "FOOD-API-024",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizTableController",
+        "controller": "BizTableController",
+        "method": "createTable",
+        "serviceClass": "ai.neargo.shop.food.service.TableService",
+        "request": "CreateTableReq",
+        "response": "TableVO"
+      },
+      {
+        "apiId": "FOOD-API-025",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizTableController",
+        "controller": "BizTableController",
+        "method": "RotateTokenTable",
+        "serviceClass": "ai.neargo.shop.food.service.TableService",
+        "request": "RotateTokenTableReq",
+        "response": "TableVO"
+      },
+      {
+        "apiId": "FOOD-API-026",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpDiningSessionController",
+        "controller": "MpDiningSessionController",
+        "method": "createSession",
+        "serviceClass": "ai.neargo.shop.food.service.DiningSessionService",
+        "request": "CreateSessionReq",
+        "response": "DiningSessionVO"
+      },
+      {
+        "apiId": "FOOD-API-027",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+        "controller": "BizReservationController",
+        "method": "createReservation",
+        "serviceClass": "ai.neargo.shop.food.service.ReservationService",
+        "request": "CreateReservationReq",
+        "response": "ReservationVO"
+      },
+      {
+        "apiId": "FOOD-API-028",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+        "controller": "BizReservationController",
+        "method": "CancelReservation",
+        "serviceClass": "ai.neargo.shop.food.service.ReservationService",
+        "request": "CancelReservationReq",
+        "response": "ReservationVO"
+      },
+      {
+        "apiId": "FOOD-API-029",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+        "controller": "BizReservationController",
+        "method": "NoShowReservation",
+        "serviceClass": "ai.neargo.shop.food.service.ReservationService",
+        "request": "NoShowReservationReq",
+        "response": "ReservationVO"
+      },
+      {
+        "apiId": "FOOD-API-030",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+        "controller": "BizReservationController",
+        "method": "ArriveReservation",
+        "serviceClass": "ai.neargo.shop.food.service.ReservationService",
+        "request": "ArriveReservationReq",
+        "response": "ReservationVO"
+      },
+      {
+        "apiId": "FOOD-API-031",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckController",
+        "controller": "BizCheckController",
+        "method": "openCheck",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": "OpenCheckReq",
+        "response": "CheckVO"
+      },
+      {
+        "apiId": "FOOD-API-032",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckController",
+        "controller": "BizCheckController",
+        "method": "getCheck",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": "GetCheckQuery",
+        "response": "CheckVO"
+      },
+      {
+        "apiId": "FOOD-API-033",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckController",
+        "controller": "BizCheckController",
+        "method": "TransferCheck",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": "TransferCheckReq",
+        "response": "CheckVO"
+      },
+      {
+        "apiId": "FOOD-API-034",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckController",
+        "controller": "BizCheckController",
+        "method": "MergeCheck",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": "MergeCheckReq",
+        "response": "CheckVO"
+      },
+      {
+        "apiId": "FOOD-API-035",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckController",
+        "controller": "BizCheckController",
+        "method": "SplitCheck",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": "SplitCheckReq",
+        "response": "CheckVO"
+      },
+      {
+        "apiId": "FOOD-API-036",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckController",
+        "controller": "BizCheckController",
+        "method": "ClearCheck",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": "ClearCheckReq",
+        "response": "CheckVO"
+      },
+      {
+        "apiId": "FOOD-API-037",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+        "controller": "BizCheckCartController",
+        "method": "getCart",
+        "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+        "request": null,
+        "response": "CheckCartVO"
+      },
+      {
+        "apiId": "FOOD-API-038",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+        "controller": "BizCheckCartController",
+        "method": "createCart",
+        "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+        "request": "CreateCartReq",
+        "response": "CheckCartVO"
+      },
+      {
+        "apiId": "FOOD-API-039",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+        "controller": "BizCheckCartController",
+        "method": "saveLine",
+        "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+        "request": "SaveLineReq",
+        "response": "CheckCartVO"
+      },
+      {
+        "apiId": "FOOD-API-040",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+        "controller": "BizCheckCartController",
+        "method": "ArchiveLine",
+        "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+        "request": "ArchiveLineReq",
+        "response": "CheckCartVO"
+      },
+      {
+        "apiId": "FOOD-API-041",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningQuoteController",
+        "controller": "BizDiningQuoteController",
+        "method": "quote",
+        "serviceClass": "ai.neargo.shop.food.service.DiningOrderService",
+        "request": "QuoteReq",
+        "response": "DiningQuoteVO"
+      },
+      {
+        "apiId": "FOOD-API-042",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchController",
+        "controller": "BizOrderBatchController",
+        "method": "place",
+        "serviceClass": "ai.neargo.shop.food.service.DiningOrderService",
+        "request": "PlaceReq",
+        "response": "OrderBatchVO"
+      },
+      {
+        "apiId": "FOOD-API-043",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchController",
+        "controller": "BizOrderBatchController",
+        "method": "getBatche",
+        "serviceClass": "ai.neargo.shop.food.service.DiningOrderService",
+        "request": null,
+        "response": "OrderBatchVO"
+      },
+      {
+        "apiId": "FOOD-API-044",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "getTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "GetTaskQuery",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-045",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "StartTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "StartTaskReq",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-046",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "ReadyTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "ReadyTaskReq",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-047",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "ServeTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "ServeTaskReq",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-048",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "HoldTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "HoldTaskReq",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-049",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "FireTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "FireTaskReq",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-050",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "UrgeTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "UrgeTaskReq",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-051",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "VoidTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "VoidTaskReq",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-052",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "RemakeTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "RemakeTaskReq",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-053",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCourseController",
+        "controller": "BizCourseController",
+        "method": "createCourse",
+        "serviceClass": "ai.neargo.shop.food.service.CourseService",
+        "request": "CreateCourseReq",
+        "response": "CourseVO"
+      },
+      {
+        "apiId": "FOOD-API-054",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCourseController",
+        "controller": "BizCourseController",
+        "method": "FireCourse",
+        "serviceClass": "ai.neargo.shop.food.service.CourseService",
+        "request": "FireCourseReq",
+        "response": "CourseVO"
+      },
+      {
+        "apiId": "FOOD-API-055",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchController",
+        "controller": "BizOrderBatchController",
+        "method": "HandoverBatche",
+        "serviceClass": "ai.neargo.shop.food.service.DiningOrderService",
+        "request": "HandoverBatcheReq",
+        "response": "OrderBatchVO"
+      },
+      {
+        "apiId": "FOOD-API-056",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningCheckoutController",
+        "controller": "BizDiningCheckoutController",
+        "method": "createSettlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCheckoutService",
+        "request": "CreateSettlementReq",
+        "response": "DiningCheckoutVO"
+      },
+      {
+        "apiId": "FOOD-API-057",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningCheckoutController",
+        "controller": "BizDiningCheckoutController",
+        "method": "getSettlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCheckoutService",
+        "request": null,
+        "response": "DiningCheckoutVO"
+      },
+      {
+        "apiId": "FOOD-API-058",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningCheckoutController",
+        "controller": "BizDiningCheckoutController",
+        "method": "PaySettlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCheckoutService",
+        "request": "PaySettlementReq",
+        "response": "DiningCheckoutVO"
+      },
+      {
+        "apiId": "FOOD-API-059",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningCheckoutController",
+        "controller": "BizDiningCheckoutController",
+        "method": "CancelSettlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCheckoutService",
+        "request": "CancelSettlementReq",
+        "response": "DiningCheckoutVO"
+      },
+      {
+        "apiId": "FOOD-API-060",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningCheckoutController",
+        "controller": "BizDiningCheckoutController",
+        "method": "FinalizeSettlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCheckoutService",
+        "request": "FinalizeSettlementReq",
+        "response": "DiningCheckoutVO"
+      },
+      {
+        "apiId": "FOOD-API-061",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningAdjustmentController",
+        "controller": "BizDiningAdjustmentController",
+        "method": "createAdjustment",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCheckoutService",
+        "request": "CreateAdjustmentReq",
+        "response": "DiningAdjustmentVO"
+      },
+      {
+        "apiId": "FOOD-API-062",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReturnController",
+        "controller": "BizDiningReturnController",
+        "method": "createReturn",
+        "serviceClass": "ai.neargo.shop.food.service.DiningReturnService",
+        "request": "CreateReturnReq",
+        "response": "DiningReturnVO"
+      },
+      {
+        "apiId": "FOOD-API-063",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReturnController",
+        "controller": "BizDiningReturnController",
+        "method": "ExecuteReturn",
+        "serviceClass": "ai.neargo.shop.food.service.DiningReturnService",
+        "request": "ExecuteReturnReq",
+        "response": "DiningReturnVO"
+      },
+      {
+        "apiId": "FOOD-API-064",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReturnController",
+        "controller": "BizDiningReturnController",
+        "method": "getReturn",
+        "serviceClass": "ai.neargo.shop.food.service.DiningReturnService",
+        "request": null,
+        "response": "DiningReturnVO"
+      },
+      {
+        "apiId": "FOOD-API-065",
+        "controllerClass": "ai.neargo.shop.print.api.biz.BizPrintJobController",
+        "controller": "BizPrintJobController",
+        "method": "createJob",
+        "serviceClass": "ai.neargo.shop.print.service.PrintService",
+        "request": "CreateJobReq",
+        "response": "PrintJobVO"
+      },
+      {
+        "apiId": "FOOD-API-066",
+        "controllerClass": "ai.neargo.shop.print.api.biz.BizPrintJobController",
+        "controller": "BizPrintJobController",
+        "method": "getJob",
+        "serviceClass": "ai.neargo.shop.print.service.PrintService",
+        "request": null,
+        "response": "PrintJobVO"
+      },
+      {
+        "apiId": "FOOD-API-067",
+        "controllerClass": "ai.neargo.shop.print.api.biz.BizPrintJobController",
+        "controller": "BizPrintJobController",
+        "method": "ReprintJob",
+        "serviceClass": "ai.neargo.shop.print.service.PrintService",
+        "request": "ReprintJobReq",
+        "response": "PrintJobVO"
+      },
+      {
+        "apiId": "FOOD-API-068",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCashShiftController",
+        "controller": "BizCashShiftController",
+        "method": "createCashShift",
+        "serviceClass": "ai.neargo.shop.food.service.CashShiftService",
+        "request": "CreateCashShiftReq",
+        "response": "CashShiftVO"
+      },
+      {
+        "apiId": "FOOD-API-069",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCashEntryController",
+        "controller": "BizCashEntryController",
+        "method": "createEntry",
+        "serviceClass": "ai.neargo.shop.food.service.CashShiftService",
+        "request": "CreateEntryReq",
+        "response": "CashEntryVO"
+      },
+      {
+        "apiId": "FOOD-API-070",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCashShiftController",
+        "controller": "BizCashShiftController",
+        "method": "CountCashShift",
+        "serviceClass": "ai.neargo.shop.food.service.CashShiftService",
+        "request": "CountCashShiftReq",
+        "response": "CashShiftVO"
+      },
+      {
+        "apiId": "FOOD-API-071",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCashShiftController",
+        "controller": "BizCashShiftController",
+        "method": "HandoverCashShift",
+        "serviceClass": "ai.neargo.shop.food.service.CashShiftService",
+        "request": "HandoverCashShiftReq",
+        "response": "CashShiftVO"
+      },
+      {
+        "apiId": "FOOD-API-072",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+        "controller": "BizBusinessCloseController",
+        "method": "createClose",
+        "serviceClass": "ai.neargo.shop.food.service.BusinessCloseService",
+        "request": "CreateCloseReq",
+        "response": "BusinessCloseVO"
+      },
+      {
+        "apiId": "FOOD-API-073",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+        "controller": "BizBusinessCloseController",
+        "method": "getClose",
+        "serviceClass": "ai.neargo.shop.food.service.BusinessCloseService",
+        "request": null,
+        "response": "BusinessCloseVO"
+      },
+      {
+        "apiId": "FOOD-API-074",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCloseExceptionController",
+        "controller": "BizCloseExceptionController",
+        "method": "CarryException",
+        "serviceClass": "ai.neargo.shop.food.service.BusinessCloseService",
+        "request": "CarryExceptionReq",
+        "response": "CloseExceptionVO"
+      },
+      {
+        "apiId": "FOOD-API-075",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+        "controller": "BizBusinessCloseController",
+        "method": "SignClose",
+        "serviceClass": "ai.neargo.shop.food.service.BusinessCloseService",
+        "request": "SignCloseReq",
+        "response": "BusinessCloseVO"
+      },
+      {
+        "apiId": "FOOD-API-076",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+        "controller": "BizBusinessCloseController",
+        "method": "createAdjustment",
+        "serviceClass": "ai.neargo.shop.food.service.BusinessCloseService",
+        "request": "CreateAdjustmentReq",
+        "response": "BusinessCloseVO"
+      },
+      {
+        "apiId": "FOOD-API-077",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReportController",
+        "controller": "BizDiningReportController",
+        "method": "getReport",
+        "serviceClass": "ai.neargo.shop.food.service.DiningReportService",
+        "request": "GetReportQuery",
+        "response": "DiningReportVO"
+      },
+      {
+        "apiId": "FOOD-API-078",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReportExportController",
+        "controller": "BizDiningReportExportController",
+        "method": "createReportExport",
+        "serviceClass": "ai.neargo.shop.food.service.DiningReportService",
+        "request": "CreateReportExportReq",
+        "response": "DiningReportExportVO"
+      },
+      {
+        "apiId": "FOOD-API-079",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReportExportController",
+        "controller": "BizDiningReportExportController",
+        "method": "getReportExport",
+        "serviceClass": "ai.neargo.shop.food.service.DiningReportService",
+        "request": null,
+        "response": "DiningReportExportVO"
+      },
+      {
+        "apiId": "FOOD-API-080",
+        "controllerClass": "ai.neargo.shop.food.api.ops.OpsDiningReportRebuildController",
+        "controller": "OpsDiningReportRebuildController",
+        "method": "createReportRebuild",
+        "serviceClass": "ai.neargo.shop.food.service.DiningReportService",
+        "request": "CreateReportRebuildReq",
+        "response": "DiningReportRebuildVO"
+      },
+      {
+        "apiId": "FOOD-API-081",
+        "controllerClass": "ai.neargo.shop.food.api.ops.OpsDiningCapabilityController",
+        "controller": "OpsDiningCapabilityController",
+        "method": "saveCapability",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCapabilityService",
+        "request": "SaveCapabilityReq",
+        "response": "DiningCapabilityVO"
+      },
+      {
+        "apiId": "FOOD-API-082",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizExternalMappingController",
+        "controller": "BizExternalMappingController",
+        "method": "saveMapping",
+        "serviceClass": "ai.neargo.shop.food.service.ExternalMappingService",
+        "request": "SaveMappingReq",
+        "response": "ExternalMappingVO"
+      },
+      {
+        "apiId": "FOOD-API-083",
+        "controllerClass": "ai.neargo.shop.food.api.ops.OpsIntegrationExceptionController",
+        "controller": "OpsIntegrationExceptionController",
+        "method": "getIntegrationException",
+        "serviceClass": "ai.neargo.shop.food.service.IntegrationExceptionService",
+        "request": "GetIntegrationExceptionQuery",
+        "response": "IntegrationExceptionVO"
+      },
+      {
+        "apiId": "FOOD-API-084",
+        "controllerClass": "ai.neargo.shop.food.api.internal.InternalSyncBatchController",
+        "controller": "InternalSyncBatchController",
+        "method": "createSyncBatche",
+        "serviceClass": "ai.neargo.shop.food.service.SyncBatchService",
+        "request": "CreateSyncBatcheReq",
+        "response": "SyncBatchVO"
+      },
+      {
+        "apiId": "FOOD-API-085",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningEntitlementController",
+        "controller": "BizDiningEntitlementController",
+        "method": "createEntitlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningEntitlementService",
+        "request": "CreateEntitlementReq",
+        "response": "DiningEntitlementVO"
+      },
+      {
+        "apiId": "FOOD-API-086",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningEntitlementController",
+        "controller": "BizDiningEntitlementController",
+        "method": "ExtendEntitlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningEntitlementService",
+        "request": "ExtendEntitlementReq",
+        "response": "DiningEntitlementVO"
+      },
+      {
+        "apiId": "FOOD-API-087",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBanquetPlanController",
+        "controller": "BizBanquetPlanController",
+        "method": "createBanquetPlan",
+        "serviceClass": "ai.neargo.shop.food.service.BanquetPlanService",
+        "request": "CreateBanquetPlanReq",
+        "response": "BanquetPlanVO"
+      },
+      {
+        "apiId": "FOOD-API-088",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBanquetPlanController",
+        "controller": "BizBanquetPlanController",
+        "method": "ConfirmAttendanceBanquetPlan",
+        "serviceClass": "ai.neargo.shop.food.service.BanquetPlanService",
+        "request": "ConfirmAttendanceBanquetPlanReq",
+        "response": "BanquetPlanVO"
+      },
+      {
+        "apiId": "FOOD-API-089",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBottleCustodyController",
+        "controller": "BizBottleCustodyController",
+        "method": "createCustody",
+        "serviceClass": "ai.neargo.shop.food.service.BottleCustodyService",
+        "request": "CreateCustodyReq",
+        "response": "BottleCustodyVO"
+      },
+      {
+        "apiId": "FOOD-API-090",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBottleCustodyController",
+        "controller": "BizBottleCustodyController",
+        "method": "createEntry",
+        "serviceClass": "ai.neargo.shop.food.service.BottleCustodyService",
+        "request": "CreateEntryReq",
+        "response": "BottleCustodyVO"
+      },
+      {
+        "apiId": "FOOD-API-091",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizRoomChargeController",
+        "controller": "BizRoomChargeController",
+        "method": "createRoomCharge",
+        "serviceClass": "ai.neargo.shop.food.service.RoomChargeService",
+        "request": "CreateRoomChargeReq",
+        "response": "RoomChargeVO"
+      }
+    ],
+    "persistence": [
+      {
+        "table": "fnb_dish",
+        "entity": "FnbDish",
+        "entityClass": "ai.neargo.shop.food.entity.FnbDish",
+        "mapper": "FoodMappers.DishMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.DishMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_bundle",
+        "entity": "FnbBundle",
+        "entityClass": "ai.neargo.shop.food.entity.FnbBundle",
+        "mapper": "FoodMappers.BundleMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.BundleMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_bundle_group",
+        "entity": "FnbBundleGroup",
+        "entityClass": "ai.neargo.shop.food.entity.FnbBundleGroup",
+        "mapper": "FoodMappers.BundleGroupMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.BundleGroupMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_bundle_choice",
+        "entity": "FnbBundleChoice",
+        "entityClass": "ai.neargo.shop.food.entity.FnbBundleChoice",
+        "mapper": "FoodMappers.BundleChoiceMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.BundleChoiceMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_modifier",
+        "entity": "FnbModifier",
+        "entityClass": "ai.neargo.shop.food.entity.FnbModifier",
+        "mapper": "FoodMappers.ModifierMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ModifierMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_modifier_component",
+        "entity": "FnbModifierComponent",
+        "entityClass": "ai.neargo.shop.food.entity.FnbModifierComponent",
+        "mapper": "FoodMappers.ModifierComponentMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ModifierComponentMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_option_group",
+        "entity": "FnbOptionGroup",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOptionGroup",
+        "mapper": "FoodMappers.OptionGroupMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_option_group_item",
+        "entity": "FnbOptionGroupItem",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOptionGroupItem",
+        "mapper": "FoodMappers.OptionGroupItemMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_dish_option_group",
+        "entity": "FnbDishOptionGroup",
+        "entityClass": "ai.neargo.shop.food.entity.FnbDishOptionGroup",
+        "mapper": "FoodMappers.DishOptionGroupMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.DishOptionGroupMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_menu",
+        "entity": "FnbMenu",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenu",
+        "mapper": "FoodMappers.MenuMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MenuMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_menu_store",
+        "entity": "FnbMenuStore",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuStore",
+        "mapper": "FoodMappers.MenuStoreMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MenuStoreMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_menu_context",
+        "entity": "FnbMenuContext",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuContext",
+        "mapper": "FoodMappers.MenuContextMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MenuContextMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_menu_schedule",
+        "entity": "FnbMenuSchedule",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuSchedule",
+        "mapper": "FoodMappers.MenuScheduleMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MenuScheduleMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_menu_exception",
+        "entity": "FnbMenuException",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuException",
+        "mapper": "FoodMappers.MenuExceptionMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MenuExceptionMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_menu_category",
+        "entity": "FnbMenuCategory",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuCategory",
+        "mapper": "FoodMappers.MenuCategoryMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MenuCategoryMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_menu_item",
+        "entity": "FnbMenuItem",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuItem",
+        "mapper": "FoodMappers.MenuItemMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MenuItemMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_menu_item_sku",
+        "entity": "FnbMenuItemSku",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuItemSku",
+        "mapper": "FoodMappers.MenuItemSkuMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MenuItemSkuMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_station",
+        "entity": "FnbStation",
+        "entityClass": "ai.neargo.shop.food.entity.FnbStation",
+        "mapper": "FoodMappers.StationMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.StationMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_sku_station",
+        "entity": "FnbSkuStation",
+        "entityClass": "ai.neargo.shop.food.entity.FnbSkuStation",
+        "mapper": "FoodMappers.SkuStationMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.SkuStationMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_store_policy",
+        "entity": "FnbStorePolicy",
+        "entityClass": "ai.neargo.shop.food.entity.FnbStorePolicy",
+        "mapper": "FoodMappers.StorePolicyMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_service_calendar",
+        "entity": "FnbServiceCalendar",
+        "entityClass": "ai.neargo.shop.food.entity.FnbServiceCalendar",
+        "mapper": "FoodMappers.ServiceCalendarMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ServiceCalendarMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_table",
+        "entity": "FnbTable",
+        "entityClass": "ai.neargo.shop.food.entity.FnbTable",
+        "mapper": "FoodMappers.TableMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.TableMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_table_token",
+        "entity": "FnbTableToken",
+        "entityClass": "ai.neargo.shop.food.entity.FnbTableToken",
+        "mapper": "FoodMappers.TableTokenMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.TableTokenMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_reservation",
+        "entity": "FnbReservation",
+        "entityClass": "ai.neargo.shop.food.entity.FnbReservation",
+        "mapper": "FoodMappers.ReservationMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ReservationMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_check",
+        "entity": "FnbCheck",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCheck",
+        "mapper": "FoodMappers.CheckMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_table_occupancy",
+        "entity": "FnbTableOccupancy",
+        "entityClass": "ai.neargo.shop.food.entity.FnbTableOccupancy",
+        "mapper": "FoodMappers.TableOccupancyMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.TableOccupancyMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_check_relation",
+        "entity": "FnbCheckRelation",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCheckRelation",
+        "mapper": "FoodMappers.CheckRelationMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckRelationMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_guest_session",
+        "entity": "FnbGuestSession",
+        "entityClass": "ai.neargo.shop.food.entity.FnbGuestSession",
+        "mapper": "FoodMappers.GuestSessionMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_seat",
+        "entity": "FnbSeat",
+        "entityClass": "ai.neargo.shop.food.entity.FnbSeat",
+        "mapper": "FoodMappers.SeatMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.SeatMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_check_cart",
+        "entity": "FnbCheckCart",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCheckCart",
+        "mapper": "FoodMappers.CheckCartMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_check_cart_item",
+        "entity": "FnbCheckCartItem",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCheckCartItem",
+        "mapper": "FoodMappers.CheckCartItemMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_order_batch",
+        "entity": "FnbOrderBatch",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOrderBatch",
+        "mapper": "FoodMappers.OrderBatchMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_core_order_binding",
+        "entity": "FnbCoreOrderBinding",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCoreOrderBinding",
+        "mapper": "FoodMappers.CoreOrderBindingMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CoreOrderBindingMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_order_line",
+        "entity": "FnbOrderLine",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOrderLine",
+        "mapper": "FoodMappers.OrderLineMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_core_line_allocation",
+        "entity": "FnbCoreLineAllocation",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCoreLineAllocation",
+        "mapper": "FoodMappers.CoreLineAllocationMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CoreLineAllocationMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_order_component",
+        "entity": "FnbOrderComponent",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOrderComponent",
+        "mapper": "FoodMappers.OrderComponentMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.OrderComponentMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_order_modifier",
+        "entity": "FnbOrderModifier",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOrderModifier",
+        "mapper": "FoodMappers.OrderModifierMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.OrderModifierMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_course",
+        "entity": "FnbCourse",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCourse",
+        "mapper": "FoodMappers.CourseMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CourseMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_kitchen_ticket",
+        "entity": "FnbKitchenTicket",
+        "entityClass": "ai.neargo.shop.food.entity.FnbKitchenTicket",
+        "mapper": "FoodMappers.KitchenTicketMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.KitchenTicketMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_kitchen_task",
+        "entity": "FnbKitchenTask",
+        "entityClass": "ai.neargo.shop.food.entity.FnbKitchenTask",
+        "mapper": "FoodMappers.KitchenTaskMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.KitchenTaskMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_service_event",
+        "entity": "FnbServiceEvent",
+        "entityClass": "ai.neargo.shop.food.entity.FnbServiceEvent",
+        "mapper": "FoodMappers.ServiceEventMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_settlement",
+        "entity": "FnbSettlement",
+        "entityClass": "ai.neargo.shop.food.entity.FnbSettlement",
+        "mapper": "FoodMappers.SettlementMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.SettlementMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_settlement_item",
+        "entity": "FnbSettlementItem",
+        "entityClass": "ai.neargo.shop.food.entity.FnbSettlementItem",
+        "mapper": "FoodMappers.SettlementItemMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.SettlementItemMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_charge_intent",
+        "entity": "FnbChargeIntent",
+        "entityClass": "ai.neargo.shop.food.entity.FnbChargeIntent",
+        "mapper": "FoodMappers.ChargeIntentMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ChargeIntentMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_return",
+        "entity": "FnbReturn",
+        "entityClass": "ai.neargo.shop.food.entity.FnbReturn",
+        "mapper": "FoodMappers.ReturnMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ReturnMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_return_item",
+        "entity": "FnbReturnItem",
+        "entityClass": "ai.neargo.shop.food.entity.FnbReturnItem",
+        "mapper": "FoodMappers.ReturnItemMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ReturnItemMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_action_log",
+        "entity": "FnbActionLog",
+        "entityClass": "ai.neargo.shop.food.entity.FnbActionLog",
+        "mapper": "FoodMappers.ActionLogMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_business_day",
+        "entity": "FnbBusinessDay",
+        "entityClass": "ai.neargo.shop.food.entity.FnbBusinessDay",
+        "mapper": "FoodMappers.BusinessDayMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.BusinessDayMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_cash_shift",
+        "entity": "FnbCashShift",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCashShift",
+        "mapper": "FoodMappers.CashShiftMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CashShiftMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_cash_entry",
+        "entity": "FnbCashEntry",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCashEntry",
+        "mapper": "FoodMappers.CashEntryMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CashEntryMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_cash_payment_link",
+        "entity": "FnbCashPaymentLink",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCashPaymentLink",
+        "mapper": "FoodMappers.CashPaymentLinkMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CashPaymentLinkMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_cash_count",
+        "entity": "FnbCashCount",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCashCount",
+        "mapper": "FoodMappers.CashCountMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CashCountMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_close_run",
+        "entity": "FnbCloseRun",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCloseRun",
+        "mapper": "FoodMappers.CloseRunMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CloseRunMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_close_balance",
+        "entity": "FnbCloseBalance",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCloseBalance",
+        "mapper": "FoodMappers.CloseBalanceMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CloseBalanceMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_close_exception",
+        "entity": "FnbCloseException",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCloseException",
+        "mapper": "FoodMappers.CloseExceptionMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CloseExceptionMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_close_adjustment",
+        "entity": "FnbCloseAdjustment",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCloseAdjustment",
+        "mapper": "FoodMappers.CloseAdjustmentMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CloseAdjustmentMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_metric_definition",
+        "entity": "FnbMetricDefinition",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMetricDefinition",
+        "mapper": "FoodMappers.MetricDefinitionMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MetricDefinitionMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_report_run",
+        "entity": "FnbReportRun",
+        "entityClass": "ai.neargo.shop.food.entity.FnbReportRun",
+        "mapper": "FoodMappers.ReportRunMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ReportRunMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_external_mapping",
+        "entity": "FnbExternalMapping",
+        "entityClass": "ai.neargo.shop.food.entity.FnbExternalMapping",
+        "mapper": "FoodMappers.ExternalMappingMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ExternalMappingMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_sync_batch",
+        "entity": "FnbSyncBatch",
+        "entityClass": "ai.neargo.shop.food.entity.FnbSyncBatch",
+        "mapper": "FoodMappers.SyncBatchMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.SyncBatchMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_edge_lease",
+        "entity": "FnbEdgeLease",
+        "entityClass": "ai.neargo.shop.food.entity.FnbEdgeLease",
+        "mapper": "FoodMappers.EdgeLeaseMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.EdgeLeaseMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_integration_exception",
+        "entity": "FnbIntegrationException",
+        "entityClass": "ai.neargo.shop.food.entity.FnbIntegrationException",
+        "mapper": "FoodMappers.IntegrationExceptionMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.IntegrationExceptionMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_dining_entitlement",
+        "entity": "FnbDiningEntitlement",
+        "entityClass": "ai.neargo.shop.food.entity.FnbDiningEntitlement",
+        "mapper": "FoodMappers.DiningEntitlementMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.DiningEntitlementMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_banquet_plan",
+        "entity": "FnbBanquetPlan",
+        "entityClass": "ai.neargo.shop.food.entity.FnbBanquetPlan",
+        "mapper": "FoodMappers.BanquetPlanMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.BanquetPlanMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_bottle_custody",
+        "entity": "FnbBottleCustody",
+        "entityClass": "ai.neargo.shop.food.entity.FnbBottleCustody",
+        "mapper": "FoodMappers.BottleCustodyMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.BottleCustodyMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_custody_entry",
+        "entity": "FnbCustodyEntry",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCustodyEntry",
+        "mapper": "FoodMappers.CustodyEntryMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CustodyEntryMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_room_charge_intent",
+        "entity": "FnbRoomChargeIntent",
+        "entityClass": "ai.neargo.shop.food.entity.FnbRoomChargeIntent",
+        "mapper": "FoodMappers.RoomChargeIntentMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.RoomChargeIntentMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "prn_device",
+        "entity": "PrnDevice",
+        "entityClass": "ai.neargo.shop.print.entity.PrnDevice",
+        "mapper": "PrintMappers.DeviceMapper",
+        "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.DeviceMapper",
+        "owner": "shared-print"
+      },
+      {
+        "table": "prn_template",
+        "entity": "PrnTemplate",
+        "entityClass": "ai.neargo.shop.print.entity.PrnTemplate",
+        "mapper": "PrintMappers.TemplateMapper",
+        "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.TemplateMapper",
+        "owner": "shared-print"
+      },
+      {
+        "table": "prn_route",
+        "entity": "PrnRoute",
+        "entityClass": "ai.neargo.shop.print.entity.PrnRoute",
+        "mapper": "PrintMappers.RouteMapper",
+        "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.RouteMapper",
+        "owner": "shared-print"
+      },
+      {
+        "table": "prn_job",
+        "entity": "PrnJob",
+        "entityClass": "ai.neargo.shop.print.entity.PrnJob",
+        "mapper": "PrintMappers.JobMapper",
+        "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.JobMapper",
+        "owner": "shared-print"
+      },
+      {
+        "table": "prn_attempt",
+        "entity": "PrnAttempt",
+        "entityClass": "ai.neargo.shop.print.entity.PrnAttempt",
+        "mapper": "PrintMappers.AttemptMapper",
+        "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.AttemptMapper",
+        "owner": "shared-print"
+      },
+      {
+        "table": "rpt_food_metric_daily",
+        "entity": "DailyFoodMetricRow",
+        "entityClass": "ai.neargo.shop.report.dto.DailyFoodMetricRow",
+        "mapper": "ReportFoodMetricDailyDao",
+        "mapperClass": "ai.neargo.shop.report.dao.ReportFoodMetricDailyDao",
+        "owner": "shop-report"
+      }
+    ]
+  },
+  "preModuleBaseline": {
+    "label": "2026-10-20-before-module-alignment",
+    "controllers": [
+      "BizStoreOperationPolicyController",
+      "BizServiceCalendarController",
+      "BizMenuController",
+      "BizOptionGroupController",
+      "BizBundleController",
+      "BizStationController",
+      "BizDishController",
+      "BizModifierController",
+      "BizKitchenRouteController",
+      "BizSalesRestrictionController",
+      "MpMenuCatalogController",
+      "BizTableController",
+      "MpDiningSessionController",
+      "BizReservationController",
+      "BizCheckController",
+      "BizCheckCartController",
+      "BizDiningQuoteController",
+      "BizOrderBatchController",
+      "BizKitchenTaskController",
+      "BizCourseController",
+      "BizDiningCheckoutController",
+      "BizDiningAdjustmentController",
+      "BizDiningReturnController",
+      "BizPrintJobController",
+      "BizCashShiftController",
+      "BizCashEntryController",
+      "BizBusinessCloseController",
+      "BizCloseExceptionController",
+      "BizDiningReportController",
+      "BizDiningReportExportController",
+      "OpsDiningReportRebuildController",
+      "OpsDiningCapabilityController",
+      "BizExternalMappingController",
+      "OpsIntegrationExceptionController",
+      "InternalSyncBatchController",
+      "BizDiningEntitlementController",
+      "BizBanquetPlanController",
+      "BizBottleCustodyController",
+      "BizRoomChargeController",
+      "BizTableAreaController",
+      "BizCheckSeatController",
+      "BizTableOperationController",
+      "BizDiningActionLogController",
+      "BizMenuCatalogController",
+      "BizConfigRevisionController",
+      "BizOrderBatchOperationController",
+      "MpCheckCartController",
+      "MpDiningQuoteController",
+      "MpOrderBatchController",
+      "MpDiningCheckoutController",
+      "MpDiningReturnController",
+      "MpCheckController"
+    ],
+    "methods": [
+      {
+        "apiId": "FOOD-API-001",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizStoreOperationPolicyController",
+        "controller": "BizStoreOperationPolicyController",
+        "method": "getPolicy",
+        "serviceClass": "ai.neargo.shop.food.service.StoreOperationService",
+        "request": "GetPolicyQuery",
+        "response": "StoreOperationPolicyVO"
+      },
+      {
+        "apiId": "FOOD-API-002",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizStoreOperationPolicyController",
+        "controller": "BizStoreOperationPolicyController",
+        "method": "createPolicy",
+        "serviceClass": "ai.neargo.shop.food.service.StoreOperationService",
+        "request": "CreatePolicyReq",
+        "response": "StoreOperationPolicyVO"
+      },
+      {
+        "apiId": "FOOD-API-003",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizServiceCalendarController",
+        "controller": "BizServiceCalendarController",
+        "method": "saveCalendar",
+        "serviceClass": "ai.neargo.shop.food.service.StoreOperationService",
+        "request": "SaveCalendarReq",
+        "response": "ServiceCalendarVO"
+      },
+      {
+        "apiId": "FOOD-API-004",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizMenuController",
+        "controller": "BizMenuController",
+        "method": "createMenu",
+        "serviceClass": "ai.neargo.shop.food.service.MenuService",
+        "request": "CreateMenuReq",
+        "response": "MenuVO"
+      },
+      {
+        "apiId": "FOOD-API-005",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizMenuController",
+        "controller": "BizMenuController",
+        "method": "getMenu",
+        "serviceClass": "ai.neargo.shop.food.service.MenuService",
+        "request": null,
+        "response": "MenuVO"
+      },
+      {
+        "apiId": "FOOD-API-006",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizMenuController",
+        "controller": "BizMenuController",
+        "method": "publishMenu",
+        "serviceClass": "ai.neargo.shop.food.service.MenuService",
+        "request": "PublishMenuReq",
+        "response": "MenuVO"
+      },
+      {
+        "apiId": "FOOD-API-007",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOptionGroupController",
+        "controller": "BizOptionGroupController",
+        "method": "createOptionGroup",
+        "serviceClass": "ai.neargo.shop.food.service.OptionGroupService",
+        "request": "CreateOptionGroupReq",
+        "response": "OptionGroupVO"
+      },
+      {
+        "apiId": "FOOD-API-008",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOptionGroupController",
+        "controller": "BizOptionGroupController",
+        "method": "getOptionGroup",
+        "serviceClass": "ai.neargo.shop.food.service.OptionGroupService",
+        "request": null,
+        "response": "OptionGroupVO"
+      },
+      {
+        "apiId": "FOOD-API-009",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOptionGroupController",
+        "controller": "BizOptionGroupController",
+        "method": "publishOptionGroup",
+        "serviceClass": "ai.neargo.shop.food.service.OptionGroupService",
+        "request": "PublishOptionGroupReq",
+        "response": "OptionGroupVO"
+      },
+      {
+        "apiId": "FOOD-API-010",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBundleController",
+        "controller": "BizBundleController",
+        "method": "createBundle",
+        "serviceClass": "ai.neargo.shop.food.service.BundleService",
+        "request": "CreateBundleReq",
+        "response": "BundleVO"
+      },
+      {
+        "apiId": "FOOD-API-011",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBundleController",
+        "controller": "BizBundleController",
+        "method": "getBundle",
+        "serviceClass": "ai.neargo.shop.food.service.BundleService",
+        "request": null,
+        "response": "BundleVO"
+      },
+      {
+        "apiId": "FOOD-API-012",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBundleController",
+        "controller": "BizBundleController",
+        "method": "publishBundle",
+        "serviceClass": "ai.neargo.shop.food.service.BundleService",
+        "request": "PublishBundleReq",
+        "response": "BundleVO"
+      },
+      {
+        "apiId": "FOOD-API-013",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizStationController",
+        "controller": "BizStationController",
+        "method": "createStation",
+        "serviceClass": "ai.neargo.shop.food.service.StationService",
+        "request": "CreateStationReq",
+        "response": "StationVO"
+      },
+      {
+        "apiId": "FOOD-API-014",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizStationController",
+        "controller": "BizStationController",
+        "method": "getStation",
+        "serviceClass": "ai.neargo.shop.food.service.StationService",
+        "request": null,
+        "response": "StationVO"
+      },
+      {
+        "apiId": "FOOD-API-015",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizStationController",
+        "controller": "BizStationController",
+        "method": "publishStation",
+        "serviceClass": "ai.neargo.shop.food.service.StationService",
+        "request": "PublishStationReq",
+        "response": "StationVO"
+      },
+      {
+        "apiId": "FOOD-API-016",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDishController",
+        "controller": "BizDishController",
+        "method": "saveDish",
+        "serviceClass": "ai.neargo.shop.food.service.DishService",
+        "request": "SaveDishReq",
+        "response": "DishVO"
+      },
+      {
+        "apiId": "FOOD-API-017",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizMenuController",
+        "controller": "BizMenuController",
+        "method": "saveMenuDefinition",
+        "serviceClass": "ai.neargo.shop.food.service.MenuService",
+        "request": "SaveMenuDefinitionReq",
+        "response": "MenuVO"
+      },
+      {
+        "apiId": "FOOD-API-018",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBundleController",
+        "controller": "BizBundleController",
+        "method": "saveBundleDefinition",
+        "serviceClass": "ai.neargo.shop.food.service.BundleService",
+        "request": "SaveBundleDefinitionReq",
+        "response": "BundleVO"
+      },
+      {
+        "apiId": "FOOD-API-019",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOptionGroupController",
+        "controller": "BizOptionGroupController",
+        "method": "saveItem",
+        "serviceClass": "ai.neargo.shop.food.service.OptionGroupService",
+        "request": "SaveItemReq",
+        "response": "OptionGroupVO"
+      },
+      {
+        "apiId": "FOOD-API-020",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizModifierController",
+        "controller": "BizModifierController",
+        "method": "saveModifier",
+        "serviceClass": "ai.neargo.shop.food.service.ModifierService",
+        "request": "SaveModifierReq",
+        "response": "ModifierVO"
+      },
+      {
+        "apiId": "FOOD-API-021",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenRouteController",
+        "controller": "BizKitchenRouteController",
+        "method": "saveSkuRoute",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenRouteService",
+        "request": "SaveSkuRouteReq",
+        "response": "KitchenRouteVO"
+      },
+      {
+        "apiId": "FOOD-API-022",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizSalesRestrictionController",
+        "controller": "BizSalesRestrictionController",
+        "method": "createSalesRestriction",
+        "serviceClass": "ai.neargo.shop.food.service.SalesRestrictionService",
+        "request": "CreateSalesRestrictionReq",
+        "response": "SalesRestrictionVO"
+      },
+      {
+        "apiId": "FOOD-API-023",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpMenuCatalogController",
+        "controller": "MpMenuCatalogController",
+        "method": "getCatalog",
+        "serviceClass": "ai.neargo.shop.food.service.MenuService",
+        "request": "GetCatalogQuery",
+        "response": "MenuCatalogVO"
+      },
+      {
+        "apiId": "FOOD-API-024",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizTableController",
+        "controller": "BizTableController",
+        "method": "createTable",
+        "serviceClass": "ai.neargo.shop.food.service.TableService",
+        "request": "CreateTableReq",
+        "response": "TableVO"
+      },
+      {
+        "apiId": "FOOD-API-025",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizTableController",
+        "controller": "BizTableController",
+        "method": "rotateTokenTable",
+        "serviceClass": "ai.neargo.shop.food.service.TableService",
+        "request": "RotateTokenTableReq",
+        "response": "TableVO"
+      },
+      {
+        "apiId": "FOOD-API-026",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpDiningSessionController",
+        "controller": "MpDiningSessionController",
+        "method": "createSession",
+        "serviceClass": "ai.neargo.shop.food.service.DiningSessionService",
+        "request": "CreateSessionReq",
+        "response": "DiningSessionVO"
+      },
+      {
+        "apiId": "FOOD-API-027",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+        "controller": "BizReservationController",
+        "method": "createReservation",
+        "serviceClass": "ai.neargo.shop.food.service.ReservationService",
+        "request": "CreateReservationReq",
+        "response": "ReservationVO"
+      },
+      {
+        "apiId": "FOOD-API-028",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+        "controller": "BizReservationController",
+        "method": "cancelReservation",
+        "serviceClass": "ai.neargo.shop.food.service.ReservationService",
+        "request": "CancelReservationReq",
+        "response": "ReservationVO"
+      },
+      {
+        "apiId": "FOOD-API-029",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+        "controller": "BizReservationController",
+        "method": "noShowReservation",
+        "serviceClass": "ai.neargo.shop.food.service.ReservationService",
+        "request": "NoShowReservationReq",
+        "response": "ReservationVO"
+      },
+      {
+        "apiId": "FOOD-API-030",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+        "controller": "BizReservationController",
+        "method": "arriveReservation",
+        "serviceClass": "ai.neargo.shop.food.service.ReservationService",
+        "request": "ArriveReservationReq",
+        "response": "ReservationVO"
+      },
+      {
+        "apiId": "FOOD-API-031",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckController",
+        "controller": "BizCheckController",
+        "method": "openCheck",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": "OpenCheckReq",
+        "response": "CheckVO"
+      },
+      {
+        "apiId": "FOOD-API-032",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckController",
+        "controller": "BizCheckController",
+        "method": "listChecks",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": "ListChecksQuery",
+        "response": "CheckVO"
+      },
+      {
+        "apiId": "FOOD-API-033",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckController",
+        "controller": "BizCheckController",
+        "method": "transferCheck",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": "TransferCheckReq",
+        "response": "CheckVO"
+      },
+      {
+        "apiId": "FOOD-API-034",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckController",
+        "controller": "BizCheckController",
+        "method": "mergeCheck",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": "MergeCheckReq",
+        "response": "CheckVO"
+      },
+      {
+        "apiId": "FOOD-API-035",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckController",
+        "controller": "BizCheckController",
+        "method": "splitCheck",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": "SplitCheckReq",
+        "response": "CheckVO"
+      },
+      {
+        "apiId": "FOOD-API-036",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckController",
+        "controller": "BizCheckController",
+        "method": "clearCheck",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": "ClearCheckReq",
+        "response": "CheckVO"
+      },
+      {
+        "apiId": "FOOD-API-037",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+        "controller": "BizCheckCartController",
+        "method": "getCart",
+        "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+        "request": null,
+        "response": "CheckCartVO"
+      },
+      {
+        "apiId": "FOOD-API-038",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+        "controller": "BizCheckCartController",
+        "method": "createCart",
+        "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+        "request": "CreateCartReq",
+        "response": "CheckCartVO"
+      },
+      {
+        "apiId": "FOOD-API-039",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+        "controller": "BizCheckCartController",
+        "method": "saveLine",
+        "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+        "request": "SaveLineReq",
+        "response": "CheckCartVO"
+      },
+      {
+        "apiId": "FOOD-API-040",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+        "controller": "BizCheckCartController",
+        "method": "archiveLine",
+        "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+        "request": "ArchiveLineReq",
+        "response": "CheckCartVO"
+      },
+      {
+        "apiId": "FOOD-API-041",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningQuoteController",
+        "controller": "BizDiningQuoteController",
+        "method": "quote",
+        "serviceClass": "ai.neargo.shop.food.service.DiningOrderService",
+        "request": "QuoteReq",
+        "response": "DiningQuoteVO"
+      },
+      {
+        "apiId": "FOOD-API-042",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchController",
+        "controller": "BizOrderBatchController",
+        "method": "place",
+        "serviceClass": "ai.neargo.shop.food.service.DiningOrderService",
+        "request": "PlaceReq",
+        "response": "OrderBatchVO"
+      },
+      {
+        "apiId": "FOOD-API-043",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchController",
+        "controller": "BizOrderBatchController",
+        "method": "getBatche",
+        "serviceClass": "ai.neargo.shop.food.service.DiningOrderService",
+        "request": null,
+        "response": "OrderBatchVO"
+      },
+      {
+        "apiId": "FOOD-API-044",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "listTasks",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "ListTasksQuery",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-045",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "startTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "StartTaskReq",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-046",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "readyTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "ReadyTaskReq",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-047",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "serveTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "ServeTaskReq",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-048",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "holdTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "HoldTaskReq",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-049",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "fireTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "FireTaskReq",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-050",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "urgeTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "UrgeTaskReq",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-051",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "voidTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "VoidTaskReq",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-052",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+        "controller": "BizKitchenTaskController",
+        "method": "remakeTask",
+        "serviceClass": "ai.neargo.shop.food.service.KitchenTaskService",
+        "request": "RemakeTaskReq",
+        "response": "KitchenTaskVO"
+      },
+      {
+        "apiId": "FOOD-API-053",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCourseController",
+        "controller": "BizCourseController",
+        "method": "createCourse",
+        "serviceClass": "ai.neargo.shop.food.service.CourseService",
+        "request": "CreateCourseReq",
+        "response": "CourseVO"
+      },
+      {
+        "apiId": "FOOD-API-054",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCourseController",
+        "controller": "BizCourseController",
+        "method": "fireCourse",
+        "serviceClass": "ai.neargo.shop.food.service.CourseService",
+        "request": "FireCourseReq",
+        "response": "CourseVO"
+      },
+      {
+        "apiId": "FOOD-API-055",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchController",
+        "controller": "BizOrderBatchController",
+        "method": "handoverBatche",
+        "serviceClass": "ai.neargo.shop.food.service.DiningOrderService",
+        "request": "HandoverBatcheReq",
+        "response": "OrderBatchVO"
+      },
+      {
+        "apiId": "FOOD-API-056",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningCheckoutController",
+        "controller": "BizDiningCheckoutController",
+        "method": "createSettlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCheckoutService",
+        "request": "CreateSettlementReq",
+        "response": "DiningCheckoutVO"
+      },
+      {
+        "apiId": "FOOD-API-057",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningCheckoutController",
+        "controller": "BizDiningCheckoutController",
+        "method": "getSettlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCheckoutService",
+        "request": null,
+        "response": "DiningCheckoutVO"
+      },
+      {
+        "apiId": "FOOD-API-058",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningCheckoutController",
+        "controller": "BizDiningCheckoutController",
+        "method": "paySettlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCheckoutService",
+        "request": "PaySettlementReq",
+        "response": "DiningCheckoutVO"
+      },
+      {
+        "apiId": "FOOD-API-059",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningCheckoutController",
+        "controller": "BizDiningCheckoutController",
+        "method": "cancelSettlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCheckoutService",
+        "request": "CancelSettlementReq",
+        "response": "DiningCheckoutVO"
+      },
+      {
+        "apiId": "FOOD-API-060",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningCheckoutController",
+        "controller": "BizDiningCheckoutController",
+        "method": "finalizeSettlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCheckoutService",
+        "request": "FinalizeSettlementReq",
+        "response": "DiningCheckoutVO"
+      },
+      {
+        "apiId": "FOOD-API-061",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningAdjustmentController",
+        "controller": "BizDiningAdjustmentController",
+        "method": "createAdjustment",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCheckoutService",
+        "request": "CreateAdjustmentReq",
+        "response": "DiningAdjustmentVO"
+      },
+      {
+        "apiId": "FOOD-API-062",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReturnController",
+        "controller": "BizDiningReturnController",
+        "method": "createReturn",
+        "serviceClass": "ai.neargo.shop.food.service.DiningReturnService",
+        "request": "CreateReturnReq",
+        "response": "DiningReturnVO"
+      },
+      {
+        "apiId": "FOOD-API-063",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReturnController",
+        "controller": "BizDiningReturnController",
+        "method": "executeReturn",
+        "serviceClass": "ai.neargo.shop.food.service.DiningReturnService",
+        "request": "ExecuteReturnReq",
+        "response": "DiningReturnVO"
+      },
+      {
+        "apiId": "FOOD-API-064",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReturnController",
+        "controller": "BizDiningReturnController",
+        "method": "getReturn",
+        "serviceClass": "ai.neargo.shop.food.service.DiningReturnService",
+        "request": null,
+        "response": "DiningReturnVO"
+      },
+      {
+        "apiId": "FOOD-API-065",
+        "controllerClass": "ai.neargo.shop.print.api.biz.BizPrintJobController",
+        "controller": "BizPrintJobController",
+        "method": "createJob",
+        "serviceClass": "ai.neargo.shop.print.service.PrintService",
+        "request": "CreateJobReq",
+        "response": "PrintJobVO"
+      },
+      {
+        "apiId": "FOOD-API-066",
+        "controllerClass": "ai.neargo.shop.print.api.biz.BizPrintJobController",
+        "controller": "BizPrintJobController",
+        "method": "getJob",
+        "serviceClass": "ai.neargo.shop.print.service.PrintService",
+        "request": null,
+        "response": "PrintJobVO"
+      },
+      {
+        "apiId": "FOOD-API-067",
+        "controllerClass": "ai.neargo.shop.print.api.biz.BizPrintJobController",
+        "controller": "BizPrintJobController",
+        "method": "reprintJob",
+        "serviceClass": "ai.neargo.shop.print.service.PrintService",
+        "request": "ReprintJobReq",
+        "response": "PrintJobVO"
+      },
+      {
+        "apiId": "FOOD-API-068",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCashShiftController",
+        "controller": "BizCashShiftController",
+        "method": "createCashShift",
+        "serviceClass": "ai.neargo.shop.food.service.CashShiftService",
+        "request": "CreateCashShiftReq",
+        "response": "CashShiftVO"
+      },
+      {
+        "apiId": "FOOD-API-069",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCashEntryController",
+        "controller": "BizCashEntryController",
+        "method": "createEntry",
+        "serviceClass": "ai.neargo.shop.food.service.CashShiftService",
+        "request": "CreateEntryReq",
+        "response": "CashEntryVO"
+      },
+      {
+        "apiId": "FOOD-API-070",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCashShiftController",
+        "controller": "BizCashShiftController",
+        "method": "countCashShift",
+        "serviceClass": "ai.neargo.shop.food.service.CashShiftService",
+        "request": "CountCashShiftReq",
+        "response": "CashShiftVO"
+      },
+      {
+        "apiId": "FOOD-API-071",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCashShiftController",
+        "controller": "BizCashShiftController",
+        "method": "handoverCashShift",
+        "serviceClass": "ai.neargo.shop.food.service.CashShiftService",
+        "request": "HandoverCashShiftReq",
+        "response": "CashShiftVO"
+      },
+      {
+        "apiId": "FOOD-API-072",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+        "controller": "BizBusinessCloseController",
+        "method": "createClose",
+        "serviceClass": "ai.neargo.shop.food.service.BusinessCloseService",
+        "request": "CreateCloseReq",
+        "response": "BusinessCloseVO"
+      },
+      {
+        "apiId": "FOOD-API-073",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+        "controller": "BizBusinessCloseController",
+        "method": "getClose",
+        "serviceClass": "ai.neargo.shop.food.service.BusinessCloseService",
+        "request": null,
+        "response": "BusinessCloseVO"
+      },
+      {
+        "apiId": "FOOD-API-074",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCloseExceptionController",
+        "controller": "BizCloseExceptionController",
+        "method": "carryException",
+        "serviceClass": "ai.neargo.shop.food.service.BusinessCloseService",
+        "request": "CarryExceptionReq",
+        "response": "CloseExceptionVO"
+      },
+      {
+        "apiId": "FOOD-API-075",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+        "controller": "BizBusinessCloseController",
+        "method": "signClose",
+        "serviceClass": "ai.neargo.shop.food.service.BusinessCloseService",
+        "request": "SignCloseReq",
+        "response": "BusinessCloseVO"
+      },
+      {
+        "apiId": "FOOD-API-076",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+        "controller": "BizBusinessCloseController",
+        "method": "createAdjustment",
+        "serviceClass": "ai.neargo.shop.food.service.BusinessCloseService",
+        "request": "CreateAdjustmentReq",
+        "response": "BusinessCloseVO"
+      },
+      {
+        "apiId": "FOOD-API-077",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReportController",
+        "controller": "BizDiningReportController",
+        "method": "getReport",
+        "serviceClass": "ai.neargo.shop.food.service.DiningReportService",
+        "request": "GetReportQuery",
+        "response": "DiningReportVO"
+      },
+      {
+        "apiId": "FOOD-API-078",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReportExportController",
+        "controller": "BizDiningReportExportController",
+        "method": "createReportExport",
+        "serviceClass": "ai.neargo.shop.food.service.DiningReportService",
+        "request": "CreateReportExportReq",
+        "response": "DiningReportExportVO"
+      },
+      {
+        "apiId": "FOOD-API-079",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReportExportController",
+        "controller": "BizDiningReportExportController",
+        "method": "getReportExport",
+        "serviceClass": "ai.neargo.shop.food.service.DiningReportService",
+        "request": null,
+        "response": "DiningReportExportVO"
+      },
+      {
+        "apiId": "FOOD-API-080",
+        "controllerClass": "ai.neargo.shop.food.api.ops.OpsDiningReportRebuildController",
+        "controller": "OpsDiningReportRebuildController",
+        "method": "createReportRebuild",
+        "serviceClass": "ai.neargo.shop.food.service.DiningReportService",
+        "request": "CreateReportRebuildReq",
+        "response": "DiningReportRebuildVO"
+      },
+      {
+        "apiId": "FOOD-API-081",
+        "controllerClass": "ai.neargo.shop.food.api.ops.OpsDiningCapabilityController",
+        "controller": "OpsDiningCapabilityController",
+        "method": "saveCapability",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCapabilityService",
+        "request": "SaveCapabilityReq",
+        "response": "DiningCapabilityVO"
+      },
+      {
+        "apiId": "FOOD-API-082",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizExternalMappingController",
+        "controller": "BizExternalMappingController",
+        "method": "saveMapping",
+        "serviceClass": "ai.neargo.shop.food.service.ExternalMappingService",
+        "request": "SaveMappingReq",
+        "response": "ExternalMappingVO"
+      },
+      {
+        "apiId": "FOOD-API-083",
+        "controllerClass": "ai.neargo.shop.food.api.ops.OpsIntegrationExceptionController",
+        "controller": "OpsIntegrationExceptionController",
+        "method": "listIntegrationExceptions",
+        "serviceClass": "ai.neargo.shop.food.service.IntegrationExceptionService",
+        "request": "ListIntegrationExceptionsQuery",
+        "response": "IntegrationExceptionVO"
+      },
+      {
+        "apiId": "FOOD-API-084",
+        "controllerClass": "ai.neargo.shop.food.api.internal.InternalSyncBatchController",
+        "controller": "InternalSyncBatchController",
+        "method": "createSyncBatche",
+        "serviceClass": "ai.neargo.shop.food.service.SyncBatchService",
+        "request": "CreateSyncBatcheReq",
+        "response": "SyncBatchVO"
+      },
+      {
+        "apiId": "FOOD-API-085",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningEntitlementController",
+        "controller": "BizDiningEntitlementController",
+        "method": "createEntitlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningEntitlementService",
+        "request": "CreateEntitlementReq",
+        "response": "DiningEntitlementVO"
+      },
+      {
+        "apiId": "FOOD-API-086",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningEntitlementController",
+        "controller": "BizDiningEntitlementController",
+        "method": "extendEntitlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningEntitlementService",
+        "request": "ExtendEntitlementReq",
+        "response": "DiningEntitlementVO"
+      },
+      {
+        "apiId": "FOOD-API-087",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBanquetPlanController",
+        "controller": "BizBanquetPlanController",
+        "method": "createBanquetPlan",
+        "serviceClass": "ai.neargo.shop.food.service.BanquetPlanService",
+        "request": "CreateBanquetPlanReq",
+        "response": "BanquetPlanVO"
+      },
+      {
+        "apiId": "FOOD-API-088",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBanquetPlanController",
+        "controller": "BizBanquetPlanController",
+        "method": "confirmAttendanceBanquetPlan",
+        "serviceClass": "ai.neargo.shop.food.service.BanquetPlanService",
+        "request": "ConfirmAttendanceBanquetPlanReq",
+        "response": "BanquetPlanVO"
+      },
+      {
+        "apiId": "FOOD-API-089",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBottleCustodyController",
+        "controller": "BizBottleCustodyController",
+        "method": "createCustody",
+        "serviceClass": "ai.neargo.shop.food.service.BottleCustodyService",
+        "request": "CreateCustodyReq",
+        "response": "BottleCustodyVO"
+      },
+      {
+        "apiId": "FOOD-API-090",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBottleCustodyController",
+        "controller": "BizBottleCustodyController",
+        "method": "createEntry",
+        "serviceClass": "ai.neargo.shop.food.service.BottleCustodyService",
+        "request": "CreateEntryReq",
+        "response": "BottleCustodyVO"
+      },
+      {
+        "apiId": "FOOD-API-091",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizRoomChargeController",
+        "controller": "BizRoomChargeController",
+        "method": "createRoomCharge",
+        "serviceClass": "ai.neargo.shop.food.service.RoomChargeService",
+        "request": "CreateRoomChargeReq",
+        "response": "RoomChargeVO"
+      },
+      {
+        "apiId": "FOOD-API-092",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizTableAreaController",
+        "controller": "BizTableAreaController",
+        "method": "listTableAreas",
+        "serviceClass": "ai.neargo.shop.food.service.TableService",
+        "request": "ListTableAreasQuery",
+        "response": "TableAreaVO"
+      },
+      {
+        "apiId": "FOOD-API-093",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizTableAreaController",
+        "controller": "BizTableAreaController",
+        "method": "createTableArea",
+        "serviceClass": "ai.neargo.shop.food.service.TableService",
+        "request": "CreateTableAreaReq",
+        "response": "TableAreaVO"
+      },
+      {
+        "apiId": "FOOD-API-094",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizTableAreaController",
+        "controller": "BizTableAreaController",
+        "method": "saveTableArea",
+        "serviceClass": "ai.neargo.shop.food.service.TableService",
+        "request": "SaveTableAreaReq",
+        "response": "TableAreaVO"
+      },
+      {
+        "apiId": "FOOD-API-095",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizTableAreaController",
+        "controller": "BizTableAreaController",
+        "method": "setStatusTableArea",
+        "serviceClass": "ai.neargo.shop.food.service.TableService",
+        "request": "SetStatusTableAreaReq",
+        "response": "TableAreaVO"
+      },
+      {
+        "apiId": "FOOD-API-096",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizTableController",
+        "controller": "BizTableController",
+        "method": "listTables",
+        "serviceClass": "ai.neargo.shop.food.service.TableService",
+        "request": "ListTablesQuery",
+        "response": "TableVO"
+      },
+      {
+        "apiId": "FOOD-API-097",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizTableController",
+        "controller": "BizTableController",
+        "method": "getTable",
+        "serviceClass": "ai.neargo.shop.food.service.TableService",
+        "request": null,
+        "response": "TableVO"
+      },
+      {
+        "apiId": "FOOD-API-098",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizTableController",
+        "controller": "BizTableController",
+        "method": "saveTable",
+        "serviceClass": "ai.neargo.shop.food.service.TableService",
+        "request": "SaveTableReq",
+        "response": "TableVO"
+      },
+      {
+        "apiId": "FOOD-API-099",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizTableController",
+        "controller": "BizTableController",
+        "method": "setStatusTable",
+        "serviceClass": "ai.neargo.shop.food.service.TableService",
+        "request": "SetStatusTableReq",
+        "response": "TableVO"
+      },
+      {
+        "apiId": "FOOD-API-100",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizTableController",
+        "controller": "BizTableController",
+        "method": "archiveTable",
+        "serviceClass": "ai.neargo.shop.food.service.TableService",
+        "request": "ArchiveTableReq",
+        "response": "TableVO"
+      },
+      {
+        "apiId": "FOOD-API-101",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizTableController",
+        "controller": "BizTableController",
+        "method": "revokeTokenTable",
+        "serviceClass": "ai.neargo.shop.food.service.TableService",
+        "request": "RevokeTokenTableReq",
+        "response": "TableVO"
+      },
+      {
+        "apiId": "FOOD-API-102",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckController",
+        "controller": "BizCheckController",
+        "method": "getCheck",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": null,
+        "response": "CheckVO"
+      },
+      {
+        "apiId": "FOOD-API-103",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckSeatController",
+        "controller": "BizCheckSeatController",
+        "method": "saveSeat",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": "SaveSeatReq",
+        "response": "CheckSeatVO"
+      },
+      {
+        "apiId": "FOOD-API-104",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckController",
+        "controller": "BizCheckController",
+        "method": "combineTablesCheck",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": "CombineTablesCheckReq",
+        "response": "CheckVO"
+      },
+      {
+        "apiId": "FOOD-API-105",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizTableController",
+        "controller": "BizTableController",
+        "method": "shareTable",
+        "serviceClass": "ai.neargo.shop.food.service.TableService",
+        "request": "ShareTableReq",
+        "response": "TableVO"
+      },
+      {
+        "apiId": "FOOD-API-106",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizTableOperationController",
+        "controller": "BizTableOperationController",
+        "method": "getTableOperation",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": null,
+        "response": "TableOperationVO"
+      },
+      {
+        "apiId": "FOOD-API-107",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+        "controller": "BizReservationController",
+        "method": "listReservations",
+        "serviceClass": "ai.neargo.shop.food.service.ReservationService",
+        "request": "ListReservationsQuery",
+        "response": "ReservationVO"
+      },
+      {
+        "apiId": "FOOD-API-108",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningActionLogController",
+        "controller": "BizDiningActionLogController",
+        "method": "listActions",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": "ListActionsQuery",
+        "response": "DiningActionLogVO"
+      },
+      {
+        "apiId": "FOOD-API-109",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizMenuController",
+        "controller": "BizMenuController",
+        "method": "listMenus",
+        "serviceClass": "ai.neargo.shop.food.service.MenuService",
+        "request": "ListMenusQuery",
+        "response": "MenuVO"
+      },
+      {
+        "apiId": "FOOD-API-110",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizMenuController",
+        "controller": "BizMenuController",
+        "method": "saveMenu",
+        "serviceClass": "ai.neargo.shop.food.service.MenuService",
+        "request": "SaveMenuReq",
+        "response": "MenuVO"
+      },
+      {
+        "apiId": "FOOD-API-111",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizMenuController",
+        "controller": "BizMenuController",
+        "method": "disableMenu",
+        "serviceClass": "ai.neargo.shop.food.service.MenuService",
+        "request": "DisableMenuReq",
+        "response": "MenuVO"
+      },
+      {
+        "apiId": "FOOD-API-112",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDishController",
+        "controller": "BizDishController",
+        "method": "listDishes",
+        "serviceClass": "ai.neargo.shop.food.service.DishService",
+        "request": "ListDishesQuery",
+        "response": "DishVO"
+      },
+      {
+        "apiId": "FOOD-API-113",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDishController",
+        "controller": "BizDishController",
+        "method": "getDish",
+        "serviceClass": "ai.neargo.shop.food.service.DishService",
+        "request": null,
+        "response": "DishVO"
+      },
+      {
+        "apiId": "FOOD-API-114",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizMenuCatalogController",
+        "controller": "BizMenuCatalogController",
+        "method": "getCatalog",
+        "serviceClass": "ai.neargo.shop.food.service.MenuService",
+        "request": "GetCatalogQuery",
+        "response": "MenuCatalogVO"
+      },
+      {
+        "apiId": "FOOD-API-115",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizConfigRevisionController",
+        "controller": "BizConfigRevisionController",
+        "method": "listConfigRevisions",
+        "serviceClass": "ai.neargo.shop.food.service.MenuService",
+        "request": "ListConfigRevisionsQuery",
+        "response": "ConfigRevisionVO"
+      },
+      {
+        "apiId": "FOOD-API-116",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizConfigRevisionController",
+        "controller": "BizConfigRevisionController",
+        "method": "republishConfigRevision",
+        "serviceClass": "ai.neargo.shop.food.service.MenuService",
+        "request": "RepublishConfigRevisionReq",
+        "response": "ConfigRevisionVO"
+      },
+      {
+        "apiId": "FOOD-API-117",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizModifierController",
+        "controller": "BizModifierController",
+        "method": "publishModifier",
+        "serviceClass": "ai.neargo.shop.food.service.ModifierService",
+        "request": "PublishModifierReq",
+        "response": "ModifierVO"
+      },
+      {
+        "apiId": "FOOD-API-118",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOptionGroupController",
+        "controller": "BizOptionGroupController",
+        "method": "listOptionGroups",
+        "serviceClass": "ai.neargo.shop.food.service.OptionGroupService",
+        "request": "ListOptionGroupsQuery",
+        "response": "OptionGroupVO"
+      },
+      {
+        "apiId": "FOOD-API-119",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizBundleController",
+        "controller": "BizBundleController",
+        "method": "listBundles",
+        "serviceClass": "ai.neargo.shop.food.service.BundleService",
+        "request": "ListBundlesQuery",
+        "response": "BundleVO"
+      },
+      {
+        "apiId": "FOOD-API-120",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizModifierController",
+        "controller": "BizModifierController",
+        "method": "listModifiers",
+        "serviceClass": "ai.neargo.shop.food.service.ModifierService",
+        "request": "ListModifiersQuery",
+        "response": "ModifierVO"
+      },
+      {
+        "apiId": "FOOD-API-121",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizStationController",
+        "controller": "BizStationController",
+        "method": "listStations",
+        "serviceClass": "ai.neargo.shop.food.service.StationService",
+        "request": "ListStationsQuery",
+        "response": "StationVO"
+      },
+      {
+        "apiId": "FOOD-API-122",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizSalesRestrictionController",
+        "controller": "BizSalesRestrictionController",
+        "method": "listSalesRestrictions",
+        "serviceClass": "ai.neargo.shop.food.service.SalesRestrictionService",
+        "request": "ListSalesRestrictionsQuery",
+        "response": "SalesRestrictionVO"
+      },
+      {
+        "apiId": "FOOD-API-123",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchController",
+        "controller": "BizOrderBatchController",
+        "method": "listBatches",
+        "serviceClass": "ai.neargo.shop.food.service.DiningOrderService",
+        "request": "ListBatchesQuery",
+        "response": "OrderBatchVO"
+      },
+      {
+        "apiId": "FOOD-API-124",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchController",
+        "controller": "BizOrderBatchController",
+        "method": "cancelBatche",
+        "serviceClass": "ai.neargo.shop.food.service.DiningOrderService",
+        "request": "CancelBatcheReq",
+        "response": "OrderBatchVO"
+      },
+      {
+        "apiId": "FOOD-API-125",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchOperationController",
+        "controller": "BizOrderBatchOperationController",
+        "method": "listOperations",
+        "serviceClass": "ai.neargo.shop.food.service.DiningOrderService",
+        "request": "ListOperationsQuery",
+        "response": "OrderBatchOperationVO"
+      },
+      {
+        "apiId": "FOOD-API-126",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+        "controller": "BizCheckCartController",
+        "method": "archiveCart",
+        "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+        "request": "ArchiveCartReq",
+        "response": "CheckCartVO"
+      },
+      {
+        "apiId": "FOOD-API-127",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpCheckCartController",
+        "controller": "MpCheckCartController",
+        "method": "getCart",
+        "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+        "request": null,
+        "response": "CheckCartVO"
+      },
+      {
+        "apiId": "FOOD-API-128",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpCheckCartController",
+        "controller": "MpCheckCartController",
+        "method": "createCart",
+        "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+        "request": "CreateCartReq",
+        "response": "CheckCartVO"
+      },
+      {
+        "apiId": "FOOD-API-129",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpCheckCartController",
+        "controller": "MpCheckCartController",
+        "method": "saveLine",
+        "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+        "request": "SaveLineReq",
+        "response": "CheckCartVO"
+      },
+      {
+        "apiId": "FOOD-API-130",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpCheckCartController",
+        "controller": "MpCheckCartController",
+        "method": "archiveLine",
+        "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+        "request": "ArchiveLineReq",
+        "response": "CheckCartVO"
+      },
+      {
+        "apiId": "FOOD-API-131",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpDiningQuoteController",
+        "controller": "MpDiningQuoteController",
+        "method": "quote",
+        "serviceClass": "ai.neargo.shop.food.service.DiningOrderService",
+        "request": "QuoteReq",
+        "response": "DiningQuoteVO"
+      },
+      {
+        "apiId": "FOOD-API-132",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpOrderBatchController",
+        "controller": "MpOrderBatchController",
+        "method": "place",
+        "serviceClass": "ai.neargo.shop.food.service.DiningOrderService",
+        "request": "PlaceReq",
+        "response": "OrderBatchVO"
+      },
+      {
+        "apiId": "FOOD-API-133",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpOrderBatchController",
+        "controller": "MpOrderBatchController",
+        "method": "getBatche",
+        "serviceClass": "ai.neargo.shop.food.service.DiningOrderService",
+        "request": null,
+        "response": "OrderBatchVO"
+      },
+      {
+        "apiId": "FOOD-API-134",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpDiningCheckoutController",
+        "controller": "MpDiningCheckoutController",
+        "method": "getSettlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCheckoutService",
+        "request": null,
+        "response": "DiningCheckoutVO"
+      },
+      {
+        "apiId": "FOOD-API-135",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpDiningCheckoutController",
+        "controller": "MpDiningCheckoutController",
+        "method": "paySettlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCheckoutService",
+        "request": "PaySettlementReq",
+        "response": "DiningCheckoutVO"
+      },
+      {
+        "apiId": "FOOD-API-136",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpDiningReturnController",
+        "controller": "MpDiningReturnController",
+        "method": "createReturn",
+        "serviceClass": "ai.neargo.shop.food.service.DiningReturnService",
+        "request": "CreateReturnReq",
+        "response": "DiningReturnVO"
+      },
+      {
+        "apiId": "FOOD-API-137",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpDiningReturnController",
+        "controller": "MpDiningReturnController",
+        "method": "getReturn",
+        "serviceClass": "ai.neargo.shop.food.service.DiningReturnService",
+        "request": null,
+        "response": "DiningReturnVO"
+      },
+      {
+        "apiId": "FOOD-API-138",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpCheckController",
+        "controller": "MpCheckController",
+        "method": "getCheck",
+        "serviceClass": "ai.neargo.shop.food.service.CheckService",
+        "request": null,
+        "response": "CheckVO"
+      },
+      {
+        "apiId": "FOOD-API-139",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpDiningSessionController",
+        "controller": "MpDiningSessionController",
+        "method": "endSession",
+        "serviceClass": "ai.neargo.shop.food.service.DiningSessionService",
+        "request": null,
+        "response": "DiningSessionVO"
+      },
+      {
+        "apiId": "FOOD-API-140",
+        "controllerClass": "ai.neargo.shop.food.api.mp.MpDiningCheckoutController",
+        "controller": "MpDiningCheckoutController",
+        "method": "createSettlement",
+        "serviceClass": "ai.neargo.shop.food.service.DiningCheckoutService",
+        "request": "CreateSettlementReq",
+        "response": "DiningCheckoutVO"
+      },
+      {
+        "apiId": "FOOD-API-141",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizModifierController",
+        "controller": "BizModifierController",
+        "method": "createModifier",
+        "serviceClass": "ai.neargo.shop.food.service.ModifierService",
+        "request": "CreateModifierReq",
+        "response": "ModifierVO"
+      }
+    ],
+    "persistence": [
+      {
+        "table": "fnb_dish",
+        "entity": "FnbDish",
+        "entityClass": "ai.neargo.shop.food.entity.FnbDish",
+        "mapper": "FoodMappers.DishMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.DishMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_bundle",
+        "entity": "FnbBundle",
+        "entityClass": "ai.neargo.shop.food.entity.FnbBundle",
+        "mapper": "FoodMappers.BundleMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.BundleMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_bundle_group",
+        "entity": "FnbBundleGroup",
+        "entityClass": "ai.neargo.shop.food.entity.FnbBundleGroup",
+        "mapper": "FoodMappers.BundleGroupMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.BundleGroupMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_bundle_choice",
+        "entity": "FnbBundleChoice",
+        "entityClass": "ai.neargo.shop.food.entity.FnbBundleChoice",
+        "mapper": "FoodMappers.BundleChoiceMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.BundleChoiceMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_modifier",
+        "entity": "FnbModifier",
+        "entityClass": "ai.neargo.shop.food.entity.FnbModifier",
+        "mapper": "FoodMappers.ModifierMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ModifierMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_modifier_component",
+        "entity": "FnbModifierComponent",
+        "entityClass": "ai.neargo.shop.food.entity.FnbModifierComponent",
+        "mapper": "FoodMappers.ModifierComponentMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ModifierComponentMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_option_group",
+        "entity": "FnbOptionGroup",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOptionGroup",
+        "mapper": "FoodMappers.OptionGroupMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_option_group_item",
+        "entity": "FnbOptionGroupItem",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOptionGroupItem",
+        "mapper": "FoodMappers.OptionGroupItemMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_dish_option_group",
+        "entity": "FnbDishOptionGroup",
+        "entityClass": "ai.neargo.shop.food.entity.FnbDishOptionGroup",
+        "mapper": "FoodMappers.DishOptionGroupMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.DishOptionGroupMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_menu",
+        "entity": "FnbMenu",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenu",
+        "mapper": "FoodMappers.MenuMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MenuMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_menu_store",
+        "entity": "FnbMenuStore",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuStore",
+        "mapper": "FoodMappers.MenuStoreMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MenuStoreMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_menu_context",
+        "entity": "FnbMenuContext",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuContext",
+        "mapper": "FoodMappers.MenuContextMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MenuContextMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_menu_schedule",
+        "entity": "FnbMenuSchedule",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuSchedule",
+        "mapper": "FoodMappers.MenuScheduleMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MenuScheduleMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_menu_exception",
+        "entity": "FnbMenuException",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuException",
+        "mapper": "FoodMappers.MenuExceptionMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MenuExceptionMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_menu_category",
+        "entity": "FnbMenuCategory",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuCategory",
+        "mapper": "FoodMappers.MenuCategoryMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MenuCategoryMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_menu_item",
+        "entity": "FnbMenuItem",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuItem",
+        "mapper": "FoodMappers.MenuItemMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MenuItemMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_menu_item_sku",
+        "entity": "FnbMenuItemSku",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuItemSku",
+        "mapper": "FoodMappers.MenuItemSkuMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MenuItemSkuMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_station",
+        "entity": "FnbStation",
+        "entityClass": "ai.neargo.shop.food.entity.FnbStation",
+        "mapper": "FoodMappers.StationMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.StationMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_sku_station",
+        "entity": "FnbSkuStation",
+        "entityClass": "ai.neargo.shop.food.entity.FnbSkuStation",
+        "mapper": "FoodMappers.SkuStationMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.SkuStationMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_store_policy",
+        "entity": "FnbStorePolicy",
+        "entityClass": "ai.neargo.shop.food.entity.FnbStorePolicy",
+        "mapper": "FoodMappers.StorePolicyMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_service_calendar",
+        "entity": "FnbServiceCalendar",
+        "entityClass": "ai.neargo.shop.food.entity.FnbServiceCalendar",
+        "mapper": "FoodMappers.ServiceCalendarMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ServiceCalendarMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_table",
+        "entity": "FnbTable",
+        "entityClass": "ai.neargo.shop.food.entity.FnbTable",
+        "mapper": "FoodMappers.TableMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.TableMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_table_token",
+        "entity": "FnbTableToken",
+        "entityClass": "ai.neargo.shop.food.entity.FnbTableToken",
+        "mapper": "FoodMappers.TableTokenMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.TableTokenMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_reservation",
+        "entity": "FnbReservation",
+        "entityClass": "ai.neargo.shop.food.entity.FnbReservation",
+        "mapper": "FoodMappers.ReservationMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ReservationMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_check",
+        "entity": "FnbCheck",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCheck",
+        "mapper": "FoodMappers.CheckMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_table_occupancy",
+        "entity": "FnbTableOccupancy",
+        "entityClass": "ai.neargo.shop.food.entity.FnbTableOccupancy",
+        "mapper": "FoodMappers.TableOccupancyMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.TableOccupancyMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_check_relation",
+        "entity": "FnbCheckRelation",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCheckRelation",
+        "mapper": "FoodMappers.CheckRelationMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckRelationMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_guest_session",
+        "entity": "FnbGuestSession",
+        "entityClass": "ai.neargo.shop.food.entity.FnbGuestSession",
+        "mapper": "FoodMappers.GuestSessionMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_seat",
+        "entity": "FnbSeat",
+        "entityClass": "ai.neargo.shop.food.entity.FnbSeat",
+        "mapper": "FoodMappers.SeatMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.SeatMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_check_cart",
+        "entity": "FnbCheckCart",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCheckCart",
+        "mapper": "FoodMappers.CheckCartMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_check_cart_item",
+        "entity": "FnbCheckCartItem",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCheckCartItem",
+        "mapper": "FoodMappers.CheckCartItemMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_order_batch",
+        "entity": "FnbOrderBatch",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOrderBatch",
+        "mapper": "FoodMappers.OrderBatchMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_core_order_binding",
+        "entity": "FnbCoreOrderBinding",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCoreOrderBinding",
+        "mapper": "FoodMappers.CoreOrderBindingMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CoreOrderBindingMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_order_line",
+        "entity": "FnbOrderLine",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOrderLine",
+        "mapper": "FoodMappers.OrderLineMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_core_line_allocation",
+        "entity": "FnbCoreLineAllocation",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCoreLineAllocation",
+        "mapper": "FoodMappers.CoreLineAllocationMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CoreLineAllocationMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_order_component",
+        "entity": "FnbOrderComponent",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOrderComponent",
+        "mapper": "FoodMappers.OrderComponentMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.OrderComponentMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_order_modifier",
+        "entity": "FnbOrderModifier",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOrderModifier",
+        "mapper": "FoodMappers.OrderModifierMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.OrderModifierMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_course",
+        "entity": "FnbCourse",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCourse",
+        "mapper": "FoodMappers.CourseMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CourseMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_kitchen_ticket",
+        "entity": "FnbKitchenTicket",
+        "entityClass": "ai.neargo.shop.food.entity.FnbKitchenTicket",
+        "mapper": "FoodMappers.KitchenTicketMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.KitchenTicketMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_kitchen_task",
+        "entity": "FnbKitchenTask",
+        "entityClass": "ai.neargo.shop.food.entity.FnbKitchenTask",
+        "mapper": "FoodMappers.KitchenTaskMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.KitchenTaskMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_service_event",
+        "entity": "FnbServiceEvent",
+        "entityClass": "ai.neargo.shop.food.entity.FnbServiceEvent",
+        "mapper": "FoodMappers.ServiceEventMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_settlement",
+        "entity": "FnbSettlement",
+        "entityClass": "ai.neargo.shop.food.entity.FnbSettlement",
+        "mapper": "FoodMappers.SettlementMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.SettlementMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_settlement_item",
+        "entity": "FnbSettlementItem",
+        "entityClass": "ai.neargo.shop.food.entity.FnbSettlementItem",
+        "mapper": "FoodMappers.SettlementItemMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.SettlementItemMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_charge_intent",
+        "entity": "FnbChargeIntent",
+        "entityClass": "ai.neargo.shop.food.entity.FnbChargeIntent",
+        "mapper": "FoodMappers.ChargeIntentMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ChargeIntentMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_return",
+        "entity": "FnbReturn",
+        "entityClass": "ai.neargo.shop.food.entity.FnbReturn",
+        "mapper": "FoodMappers.ReturnMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ReturnMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_return_item",
+        "entity": "FnbReturnItem",
+        "entityClass": "ai.neargo.shop.food.entity.FnbReturnItem",
+        "mapper": "FoodMappers.ReturnItemMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ReturnItemMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_action_log",
+        "entity": "FnbActionLog",
+        "entityClass": "ai.neargo.shop.food.entity.FnbActionLog",
+        "mapper": "FoodMappers.ActionLogMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_business_day",
+        "entity": "FnbBusinessDay",
+        "entityClass": "ai.neargo.shop.food.entity.FnbBusinessDay",
+        "mapper": "FoodMappers.BusinessDayMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.BusinessDayMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_cash_shift",
+        "entity": "FnbCashShift",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCashShift",
+        "mapper": "FoodMappers.CashShiftMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CashShiftMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_cash_entry",
+        "entity": "FnbCashEntry",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCashEntry",
+        "mapper": "FoodMappers.CashEntryMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CashEntryMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_cash_payment_link",
+        "entity": "FnbCashPaymentLink",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCashPaymentLink",
+        "mapper": "FoodMappers.CashPaymentLinkMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CashPaymentLinkMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_cash_count",
+        "entity": "FnbCashCount",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCashCount",
+        "mapper": "FoodMappers.CashCountMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CashCountMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_close_run",
+        "entity": "FnbCloseRun",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCloseRun",
+        "mapper": "FoodMappers.CloseRunMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CloseRunMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_close_balance",
+        "entity": "FnbCloseBalance",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCloseBalance",
+        "mapper": "FoodMappers.CloseBalanceMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CloseBalanceMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_close_exception",
+        "entity": "FnbCloseException",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCloseException",
+        "mapper": "FoodMappers.CloseExceptionMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CloseExceptionMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_close_adjustment",
+        "entity": "FnbCloseAdjustment",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCloseAdjustment",
+        "mapper": "FoodMappers.CloseAdjustmentMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CloseAdjustmentMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_metric_definition",
+        "entity": "FnbMetricDefinition",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMetricDefinition",
+        "mapper": "FoodMappers.MetricDefinitionMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.MetricDefinitionMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_report_run",
+        "entity": "FnbReportRun",
+        "entityClass": "ai.neargo.shop.food.entity.FnbReportRun",
+        "mapper": "FoodMappers.ReportRunMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ReportRunMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_external_mapping",
+        "entity": "FnbExternalMapping",
+        "entityClass": "ai.neargo.shop.food.entity.FnbExternalMapping",
+        "mapper": "FoodMappers.ExternalMappingMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ExternalMappingMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_sync_batch",
+        "entity": "FnbSyncBatch",
+        "entityClass": "ai.neargo.shop.food.entity.FnbSyncBatch",
+        "mapper": "FoodMappers.SyncBatchMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.SyncBatchMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_edge_lease",
+        "entity": "FnbEdgeLease",
+        "entityClass": "ai.neargo.shop.food.entity.FnbEdgeLease",
+        "mapper": "FoodMappers.EdgeLeaseMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.EdgeLeaseMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_integration_exception",
+        "entity": "FnbIntegrationException",
+        "entityClass": "ai.neargo.shop.food.entity.FnbIntegrationException",
+        "mapper": "FoodMappers.IntegrationExceptionMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.IntegrationExceptionMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_dining_entitlement",
+        "entity": "FnbDiningEntitlement",
+        "entityClass": "ai.neargo.shop.food.entity.FnbDiningEntitlement",
+        "mapper": "FoodMappers.DiningEntitlementMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.DiningEntitlementMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_banquet_plan",
+        "entity": "FnbBanquetPlan",
+        "entityClass": "ai.neargo.shop.food.entity.FnbBanquetPlan",
+        "mapper": "FoodMappers.BanquetPlanMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.BanquetPlanMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_bottle_custody",
+        "entity": "FnbBottleCustody",
+        "entityClass": "ai.neargo.shop.food.entity.FnbBottleCustody",
+        "mapper": "FoodMappers.BottleCustodyMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.BottleCustodyMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_custody_entry",
+        "entity": "FnbCustodyEntry",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCustodyEntry",
+        "mapper": "FoodMappers.CustodyEntryMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CustodyEntryMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_room_charge_intent",
+        "entity": "FnbRoomChargeIntent",
+        "entityClass": "ai.neargo.shop.food.entity.FnbRoomChargeIntent",
+        "mapper": "FoodMappers.RoomChargeIntentMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.RoomChargeIntentMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "prn_device",
+        "entity": "PrnDevice",
+        "entityClass": "ai.neargo.shop.print.entity.PrnDevice",
+        "mapper": "PrintMappers.DeviceMapper",
+        "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.DeviceMapper",
+        "owner": "shared-print"
+      },
+      {
+        "table": "prn_template",
+        "entity": "PrnTemplate",
+        "entityClass": "ai.neargo.shop.print.entity.PrnTemplate",
+        "mapper": "PrintMappers.TemplateMapper",
+        "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.TemplateMapper",
+        "owner": "shared-print"
+      },
+      {
+        "table": "prn_route",
+        "entity": "PrnRoute",
+        "entityClass": "ai.neargo.shop.print.entity.PrnRoute",
+        "mapper": "PrintMappers.RouteMapper",
+        "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.RouteMapper",
+        "owner": "shared-print"
+      },
+      {
+        "table": "prn_job",
+        "entity": "PrnJob",
+        "entityClass": "ai.neargo.shop.print.entity.PrnJob",
+        "mapper": "PrintMappers.JobMapper",
+        "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.JobMapper",
+        "owner": "shared-print"
+      },
+      {
+        "table": "prn_attempt",
+        "entity": "PrnAttempt",
+        "entityClass": "ai.neargo.shop.print.entity.PrnAttempt",
+        "mapper": "PrintMappers.AttemptMapper",
+        "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.AttemptMapper",
+        "owner": "shared-print"
+      },
+      {
+        "table": "rpt_food_metric_daily",
+        "entity": "DailyFoodMetricRow",
+        "entityClass": "ai.neargo.shop.report.dto.DailyFoodMetricRow",
+        "mapper": "ReportFoodMetricDailyDao",
+        "mapperClass": "ai.neargo.shop.report.dao.ReportFoodMetricDailyDao",
+        "owner": "shop-report"
+      },
+      {
+        "table": "fnb_table_area",
+        "entity": "FnbTableArea",
+        "entityClass": "ai.neargo.shop.food.entity.FnbTableArea",
+        "mapper": "FoodMappers.TableAreaMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.TableAreaMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_table_operation",
+        "entity": "FnbTableOperation",
+        "entityClass": "ai.neargo.shop.food.entity.FnbTableOperation",
+        "mapper": "FoodMappers.TableOperationMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.TableOperationMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_config_revision",
+        "entity": "FnbConfigRevision",
+        "entityClass": "ai.neargo.shop.food.entity.FnbConfigRevision",
+        "mapper": "FoodMappers.ConfigRevisionMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ConfigRevisionMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_sales_restriction",
+        "entity": "FnbSalesRestriction",
+        "entityClass": "ai.neargo.shop.food.entity.FnbSalesRestriction",
+        "mapper": "FoodMappers.SalesRestrictionMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.SalesRestrictionMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_check_batch_membership",
+        "entity": "FnbCheckBatchMembership",
+        "entityClass": "ai.neargo.shop.food.entity.FnbCheckBatchMembership",
+        "mapper": "FoodMappers.CheckBatchMembershipMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckBatchMembershipMapper",
+        "owner": "food-core"
+      },
+      {
+        "table": "fnb_sales_quota_claim",
+        "entity": "FnbSalesQuotaClaim",
+        "entityClass": "ai.neargo.shop.food.entity.FnbSalesQuotaClaim",
+        "mapper": "FoodMappers.SalesQuotaClaimMapper",
+        "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.SalesQuotaClaimMapper",
+        "owner": "food-core"
+      }
+    ]
+  }
+}

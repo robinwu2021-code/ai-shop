@@ -54,7 +54,7 @@ public final class FoodSchemaValidator {
             require(state.equals("SUCCESS") || state.equals("BASELINE"), "food migration state: " + state);
         }
         var current = flyway.info().current();
-        require(current != null && "5".equals(current.getVersion().getVersion()), "food migration version must be 5");
+        require(current != null && "7".equals(current.getVersion().getVersion()), "food migration version must be 7");
         try (var connection = source.getConnection();
                 var column = connection.getMetaData().getColumns(connection.getCatalog(), connection.getSchema(),
                         "fnb_option_group_item", "spec_value_no")) {
@@ -71,7 +71,7 @@ public final class FoodSchemaValidator {
         missing.addAll(missingCoreCapabilities(actual));
         missing.addAll(missingCoreUniqueKeys(source, actual));
         Collections.sort(missing);
-        return new FoodSchemaReady(true, "5", missing);
+        return new FoodSchemaReady(true, "7", missing);
     }
 
     private static List<String> missingCoreCapabilities(Map<String, Set<String>> actual) {
@@ -92,6 +92,7 @@ public final class FoodSchemaValidator {
 
     private static List<String> missingCoreUniqueKeys(DataSource source, Map<String, Set<String>> actual) {
         Map<String, List<String>> required = Map.of(
+                "fnb_menu_item_option_group", List.of("menu_item_no,group_no"),
                 "fnb_recipe", List.of("recipe_no", "store_no,sku_no,recipe_code"),
                 "fnb_recipe_line", List.of("line_no", "recipe_no,line_no"),
                 "fnb_recipe_adjustment", List.of("adjustment_no", "recipe_no,option_item_no,target_line_no"),
@@ -195,6 +196,18 @@ public final class FoodSchemaValidator {
             adjustment.addAll(List.of("adjustment_no", "recipe_no", "option_item_no", "target_line_no", "action",
                     "qty", "unit", "sort_no", "option_identity_hash"));
             expected.put("fnb_recipe_adjustment", adjustment);
+            expected.get("fnb_menu_item").add("option_mode");
+            expected.get("fnb_menu_item_sku").add("recipe_no");
+            var options = new TreeSet<>(common);
+            options.addAll(List.of("menu_item_no", "group_no", "sort_no"));
+            expected.put("fnb_menu_item_option_group", options);
+            expected.get("fnb_menu_context").addAll(
+                    List.of("channel_binding_no", "channel_scope_key", "price_policy_ref"));
+            expected.get("fnb_sales_restriction").addAll(List.of("order_source", "fulfillment"));
+            var channel = new TreeSet<>(common);
+            channel.addAll(List.of("binding_no", "menu_no", "store_no", "provider", "channel_account_ref",
+                    "external_store_ref", "status"));
+            expected.put("fnb_menu_channel_binding", channel);
             return expected;
         } catch (IllegalStateException ex) { throw ex; }
         catch (Exception ex) { throw new IllegalStateException("Cannot read immutable food V1 manifest"); }

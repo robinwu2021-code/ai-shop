@@ -10,6 +10,10 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.food.api.FoodRequestScopeValidator;
 import ai.neargo.shop.food.config.ConditionalOnFoodWebEnabled;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration.PolicyEnabled;
+import ai.neargo.shop.food.dto.MenuDefinitionCommand;
+import ai.neargo.shop.food.dto.ReplaceMenuCompositionReq;
+import ai.neargo.shop.food.dto.ReplaceMenuContextsReq;
+import ai.neargo.shop.food.dto.DisableMenuReq;
 import ai.neargo.shop.food.dto.CreateMenuReq;
 import ai.neargo.shop.food.dto.ListMenusQuery;
 import ai.neargo.shop.food.dto.MenuResultVO;
@@ -80,17 +84,35 @@ public class BizMenuController {
                 SecurityUtils.currentUserNo(), req, key);
     }
 
-    /** Only the explicit schedule section is supported until composition contracts are implemented. */
+    /** Explicit typed sections update schedules or composition without changing the other section. */
     @PutMapping("/biz/x/food/menus/{menuNo}/definition")
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
-    public MenuScheduleResultVO replaceSchedule(@PathVariable("menuNo") @NotBlank @Size(max=32) String number,
-            @Valid @RequestBody ReplaceMenuScheduleReq req,
+    public Object replaceDefinition(@PathVariable("menuNo") @NotBlank @Size(max=32) String number,
+            @Valid @RequestBody MenuDefinitionCommand req,
             @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) String key, HttpServletRequest request) {
         queryFields(request, Set.of());
         var context = BizContext.current();
         if (context.currentStoreNo() == null) throw BizException.of(ErrorCode.BAD_REQUEST);
         requireStore(context.currentStoreNo(), request);
-        return service.replaceSchedule(context.merchantNo(), context.currentStoreNo(), number,
+        return switch (req) {
+            case ReplaceMenuContextsReq contexts -> service.replaceContexts(context.merchantNo(),
+                    context.currentStoreNo(), number, SecurityUtils.currentUserNo(), contexts, key);
+            case ReplaceMenuScheduleReq schedule -> service.replaceSchedule(context.merchantNo(),
+                    context.currentStoreNo(), number, SecurityUtils.currentUserNo(), schedule, key);
+            case ReplaceMenuCompositionReq composition -> service.replaceComposition(context.merchantNo(),
+                    context.currentStoreNo(), number, SecurityUtils.currentUserNo(), composition, key);
+        };
+    }
+
+    @PostMapping("/biz/x/food/menus/{menuNo}:disable")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    public MenuResultVO disableMenu(@PathVariable("menuNo") @NotBlank @Size(max=32) String number,
+            @Valid @RequestBody DisableMenuReq req,
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) String key, HttpServletRequest request) {
+        queryFields(request, Set.of()); var context = BizContext.current();
+        if (context.currentStoreNo() == null) throw BizException.of(ErrorCode.BAD_REQUEST);
+        requireStore(context.currentStoreNo(), request);
+        return service.disableMenu(context.merchantNo(), context.currentStoreNo(), number,
                 SecurityUtils.currentUserNo(), req, key);
     }
 

@@ -1,5 +1,10 @@
 package ai.neargo.shop.food.spi;
 
+import ai.neargo.shop.food.dto.ReplaceMenuCompositionReq;
+import ai.neargo.shop.food.dto.MenuCompositionResultVO;
+import ai.neargo.shop.food.dto.ReplaceMenuContextsReq;
+import ai.neargo.shop.food.dto.MenuContextsResultVO;
+import ai.neargo.shop.food.dto.DisableMenuReq;
 import ai.neargo.shop.food.dto.CreateMenuReq;
 import ai.neargo.shop.food.dto.CreateMenuResultVO;
 import ai.neargo.shop.food.dto.MenuConfigResultVO;
@@ -25,6 +30,9 @@ public interface MenuInternalApi {
     String CREATE_PATH = "/internal/food/menus/create";
     String UPDATE_PATH = "/internal/food/menus/update";
     String SCHEDULE_PATH = "/internal/food/menus/replace-schedule";
+    String COMPOSITION_PATH = "/internal/food/menus/replace-composition";
+    String CONTEXTS_PATH = "/internal/food/menus/replace-contexts";
+    String DISABLE_PATH = "/internal/food/menus/disable";
     String GET_PATH = "/internal/food/menus/get";
     String LIST_PATH = "/internal/food/menus/list";
 
@@ -34,6 +42,12 @@ public interface MenuInternalApi {
     MenuResultVO updateMenu(@RequestBody UpdateCommand command);
     @PostExchange(SCHEDULE_PATH)
     MenuScheduleResultVO replaceSchedule(@RequestBody ScheduleCommand command);
+    @PostExchange(COMPOSITION_PATH)
+    MenuCompositionResultVO replaceComposition(@RequestBody CompositionCommand command);
+    @PostExchange(CONTEXTS_PATH)
+    MenuContextsResultVO replaceContexts(@RequestBody ContextsCommand command);
+    @PostExchange(DISABLE_PATH)
+    MenuResultVO disableMenu(@RequestBody DisableCommand command);
     @PostExchange(GET_PATH)
     MenuConfigResultVO getMenu(@RequestBody GetQuery query);
     @PostExchange(LIST_PATH)
@@ -76,6 +90,39 @@ public interface MenuInternalApi {
             @NotBlank @Size(max=128)
             @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String idempotencyKey,
             @NotNull @Valid ReplaceMenuScheduleReq definition) { }
+    record CompositionCommand(@NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String entityNo,
+            @NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String storeNo,
+            @NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String menuNo,
+            @NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String actorNo,
+            @NotBlank @Size(max=128)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String idempotencyKey,
+            @NotNull @Valid ReplaceMenuCompositionReq definition) { }
+    record ContextsCommand(@NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String entityNo,
+            @NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String storeNo,
+            @NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String menuNo,
+            @NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String actorNo,
+            @NotBlank @Size(max=128)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String idempotencyKey,
+            @NotNull @Valid ReplaceMenuContextsReq definition) { }
+    record DisableCommand(@NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String entityNo,
+            @NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String storeNo,
+            @NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String menuNo,
+            @NotBlank @Size(max=32)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String actorNo,
+            @NotBlank @Size(max=128)
+            @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String idempotencyKey,
+            @NotNull @Valid DisableMenuReq definition) { }
     record GetQuery(@NotBlank @Size(max=32)
             @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String entityNo,
             @NotBlank @Size(max=32)

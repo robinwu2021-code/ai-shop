@@ -17,7 +17,8 @@ public record ReplaceMenuScheduleReq(@NotNull
         @NotNull @Size(max=366) List<@NotNull @Valid ExceptionInput> exceptions,
         @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class)
         String validFrom,
-        @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String validTo) {
+        @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String validTo)
+        implements MenuDefinitionCommand {
     @JsonAnySetter
     public void rejectUnknown(String key, Object value) {
         throw new IllegalArgumentException("Unknown schedule field");

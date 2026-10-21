@@ -22,6 +22,15 @@ import ai.neargo.shop.food.service.ModifierService;
 import ai.neargo.shop.food.service.BundleService;
 import ai.neargo.shop.food.service.RecipeService;
 import ai.neargo.shop.food.service.MenuService;
+import ai.neargo.shop.food.api.biz.BizCatalogController;
+import ai.neargo.shop.food.api.mp.MpCatalogController;
+import ai.neargo.shop.food.service.CatalogService;
+import ai.neargo.shop.food.api.biz.BizMenuChannelBindingController;
+import ai.neargo.shop.food.service.MenuChannelBindingService;
+import ai.neargo.shop.food.api.biz.BizStationController;
+import ai.neargo.shop.food.api.biz.BizSalesRestrictionController;
+import ai.neargo.shop.food.service.StationService;
+import ai.neargo.shop.food.service.SalesRestrictionService;
 import ai.neargo.shop.food.api.biz.BizMenuController;
 import ai.neargo.shop.food.api.biz.BizRecipeController;
 import ai.neargo.shop.food.api.biz.BizBundleController;
@@ -63,6 +72,47 @@ public class FoodWebAutoConfiguration {
             FoodRequestScopeValidator scope) {
         return new BizConfigRevisionController(service, stores, scope);
     }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({CatalogService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizCatalogController.class)
+    BizCatalogController catalogController(CatalogService service, StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizCatalogController(service, stores, scope); }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean(CatalogService.class)
+    @ConditionalOnMissingBean(MpCatalogController.class)
+    MpCatalogController mpCatalogController(CatalogService service) { return new MpCatalogController(service); }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({MenuChannelBindingService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizMenuChannelBindingController.class)
+    BizMenuChannelBindingController menuChannelBindingController(MenuChannelBindingService service,
+            StoreDirectoryPort stores, FoodRequestScopeValidator scope) {
+        return new BizMenuChannelBindingController(service, stores, scope);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({StationService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizStationController.class)
+    BizStationController stationController(StationService service, StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizStationController(service, stores, scope); }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({SalesRestrictionService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizSalesRestrictionController.class)
+    BizSalesRestrictionController restrictionController(SalesRestrictionService service, StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizSalesRestrictionController(service, stores, scope); }
 
     @Bean
     @Profile("api")

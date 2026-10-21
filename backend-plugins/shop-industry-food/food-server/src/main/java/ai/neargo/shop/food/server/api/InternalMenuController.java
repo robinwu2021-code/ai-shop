@@ -4,6 +4,8 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.food.config.ConditionalOnFoodEnabled;
 import ai.neargo.shop.food.config.FoodPersistenceConfiguration.PersistenceEnabled;
+import ai.neargo.shop.food.dto.MenuCompositionResultVO;
+import ai.neargo.shop.food.dto.MenuContextsResultVO;
 import ai.neargo.shop.food.dto.MenuResultVO;
 import ai.neargo.shop.food.dto.CreateMenuResultVO;
 import ai.neargo.shop.food.dto.MenuConfigResultVO;
@@ -42,6 +44,21 @@ public class InternalMenuController {
     @PostMapping(MenuInternalApi.SCHEDULE_PATH)
     public MenuScheduleResultVO replaceSchedule(@Valid @RequestBody MenuInternalApi.ScheduleCommand c) {
         return service.replaceSchedule(c.entityNo(), c.storeNo(), c.menuNo(), c.actorNo(),
+                c.definition(), c.idempotencyKey());
+    }
+    @PostMapping(MenuInternalApi.COMPOSITION_PATH)
+    public MenuCompositionResultVO replaceComposition(@Valid @RequestBody MenuInternalApi.CompositionCommand c) {
+        return service.replaceComposition(c.entityNo(), c.storeNo(), c.menuNo(), c.actorNo(),
+                c.definition(), c.idempotencyKey());
+    }
+    @PostMapping(MenuInternalApi.CONTEXTS_PATH)
+    public MenuContextsResultVO replaceContexts(@Valid @RequestBody MenuInternalApi.ContextsCommand c) {
+        return service.replaceContexts(c.entityNo(), c.storeNo(), c.menuNo(), c.actorNo(),
+                c.definition(), c.idempotencyKey());
+    }
+    @PostMapping(MenuInternalApi.DISABLE_PATH)
+    public MenuResultVO disableMenu(@Valid @RequestBody MenuInternalApi.DisableCommand c) {
+        return service.disableMenu(c.entityNo(), c.storeNo(), c.menuNo(), c.actorNo(),
                 c.definition(), c.idempotencyKey());
     }
     @PostMapping(MenuInternalApi.GET_PATH)

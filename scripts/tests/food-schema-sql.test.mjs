@@ -90,5 +90,13 @@ test('V3 preserves spec64 without changing frozen V1 or V2',()=>{
  assert.match(renderFoodV1(s),/`spec_value_no` VARCHAR\(32\)/);
  const file=new URL('../../backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V3__option_spec_value_identity_width.sql',import.meta.url);
  assert.match(fs.readFileSync(file,'utf8'),/MODIFY COLUMN `spec_value_no` VARCHAR\(64\)/);
- assert.equal(s.databaseInitialization.targetSchemaVersion,5);
+ assert.equal(s.databaseInitialization.targetSchemaVersion,7);
+});
+
+test('V6 composes menu options and recipe variants without changing frozen migrations',async()=>{
+ const {renderMenuCompositionV6}=await import('../lib/food-schema-sql.mjs');
+ const file=new URL('../../backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V6__menu_composition.sql',import.meta.url);
+ assert.equal(fs.readFileSync(file,'utf8'),renderMenuCompositionV6(s));
+ assert.match(renderFoodSchema(s),/history: fnb_flyway_history; version: 7/);
+ assertFrozenFoodV1(renderFoodV1(s));
 });

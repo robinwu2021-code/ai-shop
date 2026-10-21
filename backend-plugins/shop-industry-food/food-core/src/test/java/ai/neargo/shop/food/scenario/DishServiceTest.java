@@ -20,6 +20,8 @@ import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.impl.DishServiceImpl;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
+import ai.neargo.shop.spi.media.MediaAssetQueryPort;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.HashSet;
@@ -54,6 +56,44 @@ class DishServiceTest extends FoodWriteGuardFixture {
         return new SaveDishReq("SINGLE", 60,
                 new DishPresentation(name, List.of(), List.of(), List.of("热饮"), List.of("含奶")),
                 new MeasurementPolicy("EA", "COUNT", 0, null), version);
+    }
+
+    @Test void savesVerifiedDishMediaWithoutChangingOriginalGoodsCover() {
+        runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class, Dishes.class).run(c -> {
+            fixture(c);
+            var base = req(null, "奶茶");
+            var presentation = new DishPresentation(null, List.of(),
+                    List.of("E/A/goods/dish.jpg"), List.of(), List.of());
+            var saved = c.getBean(DishService.class).saveDish("E", "A", "G", "actor",
+                    new SaveDishReq("SINGLE", 0, presentation, base.measurement(), null), "media-owned");
+            assertThat(saved.dish().presentation().imageRefs()).containsExactly("E/A/goods/dish.jpg");
+            assertThat(c.getBean(Facts.class).getGoods("E", "A", "G").cover()).isEqualTo("base-cover");
+        });
+    }
+
+    @Test void refusesMissingForeignAndUnavailableMediaBeforeAnyLocalWrite() {
+        runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class, Dishes.class).run(c -> {
+            var f = fixture(c);
+            var facts = c.getBean(MediaFacts.class);
+            var base = req(null, "奶茶");
+            var presentation = new DishPresentation(null, List.of(),
+                    List.of("E/A/goods/dish.jpg"), List.of(), List.of());
+            var request = new SaveDishReq("SINGLE", 0, presentation, base.measurement(), null);
+            facts.missing = true;
+            assertThatThrownBy(() -> c.getBean(DishService.class)
+                    .saveDish("E", "A", "G", "actor", request, "missing-media")).isInstanceOf(BizException.class);
+            facts.missing = false; facts.foreign = true;
+            assertThatThrownBy(() -> c.getBean(DishService.class)
+                    .saveDish("E", "A", "G", "actor", request, "foreign-media"))
+                    .isInstanceOf(IllegalStateException.class);
+            facts.foreign = false; facts.unavailable = true;
+            assertThatThrownBy(() -> c.getBean(DishService.class)
+                    .saveDish("E", "A", "G", "actor", request, "offline-media"))
+                    .isInstanceOf(IllegalStateException.class);
+            for (String table : List.of("fnb_dish", "fnb_action_log", "sys_idempotent", "sys_outbox")) {
+                assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
+            }
+        });
     }
 
     @Test void createsAndEditsOnlyTheExtensionWithStableReplayAndCas() {
@@ -191,6 +231,21 @@ class DishServiceTest extends FoodWriteGuardFixture {
         }
     }
 
+    static class MediaFacts implements MediaAssetQueryPort {
+        boolean missing;
+        boolean unavailable;
+        boolean foreign;
+        int calls;
+        @Override public List<AssetFact> getAssets(String entity, String store, List<String> keys) {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            calls++;
+            if (unavailable) throw new IllegalStateException("media-unavailable");
+            if (missing) return List.of();
+            return keys.stream().map(key -> new AssetFact(key, foreign ? "OTHER" : entity, store,
+                    "GOODS", "ACTIVE")).toList();
+        }
+    }
+
     static class FailAfterPublish { final AtomicBoolean enabled = new AtomicBoolean(); }
 
     @Configuration(proxyBeanMethods = false)
@@ -206,6 +261,7 @@ class DishServiceTest extends FoodWriteGuardFixture {
             var f = new MapperFactoryBean<>(OptionGroupItemMapper.class); f.setSqlSessionTemplate(t); return f;
         }
         @Bean Facts facts() { return new Facts(); }
+        @Bean MediaFacts mediaFacts() { return new MediaFacts(); }
         @Bean MapperFactoryBean<DishMapper> dishes(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) {
             var factory = new MapperFactoryBean<>(DishMapper.class);
             factory.setSqlSessionTemplate(t);
@@ -214,13 +270,14 @@ class DishServiceTest extends FoodWriteGuardFixture {
         @Bean DishService dishService(DishMapper mapper, ActionLogMapper actions, IdempotencyService idem,
                 @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
                 PlatformTransactionManager manager, Facts facts, FailAfterPublish fail, DishOptionGroupMapper bindings,
-                OptionGroupMapper groups, OptionGroupItemMapper items) {
+                OptionGroupMapper groups, OptionGroupItemMapper items, MediaFacts media) {
             OutboxPublisher checked = (event, options) -> {
                 var receipt = publisher.publish(event, options);
                 if (fail.enabled.get()) throw new IllegalStateException("after-dish-publish");
                 return receipt;
             };
-            return new DishServiceImpl(mapper, actions, idem, checked, json, manager, facts, bindings, groups, items);
+            return new DishServiceImpl(mapper, actions, idem, checked, json, manager, facts, bindings, groups,
+                    items, media);
         }
     }
 }

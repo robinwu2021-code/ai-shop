@@ -11,6 +11,12 @@ import ai.neargo.shop.auth.TokenStore;
 import ai.neargo.shop.auth.store.MemoryTokenStore;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration;
+import ai.neargo.shop.food.dto.MenuCompositionResultVO;
+import ai.neargo.shop.food.dto.ReplaceMenuCompositionReq;
+import ai.neargo.shop.food.policy.MenuCompositionDefinitions;
+import ai.neargo.shop.food.dto.ReplaceMenuContextsReq;
+import ai.neargo.shop.food.dto.MenuContextsResultVO;
+import ai.neargo.shop.food.dto.DisableMenuReq;
 import ai.neargo.shop.food.dto.CreateMenuReq;
 import ai.neargo.shop.food.dto.CreateMenuResultVO;
 import ai.neargo.shop.food.dto.ListMenusQuery;
@@ -101,6 +107,24 @@ class MenuApiTest {
         });
     }
 
+    @Test void compositionUsesDefinitionRouteAndRejectsMixedSectionsAndCoercedFlags() {
+        runner.run(c -> {
+            var mvc = mvc(c); var auth = token(c, "staff");
+            String body = "{\"section\":\"COMPOSITION\",\"version\":0,\"categories\":[]}";
+            mvc.perform(put("/biz/x/food/menus/M1/definition").header("Authorization", auth)
+                    .header("Idempotency-Key", "composition").contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(jsonPath("$.data.composition.categories").isEmpty());
+            for (String bad : List.of(body.replace("COMPOSITION", "UNKNOWN"),
+                    body.replace("\"version\":0", "\"version\":\"0\""),
+                    body.replace("\"categories\":[]", "\"categories\":[],\"exceptions\":[]"))) {
+                mvc.perform(put("/biz/x/food/menus/M1/definition").header("Authorization", auth)
+                        .header("Idempotency-Key", "bad").contentType(MediaType.APPLICATION_JSON).content(bad))
+                        .andExpect(jsonPath("$.code").value(10400));
+            }
+            assertThat(c.getBean(AtomicInteger.class)).hasValue(1);
+        });
+    }
+
     private String token(WebApplicationContext c, String actor) {
         return "Bearer " + c.getBean(MemoryTokenStore.class)
                 .issue(TokenStore.SessionData.of(LoginUser.merchant(actor, actor)));
@@ -134,6 +158,18 @@ class MenuApiTest {
                     var rules = MenuScheduleDefinitions.normalize(req);
                     return new MenuScheduleResultVO(view(entity, store, 1), rules);
                 }
+                @Override public MenuCompositionResultVO replaceComposition(String entity, String store,
+                        String menu, String actor, ReplaceMenuCompositionReq req, String key) {
+                    assertThat(actor).isEqualTo("staff"); assertThat(menu).isEqualTo("M1");
+                    return new MenuCompositionResultVO(view(entity, store, 1),
+                            MenuCompositionDefinitions.normalize(req));
+                }
+                @Override public MenuContextsResultVO replaceContexts(String e, String st, String menu,
+                        String actor, ReplaceMenuContextsReq req, String key) {
+                    return new MenuContextsResultVO(view(e, st, 1), req.contexts());
+                }
+                @Override public MenuResultVO disableMenu(String e, String st, String menu, String actor,
+                        DisableMenuReq req, String key) { throw new UnsupportedOperationException(); }
                 @Override public MenuConfigResultVO getMenu(String entity, String store, String menu) {
                     assertThat(menu).isEqualTo("M1"); return new MenuConfigResultVO(view(entity, store, 0));
                 }

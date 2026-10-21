@@ -3,9 +3,12 @@ package ai.neargo.shop.food.foodclient;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.food.dto.MenuPublicationSnapshot;
+import ai.neargo.shop.food.dto.StationPublicationSnapshot;
 import ai.neargo.shop.food.dto.ConfigRevisionContentVO;
 import ai.neargo.shop.food.dto.ConfigRevisionVO;
 import ai.neargo.shop.food.dto.ListConfigRevisionsQuery;
+import ai.neargo.shop.food.dto.RepublishConfigReq;
 import ai.neargo.shop.food.dto.PublishConfigReq;
 import ai.neargo.shop.food.dto.PublishConfigResultVO;
 import ai.neargo.shop.food.policy.PublicationDocuments;
@@ -27,6 +30,31 @@ public class RemoteConfigRevisionService implements ConfigRevisionService {
     private final ConfigRevisionInternalApi api;
     private final JsonMapper json = JsonMapper.builder().findAndAddModules().build();
     public RemoteConfigRevisionService(ConfigRevisionInternalApi api) { this.api = api; }
+
+    @Override
+    public PublishConfigResultVO republishRevision(String entity, String store, String revision, String actor,
+            RepublishConfigReq req, String key) {
+        var source = getRevision(entity, store, revision);
+        var result = publication(invoke(() -> api.republishRevision(new ConfigRevisionInternalApi.RepublishCommand(
+                entity, store, revision, actor, key, req))), source.publication().configKind(),
+                source.publication().configNo());
+        if (revision.equals(result.publication().revisionNo())
+                || result.publication().revision() <= source.publication().revision()) throw malformed();
+        return result;
+    }
+
+    @Override
+    public PublishConfigResultVO publishMenu(String entity, String store, String number, String actor,
+            PublishConfigReq req, String key) {
+        return publication(invoke(() -> api.publishMenu(new ConfigRevisionInternalApi.Command(
+                entity, store, number, actor, key, req))), "MENU", number);
+    }
+    @Override
+    public PublishConfigResultVO publishStation(String entity, String store, String number, String actor,
+            PublishConfigReq req, String key) {
+        return publication(invoke(() -> api.publishStation(new ConfigRevisionInternalApi.Command(
+                entity, store, number, actor, key, req))), "STATION", number);
+    }
 
     @Override
     public PublishConfigResultVO publishRecipe(String entity, String store, String number, String actor,
@@ -103,6 +131,14 @@ public class RemoteConfigRevisionService implements ConfigRevisionService {
         }
         PublicationDocuments.validate(json, result.publication().configKind(), result.publication().configNo(),
                 result.definitionSnapshot());
+        if ("MENU".equals(result.publication().configKind())) {
+            var menu = json.readValue(result.definitionSnapshot(), MenuPublicationSnapshot.class).menu();
+            if (!entity.equals(menu.entityNo()) || !store.equals(menu.storeNo())) throw malformed();
+        }
+        if ("STATION".equals(result.publication().configKind())) {
+            var station = json.readValue(result.definitionSnapshot(), StationPublicationSnapshot.class);
+            if (!entity.equals(station.entityNo()) || !store.equals(station.storeNo())) throw malformed();
+        }
         if ("RECIPE".equals(result.publication().configKind())) {
             RecipePublicationDocuments.scope(RecipePublicationDocuments.validate(json,
                     result.publication().configNo(), result.definitionSnapshot()), entity, store);
@@ -110,7 +146,8 @@ public class RemoteConfigRevisionService implements ConfigRevisionService {
     }
     private static boolean valid(ConfigRevisionVO v) {
         return v != null && key(v.revisionNo()) && key(v.configNo()) && v.configKind() != null
-                && Set.of("MODIFIER", "OPTION_GROUP", "BUNDLE", "RECIPE").contains(v.configKind()) && v.revision() > 0
+                && Set.of("MODIFIER", "OPTION_GROUP", "BUNDLE", "RECIPE", "MENU", "STATION").contains(v.configKind())
+                && v.revision() > 0
                 && v.effectiveAt() != null && v.contentHash() != null && v.contentHash().matches("[a-f0-9]{64}")
                 && v.status() != null && Set.of("SCHEDULED", "EFFECTIVE", "CANCELLED").contains(v.status());
     }

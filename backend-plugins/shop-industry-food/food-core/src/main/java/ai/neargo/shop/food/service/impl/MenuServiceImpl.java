@@ -6,6 +6,17 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.PublishOptions;
+import ai.neargo.shop.food.dto.MenuContextsResultVO;
+import ai.neargo.shop.food.dto.MenuContextInput;
+import ai.neargo.shop.food.dto.ReplaceMenuContextsReq;
+import ai.neargo.shop.food.dto.DisableMenuReq;
+import ai.neargo.shop.food.entity.FnbMenuContext;
+import ai.neargo.shop.food.mapper.FoodMappers.MenuContextMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.MenuChannelBindingMapper;
+import ai.neargo.shop.food.entity.FnbMenuChannelBinding;
+import ai.neargo.shop.food.policy.MenuContextDefinitions;
+import ai.neargo.shop.food.spi.MenuChannelAuthorityPort;
+import java.util.function.Supplier;
 import ai.neargo.shop.food.dto.CreateMenuReq;
 import ai.neargo.shop.food.dto.CreateMenuResultVO;
 import ai.neargo.shop.food.dto.ListMenusQuery;
@@ -14,6 +25,11 @@ import ai.neargo.shop.food.dto.MenuResultVO;
 import ai.neargo.shop.food.dto.MenuVO;
 import ai.neargo.shop.food.dto.UpdateMenuReq;
 import ai.neargo.shop.food.dto.MenuScheduleVO;
+import ai.neargo.shop.food.dto.MenuCompositionVO;
+import ai.neargo.shop.food.dto.MenuCompositionResultVO;
+import ai.neargo.shop.food.dto.ReplaceMenuCompositionReq;
+import ai.neargo.shop.food.policy.MenuCompositionSource;
+import ai.neargo.shop.food.policy.MenuCompositionDefinitions;
 import ai.neargo.shop.food.dto.MenuScheduleResultVO;
 import ai.neargo.shop.food.dto.ReplaceMenuScheduleReq;
 import ai.neargo.shop.food.dto.WeekScheduleInput;
@@ -34,6 +50,8 @@ import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.policy.MenuDefinitionPolicy;
 import ai.neargo.shop.food.service.MenuService;
+import ai.neargo.shop.food.policy.MenuWorkingDefinitionPort;
+import ai.neargo.shop.food.entity.FnbConfigRevision;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.food.MenuChanged;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -53,7 +71,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 /** Single-store editing cannot silently mutate shared menus or reinterpret their published snapshots. */
-public class MenuServiceImpl implements MenuService {
+public class MenuServiceImpl implements MenuService, MenuWorkingDefinitionPort {
+    private final MenuContextMapper contexts;
+    private final MenuChannelBindingMapper channels;
+    private final Supplier<MenuChannelAuthorityPort> channelAuthority;
+    private final MenuCompositionSource composition;
     private final MenuScheduleMapper weeks;
     private final MenuExceptionMapper exceptions;
     private final MenuMapper heads;
@@ -70,7 +92,10 @@ public class MenuServiceImpl implements MenuService {
     public MenuServiceImpl(MenuMapper heads, MenuStoreMapper bindings, StorePolicyMapper policies,
             ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
             PlatformTransactionManager manager, Clock clock, MenuScheduleMapper weeks,
-            MenuExceptionMapper exceptions) {
+            MenuExceptionMapper exceptions, MenuCompositionSource composition, MenuContextMapper contexts,
+            MenuChannelBindingMapper channels, Supplier<MenuChannelAuthorityPort> channelAuthority) {
+        this.contexts = contexts; this.channels = channels; this.channelAuthority = channelAuthority;
+        this.composition = composition;
         this.weeks = weeks; this.exceptions = exceptions;
         this.heads = heads; this.bindings = bindings; this.policies = policies; this.actions = actions;
         this.idem = idem; this.publisher = publisher; this.json = json; this.clock = clock;
@@ -195,6 +220,187 @@ public class MenuServiceImpl implements MenuService {
         }
     }
 
+    @Override
+    public MenuCompositionResultVO replaceComposition(String entity, String store, String number, String actor,
+            ReplaceMenuCompositionReq req, String key) {
+        context(entity, store, actor, key); MenuDefinitionPolicy.key(number);
+        var definition = MenuCompositionDefinitions.normalize(req);
+        String scope = FoodCommandFingerprint.scope("REPLACE_MENU_COMPOSITION", entity, store);
+        String hash = FoodCommandFingerprint.hash("menu-composition:v1", number, req.version().toString(),
+                json.writeValueAsString(definition));
+        var replay = read.execute(tx -> idem.findCompleted(key, scope, actor, hash, MenuCompositionResultVO.class));
+        if (replay.isPresent()) return replay.get();
+        var previous = read.execute(tx -> {
+            head(entity, store, number, false);
+            return composition.read(entity, number);
+        });
+        var facts = composition.facts(entity, store, definition);
+        try {
+            return write.execute(tx -> idem.execute(key, scope, actor, hash, MenuCompositionResultVO.class, () -> {
+                var row = head(entity, store, number, true);
+                editable(entity, store, row, req.version()); timezone(entity, store, row.getTimezone());
+                var before = view(row, store);
+                var locked = composition.read(entity, number);
+                if (!previous.equals(locked)) throw BizException.of(ErrorCode.CONFLICT);
+                var result = composition.replace(entity, store, number, definition, locked, facts);
+                if (heads.update(null, Wrappers.<FnbMenu>lambdaUpdate().eq(FnbMenu::getEntityNo, entity)
+                        .eq(FnbMenu::getMenuNo, number).eq(FnbMenu::getVersion, req.version())
+                        .set(FnbMenu::getStatus, "DRAFT").set(FnbMenu::getVersion, req.version() + 1)
+                        .set(FnbMenu::getConfigVersion, row.getConfigVersion() + 1)
+                        .set(FnbMenu::getUpdatedAt, LocalDateTime.now()).set(FnbMenu::getUpdatedBy, actor)) != 1) {
+                    throw BizException.of(ErrorCode.CONFLICT);
+                }
+                var after = view(head(entity, store, number, false), store);
+                recordComposition(entity, store, actor, key, before, after, locked, result);
+                return new MenuCompositionResultVO(after, result);
+            }));
+        } catch (ConcurrencyFailureException | DuplicateKeyException failure) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    @Override
+    public MenuContextsResultVO replaceContexts(String entity, String store, String number, String actor,
+            ReplaceMenuContextsReq req, String key) {
+        context(entity, store, actor, key); MenuDefinitionPolicy.key(number);
+        var definition = MenuContextDefinitions.normalize(req);
+        String scope = FoodCommandFingerprint.scope("REPLACE_MENU_CONTEXTS", entity, store);
+        String hash = FoodCommandFingerprint.hash("menu-context:v1", number, req.version().toString(),
+                json.writeValueAsString(definition));
+        var replay = read.execute(tx -> idem.findCompleted(key, scope, actor, hash, MenuContextsResultVO.class));
+        if (replay.isPresent()) return replay.get();
+        var previous = read.execute(tx -> {
+            head(entity, store, number, false);
+            return contextDefinition(entity, number);
+        });
+        // Bindings remain explicitly unverified drafts until their real authority is connected.
+        for (var input : definition) if (input.channelBindingNo() != null) {
+            var binding = channels.selectOne(Wrappers.<FnbMenuChannelBinding>lambdaQuery()
+                    .eq(FnbMenuChannelBinding::getEntityNo, entity).eq(FnbMenuChannelBinding::getStoreNo, store)
+                    .eq(FnbMenuChannelBinding::getMenuNo, number)
+                    .eq(FnbMenuChannelBinding::getBindingNo, input.channelBindingNo()));
+            if (binding == null) throw BizException.of(ErrorCode.BAD_REQUEST);
+            var authority = channelAuthority.get();
+            if (authority == null || !authority.authorized(entity, store, binding.getProvider(),
+                    binding.getChannelAccountRef(), binding.getExternalStoreRef())
+                    || !authority.pricePolicyAuthorized(entity, store, binding.getBindingNo(),
+                            input.pricePolicyRef())) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+        }
+        try {
+            return write.execute(tx -> idem.execute(key, scope, actor, hash, MenuContextsResultVO.class, () -> {
+                var row = head(entity, store, number, true);
+                editable(entity, store, row, req.version());
+                var before = contextDefinition(entity, number);
+                if (!previous.equals(before)) throw BizException.of(ErrorCode.CONFLICT);
+                var beforeHead = view(row, store);
+                for (var input : definition) if (input.channelBindingNo() != null) {
+                    var binding = channels.selectOne(Wrappers.<FnbMenuChannelBinding>lambdaQuery()
+                            .eq(FnbMenuChannelBinding::getEntityNo, entity)
+                            .eq(FnbMenuChannelBinding::getStoreNo, store)
+                            .eq(FnbMenuChannelBinding::getMenuNo, number)
+                            .eq(FnbMenuChannelBinding::getBindingNo, input.channelBindingNo()).last("FOR UPDATE"));
+                    if (binding == null || !"ACTIVE".equals(binding.getStatus())) {
+                        throw BizException.of(ErrorCode.CONFLICT);
+                    }
+                }
+                contexts.replaceDraftRows(entity, number);
+                for (var input : definition) {
+                    var child = new FnbMenuContext(); child.setEntityNo(entity); child.setMenuNo(number);
+                    child.setContextNo(BizKey.next("FMCT")); child.setOrderSource(input.orderSource());
+                    child.setFulfillment(input.fulfillment()); child.setChannelBindingNo(input.channelBindingNo());
+                    child.setChannelScopeKey(input.channelBindingNo() == null ? "LOCAL" : input.channelBindingNo());
+                    child.setPricePolicyRef(input.pricePolicyRef()); contexts.insert(child);
+                }
+                advance(row, entity, actor, "DRAFT");
+                var after = view(head(entity, store, number, false), store);
+                recordContext(entity, store, actor, key, beforeHead, after, before, definition);
+                return new MenuContextsResultVO(after, definition);
+            }));
+        } catch (ConcurrencyFailureException | DuplicateKeyException failure) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    @Override
+    public MenuResultVO disableMenu(String entity, String store, String number, String actor,
+            DisableMenuReq req, String key) {
+        context(entity, store, actor, key); MenuDefinitionPolicy.key(number);
+        if (req == null || req.version() == null || req.version() < 0 || req.version() == Long.MAX_VALUE
+                || req.reason() == null || req.reason().isBlank() || req.reason().length() > 255
+                || req.reason().codePoints().anyMatch(Character::isISOControl)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String scope = FoodCommandFingerprint.scope("DISABLE_MENU", entity, store);
+        String hash = FoodCommandFingerprint.hash("disable-menu:v1", number, json.writeValueAsString(req));
+        var replay = read.execute(tx -> idem.findCompleted(key, scope, actor, hash, MenuResultVO.class));
+        if (replay.isPresent()) return replay.get();
+        try {
+            return write.execute(tx -> idem.execute(key, scope, actor, hash, MenuResultVO.class, () -> {
+                var row = head(entity, store, number, true);
+                editable(entity, store, row, req.version());
+                var before = view(row, store); advance(row, entity, actor, "DISABLED");
+                var after = view(head(entity, store, number, false), store);
+                record(entity, store, actor, key, "DISABLE_MENU", before, after, null, null, req.reason());
+                return new MenuResultVO(after);
+            }));
+        } catch (ConcurrencyFailureException | DuplicateKeyException failure) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    private void advance(FnbMenu row, String entity, String actor, String status) {
+        if (heads.update(null, Wrappers.<FnbMenu>lambdaUpdate().eq(FnbMenu::getEntityNo, entity)
+                .eq(FnbMenu::getMenuNo, row.getMenuNo()).eq(FnbMenu::getVersion, row.getVersion())
+                .set(FnbMenu::getStatus, status).set(FnbMenu::getVersion, row.getVersion() + 1)
+                .set(FnbMenu::getConfigVersion, row.getConfigVersion() + 1)
+                .set(FnbMenu::getUpdatedAt, LocalDateTime.now()).set(FnbMenu::getUpdatedBy, actor)) != 1) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    private List<MenuContextInput> contextDefinition(String entity, String number) {
+        try {
+            return MenuContextDefinitions.normalize(contexts.selectList(Wrappers.<FnbMenuContext>lambdaQuery()
+                    .eq(FnbMenuContext::getEntityNo, entity).eq(FnbMenuContext::getMenuNo, number)).stream()
+                    .map(row -> new MenuContextInput(row.getOrderSource(), row.getFulfillment(),
+                            row.getChannelBindingNo(), row.getPricePolicyRef())).toList());
+        } catch (RuntimeException invalid) { throw new IllegalStateException("Invalid stored menu contexts", invalid); }
+    }
+
+    private void recordContext(String entity, String store, String actor, String key, MenuVO before,
+            MenuVO after, List<MenuContextInput> previous, List<MenuContextInput> definition) {
+        var audit = new FnbActionLog(); audit.setEntityNo(entity); audit.setStoreNo(store);
+        audit.setActionNo(BizKey.next("FACT")); audit.setObjectType("MENU"); audit.setObjectNo(after.menuNo());
+        audit.setAction("REPLACE_MENU_CONTEXTS"); audit.setOperatorNo(actor);
+        audit.setRequestNo(FoodCommandFingerprint.hash(
+                FoodCommandFingerprint.scope("REPLACE_MENU_CONTEXTS", entity, store), key));
+        audit.setBeforeRef(FoodCommandFingerprint.hash(
+                json.writeValueAsString(new MenuContextsResultVO(before, previous))));
+        audit.setAfterRef(FoodCommandFingerprint.hash(
+                json.writeValueAsString(new MenuContextsResultVO(after, definition))));
+        actions.insert(audit);
+        publisher.publish(new MenuChanged(entity, store, after.menuNo(), "REPLACE_MENU_CONTEXTS", after.version(),
+                audit.getActionNo(), after, null, null, definition),
+                new PublishOptions("FOOD_MENU:" + after.menuNo(), 1));
+    }
+
+    private void recordComposition(String entity, String store, String actor, String key, MenuVO before,
+            MenuVO after, MenuCompositionVO previous, MenuCompositionVO definition) {
+        var audit = new FnbActionLog(); audit.setEntityNo(entity); audit.setStoreNo(store);
+        audit.setActionNo(BizKey.next("FACT")); audit.setObjectType("MENU"); audit.setObjectNo(after.menuNo());
+        audit.setAction("REPLACE_MENU_COMPOSITION"); audit.setOperatorNo(actor);
+        audit.setRequestNo(FoodCommandFingerprint.hash(
+                FoodCommandFingerprint.scope("REPLACE_MENU_COMPOSITION", entity, store), key));
+        audit.setBeforeRef(FoodCommandFingerprint.hash(json.writeValueAsString(
+                new MenuCompositionResultVO(before, previous))));
+        audit.setAfterRef(FoodCommandFingerprint.hash(json.writeValueAsString(
+                new MenuCompositionResultVO(after, definition)))); actions.insert(audit);
+        publisher.publish(new MenuChanged(entity, store, after.menuNo(), "REPLACE_MENU_COMPOSITION", after.version(),
+                audit.getActionNo(), after, null, definition), new PublishOptions("FOOD_MENU:" + after.menuNo(), 1));
+    }
+
     private void editable(String entity, String store, FnbMenu row, long version) {
         var all = bindings.selectList(Wrappers.<FnbMenuStore>lambdaQuery()
                 .eq(FnbMenuStore::getEntityNo, entity).eq(FnbMenuStore::getMenuNo, row.getMenuNo()).last("FOR UPDATE"));
@@ -229,10 +435,53 @@ public class MenuServiceImpl implements MenuService {
     }
 
     @Override
+    public MenuConfigResultVO capture(String entity, String store, String number, boolean lock) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("Menu publication capture requires an owning local transaction");
+        }
+        var row = head(entity, store, number, lock);
+        if (lock) editable(entity, store, row, row.getVersion());
+        return new MenuConfigResultVO(view(row, store), schedule(entity, number), composition.read(entity, number),
+                contextDefinition(entity, number));
+    }
+
+    @Override
+    public long currentVersion(String entity, String store, String number, boolean lock) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("Menu publication version requires an owning local transaction");
+        }
+        var row = head(entity, store, number, lock);
+        if ("DISABLED".equals(row.getStatus()) || row.getVersion() == null) throw BizException.of(ErrorCode.CONFLICT);
+        if (lock) editable(entity, store, row, row.getVersion());
+        return row.getVersion();
+    }
+
+    @Override
+    public void advance(String entity, String store, String number, long version, FnbConfigRevision revision) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("Menu publication advance requires an owning local transaction");
+        }
+        var row = head(entity, store, number, true); editable(entity, store, row, version);
+        boolean effective = "EFFECTIVE".equals(revision.getStatus());
+        long sourceVersion = json.readTree(revision.getDefinitionSnapshot()).get("sourceVersion").asLong();
+        boolean matchesWorkingVersion = sourceVersion == version;
+        if (heads.update(null, Wrappers.<FnbMenu>lambdaUpdate().eq(FnbMenu::getEntityNo, entity)
+                .eq(FnbMenu::getMenuNo, number).eq(FnbMenu::getVersion, version)
+                .set(FnbMenu::getVersion, version + 1)
+                .set(FnbMenu::getStatus, effective && matchesWorkingVersion ? "PUBLISHED" : "DRAFT")
+                .set(effective, FnbMenu::getPublishedRevisionNo, revision.getRevisionNo())
+                .set(FnbMenu::getUpdatedAt, LocalDateTime.now())
+                .set(FnbMenu::getUpdatedBy, revision.getCreatedBy())) != 1) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    @Override
     public MenuConfigResultVO getMenu(String entity, String store, String number) {
         queryContext(entity, store); MenuDefinitionPolicy.key(number);
         return read.execute(tx -> new MenuConfigResultVO(
-                view(head(entity, store, number, false), store), schedule(entity, number)));
+                view(head(entity, store, number, false), store), schedule(entity, number),
+                composition.read(entity, number), contextDefinition(entity, number)));
     }
 
     @Override
@@ -287,9 +536,14 @@ public class MenuServiceImpl implements MenuService {
 
     private void record(String entity, String store, String actor, String key, String action, MenuVO before,
             MenuVO after, MenuScheduleVO beforeRules, MenuScheduleVO afterRules) {
+        record(entity, store, actor, key, action, before, after, beforeRules, afterRules, null);
+    }
+
+    private void record(String entity, String store, String actor, String key, String action, MenuVO before,
+            MenuVO after, MenuScheduleVO beforeRules, MenuScheduleVO afterRules, String reason) {
         var audit = new FnbActionLog(); audit.setEntityNo(entity); audit.setStoreNo(store);
         audit.setActionNo(BizKey.next("FACT")); audit.setObjectType("MENU"); audit.setObjectNo(after.menuNo());
-        audit.setAction(action); audit.setOperatorNo(actor);
+        audit.setAction(action); audit.setOperatorNo(actor); audit.setReason(reason);
         audit.setRequestNo(FoodCommandFingerprint.hash(FoodCommandFingerprint.scope(action, entity, store), key));
         if (before != null) audit.setBeforeRef(FoodCommandFingerprint.hash(json.writeValueAsString(
                 beforeRules == null ? before : new MenuScheduleResultVO(before, beforeRules))));

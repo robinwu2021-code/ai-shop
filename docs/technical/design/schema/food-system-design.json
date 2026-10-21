@@ -1,6 +1,6 @@
 {
   "status": "PROPOSED",
-  "version": "2026-10-20-module-alignment",
+  "version": "2026-10-21-cat-all-backend-reconciliation",
   "domains": [
     {
       "code": "A",
@@ -118,7 +118,8 @@
         "FOOD-API-149",
         "FOOD-API-150",
         "FOOD-API-151",
-        "FOOD-API-152"
+        "FOOD-API-152",
+        "FOOD-API-155"
       ]
     },
     {
@@ -5965,6 +5966,20 @@
           "label": "原因",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "order_source",
+          "type": "varchar(32)",
+          "label": "可空，空表示全部来源",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "fulfillment",
+          "type": "varchar(32)",
+          "label": "可空，空表示全部履约",
+          "ref": null,
+          "nullable": true
         }
       ],
       "unique": [
@@ -6133,7 +6148,7 @@
         {
           "name": "status",
           "type": "varchar(16)",
-          "label": "ACTIVE / DISABLED",
+          "label": "DRAFT / ACTIVE / DISABLED；ACTIVE必须权威验真",
           "ref": null,
           "nullable": false
         }
@@ -6150,7 +6165,7 @@
         ]
       ],
       "rules": "账号和门店必须归当前主体；只存已验真的外部引用，不存密钥；Keeta仅规划，当前不能上传或宣称已联通。",
-      "deployment": "PLANNED"
+      "deployment": "MIGRATION_V7"
     },
     {
       "name": "fnb_menu_item_option_group",
@@ -6186,7 +6201,7 @@
         ]
       ],
       "rules": "INHERIT读取商品默认组；REPLACE只读取本项显式组，空组即禁选，不回退；发布冻结组修订。",
-      "deployment": "PLANNED"
+      "deployment": "MIGRATION_V6"
     },
     {
       "name": "fnb_recipe",
@@ -6799,7 +6814,8 @@
       "input": "name:string:菜单名;menuType:string:STANDARD或TIME或SEASON或EVENT;timezone:string:时区;priority:int32:优先级;exclusiveGroup?:string:互斥组",
       "output": "configNo:string:配置号;version:int64:草稿版本;status:string:DRAFT",
       "guard": "原GOODS权限/BizContext/StoreDirectory与实际同主体门店绑定；未知字段拒绝；写操作CAS/幂等/审计/Outbox同事务；timezone与当前生效门店策略一致；只写单店无override头，多店编辑409；完成回执优先重放",
-      "needs": "CAT-02A已实现餐牌头管理；时段规则、菜项与发布仍待后续，不表示可售"
+      "needs": "已实现餐牌工作定义管理；发布与历史读取独立，不能将草稿当可售",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-005",
@@ -6808,20 +6824,22 @@
       "method": "GET",
       "path": "/biz/x/food/stores/{storeNo}/menus/{configNo}",
       "input": "",
-      "output": "config:Menu:当前授权店的工作头，不等于生效发布;schedule?:MenuSchedule:新提供方返回，旧提供方缺省表示未知",
+      "output": "config:Menu:当前工作头;schedule?:MenuSchedule:旧提供方缺省为未知;composition?:MenuComposition:分类菜项SKU及选配配方;contexts:ContextInput[]:明确来源及履约",
       "guard": "原GOODS权限/BizContext/StoreDirectory与实际同主体门店绑定；未知字段拒绝；写操作CAS/幂等/审计/Outbox同事务；timezone与当前生效门店策略一致；只写单店无override头，多店编辑409；完成回执优先重放",
-      "needs": "CAT-02A已实现餐牌头管理；时段规则、菜项与发布仍待后续，不表示可售"
+      "needs": "已实现餐牌工作定义管理；发布与历史读取独立，不能将草稿当可售",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-006",
       "domain": "B",
-      "name": "发布menus",
+      "name": "发布餐牌",
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/menus/{configNo}:publish",
       "input": "version:int64:草稿版本;effectiveAt:datetime:生效时刻;approvalRef?:string:审批",
       "output": "publication:ConfigRevision:冻结发布修订",
-      "guard": "CAS草稿头及完整聚合校验；冻结依赖发布版本和definition；发布内容不可改，客户端不可自填已发布凭据",
-      "needs": "餐饮新增"
+      "guard": "真实GOODS及获准门店；MENU开关独立；外部原身份先于本地事务核验；店级仲裁锁/CAS/actor绑定幂等；冻结定义与依赖、原商品身份且不含价格库存；完成回执先重放；历史内容不变；CHANNEL互斥按冻结的主体/门店/提供方/渠道账号/外部门店身份比较，不能按餐牌私有bindingNo判离散",
+      "needs": "ALL-03/04已实现，生效时间及门店范围内选择冻结修订；不表示订单厨房事务已接入",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-007",
@@ -6898,7 +6916,8 @@
       "input": "name:string:工位名;stationType:string:HOT或COLD或BAR或PACK",
       "output": "configNo:string:配置号;version:int64:草稿版本;status:string:DRAFT",
       "guard": "门店范围与对象权限；写操作CAS版本及幂等",
-      "needs": "餐饮新增"
+      "needs": "ALL-04已实现店内工位管理；不派发厨房订单",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-014",
@@ -6907,20 +6926,22 @@
       "method": "GET",
       "path": "/biz/x/food/stores/{storeNo}/stations/{configNo}",
       "input": "",
-      "output": "config:Config:具体配置，类型由路径确定",
+      "output": "config:Station:授权工位工作定义及发布指针",
       "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
-      "needs": "餐饮新增"
+      "needs": "ALL-04已实现",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-015",
       "domain": "B",
-      "name": "发布stations",
+      "name": "发布工位",
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/stations/{configNo}:publish",
       "input": "version:int64:草稿版本;effectiveAt:datetime:生效时刻;approvalRef?:string:审批",
       "output": "publication:ConfigRevision:冻结发布修订",
-      "guard": "CAS草稿头及完整聚合校验；冻结依赖发布版本和definition；发布内容不可改，客户端不可自填已发布凭据",
-      "needs": "餐饮新增"
+      "guard": "真实GOODS及获准门店；STATION开关独立；外部原身份先于本地事务核验；店级仲裁锁/CAS/actor绑定幂等；冻结定义与依赖、原商品身份且不含价格库存；完成回执先重放；历史内容不变",
+      "needs": "ALL-03/04已实现，生效时间及门店范围内选择冻结修订；不表示订单厨房事务已接入",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-016",
@@ -6939,10 +6960,11 @@
       "name": "菜单组成与时段配置",
       "method": "PUT",
       "path": "/biz/x/food/menus/{menuNo}/definition",
-      "input": "section:string:本批仅SCHEDULE;version:int64:草稿CAS;weekSchedules:WeekScheduleInput[]:必需，允许[]不允许null;exceptions:ExceptionInput[]:必需，允许[]不允许null;validFrom?:date:含首日;validTo?:date:含末日；完整storeNos/contexts/categories分支尚未实现，不接受这些字段",
-      "output": "menu:Menu:草稿头;schedule:MenuSchedule:规范化时段及例外",
-      "guard": "CAT-02B仅SCHEDULE分段；GOODS/BizContext/StoreDirectory/实际同主体当前店；单店无override/CAS/幂等/审计Outbox同事务；当前策略时区一致；跨周重叠拒绝/区间左闭右开/日期例外优先；不改变不可变历史；完整组成及发布冲突校验仍待后续",
-      "needs": "CAT-02B已实现SCHEDULE分段；API017完整门店/入口/分类菜项定义仍待实现，不表示可售"
+      "input": "section:string:SCHEDULE或COMPOSITION或CONTEXT显式互斥分段;version:int64:当前草稿CAS;weekSchedules?:WeekScheduleInput[]:SCHEDULE必需;exceptions?:ExceptionInput[]:SCHEDULE必需;validFrom?:date:SCHEDULE来源起日;validTo?:date:SCHEDULE来源末日;categories?:MenuCategoryInput[]:COMPOSITION必需，空清空;contexts?:ContextInput[]:CONTEXT必需，空清空",
+      "output": "menu:Menu:新工作CAS;schedule?:MenuSchedule:仅SCHEDULE分段回执;composition?:MenuComposition:仅COMPOSITION分段回执;contexts?:ContextInput[]:仅CONTEXT分段回执",
+      "guard": "三个分段只替换自身；真实同主体当前店；CAS及actor绑定幂等审计Outbox同事务；原Goods/SKU事实先在本地事务外批量核验；分类及菜项ID不能借用别的餐牌；ALL/EXPLICIT、INHERIT/REPLACE严格区分；配方同店同SKU；时段按来源日期覆盖、左闭右开；不改历史",
+      "needs": "ALL-01/02已实现工作组成、时段及上下文；发布另验依赖和冲突，不提供价格或成交授权",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-018",
@@ -6983,10 +7005,11 @@
       "name": "工位路由配置",
       "method": "PUT",
       "path": "/biz/x/food/stores/{storeNo}/sku-routes/{skuNo}",
-      "input": "routes:RouteInput[]:stationNo/taskRole/routeVersion;version:int64:版本",
+      "input": "version:int64:整个店SKU关系CAS，首次0;routes:RouteInput[]:最多100个stationNo及taskRole，空清空，不接受客户端routeVersion",
       "output": "operationNo:string:操作号;status:string:操作状态;version:int64:对象版本;resultRef?:string:结果业务号",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
-      "needs": "餐饮新增"
+      "guard": "原SKU同主体当前店；只允许同店启用工位；店级仲裁行锁；清空墓碑保留路由计数防ABA；actor绑定幂等及审计Outbox同事务；不改实存、不派发历史厨房任务",
+      "needs": "ALL-04已实现路由配置，派工读取冻结发布需订单阶段集成",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-022",
@@ -6994,10 +7017,11 @@
       "name": "沽清与恢复",
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/sales-restrictions",
-      "input": "skuNo:string:SKU;mode:string:SOLD_OUT或QUOTA或PREORDER_LIMIT或CLEAR;restrictionNo?:string:CLEAR时必填;quota?:decimal:额度模式必填正值;businessDate?:date:每日额度必填;startsAt?:datetime:缺省现在;expiresAt?:datetime:到期;reason:string:原因",
-      "output": "restrictionNo:string:销售约束引用;status:string:结果",
-      "guard": "店SKU有效约束串行化；CLEAR仅清指定限制；配额批次幂等预占释放一次且不修改实存",
-      "needs": "共享可售约束或新增通用能力"
+      "input": "skuNo:string:同店原SKU;mode:string:SOLD_OUT或QUOTA或PREORDER_LIMIT或CLEAR;restrictionNo?:string:编辑或CLEAR对象;version?:int64:已有对象必需CAS;quota?:decimal:额度模式正decimal(18,6)，物理件数与交易计量另验;businessDate?:date:适用营业日;startsAt?:datetime:缺省当前;expiresAt?:datetime:到期;reason:string:原因;orderSource?:string:受控来源;fulfillment?:string:履约",
+      "output": "restrictionNo:string:约束;storeNo:string:授权店;skuNo:string:原SKU;mode:string:SOLD_OUT或QUOTA或PREORDER_LIMIT;businessDate?:date:业务日;quota?:decimal:额度;reservedQty:decimal:原子预占;consumedQty:decimal:已用;startsAt:datetime:开始;expiresAt?:datetime:到期;status:string:当前时点状态含EXPIRED;reason:string:原因;orderSource?:string:来源过滤;fulfillment?:string:履约过滤;version:int64:CAS",
+      "guard": "店SKU仲裁行锁；CLEAR只清指定版本；完成回执优先；过期按服务器时点恢复；餐饮额度通过既有OnlineQuotaPort本地原子预占消费释放一次，不重复建立实存账；UNKNOWN不释放；orderSource非空只允许POS/WAITER/KIOSK/QR/H5/APP/CHANNEL，fulfillment非空只允许DINE_IN/PICKUP/DELIVERY，CHANNEL显式履约只允许DELIVERY；null保留通配语义，非法值不得写审计/Outbox",
+      "needs": "ALL-05已实现餐饮限制及在线额度；不表示物理库存或订单报价可用",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-023",
@@ -7005,10 +7029,11 @@
       "name": "顾客菜单视图",
       "method": "GET",
       "path": "/mp/x/food/catalog",
-      "input": "storeNo:string:门店;sessionNo?:string:会话;orderSource:string:销售来源;fulfillment:string:履约;channelBindingNo?:string:服务端按获准来源解析；外部身份须匹配",
-      "output": "menus:Menu[]:生效菜单;items:CatalogItem[]:商品规格选配可售提示;asOf:datetime:时点",
-      "guard": "公开目录或合法会话范围；来源须与客户端身份匹配；用户不能指定任意未来时间绕过接单；菜单条目不可仅按SKU去重；未取得权威报价不显示0元或可成交；用户不能伪造渠道身份。",
-      "needs": "餐饮新增"
+      "input": "storeNo:string:公开门店或原顾客会话门店;orderSource:string:H5公开或QR原顾客会话，不能伪造CHANNEL;fulfillment:string:H5仅PICKUP或DELIVERY，QR仅DINE_IN;sessionNo?:string:QR必需，另需X-Food-Session头原会话凭据",
+      "output": "storeNo:string:获准店;orderSource:string:可信来源;fulfillment:string:履约;asOf:datetime:服务端当前时点;menus:CatalogMenu[]:生效发布;items:CatalogItem[]:保留菜项身份",
+      "guard": "服务器当前时间；仅已发布冻结定义及其时段来源履约；每菜项保留身份；当前原商品审核上架、原CN/CNY门店及特价和餐饮限制重新读取；未知价格及库存为null且不可成交；复杂选配/套餐/配方需权威报价；公开及顾客目录不暴露channelAccount账号、外部门店、pricePolicyRef或内部依赖快照，渠道上下文不能由用户伪造；不接受任意at未来预览",
+      "needs": "ALL-06已实现保守当前展示；PLATFORM物理库存可明确读取，DUAL/INVENTORY或多市场歧义为UNKNOWN；没有报价保留禁成交，不保证下单",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-024",
@@ -7965,7 +7990,8 @@
       "input": "name:string:名称;menuType:string:受控类型;timezone:string:时区;priority:int32:优先级;exclusiveGroup?:string:互斥组;version:int64:版本",
       "output": "menu:Menu:草稿头",
       "guard": "原GOODS权限/BizContext/StoreDirectory与实际同主体门店绑定；未知字段拒绝；写操作CAS/幂等/审计/Outbox同事务；timezone与当前生效门店策略一致；只写单店无override头，多店编辑409；完成回执优先重放",
-      "needs": "CAT-02A已实现餐牌头管理；时段规则、菜项与发布仍待后续，不表示可售"
+      "needs": "已实现餐牌工作定义管理；发布与历史读取独立，不能将草稿当可售",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-111",
@@ -7974,9 +8000,10 @@
       "method": "POST",
       "path": "/biz/x/food/menus/{menuNo}:disable",
       "input": "version:int64:版本;reason:string:原因",
-      "output": "operation:Operation:接单门控结果",
+      "output": "menu:Menu:停用后的工作头，不影响旧订单快照",
       "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；旧订单快照保留",
-      "needs": "餐饮新增"
+      "needs": "已实现餐牌工作定义管理；发布与历史读取独立，不能将草稿当可售",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-112",
@@ -8006,10 +8033,11 @@
       "name": "经营端可售餐牌",
       "method": "GET",
       "path": "/biz/x/food/stores/{storeNo}/catalog",
-      "input": "orderSource:string:授权来源;fulfillment:string:履约;at?:datetime:有预览权限才可指定;channelBindingNo?:string:服务端按获准来源解析；外部身份须匹配",
-      "output": "menus:Menu[]:生效餐牌;items:CatalogItem[]:可售菜品;asOf:datetime:截至",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；仅解析已发布快照；可售提交时再次验证；菜单条目不可仅按SKU去重；未取得权威报价不显示0元或可成交；用户不能伪造渠道身份。",
-      "needs": "餐饮新增"
+      "input": "orderSource:string:POS或WAITER或KIOSK或QR或H5或APP;fulfillment:string:DINE_IN或PICKUP或DELIVERY;channelBindingNo?:string:尚无真实渠道目录授权时拒绝",
+      "output": "storeNo:string:获准店;orderSource:string:可信来源;fulfillment:string:履约;asOf:datetime:服务端当前时点;menus:CatalogMenu[]:生效发布;items:CatalogItem[]:保留菜项身份",
+      "guard": "服务器当前时间；仅已发布冻结定义及其时段来源履约；每菜项保留身份；当前原商品审核上架、原CN/CNY门店及特价和餐饮限制重新读取；未知价格及库存为null且不可成交；复杂选配/套餐/配方需权威报价；公开及顾客目录不暴露channelAccount账号、外部门店、pricePolicyRef或内部依赖快照，渠道上下文不能由用户伪造；不接受任意at未来预览",
+      "needs": "ALL-06已实现保守当前展示；PLATFORM物理库存可明确读取，DUAL/INVENTORY或多市场歧义为UNKNOWN；没有报价保留禁成交，不保证下单",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-115",
@@ -8030,8 +8058,9 @@
       "path": "/biz/x/food/config-revisions/{revisionNo}:republish",
       "input": "version:int64:当前头版本;effectiveAt:datetime:生效;reason:string:原因;approvalRef?:string:审批",
       "output": "publication:ConfigRevision:新发布号",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；旧快照不可改，旧引用现可售性重新校验",
-      "needs": "餐饮新增"
+      "guard": "原主体门店及当前工作CAS；只允许已实现kind白名单；重新验真当前原身份及依赖授权，用旧冻结内容追加新发布号；保留原内容哈希及旧引用，不覆盖历史；理由与actor审计同事务；CHANNEL互斥按冻结的主体/门店/提供方/渠道账号/外部门店身份比较，不能按餐牌私有bindingNo判离散",
+      "needs": "ALL-03已实现新修订回滚；开关和冲突时间线继续适用；不回滚历史订单事实",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-117",
@@ -8084,9 +8113,10 @@
       "method": "GET",
       "path": "/biz/x/food/stores/{storeNo}/stations",
       "input": "page?:int32:默认1;size?:int32:默认20最大100",
-      "output": "records:Config[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
+      "output": "records:Station[]:授权工位;total:int64:相同过滤总数;page:int32:页;size:int32:页长",
       "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
-      "needs": "餐饮新增"
+      "needs": "ALL-04已实现",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-122",
@@ -8097,7 +8127,8 @@
       "input": "page?:int32:默认1;size?:int32:默认20最大100;skuNo?:string:SKU;status?:string:状态",
       "output": "records:SalesRestriction[]:约束;total:int64:总数;page:int32:页;size:int32:页长",
       "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
-      "needs": "餐饮新增"
+      "needs": "ALL-05已实现服务器时点状态及主体门店过滤",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-123",
@@ -8315,9 +8346,10 @@
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/menu-channel-bindings",
       "input": "menuNo:string:本店餐牌;provider:string:受控渠道;channelAccountRef:string:已有受权账号引用;externalStoreRef:string:受权外部门店",
-      "output": "binding:MenuChannelBinding:服务端生成绑定",
-      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。渠道账号必须验真；Keeta仅规划。",
-      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+      "output": "bindingNo:string:服务端业务号;menuNo:string:本店餐牌;storeNo:string:门店;provider:string:渠道;channelAccountRef:string:仅经营授权端可读账号引用;externalStoreRef:string:外部门店引用;status:string:DRAFT或ACTIVE或DISABLED;version:int64:CAS",
+      "guard": "同主体当前店餐牌；新绑定为DRAFT，不宣称已获账号授权；服务端号/CAS/actor绑定幂等/审计Outbox；创建及修改失效餐牌工作CAS",
+      "needs": "ALL-02已实现渠道引用草稿及受控启停；真实渠道账号/价格授权缺失时ACTIVE拒绝；Keeta仅规划，无真实同步或成交",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-143",
@@ -8328,7 +8360,8 @@
       "input": "page?:int32:默认1;size?:int32:默认20最大100;provider?:string:渠道;menuNo?:string:餐牌",
       "output": "records:MenuChannelBinding[]:授权记录;total:int64:同过滤总数;page:int32:页;size:int32:页长",
       "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。",
-      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+      "needs": "ALL-02已实现渠道引用草稿及受控启停；真实渠道账号/价格授权缺失时ACTIVE拒绝；Keeta仅规划，无真实同步或成交",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-144",
@@ -8337,9 +8370,10 @@
       "method": "GET",
       "path": "/biz/x/food/menu-channel-bindings/{bindingNo}",
       "input": "",
-      "output": "binding:MenuChannelBinding:获准对象",
-      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。",
-      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+      "output": "bindingNo:string:服务端业务号;menuNo:string:本店餐牌;storeNo:string:门店;provider:string:渠道;channelAccountRef:string:仅经营授权端可读账号引用;externalStoreRef:string:外部门店引用;status:string:DRAFT或ACTIVE或DISABLED;version:int64:CAS",
+      "guard": "真实GOODS权限及获准对象门店；仅经营端返回账号引用，公开目录不得返回",
+      "needs": "ALL-02已实现渠道引用草稿及受控启停；真实渠道账号/价格授权缺失时ACTIVE拒绝；Keeta仅规划，无真实同步或成交",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-145",
@@ -8348,9 +8382,10 @@
       "method": "PUT",
       "path": "/biz/x/food/menu-channel-bindings/{bindingNo}",
       "input": "version:int64:CAS;status:string:ACTIVE或DISABLED;externalStoreRef:string:获准外部门店",
-      "output": "binding:MenuChannelBinding:新版本",
-      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。不改原provider/账号/menu/store；历史映射保留，停用不取消旧订单。",
-      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+      "output": "bindingNo:string:服务端业务号;menuNo:string:本店餐牌;storeNo:string:门店;provider:string:渠道;channelAccountRef:string:仅经营授权端可读账号引用;externalStoreRef:string:外部门店引用;status:string:DRAFT或ACTIVE或DISABLED;version:int64:CAS",
+      "guard": "对象门店/CAS/actor绑定幂等；ACTIVE需真实账号及外部门店授权，Keeta或缺提供方拒绝；provider/账号/menu/store不可换义；停用不取消历史订单",
+      "needs": "ALL-02已实现渠道引用草稿及受控启停；真实渠道账号/价格授权缺失时ACTIVE拒绝；Keeta仅规划，无真实同步或成交",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
     {
       "id": "FOOD-API-146",
@@ -8450,6 +8485,18 @@
       "output": "consumption:ProductionConsumption:原事实与回执",
       "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。只读核验逐行回执，不能以退款推返料。",
       "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+    },
+    {
+      "id": "FOOD-API-155",
+      "domain": "B",
+      "name": "读取SKU工位路由",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/sku-routes/{skuNo}",
+      "input": "",
+      "output": "skuNo:string:原SKU;version:int64:整个店SKU路由版本，清空仍保留计数;routes:RouteInput[]:当前有效路由",
+      "guard": "原GOODS权限及真实同主体当前门店；只读店SKU当前路由及整体关系版本，不返回物理id，不写审计或库存",
+      "needs": "ALL-04已实现；StationService.getRoutes/BizStationController.getRoutes，空关系保留版本而非重置",
+      "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
     }
   ],
   "dtos": {
@@ -8469,7 +8516,7 @@
     "Config": "configNo:string:对象编号;kind:string:受控配置类型;revision:int64:版本;status:string:草稿或已发布;data:object:按对应数据库字段定义且拒未知字段",
     "ReturnItem": "foodLineNo:string:源行;componentNo?:string:组件;qty:decimal:退量;disposition:string:CANCEL或LOSS或KEEP或REMAKE",
     "Page": "records:object[]:该端点明确的业务VO;total:int64:总数;page:int32:页码;size:int32:每页条数",
-    "MenuCategoryInput": "categoryNo:string:分类;name:string:名称;sortNo:int32:排序;items:MenuItemInput[]:商品项",
+    "MenuCategoryInput": "categoryNo?:string:新分类省略由服务端生成，旧号必须属于本餐牌;name:string:分类名;sortNo:int32:同级非负唯一;items:MenuItemInput[]:必需，允许空",
     "MenuItemInput": "menuItemNo:string:项号;goodsNo:string:商品;sortNo:int32:排序;enabled:boolean:启用;skuScope:string:ALL或EXPLICIT;skuNos:string[]:EXPLICIT必须非空且属于商品;optionMode:string:INHERIT或REPLACE;optionGroupNos:string[]:REPLACE显式组，空表示禁选;skuRecipes:MenuSkuRecipeInput[]:特定SKU配方，必须EXPLICIT白名单",
     "WeekScheduleInput": "weekday:int32:1至7;startTime:string:严格HH:mm;endTime:string:严格HH:mm;endDayOffset:int32:0或1；时长大于0不超过24小时，周内含跨周重叠拒绝",
     "ExceptionInput": "localDate:date:本地开始日期且在适用范围内;mode:string:OPEN或CLOSED;startTime?:string:OPEN必填;endTime?:string:OPEN必填;endDayOffset:int32:0或1，CLOSED为0且无时间；日期唯一",
@@ -8478,7 +8525,7 @@
     "BundleChoiceInput": "choiceNo:string:选项;groupNo:string:组;skuNo:string:SKU;unitsPerPick:decimal:每选用量;priceMode:string:INCLUDED或ADD_SKU或DIFF_BASE;defaultQty:decimal:默认;minQty:decimal:下限;maxQty:decimal:上限;sortNo:int32:排序",
     "OptionItemInput": "optionItemNo:string:稳定业务引用最长32;sourceKind:string:SPEC_VALUE或MODIFIER;specValueNo?:string:原字典值最长64;modifierNo?:string:配料;maxQty:decimal:上限;defaultQty:decimal:默认;sortNo:int32:排序;minQty:decimal:本选项下限",
     "ComponentInput": "memberNo:string:叶子配料;quantity:decimal:正用量",
-    "RouteInput": "stationNo:string:工位;taskRole:string:MAKE或ASSEMBLE或PACK;routeVersion:int64:路由版",
+    "RouteInput": "stationNo:string:同店启用工位;taskRole:string:MAKE或ASSEMBLE或PACK，关系版本只由服务端产生",
     "VersionInput": "checkNo:string:台账;version:int64:版本",
     "DeliveryLineInput": "foodLineNo:string:餐饮行;qty:decimal:交付量",
     "TableArea": "areaNo:string:桌区号;storeNo:string:门店;code:string:编码;name:string:名称;sortNo:int32:排序;status:string:启停;version:int64:版本",
@@ -8501,10 +8548,10 @@
     "SelectionDependency": "optionItemNo:string:被选项;requiresItemNos:string[]:必须同时选项",
     "Reservation": "reservationNo:string:预约;partySize:int32:人数;startAt:datetime:开始;endAt:datetime:结束;status:string:资源状态;depositRef?:string:获准订金凭据;checkNo?:string:到店台账;version:int64:版本",
     "ActionLog": "actionNo:string:记录;action:string:动作;actorRef:string:审计操作人;occurredAt:datetime:时间;reason?:string:原因",
-    "CatalogItem": "menuItemNo:string:实际餐牌条目;menuRevisionNo:string:餐牌发布修订;goodsNo:string:商品;skuNo:string:规格;name:string:名称;imageRefs:string[]:媒资;price?:Money:仅权威报价可用时返回;pricingStatus:string:AVAILABLE或UNAVAILABLE;pricePolicyRef?:string:权威依据;available:boolean:服务端综合可售;reasonCodes:string[]:不可售原因;configRevisionNos:string[]:冻结依赖",
-    "SalesRestriction": "restrictionNo:string:约束;skuNo:string:SKU;mode:string:类型;status:string:状态;quotaQty?:decimal:额度;reservedQty:decimal:预占;consumedQty:decimal:已用;version:int64:版本",
+    "CatalogItem": "menuNo:string:餐牌;menuItemNo:string:菜项身份，不能仅按SKU合并;categoryNo:string:分类;categoryName:string:分类名;goodsNo:string:原商品;title:string:当前原标题;cover?:string:当前原封面;dish:Dish:冻结餐饮属性;optionGroupNos:string[]:冻结显式选配;skus:CatalogSku[]:当前权威及限制提示",
+    "SalesRestriction": "restrictionNo:string:约束;storeNo:string:授权店;skuNo:string:原SKU;mode:string:SOLD_OUT或QUOTA或PREORDER_LIMIT;businessDate?:date:业务日;quota?:decimal:额度;reservedQty:decimal:原子预占;consumedQty:decimal:已用;startsAt:datetime:开始;expiresAt?:datetime:到期;status:string:当前时点状态含EXPIRED;reason:string:原因;orderSource?:string:来源过滤;fulfillment?:string:履约过滤;version:int64:CAS",
     "MenuSkuRecipeInput": "skuNo:string:本菜品SKU;recipeNo:string:本SKU获准配方变体",
-    "MenuChannelBinding": "bindingNo:string:绑定;menuNo:string:餐牌;storeNo:string:门店;provider:string:提供方;channelAccountRef:string:已有账号引用;externalStoreRef:string:外部门店;status:string:ACTIVE或DISABLED;version:int64:CAS",
+    "MenuChannelBinding": "bindingNo:string:服务端业务号;menuNo:string:本店餐牌;storeNo:string:门店;provider:string:渠道;channelAccountRef:string:仅经营授权端可读账号引用;externalStoreRef:string:外部门店引用;status:string:DRAFT或ACTIVE或DISABLED;version:int64:CAS",
     "CatalogSync": "syncNo:string:任务;bindingNo:string:绑定;revisionNo:string:冻结修订;status:string:真实同步状态;items:CatalogSyncItem[]:分项结果;version:int64:CAS",
     "CatalogSyncItem": "lineNo:int32:行;menuItemNo:string:菜项;status:string:状态;externalObjectRef?:string:外部编号;errorCode?:string:脱敏错误;confirmedRevisionNo?:string:确认修订",
     "Recipe": "recipeNo:string:配方;storeNo:string:门店;skuNo:string:SKU;recipeCode:string:DEFAULT或受控变体;yieldQty:decimal:正配置份数;yieldUnit:string:固定EA，非物理单位;status:string:DRAFT或ACTIVE；发布后编辑回DRAFT;configVersion:int64:内容版本;version:int64:CAS;lines:RecipeLineVO[]:保存的物料事实;adjustments:RecipeAdjustmentVO[]:选配工作调整，旧回执缺失时空数组",
@@ -8552,8 +8599,19 @@
     "RecipeOptionGroupSnapshot": "goodsNo:string:实际根商品绑定;publication:PublicationDependency:不可变依赖;definition:object:完整schema1组选项文档",
     "CreateMenuReq": "name:string:1到64文本;menuType:string:STANDARD或TIME或SEASON或EVENT;timezone:string:门店当前生效IANA时区;priority:int32:必需;exclusiveGroup?:string:1到32文本；禁止自报主体/门店/状态/价格",
     "UpdateMenuReq": "name:string:1到64文本;menuType:string:STANDARD或TIME或SEASON或EVENT;timezone:string:门店当前生效IANA时区;priority:int32:必需;exclusiveGroup?:string:1到32文本；禁止自报主体/门店/状态/价格;version:int64:非负且小于Long.MAX_VALUE",
-    "MenuSchedule": "validFrom?:date:含起始日;validTo?:date:含结束日;weekSchedules:WeekScheduleInput[]:实际规则;exceptions:ExceptionInput[]:实际例外；whole schedule缺省为旧提供方未知，数组为空才表示已清空",
-    "ReplaceMenuScheduleReq": "section:string:本批仅SCHEDULE;version:int64:草稿CAS;weekSchedules:WeekScheduleInput[]:必需，允许[]不允许null;exceptions:ExceptionInput[]:必需，允许[]不允许null;validFrom?:date:含首日;validTo?:date:含末日；完整storeNos/contexts/categories分支尚未实现，不接受这些字段"
+    "MenuSchedule": "validFrom?:date:来源起始日含首日;validTo?:date:来源起始日含末日;weekSchedules:WeekScheduleInput[]:必需;exceptions:ExceptionInput[]:必需，日期覆盖周规则",
+    "ReplaceMenuScheduleReq": "section:string:本批仅SCHEDULE;version:int64:草稿CAS;weekSchedules:WeekScheduleInput[]:必需，允许[]不允许null;exceptions:ExceptionInput[]:必需，允许[]不允许null;validFrom?:date:含首日;validTo?:date:含末日；完整storeNos/contexts/categories分支尚未实现，不接受这些字段",
+    "MenuComposition": "categories:MenuCategoryInput[]:显式空清空组成，不改时段和上下文",
+    "Station": "configNo:string:工位号;version:int64:工作CAS;status:string:工作状态;storeNo:string:授权门店;name:string:名称;stationType:string:HOT或COLD或BAR或PACK;enabled:boolean:启用;publishedRevisionNo?:string:历史发布指针",
+    "StationRoutes": "skuNo:string:原SKU;version:int64:整个店SKU路由版本，清空仍保留计数;routes:RouteInput[]:当前有效路由",
+    "Catalog": "storeNo:string:获准店;orderSource:string:可信来源;fulfillment:string:履约;asOf:datetime:服务端当前时点;menus:CatalogMenu[]:生效发布;items:CatalogItem[]:保留菜项身份",
+    "CatalogMenu": "menuNo:string:餐牌;revisionNo:string:冻结发布号;revision:int64:发布序号;name:string:冻结名称;priority:int32:优先级;exclusiveGroup?:string:互斥组;dependencies:CatalogDependency[]:冻结依赖",
+    "CatalogDependency": "revisionNo:string:冻结发布号;configKind:string:类型;configNo:string:对象;revision:int64:序号;contentHash:string:校验;optionGroup?:DishOptionGroup:公开选配定义;modifier?:CatalogModifier:公开小料元数据;bundle?:BundleConfigVO:公开套餐选项;recipe?:CatalogRecipe:仅配方身份，无原料和耗用;specValues:CatalogSpecValue[]:冻结选项标签及版本",
+    "CatalogSku": "skuNo:string:原SKU;spec?:string:当前规格;recipeNo?:string:冻结配方;priceMinor?:int64:真实原CN价格，未知为null，不伪造0;currency?:string:已知CN价为CNY;pricingStatus:string:KNOWN或UNAVAILABLE或UNKNOWN;available?:int32:仅权威PLATFORM物理可售件数，未知为null;stockStatus:string:KNOWN或UNKNOWN或UNAVAILABLE;onSale:boolean:当前原上架及审核;restricted:boolean:当前餐饮限制;remainingQuota?:decimal:剩余额度;transactable:boolean:保守当前展示提示，不是报价或下单承诺;requiresSelectionQuote:boolean:选配小料套餐配方必须重新权威报价;reason?:string:不可成交原因",
+    "RepublishConfigReq": "version:int64:当前工作CAS;effectiveAt:datetime:新生效时刻;reason:string:必需原因;approvalRef?:string:审批引用",
+    "CatalogModifier": "configNo:string:小料号;version:int64:版本;status:string:状态;name:string:名称;kind:string:ADDON或COMPONENT;salesSkuNo?:string:销售SKU;salesOffer?:CatalogSku:当前原SKU展示提示，不含组件用量",
+    "CatalogRecipe": "recipeNo:string:配方号;skuNo:string:原SKU;storeNo:string:授权门店;version:int64:版本;configVersion:int64:配置版，不公开原料配比",
+    "CatalogSpecValue": "valueNo:string:选项;dimNo:string:维度;label:string:公开标签;dimName:string:公开维度名;valueType:string:值类型;usageType:string:用途;valueVersion:int64:值版本;dimVersion:int64:维度版本"
   },
   "commonFields": [
     [
@@ -8603,7 +8661,7 @@
     ]
   ],
   "compatibility": "docs/technical/design/餐饮系统-项目底座兼容对齐.md",
-  "reviewDate": "2026-10-20",
+  "reviewDate": "2026-10-21",
   "businessModules": [
     {
       "id": "MOD-01",
@@ -8752,7 +8810,8 @@
         "FOOD-API-149",
         "FOOD-API-150",
         "FOOD-API-151",
-        "FOOD-API-152"
+        "FOOD-API-152",
+        "FOOD-API-155"
       ],
       "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
     },
@@ -10911,9 +10970,12 @@
       "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V2__table_occupancy_sharing_mode.sql",
       "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V3__option_spec_value_identity_width.sql",
       "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V4__recipe_draft_tables.sql",
-      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V5__recipe_adjustment_table.sql"
+      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V5__recipe_adjustment_table.sql",
+      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V6__menu_composition.sql",
+      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V7__menu_context_channels.sql"
     ],
-    "targetSchemaVersion": 5
+    "targetSchemaVersion": 7,
+    "note": "历史证据仅V1/73张本机业务表；additionalMigrations表示提供的后续迁移，不表示已应用到该经营库。当前Java五模块及部分后端端点已实现，验收以CAT-ALL记录为准。"
   },
   "catalogEnhancement": {
     "version": 1,
@@ -11062,6 +11124,12 @@
     ],
     "migrationV5Tables": [
       "fnb_recipe_adjustment"
+    ],
+    "migrationV6Tables": [
+      "fnb_menu_item_option_group"
+    ],
+    "migrationV7Tables": [
+      "fnb_menu_channel_binding"
     ]
   }
 }

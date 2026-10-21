@@ -195,7 +195,13 @@ class MediaUploadFlowTest {
         String body = mvc().perform(req)
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("data").get("url").asString();
+        var data = json.readTree(body).get("data");
+        assertThat(data.hasNonNull("assetKey")).isTrue();
+        String key = data.get("assetKey").asString();
+        var asset = assetMapper.selectOne(Wrappers.<SysMediaAsset>lambdaQuery().eq(SysMediaAsset::getAssetKey, key));
+        assertThat(asset).isNotNull();
+        assertThat(asset.getStatus()).isEqualTo(SysMediaAsset.ACTIVE);
+        return data.get("url").asString();
     }
 
 

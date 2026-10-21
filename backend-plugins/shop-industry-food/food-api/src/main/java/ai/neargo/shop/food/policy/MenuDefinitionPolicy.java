@@ -54,6 +54,15 @@ public final class MenuDefinitionPolicy {
     private static void require(boolean condition) {
         if (!condition) throw BizException.of(ErrorCode.BAD_REQUEST);
     }
+    /** Provided booleans must not accept string or numeric coercion. */
+    public static final class BooleanDeserializer extends ValueDeserializer<Boolean> {
+        @Override public Boolean deserialize(JsonParser parser, DeserializationContext context) {
+            if (parser.currentToken() == JsonToken.VALUE_TRUE) return true;
+            if (parser.currentToken() == JsonToken.VALUE_FALSE) return false;
+            return context.reportInputMismatch(Boolean.class, "Menu boolean requires a boolean token");
+        }
+    }
+
     /** All int32 JSON fields must be actual integer tokens; optional nulls are validated by their caller. */
     public static final class IntegerDeserializer extends ValueDeserializer<Integer> {
         @Override public Integer deserialize(JsonParser parser, DeserializationContext context) {

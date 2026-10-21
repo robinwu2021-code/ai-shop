@@ -10,4 +10,4 @@ assertFrozenFoodV1(sql);
 if(process.argv.includes('--check')){
  if(!fs.existsSync(file)||fs.readFileSync(file,'utf8')!==sql)throw Error('Food schema differs from frozen migration');
 }else{fs.mkdirSync(path.dirname(file),{recursive:true});writeFrozenMigration(file,sql);}
-console.log('Food target: '+s.tables.filter(t=>t.name.startsWith('fnb_')).length+' tables; frozen V1: '+[...sql.matchAll(/CREATE TABLE `/g)].length+'; active migration version: '+s.databaseInitialization.targetSchemaVersion+'.');
+console.log('Food target: '+s.tables.filter(t=>t.name.startsWith('fnb_')).length+' tables; frozen V1: '+[...sql.matchAll(/CREATE TABLE `/g)].length+'; available migration version: '+s.databaseInitialization.targetSchemaVersion+'.');
