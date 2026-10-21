@@ -3,6 +3,7 @@ package ai.neargo.shop.beauty.scenario;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.shop.beauty.config.BeautyAppointmentConfiguration;
 import ai.neargo.shop.beauty.config.BeautyMerchantClientConfiguration;
 import ai.neargo.shop.beauty.job.AppointmentRecoveryJob;
@@ -47,7 +48,10 @@ class BookingServerWiringTest {
     @Test void standaloneServerHasLocalUniqueSourceAndRemoteOwnerWithoutProviderConstructorCycle() {
         runner().withPropertyValues("spring.profiles.active=api").run(ctx -> {
             assertThat(ctx).hasNotFailed().hasSingleBean(ResourceSourceAuthorityPort.class)
-                    .hasSingleBean(ResourceBookingPort.class).hasSingleBean(AppointmentRecoveryJob.class);
+                    .hasSingleBean(ResourceBookingPort.class).hasSingleBean(AppointmentRecoveryJob.class)
+                    .hasSingleBean(JobDeclaration.class);
+            assertThat(ctx.getBean(JobDeclaration.class).handlerName())
+                    .isEqualTo(ctx.getBean(AppointmentRecoveryJob.class).name());
             assertThat(ctx.getBean(ResourceSourceAuthorityPort.class)).isInstanceOf(AppointmentSourceAuthorityPortImpl.class);
             assertThat(ctx.getBean(ResourceBookingPort.class)).isInstanceOf(RemoteResourceBookingPort.class);
         });
@@ -55,7 +59,7 @@ class BookingServerWiringTest {
     @Test void opsAndNoApiShapeDoNotRegisterRecoveryJob() {
         for (String profiles : new String[] {"ops", ""}) {
             runner().withPropertyValues("spring.profiles.active=" + profiles).run(ctx -> assertThat(ctx)
-                    .hasNotFailed().doesNotHaveBean(AppointmentRecoveryJob.class));
+                    .hasNotFailed().doesNotHaveBean(AppointmentRecoveryJob.class).doesNotHaveBean(JobDeclaration.class));
         }
     }
 }

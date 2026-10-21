@@ -26,7 +26,7 @@ def generate():
         for f in t['fields']:
             assert f.get('references', '') in names | EXTERNAL | {''}, (t['name'], f)
     lines = ['# 美业与共用人员资源数据库字段字典', '',
-             '> 状态：数据库结构草稿，未执行 · 2026-10-20',
+             '> 状态：原41项目标基线保留；BM03正式V1–V4共23项私表，增量另列 · 2026-10-22',
              '> 由 `python3 scripts/gen-beauty-database-design.py` 生成，勿手改；真源：[数据库设计源](./schema/beauty-database-design.json)。',
              '> 业务约束及复用边界：[数据库结构设计](./美业系统-数据库结构设计.md)。本册不是Flyway迁移，不输出可执行建表SQL。', '',
              '## 一、公共字段与约束', '',
@@ -90,6 +90,17 @@ def generate():
         for field in table['fields']:
             lines.append(f'| {field["name"]} | {field["type"]} | {field["nullable"]} | {field["description"]} |')
         lines += ['', '唯一键均含tenant_no/entity_no：' + '；'.join(', '.join(key) for key in table['unique']) + '。', '']
+    lines += ['## BM03业务与冻结决策增量（私有V3/V4）', '',
+              '原41项目标及V1/V2保持冻结。V3追加准备、操作、当前指针、不可变安排4表；V4追加不可变来源决策1表。当前私表16+2+4+1=23，行业历史表另计；并非把49任务/160接口目标宣称全部交付。', '',
+              '正式迁移与严格物理manifest由BeautySchemaValidator核验；生成器为gen-beauty-appointment-business-schema.mjs、gen-beauty-appointment-decision-schema.mjs。原生升级及部署证据见[Task53报告](../../../.superpowers/sdd/beauty-backend/task-53-report.md)。', '']
+    for filename in ['beauty-appointment-business-schema.json', 'beauty-appointment-decision-schema.json']:
+        increment = json.loads((SOURCE.parent / filename).read_text())
+        lines += ['增量真源：[' + filename + '](./schema/' + filename + ')。', '']
+        for table in increment['tables']:
+            lines += ['### ' + table['name'], '', '| 字段 | 类型 | 可空 | 含义 |', '|---|---|---|---|']
+            for field in table['fields']:
+                lines.append(f'| {field["name"]} | {field["type"]} | {field["nullable"]} | {field["description"]} |')
+            lines += ['', '唯一键均含tenant_no/entity_no：' + '；'.join(', '.join(key) for key in table['unique']) + '。', '']
     outputs[OUTPUT] = '\n'.join(lines)
     return outputs, tables
 

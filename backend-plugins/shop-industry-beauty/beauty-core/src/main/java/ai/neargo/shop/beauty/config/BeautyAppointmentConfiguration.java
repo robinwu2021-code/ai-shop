@@ -1,6 +1,7 @@
 package ai.neargo.shop.beauty.config;
 
 import ai.neargo.shop.beauty.job.AppointmentRecoveryJob;
+import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
 import ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl;
@@ -102,6 +103,14 @@ public class BeautyAppointmentConfiguration {
     @Profile("api")
     AppointmentRecoveryJob appointmentRecoveryJob(AppointmentRecovery recovery) {
         return new AppointmentRecoveryJob(recovery);
+    }
+    /** External workers discover the bounded reconciliation task; this declaration starts no timer. */
+    @Bean
+    @Profile("api")
+    JobDeclaration beautyAppointmentRecoveryDeclaration() {
+        return new JobDeclaration("beauty-appointment-recovery", "美业预约原操作恢复",
+                "仅核验已绑定的原终态；需要用户授权的步骤保持待处理", "beauty-core",
+                "0 * * * * *", true, 60, 120, true, true);
     }
     @Bean
     ServiceOperationRecoveryServiceImpl serviceOperationRecoveryServiceImpl(AppointmentPersistence db,

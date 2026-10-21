@@ -1,6 +1,8 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.job.engine.JobRegistry;
+import ai.neargo.job.api.JobHttpPaths;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -63,6 +65,15 @@ class JobTargetProfileTest {
 
     @Value("${shop.job.internal-token}")
     String token;
+
+    @Test
+    void inheritedCommonTargetRegistersExactlyOneRouteSet() {
+        var mappings = ctx.getBeansOfType(RequestMappingHandlerMapping.class).values().stream()
+                .flatMap(mapping -> mapping.getHandlerMethods().keySet().stream()).toList();
+        assertThat(mappings.stream().filter(m -> m.getPatternValues().contains(JobHttpPaths.DECLARATIONS)))
+                .hasSize(1);
+        assertThat(mappings.stream().filter(m -> m.getPatternValues().contains(JobHttpPaths.RUN))).hasSize(1);
+    }
 
     @Test
     @DisplayName("没有 worker profile 时，任务体索引与内部端点仍要在")

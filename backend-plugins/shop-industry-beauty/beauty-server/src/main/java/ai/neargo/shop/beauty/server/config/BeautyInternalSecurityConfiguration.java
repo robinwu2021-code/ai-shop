@@ -1,6 +1,7 @@
 package ai.neargo.shop.beauty.server.config;
 
 import ai.neargo.shop.svc.InternalHttp;
+import ai.neargo.job.api.JobHttpPaths;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,6 +30,7 @@ public class BeautyInternalSecurityConfiguration {
                 .exceptionHandling(errors -> errors.authenticationEntryPoint(
                         (request, response, failure) -> response.sendError(401)))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(JobHttpPaths.DECLARATIONS, JobHttpPaths.RUN).permitAll()
                         .requestMatchers("/internal/beauty/**").access((authentication, context) ->
                                 new AuthorizationDecision(trusted(token,
                                         context.getRequest().getHeader(InternalHttp.TOKEN_HEADER))))

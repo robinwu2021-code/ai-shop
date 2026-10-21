@@ -11,6 +11,11 @@
     <packaging>jar</packaging>
     <dependencies>
         <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>ai.neargo.shop</groupId>
             <artifactId>beauty-core</artifactId>
             <version>${project.version}</version>
