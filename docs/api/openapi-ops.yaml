@@ -8421,7 +8421,6 @@ components:
         - "typeCode"
         - "expectedName"
         - "name"
-        - "reason"
       additionalProperties: false
     PointsTypeChange:
       type: "object"
@@ -8442,7 +8441,6 @@ components:
         - "requestId"
         - "typeCode"
         - "action"
-        - "reason"
       additionalProperties: false
     PointsFallback:
       type: "object"

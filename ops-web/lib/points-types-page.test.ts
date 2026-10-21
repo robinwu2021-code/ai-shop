@@ -123,13 +123,14 @@ it("shows the default and offers pause without affecting redemption", async () =
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   expect(host.textContent).toContain("订单默认");
   await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
+  await act(async () => (host.querySelector('button[aria-label="编辑状态"]') as HTMLButtonElement).click());
   const actions = host.querySelector('[name="action"]') as HTMLSelectElement;
   expect([...actions.options].map((o) => o.value)).toContain("PAUSE_EARNING");
   expect([...actions.options].map((o) => o.value)).not.toContain("SET_DEFAULT");
   actions.value = "PAUSE_EARNING";
-  (host.querySelector('[name="reason"]') as HTMLInputElement).value = "暂停赠送";
+  expect(host.querySelector('[name="reason"]')).toBeNull();
   await act(async () => host.querySelector("form#points-type-state")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
-  expect(mock.transition).toHaveBeenCalledWith(expect.objectContaining({ typeCode: "HX_TOKEN", action: "PAUSE_EARNING", reason: "暂停赠送" }));
+  expect(mock.transition).toHaveBeenCalledWith(expect.objectContaining({ typeCode: "HX_TOKEN", action: "PAUSE_EARNING" }));
   expect(host.textContent).toContain("已有积分仍可抵扣");
 });
 
@@ -139,9 +140,11 @@ it("offers resume and explicit default selection for a paused independent type",
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   expect(host.textContent).toContain("赠送已暂停");
   await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
+  await act(async () => (host.querySelector('button[aria-label="编辑状态"]') as HTMLButtonElement).click());
   const actions = host.querySelector('[name="action"]') as HTMLSelectElement;
   expect([...actions.options].map((o) => o.value)).toContain("RESUME_EARNING");
-  expect([...actions.options].map((o) => o.value)).toContain("SET_DEFAULT");
+  expect([...actions.options].map((o) => o.value)).not.toContain("SET_DEFAULT");
+  expect(host.querySelector('button[aria-label="编辑订单默认"]')).not.toBeNull();
 });
 
 it("edits an active points name in its drawer and refreshes the list", async () => {
@@ -151,14 +154,17 @@ it("edits an active points name in its drawer and refreshes the list", async () 
   await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
+  expect(host.querySelector('form#points-type-rename')).toBeNull();
+  await act(async () => (host.querySelector('button[aria-label="编辑积分名称"]') as HTMLButtonElement).click());
   const name = host.querySelector('form#points-type-rename [name="name"]') as HTMLInputElement;
   expect(name).not.toBeNull();
   expect(name.value).toBe("平台积分");
   name.value = "虹选积分";
-  (host.querySelector('form#points-type-rename [name="remark"]') as HTMLInputElement).value = "更新展示名称";
+  expect(host.querySelector('form#points-type-rename [name="remark"]')).toBeNull();
   await act(async () => host.querySelector('form#points-type-rename')!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
-  expect(mock.rename).toHaveBeenCalledWith(expect.objectContaining({ typeCode: "HX_TOKEN", expectedName: "平台积分", name: "虹选积分", reason: "更新展示名称" }));
+  expect(mock.rename).toHaveBeenCalledWith(expect.objectContaining({ typeCode: "HX_TOKEN", expectedName: "平台积分", name: "虹选积分" }));
+  expect(mock.rename.mock.calls[0][0]).not.toHaveProperty("reason");
   expect(host.querySelector('[data-testid="points-type-list"]')!.textContent).toContain("虹选积分");
 });
 
@@ -168,9 +174,35 @@ it("blocks duplicate names in the drawer before submitting", async () => {
   await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
+  await act(async () => (host.querySelector('button[aria-label="编辑积分名称"]') as HTMLButtonElement).click());
   (host.querySelector('form#points-type-rename [name="name"]') as HTMLInputElement).value = "已有积分";
-  (host.querySelector('form#points-type-rename [name="remark"]') as HTMLInputElement).value = "重复测试";
+
   await act(async () => host.querySelector('form#points-type-rename')!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   expect(host.textContent).toContain("积分名称已存在，请修改后重试。");
   expect(mock.rename).not.toHaveBeenCalled();
+});
+
+it("cancels inline name editing without submitting", async () => {
+  mock.types.mockResolvedValue([{ typeCode: "HX_TOKEN", name: "平台积分", market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "ACTIVE", orderDefault: true }]);
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
+  await act(async () => (host.querySelector('button[aria-label="编辑积分名称"]') as HTMLButtonElement).click());
+  await act(async () => (host.querySelector('form#points-type-rename button[type="button"]') as HTMLButtonElement).click());
+  expect(host.querySelector('form#points-type-rename')).toBeNull();
+  expect(mock.rename).not.toHaveBeenCalled();
+});
+
+it("edits the default field independently without a remark", async () => {
+  mock.types.mockResolvedValue([{ typeCode: "OTHER", name: "其他积分", market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "ACTIVE", orderDefault: false }]);
+  mock.transition.mockResolvedValue({ requestId: "D1" });
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
+  expect(host.querySelector('form')).toBeNull();
+  await act(async () => (host.querySelector('button[aria-label="编辑订单默认"]') as HTMLButtonElement).click());
+  expect(host.querySelector('[name="reason"]')).toBeNull();
+  await act(async () => host.querySelector('form#points-type-default')!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(mock.transition).toHaveBeenCalledWith(expect.objectContaining({ typeCode: "OTHER", action: "SET_DEFAULT" }));
+  expect(mock.transition.mock.calls[0][0]).not.toHaveProperty("reason");
 });

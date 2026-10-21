@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Pencil } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { PointsCreate, PointsTypeChange, PointsTypeRename, PointsTypeConfig } from "@/lib/types";
@@ -24,6 +25,7 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
   const [selectedCode, setSelectedCode] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [nameError, setNameError] = useState("");
+  const [editing, setEditing] = useState<"name" | "state" | "default" | null>(null);
   const selected = types.data?.find((item) => item.typeCode === selectedCode);
   const intent = useRef<{ body: string; requestId: string } | undefined>(undefined);
   const save = useMutation({
@@ -34,9 +36,10 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
         case "RENAME": return api.renamePointsType(command.value);
       }
     },
-    onSuccess: (_result, command) => {
+    onSuccess: async (_result, command) => {
       intent.current = undefined;
-      void qc.invalidateQueries({ queryKey: ["points-types"] });
+      await qc.invalidateQueries({ queryKey: ["points-types"] });
+      setEditing(null);
       if (command.kind === "CREATE") {
         setCreateOpen(false);
         setSelectedCode(command.value.command.typeCode);
@@ -49,6 +52,19 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
     save.mutate({ ...command, value: { ...command.value, requestId: next.command.requestId } } as Command);
   }
 
+  function statusText(row: PointsTypeConfig) {
+    return t(row.status === "DRAFT" ? "草稿" : row.status === "ACTIVE" ? (row.earningPaused ? "赠送已暂停" : "生效中") : row.status === "DRAINING" ? "清偿中" : "已退役", row.status === "DRAFT" ? "Draft" : row.status === "ACTIVE" ? (row.earningPaused ? "Earning paused" : "Active") : row.status === "DRAINING" ? "Draining" : "Retired");
+  }
+  function startEditing(field: "name" | "state" | "default") {
+    if (save.isPending) return;
+    save.reset(); setNameError(""); setEditing(field);
+  }
+  function cancelEditing() { save.reset(); setNameError(""); setEditing(null); }
+  function editIcon(field: "name" | "state" | "default", label: string) {
+    return canEdit && <Button type="button" variant="ghost" size="icon" aria-label={label} title={label} disabled={save.isPending} onClick={() => startEditing(field)}><Pencil className="size-3.5" aria-hidden="true" /></Button>;
+  }
+  const editButtons = <><Button size="sm" type="submit" loading={save.isPending}>{t("保存", "Save")}</Button><Button size="sm" variant="outline" type="button" disabled={save.isPending} onClick={cancelEditing}>{t("取消", "Cancel")}</Button></>;
+
   const columns = [
     { header: t("积分名称", "Points name"), cell: (row: PointsTypeConfig) => row.name },
     { header: t("积分代码", "Points code"), cell: (row: PointsTypeConfig) => <span dir="ltr">{row.typeCode}</span> },
@@ -58,9 +74,7 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
     { header: t("货币单位数量", "Currency units"), numeric: true, cell: (row: PointsTypeConfig) => row.rate.minorUnit },
     { header: t("兑换积分数量", "Points amount"), numeric: true, cell: (row: PointsTypeConfig) => row.rate.pointsUnit },
     { header: t("抵扣上限", "Deduction cap"), numeric: true, cell: (row: PointsTypeConfig) => `${(row.deductRatioBp / 100).toFixed(2)}%` },
-    { header: t("状态", "Status"), cell: (row: PointsTypeConfig) => t(
-      row.status === "DRAFT" ? "草稿" : row.status === "ACTIVE" ? (row.earningPaused ? "赠送已暂停" : "生效中") : row.status === "DRAINING" ? "清偿中" : "已退役", row.status,
-    ) },
+    { header: t("状态", "Status"), cell: statusText },
     { header: t("订单默认", "Order default"), cell: (row: PointsTypeConfig) => row.orderDefault ? t("是", "Yes") : t("否", "No") },
     { header: "", cell: () => <span className="text-muted-foreground">{t("查看详情 →", "View details →")}</span> },
   ];
@@ -78,8 +92,8 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
       emptyAction={canEdit ? <Button size="sm" onClick={() => { save.reset(); setCreateOpen(true); }}>{t("新建积分类型", "New points type")}</Button> : undefined}
       rowProps={(row) => ({ role: "button", tabIndex: 0, "aria-label": `${t("查看积分类型", "View points type")} ${row.name}`,
         className: "cursor-pointer hover:bg-accent/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
-        onClick: () => { setSelectedCode(row.typeCode); setNameError(""); save.reset(); },
-        onKeyDown: (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedCode(row.typeCode); setNameError(""); save.reset(); } },
+        onClick: () => { setSelectedCode(row.typeCode); setEditing(null); setNameError(""); save.reset(); },
+        onKeyDown: (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedCode(row.typeCode); setEditing(null); setNameError(""); save.reset(); } },
       })} />
 
     <Drawer open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) save.reset(); }}
@@ -95,33 +109,30 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
       }} />
     </Drawer>
 
-    <Drawer open={!!selected} onOpenChange={(open) => { if (!open) { setSelectedCode(""); save.reset(); } }}
-      title={selected ? `${selected.name} · ${selected.typeCode} · ${selected.status}` : ""}
-      desc={t("维护积分类型和兑换配置。", "Manage points type state and conversion settings.")}
+    <Drawer open={!!selected} onOpenChange={(open) => { if (!open) { setSelectedCode(""); setEditing(null); setNameError(""); save.reset(); } }}
+      title={selected?.name ?? ""}
+      desc={t("查看积分信息，点击编辑图标修改。", "View points details and use the edit icons to make changes.")}
       width="w-[760px]">
       {error && <Notice tone="warning">{t(error.message, error.message)}<Button onClick={() => { void types.refetch(); }}>{t("重试", "Retry")}</Button></Notice>}
       {save.isError && <Notice tone="warning">{t(save.error.message, save.error.message)}</Notice>}
-      {save.isSuccess && <Notice>{t("已保存，操作号：", "Saved, request ID: ")}{save.data.requestId}</Notice>}
+      {save.isSuccess && <Notice>{t("已保存", "Saved")}</Notice>}
       {selected && <div className={card}>
-        {canEdit && <form id="points-type-rename" key={`${selected.typeCode}:${selected.name}`} className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end" onSubmit={(event) => {
-          event.preventDefault();
-          const form = new FormData(event.currentTarget);
-          const name = String(form.get("name") ?? "").trim();
-          if (!name || name.length > 80) { setNameError(t("积分名称需为 1 至 80 个字符。", "Points name must contain 1 to 80 characters.")); return; }
-          if (types.data?.some((row) => row.typeCode !== selected.typeCode && row.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
-            setNameError(t("积分名称已存在，请修改后重试。", "This points name already exists. Change it and try again.")); return;
-          }
-          setNameError("");
-          submit({ kind: "RENAME", value: { requestId: "", typeCode: selected.typeCode, expectedName: selected.name, name, reason: String(form.get("remark") ?? "").trim() } });
-        }}>
-          <label className="flex flex-col gap-2">{t("积分名称", "Points name")}<Input type="text" name="name" dir="auto" required maxLength={80} defaultValue={selected.name} disabled={save.isPending} onChange={() => setNameError("")} /></label>
-          <label className="flex flex-col gap-2">{t("备注", "Remark")}<Input type="text" name="remark" dir="auto" required maxLength={1000} disabled={save.isPending} /></label>
-          <Button type="submit" disabled={save.isPending}>{t("保存名称", "Save name")}</Button>
-        </form>}
-        {nameError && <Notice tone="warning">{nameError}</Notice>}
-
-        <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 txt-body">
-          {!canEdit && <><dt className="text-muted-foreground">{t("积分名称", "Points name")}</dt><dd>{selected.name}</dd></>}
+        <dl className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-6 gap-y-3 txt-body">
+          <dt className="text-muted-foreground">{t("积分名称", "Points name")}</dt>
+          <dd>{editing === "name" && canEdit ? <form id="points-type-rename" key={`${selected.typeCode}:${selected.name}`} className="flex flex-wrap items-center gap-2" onSubmit={(event) => {
+            event.preventDefault();
+            const name = String(new FormData(event.currentTarget).get("name") ?? "").trim();
+            if (!name || name.length > 80) { setNameError(t("积分名称需为 1 至 80 个字符。", "Points name must contain 1 to 80 characters.")); return; }
+            if (types.data?.some((row) => row.typeCode !== selected.typeCode && row.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+              setNameError(t("积分名称已存在，请修改后重试。", "This points name already exists. Change it and try again.")); return;
+            }
+            setNameError("");
+            submit({ kind: "RENAME", value: { requestId: "", typeCode: selected.typeCode, expectedName: selected.name, name } });
+          }}>
+            <Input type="text" name="name" aria-label={t("积分名称", "Points name")} className="w-full sm:w-56" dir="auto" required maxLength={80} defaultValue={selected.name} disabled={save.isPending} autoFocus onChange={() => setNameError("")} />
+            {editButtons}
+            {nameError && <div className="w-full"><Notice tone="warning">{nameError}</Notice></div>}
+          </form> : <div className="flex items-center gap-2"><span>{selected.name}</span>{editIcon("name", t("编辑积分名称", "Edit points name"))}</div>}</dd>
           <dt className="text-muted-foreground">{t("积分代码", "Points code")}</dt><dd dir="ltr">{selected.typeCode}</dd>
           <dt className="text-muted-foreground">{t("货币类型", "Currency")}</dt><dd>{(() => { const c = pointsCurrency(selected.currency); return c ? t(c.name, c.english) : selected.currency; })()}</dd>
           <dt className="text-muted-foreground">{t("货币代码", "Currency code")}</dt><dd>{selected.currency}</dd>
@@ -129,24 +140,28 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
           <dt className="text-muted-foreground">{t("货币单位数量", "Currency units")}</dt><dd>{selected.rate.minorUnit}</dd>
           <dt className="text-muted-foreground">{t("兑换积分数量", "Points amount")}</dt><dd>{selected.rate.pointsUnit}</dd>
           <dt className="text-muted-foreground">{t("抵扣上限", "Deduction cap")}</dt><dd>{(selected.deductRatioBp / 100).toFixed(2)}%</dd>
+          <dt className="text-muted-foreground">{t("状态", "Status")}</dt>
+          <dd>{editing === "state" && canEdit ? <form id="points-type-state" className="flex flex-wrap items-center gap-2" onSubmit={(event) => {
+            event.preventDefault();
+            const action = String(new FormData(event.currentTarget).get("action")) as PointsTypeChange["action"];
+            submit({ kind: "STATE", value: { requestId: "", typeCode: selected.typeCode, action } });
+          }}>
+            <Select name="action" aria-label={t("状态操作", "Status action")} className="w-auto max-w-full" disabled={save.isPending}>
+              {selected.status === "DRAFT" && <option value="ACTIVATE">{t("生效", "Activate")}</option>}
+              {selected.status === "ACTIVE" && <>
+                <option value={selected.earningPaused ? "RESUME_EARNING" : "PAUSE_EARNING"}>{selected.earningPaused ? t("恢复赠送", "Resume earning") : t("暂停赠送", "Pause earning")}</option>
+                <option value="DRAIN">{t("清偿停用", "Drain")}</option>
+              </>}
+              {selected.status === "DRAINING" && <option value="RETIRE">{t("退役（须全部清偿）", "Retire (all obligations must be cleared)")}</option>}
+            </Select>{editButtons}
+          </form> : <div className="flex items-center gap-2"><span>{statusText(selected)}</span>{selected.status !== "RETIRED" && editIcon("state", t("编辑状态", "Edit status"))}</div>}</dd>
+          <dt className="text-muted-foreground">{t("订单默认", "Order default")}</dt>
+          <dd>{editing === "default" && canEdit ? <form id="points-type-default" className="flex flex-wrap items-center gap-2" onSubmit={(event) => {
+            event.preventDefault(); submit({ kind: "STATE", value: { requestId: "", typeCode: selected.typeCode, action: "SET_DEFAULT" } });
+          }}>
+            <Select aria-label={t("订单默认", "Order default")} className="w-auto" disabled={save.isPending}><option>{t("设为订单默认", "Set as order default")}</option></Select>{editButtons}
+          </form> : <div className="flex items-center gap-2"><span>{selected.orderDefault ? t("是", "Yes") : t("否", "No")}</span>{selected.status === "ACTIVE" && !selected.orderDefault && editIcon("default", t("编辑订单默认", "Edit order default"))}</div>}</dd>
         </dl>
-        <form id="points-type-state" key={`${selected.typeCode}:${selected.earningPaused}:${selected.orderDefault}:${selected.status}`} className="flex flex-wrap items-end gap-3" onSubmit={(event) => {
-          event.preventDefault(); const form = new FormData(event.currentTarget);
-          submit({ kind: "STATE", value: { requestId: "", typeCode: selected.typeCode,
-            action: String(form.get("action")) as PointsTypeChange["action"], reason: String(form.get("reason")).trim() } });
-        }}>
-          <label>{t("操作", "Action")}<Select name="action" disabled={!canEdit || selected.status === "RETIRED"}>
-            {selected.status === "DRAFT" && <option value="ACTIVATE">{t("生效", "Activate")}</option>}
-            {selected.status === "ACTIVE" && <>
-              <option value={selected.earningPaused ? "RESUME_EARNING" : "PAUSE_EARNING"}>{selected.earningPaused ? t("恢复赠送", "Resume earning") : t("暂停赠送", "Pause earning")}</option>
-              {!selected.orderDefault && <option value="SET_DEFAULT">{t("设为订单默认", "Set as order default")}</option>}
-            </>}
-            {selected.status === "ACTIVE" && <option value="DRAIN">{t("清偿停用", "Drain")}</option>}
-            {selected.status === "DRAINING" && <option value="RETIRE">{t("退役（须全部清偿）", "Retire (all obligations must be cleared)")}</option>}
-          </Select></label>
-          <label>{t("备注", "Remark")}<Input dir="auto" name="reason" required disabled={!canEdit} /></label>
-          {canEdit && selected.status !== "RETIRED" && <Button disabled={save.isPending} type="submit">{t("确认操作", "Confirm action")}</Button>}
-        </form>
       </div>}
 
 

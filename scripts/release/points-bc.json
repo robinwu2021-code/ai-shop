@@ -55,6 +55,7 @@
   "backend/shop-app/src/test/java/ai/neargo/shop/payclient/OrderPointsRefundRoutingTest.java",
   "backend/shop-app/src/test/java/ai/neargo/shop/payclient/OrderPointsUnifiedDeliveryTest.java",
   "backend/shop-app/src/test/java/ai/neargo/shop/payclient/PointsClosureOrderLinkTest.java",
+  "backend/shop-app/src/test/java/ai/neargo/shop/payclient/PointsConfigurationAuditTest.java",
   "backend/shop-app/src/test/java/ai/neargo/shop/payclient/PointsEntryMetadataTest.java",
   "backend/shop-app/src/test/java/ai/neargo/shop/payclient/PointsOpsPermissionTest.java",
   "backend/shop-app/src/test/java/ai/neargo/shop/payclient/PointsOrderLinkServiceTest.java",

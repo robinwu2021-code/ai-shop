@@ -17,6 +17,10 @@ import ai.neargo.shop.payclient.PointsConfigurationAppService;
 import ai.neargo.shop.payclient.PointsOpsAccess;
 import ai.neargo.shop.payclient.PointsOpsErrors;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
+import ai.neargo.shop.spi.platform.AuditLogPort;
+import java.util.Map;
+import java.util.function.Supplier;
+import tools.jackson.databind.ObjectMapper;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -30,8 +34,26 @@ public class PointsConfigurationAppServiceImpl implements PointsConfigurationApp
 
     private final PointsAdministrationService service;
 
-    public PointsConfigurationAppServiceImpl(PointsAdministrationService service) {
+    private final AuditLogPort audit;
+    private final ObjectMapper json = new ObjectMapper();
+
+    public PointsConfigurationAppServiceImpl(PointsAdministrationService service, AuditLogPort audit) {
         this.service = service;
+        this.audit = audit;
+    }
+
+    private ChangeResult logged(Object request, Supplier<ChangeResult> work) {
+        var result = work.get();
+        String before = null;
+        String after = json.writeValueAsString(request);
+        if (request instanceof TypeRename rename) {
+            before = json.writeValueAsString(Map.of("name", rename.expectedName()));
+            after = json.writeValueAsString(Map.of("name", rename.name().trim()));
+        }
+        audit.record("POINTS_" + result.action(), result.typeCode(),
+                "积分配置操作 " + result.action() + "，操作号：" + result.requestId(),
+                !(request instanceof TypeRename), before, after);
+        return result;
     }
 
     @Override
@@ -43,19 +65,19 @@ public class PointsConfigurationAppServiceImpl implements PointsConfigurationApp
     @Override
     public ChangeResult create(Create r, String actor) {
         PointsOpsAccess.platform();
-        return PointsOpsErrors.call(() -> service.create(r, actor));
+        return logged(r, () -> PointsOpsErrors.call(() -> service.create(r, actor)));
     }
 
     @Override
     public ChangeResult transition(TypeChange r, String actor) {
         PointsOpsAccess.platform();
-        return PointsOpsErrors.call(() -> service.transition(r, actor));
+        return logged(r, () -> PointsOpsErrors.call(() -> service.transition(r, actor)));
     }
 
     @Override
     public ChangeResult rename(TypeRename r, String actor) {
         PointsOpsAccess.platform();
-        return PointsOpsErrors.call(() -> service.rename(r, actor));
+        return logged(r, () -> PointsOpsErrors.call(() -> service.rename(r, actor)));
     }
 
     @Override
@@ -67,7 +89,7 @@ public class PointsConfigurationAppServiceImpl implements PointsConfigurationApp
     @Override
     public ChangeResult saveFallback(FallbackChange r, String actor) {
         PointsOpsAccess.platform();
-        return PointsOpsErrors.call(() -> service.saveFallback(r, actor));
+        return logged(r, () -> PointsOpsErrors.call(() -> service.saveFallback(r, actor)));
     }
 
     @Override
@@ -79,7 +101,7 @@ public class PointsConfigurationAppServiceImpl implements PointsConfigurationApp
     @Override
     public ChangeResult changeSwitch(SwitchChange r, String actor) {
         PointsOpsAccess.platform();
-        return PointsOpsErrors.call(() -> service.changeSwitch(r, actor));
+        return logged(r, () -> PointsOpsErrors.call(() -> service.changeSwitch(r, actor)));
     }
 
     @Override
@@ -91,7 +113,7 @@ public class PointsConfigurationAppServiceImpl implements PointsConfigurationApp
     @Override
     public ChangeResult publishTerms(TermsChange r, String actor) {
         PointsOpsAccess.platform();
-        return PointsOpsErrors.call(() -> service.publishTerms(r, actor));
+        return logged(r, () -> PointsOpsErrors.call(() -> service.publishTerms(r, actor)));
     }
 
     @Override

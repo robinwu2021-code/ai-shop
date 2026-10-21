@@ -28,8 +28,8 @@ if(files.includes('packages/shared/src/utils/points-name.ts')) {
 }
 
 
-if(files.some(file => file.includes('/points/type/') || file.includes('PointsAdministrationService'))) {
-  run('mvn',['-o','-pl','shop-app','-am','-Dtest=PointsOpsConfigurationTest,PointsOpsPermissionTest,PointsOpsErrorsTest,PointTypeActivationTest,PointsOrderTermsPortTest,AcceptedEarnBudgetTest,PointsDefaultLockOrderTest','-Dsurefire.failIfNoSpecifiedTests=false','test','-q'],'backend');
+if(files.some(file => file.includes('/points/type/') || file.includes('PointsAdministrationService') || file.includes('PointsConfigurationAppService'))) {
+  run('mvn',['-o','-pl','shop-app','-am','-Dtest=PointsOpsConfigurationTest,PointsConfigurationAuditTest,PointsOpsPermissionTest,PointsOpsErrorsTest,PointTypeActivationTest,PointsOrderTermsPortTest,AcceptedEarnBudgetTest,PointsDefaultLockOrderTest','-Dsurefire.failIfNoSpecifiedTests=false','test','-q'],'backend');
 }
 if(files.includes('ops-web/app/points/types-tab.tsx')) run('npm',['test','--','lib/points-types-page.test.ts','lib/api/points-configuration.test.ts'],'ops-web');
 console.log(`points-bc scoped checks passed: ${head} (${files.length} files)`);

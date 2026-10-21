@@ -1116,7 +1116,7 @@ export interface PointsTypeRename {
   typeCode: string;
   expectedName: string;
   name: string;
-  reason: string;
+  reason?: string;
 }
 
 export interface PointsTypeChange {
@@ -1127,7 +1127,7 @@ export interface PointsTypeChange {
   /** 请求执行的业务动作 */
   action: PointsTypeChangeAction;
   /** 服务端不可用原因或操作审计原因 */
-  reason: string;
+  reason?: string;
 }
 export interface PointsFallback {
   /** 不可变修订版本 */

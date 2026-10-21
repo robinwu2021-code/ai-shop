@@ -391,6 +391,19 @@ class PointsOpsConfigurationTest {
         assertThat(read.type(second).orElseThrow().name()).isEqualTo(other);
     }
 
+    @Test
+    void metadata_changes_need_no_operator_remark_and_generate_their_own_audit_description() {
+        String type = type();
+        admin.transition(new TypeChange("ACTIVE:" + type, type, TypeAction.ACTIVATE, null), "OPS");
+        var rename = new PointsAdministrationService.TypeRename("RENAME:" + type, type, type, "Name " + type, null);
+        var result = admin.rename(rename, "OPS");
+        assertThat(admin.rename(rename, "OPS")).isEqualTo(result);
+        assertThat(read.type(type).orElseThrow().name()).isEqualTo("Name " + type);
+        admin.transition(new TypeChange("PAUSE:" + type, type, TypeAction.PAUSE_EARNING, null), "OPS");
+        assertThat(admin.switches(type, 0, 10).rows().getFirst().reason()).isNotBlank();
+        assertThat(read.type(type).orElseThrow().earningPaused()).isTrue();
+    }
+
     private String type() {
         String type = "OC" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
         var request =
@@ -748,6 +761,11 @@ class PointsOpsConfigurationTest {
         AgreementServiceImpl.class
     })
     static class Config {
+        @Bean
+        ai.neargo.shop.spi.platform.AuditLogPort auditLog() {
+            return mock(ai.neargo.shop.spi.platform.AuditLogPort.class);
+        }
+
         @Bean
         MarketService markets() {
             var markets = mock(MarketService.class);
