@@ -1,10 +1,10 @@
 # SHR-02b 共用资源容量与组合占用：详细需求与方案
 
-> 状态：**实施中；02b-1a需求归一已实现，其余仲裁尚未实现** · 2026-10-21 · 档位2。
+> 状态：**实施中；02b-1a算法/1b数据契约完成，持久命令协议与预留尚未实现** · 2026-10-21 · 档位2。
 > 基线：美业隔离分支378a5f2f7；只读核验最新本地餐饮ca71f6092，共用merchant/base及平台迁移相对8e732eeb7无新增。
 > 上游：[多端功能矩阵](../requirements/美业系统-多端功能矩阵.md) D01–D05、H04–H07；[主执行计划](./TDD-美业系统-后端开发计划.md) §11–13。
 > 既有设计：[字段真源](./design/schema/beauty-database-design.json) · [日历设计](./design/美业系统-预约工作台与日历API设计.md) · [旧资源方案](./design/TDD-预约资源域-多行业完整方案.md)。
-> 决策提案：[ADR-043](./ADR/ADR-043-共用资源仲裁归属与命令恢复.md)。本文件补充需求及设计，不代表新表、接口、任务或跨域恢复已经交付。
+> 决策提案：[ADR-043](./ADR/ADR-043-共用资源仲裁归属与命令恢复.md)。交付状态按§5.4/5.5分批记录；未交付的接口、业务任务与跨域恢复仍待后续验收。
 
 ## §0 定位、现状与需求追溯
 
@@ -159,6 +159,46 @@
 | R05并集、累计、重复拒绝 | 同组桶区间合并与逐桶汇总 | mergesOneGroupButAddsIndependentGroups；rejectsDuplicateOrContradictoryGroups |
 | R01/R02/R06–R34 | 不属于1a验收完成范围 | 1b及后续继续；事实精确匹配不等于作用域/班表/容量仲裁 |
 
+### 2.4 02b-1b五表数据层实施计划（2026-10-21）
+
+**范围：** 在1a基础上冻结并实现五表DDL、继承BaseEntity的Entity、MerchantMappers内嵌BaseMapper及主体数据域注册。
+只交付持久数据契约，不交付owner/command业务方法、不可变写协议或预留Service；1c开始前继续细化事务/CAS方法。
+最新本地food为14f90a9ad，较ca71f6092仅base商品SPI新增，与本批merchant/迁移无交集；不导入无关代码。
+两个工作树平台最大版本分别534/531，新追加V535__shared_resource_booking_foundation.sql，V532–534不改。
+
+| 表/Entity/Mapper（均merchant归属） | 本批冻结的业务字段 | 约束与后续责任 |
+|---|---|---|
+| mch_booking_owner / MchBookingOwner / BookingOwnerMapper | ownerNo,storeNo,sourceType,sourceNo,currentHoldNo,ownerVersion,sourceRevision | tenant/entity/store/sourceType/sourceNo唯一；head与sourceRevision同空或同非空；版本非负，ownerVersion与BaseEntity.version不同 |
+| mch_resource_command / MchResourceCommand / ResourceCommandMapper | commandNo,ownerNo,storeNo,action,requestKeyHash,payloadHash,frozenPayload,expectedOwnerVersion,sourceRevision,targetHoldNo,expectedHoldVersion,expectedLeaseRevision,status,resultPayload,rejectionCode,waitReason,nextRetryAt,initiatedBy | 范围+动作+键唯一；摘要小写SHA256；JSON合法；ACCEPTED无结果/拒绝码，SUCCEEDED有结果无拒绝码，REJECTED有结果与拒绝码；终态无重试；载荷不可变/终态不可逆由1c协议实现 |
+| mch_resource_bucket / MchResourceBucket / ResourceBucketMapper | bucketNo,resourceNo,startAt,endAt,capacity,heldQty,confirmedQty,capacityRevision | 主体/resource/start唯一，无store；UTC五分钟网格、存储安全边界；capacity>0，held/confirmed非负，和<=capacity且防int溢出；容量修订非负 |
+| mch_booking_hold / MchBookingHold / BookingHoldMapper | holdNo,ownerNo,storeNo,commandNo,sourceRevision,leaseRevision,status,expirationPolicy,expiresAt,creationPlanHash,currentPlanHash,planRevision,replacesHoldNo,replacedByHoldNo,terminationReason,terminatedAt,executionStartedAt | 业务号及创建command唯一；HELD/CONFIRMED/RELEASED/EXPIRED；LOCAL_TTL/SOURCE_COORDINATED；租约/计划修订>=1，外部修订>=0；保留初始expiresAt；终态必须有原因/时间，非终态不得有；HELD不得开工 |
+| mch_booking_hold_unit / MchBookingHoldUnit / BookingHoldUnitMapper | unitNo,holdNo,bucketNo,allocationRevision,qty,sourceLineRef,releasedAt,releaseCommandNo | hold/allocationRevision/bucket/sourceLineRef历史唯一；组引用varchar128且utf8mb4_bin，匹配1a精确身份；qty>0，分配修订>=1，释放时间/命令同空或同非空；活动单位唯一由1c/2根锁/CAS保证 |
+
+公共字段沿BaseEntity；所有Entity显式entityNo。五表业务唯一键不含deleted，软删不释放身份。
+业务号/主体/门店引用跟随库默认排序规则；状态、动作/来源类别与摘要采用二进制比较，拒绝状态大小写漂移；
+组引用单列utf8mb4_bin不跨域JOIN，保留大小写/重音区别；不得把规范资源号改成Java大小写折叠。
+无跨域外键，父链/范围写校验、当前头CAS、不可变历史及完整事务是后续服务门禁；不能以BaseMapper可写宣称业务安全。
+
+**真源同步：** 原39表添加owner/command两项至41表，扩充bucket/hold/unit三项字段；occupation-unit/block留作后续提案，暂不新增。
+原49任务数量/NOT_STARTED定义保留，owner/command归SHR-02；动态生成统计由真源计算，不再硬编码39/14。
+美业私有V1与16表输出不变；生成器类型白名单支持共用表longtext，仍只渲染16私有表；同步数据库册、字段字典/图、Java规划及任务索引、平台H2/表清单/ER/分层/词汇投影。
+
+- [x] 先写ResourceBookingPersistenceIT及verify-resource-booking-persistence.mjs；缺少新Entity的真实断言RED。
+- [x] 按真源新增V535、五Entity/五Mapper、五表主体注册；不加空转Service/Repository。
+- [x] 真实MySQL逐表验证约束、JSON、毫秒网格、溢出、大小写组引用、修订历史与软删唯一性；并发相同来源/幂等键/桶只能插入一份。
+- [x] 真实装配逐表插入/字段读取/审计与主体隔离；拒绝输入不依赖H2；业务父链/租户鉴权另验。
+- [x] 消融桶总量约束使超容量测试RED，恢复后真实MySQL全部GREEN；运行merchant全套、旧slot相关及美业独立reactor回归。
+- [x] 重生成、SQL/字段/结构检查、独立只读审查一次，回填真实输出并检查点提交。
+
+实现适配：H2生成器将JSON_VALID简单列参数映射IS JSON、MICROSECOND映射EXTRACT，保持重复转换幂等。
+对应Node回归先RED后GREEN，完整353表/2400种子实际H2重放；正式MySQL校验不放宽。
+共用表longtext暴露原美业生成器白名单缺口：既有测试先RED，再扩充单个类型，冻结V1输出保持字节一致。
+
+**Review Focus：** nullable CHECK穿透、CI/AI与精确组引用混淆、int求和溢出、终态/释放证据不完整、软删或跨店复制STAFF容量身份。
+用例/验收追溯：R01基础主体注册→allMappersUseAuditAndSubjectScope；R03/R06→bucketGridAndCapacityAreDatabaseInvariants；
+R07/R08→scopedCommandAndOwnerIdentitySurviveConcurrentInsertAndDeletion；R18/R19→allocationHistoryAndExactGroupIdentityArePreserved。
+仅这些需求的数据约束部分完成；不替代后续服务级幂等、原子预留、来源恢复验收。
+
 ## §3 桶、区间与完整组合
 
 ### 3.1 候选工程参数
@@ -294,6 +334,32 @@ open指针或单位父链残缺、阻断原因不一致时失败关闭并进入�
 并增加乱序可变interval列表的断言。目前实现不修改输入，但该断言增强尚未交付，不宣称该故障已被测试完整排除。
 审查范围明确不含身份/数据库CI解析、业务准入/班表、事务并发/MySQL及预约生命周期，这些仍由后续各批验收。
 
+### 5.5 02b-1b实际验收（2026-10-21）
+
+| 验收 | 真实结果 | 日志/边界 |
+|---|---|---|
+| 测试先行 | 实际MySQL17项全部断言失败、0错误，缺少五Entity | `/tmp/resource-booking-red.log`；前一次测试夹具主键编译错误已修正，不算功能RED |
+| 首轮原生验证 | 17通过、0失败/错误/跳过 | `/tmp/resource-booking-green.log` |
+| 消融容量求和CHECK | 17项中2项断言失败、0错误；容量与int溢出均检出 | `/tmp/resource-booking-ablation.log`；随后恢复正式V535 |
+| 最终原生验证 | 17通过、0失败/错误/跳过，BUILD SUCCESS | `/tmp/resource-booking-final-native.log`；包含可空当前头、目标版本、重试和释放字段回读 |
+| merchant与依赖全套 | 268通过、0失败/错误/跳过 | `/tmp/resource-booking-merchant.log` |
+| 独立美业reactor | 54通过、0失败/错误/跳过 | `/tmp/resource-booking-beauty.log` |
+| 旧预约与结构漂移 | 旧路径37项通过；另SchemaDriftTest 2项中1项失败，合计39项/1失败 | `/tmp/resource-booking-legacy.log`，见下方基线核对 |
+| H2生成器/私有迁移生成器 | Node7项通过；五组设计检查、冻结V1、SQL无新增方言及diff检查通过 | JSON/微秒映射各有RED→GREEN；完整353表/2400种子实际H2重放成功 |
+| 全局schema-lineage | 14通过/2既有失败 | `/tmp/resource-booking-lineage.log`；旧同名键未分类及gen-erd键归属分叉，无新增本域未分类键 |
+
+原生命令：`JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home node scripts/verify-resource-booking-persistence.mjs`。
+每例独立数据库、正式V535、真实MySQL8.4/utf8mb4_unicode_ci；运行器只删除本次UUID一次性容器。
+不重放全部平台Flyway历史、不接营业库，不证明所有部署排序规则或MariaDB具体版本。
+
+结构漂移失败为`pay_ent_exception_action`：Java重放器仅解析出id/operation_kind，而既有H2具有完整列。
+已从基线7925cbf5e提取**原迁移及原H2文件**，在该目录用未改动的同一SchemaDriftTest实际方法调用复现相同断言，
+日志`/tmp/resource-booking-drift-baseline.log`。没有放宽断言、改原迁移或碰无关资金表；不声称全局闸门全绿。
+
+独立只读审查无Critical/Important；Minor待补：增加REJECTED命令的Mapper非空resultPayload/rejectionCode回读。
+当前两个Entity字段正确，状态约束已由真实SQL覆盖；该映射覆盖增强排入1c结果/恢复测试，不宣称已完成。
+前批1a的输入列表非修改断言增强也仍未实施。
+
 ## §6 替换、实际交接与超时
 
 ### 6.1 未开工整计划原子替换
@@ -349,9 +415,26 @@ block不能替代实际容量台账：保留原单位计数，超出原窗口的
 偏差：将02b-1细分为1a/1b/1c，先交付确定性算法，五表及持久仲裁后续；不是原02b-1整体完成。
 原worktree/ledger保留供后续实施，无合并/推送/营业库执行。
 
+### 6.7 02b-1b实现对账与剩余门禁
+
+| §2.4计划 | 实际交付 |
+|---|---|
+| 五表正式契约 | V535__shared_resource_booking_foundation.sql；MchBookingOwner/MchResourceCommand/MchResourceBucket/MchBookingHold/MchBookingHoldUnit |
+| 数据层接线 | MerchantMappers五个嵌套BaseMapper；PersonnelDataScopeRegistration新增五表 |
+| 原生验收 | ResourceBookingPersistenceIT、verify-resource-booking-persistence.mjs；17项及求和消融 |
+| 设计真源与派生 | 两个schema JSON至41表/49任务；生成器动态统计；数据库册、字典/两张资源图、Java/任务索引；H2、表清单、ER、分层、词汇 |
+| 必要适配 | H2生成器与Node回归；美业渲染器仅放行longtext类型；ER及血缘测试主键分类/owner_no碰撞说明 |
+| 执行记录 | 本TDD、主执行计划、ADR043、README与原ledger |
+
+偏差：生成器适配是新契约进入既有回归所必需；均有实际RED→GREEN，不修改冻结V1。
+本批无业务Service、HTTP或跨域Port，无命令不可变/终态不可逆、根锁/CAS、活动单位唯一或历史删除保护协议。
+跨表父链、来源权限/租户授权及当前资源事实校验仍由1c/2写入服务验收；数据域投影隔离不代替业务授权。
+02b-1b数据契约完成，02b-1整体及预约营业未完成；下一步1c按当前五表冻结命令接受/查询/恢复与归属根CAS方法。
+无合并/推送/营业库迁移；保留隔离工作树和ledger。
+
 ## §7 数据结构补充提案
 
-原39项设计真源包含本阶段4张容量表，但不足以完整承载上述恢复/交接语义。建议在评审后同步真源，而不是静默把新关系塞进自由JSON。
+原39项设计包含4张容量表。02b-1b已加入归属头/命令两项并扩展bucket/hold/unit字段，真源现为41项；occupation-unit/block仍为后续提案，不静默塞进自由JSON。
 
 | 表 | 本轮建议字段/约束增量 | 对应需求 |
 |---|---|---|
@@ -468,10 +551,10 @@ owner、command、hold、unit、occupation、block的跨父链校验需实际SQL
 | 冻结项 | 本文建议 | 后续动作 |
 |---|---|---|
 | 桶粒度/TTL/容量和请求上限 | §3.1默认值 | 三行业时长/流量样本评估，冻结后写正式配置/契约 |
-| 4张支撑表与既有字段增量 | §7八表模型 | 逐字段映射需求，评审后将原39项设计更新为包含该增量的基线，重新生成字典/ER |
+| 4张支撑表与既有字段增量 | §7八表模型 | 逐字段映射需求，在当前41项基线上继续纳入后续交接关系/block，重新生成字典/ER |
 | 来源冻结许可/副作用保护 | §5.3 typed decision＋fence | 明确各来源可用动作/查询/失败恢复；未完成者不接收费入口 |
 | P1执行单位 | 整单位交接释放，持续使用组可追溯 | 行业保存项目→组关系，P4拆分/多阶段另定 |
 | 锁序/维护写守卫 | §4.3统一根锁与人员顺序 | 同步人员/排班/资源维护；未参加守卫的写入口不开放 |
 | 正常open/超时处理 | capacity1正常open；超时多原因全资源保守block | 实测餐饮/美业冲突协调，不能假定预计结束释放 |
 
-本轮在方案基础上实施02b-1a纯算法；未写迁移或访问营业库，02b-1整体及后续仍未完成。已有V532–V534、39表真源及49任务定义保持不变。
+本轮在方案基础上实施02b-1a纯算法；未写迁移或访问营业库，02b-1整体及后续仍未完成。已有V532–V534与美业V1保持不变；1b真源41项、49个任务数量不变，业务协议后续。

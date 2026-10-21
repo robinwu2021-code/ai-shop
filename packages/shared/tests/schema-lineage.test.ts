@@ -210,6 +210,9 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
   mch_account_no: { table: "mch_account" },
   personnel_no: { table: "mch_personnel" },
   assignment_no: { table: "mch_personnel_store" },
+  command_no: { table: "mch_resource_command" },
+  bucket_no: { table: "mch_resource_bucket" },
+  hold_no: { table: "mch_booking_hold" },
   // 收款商户号业务键 —— 全库唯一合法的 "merchant" 用法；mch_store 引用它选收款号
   pay_merchant_no: { table: "mch_payment_merchant" },
   user_no: { table: "usr_account" },
@@ -282,6 +285,7 @@ const NAME_COLLISIONS: Record<string, string> = {
   account_no: "mch_payout_account为银行出款账户；sv_account为储值账户。",
   version_no: "活动版本和权益模板版本各自发号；活动子表指pmt_activity_version，ent_template_version自持权益版本。",
   resource_no: "共用人员或物理资源在mch_resource；幂等结果与对账差异按各自资源类型解释，不可仅按同名字段关联。",
+  owner_no: "通知渠道的owner_no按owner_type解释；资源归属头在mch_booking_owner，不能按同名字段跨域关联。",
   actor_no: "审计操作人可为商家账号、运营或系统，必须结合actor_type解释。",
   decision_no: "Core订单源决定与旧券迁移永久源决定分别发号。",
   reservation_no: "活动资源占用与Pay售卡承诺分别发号，关联必须结合业务协议。",

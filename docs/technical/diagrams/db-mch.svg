@@ -1,68 +1,79 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="680" height="1389" viewBox="0 0 680 1389" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
-<title>商家主体与门店 表关系</title><desc>39 张表，箭头由引用方指向被引用方。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="1505" viewBox="0 0 680 1505" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>商家主体与门店 表关系</title><desc>44 张表，箭头由引用方指向被引用方。</desc>
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
 <style>.n{font-weight:500;fill:#161A21}.s{font-size:11px;fill:#5A6472}
 .l{font-size:10.5px;fill:#5A6472;paint-order:stroke;stroke:#F7F9FB;stroke-width:3.5;stroke-linejoin:round}.b{font-size:11px;fill:#5A6472;letter-spacing:.1em}
 .ar{stroke:#8A94A2;stroke-width:1.3;fill:none}</style></defs><path class="ar" d="M100 146 L100 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M260 146 L260 104 L100 104 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M100 726 L100 92 L100 92 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M100 770 L100 1288 L100 1288 L100 1303" marker-end="url(#a)"/>
+<path class="ar" d="M100 842 L100 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M100 842 L100 788 L244 788 L244 773" marker-end="url(#a)"/>
 <path class="ar" d="M420 146 L420 116 L100 116 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M260 726 L260 208 L420 208 L420 193" marker-end="url(#a)"/>
-<path class="ar" d="M260 770 L260 1276 L100 1276 L100 1303" marker-end="url(#a)"/>
-<path class="ar" d="M100 1306 L100 92 L100 92 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M100 1306 L100 788 L100 788 L100 773" marker-end="url(#a)"/>
-<path class="ar" d="M420 726 L420 104 L100 104 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M420 770 L420 1264 L100 1264 L100 1303" marker-end="url(#a)"/>
-<path class="ar" d="M580 726 L580 116 L100 116 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M580 770 L580 1288 L100 1288 L100 1303" marker-end="url(#a)"/>
+<path class="ar" d="M260 842 L260 208 L420 208 L420 193" marker-end="url(#a)"/>
+<path class="ar" d="M260 842 L260 800 L244 800 L244 773" marker-end="url(#a)"/>
+<path class="ar" d="M244 726 L244 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M244 770 L244 824 L100 824 L100 839" marker-end="url(#a)"/>
+<path class="ar" d="M420 842 L420 104 L100 104 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M420 842 L420 812 L244 812 L244 773" marker-end="url(#a)"/>
+<path class="ar" d="M580 842 L580 116 L100 116 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M580 842 L580 788 L244 788 L244 773" marker-end="url(#a)"/>
 <path class="ar" d="M580 146 L580 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M100 262 L100 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M260 262 L260 104 L100 104 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M100 842 L100 92 L100 92 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M100 886 L100 1288 L100 1288 L100 1303" marker-end="url(#a)"/>
-<path class="ar" d="M260 842 L260 104 L100 104 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M260 886 L260 1276 L100 1276 L100 1303" marker-end="url(#a)"/>
+<path class="ar" d="M100 958 L100 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M100 958 L100 788 L244 788 L244 773" marker-end="url(#a)"/>
+<path class="ar" d="M260 958 L260 104 L100 104 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M260 958 L260 800 L244 800 L244 773" marker-end="url(#a)"/>
 <path class="ar" d="M420 262 L420 116 L100 116 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M580 262 L580 92 L100 92 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M420 886 L420 1264 L100 1264 L100 1303" marker-end="url(#a)"/>
-<path class="ar" d="M420 842 L420 116 L100 116 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M580 886 L580 1288 L100 1288 L100 1303" marker-end="url(#a)"/>
-<path class="ar" d="M580 842 L580 92 L100 92 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M100 1002 L100 1288 L100 1288 L100 1303" marker-end="url(#a)"/>
-<path class="ar" d="M100 1350 L100 1362 L260 1362 L260 1353" marker-start="url(#a)"/>
-<path class="ar" d="M260 1306 L260 904 L100 904 L100 889" marker-end="url(#a)"/>
-<path class="ar" d="M260 958 L260 92 L100 92 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M260 1002 L260 1276 L100 1276 L100 1303" marker-end="url(#a)"/>
+<path class="ar" d="M420 958 L420 812 L244 812 L244 773" marker-end="url(#a)"/>
+<path class="ar" d="M420 958 L420 116 L100 116 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M580 958 L580 788 L244 788 L244 773" marker-end="url(#a)"/>
+<path class="ar" d="M580 958 L580 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M100 1074 L100 788 L244 788 L244 773" marker-end="url(#a)"/>
+<path class="ar" d="M260 1074 L260 800 L244 800 L244 773" marker-end="url(#a)"/>
+<path class="ar" d="M260 1074 L260 1020 L100 1020 L100 1005" marker-end="url(#a)"/>
+<path class="ar" d="M420 1074 L420 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M420 1074 L420 812 L244 812 L244 773" marker-end="url(#a)"/>
 <path class="ar" d="M100 378 L100 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M260 378 L260 104 L100 104 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M420 958 L420 104 L100 104 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M420 1002 L420 1264 L100 1264 L100 1303" marker-end="url(#a)"/>
+<path class="ar" d="M580 1074 L580 104 L100 104 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M580 1074 L580 788 L244 788 L244 773" marker-end="url(#a)"/>
 <path class="ar" d="M420 378 L420 116 L100 116 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M580 1002 L580 1288 L100 1288 L100 1303" marker-end="url(#a)"/>
-<path class="ar" d="M100 1118 L100 1288 L100 1288 L100 1303" marker-end="url(#a)"/>
-<path class="ar" d="M420 1306 L420 916 L100 916 L100 889" marker-end="url(#a)"/>
-<path class="ar" d="M420 1306 L420 104 L100 104 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M100 1350 L100 1375 L420 1375 L420 1353" marker-start="url(#a)"/>
+<path class="ar" d="M100 1190 L100 788 L244 788 L244 773" marker-end="url(#a)"/>
+<path class="ar" d="M260 1190 L260 800 L244 800 L244 773" marker-end="url(#a)"/>
+<path class="ar" d="M420 1190 L420 1020 L100 1020 L100 1005" marker-end="url(#a)"/>
+<path class="ar" d="M420 1190 L420 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M420 1190 L420 812 L244 812 L244 773" marker-end="url(#a)"/>
 <path class="ar" d="M580 378 L580 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M340 610 L340 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M340 610 L340 440 L580 440 L580 425" marker-end="url(#a)"/>
 <path class="ar" d="M340 610 L340 208 L420 208 L420 193" marker-end="url(#a)"/>
-<path class="ar" d="M260 1074 L260 92 L100 92 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M260 1074 L260 440 L580 440 L580 425" marker-end="url(#a)"/>
-<path class="ar" d="M260 1118 L260 1276 L100 1276 L100 1303" marker-end="url(#a)"/>
-<path class="ar" d="M580 1306 L580 116 L100 116 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M580 1306 L580 1136 L260 1136 L260 1121" marker-end="url(#a)"/>
-<path class="ar" d="M420 1074 L420 104 L100 104 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M420 1074 L420 452 L580 452 L580 425" marker-end="url(#a)"/>
-<path class="ar" d="M420 1118 L420 1264 L100 1264 L100 1303" marker-end="url(#a)"/>
-<path class="ar" d="M580 1074 L580 116 L100 116 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M580 1118 L580 1288 L100 1288 L100 1303" marker-end="url(#a)"/>
-<path class="ar" d="M580 1074 L580 464 L580 464 L580 425" marker-end="url(#a)"/>
-<path class="ar" d="M340 1190 L340 92 L100 92 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M340 1234 L340 1288 L100 1288 L100 1303" marker-end="url(#a)"/>
-<path class="ar" d="M340 494 L340 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M580 1190 L580 104 L100 104 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M580 1190 L580 440 L580 440 L580 425" marker-end="url(#a)"/>
+<path class="ar" d="M580 1190 L580 788 L244 788 L244 773" marker-end="url(#a)"/>
+<path class="ar" d="M436 726 L436 104 L100 104 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M436 770 L436 1172 L580 1172 L580 1187" marker-end="url(#a)"/>
+<path class="ar" d="M100 1306 L100 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M100 1306 L100 440 L580 440 L580 425" marker-end="url(#a)"/>
+<path class="ar" d="M100 1306 L100 788 L244 788 L244 773" marker-end="url(#a)"/>
+<path class="ar" d="M260 1306 L260 104 L100 104 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M260 1306 L260 800 L244 800 L244 773" marker-end="url(#a)"/>
+<path class="ar" d="M260 1306 L260 452 L580 452 L580 425" marker-end="url(#a)"/>
+<path class="ar" d="M420 1306 L420 116 L100 116 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M420 1306 L420 812 L244 812 L244 773" marker-end="url(#a)"/>
+<path class="ar" d="M244 494 L244 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M580 1306 L580 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M580 1306 L580 788 L244 788 L244 773" marker-end="url(#a)"/>
+<path class="ar" d="M148 1422 L148 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M148 1422 L148 788 L244 788 L244 773" marker-end="url(#a)"/>
+<path class="ar" d="M436 494 L436 104 L100 104 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M340 1422 L340 104 L100 104 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M340 1422 L340 800 L244 800 L244 773" marker-end="url(#a)"/>
+<path class="ar" d="M148 1466 L148 1478 L340 1478 L340 1469" marker-start="url(#a)"/>
+<path class="ar" d="M532 1422 L532 116 L100 116 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M340 1466 L340 1491 L532 1491 L532 1469" marker-start="url(#a)"/>
+<path class="ar" d="M532 1422 L532 556 L436 556 L436 541" marker-end="url(#a)"/>
 <rect x="31" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="100" y="50" text-anchor="middle" font-size="13">mch_entity</text>
 <text class="s" x="100" y="65" text-anchor="middle">经营主体：一张营业执照…</text>
@@ -111,131 +122,157 @@
 <rect x="511" y="378" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="580" y="398" text-anchor="middle" font-size="13">mch_personnel</text>
 <text class="s" x="580" y="413" text-anchor="middle">共用业务人员主档</text>
-<rect x="255" y="494" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="340" y="514" text-anchor="middle" font-size="11">mch_schedule_change_log</text>
-<text class="s" x="340" y="529" text-anchor="middle">班表调整历史</text>
+<rect x="159" y="494" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="244" y="514" text-anchor="middle" font-size="11">mch_schedule_change_log</text>
+<text class="s" x="244" y="529" text-anchor="middle">班表调整历史</text>
+<rect x="351" y="494" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="436" y="514" text-anchor="middle" font-size="13">mch_resource_bucket</text>
+<text class="s" x="436" y="529" text-anchor="middle">跨店统一容量仲裁桶</text>
 <rect x="255" y="610" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="340" y="630" text-anchor="middle" font-size="13">mch_personnel_account</text>
 <text class="s" x="340" y="645" text-anchor="middle">当前人员账号关联</text>
-<rect x="31" y="726" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="746" text-anchor="middle" font-size="11">mch_payment_merchant</text>
-<text class="s" x="100" y="761" text-anchor="middle">收款商户号：进件产物 s…</text>
-<rect x="191" y="726" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="746" text-anchor="middle" font-size="13">mch_store_role</text>
-<text class="s" x="260" y="761" text-anchor="middle">子账号在各门店的角色…</text>
-<rect x="351" y="726" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="746" text-anchor="middle" font-size="13">mch_violation</text>
-<text class="s" x="420" y="761" text-anchor="middle">商家违规与处置记录：结…</text>
-<rect x="511" y="726" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="746" text-anchor="middle" font-size="13">mch_store_audit</text>
-<text class="s" x="580" y="761" text-anchor="middle">店招与公告的人审队列：…</text>
+<rect x="159" y="726" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="244" y="746" text-anchor="middle" font-size="13">mch_store</text>
+<text class="s" x="244" y="761" text-anchor="middle">门店：顾客感知的边界（地址/营…</text>
+<rect x="351" y="726" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="436" y="746" text-anchor="middle" font-size="11">mch_personnel_position</text>
+<text class="s" x="436" y="761" text-anchor="middle">任职上的业务岗位</text>
 <rect x="31" y="842" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="862" text-anchor="middle" font-size="13">mch_service_area</text>
-<text class="s" x="100" y="877" text-anchor="middle">商家的地理覆盖项：一行…</text>
+<text class="n" x="100" y="862" text-anchor="middle" font-size="11">mch_payment_merchant</text>
+<text class="s" x="100" y="877" text-anchor="middle">收款商户号：进件产物 s…</text>
 <rect x="191" y="842" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="862" text-anchor="middle" font-size="13">mch_staff_log</text>
-<text class="s" x="260" y="877" text-anchor="middle">员工与授权的操作日志：…</text>
+<text class="n" x="260" y="862" text-anchor="middle" font-size="13">mch_store_role</text>
+<text class="s" x="260" y="877" text-anchor="middle">子账号在各门店的角色…</text>
 <rect x="351" y="842" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="862" text-anchor="middle" font-size="11">mch_store_category</text>
-<text class="s" x="420" y="877" text-anchor="middle">门店经营类目：这家店打…</text>
+<text class="n" x="420" y="862" text-anchor="middle" font-size="13">mch_violation</text>
+<text class="s" x="420" y="877" text-anchor="middle">商家违规与处置记录：结…</text>
 <rect x="511" y="842" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="862" text-anchor="middle" font-size="9.5">mch_fulfillment_channel</text>
-<text class="s" x="580" y="877" text-anchor="middle">门店送货方式：每店每路…</text>
+<text class="n" x="580" y="862" text-anchor="middle" font-size="13">mch_store_audit</text>
+<text class="s" x="580" y="877" text-anchor="middle">店招与公告的人审队列：…</text>
 <rect x="31" y="958" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="978" text-anchor="middle" font-size="11">mch_channel_pickup</text>
-<text class="s" x="100" y="993" text-anchor="middle">自提路×取货点（P1 启用…</text>
+<text class="n" x="100" y="978" text-anchor="middle" font-size="13">mch_service_area</text>
+<text class="s" x="100" y="993" text-anchor="middle">商家的地理覆盖项：一行…</text>
 <rect x="191" y="958" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="978" text-anchor="middle" font-size="11">mch_appointment_slot</text>
-<text class="s" x="260" y="993" text-anchor="middle">门店预约时段与名额</text>
+<text class="n" x="260" y="978" text-anchor="middle" font-size="13">mch_staff_log</text>
+<text class="s" x="260" y="993" text-anchor="middle">员工与授权的操作日志：…</text>
 <rect x="351" y="958" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="978" text-anchor="middle" font-size="9.5">mch_store_qrcode_print</text>
-<text class="s" x="420" y="993" text-anchor="middle">店铺码印刷量登记台账…</text>
+<text class="n" x="420" y="978" text-anchor="middle" font-size="11">mch_store_category</text>
+<text class="s" x="420" y="993" text-anchor="middle">门店经营类目：这家店打…</text>
 <rect x="511" y="958" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="978" text-anchor="middle" font-size="13">mch_notify_pref</text>
-<text class="s" x="580" y="993" text-anchor="middle">门店自己的通知开关（缺…</text>
+<text class="n" x="580" y="978" text-anchor="middle" font-size="9.5">mch_fulfillment_channel</text>
+<text class="s" x="580" y="993" text-anchor="middle">门店送货方式：每店每路…</text>
 <rect x="31" y="1074" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="1094" text-anchor="middle" font-size="11">mch_notify_recipient</text>
-<text class="s" x="100" y="1109" text-anchor="middle">门店的通知收件地址（短…</text>
+<text class="n" x="100" y="1094" text-anchor="middle" font-size="11">mch_channel_pickup</text>
+<text class="s" x="100" y="1109" text-anchor="middle">自提路×取货点（P1 启用…</text>
 <rect x="191" y="1074" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="1094" text-anchor="middle" font-size="11">mch_personnel_store</text>
-<text class="s" x="260" y="1109" text-anchor="middle">跨门店业务任职</text>
+<text class="n" x="260" y="1094" text-anchor="middle" font-size="13">mch_channel_area</text>
+<text class="s" x="260" y="1109" text-anchor="middle">SUBSET 收窄：某店某路…</text>
 <rect x="351" y="1074" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="1094" text-anchor="middle" font-size="11">mch_personnel_skill</text>
-<text class="s" x="420" y="1109" text-anchor="middle">项目服务资格</text>
+<text class="n" x="420" y="1094" text-anchor="middle" font-size="11">mch_appointment_slot</text>
+<text class="s" x="420" y="1109" text-anchor="middle">门店预约时段与名额</text>
 <rect x="511" y="1074" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="1094" text-anchor="middle" font-size="13">mch_resource</text>
-<text class="s" x="580" y="1109" text-anchor="middle">人员或物理资源</text>
-<rect x="255" y="1190" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="340" y="1210" text-anchor="middle" font-size="13">mch_schedule_rule</text>
-<text class="s" x="340" y="1225" text-anchor="middle">资源班表规则</text>
+<text class="n" x="580" y="1094" text-anchor="middle" font-size="9.5">mch_store_qrcode_print</text>
+<text class="s" x="580" y="1109" text-anchor="middle">店铺码印刷量登记台账…</text>
+<rect x="31" y="1190" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="100" y="1210" text-anchor="middle" font-size="13">mch_notify_pref</text>
+<text class="s" x="100" y="1225" text-anchor="middle">门店自己的通知开关（缺…</text>
+<rect x="191" y="1190" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="260" y="1210" text-anchor="middle" font-size="11">mch_notify_recipient</text>
+<text class="s" x="260" y="1225" text-anchor="middle">门店的通知收件地址（短…</text>
+<rect x="351" y="1190" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="420" y="1210" text-anchor="middle" font-size="9.5">mch_service_area_cell</text>
+<text class="s" x="420" y="1225" text-anchor="middle">多边形范围的 S2 网格…</text>
+<rect x="511" y="1190" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="580" y="1210" text-anchor="middle" font-size="11">mch_personnel_store</text>
+<text class="s" x="580" y="1225" text-anchor="middle">跨门店业务任职</text>
 <rect x="31" y="1306" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="1326" text-anchor="middle" font-size="13">mch_store</text>
-<text class="s" x="100" y="1341" text-anchor="middle">门店：顾客感知的边界…</text>
+<text class="n" x="100" y="1326" text-anchor="middle" font-size="11">mch_personnel_skill</text>
+<text class="s" x="100" y="1341" text-anchor="middle">项目服务资格</text>
 <rect x="191" y="1306" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="1326" text-anchor="middle" font-size="13">mch_channel_area</text>
-<text class="s" x="260" y="1341" text-anchor="middle">SUBSET 收窄：某店某路…</text>
+<text class="n" x="260" y="1326" text-anchor="middle" font-size="13">mch_resource</text>
+<text class="s" x="260" y="1341" text-anchor="middle">人员或物理资源</text>
 <rect x="351" y="1306" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="1326" text-anchor="middle" font-size="9.5">mch_service_area_cell</text>
-<text class="s" x="420" y="1341" text-anchor="middle">多边形范围的 S2 网格…</text>
+<text class="n" x="420" y="1326" text-anchor="middle" font-size="13">mch_schedule_rule</text>
+<text class="s" x="420" y="1341" text-anchor="middle">资源班表规则</text>
 <rect x="511" y="1306" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="1326" text-anchor="middle" font-size="9.5">mch_personnel_position</text>
-<text class="s" x="580" y="1341" text-anchor="middle">任职上的业务岗位</text>
+<text class="n" x="580" y="1326" text-anchor="middle" font-size="13">mch_booking_owner</text>
+<text class="s" x="580" y="1341" text-anchor="middle">稳定资源仲裁归属</text>
+<rect x="63" y="1422" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="148" y="1442" text-anchor="middle" font-size="13">mch_resource_command</text>
+<text class="s" x="148" y="1457" text-anchor="middle">资源持久命令与结果</text>
+<rect x="255" y="1422" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="340" y="1442" text-anchor="middle" font-size="13">mch_booking_hold</text>
+<text class="s" x="340" y="1457" text-anchor="middle">资源集合持有凭证</text>
+<rect x="447" y="1422" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="532" y="1442" text-anchor="middle" font-size="13">mch_booking_hold_unit</text>
+<text class="s" x="532" y="1457" text-anchor="middle">资源持有分配历史明细</text>
 <text class="l" x="100" y="88" text-anchor="middle">entity_no</text>
 <text class="l" x="180" y="100" text-anchor="middle">entity_no</text>
 <text class="l" x="100" y="88" text-anchor="middle">entity_no</text>
-<text class="l" x="100" y="1284" text-anchor="middle">store_no</text>
+<text class="l" x="172" y="784" text-anchor="middle">store_no</text>
 <text class="l" x="260" y="112" text-anchor="middle">entity_no</text>
 <text class="l" x="340" y="204" text-anchor="middle">mch_account_no</text>
-<text class="l" x="180" y="1272" text-anchor="middle">store_no</text>
-<text class="l" x="100" y="88" text-anchor="middle">entity_no</text>
-<text class="l" x="100" y="784" text-anchor="middle">pay_merchant_no</text>
+<text class="l" x="252" y="796" text-anchor="middle">store_no</text>
+<text class="l" x="172" y="88" text-anchor="middle">entity_no</text>
+<text class="l" x="172" y="820" text-anchor="middle">pay_merchant_no</text>
 <text class="l" x="260" y="100" text-anchor="middle">entity_no</text>
-<text class="l" x="260" y="1260" text-anchor="middle">store_no</text>
+<text class="l" x="332" y="808" text-anchor="middle">store_no</text>
 <text class="l" x="340" y="112" text-anchor="middle">entity_no</text>
-<text class="l" x="340" y="1284" text-anchor="middle">store_no</text>
+<text class="l" x="412" y="784" text-anchor="middle">store_no</text>
 <text class="l" x="340" y="88" text-anchor="middle">entity_no</text>
 <text class="l" x="100" y="88" text-anchor="middle">merchant_no</text>
 <text class="l" x="180" y="100" text-anchor="middle">merchant_no</text>
 <text class="l" x="100" y="88" text-anchor="middle">entity_no</text>
-<text class="l" x="100" y="1284" text-anchor="middle">store_no</text>
+<text class="l" x="172" y="784" text-anchor="middle">store_no</text>
 <text class="l" x="180" y="100" text-anchor="middle">entity_no</text>
-<text class="l" x="180" y="1272" text-anchor="middle">store_no</text>
+<text class="l" x="252" y="796" text-anchor="middle">store_no</text>
 <text class="l" x="260" y="112" text-anchor="middle">entity_no</text>
 <text class="l" x="340" y="88" text-anchor="middle">entity_no</text>
-<text class="l" x="260" y="1260" text-anchor="middle">store_no</text>
+<text class="l" x="332" y="808" text-anchor="middle">store_no</text>
 <text class="l" x="260" y="112" text-anchor="middle">entity_no</text>
-<text class="l" x="340" y="1284" text-anchor="middle">store_no</text>
+<text class="l" x="412" y="784" text-anchor="middle">store_no</text>
 <text class="l" x="340" y="88" text-anchor="middle">entity_no</text>
-<text class="l" x="100" y="1284" text-anchor="middle">store_no</text>
-<text class="l" x="180" y="1359" text-anchor="middle">store_no</text>
-<text class="l" x="180" y="900" text-anchor="middle">area_no</text>
-<text class="l" x="180" y="88" text-anchor="middle">entity_no</text>
-<text class="l" x="180" y="1272" text-anchor="middle">store_no</text>
+<text class="l" x="172" y="784" text-anchor="middle">store_no</text>
+<text class="l" x="252" y="796" text-anchor="middle">store_no</text>
+<text class="l" x="180" y="1016" text-anchor="middle">area_no</text>
+<text class="l" x="260" y="88" text-anchor="middle">entity_no</text>
+<text class="l" x="332" y="808" text-anchor="middle">store_no</text>
 <text class="l" x="100" y="88" text-anchor="middle">entity_no</text>
 <text class="l" x="180" y="100" text-anchor="middle">entity_no</text>
-<text class="l" x="260" y="100" text-anchor="middle">entity_no</text>
-<text class="l" x="260" y="1260" text-anchor="middle">store_no</text>
+<text class="l" x="340" y="100" text-anchor="middle">entity_no</text>
+<text class="l" x="412" y="784" text-anchor="middle">store_no</text>
 <text class="l" x="260" y="112" text-anchor="middle">entity_no</text>
-<text class="l" x="340" y="1284" text-anchor="middle">store_no</text>
-<text class="l" x="100" y="1284" text-anchor="middle">store_no</text>
-<text class="l" x="260" y="912" text-anchor="middle">area_no</text>
-<text class="l" x="260" y="100" text-anchor="middle">entity_no</text>
-<text class="l" x="260" y="1372" text-anchor="middle">store_no</text>
+<text class="l" x="172" y="784" text-anchor="middle">store_no</text>
+<text class="l" x="252" y="796" text-anchor="middle">store_no</text>
+<text class="l" x="260" y="1016" text-anchor="middle">area_no</text>
+<text class="l" x="260" y="88" text-anchor="middle">entity_no</text>
+<text class="l" x="332" y="808" text-anchor="middle">store_no</text>
 <text class="l" x="340" y="88" text-anchor="middle">entity_no</text>
 <text class="l" x="220" y="88" text-anchor="middle">entity_no</text>
 <text class="l" x="460" y="436" text-anchor="middle">personnel_no</text>
 <text class="l" x="380" y="204" text-anchor="middle">mch_account_no</text>
-<text class="l" x="180" y="88" text-anchor="middle">entity_no</text>
-<text class="l" x="420" y="436" text-anchor="middle">personnel_no</text>
-<text class="l" x="180" y="1272" text-anchor="middle">store_no</text>
-<text class="l" x="340" y="112" text-anchor="middle">entity_no</text>
-<text class="l" x="420" y="1132" text-anchor="middle">assignment_no</text>
-<text class="l" x="260" y="100" text-anchor="middle">entity_no</text>
-<text class="l" x="500" y="448" text-anchor="middle">personnel_no</text>
-<text class="l" x="260" y="1260" text-anchor="middle">store_no</text>
-<text class="l" x="340" y="112" text-anchor="middle">entity_no</text>
-<text class="l" x="340" y="1284" text-anchor="middle">store_no</text>
-<text class="l" x="580" y="460" text-anchor="middle">personnel_no</text>
-<text class="l" x="220" y="88" text-anchor="middle">entity_no</text>
-<text class="l" x="220" y="1284" text-anchor="middle">store_no</text>
-<text class="l" x="220" y="88" text-anchor="middle">entity_no</text></svg>
+<text class="l" x="340" y="100" text-anchor="middle">entity_no</text>
+<text class="l" x="580" y="436" text-anchor="middle">personnel_no</text>
+<text class="l" x="412" y="784" text-anchor="middle">store_no</text>
+<text class="l" x="268" y="100" text-anchor="middle">entity_no</text>
+<text class="l" x="508" y="1168" text-anchor="middle">assignment_no</text>
+<text class="l" x="100" y="88" text-anchor="middle">entity_no</text>
+<text class="l" x="340" y="436" text-anchor="middle">personnel_no</text>
+<text class="l" x="172" y="784" text-anchor="middle">store_no</text>
+<text class="l" x="180" y="100" text-anchor="middle">entity_no</text>
+<text class="l" x="252" y="796" text-anchor="middle">store_no</text>
+<text class="l" x="420" y="448" text-anchor="middle">personnel_no</text>
+<text class="l" x="260" y="112" text-anchor="middle">entity_no</text>
+<text class="l" x="332" y="808" text-anchor="middle">store_no</text>
+<text class="l" x="172" y="88" text-anchor="middle">entity_no</text>
+<text class="l" x="340" y="88" text-anchor="middle">entity_no</text>
+<text class="l" x="412" y="784" text-anchor="middle">store_no</text>
+<text class="l" x="124" y="88" text-anchor="middle">entity_no</text>
+<text class="l" x="196" y="784" text-anchor="middle">store_no</text>
+<text class="l" x="268" y="100" text-anchor="middle">entity_no</text>
+<text class="l" x="220" y="100" text-anchor="middle">entity_no</text>
+<text class="l" x="292" y="796" text-anchor="middle">store_no</text>
+<text class="l" x="244" y="1475" text-anchor="middle">command_no</text>
+<text class="l" x="316" y="112" text-anchor="middle">entity_no</text>
+<text class="l" x="436" y="1488" text-anchor="middle">hold_no</text>
+<text class="l" x="484" y="552" text-anchor="middle">bucket_no</text></svg>

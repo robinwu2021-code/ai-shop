@@ -13,6 +13,10 @@ test('H2 fixture keeps table-scoped MySQL unique keys without schema name collis
 CREATE TABLE pay_commands (
     id BIGINT NOT NULL,
     source_no VARCHAR(64) NOT NULL,
+    payload LONGTEXT NULL,
+    start_at DATETIME(3) NULL,
+    CONSTRAINT ck_grid CHECK (MICROSECOND(start_at)=0),
+    CONSTRAINT ck_json_payload CHECK (payload IS NULL OR JSON_VALID(payload)),
     PRIMARY KEY (id),
     UNIQUE KEY uk_command (source_no)
 );
@@ -41,6 +45,9 @@ CREATE TABLE independent (
         assert.equal([...schema.matchAll(/CONSTRAINT ck_nonnegative CHECK/g)].length,1);
         assert.doesNotMatch(schema, /CHECK \(id >= 0\)/);
         assert.match(schema, /snapshot TEXT NULL/);
+        assert.match(schema, /payload IS NULL OR \(payload IS JSON\)/);
+        assert.doesNotMatch(schema, /JSON_VALID\(/);
+        assert.match(schema, /EXTRACT\(MICROSECOND FROM start_at\)=0/);
         assert.doesNotMatch(schema, /snapshot JSON/);
         const names = [...schema.matchAll(/CONSTRAINT (\w+) UNIQUE/g)].map(match => match[1]);
         assert.equal(new Set(names).size, 3);

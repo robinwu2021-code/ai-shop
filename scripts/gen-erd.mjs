@@ -107,6 +107,9 @@ export const KEY_OWNERS = {
   mch_account_no: "mch_account",
   personnel_no: "mch_personnel",
   assignment_no: "mch_personnel_store",
+  command_no: "mch_resource_command",
+  bucket_no: "mch_resource_bucket",
+  hold_no: "mch_booking_hold",
   pay_merchant_no: "mch_payment_merchant",
   user_no: "usr_account",
   order_no: "ord_order",
@@ -257,6 +260,7 @@ const TOPICS = [
 const NAME_COLLISIONS_WHY = {
   rule_no: "分账费率规则与资源班表规则属于不同域，不可按同名编号关联。",
   resource_no: "共用人员或物理资源在mch_resource；幂等结果与对账差异按各自资源类型解释，不可仅按同名字段关联。",
+  owner_no: "通知渠道的owner_no按owner_type解释；资源归属头在mch_booking_owner，不能按同名字段跨域关联。",
   parent_no: "不同层级树的父节点，必须结合所属树。",
   provider_no: "通道回执需结合通道、资金方向与原请求。",
   scope_no: "角色授权范围与积分开关统计范围，须按各自范围类型解释。",

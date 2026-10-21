@@ -74,7 +74,14 @@ def _h2_type(col: str) -> str:
     **修在生成器而不是产物**：手改 schema-test.sql 会在下一次重新生成时被冲掉，
     这一条已经被覆盖过三次。生产库仍是 JSON，那边没有这个问题。
     """
-    return _h2_generated_column(re.sub(r"(?<![\w])JSON(?![\w])", "TEXT", col, flags=re.I))
+    col = re.sub(r"(?<![\w])JSON(?![\w])",
+                 lambda match: "JSON" if re.search(r"\bIS\s+$", col[:match.start()], re.I) else "TEXT",
+                 col, flags=re.I)
+    # H2 uses standard predicates/extraction; native MySQL remains the constraint authority.
+    col = re.sub(r"\bJSON_VALID\(\s*([A-Za-z_]\w*)\s*\)", r"(\1 IS JSON)", col, flags=re.I)
+    col = re.sub(r"\bMICROSECOND\(\s*([A-Za-z_]\w*)\s*\)",
+                 r"EXTRACT(MICROSECOND FROM \1)", col, flags=re.I)
+    return _h2_generated_column(col)
 
 
 def main():

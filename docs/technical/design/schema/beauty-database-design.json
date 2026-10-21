@@ -1,6 +1,6 @@
 {
   "status": "DRAFT_NOT_APPLIED",
-  "date": "2026-10-20",
+  "date": "2026-10-21",
   "common_fields": [
     [
       "id",
@@ -688,6 +688,220 @@
       "mode": "NEW"
     },
     {
+      "name": "mch_booking_owner",
+      "group": "资源",
+      "business_key": "owner_no",
+      "description": "稳定资源仲裁归属",
+      "fields": [
+        {
+          "name": "owner_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "稳定仲裁归属号"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "来源业务门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "source_type",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "来源类别，精确匹配"
+        },
+        {
+          "name": "source_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "来源业务引用"
+        },
+        {
+          "name": "current_hold_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "当前持有头",
+          "references": "mch_booking_hold"
+        },
+        {
+          "name": "owner_version",
+          "type": "bigint",
+          "nullable": false,
+          "description": "本域仲裁版本，非BaseEntity版本"
+        },
+        {
+          "name": "source_revision",
+          "type": "bigint",
+          "nullable": true,
+          "description": "当前头外部来源修订"
+        }
+      ],
+      "unique": [
+        [
+          "owner_no"
+        ],
+        [
+          "store_no",
+          "source_type",
+          "source_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "current_hold_no"
+        ]
+      ],
+      "rules": "同来源稳定唯一；当前持有与外部修订成对；本域owner_version与来源修订/实体版本分离。根锁/CAS后续协议实现。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "mch_resource_command",
+      "group": "资源",
+      "business_key": "command_no",
+      "description": "资源持久命令与结果",
+      "fields": [
+        {
+          "name": "command_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "持久命令号"
+        },
+        {
+          "name": "owner_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "稳定归属",
+          "references": "mch_booking_owner"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "来源门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "action",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "RESERVE/PROTECT/CONFIRM/RENEW/RELEASE/EXPIRE/RECONCILE/REPLACE"
+        },
+        {
+          "name": "request_key_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "作用域内请求键SHA256"
+        },
+        {
+          "name": "payload_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "冻结请求SHA256"
+        },
+        {
+          "name": "frozen_payload",
+          "type": "longtext",
+          "nullable": false,
+          "description": "合法JSON冻结载荷，后续命令协议保持不可变"
+        },
+        {
+          "name": "expected_owner_version",
+          "type": "bigint",
+          "nullable": false,
+          "description": "期望仲裁头版本"
+        },
+        {
+          "name": "source_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "外部来源修订"
+        },
+        {
+          "name": "target_hold_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "可选目标持有",
+          "references": "mch_booking_hold"
+        },
+        {
+          "name": "expected_hold_version",
+          "type": "bigint",
+          "nullable": true,
+          "description": "可选目标实体版本"
+        },
+        {
+          "name": "expected_lease_revision",
+          "type": "bigint",
+          "nullable": true,
+          "description": "可选目标租约修订"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "ACCEPTED/SUCCEEDED/REJECTED"
+        },
+        {
+          "name": "result_payload",
+          "type": "longtext",
+          "nullable": true,
+          "description": "合法JSON权威结果"
+        },
+        {
+          "name": "rejection_code",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "稳定拒绝原因"
+        },
+        {
+          "name": "wait_reason",
+          "type": "varchar(128)",
+          "nullable": true,
+          "description": "待恢复原因"
+        },
+        {
+          "name": "next_retry_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "待恢复下次处理时间"
+        },
+        {
+          "name": "initiated_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "原命令发起者"
+        }
+      ],
+      "unique": [
+        [
+          "command_no"
+        ],
+        [
+          "store_no",
+          "action",
+          "request_key_hash"
+        ]
+      ],
+      "indexes": [
+        [
+          "owner_no",
+          "created_at",
+          "id"
+        ],
+        [
+          "status",
+          "next_retry_at",
+          "id"
+        ]
+      ],
+      "rules": "冻结载荷与结果为合法JSON，状态证据匹配；同键异参及不可变/不可逆由后续命令协议实现，不能直接以通用Mapper开放写入。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
       "name": "mch_resource_bucket",
       "group": "资源",
       "business_key": "bucket_no",
@@ -697,50 +911,50 @@
           "name": "bucket_no",
           "type": "varchar(32)",
           "nullable": false,
-          "description": "桶号"
+          "description": "容量桶号"
         },
         {
           "name": "resource_no",
           "type": "varchar(32)",
           "nullable": false,
-          "description": "规范资源",
+          "description": "跨店规范资源",
           "references": "mch_resource"
         },
         {
           "name": "start_at",
           "type": "datetime(3)",
           "nullable": false,
-          "description": "桶开始"
+          "description": "UTC五分钟开始"
         },
         {
           "name": "end_at",
           "type": "datetime(3)",
           "nullable": false,
-          "description": "桶结束"
+          "description": "UTC五分钟排他结束"
         },
         {
           "name": "capacity",
           "type": "int",
           "nullable": false,
-          "description": "桶容量"
+          "description": "桶容量正整数"
         },
         {
           "name": "held_qty",
           "type": "int",
           "nullable": false,
-          "description": "临时占用"
+          "description": "未确认占用数量"
         },
         {
           "name": "confirmed_qty",
           "type": "int",
           "nullable": false,
-          "description": "正式占用"
+          "description": "确认占用数量"
         },
         {
-          "name": "blocked",
-          "type": "tinyint",
+          "name": "capacity_revision",
+          "type": "bigint",
           "nullable": false,
-          "description": "现场开放占用或停约阻断"
+          "description": "容量事实修订"
         }
       ],
       "unique": [
@@ -758,7 +972,7 @@
           "end_at"
         ]
       ],
-      "rules": "以统一粒度的resource桶原子锁/CAS仲裁，held+confirmed不得超capacity；同一STAFF跨店占同一桶。",
+      "rules": "UTC统一五分钟网格、存储安全边界、容量正整数及held+confirmed<=capacity；资源身份不含门店。活动事实仍须根锁内复核。",
       "stage": "P1",
       "mode": "NEW"
     },
@@ -772,7 +986,14 @@
           "name": "hold_no",
           "type": "varchar(32)",
           "nullable": false,
-          "description": "持有号"
+          "description": "集合持有号"
+        },
+        {
+          "name": "owner_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "稳定归属",
+          "references": "mch_booking_owner"
         },
         {
           "name": "store_no",
@@ -782,46 +1003,91 @@
           "references": "mch_store"
         },
         {
-          "name": "source_type",
+          "name": "command_no",
           "type": "varchar(32)",
           "nullable": false,
-          "description": "业务来源类型"
+          "description": "唯一创建命令",
+          "references": "mch_resource_command"
         },
         {
-          "name": "source_no",
-          "type": "varchar(64)",
+          "name": "source_revision",
+          "type": "bigint",
           "nullable": false,
-          "description": "预约或任务号"
+          "description": "创建来源修订"
         },
         {
-          "name": "request_key_hash",
-          "type": "char(64)",
+          "name": "lease_revision",
+          "type": "bigint",
           "nullable": false,
-          "description": "稳定请求键"
-        },
-        {
-          "name": "payload_hash",
-          "type": "char(64)",
-          "nullable": false,
-          "description": "参数摘要"
+          "description": "租约修订，从1开始"
         },
         {
           "name": "status",
           "type": "varchar(24)",
           "nullable": false,
-          "description": "HELD或CONFIRMED或RELEASED或EXPIRED"
+          "description": "HELD/CONFIRMED/RELEASED/EXPIRED"
+        },
+        {
+          "name": "expiration_policy",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "LOCAL_TTL/SOURCE_COORDINATED"
         },
         {
           "name": "expires_at",
           "type": "datetime(3)",
-          "nullable": true,
-          "description": "临时期限"
+          "nullable": false,
+          "description": "原临时期限定点，确认后保留"
         },
         {
-          "name": "owner_revision",
+          "name": "creation_plan_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "创建计划摘要不可覆盖"
+        },
+        {
+          "name": "current_plan_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "当前计划摘要"
+        },
+        {
+          "name": "plan_revision",
           "type": "bigint",
           "nullable": false,
-          "description": "业务来源版本"
+          "description": "当前计划修订，从1开始"
+        },
+        {
+          "name": "replaces_hold_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "替换的旧持有",
+          "references": "mch_booking_hold"
+        },
+        {
+          "name": "replaced_by_hold_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "后继持有",
+          "references": "mch_booking_hold"
+        },
+        {
+          "name": "termination_reason",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "终止原因"
+        },
+        {
+          "name": "terminated_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "实际终止时刻"
+        },
+        {
+          "name": "execution_started_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "首次执行标记"
         }
       ],
       "unique": [
@@ -829,21 +1095,21 @@
           "hold_no"
         ],
         [
-          "store_no",
-          "request_key_hash"
+          "command_no"
         ]
       ],
       "indexes": [
         [
-          "source_type",
-          "source_no"
+          "owner_no",
+          "status"
         ],
         [
           "status",
-          "expires_at"
+          "expires_at",
+          "id"
         ]
       ],
-      "rules": "请求先定幂等再锁稳定排序资源桶；集合全成全败；支付未知不得仅凭本地TTL释放。",
+      "rules": "创建命令唯一；来源/租约/计划版本分离，终态留完整证据；保护来源未知不由TTL盲释，后续生命周期事务实现。",
       "stage": "P1",
       "mode": "NEW"
     },
@@ -851,45 +1117,58 @@
       "name": "mch_booking_hold_unit",
       "group": "资源",
       "business_key": "unit_no",
-      "description": "资源持有分配明细",
+      "description": "资源持有分配历史明细",
       "fields": [
         {
           "name": "unit_no",
           "type": "varchar(32)",
           "nullable": false,
-          "description": "单元号"
+          "description": "历史分配单位号"
         },
         {
           "name": "hold_no",
           "type": "varchar(32)",
           "nullable": false,
-          "description": "持有凭证",
+          "description": "持有根",
           "references": "mch_booking_hold"
         },
         {
           "name": "bucket_no",
           "type": "varchar(32)",
           "nullable": false,
-          "description": "容量桶",
+          "description": "统一容量桶",
           "references": "mch_resource_bucket"
+        },
+        {
+          "name": "allocation_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "分配修订，从1开始"
         },
         {
           "name": "qty",
           "type": "int",
           "nullable": false,
-          "description": "占用份数"
+          "description": "正整数容量份数"
         },
         {
           "name": "source_line_ref",
-          "type": "varchar(64)",
+          "type": "varchar(128)",
           "nullable": false,
-          "description": "需求项目行"
+          "description": "精确持续使用组引用，utf8mb4_bin"
         },
         {
           "name": "released_at",
           "type": "datetime(3)",
           "nullable": true,
-          "description": "释放标记"
+          "description": "实际释放标记"
+        },
+        {
+          "name": "release_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "释放证据命令",
+          "references": "mch_resource_command"
         }
       ],
       "unique": [
@@ -898,6 +1177,7 @@
         ],
         [
           "hold_no",
+          "allocation_revision",
           "bucket_no",
           "source_line_ref"
         ]
@@ -906,9 +1186,13 @@
         [
           "bucket_no",
           "hold_no"
+        ],
+        [
+          "hold_no",
+          "released_at"
         ]
       ],
-      "rules": "明细标记、桶减量和hold状态同资源本地事务，重复释放不增容量。",
+      "rules": "组引用区分大小写/重音，分配历史唯一且不复用；正数量；释放标记/命令成对。活动单位唯一及计数事务由后续根锁/CAS保证。",
       "stage": "P1",
       "mode": "NEW"
     },

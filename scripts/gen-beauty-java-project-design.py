@@ -62,7 +62,7 @@ def generate():
     for b in sorted(data['apiBindings'],key=lambda b:b['apiId']):
         a=apis[b['apiId']];lines.append(f'| {b["apiId"]} | `{a["method"]} {a["path"]}` | {b["module"]} | {b["owner"]} |')
     lines += ['', '## 七、美业持久化候选类', '',
-              '只映射25项bty表，全部在beauty-core；实体继承现有BaseEntity。Mapper集合完整名为`ai.neargo.shop.beauty.mapper.BeautyMappers`，以下Mapper为其内嵌接口，不生成等义Repository。14项共用表结构（13新、1扩展）全部排除。逻辑聚合/状态机与数据库Entity按职责组合，不再为每张表强制复制一个Domain对象。', '',
+              f'只映射25项bty表，全部在beauty-core；实体继承现有BaseEntity。Mapper集合完整名为`ai.neargo.shop.beauty.mapper.BeautyMappers`，以下Mapper为其内嵌接口，不生成等义Repository。{sum(t["name"].startswith("mch_") for t in schema["tables"])}项共用表结构全部排除。逻辑聚合/状态机与数据库Entity按职责组合，不再为每张表强制复制一个Domain对象。', '',
               '| 表 | Entity完整类名 | 内嵌Mapper |', '|---|---|---|']
     for t in data['tables']:lines.append(f'| {t["table"]} | `{t["entity"]}` | `{t["mapper"]}` |')
     lines += ['', '## 八、生成物边界', '',

@@ -11,6 +11,11 @@ import org.springframework.stereotype.Component;
 public final class PersonnelDataScopeRegistration implements DataScopeRegistrar {
     @Override
     public void register(DataScopeTableRegistry registry) {
+        registry.register("mch_booking_owner", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mch_resource_command", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mch_resource_bucket", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mch_booking_hold", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mch_booking_hold_unit", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("mch_schedule_rule", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("mch_schedule_change_log", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("mch_resource", Map.of(ScopeDim.MERCHANT, "entity_no"));

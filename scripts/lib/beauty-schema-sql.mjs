@@ -9,7 +9,7 @@ const identifier = value => {
 };
 const literal = value => `'${String(value).replaceAll("'", "''").replaceAll('\\', '\\\\')}'`;
 const sqlType = value => {
-  if (!/^(?:bigint|int|tinyint|text|json|date|datetime\(3\)|(?:var)?char\([1-9][0-9]*\)|decimal\(18,6\))$/.test(value)) {
+  if (!/^(?:bigint|int|tinyint|text|longtext|json|date|datetime\(3\)|(?:var)?char\([1-9][0-9]*\)|decimal\(18,6\))$/.test(value)) {
     throw new Error(`Unsupported SQL type: ${value}`);
   }
   return value.toUpperCase();

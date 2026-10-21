@@ -28215,6 +28215,27 @@
       "package": "ai.neargo.shop.merchant.entity"
     },
     {
+      "table": "mch_booking_hold",
+      "class": "MchBookingHold",
+      "zh": "资源集合持有凭证。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
+      "table": "mch_booking_hold_unit",
+      "class": "MchBookingHoldUnit",
+      "zh": "资源持有分配历史明细。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
+      "table": "mch_booking_owner",
+      "class": "MchBookingOwner",
+      "zh": "稳定资源仲裁归属。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
       "table": "mch_channel_area",
       "class": "MchChannelArea",
       "zh": "SUBSET 收窄：某店某路只适用哪些范围项（P2 启用，P0 只建表）。",
@@ -28365,6 +28386,20 @@
       "table": "mch_resource",
       "class": "MchResource",
       "zh": "人员或物理资源的稳定主档。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
+      "table": "mch_resource_bucket",
+      "class": "MchResourceBucket",
+      "zh": "跨店统一容量仲裁桶。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
+      "table": "mch_resource_command",
+      "class": "MchResourceCommand",
+      "zh": "资源持久命令与结果。",
       "module": "shop-merchant",
       "package": "ai.neargo.shop.merchant.entity"
     },

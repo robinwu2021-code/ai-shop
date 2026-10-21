@@ -37,7 +37,7 @@ def render():
     methods={e['apiId']:e for e in method['endpoints']};shared={e['apiId']:e for e in method['sharedHttpMethods']};bindings={e['apiId']:e for e in project['apiBindings']}
     for aid in methods:assert aid in owner
     lines=['# 美业系统开发任务对照索引', '', '> 状态：任务定义基线 · 2026-10-20 · 实际实施进度以执行入口的记录为准，本索引不推断工程、接口或迁移已交付。', '> 由 `python3 scripts/gen-beauty-development-plan.py` 生成，勿手改；真源：[开发任务JSON](./schema/beauty-development-plan.json)。', '> 执行入口：[美业后端开发计划](../TDD-美业系统-后端开发计划.md)；[类与方法](./美业系统-Java类与方法清单.md) · [逐API方法](./美业系统-Controller-Service-Mapper方法清单.md)。', '', '## 一、任务、依赖与交付', '',
-           f'{len(tasks)}个目标任务，覆盖118项功能、160个API/合同及39项数据结构；其中25项bty结构归美业，14项人员/资源结构由共用所有者提供。每个API/表只有一个首次实施主责任务，不因多端或多次联合验收重复记完成。P4宽任务是待按正式合同再分解的路线项，不可直接一次编码。', '', '| 任务 | 阶段 | 交付 | 前置 | API/合同数 | 表数 | 验收重点 |', '|---|---|---|---|---:|---:|---|']
+           f'{len(tasks)}个目标任务，覆盖118项功能、160个API/合同及{len(schema["tables"])}项数据结构；其中{sum(t["name"].startswith("bty_") for t in schema["tables"])}项bty结构归美业，{sum(t["name"].startswith("mch_") for t in schema["tables"])}项人员/资源结构由共用所有者提供。每个API/表只有一个首次实施主责任务，不因多端或多次联合验收重复记完成。P4宽任务是待按正式合同再分解的路线项，不可直接一次编码。', '', '| 任务 | 阶段 | 交付 | 前置 | API/合同数 | 表数 | 验收重点 |', '|---|---|---|---|---:|---:|---|']
     for t in tasks.values():lines.append(f'| {t["id"]} | {t["stage"]} | {t["title"]} | '+('、'.join(t['dependencies']) or '—')+f' | {len(t["apiIds"])} | {len(t["tables"])} | {t["acceptance"]} |')
     lines+=['', '## 二、API/合同首次实施归属', '', '美业路径的Service签名、事务、Mapper调用以方法真源为准。共用HTTP由其原域创建/扩展，共用CONTRACT不机械转为美业Java方法。实施任务不能把“核验合同存在”计作“整个共用能力已交付”。', '', '| API | 阶段 | 首次任务 | 方法与路径/合同 | Java落点/所有者 |', '|---|---|---|---|---|']
     for aid,a in sorted(apis.items()):

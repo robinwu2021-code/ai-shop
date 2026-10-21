@@ -6,6 +6,11 @@ import ai.neargo.shop.merchant.dto.PersonnelQualificationFactRow;
 import ai.neargo.shop.merchant.dto.ResourceFactRow;
 import ai.neargo.shop.merchant.dto.ScheduleRuleFactRow;
 import ai.neargo.shop.merchant.entity.MchAccount;
+import ai.neargo.shop.merchant.entity.MchBookingOwner;
+import ai.neargo.shop.merchant.entity.MchResourceCommand;
+import ai.neargo.shop.merchant.entity.MchResourceBucket;
+import ai.neargo.shop.merchant.entity.MchBookingHold;
+import ai.neargo.shop.merchant.entity.MchBookingHoldUnit;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
@@ -42,6 +47,26 @@ import org.apache.ibatis.annotations.Update;
 public final class MerchantMappers {
 
     private MerchantMappers() {
+    }
+
+    /** 稳定资源仲裁归属数据访问；完整仲裁由后续服务编排。 */
+    public interface BookingOwnerMapper extends BaseMapper<MchBookingOwner> {
+    }
+
+    /** 资源持久命令与结果数据访问；完整仲裁由后续服务编排。 */
+    public interface ResourceCommandMapper extends BaseMapper<MchResourceCommand> {
+    }
+
+    /** 跨店统一容量仲裁桶数据访问；完整仲裁由后续服务编排。 */
+    public interface ResourceBucketMapper extends BaseMapper<MchResourceBucket> {
+    }
+
+    /** 资源集合持有凭证数据访问；完整仲裁由后续服务编排。 */
+    public interface BookingHoldMapper extends BaseMapper<MchBookingHold> {
+    }
+
+    /** 资源持有分配历史明细数据访问；完整仲裁由后续服务编排。 */
+    public interface BookingHoldUnitMapper extends BaseMapper<MchBookingHoldUnit> {
     }
 
     public interface MchEntityMapper extends BaseMapper<MchEntity> {
