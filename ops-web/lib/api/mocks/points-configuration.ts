@@ -10,7 +10,7 @@ const rules = new Map<string, PointsFallback>();
 const terms = new Map<string, PointsTerms>();
 const switches: PointsSwitchView[] = [];
 const receipts = new Map<string, { body: string; result: PointsChangeResult }>();
-function command(action: string, v: { requestId: string; typeCode: string; reason: string }, work: () => void) {
+function command(action: string, v: { requestId: string; typeCode: string; reason?: string }, work: () => void) {
   const key = `${action}:${v.requestId}`;
   const body = JSON.stringify(v);
   const prior = receipts.get(key);
@@ -18,7 +18,7 @@ function command(action: string, v: { requestId: string; typeCode: string; reaso
     if (prior.body !== body) fail("请求号已用于其他操作内容", "Request ID conflicts with the original command");
     return wait(structuredClone(prior.result));
   }
-  if (!v.requestId || !v.reason.trim()) fail("请填写操作原因", "An operation reason is required");
+  if (!v.requestId || (!["RENAME", "STATE"].includes(action) && !v.reason?.trim())) fail("请填写操作原因", "An operation reason is required");
   work();
   const result = { requestId: v.requestId, action, typeCode: v.typeCode, at: Date.now() };
   receipts.set(key, { body, result });

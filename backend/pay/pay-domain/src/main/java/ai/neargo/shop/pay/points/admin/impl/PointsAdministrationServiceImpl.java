@@ -87,12 +87,13 @@ public class PointsAdministrationServiceImpl implements PointsAdministrationServ
     @Override
     public ChangeResult transition(TypeChange r, String actor) {
         require(r.action() != null, "POINTS_TYPE_ACTION_INVALID");
+        String reason = nonblank(r.reason()) ? r.reason() : "积分状态变更：" + r.action().name();
         return execute(
                 "TYPE_STATE",
                 r.requestId(),
                 r.typeCode(),
                 actor,
-                r.reason(),
+                reason,
                 r,
                 false,
                 at -> {
@@ -107,7 +108,7 @@ public class PointsAdministrationServiceImpl implements PointsAdministrationServ
                             switches.change(new PointsSwitchService.Command(
                                     PointsKeys.position("OS", "TYPE_STATE", r.requestId()),
                                     PointsSwitchService.Scope.TYPE, r.typeCode(), r.typeCode(),
-                                    r.action() == TypeAction.RESUME_EARNING, at, actor, r.reason(),
+                                    r.action() == TypeAction.RESUME_EARNING, at, actor, reason,
                                     PointsSwitchService.Flow.EARN));
                         }
                     }
@@ -118,7 +119,7 @@ public class PointsAdministrationServiceImpl implements PointsAdministrationServ
     public ChangeResult rename(TypeRename r, String actor) {
         String name = r.name() == null ? "" : r.name().trim();
         require(!name.isBlank() && name.length() <= 80 && nonblank(r.expectedName()), "POINTS_TYPE_INVALID");
-        return execute("RENAME", r.requestId(), r.typeCode(), actor, r.reason(), r, false, at -> {
+        return execute("RENAME", r.requestId(), r.typeCode(), actor, nonblank(r.reason()) ? r.reason() : "修改积分名称", r, false, at -> {
             var current = config.lockRules(r.typeCode());
             require(current != null, "POINTS_TYPE_UNKNOWN");
             require(r.expectedName().equals(current.get("name")), "POINTS_TYPE_NAME_CONFLICT");
