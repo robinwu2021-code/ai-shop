@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-21 · 按业务模块交付并逐模块部署验证；BM-01后端模块已通过隔离部署关口，BM-02人员/物理资源/周班表及远程事实后端模块已通过隔离部署；BM03-a1预约来源存储检查点完成；预约工作台未完成。
+> 状态：实施中 · 2026-10-21 · 按业务模块交付并逐模块部署验证；BM-01后端模块已通过隔离部署关口，BM-02人员/物理资源/周班表及远程事实后端模块已通过隔离部署；BM03-a2-1共用权限/原命令核验读取检查点完成；预约工作台未完成。
 > **执行方式：** 使用`superpowers:executing-plans`逐任务实施，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -25,6 +25,7 @@
 | SHR-01b | 基础切片完成 | 周班表及内部窗口查询、变更历史，见§13；审批/写维护与完整SHR-01/02后续 |
 | SHR-02b | 02b-1a/1b/1c、2a、2b-1及2b-2a基础完成 | 归一/持久命令/锁内准入/来源消费防线及独立行业共用合同已交付；详细方案§5.4–5.9；生产来源provider和原子预留未完成 |
 | BM03-a1 | 来源存储检查点完成 | 私有V2追加2表/2实体Mapper，来源冻结、拒绝形状与原预约写者保护；最终记录见§26，真实授权与预约业务闭环未完成 |
+| BM03-a2-1 | 共用核验读取检查点完成 | 两个共用Port/实际owner/机器协议及美业远程；原始结果、异常503及实际宿主Mapper接线验收；来源provider仍待a2-2，见§27 |
 | SHR-03及后续业务 | 待逐项闭环 | 已使用部分商品/公共写守卫合同，未完成订单/资金/履约/通知打印的整体接入；预约/日历/任务营业闭环未完成 |
 
 首批基础阶段验证（后续批次增量见§8、§9）：独立reactor 42项测试通过，Node生成器6项通过，隔离MySQL DDL约束通过，23项真实JDBC IT通过。
@@ -333,7 +334,7 @@ BM02-a具体合同：
 | 内部顺序 | 需求和成功条件 | 本次范围 |
 |---|---|---|
 | BM03-a1 来源意图/栅栏存储 | 预约根→fence→intent，完整冻结计划原UTF8字节、命令/来源修订/摘要不可被重试覆盖；同预约一个活动fence；过许可时点不自动解除 | 本次实现，两表追加私有V2；Mapper/实体/迁移验证及原预约写者NOT EXISTS守卫 |
-| BM03-a2 真实来源权限与决策 | 正式经营成员/门店授权，按持久预约/版本/需求生成完整计划，freeze/query同Binding幂等；取消/改约/签到不绕fence；可信资源终态协调后解除 | 后续内部任务；a1 Mapper不等于许可，不注册可授权provider或开放写HTTP |
+| BM03-a2 真实来源权限与决策 | 正式经营成员/门店授权，按持久预约/版本/需求生成完整计划，freeze/query同Binding幂等；取消/改约/签到不绕fence；可信资源终态协调后解除 | a2-1核验读取已交付（§27）；真实来源provider/计划生成/决定与协调仍待a2-2，不开放预约写HTTP |
 | BM03-b 共用容量 | 零售/餐饮/美业同一命令所有者；组合预留全成或全回滚、跨店人员防双占；保护/确认/续期/释放/过期/完整替换，失败保旧与原号恢复 | 完成a2及三行业真实来源适配验收后实施 |
 | BM03-c 预约业务闭环 | 顾客身份/代约临客、当前政策/商品/定义版本、时段/资格/自动或指定匹配、创建/详情/列表/改期/取消/爽约/未知恢复 | 实际Service/Controller，冻结真实输入，不能只写holdNo返回成功 |
 | BM03-d 大模块关口 | 创建→查询→改约→取消；并发、失败保旧、许可到期与未知结果保护；实际embedded/standalone/默认零售/餐饮影响 | 全部必要单元齐备后一次模块部署验证；a1不启动完成宣告 |
@@ -349,6 +350,26 @@ BM02-a具体合同：
 - [x] a1-1 原生反例ResourceIntentPersistenceIT、V1→V2升级/新库/validate只读/数据保留、原计划字节、唯一活动fence、修订/CAS、四预约写者阻断与手工终态前禁止释放、事务回滚/跨店隔离。
 - [x] a1-2 实现迁移/实体/Mapper/版本与严格结构检查；必要CHECK语法仅显式扩展json_valid/octet_length及MySQL同义length封闭函数，不放宽冻结V1验证；一次守卫消融RED→恢复GREEN。
 - [x] a1-3 一次独立只读审查，重要问题一轮RED→GREEN；独立reactor/全原生回归及文档对账，保存内部检查点。真实a2/b/c/d仍未完成；不按技术切片宣称大模块交付或提前开始BM04。
+
+### 2.16 BM03-a2-1共用权限与原命令核验前置（2026-10-21）
+
+基线e2d89042f，档位1，沿ADR-043。沿已授权自动执行，使用brainstorming/writing-plans深化现有设计，executing-plans原位实施，先RED后GREEN。
+
+**缺口与选择：** MerchantScopeFacts只证明主体/门店归属，不含成员权限；ResourceCommandService是merchant内部合同，独立美业不能直接引用。不能用服务令牌、人员资格、请求中的terminalCode或当前owner指针代替真实成员和原命令事实。先在shop-base增加两个所有者只读Port及独立机器协议，再接美业来源Service。原V1/V2、旧slot、49任务定义不变。
+
+| 需求 | 设计/实现 | 验收 |
+|---|---|---|
+| 当前经营成员权限 | MerchantOperatorAccessPort.allowed(Query(tenantNo,entityNo,storeNo,operatorNo,realm,subjectKind,permission))；merchant.owner实际主体验证ACTIVE/未归档、店ACTIVE、成员ACTIVE，MCH只按账号号/USR只按user_no，不能跨身份命名空间；当店授权及当前角色权限精确或裸*匹配，无静态角色兜底 | 真MySQL：owner、USR/MCH、跨店、错误类型、停用/软删/已归档、收回角色/权限下一读生效、大小写别名拒绝 |
+| 原命令核实 | ResourceCommandFactsPort.lookup(ResourceSourceAuthorityPort.Request) → Lookup(command?)；owner读原command+原owner父链，比较完整Binding含两个摘要/来源/修订/动作；访问须经营侧biz:order:view当前权限 | 真journal accept→查询→rejectAfterRollback→查询；ACCEPTED无终态hash；终态保留原resultPayload/rejectionCode及绑定版本摘要；缺失返回显式空，失配409、拒权403，不用currentHoldNo当历史结果 |
+| 独立行业复用 | 新ResourceRecoveryInternalApi两个POST（/internal/merchant/recovery/operator-access、/internal/merchant/recovery/commands）；机器令牌先验；美业channel实际HTTP适配+条件接线，宿主本地owner唯一 | MVC错误令牌不调用owner，400/403/409/503不伪装空；真实TCP路径/请求/响应/服务发现/凭据及超时失败 |
+
+**方法与文件：** shop-base/spi/user/MerchantOperatorAccessPort，spi/resource/ResourceCommandFactsPort、ResourceRecoveryInternalApi；merchant.port两个Impl，MerchantMappers.OperatorAccessMapper及ResourceCommandMapper原命令投影，merchant.dto.ResourceCommandFactRow；portal.internal.InternalResourceRecoveryController；beauty.port.RemoteMerchantOperatorAccessPort/RemoteResourceCommandFactsPort及BeautyMerchantClientConfiguration。服务只读，不提供命令写入、角色写入、占用/当前头写入或客户端入口。
+
+**边界：** 成员事实是读取时的判断，不是可持续消费的授权凭证；USR/MCH需由可信已认证入口提供，机器令牌不能替代真实成员。原始结果仅传内部核对，不日志/公网输出；终态摘要是稳定证据摘要，不能凭自制摘要解冻。网络读取只允许无调用方事务，不在来源根锁或资源事务中反向访问。未来a2-2仍须生成真实业务计划、持久prepare/freeze/query决定、可信终态协调与全部相反写者协议。
+
+- [x] a2-1a 写原生权限/原命令结果、协议鉴权、真实TCP失败反例；观察RED。
+- [x] a2-1b 实现两个共用Port/owner精确查询及内部HTTP/美业远程接线；观察GREEN，权限守卫消融RED再恢复。
+- [x] a2-1c 一次独立只读审查、一轮重要问题修正，受影响merchant/宿主/beauty回归；同步矩阵/对象/API/方法、保存本地检查点。a2真实来源provider及整个BM03仍不认定完成，不在此执行整模块部署。
 
 ## §3 数据层之后的业务任务与启动深化
 
@@ -403,7 +424,7 @@ python3 scripts/gen-beauty-development-plan.py --check
 
 ## §6 下一次领取任务与本轮交付
 
-**当前下一步：BM03-a2真实来源权限、计划核对与终态协调；BM03-a1来源存储本轮完成，记录见§26。BM-02人员/资源/周班表及standalone事实后端模块已通过§25隔离部署关口，BM-01已通过§22关口。** 后续按BM-03预约等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
+**当前下一步：BM03-a2-2真实来源计划、持久决定与终态协调；a1存储和a2-1共用核验读取已完成，见§26/§27。BM-02人员/资源/周班表及standalone事实后端模块已通过§25隔离部署关口，BM-01已通过§22关口。** 后续按BM-03预约等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
 
 初始计划阶段产物（2026-10-20，非当前工程状态）：本TDD、开发任务JSON、生成任务对照索引和校验器；当时尚未编码。之后实际实现及验收按§7–20逐批记录，当前总览与后续领取以§21为准。
 
@@ -1036,7 +1057,7 @@ schema-lineage仍为14通过/2既有失败，详见方案日志，不宣称全�
 |---|---|---|---|
 | **BM-01 服务项目与门店政策** | **后端模块完成，隔离部署通过（§22）**；POL-01、DEF-01，所需ENG-03/SHR-03 | 共用商品/SKU及门店报价引用；服务执行定义与历史版本；门店服务政策/公开营业信息；相应权限、幂等、审计、事件及部署适配 | 使用真实商品提供方完成查询→发布→门店读取→历史版本回查；验证越权/重复发布/失败回滚，重启后结果保留 |
 | **BM-02 服务人员、排班与服务资源** | BM-02 P1后端模块隔离部署通过（§25）；人员/任职/资格、物理资源、周规则及远程事实已实现；P3例外审批/完整任务影响仍后续 | 业务人员与可选账号、多店任职、岗位/资格、班表维护与例外/变更影响；床位/房间/设备等资源维护；同人STAFF规范身份和受权事实查询 | 建立无账号人员→任职/资格→排班→关联服务资源→查询匹配事实；验证跨店同人、停用/资格过期/班表变更与范围隔离 |
-| **BM-03 预约管理** | 来源意图/栅栏数据前置完成（§26）；AVL-01、APT-01/02/03，所需SHR02b/ENG-03/SHR-03 | 可约/预览、自约/代约、指定或自动匹配、预约列表详情、改约/取消/爽约；完整资源冻结/预留/确认/续期/释放/过期/替换及原号恢复，必要的占用查询 | 创建→查询→改约→取消完整链路；并发争抢不超售、改约失败保旧、响应丢失原号恢复、租期与未知结果正确保护；不要求先做实际服务执行 |
+| **BM-03 预约管理** | 来源意图/栅栏及核验读取前置完成（§26/§27）；AVL-01、APT-01/02/03，所需SHR02b/ENG-03/SHR-03 | 可约/预览、自约/代约、指定或自动匹配、预约列表详情、改约/取消/爽约；完整资源冻结/预留/确认/续期/释放/过期/替换及原号恢复，必要的占用查询 | 创建→查询→改约→取消完整链路；并发争抢不超售、改约失败保旧、响应丢失原号恢复、租期与未知结果正确保护；不要求先做实际服务执行 |
 | **BM-04 到店接待、工单与交易来源** | 数据基础，业务闭环未完成；REC-01、WO-01、SRC-01及所需SHR-03 | 临客认领、预约签到/直客接待、工单项目范围/加项、真实订单报价/来源提交/绑定/逐来源账单及恢复；权限/审计/事件、到店与取消互斥 | 预约到店或直客→幂等建工单→真实来源提交/绑定→查询账单；验证重复签到、越权、报价失效和来源结果未知；未就绪来源不能标为可开工 |
 | **BM-05 服务作业与履约** | 任务数据基础，业务执行未完成；TASK-01/02/03，SHR02b实际占用及超时部分 | 接单、开工、工作流步骤、实际参与/交接、暂停/延长/提前结束、清洁、完工数量、履约确认和工单关闭；实际占用/开放占用/超时阻断及恢复 | 接单→开工→步骤→交接/暂停→完工→清洁释放→履约/关闭；验证不双扣、不双完工、未清洁不放开、超时与未来预约并存及冲突开工阻断 |
 | **BM-06 预约与作业工作台** | 未完成；CAL-01及受控读模型/操作集成 | 日/周视图；人员/工位/设备泳道；具体预约及任务、计划/实际/准备清洁/临时占位/阻断、未分派；筛选/详情/操作后刷新、跨店匿名busy | 从真实预约与作业生成日历数据，任务与多资源占用可追溯；验证权限、分页同水位、不完整/延迟标记及动作后刷新。当前后端范围验收真实API/日历数据合同；可视页面另按端上任务交付 |
@@ -1293,3 +1314,35 @@ BAPI012～016落在共用shop-merchant；美业继续引用人员/任职/岗位/
 
 最终V1 SHA-256：`ac2a539664c42fdb7e4893f1359879fc5affbe4b24f95aae1809cd25f11061a4`；V2：`5b6768928018b68635c9c081b200a2cb6202d40645c5db62c91c558cc49d4114`。
 最终证据：`/tmp/beauty-bm03-final-native.log`、`/tmp/beauty-bm03-final-clean-build.log`、`/tmp/beauty-bm03-final-host.log`；守卫消融：`/tmp/beauty-bm03-ablation-red.log`；拒绝形状反例：`/tmp/beauty-bm03-denial-red.log`。五项设计生成、V1/V2冻结生成检查、SQL方言无新增依赖及新Java120列检查已通过。
+
+## §27 BM03-a2-1共用核验读取检查点（2026-10-21）
+
+基线e2d89042f，按§2.16先补来源授权所需的实际所有者读取。当前没有美业来源可授权provider、业务计划生成或预约HTTP；整个BM-03及其部署关口尚未完成。
+
+### 27.1 需求、设计与实现
+
+- shop-base唯一维护MerchantOperatorAccessPort、ResourceCommandFactsPort与ResourceRecoveryInternalApi；shop-merchant两个PortImpl、OperatorAccessMapper及原命令投影查询实际经营成员/当店角色权限和原command/owner父链。共享合同供零售、餐饮、美业复用，未新增三套权限或容量模型。
+- 主体ACTIVE/未归档、店ACTIVE、成员ACTIVE/未删除；MERCHANT/MCH只认成员号，MERCHANT/USR只认其关联user_no。无权限/停用/错店/大小写别名/歧义身份拒绝；当前角色定义优先本主体覆盖预置，精确权限或裸*，不回落静态角色。
+- 原命令读取须当前biz:order:view，完整Binding逐字段匹配，包括命令号、来源、修订、动作、命令摘要和完整计划摘要。ACCEPTED不携终态；SUCCEEDED/REJECTED保存原载荷、拒绝原因、命令版本及原UTF8字节敏感摘要；新命令/移动当前头不能覆盖历史结果。Lookup(command=null)只表示受权查询未发现，不表示已回滚或可解除fence。
+- shop-app新增InternalResourceRecoveryController两条机器POST；beauty-channel两个远程适配及条件接线，实际走PLATFORM。机器令牌先于所有者调用，403/409/服务失败不成为成功空值或授权；远程再次比对返回完整Binding。网络读禁止调用方事务内执行。
+- 没有新增表、迁移、权限码、端页面；已提交V1/V2及原49任务/160目标API不变。API清单实施补充单列两个内部路径，类/方法、领域对象、矩阵、ADR043与README同步。
+
+### 27.2 实际验证与一次审查
+
+原生5项RED缺失合同、HTTP与TCP各1项RED缺失合同；原生初次夹具使用任意JSON而非实际V1计划，真实ResourcePlanContract拒绝后修正夹具，不放宽生产校验。
+实际原生6项通过，包含当前权限、撤权/停用、MCH/USR、跨店/别名、拒绝/成功原结果与后续命令、完整绑定及事务边界。共用形状/UTF8摘要单测3项通过；实际GlobalExceptionHandler的HTTP3项通过。
+真实TCP已验证机器凭据、成功/缺失/Unicode原结果回传及403/409/503传播；额外错误Binding响应反例先失败，再加远程守卫通过；独立reactor干净构建67项通过。
+暂时去除ACTIVE成员条件得到2项原生断言失败，finally恢复。最终新旧命令原生38项（含生产MybatisPlusConfig扫描接线）、实际GlobalAdvice HTTP5项及形状/摘要4项，共47项通过；merchant及依赖300项通过，美业独立reactor干净构建70项通过。真实Spring条件接线验证远程只在本地owner缺失时注册；真实TCP证明协议，但不称部署真实业务提供方。
+
+一次独立只读审查0Critical/1Important/0Minor：owner数据库异常经全局Advice返回200信封，Lookup缺失command可能被忽略为null。实际GlobalAdvice两路径先失败（预期503实际200），TCP的{}和200错误信封两项先失败；一轮修正为未知运行异常返回空503、Lookup.command必需且ALWAYS显式序列化null，保证全局忽略null配置下仍保留成功缺失。最终HTTP/TCP及全量回归通过，不进行重复审查。
+
+同一修正轮执行者另发现生产扫描接线缺口：只读OperatorAccessMapper未继承BaseMapper，宽扫描测试能注册而宿主实际扫描需要@Mapper。新增真实生产MybatisPlusConfig启动测试先因NoSuchBeanDefinitionException失败，再仅添加@Mapper，不放宽扫描；最终实际接线及原生回归通过。
+
+ArchitectureTest实际16项、1项失败，仍是未改动OpsPointsInspectionController的全限定@PathVariable，已与e2d89042f逐字节比较一致，其余15项通过；未标记全局发布绿灯。SchemaDrift/全生产历史未在本批重验。五项设计生成、SQL无新增依赖、V1/V2冻结、Java120列/无新增全限定跨域引用及git diff检查通过。
+
+### 27.3 后续范围
+
+两项读取是point-in-time事实，不签发可持续消费的来源许可；调用服务仍须保证输入来自已认证的真实actor。原结果是内部私有核实资料，摘要不是签名，不接受客户端自制摘要或terminalCode解冻。
+下一步a2-2须根据持久预约/版本/需求建立真实计划及完整Binding、持久prepare/freeze/query决定，使用实际权威终态编排对账，并与所有相反写者共用根锁协议。完整a2、三行业容量事务、预约API/工作台和大模块实际部署均未完成。
+
+本批最终证据：`/tmp/resource-recovery-final-native-protocol.log`（47）、`/tmp/resource-recovery-final-merchant.log`（300）、`/tmp/resource-recovery-final-beauty.log`（70）；一轮修正反例：`/tmp/resource-recovery-owner-error-red.log`、`/tmp/resource-recovery-envelope-red.log`、`/tmp/resource-recovery-host-wiring-red.log`；消融：`/tmp/resource-recovery-ablation-red.log`。工作保留在独立worktree，保存本地检查点，不合并/推送或部署共享生产库；大模块部署仍按§21.4在BM03全部必要单元完成后执行。

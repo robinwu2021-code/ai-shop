@@ -2774,6 +2774,22 @@
       "purpose": "受内部凭证保护；跨店冲突不能隐藏为空闲",
       "request": "ScheduleWindowsPort.Query",
       "response": "List<Window>"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/merchant/recovery/operator-access",
+      "owner": "PLATFORM portal/internal → merchant权限所有者，零售/餐饮/美业共用",
+      "purpose": "机器令牌保护的当前成员/当店权限事实；无会话快照/业务岗位推导，不是持续许可",
+      "request": "MerchantOperatorAccessPort.Query(tenantNo,entityNo,storeNo,operatorNo,realm,subjectKind,permission)",
+      "response": "Boolean；真实拒绝false，错误不伪装false"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/merchant/recovery/commands",
+      "owner": "PLATFORM portal/internal → merchant资源命令所有者，零售/餐饮/美业共用",
+      "purpose": "当前成员biz:order:view核验后按完整Binding读取原命令；无写入或解冻能力",
+      "request": "ResourceSourceAuthorityPort.Request(binding,operatorNo,realm,subjectKind)",
+      "response": "ResourceCommandFactsPort.Lookup(command?)；原状态/版本/结果及稳定终态摘要，ACCEPTED不携终态，缺失显式空，失败400/403/409/5xx；command字段必需，null显式序列化，{}和200错误信封拒绝；未知owner运行异常空503"
     }
   ]
 }

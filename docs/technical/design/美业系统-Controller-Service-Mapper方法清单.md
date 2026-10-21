@@ -3377,3 +3377,25 @@ int reconcile(String entityNo, String storeNo, String intentNo, long expectedVer
 ```
 
 a2仍须实现正式权限、持久预约生成计划、同Binding幂等及可信资源终态核实；本批不增加可调用预约HTTP。
+
+## BM03-a2-1共用核验增量（2026-10-21）
+
+本节为已编码的所有者只读前置，不改变原49任务或160编号；不是完整美业来源授权、预约或终态解冻。
+
+| 模块 / 完整类 | 职责与实际方法 |
+|---|---|
+| shop-base / ai.neargo.shop.spi.user.MerchantOperatorAccessPort | boolean allowed(Query query)；显式租户/主体/店/操作者realm+subjectKind/权限 |
+| shop-base / ai.neargo.shop.spi.resource.ResourceCommandFactsPort | Lookup lookup(ResourceSourceAuthorityPort.Request request)；完整Binding，原命令状态/结果/摘要；不以当前持有头替代历史结果 |
+| shop-base / ai.neargo.shop.spi.resource.ResourceRecoveryInternalApi | Boolean operatorAccess(Query query)；Lookup command(Request request)；PLATFORM内部协议 |
+| shop-merchant / ai.neargo.shop.merchant.port.MerchantOperatorAccessPortImpl | 实际有效成员、店授权、角色权限精确或裸*匹配；MCH/USR隔离，歧义拒绝，无静态角色兜底 |
+| shop-merchant / ai.neargo.shop.merchant.port.ResourceCommandFactsPortImpl | 实际原command/owner父链，完整Binding比对，REJECTED/SUCCEEDED摘要及ACCEPTED非终态 |
+| shop-merchant / ai.neargo.shop.merchant.mapper.MerchantMappers.OperatorAccessMapper | List<OperatorAccessRow> selectAccess(Query query)；最多2行用于拒绝歧义 |
+| shop-merchant / ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceCommandMapper | ResourceCommandFactRow selectOriginalFact(ResourceCommandScopeRow scope, String commandNo)；只读投影 |
+| shop-app / ai.neargo.shop.portal.internal.InternalResourceRecoveryController | ResponseEntity<?> operatorAccess(Query query,String given) / command(Request request,String given)；先机器令牌、保留错误HTTP状态 |
+| beauty-channel / ai.neargo.shop.beauty.port.RemoteMerchantOperatorAccessPort | boolean allowed(Query query)；真实PLATFORM链路，不把失败当false |
+| beauty-channel / ai.neargo.shop.beauty.port.RemoteResourceCommandFactsPort | Lookup lookup(Request request)；完整返回Binding比对，不把失败当缺失 |
+| beauty-channel / ai.neargo.shop.beauty.config.BeautyMerchantClientConfiguration | 条件缺失时接远程两个Port，embedded仍使用本地owner |
+
+内部Lookup必须显式command字段，允许显式null；缺字段/200错误信封拒绝，未知owner运行异常503；只读OperatorAccessMapper显式@Mapper由宿主实际注解扫描注册。
+
+接口、owner及远程适配均在事务外读取；事实只说明读取时状态，不是来源许可。未新增可授权provider/预约Controller，待a2-2基于真实持久业务计划与来源根锁继续实现。

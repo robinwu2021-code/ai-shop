@@ -205,3 +205,11 @@ BM02-c班表/远程事实及整模块隔离构件部署已通过主TDD§25关口
 `node scripts/gen-beauty-resource-intent-schema.mjs --check`核对独立增量真源及冻结V2，原V1生成检查保持16表。
 `node scripts/verify-beauty-persistence.mjs --resource-intent-only`在独占MySQL8.4中验证V1→V2显式升级、原始计划字节、并发单栅栏、相反写者、终态前禁止释放和回滚。
 现阶段无来源授权provider或新预约HTTP，不能把Mapper参数当可信许可/资源结果；BM-03大模块部署关口尚未达到，实际记录见主TDD§26。
+
+### BM03-a2-1共用核验前置
+
+独立channel新增MerchantOperatorAccessPort与ResourceCommandFactsPort的PLATFORM远程适配；同部署本地owner存在时不注册远程替身。前者验证当前经营成员/当店权限，后者按完整Binding查询原资源命令，保留原结果及终态摘要；失败不转为空或许可，网络读取须在调用方事务外。
+内部协议见ResourceRecoveryInternalApi两条POST及API清单实施增量；成员输入只能来自可信已认证入口。原始结果仅供内部核实，不日志/公网输出。
+这是来源授权前置，不是完整来源provider；下一步a2-2仍须完成持久业务计划生成、freeze/query决定和真实终态协调。主TDD§2.16/§27记录实际检查。
+
+共用原生与协议复现：`node scripts/verify-resource-recovery-facts.mjs --include-journal --include-protocol`；需沿构建说明使用当前分支公共构件及隔离Maven仓库，脚本自建并清理MySQL8.4。

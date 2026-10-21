@@ -1,5 +1,10 @@
 package ai.neargo.shop.beauty.config;
 
+import ai.neargo.shop.beauty.port.RemoteMerchantOperatorAccessPort;
+import ai.neargo.shop.beauty.port.RemoteResourceCommandFactsPort;
+import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
+import ai.neargo.shop.spi.resource.ResourceCommandFactsPort;
+import ai.neargo.shop.spi.resource.ResourceRecoveryInternalApi;
 import ai.neargo.shop.beauty.port.RemotePersonnelFactsPort;
 import ai.neargo.shop.beauty.port.RemoteResourceFactsPort;
 import ai.neargo.shop.beauty.port.RemoteScheduleWindowsPort;
@@ -31,6 +36,19 @@ public class BeautyMerchantClientConfiguration {
     @ConditionalOnMissingBean(ScheduleWindowsPort.class)
     ScheduleWindowsPort remoteScheduleWindowsPort(InternalHttp http) {
         return new RemoteScheduleWindowsPort(api(http));
+    }
+    @Bean
+    @ConditionalOnMissingBean(MerchantOperatorAccessPort.class)
+    MerchantOperatorAccessPort remoteMerchantOperatorAccessPort(InternalHttp http) {
+        return new RemoteMerchantOperatorAccessPort(recoveryApi(http));
+    }
+    @Bean
+    @ConditionalOnMissingBean(ResourceCommandFactsPort.class)
+    ResourceCommandFactsPort remoteResourceCommandFactsPort(InternalHttp http) {
+        return new RemoteResourceCommandFactsPort(recoveryApi(http));
+    }
+    private ResourceRecoveryInternalApi recoveryApi(InternalHttp http) {
+        return http.client(ServiceName.PLATFORM, ResourceRecoveryInternalApi.class, Duration.ofSeconds(5));
     }
     private MerchantFactsInternalApi api(InternalHttp http) {
         return http.client(ServiceName.PLATFORM, MerchantFactsInternalApi.class, Duration.ofSeconds(5));

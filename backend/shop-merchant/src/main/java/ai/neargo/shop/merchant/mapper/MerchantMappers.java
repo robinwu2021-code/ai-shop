@@ -1,5 +1,8 @@
 package ai.neargo.shop.merchant.mapper;
 
+import ai.neargo.shop.merchant.dto.OperatorAccessRow;
+import ai.neargo.shop.merchant.dto.ResourceCommandFactRow;
+import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 import ai.neargo.shop.merchant.dto.PersonnelAssignmentFactRow;
 import ai.neargo.shop.merchant.dto.PersonnelPositionFactRow;
 import ai.neargo.shop.merchant.dto.PersonnelQualificationFactRow;
@@ -33,6 +36,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -50,6 +54,38 @@ import org.apache.ibatis.annotations.Update;
 public final class MerchantMappers {
 
     private MerchantMappers() {
+    }
+
+    /** Exact live access projection; source owners must not reuse session-role snapshots or personnel jobs. */
+    @Mapper
+    public interface OperatorAccessMapper {
+        @Select("""
+                SELECT a.mch_account_no AS account_no,
+                  (a.is_owner=1 OR EXISTS (
+                    SELECT 1 FROM mch_store_role g JOIN mch_role d ON d.tenant_no=g.tenant_no
+                      AND CAST(d.role_code AS BINARY)=CAST(g.role AS BINARY) AND d.deleted=0
+                    WHERE g.tenant_no=a.tenant_no AND g.mch_account_no=a.mch_account_no AND g.deleted=0
+                      AND CAST(g.store_no AS BINARY)=CAST(s.store_no AS BINARY)
+                      AND (CAST(d.entity_no AS BINARY)=CAST(e.entity_no AS BINARY)
+                        OR (d.entity_no='*' AND NOT EXISTS (SELECT 1 FROM mch_role custom
+                          WHERE custom.tenant_no=d.tenant_no AND custom.deleted=0
+                            AND CAST(custom.entity_no AS BINARY)=CAST(e.entity_no AS BINARY)
+                            AND CAST(custom.role_code AS BINARY)=CAST(d.role_code AS BINARY))))
+                      AND JSON_VALID(d.perms)
+                      AND (JSON_CONTAINS(d.perms,JSON_QUOTE(#{q.permission}))
+                        OR JSON_CONTAINS(d.perms,JSON_QUOTE('*'))))) AS allowed
+                FROM mch_entity e JOIN mch_store s ON s.tenant_no=e.tenant_no AND s.entity_no=e.entity_no
+                JOIN mch_account a ON a.tenant_no=e.tenant_no AND a.entity_no=e.entity_no
+                WHERE CAST(e.tenant_no AS BINARY)=CAST(#{q.tenantNo} AS BINARY)
+                  AND CAST(e.entity_no AS BINARY)=CAST(#{q.entityNo} AS BINARY)
+                  AND CAST(s.store_no AS BINARY)=CAST(#{q.storeNo} AS BINARY)
+                  AND e.status='ACTIVE' AND e.archived_at IS NULL AND e.deleted=0
+                  AND s.status='ACTIVE' AND s.deleted=0 AND a.status='ACTIVE' AND a.deleted=0
+                  AND ((#{q.subjectKind}='MCH' AND CAST(a.mch_account_no AS BINARY)=CAST(#{q.operatorNo} AS BINARY))
+                    OR (#{q.subjectKind}='USR' AND CAST(a.user_no AS BINARY)=CAST(#{q.operatorNo} AS BINARY)))
+                LIMIT 2
+                """)
+        List<OperatorAccessRow> selectAccess(@Param("q") MerchantOperatorAccessPort.Query query);
     }
 
     /** 稳定资源仲裁归属数据访问；完整仲裁由后续服务编排。 */
@@ -118,6 +154,19 @@ public final class MerchantMappers {
 
     /** 资源持久命令与结果数据访问；完整仲裁由后续服务编排。 */
     public interface ResourceCommandMapper extends BaseMapper<MchResourceCommand> {
+        /** One original parent-chain snapshot; never substitutes the owner's current hold or latest command. */
+        @Select("""
+                SELECT c.tenant_no,c.entity_no,c.store_no,c.command_no,o.source_type,o.source_no,
+                  c.source_revision,c.action,c.payload_hash AS command_hash,c.frozen_payload,c.status,
+                  c.version AS revision,c.result_payload,c.rejection_code
+                FROM mch_resource_command c JOIN mch_booking_owner o ON o.tenant_no=c.tenant_no
+                  AND o.entity_no=c.entity_no AND o.store_no=c.store_no AND o.owner_no=c.owner_no AND o.deleted=0
+                WHERE c.tenant_no=#{scope.tenantNo} AND c.entity_no=#{scope.entityNo} AND c.store_no=#{scope.storeNo}
+                  AND c.command_no=#{commandNo} AND c.deleted=0
+                """)
+        ResourceCommandFactRow selectOriginalFact(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("commandNo") String commandNo);
+
         /** Explicit parent chain prevents recovery by command number from crossing scope or a foreign owner. */
         @Select("""
                 SELECT c.* FROM mch_resource_command c JOIN mch_booking_owner o
