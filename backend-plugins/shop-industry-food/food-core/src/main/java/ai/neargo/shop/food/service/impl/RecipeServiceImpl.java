@@ -8,17 +8,26 @@ import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.dto.CreateRecipeReq;
 import ai.neargo.shop.food.dto.ListRecipesQuery;
+import ai.neargo.shop.food.dto.RecipeAdjustmentInput;
+import ai.neargo.shop.food.dto.RecipeAdjustmentVO;
 import ai.neargo.shop.food.dto.RecipeLineVO;
 import ai.neargo.shop.food.dto.RecipeResultVO;
 import ai.neargo.shop.food.dto.RecipeVO;
 import ai.neargo.shop.food.dto.ReplaceRecipeDefinitionReq;
 import ai.neargo.shop.food.entity.FnbActionLog;
+import ai.neargo.shop.food.entity.FnbOptionGroup;
+import ai.neargo.shop.food.entity.FnbOptionGroupItem;
 import ai.neargo.shop.food.entity.FnbRecipe;
+import ai.neargo.shop.food.entity.FnbRecipeAdjustment;
 import ai.neargo.shop.food.entity.FnbRecipeLine;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.RecipeAdjustmentMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.RecipeLineMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.RecipeMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
+import ai.neargo.shop.food.policy.RecipeAdjustmentPolicy;
 import ai.neargo.shop.food.policy.RecipeDefinitionPolicy;
 import ai.neargo.shop.food.service.RecipeService;
 import ai.neargo.shop.idem.IdempotencyService;
@@ -46,6 +55,9 @@ public class RecipeServiceImpl implements RecipeService {
     private final RecipeMapper heads;
     private final RecipeLineMapper lines;
     private final ActionLogMapper actions;
+    private final RecipeAdjustmentMapper adjustments;
+    private final OptionGroupItemMapper optionItems;
+    private final OptionGroupMapper optionGroups;
     private final IdempotencyService idem;
     private final OutboxPublisher publisher;
     private final ObjectMapper json;
@@ -56,8 +68,12 @@ public class RecipeServiceImpl implements RecipeService {
 
     public RecipeServiceImpl(RecipeMapper heads, RecipeLineMapper lines, ActionLogMapper actions,
             IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
-            PlatformTransactionManager manager, GoodsCatalogQueryPort catalog, MaterialCatalogQueryPort materials) {
+            PlatformTransactionManager manager, GoodsCatalogQueryPort catalog, MaterialCatalogQueryPort materials,
+            RecipeAdjustmentMapper adjustments, OptionGroupItemMapper optionItems, OptionGroupMapper optionGroups) {
         this.heads = heads; this.lines = lines; this.actions = actions; this.idem = idem;
+        this.adjustments = adjustments;
+        this.optionItems = optionItems;
+        this.optionGroups = optionGroups;
         this.publisher = publisher; this.json = json; this.catalog = catalog; this.materials = materials;
         write = new TransactionTemplate(manager);
         write.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
@@ -120,6 +136,11 @@ public class RecipeServiceImpl implements RecipeService {
                         throw BizException.of(ErrorCode.CONFLICT);
                     }
                 }
+                var requestedAdjustments = req.adjustments() == null ? before.adjustments().stream()
+                        .map(a -> new RecipeAdjustmentInput(a.adjustmentNo(), a.optionItemNo(), a.targetLineNo(),
+                                a.action(), a.qty(), a.unit())).toList() : req.adjustments();
+                var optionIdentities = validateAdjustments(entity, req, before, requestedAdjustments);
+                adjustments.replaceDraftRows(entity, number);
                 lines.replaceDraftRows(entity, number);
                 int order = 0;
                 for (var inputLine : req.lines()) {
@@ -131,6 +152,22 @@ public class RecipeServiceImpl implements RecipeService {
                     line.setMaterialDefinitionHash(facts.get(inputLine.itemRef()).definitionHash());
                     lines.insert(line);
                 }
+                int adjustmentOrder = 0;
+                for (var inputAdjustment : requestedAdjustments) {
+                    var adjustment = new FnbRecipeAdjustment();
+                    adjustment.setEntityNo(entity);
+                    adjustment.setRecipeNo(number);
+                    adjustment.setAdjustmentNo(inputAdjustment.adjustmentNo() == null
+                            ? BizKey.next("FRAD") : inputAdjustment.adjustmentNo());
+                    adjustment.setOptionItemNo(inputAdjustment.optionItemNo());
+                    adjustment.setTargetLineNo(inputAdjustment.targetLineNo());
+                    adjustment.setAction(inputAdjustment.action());
+                    adjustment.setQty(inputAdjustment.qty());
+                    adjustment.setUnit(inputAdjustment.unit());
+                    adjustment.setOptionIdentityHash(optionIdentities.get(inputAdjustment.optionItemNo()));
+                    adjustment.setSortNo(adjustmentOrder++);
+                    adjustments.insert(adjustment);
+                }
                 row.setYieldQty(req.yieldQty()); row.setYieldUnit(req.yieldUnit());
                 row.setConfigVersion(row.getConfigVersion() + 1);
                 if (heads.updateById(row) != 1) throw BizException.of(ErrorCode.CONFLICT);
@@ -141,6 +178,44 @@ public class RecipeServiceImpl implements RecipeService {
         } catch (ConcurrencyFailureException | DuplicateKeyException failure) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
+    }
+
+    private Map<String, String> validateAdjustments(String entity, ReplaceRecipeDefinitionReq req, RecipeVO before,
+            List<RecipeAdjustmentInput> requested) {
+        var old = new HashMap<String, RecipeAdjustmentVO>();
+        var identities = new HashMap<String, String>();
+        before.adjustments().forEach(a -> old.put(a.adjustmentNo(), a));
+        for (var input : requested) {
+            var target = req.lines().stream().filter(line -> input.targetLineNo().equals(line.lineNo()))
+                    .findFirst().orElseThrow(() -> BizException.of(req.adjustments() == null
+                            ? ErrorCode.CONFLICT : ErrorCode.BAD_REQUEST));
+            if (!input.unit().equals(target.unit())) throw BizException.of(ErrorCode.BAD_REQUEST);
+            if (input.adjustmentNo() != null) {
+                var previous = old.get(input.adjustmentNo());
+                if (previous == null || !previous.optionItemNo().equals(input.optionItemNo())
+                        || !previous.targetLineNo().equals(input.targetLineNo())) {
+                    throw BizException.of(ErrorCode.CONFLICT);
+                }
+            }
+            var item = optionItems.selectOne(Wrappers.<FnbOptionGroupItem>lambdaQuery()
+                    .eq(FnbOptionGroupItem::getEntityNo, entity)
+                    .eq(FnbOptionGroupItem::getOptionItemNo, input.optionItemNo()).last("FOR UPDATE"));
+            if (item == null) throw BizException.of(ErrorCode.BAD_REQUEST);
+            var group = optionGroups.selectOne(Wrappers.<FnbOptionGroup>lambdaQuery()
+                    .eq(FnbOptionGroup::getEntityNo, entity).eq(FnbOptionGroup::getGroupNo, item.getGroupNo())
+                    .last("FOR UPDATE"));
+            if (group == null || !List.of("DRAFT", "ACTIVE").contains(
+                    group.getStatus() == null ? "" : group.getStatus())) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            String identity = RecipeAdjustmentPolicy.optionIdentity(entity, item.getGroupNo(), item.getOptionItemNo(),
+                    item.getSourceKind(), item.getSpecValueNo(), item.getModifierNo());
+            if (input.adjustmentNo() != null && !identity.equals(old.get(input.adjustmentNo()).optionIdentityHash())) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            identities.put(input.optionItemNo(), identity);
+        }
+        return identities;
     }
 
     private Map<String, MaterialFact> facts(String entity, ReplaceRecipeDefinitionReq req) {
@@ -203,12 +278,20 @@ public class RecipeServiceImpl implements RecipeService {
         var children = lines.selectList(Wrappers.<FnbRecipeLine>lambdaQuery()
                 .eq(FnbRecipeLine::getEntityNo, entity).eq(FnbRecipeLine::getRecipeNo, row.getRecipeNo())
                 .orderByAsc(FnbRecipeLine::getSortNo, FnbRecipeLine::getLineNo));
+        var adjustmentRows = adjustments.selectList(Wrappers.<FnbRecipeAdjustment>lambdaQuery()
+                .eq(FnbRecipeAdjustment::getEntityNo, entity).eq(FnbRecipeAdjustment::getRecipeNo, row.getRecipeNo())
+                .orderByAsc(FnbRecipeAdjustment::getSortNo, FnbRecipeAdjustment::getAdjustmentNo));
         return new RecipeVO(row.getRecipeNo(), row.getStoreNo(), row.getSkuNo(), row.getRecipeCode(),
                 RecipeDefinitionPolicy.quantity(row.getYieldQty(), true), row.getYieldUnit(), row.getStatus(),
                 row.getVersion(), row.getConfigVersion(), children.stream().map(line -> new RecipeLineVO(
                         line.getLineNo(), line.getItemRef(), RecipeDefinitionPolicy.quantity(line.getQty(), true),
                         line.getUnit(), RecipeDefinitionPolicy.quantity(line.getLossRate(), false),
-                        line.getMaterialDefinitionHash())).toList());
+                        line.getMaterialDefinitionHash())).toList(), adjustmentRows.stream().map(a ->
+                                new RecipeAdjustmentVO(a.getAdjustmentNo(), a.getOptionItemNo(), a.getTargetLineNo(),
+                                        a.getAction(), a.getQty() == null ? null
+                                                : RecipeDefinitionPolicy.quantity(a.getQty(), false), a.getUnit(),
+                                        a.getOptionIdentityHash()))
+                                .toList());
     }
 
     private void sku(String entity, String store, String number) {

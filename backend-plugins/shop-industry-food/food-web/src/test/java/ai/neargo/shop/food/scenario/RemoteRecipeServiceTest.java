@@ -10,8 +10,13 @@ import static org.mockito.Mockito.when;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.food.dto.CreateRecipeReq;
 import ai.neargo.shop.food.dto.ListRecipesQuery;
+import ai.neargo.shop.food.dto.RecipeAdjustmentInput;
+import ai.neargo.shop.food.dto.RecipeAdjustmentVO;
+import ai.neargo.shop.food.dto.RecipeLineInput;
+import ai.neargo.shop.food.dto.RecipeLineVO;
 import ai.neargo.shop.food.dto.RecipeResultVO;
 import ai.neargo.shop.food.dto.RecipeVO;
+import ai.neargo.shop.food.dto.ReplaceRecipeDefinitionReq;
 import ai.neargo.shop.food.foodclient.RemoteRecipeService;
 import ai.neargo.shop.food.spi.RecipeInternalApi;
 import ai.neargo.shop.svc.ServiceName;
@@ -79,6 +84,54 @@ class RemoteRecipeServiceTest {
             assertThatThrownBy(() -> service.listRecipes("E", "A", null))
                     .as("missing response %s", field).isInstanceOf(RuntimeException.class);
         }
+    }
+
+    @Test void mutationReceiptsCannotDropRebindOrChangeAdjustmentsAndCopyThemToTheCaller() {
+        var api = mock(RecipeInternalApi.class);
+        var service = new RemoteRecipeService(api);
+        var line = new RecipeLineVO("L1", "MILK", BigDecimal.ONE, "KG", BigDecimal.ZERO, "a".repeat(64));
+        var adjustment = new RecipeAdjustmentVO("A1", "NO_SUGAR", "L1", "SET",
+                BigDecimal.ZERO, "KG", "b".repeat(64));
+        var req = new ReplaceRecipeDefinitionReq(0L, BigDecimal.ONE, "EA",
+                List.of(new RecipeLineInput("L1", "MILK", BigDecimal.ONE, "KG", BigDecimal.ZERO)),
+                List.of(new RecipeAdjustmentInput(null, "NO_SUGAR", "L1", "SET", BigDecimal.ZERO, "KG")));
+        var valid = new RecipeVO("R1", "A", "TEA", "DEFAULT", BigDecimal.ONE, "EA", "DRAFT", 1, 1,
+                List.of(line), List.of(adjustment));
+        when(api.replaceDefinition(any())).thenReturn(new RecipeResultVO(new RecipeVO("R1", "A", "TEA",
+                "DEFAULT", BigDecimal.ONE, "EA", "DRAFT", 1, 1, List.of(line))));
+        assertThatThrownBy(() -> service.replaceDefinition("E", "A", "R1", "actor", req, "key"))
+                .isInstanceOf(IllegalStateException.class);
+        for (var bad : List.of(new RecipeAdjustmentVO("A1", "OTHER", "L1", "SET",
+                        BigDecimal.ZERO, "KG", "b".repeat(64)),
+                new RecipeAdjustmentVO("A1", "NO_SUGAR", "OTHER", "SET", BigDecimal.ZERO, "KG", "b".repeat(64)),
+                new RecipeAdjustmentVO("A1", "NO_SUGAR", "L1", "SET", BigDecimal.ONE, "KG", "b".repeat(64)),
+                new RecipeAdjustmentVO("A1", "NO_SUGAR", "L1", "REMOVE", BigDecimal.ONE, "KG", "b".repeat(64)),
+                new RecipeAdjustmentVO("A1", "NO_SUGAR", "L1", "SET", BigDecimal.ZERO, "KG", "invalid"))) {
+            when(api.replaceDefinition(any())).thenReturn(new RecipeResultVO(new RecipeVO("R1", "A", "TEA",
+                    "DEFAULT", BigDecimal.ONE, "EA", "DRAFT", 1, 1, List.of(line), List.of(bad))));
+            assertThatThrownBy(() -> service.replaceDefinition("E", "A", "R1", "actor", req, "key"))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+        when(api.replaceDefinition(any())).thenReturn(new RecipeResultVO(valid));
+        assertThat(service.replaceDefinition("E", "A", "R1", "actor", req, "key").recipe().adjustments())
+                .containsExactly(adjustment);
+    }
+
+    @Test void additiveAdjustmentContractPreservesHistoricalFingerprintsAndStrictText() {
+        var json = new ObjectMapper();
+        var old = new ReplaceRecipeDefinitionReq(0L, BigDecimal.ONE, "EA", List.of());
+        assertThat(json.writeValueAsString(old)).isEqualTo(
+                "{\"version\":0,\"yieldQty\":1,\"yieldUnit\":\"EA\",\"lines\":[]}");
+        String normal = "{\"optionItemNo\":\"O\",\"targetLineNo\":\"L\",\"action\":\"SET\",\"qty\":0,\"unit\":\"KG\"}";
+        for (String field : List.of("optionItemNo", "targetLineNo", "action", "unit")) {
+            String bad = normal.replaceFirst("\"" + field + "\":\"[^\"]*\"", "\"" + field + "\":123");
+            assertThatThrownBy(() -> json.readValue(bad, RecipeAdjustmentInput.class))
+                    .isInstanceOf(RuntimeException.class);
+        }
+        assertThatThrownBy(() -> json.readValue(normal.replace("{", "{\"entityNo\":\"OTHER\","),
+                RecipeAdjustmentInput.class)).isInstanceOf(RuntimeException.class);
+        String legacy = json.writeValueAsString(view("A", "TEA")).replace(",\"adjustments\":[]", "");
+        assertThat(json.readValue(legacy, RecipeVO.class).adjustments()).isEmpty();
     }
 
     @Test void businessErrorsAndTransportOutagesKeepOneAttemptWithoutEmptySuccess() {

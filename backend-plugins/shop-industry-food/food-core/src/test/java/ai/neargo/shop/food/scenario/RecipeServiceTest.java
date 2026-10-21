@@ -12,18 +12,30 @@ import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.dto.CreateRecipeReq;
 import ai.neargo.shop.food.dto.ListRecipesQuery;
+import ai.neargo.shop.food.dto.OptionItemInput;
+import ai.neargo.shop.food.dto.RecipeAdjustmentInput;
 import ai.neargo.shop.food.dto.RecipeLineInput;
+import ai.neargo.shop.food.dto.ReplaceOptionGroupItemsReq;
 import ai.neargo.shop.food.dto.ReplaceRecipeDefinitionReq;
+import ai.neargo.shop.food.dto.SelectionRules;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.DishMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.DishOptionGroupMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ModifierMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.RecipeAdjustmentMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.RecipeLineMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.RecipeMapper;
 import ai.neargo.shop.food.service.RecipeService;
+import ai.neargo.shop.food.service.impl.OptionGroupServiceImpl;
 import ai.neargo.shop.food.service.impl.RecipeServiceImpl;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -40,6 +52,8 @@ import org.springframework.boot.test.context.assertj.AssertableApplicationContex
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -66,6 +80,19 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
                         + "recipe_no VARCHAR(32),item_ref VARCHAR(32),qty DECIMAL(18,6),unit VARCHAR(16),"
                         + "conversion_ref VARCHAR(64),material_definition_hash VARCHAR(64),"
                         + "loss_rate DECIMAL(12,6),sort_no INT,UNIQUE(recipe_no,line_no))");
+            }
+            if ("true".equals(System.getenv("FOOD_TEST_DISPOSABLE"))) {
+                new ResourceDatabasePopulator(new ClassPathResource(
+                        "db/industry/food/V5__recipe_adjustment_table.sql")).execute(f.source());
+            } else {
+                f.sql().execute("CREATE TABLE fnb_recipe_adjustment (id BIGINT AUTO_INCREMENT PRIMARY KEY,"
+                        + "tenant_no VARCHAR(32) DEFAULT 'MAIN',entity_no VARCHAR(32),created_at DATETIME(3),"
+                        + "created_by VARCHAR(32),updated_at DATETIME(3),updated_by VARCHAR(32),"
+                        + "version BIGINT DEFAULT 0,deleted INT DEFAULT 0,adjustment_no VARCHAR(32) UNIQUE,"
+                        + "recipe_no VARCHAR(32),option_item_no VARCHAR(32),target_line_no VARCHAR(32),"
+                        + "action VARCHAR(16),qty DECIMAL(18,6),unit VARCHAR(16),sort_no INT,"
+                        + "option_identity_hash VARCHAR(64),"
+                        + "UNIQUE(recipe_no,option_item_no,target_line_no))");
             }
             c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_RECIPE_CHANGED"));
             action.accept(c, f);
@@ -231,6 +258,246 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
         });
     }
 
+    static ReplaceRecipeDefinitionReq adjusted(ObjectMapper json, long version, RecipeLineInput target,
+            String extra) {
+        String base = json.writeValueAsString(definition(version, target));
+        return json.readValue(base.substring(0, base.length() - 1) + ",\"adjustments\":" + extra + "}",
+                ReplaceRecipeDefinitionReq.class);
+    }
+    static String adjustment(String id, String option, String line, String action, String qty, String unit) {
+        return "[{" + (id == null ? "" : "\"adjustmentNo\":\"" + id + "\",")
+                + "\"optionItemNo\":\"" + option + "\",\"targetLineNo\":\"" + line
+                + "\",\"action\":\"" + action + "\",\"qty\":" + qty + ",\"unit\":\"" + unit + "\"}]";
+    }
+    private static void options(Fixture f) {
+        String common = "id BIGINT AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) DEFAULT 'MAIN',"
+                + "entity_no VARCHAR(32),created_at DATETIME(3),created_by VARCHAR(32),updated_at DATETIME(3),"
+                + "updated_by VARCHAR(32),version BIGINT DEFAULT 0,deleted INT DEFAULT 0,";
+        f.sql().execute("CREATE TABLE fnb_option_group (" + common + "group_no VARCHAR(32) UNIQUE,"
+                + "name VARCHAR(64),min_qty DECIMAL(18,6),max_qty DECIMAL(18,6),"
+                + "published_revision_no VARCHAR(32),status VARCHAR(16),selection_rules TEXT)");
+        f.sql().execute("CREATE TABLE fnb_option_group_item (" + common + "option_item_no VARCHAR(32) UNIQUE,"
+                + "group_no VARCHAR(32),source_kind VARCHAR(16),spec_value_no VARCHAR(64),modifier_no VARCHAR(32),"
+                + "min_qty DECIMAL(18,6),max_qty DECIMAL(18,6),default_qty DECIMAL(18,6),sort_no INT)");
+        f.sql().update("INSERT INTO fnb_option_group(entity_no,group_no,name,min_qty,max_qty,status) "
+                + "VALUES('E','SUGAR','糖量',0,1,'DRAFT'),('OTHER','FOREIGN','外部',0,1,'DRAFT')");
+        f.sql().update("INSERT INTO fnb_option_group_item(entity_no,option_item_no,group_no,source_kind,"
+                + "spec_value_no,min_qty,max_qty,default_qty,sort_no) VALUES"
+                + "('E','NO_SUGAR','SUGAR','SPEC_VALUE','V1',0,1,0,0),"
+                + "('OTHER','BAD','FOREIGN','SPEC_VALUE','V2',0,1,0,0)");
+    }
+
+    @Test void adjustmentsSaveReplayPreserveAndClearWithoutLosingBaseLineIdentity() {
+        run((c, f) -> {
+            var service = c.getBean(RecipeService.class);
+            var json = c.getBean(ObjectMapper.class);
+            options(f);
+            var id = service.createRecipe("E", "A", "actor", create("TEA", "DEFAULT"), "create")
+                    .recipe().recipeNo();
+            var base = service.replaceDefinition("E", "A", id, "actor",
+                    definition(0, line(null, "MILK", "1", "KG")), "base").recipe().lines().getFirst();
+            var input = line(base.lineNo(), "MILK", "1", "KG");
+            var req = adjusted(json, 1, input, adjustment(null, "NO_SUGAR", base.lineNo(), "SET", "0", "KG"));
+            var saved = service.replaceDefinition("E", "A", id, "actor", req, "adjust");
+            assertThat(json.writeValueAsString(saved)).contains("\"action\":\"SET\"");
+            assertThat(f.sql().queryForObject("SELECT qty FROM fnb_recipe_adjustment", BigDecimal.class))
+                    .isEqualByComparingTo("0");
+            String adjustmentNo = f.sql().queryForObject("SELECT adjustment_no FROM fnb_recipe_adjustment",
+                    String.class);
+            c.getBean(State.class).outage.set(true);
+            assertThat(service.replaceDefinition("E", "A", id, "actor", req, "adjust")).isEqualTo(saved);
+            c.getBean(State.class).outage.set(false);
+            var preserved = service.replaceDefinition("E", "A", id, "actor", definition(2, input), "old-client");
+            assertThat(json.writeValueAsString(preserved)).contains(adjustmentNo);
+            code(() -> service.replaceDefinition("E", "A", id, "actor", definition(3), "orphan"),
+                    ErrorCode.CONFLICT);
+            var clear = service.replaceDefinition("E", "A", id, "actor", adjusted(json, 3, input, "[]"), "clear");
+            assertThat(clear.recipe().version()).isEqualTo(4);
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_recipe_adjustment", Integer.class)).isZero();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isEqualTo(5);
+        });
+    }
+
+    @Test void adjustmentScopeUnitsActionsAndIdsFailWithoutMutationAndOutboxFailureRollsBack() {
+        run((c, f) -> {
+            var service = c.getBean(RecipeService.class);
+            var json = c.getBean(ObjectMapper.class);
+            options(f);
+            var id = service.createRecipe("E", "A", "actor", create("TEA", "DEFAULT"), "create")
+                    .recipe().recipeNo();
+            var base = service.replaceDefinition("E", "A", id, "actor",
+                    definition(0, line(null, "MILK", "1", "KG")), "base").recipe().lines().getFirst();
+            var input = line(base.lineNo(), "MILK", "1", "KG");
+            for (String bad : List.of(adjustment(null, "BAD", base.lineNo(), "SET", "0", "KG"),
+                    adjustment(null, "MISSING", base.lineNo(), "SET", "0", "KG"),
+                    adjustment(null, "NO_SUGAR", "foreign-line", "SET", "0", "KG"),
+                    adjustment(null, "NO_SUGAR", base.lineNo(), "SET", "0", "G"),
+                    adjustment(null, "NO_SUGAR", base.lineNo(), "REMOVE", "1", "KG"),
+                    adjustment(null, "NO_SUGAR", base.lineNo(), "SET", "-1", "KG"),
+                    adjustment(null, "NO_SUGAR", base.lineNo(), "ADD", "0.0000001", "KG"))) {
+                code(() -> service.replaceDefinition("E", "A", id, "actor", adjusted(json, 1, input, bad), "bad"),
+                        ErrorCode.BAD_REQUEST);
+            }
+            code(() -> service.replaceDefinition("E", "A", id, "actor", adjusted(json, 1, input,
+                    adjustment("invented", "NO_SUGAR", base.lineNo(), "SET", "0", "KG")), "bad-id"),
+                    ErrorCode.CONFLICT);
+            c.getBean(State.class).fail.set(true);
+            assertThatThrownBy(() -> service.replaceDefinition("E", "A", id, "actor", adjusted(json, 1, input,
+                    adjustment(null, "NO_SUGAR", base.lineNo(), "REMOVE", "null", "KG")), "rollback"))
+                    .isInstanceOf(IllegalStateException.class);
+            assertThat(service.getRecipe("E", "A", id).recipe().version()).isEqualTo(1);
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_recipe_adjustment", Integer.class)).isZero();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isEqualTo(2);
+        });
+    }
+
+    @Test void adjustmentIdentityCannotRebindAndDifferentMutuallyExclusiveOptionsRemainIndependent() {
+        run((c, f) -> {
+            var service = c.getBean(RecipeService.class);
+            var json = c.getBean(ObjectMapper.class);
+            options(f);
+            f.sql().update("INSERT INTO fnb_option_group_item(entity_no,option_item_no,group_no,source_kind,"
+                    + "spec_value_no,min_qty,max_qty,default_qty,sort_no) "
+                    + "VALUES('E','LESS_SUGAR','SUGAR','SPEC_VALUE','V3',0,1,0,1)");
+            var id = service.createRecipe("E", "A", "actor", create("TEA", "DEFAULT"), "create")
+                    .recipe().recipeNo();
+            var initial = service.replaceDefinition("E", "A", id, "actor", definition(0,
+                    line(null, "MILK", "1", "KG"), line(null, "MILK", "2", "KG")), "base").recipe();
+            var first = initial.lines().getFirst();
+            var second = initial.lines().get(1);
+            var baseLines = initial.lines().stream().map(a -> line(a.lineNo(), a.itemRef(), a.qty().toPlainString(),
+                    a.unit())).toList();
+            var rules = List.of(new RecipeAdjustmentInput(null, "NO_SUGAR", first.lineNo(), "SET", n("0"), "KG"),
+                    new RecipeAdjustmentInput(null, "LESS_SUGAR", first.lineNo(), "SET", n("0.5"), "KG"));
+            var saved = service.replaceDefinition("E", "A", id, "actor",
+                    new ReplaceRecipeDefinitionReq(1L, n("1"), "EA", baseLines, rules), "rules").recipe();
+            assertThat(saved.adjustments()).hasSize(2);
+            var noSugar = saved.adjustments().getFirst();
+            for (var bad : List.of(
+                    new RecipeAdjustmentInput(noSugar.adjustmentNo(), "LESS_SUGAR", first.lineNo(),
+                            "SET", n("0"), "KG"),
+                    new RecipeAdjustmentInput(noSugar.adjustmentNo(), "NO_SUGAR", second.lineNo(),
+                            "SET", n("0"), "KG"))) {
+                code(() -> service.replaceDefinition("E", "A", id, "actor",
+                        new ReplaceRecipeDefinitionReq(2L, n("1"), "EA", baseLines, List.of(bad)), "rebind"),
+                        ErrorCode.CONFLICT);
+            }
+            var duplicate = List.of(rules.getFirst(), rules.getFirst());
+            code(() -> service.replaceDefinition("E", "A", id, "actor",
+                    new ReplaceRecipeDefinitionReq(2L, n("1"), "EA", baseLines, duplicate), "duplicate"),
+                    ErrorCode.BAD_REQUEST);
+            var added = service.replaceDefinition("E", "A", id, "actor",
+                    new ReplaceRecipeDefinitionReq(2L, n("1"), "EA", baseLines, List.of(new RecipeAdjustmentInput(
+                            noSugar.adjustmentNo(), "NO_SUGAR", first.lineNo(), "ADD", n("0.012345"), "KG"))), "add");
+            assertThat(added.recipe().adjustments().getFirst().adjustmentNo()).isEqualTo(noSugar.adjustmentNo());
+            var removed = service.replaceDefinition("E", "A", id, "actor",
+                    new ReplaceRecipeDefinitionReq(3L, n("1"), "EA", baseLines, List.of(new RecipeAdjustmentInput(
+                            noSugar.adjustmentNo(), "NO_SUGAR", first.lineNo(), "REMOVE", null, "KG"))), "remove");
+            assertThat(removed.recipe().adjustments().getFirst().qty()).isNull();
+            assertThat(service.getRecipe("E", "A", id)).isEqualTo(removed);
+            f.sql().update("UPDATE fnb_option_group SET status='DISABLED' WHERE group_no='SUGAR'");
+            code(() -> service.replaceDefinition("E", "A", id, "actor",
+                    new ReplaceRecipeDefinitionReq(4L, n("1"), "EA", baseLines), "disabled"), ErrorCode.BAD_REQUEST);
+            assertThat(service.getRecipe("E", "A", id)).isEqualTo(removed);
+        });
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named="FOOD_TEST_DISPOSABLE", matches="true")
+    void nativeAdjustmentChecksRejectMalformedActionQuantityAndOrder() {
+        run((c, f) -> {
+            String insert = "INSERT INTO fnb_recipe_adjustment(entity_no,created_at,created_by,updated_at,updated_by,"
+                    + "adjustment_no,recipe_no,option_item_no,target_line_no,action,qty,unit,"
+                    + "option_identity_hash,sort_no) "
+                    + "VALUES('E',CURRENT_TIMESTAMP(3),'actor',CURRENT_TIMESTAMP(3),'actor',?,?,?,?,?,?,'KG','"
+                    + "a".repeat(64) + "',?)";
+            for (String action : List.of("UNKNOWN", "REMOVE", "SET", "ADD")) {
+                BigDecimal qty = switch (action) {
+                    case "SET" -> null;
+                    case "ADD" -> n("-1");
+                    default -> n("0");
+                };
+                checkConstraint(() -> f.sql().update(insert, "BAD", "R", "O", "L", action, qty, 0));
+            }
+            checkConstraint(() -> f.sql().update(insert, "BAD", "R", "O", "L", "SET", n("0"), -1));
+            f.sql().update(insert, "A1", "R", "O", "L", "SET", n("0"), 0);
+            assertThatThrownBy(() -> f.sql().update(insert, "A2", "R", "O", "L", "ADD", n("1"), 1))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+            f.sql().update(insert, "A2", "R", "O2", "L", "REMOVE", null, 1);
+        });
+    }
+
+    @Test void actualOptionDeleteAndRecreateCannotSilentlyRebindSavedAdjustmentIdentity() {
+        run((c, f) -> {
+            options(f);
+            f.sql().update("UPDATE fnb_option_group SET selection_rules='{}'");
+            f.sql().execute("CREATE TABLE fnb_dish_option_group(id BIGINT AUTO_INCREMENT PRIMARY KEY,"
+                    + "tenant_no VARCHAR(32) DEFAULT 'MAIN',entity_no VARCHAR(32),created_at DATETIME(3),"
+                    + "created_by VARCHAR(32),updated_at DATETIME(3),updated_by VARCHAR(32),"
+                    + "version BIGINT DEFAULT 0,deleted INT DEFAULT 0,goods_no VARCHAR(32),"
+                    + "group_no VARCHAR(32),sort_no INT)");
+            var template = c.getBean(SqlSessionTemplate.class);
+            for (var mapper : List.of(DishMapper.class, DishOptionGroupMapper.class, ModifierMapper.class)) {
+                if (!template.getConfiguration().hasMapper(mapper)) template.getConfiguration().addMapper(mapper);
+            }
+            var sources = new OptionGroupServiceTest.Sources();
+            var groups = new OptionGroupServiceImpl(c.getBean(OptionGroupMapper.class),
+                    c.getBean(OptionGroupItemMapper.class), c.getBean(ActionLogMapper.class),
+                    c.getBean(IdempotencyService.class), c.getBean("foodOutboxPublisher", OutboxPublisher.class),
+                    c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class),
+                    template.getMapper(DishMapper.class), template.getMapper(DishOptionGroupMapper.class),
+                    template.getMapper(ModifierMapper.class), sources, sources);
+            c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(
+                    Set.of("PLATFORM:FOOD_RECIPE_CHANGED", "PLATFORM:FOOD_OPTION_GROUP_CHANGED"));
+            var service = c.getBean(RecipeService.class);
+            var json = c.getBean(ObjectMapper.class);
+            var id = service.createRecipe("E", "A", "actor", create("TEA", "DEFAULT"), "create")
+                    .recipe().recipeNo();
+            var base = service.replaceDefinition("E", "A", id, "actor",
+                    definition(0, line(null, "MILK", "1", "KG")), "base").recipe().lines().getFirst();
+            var input = line(base.lineNo(), "MILK", "1", "KG");
+            var req = adjusted(json, 1, input, adjustment(null, "NO_SUGAR", base.lineNo(), "SET", "0", "KG"));
+            var saved = service.replaceDefinition("E", "A", id, "actor", req, "adjust");
+            var unchanged = new OptionItemInput("NO_SUGAR", "SPEC_VALUE", "V1", null,
+                    n("0"), n("1"), n("0"), 0);
+            groups.replaceOptionGroupItems("E", "A", "SUGAR", "actor",
+                    new ReplaceOptionGroupItemsReq(0L, List.of(unchanged), List.of(),
+                            new SelectionRules(List.of(), List.of())), "same-identity");
+            var retained = service.replaceDefinition("E", "A", id, "actor", definition(2, input), "safe-preserve");
+            assertThat(retained.recipe().adjustments()).isEqualTo(saved.recipe().adjustments());
+            groups.replaceOptionGroupItems("E", "A", "SUGAR", "actor",
+                    new ReplaceOptionGroupItemsReq(1L, List.of(), List.of(),
+                            new SelectionRules(List.of(), List.of())), "delete-option");
+            var recreated = new OptionItemInput("NO_SUGAR", "SPEC_VALUE", "V99", null,
+                    n("0"), n("1"), n("0"), 0);
+            groups.replaceOptionGroupItems("E", "A", "SUGAR", "actor",
+                    new ReplaceOptionGroupItemsReq(2L, List.of(recreated), List.of(),
+                            new SelectionRules(List.of(), List.of())), "recreate-option");
+            assertThat(f.sql().queryForObject("SELECT spec_value_no FROM fnb_option_group_item "
+                    + "WHERE option_item_no='NO_SUGAR'", String.class)).isEqualTo("V99");
+            assertThat(service.replaceDefinition("E", "A", id, "actor", req, "adjust")).isEqualTo(saved);
+            code(() -> service.replaceDefinition("E", "A", id, "actor", definition(3, input), "preserve"),
+                    ErrorCode.CONFLICT);
+            var previous = saved.recipe().adjustments().getFirst();
+            code(() -> service.replaceDefinition("E", "A", id, "actor", adjusted(json, 3, input,
+                    adjustment(previous.adjustmentNo(), "NO_SUGAR", base.lineNo(), "SET", "0", "KG")), "explicit"),
+                    ErrorCode.CONFLICT);
+            assertThat(service.getRecipe("E", "A", id)).isEqualTo(retained);
+            var accepted = service.replaceDefinition("E", "A", id, "actor", adjusted(json, 3, input,
+                    adjustment(null, "NO_SUGAR", base.lineNo(), "SET", "0", "KG")), "new-identity");
+            assertThat(accepted.recipe().adjustments().getFirst().adjustmentNo())
+                    .isNotEqualTo(previous.adjustmentNo());
+            assertThat(accepted.recipe().adjustments().getFirst().optionIdentityHash())
+                    .isNotEqualTo(previous.optionIdentityHash());
+        });
+    }
+
+    private static void checkConstraint(Runnable action) {
+        assertThatThrownBy(action::run).isInstanceOfSatisfying(DataAccessException.class, failure ->
+                assertThat(failure.getMostSpecificCause()).isInstanceOfSatisfying(SQLException.class, sql ->
+                        assertThat(sql.getErrorCode()).isIn(3819, 4025)));
+    }
+
     static class State {
         final AtomicBoolean fail = new AtomicBoolean();
         final AtomicBoolean badSku = new AtomicBoolean();
@@ -247,9 +514,22 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
                 @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) {
             var b = new MapperFactoryBean<>(RecipeLineMapper.class); b.setSqlSessionTemplate(t); return b;
         }
+        @Bean MapperFactoryBean<RecipeAdjustmentMapper> recipeAdjustments(
+                @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) {
+            var b = new MapperFactoryBean<>(RecipeAdjustmentMapper.class); b.setSqlSessionTemplate(t); return b;
+        }
+        @Bean MapperFactoryBean<OptionGroupItemMapper> recipeOptionItems(
+                @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) {
+            var b = new MapperFactoryBean<>(OptionGroupItemMapper.class); b.setSqlSessionTemplate(t); return b;
+        }
+        @Bean MapperFactoryBean<OptionGroupMapper> recipeOptionGroups(
+                @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) {
+            var b = new MapperFactoryBean<>(OptionGroupMapper.class); b.setSqlSessionTemplate(t); return b;
+        }
         @Bean RecipeService recipeService(RecipeMapper heads, RecipeLineMapper lines, ActionLogMapper actions,
                 IdempotencyService idem, @Qualifier("foodOutboxPublisher") OutboxPublisher outbox,
-                ObjectMapper json, PlatformTransactionManager manager, State state) {
+                ObjectMapper json, PlatformTransactionManager manager, State state, RecipeAdjustmentMapper adjustments,
+                OptionGroupItemMapper items, OptionGroupMapper groups) {
             var catalog = mock(GoodsCatalogQueryPort.class);
             when(catalog.getSku(anyString(), anyString(), anyString())).thenAnswer(i -> {
                 assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
@@ -271,7 +551,8 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
                 if (state.fail.get()) throw new IllegalStateException("after-recipe-outbox");
                 return receipt;
             };
-            return new RecipeServiceImpl(heads, lines, actions, idem, checked, json, manager, catalog, materials);
+            return new RecipeServiceImpl(heads, lines, actions, idem, checked, json, manager, catalog, materials,
+                    adjustments, items, groups);
         }
     }
 }

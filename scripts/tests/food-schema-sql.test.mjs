@@ -90,5 +90,5 @@ test('V3 preserves spec64 without changing frozen V1 or V2',()=>{
  assert.match(renderFoodV1(s),/`spec_value_no` VARCHAR\(32\)/);
  const file=new URL('../../backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V3__option_spec_value_identity_width.sql',import.meta.url);
  assert.match(fs.readFileSync(file,'utf8'),/MODIFY COLUMN `spec_value_no` VARCHAR\(64\)/);
- assert.equal(s.databaseInitialization.targetSchemaVersion,4);
+ assert.equal(s.databaseInitialization.targetSchemaVersion,5);
 });

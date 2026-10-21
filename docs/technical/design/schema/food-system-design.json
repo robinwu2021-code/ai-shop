@@ -6404,6 +6404,20 @@
           "label": "与目标物料一致 Unit",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "sort_no",
+          "type": "int",
+          "label": "草稿调整顺序 Draft adjustment order",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "option_identity_hash",
+          "type": "varchar(64)",
+          "label": "选项来源语义身份摘要 Option semantic identity hash (not CAS)",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
@@ -6416,8 +6430,8 @@
           "target_line_no"
         ]
       ],
-      "rules": "先唯一SET或原值再合计ADD；REMOVE与其他同目标调整互斥；不允许负需求，不能猜少糖等于50%。",
-      "deployment": "PLANNED"
+      "rules": "先唯一SET或原值再合计ADD；REMOVE与其他同目标调整互斥；不允许负需求，不能猜少糖等于50%。 RECIPE-01B仅维护工作配置；省略/null保留，[]清空；同主体有效工作选项及本配方行，编号不可重绑。跨选项冲突在实际选择求值时处理，不提前误判互斥口味。 既有调整保留option_identity_hash，不允许选项删后同号换来源；新来源需新调整号。",
+      "deployment": "MIGRATION_V5"
     },
     {
       "name": "fnb_production_consumption",
@@ -8369,7 +8383,7 @@
       "input": "skuNo:string:本店SKU;recipeCode:string:DEFAULT或受控变体;yieldQty:decimal:正产出;yieldUnit:string:受控单位",
       "output": "recipe:Recipe:服务端生成配方",
       "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；本批仅EA计份、真实物料baseUom；无库存命令；内部Token不替代B端门店权限。单位与物料目录未联通时不得假校验。",
-      "needs": "RECIPE-01A基础草稿已实现：本地及typed远程一致；选配调整和发布未实现。"
+      "needs": "RECIPE-01A/01B草稿已实现：基础物料及选配调整，本地和typed远程一致；发布及实际选择求值未实现。"
     },
     {
       "id": "FOOD-API-149",
@@ -8380,7 +8394,7 @@
       "input": "page?:int32:默认1;size?:int32:默认20最大100;skuNo?:string:本店SKU;status?:string:状态",
       "output": "records:Recipe[]:记录;total:int64:同过滤总数;page:int32:页;size:int32:页长",
       "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；本批仅EA计份、真实物料baseUom；无库存命令；内部Token不替代B端门店权限。",
-      "needs": "RECIPE-01A基础草稿已实现：本地及typed远程一致；选配调整和发布未实现。"
+      "needs": "RECIPE-01A/01B草稿已实现：基础物料及选配调整，本地和typed远程一致；发布及实际选择求值未实现。"
     },
     {
       "id": "FOOD-API-150",
@@ -8391,18 +8405,18 @@
       "input": "",
       "output": "recipe:Recipe:获准配置",
       "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；本批仅EA计份、真实物料baseUom；无库存命令；内部Token不替代B端门店权限。",
-      "needs": "RECIPE-01A基础草稿已实现：本地及typed远程一致；选配调整和发布未实现。"
+      "needs": "RECIPE-01A/01B草稿已实现：基础物料及选配调整，本地和typed远程一致；发布及实际选择求值未实现。"
     },
     {
       "id": "FOOD-API-151",
       "domain": "B",
-      "name": "维护配方基础物料（选配调整待后续）",
+      "name": "维护配方物料与选配调整",
       "method": "PUT",
       "path": "/biz/x/food/recipes/{recipeNo}/definition",
-      "input": "version:int64:CAS;yieldQty:decimal:正产出;yieldUnit:string:固定EA配置份数;lines:RecipeLineInput[]:基础物料，最多100行；adjustments本批拒绝",
+      "input": "version:int64:CAS;yieldQty:decimal:正产出;yieldUnit:string:固定EA配置份数;lines:RecipeLineInput[]:最多100基础行;adjustments?:RecipeAdjustmentInput[]:最多100调整，省略或null保留、空数组清空",
       "output": "recipe:Recipe:新草稿版本",
-      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；本批仅EA计份、真实物料baseUom；无库存命令；内部Token不替代B端门店权限。目标行属于本配方；先SET后ADD，REMOVE互斥；权威单位/损失比例；禁止改历史发布。",
-      "needs": "RECIPE-01A基础草稿已实现：本地及typed远程一致；选配调整和发布未实现。"
+      "guard": "可信主体门店及商品权限；幂等/CAS；基础单位验真；调整目标为本次保留的既有基础行，选项同主体且组DRAFT/ACTIVE；既有调整编号不能重绑，单位与目标一致；SET/ADD非负、REMOVE空；仅草稿配置，不进行选择求值/扣料/发布。",
+      "needs": "RECIPE-01A/01B草稿已实现：基础物料及选配调整，本地和typed远程一致；发布及实际选择求值未实现。"
     },
     {
       "id": "FOOD-API-152",
@@ -8493,7 +8507,7 @@
     "MenuChannelBinding": "bindingNo:string:绑定;menuNo:string:餐牌;storeNo:string:门店;provider:string:提供方;channelAccountRef:string:已有账号引用;externalStoreRef:string:外部门店;status:string:ACTIVE或DISABLED;version:int64:CAS",
     "CatalogSync": "syncNo:string:任务;bindingNo:string:绑定;revisionNo:string:冻结修订;status:string:真实同步状态;items:CatalogSyncItem[]:分项结果;version:int64:CAS",
     "CatalogSyncItem": "lineNo:int32:行;menuItemNo:string:菜项;status:string:状态;externalObjectRef?:string:外部编号;errorCode?:string:脱敏错误;confirmedRevisionNo?:string:确认修订",
-    "Recipe": "recipeNo:string:配方;storeNo:string:门店;skuNo:string:SKU;recipeCode:string:DEFAULT或受控变体;yieldQty:decimal:正配置份数;yieldUnit:string:固定EA，非物理单位;status:string:本批DRAFT;configVersion:int64:内容版本;version:int64:CAS;lines:RecipeLineVO[]:保存的物料事实",
+    "Recipe": "recipeNo:string:配方;storeNo:string:门店;skuNo:string:SKU;recipeCode:string:DEFAULT或受控变体;yieldQty:decimal:正配置份数;yieldUnit:string:固定EA，非物理单位;status:string:本批DRAFT;configVersion:int64:内容版本;version:int64:CAS;lines:RecipeLineVO[]:保存的物料事实;adjustments:RecipeAdjustmentVO[]:选配工作调整，旧回执缺失时空数组",
     "RecipeLineInput": "lineNo?:string:新行省略服务端发号，既有行不能换物料;itemRef:string:32位内获准库存物料;qty:decimal:正净用量18,6;unit:string:必须等于物料baseUom;lossRate:decimal:0至1间损失比例，最多6位小数",
     "RecipeAdjustmentInput": "adjustmentNo?:string:创建省略服务端发号;optionItemNo:string:选项;targetLineNo:string:本配方行;action:string:SET或ADD或REMOVE;qty?:decimal:SET/ADD非负，REMOVE省略;unit:string:与目标一致",
     "ProductionConsumption": "consumptionNo:string:耗用号;storeNo:string:门店;sourceEventNo:string:原制作事件;purpose:string:耗用目的;status:string:真实状态;businessDate:date:营业日;inventoryOperationRef?:string:库存原操作;lines:ConsumptionLine[]:明细",
@@ -8531,7 +8545,8 @@
     "ListBundlesQuery": "page?:int32:默认1;size?:int32:默认20最大100",
     "BundlePublicationSnapshot": "contentSchema:int32:固定2;configKind:string:固定BUNDLE;configNo:string:主SKU;sourceVersion:int64:严格整数工作CAS;bundle:BundleConfigVO:完整冻结定义;skuFacts:SkuIdentityFact[]:所有显式SKU身份版本;approvalRef?:string:仅审批引用",
     "SkuIdentityFact": "skuNo:string:原SKU;goodsNo:string:原商品;entityNo:string:权威经营主体;storeNo:string:验真门店;version:int64:严格非负整数身份版本",
-    "RecipeLineVO": "lineNo:string:行号;itemRef:string:物料;qty:decimal:净用量;unit:string:保存基础单位;lossRate:decimal:损失比例;materialDefinitionHash:string:真实物料定义摘要，不是CAS或换算版本"
+    "RecipeLineVO": "lineNo:string:行号;itemRef:string:物料;qty:decimal:净用量;unit:string:保存基础单位;lossRate:decimal:损失比例;materialDefinitionHash:string:真实物料定义摘要，不是CAS或换算版本",
+    "RecipeAdjustmentVO": "adjustmentNo:string:服务端稳定调整编号;optionItemNo:string:选项;targetLineNo:string:本配方行;action:string:SET或ADD或REMOVE;qty?:decimal:SET/ADD非负，REMOVE省略;unit:string:与目标一致;optionIdentityHash:string:服务端保存来源身份摘要，非物理行号或CAS"
   },
   "commonFields": [
     [
@@ -10887,9 +10902,11 @@
     "executionRecord": "docs/technical/TDD-餐饮系统-数据库初始化.md",
     "additionalMigrations": [
       "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V2__table_occupancy_sharing_mode.sql",
-      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V3__option_spec_value_identity_width.sql"
+      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V3__option_spec_value_identity_width.sql",
+      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V4__recipe_draft_tables.sql",
+      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V5__recipe_adjustment_table.sql"
     ],
-    "targetSchemaVersion": 4
+    "targetSchemaVersion": 5
   },
   "catalogEnhancement": {
     "version": 1,
@@ -11035,6 +11052,9 @@
     "migrationV4Tables": [
       "fnb_recipe",
       "fnb_recipe_line"
+    ],
+    "migrationV5Tables": [
+      "fnb_recipe_adjustment"
     ]
   }
 }

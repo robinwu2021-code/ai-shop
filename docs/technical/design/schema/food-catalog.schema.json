@@ -1733,6 +1733,20 @@
           "label": "与目标物料一致 Unit",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "sort_no",
+          "type": "int",
+          "label": "草稿调整顺序 Draft adjustment order",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "option_identity_hash",
+          "type": "varchar(64)",
+          "label": "选项来源语义身份摘要 Option semantic identity hash (not CAS)",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
@@ -1745,8 +1759,8 @@
           "target_line_no"
         ]
       ],
-      "rules": "先唯一SET或原值再合计ADD；REMOVE与其他同目标调整互斥；不允许负需求，不能猜少糖等于50%。",
-      "deployment": "PLANNED"
+      "rules": "先唯一SET或原值再合计ADD；REMOVE与其他同目标调整互斥；不允许负需求，不能猜少糖等于50%。 RECIPE-01B仅维护工作配置；省略/null保留，[]清空；同主体有效工作选项及本配方行，编号不可重绑。跨选项冲突在实际选择求值时处理，不提前误判互斥口味。 既有调整保留option_identity_hash，不允许选项删后同号换来源；新来源需新调整号。",
+      "deployment": "MIGRATION_V5"
     },
     {
       "name": "fnb_config_revision",

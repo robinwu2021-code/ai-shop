@@ -2,8 +2,21 @@ package ai.neargo.shop.food.config;
 
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.BundleChoiceMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.BundleGroupMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.BundleMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.CheckMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ConfigRevisionMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.DishMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.DishOptionGroupMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ModifierComponentMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ModifierMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.RecipeAdjustmentMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.RecipeLineMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.RecipeMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ReservationMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.SeatMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ServiceCalendarMapper;
@@ -13,48 +26,36 @@ import ai.neargo.shop.food.mapper.FoodMappers.TableMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableOccupancyMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableOperationMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableTokenMapper;
-import ai.neargo.shop.food.service.CheckService;
-import ai.neargo.shop.food.service.DishService;
-import ai.neargo.shop.food.service.OptionGroupService;
-import ai.neargo.shop.food.service.ModifierService;
-import ai.neargo.shop.food.service.RecipeService;
-import ai.neargo.shop.food.service.impl.RecipeServiceImpl;
-import ai.neargo.shop.food.mapper.FoodMappers.RecipeMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.RecipeLineMapper;
-import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
-import ai.neargo.shop.food.service.BundleService;
 import ai.neargo.shop.food.policy.BundlePublicationSource;
-import java.time.Clock;
-import ai.neargo.shop.food.service.impl.BundleServiceImpl;
-import ai.neargo.shop.food.mapper.FoodMappers.BundleMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.BundleGroupMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.BundleChoiceMapper;
+import ai.neargo.shop.food.service.BundleService;
+import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.ConfigRevisionService;
-import ai.neargo.shop.food.service.impl.ConfigRevisionServiceImpl;
-import ai.neargo.shop.food.mapper.FoodMappers.ConfigRevisionMapper;
-import ai.neargo.shop.food.service.impl.ModifierServiceImpl;
-import ai.neargo.shop.food.mapper.FoodMappers.ModifierComponentMapper;
-import ai.neargo.shop.food.service.impl.OptionGroupServiceImpl;
-import ai.neargo.shop.food.service.impl.DishServiceImpl;
-import ai.neargo.shop.food.mapper.FoodMappers.DishMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.DishOptionGroupMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.ModifierMapper;
-import ai.neargo.shop.spi.product.SpecValueCatalogQueryPort;
-import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper;
-import java.util.List;
-import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
-import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.shop.food.service.DiningSessionService;
+import ai.neargo.shop.food.service.DishService;
+import ai.neargo.shop.food.service.ModifierService;
+import ai.neargo.shop.food.service.OptionGroupService;
+import ai.neargo.shop.food.service.RecipeService;
 import ai.neargo.shop.food.service.ReservationService;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.service.TableService;
+import ai.neargo.shop.food.service.impl.BundleServiceImpl;
 import ai.neargo.shop.food.service.impl.CheckServiceImpl;
+import ai.neargo.shop.food.service.impl.ConfigRevisionServiceImpl;
 import ai.neargo.shop.food.service.impl.DiningSessionServiceImpl;
+import ai.neargo.shop.food.service.impl.DishServiceImpl;
+import ai.neargo.shop.food.service.impl.ModifierServiceImpl;
+import ai.neargo.shop.food.service.impl.OptionGroupServiceImpl;
+import ai.neargo.shop.food.service.impl.RecipeServiceImpl;
 import ai.neargo.shop.food.service.impl.ReservationServiceImpl;
 import ai.neargo.shop.food.service.impl.StoreOperationServiceImpl;
 import ai.neargo.shop.food.service.impl.TableServiceImpl;
 import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
+import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
+import ai.neargo.shop.spi.product.SpecValueCatalogQueryPort;
+import java.time.Clock;
+import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -106,6 +107,7 @@ public class FoodAutoConfiguration {
     @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
     @ConditionalOnMissingBean(RecipeService.class)
     RecipeService recipeService(RecipeMapper heads, RecipeLineMapper lines, ActionLogMapper actions,
+            RecipeAdjustmentMapper adjustments, OptionGroupItemMapper optionItems, OptionGroupMapper optionGroups,
             IdempotencyService idem, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectProvider<GoodsCatalogQueryPort> catalogs, ObjectProvider<MaterialCatalogQueryPort> materials) {
@@ -121,7 +123,8 @@ public class FoodAutoConfiguration {
             }
         };
         return new RecipeServiceImpl(heads, lines, actions, idem, publisher, json, manager, catalog,
-                (entity, ids) -> materials.getObject().getMaterials(entity, ids));
+                (entity, ids) -> materials.getObject().getMaterials(entity, ids),
+                adjustments, optionItems, optionGroups);
     }
 
     @Bean

@@ -1,0 +1,30 @@
+-- Recipe adjustment drafts only; preserve V1-V4. No selection execution or inventory commands.
+
+CREATE TABLE `fnb_recipe_adjustment` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT 'BaseEntity自增物理主键，不对外不进URL',
+    `tenant_no` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT '沿用BaseEntity，一期MAIN；不是entity_no，不另启租户体系',
+    `entity_no` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '当前主体或业务发生时主体快照，不等于账号和支付商户号',
+    `created_at` DATETIME(3) NOT NULL COMMENT '沿用MetaObjectHandler及现有LocalDateTime持久化约定',
+    `created_by` VARCHAR(32) NOT NULL COMMENT '当前认证业务键；按现有填充规则，作业SYSTEM',
+    `updated_at` DATETIME(3) NOT NULL COMMENT '沿用公共填充',
+    `updated_by` VARCHAR(32) NOT NULL COMMENT '沿用公共填充',
+    `version` BIGINT NOT NULL DEFAULT 0 COMMENT 'BaseEntity乐观锁',
+    `deleted` INT NOT NULL DEFAULT 0 COMMENT 'BaseEntity逻辑删除；签核和事实表禁止业务归档覆盖历史',
+    `adjustment_no` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '调整编号 Adjustment',
+    `recipe_no` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '配方 Recipe',
+    `option_item_no` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '触发选项 Selection',
+    `target_line_no` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '目标物料行 Material line',
+    `action` VARCHAR(16) NOT NULL COMMENT 'SET / ADD / REMOVE',
+    `qty` DECIMAL(18,6) NULL COMMENT 'SET/ADD非负量，REMOVE为空',
+    `unit` VARCHAR(16) NOT NULL COMMENT '与目标物料一致 Unit',
+    `sort_no` INT NOT NULL COMMENT '草稿调整顺序 Draft adjustment order',
+    `option_identity_hash` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '选项来源语义身份摘要 Option semantic identity hash (not CAS)',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_food_1` (`adjustment_no`),
+    UNIQUE KEY `uk_food_2` (`recipe_no`, `option_item_no`, `target_line_no`),
+    KEY `ix_food_audit` (`entity_no`, `created_at`, `id`),
+    KEY `ix_food_ref_1` (`entity_no`, `option_item_no`, `id`),
+    KEY `ix_food_ref_2` (`entity_no`, `target_line_no`, `id`),
+    CHECK ((`action` = 'REMOVE' AND `qty` IS NULL) OR (`action` IN ('SET', 'ADD') AND `qty` IS NOT NULL AND `qty` >= 0)),
+    CHECK (`sort_no` >= 0)
+) ENGINE=InnoDB COMMENT='选配配方调整 Recipe selection adjustment';

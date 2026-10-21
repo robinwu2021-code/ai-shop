@@ -8,8 +8,8 @@ const added=['fnb_menu_channel_binding','fnb_menu_item_option_group','fnb_recipe
 test('enhancement schema traces nine target objects without pretending to have migrated them',()=>{
  const s=source();assert.equal(s.catalogEnhancement?.version,1);
  assert.equal(s.tables.filter(t=>t.name.startsWith('fnb_')).length,82);
- for(const name of added)assert.equal(s.tables.find(t=>t.name===name)?.deployment,['fnb_recipe','fnb_recipe_line'].includes(name)?'MIGRATION_V4':'PLANNED',name);
- assert.equal(s.databaseInitialization.targetSchemaVersion,4);
+ for(const name of added)assert.equal(s.tables.find(t=>t.name===name)?.deployment,['fnb_recipe','fnb_recipe_line'].includes(name)?'MIGRATION_V4':name==='fnb_recipe_adjustment'?'MIGRATION_V5':'PLANNED',name);
+ assert.equal(s.databaseInitialization.targetSchemaVersion,5);
  assert.equal(s.catalogEnhancement.runtimeEnabled,false);
  assertFrozenFoodV1(renderFoodV1(s));
 });

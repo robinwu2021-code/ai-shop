@@ -16,4 +16,14 @@ public record RecipeVO(@JsonDeserialize(using=MaterialCatalogFacts.TextDeseriali
         @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String status,
         @JsonDeserialize(using=CatalogRevisionDeserializer.class) long version,
         @JsonDeserialize(using=CatalogRevisionDeserializer.class) long configVersion,
-        List<RecipeLineVO> lines) { }
+        List<RecipeLineVO> lines, List<RecipeAdjustmentVO> adjustments) {
+    public RecipeVO {
+        // Historical idempotency receipts predate the additive field.
+        adjustments = adjustments == null ? List.of() : List.copyOf(adjustments);
+    }
+    public RecipeVO(String recipeNo, String storeNo, String skuNo, String recipeCode, BigDecimal yieldQty,
+            String yieldUnit, String status, long version, long configVersion, List<RecipeLineVO> lines) {
+        this(recipeNo, storeNo, skuNo, recipeCode, yieldQty, yieldUnit, status, version, configVersion, lines,
+                List.of());
+    }
+}

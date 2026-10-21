@@ -54,7 +54,7 @@ public final class FoodSchemaValidator {
             require(state.equals("SUCCESS") || state.equals("BASELINE"), "food migration state: " + state);
         }
         var current = flyway.info().current();
-        require(current != null && "4".equals(current.getVersion().getVersion()), "food migration version must be 4");
+        require(current != null && "5".equals(current.getVersion().getVersion()), "food migration version must be 5");
         try (var connection = source.getConnection();
                 var column = connection.getMetaData().getColumns(connection.getCatalog(), connection.getSchema(),
                         "fnb_option_group_item", "spec_value_no")) {
@@ -71,7 +71,7 @@ public final class FoodSchemaValidator {
         missing.addAll(missingCoreCapabilities(actual));
         missing.addAll(missingCoreUniqueKeys(source, actual));
         Collections.sort(missing);
-        return new FoodSchemaReady(true, "4", missing);
+        return new FoodSchemaReady(true, "5", missing);
     }
 
     private static List<String> missingCoreCapabilities(Map<String, Set<String>> actual) {
@@ -94,6 +94,7 @@ public final class FoodSchemaValidator {
         Map<String, List<String>> required = Map.of(
                 "fnb_recipe", List.of("recipe_no", "store_no,sku_no,recipe_code"),
                 "fnb_recipe_line", List.of("line_no", "recipe_no,line_no"),
+                "fnb_recipe_adjustment", List.of("adjustment_no", "recipe_no,option_item_no,target_line_no"),
                 "sys_idempotent", List.of("idem_key,endpoint"),
                 "sys_outbox", List.of("event_no", "source_system,source_event_no", "stream_key,stream_sequence"),
                 "sys_outbox_stream", List.of("stream_key"),
@@ -190,6 +191,10 @@ public final class FoodSchemaValidator {
             line.addAll(List.of("line_no", "recipe_no", "item_ref", "qty", "unit", "conversion_ref", "loss_rate",
                     "material_definition_hash", "sort_no"));
             expected.put("fnb_recipe_line", line);
+            var adjustment = new TreeSet<>(common);
+            adjustment.addAll(List.of("adjustment_no", "recipe_no", "option_item_no", "target_line_no", "action",
+                    "qty", "unit", "sort_no", "option_identity_hash"));
+            expected.put("fnb_recipe_adjustment", adjustment);
             return expected;
         } catch (IllegalStateException ex) { throw ex; }
         catch (Exception ex) { throw new IllegalStateException("Cannot read immutable food V1 manifest"); }

@@ -88,8 +88,10 @@ export function validateFoodDesign(s) {
     must(e.plannedTables.length === 9 && new Set(e.plannedTables).size === 9, 'Incomplete planned enhancement tables');
     const migrated=new Set(e.migrationV4Tables||[]);
     must(migrated.size===2 && migrated.has('fnb_recipe') && migrated.has('fnb_recipe_line'), 'Invalid recipe V4 scope');
+    const adjusted=new Set(e.migrationV5Tables||[]);
+    must(adjusted.size===1 && adjusted.has('fnb_recipe_adjustment'), 'Invalid recipe V5 scope');
     for (const name of e.plannedTables)
-      must(tables.get(name)?.deployment === (migrated.has(name)?'MIGRATION_V4':'PLANNED'), `Unverified deployment ${name}`);
+      must(tables.get(name)?.deployment === (migrated.has(name)?'MIGRATION_V4':adjusted.has(name)?'MIGRATION_V5':'PLANNED'), `Unverified deployment ${name}`);
     must(s.tables.filter(t => t.name.startsWith('fnb_')).length === e.targetBusinessTableCount, 'Stale target table count');
     for (const name of ['fnb_recipe_line', 'fnb_recipe_adjustment'])
       must(tables.get(name)?.fields.some(f => f.name === 'qty' && f.type === 'decimal(18,6)'), 'Recipe quantity precision differs');

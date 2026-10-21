@@ -13,6 +13,8 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration;
 import ai.neargo.shop.food.dto.CreateRecipeReq;
 import ai.neargo.shop.food.dto.ListRecipesQuery;
+import ai.neargo.shop.food.dto.RecipeAdjustmentVO;
+import ai.neargo.shop.food.dto.RecipeLineVO;
 import ai.neargo.shop.food.dto.RecipeResultVO;
 import ai.neargo.shop.food.dto.RecipeVO;
 import ai.neargo.shop.food.dto.ReplaceRecipeDefinitionReq;
@@ -56,6 +58,26 @@ class RecipeApiTest {
                     .content("{\"version\":0,\"yieldQty\":1,\"yieldUnit\":\"EA\",\"lines\":[]}"))
                     .andExpect(jsonPath("$.data.recipe.version").value(1));
             assertThat(c.getBean(Calls.class).count).hasValue(4);
+        });
+    }
+
+    @Test void definitionAcceptsExplicitAdjustmentAndExposesItThroughOriginalEnvelope() {
+        runner.run(c -> {
+            var mvc = mvc(c);
+            String body = "{\"version\":0,\"yieldQty\":1,\"yieldUnit\":\"EA\",\"lines\":["
+                    + "{\"lineNo\":\"L1\",\"itemRef\":\"MILK\",\"qty\":1,\"unit\":\"KG\",\"lossRate\":0}],"
+                    + "\"adjustments\":["
+                    + "{\"optionItemNo\":\"NO_SUGAR\",\"targetLineNo\":\"L1\",\"action\":\"SET\","
+                    + "\"qty\":0,\"unit\":\"KG\"}]}";
+            mvc.perform(put("/biz/x/food/recipes/R1/definition").header("Authorization", token(c, "staff"))
+                    .header("Idempotency-Key", "edit").contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(jsonPath("$.data.recipe.adjustments[0].adjustmentNo").value("AD1"))
+                    .andExpect(jsonPath("$.data.recipe.adjustments[0].qty").value(0));
+            mvc.perform(put("/biz/x/food/recipes/R1/definition").header("Authorization", token(c, "staff"))
+                    .header("Idempotency-Key", "bad").contentType(MediaType.APPLICATION_JSON)
+                    .content(body.replace("\"NO_SUGAR\"", "123")))
+                    .andExpect(jsonPath("$.code").value(10400));
+            assertThat(c.getBean(Calls.class).count).hasValue(1);
         });
     }
 
@@ -105,7 +127,19 @@ class RecipeApiTest {
                 }
                 @Override public RecipeResultVO replaceDefinition(String entity, String store, String id,
                         String actor, ReplaceRecipeDefinitionReq req, String key) {
-                    assertThat(id).isEqualTo("R1"); return result(entity, store, 1);
+                    assertThat(id).isEqualTo("R1");
+                    if (req.adjustments() != null && !req.adjustments().isEmpty()) {
+                        assertThat(actor).isEqualTo("staff");
+                        assertThat(req.adjustments().getFirst().optionItemNo()).isEqualTo("NO_SUGAR");
+                        var initial = result(entity, store, 1).recipe();
+                        return new RecipeResultVO(new RecipeVO(initial.recipeNo(), store, "TEA", "DEFAULT",
+                                BigDecimal.ONE, "EA", "DRAFT", 1, 1,
+                                List.of(new RecipeLineVO("L1", "MILK", BigDecimal.ONE, "KG", BigDecimal.ZERO,
+                                        "a".repeat(64))),
+                                List.of(new RecipeAdjustmentVO("AD1", "NO_SUGAR", "L1", "SET",
+                                        BigDecimal.ZERO, "KG", "b".repeat(64)))));
+                    }
+                    return result(entity, store, 1);
                 }
                 @Override public RecipeResultVO getRecipe(String entity, String store, String id) {
                     assertThat(id).isEqualTo("R1"); return result(entity, store, 0);

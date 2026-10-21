@@ -48,6 +48,7 @@ public final class RecipeDefinitionPolicy {
             if (loss.compareTo(BigDecimal.ONE) >= 0) throw BizException.of(ErrorCode.BAD_REQUEST);
             return new RecipeLineInput(line.lineNo(), line.itemRef(), quantity(line.qty(), true), line.unit(), loss);
         }).toList();
-        return new ReplaceRecipeDefinitionReq(req.version(), quantity(req.yieldQty(), true), req.yieldUnit(), lines);
+        return new ReplaceRecipeDefinitionReq(req.version(), quantity(req.yieldQty(), true), req.yieldUnit(), lines,
+                RecipeAdjustmentPolicy.normalize(req.adjustments()));
     }
 }

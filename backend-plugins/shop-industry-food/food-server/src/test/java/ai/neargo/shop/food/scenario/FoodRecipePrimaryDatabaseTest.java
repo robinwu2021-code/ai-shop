@@ -9,6 +9,7 @@ import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.dto.CreateRecipeReq;
 import ai.neargo.shop.food.dto.ListRecipesQuery;
+import ai.neargo.shop.food.dto.RecipeAdjustmentInput;
 import ai.neargo.shop.food.dto.RecipeLineInput;
 import ai.neargo.shop.food.dto.ReplaceRecipeDefinitionReq;
 import ai.neargo.shop.food.server.FoodApplication;
@@ -170,6 +171,33 @@ class FoodRecipePrimaryDatabaseTest {
                         for (String table : List.of("fnb_action_log", "sys_outbox", "sys_idempotent")) {
                             assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isEqualTo(2);
                         }
+                        sql.update("INSERT INTO fnb_option_group(entity_no,created_at,created_by,updated_at,updated_by,"
+                                + "group_no,name,min_qty,max_qty,status,selection_rules) "
+                                + "VALUES('E',CURRENT_TIMESTAMP(3),"
+                                + "'operator',"
+                                + "CURRENT_TIMESTAMP(3),'operator','SUGAR','Sugar',0,1,'DRAFT','{}')");
+                        sql.update("INSERT INTO fnb_option_group_item(entity_no,created_at,created_by,updated_at,"
+                                + "updated_by,option_item_no,group_no,source_kind,spec_value_no,min_qty,max_qty,"
+                                + "default_qty,sort_no) VALUES('E',CURRENT_TIMESTAMP(3),'operator',"
+                                + "CURRENT_TIMESTAMP(3),"
+                                + "'operator','NO_SUGAR','SUGAR','SPEC_VALUE','V1',0,1,0,0)");
+                        var baseLine = view.lines().getFirst();
+                        var adjustmentDefinition = new ReplaceRecipeDefinitionReq(1L, BigDecimal.ONE, "EA",
+                                List.of(new RecipeLineInput(baseLine.lineNo(), baseLine.itemRef(), baseLine.qty(),
+                                        baseLine.unit(), baseLine.lossRate())),
+                                List.of(new RecipeAdjustmentInput(null, "NO_SUGAR", baseLine.lineNo(), "SET",
+                                        BigDecimal.ZERO, "KG")));
+                        var adjustmentCommand = new RecipeInternalApi.UpdateCommand("E", "A", id, "operator",
+                                "adjust", adjustmentDefinition);
+                        var adjusted = api.replaceDefinition(adjustmentCommand);
+                        assertThat(adjusted.recipe().adjustments()).hasSize(1);
+                        assertThat(adjusted.recipe().adjustments().getFirst().qty()).isEqualByComparingTo("0");
+                        assertThat(api.replaceDefinition(adjustmentCommand)).isEqualTo(adjusted);
+                        assertThat(api.getRecipe(new RecipeInternalApi.GetQuery("E", "A", id))).isEqualTo(adjusted);
+                        assertThat(api.listRecipes(new RecipeInternalApi.Lookup("E", "A", null)).records())
+                                .containsExactly(adjusted.recipe());
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_recipe_adjustment", Integer.class))
+                                .isOne();
                         assertThat(bridgeFailure.get()).isNull();
                         for (String table : List.of("prd_goods", "ord_order")) {
                             assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();

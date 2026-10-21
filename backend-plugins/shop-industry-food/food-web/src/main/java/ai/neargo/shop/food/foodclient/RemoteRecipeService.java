@@ -15,6 +15,7 @@ import ai.neargo.shop.svc.ServiceName;
 import ai.neargo.svc.client.ServiceCallException;
 import ai.neargo.svc.client.ServiceCalls;
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.function.Supplier;
@@ -31,7 +32,8 @@ public class RemoteRecipeService implements RecipeService {
         var v = result == null ? null : result.recipe();
         if (!valid(v, store) || !req.skuNo().equals(v.skuNo()) || !req.recipeCode().equals(v.recipeCode())
                 || !same(req.yieldQty(), v.yieldQty()) || !req.yieldUnit().equals(v.yieldUnit())
-                || v.version() != 0 || v.configVersion() != 0 || !"DRAFT".equals(v.status()) || !v.lines().isEmpty()) {
+                || v.version() != 0 || v.configVersion() != 0 || !"DRAFT".equals(v.status())
+                || !v.lines().isEmpty() || !v.adjustments().isEmpty()) {
             throw new IllegalStateException("Invalid recipe creation receipt");
         }
         return copy(v);
@@ -56,6 +58,23 @@ public class RemoteRecipeService implements RecipeService {
                     || !output.itemRef().equals(input.itemRef()) || !output.unit().equals(input.unit())
                     || !same(output.qty(), input.qty()) || !same(output.lossRate(), input.lossRate())) {
                 throw new IllegalStateException("Invalid recipe line receipt");
+            }
+        }
+        if (req.adjustments() != null) {
+            if (v.adjustments().size() != req.adjustments().size()) {
+                throw new IllegalStateException("Invalid recipe adjustment receipt");
+            }
+            for (int i = 0; i < req.adjustments().size(); i++) {
+                var input = req.adjustments().get(i);
+                var output = v.adjustments().get(i);
+                if (input == null || input.adjustmentNo() != null
+                        && !input.adjustmentNo().equals(output.adjustmentNo())
+                        || !output.optionItemNo().equals(input.optionItemNo())
+                        || !output.targetLineNo().equals(input.targetLineNo())
+                        || !output.action().equals(input.action()) || !output.unit().equals(input.unit())
+                        || !(output.qty() == null && input.qty() == null || same(output.qty(), input.qty()))) {
+                    throw new IllegalStateException("Invalid recipe adjustment receipt");
+                }
             }
         }
         return copy(v);
@@ -90,7 +109,8 @@ public class RemoteRecipeService implements RecipeService {
 
     private static RecipeResultVO copy(RecipeVO v) {
         return new RecipeResultVO(new RecipeVO(v.recipeNo(), v.storeNo(), v.skuNo(), v.recipeCode(), v.yieldQty(),
-                v.yieldUnit(), v.status(), v.version(), v.configVersion(), List.copyOf(v.lines())));
+                v.yieldUnit(), v.status(), v.version(), v.configVersion(), List.copyOf(v.lines()),
+                List.copyOf(v.adjustments())));
     }
     private static boolean valid(RecipeVO v, String store) {
         if (v == null || !MaterialCatalogFacts.validKey(v.recipeNo(), 32) || !store.equals(v.storeNo())
@@ -107,6 +127,21 @@ public class RemoteRecipeService implements RecipeService {
                     || !quantity(line.qty(), true) || !quantity(line.lossRate(), false)
                     || line.lossRate().compareTo(BigDecimal.ONE) >= 0 || line.materialDefinitionHash() == null
                     || !line.materialDefinitionHash().matches("[a-f0-9]{64}")) return false;
+        }
+        var targets = new HashMap<String, String>();
+        v.lines().forEach(line -> targets.put(line.lineNo(), line.unit()));
+        var adjustmentIds = new HashSet<String>();
+        var optionTargets = new HashSet<List<String>>();
+        if (v.adjustments().size() > 100) return false;
+        for (var a : v.adjustments()) {
+            if (a == null || a.optionIdentityHash() == null || !a.optionIdentityHash().matches("[a-f0-9]{64}")
+                    || !MaterialCatalogFacts.validKey(a.adjustmentNo(), 32)
+                    || !adjustmentIds.add(a.adjustmentNo()) || !MaterialCatalogFacts.validKey(a.optionItemNo(), 32)
+                    || !MaterialCatalogFacts.validKey(a.targetLineNo(), 32)
+                    || !optionTargets.add(List.of(a.optionItemNo(), a.targetLineNo()))
+                    || a.unit() == null || !a.unit().equals(targets.get(a.targetLineNo()))
+                    || !List.of("SET", "ADD", "REMOVE").contains(a.action() == null ? "" : a.action())
+                    || ("REMOVE".equals(a.action()) ? a.qty() != null : !quantity(a.qty(), false))) return false;
         }
         return true;
     }

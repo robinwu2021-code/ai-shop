@@ -1,21 +1,21 @@
 package ai.neargo.shop.food.mapper;
 
 import ai.neargo.shop.food.entity.FnbActionLog;
-import ai.neargo.shop.food.entity.FnbRecipe;
-import ai.neargo.shop.food.entity.FnbRecipeLine;
 import ai.neargo.shop.food.entity.FnbBundle;
-import ai.neargo.shop.food.entity.FnbBundleGroup;
 import ai.neargo.shop.food.entity.FnbBundleChoice;
+import ai.neargo.shop.food.entity.FnbBundleGroup;
+import ai.neargo.shop.food.entity.FnbCheck;
+import ai.neargo.shop.food.entity.FnbConfigRevision;
 import ai.neargo.shop.food.entity.FnbDish;
 import ai.neargo.shop.food.entity.FnbDishOptionGroup;
-import ai.neargo.shop.food.entity.FnbOptionGroup;
-import ai.neargo.shop.food.entity.FnbModifier;
-import ai.neargo.shop.food.entity.FnbConfigRevision;
-import ai.neargo.shop.food.entity.FnbModifierComponent;
-import ai.neargo.shop.food.entity.FnbOptionGroupItem;
-
-import ai.neargo.shop.food.entity.FnbCheck;
 import ai.neargo.shop.food.entity.FnbGuestSession;
+import ai.neargo.shop.food.entity.FnbModifier;
+import ai.neargo.shop.food.entity.FnbModifierComponent;
+import ai.neargo.shop.food.entity.FnbOptionGroup;
+import ai.neargo.shop.food.entity.FnbOptionGroupItem;
+import ai.neargo.shop.food.entity.FnbRecipe;
+import ai.neargo.shop.food.entity.FnbRecipeAdjustment;
+import ai.neargo.shop.food.entity.FnbRecipeLine;
 import ai.neargo.shop.food.entity.FnbReservation;
 import ai.neargo.shop.food.entity.FnbSeat;
 import ai.neargo.shop.food.entity.FnbServiceCalendar;
@@ -28,15 +28,20 @@ import ai.neargo.shop.food.entity.FnbTableToken;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.time.LocalDateTime;
 import java.util.List;
-import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 /** 按实际落地的持久化资源增加嵌套 Mapper，不预生成全域空壳。 */
 public final class FoodMappers {
     private FoodMappers() {
+    }
+
+    public interface RecipeAdjustmentMapper extends BaseMapper<FnbRecipeAdjustment> {
+        @Delete("DELETE FROM fnb_recipe_adjustment WHERE entity_no=#{entity} AND recipe_no=#{recipe}")
+        int replaceDraftRows(@Param("entity") String entity, @Param("recipe") String recipe);
     }
 
     public interface RecipeMapper extends BaseMapper<FnbRecipe> { }
