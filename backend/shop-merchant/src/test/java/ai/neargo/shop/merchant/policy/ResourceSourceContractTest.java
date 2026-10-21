@@ -9,6 +9,7 @@ import ai.neargo.shop.merchant.policy.ResourceDemandNormalizer.Interval;
 import ai.neargo.shop.merchant.service.ResourceAdmissionService.Qualification;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
+import java.util.AbstractList;
 import java.util.List;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
@@ -106,6 +107,40 @@ class ResourceSourceContractTest {
     void emptyPlansAndForeignQualificationGroupsAreRejected() {
         assertThatThrownBy(() -> encode(List.of(), List.of())).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> encode(demands(START), List.of(new Qualification("OTHER", "L", "G", null))))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void adapterRejectsOversizedDemandCollectionBeforeReadingItsElements() {
+        List<Demand> oversized = new AbstractList<>() {
+            @Override
+            public int size() {
+                return 10001;
+            }
+
+            @Override
+            public Demand get(int index) {
+                throw new AssertionError("oversized evidence must not be traversed");
+            }
+        };
+        assertThatThrownBy(() -> ResourcePlanCodec.encode(oversized, List.of()))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void adapterRejectsOversizedIntervalsBeforeReadingTheirElements() {
+        List<Interval> oversized = new AbstractList<>() {
+            @Override
+            public int size() {
+                return 10001;
+            }
+
+            @Override
+            public Interval get(int index) {
+                throw new AssertionError("oversized intervals must not be traversed");
+            }
+        };
+        assertThatThrownBy(() -> ResourcePlanCodec.encode(List.of(new Demand("R", "L", 1, oversized)), List.of()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

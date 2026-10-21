@@ -1,10 +1,10 @@
 # SHR-02b 共用资源容量与组合占用：详细需求与方案
 
-> 状态：**实施中；02b-1a/1b/1c、2a准入及2b-1来源消费防线完成；真实来源适配/原子预留待实施** · 2026-10-21 · 档位2。
+> 状态：**实施中；02b-1a/1b/1c、2a准入及2b-1来源消费防线、2b-2a独立行业合同复用完成；真实来源适配/原子预留待实施** · 2026-10-21 · 档位2。
 > 基线：美业隔离分支378a5f2f7；只读核验最新本地餐饮ca71f6092，共用merchant/base及平台迁移相对8e732eeb7无新增。
 > 上游：[多端功能矩阵](../requirements/美业系统-多端功能矩阵.md) D01–D05、H04–H07；[主执行计划](./TDD-美业系统-后端开发计划.md) §11–13。
 > 既有设计：[字段真源](./design/schema/beauty-database-design.json) · [日历设计](./design/美业系统-预约工作台与日历API设计.md) · [旧资源方案](./design/TDD-预约资源域-多行业完整方案.md)。
-> 决策提案：[ADR-043](./ADR/ADR-043-共用资源仲裁归属与命令恢复.md)。交付状态按§5.4–5.8分批记录；未交付的接口、业务任务与跨域恢复仍待后续验收。
+> 决策提案：[ADR-043](./ADR/ADR-043-共用资源仲裁归属与命令恢复.md)。交付状态按§5.4–5.9分批记录；未交付的接口、业务任务与跨域恢复仍待后续验收。
 
 ## §0 定位、现状与需求追溯
 
@@ -315,6 +315,32 @@ validUntil是本次执行许可窗口，**不是来源fence自动解冻时刻**�
 本批不证明任何真实源的持久冻结/权限、支付/权益、时间提前量/TTL/bucket事务或业务可预约；合同double不能当三行业接入验收。
 **Review Focus：** 摘要遗漏资格豁免/区间；非授权状态携带许可；错来源/actor/范围重用；事务内远程调用或超时误拒绝持久命令；签发后及提交前到期。
 
+### 2.8 02b-2b-2a独立行业冻结计划复用（2026-10-21）
+
+档位2，基线6d0f7a005。最新餐饮cb943bcef无base/merchant/平台迁移增量。
+沿用R07/R10–R18、ADR-043及§2.7授权，executing-plans原会话实施。
+前置检查发现编码器引用merchant内部Demand/Qualification，独立美业不能依赖该域实现。
+先下沉纯合同，再实施真实美业来源冻结；编码器不能替代实际来源权限和持久fence。
+
+| 单元 | 文件/方法 | 验收 |
+|---|---|---|
+| 共用编码 | shop-base/spi/resource/ResourcePlanContract及内嵌FrozenPlan/Demand/Interval/Qualification | encode/decode/hash复用原算法；严格V1 JSON、顺序、精度、UTF8原字节摘要兼容 |
+| 摘要复用 | IdempotencyScope保持包名/方法/实现，从store-mybatis移至base | 不复制算法，不倒置依赖；原二进制类名与错误语义不变 |
+| 原消费者 | merchant.policy.ResourcePlanCodec保留原接口及记录类型，转换到共用合同 | 原14项不改测试继续通过，无调用点/数据迁移 |
+| 独立美业 | beauty-core ResourcePlanContractTest | 仅用base读取并生成多段资源计划及技师资格，不引merchant |
+
+- [x] base反射测试先RED：不存在共用类必须断言失败；固定V1字节/摘要、严格解析、不可变证据。
+- [x] 下沉合同与摘要工具，保留merchant适配；base/merchant全模块及独立美业回归。
+- [x] 原生消费防线与美业持久化回归；消融严格字段守卫RED并恢复GREEN。
+- [x] 一次独立只读审查，重要问题一次RED→GREEN；三处对账、本地提交。
+
+**后续持久冻结方案：** 独立意图/fence记录，不复用数量guard或提交JSON；受信服务依据预约、项目安排及生效定义生成完整计划，持久绑定来源修订和原命令。
+freeze/query均验证实际成员及门店权限，禁止回显输入即授权。取消/改期/到店等写者与冻结共用预约根锁。
+相同Binding重试读取原决策，不延长许可、不换command；validUntil过期不解除fence。
+可信查询证实原命令终态后才解除；未知提交保持保护，来源本地事务不包远程调用。
+追加V2而不改冻结V1，同时验收升级/全新库及独立/嵌入部署readiness。
+该持久化阶段尚未交付；本批不注册来源provider，不开放预约/收费，不新增DDL/HTTP/权限。
+
 ## §3 桶、区间与完整组合
 
 ### 3.1 候选工程参数
@@ -578,6 +604,34 @@ UUID临时MySQL8.4、每例独立数据库、真实主库持久层/Service与正
 SourcePermission→准入→容量写入的完整处理器、Clock提前量/TTL/生命周期、Outbox/Job/对账/维护入口、全部部署排序规则与完整Flyway。
 既有SchemaDrift/血缘失败见§5.5，本批无相关变更且未重跑全局闸门。未接营业库、未推送/合并。
 
+### 5.9 02b-2b-2a共用合同下沉验收（2026-10-21）
+
+| 验收 | 实际结果 | 日志 |
+|---|---|---|
+| 共用合同先行 | 缺少共享类5项断言失败、0错误；下沉后5通过 | `/tmp/resource-plan-shared-red.log`、`/tmp/resource-plan-shared-final.log` |
+| 适配器规模反例 | 16项中2断言失败：超限元素被提前遍历；转换前守卫补回后16通过 | `/tmp/resource-plan-adapter-bounds-red.log`、`/tmp/resource-plan-shared-final.log` |
+| 严格字段消融 | 5项中1断言失败、0错误；源码自动恢复后5通过 | `/tmp/resource-plan-ablation.log`、`/tmp/resource-plan-restored.log` |
+| clean共享构建 | merchant及依赖289通过、0失败/错误/跳过，BUILD SUCCESS | `/tmp/resource-plan-shared-final.log` |
+| 美业独立构建 | 56通过、0失败/错误/跳过（新增2项共用计划验收） | `/tmp/resource-plan-beauty-final.log` |
+| 实际MySQL | 消费防线16、预约/服务任务持久化25全部通过 | `/tmp/resource-plan-source-native.log`、`/tmp/resource-plan-beauty-native.log` |
+| 架构及旧路径 | 62项中61通过、1基线失败（见下）；零售/原预约/人员37与幂等9全部通过 | `/tmp/resource-plan-architecture-legacy.log` |
+| 数据与文档契约 | 五组设计、冻结V1、Node7、SQL无新增方言通过 | `/tmp/resource-plan-node-checks.log`、`/tmp/resource-plan-sql-check.log` |
+
+`IdempotencyScope`原文件与base新位置SHA256均为
+`199336b790d0cb74bb77ab4faf8069b628645ed50afbf67ea2d31e5259033973`；源码字节完全相同。
+clean安装后检查JAR：base含唯一该FQN及共用合同，store-mybatis不再包含该类，无残留重复定义。
+共用合同置于现有`spi.resource`，不新增未登记顶层域，不添加merchant或MyBatis依赖。
+独立美业实际引用共用类型保留技师资格和床位准备/服务/清洁多段计划；编解码仍不是资格准入或来源授权。
+
+一次独立只读审查无Critical/Important；Minor延期：增加中文引用固定摘要及字符数未超限但UTF8字节超限的反例。
+当前生产按UTF8长度前缀摘要并限制字节数，未发现实现错误；不为非阻断测试增强扩大本批。
+审查未认证运行中的回归/消融结果，以上结果由原实施者实际执行并读取。
+实际来源仍为合同double，非持久fence；新表/升级、权限、相反写者互斥、终态解冻及三行业接入均未交付。
+本次额外运行ArchitectureTest16项，15通过、1失败：noFullyQualifiedReferences发现
+OpsPointsInspectionController原有全限定PathVariable（84行）；HEAD原文件与当前文件相同，按原守卫相同扫描在两者均得到同一违规。
+基线证据`/tmp/resource-plan-architecture-baseline.log`；不改积分运营代码、不放宽守卫。
+同时旧零售/预约/人员37项、幂等及手工写入9项均通过。沿用§5.5的SchemaDrift/血缘旧失败，本批未重跑这些全局闸门，不宣称全仓或上线验收通过。
+
 ## §6 替换、实际交接与超时
 
 ### 6.1 未开工整计划原子替换
@@ -703,6 +757,20 @@ Clock/TTL、完整预留/保护/确认/释放、Outbox/恢复及营业入口仍�
 未新增真实源适配器是明确启用门禁，不是模拟提供者已可营业；不能把数量分配guard或一次状态查询冒充持久资源fence。
 下一批02b-2b-2先实现并实际验证美业来源冻结适配：来源意图/修订/计划绑定、成员权限、同Binding重放、相反动作互斥、原号恢复与终态核实；
 零售/餐饮按同合同分别接入，再把许可/原计划/2a准入接入2c容量事务。当前仍无营业入口/容量预留承诺。
+
+### 6.11 02b-2b-2a文件对账
+
+| §2.8单元 | 实际实现 |
+|---|---|
+| 共用编码 | shop-base/spi/resource/ResourcePlanContract.java；原严格算法与新增独立输入records |
+| 原摘要工具 | IdempotencyScope.java从shop-store-mybatis移到shop-base，同包名及文件字节 |
+| 消费兼容 | merchant.policy.ResourcePlanCodec保留入口/记录，委托共用合同并先检查转换规模 |
+| 真实测试 | base/spi/resource/ResourcePlanContractTest；merchant ResourceSourceContractTest追加2项；beauty-core ResourcePlanContractTest |
+| 文档 | 本文件§2.8/§5.9/§6.11、后端开发计划§20、ADR-043、README与生成分层/词汇/索引 |
+
+偏差：先消除独立美业无法复用merchant内部类型的依赖阻塞，而非直接新增来源表；原因和代价已记录ledger。
+后续02b-2b-2b按§2.8实现美业真实来源意图/冻结、权限、修改互斥及原号恢复；随后零售/餐饮，再接原子容量事务。
+本批不增加Controller/Service/Mapper空壳，也不将shared编码器注册为来源provider。
 
 ## §7 数据结构补充提案
 
