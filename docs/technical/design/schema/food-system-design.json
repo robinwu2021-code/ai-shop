@@ -6836,8 +6836,8 @@
       "path": "/biz/x/food/stores/{storeNo}/bundles",
       "input": "skuNo:string:主SKU",
       "output": "configNo:string:主SKU业务号;version:int64:草稿CAS;status:string:DRAFT",
-      "guard": "主SKU属于当前主体且未重复建套餐定义；configVersion由服务端分配，不接受客户端指定",
-      "needs": "餐饮新增"
+      "guard": "已实现；原GOODS及当前门店目录；原SKU身份事务外验真，主SKU唯一且不得已为其他套餐成员或补差基准；CAS/幂等回执/审计/Outbox；不接受自报主体或价格库存",
+      "needs": "已实现套餐空草稿登记；冻结发布API012及成交报价后续"
     },
     {
       "id": "FOOD-API-011",
@@ -6846,9 +6846,9 @@
       "method": "GET",
       "path": "/biz/x/food/stores/{storeNo}/bundles/{configNo}",
       "input": "",
-      "output": "config:Config:具体配置，类型由路径确定",
-      "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
-      "needs": "餐饮新增"
+      "output": "config:BundleConfigVO:真实套餐工作头和有序组/选项",
+      "guard": "已实现；原GOODS及当前门店目录；主体共享工作头，跨主体404；拒绝查询参数，不依赖上游在线",
+      "needs": "已实现草稿查询，不代表门店可售"
     },
     {
       "id": "FOOD-API-012",
@@ -6922,10 +6922,10 @@
       "name": "套餐选择组配置",
       "method": "PUT",
       "path": "/biz/x/food/bundles/{skuNo}/definition",
-      "input": "version:int64:版本;groups:BundleGroupInput[]:groupNo名称minQty/maxQty/baseSkuNo;choices:BundleChoiceInput[]:choiceNo/groupNo/skuNo/unitsPerPick/priceMode/defaultQty/minQty/maxQty",
+      "input": "version:int64:严格非负整数CAS;groups:BundleGroupInput[]:完整组集合最多30;choices:BundleChoiceInput[]:完整选项集合最多100",
       "output": "configNo:string:SKU;version:int64:新版本",
-      "guard": "配置权限；priceMode仅INCLUDED/ADD_SKU/DIFF_BASE；无递归套餐",
-      "needs": "核心组合报价与库存展开缺口"
+      "guard": "已实现；原GOODS及当前门店；原主SKU/成员/补差基准身份事务外验真；SERIALIZABLE双向禁止嵌套；业务号不可盗用或切换身份；数量精度/默认/容量校验，DIFF_BASE必须有基准；CAS/幂等/审计/Outbox原子；只替换工作定义",
+      "needs": "已实现固定/自选套餐草稿；金额由原报价权威确定，正式库存展开后续"
     },
     {
       "id": "FOOD-API-019",
@@ -8034,9 +8034,9 @@
       "method": "GET",
       "path": "/biz/x/food/stores/{storeNo}/bundles",
       "input": "page?:int32:默认1;size?:int32:默认20最大100",
-      "output": "records:Config[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
-      "needs": "餐饮新增"
+      "output": "records:BundleConfigVO[]:主体共享管理列表;total:int64:真实总数;page:int32:页;size:int32:页长",
+      "guard": "已实现；原GOODS及门店入口权限；主体过滤先于count分页，SKU稳定排序，真实有序组/选项；拒绝未知/重复参数；无物理id",
+      "needs": "已实现草稿管理，非可售目录"
     },
     {
       "id": "FOOD-API-120",
@@ -8506,7 +8506,15 @@
     "ModifierConfigVO": "configNo:string:配料业务号;kind:string:ADDON或COMBO;version:int64:工作头CAS;status:string:DRAFT或ACTIVE或DISABLED;data:ModifierConfigData:管理定义",
     "PublishConfigReq": "version:int64:工作头CAS整数;effectiveAt:datetime:带时区毫秒精度;approvalRef?:string:审批业务引用",
     "ConfigRevisionContent": "publication:ConfigRevision:修订元数据;definitionSnapshot:string:仅内部读取的完整JSON冻结文档",
-    "PublicationDependency": "revisionNo:string:依赖修订;configKind:string:类型;configNo:string:对象;revision:int64:单调修订;contentHash:string:规范摘要"
+    "PublicationDependency": "revisionNo:string:依赖修订;configKind:string:类型;configNo:string:对象;revision:int64:单调修订;contentHash:string:规范摘要",
+    "CreateBundleReq": "skuNo:string:原主SKU业务号",
+    "CreateBundleResultVO": "configNo:string:原SKU;version:int64:0;status:string:DRAFT",
+    "ReplaceBundleDefinitionReq": "version:int64:严格非负整数CAS;groups:BundleGroupInput[]:最多30;choices:BundleChoiceInput[]:最多100",
+    "BundleMutationVO": "configNo:string:原SKU;version:int64:更新后工作头CAS",
+    "BundleConfigVO": "configNo:string:原SKU;version:int64:工作头CAS;status:string:DRAFT或ACTIVE或DISABLED;data:BundleConfigData:真实管理定义",
+    "BundleConfigData": "configVersion:int64:定义变更次数非发布修订;publishedRevisionNo?:string:管理提示;groups:BundleGroupInput[]:有序组;choices:BundleChoiceInput[]:有序选项",
+    "GetBundleVO": "config:BundleConfigVO:真实管理定义",
+    "ListBundlesQuery": "page?:int32:默认1;size?:int32:默认20最大100"
   },
   "commonFields": [
     [

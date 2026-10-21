@@ -1,6 +1,9 @@
 package ai.neargo.shop.food.mapper;
 
 import ai.neargo.shop.food.entity.FnbActionLog;
+import ai.neargo.shop.food.entity.FnbBundle;
+import ai.neargo.shop.food.entity.FnbBundleGroup;
+import ai.neargo.shop.food.entity.FnbBundleChoice;
 import ai.neargo.shop.food.entity.FnbDish;
 import ai.neargo.shop.food.entity.FnbDishOptionGroup;
 import ai.neargo.shop.food.entity.FnbOptionGroup;
@@ -32,6 +35,18 @@ import org.apache.ibatis.annotations.Update;
 /** 按实际落地的持久化资源增加嵌套 Mapper，不预生成全域空壳。 */
 public final class FoodMappers {
     private FoodMappers() {
+    }
+
+    public interface BundleMapper extends BaseMapper<FnbBundle> { }
+    public interface BundleGroupMapper extends BaseMapper<FnbBundleGroup> {
+        // Only the locked mutable definition is replaceable; never a frozen publication.
+        @Delete("DELETE FROM fnb_bundle_group WHERE entity_no=#{entity} AND bundle_sku_no=#{sku}")
+        int replaceDraftRows(@Param("entity") String entity, @Param("sku") String sku);
+    }
+    public interface BundleChoiceMapper extends BaseMapper<FnbBundleChoice> {
+        @Delete("DELETE FROM fnb_bundle_choice WHERE entity_no=#{entity} AND group_no IN "
+                + "(SELECT group_no FROM fnb_bundle_group WHERE entity_no=#{entity} AND bundle_sku_no=#{sku})")
+        int replaceDraftRows(@Param("entity") String entity, @Param("sku") String sku);
     }
 
     public interface DishOptionGroupMapper extends BaseMapper<FnbDishOptionGroup> {

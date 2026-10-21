@@ -17,6 +17,11 @@ import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.OptionGroupService;
 import ai.neargo.shop.food.service.ModifierService;
+import ai.neargo.shop.food.service.BundleService;
+import ai.neargo.shop.food.service.impl.BundleServiceImpl;
+import ai.neargo.shop.food.mapper.FoodMappers.BundleMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.BundleGroupMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.BundleChoiceMapper;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.service.impl.ConfigRevisionServiceImpl;
 import ai.neargo.shop.food.mapper.FoodMappers.ConfigRevisionMapper;
@@ -83,6 +88,28 @@ public class FoodAutoConfiguration {
         };
         return new ConfigRevisionServiceImpl(revisions, modifiers, components, groups, items, actions, idem,
                 publisher, json, manager, catalog, (entity, numbers) -> specs.getObject().getValues(entity, numbers));
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(BundleService.class)
+    BundleService bundleService(BundleMapper heads, BundleGroupMapper groups, BundleChoiceMapper choices,
+            ActionLogMapper actions, IdempotencyService idem,
+            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
+            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            ObjectProvider<GoodsCatalogQueryPort> catalogs) {
+        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
+            @Override public SkuIdentityFact getSku(String entity, String store, String sku) {
+                return catalogs.getObject().getSku(entity, store, sku);
+            }
+            @Override public GoodsFact getGoods(String entity, String store, String goods) {
+                return catalogs.getObject().getGoods(entity, store, goods);
+            }
+            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
+                return catalogs.getObject().getGoodsBatch(entity, store, numbers);
+            }
+        };
+        return new BundleServiceImpl(heads, groups, choices, actions, idem, publisher, json, manager, catalog);
     }
 
     @Bean

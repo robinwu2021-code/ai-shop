@@ -1091,6 +1091,66 @@
 | revision | int64 | 是 | 单调修订 |
 | contentHash | string | 是 | 规范摘要 |
 
+### CreateBundleReq
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| skuNo | string | 是 | 原主SKU业务号 |
+
+### CreateBundleResultVO
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| configNo | string | 是 | 原SKU |
+| version | int64 | 是 | 0 |
+| status | string | 是 | DRAFT |
+
+### ReplaceBundleDefinitionReq
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| version | int64 | 是 | 严格非负整数CAS |
+| groups | BundleGroupInput[] | 是 | 最多30 |
+| choices | BundleChoiceInput[] | 是 | 最多100 |
+
+### BundleMutationVO
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| configNo | string | 是 | 原SKU |
+| version | int64 | 是 | 更新后工作头CAS |
+
+### BundleConfigVO
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| configNo | string | 是 | 原SKU |
+| version | int64 | 是 | 工作头CAS |
+| status | string | 是 | DRAFT或ACTIVE或DISABLED |
+| data | BundleConfigData | 是 | 真实管理定义 |
+
+### BundleConfigData
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| configVersion | int64 | 是 | 定义变更次数非发布修订 |
+| publishedRevisionNo | string | 否 | 管理提示 |
+| groups | BundleGroupInput[] | 是 | 有序组 |
+| choices | BundleChoiceInput[] | 是 | 有序选项 |
+
+### GetBundleVO
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| config | BundleConfigVO | 是 | 真实管理定义 |
+
+### ListBundlesQuery
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| page | int32 | 否 | 默认1 |
+| size | int32 | 否 | 默认20最大100 |
+
 ## 四、逐接口输入输出
 
 ### FOOD-API-001 · 查询营业策略
@@ -1365,9 +1425,9 @@
 
 `POST /biz/x/food/stores/{storeNo}/bundles`
 
-权限与守卫：主SKU属于当前主体且未重复建套餐定义；configVersion由服务端分配，不接受客户端指定。
+权限与守卫：已实现；原GOODS及当前门店目录；原SKU身份事务外验真，主SKU唯一且不得已为其他套餐成员或补差基准；CAS/幂等回执/审计/Outbox；不接受自报主体或价格库存。
 
-能力依赖：餐饮新增。
+能力依赖：已实现套餐空草稿登记；冻结发布API012及成交报价后续。
 
 路径输入：
 
@@ -1393,9 +1453,9 @@
 
 `GET /biz/x/food/stores/{storeNo}/bundles/{configNo}`
 
-权限与守卫：门店范围与对象权限；仅授权读取，无写入副作用。
+权限与守卫：已实现；原GOODS及当前门店目录；主体共享工作头，跨主体404；拒绝查询参数，不依赖上游在线。
 
-能力依赖：餐饮新增。
+能力依赖：已实现草稿查询，不代表门店可售。
 
 路径输入：
 
@@ -1412,7 +1472,7 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| config | Config | 是 | 具体配置，类型由路径确定 |
+| config | BundleConfigVO | 是 | 真实套餐工作头和有序组/选项 |
 
 ### FOOD-API-012 · 发布bundles
 
@@ -1594,9 +1654,9 @@
 
 `PUT /biz/x/food/bundles/{skuNo}/definition`
 
-权限与守卫：配置权限；priceMode仅INCLUDED/ADD_SKU/DIFF_BASE；无递归套餐。
+权限与守卫：已实现；原GOODS及当前门店；原主SKU/成员/补差基准身份事务外验真；SERIALIZABLE双向禁止嵌套；业务号不可盗用或切换身份；数量精度/默认/容量校验，DIFF_BASE必须有基准；CAS/幂等/审计/Outbox原子；只替换工作定义。
 
-能力依赖：核心组合报价与库存展开缺口。
+能力依赖：已实现固定/自选套餐草稿；金额由原报价权威确定，正式库存展开后续。
 
 路径输入：
 
@@ -1608,9 +1668,9 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| version | int64 | 是 | 版本 |
-| groups | BundleGroupInput[] | 是 | groupNo名称minQty/maxQty/baseSkuNo |
-| choices | BundleChoiceInput[] | 是 | choiceNo/groupNo/skuNo/unitsPerPick/priceMode/defaultQty/minQty/maxQty |
+| version | int64 | 是 | 严格非负整数CAS |
+| groups | BundleGroupInput[] | 是 | 完整组集合最多30 |
+| choices | BundleChoiceInput[] | 是 | 完整选项集合最多100 |
 
 成功输出（data）：
 
@@ -4563,9 +4623,9 @@
 
 `GET /biz/x/food/stores/{storeNo}/bundles`
 
-权限与守卫：主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id。
+权限与守卫：已实现；原GOODS及门店入口权限；主体过滤先于count分页，SKU稳定排序，真实有序组/选项；拒绝未知/重复参数；无物理id。
 
-能力依赖：餐饮新增。
+能力依赖：已实现草稿管理，非可售目录。
 
 路径输入：
 
@@ -4584,8 +4644,8 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| records | Config[] | 是 | 授权列表 |
-| total | int64 | 是 | 总数 |
+| records | BundleConfigVO[] | 是 | 主体共享管理列表 |
+| total | int64 | 是 | 真实总数 |
 | page | int32 | 是 | 页 |
 | size | int32 | 是 | 页长 |
 

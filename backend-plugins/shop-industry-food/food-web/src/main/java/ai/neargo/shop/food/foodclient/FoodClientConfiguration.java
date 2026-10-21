@@ -6,6 +6,8 @@ import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.OptionGroupService;
 import ai.neargo.shop.food.service.ModifierService;
+import ai.neargo.shop.food.service.BundleService;
+import ai.neargo.shop.food.spi.BundleInternalApi;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.spi.ConfigRevisionInternalApi;
 import ai.neargo.shop.food.spi.ModifierInternalApi;
@@ -45,6 +47,13 @@ public class FoodClientConfiguration {
     @ConditionalOnMissingBean(ConfigRevisionService.class)
     ConfigRevisionService remoteConfigRevisionService(InternalHttp http) {
         return new RemoteConfigRevisionService(http.client(ServiceName.FOOD, ConfigRevisionInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(BundleService.class)
+    BundleService remoteBundleService(InternalHttp http) {
+        return new RemoteBundleService(http.client(ServiceName.FOOD, BundleInternalApi.class,
                 Duration.ofSeconds(5)));
     }
 
