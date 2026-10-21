@@ -44,7 +44,7 @@
 | BR05 | `POST /biz/management/brands/{brandNo}/status-changes` | Merchant | StatusChange | expectedRevision,targetStatus,reason；有有效绑定/待决变更拒绝停用；不清空资金 |
 | BR06 | `GET /biz/management/brands/{brandNo}/stores` | Merchant | cursor,size | CursorPage<BrandStore> | `brand.read`；s02,s03,s04 | NEW |
 | BR07 | `GET /biz/management/brands/{brandNo}/audit-events` | Merchant | cursor,size | CursorPage<AuditEvent> | `brand.audit.read`；s02,s03,s04 | NEW |
-| ST01 | `GET /biz/stores/{storeNo}/operating-context` | Merchant/BFF | — | StoreOperatingContext | `store.read`；s06,s09 | NEW |
+| ST01 | `GET /biz/stores/{storeNo}/operating-context` | Merchant/BFF | managementNo | StoreOperatingContext | `store.read`；s06,s09 | NEW |
 | ST02 | `POST /biz/stores/{storeNo}/brand-changes/check` | Merchant/BFF | BrandChangeCheck | managementNo,toBrandNo可空；返回checkToken/sourceRevisions/blockers/warnings/expiresAt，默认60秒；不是Pay资金锁 |
 | ST03 | `POST /biz/stores/{storeNo}/brand-changes` | Merchant | BrandChangeSubmit | managementNo,toBrandNo?,checkToken,expectedStoreRevision,expectedScopeRevision,expectedFromBrandRevision?,expectedToBrandRevision?,reason；双方授权快照由服务端补入 |
 | ST04 | `GET /biz/management/brand-changes/{changeNo}` | Merchant | — | BrandChange | `brand.change.read`；s08 | NEW |

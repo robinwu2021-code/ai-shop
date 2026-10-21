@@ -11,7 +11,9 @@ public final class ManagementModels {
   public Actor { if(tenantNo==null||tenantNo.isBlank()||actorKey==null||!actorKey.matches("(USER|MCH):[A-Za-z0-9_-]{1,55}")) throw BizException.of(ErrorCode.UNAUTHORIZED); }
  }
  public record GrantCommand(String actorNo,String resourceType,String resourceNo,String permissionCode,
-       Instant validFrom,Instant validTo,boolean delegatable,Long expectedRevision,boolean reactivate) {}
+       Instant validFrom,Instant validTo,Boolean delegatable,Long expectedRevision,Boolean reactivate) {
+  public GrantCommand {if(delegatable==null)delegatable=false;if(reactivate==null)reactivate=false;}
+ }
  public record BrandCreate(String managementNo,String name,String logo,String status) {}
  public record BrandEdit(String name,String logo,long expectedRevision) {}
  public record StatusChange(String targetStatus,String reason,long expectedRevision) {}

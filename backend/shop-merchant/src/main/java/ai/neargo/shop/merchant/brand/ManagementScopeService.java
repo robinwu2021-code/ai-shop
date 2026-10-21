@@ -40,8 +40,10 @@ public class ManagementScopeService {
  }
  boolean valid(Actor a,Map<String,Object> g,Set<String> seen){
   if(g==null||!"ACTIVE".equals(str(g,"status"))||seen.size()>=8||!seen.add(str(g,"grant_no")))return false;
-  var now=Instant.now();var from=((Timestamp)g.get("valid_from")).toInstant();var to=(Timestamp)g.get("valid_to");
-  if(now.isBefore(from)||(to!=null&&!now.isBefore(to.toInstant())))return false;
+  String recipient=str(g,"actor_no");
+  if(recipient==null||db.one("SELECT mch_account_no FROM mch_account WHERE tenant_no=? AND "+(recipient.startsWith("MCH:")?"mch_account_no":"user_no")+"=? AND status='ACTIVE' AND deleted=0",a.tenantNo(),recipient.substring(recipient.indexOf(':')+1))==null)return false;
+  var now=Instant.now();var from=instant(g.get("valid_from"));var to=instant(g.get("valid_to"));
+  if(now.isBefore(from)||(to!=null&&!now.isBefore(to)))return false;
   var m=space(a,str(g,"management_no"));if(m==null||!"ACTIVE".equals(str(m,"status")))return false;
   String source=str(g,"authority_source_type"),no=str(g,"authority_source_no");
   if("SPACE_OWNER".equals(source))return no.equals(str(m,"management_no"))&&ownedBySpace(a,m,str(g,"resource_type"),str(g,"resource_no"));
@@ -75,7 +77,7 @@ public class ManagementScopeService {
   var spaces=db.rows("SELECT DISTINCT s.* FROM mch_management_space s WHERE s.tenant_no=? AND s.status='ACTIVE' AND s.deleted=0 AND (s.owner_actor_no=? OR EXISTS (SELECT 1 FROM mch_management_grant g WHERE g.tenant_no=s.tenant_no AND g.management_no=s.management_no AND g.actor_no=? AND g.status='ACTIVE' AND g.deleted=0)) ORDER BY s.id DESC",a.tenantNo(),a.actorKey(),a.actorKey()).stream()
    .filter(s->can(a,str(s,"management_no"),"SPACE",str(s,"management_no"),"management.enter"))
    .map(s->{var v=db.view(s);v.put("actions",PERMISSIONS.get("SPACE").stream().filter(p->can(a,str(s,"management_no"),"SPACE",str(s,"management_no"),p)).sorted().toList());return v;}).toList();
-  return Map.of("actorKey",a.actorKey(),"spaces",spaces,"canBootstrap",!ownerAccounts(a).isEmpty(),"bootstrapSources",ownerAccounts(a).stream().map(x->Map.of("accountNo",str(x,"mch_account_no"),"entityNo",str(x,"entity_no"))).toList());
+  return Map.of("actorKey",a.actorKey(),"spaces",spaces,"canBootstrap",!ownerAccounts(a).isEmpty(),"bootstrapSources",ownerAccounts(a).stream().map(x->{var entity=db.one("SELECT name FROM mch_entity WHERE tenant_no=? AND entity_no=? AND deleted=0",a.tenantNo(),str(x,"entity_no"));return Map.of("accountNo",str(x,"mch_account_no"),"entityNo",str(x,"entity_no"),"entityName",entity==null?"—":str(entity,"name"));}).toList());
  }
  public Map<String,Object> create(Actor a,String name,String source,String key){
   name=text(name,64);key=text(key,64);final String n=name,k=key;
@@ -120,12 +122,18 @@ public class ManagementScopeService {
   var result=db.view(db.one("SELECT * FROM mch_management_grant WHERE tenant_no=? AND grant_no=?",a.tenantNo(),no));
   db.emit(a,ManagementRepository.hash(a.tenantNo()+no+result.get("revision")),m,"GRANT_CHANGED",ManagementRepository.hash(db.encode(c)),result);return result;
  });}
+ boolean canDelegate(Actor a,String m,String type,String no,String permission){
+  var space=space(a,m);if(space==null)return false;
+  if(a.actorKey().equals(str(space,"owner_actor_no"))&&ownedBySpace(a,space,type,no))return true;
+  String entity=resourceEntity(a,type,no);if(!entity.isEmpty()&&ownerAccounts(a).stream().anyMatch(owner->entity.equals(str(owner,"entity_no"))))return true;
+  return db.rows("SELECT * FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND resource_type=? AND resource_no=? AND permission_code=? AND delegatable=1 AND deleted=0",a.tenantNo(),m,a.actorKey(),type,no,permission).stream().anyMatch(grant->valid(a,grant,new HashSet<>()));
+ }
  public Map<String,Object> revoke(Actor a,String m,String no,long revision,String reason){return db.write(()->{
   lock(a,m);require(a,m,"SPACE",m,"management.grant.manage");text(reason,255);
   var row=db.one("SELECT * FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND grant_no=? AND deleted=0",a.tenantNo(),m,no);
   if(row==null)throw BizException.of(ErrorCode.NOT_FOUND);
   // The revoker must also control the grant's actual resource, not just its space.
-  if(!a.actorKey().equals(str(space(a,m),"owner_actor_no"))&&!can(a,m,str(row,"resource_type"),str(row,"resource_no"),str(row,"permission_code")))throw BizException.of(ErrorCode.FORBIDDEN);
+  if(!canDelegate(a,m,str(row,"resource_type"),str(row,"resource_no"),str(row,"permission_code")))throw BizException.of(ErrorCode.FORBIDDEN);
   if("REVOKED".equals(str(row,"status")))return db.view(row);
   if(num(row,"version")!=revision)throw BizException.of(ErrorCode.CONFLICT);
   db.update("UPDATE mch_management_grant SET status='REVOKED',version=version+1,updated_at=?,updated_by=? WHERE tenant_no=? AND grant_no=? AND version=?",Timestamp.from(Instant.now()),a.actorKey(),a.tenantNo(),no,revision);

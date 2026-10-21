@@ -109,7 +109,7 @@ onUnload(pager.invalidate);
         <text class="txt-caption sh-muted block">{{ $t("storedValue.storeLocalTime") }}</text>
         <text class="sh-link txt-caption notify" @tap="showNotifications">{{ $t("storedValue.notifications") }} ›</text>
       </view>
-      <view class="filters">
+      <view class="filters sh-row sh-row--between">
         <sh-tabs :items="tabs" :active="type" @change="selectType" />
         <text class="sh-chip" :class="{ 'sh-chip--primary': startDate || endDate }" @tap="openDates">{{ $t("storedValue.time") }}</text>
       </view>
@@ -150,7 +150,7 @@ onUnload(pager.invalidate);
 <style scoped>
 .header, .record { margin-bottom: var(--sh-gap-block); }
 .block { display: block; margin-top: 8rpx; }
-.filters { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-bottom: var(--sh-gap-block); }
+.filters { gap: 16rpx; margin-bottom: var(--sh-gap-block); }
 .dates { display: block; margin-bottom: var(--sh-gap-block); }
 .record__main { gap: 20rpx; }
 .record__amount { direction: ltr; flex-shrink: 0; font-weight: 700; }

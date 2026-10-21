@@ -1,3 +1,4 @@
+import {managementHttpApi} from "./management-http";
 import { requirePointsNames } from "@shared/utils/points-name";
 import type { OrderPointsEarning } from "@shared/types";
 import type * as SV from './stored-value-types';
@@ -202,6 +203,7 @@ import type {
 } from "@shared/types";
 
 export const httpApi: MerchantApi = {
+  ...managementHttpApi,
   mSvCandidates:(q)=>http.get<PageResult<SV.SvCandidate>>(E.mSvCandidates.path,q),
   mSvSelectCustomer:(body)=>http.post<SV.SvSelectedCustomer>(E.mSvSelectCustomer.path,body),
   mSvConfirmOffline:(body,key)=>http.post<SV.SvProgress>(E.mSvConfirmOffline.path,body,{'Idempotency-Key':key}),

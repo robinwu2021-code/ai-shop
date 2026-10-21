@@ -22,7 +22,7 @@ public class ManagementRepository {
  final TransactionTemplate transactions;
  final ObjectMapper json;
  final OutboxIngress events;
- public ManagementRepository(JdbcTemplate jdbc,PlatformTransactionManager tx,ObjectMapper json,
+ public ManagementRepository(JdbcTemplate jdbc,@Qualifier("transactionManager") PlatformTransactionManager tx,ObjectMapper json,
         @Qualifier("managementOutboxIngress") OutboxIngress events) {
   this.jdbc=jdbc;this.transactions=new TransactionTemplate(tx);this.json=json;this.events=events;
  }
@@ -44,6 +44,12 @@ public class ManagementRepository {
  }
  static String str(Map<String,Object> r,String k){return r==null||r.get(k)==null?null:r.get(k).toString();}
  static long num(Map<String,Object> r,String k){return r==null||r.get(k)==null?0:((Number)r.get(k)).longValue();}
+ static Instant instant(Object value){
+  if(value==null)return null;
+  if(value instanceof Timestamp timestamp)return timestamp.toInstant();
+  if(value instanceof LocalDateTime time)return time.toInstant(ZoneOffset.UTC);
+  throw new IllegalStateException("Unsupported database datetime");
+ }
  static boolean bool(Map<String,Object> r,String k){return r!=null&&(Boolean.TRUE.equals(r.get(k))||"1".equals(str(r,k)));}
  Map<String,Object> view(Map<String,Object> row){
   if(row==null)throw BizException.of(ErrorCode.NOT_FOUND);
@@ -53,10 +59,27 @@ public class ManagementRepository {
    var b=new StringBuilder();boolean upper=false;for(char c:key.toCharArray()){if(c=='_'){upper=true;continue;}b.append(upper?Character.toUpperCase(c):c);upper=false;}
    String name=b.toString();if("version".equals(key))name="revision";
    result.put(name,value instanceof Timestamp ts?ts.toInstant().toString():value instanceof java.time.LocalDateTime dt?dt.toInstant(ZoneOffset.UTC).toString():value);
-  }});return result;
+  }});
+  for(String field:List.of("created_by","updated_by"))if(row.containsKey(field)){
+   String key=str(row,field);Map<String,Object> actor=null;
+   if(key!=null&&key.startsWith("MCH:"))actor=one("SELECT display_name FROM mch_account WHERE tenant_no=? AND mch_account_no=? AND deleted=0",str(row,"tenant_no"),key.substring(4));
+   if(key!=null&&key.startsWith("USER:"))actor=one("SELECT display_name FROM mch_account WHERE tenant_no=? AND user_no=? AND deleted=0 ORDER BY mch_account_no LIMIT 1",str(row,"tenant_no"),key.substring(5));
+   result.put(field.equals("created_by")?"createdByLabel":"updatedByLabel",actor==null||str(actor,"display_name")==null?"—":str(actor,"display_name"));
+  }
+  if(row.containsKey("grant_no")){
+   String type=str(row,"resource_type"),no=str(row,"resource_no"),tenant=str(row,"tenant_no");
+   String table=switch(type){case "SPACE"->"mch_management_space";case "BRAND"->"mch_brand";case "STORE"->"mch_store";case "ENTITY"->"mch_entity";default->null;};
+   String column=switch(type){case "SPACE"->"management_no";case "BRAND"->"brand_no";case "STORE"->"store_no";case "ENTITY"->"entity_no";default->null;};
+   var resource=table==null?null:one("SELECT name FROM "+table+" WHERE tenant_no=? AND "+column+"=? AND deleted=0",tenant,no);
+   result.put("resourceName",resource==null?type:str(resource,"name"));
+   String actorKey=str(row,"actor_no");var actor=one("SELECT display_name FROM mch_account WHERE tenant_no=? AND "+(actorKey.startsWith("MCH:")?"mch_account_no":"user_no")+"=? AND deleted=0 ORDER BY mch_account_no LIMIT 1",tenant,actorKey.substring(actorKey.indexOf(':')+1));
+   result.put("actorLabel",actor==null||str(actor,"display_name")==null?"—":str(actor,"display_name"));
+  }
+  return result;
  }
  String encode(Object value){return json.writeValueAsString(value);}
  @SuppressWarnings("unchecked") Map<String,Object> decode(Object value){
+  if(value instanceof Map<?,?> map)return (Map<String,Object>)map;
   if(value instanceof byte[] bytes)value=new String(bytes,StandardCharsets.UTF_8);
   if(value instanceof java.sql.Clob clob)try{value=clob.getSubString(1,(int)clob.length());}catch(SQLException e){throw new IllegalStateException(e);}
   Object parsed=json.readValue(value.toString(),Object.class);
@@ -66,7 +89,7 @@ public class ManagementRepository {
  static String hash(String value){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));}catch(Exception e){throw new IllegalStateException(e);}}
  String commandId(ManagementModels.Actor a,String target,String action,String key){return hash(a.tenantNo()+"|"+a.actorKey()+"|"+target+"|"+action+"|"+ManagementModels.text(key,64));}
  Map<String,Object> replay(String id,String commandHash){
-  var row=one("SELECT payload FROM sys_outbox WHERE source_system='PLATFORM' AND source_event_no=?",id);
+  var row=one("SELECT payload FROM sys_outbox WHERE (source_system='PLATFORM' AND source_event_no=?) OR event_no=?",id,id);
   if(row==null)return null;var payload=decode(row.get("payload"));
   if(!Objects.equals(commandHash,payload.get("commandHash")))throw BizException.of(ErrorCode.CONFLICT);
   return decode(encode(payload.get("resultSnapshot")));
@@ -74,6 +97,6 @@ public class ManagementRepository {
  void emit(ManagementModels.Actor a,String id,String target,String action,String commandHash,Map<String,Object> result){
   var payload=new LinkedHashMap<String,Object>();payload.put("tenantNo",a.tenantNo());payload.put("actorKey",a.actorKey());
   payload.put("action",action);payload.put("target",target);payload.put("commandHash",commandHash);payload.put("resultSnapshot",result);
-  events.accept(new OutboxEnvelope(BizKey.next(BizKey.EVENT),"PLATFORM",id,"MANAGEMENT",target,"MANAGEMENT_CHANGED",1,"MANAGEMENT:"+a.tenantNo()+":"+target,0,encode(payload),Instant.now()));
+  events.accept(new OutboxEnvelope(id,"PLATFORM",id,"MANAGEMENT",a.tenantNo()+"|"+target,"MANAGEMENT_CHANGED",1,"MANAGEMENT:"+a.tenantNo()+":"+target,0,encode(payload),Instant.now()));
  }
 }

@@ -23,7 +23,7 @@ CREATE TABLE mch_management_space (
   updated_by VARCHAR(64) NOT NULL COMMENT '认证修改人',
   UNIQUE KEY uk_1 (tenant_no,management_no),
   UNIQUE KEY uk_2 (tenant_no,owner_actor_no,bootstrap_key)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 -- shop-merchant · 独立授予品牌、门店及主体管理权限
 CREATE TABLE mch_management_grant (
@@ -52,7 +52,7 @@ CREATE TABLE mch_management_grant (
   UNIQUE KEY uk_2 (tenant_no,management_no,actor_no,resource_type,resource_no,permission_code),
   KEY ix_1 (tenant_no,actor_no,status),
   KEY ix_2 (tenant_no,resource_type,resource_no,status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 -- shop-merchant · 经营品牌，不直接归属经营主体
 CREATE TABLE mch_brand (
@@ -77,7 +77,7 @@ CREATE TABLE mch_brand (
   UNIQUE KEY uk_2 (tenant_no,management_no,name_key),
   UNIQUE KEY uk_3 (tenant_no,management_no,create_key),
   KEY ix_1 (tenant_no,management_no,status,id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 -- shop-merchant · 门店品牌有效期关系；品牌与主体无直接关系表
 CREATE TABLE mch_brand_store_binding (
@@ -103,7 +103,7 @@ CREATE TABLE mch_brand_store_binding (
   KEY ix_1 (tenant_no,brand_no,status,store_no),
   KEY ix_2 (tenant_no,store_no,effective_from),
   CHECK (status IN ('PREPARING','ACTIVE','ENDED'))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 -- shop-merchant · 加入退出品牌及独立影响检查，不迁移资金
 CREATE TABLE mch_brand_change (
@@ -142,7 +142,7 @@ CREATE TABLE mch_brand_change (
   UNIQUE KEY uk_2 (tenant_no,store_no,command_key),
   UNIQUE KEY uk_3 (tenant_no,pending_store_no),
   KEY ix_1 (tenant_no,store_no,status,id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 -- shop-core/member · 品牌或独立门店会员关系，不替换平台人档
 CREATE TABLE mbr_scope_member (

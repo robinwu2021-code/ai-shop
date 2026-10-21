@@ -1,5 +1,5 @@
 {
-  "status": "DESIGN_NOT_IMPLEMENTED",
+  "status": "IMPLEMENTED_ACCEPTANCE_IN_PROGRESS",
   "phase": "P1",
   "databaseTables": [
     "mch_management_space",
@@ -241,7 +241,7 @@
       "module": "Merchant/BFF",
       "method": "GET",
       "path": "/biz/stores/{storeNo}/operating-context",
-      "request": "—",
+      "request": "managementNo",
       "response": "StoreOperatingContext",
       "permission": "store.read",
       "screens": [
@@ -336,5 +336,11 @@
     "mutationIdempotency": "Idempotency-Key; body hash conflict rejected",
     "pagination": "opaque cursor; size default20 max100",
     "audit": "same transaction outbox; no sensitive payment data"
+  },
+  "internalReadDependency": {
+    "method": "POST",
+    "path": "/internal/pay/stored-value/organization-impact",
+    "owner": "Pay",
+    "writesMoney": false
   }
 }

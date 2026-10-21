@@ -1119,6 +1119,102 @@
           "navigationStyle": "custom"
         }
       }
+    },
+    {
+      "path": "pages/management/index",
+      "style": {
+        "navigationBarTitleText": "经营管理",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/brand-list/index",
+      "style": {
+        "navigationBarTitleText": "品牌管理",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/brand-edit/index",
+      "style": {
+        "navigationBarTitleText": "品牌资料",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/brand-detail/index",
+      "style": {
+        "navigationBarTitleText": "品牌详情",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/management-resources/index",
+      "style": {
+        "navigationBarTitleText": "经营资源",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/store-brand/index",
+      "style": {
+        "navigationBarTitleText": "门店品牌",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/management-grants/index",
+      "style": {
+        "navigationBarTitleText": "资源授权",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/brand-change/index",
+      "style": {
+        "navigationBarTitleText": "品牌变更",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
     }
   ],
   "globalStyle": {

@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 97,
+      "count": 105,
       "domains": [
         {
           "name": "工作台",
@@ -615,6 +615,94 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/stored-value-recharge/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/management/index",
+              "title": "经营管理",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/management/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/brand-list/index",
+              "title": "品牌管理",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/brand-list/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/brand-edit/index",
+              "title": "品牌资料",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/brand-edit/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/brand-detail/index",
+              "title": "品牌详情",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/brand-detail/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/management-resources/index",
+              "title": "经营资源",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/management-resources/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/store-brand/index",
+              "title": "门店品牌",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/store-brand/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/management-grants/index",
+              "title": "资源授权",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/management-grants/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/brand-change/index",
+              "title": "品牌变更",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/brand-change/index"
             }
           ]
         },
@@ -3583,5 +3671,5 @@
       ]
     }
   ],
-  "total": 284
+  "total": 292
 }

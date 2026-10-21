@@ -1581,6 +1581,10 @@ components:
     StockSyncOperationRecord:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         operationNo:
           type: "string"
           description: "Identifier of this stock synchronization operation."
@@ -1704,6 +1708,10 @@ components:
     StockAlignmentBatch:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         batchNo:
           type: "string"
           description: "Identifier of this inventory alignment batch."
@@ -1989,6 +1997,10 @@ components:
     Coupon:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         couponNo:
           type: "string"
           description: "券单号"
@@ -2456,6 +2468,10 @@ components:
     MarketingCampaign:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         campaignNo:
           type: "string"
           description: "活动单号"
@@ -2814,6 +2830,10 @@ components:
     CouponIssueBatch:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         issueNo:
           type: "string"
           description: "这一批发放的编号"
@@ -3051,6 +3071,10 @@ components:
     MyFission:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         fissionNo:
           type: "string"
           description: "活动号。端上只用来回传，不显示"
@@ -5603,6 +5627,14 @@ components:
     SettleBill:
       type: "object"
       properties:
+        batchDocumentNo:
+          type:
+            - "string"
+            - "null"
+        documentNo:
+          type:
+            - "string"
+            - "null"
         settleNo:
           type: "string"
           description: "结算单号"
@@ -5709,6 +5741,10 @@ components:
     MySettleBatch:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         batchNo:
           type: "string"
           description: "批次号。**与结算单上的批次号是同一个** —— 商家照着单子来问的就是它"
@@ -6655,6 +6691,83 @@ components:
         - "at"
       additionalProperties: false
       description: "Receipt of an audited statement decision; this does not assert bank payout success."
+    OrderPointsEarning:
+      type: "object"
+      properties:
+        orderNo:
+          type: "string"
+        typeCode:
+          type: "string"
+        name:
+          type: "string"
+        currency:
+          type: "string"
+        state:
+          type: "string"
+          enum:
+            - "NONE"
+            - "EXPECTED"
+            - "PROCESSING"
+            - "PENDING"
+            - "AVAILABLE"
+            - "RETRYABLE"
+            - "MANUAL"
+            - "SKIPPED"
+            - "RECLAIMED"
+        redemptionState:
+          type: "string"
+          enum:
+            - "NONE"
+            - "PROCESSING"
+            - "HELD"
+            - "RELEASED"
+            - "CONSUMED"
+            - "REFUND_PROCESSING"
+            - "RETURNED"
+            - "PARTIALLY_RETURNED"
+        usedPoints:
+          type: "number"
+        refundState:
+          type: "string"
+          enum:
+            - "NONE"
+            - "PROCESSING"
+            - "MANUAL"
+            - "COMPLETED"
+        returnedPoints:
+          type: "number"
+        expectedPoints:
+          type: "number"
+        grantedPoints:
+          type: "number"
+        pendingPoints:
+          type: "number"
+        availablePoints:
+          type: "number"
+        reclaimedPoints:
+          type: "number"
+        reason:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "orderNo"
+        - "typeCode"
+        - "name"
+        - "currency"
+        - "state"
+        - "redemptionState"
+        - "usedPoints"
+        - "refundState"
+        - "returnedPoints"
+        - "expectedPoints"
+        - "grantedPoints"
+        - "pendingPoints"
+        - "availablePoints"
+        - "reclaimedPoints"
+        - "reason"
+      additionalProperties: false
+      description: "Server-projected earning for an authorized order; accepted work is not an account credit."
     MessageType:
       type: "string"
       enum:
@@ -10404,6 +10517,16 @@ components:
     Order:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human order number (OD/OS); historical unmapped rows leave it empty."
+        payDocumentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number."
         orderNo:
           type: "string"
           description: "订单单号"
@@ -10621,6 +10744,10 @@ components:
     AfterSale:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         afterSaleNo:
           type: "string"
           description: "售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。"
@@ -12879,6 +13006,449 @@ components:
         - "statementNo"
         - "typeCode"
       additionalProperties: false
+    GrantCommand:
+      type: "object"
+      properties:
+        actorNo:
+          type: "string"
+        resourceType:
+          type: "string"
+        resourceNo:
+          type: "string"
+        permissionCode:
+          type: "string"
+        delegatable:
+          type: "boolean"
+        validFrom:
+          type: "string"
+        validTo:
+          type: "string"
+        expectedRevision:
+          type: "number"
+        reactivate:
+          type: "boolean"
+      required:
+        - "actorNo"
+        - "resourceType"
+        - "resourceNo"
+        - "permissionCode"
+      additionalProperties: false
+    BrandDraft:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        name:
+          type: "string"
+        logo:
+          type:
+            - "string"
+            - "null"
+        status:
+          type: "string"
+          enum:
+            - "DRAFT"
+            - "ACTIVE"
+      required:
+        - "managementNo"
+        - "name"
+      additionalProperties: false
+    BrandEdit:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        logo:
+          type:
+            - "string"
+            - "null"
+        expectedRevision:
+          type: "number"
+      required:
+        - "name"
+        - "expectedRevision"
+      additionalProperties: false
+    BrandChangeSubmit:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        toBrandNo:
+          type:
+            - "string"
+            - "null"
+        checkToken:
+          type: "string"
+        expectedStoreRevision:
+          type: "number"
+        expectedScopeRevision:
+          type: "number"
+        expectedFromBrandRevision:
+          type:
+            - "number"
+            - "null"
+        expectedToBrandRevision:
+          type:
+            - "number"
+            - "null"
+        reason:
+          type: "string"
+      required:
+        - "managementNo"
+        - "toBrandNo"
+        - "checkToken"
+        - "expectedStoreRevision"
+        - "expectedScopeRevision"
+        - "expectedFromBrandRevision"
+        - "expectedToBrandRevision"
+        - "reason"
+      additionalProperties: false
+    ManagementSpaceCreateReq:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        sourceAccountNo:
+          type: "string"
+      required:
+        - "name"
+        - "sourceAccountNo"
+      additionalProperties: false
+    ManagementResourcesQuery:
+      type: "object"
+      properties:
+        resourceType:
+          type: "string"
+        view:
+          type: "string"
+          enum:
+            - "EFFECTIVE"
+            - "GRANTS"
+        actorNo:
+          type: "string"
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+      additionalProperties: false
+    ManagementRevokeQuery:
+      type: "object"
+      properties:
+        expectedRevision:
+          type: "number"
+        reason:
+          type: "string"
+      required:
+        - "expectedRevision"
+        - "reason"
+      additionalProperties: false
+    ManagementPageQuery:
+      type: "object"
+      properties:
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+      additionalProperties: false
+    ManagementStoresQuery:
+      type: "object"
+      properties:
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+        brandNo:
+          type: "string"
+      additionalProperties: false
+    ManagementMerchantsQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        payChannel:
+          type: "string"
+        payScene:
+          type: "string"
+        storeNo:
+          type: "string"
+      required:
+        - "managementNo"
+      additionalProperties: false
+    ManagementBrandsQuery:
+      type: "object"
+      properties:
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+        managementNo:
+          type: "string"
+        status:
+          type: "string"
+        keyword:
+          type: "string"
+      required:
+        - "managementNo"
+      additionalProperties: false
+    ManagementBrandStatusReq:
+      type: "object"
+      properties:
+        targetStatus:
+          type: "string"
+          enum:
+            - "ACTIVE"
+            - "INACTIVE"
+        expectedRevision:
+          type: "number"
+        reason:
+          type: "string"
+      required:
+        - "targetStatus"
+        - "expectedRevision"
+        - "reason"
+      additionalProperties: false
+    ManagementStoreContextQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+      required:
+        - "managementNo"
+      additionalProperties: false
+    ManagementBrandCheckReq:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        toBrandNo:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "managementNo"
+        - "toBrandNo"
+      additionalProperties: false
+    ManagementBrandDecisionReq:
+      type: "object"
+      properties:
+        decision:
+          type: "string"
+          enum:
+            - "APPROVE"
+            - "REJECT"
+        expectedRevision:
+          type: "number"
+        reason:
+          type: "string"
+      required:
+        - "decision"
+        - "expectedRevision"
+        - "reason"
+      additionalProperties: false
+    SvPlanCreate:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+        name:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        paidAmountMinor:
+          type: "number"
+        bonusAmountMinor:
+          type: "number"
+      required:
+        - "storeNo"
+        - "name"
+        - "currency"
+        - "paidAmountMinor"
+        - "bonusAmountMinor"
+      additionalProperties: false
+    SvRechargeCreate:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+        customerRef:
+          type: "string"
+        planNo:
+          type: "string"
+        versionNo:
+          type: "string"
+      required:
+        - "storeNo"
+        - "customerRef"
+        - "planNo"
+        - "versionNo"
+      additionalProperties: false
+    SvReceipt:
+      type: "object"
+      properties:
+        expectedRevision:
+          type: "number"
+        actualAmountMinor:
+          type: "number"
+        collectionMethod:
+          type: "string"
+          enum:
+            - "CASH"
+            - "TRANSFER"
+        receiptNo:
+          type: "string"
+      required:
+        - "expectedRevision"
+        - "actualAmountMinor"
+        - "collectionMethod"
+        - "receiptNo"
+      additionalProperties: false
+    SvReceive:
+      type: "object"
+      properties:
+        expectedRevision:
+          type: "number"
+        receiptNo:
+          type: "string"
+        confirmationNote:
+          type: "string"
+      required:
+        - "expectedRevision"
+        - "receiptNo"
+        - "confirmationNote"
+      additionalProperties: false
+    SvRecordsQuery:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+        type:
+          type: "string"
+          enum:
+            - "ALL"
+            - "RECHARGE"
+            - "REDEMPTION"
+        startDate:
+          type: "string"
+        endDate:
+          type: "string"
+        accountRef:
+          type: "string"
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+      required:
+        - "storeNo"
+        - "type"
+      additionalProperties: false
+    SvCandidatesQuery:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+        phone:
+          type: "string"
+        keyword:
+          type: "string"
+      required:
+        - "storeNo"
+      additionalProperties: false
+    SvSelectCustomerReq:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+        source:
+          "$ref": "#/components/schemas/SvSelectionSource"
+      required:
+        - "storeNo"
+        - "source"
+      additionalProperties: false
+    SvSelectionSource:
+      anyOf:
+        - type: "object"
+          properties:
+            type:
+              type: "string"
+              const: "MEMBER"
+            memberNo:
+              type: "string"
+          required:
+            - "type"
+            - "memberNo"
+          additionalProperties: false
+        - type: "object"
+          properties:
+            type:
+              type: "string"
+              const: "ACCOUNT"
+            accountRef:
+              type: "string"
+          required:
+            - "type"
+            - "accountRef"
+          additionalProperties: false
+    SvStoreQuery:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+      required:
+        - "storeNo"
+      additionalProperties: false
+    SvPlansQuery:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+        status:
+          type: "string"
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+      required:
+        - "storeNo"
+      additionalProperties: false
+    SvAccountsQuery:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+        keyword:
+          type: "string"
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+      required:
+        - "storeNo"
+      additionalProperties: false
+    SvPlanStatusReq:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+        status:
+          type: "string"
+        expectedRevision:
+          type: "number"
+      required:
+        - "storeNo"
+        - "status"
+        - "expectedRevision"
+      additionalProperties: false
+    SvCancelReq:
+      type: "object"
+      properties:
+        expectedRevision:
+          type: "number"
+        reason:
+          type: "string"
+      required:
+        - "expectedRevision"
+        - "reason"
+      additionalProperties: false
     MerchantOrderActionKind:
       type: "string"
       enum:
@@ -13225,6 +13795,686 @@ components:
         - "reservations"
       additionalProperties: false
       description: "订单库存追溯：当前状态、事件投递和实物出入账事实。"
+    ManagementContext:
+      type: "object"
+      properties:
+        actorKey:
+          type: "string"
+        spaces:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/ManagementSpace"
+        canBootstrap:
+          type: "boolean"
+        bootstrapSources:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              accountNo:
+                type: "string"
+              entityNo:
+                type: "string"
+              entityName:
+                type: "string"
+            required:
+              - "accountNo"
+              - "entityNo"
+            additionalProperties: false
+      required:
+        - "actorKey"
+        - "spaces"
+        - "canBootstrap"
+        - "bootstrapSources"
+      additionalProperties: false
+    ManagementSpace:
+      type: "object"
+      properties:
+        canManageLegacy:
+          type: "boolean"
+        canConfigureBrand:
+          type: "boolean"
+        resourceType:
+          type: "string"
+        resourceNo:
+          type: "string"
+        name:
+          type: "string"
+        status:
+          type: "string"
+        revision:
+          type: "number"
+        brandNo:
+          type: "string"
+        entityNo:
+          type: "string"
+        storeNo:
+          type: "string"
+        scopeRevision:
+          type: "number"
+        managementNo:
+          type: "string"
+        actions:
+          type: "array"
+          items:
+            type: "string"
+      required:
+        - "actions"
+        - "managementNo"
+        - "name"
+        - "revision"
+        - "status"
+      additionalProperties: false
+    ManagementGrant:
+      type: "object"
+      properties:
+        actorLabel:
+          type: "string"
+        resourceName:
+          type: "string"
+        grantNo:
+          type: "string"
+        managementNo:
+          type: "string"
+        actorNo:
+          type: "string"
+        resourceType:
+          type: "string"
+        resourceNo:
+          type: "string"
+        permissionCode:
+          type: "string"
+        status:
+          type: "string"
+        delegatable:
+          type:
+            - "boolean"
+            - "number"
+        revision:
+          type: "number"
+      required:
+        - "grantNo"
+        - "managementNo"
+        - "actorNo"
+        - "resourceType"
+        - "resourceNo"
+        - "permissionCode"
+        - "status"
+        - "delegatable"
+        - "revision"
+      additionalProperties: false
+    ManagementResource:
+      type: "object"
+      properties:
+        canManageLegacy:
+          type: "boolean"
+        canConfigureBrand:
+          type: "boolean"
+        resourceType:
+          type: "string"
+        resourceNo:
+          type: "string"
+        name:
+          type: "string"
+        status:
+          type: "string"
+        revision:
+          type: "number"
+        brandNo:
+          type: "string"
+        entityNo:
+          type: "string"
+        storeNo:
+          type: "string"
+        scopeRevision:
+          type: "number"
+      required:
+        - "name"
+        - "status"
+        - "revision"
+      additionalProperties: false
+    Brand:
+      type: "object"
+      properties:
+        canManageLegacy:
+          type: "boolean"
+        canConfigureBrand:
+          type: "boolean"
+        resourceType:
+          type: "string"
+        resourceNo:
+          type: "string"
+        name:
+          type: "string"
+        status:
+          type: "string"
+        revision:
+          type: "number"
+        brandNo:
+          type: "string"
+        entityNo:
+          type: "string"
+        storeNo:
+          type: "string"
+        scopeRevision:
+          type: "number"
+        managementNo:
+          type: "string"
+        logo:
+          type: "string"
+        storeCount:
+          type: "number"
+        createdAt:
+          type: "string"
+        updatedAt:
+          type: "string"
+        createdByLabel:
+          type: "string"
+        updatedByLabel:
+          type: "string"
+        actions:
+          type: "array"
+          items:
+            type: "string"
+      required:
+        - "brandNo"
+        - "managementNo"
+        - "name"
+        - "revision"
+        - "scopeRevision"
+        - "status"
+      additionalProperties: false
+    BrandImpact:
+      type: "object"
+      properties:
+        allowed:
+          type: "boolean"
+        canDecide:
+          type: "boolean"
+        blockers:
+          type: "array"
+          items:
+            type: "string"
+        checkToken:
+          type: "string"
+        storeVersion:
+          type: "number"
+        bindingRevision:
+          type: "number"
+        fromRevision:
+          type:
+            - "number"
+            - "null"
+        toRevision:
+          type:
+            - "number"
+            - "null"
+      required:
+        - "allowed"
+        - "blockers"
+        - "checkToken"
+        - "storeVersion"
+        - "bindingRevision"
+        - "fromRevision"
+        - "toRevision"
+      additionalProperties: false
+    BrandChange:
+      type: "object"
+      properties:
+        changeNo:
+          type: "string"
+        managementNo:
+          type: "string"
+        storeNo:
+          type: "string"
+        fromBrandNo:
+          type: "string"
+        toBrandNo:
+          type: "string"
+        status:
+          type: "string"
+        revision:
+          type: "number"
+        applied:
+          type: "boolean"
+        blockers:
+          type: "array"
+          items:
+            type: "string"
+        actions:
+          type: "array"
+          items:
+            type: "string"
+        reason:
+          type: "string"
+      required:
+        - "changeNo"
+        - "managementNo"
+        - "storeNo"
+        - "status"
+        - "revision"
+        - "applied"
+      additionalProperties: false
+    OperatingContext:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+        entityNo:
+          type: "string"
+        name:
+          type: "string"
+        status:
+          type: "string"
+        revision:
+          type: "number"
+        managementNo:
+          type: "string"
+        brand:
+          anyOf:
+            - type: "object"
+              properties:
+                brandNo:
+                  type: "string"
+                name:
+                  type: "string"
+                scopeRevision:
+                  type: "number"
+              required:
+                - "brandNo"
+                - "name"
+                - "scopeRevision"
+              additionalProperties: false
+            - type: "null"
+        actions:
+          type: "array"
+          items:
+            type: "string"
+        pendingChange:
+          anyOf:
+            - type: "object"
+              properties:
+                changeNo:
+                  type: "string"
+                status:
+                  type: "string"
+                revision:
+                  type: "number"
+              required:
+                - "changeNo"
+                - "status"
+                - "revision"
+              additionalProperties: false
+            - type: "null"
+      required:
+        - "storeNo"
+        - "entityNo"
+        - "name"
+        - "status"
+        - "revision"
+        - "managementNo"
+        - "brand"
+        - "actions"
+      additionalProperties: false
+    PaymentMerchant:
+      type: "object"
+      properties:
+        payMerchantNo:
+          type: "string"
+        entityNo:
+          type: "string"
+        storeNo:
+          type: "string"
+        payChannel:
+          type: "string"
+        applyStatus:
+          type: "string"
+        payMethods:
+          type: "array"
+          items:
+            type: "string"
+      required:
+        - "payMerchantNo"
+        - "entityNo"
+        - "storeNo"
+        - "payChannel"
+        - "applyStatus"
+        - "payMethods"
+      additionalProperties: false
+    ManagementAudit:
+      type: "object"
+      properties:
+        action:
+          type: "string"
+        actorKey:
+          type: "string"
+        occurredAt:
+          type: "string"
+      required:
+        - "action"
+        - "actorKey"
+        - "occurredAt"
+      additionalProperties: false
+    ManagementGrantPage:
+      "$ref": "#/components/schemas/ManagementPage_ManagementGrant"
+    ManagementResourcePage:
+      "$ref": "#/components/schemas/ManagementPage_ManagementResource"
+    ManagementBrandPage:
+      "$ref": "#/components/schemas/ManagementPage_Brand"
+    ManagementAuditPage:
+      "$ref": "#/components/schemas/ManagementPage_ManagementAudit"
+    SvContext:
+      type: "object"
+      properties:
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        currencyScale:
+          type: "number"
+        timeZone:
+          type: "string"
+      required:
+        - "currency"
+        - "currencyScale"
+        - "timeZone"
+      additionalProperties: false
+    SvPlan:
+      type: "object"
+      properties:
+        planNo:
+          type: "string"
+        versionNo:
+          type: "string"
+        revision:
+          type: "number"
+        storeNo:
+          type: "string"
+        name:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        paidAmountMinor:
+          type: "number"
+        bonusAmountMinor:
+          type: "number"
+        totalAmountMinor:
+          type: "number"
+        status:
+          type: "string"
+          enum:
+            - "ACTIVE"
+            - "INACTIVE"
+        createdAt:
+          type: "string"
+        updatedAt:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "planNo"
+        - "versionNo"
+        - "revision"
+        - "storeNo"
+        - "name"
+        - "currency"
+        - "paidAmountMinor"
+        - "bonusAmountMinor"
+        - "totalAmountMinor"
+        - "status"
+        - "createdAt"
+        - "updatedAt"
+      additionalProperties: false
+    SvAccount:
+      type: "object"
+      properties:
+        accountRef:
+          type: "string"
+        maskedName:
+          type: "string"
+        maskedPhone:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        balanceMinor:
+          type: "number"
+        heldMinor:
+          type: "number"
+        availableMinor:
+          type: "number"
+        lastOccurredAt:
+          type:
+            - "string"
+            - "null"
+        lastRechargeAt:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "accountRef"
+        - "maskedName"
+        - "maskedPhone"
+        - "currency"
+        - "balanceMinor"
+        - "heldMinor"
+        - "availableMinor"
+        - "lastOccurredAt"
+      additionalProperties: false
+    SvRecord:
+      type: "object"
+      properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+        voucherDocumentNo:
+          type:
+            - "string"
+            - "null"
+        recordNo:
+          type: "string"
+        maskedName:
+          type: "string"
+        maskedPhone:
+          type: "string"
+        type:
+          type: "string"
+          enum:
+            - "RECHARGE"
+            - "REDEMPTION"
+        title:
+          type: "string"
+        storeNo:
+          type: "string"
+        storeName:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        signedAmountMinor:
+          type: "number"
+        balanceAfterMinor:
+          type: "number"
+        occurredAt:
+          type: "string"
+        businessNo:
+          type: "string"
+        planNo:
+          type:
+            - "string"
+            - "null"
+        versionNo:
+          type:
+            - "string"
+            - "null"
+        paidAmountMinor:
+          type:
+            - "number"
+            - "null"
+        bonusAmountMinor:
+          type:
+            - "number"
+            - "null"
+      required:
+        - "recordNo"
+        - "maskedName"
+        - "maskedPhone"
+        - "type"
+        - "title"
+        - "storeNo"
+        - "storeName"
+        - "currency"
+        - "signedAmountMinor"
+        - "balanceAfterMinor"
+        - "occurredAt"
+        - "businessNo"
+        - "planNo"
+        - "versionNo"
+        - "paidAmountMinor"
+        - "bonusAmountMinor"
+      additionalProperties: false
+    SvProgress:
+      type: "object"
+      properties:
+        rechargeNo:
+          type: "string"
+        documentNo:
+          type:
+            - "string"
+            - "null"
+        revision:
+          type: "number"
+        status:
+          type: "string"
+        storeNo:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        paidAmountMinor:
+          type:
+            - "number"
+            - "null"
+        creditedTotalMinor:
+          type:
+            - "number"
+            - "null"
+        creditedAt:
+          type:
+            - "string"
+            - "null"
+        receivedAt:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "rechargeNo"
+        - "revision"
+        - "status"
+        - "storeNo"
+        - "currency"
+        - "paidAmountMinor"
+        - "creditedTotalMinor"
+        - "creditedAt"
+        - "receivedAt"
+      additionalProperties: false
+    SvSelectedCustomer:
+      type: "object"
+      properties:
+        customerRef:
+          type: "string"
+        expiresAt:
+          type: "string"
+        pendingScope:
+          type: "string"
+        memberNo:
+          type:
+            - "string"
+            - "null"
+        displayName:
+          type: "string"
+        phoneMasked:
+          type: "string"
+        account:
+          anyOf:
+            - type: "object"
+              properties:
+                accountRef:
+                  type: "string"
+                currency:
+                  "$ref": "#/components/schemas/CurrencyCode"
+                availableMinor:
+                  type: "number"
+              required:
+                - "accountRef"
+                - "currency"
+                - "availableMinor"
+              additionalProperties: false
+            - type: "null"
+      required:
+        - "customerRef"
+        - "expiresAt"
+        - "displayName"
+        - "phoneMasked"
+        - "account"
+      additionalProperties: false
+    SvCandidate:
+      type: "object"
+      properties:
+        memberNo:
+          type: "string"
+        displayName:
+          type: "string"
+        phoneMasked:
+          type: "string"
+        memberStatus:
+          type: "string"
+        canRecharge:
+          type: "boolean"
+        unavailableReason:
+          type:
+            - "string"
+            - "null"
+        account:
+          anyOf:
+            - type: "object"
+              properties:
+                accountRef:
+                  type: "string"
+                currency:
+                  "$ref": "#/components/schemas/CurrencyCode"
+                availableMinor:
+                  type: "number"
+              required:
+                - "accountRef"
+                - "currency"
+                - "availableMinor"
+              additionalProperties: false
+            - type: "null"
+      required:
+        - "memberNo"
+        - "displayName"
+        - "phoneMasked"
+        - "memberStatus"
+        - "canRecharge"
+        - "unavailableReason"
+        - "account"
+      additionalProperties: false
+    SvPlanPage:
+      "$ref": "#/components/schemas/SvPage_SvPlan"
+    SvAccountPage:
+      "$ref": "#/components/schemas/SvPage_SvAccount"
+    SvRecordPage:
+      "$ref": "#/components/schemas/SvPage_SvRecord"
+    SvRechargeResolve:
+      type: "object"
+      properties:
+        found:
+          type: "boolean"
+        recharge:
+          anyOf:
+            - "$ref": "#/components/schemas/SvProgress"
+            - type: "null"
+      required:
+        - "found"
+        - "recharge"
+      additionalProperties: false
     Record_Lang_string:
       type: "object"
       properties:
@@ -13261,84 +14511,1668 @@ components:
         US:
           type: "number"
       additionalProperties: false
-    OrderPointsEarning:
+    ManagementPage_ManagementGrant:
       type: "object"
       properties:
-        orderNo:
-          type: "string"
-        typeCode:
-          type: "string"
-        name:
-          type: "string"
-        currency:
-          type: "string"
-        state:
-          type: "string"
-          enum:
-            - "NONE"
-            - "EXPECTED"
-            - "PROCESSING"
-            - "PENDING"
-            - "AVAILABLE"
-            - "RETRYABLE"
-            - "MANUAL"
-            - "SKIPPED"
-            - "RECLAIMED"
-        redemptionState:
-          type: "string"
-          enum:
-            - "NONE"
-            - "PROCESSING"
-            - "HELD"
-            - "RELEASED"
-            - "CONSUMED"
-            - "REFUND_PROCESSING"
-            - "RETURNED"
-            - "PARTIALLY_RETURNED"
-        usedPoints:
-          type: "number"
-        refundState:
-          type: "string"
-          enum:
-            - "NONE"
-            - "PROCESSING"
-            - "MANUAL"
-            - "COMPLETED"
-        returnedPoints:
-          type: "number"
-        expectedPoints:
-          type: "number"
-        grantedPoints:
-          type: "number"
-        pendingPoints:
-          type: "number"
-        availablePoints:
-          type: "number"
-        reclaimedPoints:
-          type: "number"
-        reason:
+        items:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/ManagementGrant"
+        nextCursor:
           type:
             - "string"
             - "null"
       required:
-        - "orderNo"
-        - "typeCode"
-        - "name"
-        - "currency"
-        - "state"
-        - "redemptionState"
-        - "usedPoints"
-        - "refundState"
-        - "returnedPoints"
-        - "expectedPoints"
-        - "grantedPoints"
-        - "pendingPoints"
-        - "availablePoints"
-        - "reclaimedPoints"
-        - "reason"
+        - "items"
+        - "nextCursor"
       additionalProperties: false
-      description: "Server-projected earning for an authorized order; accepted work is not an account credit."
+    ManagementPage_ManagementResource:
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/ManagementResource"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "items"
+        - "nextCursor"
+      additionalProperties: false
+    ManagementPage_Brand:
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/Brand"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "items"
+        - "nextCursor"
+      additionalProperties: false
+    ManagementPage_ManagementAudit:
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/ManagementAudit"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "items"
+        - "nextCursor"
+      additionalProperties: false
+    SvPage_SvPlan:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SvPlan"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+        hasMore:
+          type: "boolean"
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    SvPage_SvAccount:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SvAccount"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+        hasMore:
+          type: "boolean"
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    SvPage_SvRecord:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SvRecord"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+        hasMore:
+          type: "boolean"
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
 paths:
+  "/biz/management/context":
+    get:
+      operationId: "mManagementContext"
+      summary: "管理空间上下文"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ManagementContext"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/spaces":
+    post:
+      operationId: "mCreateManagementSpace"
+      summary: "创建管理空间"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ManagementSpace"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ManagementSpaceCreateReq"
+  "/biz/management/spaces/{m}/resources":
+    get:
+      operationId: "mManagementResources"
+      summary: "资源与授权列表"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "m"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "resourceType"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "view"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - "EFFECTIVE"
+              - "GRANTS"
+        - name: "actorNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ManagementGrantPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/spaces/{m}/grants":
+    post:
+      operationId: "mManagementGrant"
+      summary: "授予资源能力"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "m"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ManagementGrant"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ManagementGrantReq"
+  "/biz/management/spaces/{m}/grants/{g}":
+    delete:
+      operationId: "mRevokeManagementGrant"
+      summary: "撤销资源授权"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "m"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "g"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "expectedRevision"
+          in: "query"
+          required: true
+          schema:
+            type: "number"
+        - name: "reason"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ManagementGrant"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/spaces/{m}/entities":
+    get:
+      operationId: "mManagementEntities"
+      summary: "管理主体列表"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "m"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ManagementResourcePage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/spaces/{m}/stores":
+    get:
+      operationId: "mManagementStores"
+      summary: "管理门店列表"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "m"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+        - name: "brandNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ManagementResourcePage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/entities/{e}/payment-merchants":
+    get:
+      operationId: "mPaymentMerchantCandidates"
+      summary: "支付商户候选"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "e"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "payChannel"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "payScene"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "storeNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/PaymentMerchant"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/brands":
+    get:
+      operationId: "mBrands"
+      summary: "品牌列表"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "status"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "keyword"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ManagementBrandPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    post:
+      operationId: "mCreateBrand"
+      summary: "创建品牌"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/Brand"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ManagementBrandCreateReq"
+  "/biz/management/brands/{b}":
+    get:
+      operationId: "mBrand"
+      summary: "品牌详情"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "b"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/Brand"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    put:
+      operationId: "mEditBrand"
+      summary: "修改品牌"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "b"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/Brand"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ManagementBrandEditReq"
+  "/biz/management/brands/{b}/status-changes":
+    post:
+      operationId: "mBrandStatus"
+      summary: "品牌启停"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "b"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/Brand"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ManagementBrandStatusReq"
+  "/biz/management/brands/{b}/stores":
+    get:
+      operationId: "mBrandStores"
+      summary: "品牌门店"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "b"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ManagementResourcePage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/brands/{b}/audit-events":
+    get:
+      operationId: "mBrandAudit"
+      summary: "品牌操作记录"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "b"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ManagementAuditPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stores/{s}/operating-context":
+    get:
+      operationId: "mStoreOperatingContext"
+      summary: "门店组织上下文"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "s"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/OperatingContext"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stores/{s}/brand-changes/check":
+    post:
+      operationId: "mCheckBrandChange"
+      summary: "品牌变更影响检查"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "s"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/BrandImpact"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ManagementBrandCheckReq"
+  "/biz/stores/{s}/brand-changes":
+    post:
+      operationId: "mSubmitBrandChange"
+      summary: "提交品牌变更"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "s"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/BrandChange"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ManagementBrandChangeSubmitReq"
+  "/biz/management/brand-changes/{c}":
+    get:
+      operationId: "mBrandChange"
+      summary: "查询品牌变更"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "c"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/BrandChange"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/brand-changes/{c}/decisions":
+    post:
+      operationId: "mDecideBrandChange"
+      summary: "决定品牌变更"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "c"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/BrandChange"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ManagementBrandDecisionReq"
+  "/biz/stored-value/customer-candidates":
+    get:
+      operationId: "mSvCandidates"
+      summary: "查找可办理储值的会员"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "phone"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "keyword"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    properties:
+                      records:
+                        type: "array"
+                        items:
+                          "$ref": "#/components/schemas/SvCandidate"
+                      total:
+                        type: "integer"
+                      page:
+                        type: "integer"
+                      size:
+                        type: "integer"
+                    required:
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stored-value/customer-selections":
+    post:
+      operationId: "mSvSelectCustomer"
+      summary: "选用储值顾客"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvSelectedCustomer"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvSelectCustomerReq"
+  "/biz/stored-value/plan-recharges/confirm-offline":
+    post:
+      operationId: "mSvConfirmOffline"
+      summary: "确认商家线下储值"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvProgress"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvRechargeCreate"
+  "/biz/stored-value/context":
+    get:
+      operationId: "mSvContext"
+      summary: "储值上下文"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvContext"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stored-value/plans":
+    get:
+      operationId: "mSvPlans"
+      summary: "门店储值方案"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "status"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvPlanPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    post:
+      operationId: "mSvCreatePlan"
+      summary: "创建门店储值方案"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvPlan"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvPlanCreate"
+  "/biz/stored-value/plans/{planNo}":
+    get:
+      operationId: "mSvPlan"
+      summary: "储值方案详情"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvPlan"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stored-value/plans/{planNo}/status":
+    put:
+      operationId: "mSvPlanStatus"
+      summary: "启停门店储值方案"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvPlan"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvPlanStatusReq"
+  "/biz/stored-value/account-directory":
+    get:
+      operationId: "mSvAccounts"
+      summary: "门店储值顾客"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "keyword"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvAccountPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stored-value/accounts/{accountRef}":
+    get:
+      operationId: "mSvAccount"
+      summary: "门店储值账户"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvAccount"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stored-value/records":
+    get:
+      operationId: "mSvRecords"
+      summary: "门店储值收支"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "type"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            enum:
+              - "ALL"
+              - "RECHARGE"
+              - "REDEMPTION"
+        - name: "startDate"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "endDate"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "accountRef"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvRecordPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stored-value/records/{recordNo}":
+    get:
+      operationId: "mSvRecord"
+      summary: "储值收支详情"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvRecord"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stored-value/plan-recharges/resolve":
+    post:
+      operationId: "mSvResolveRecharge"
+      summary: "查询原充值创建结果"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvRechargeResolve"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvRechargeCreate"
+  "/biz/stored-value/plan-recharges/cancel-create":
+    post:
+      operationId: "mSvCancelCreate"
+      summary: "取消未明确创建的原充值命令"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvProgress"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvRechargeCreate"
+  "/biz/stored-value/plan-recharges":
+    post:
+      operationId: "mSvCreateRecharge"
+      summary: "按方案办理储值"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvProgress"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvRechargeCreate"
+  "/biz/stored-value/plan-recharges/{rechargeNo}":
+    get:
+      operationId: "mSvRecharge"
+      summary: "独立储值进度"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvProgress"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stored-value/plan-recharges/{rechargeNo}/submit":
+    post:
+      operationId: "mSvSubmit"
+      summary: "提交储值实收"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvProgress"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvReceipt"
+  "/biz/stored-value/plan-recharges/{rechargeNo}/receive":
+    post:
+      operationId: "mSvReceive"
+      summary: "确认储值收款"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvProgress"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvReceive"
+  "/biz/stored-value/plan-recharges/{rechargeNo}/cancel":
+    post:
+      operationId: "mSvCancel"
+      summary: "取消未收款储值"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvProgress"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvCancelReq"
   "/biz/auth/otp/send":
     post:
       operationId: "mSendOtp"
@@ -17199,6 +20033,41 @@ paths:
                       - "total"
                       - "page"
                       - "size"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/order/{orderNo}/points-earning":
+    get:
+      operationId: "mOrderPointsEarning"
+      summary: "订单赠送积分进度"
+      tags:
+        - "order"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/OrderPointsEarning"
                 required:
                   - "code"
                   - "msg"
@@ -23709,42 +26578,6 @@ paths:
                     type: "string"
                   data:
                     "$ref": "#/components/schemas/{ docNo: string }"
-                required:
-                  - "code"
-                  - "msg"
-                  - "data"
-
-  "/biz/order/{orderNo}/points-earning":
-    get:
-      operationId: "mOrderPointsEarning"
-      summary: "订单赠送积分进度"
-      tags:
-        - "order"
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: "orderNo"
-          in: "path"
-          required: true
-          schema:
-            type: "string"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "application/json":
-              schema:
-                type: "object"
-                properties:
-                  code:
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg:
-                    type: "string"
-                  data:
-                    type: "array"
-                    items:
-                      "$ref": "#/components/schemas/OrderPointsEarning"
                 required:
                   - "code"
                   - "msg"

@@ -1,3 +1,4 @@
+import {managementMock} from "./management";
 import { storedValueMock } from './stored-value';
 // B 端 mock 的门面：把各域拼成一份完整实现。
 //
@@ -19,6 +20,7 @@ import { messageMock } from "./message";
 import { inventoryMock } from "./inventory";
 
 export const mockApi: MerchantApi = {
+  ...managementMock,
   mOrderPointsEarning: async () => [],
   ...storedValueMock,
   ...accountMock,

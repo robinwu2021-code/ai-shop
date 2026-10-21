@@ -22,6 +22,16 @@ class BrandScopeAuthorizationTest {
   assertThat(f.scopes.can(staff,m,"ENTITY","E1","entity.read")).isFalse();
   assertThatThrownBy(()->f.scopes.grant(f.owner,m,new ManagementModels.GrantCommand("MCH:MA3","ENTITY","E1","entity.read",null,null,true,null,false))).isInstanceOf(ai.neargo.shop.common.BizException.class);
  }
+ @Test void disabledDelegatorInvalidatesItsChildGrant() throws Exception {
+  var f=new BrandFixture();String m=f.no(f.space(),"managementNo");
+  for(String permission:new String[]{"management.enter","management.grant.manage"})f.scopes.grant(f.owner,m,new ManagementModels.GrantCommand("MCH:MA3","SPACE",m,permission,null,null,false,null,false));
+  f.scopes.grant(f.owner,m,new ManagementModels.GrantCommand("MCH:MA3","ENTITY","E1","entity.read",null,null,true,null,false));
+  f.scopes.grant(new ManagementModels.Actor("MAIN","MCH:MA3"),m,new ManagementModels.GrantCommand("MCH:MA2","ENTITY","E1","entity.read",null,null,false,null,false));
+  assertThat(f.scopes.can(f.other,m,"ENTITY","E1","entity.read")).isTrue();
+  f.jdbc.update("UPDATE mch_account SET status='DISABLED' WHERE mch_account_no='MA3'");
+  assertThat(f.scopes.can(f.other,m,"ENTITY","E1","entity.read")).isFalse();
+ }
+
  @Test void tenantAndSubjectKindNeverAlias() throws Exception {
   var f=new BrandFixture();var m=f.no(f.space(),"managementNo");
   assertThat(f.scopes.can(new ManagementModels.Actor("OTHER","MCH:MA1"),m,"SPACE",m,"management.enter")).isFalse();

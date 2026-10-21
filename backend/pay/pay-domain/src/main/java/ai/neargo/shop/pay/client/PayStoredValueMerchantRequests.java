@@ -6,6 +6,7 @@ import java.util.List;
 
 public final class PayStoredValueMerchantRequests {
     private PayStoredValueMerchantRequests() { }
+    public record OrganizationImpact(String tenantNo,String entityNo,String storeNo) {}
     public record Directory(CatalogScope scope,String storeNo,List<String> users,String keywordHash,String cursor,int size) { }
     public record Account(CatalogScope scope,String storeNo,String accountRef) { }
     public record Records(CatalogScope scope,String storeNo,String type,Instant from,Instant to,String accountRef,String cursor,int size) { }

@@ -150,3 +150,19 @@ export interface MerchantInventoryTrace {
     }>;
   }>;
 }
+
+// P1 organization management response contracts.
+export type {ManagementContext,ManagementSpace,ManagementGrant,ManagementResource,Brand,BrandImpact,BrandChange,OperatingContext,PaymentMerchant,ManagementAudit} from './management-types';
+import type {ManagementPage,ManagementGrant,ManagementResource,Brand,ManagementAudit} from './management-types';
+export type ManagementGrantPage=ManagementPage<ManagementGrant>;
+export type ManagementResourcePage=ManagementPage<ManagementResource>;
+export type ManagementBrandPage=ManagementPage<Brand>;
+export type ManagementAuditPage=ManagementPage<ManagementAudit>;
+
+// Existing single-store stored-value contracts, now visible to the API generator.
+export type {SvContext,SvPlan,SvAccount,SvRecord,SvProgress,SvSelectedCustomer,SvCandidate} from './stored-value-types';
+import type {SvPage,SvPlan,SvAccount,SvRecord,SvProgress} from './stored-value-types';
+export type SvPlanPage=SvPage<SvPlan>;
+export type SvAccountPage=SvPage<SvAccount>;
+export type SvRecordPage=SvPage<SvRecord>;
+export interface SvRechargeResolve {found:boolean;recharge:SvProgress|null}

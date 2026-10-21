@@ -13809,3 +13809,139 @@ INSERT IGNORE INTO notify_scene_channel
 VALUES
     ('MAIN','STORED_VALUE_REDEEMED','C_USER','WXSUB',0,'NORMAL',0,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'SYSTEM','SYSTEM'),
     ('MAIN','STORED_VALUE_REDEEMED','C_USER','INAPP',1,'NORMAL',0,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'SYSTEM','SYSTEM');
+
+-- V544 scoped generation: brand management organization
+CREATE TABLE IF NOT EXISTS mch_management_space
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    owner_actor_no VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    bootstrap_source_account_no VARCHAR(64) NOT NULL,
+    bootstrap_key VARCHAR(64) NOT NULL,
+    bootstrap_hash CHAR(64) NOT NULL,
+    auth_revision BIGINT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mch_management_space_uk_1 UNIQUE (tenant_no,management_no),
+    CONSTRAINT mch_management_space_uk_2 UNIQUE (tenant_no,owner_actor_no,bootstrap_key)
+);
+
+CREATE TABLE IF NOT EXISTS mch_management_grant
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    grant_no VARCHAR(64) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    resource_type VARCHAR(24) NOT NULL,
+    resource_no VARCHAR(64) NOT NULL,
+    permission_code VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    valid_from DATETIME(3) NOT NULL,
+    valid_to DATETIME(3) NULL,
+    authority_source_type VARCHAR(24) NOT NULL,
+    authority_source_no VARCHAR(64) NOT NULL,
+    delegatable TINYINT NOT NULL DEFAULT 0,
+    authority_snapshot TEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mch_management_grant_uk_1 UNIQUE (tenant_no,grant_no),
+    CONSTRAINT mch_management_grant_uk_2 UNIQUE (tenant_no,management_no,actor_no,resource_type,resource_no,permission_code)
+);
+
+CREATE TABLE IF NOT EXISTS mch_brand
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    brand_no VARCHAR(64) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    logo VARCHAR(512) NULL,
+    status VARCHAR(24) NOT NULL,
+    scope_revision BIGINT NOT NULL,
+    name_key VARCHAR(100) NOT NULL,
+    create_key VARCHAR(64) NOT NULL,
+    create_hash CHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mch_brand_uk_1 UNIQUE (tenant_no,brand_no),
+    CONSTRAINT mch_brand_uk_2 UNIQUE (tenant_no,management_no,name_key),
+    CONSTRAINT mch_brand_uk_3 UNIQUE (tenant_no,management_no,create_key)
+);
+
+CREATE TABLE IF NOT EXISTS mch_brand_store_binding
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    binding_no VARCHAR(64) NOT NULL,
+    brand_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    effective_from DATETIME(3) NOT NULL,
+    effective_to DATETIME(3) NULL,
+    scope_revision BIGINT NOT NULL,
+    change_no VARCHAR(64) NOT NULL,
+    active_store_no VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN status='ACTIVE' THEN store_no ELSE NULL END),
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mch_brand_store_binding_uk_1 UNIQUE (tenant_no,binding_no),
+    CONSTRAINT mch_brand_store_binding_uk_2 UNIQUE (tenant_no,active_store_no),
+    CHECK (status IN ('PREPARING','ACTIVE','ENDED'))
+);
+
+CREATE TABLE IF NOT EXISTS mch_brand_change
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    change_no VARCHAR(64) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    from_brand_no VARCHAR(64) NULL,
+    to_brand_no VARCHAR(64) NULL,
+    expected_scope_revision BIGINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    check_snapshot TEXT NOT NULL,
+    authorization_snapshot TEXT NOT NULL,
+    reason VARCHAR(255) NULL,
+    expected_store_version BIGINT NOT NULL,
+    expected_from_brand_revision BIGINT NULL,
+    expected_to_brand_revision BIGINT NULL,
+    command_key VARCHAR(64) NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    check_expires_at DATETIME(3) NOT NULL,
+    submitted_by VARCHAR(64) NOT NULL,
+    decision VARCHAR(16) NULL,
+    decided_by VARCHAR(64) NULL,
+    decided_at DATETIME(3) NULL,
+    decision_key VARCHAR(64) NULL,
+    decision_hash CHAR(64) NULL,
+    pending_store_no VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN status IN ('CHECKED','PREPARING') THEN store_no ELSE NULL END),
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mch_brand_change_uk_1 UNIQUE (tenant_no,change_no),
+    CONSTRAINT mch_brand_change_uk_2 UNIQUE (tenant_no,store_no,command_key),
+    CONSTRAINT mch_brand_change_uk_3 UNIQUE (tenant_no,pending_store_no)
+);

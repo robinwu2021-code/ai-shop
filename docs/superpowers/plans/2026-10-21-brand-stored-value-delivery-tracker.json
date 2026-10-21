@@ -106,7 +106,12 @@
         "MG08"
       ],
       "planFile": "2026-10-21-brand-stored-value-organization.md",
-      "status": "IN_PROGRESS"
+      "status": "AWAITING_FINAL_REVIEW",
+      "implementationNotes": [
+        "20 business APIs and one internal Pay read dependency implemented",
+        "5 Merchant tables allocated V544; explicit existing unicode_520 collation",
+        "No real customer stored-value transaction executed"
+      ]
     },
     {
       "id": "P2",

@@ -1,6 +1,6 @@
 # 第一阶段经营组织与品牌管理详细设计
 
-状态：设计待开发。适用范围：P1经营管理空间、品牌、门店品牌配置、主体及支付商户候选。设计日期：2026-10-21。
+状态：编码完成，阶段验收中。适用范围：P1经营管理空间、品牌、门店品牌配置、主体及支付商户候选。设计日期：2026-10-21。
 
 第一阶段把B端的顶层经营管理与当前门店经营分开，交付可以实际使用的品牌组织配置。复用现有经营主体、门店、成员身份和渠道进件，新增5张Merchant表及20项API。品牌关联只改变运营组织，不改变门店经营主体、收款商户、会员可见范围或储值资金归属。
 
@@ -57,7 +57,7 @@ erDiagram
 | sys_outbox | event_no、source_event_no、payload、状态与重试信息 | 事务事件与关键审计证据；不新建另一套outbox |
 | sys_audit_log | op_action、target、before_json、after_json及操作者 | 通过现有平台审计适配，BR07返回受限品牌审计；不是原始日志下载 |
 
-P1不改sv_account、sv_lot、pmt_activity、会员表，也不生成品牌余额。数据库落在Merchant所属Core数据源，Pay数据源无P1新增表。各域间无跨库外键；应用校验关系、唯一索引防并发。
+P1不改sv_account、sv_lot、pmt_activity、会员表，也不生成品牌余额。数据库落在Merchant所属Core数据源，Pay数据源无P1新增表。新增一项Pay内部只读影响检查，发布时先升级Pay再升级Core。各域间无跨库外键；应用校验关系、唯一索引防并发。
 
 ### 3.2 公共字段与存储规范
 
@@ -74,7 +74,7 @@ P1不改sv_account、sv_lot、pmt_activity、会员表，也不生成品牌余�
 
 实体业务号调用已有BizKey并注册集中前缀；人工可见变更单调用现有DocumentNumberGenerator并注册业务类型，不另写UUID/时间戳拼号。具体编号配置跟随现有统一登记机制实施。外部引用预留VARCHAR(64)，不依赖编码长度。
 
-MySQL实际版本、排序规则、CHECK是否执行在迁移演练核对。应用必须验证枚举、长度与有效期，不能只依赖CHECK。名称trim+Unicode NFC生成name_key，唯一性遵循目标库已确认的排序规则，前端提示不代替唯一键。
+服务器已核对为MySQL 9.7.2；现有经营表采用utf8mb4_unicode_520_ci，P1新表显式使用相同排序规则，避免跨表授权关联产生Illegal mix of collations。CHECK及生成列在隔离MySQL库演练。应用必须验证枚举、长度与有效期，不能只依赖CHECK。名称trim+Unicode NFC生成name_key，唯一性遵循目标库已确认的排序规则，前端提示不代替唯一键。
 
 ### mch_management_space
 
@@ -330,7 +330,7 @@ MG08不是修改收款路由。必须先校验主体读权限与具体商户读�
 | BR05 | `POST /biz/management/brands/{brandNo}/status-changes` | StatusChange | `ChangeResult` | `brand.manage` |
 | BR06 | `GET /biz/management/brands/{brandNo}/stores` | cursor,size | `CursorPage<BrandStore>` | `brand.read` |
 | BR07 | `GET /biz/management/brands/{brandNo}/audit-events` | cursor,size | `CursorPage<AuditEvent>` | `brand.audit.read` |
-| ST01 | `GET /biz/stores/{storeNo}/operating-context` | — | `StoreOperatingContext` | `store.read` |
+| ST01 | `GET /biz/stores/{storeNo}/operating-context` | managementNo | `StoreOperatingContext` | `store.read` |
 | ST02 | `POST /biz/stores/{storeNo}/brand-changes/check` | BrandChangeCheck | `BrandChangeImpact` | `store.brand.change` |
 | ST03 | `POST /biz/stores/{storeNo}/brand-changes` | BrandChangeSubmit | `BrandChange` | `store.brand.change` |
 | ST04 | `GET /biz/management/brand-changes/{changeNo}` | — | `BrandChange` | `brand.change.read` |
@@ -347,7 +347,7 @@ MG08不是修改收款路由。必须先校验主体读权限与具体商户读�
 - MG04以表中六元唯一键复用授权，不另建命令表；第一次创建后重放返回当前有效授权，相同唯一元组但来源/委派/有效期不同必须带expectedRevision显式更新；已撤销或过期授权不能被普通重试自动复活，明确reactivate=true及当前revision才可重新授予。
 - MG03保持CursorPage<GrantedResource>，items包含resourceType/resourceNo/actions；view=GRANTS时附带grantNo、actorRef、permissionCode、状态、来源和revision，不能返回原始身份凭据。MG05的expectedRevision、reason放查询参数，避免DELETE body兼容性问题；已撤销返回原状态，不能删除审计。MG03 view=GRANTS只向授权管理者返回其可管理范围的授权，用于列表及撤销；普通用户仅view=EFFECTIVE。
 - 返回品牌/变更/授权时包含status、createdAt、updatedAt、createdByLabel、updatedByLabel、revision；数字版本若可能超过JS安全范围用十进制字符串。可用actions用于页面，但后端始终重验权限。
-- 列表空结果返回items=[]，不返回可越权推断的tenant总数。无资源读权404，有读权但无动作权403，版本/状态/幂等冲突409，输入错误400，依赖未知503；使用现有异常码体系登记业务码，不占用未知数字。
+- 列表空结果返回items=[]，不返回可越权推断的tenant总数。沿用项目ApiResult：除认证失败外以HTTP 200及业务code表示错误；无资源读权NOT_FOUND、有读权但无动作权FORBIDDEN、版本/状态/幂等冲突CONFLICT、输入错误BAD_REQUEST、依赖未知为能力不可用。不能按HTTP 200判定业务成功。
 
 ### 6.2 主要请求DTO
 
@@ -469,3 +469,12 @@ ActorContext从认证生成；ManagementContext/EntityContext/StoreExecutionCont
 回滚关闭新增管理入口并回退兼容应用，保留品牌/授权/变更/审计数据；回退程序不得把brand关系解释成资金准入。新表不直接删除，原会员、单店账户和收款路由保持原状。
 
 本阶段完成标准：可创建品牌、把有权门店关联到品牌、看到完整创建修改状态和审计、正确筛选主体渠道商户，并通过越权及并发检查；品牌会员和品牌储值资金仍明确未开通。
+
+
+## 11 实施补充
+
+- Merchant使用显式tenant/resource条件的JdbcTemplate本地事务；请求DTO为ManagementModels中的类型，不额外创建未被使用的实体/Mapper。
+- 管理事件通过当前实例已有投递引擎写入：UNIFIED使用统一ingress，LEGACY使用OutboxEventBus稳定事件编号；不切换实例全局模式。持久事件同时承担命令恢复及品牌审计读取。
+- Pay内部新增POST /internal/pay/stored-value/organization-impact，受现有服务间token保护，仅返回范围一致的余额/冻结/待处理/未归属计数及品牌金融能力，不返回会员、凭据或流水明细。
+- 门店上下文请求显式携带managementNo；返回pendingChange供其他有权管理者进入原变更单。
+- 管理空间初始化只创建空间。B端“导入本人经营资源”明确选择已验证所有人主体，经MG04逐项导入该主体资源；不导入整个租户。

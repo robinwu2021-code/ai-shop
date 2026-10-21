@@ -235,7 +235,7 @@
       "module": "Merchant/BFF",
       "method": "GET",
       "path": "/biz/stores/{storeNo}/operating-context",
-      "request": "—",
+      "request": "managementNo",
       "response": "StoreOperatingContext",
       "permission": "store.read",
       "screens": [

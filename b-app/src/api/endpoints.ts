@@ -2,7 +2,7 @@
 // 一处声明，两处消费：http.ts 按表发请求；后端据此生成 controller 骨架。
 import type { MerchantApi } from "./contract";
 
-export type HttpMethod = "GET" | "POST" | "PUT";
+export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 
 export interface EndpointDef {
   method: HttpMethod;
@@ -15,6 +15,26 @@ export interface EndpointDef {
 
 /** key 与 MerchantApi 的方法名一一对应，缺一个就编译不过 */
 export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
+  mManagementContext: {method:"GET",path:"/biz/management/context",auth:true,summary:"管理空间上下文"},
+  mCreateManagementSpace: {method:"POST",path:"/biz/management/spaces",auth:true,summary:"创建管理空间"},
+  mManagementResources: {method:"GET",path:"/biz/management/spaces/:m/resources",auth:true,summary:"资源与授权列表"},
+  mManagementGrant: {method:"POST",path:"/biz/management/spaces/:m/grants",auth:true,summary:"授予资源能力"},
+  mRevokeManagementGrant: {method:"DELETE",path:"/biz/management/spaces/:m/grants/:g",auth:true,summary:"撤销资源授权"},
+  mManagementEntities: {method:"GET",path:"/biz/management/spaces/:m/entities",auth:true,summary:"管理主体列表"},
+  mManagementStores: {method:"GET",path:"/biz/management/spaces/:m/stores",auth:true,summary:"管理门店列表"},
+  mPaymentMerchantCandidates: {method:"GET",path:"/biz/management/entities/:e/payment-merchants",auth:true,summary:"支付商户候选"},
+  mBrands: {method:"GET",path:"/biz/management/brands",auth:true,summary:"品牌列表"},
+  mCreateBrand: {method:"POST",path:"/biz/management/brands",auth:true,summary:"创建品牌"},
+  mBrand: {method:"GET",path:"/biz/management/brands/:b",auth:true,summary:"品牌详情"},
+  mEditBrand: {method:"PUT",path:"/biz/management/brands/:b",auth:true,summary:"修改品牌"},
+  mBrandStatus: {method:"POST",path:"/biz/management/brands/:b/status-changes",auth:true,summary:"品牌启停"},
+  mBrandStores: {method:"GET",path:"/biz/management/brands/:b/stores",auth:true,summary:"品牌门店"},
+  mBrandAudit: {method:"GET",path:"/biz/management/brands/:b/audit-events",auth:true,summary:"品牌操作记录"},
+  mStoreOperatingContext: {method:"GET",path:"/biz/stores/:s/operating-context",auth:true,summary:"门店组织上下文"},
+  mCheckBrandChange: {method:"POST",path:"/biz/stores/:s/brand-changes/check",auth:true,summary:"品牌变更影响检查"},
+  mSubmitBrandChange: {method:"POST",path:"/biz/stores/:s/brand-changes",auth:true,summary:"提交品牌变更"},
+  mBrandChange: {method:"GET",path:"/biz/management/brand-changes/:c",auth:true,summary:"查询品牌变更"},
+  mDecideBrandChange: {method:"POST",path:"/biz/management/brand-changes/:c/decisions",auth:true,summary:"决定品牌变更"},
   mSvCandidates: {method:"GET",path:"/biz/stored-value/customer-candidates",auth:true,summary:"查找可办理储值的会员"},
   mSvSelectCustomer: {method:"POST",path:"/biz/stored-value/customer-selections",auth:true,summary:"选用储值顾客"},
   mSvConfirmOffline: {method:"POST",path:"/biz/stored-value/plan-recharges/confirm-offline",auth:true,summary:"确认商家线下储值"},

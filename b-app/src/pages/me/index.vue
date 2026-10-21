@@ -154,6 +154,7 @@ onShow(() => {
 
 <template>
   <sh-scaffold title-key="tab.me" tab="me">
+    <view v-if="merchant.isLogin" class="sh-card sh-row sh-row--between" @tap="go(ROUTES.management)"><text class="txt-body">{{$t('management.title')}}</text><sh-go/></view>
     <view v-if="!merchant.isLogin" class="sh-card head sh-row" @tap="goLogin">
       <text class="txt-title">{{ $t("me.notLogin") }}</text>
       <text class="sh-muted">{{ $t("me.notLoginHint") }}</text>

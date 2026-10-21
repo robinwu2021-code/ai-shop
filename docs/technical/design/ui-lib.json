@@ -257,8 +257,8 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 556,
-        "c-app": 97
+        "b-app": 584,
+        "c-app": 102
       }
     },
     {
@@ -279,8 +279,8 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 432,
-        "c-app": 85
+        "b-app": 437,
+        "c-app": 89
       }
     },
     {
@@ -317,8 +317,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 437,
-        "c-app": 303
+        "b-app": 441,
+        "c-app": 317
       }
     },
     {
@@ -437,7 +437,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 16,
+        "b-app": 25,
         "c-app": 13
       }
     },
@@ -454,7 +454,7 @@
       },
       "usage": {
         "b-app": 46,
-        "c-app": 54
+        "c-app": 56
       }
     },
     {
@@ -491,8 +491,8 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 142,
-        "c-app": 58
+        "b-app": 159,
+        "c-app": 60
       }
     },
     {
@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 117,
+        "b-app": 127,
         "c-app": 83
       }
     },
@@ -535,8 +535,8 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 129,
-        "c-app": 32
+        "b-app": 138,
+        "c-app": 35
       }
     },
     {
@@ -635,8 +635,8 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 241,
-        "c-app": 94
+        "b-app": 295,
+        "c-app": 97
       }
     },
     {
@@ -677,8 +677,8 @@
         "padding": "12px var(--sh-pad-page, 14px)"
       },
       "usage": {
-        "b-app": 160,
-        "c-app": 33
+        "b-app": 180,
+        "c-app": 34
       }
     },
     {
@@ -827,8 +827,8 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 211,
-        "c-app": 81
+        "b-app": 256,
+        "c-app": 90
       }
     },
     {
@@ -849,7 +849,7 @@
         "padding": "14px 0"
       },
       "usage": {
-        "b-app": 9,
+        "b-app": 13,
         "c-app": 1
       }
     },
@@ -903,8 +903,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 72,
-        "c-app": 7
+        "b-app": 80,
+        "c-app": 14
       }
     },
     {
@@ -921,7 +921,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 53,
+        "b-app": 54,
         "c-app": 17
       }
     },
@@ -939,7 +939,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 40,
+        "b-app": 59,
         "c-app": 12
       }
     },
@@ -979,8 +979,8 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 70,
-        "c-app": 23
+        "b-app": 79,
+        "c-app": 24
       }
     },
     {
@@ -1035,8 +1035,8 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 119,
-        "c-app": 20
+        "b-app": 134,
+        "c-app": 28
       }
     },
     {
@@ -1095,8 +1095,8 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 343,
-        "c-app": 152
+        "b-app": 372,
+        "c-app": 157
       }
     },
     {
@@ -1159,8 +1159,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 163,
-        "c-app": 57
+        "b-app": 167,
+        "c-app": 58
       }
     },
     {
@@ -1253,8 +1253,8 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 74,
-        "c-app": 26
+        "b-app": 71,
+        "c-app": 27
       }
     },
     {
@@ -1289,7 +1289,7 @@
         "color": "var(--sh-success)"
       },
       "usage": {
-        "b-app": 5,
+        "b-app": 7,
         "c-app": 0
       }
     },
@@ -1421,8 +1421,8 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 176,
-        "c-app": 94
+        "b-app": 184,
+        "c-app": 95
       }
     },
     {
@@ -1437,7 +1437,7 @@
         "position": "relative"
       },
       "usage": {
-        "b-app": 40,
+        "b-app": 49,
         "c-app": 16
       }
     },
@@ -1457,8 +1457,8 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 594,
-        "c-app": 212
+        "b-app": 639,
+        "c-app": 218
       }
     },
     {
@@ -1489,8 +1489,8 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 329,
-        "c-app": 106
+        "b-app": 367,
+        "c-app": 110
       }
     },
     {
@@ -1639,7 +1639,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 53,
+        "b-app": 51,
         "c-app": 19
       }
     },
@@ -1655,7 +1655,7 @@
         "margin-top": "10px"
       },
       "usage": {
-        "b-app": 43,
+        "b-app": 50,
         "c-app": 0
       }
     },
@@ -1685,7 +1685,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 10,
+        "b-app": 11,
         "c-app": 3
       }
     },
@@ -1733,8 +1733,8 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 71,
-        "c-app": 24
+        "b-app": 82,
+        "c-app": 26
       }
     },
     {
@@ -1755,7 +1755,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 56,
+        "b-app": 66,
         "c-app": 0
       }
     },
@@ -1863,7 +1863,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 122,
+        "b-app": 128,
         "c-app": 3
       }
     },
@@ -1897,7 +1897,7 @@
         "dock?: boolean"
       ],
       "usage": {
-        "b-app": 35,
+        "b-app": 47,
         "c-app": 19,
         "lib": 0
       },
@@ -1982,7 +1982,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 9,
+        "b-app": 11,
         "c-app": 5,
         "lib": 0
       },
@@ -2143,8 +2143,8 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 62,
-        "c-app": 39,
+        "b-app": 75,
+        "c-app": 43,
         "lib": 1
       },
       "note": "空态",
@@ -2225,7 +2225,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 28,
+        "b-app": 31,
         "c-app": 4,
         "lib": 0
       },
@@ -2299,7 +2299,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 130,
+        "b-app": 133,
         "c-app": 29,
         "lib": 13
       },
@@ -2338,7 +2338,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 59,
+        "b-app": 90,
         "c-app": 0,
         "lib": 0
       },
@@ -2435,6 +2435,38 @@
         "min-height": "88rpx",
         "padding": "8rpx 0"
       }
+    },
+    {
+      "name": "sh-points-earning",
+      "file": "packages/ui/src/components/sh-points-earning.vue",
+      "scope": "跨端",
+      "lines": 30,
+      "props": [
+        "rows: OrderPointsEarning[]",
+        "failed?: boolean"
+      ],
+      "usage": {
+        "b-app": 0,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "—",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-caption",
+          "txt-title"
+        ],
+        "rawFontSize": [],
+        "spacing": [],
+        "radius": [],
+        "deps": []
+      },
+      "rootClasses": [
+        "sh-card",
+        "sh-mt-sm"
+      ],
+      "rootDecl": {}
     },
     {
       "name": "sh-prompt",
@@ -2562,8 +2594,8 @@
         "immersive?: boolean"
       ],
       "usage": {
-        "b-app": 90,
-        "c-app": 41,
+        "b-app": 105,
+        "c-app": 43,
         "lib": 1
       },
       "note": "页面外壳",
@@ -2649,8 +2681,8 @@
         "fit?: boolean"
       ],
       "usage": {
-        "b-app": 28,
-        "c-app": 11,
+        "b-app": 36,
+        "c-app": 13,
         "lib": 1
       },
       "note": "底部弹层",
@@ -2857,8 +2889,8 @@
         "line?: boolean"
       ],
       "usage": {
-        "b-app": 16,
-        "c-app": 14,
+        "b-app": 19,
+        "c-app": 15,
         "lib": 0
       },
       "note": "筛选条",
@@ -3553,9 +3585,10 @@
       "name": "StorePointStatements",
       "file": "b-app/src/components/points/StorePointStatements.vue",
       "scope": "B 端",
-      "lines": 141,
+      "lines": 142,
       "props": [
         "typeCode: string",
+        "typeName?: string",
         "storeNo: string",
         "targetStatement?: string"
       ],
@@ -3667,6 +3700,81 @@
       "libClassHits": 113,
       "localSelectors": 26,
       "localCssLines": 82,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "brand-change",
+      "key": "b-app/brand-change",
+      "file": "b-app/src/pages/brand-change/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-scaffold"
+      ],
+      "libClassHits": 13,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "brand-detail/components",
+      "key": "b-app/brand-detail/components",
+      "file": "b-app/src/pages/brand-detail/components/BrandChangeSheet.vue",
+      "components": [
+        "sh-check",
+        "sh-empty",
+        "sh-sheet"
+      ],
+      "libClassHits": 15,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "brand-detail",
+      "key": "b-app/brand-detail",
+      "file": "b-app/src/pages/brand-detail/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-go",
+        "sh-kv",
+        "sh-scaffold"
+      ],
+      "libClassHits": 29,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "brand-edit",
+      "key": "b-app/brand-edit",
+      "file": "b-app/src/pages/brand-edit/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-scaffold"
+      ],
+      "libClassHits": 7,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "brand-list",
+      "key": "b-app/brand-list",
+      "file": "b-app/src/pages/brand-list/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 14,
+      "localSelectors": 0,
+      "localCssLines": 0,
       "rolled": []
     },
     {
@@ -4063,6 +4171,53 @@
     },
     {
       "app": "b-app",
+      "page": "management",
+      "key": "b-app/management",
+      "file": "b-app/src/pages/management/index.vue",
+      "components": [
+        "sh-check",
+        "sh-empty",
+        "sh-scaffold",
+        "sh-sheet"
+      ],
+      "libClassHits": 39,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "management-grants",
+      "key": "b-app/management-grants",
+      "file": "b-app/src/pages/management-grants/index.vue",
+      "components": [
+        "sh-scaffold",
+        "sh-sheet"
+      ],
+      "libClassHits": 22,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "management-resources",
+      "key": "b-app/management-resources",
+      "file": "b-app/src/pages/management-resources/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-go",
+        "sh-scaffold",
+        "sh-sheet"
+      ],
+      "libClassHits": 13,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
       "page": "marketing",
       "key": "b-app/marketing",
       "file": "b-app/src/pages/marketing/index.vue",
@@ -4071,7 +4226,7 @@
         "sh-scaffold",
         "sh-stat"
       ],
-      "libClassHits": 57,
+      "libClassHits": 61,
       "localSelectors": 0,
       "localCssLines": 0,
       "rolled": []
@@ -4086,7 +4241,7 @@
         "sh-scaffold",
         "sh-theme-sheet"
       ],
-      "libClassHits": 82,
+      "libClassHits": 86,
       "localSelectors": 8,
       "localCssLines": 34,
       "rolled": []
@@ -4100,7 +4255,7 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 15,
+      "libClassHits": 17,
       "localSelectors": 5,
       "localCssLines": 15,
       "rolled": []
@@ -4111,13 +4266,14 @@
       "key": "b-app/member-detail",
       "file": "b-app/src/pages/member-detail/index.vue",
       "components": [
+        "sh-actionbar",
         "sh-empty",
         "sh-icon",
         "sh-kv",
         "sh-scaffold",
         "sh-sheet"
       ],
-      "libClassHits": 65,
+      "libClassHits": 67,
       "localSelectors": 7,
       "localCssLines": 26,
       "rolled": []
@@ -4456,7 +4612,7 @@
         "sh-scaffold",
         "StorePointStatements"
       ],
-      "libClassHits": 49,
+      "libClassHits": 38,
       "localSelectors": 3,
       "localCssLines": 3,
       "rolled": [
@@ -4478,7 +4634,7 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 19,
+      "libClassHits": 24,
       "localSelectors": 0,
       "localCssLines": 0,
       "rolled": []
@@ -4694,7 +4850,7 @@
         "sh-scaffold",
         "sh-section"
       ],
-      "libClassHits": 45,
+      "libClassHits": 47,
       "localSelectors": 2,
       "localCssLines": 8,
       "rolled": []
@@ -4794,16 +4950,8 @@
       ],
       "libClassHits": 33,
       "localSelectors": 14,
-      "localCssLines": 62,
-      "rolled": [
-        {
-          "id": "fill",
-          "label": "占满剩余自写",
-          "lib": ".sh-fill",
-          "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
-          "gap": false
-        }
-      ]
+      "localCssLines": 61,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -4908,6 +5056,21 @@
     },
     {
       "app": "b-app",
+      "page": "store-brand",
+      "key": "b-app/store-brand",
+      "file": "b-app/src/pages/store-brand/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-kv",
+        "sh-scaffold"
+      ],
+      "libClassHits": 7,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
       "page": "store-categories",
       "key": "b-app/store-categories",
       "file": "b-app/src/pages/store-categories/index.vue",
@@ -5004,6 +5167,173 @@
           "gap": false
         }
       ]
+    },
+    {
+      "app": "b-app",
+      "page": "stored-value/components",
+      "key": "b-app/stored-value/components",
+      "file": "b-app/src/pages/stored-value/components/CustomerAccountList.vue",
+      "components": [
+        "sh-empty",
+        "sh-go",
+        "sh-kv"
+      ],
+      "libClassHits": 24,
+      "localSelectors": 1,
+      "localCssLines": 1,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stored-value/components",
+      "key": "b-app/stored-value/components",
+      "file": "b-app/src/pages/stored-value/components/PlanList.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-icon",
+        "sh-kv"
+      ],
+      "libClassHits": 24,
+      "localSelectors": 1,
+      "localCssLines": 1,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stored-value/components",
+      "key": "b-app/stored-value/components",
+      "file": "b-app/src/pages/stored-value/components/StoredValueRechargeSheet.vue",
+      "components": [
+        "sh-empty",
+        "sh-kv",
+        "sh-sheet"
+      ],
+      "libClassHits": 27,
+      "localSelectors": 4,
+      "localCssLines": 4,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stored-value/components",
+      "key": "b-app/stored-value/components",
+      "file": "b-app/src/pages/stored-value/components/StoredValueRecordList.vue",
+      "components": [
+        "sh-empty",
+        "sh-sheet",
+        "sh-tabs"
+      ],
+      "libClassHits": 33,
+      "localSelectors": 1,
+      "localCssLines": 1,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stored-value",
+      "key": "b-app/stored-value",
+      "file": "b-app/src/pages/stored-value/index.vue",
+      "components": [
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 0,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stored-value-account",
+      "key": "b-app/stored-value-account",
+      "file": "b-app/src/pages/stored-value-account/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-kv",
+        "sh-scaffold"
+      ],
+      "libClassHits": 13,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stored-value-plan-detail",
+      "key": "b-app/stored-value-plan-detail",
+      "file": "b-app/src/pages/stored-value-plan-detail/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-kv",
+        "sh-scaffold"
+      ],
+      "libClassHits": 17,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stored-value-plan-edit",
+      "key": "b-app/stored-value-plan-edit",
+      "file": "b-app/src/pages/stored-value-plan-edit/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-kv",
+        "sh-scaffold"
+      ],
+      "libClassHits": 26,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stored-value-recharge",
+      "key": "b-app/stored-value-recharge",
+      "file": "b-app/src/pages/stored-value-recharge/LegacyRecharge.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-icon",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-sheet",
+        "sh-tabs"
+      ],
+      "libClassHits": 44,
+      "localSelectors": 1,
+      "localCssLines": 1,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stored-value-recharge",
+      "key": "b-app/stored-value-recharge",
+      "file": "b-app/src/pages/stored-value-recharge/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 0,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stored-value-record",
+      "key": "b-app/stored-value-record",
+      "file": "b-app/src/pages/stored-value-record/index.vue",
+      "components": [
+        "sh-kv",
+        "sh-scaffold"
+      ],
+      "libClassHits": 9,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -5377,7 +5707,7 @@
         "sh-sheet",
         "sh-theme-sheet"
       ],
-      "libClassHits": 139,
+      "libClassHits": 144,
       "localSelectors": 26,
       "localCssLines": 108,
       "rolled": []
@@ -5561,7 +5891,7 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 35,
+      "libClassHits": 41,
       "localSelectors": 12,
       "localCssLines": 12,
       "rolled": []
@@ -5641,6 +5971,36 @@
       "libClassHits": 57,
       "localSelectors": 34,
       "localCssLines": 154,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "stored-value",
+      "key": "c-app/stored-value",
+      "file": "c-app/src/pages/stored-value/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 11,
+      "localSelectors": 4,
+      "localCssLines": 4,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "stored-value-records",
+      "key": "c-app/stored-value-records",
+      "file": "c-app/src/pages/stored-value-records/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-sheet",
+        "sh-tabs"
+      ],
+      "libClassHits": 57,
+      "localSelectors": 13,
+      "localCssLines": 13,
       "rolled": []
     },
     {
@@ -5833,7 +6193,7 @@
       "key": "b-app/StorePointStatements",
       "file": "b-app/src/components/points/StorePointStatements.vue",
       "components": [],
-      "libClassHits": 20,
+      "libClassHits": 23,
       "localSelectors": 0,
       "localCssLines": 0,
       "rolled": []
@@ -6188,16 +6548,6 @@
       ]
     },
     {
-      "id": "fill",
-      "label": "占满剩余自写",
-      "lib": ".sh-fill",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
-      "pages": [
-        "b-app/stock-detail"
-      ]
-    },
-    {
       "id": "uploader",
       "label": "图片上传格",
       "lib": "sh-uploader",
@@ -6211,8 +6561,8 @@
   "counts": {
     "tokens": 16,
     "blocks": 82,
-    "components": 41,
-    "pages": 164,
+    "components": 42,
+    "pages": 186,
     "gapKinds": 3
   }
 }

@@ -47,3 +47,18 @@ mTransferDetail	/biz/inventory/transfers/:no
 mTransferReceive	/biz/inventory/transfers/:no/receive
 mTransferVoid	/biz/inventory/transfers/:no/void
 mTransferShip	/biz/inventory/transfers/:no/ship
+
+mManagementResources	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
+mManagementGrant	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
+mRevokeManagementGrant	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
+mManagementEntities	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
+mManagementStores	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
+mPaymentMerchantCandidates	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
+mBrand	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
+mEditBrand	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
+mBrandStatus	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
+mBrandStores	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
+mBrandAudit	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
+mStoreOperatingContext	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
+mCheckBrandChange	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
+mSubmitBrandChange	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
