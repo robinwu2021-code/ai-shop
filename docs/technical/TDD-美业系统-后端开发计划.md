@@ -392,17 +392,21 @@ ResourceSourceAuthorizationService.authorize/recover/requireAuthorized；Resourc
 对已接受命令执行原号恢复，可先authorize再短READ_COMMITTED事务，禁止资源事务内RPC。
 Owner本地可增加必要的有界hold/occupancy查询；原命令Receipt保持不可变。
 
-- [ ] RED：新增真实MySQL ResourceBookingPersistenceIT及运行包装器；完整两资源成功、第二资源不足全回滚、两命令争同一STAFF跨店只成功一个。
-- [ ] 实现RESERVE：五分钟bucket初始化和canonical资源锁，容量从权威资源事实获取；原子写hold/unit/held计数、owner头和原命令成功终态。
-- [ ] 实现PROTECT/CONFIRM/RENEW/RELEASE/EXPIRE及整计划REPLACE；目标hold/version/leaseRevision/sourceRevision/ownerRevision均严格检查。
+- [x] RED：新增真实MySQL ResourceBookingPersistenceIT及运行包装器；完整两资源成功、第二资源不足全回滚、两命令争同一STAFF跨店只成功一个。
+- [x] 实现RESERVE：五分钟bucket初始化和canonical资源锁，容量从权威资源事实获取；原子写hold/unit/held计数、owner头和原命令成功终态。
+- [x] 实现PROTECT/CONFIRM/RENEW/RELEASE/EXPIRE及整计划REPLACE；目标hold/version/leaseRevision/sourceRevision/ownerRevision均严格检查。
   固定临时租期15分钟，SOURCE_COORDINATED；续期从当前时刻延15分钟且leaseRevision+1；PROTECT同样延长并增加leaseRevision，不能绕来源许可。
   CONFIRM将held转confirmed且重复原号不重复扣量；到期HELD不得确认或续期，EXPIRE仅HELD且now>=expiresAt；CONFIRMED不得按TTL回收。
+  RECONCILE明确为SOURCE_COORDINATED受保护HELD的恢复确认（可过原租期），仍须真实来源许可和重新准入；恢复释放走独立RELEASE，不能从终态复活。
   RELEASE可释放未开工HELD/CONFIRMED；executionStartedAt不空拒绝。所有动作保存原终态且再用同命令返回同Receipt。
   REPLACE新旧全资源统一排序锁，按净增量检查容量；先验证后原子释放旧/写新/链路关联，失败保留旧hold、units和owner头。
-  新hold沿旧状态（初次HELD），保留原始creationPlanHash，新的currentPlanHash取完整计划；历史units不删除。
-- [ ] GREEN：真实MySQL覆盖上述动作、同号重试、过期许可不写、故障回滚与未知结果原号find；异常不得把提交未知伪造成拒绝。
+  新hold沿旧状态（初次HELD），旧hold的creationPlanHash不可重写，新hold自身的creationPlanHash/currentPlanHash均来自新计划；历史units不删除。
+  完整资源变更、安全事件outbox、原命令终态与owner头同事务；不在事件中携带原冻结载荷或顾客资料。
+- [x] GREEN：真实MySQL覆盖上述动作、同号重试、过期许可不写、故障回滚与未知结果原号find；异常不得把提交未知伪造成拒绝。
   只在能证明资源事务已回滚时才rejectAfterRollback，未知异常保留ACCEPTED供恢复。
-- [ ] 自审、一次守卫消融RED→GREEN，运行受影响共享内核测试并提交；输出精确日志和接口供下一任务使用。
+  真实来源持久DENIED或原AUTHORIZED许可已过期时，可在owner/原命令锁内核实仍ACCEPTED后安全拒绝原号；并发已终态返回原结果，不直接解除来源栅栏。
+  旧计划与未释放units必须完整一致，桶计数与全部活动units及合法hold父链一致；缺行、软删或悬空不能制造可用容量。
+- [x] 自审、一次守卫消融RED→GREEN，运行受影响共享内核测试并提交；输出精确日志和接口供下一任务使用。
 
 #### Task 51: BM03真实预约来源与业务服务
 
@@ -414,7 +418,22 @@ Owner本地可增加必要的有界hold/occupancy查询；原命令Receipt保持
 - [ ] 用真实门店、服务商品、定义、人员资格/周班表、资源事实生成有界可约候选和完整计划；指定与自动匹配，包含缓冲、多人/多资源；匹配不等于容量承诺。
 - [ ] 持久准备→owner.accept→绑定真实原命令→预约根/fence/intent授权→owner.execute→原命令核验→本域终态落地/历史安排→释放fence。
   许可超时不自动解fence；网络未知返回operation并按原号恢复；改约失败保留旧安排。
+  最小恢复扫描复用现有JobHandler/Outbox，持久操作号、当前命令、重试时点及版本/短租约CAS；进程重启可按原号继续，不靠内存Future或GET查询产生隐式新命令。
+  创建的预留成功后用下一独立原命令确认，最终预约CONFIRMED须与真实CONFIRMED hold一致；中间未知保留操作进度，未确认HELD不宣称成约。
 - [ ] 当前经营权限逐次验证，消费者自约绑定本人，代约顾客与临客不伪造订单买家；创建/列表/详情/改约/取消/爽约与恢复全部Service联验。
+**身份与来源实施裁决：** C端只认CONSUMER/USR当前认证本人，B端只认MERCHANT/MCH或USR当前经营授权。
+内部协议必须原样携带realm/subjectKind并使用既有LoginUser恢复审计上下文，不把所有调用者转成MCH。
+预约权限复用平台BizPerms管理机制，新增跨行业`biz:booking:view`（查看预约）与`biz:booking:manage`（创建、调整及取消预约）。
+只读允许view或manage；来源freeze/query与写操作须manage，逐次查询真实成员权限；到货receive、核销verify、看订单order:view均不自动取得预约管理权。
+BizPerms.LABELS及可分配码一起登记，不修改既有内置角色授权；OWNER既有裸*继续有效，其他角色由店主明确授权预约权限。
+权限不增加新的认证/角色系统，不向既有员工静默加权限。
+代约的已识别customerRef先经CustomerIdentityPort解析，持久引用规范userNo；无已识别顾客时生成本店受控guestRef，不伪造消费者/买家。
+ResourceBookingPort是受信行业服务端合同：accept/query/execute/queryHold使用显式规范scope和真实操作身份，来源Service先验归属；
+原回执由真实owner返回并持久绑定到来源准备记录，freeze只认该完整Binding和服务端生成计划；不得把公网传入的Binding写成已验证意图。
+原ResourceCommandFactsPort的经营成员只读权限保持原样，不能放宽为任意消费者可读；C端协调经新的可信行业命令合同核验本来源原回执。
+付款/权益的sourceRefs非空时，必须接真实来源合同，否则明确能力关闭；不在BM03创建消费者订单或宣称已收费。
+完整资金/工单绑定仍按BM04/05原业务计划交付，不能用sourceRefs字符串替代证明。
+
 - [ ] 真MySQL验证来源不可伪造、持久幂等、并发同预约、旧版本拒绝、当前撤权、失败保旧、终态对账、原号恢复，提交。
 
 #### Task 52: BM03端点与独立协议
@@ -485,7 +504,7 @@ python3 scripts/gen-beauty-development-plan.py --check
 
 ## §6 下一次领取任务与本轮交付
 
-**当前下一步：BM03-a2-2真实来源计划、持久决定与终态协调；a1存储和a2-1共用核验读取已完成，见§26/§27。BM-02人员/资源/周班表及standalone事实后端模块已通过§25隔离部署关口，BM-01已通过§22关口。** 后续按BM-03预约等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
+**当前执行：按§2.17连续完成BM03模块（Task50共用容量→Task51真实来源/预约Service→Task52端点/协议→Task53模块部署）；a1存储和a2-1共用核验读取已完成，见§26/§27。BM-02人员/资源/周班表及standalone事实后端模块已通过§25隔离部署关口，BM-01已通过§22关口。** 后续按BM-03预约等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
 
 初始计划阶段产物（2026-10-20，非当前工程状态）：本TDD、开发任务JSON、生成任务对照索引和校验器；当时尚未编码。之后实际实现及验收按§7–20逐批记录，当前总览与后续领取以§21为准。
 
@@ -1407,3 +1426,30 @@ ArchitectureTest实际16项、1项失败，仍是未改动OpsPointsInspectionCon
 下一步a2-2须根据持久预约/版本/需求建立真实计划及完整Binding、持久prepare/freeze/query决定，使用实际权威终态编排对账，并与所有相反写者共用根锁协议。完整a2、三行业容量事务、预约API/工作台和大模块实际部署均未完成。
 
 本批最终证据：`/tmp/resource-recovery-final-native-protocol.log`（47）、`/tmp/resource-recovery-final-merchant.log`（300）、`/tmp/resource-recovery-final-beauty.log`（70）；一轮修正反例：`/tmp/resource-recovery-owner-error-red.log`、`/tmp/resource-recovery-envelope-red.log`、`/tmp/resource-recovery-host-wiring-red.log`；消融：`/tmp/resource-recovery-ablation-red.log`。工作保留在独立worktree，保存本地检查点，不合并/推送或部署共享生产库；大模块部署仍按§21.4在BM03全部必要单元完成后执行。
+
+
+## §28 BM03共用原子容量内部检查点（2026-10-21）
+
+按§2.17 Task50完成，代码8cb79f5f7、审查修复bfda5ba9c。ResourceBookingService.execute按原命令驱动RESERVE、PROTECT、CONFIRM、RENEW、RELEASE、EXPIRE、RECONCILE与整计划REPLACE。
+短READ_COMMITTED主库事务内锁owner/原命令→规范人员/完整新旧资源集合→hold→资源时间桶；真实来源调用在事务外。
+完整容量、单位历史、hold、owner头、原命令终态和安全outbox事件同事务。REPLACE按净增量，失败保旧；固定临时租期15分钟，受保护到期不隐式减量。
+未注册来源时拒绝执行；本检查点原生验证使用显式测试来源合同，真实美业provider、预约业务及HTTP仍由Task51/52实施，整个BM03未完成，也未进行模块部署。
+
+| 设计→实现 | 本次落点 |
+|---|---|
+| 共享执行 | merchant ResourceBookingService/Impl，BookingAllocationRow/CounterRow，MerchantMappers三个容量Mapper扩展 |
+| 同事务安全事件 | base ResourceBookingChanged；沿既有PlatformPublicationPublisher和shop.resource.publication.archive-only配置，不含完整载荷/顾客资料 |
+| 原生反例 | ResourceBookingExecutionIT 29项及旧foundation17项，verify-resource-booking-persistence.mjs运行两组 |
+| 审查修复 | entity内悬空未释放单位拒绝新分配；PROTECT/RENEW也核验原桶/计数/父链，零增量不写桶；既有迁移不变 |
+
+| 验收→证据 | 真实结果 |
+|---|---|
+| 初始RED | 25项/8失败/0错误，缺执行器；/tmp/task50-red.log |
+| 整组/生命周期/失败保旧/提交未知 | 首轮28通过，补完整性后33通过；真实JDBC在commit之后抛异常，原号查询只得一个成功hold/event |
+| 消融容量计数一致性守卫 | 1项/1预期失败；/tmp/task50-ablation-red.log，finally恢复 |
+| 独立审查第一轮修复RED→GREEN | 新增13反例后46项/9预期失败→46项全部通过；/tmp/task50-r1-red.log、/tmp/task50-r1-green.log |
+| 最终共享回归 | 215项/214通过/1既有Architecture FQN失败；/tmp/task50-r1-shared.log。全部预约原生46项与i18n6项通过 |
+| 审查 | /tmp/review-bm03-capacity.md两Important已修复；/tmp/review-bm03-capacity-r1.md规格/质量通过。夹具Sequence警告已消除，既有重复Mapper/Mockito环境警告已在报告说明 |
+
+Architecture剩余失败为未修改的OpsPointsInspectionController.java:84全限定PathVariable，基线已存在；不冒充全局绿灯。
+SQL方言无新增、diff空白检查通过。无新增DDL、旧slot切写、实际作业占用、业务库发布或推送；主任务清单继续Task51→52→53。
