@@ -371,6 +371,67 @@ BM02-a具体合同：
 - [x] a2-1b 实现两个共用Port/owner精确查询及内部HTTP/美业远程接线；观察GREEN，权限守卫消融RED再恢复。
 - [x] a2-1c 一次独立只读审查、一轮重要问题修正，受影响merchant/宿主/beauty回归；同步矩阵/对象/API/方法、保存本地检查点。a2真实来源provider及整个BM03仍不认定完成，不在此执行整模块部署。
 
+### 2.17 BM03完整模块续做计划（2026-10-21）
+
+沿§2.15、ADR-043及SHR02b批准设计，剩余工作连续执行至BM03-d，不再按核验读取切片宣布模块完成。
+采用分任务实施与独立审查，沿既有隔离分支；每项先真实反例RED再GREEN，任务间不重复请求执行确认。
+
+Ruling：共享容量实现可在来源业务实现之前开发和独立验证，但未注册真实来源时必须拒绝执行；生产美业链路须真实provider。
+零售/餐饮通过同一个共享合同和禁用兼容验收，不为不存在的零售/餐饮预约聚合虚构授权提供者；其真实预约来源另由所属模块接入。
+成本：本阶段不能声称已交付三个行业的预约业务，只交付共用内核与美业预约业务。
+
+#### Task 50: BM03共用原子容量与生命周期
+
+**文件责任：** shop-merchant/service/ResourceBookingService.java、service/impl/ResourceBookingServiceImpl.java；
+容量SQL放MerchantMappers.ResourceBucketMapper/BookingHoldMapper/BookingHoldUnitMapper；必要独立DTO在merchant.dto。
+共享ResourcePlanContract、V535与既有来源许可合同保持冻结；本任务不加公共用户HTTP、不复制美业规则。
+
+**消费：** ResourceCommandService.accept/find/lockForExecution/completeSuccess/rejectAfterRollback；
+ResourceSourceAuthorizationService.authorize/recover/requireAuthorized；ResourceAdmissionService.lockAndValidate。
+**产出：** ResourceBookingService.execute(Scope scope,String commandNo) -> ResourceCommandService.Receipt；
+对已接受命令执行原号恢复，可先authorize再短READ_COMMITTED事务，禁止资源事务内RPC。
+Owner本地可增加必要的有界hold/occupancy查询；原命令Receipt保持不可变。
+
+- [ ] RED：新增真实MySQL ResourceBookingPersistenceIT及运行包装器；完整两资源成功、第二资源不足全回滚、两命令争同一STAFF跨店只成功一个。
+- [ ] 实现RESERVE：五分钟bucket初始化和canonical资源锁，容量从权威资源事实获取；原子写hold/unit/held计数、owner头和原命令成功终态。
+- [ ] 实现PROTECT/CONFIRM/RENEW/RELEASE/EXPIRE及整计划REPLACE；目标hold/version/leaseRevision/sourceRevision/ownerRevision均严格检查。
+  固定临时租期15分钟，SOURCE_COORDINATED；续期从当前时刻延15分钟且leaseRevision+1；PROTECT同样延长并增加leaseRevision，不能绕来源许可。
+  CONFIRM将held转confirmed且重复原号不重复扣量；到期HELD不得确认或续期，EXPIRE仅HELD且now>=expiresAt；CONFIRMED不得按TTL回收。
+  RELEASE可释放未开工HELD/CONFIRMED；executionStartedAt不空拒绝。所有动作保存原终态且再用同命令返回同Receipt。
+  REPLACE新旧全资源统一排序锁，按净增量检查容量；先验证后原子释放旧/写新/链路关联，失败保留旧hold、units和owner头。
+  新hold沿旧状态（初次HELD），保留原始creationPlanHash，新的currentPlanHash取完整计划；历史units不删除。
+- [ ] GREEN：真实MySQL覆盖上述动作、同号重试、过期许可不写、故障回滚与未知结果原号find；异常不得把提交未知伪造成拒绝。
+  只在能证明资源事务已回滚时才rejectAfterRollback，未知异常保留ACCEPTED供恢复。
+- [ ] 自审、一次守卫消融RED→GREEN，运行受影响共享内核测试并提交；输出精确日志和接口供下一任务使用。
+
+#### Task 51: BM03真实预约来源与业务服务
+
+**文件责任：** beauty-api Req/VO与AppointmentService；beauty-core预约准备/匹配/来源授权/协调Service及Mapper；
+必要追加V3私有迁移、独立增量真源与严格validator清单。不得回写V1/V2，不依赖merchant实现。
+**接口：** 与Task50通过shop-base资源Booking Port接线（由本任务补端口及owner薄适配），行业生成原计划，owner处理容量。
+
+- [ ] 先对齐原API038～045、147～153、160及AVL-01/APT-01～03实际字段；持久预览含真实政策/商品/定义版本、安排和修订，禁止客户端提供frozenPlan/holdNo当真相。
+- [ ] 用真实门店、服务商品、定义、人员资格/周班表、资源事实生成有界可约候选和完整计划；指定与自动匹配，包含缓冲、多人/多资源；匹配不等于容量承诺。
+- [ ] 持久准备→owner.accept→绑定真实原命令→预约根/fence/intent授权→owner.execute→原命令核验→本域终态落地/历史安排→释放fence。
+  许可超时不自动解fence；网络未知返回operation并按原号恢复；改约失败保留旧安排。
+- [ ] 当前经营权限逐次验证，消费者自约绑定本人，代约顾客与临客不伪造订单买家；创建/列表/详情/改约/取消/爽约与恢复全部Service联验。
+- [ ] 真MySQL验证来源不可伪造、持久幂等、并发同预约、旧版本拒绝、当前撤权、失败保旧、终态对账、原号恢复，提交。
+
+#### Task 52: BM03端点与独立协议
+
+**文件责任：** beauty-web预约/可约/operations Controller、beauty-channel远程Service/资源/来源协议、beauty-server内部Controller；
+平台内部owner资源Controller及自动配置。共享机器令牌不替代真实操作者，外部不能提交主体/actor/裸资源许可。
+
+- [ ] 按Task51真实Service接入B/C端，校验trusted context和门店范围；真实TCP覆盖错误令牌、跨主体/跨店、UNKNOWN及断连，不返回伪成功。
+- [ ] embedded与standalone只注册唯一真实provider，禁用不注册；三端路由与API/Java清单增量对账，不生成未实现壳。
+- [ ] 测试并提交。
+
+#### Task 53: BM03模块验收与部署
+
+- [ ] 联验实际创建→查询→确认/改约→取消/爽约→恢复；完整组合并发、失败保旧、过期许可与未知保护。
+- [ ] 构建实际JAR，临时MySQL真实迁移与embedded/standalone启动，经HTTP调用真实provider完成上述闭环；默认零售和餐饮回归。
+- [ ] 记录测试/迁移/配置/影响范围、消融和模块准出证据；独立全模块审查及必要修复；未完成项如实记载，不把基础readiness等同全部49任务交付。
+
 ## §3 数据层之后的业务任务与启动深化
 
 每部分开工前重新核对功能矩阵对应行、API输入输出、类/方法、表字段、权限与真实跨域提供方，提交“可实施 / 需先补合同 / 延后关闭”结论，再编码。上次形成的类清单不代替这次业务规则梳理。

@@ -292,3 +292,14 @@ Final: fixed reviewImportant ownererror→falseabsence — actualGlobalAdvice2RE
 Final: Ruling: retain explicitpoint-in-time/ACTIVE-only/trustedactor readscope — no durablepermission, cryptographicattestation, closedstore recovery, sourceprovider/plan generation/freeze/unfreeze/terminalcoordination orcapacity/booking/moduledeploy claim — cost a2-2 and fullBM03 gate remainsrequired. Known Architecture16/1failure same unchangedOpsPointsInspectionController FQN verifiedbyteidenticaltoe2d89042f, other15pass; no globalreleaseclaim, SchemaDrift/productionhistory notretested. No currentreviewMinors; priorUnicodeplanboundaryminorremainsoutsidecurrentdelta.
 BM03-a2-1 checkpointcomplete: TDD2.16/§6/§21/§27, matrix/domain/API2supplements/methods/ADR043/README synchronized; original49task/160baselineAPI/41baseline+2increment unchanged, V1V2unchanged. Finalstaticgates pendinglastconfirmation; preserveongoingworktree/ledger, localcheckpointonly no merge/push/sharedDB. Nexta2-2 genuinebusinessplan/prepare/freeze/query/verifiedterminalcoordination beforeBM03capacity/controller/workbench/moduledeployment.
 Final staticconfirmation fiveDesign/frozenV1V2/SQLno-newhits/Nodeparse/newJava120/no-newFQN/diff pass; actual47/300/70 logs re-read0fail0error0skip. Hostprodscan andconditionalremote/localownerwiring proven; trustedmachineprotocolTCP is not actualBM03businessdeployment. No pendingcurrentreviewminor, no rereview. Ready localcheckpoint only, ongoingplan/worktree retained.
+
+BM03 completion resume HEAD55d615a82 clean worktree; execute Task50-53 (§2.17) continuously through module gate.
+Ruling: production beauty real-source integration remains mandatory; shared kernel may be implemented first against explicit test-only sources, absent production providers fail closed. Retail/food consume same kernel but no invented business aggregates; cost no claim of real retail/food booking delivery.
+Preflight | pair/task | producer/consumer | result
+50↔51 | ResourceBookingService + shared Booking Port | owner local executor vs industry orchestration | 51 adds thin neutral Port; beauty never imports merchant.
+51↔52 | AppointmentService Req/VO | business operations vs web/channel | 52 uses actual service signatures only.
+50/51↔53 | real provider + actual artifact | deployment | tests cannot substitute source fixtures for deployed path.
+50 self | SQL and execution/authorization transactions | standalone native tests | no RPC under resource locks; terminal original evidence retained.
+51 self | immutable proposal + source fence + coordination | Service tests | newV3 only; unchanged V1/V2 and strict validators.
+52 self | trusted actor realm/kind | internal/public protocols | machine identity alone never grants actor access.
+53 self | complete module gate | no partial completion | BM04/05/06 remain separate future modules.
