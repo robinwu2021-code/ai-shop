@@ -1,6 +1,9 @@
 package ai.neargo.shop.food.channel;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.common.BizException;
@@ -19,6 +22,9 @@ import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.function.Function;
+import java.util.Arrays;
+import ai.neargo.shop.spi.product.GoodsCatalogQueryPort.GoodsSummary;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -50,10 +56,10 @@ class CoreGoodsCatalogQueryPortTest {
     @Test void preservesBusinessAndTransportErrorsWithoutRetry() {
         for(int status:new int[]{400,403,404,409,503,0}) {
             var count=new AtomicInteger();
-            GoodsCatalogInternalApi api=q -> {
+            GoodsCatalogInternalApi api=single(q -> {
                 count.incrementAndGet();throw new ServiceCallException(status==0?CallOutcome.TIMEOUT:CallOutcome.REMOTE_ERROR,
                         ServiceName.PLATFORM,status,"safe");
-            };
+            });
             var service=new CoreGoodsCatalogQueryPortImpl(() -> api);
             if(status>=400&&status<500) {
                 var code=switch(status) { case 400 -> ErrorCode.BAD_REQUEST;case 403 -> ErrorCode.FORBIDDEN;case 404 -> ErrorCode.NOT_FOUND;default -> ErrorCode.CONFLICT; };
@@ -66,9 +72,24 @@ class CoreGoodsCatalogQueryPortTest {
         new ApplicationContextRunner().withUserConfiguration(FoodCatalogClientConfiguration.class).withPropertyValues("shop.food.enabled=true").run(c ->
                 assertThatThrownBy(() -> c.getBean(GoodsCatalogQueryPort.class).getGoods("E","S","G"))
                         .isInstanceOf(ServiceCallException.class));
-        var wrong=new CoreGoodsCatalogQueryPortImpl(() -> q -> new GoodsFact("G","OTHER","S","private",null,true,"APPROVED",0,List.of()));
+        var wrong=new CoreGoodsCatalogQueryPortImpl(() -> single(q -> new GoodsFact("G","OTHER","S","private",null,true,"APPROVED",0,List.of())));
         assertThatThrownBy(() -> wrong.getGoods("E","S","G")).isInstanceOf(ServiceCallException.class);
-        var service=new CoreGoodsCatalogQueryPortImpl(() -> q -> null);
+        var service=new CoreGoodsCatalogQueryPortImpl(() -> single(q -> null));
         assertThatThrownBy(() -> service.getGoods("E","S","G")).isInstanceOf(ServiceCallException.class);
+    }
+    private GoodsCatalogInternalApi single(Function<GoodsCatalogInternalApi.Lookup, GoodsFact> read) {
+        var api=mock(GoodsCatalogInternalApi.class);
+        when(api.lookup(any())).thenAnswer(i -> read.apply(i.getArgument(0)));
+        return api;
+    }
+    @Test void batchRejectsNullDuplicateAndForeignFactsWithoutFallingBackToSingleLookup() {
+        for(List<GoodsSummary> facts: Arrays.asList(null,List.of(
+                new GoodsSummary("G","OTHER","S","title",null,false,"PENDING",0)),List.of(
+                new GoodsSummary("G","E","S","title",null,false,"PENDING",0),
+                new GoodsSummary("G","E","S","title",null,false,"PENDING",0)))) {
+            var api=mock(GoodsCatalogInternalApi.class); when(api.lookupBatch(any())).thenReturn(facts);
+            assertThatThrownBy(() -> new CoreGoodsCatalogQueryPortImpl(() -> api).getGoodsBatch("E","S",List.of("G")))
+                    .isInstanceOf(ServiceCallException.class);
+        }
     }
 }

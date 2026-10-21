@@ -14,6 +14,8 @@ import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.port.GoodsCatalogQueryPortImpl;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import java.util.Set;
+import java.util.List;
+import java.util.stream.IntStream;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -94,6 +96,22 @@ class GoodsCatalogQueryPortTest {
             }
         });
     }
+    @Test void batchUsesAuthoritativeStoreScopeAndOmitsUnavailableIdentities() {
+        run((service, sql) -> {
+            sql.update("INSERT INTO prd_goods VALUES(2,'OTHER_STORE','E','X','外店',NULL,FALSE,'PENDING',0,0),"
+                    + "(3,'OTHER_ENTITY','X','S','外主体',NULL,TRUE,'APPROVED',0,0),"
+                    + "(4,'DELETED','E','S','归档',NULL,TRUE,'APPROVED',0,1)");
+            var facts = service.getGoodsBatch("E", "S", List.of("G", "OTHER_STORE", "OTHER_ENTITY", "DELETED", "MISSING"));
+            assertThat(facts).extracting(GoodsCatalogQueryPort.GoodsSummary::goodsNo).containsExactly("G");
+            assertThat(facts.getFirst().title()).isEqualTo("菜品");
+            assertThat(new ObjectMapper().writeValueAsString(facts)).doesNotContain("price", "stock", "skus");
+            code(() -> service.getGoodsBatch("E", "S", List.of()), ErrorCode.BAD_REQUEST);
+            code(() -> service.getGoodsBatch("E", "S", List.of("G", "G")), ErrorCode.BAD_REQUEST);
+            code(() -> service.getGoodsBatch("E", "S", IntStream.range(0,257)
+                    .mapToObj(i -> "G" + i).toList()), ErrorCode.BAD_REQUEST);
+        });
+    }
+
     private static void code(Runnable command,ErrorCode expected) {
         assertThatThrownBy(command::run).isInstanceOfSatisfying(BizException.class,
                 e -> assertThat(e.errorCode()).isEqualTo(expected));

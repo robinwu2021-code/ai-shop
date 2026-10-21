@@ -1,6 +1,9 @@
 package ai.neargo.shop.food.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.common.BizException;
@@ -54,7 +57,8 @@ class RemoteDishServiceTest {
     @Test void rejectsEmptyOrWrongResourceReceiptsRatherThanReportingSuccess() {
         for (String body : List.of("null", "{}", "{\"dish\":{\"goodsNo\":\"OTHER\",\"prepSeconds\":0,\"version\":0,\"configVersion\":1}}")) {
             var json = new ObjectMapper();
-            DishInternalApi api = command -> json.readValue(body, DishResultVO.class);
+            DishInternalApi api = mock(DishInternalApi.class);
+            when(api.saveDish(any())).thenAnswer(inv -> json.readValue(body, DishResultVO.class));
             assertThatThrownBy(() -> new RemoteDishService(api)
                     .saveDish("E", "A", "G", "trusted", request(), "stable"))
                     .isInstanceOf(IllegalStateException.class);

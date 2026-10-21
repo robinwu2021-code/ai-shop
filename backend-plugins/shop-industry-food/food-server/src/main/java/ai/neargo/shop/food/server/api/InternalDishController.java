@@ -1,6 +1,11 @@
 package ai.neargo.shop.food.server.api;
 
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.food.dto.DishCatalogItemVO;
+import ai.neargo.shop.food.dto.DishDetailResultVO;
+import ai.neargo.shop.food.dto.ListDishesQuery;
+
 import ai.neargo.shop.food.config.ConditionalOnFoodEnabled;
 import ai.neargo.shop.food.config.FoodPersistenceConfiguration.PersistenceEnabled;
 import ai.neargo.shop.food.dto.DishResultVO;
@@ -27,6 +32,15 @@ public class InternalDishController {
     @PostMapping(DishInternalApi.SAVE_PATH)
     public DishResultVO saveDish(@Valid @RequestBody DishInternalApi.SaveCommand c) {
         return service.saveDish(c.entityNo(), c.storeNo(), c.goodsNo(), c.actorNo(), c.dish(), c.idempotencyKey());
+    }
+
+    @PostMapping(DishInternalApi.LIST_PATH)
+    public PageData<DishCatalogItemVO> listDishes(@Valid @RequestBody DishInternalApi.Lookup query) {
+        return service.listDishes(query.entityNo(), query.storeNo(), query.query());
+    }
+    @PostMapping(DishInternalApi.GET_PATH)
+    public DishDetailResultVO getDish(@Valid @RequestBody DishInternalApi.Identity query) {
+        return service.getDish(query.entityNo(), query.storeNo(), query.goodsNo());
     }
 
     /** Preserves business failures across the shared HTTP transport without returning query or row contents. */

@@ -75,3 +75,5 @@ FoodAutoConfiguration、FoodWebAutoConfiguration、FoodClientConfiguration显式
 - RemoteDishServiceTest：原类型化HTTP及令牌、409不重试、空/错误资源回执不报成功。
 - FoodDishPrimaryDatabaseTest：一次性MySQL真实V1/V2、JSON列、独立FoodApplication、两段类型化HTTP、令牌、修改及回执；不修改既有商品/订单哨兵表。
 - 完整餐饮reactor、迁移打包检查、零售/embedded/standalone三种宿主装配及设计守卫同时执行。实际数量和最终结论见增强方案执行回执。
+
+后续进展：API112/113已由[CAT-01C](./TDD-餐饮系统-CAT-01C-菜品查询实施.md)交付管理查询；本文记录的首批范围及未开放交易边界不变。

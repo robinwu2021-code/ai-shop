@@ -9,6 +9,8 @@ import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import java.util.List;
+import java.util.HashSet;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +45,23 @@ public class GoodsCatalogQueryPortImpl implements GoodsCatalogQueryPort {
                     row.getCover(), Boolean.TRUE.equals(row.getOnSale()), row.getAuditStatus(), row.getVersion(),
                     variants.stream().map(s -> new SkuFact(s.getSkuNo(), s.getSpec(), s.getVersion())).toList());
         });
+    }
+
+    @Override
+    @Transactional(transactionManager = "transactionManager", readOnly = true)
+    public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
+        key(entity); key(store);
+        if (numbers == null || numbers.isEmpty() || numbers.size() > 256
+                || new HashSet<>(numbers).size() != numbers.size()) throw BizException.of(ErrorCode.BAD_REQUEST);
+        numbers.forEach(GoodsCatalogQueryPortImpl::key);
+        return DataScopeContext.executeWithoutScope(() -> goods.selectList(Wrappers.<PrdGoods>lambdaQuery()
+                .select(PrdGoods::getGoodsNo, PrdGoods::getEntityNo, PrdGoods::getStoreNo, PrdGoods::getTitle,
+                        PrdGoods::getCover, PrdGoods::getOnSale, PrdGoods::getAuditStatus, PrdGoods::getVersion)
+                .eq(PrdGoods::getEntityNo, entity).eq(PrdGoods::getStoreNo, store)
+                .in(PrdGoods::getGoodsNo, numbers).orderByAsc(PrdGoods::getGoodsNo))
+                .stream().map(row -> new GoodsSummary(row.getGoodsNo(), row.getEntityNo(), row.getStoreNo(),
+                        row.getTitle(), row.getCover(), Boolean.TRUE.equals(row.getOnSale()), row.getAuditStatus(),
+                        row.getVersion())).toList());
     }
 
     private static void key(String value) {

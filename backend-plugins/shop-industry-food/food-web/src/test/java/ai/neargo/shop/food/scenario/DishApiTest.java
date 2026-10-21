@@ -2,6 +2,7 @@ package ai.neargo.shop.food.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import ai.neargo.shop.auth.BizContext;
@@ -12,6 +13,13 @@ import ai.neargo.shop.auth.TokenStore;
 import ai.neargo.shop.auth.store.MemoryTokenStore;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration;
 import ai.neargo.shop.food.dto.DishResultVO;
+import ai.neargo.shop.food.dto.ListDishesQuery;
+import ai.neargo.shop.food.dto.DishCatalogItemVO;
+import ai.neargo.shop.food.dto.DishDetailResultVO;
+import ai.neargo.shop.food.dto.SaveDishReq;
+import ai.neargo.shop.common.PageData;
+import java.util.List;
+import ai.neargo.shop.spi.product.GoodsCatalogQueryPort.GoodsFact;
 import ai.neargo.shop.food.dto.DishVO;
 import ai.neargo.shop.food.service.DishService;
 import java.util.Map;
@@ -74,6 +82,25 @@ class DishApiTest {
         });
     }
 
+    @Test void queriesUseOriginalScopeAndDenyUnknownFiltersWithoutWriting() {
+        runner.run(c -> {
+            var mvc=mvc(c); var auth=token(c,"staff");
+            mvc.perform(get("/biz/x/food/stores/A/dishes").header("Authorization",auth))
+                    .andExpect(jsonPath("$.data.total").value(0));
+            mvc.perform(get("/biz/x/food/stores/A/dishes/G").header("Authorization",auth))
+                    .andExpect(jsonPath("$.data.coreCatalog.cover").value("cover"));
+            for(String path:List.of("/biz/x/food/stores/A/dishes","/biz/x/food/stores/A/dishes/G")) {
+                mvc.perform(get(path).header("Authorization",token(c,"cashier"))).andExpect(jsonPath("$.code").value(70006));
+                mvc.perform(get(path).header("Authorization",auth).param("entityNo","OTHER")).andExpect(jsonPath("$.code").value(10400));
+            }
+            mvc.perform(get("/biz/x/food/stores/A/dishes").header("Authorization",auth).param("size","101"))
+                    .andExpect(jsonPath("$.code").value(10400));
+            mvc.perform(get("/biz/x/food/stores/B/dishes").header("Authorization",auth))
+                    .andExpect(jsonPath("$.code").value(10403));
+            assertThat(c.getBean(Calls.class).count).hasValue(2);
+        });
+    }
+
     private String token(WebApplicationContext c, String actor) {
         return "Bearer " + c.getBean(MemoryTokenStore.class)
                 .issue(TokenStore.SessionData.of(LoginUser.merchant(actor, actor)));
@@ -86,7 +113,17 @@ class DishApiTest {
     static class Host {
         @Bean Calls dishCalls() { return new Calls(); }
         @Bean DishService dishService(Calls calls) {
-            return (entity, store, goods, actor, req, key) -> {
+            return new DishService() {
+            @Override public PageData<DishCatalogItemVO> listDishes(String entity,String store,ListDishesQuery query) {
+                assertThat(entity).isEqualTo("E"); assertThat(store).isEqualTo("A");
+                calls.count.incrementAndGet(); return PageData.of(List.of(),0,1,20);
+            }
+            @Override public DishDetailResultVO getDish(String entity,String store,String goods) {
+                assertThat(entity).isEqualTo("E"); assertThat(store).isEqualTo("A"); assertThat(goods).isEqualTo("G");
+                calls.count.incrementAndGet();
+                return new DishDetailResultVO(null,List.of(),goods,new GoodsFact(goods,entity,store,"基础名","cover",false,"PENDING",0,List.of()));
+            }
+            @Override public DishResultVO saveDish(String entity,String store,String goods,String actor,SaveDishReq req,String key) {
                 assertThat(entity).isEqualTo("E");
                 assertThat(store).isEqualTo("A");
                 assertThat(goods).isEqualTo("G");
@@ -95,6 +132,7 @@ class DishApiTest {
                 calls.count.incrementAndGet();
                 return new DishResultVO(new DishVO(goods, req.dishKind(), req.prepSeconds(), req.presentation(),
                         req.measurement(), 1, 0));
+            }
             };
         }
     }

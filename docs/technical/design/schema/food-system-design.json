@@ -7956,10 +7956,10 @@
       "name": "菜品列表",
       "method": "GET",
       "path": "/biz/x/food/stores/{storeNo}/dishes",
-      "input": "page?:int32:默认1;size?:int32:默认20最大100;keyword?:string:名称;dishKind?:string:类型",
-      "output": "records:Dish[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
-      "needs": "餐饮新增"
+      "input": "page?:int32:默认1;size?:int32:默认20最大100;keyword?:string:最长128商品名或餐饮别名多语言名，忽略大小写字面子串;dishKind?:string:SINGLE或BUNDLE或ADDON",
+      "output": "records:DishCatalogItem[]:当前店授权菜品与原商品图文;total:int64:全部授权筛选后数量;page:int32:页;size:int32:页长",
+      "guard": "当前主体门店和原商品权限；先按原商品权威过滤及名称匹配，再统计与分页；goodsNo稳定排序；不接受未知或重复查询参数；不返回价格库存假值",
+      "needs": "已实现管理查询，不代表可售"
     },
     {
       "id": "FOOD-API-113",
@@ -7968,9 +7968,9 @@
       "method": "GET",
       "path": "/biz/x/food/stores/{storeNo}/dishes/{goodsNo}",
       "input": "",
-      "output": "dish:Dish:餐饮配置;optionGroups:Config[]:获准选择组;coreCatalogRef:string:基础商品查询引用",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
-      "needs": "餐饮新增"
+      "output": "dish:Dish:当前餐饮配置;optionGroups:DishOptionGroup[]:当前真实管理草稿组;coreCatalogRef:string:已核验的基础商品编号;coreCatalog:ProductCatalog:基础图文及规格",
+      "guard": "当前主体门店原商品权限；真实组绑定及条目同主体；目标丢失/跨主体绑定CONFLICT，不用空组隐藏；发布引用独立返回，管理草稿不作为可售定义",
+      "needs": "已实现管理详情，不代表发布或可交易"
     },
     {
       "id": "FOOD-API-114",
@@ -8492,7 +8492,14 @@
     "MaterialConsumptionReq": "entityNo:string:可信主体;storeNo:string:获准门店;productionEventNo:string:稳定制作事实编号;requestKey:string:重试不变的业务键;requestHash:string:同键异载荷冲突检测;originalReservationRef:string:受理时原预占;purpose:string:PRODUCTION/REMAKE/MATERIAL_WASTE/REVERSAL;originalOperationRef?:string:冲回必须引用原已确认操作;demands:FrozenMaterialDemand[]:来自受理冻结树的本次制作数量",
     "MaterialConsumptionResult": "operationRef:string:库存权威操作编号;requestKey:string:原请求键;status:string:CONFIRMED/PARTIAL/UNKNOWN/FAILED;receipts:MaterialConsumptionReceipt[]:逐行确认不以请求数量冒充实耗;occurredAt:datetime:权威事实发生时点",
     "MaterialConsumptionReceipt": "sourceLineRef:string:原购买实例;componentPath:string:原冻结路径;receiptRef?:string:已确认库存流水引用;status:string:CONFIRMED/UNKNOWN/FAILED;actualQty?:decimal:仅确认后返回实耗不得用理论量填充;unit:string:库存单位;costMinor?:int64:权威历史分摊成本未知为null;currency?:string:成本币种;valuationRevision?:string:历史计价依据",
-    "QuoteSelection": "componentPath:string:购买实例内完整组件路径;groupRevisionNo:string:已发布组修订;optionItemNo:string:该修订内合法选项;quantity:decimal:选择份数;selectionInstanceRef:string:同SKU不同选择仍独立的实例号"
+    "QuoteSelection": "componentPath:string:购买实例内完整组件路径;groupRevisionNo:string:已发布组修订;optionItemNo:string:该修订内合法选项;quantity:decimal:选择份数;selectionInstanceRef:string:同SKU不同选择仍独立的实例号",
+    "ProductSummary": "goodsNo:string:基础商品编号;entityNo:string:已验证主体;storeNo:string:已验证门店;title:string:商品名称;cover?:string:原商品图片;baseOnSale:boolean:基础上下架事实非餐饮可售;auditStatus:string:审核事实;version:int64:原商品版本",
+    "ProductSku": "skuNo:string:基础规格编号;spec?:string:规格展示;version:int64:基础规格版本",
+    "ProductCatalog": "goodsNo:string:基础商品编号;entityNo:string:已验证主体;storeNo:string:已验证门店;title:string:商品名称;cover?:string:原商品图片;baseOnSale:boolean:基础上下架事实非餐饮可售;auditStatus:string:审核事实;version:int64:原商品版本;skus:ProductSku[]:原商品规格事实，不含金额库存",
+    "DishCatalogItem": "dish:Dish:餐饮属性;product:ProductSummary:当前门店商品权威图文与管理状态",
+    "DishOptionItem": "optionItemNo:string:当前组条目;sourceKind:string:SPEC_VALUE或MODIFIER;specValueNo?:string:原口味值;modifierNo?:string:餐饮配料;minQty:decimal:下限;maxQty:decimal:上限;defaultQty:decimal:默认量;sortNo:int32:顺序",
+    "DishOptionData": "name:string:组名称;minQty:decimal:组下限;maxQty:decimal:组上限;publishedRevisionNo?:string:已发布引用独立于当前草稿;selectionRules:object:存储的管理选择规则非执行授权;items:DishOptionItem[]:真实当前条目",
+    "DishOptionGroup": "configNo:string:选择组编号;kind:string:固定OPTION_GROUP;revision:int64:当前管理草稿并发版本;status:string:管理状态;data:DishOptionData:实际工作头与条目"
   },
   "commonFields": [
     [
@@ -10955,6 +10962,17 @@
         "113完整选配详情"
       ],
       "unitBoundary": "EA仅是餐饮按份展示标记，不作为库存物料单位；不声称已对接物料目录或库存精度"
+    },
+    "readSlice": {
+      "id": "CAT-01C",
+      "apiIds": [
+        "FOOD-API-112",
+        "FOOD-API-113"
+      ],
+      "status": "IMPLEMENTED_MANAGEMENT",
+      "batchSize": 256,
+      "pagination": "候选餐饮配置全扫描，批量授权及名称过滤后计算真实总数与页",
+      "remaining": "超大主体配置量需要容量评估后再引入授权索引投影；不改变正式交易门槛"
     }
   }
 }

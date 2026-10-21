@@ -39,6 +39,15 @@ public class InternalGoodsCatalogEndpoint {
             return catalog.getGoods(request.entityNo(), request.storeNo(), request.goodsNo());
         });
     }
+    @PostMapping(GoodsCatalogInternalApi.BATCH_PATH)
+    public ResponseEntity<?> lookupBatch(@RequestBody(required=false) GoodsCatalogInternalApi.BatchLookup request,
+            @RequestHeader(value=InternalHttp.TOKEN_HEADER, required=false) String given) {
+        return InternalServiceResponses.invoke(token, given, () -> {
+            if (request == null || !validator.validate(request).isEmpty()) throw BizException.of(ErrorCode.BAD_REQUEST);
+            return catalog.getGoodsBatch(request.entityNo(), request.storeNo(), request.goodsNos());
+        });
+    }
+
     /** Public global advice uses HTTP 200 envelopes; internal malformed requests retain token/status semantics. */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<?> malformedBody(HttpMessageNotReadableException failure, HttpServletRequest request) {

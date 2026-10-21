@@ -9,6 +9,8 @@ import ai.neargo.svc.client.CallOutcome;
 import ai.neargo.svc.client.ServiceCallException;
 import ai.neargo.svc.client.ServiceCalls;
 import java.util.Objects;
+import java.util.List;
+import java.util.HashSet;
 import java.util.function.Supplier;
 
 /** Independent restaurant reads metadata from the original product authority, without fallback or retry. */
@@ -16,6 +18,33 @@ public class CoreGoodsCatalogQueryPortImpl implements GoodsCatalogQueryPort {
     private final Supplier<GoodsCatalogInternalApi> api;
 
     public CoreGoodsCatalogQueryPortImpl(Supplier<GoodsCatalogInternalApi> api) { this.api = api; }
+
+    @Override
+    public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
+        try {
+            return ServiceCalls.call(ServiceName.PLATFORM, () -> {
+                var result = api.get().lookupBatch(new GoodsCatalogInternalApi.BatchLookup(entity, store, numbers));
+                var seen = new HashSet<String>();
+                if (result == null || result.size() > numbers.size() || result.stream().anyMatch(f -> f == null
+                        || !Objects.equals(entity, f.entityNo()) || !Objects.equals(store, f.storeNo())
+                        || !numbers.contains(f.goodsNo()) || !seen.add(f.goodsNo()))) {
+                    throw new ServiceCallException(CallOutcome.REMOTE_ERROR, ServiceName.PLATFORM, 0,
+                            "Invalid product batch metadata response");
+                }
+                return List.copyOf(result);
+            });
+        } catch (ServiceCallException failure) {
+            ErrorCode code = switch (failure.statusCode()) {
+                case 400 -> ErrorCode.BAD_REQUEST;
+                case 403 -> ErrorCode.FORBIDDEN;
+                case 404 -> ErrorCode.NOT_FOUND;
+                case 409 -> ErrorCode.CONFLICT;
+                default -> null;
+            };
+            if (code != null) throw BizException.of(code);
+            throw failure;
+        }
+    }
 
     @Override
     public GoodsFact getGoods(String entityNo, String storeNo, String goodsNo) {

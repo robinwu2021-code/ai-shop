@@ -2,6 +2,10 @@ package ai.neargo.shop.food.mapper;
 
 import ai.neargo.shop.food.entity.FnbActionLog;
 import ai.neargo.shop.food.entity.FnbDish;
+import ai.neargo.shop.food.entity.FnbDishOptionGroup;
+import ai.neargo.shop.food.entity.FnbOptionGroup;
+import ai.neargo.shop.food.entity.FnbOptionGroupItem;
+
 import ai.neargo.shop.food.entity.FnbCheck;
 import ai.neargo.shop.food.entity.FnbGuestSession;
 import ai.neargo.shop.food.entity.FnbReservation;
@@ -24,6 +28,10 @@ import org.apache.ibatis.annotations.Update;
 public final class FoodMappers {
     private FoodMappers() {
     }
+
+    public interface DishOptionGroupMapper extends BaseMapper<FnbDishOptionGroup> { }
+    public interface OptionGroupMapper extends BaseMapper<FnbOptionGroup> { }
+    public interface OptionGroupItemMapper extends BaseMapper<FnbOptionGroupItem> { }
 
     public interface DishMapper extends BaseMapper<FnbDish> { }
 

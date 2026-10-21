@@ -13,12 +13,17 @@ import ai.neargo.shop.food.dto.MeasurementPolicy;
 import ai.neargo.shop.food.dto.SaveDishReq;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.DishMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.DishOptionGroupMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper;
 import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.impl.DishServiceImpl;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.HashSet;
+import ai.neargo.shop.food.dto.ListDishesQuery;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.mapper.MapperFactoryBean;
@@ -126,9 +131,59 @@ class DishServiceTest extends FoodWriteGuardFixture {
         });
     }
 
+    @Test void listCountsAuthorizedMatchesBeforePagingAndBatchesBeyond256() {
+        runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class, Dishes.class).run(c -> {
+            var f = fixture(c); var service = c.getBean(DishService.class); var facts = c.getBean(Facts.class);
+            for (int i=0; i<260; i++) {
+                String number = String.format("G%03d",i);
+                f.sql().update("INSERT INTO fnb_dish(entity_no,goods_no,dish_kind,prep_seconds,status,presentation,"
+                        + "measurement_policy,config_version) VALUES('E',?,'SINGLE',0,'DRAFT',?, ?,1)", number,
+                        "{\"displayName\":\"餐饮别名\"}", "{\"unit\":\"EA\",\"mode\":\"COUNT\",\"scale\":0}");
+                if (i!=1) facts.visible.add(number);
+            }
+            var page = service.listDishes("E", "A", new ListDishesQuery(2,1,"餐饮",null));
+            assertThat(page.total()).isEqualTo(259);
+            assertThat(page.records()).extracting(x -> x.dish().goodsNo()).containsExactly("G002");
+            assertThat(facts.batchCalls).isEqualTo(2);
+            assertThat(service.listDishes("E","A",new ListDishesQuery(1,20,"基础名",null)).total()).isEqualTo(259);
+            assertThat(service.listDishes("E","A",new ListDishesQuery(1,20,null,"BUNDLE")).total()).isZero();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_idempotent",Integer.class)).isZero();
+        });
+    }
+
+    @Test void detailReadsRealOptionBindingsAndRejectsBrokenOrForeignGroups() {
+        runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class, Dishes.class).run(c -> {
+            var f=fixture(c); var service=c.getBean(DishService.class);
+            service.saveDish("E","A","G","actor",req(null,"奶茶"),"new");
+            String common="id BIGINT AUTO_INCREMENT PRIMARY KEY,entity_no VARCHAR(32),tenant_no VARCHAR(32),"
+                    +"created_at DATETIME,created_by VARCHAR(32),updated_at DATETIME,updated_by VARCHAR(32),version BIGINT DEFAULT 0,deleted INT DEFAULT 0,";
+            f.sql().execute("CREATE TABLE fnb_dish_option_group("+common+"goods_no VARCHAR(32),group_no VARCHAR(32),sort_no INT)");
+            f.sql().execute("CREATE TABLE fnb_option_group("+common+"group_no VARCHAR(32),name VARCHAR(64),min_qty DECIMAL(18,6),max_qty DECIMAL(18,6),published_revision_no VARCHAR(32),status VARCHAR(16),selection_rules TEXT)");
+            f.sql().execute("CREATE TABLE fnb_option_group_item("+common+"option_item_no VARCHAR(32),group_no VARCHAR(32),source_kind VARCHAR(16),spec_value_no VARCHAR(32),modifier_no VARCHAR(32),min_qty DECIMAL(18,6),max_qty DECIMAL(18,6),default_qty DECIMAL(18,6),sort_no INT)");
+            assertThat(service.getDish("E","A","G").optionGroups()).isEmpty();
+            f.sql().update("INSERT INTO fnb_dish_option_group(entity_no,goods_no,group_no,sort_no) VALUES('E','G','OG',2)");
+            f.sql().update("INSERT INTO fnb_option_group(entity_no,group_no,name,min_qty,max_qty,status,selection_rules) VALUES('E','OG','糖度',1,1,'DRAFT','{}')");
+            f.sql().update("INSERT INTO fnb_option_group_item(entity_no,option_item_no,group_no,source_kind,spec_value_no,min_qty,max_qty,default_qty,sort_no) VALUES('E','OI','OG','SPEC_VALUE','SUGAR',0,1,1,0)");
+            var detail=service.getDish("E","A","G");
+            assertThat(detail.coreCatalog().cover()).isEqualTo("base-cover");
+            assertThat(detail.optionGroups()).hasSize(1);
+            assertThat(detail.optionGroups().getFirst().data().items()).extracting(x->x.optionItemNo()).containsExactly("OI");
+            f.sql().update("UPDATE fnb_option_group SET entity_no='OTHER'");
+            assertThatThrownBy(()->service.getDish("E","A","G")).isInstanceOf(BizException.class);
+        });
+    }
+
     static class Facts implements GoodsCatalogQueryPort {
+        final Set<String> visible = new HashSet<>(Set.of("G"));
+        int batchCalls;
         boolean foreign;
         boolean unavailable;
+        @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
+            batchCalls++;
+            if (unavailable) throw new IllegalStateException("catalog-unavailable");
+            return numbers.stream().filter(visible::contains).map(n -> new GoodsSummary(n, foreign ? "OTHER" : entity,
+                    store, "基础名", "base-cover", false, "PENDING", 1)).toList();
+        }
         @Override public GoodsFact getGoods(String entity, String store, String goods) {
             if (unavailable) throw new IllegalStateException("catalog-unavailable");
             return new GoodsFact(goods, foreign ? "OTHER" : entity, store, "基础名", "base-cover", false,
@@ -141,6 +196,15 @@ class DishServiceTest extends FoodWriteGuardFixture {
     @Configuration(proxyBeanMethods = false)
     static class Dishes {
         @Bean FailAfterPublish failAfterPublish() { return new FailAfterPublish(); }
+        @Bean MapperFactoryBean<DishOptionGroupMapper> bindings(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) {
+            var f = new MapperFactoryBean<>(DishOptionGroupMapper.class); f.setSqlSessionTemplate(t); return f;
+        }
+        @Bean MapperFactoryBean<OptionGroupMapper> groups(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) {
+            var f = new MapperFactoryBean<>(OptionGroupMapper.class); f.setSqlSessionTemplate(t); return f;
+        }
+        @Bean MapperFactoryBean<OptionGroupItemMapper> items(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) {
+            var f = new MapperFactoryBean<>(OptionGroupItemMapper.class); f.setSqlSessionTemplate(t); return f;
+        }
         @Bean Facts facts() { return new Facts(); }
         @Bean MapperFactoryBean<DishMapper> dishes(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) {
             var factory = new MapperFactoryBean<>(DishMapper.class);
@@ -149,13 +213,14 @@ class DishServiceTest extends FoodWriteGuardFixture {
         }
         @Bean DishService dishService(DishMapper mapper, ActionLogMapper actions, IdempotencyService idem,
                 @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
-                PlatformTransactionManager manager, Facts facts, FailAfterPublish fail) {
+                PlatformTransactionManager manager, Facts facts, FailAfterPublish fail, DishOptionGroupMapper bindings,
+                OptionGroupMapper groups, OptionGroupItemMapper items) {
             OutboxPublisher checked = (event, options) -> {
                 var receipt = publisher.publish(event, options);
                 if (fail.enabled.get()) throw new IllegalStateException("after-dish-publish");
                 return receipt;
             };
-            return new DishServiceImpl(mapper, actions, idem, checked, json, manager, facts);
+            return new DishServiceImpl(mapper, actions, idem, checked, json, manager, facts, bindings, groups, items);
         }
     }
 }

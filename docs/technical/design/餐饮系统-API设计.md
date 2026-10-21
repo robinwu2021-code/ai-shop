@@ -956,6 +956,82 @@
 | quantity | decimal | 是 | 选择份数 |
 | selectionInstanceRef | string | 是 | 同SKU不同选择仍独立的实例号 |
 
+### ProductSummary
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| goodsNo | string | 是 | 基础商品编号 |
+| entityNo | string | 是 | 已验证主体 |
+| storeNo | string | 是 | 已验证门店 |
+| title | string | 是 | 商品名称 |
+| cover | string | 否 | 原商品图片 |
+| baseOnSale | boolean | 是 | 基础上下架事实非餐饮可售 |
+| auditStatus | string | 是 | 审核事实 |
+| version | int64 | 是 | 原商品版本 |
+
+### ProductSku
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| skuNo | string | 是 | 基础规格编号 |
+| spec | string | 否 | 规格展示 |
+| version | int64 | 是 | 基础规格版本 |
+
+### ProductCatalog
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| goodsNo | string | 是 | 基础商品编号 |
+| entityNo | string | 是 | 已验证主体 |
+| storeNo | string | 是 | 已验证门店 |
+| title | string | 是 | 商品名称 |
+| cover | string | 否 | 原商品图片 |
+| baseOnSale | boolean | 是 | 基础上下架事实非餐饮可售 |
+| auditStatus | string | 是 | 审核事实 |
+| version | int64 | 是 | 原商品版本 |
+| skus | ProductSku[] | 是 | 原商品规格事实，不含金额库存 |
+
+### DishCatalogItem
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| dish | Dish | 是 | 餐饮属性 |
+| product | ProductSummary | 是 | 当前门店商品权威图文与管理状态 |
+
+### DishOptionItem
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| optionItemNo | string | 是 | 当前组条目 |
+| sourceKind | string | 是 | SPEC_VALUE或MODIFIER |
+| specValueNo | string | 否 | 原口味值 |
+| modifierNo | string | 否 | 餐饮配料 |
+| minQty | decimal | 是 | 下限 |
+| maxQty | decimal | 是 | 上限 |
+| defaultQty | decimal | 是 | 默认量 |
+| sortNo | int32 | 是 | 顺序 |
+
+### DishOptionData
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| name | string | 是 | 组名称 |
+| minQty | decimal | 是 | 组下限 |
+| maxQty | decimal | 是 | 组上限 |
+| publishedRevisionNo | string | 否 | 已发布引用独立于当前草稿 |
+| selectionRules | object | 是 | 存储的管理选择规则非执行授权 |
+| items | DishOptionItem[] | 是 | 真实当前条目 |
+
+### DishOptionGroup
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| configNo | string | 是 | 选择组编号 |
+| kind | string | 是 | 固定OPTION_GROUP |
+| revision | int64 | 是 | 当前管理草稿并发版本 |
+| status | string | 是 | 管理状态 |
+| data | DishOptionData | 是 | 实际工作头与条目 |
+
 ## 四、逐接口输入输出
 
 ### FOOD-API-001 · 查询营业策略
@@ -4224,9 +4300,9 @@
 
 `GET /biz/x/food/stores/{storeNo}/dishes`
 
-权限与守卫：主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id。
+权限与守卫：当前主体门店和原商品权限；先按原商品权威过滤及名称匹配，再统计与分页；goodsNo稳定排序；不接受未知或重复查询参数；不返回价格库存假值。
 
-能力依赖：餐饮新增。
+能力依赖：已实现管理查询，不代表可售。
 
 路径输入：
 
@@ -4240,15 +4316,15 @@
 |---|---|---|---|
 | page | int32 | 否 | 默认1 |
 | size | int32 | 否 | 默认20最大100 |
-| keyword | string | 否 | 名称 |
-| dishKind | string | 否 | 类型 |
+| keyword | string | 否 | 最长128商品名或餐饮别名多语言名，忽略大小写字面子串 |
+| dishKind | string | 否 | SINGLE或BUNDLE或ADDON |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| records | Dish[] | 是 | 授权列表 |
-| total | int64 | 是 | 总数 |
+| records | DishCatalogItem[] | 是 | 当前店授权菜品与原商品图文 |
+| total | int64 | 是 | 全部授权筛选后数量 |
 | page | int32 | 是 | 页 |
 | size | int32 | 是 | 页长 |
 
@@ -4256,9 +4332,9 @@
 
 `GET /biz/x/food/stores/{storeNo}/dishes/{goodsNo}`
 
-权限与守卫：主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id。
+权限与守卫：当前主体门店原商品权限；真实组绑定及条目同主体；目标丢失/跨主体绑定CONFLICT，不用空组隐藏；发布引用独立返回，管理草稿不作为可售定义。
 
-能力依赖：餐饮新增。
+能力依赖：已实现管理详情，不代表发布或可交易。
 
 路径输入：
 
@@ -4275,9 +4351,10 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| dish | Dish | 是 | 餐饮配置 |
-| optionGroups | Config[] | 是 | 获准选择组 |
-| coreCatalogRef | string | 是 | 基础商品查询引用 |
+| dish | Dish | 是 | 当前餐饮配置 |
+| optionGroups | DishOptionGroup[] | 是 | 当前真实管理草稿组 |
+| coreCatalogRef | string | 是 | 已核验的基础商品编号 |
+| coreCatalog | ProductCatalog | 是 | 基础图文及规格 |
 
 ### FOOD-API-114 · 经营端可售餐牌
 

@@ -1,6 +1,10 @@
 package ai.neargo.shop.food.spi;
 
 import ai.neargo.shop.food.dto.DishResultVO;
+import ai.neargo.shop.food.dto.DishCatalogItemVO;
+import ai.neargo.shop.food.dto.DishDetailResultVO;
+import ai.neargo.shop.food.dto.ListDishesQuery;
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.food.dto.SaveDishReq;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -15,6 +19,19 @@ public interface DishInternalApi {
 
     @PostExchange(SAVE_PATH)
     DishResultVO saveDish(@RequestBody SaveCommand command);
+
+    String LIST_PATH = "/internal/food/dishes/list";
+    String GET_PATH = "/internal/food/dishes/get";
+
+    @PostExchange(LIST_PATH)
+    PageData<DishCatalogItemVO> listDishes(@RequestBody Lookup query);
+    @PostExchange(GET_PATH)
+    DishDetailResultVO getDish(@RequestBody Identity query);
+
+    record Lookup(@NotBlank @Size(max=32) String entityNo, @NotBlank @Size(max=32) String storeNo,
+            @Valid ListDishesQuery query) { }
+    record Identity(@NotBlank @Size(max=32) String entityNo, @NotBlank @Size(max=32) String storeNo,
+            @NotBlank @Size(max=32) String goodsNo) { }
 
     record SaveCommand(@NotBlank @Size(max=32) String entityNo, @NotBlank @Size(max=32) String storeNo,
             @NotBlank @Size(max=32) String goodsNo, @NotBlank @Size(max=32) String actorNo,

@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -14,6 +15,11 @@ import ai.neargo.shop.common.ApiResponseWrapper;
 import ai.neargo.shop.portal.internal.InternalGoodsCatalogEndpoint;
 import ai.neargo.shop.spi.product.GoodsCatalogInternalApi;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
+import ai.neargo.shop.spi.product.GoodsCatalogQueryPort.GoodsSummary;
+import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyList;
+import java.util.List;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort.GoodsFact;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort.SkuFact;
 import ai.neargo.shop.svc.InternalHttp;
@@ -23,7 +29,6 @@ import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterAll;
@@ -48,7 +53,8 @@ class InternalGoodsCatalogApiTest {
         verifyNoInteractions(port);
     }
     @Test void validatesBodyAndPreservesNotFoundWithoutPrivateDetails() throws Exception {
-        GoodsCatalogQueryPort port=(e,s,g) -> { throw BizException.of(ErrorCode.NOT_FOUND); };
+        GoodsCatalogQueryPort port=mock(GoodsCatalogQueryPort.class);
+        when(port.getGoods(anyString(),anyString(),anyString())).thenThrow(BizException.of(ErrorCode.NOT_FOUND));
         var mvc=MockMvcBuilders.standaloneSetup(new InternalGoodsCatalogEndpoint(port,"secret",VALIDATION.getValidator())).setControllerAdvice(new GlobalExceptionHandler(),new ApiResponseWrapper()).build();
         mvc.perform(post(GoodsCatalogInternalApi.LOOKUP_PATH).header(InternalHttp.TOKEN_HEADER,"secret")
                 .contentType("application/json").content("{}")).andExpect(status().isBadRequest());
@@ -71,13 +77,17 @@ class InternalGoodsCatalogApiTest {
         verifyNoInteractions(port);
     }
     @Test void actualTypedHttpRoundTripUsesSameMetadataAndErrorStatus() throws Exception {
-        GoodsCatalogQueryPort port=(e,s,g) -> {
+        GoodsCatalogQueryPort port=mock(GoodsCatalogQueryPort.class);
+        when(port.getGoods(anyString(),anyString(),anyString())).thenAnswer(inv -> {
+            String e=inv.getArgument(0),s=inv.getArgument(1),g=inv.getArgument(2);
             if(!"E".equals(e)||!"S".equals(s)||!"G".equals(g)) throw BizException.of(ErrorCode.NOT_FOUND);
             return FACT;
-        };
+        });
+        when(port.getGoodsBatch(anyString(),anyString(),anyList())).thenReturn(List.of(
+                new GoodsSummary("G","E","S","菜品",null,false,"PENDING",3)));
         var mvc=MockMvcBuilders.standaloneSetup(new InternalGoodsCatalogEndpoint(port,"secret",VALIDATION.getValidator())).setControllerAdvice(new GlobalExceptionHandler(),new ApiResponseWrapper()).build();
         var server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
-        server.createContext(GoodsCatalogInternalApi.LOOKUP_PATH,exchange -> {
+        server.createContext("/internal/product/catalog/goods/",exchange -> {
             try {
                 var result=mvc.perform(post(exchange.getRequestURI().getPath())
                         .header(InternalHttp.TOKEN_HEADER,exchange.getRequestHeaders().getFirst(InternalHttp.TOKEN_HEADER))
@@ -96,11 +106,27 @@ class InternalGoodsCatalogApiTest {
                 return Optional.of("http://127.0.0.1:"+server.getAddress().getPort());
             },"secret");
             var api=http.client(ServiceName.PLATFORM,GoodsCatalogInternalApi.class,Duration.ofSeconds(5));
+            assertThat(api.lookupBatch(new GoodsCatalogInternalApi.BatchLookup("E","S",List.of("G"))))
+                    .extracting(GoodsSummary::goodsNo).containsExactly("G");
             assertThat(api.lookup(new GoodsCatalogInternalApi.Lookup("E","S","G"))).isEqualTo(FACT);
             assertThatThrownBy(() -> api.lookup(new GoodsCatalogInternalApi.Lookup("E","","G")))
                     .isInstanceOfSatisfying(ServiceCallException.class,e -> assertThat(e.statusCode()).isEqualTo(400));
             assertThatThrownBy(() -> api.lookup(new GoodsCatalogInternalApi.Lookup("E","OTHER","G")))
                     .isInstanceOfSatisfying(ServiceCallException.class,e -> assertThat(e.statusCode()).isEqualTo(404));
         } finally { server.stop(0); }
+    }
+    @Test void batchAuthenticatesBeforeValidationAndKeepsRawProtocol() throws Exception {
+        var port=mock(GoodsCatalogQueryPort.class);
+        when(port.getGoodsBatch(anyString(),anyString(),anyList())).thenReturn(List.of());
+        var mvc=MockMvcBuilders.standaloneSetup(new InternalGoodsCatalogEndpoint(port,"secret",VALIDATION.getValidator()))
+                .setControllerAdvice(new GlobalExceptionHandler(),new ApiResponseWrapper()).build();
+        mvc.perform(post(GoodsCatalogInternalApi.BATCH_PATH).contentType("application/json").content("{}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post(GoodsCatalogInternalApi.BATCH_PATH).header(InternalHttp.TOKEN_HEADER,"secret")
+                .contentType("application/json").content("{\"entityNo\":\"E\",\"storeNo\":\"S\",\"goodsNos\":[]}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post(GoodsCatalogInternalApi.BATCH_PATH).header(InternalHttp.TOKEN_HEADER,"secret")
+                .contentType("application/json").content("{\"entityNo\":\"E\",\"storeNo\":\"S\",\"goodsNos\":[\"G\"]}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
     }
 }

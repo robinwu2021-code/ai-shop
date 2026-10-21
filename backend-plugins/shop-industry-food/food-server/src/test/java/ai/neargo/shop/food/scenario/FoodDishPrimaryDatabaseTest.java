@@ -8,6 +8,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.dto.DishPresentation;
+import ai.neargo.shop.food.dto.DishCatalogItemVO;
+import ai.neargo.shop.food.dto.DishDetailResultVO;
+import ai.neargo.shop.food.dto.DishResultVO;
+import ai.neargo.shop.food.dto.ListDishesQuery;
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.food.dto.MeasurementPolicy;
 import ai.neargo.shop.food.dto.SaveDishReq;
 import ai.neargo.shop.food.server.FoodApplication;
@@ -78,6 +83,17 @@ class FoodDishPrimaryDatabaseTest {
             }
             ex.close();
         });
+        server.createContext(GoodsCatalogInternalApi.BATCH_PATH, ex -> {
+            calls.incrementAndGet();
+            assertThat(ex.getRequestHeaders().getFirst(InternalHttp.TOKEN_HEADER)).isEqualTo("wire");
+            assertThat(new String(ex.getRequestBody().readAllBytes(),StandardCharsets.UTF_8)).contains("G");
+            byte[] response="""
+                    [{"goodsNo":"G","entityNo":"E","storeNo":"A","title":"原商品","cover":"base-cover",
+                      "baseOnSale":false,"auditStatus":"PENDING","version":1}]
+                    """.getBytes(StandardCharsets.UTF_8);
+            ex.getResponseHeaders().add("Content-Type","application/json");
+            ex.sendResponseHeaders(200,response.length);ex.getResponseBody().write(response);ex.close();
+        });
         server.start();
         try {
             String url = adminUrl.replace("/mysql", "/" + database);
@@ -104,9 +120,9 @@ class FoodDishPrimaryDatabaseTest {
                         mvc.perform(post(DishInternalApi.SAVE_PATH).header(InternalHttp.TOKEN_HEADER, "wire")
                                 .contentType(MediaType.APPLICATION_JSON).content("{}"))
                                 .andExpect(status().isBadRequest());
-                        server.createContext(DishInternalApi.SAVE_PATH, ex -> {
+                        server.createContext("/internal/food/dishes/", ex -> {
                             try {
-                                var result = mvc.perform(post(DishInternalApi.SAVE_PATH)
+                                var result = mvc.perform(post(ex.getRequestURI().getPath())
                                         .header(InternalHttp.TOKEN_HEADER,
                                                 ex.getRequestHeaders().getFirst(InternalHttp.TOKEN_HEADER))
                                         .contentType(MediaType.APPLICATION_JSON).content(ex.getRequestBody().readAllBytes()))
@@ -121,8 +137,18 @@ class FoodDishPrimaryDatabaseTest {
                         var http = new InternalHttp(name -> Optional.of("http://127.0.0.1:"
                                 + server.getAddress().getPort()), "wire");
                         var api = http.client(ServiceName.FOOD, DishInternalApi.class, Duration.ofSeconds(5));
-                        DishService remote = (entity, store, goods, actor, request, key) -> api.saveDish(
-                                new DishInternalApi.SaveCommand(entity, store, goods, actor, key, request));
+                        DishService remote = new DishService() {
+                            @Override public DishResultVO saveDish(String entity,String store,String goods,String actor,
+                                    SaveDishReq request,String key) {
+                                return api.saveDish(new DishInternalApi.SaveCommand(entity,store,goods,actor,key,request));
+                            }
+                            @Override public PageData<DishCatalogItemVO> listDishes(String entity,String store,ListDishesQuery query) {
+                                return api.listDishes(new DishInternalApi.Lookup(entity,store,query));
+                            }
+                            @Override public DishDetailResultVO getDish(String entity,String store,String goods) {
+                                return api.getDish(new DishInternalApi.Identity(entity,store,goods));
+                            }
+                        };
                         var presentation = new DishPresentation("奶茶", List.of(), List.of(), List.of(), List.of("含奶"));
                         var req = new SaveDishReq("SINGLE", 60, presentation,
                                 new MeasurementPolicy("EA", "COUNT", 0, null), null);
@@ -141,6 +167,18 @@ class FoodDishPrimaryDatabaseTest {
                                 .isInstanceOfSatisfying(ServiceCallException.class,
                                         e -> assertThat(e.statusCode()).isEqualTo(404));
                         var sql = new JdbcTemplate(c.getBean(DataSource.class));
+                        sql.update("INSERT INTO fnb_option_group(entity_no,group_no,name,min_qty,max_qty,status,selection_rules,"
+                                +"created_at,created_by,updated_at,updated_by) VALUES('E','OG','糖度',1,1,'DRAFT','{}',NOW(3),'SYSTEM',NOW(3),'SYSTEM')");
+                        sql.update("INSERT INTO fnb_dish_option_group(entity_no,goods_no,group_no,sort_no,created_at,created_by,updated_at,updated_by) "
+                                +"VALUES('E','G','OG',0,NOW(3),'SYSTEM',NOW(3),'SYSTEM')");
+                        sql.update("INSERT INTO fnb_option_group_item(entity_no,option_item_no,group_no,source_kind,spec_value_no,min_qty,max_qty,default_qty,sort_no,"
+                                +"created_at,created_by,updated_at,updated_by) VALUES('E','OI','OG','SPEC_VALUE','SUGAR',0,1,1,0,NOW(3),'SYSTEM',NOW(3),'SYSTEM')");
+                        var page=remote.listDishes("E","A",new ListDishesQuery(1,20,"原商品",null));
+                        assertThat(page.total()).isEqualTo(1);
+                        assertThat(page.records().getFirst().product().cover()).isEqualTo("base-cover");
+                        var detail=remote.getDish("E","A","G");
+                        assertThat(detail.optionGroups().getFirst().data().items().getFirst().optionItemNo()).isEqualTo("OI");
+                        assertThat(detail.coreCatalog().skus()).hasSize(1);
                         assertThat(sql.queryForObject("SELECT JSON_EXTRACT(presentation,'$.displayName') "
                                 + "FROM fnb_dish WHERE goods_no='G'", String.class)).isEqualTo("null");
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_dish", Integer.class)).isOne();
@@ -154,7 +192,7 @@ class FoodDishPrimaryDatabaseTest {
                                     + "WHERE table_schema=DATABASE() AND table_name=?", Integer.class, table)).isOne();
                         }
                     });
-            assertThat(calls.get()).isEqualTo(5);
+            assertThat(calls.get()).isEqualTo(7);
         } finally {
             server.stop(0);
             executor.shutdownNow();

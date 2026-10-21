@@ -3,6 +3,18 @@ package ai.neargo.shop.food.service.impl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.food.dto.DishCatalogItemVO;
+import ai.neargo.shop.food.dto.DishDetailResultVO;
+import ai.neargo.shop.food.dto.ListDishesQuery;
+import ai.neargo.shop.food.dto.OptionGroupConfigVO;
+import ai.neargo.shop.food.entity.FnbDishOptionGroup;
+import ai.neargo.shop.food.entity.FnbOptionGroup;
+import ai.neargo.shop.food.entity.FnbOptionGroupItem;
+import ai.neargo.shop.food.mapper.FoodMappers.DishOptionGroupMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper;
+import ai.neargo.shop.spi.product.GoodsCatalogQueryPort.GoodsSummary;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.dto.DishPresentation;
@@ -22,6 +34,10 @@ import ai.neargo.shop.spi.food.DishChanged;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -42,18 +58,123 @@ public class DishServiceImpl implements DishService {
     private final ObjectMapper json;
     private final TransactionTemplate transaction;
     private final GoodsCatalogQueryPort catalog;
+    private final DishOptionGroupMapper bindings;
+    private final OptionGroupMapper groups;
+    private final OptionGroupItemMapper items;
+    private final TransactionTemplate readTransaction;
 
     public DishServiceImpl(DishMapper dishes, ActionLogMapper actions, IdempotencyService idempotency,
             OutboxPublisher publisher, ObjectMapper json, PlatformTransactionManager manager,
-            GoodsCatalogQueryPort catalog) {
+            GoodsCatalogQueryPort catalog, DishOptionGroupMapper bindings, OptionGroupMapper groups,
+            OptionGroupItemMapper items) {
         this.dishes = dishes;
         this.actions = actions;
         this.idempotency = idempotency;
         this.publisher = publisher;
         this.json = json;
         this.catalog = catalog;
+        this.bindings = bindings;
+        this.groups = groups;
+        this.items = items;
+        this.readTransaction = new TransactionTemplate(manager);
+        this.readTransaction.setReadOnly(true);
+        this.readTransaction.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
         this.transaction = new TransactionTemplate(manager);
         this.transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+    }
+
+    @Override
+    public PageData<DishCatalogItemVO> listDishes(String entity, String store, ListDishesQuery query) {
+        identifier(entity); identifier(store); noOuterTransaction();
+        int page = query == null || query.page() == null ? 1 : query.page();
+        int size = query == null || query.size() == null ? 20 : query.size();
+        String kind = query == null ? null : query.dishKind();
+        String word = query == null || query.keyword() == null ? "" : query.keyword().trim();
+        if (page < 1 || size < 1 || size > 100 || word.length() > 128
+                || kind != null && !Set.of("SINGLE", "BUNDLE", "ADDON").contains(kind)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String keyword = word.toLowerCase(Locale.ROOT);
+        var rows = dishes.selectList(Wrappers.<FnbDish>lambdaQuery().eq(FnbDish::getEntityNo, entity)
+                .eq(kind != null, FnbDish::getDishKind, kind).orderByAsc(FnbDish::getGoodsNo));
+        var records = new ArrayList<DishCatalogItemVO>();
+        long count = 0, offset = (long) (page - 1) * size;
+        for (int start = 0; start < rows.size(); start += 256) {
+            var chunk = rows.subList(start, Math.min(start + 256, rows.size()));
+            var numbers = chunk.stream().map(FnbDish::getGoodsNo).toList();
+            var facts = catalog.getGoodsBatch(entity, store, numbers);
+            var byNumber = new HashMap<String, GoodsSummary>();
+            if (facts == null) throw new IllegalStateException("Missing product batch response");
+            for (var fact : facts) {
+                if (fact == null || !entity.equals(fact.entityNo()) || !store.equals(fact.storeNo())
+                        || !numbers.contains(fact.goodsNo()) || byNumber.put(fact.goodsNo(), fact) != null) {
+                    throw new IllegalStateException("Invalid product batch response");
+                }
+            }
+            for (var row : chunk) {
+                var fact = byNumber.get(row.getGoodsNo());
+                if (fact == null) continue; // Only an explicit authoritative omission excludes this candidate.
+                var dish = view(row);
+                if (!keyword.isEmpty() && !contains(fact.title(), keyword)
+                        && !contains(dish.presentation().displayName(), keyword)
+                        && dish.presentation().localizedNames().stream().noneMatch(n -> contains(n.name(), keyword))) continue;
+                if (count >= offset && records.size() < size) records.add(new DishCatalogItemVO(dish, fact));
+                count++;
+            }
+        }
+        return PageData.of(records, count, page, size);
+    }
+
+    @Override
+    public DishDetailResultVO getDish(String entity, String store, String goods) {
+        identifier(entity); identifier(store); identifier(goods); noOuterTransaction();
+        var fact = catalog.getGoods(entity, store, goods);
+        if (fact == null || !entity.equals(fact.entityNo()) || !store.equals(fact.storeNo())
+                || !goods.equals(fact.goodsNo())) throw BizException.of(ErrorCode.FORBIDDEN);
+        return readTransaction.execute(status -> {
+            var row = dishes.selectOne(Wrappers.<FnbDish>lambdaQuery().eq(FnbDish::getEntityNo, entity)
+                    .eq(FnbDish::getGoodsNo, goods));
+            if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
+            return new DishDetailResultVO(view(row), optionGroups(entity, goods), goods, fact);
+        });
+    }
+
+    private List<OptionGroupConfigVO> optionGroups(String entity, String goods) {
+        var links = bindings.selectList(Wrappers.<FnbDishOptionGroup>lambdaQuery()
+                .eq(FnbDishOptionGroup::getEntityNo, entity).eq(FnbDishOptionGroup::getGoodsNo, goods)
+                .orderByAsc(FnbDishOptionGroup::getSortNo).orderByAsc(FnbDishOptionGroup::getGroupNo));
+        if (links.isEmpty()) return List.of();
+        var numbers = links.stream().map(FnbDishOptionGroup::getGroupNo).toList();
+        var heads = groups.selectList(Wrappers.<FnbOptionGroup>lambdaQuery().eq(FnbOptionGroup::getEntityNo, entity)
+                .in(FnbOptionGroup::getGroupNo, numbers)).stream()
+                .collect(Collectors.toMap(FnbOptionGroup::getGroupNo, g -> g));
+        if (heads.size() != numbers.size()) throw BizException.of(ErrorCode.CONFLICT);
+        var children = items.selectList(Wrappers.<FnbOptionGroupItem>lambdaQuery()
+                .eq(FnbOptionGroupItem::getEntityNo, entity).in(FnbOptionGroupItem::getGroupNo, numbers)
+                .orderByAsc(FnbOptionGroupItem::getSortNo).orderByAsc(FnbOptionGroupItem::getOptionItemNo))
+                .stream().collect(Collectors.groupingBy(FnbOptionGroupItem::getGroupNo));
+        return links.stream().map(link -> {
+            var group = heads.get(link.getGroupNo());
+            var options = children.getOrDefault(group.getGroupNo(), List.of()).stream().map(item ->
+                    new OptionGroupConfigVO.Item(item.getOptionItemNo(), item.getSourceKind(), item.getSpecValueNo(),
+                            item.getModifierNo(), item.getMinQty(), item.getMaxQty(), item.getDefaultQty(), item.getSortNo()))
+                    .toList();
+            Map<String, Object> rules = json.readValue(group.getSelectionRules(),
+                    json.getTypeFactory().constructMapType(Map.class, String.class, Object.class));
+            return new OptionGroupConfigVO(group.getGroupNo(), "OPTION_GROUP", group.getVersion(), group.getStatus(),
+                    new OptionGroupConfigVO.Data(group.getName(), group.getMinQty(), group.getMaxQty(),
+                            group.getPublishedRevisionNo(), rules, options));
+        }).toList();
+    }
+
+    private static boolean contains(String value, String word) {
+        return value != null && value.toLowerCase(Locale.ROOT).contains(word);
+    }
+
+    private static void noOuterTransaction() {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("Dish query cannot perform remote lookups inside an existing transaction");
+        }
     }
 
     @Override
