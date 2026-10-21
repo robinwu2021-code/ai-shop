@@ -141,7 +141,7 @@ onUnload(pager.invalidate);
       <text v-if="!nativeWechat" class="sh-hint block">{{ $t("storedValue.notificationOtherPlatform") }}</text>
       <sh-empty v-else-if="capabilityFailed" bare failed @retry="loadCapability" />
       <text v-else-if="!capability" class="sh-hint block">{{ $t("storedValue.loadingMore") }}</text>
-      <text v-else-if="!capability.available" class="sh-hint block">{{ $t("storedValue.notificationUnavailable") }}</text>
+      <text v-else-if="capability && !capability.available" class="sh-hint block">{{ $t("storedValue.notificationUnavailable") }}</text>
       <button v-if="nativeWechat && capability?.available && capability.templateId" class="sh-btn" :disabled="subscribing" @tap="subscribe">{{ $t("storedValue.subscribe") }}</button>
       <button class="sh-btn sh-btn--muted" @tap="viewMessages">{{ $t("storedValue.viewMessages") }}</button>
     </sh-sheet>
