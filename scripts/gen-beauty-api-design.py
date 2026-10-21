@@ -31,7 +31,7 @@ def render():
     methods = Counter(a['method'] for a in apis)
     nhttp = len(apis) - methods['CONTRACT']
     lines = ['# 美业系统 API 清单（按业务模块）', '',
-             '> 状态：目标接口契约草稿，待评审 · 2026-10-20 · 未新增Controller、注册路由或改变线上权限。',
+             '> 状态：目标接口契约与实施对照 · 2026-10-21 · 部分接口已编码，模块交付以主TDD部署关口为准。',
              '> 由 `python3 scripts/gen-beauty-api-design.py` 生成，勿手改；真源：[API设计JSON](./schema/beauty-api-design.json)。',
              '> 上游：[118项功能矩阵](../../requirements/美业系统-多端功能矩阵.md) · [领域对象](./美业系统-领域对象与聚合边界.md) · [数据库结构](./美业系统-数据库结构设计.md)。',
              '> 关键详情：[预约工作台与日历契约](./美业系统-预约工作台与日历API设计.md)。', '',

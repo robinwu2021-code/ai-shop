@@ -1,6 +1,9 @@
 package ai.neargo.shop.beauty.config;
 
 import ai.neargo.shop.beauty.port.RemoteServiceProductFactsPort;
+import ai.neargo.shop.beauty.port.RemoteServiceCatalogFactsPort;
+import ai.neargo.shop.spi.product.ServiceCatalogFactsPort;
+import ai.neargo.shop.spi.product.ServiceCatalogFactsInternalApi;
 import ai.neargo.shop.spi.product.ServiceProductFactsPort;
 import ai.neargo.shop.spi.product.ServiceProductFactsInternalApi;
 import ai.neargo.shop.svc.InternalHttp;
@@ -17,6 +20,12 @@ public class BeautyProductClientConfiguration {
     @ConditionalOnMissingBean(ServiceProductFactsPort.class)
     ServiceProductFactsPort remoteServiceProductFactsPort(InternalHttp http) {
         return new RemoteServiceProductFactsPort(http.client(ServiceName.PLATFORM, ServiceProductFactsInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
+    @Bean
+    @ConditionalOnMissingBean(ServiceCatalogFactsPort.class)
+    ServiceCatalogFactsPort remoteServiceCatalogFactsPort(InternalHttp http) {
+        return new RemoteServiceCatalogFactsPort(http.client(ServiceName.PLATFORM, ServiceCatalogFactsInternalApi.class,
                 Duration.ofSeconds(5)));
     }
 }

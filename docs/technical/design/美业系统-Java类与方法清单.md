@@ -1,12 +1,12 @@
 # 美业系统 Java 类与方法清单
 
-> 状态：方法级设计清单，待评审 · 2026-10-20 · 未生成Java业务源码、注册路由或执行DDL。
+> 状态：方法级目标与实施对照 · 2026-10-21 · 已实现范围和部署结果以主TDD为准，不能把整张清单当已完成。
 > 由 `python3 scripts/gen-beauty-java-method-design.py` 生成，勿手改；真源：[Java方法设计JSON](./schema/beauty-java-method-design.json)。
 > 依据：[统一Java规范§七](../../../.claude/skills/ai-shop-dev-standards/references/java.md) · [独立项目结构](../TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./美业系统-API清单.md) · [数据库结构](./美业系统-数据库结构设计.md)。
 
 ## 一、范围与规范
 
-目标包含44个美业用户Controller、28个Service及同名Impl、25个内嵌Mapper、25个Entity、160个Req/Query/VO和7个必要辅助类。95条美业HTTP方法与6条内部业务方法合计101条Service方法。按需提供同接口远程实现、协议客户端和内部入口，不能把目标清单当已生成源码。
+目标包含44个美业用户Controller、28个Service及同名Impl、25个内嵌Mapper、25个Entity、162个Req/Query/VO和7个必要辅助类。95条美业HTTP方法与6条内部业务方法合计101条Service方法。按需提供同接口远程实现、协议客户端和内部入口，不能把目标清单当已生成源码。
 
 11个共用候选HTTP另列其所属域的类/方法，54个CONTRACT是能力接入点而非54条已定Java方法。共享资源、账户、打印、报表等不复制到美业；需要补齐的正式契约在原所有者评审。
 
@@ -945,10 +945,11 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.PrivacyRequestVO` | VO | PrivacyRequestVO | BAPI-037 |
 | `ai.neargo.shop.beauty.dto.PublicAvailabilityQuery` | QUERY | storeNo,items,from,to | BAPI-146 |
 | `ai.neargo.shop.beauty.dto.PublicAvailabilityVO` | VO | PublicAvailabilityVO | BAPI-146 |
-| `ai.neargo.shop.beauty.dto.PublicServiceVO` | VO | PublicServiceVO | BAPI-145 |
-| `ai.neargo.shop.beauty.dto.PublicStoreVO` | VO | PublicStoreVO | BAPI-144 |
+| `ai.neargo.shop.beauty.dto.PublicSalesCatalogVO` | VO | versionNo,validFrom,timezone,groups（共用Group，只含visible=true） | BAPI-144 |
+| `ai.neargo.shop.beauty.dto.PublicServiceVO` | VO | storeNo,skuNo,goodsNo,title,cover,priceMinor,definitionVersionNo,duration,notes,store,sales（时区/周窗口/saleableNow；非预约许可） | BAPI-145 |
+| `ai.neargo.shop.beauty.dto.PublicStoreVO` | VO | storeNo,name,logo,status,openHours,address,policyVersionNo,validFrom,policy,catalog（仅可见分组） | BAPI-144 |
 | `ai.neargo.shop.beauty.dto.PublishCommissionPolicyReq` | REQ | scope,basis,shares,validity,expectedRevision | BAPI-107 |
-| `ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq` | REQ | skuNo,expectedRevision,duration{minutes,bufferBeforeMin,bufferAfterMin},requirements[{roleCode,resourceType,skillGoodsNo,qty,sequenceNo,offsetMin,durationMin,selectionRule}] | BAPI-008 |
+| `ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq` | REQ | skuNo,expectedRevision,duration{minutes,bufferBeforeMin,bufferAfterMin},requirements[{roleCode,resourceType,skillGoodsNo,qty,sequenceNo,offsetMin,durationMin,selectionRule}],notes?(max20,eachNonblankMax500;default[]) | BAPI-008 |
 | `ai.neargo.shop.beauty.dto.PublishStorePolicyVersionReq` | REQ | expectedRevision,validFrom,policy | BAPI-002 |
 | `ai.neargo.shop.beauty.dto.RaiseMyServiceDisputeReq` | REQ | taskNo,reason,evidenceRefs | BAPI-157 |
 | `ai.neargo.shop.beauty.dto.ReceiveWalkInReq` | REQ | customerRef,items,assignments,startAt | BAPI-048 |
@@ -973,14 +974,15 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.SchedulingReportQuery` | QUERY | storeNo,from,to,resourceType | BAPI-119 |
 | `ai.neargo.shop.beauty.dto.SchedulingReportVO` | VO | SchedulingReportVO含计划/实际口径 | BAPI-119 |
 | `ai.neargo.shop.beauty.dto.ServiceDefinitionQuery` | QUERY | storeNo,skuNo,at,page=1,size=20(max100) | BAPI-007 |
-| `ai.neargo.shop.beauty.dto.ServiceDefinitionVO` | VO | definitionNo,storeNo,skuNo,revision,definitionVersionNo,effectiveRevision,publishedAt,duration,requirements,snapshotHash | BAPI-007 |
+| `ai.neargo.shop.beauty.dto.ServiceDefinitionVO` | VO | definitionNo,storeNo,skuNo,revision,definitionVersionNo,effectiveRevision,publishedAt,duration,requirements,snapshotHash,notes | BAPI-007 |
 | `ai.neargo.shop.beauty.dto.ServiceDefinitionVersionVO` | VO | definitionNo,definitionVersionNo,revision,snapshotHash | BAPI-008 |
-| `ai.neargo.shop.beauty.dto.ServiceDetailQuery` | QUERY | storeNo；storeNo,skuNo | BAPI-009、BAPI-145 |
-| `ai.neargo.shop.beauty.dto.ServiceDetailVO` | VO | ServiceDetailVO | BAPI-009 |
+| `ai.neargo.shop.beauty.dto.ServiceDetailQuery` | QUERY | storeNo(required,max32) | BAPI-009、BAPI-145 |
+| `ai.neargo.shop.beauty.dto.ServiceDetailVO` | VO | service,definitionNo,revision | BAPI-009 |
 | `ai.neargo.shop.beauty.dto.ServiceDisputeVO` | VO | ServiceDisputeVO | BAPI-157 |
 | `ai.neargo.shop.beauty.dto.ServiceEvidenceVO` | VO | ServiceEvidenceVO不可覆盖原事实 | BAPI-101 |
 | `ai.neargo.shop.beauty.dto.ServiceReportQuery` | QUERY | storeNo,period,dimensions | BAPI-120 |
 | `ai.neargo.shop.beauty.dto.ServiceReportVO` | VO | ServiceReportVO各事实水位 | BAPI-120 |
+| `ai.neargo.shop.beauty.dto.ServiceSalesVO` | VO | catalogVersionNo,groupKey,position,timezone,salesMode,windows,saleableNow；引用共用SalesMode/Window | BAPI-145 |
 | `ai.neargo.shop.beauty.dto.ServiceStepVO` | VO | ServiceStepVO | BAPI-060 |
 | `ai.neargo.shop.beauty.dto.ServiceSubmissionVO` | VO | ServiceSubmissionVO含恢复号；ServiceSubmissionVO含UNKNOWN阻断项 | BAPI-056、BAPI-072 |
 | `ai.neargo.shop.beauty.dto.ServiceTaskDetailVO` | VO | ServiceTaskDetailVO含来源状态及允许动作 | BAPI-159 |

@@ -6091,7 +6091,7 @@
       "class": "ai.neargo.shop.beauty.dto.PublicStoreVO",
       "kind": "VO",
       "fieldsContract": [
-        "PublicStoreVO"
+        "storeNo,name,logo,status,openHours,address,policyVersionNo,validFrom,policy,catalog（仅可见分组）"
       ],
       "apiIds": [
         "BAPI-144"
@@ -6111,7 +6111,7 @@
       "class": "ai.neargo.shop.beauty.dto.ServiceDefinitionVO",
       "kind": "VO",
       "fieldsContract": [
-        "definitionNo,storeNo,skuNo,revision,definitionVersionNo,effectiveRevision,publishedAt,duration,requirements,snapshotHash"
+        "definitionNo,storeNo,skuNo,revision,definitionVersionNo,effectiveRevision,publishedAt,duration,requirements,snapshotHash,notes"
       ],
       "apiIds": [
         "BAPI-007"
@@ -6121,7 +6121,7 @@
       "class": "ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq",
       "kind": "REQ",
       "fieldsContract": [
-        "skuNo,expectedRevision,duration{minutes,bufferBeforeMin,bufferAfterMin},requirements[{roleCode,resourceType,skillGoodsNo,qty,sequenceNo,offsetMin,durationMin,selectionRule}]"
+        "skuNo,expectedRevision,duration{minutes,bufferBeforeMin,bufferAfterMin},requirements[{roleCode,resourceType,skillGoodsNo,qty,sequenceNo,offsetMin,durationMin,selectionRule}],notes?(max20,eachNonblankMax500;default[])"
       ],
       "apiIds": [
         "BAPI-008"
@@ -6141,8 +6141,7 @@
       "class": "ai.neargo.shop.beauty.dto.ServiceDetailQuery",
       "kind": "QUERY",
       "fieldsContract": [
-        "storeNo",
-        "storeNo,skuNo"
+        "storeNo(required,max32)"
       ],
       "apiIds": [
         "BAPI-009",
@@ -6153,7 +6152,7 @@
       "class": "ai.neargo.shop.beauty.dto.ServiceDetailVO",
       "kind": "VO",
       "fieldsContract": [
-        "ServiceDetailVO"
+        "service,definitionNo,revision"
       ],
       "apiIds": [
         "BAPI-009"
@@ -6183,7 +6182,7 @@
       "class": "ai.neargo.shop.beauty.dto.PublicServiceVO",
       "kind": "VO",
       "fieldsContract": [
-        "PublicServiceVO"
+        "storeNo,skuNo,goodsNo,title,cover,priceMinor,definitionVersionNo,duration,notes,store,sales（时区/周窗口/saleableNow；非预约许可）"
       ],
       "apiIds": [
         "BAPI-145"
@@ -7662,6 +7661,26 @@
         "allocationNo,sourceRef,basisCode,revisionIndex,shares,status,currency,totalMinor"
       ],
       "apiIds": []
+    },
+    {
+      "class": "ai.neargo.shop.beauty.dto.PublicSalesCatalogVO",
+      "kind": "VO",
+      "fieldsContract": [
+        "versionNo,validFrom,timezone,groups（共用Group，只含visible=true）"
+      ],
+      "apiIds": [
+        "BAPI-144"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.beauty.dto.ServiceSalesVO",
+      "kind": "VO",
+      "fieldsContract": [
+        "catalogVersionNo,groupKey,position,timezone,salesMode,windows,saleableNow；引用共用SalesMode/Window"
+      ],
+      "apiIds": [
+        "BAPI-145"
+      ]
     }
   ],
   "sharedEntries": [
@@ -7677,8 +7696,8 @@
     },
     {
       "apiId": "BAPI-006",
-      "owner": "共用合同所有者",
-      "status": "REUSE_CONTRACT"
+      "owner": "product：StoreSalesCatalogService / StoreSalesCatalogPort（只读）",
+      "status": "IMPLEMENTED_BM01_ISOLATED_DEPLOYMENT_PASSED：GET /biz/store-sales-catalog；POST /biz/store-sales-catalog/versions；BizStoreSalesCatalogController；V536目录头/不可变版本；可信当前门店及biz:goods"
     },
     {
       "apiId": "BAPI-011",

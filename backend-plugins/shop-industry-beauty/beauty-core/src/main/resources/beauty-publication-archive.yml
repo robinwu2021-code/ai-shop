@@ -1,11 +1,6 @@
-# Explicit opt-in contract for immutable policy/definition publication evidence.
-# No notification, projection, payment or resource action is promised by these events.
-# Import this file only when no downstream consumer is required for these two event types.
+# Explicit evidence-only publication contract. Does not switch the host PLATFORM source or delivery consumers.
+# Only the two immutable beauty version events may be archived, and declared consumers/routes reject this mode.
 shop:
-  outbox:
-    sources:
-      platform:
-        mode: UNIFIED
-    archive-only:
-      - PLATFORM:BEAUTY_STORE_POLICY_VERSION_PUBLISHED
-      - PLATFORM:BEAUTY_SERVICE_DEFINITION_VERSION_PUBLISHED
+  beauty:
+    publication:
+      archive-only: true

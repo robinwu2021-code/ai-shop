@@ -78,7 +78,7 @@ def generate():
         src=(ROOT/row['path']).read_text()
         assert re.sub(r'\s+','',row['signature']) in re.sub(r'\s+','',src),row['owner']
     assert {x['apiId'] for x in d['sharedHttpMethods']}=={k for k,b in bindings.items() if b['owner']=='共用人员/资源所有者'}
-    prefix=['> 状态：方法级设计清单，待评审 · 2026-10-20 · 未生成Java业务源码、注册路由或执行DDL。',
+    prefix=['> 状态：方法级目标与实施对照 · 2026-10-21 · 已实现范围和部署结果以主TDD为准，不能把整张清单当已完成。',
             '> 由 `python3 scripts/gen-beauty-java-method-design.py` 生成，勿手改；真源：[Java方法设计JSON](./schema/beauty-java-method-design.json)。',
             '> 依据：[统一Java规范§七](../../../.claude/skills/ai-shop-dev-standards/references/java.md) · [独立项目结构](../TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./美业系统-API清单.md) · [数据库结构](./美业系统-数据库结构设计.md)。']
     method_count=sum(len(xs) for xs in services.values())

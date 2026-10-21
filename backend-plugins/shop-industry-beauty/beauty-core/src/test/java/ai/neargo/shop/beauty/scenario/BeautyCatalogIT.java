@@ -284,4 +284,27 @@ class BeautyCatalogIT {
         });
     }
 
+    @Test
+    void publishesCustomerNotesAsImmutableVersionEvidenceAndRejectsChangedReplay() {
+        runner().run(context -> {
+            String command = "{\"skuNo\":\"SKU\",\"expectedRevision\":0,\"duration\":{\"minutes\":60,"
+                    + "\"bufferBeforeMin\":5,\"bufferAfterMin\":10},\"requirements\":[{\"roleCode\":\"TECH\","
+                    + "\"resourceType\":\"STAFF\",\"skillGoodsNo\":\"G\",\"qty\":1,\"sequenceNo\":0,"
+                    + "\"offsetMin\":0,\"durationMin\":60,\"selectionRule\":\"ANY_QUALIFIED\"}],"
+                    + "\"notes\":[\"请提前到店\"]}";
+            Object result = call(context, "ServiceDefinitionService", "publishDefinitionVersion",
+                    "PublishServiceDefinitionVersionReq", command, "S", "NOTES");
+            assertThat(sql.queryForObject("SELECT notes FROM bty_service_definition_version", String.class))
+                    .contains("请提前到店");
+            assertThat(json.writeValueAsString(call(context, "ServiceDefinitionService", "publishDefinitionVersion",
+                    "PublishServiceDefinitionVersionReq", command, "S", "NOTES")))
+                    .isEqualTo(json.writeValueAsString(result));
+            assertThatThrownBy(() -> call(context, "ServiceDefinitionService", "publishDefinitionVersion",
+                    "PublishServiceDefinitionVersionReq", command.replace("请提前到店", "请勿迟到"), "S", "NOTES"))
+                    .isInstanceOf(BizException.class);
+            Object list = call(context, "ServiceDefinitionService", "listDefinitions", "ServiceDefinitionQuery",
+                    "{\"storeNo\":\"S\",\"page\":1,\"size\":20}", "S", null);
+            assertThat(json.writeValueAsString(list)).contains("请提前到店");
+        });
+    }
 }

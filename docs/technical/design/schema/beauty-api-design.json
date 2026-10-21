@@ -551,7 +551,7 @@
             "BTY-A04"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "代码已实现；BM-01后端模块隔离部署通过，详见主TDD§22"
         }
       ]
     },
@@ -580,13 +580,13 @@
           "method": "CONTRACT",
           "path": "catalog.sales-calendar",
           "purpose": "维护分组排序与销售时段",
-          "request": "catalogNo,storeNo,version,rules",
-          "response": "CatalogVersionVO",
+          "request": "StoreSalesCatalogPort.PublishReq(expectedRevision,validFrom,timezone,groups,entries)；当前范围/actor由可信上下文取得",
+          "response": "StoreSalesCatalogPort.Snapshot",
           "functions": [
             "BTY-B03"
           ],
           "phase": "P1",
-          "status": "共用合同接入，路径待核对"
+          "status": "已编码；product所有者GET /biz/store-sales-catalog与POST /biz/store-sales-catalog/versions；BM-01隔离部署关口已通过，详见主TDD§22"
         },
         {
           "id": "BAPI-007",
@@ -606,7 +606,7 @@
           "method": "POST",
           "path": "/biz/x/beauty/service-definitions/versions",
           "purpose": "提交项目时长缓冲资格资源要求",
-          "request": "skuNo,expectedRevision,duration,requirements",
+          "request": "skuNo,expectedRevision,duration,requirements,notes?(最多20条非空文本，每条最多500字符；默认空列表)",
           "response": "ServiceDefinitionVersionVO",
           "functions": [
             "BTY-B04"
@@ -625,7 +625,7 @@
             "BTY-B05"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "代码已实现；BM-01后端模块隔离部署通过，详见主TDD§22"
         },
         {
           "id": "BAPI-010",
@@ -664,7 +664,7 @@
             "BTY-B05"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "代码已实现；BM-01后端模块隔离部署通过，详见主TDD§22"
         },
         {
           "id": "BAPI-146",

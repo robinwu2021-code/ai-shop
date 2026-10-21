@@ -9,12 +9,24 @@ import java.util.Set;
 
 /** P1 fixed-step execution definition; duration must also match the product owner's authoritative fact. */
 public record PublishServiceDefinitionVersionReq(String skuNo, Long expectedRevision, Duration duration,
-        List<Requirement> requirements) {
+        List<Requirement> requirements, List<String> notes) {
+    /** Existing callers retain the original empty-notes command semantics. */
+    public PublishServiceDefinitionVersionReq(String skuNo, Long expectedRevision, Duration duration,
+            List<Requirement> requirements) {
+        this(skuNo, expectedRevision, duration, requirements, List.of());
+    }
+
     public PublishServiceDefinitionVersionReq {
         if (!text(skuNo, 32) || expectedRevision == null || expectedRevision < 0 || duration == null
                 || requirements == null || requirements.isEmpty() || requirements.size() > 100) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        notes = notes == null ? List.of() : notes;
+        if (notes.size() > 20
+                || notes.stream().anyMatch(note -> note == null || note.isBlank() || note.length() > 500)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        notes = List.copyOf(notes);
         Set<String> identities = new HashSet<>();
         for (Requirement row : requirements) {
             if (row == null || (long) row.offsetMin() + row.durationMin() > duration.minutes()

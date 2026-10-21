@@ -11,6 +11,6 @@ import tools.jackson.databind.ObjectMapper;
 @ConditionalOnBeautyEnabled
 @ConditionalOnBean(ObjectMapper.class)
 @Import({BeautyWriteGuardConfiguration.class, BeautyPolicyConfiguration.class,
-        BeautyDefinitionConfiguration.class})
+        BeautyDefinitionConfiguration.class, BeautyCatalogConfiguration.class})
 public class BeautyBusinessAutoConfiguration {
 }

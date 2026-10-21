@@ -1,6 +1,6 @@
 # 美业系统 Controller、Service 与 Mapper 方法清单
 
-> 状态：方法级设计清单，待评审 · 2026-10-20 · 未生成Java业务源码、注册路由或执行DDL。
+> 状态：方法级目标与实施对照 · 2026-10-21 · 已实现范围和部署结果以主TDD为准，不能把整张清单当已完成。
 > 由 `python3 scripts/gen-beauty-java-method-design.py` 生成，勿手改；真源：[Java方法设计JSON](./schema/beauty-java-method-design.json)。
 > 依据：[统一Java规范§七](../../../.claude/skills/ai-shop-dev-standards/references/java.md) · [独立项目结构](../TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./美业系统-API清单.md) · [数据库结构](./美业系统-数据库结构设计.md)。
 
@@ -3177,7 +3177,7 @@ CONTRACT是一个能力接入点，可能覆盖多个既有接口，不能从名
 |---|---|---|
 | BAPI-003 | `merchant.store-context` | 列出并切换受权门店/岗位；P1；当前账号,目标门店/岗位 → StoreContextVO与服务端重建权限；按原所有者正式合同，不新增美业同义Java类 |
 | BAPI-005 | `product.catalog-and-store-offer` | 共用商品SKU/媒体/上架与门店价维护；P1；productNo,skuNo,storeNo,version → ProductVO/StoreOfferVO；按原所有者正式合同，不新增美业同义Java类 |
-| BAPI-006 | `catalog.sales-calendar` | 维护分组排序与销售时段；P1；catalogNo,storeNo,version,rules → CatalogVersionVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-006 | `catalog.sales-calendar` | 维护分组排序与销售时段；P1；StoreSalesCatalogPort.PublishReq(expectedRevision,validFrom,timezone,groups,entries)；当前范围/actor由可信上下文取得 → StoreSalesCatalogPort.Snapshot；按原所有者正式合同，不新增美业同义Java类 |
 | BAPI-011 | `quote.configured-options` | 复杂选配与补差报价；P4；正规SKU与选配版本,买家 → QuoteVO须正式合同开放；按原所有者正式合同，不新增美业同义Java类 |
 | BAPI-017 | `merchant.roles-and-permissions` | 维护账号门店角色及操作范围；P1；accountNo,storeNo,roleCode,permissionScope → RoleGrantVO不改变业务岗位；按原所有者正式合同，不新增美业同义Java类 |
 | BAPI-019 | `identity.session-revoke` | 撤销离职人员关联账号会话；P1；accountNo,reason → SessionRevocationVO与审计；按原所有者正式合同，不新增美业同义Java类 |

@@ -11,6 +11,8 @@ import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
+import ai.neargo.shop.event.OutboxConsumer;
+import ai.neargo.shop.event.SysOutbox;
 import com.zaxxer.hikari.HikariDataSource;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
@@ -234,6 +236,42 @@ class BeautyPolicyPublicationIT {
             return 1;
         } catch (BizException conflict) { return 0; }
         finally { SecurityContextHolder.clearContext(); }
+    }
+
+    @Test
+    void explicitPublicationArchiveWorksWithoutSwitchingTheHostLegacySource() {
+        runner().withPropertyValues("shop.beauty.publication.archive-only=true")
+                .withBean(OutboxConsumer.class, () -> new OutboxConsumer() {
+                    @Override
+                    public boolean supports(String eventType) { return "UNRELATED_LEGACY_EVENT".equals(eventType); }
+                    @Override
+                    public void consume(SysOutbox event) { throw new AssertionError("not a beauty consumer"); }
+                }).run(context -> {
+            assertThat(context).hasNotFailed();
+            assertDoesNotThrow(() -> publish(context, "ARCHIVE_WITH_LEGACY", 0, 7));
+            assertThat(sql.queryForObject("SELECT status FROM sys_outbox", String.class)).isEqualTo("ARCHIVED");
+            assertThat(context.getEnvironment().getProperty("shop.outbox.sources.platform.mode", "LEGACY"))
+                    .isEqualTo("LEGACY");
+            assertThat(count("bty_store_policy_version")).isOne();
+        });
+    }
+
+    @Test
+    void explicitArchiveRejectsADeclaredBusinessConsumerAndRollsBackPublication() {
+        runner().withPropertyValues("shop.beauty.publication.archive-only=true")
+                .withBean(OutboxConsumer.class, () -> new OutboxConsumer() {
+                    @Override
+                    public boolean supports(String eventType) { return EVENT.equals(eventType); }
+                    @Override
+                    public void consume(SysOutbox event) {
+                        throw new AssertionError("must not be archived or invoked");
+                    }
+                }).run(context -> {
+                    assertThatThrownBy(() -> publish(context, "CONSUMER_CONFLICT", 0, 7))
+                            .isInstanceOf(IllegalStateException.class).hasMessageContaining("consumer");
+                    assertThat(count("bty_store_policy_version")).isZero();
+                    assertThat(count("sys_outbox")).isZero();
+                });
     }
 
     @Configuration(proxyBeanMethods = false)

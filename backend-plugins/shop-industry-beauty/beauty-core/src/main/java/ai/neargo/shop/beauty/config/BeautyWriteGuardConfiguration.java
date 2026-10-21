@@ -1,12 +1,15 @@
 package ai.neargo.shop.beauty.config;
 
 import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.runtime.PlatformOutboxPublisher;
+import ai.neargo.shop.event.OutboxConsumer;
+import ai.neargo.shop.event.outbox.runtime.PlatformPublicationPublisher;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import org.mybatis.spring.SqlSessionTemplate;
-import org.mybatis.spring.mapper.MapperFactoryBean;
+import java.util.Set;
+import javax.sql.DataSource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -19,29 +22,32 @@ import tools.jackson.databind.ObjectMapper;
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnBeautyEnabled
 public class BeautyWriteGuardConfiguration {
-    @Bean
-    @ConditionalOnMissingBean(SysIdempotentMapper.class)
-    MapperFactoryBean<SysIdempotentMapper> sysIdempotentMapper(
-            @Qualifier("beautySqlSessionTemplate") SqlSessionTemplate template) {
-        var mapper = new MapperFactoryBean<>(SysIdempotentMapper.class);
-        mapper.setSqlSessionTemplate(template);
-        return mapper;
-    }
-
+    /** Standalone fallback stays local; the host retains sole ownership of its Spring Mapper bean. */
     @Bean
     @ConditionalOnMissingBean(IdempotencyService.class)
-    IdempotencyService idempotencyService(SysIdempotentMapper mapper, ObjectMapper json) {
-        return new IdempotencyService(mapper, json);
+    IdempotencyService beautyIdempotencyService(
+            @Qualifier("beautySqlSessionTemplate") SqlSessionTemplate template, ObjectMapper json) {
+        var configuration = template.getSqlSessionFactory().getConfiguration();
+        if (!configuration.hasMapper(SysIdempotentMapper.class)) {
+            configuration.addMapper(SysIdempotentMapper.class);
+        }
+        return new IdempotencyService(template.getMapper(SysIdempotentMapper.class), json);
     }
 
-    /** No legacy fallback: the existing unified PLATFORM source must be registered by its owner. */
+    /** Delivery needs the owner route; immutable publication evidence can opt into a narrow archive contract. */
     @Bean
     @ConditionalOnMissingBean(name = "beautyOutboxPublisher")
     OutboxPublisher beautyOutboxPublisher(ObjectProvider<UnifiedOutboxFacade> facades,
-            @Qualifier("transactionManager") PlatformTransactionManager manager, BeautySchemaReady schema) {
+            @Qualifier("transactionManager") PlatformTransactionManager manager, BeautySchemaReady schema,
+            @Qualifier("dataSource") ObjectProvider<DataSource> sources, ObjectMapper json,
+            ObjectProvider<OutboxConsumer> consumers,
+            @Value("${shop.beauty.publication.archive-only:false}") boolean archiveOnly,
+            @Value("${shop.outbox.maintenance:false}") boolean maintenance) {
         if (!"1".equals(schema.version())) {
             throw new IllegalStateException("Beauty write guards require validated primary schema");
         }
-        return new PlatformOutboxPublisher(facades::getIfAvailable, manager);
+        return PlatformPublicationPublisher.create(facades::getIfAvailable, manager, sources::getObject, json,
+                consumers::orderedStream, Set.of("BEAUTY_STORE_POLICY_VERSION_PUBLISHED",
+                        "BEAUTY_SERVICE_DEFINITION_VERSION_PUBLISHED"), archiveOnly, maintenance);
     }
 }

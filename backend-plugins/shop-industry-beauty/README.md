@@ -90,8 +90,8 @@ P1仅单步骤SERVICE（sequenceNo=0）、ANY_QUALIFIED规则，资源类型STAF
 不可变政策/定义发布事件本批采用明确归档合同：版本表和action_log为权威，outbox事件留作发布凭据，
 不承诺通知、支付或资源副作用。部署需显式设置
 `spring.config.import=classpath:beauty-publication-archive.yml`（可合并到已有导入列表）；
-此文件精确登记两个事件并将platform源设为UNIFIED，不默认开启，也不覆盖其他消费者合同。
-已有实际消费者的部署应自行配置正式路由，不能同时归档同一事件。缺路由仍拒绝发布、整体回滚。
+此文件显式启用`shop.beauty.publication.archive-only=true`，仅将两个不可变版本事件作为ARCHIVED证据写入共用PLATFORM存储，不切换宿主全局投递模式，不创建另一套投递泵。
+已有实际消费者或正式路由时拒绝归档并回滚；此时必须关闭该显式模式并使用正式投递。未启用归档且缺路由仍拒绝发布、整体回滚。
 独立server本批只装配共享PLATFORM存储用于归档；需要实际投递消费者时须先接入交付引擎并验收。
 
 standalone 宿主需要配置 `shop.services.targets.BEAUTY`；beauty-server 反向查商品需配置
@@ -100,7 +100,7 @@ standalone 宿主需要配置 `shop.services.targets.BEAUTY`；beauty-server 反
 内部scope字段非空有长度约束，Service再次校验query门店和SQL范围；操作人适配原审计后finally恢复线程身份。
 readiness 继续为503，直到业务提供方、正式投递和后续合同完成验收。
 
-ENG-03 在政策/定义切片通过；DATA-04 的定义版本发布和父链隔离已实现。公开营业信息与完整商品目录、预约/工单等仍待后续切片。
+ENG-03 在政策/定义切片通过；DATA-04 的定义版本发布和父链隔离已实现。BM-01正在补公开营业信息/服务详情和注意事项；完整销售分组/时段合同与模块部署仍待验收，不能由基础切片推断模块完成。
 DATA-05/06的数据层已实现：预约及项目/安排历史、工单、任务、步骤、实际参与段7实体，15条既定自定义Mapper方法；
 没有新增公开接口。改约/签到、任务启停/数量、绑定版本、冻结/关闭均做本地范围及CAS检查，
 返回0须由后续业务Service转为冲突。安排revision、工单scopeRevision、任务bindingRevision与BaseEntity.version分别处理。
@@ -141,3 +141,30 @@ shop-base/spi/schedule/ScheduleWindowsPort在明确资源名单、门店及最�
 DST缺失/重复端点影响请求时拒绝，不猜测偏移；数据库规范门店号用于筛选，支持CI引用且不输出其他店规则。
 本批周窗口不包含P3例外审批或容量/资格许可；变更历史数据不代表已处理已有预约影响。
 维护HTTP/写Service、完整影响协调、容量桶/组合占用、远程接入与预约日历后续实施。验收见[开发计划§13](../../docs/technical/TDD-美业系统-后端开发计划.md)。
+
+## BM-01门店政策、项目定义与共用销售目录
+
+公共入口为GET `/mp/x/beauty/stores/{storeNo}`、GET `/mp/x/beauty/services/{skuNo}?storeNo=...`；
+受权商家详情为GET `/biz/x/beauty/services/{skuNo}?storeNo=...`。
+目录维护由商品域拥有：GET `/biz/store-sales-catalog`及POST `/biz/store-sales-catalog/versions`，
+使用当前授权门店与`biz:goods`，发布要求`Idempotency-Key`和`expectedRevision`。
+新表来自平台V536；美业私有V1不变。共用目录只冻结分组/陈列/时段，不维护价格、货架、库存或人员容量。
+无已生效目录继续既有展示口径；配置后隐藏条目/隐藏分组不返回详情，窗口外展示`saleableNow=false`。
+`saleableNow`不是预约或收费许可，后续来源/资源/成交守卫仍须独立通过。
+
+不可变目录发布证据可显式配置`shop.catalog.publication.archive-only=true`；
+它与`shop.beauty.publication.archive-only`复用同一个共用发布器和实际PLATFORM outbox。
+默认保持严格交付前置；有真实消费者/交付路由的事件拒绝归档，不切全局LEGACY/UNIFIED模式。
+
+原生目录验收：`node scripts/verify-store-sales-catalog.mjs`，只使用脚本自建并自动清理的MySQL容器。
+部署验收：先用`beauty-embedded`、`beauty-standalone`和默认profile分别clean打包shop-app，
+并保留各自JAR；独立beauty-server从美业reactor构建。设置以下环境变量后执行
+`node scripts/verify-beauty-bm01-deployment.mjs`：
+
+- `JAVA_HOME`：Java21；`BEAUTY_EMBEDDED_JAR`、`BEAUTY_STANDALONE_HOST_JAR`、`BEAUTY_DEFAULT_RETAIL_JAR`：上述真实JAR绝对路径。
+- `BEAUTY_BM01_EVIDENCE_DIR`可选，默认为`/tmp`下独立随机目录；保存构件摘要、探针及进程/数据库日志，不含实际营业库连接信息。
+
+脚本使用本机已缓存MySQL9.7.2、回环随机端口和自建tmpfs数据库，不拉取镜像、不连接共享库。
+平台历史结构使用显式测试夹具，再执行真实V536；不代表完整平台历史Flyway重放或生产迁移批准。
+独立服务整体readiness仍为503；模块运行用例通过不代表预约/工作流整体可营业。
+完整范围、最终证据和延期项见主TDD§22；下一业务模块为人员、排班与资源维护。

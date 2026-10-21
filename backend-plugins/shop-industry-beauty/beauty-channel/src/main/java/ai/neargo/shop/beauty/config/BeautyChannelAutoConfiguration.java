@@ -1,6 +1,9 @@
 package ai.neargo.shop.beauty.config;
 
 import ai.neargo.shop.beauty.client.RemoteStorePolicyService;
+import ai.neargo.shop.beauty.client.RemoteServiceCatalogQueryService;
+import ai.neargo.shop.beauty.service.ServiceCatalogQueryService;
+import ai.neargo.shop.beauty.spi.BeautyCatalogInternalApi;
 import ai.neargo.shop.beauty.client.RemoteServiceDefinitionService;
 import ai.neargo.shop.beauty.service.StorePolicyService;
 import ai.neargo.shop.beauty.service.ServiceDefinitionService;
@@ -34,6 +37,13 @@ public class BeautyChannelAutoConfiguration {
     @ConditionalOnMissingBean(ServiceDefinitionService.class)
     ServiceDefinitionService remoteServiceDefinitionService(InternalHttp http) {
         return new RemoteServiceDefinitionService(http.client(ServiceName.BEAUTY, BeautyDefinitionInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
+    @Bean
+    @ConditionalOnProperty(prefix = "shop.beauty", name = "deployment", havingValue = "standalone")
+    @ConditionalOnMissingBean(ServiceCatalogQueryService.class)
+    ServiceCatalogQueryService remoteServiceCatalogQueryService(InternalHttp http) {
+        return new RemoteServiceCatalogQueryService(http.client(ServiceName.BEAUTY, BeautyCatalogInternalApi.class,
                 Duration.ofSeconds(5)));
     }
 }

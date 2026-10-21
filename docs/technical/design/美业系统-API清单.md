@@ -1,6 +1,6 @@
 # 美业系统 API 清单（按业务模块）
 
-> 状态：目标接口契约草稿，待评审 · 2026-10-20 · 未新增Controller、注册路由或改变线上权限。
+> 状态：目标接口契约与实施对照 · 2026-10-21 · 部分接口已编码，模块交付以主TDD部署关口为准。
 > 由 `python3 scripts/gen-beauty-api-design.py` 生成，勿手改；真源：[API设计JSON](./schema/beauty-api-design.json)。
 > 上游：[118项功能矩阵](../../requirements/美业系统-多端功能矩阵.md) · [领域对象](./美业系统-领域对象与聚合边界.md) · [数据库结构](./美业系统-数据库结构设计.md)。
 > 关键详情：[预约工作台与日历契约](./美业系统-预约工作台与日历API设计.md)。
@@ -71,7 +71,7 @@
 | BAPI-002<br>BTY-A03、BTY-A04<br>P1 | `POST /biz/x/beauty/store-policies/versions` | 提交营业/预约窗口与先付规则版本<br>expectedRevision,validFrom,policy | PolicyVersionVO<br>已实现；部署与验收边界见后端开发计划§8 |
 | BAPI-003<br>BTY-A02<br>P1 | `CONTRACT merchant.store-context` | 列出并切换受权门店/岗位<br>当前账号,目标门店/岗位 | StoreContextVO与服务端重建权限<br>共用合同接入，路径待核对 |
 | BAPI-004<br>BTY-A05<br>P4 | `POST /biz/x/beauty/capability-applications` | 申请高级经营能力<br>storeNo,capability,evidence | CapabilityApplicationVO不直接启用<br>美业候选新接口 |
-| BAPI-144<br>BTY-A01、BTY-A03、BTY-A04<br>P1 | `GET /mp/x/beauty/stores/{storeNo}` | 读取公开门店营业与预约须知<br>storeNo | PublicStoreVO<br>美业候选新接口 |
+| BAPI-144<br>BTY-A01、BTY-A03、BTY-A04<br>P1 | `GET /mp/x/beauty/stores/{storeNo}` | 读取公开门店营业与预约须知<br>storeNo | PublicStoreVO<br>代码已实现；BM-01后端模块隔离部署通过，详见主TDD§22 |
 
 ### B 项目与目录
 
@@ -80,13 +80,13 @@
 | 编号 / 功能 / 阶段 | 方法与路径或合同 | 操作与关键入参 | 返回 / 状态 |
 |---|---|---|---|
 | BAPI-005<br>BTY-B01、BTY-B02<br>P1 | `CONTRACT product.catalog-and-store-offer` | 共用商品SKU/媒体/上架与门店价维护<br>productNo,skuNo,storeNo,version | ProductVO/StoreOfferVO<br>共用合同接入，路径待核对 |
-| BAPI-006<br>BTY-B03<br>P1 | `CONTRACT catalog.sales-calendar` | 维护分组排序与销售时段<br>catalogNo,storeNo,version,rules | CatalogVersionVO<br>共用合同接入，路径待核对 |
+| BAPI-006<br>BTY-B03<br>P1 | `CONTRACT catalog.sales-calendar` | 维护分组排序与销售时段<br>StoreSalesCatalogPort.PublishReq(expectedRevision,validFrom,timezone,groups,entries)；当前范围/actor由可信上下文取得 | StoreSalesCatalogPort.Snapshot<br>已编码；product所有者GET /biz/store-sales-catalog与POST /biz/store-sales-catalog/versions；BM-01隔离部署关口已通过，详见主TDD§22 |
 | BAPI-007<br>BTY-B04<br>P1 | `GET /biz/x/beauty/service-definitions` | 查项目作业定义<br>storeNo,skuNo,at,page?,size? | PageData<ServiceDefinitionVO><br>已实现；部署与验收边界见后端开发计划§8 |
-| BAPI-008<br>BTY-B04<br>P1 | `POST /biz/x/beauty/service-definitions/versions` | 提交项目时长缓冲资格资源要求<br>skuNo,expectedRevision,duration,requirements | ServiceDefinitionVersionVO<br>已实现；部署与验收边界见后端开发计划§8 |
-| BAPI-009<br>BTY-B05<br>P1 | `GET /biz/x/beauty/services/{skuNo}` | 查项目展示及适用须知<br>storeNo | ServiceDetailVO<br>美业候选新接口 |
+| BAPI-008<br>BTY-B04<br>P1 | `POST /biz/x/beauty/service-definitions/versions` | 提交项目时长缓冲资格资源要求<br>skuNo,expectedRevision,duration,requirements,notes?(最多20条非空文本，每条最多500字符；默认空列表) | ServiceDefinitionVersionVO<br>已实现；部署与验收边界见后端开发计划§8 |
+| BAPI-009<br>BTY-B05<br>P1 | `GET /biz/x/beauty/services/{skuNo}` | 查项目展示及适用须知<br>storeNo | ServiceDetailVO<br>代码已实现；BM-01后端模块隔离部署通过，详见主TDD§22 |
 | BAPI-010<br>BTY-B05<br>P1 | `POST /biz/x/beauty/availability/queries` | 查询项目可约组合<br>storeNo,items,from,to,requestedPersonnelNo | AvailabilityVO含候选组合与过期时间<br>美业候选新接口 |
 | BAPI-011<br>BTY-B06<br>P4 | `CONTRACT quote.configured-options` | 复杂选配与补差报价<br>正规SKU与选配版本,买家 | QuoteVO须正式合同开放<br>共用合同接入，路径待核对 |
-| BAPI-145<br>BTY-B05<br>P1 | `GET /mp/x/beauty/services/{skuNo}` | 读取公开服务详情<br>storeNo,skuNo | PublicServiceVO<br>美业候选新接口 |
+| BAPI-145<br>BTY-B05<br>P1 | `GET /mp/x/beauty/services/{skuNo}` | 读取公开服务详情<br>storeNo,skuNo | PublicServiceVO<br>代码已实现；BM-01后端模块隔离部署通过，详见主TDD§22 |
 | BAPI-146<br>BTY-B05<br>P1 | `POST /mp/x/beauty/availability/queries` | 查询公开可约时段及可选技师<br>storeNo,items,from,to | PublicAvailabilityVO<br>美业候选新接口 |
 
 ### C 共用人员与权限

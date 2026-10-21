@@ -1,6 +1,8 @@
 package ai.neargo.shop.product.mapper;
 
 import ai.neargo.shop.product.entity.PrdCategory;
+import ai.neargo.shop.product.entity.PrdStoreCatalog;
+import ai.neargo.shop.product.entity.PrdStoreCatalogVersion;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdSpecTemplate;
@@ -11,12 +13,25 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
+import java.time.LocalDateTime;
 
 /** product 域的 Mapper 集合。 */
 public final class ProductMappers {
 
     private ProductMappers() {
     }
+
+    public interface StoreCatalogMapper extends BaseMapper<PrdStoreCatalog> {
+        @Update("UPDATE prd_store_catalog SET current_version_no=#{next}, version=version+1, "
+                + "updated_at=#{at}, updated_by=#{actor} WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND store_no=#{store} AND catalog_no=#{catalog} AND version=#{expected} AND deleted=0")
+        int advance(@Param("entity") String entity, @Param("store") String store,
+                @Param("catalog") String catalog, @Param("expected") long expected,
+                @Param("next") String next, @Param("actor") String actor,
+                @Param("at") LocalDateTime at);
+    }
+
+    public interface StoreCatalogVersionMapper extends BaseMapper<PrdStoreCatalogVersion> { }
 
     public interface GoodsMapper extends BaseMapper<PrdGoods> {
     }

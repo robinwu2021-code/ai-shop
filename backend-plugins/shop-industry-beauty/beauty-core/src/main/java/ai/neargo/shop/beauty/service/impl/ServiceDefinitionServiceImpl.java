@@ -29,6 +29,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZoneId;
 import java.util.Map;
+import java.util.List;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.ConcurrencyFailureException;
@@ -78,8 +79,11 @@ public class ServiceDefinitionServiceImpl implements ServiceDefinitionService {
         String endpoint = identity("PUBLISH_DEFINITION", entityNo, currentStoreNo, actorNo);
         String key = IdempotencyScope.requireKey(idempotencyKey);
         if (req == null) { throw BizException.of(ErrorCode.BAD_REQUEST); }
-        String snapshot = IdempotencyScope.requestHash(req.skuNo(), json.writeValueAsString(req.duration()),
+        String originalSnapshot = IdempotencyScope.requestHash(req.skuNo(), json.writeValueAsString(req.duration()),
                 json.writeValueAsString(req.requirements()));
+        String snapshot = req.notes().isEmpty() ? originalSnapshot
+                : IdempotencyScope.requestHash("BEAUTY_DEFINITION_NOTES_V1", originalSnapshot,
+                        json.writeValueAsString(req.notes()));
         String hash = IdempotencyScope.requestHash(req.expectedRevision().toString(), snapshot);
         // Transport failure must not hide an already committed idempotent response.
         ServiceProductFactsPort.Fact fact = null;
@@ -147,7 +151,7 @@ public class ServiceDefinitionServiceImpl implements ServiceDefinitionService {
         version.setBufferBeforeMin(req.duration().bufferBeforeMin());
         version.setBufferAfterMin(req.duration().bufferAfterMin());
         version.setStepsTemplate("[{\"stepCode\":\"SERVICE\",\"sequenceNo\":0}]");
-        version.setNotes("[]");
+        version.setNotes(json.writeValueAsString(req.notes()));
         version.setSchemaVersion(1);
         version.setSnapshotHash(snapshot);
         versions.insert(version);
@@ -243,7 +247,9 @@ public class ServiceDefinitionServiceImpl implements ServiceDefinitionService {
         return new ServiceDefinitionVO(head.getDefinitionNo(), head.getStoreNo(), head.getSkuNo(), head.getVersion(),
                 version.getDefinitionVersionNo(), version.getRevisionIndex(), publishedAt,
                 new PublishServiceDefinitionVersionReq.Duration(version.getDurationMinSnapshot(),
-                        version.getBufferBeforeMin(), version.getBufferAfterMin()), result, version.getSnapshotHash());
+                        version.getBufferBeforeMin(), version.getBufferAfterMin()), result, version.getSnapshotHash(),
+                version.getNotes() == null ? List.of()
+                        : List.of(json.readValue(version.getNotes(), String[].class)));
     }
 
     private String identity(String operation, String entity, String store, String actor) {

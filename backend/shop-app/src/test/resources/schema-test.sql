@@ -8597,6 +8597,54 @@ CREATE TABLE IF NOT EXISTS mch_booking_hold_unit
     CONSTRAINT ck_booking_unit_release CHECK ((released_at IS NULL AND release_command_no IS NULL) OR (released_at IS NOT NULL AND release_command_no IS NOT NULL))
 );
 
+CREATE TABLE IF NOT EXISTS prd_store_catalog
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    catalog_no VARCHAR(32) NOT NULL,
+    current_version_no VARCHAR(32) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_prd_catalog_scope UNIQUE (tenant_no, entity_no, store_no),
+    CONSTRAINT uk_prd_catalog_no UNIQUE (tenant_no, entity_no, catalog_no),
+    CONSTRAINT ck_prd_catalog_revision CHECK (version >= 1),
+    CONSTRAINT ck_prd_catalog_deleted CHECK (deleted IN (0,1))
+);
+
+CREATE TABLE IF NOT EXISTS prd_store_catalog_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    catalog_version_no VARCHAR(32) NOT NULL,
+    catalog_no VARCHAR(32) NOT NULL,
+    revision_index BIGINT NOT NULL,
+    effective_at DATETIME(3) NOT NULL,
+    frozen_payload LONGTEXT NOT NULL,
+    snapshot_hash VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_prd_catalog_version_no UNIQUE (tenant_no, entity_no, catalog_version_no),
+    CONSTRAINT uk_prd_catalog_revision UNIQUE (tenant_no, entity_no, catalog_no, revision_index),
+    CONSTRAINT ck_prd_catalog_version_revision CHECK (revision_index >= 1 AND version >= 0),
+    CONSTRAINT ck_prd_catalog_payload CHECK ((frozen_payload IS JSON)),
+    CONSTRAINT ck_prd_catalog_hash CHECK (CHAR_LENGTH(snapshot_hash) = 64),
+    CONSTRAINT ck_prd_catalog_version_deleted CHECK (deleted IN (0,1))
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
