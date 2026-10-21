@@ -5,7 +5,7 @@ const id=n=>{if(!/^[a-z][a-z0-9_]*$/.test(n))throw Error('Invalid SQL identifier
 const literal=s=>"'"+s.replaceAll("'","''").replaceAll('\\','\\\\')+"'";
 function checks(t){
  const names=new Set(t.fields.map(f=>f.name)),out=[];
- for(const n of ['qty','quantity','capacity','party_size','persons','seats','units_per_pick'])if(names.has(n))out.push(`${id(n)} > 0`);
+ for(const n of ['qty','quantity','capacity','party_size','persons','seats','units_per_pick'])if(names.has(n)&&!(t.name==='fnb_recipe_adjustment'&&n==='qty'))out.push(`${id(n)} > 0`);
  for(const n of ['min_qty','max_qty','default_qty','reserved_qty','consumed_qty','making_qty','ready_qty','served_qty','void_qty','remaining_qty','opening_minor','counted_minor'])if(names.has(n))out.push(`${id(n)} >= 0`);
  if(names.has('min_qty')&&names.has('max_qty'))out.push('`min_qty` <= `max_qty`');
  if(names.has('default_qty')&&names.has('max_qty'))out.push('`default_qty` <= `max_qty`');
@@ -16,6 +16,9 @@ function checks(t){
  if(names.has('weekday'))out.push('`weekday` BETWEEN 1 AND 7');
  if(t.name==='fnb_table_occupancy'&&names.has('sharing_mode'))out.push("`sharing_mode` IN ('EXCLUSIVE', 'SHARED')");
  if(names.has('cutover_minute'))out.push('`cutover_minute` BETWEEN 0 AND 1439');
+ if(t.name==='fnb_recipe')out.push('`yield_qty` > 0');
+ if(t.name==='fnb_recipe_line')out.push('`loss_rate` >= 0 AND `loss_rate` < 1');
+ if(t.name==='fnb_recipe_adjustment')out.push("(`action` = 'REMOVE' AND `qty` IS NULL) OR (`action` IN ('SET', 'ADD') AND `qty` IS NOT NULL AND `qty` >= 0)");
  if(t.name==='fnb_modifier_component')out.push('`combo_no` <> `member_no`');
  return out;
 }
@@ -24,6 +27,7 @@ export function renderFoodSchema(s){
  const tables=s.tables.filter(t=>t.name.startsWith('fnb_'));
  const version=tables.some(t=>t.name==='fnb_table_occupancy'&&t.fields.some(f=>f.name==='sharing_mode'))?2:1;
  let sql='-- Food-owned tables only; use the existing product/order database.\n-- Flyway location: db/industry/food; history: fnb_flyway_history; version: '+version+'.\n-- Frozen after application. Add a new migration for any subsequent change.\n-- No cross-domain physical foreign keys; services must enforce ownership and concurrency.\n\n';
+ if(s.catalogEnhancement)sql='-- TARGET DESIGN ONLY; planned objects are not applied migrations.\n'+sql;
  for(const t of tables){
   const own=new Set(t.fields.map(f=>f.name));
   const fields=[...s.commonFields.filter(f=>!own.has(f[0])).map(([name,type,label])=>({name,type,label,nullable:false})),...t.fields];
@@ -57,9 +61,28 @@ export function assertFrozenFoodV1(sql){
   throw Error('Frozen V1 SHA-256 differs; create a new migration instead');
 }
 
-/** Project only the reviewed V2 addition; all original V1 bytes remain covered by the pinned SHA-256. */
+/** Project reviewed post-V1 design additions; the pinned hash still protects every V1 byte. */
 export function renderFoodV1(s){
  const v1=structuredClone(s);
+ if(v1.catalogEnhancement){
+  validateFoodDesign(s);
+  const planned=new Set(v1.catalogEnhancement.plannedTables);
+  v1.tables=v1.tables.filter(t=>!planned.has(t.name));
+  const fields={
+   fnb_menu_context:['channel_binding_no','channel_scope_key','price_policy_ref'],
+   fnb_menu_item:['option_mode'],fnb_menu_item_sku:['recipe_no'],
+   fnb_external_mapping:['channel_scope_key','mapping_revision_no'],
+  };
+  for(const [name,added] of Object.entries(fields)){
+   const t=v1.tables.find(t=>t.name===name);t.fields=t.fields.filter(f=>!added.includes(f.name));
+  }
+  v1.tables.find(t=>t.name==='fnb_menu_context').unique=[['menu_no','order_source','fulfillment'],['context_no']];
+  v1.tables.find(t=>t.name==='fnb_external_mapping').unique=[['mapping_no'],['provider','store_no','object_type','external_no']];
+  v1.tables.find(t=>t.name==='fnb_modifier').fields.find(f=>f.name==='kind').label='类型 FLAVOR / ADDON / COMBO';
+  for(const d of v1.domains)d.tables=v1.tables.filter(t=>t.domain===d.code).map(t=>t.name);
+  for(const row of v1.requirementAlignment)row.tables=row.tables.filter(name=>!planned.has(name));
+  delete v1.catalogEnhancement;
+ }
  const table=v1.tables.find(t=>t.name==='fnb_table_occupancy');
  const field=table?.fields.find(f=>f.name==='sharing_mode');
  if(!field||field.type!=='varchar(16)'||field.nullable!==false)

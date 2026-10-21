@@ -67,7 +67,12 @@
         "fnb_sku_station",
         "fnb_config_revision",
         "fnb_sales_restriction",
-        "fnb_sales_quota_claim"
+        "fnb_sales_quota_claim",
+        "fnb_menu_channel_binding",
+        "fnb_menu_item_option_group",
+        "fnb_recipe",
+        "fnb_recipe_line",
+        "fnb_recipe_adjustment"
       ],
       "apis": [
         "FOOD-API-004",
@@ -104,7 +109,16 @@
         "FOOD-API-120",
         "FOOD-API-121",
         "FOOD-API-122",
-        "FOOD-API-141"
+        "FOOD-API-141",
+        "FOOD-API-142",
+        "FOOD-API-143",
+        "FOOD-API-144",
+        "FOOD-API-145",
+        "FOOD-API-148",
+        "FOOD-API-149",
+        "FOOD-API-150",
+        "FOOD-API-151",
+        "FOOD-API-152"
       ]
     },
     {
@@ -239,7 +253,9 @@
         "fnb_course",
         "fnb_kitchen_ticket",
         "fnb_kitchen_task",
-        "fnb_service_event"
+        "fnb_service_event",
+        "fnb_production_consumption",
+        "fnb_production_consumption_line"
       ],
       "apis": [
         "FOOD-API-044",
@@ -253,7 +269,9 @@
         "FOOD-API-052",
         "FOOD-API-053",
         "FOOD-API-054",
-        "FOOD-API-055"
+        "FOOD-API-055",
+        "FOOD-API-153",
+        "FOOD-API-154"
       ]
     },
     {
@@ -436,13 +454,17 @@
         "fnb_external_mapping",
         "fnb_sync_batch",
         "fnb_edge_lease",
-        "fnb_integration_exception"
+        "fnb_integration_exception",
+        "fnb_catalog_sync_job",
+        "fnb_catalog_sync_item"
       ],
       "apis": [
         "FOOD-API-081",
         "FOOD-API-082",
         "FOOD-API-083",
-        "FOOD-API-084"
+        "FOOD-API-084",
+        "FOOD-API-146",
+        "FOOD-API-147"
       ]
     },
     {
@@ -748,7 +770,7 @@
         {
           "name": "kind",
           "type": "varchar(16)",
-          "label": "类型 FLAVOR / ADDON / COMBO",
+          "label": "类型 ADDON / COMBO；免费口味复用SPEC_VALUE",
           "ref": null,
           "nullable": false
         },
@@ -791,7 +813,7 @@
           "name": "component_no",
           "type": "varchar(32)",
           "label": "组合明细编号 Component ID",
-          "ref": "fnb_order_component.component_no",
+          "ref": null,
           "nullable": false
         },
         {
@@ -1171,20 +1193,42 @@
           "label": "履约方式 Fulfillment",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "channel_binding_no",
+          "type": "varchar(32)",
+          "label": "外送绑定；本地为空",
+          "ref": "fnb_menu_channel_binding.binding_no",
+          "nullable": true
+        },
+        {
+          "name": "channel_scope_key",
+          "type": "varchar(32)",
+          "label": "服务端归一为LOCAL或绑定号",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "price_policy_ref",
+          "type": "varchar(64)",
+          "label": "报价权威价格策略引用",
+          "ref": null,
+          "nullable": true
         }
       ],
       "unique": [
         [
           "menu_no",
           "order_source",
-          "fulfillment"
+          "fulfillment",
+          "channel_scope_key"
         ],
         [
           "context_no"
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。；channel_scope_key不接受客户端设置，LOCAL与绑定号归一；外送不得回退堂食价，策略未受权核验保持草稿。"
     },
     {
       "name": "fnb_menu_schedule",
@@ -1397,6 +1441,13 @@
           "label": "ALL / EXPLICIT；EXPLICIT必须非空",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "option_mode",
+          "type": "varchar(16)",
+          "label": "INHERIT / REPLACE；REPLACE空组禁选",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
@@ -1436,6 +1487,13 @@
           "label": "EXPLICIT；空白名单语义存父项",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "recipe_no",
+          "type": "varchar(32)",
+          "label": "同SKU配方变体引用",
+          "ref": "fnb_recipe.recipe_no",
+          "nullable": true
         }
       ],
       "unique": [
@@ -4506,6 +4564,20 @@
           "label": "权威角色",
           "nullable": false,
           "ref": null
+        },
+        {
+          "name": "channel_scope_key",
+          "type": "varchar(32)",
+          "label": "LOCAL或获准渠道绑定号",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "mapping_revision_no",
+          "type": "varchar(32)",
+          "label": "不可变映射修订编号",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
@@ -4515,11 +4587,13 @@
         [
           "provider",
           "store_no",
+          "channel_scope_key",
           "object_type",
-          "external_no"
+          "external_no",
+          "mapping_revision_no"
         ]
       ],
-      "rules": ""
+      "rules": "渠道账号范围及不可变映射修订参与去重；回流订单使用购买时映射，不猜最新；无可识别旧修订按协议兼容或挂异常。"
     },
     {
       "domain": "K",
@@ -6008,6 +6082,650 @@
         ]
       ],
       "rules": "预占与批次PREPARED同一餐饮事务；锁定规则容量行并以唯一键去重。核心UNKNOWN保留预占，确认受理转消费；确认未建单/取消才释放；状态条件更新保证各转换一次。已售退餐是否回补额度由规则决定，不自动等同库存回补。"
+    },
+    {
+      "name": "fnb_menu_channel_binding",
+      "domain": "B",
+      "label": "餐牌渠道绑定 Menu channel binding",
+      "fields": [
+        {
+          "name": "binding_no",
+          "type": "varchar(32)",
+          "label": "渠道绑定 Binding",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "menu_no",
+          "type": "varchar(32)",
+          "label": "餐牌 Menu",
+          "ref": "fnb_menu.menu_no",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "门店 Store",
+          "ref": "mch_store.store_no",
+          "nullable": false
+        },
+        {
+          "name": "provider",
+          "type": "varchar(32)",
+          "label": "渠道提供方 Provider",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "channel_account_ref",
+          "type": "varchar(64)",
+          "label": "已有渠道账号引用 Account reference",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "external_store_ref",
+          "type": "varchar(64)",
+          "label": "外部门店 External store",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "ACTIVE / DISABLED",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "binding_no"
+        ],
+        [
+          "menu_no",
+          "store_no",
+          "provider",
+          "channel_account_ref"
+        ]
+      ],
+      "rules": "账号和门店必须归当前主体；只存已验真的外部引用，不存密钥；Keeta仅规划，当前不能上传或宣称已联通。",
+      "deployment": "PLANNED"
+    },
+    {
+      "name": "fnb_menu_item_option_group",
+      "domain": "B",
+      "label": "餐牌菜项选配 Menu item options",
+      "fields": [
+        {
+          "name": "menu_item_no",
+          "type": "varchar(32)",
+          "label": "餐牌菜项 Item",
+          "ref": "fnb_menu_item.menu_item_no",
+          "nullable": false
+        },
+        {
+          "name": "group_no",
+          "type": "varchar(32)",
+          "label": "选配组 Group",
+          "ref": "fnb_option_group.group_no",
+          "nullable": false
+        },
+        {
+          "name": "sort_no",
+          "type": "int",
+          "label": "顺序 Sort",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "menu_item_no",
+          "group_no"
+        ]
+      ],
+      "rules": "INHERIT读取商品默认组；REPLACE只读取本项显式组，空组即禁选，不回退；发布冻结组修订。",
+      "deployment": "PLANNED"
+    },
+    {
+      "name": "fnb_recipe",
+      "domain": "B",
+      "label": "SKU配方工作头 SKU recipe",
+      "fields": [
+        {
+          "name": "recipe_no",
+          "type": "varchar(32)",
+          "label": "配方编号 Recipe",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "门店 Store",
+          "ref": "mch_store.store_no",
+          "nullable": false
+        },
+        {
+          "name": "sku_no",
+          "type": "varchar(32)",
+          "label": "销售规格 SKU",
+          "ref": "prd_sku.sku_no",
+          "nullable": false
+        },
+        {
+          "name": "recipe_code",
+          "type": "varchar(32)",
+          "label": "DEFAULT或受控配方变体 Variant",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "yield_qty",
+          "type": "decimal(18,6)",
+          "label": "基准产出 Positive yield",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "yield_unit",
+          "type": "varchar(16)",
+          "label": "产出单位 Controlled unit",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "config_version",
+          "type": "bigint",
+          "label": "配方内容版本 Configuration version",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "published_revision_no",
+          "type": "varchar(32)",
+          "label": "冻结修订 Published revision",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "DRAFT / ACTIVE / DISABLED",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "recipe_no"
+        ],
+        [
+          "store_no",
+          "sku_no",
+          "recipe_code"
+        ]
+      ],
+      "rules": "同门店SKU只有一个DEFAULT；变体经菜单SKU显式引用；历史内容冻结在ConfigRevision，不从当前工作头回算旧单。",
+      "deployment": "PLANNED"
+    },
+    {
+      "name": "fnb_recipe_line",
+      "domain": "B",
+      "label": "配方物料行 Recipe material line",
+      "fields": [
+        {
+          "name": "line_no",
+          "type": "varchar(32)",
+          "label": "物料行编号 Recipe line",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "recipe_no",
+          "type": "varchar(32)",
+          "label": "配方 Recipe",
+          "ref": "fnb_recipe.recipe_no",
+          "nullable": false
+        },
+        {
+          "name": "item_ref",
+          "type": "varchar(64)",
+          "label": "进销存物料引用 Inventory item",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "qty",
+          "type": "decimal(18,6)",
+          "label": "每基准产出净用量 Net requirement",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "unit",
+          "type": "varchar(16)",
+          "label": "权威物料单位 Material unit",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "conversion_ref",
+          "type": "varchar(64)",
+          "label": "权威换算版本 Conversion reference",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "loss_rate",
+          "type": "decimal(12,6)",
+          "label": "投入损失比例 0<=rate<1",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "line_no"
+        ],
+        [
+          "recipe_no",
+          "line_no"
+        ]
+      ],
+      "rules": "qty为净用量，毛需求=净需求/(1-loss_rate)；损失不混用加成比例；单位/精度归进销存，不能截断；物料不是另建销售商品。",
+      "deployment": "PLANNED"
+    },
+    {
+      "name": "fnb_recipe_adjustment",
+      "domain": "B",
+      "label": "选配配方调整 Recipe selection adjustment",
+      "fields": [
+        {
+          "name": "adjustment_no",
+          "type": "varchar(32)",
+          "label": "调整编号 Adjustment",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "recipe_no",
+          "type": "varchar(32)",
+          "label": "配方 Recipe",
+          "ref": "fnb_recipe.recipe_no",
+          "nullable": false
+        },
+        {
+          "name": "option_item_no",
+          "type": "varchar(32)",
+          "label": "触发选项 Selection",
+          "ref": "fnb_option_group_item.option_item_no",
+          "nullable": false
+        },
+        {
+          "name": "target_line_no",
+          "type": "varchar(32)",
+          "label": "目标物料行 Material line",
+          "ref": "fnb_recipe_line.line_no",
+          "nullable": false
+        },
+        {
+          "name": "action",
+          "type": "varchar(16)",
+          "label": "SET / ADD / REMOVE",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "qty",
+          "type": "decimal(18,6)",
+          "label": "SET/ADD非负量，REMOVE为空",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "unit",
+          "type": "varchar(16)",
+          "label": "与目标物料一致 Unit",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "adjustment_no"
+        ],
+        [
+          "recipe_no",
+          "option_item_no",
+          "target_line_no"
+        ]
+      ],
+      "rules": "先唯一SET或原值再合计ADD；REMOVE与其他同目标调整互斥；不允许负需求，不能猜少糖等于50%。",
+      "deployment": "PLANNED"
+    },
+    {
+      "name": "fnb_production_consumption",
+      "domain": "E",
+      "label": "制作耗用意图 Production consumption",
+      "fields": [
+        {
+          "name": "consumption_no",
+          "type": "varchar(32)",
+          "label": "耗用操作 Consumption",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "门店 Store",
+          "ref": "mch_store.store_no",
+          "nullable": false
+        },
+        {
+          "name": "source_event_no",
+          "type": "varchar(32)",
+          "label": "制作事件 Source event",
+          "ref": "fnb_service_event.event_no",
+          "nullable": false
+        },
+        {
+          "name": "purpose",
+          "type": "varchar(24)",
+          "label": "PRODUCTION / REMAKE / MATERIAL_WASTE / REVERSAL",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "request_hash",
+          "type": "char(64)",
+          "label": "不可变请求摘要 Request hash",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "PREPARED / SUBMITTED / UNKNOWN / CONFIRMED / FAILED",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "inventory_operation_ref",
+          "type": "varchar(64)",
+          "label": "库存权威操作号",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "original_consumption_no",
+          "type": "varchar(32)",
+          "label": "反向操作引用原耗用",
+          "ref": "fnb_production_consumption.consumption_no",
+          "nullable": true
+        },
+        {
+          "name": "business_date",
+          "type": "date",
+          "label": "营业日 Business date",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "occurred_at",
+          "type": "datetime(3)",
+          "label": "原事件真实发生时刻 Occurred at",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "consumption_no"
+        ],
+        [
+          "source_event_no",
+          "purpose"
+        ]
+      ],
+      "rules": "源事件和同参请求幂等；仅追加更正；退款不返原料；CONFIRMED须全部行有真实库存回执，UNKNOWN原键查询；领料不冒充逐菜实耗。",
+      "deployment": "PLANNED"
+    },
+    {
+      "name": "fnb_production_consumption_line",
+      "domain": "E",
+      "label": "制作耗用明细 Consumption line",
+      "fields": [
+        {
+          "name": "consumption_no",
+          "type": "varchar(32)",
+          "label": "耗用 Consumption",
+          "ref": "fnb_production_consumption.consumption_no",
+          "nullable": false
+        },
+        {
+          "name": "line_no",
+          "type": "int",
+          "label": "行序号 Line number",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "component_path",
+          "type": "varchar(255)",
+          "label": "制作实例及组件路径 Instance path",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "item_ref",
+          "type": "varchar(64)",
+          "label": "进销存物料引用 Material",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "theory_qty",
+          "type": "decimal(18,6)",
+          "label": "冻结配方理论量 Theory quantity",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "unit",
+          "type": "varchar(16)",
+          "label": "权威单位 Unit",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "recipe_revision_no",
+          "type": "varchar(32)",
+          "label": "历史配方修订",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": false
+        },
+        {
+          "name": "inventory_receipt_ref",
+          "type": "varchar(64)",
+          "label": "实际回执及行引用 Receipt",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "actual_qty",
+          "type": "decimal(18,6)",
+          "label": "库存确认量，未知为空",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "cost_minor",
+          "type": "bigint",
+          "label": "权威历史总成本最小单位，未知为空",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "currency",
+          "type": "char(3)",
+          "label": "权威成本币种，未知为空",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "PENDING / CONFIRMED / FAILED",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "consumption_no",
+          "line_no"
+        ]
+      ],
+      "rules": "实际量/成本只能回填受权回执，不构成第二本库存账；配方理论量和领料量不能伪装实耗，缺成本为空而非零。",
+      "deployment": "PLANNED"
+    },
+    {
+      "name": "fnb_catalog_sync_job",
+      "domain": "K",
+      "label": "渠道餐牌同步任务 Catalog synchronization",
+      "fields": [
+        {
+          "name": "sync_no",
+          "type": "varchar(32)",
+          "label": "任务 Sync",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "binding_no",
+          "type": "varchar(32)",
+          "label": "渠道绑定",
+          "ref": "fnb_menu_channel_binding.binding_no",
+          "nullable": false
+        },
+        {
+          "name": "revision_no",
+          "type": "varchar(32)",
+          "label": "本次冻结餐牌修订",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": false
+        },
+        {
+          "name": "request_key",
+          "type": "varchar(64)",
+          "label": "稳定渠道请求键 Request key",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "payload_hash",
+          "type": "char(64)",
+          "label": "冻结负载摘要 Payload hash",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "external_request_ref",
+          "type": "varchar(64)",
+          "label": "渠道原请求引用",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "PREPARED / SUBMITTED / PARTIAL / UNKNOWN / CONFIRMED / FAILED",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "sync_no"
+        ],
+        [
+          "binding_no",
+          "revision_no"
+        ],
+        [
+          "binding_no",
+          "request_key"
+        ]
+      ],
+      "rules": "本地发布和远端确认分开；原键查询不盲目重发；当前Keeta仅规划，不提供伪造成功的适配。",
+      "deployment": "PLANNED"
+    },
+    {
+      "name": "fnb_catalog_sync_item",
+      "domain": "K",
+      "label": "渠道餐牌同步明细 Catalog sync item",
+      "fields": [
+        {
+          "name": "sync_no",
+          "type": "varchar(32)",
+          "label": "同步任务",
+          "ref": "fnb_catalog_sync_job.sync_no",
+          "nullable": false
+        },
+        {
+          "name": "line_no",
+          "type": "int",
+          "label": "行序号 Line",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "menu_item_no",
+          "type": "varchar(32)",
+          "label": "餐牌菜项",
+          "ref": "fnb_menu_item.menu_item_no",
+          "nullable": false
+        },
+        {
+          "name": "external_object_ref",
+          "type": "varchar(64)",
+          "label": "外部对象引用",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "PENDING / CONFIRMED / FAILED",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "error_code",
+          "type": "varchar(64)",
+          "label": "脱敏错误码",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "confirmed_revision_no",
+          "type": "varchar(32)",
+          "label": "确认修订",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
+        }
+      ],
+      "unique": [
+        [
+          "sync_no",
+          "line_no"
+        ]
+      ],
+      "rules": "旧修订回调不得覆盖新修订；PARTIAL保留每项结果，不能把HTTP200视为全量同步成功。",
+      "deployment": "PLANNED"
     }
   ],
   "apis": [
@@ -6184,8 +6902,8 @@
       "path": "/biz/x/food/stores/{storeNo}/dishes/{goodsNo}",
       "input": "dishKind:string:SINGLE或BUNDLE或ADDON;prepSeconds:int32:非负;presentation:DishPresentation:餐饮展示覆盖;measurement:MeasurementPolicy:计量规则;version?:int64:创建时不传，修改时必须CAS",
       "output": "dish:Dish:菜品",
-      "guard": "商品同主体；缺version仅当餐饮扩展不存在时创建，存在则冲突；传version只允许CAS修改已存在扩展；基础图文价格库存仍在商品域",
-      "needs": "餐饮新增"
+      "guard": "商品同主体；缺version仅当餐饮扩展不存在时创建，存在则冲突；传version只允许CAS修改已存在扩展；基础图文价格库存仍在商品域；当前仅COUNT/EA整数份数展示；自定义imageRefs/WEIGHT待权威合同，明确拒绝",
+      "needs": "已实现餐饮属性草稿维护；COUNT/EA展示、原商品图片沿用；不含称重、自定义媒资及可售发布"
     },
     {
       "id": "FOOD-API-017",
@@ -6195,7 +6913,7 @@
       "path": "/biz/x/food/menus/{menuNo}/definition",
       "input": "version:int64:草稿版本;storeNos:string[]:适用门店;contexts:ContextInput[]:渠道与履约;weekSchedules:WeekScheduleInput[]:weekday起止时间和跨日标记;exceptions:ExceptionInput[]:日期及OPEN或CLOSED和时间;categories:MenuCategoryInput[]:分类号名称排序及商品SKU白名单;validFrom?:date:适用首日;validTo?:date:适用末日",
       "output": "menu:Menu:草稿头",
-      "guard": "仅更新草稿；分类/菜项同属本餐牌；SKU须属于商品；时段跨日及例外完整校验",
+      "guard": "仅更新草稿；分类/菜项同属本餐牌；SKU须属于商品；时段跨日及例外完整校验；渠道绑定/价格引用同主体门店验真；INHERIT或REPLACE显式，不能客户端提交scopeKey；特定配方SKU必须白名单；同组同优先级重叠拒绝。",
       "needs": "餐饮新增"
     },
     {
@@ -6259,9 +6977,9 @@
       "name": "顾客菜单视图",
       "method": "GET",
       "path": "/mp/x/food/catalog",
-      "input": "storeNo:string:门店;sessionNo?:string:会话;orderSource:string:销售来源;fulfillment:string:履约",
+      "input": "storeNo:string:门店;sessionNo?:string:会话;orderSource:string:销售来源;fulfillment:string:履约;channelBindingNo?:string:服务端按获准来源解析；外部身份须匹配",
       "output": "menus:Menu[]:生效菜单;items:CatalogItem[]:商品规格选配可售提示;asOf:datetime:时点",
-      "guard": "公开目录或合法会话范围；来源须与客户端身份匹配；用户不能指定任意未来时间绕过接单",
+      "guard": "公开目录或合法会话范围；来源须与客户端身份匹配；用户不能指定任意未来时间绕过接单；菜单条目不可仅按SKU去重；未取得权威报价不显示0元或可成交；用户不能伪造渠道身份。",
       "needs": "餐饮新增"
     },
     {
@@ -6908,9 +7626,9 @@
       "name": "外部映射",
       "method": "PUT",
       "path": "/biz/x/food/integrations/{provider}/mappings",
-      "input": "storeNo:string:门店;objectType:string:受控类型;externalNo:string:外部编号;internalNo:string:内部编号;authority:string:权威角色",
+      "input": "storeNo:string:门店;objectType:string:受控类型;externalNo:string:外部编号;internalNo:string:内部编号;authority:string:权威角色;channelBindingNo?:string:外部账号绑定，本地省略;mappingRevisionNo:string:不可变映射修订",
       "output": "operationNo:string:操作号;status:string:操作状态;version:int64:对象版本;resultRef?:string:结果业务号",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "guard": "门店范围与对象权限；写操作CAS版本及幂等；映射按账号范围/修订追加，旧订单不按当前映射重解释。",
       "needs": "餐饮新增"
     },
     {
@@ -7260,9 +7978,9 @@
       "name": "经营端可售餐牌",
       "method": "GET",
       "path": "/biz/x/food/stores/{storeNo}/catalog",
-      "input": "orderSource:string:授权来源;fulfillment:string:履约;at?:datetime:有预览权限才可指定",
+      "input": "orderSource:string:授权来源;fulfillment:string:履约;at?:datetime:有预览权限才可指定;channelBindingNo?:string:服务端按获准来源解析；外部身份须匹配",
       "output": "menus:Menu[]:生效餐牌;items:CatalogItem[]:可售菜品;asOf:datetime:截至",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；仅解析已发布快照；可售提交时再次验证",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；仅解析已发布快照；可售提交时再次验证；菜单条目不可仅按SKU去重；未取得权威报价不显示0元或可成交；用户不能伪造渠道身份。",
       "needs": "餐饮新增"
     },
     {
@@ -7561,6 +8279,149 @@
       "output": "configNo:string:服务端生成配料业务号;version:int64:草稿CAS版本;status:string:DRAFT",
       "guard": "主体门店权限与创建幂等；SKU同主体；COMBO引用已存在配料并拒循环；不接受客户端伪造业务号或价格",
       "needs": "餐饮配置；收费成交需核心报价"
+    },
+    {
+      "id": "FOOD-API-142",
+      "domain": "B",
+      "name": "创建餐牌渠道绑定",
+      "method": "POST",
+      "path": "/biz/x/food/stores/{storeNo}/menu-channel-bindings",
+      "input": "menuNo:string:本店餐牌;provider:string:受控渠道;channelAccountRef:string:已有受权账号引用;externalStoreRef:string:受权外部门店",
+      "output": "binding:MenuChannelBinding:服务端生成绑定",
+      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。渠道账号必须验真；Keeta仅规划。",
+      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+    },
+    {
+      "id": "FOOD-API-143",
+      "domain": "B",
+      "name": "渠道绑定列表",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/menu-channel-bindings",
+      "input": "page?:int32:默认1;size?:int32:默认20最大100;provider?:string:渠道;menuNo?:string:餐牌",
+      "output": "records:MenuChannelBinding[]:授权记录;total:int64:同过滤总数;page:int32:页;size:int32:页长",
+      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。",
+      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+    },
+    {
+      "id": "FOOD-API-144",
+      "domain": "B",
+      "name": "渠道绑定详情",
+      "method": "GET",
+      "path": "/biz/x/food/menu-channel-bindings/{bindingNo}",
+      "input": "",
+      "output": "binding:MenuChannelBinding:获准对象",
+      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。",
+      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+    },
+    {
+      "id": "FOOD-API-145",
+      "domain": "B",
+      "name": "修改渠道绑定",
+      "method": "PUT",
+      "path": "/biz/x/food/menu-channel-bindings/{bindingNo}",
+      "input": "version:int64:CAS;status:string:ACTIVE或DISABLED;externalStoreRef:string:获准外部门店",
+      "output": "binding:MenuChannelBinding:新版本",
+      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。不改原provider/账号/menu/store；历史映射保留，停用不取消旧订单。",
+      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+    },
+    {
+      "id": "FOOD-API-146",
+      "domain": "K",
+      "name": "发起餐牌渠道同步",
+      "method": "POST",
+      "path": "/biz/x/food/menu-channel-bindings/{bindingNo}/syncs",
+      "input": "revisionNo:string:本绑定餐牌已发布修订;version:int64:绑定CAS",
+      "output": "sync:CatalogSync:原号任务",
+      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。当前Keeta没有启用适配；无真实提供方拒绝，不能返回虚构成功。",
+      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+    },
+    {
+      "id": "FOOD-API-147",
+      "domain": "K",
+      "name": "查询餐牌同步结果",
+      "method": "GET",
+      "path": "/biz/x/food/catalog-syncs/{syncNo}",
+      "input": "",
+      "output": "sync:CatalogSync:持久化真实状态",
+      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。部分/未知分列；旧ACK不能覆盖新目标。",
+      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+    },
+    {
+      "id": "FOOD-API-148",
+      "domain": "B",
+      "name": "创建配方工作头",
+      "method": "POST",
+      "path": "/biz/x/food/stores/{storeNo}/recipes",
+      "input": "skuNo:string:本店SKU;recipeCode:string:DEFAULT或受控变体;yieldQty:decimal:正产出;yieldUnit:string:受控单位",
+      "output": "recipe:Recipe:服务端生成配方",
+      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。单位与物料目录未联通时不得假校验。",
+      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+    },
+    {
+      "id": "FOOD-API-149",
+      "domain": "B",
+      "name": "配方列表",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/recipes",
+      "input": "page?:int32:默认1;size?:int32:默认20最大100;skuNo?:string:本店SKU;status?:string:状态",
+      "output": "records:Recipe[]:记录;total:int64:同过滤总数;page:int32:页;size:int32:页长",
+      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。",
+      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+    },
+    {
+      "id": "FOOD-API-150",
+      "domain": "B",
+      "name": "配方详情",
+      "method": "GET",
+      "path": "/biz/x/food/recipes/{recipeNo}",
+      "input": "",
+      "output": "recipe:Recipe:获准配置",
+      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。",
+      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+    },
+    {
+      "id": "FOOD-API-151",
+      "domain": "B",
+      "name": "维护配方物料与调整",
+      "method": "PUT",
+      "path": "/biz/x/food/recipes/{recipeNo}/definition",
+      "input": "version:int64:CAS;yieldQty:decimal:正产出;yieldUnit:string:单位;lines:RecipeLineInput[]:物料;adjustments:RecipeAdjustmentInput[]:调整",
+      "output": "recipe:Recipe:新草稿版本",
+      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。目标行属于本配方；先SET后ADD，REMOVE互斥；权威单位/损失比例；禁止改历史发布。",
+      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+    },
+    {
+      "id": "FOOD-API-152",
+      "domain": "B",
+      "name": "发布配方",
+      "method": "POST",
+      "path": "/biz/x/food/recipes/{recipeNo}:publish",
+      "input": "version:int64:CAS;effectiveAt:datetime:生效时间",
+      "output": "publication:ConfigRevision:不可变修订",
+      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。RECIPE schema校验及物料/单位验真，冻结转换；不意味着库存扣料合同已就绪。",
+      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+    },
+    {
+      "id": "FOOD-API-153",
+      "domain": "E",
+      "name": "制作耗用列表",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/production-consumptions",
+      "input": "page?:int32:默认1;size?:int32:默认20最大100;from:date:起日;to:date:止日不含;skuNo?:string:本店SKU;itemRef?:string:物料;status?:string:真实状态",
+      "output": "records:ProductionConsumption[]:获准事实;total:int64:同过滤总数;page:int32:页;size:int32:页长",
+      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。只读不补扣库存；未知成本与实际量保持为空。",
+      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
+    },
+    {
+      "id": "FOOD-API-154",
+      "domain": "E",
+      "name": "制作耗用详情",
+      "method": "GET",
+      "path": "/biz/x/food/production-consumptions/{consumptionNo}",
+      "input": "",
+      "output": "consumption:ProductionConsumption:原事实与回执",
+      "guard": "原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。只读核验逐行回执，不能以退款推返料。",
+      "needs": "餐饮新增，未实现；按P1/P2/P4/P5所属切片验收"
     }
   ],
   "dtos": {
@@ -7581,10 +8442,10 @@
     "ReturnItem": "foodLineNo:string:源行;componentNo?:string:组件;qty:decimal:退量;disposition:string:CANCEL或LOSS或KEEP或REMAKE",
     "Page": "records:object[]:该端点明确的业务VO;total:int64:总数;page:int32:页码;size:int32:每页条数",
     "MenuCategoryInput": "categoryNo:string:分类;name:string:名称;sortNo:int32:排序;items:MenuItemInput[]:商品项",
-    "MenuItemInput": "menuItemNo:string:项号;goodsNo:string:商品;sortNo:int32:排序;enabled:boolean:启用;skuScope:string:ALL或EXPLICIT;skuNos:string[]:EXPLICIT必须非空且属于商品",
+    "MenuItemInput": "menuItemNo:string:项号;goodsNo:string:商品;sortNo:int32:排序;enabled:boolean:启用;skuScope:string:ALL或EXPLICIT;skuNos:string[]:EXPLICIT必须非空且属于商品;optionMode:string:INHERIT或REPLACE;optionGroupNos:string[]:REPLACE显式组，空表示禁选;skuRecipes:MenuSkuRecipeInput[]:特定SKU配方，必须EXPLICIT白名单",
     "WeekScheduleInput": "weekday:int32:1至7;startTime:string:HH:mm;endTime:string:HH:mm;endDayOffset:int32:0或1",
     "ExceptionInput": "localDate:date:日期;mode:string:OPEN或CLOSED;startTime?:string:OPEN必填;endTime?:string:OPEN必填;endDayOffset:int32:跨日标记",
-    "ContextInput": "orderSource:string:受控来源;fulfillment:string:受控履约",
+    "ContextInput": "orderSource:string:受控来源;fulfillment:string:受控履约;channelBindingNo?:string:受权渠道绑定，本地省略;pricePolicyRef?:string:权威价格策略引用，不接受金额",
     "BundleGroupInput": "groupNo:string:组号;name:string:名称;minQty:decimal:最少;maxQty:decimal:最多;baseSkuNo?:string:补差基准;sortNo:int32:排序",
     "BundleChoiceInput": "choiceNo:string:选项;groupNo:string:组;skuNo:string:SKU;unitsPerPick:decimal:每选用量;priceMode:string:INCLUDED或ADD_SKU或DIFF_BASE;defaultQty:decimal:默认;minQty:decimal:下限;maxQty:decimal:上限;sortNo:int32:排序",
     "OptionItemInput": "optionItemNo:string:项号;sourceKind:string:SPEC_VALUE或MODIFIER;specValueNo?:string:字典值;modifierNo?:string:配料;maxQty:decimal:上限;defaultQty:decimal:默认;sortNo:int32:排序;minQty:decimal:本选项下限",
@@ -7612,8 +8473,26 @@
     "SelectionDependency": "optionItemNo:string:被选项;requiresItemNos:string[]:必须同时选项",
     "Reservation": "reservationNo:string:预约;partySize:int32:人数;startAt:datetime:开始;endAt:datetime:结束;status:string:资源状态;depositRef?:string:获准订金凭据;checkNo?:string:到店台账;version:int64:版本",
     "ActionLog": "actionNo:string:记录;action:string:动作;actorRef:string:审计操作人;occurredAt:datetime:时间;reason?:string:原因",
-    "CatalogItem": "goodsNo:string:商品;skuNo:string:规格;name:string:名称;imageRefs:string[]:媒资;price:Money:核心当前报价提示;available:boolean:可售;configRevisionNos:string[]:引用发布版本",
-    "SalesRestriction": "restrictionNo:string:约束;skuNo:string:SKU;mode:string:类型;status:string:状态;quotaQty?:decimal:额度;reservedQty:decimal:预占;consumedQty:decimal:已用;version:int64:版本"
+    "CatalogItem": "menuItemNo:string:实际餐牌条目;menuRevisionNo:string:餐牌发布修订;goodsNo:string:商品;skuNo:string:规格;name:string:名称;imageRefs:string[]:媒资;price?:Money:仅权威报价可用时返回;pricingStatus:string:AVAILABLE或UNAVAILABLE;pricePolicyRef?:string:权威依据;available:boolean:服务端综合可售;reasonCodes:string[]:不可售原因;configRevisionNos:string[]:冻结依赖",
+    "SalesRestriction": "restrictionNo:string:约束;skuNo:string:SKU;mode:string:类型;status:string:状态;quotaQty?:decimal:额度;reservedQty:decimal:预占;consumedQty:decimal:已用;version:int64:版本",
+    "MenuSkuRecipeInput": "skuNo:string:本菜品SKU;recipeNo:string:本SKU获准配方变体",
+    "MenuChannelBinding": "bindingNo:string:绑定;menuNo:string:餐牌;storeNo:string:门店;provider:string:提供方;channelAccountRef:string:已有账号引用;externalStoreRef:string:外部门店;status:string:ACTIVE或DISABLED;version:int64:CAS",
+    "CatalogSync": "syncNo:string:任务;bindingNo:string:绑定;revisionNo:string:冻结修订;status:string:真实同步状态;items:CatalogSyncItem[]:分项结果;version:int64:CAS",
+    "CatalogSyncItem": "lineNo:int32:行;menuItemNo:string:菜项;status:string:状态;externalObjectRef?:string:外部编号;errorCode?:string:脱敏错误;confirmedRevisionNo?:string:确认修订",
+    "Recipe": "recipeNo:string:配方;storeNo:string:门店;skuNo:string:SKU;recipeCode:string:DEFAULT或变体;yieldQty:decimal:正产出;yieldUnit:string:受控单位;status:string:草稿或启用;configVersion:int64:内容版本;version:int64:CAS;lines:RecipeLineInput[]:物料;adjustments:RecipeAdjustmentInput[]:选配调整;publishedRevisionNo?:string:已发布修订",
+    "RecipeLineInput": "lineNo?:string:创建省略服务端发号;itemRef:string:获准库存物料;qty:decimal:正净用量;unit:string:物料单位;conversionRef:string:权威换算版本;lossRate:decimal:投入损失比例非负且小于1",
+    "RecipeAdjustmentInput": "adjustmentNo?:string:创建省略服务端发号;optionItemNo:string:选项;targetLineNo:string:本配方行;action:string:SET或ADD或REMOVE;qty?:decimal:SET/ADD非负，REMOVE省略;unit:string:与目标一致",
+    "ProductionConsumption": "consumptionNo:string:耗用号;storeNo:string:门店;sourceEventNo:string:原制作事件;purpose:string:耗用目的;status:string:真实状态;businessDate:date:营业日;inventoryOperationRef?:string:库存原操作;lines:ConsumptionLine[]:明细",
+    "ConsumptionLine": "lineNo:int32:序号;componentPath:string:实例路径;itemRef:string:物料;theoryQty:decimal:理论量;unit:string:权威单位;recipeRevisionNo:string:历史配方;status:string:回执状态;actualQty?:decimal:仅真实库存回执;cost?:Money:仅真实历史总成本;inventoryReceiptRef?:string:回执行号",
+    "ChannelQuoteReq": "entityNo:string:可信服务身份解析的经营主体;storeNo:string:已授权门店;channelBindingNo?:string:仅适配器认证所得渠道绑定;menuRevisionNo:string:不可变餐牌修订;menuItemNo:string:原餐牌条目不可按SKU合并;sourceLineRef:string:购买实例引用;skuNo:string:当前菜项内实际购买规格;quantity:decimal:购买份数;selections:QuoteSelection[]:按购买实例绑定的口味加料套餐选择;pricePolicyRef?:string:报价权威校验的策略引用;currency:string:ISO币种;selectionRevisionNos:string[]:已发布选配套餐配方修订;demands:FrozenMaterialDemand[]:唯一库存需求树",
+    "ChannelQuoteResult": "quoteRef:string:权威报价引用;policyRevisionNo:string:权威策略版本;expiresAt:datetime:到期时需重报;currency:string:币种;totalMinor:int64:最小货币单位金额;allocations:QuoteLineAllocation[]:核心行分摊合计等于总额;stockDemandTree:FrozenMaterialDemand[]:与受理一致且只执行一次的需求树",
+    "QuoteLineAllocation": "sourceLineRef:string:购买实例引用;componentPath:string:完整套餐选配实例路径;coreLineRef:string:核心行分配引用;qty:decimal:数量;amountMinor:int64:优惠后权威分摊金额",
+    "FrozenMaterialDemand": "sourceLineRef:string:购买实例引用;componentPath:string:不能仅按SKU折叠的路径;executionMode:string:SELLABLE_SKU/RECIPE_LEAVES/NONE;itemRef:string:库存权威物料或成品引用;recipeRevisionNo?:string:配方不可变修订;qty:decimal:按权威数量精度的毛需求;unit:string:库存权威单位;conversionRevision:string:不可变换算版本",
+    "InventoryMaterialFacts": "itemRef:string:权威物料引用;storeNo:string:所属门店;unit:string:库存基本单位;conversionRevision:string:单位换算版本;quantityScale:int32:数量有效小数位;valuationScale:int32:单位成本内部精度;roundingMode:string:权威数量及成本舍入方式;status:string:ACTIVE/DISABLED",
+    "MaterialConsumptionReq": "entityNo:string:可信主体;storeNo:string:获准门店;productionEventNo:string:稳定制作事实编号;requestKey:string:重试不变的业务键;requestHash:string:同键异载荷冲突检测;originalReservationRef:string:受理时原预占;purpose:string:PRODUCTION/REMAKE/MATERIAL_WASTE/REVERSAL;originalOperationRef?:string:冲回必须引用原已确认操作;demands:FrozenMaterialDemand[]:来自受理冻结树的本次制作数量",
+    "MaterialConsumptionResult": "operationRef:string:库存权威操作编号;requestKey:string:原请求键;status:string:CONFIRMED/PARTIAL/UNKNOWN/FAILED;receipts:MaterialConsumptionReceipt[]:逐行确认不以请求数量冒充实耗;occurredAt:datetime:权威事实发生时点",
+    "MaterialConsumptionReceipt": "sourceLineRef:string:原购买实例;componentPath:string:原冻结路径;receiptRef?:string:已确认库存流水引用;status:string:CONFIRMED/UNKNOWN/FAILED;actualQty?:decimal:仅确认后返回实耗不得用理论量填充;unit:string:库存单位;costMinor?:int64:权威历史分摊成本未知为null;currency?:string:成本币种;valuationRevision?:string:历史计价依据",
+    "QuoteSelection": "componentPath:string:购买实例内完整组件路径;groupRevisionNo:string:已发布组修订;optionItemNo:string:该修订内合法选项;quantity:decimal:选择份数;selectionInstanceRef:string:同SKU不同选择仍独立的实例号"
   },
   "commonFields": [
     [
@@ -7765,7 +8644,12 @@
         "fnb_order_line",
         "fnb_sales_quota_claim",
         "fnb_sales_restriction",
-        "fnb_store_policy"
+        "fnb_store_policy",
+        "fnb_menu_channel_binding",
+        "fnb_menu_item_option_group",
+        "fnb_recipe",
+        "fnb_recipe_line",
+        "fnb_recipe_adjustment"
       ],
       "apis": [
         "FOOD-API-004",
@@ -7798,7 +8682,16 @@
         "FOOD-API-119",
         "FOOD-API-120",
         "FOOD-API-122",
-        "FOOD-API-141"
+        "FOOD-API-141",
+        "FOOD-API-142",
+        "FOOD-API-143",
+        "FOOD-API-144",
+        "FOOD-API-145",
+        "FOOD-API-148",
+        "FOOD-API-149",
+        "FOOD-API-150",
+        "FOOD-API-151",
+        "FOOD-API-152"
       ],
       "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
     },
@@ -7888,7 +8781,9 @@
         "fnb_order_component",
         "fnb_return_item",
         "fnb_service_event",
-        "fnb_store_policy"
+        "fnb_store_policy",
+        "fnb_production_consumption",
+        "fnb_production_consumption_line"
       ],
       "apis": [
         "FOOD-API-044",
@@ -7905,7 +8800,9 @@
         "FOOD-API-055",
         "FOOD-API-062",
         "FOOD-API-063",
-        "FOOD-API-081"
+        "FOOD-API-081",
+        "FOOD-API-153",
+        "FOOD-API-154"
       ],
       "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
     },
@@ -8150,14 +9047,18 @@
         "fnb_external_mapping",
         "fnb_integration_exception",
         "fnb_store_policy",
-        "fnb_sync_batch"
+        "fnb_sync_batch",
+        "fnb_catalog_sync_job",
+        "fnb_catalog_sync_item"
       ],
       "apis": [
         "FOOD-API-081",
         "FOOD-API-082",
         "FOOD-API-083",
         "FOOD-API-084",
-        "FOOD-API-108"
+        "FOOD-API-108",
+        "FOOD-API-146",
+        "FOOD-API-147"
       ],
       "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
     },
@@ -8356,7 +9257,11 @@
         "FOOD-API-111",
         "FOOD-API-114",
         "FOOD-API-115",
-        "FOOD-API-116"
+        "FOOD-API-116",
+        "FOOD-API-142",
+        "FOOD-API-143",
+        "FOOD-API-144",
+        "FOOD-API-145"
       ],
       "tables": [
         "fnb_menu",
@@ -8367,10 +9272,12 @@
         "fnb_menu_category",
         "fnb_menu_item",
         "fnb_menu_item_sku",
-        "fnb_config_revision"
+        "fnb_config_revision",
+        "fnb_menu_channel_binding",
+        "fnb_menu_item_option_group"
       ],
       "status": "DEFINED",
-      "note": "结构与目标接口已定义；仍需实现与业务验收"
+      "note": "时段/渠道范围及菜项覆盖已入设计；报价引用须权威核验，Keeta仅规划，实际发布/同步未实现。"
     },
     {
       "requirementId": "FNB-B03",
@@ -8409,10 +9316,11 @@
         "fnb_option_group",
         "fnb_option_group_item",
         "fnb_dish_option_group",
-        "fnb_config_revision"
+        "fnb_config_revision",
+        "fnb_menu_item_option_group"
       ],
       "status": "DEFINED",
-      "note": "结构与目标接口已定义；仍需实现与业务验收"
+      "note": "商品默认选配与餐牌REPLACE显式分开；免费口味复用SPEC_VALUE，未实现运行时选择校验。"
     },
     {
       "requirementId": "FNB-B05",
@@ -9585,10 +10493,15 @@
       "tables": [
         "fnb_metric_definition",
         "fnb_report_run",
-        "rpt_food_metric_daily"
+        "rpt_food_metric_daily",
+        "fnb_recipe",
+        "fnb_recipe_line",
+        "fnb_recipe_adjustment",
+        "fnb_production_consumption",
+        "fnb_production_consumption_line"
       ],
       "status": "CORE_CONTRACT",
-      "note": "BOM/历史成本未提供则标未知，不用当前采购价伪造历史毛利"
+      "note": "配方/制作理论耗用/真实回执分开；单位数量及历史估值合同PENDING，当前不能把领料当逐菜实耗或估算为实际成本。"
     },
     {
       "requirementId": "FNB-J12",
@@ -9937,5 +10850,111 @@
       "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V2__table_occupancy_sharing_mode.sql"
     ],
     "targetSchemaVersion": 2
+  },
+  "catalogEnhancement": {
+    "version": 1,
+    "approvedAt": "2026-10-21",
+    "phase": "P0",
+    "runtimeEnabled": false,
+    "targetBusinessTableCount": 82,
+    "plannedTables": [
+      "fnb_menu_channel_binding",
+      "fnb_menu_item_option_group",
+      "fnb_recipe",
+      "fnb_recipe_line",
+      "fnb_recipe_adjustment",
+      "fnb_production_consumption",
+      "fnb_production_consumption_line",
+      "fnb_catalog_sync_job",
+      "fnb_catalog_sync_item"
+    ],
+    "providerPlan": {
+      "provider": "KEETA",
+      "status": "PLANNED_DISABLED",
+      "region": null,
+      "userInstruction": "首批规划Keeta，暂不接入；不等待凭据、不开发真实适配。"
+    },
+    "contracts": {
+      "pricing": {
+        "implementation": "PENDING",
+        "authority": "PLATFORM product/quote",
+        "required": [
+          "entityNo",
+          "storeNo",
+          "authenticatedChannelBindingNo",
+          "menuRevisionNo",
+          "menuItemNo",
+          "pricePolicyRef",
+          "sourceLineRef",
+          "selectedSkuNeeds",
+          "currency",
+          "quoteExpiry",
+          "stockDemandTree"
+        ],
+        "inputDto": "ChannelQuoteReq",
+        "outputDto": "ChannelQuoteResult",
+        "errors": [
+          "BAD_REQUEST",
+          "FORBIDDEN",
+          "NOT_FOUND",
+          "CONFLICT",
+          "UNAVAILABLE",
+          "UNKNOWN"
+        ],
+        "transport": "现有类型化内部通信；提供方实现前不注册运行时路由",
+        "queryRecovery": "用原requestKey/operationRef查询UNKNOWN；不可另起业务键重发",
+        "ownershipRule": "提供方PLATFORM商品/报价；策略校验主体门店认证渠道；终端不提交可信金额；缺策略不得回退或填0"
+      },
+      "inventory": {
+        "implementation": "PENDING",
+        "authority": "INVENTORY",
+        "required": [
+          "itemRef",
+          "unit",
+          "conversionRevision",
+          "quantityScale",
+          "valuationScale",
+          "originalReservationRef",
+          "productionEventNo",
+          "stableRequestKey",
+          "requestHash",
+          "lineReceipts",
+          "historyCost",
+          "queryUnknown"
+        ],
+        "inputDto": "MaterialConsumptionReq",
+        "outputDto": "MaterialConsumptionResult",
+        "errors": [
+          "BAD_REQUEST",
+          "FORBIDDEN",
+          "NOT_FOUND",
+          "CONFLICT",
+          "UNAVAILABLE",
+          "UNKNOWN"
+        ],
+        "transport": "现有类型化内部通信；提供方实现前不注册运行时路由",
+        "queryRecovery": "用原requestKey/operationRef查询UNKNOWN；不可另起业务键重发",
+        "precisionRule": "仅权威明确支持的单位和精度可交易；库存当前int协议不足以承接克重，不截断、不用换小单位规避成本精度"
+      }
+    },
+    "configurationSlice": {
+      "id": "CAT-01B-ATTRIBUTES",
+      "apiId": "FOOD-API-016",
+      "status": "IMPLEMENTED_LIMITED",
+      "supports": [
+        "SINGLE/BUNDLE/ADDON属性草稿",
+        "CAS及幂等",
+        "展示别名多语言标签过敏提示",
+        "COUNT/EA整数份数展示标记"
+      ],
+      "notEnabled": [
+        "WEIGHT及自定义单位",
+        "自定义媒资覆盖",
+        "发布/可交易",
+        "112真实分页",
+        "113完整选配详情"
+      ],
+      "unitBoundary": "EA仅是餐饮按份展示标记，不作为库存物料单位；不声称已对接物料目录或库存精度"
+    }
   }
 }

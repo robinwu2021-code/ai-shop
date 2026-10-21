@@ -7,9 +7,9 @@ import os from 'node:os';
 import {spawnSync} from 'node:child_process';
 import {renderFoodSchema,renderFoodV1,assertFrozenFoodV1,writeFrozenMigration} from '../lib/food-schema-sql.mjs';
 const s=JSON.parse(fs.readFileSync(new URL('../../docs/technical/design/schema/food-system-design.json',import.meta.url)));
-test('creates exactly the 73 food-owned tables and never existing core/shared tables',()=>{
+test('target design contains 82 food-owned tables while frozen V1 remains 73',()=>{
  const sql=renderFoodSchema(s);const names=[...sql.matchAll(/CREATE TABLE `([^`]+)`/g)].map(m=>m[1]);
- assert.equal(names.length,73);assert(names.every(n=>n.startsWith('fnb_')));
+ assert.equal(names.length,82);assert.equal([...renderFoodV1(s).matchAll(/CREATE TABLE `/g)].length,73);assert(names.every(n=>n.startsWith('fnb_')));
  assert(!/\b(?:ALTER|DROP|TRUNCATE|INSERT|UPDATE|DELETE|CREATE DATABASE)\b/i.test(sql.replace(/--[^\n]*|'(?:[^']|'')*'/g,'')));
  assert(!/CREATE TABLE.*(?:prd_|ord_|pay_|prn_|rpt_)/.test(sql));
 });

@@ -3,6 +3,8 @@ package ai.neargo.shop.food.foodclient;
 import ai.neargo.shop.food.config.ConditionalOnFoodWebEnabled;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration.PolicyEnabled;
 import ai.neargo.shop.food.service.CheckService;
+import ai.neargo.shop.food.service.DishService;
+import ai.neargo.shop.food.spi.DishInternalApi;
 import ai.neargo.shop.food.service.DiningSessionService;
 import ai.neargo.shop.food.service.ReservationService;
 import ai.neargo.shop.food.service.StoreOperationService;
@@ -33,6 +35,12 @@ import org.springframework.context.annotation.Profile;
 @Conditional(PolicyEnabled.class)
 @Profile({"api", "ops"})
 public class FoodClientConfiguration {
+    @Bean
+    @ConditionalOnMissingBean(DishService.class)
+    DishService remoteDishService(InternalHttp http) {
+        return new RemoteDishService(http.client(ServiceName.FOOD, DishInternalApi.class, Duration.ofSeconds(5)));
+    }
+
     @Bean
     @ConditionalOnMissingBean(DiningSessionService.class)
     DiningSessionService remoteDiningSessionService(InternalHttp http) {

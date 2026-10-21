@@ -69,5 +69,29 @@ export function validateFoodDesign(s) {
     for (const api of row.apiIds) must(ids.has(api), `Unknown alignment API ${api}`);
     for (const table of row.tables) must(tables.has(table), `Unknown alignment table ${table}`);
   }
+  if (s.catalogEnhancement) {
+    const e = s.catalogEnhancement;
+    const hasKey = (name, key) => tables.get(name)?.unique.some(k => k.join(',') === key);
+    const reviewedKeys = {
+      fnb_menu_context: ['context_no', 'menu_no,order_source,fulfillment,channel_scope_key'],
+      fnb_external_mapping: ['mapping_no', 'provider,store_no,channel_scope_key,object_type,external_no,mapping_revision_no'],
+    };
+    for (const [name, keys] of Object.entries(reviewedKeys))
+      must(tables.get(name)?.unique.length === keys.length && keys.every(k => hasKey(name, k)),
+        `Unreviewed channel scope or identity constraint ${name}`);
+    must(hasKey('fnb_recipe_line', 'recipe_no,line_no')
+      && !hasKey('fnb_recipe_line', 'recipe_no,item_ref'), 'Recipe line identity must preserve repeated materials');
+    must(tables.get('fnb_modifier')?.fields.find(f => f.name === 'kind')?.label === '类型 ADDON / COMBO；免费口味复用SPEC_VALUE', 'Unreviewed modifier contract label');
+    must(hasKey('fnb_menu_context', 'menu_no,order_source,fulfillment,channel_scope_key'), 'Missing channel scope cardinality');
+    must(tables.get('fnb_menu_context').fields.some(f => f.name === 'channel_scope_key' && !f.nullable), 'Nullable channel scope');
+    must(hasKey('fnb_external_mapping', 'provider,store_no,channel_scope_key,object_type,external_no,mapping_revision_no'), 'Missing immutable channel mapping scope');
+    must(e.plannedTables.length === 9 && new Set(e.plannedTables).size === 9, 'Incomplete planned enhancement tables');
+    for (const name of e.plannedTables) must(tables.get(name)?.deployment === 'PLANNED', `Unverified deployment ${name}`);
+    must(s.tables.filter(t => t.name.startsWith('fnb_')).length === e.targetBusinessTableCount, 'Stale target table count');
+    for (const name of ['fnb_recipe_line', 'fnb_recipe_adjustment'])
+      must(tables.get(name)?.fields.some(f => f.name === 'qty' && f.type === 'decimal(18,6)'), 'Recipe quantity precision differs');
+    const ready = ['pricing', 'inventory'].every(name => e.contracts?.[name]?.implementation === 'VERIFIED');
+    must(!e.runtimeEnabled || ready, 'Enhancement runtime closed: authoritative contracts not ready');
+  }
   return true;
 }

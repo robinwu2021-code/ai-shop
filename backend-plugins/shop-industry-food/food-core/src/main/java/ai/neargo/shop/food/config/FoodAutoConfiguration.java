@@ -14,6 +14,11 @@ import ai.neargo.shop.food.mapper.FoodMappers.TableOccupancyMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableOperationMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableTokenMapper;
 import ai.neargo.shop.food.service.CheckService;
+import ai.neargo.shop.food.service.DishService;
+import ai.neargo.shop.food.service.impl.DishServiceImpl;
+import ai.neargo.shop.food.mapper.FoodMappers.DishMapper;
+import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
+import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.shop.food.service.DiningSessionService;
 import ai.neargo.shop.food.service.ReservationService;
 import ai.neargo.shop.food.service.StoreOperationService;
@@ -42,6 +47,18 @@ import tools.jackson.databind.ObjectMapper;
 @ConditionalOnFoodEnabled
 @EnableConfigurationProperties(FoodProperties.class)
 public class FoodAutoConfiguration {
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(DishService.class)
+    DishService dishService(DishMapper dishes, ActionLogMapper actions, IdempotencyService idem,
+            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
+            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            ObjectProvider<GoodsCatalogQueryPort> catalogs) {
+        // Resolve on invocation so optional food-off/remote-client assembly never substitutes catalog facts.
+        GoodsCatalogQueryPort catalog = (entity, store, goods) -> catalogs.getObject().getGoods(entity, store, goods);
+        return new DishServiceImpl(dishes, actions, idem, publisher, json, manager, catalog);
+    }
+
     @Bean
     @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
     @ConditionalOnMissingBean(StoreOperationService.class)
