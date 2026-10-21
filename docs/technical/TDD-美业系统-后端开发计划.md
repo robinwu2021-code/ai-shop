@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-21 · 按业务模块交付并逐模块部署验证；BM-01后端模块已通过隔离部署关口，BM02-a人员及BM02-b物理资源维护已实现；下一步BM02-c周班表写入及远程事实接入；预约工作台未完成。
+> 状态：实施中 · 2026-10-21 · 按业务模块交付并逐模块部署验证；BM-01后端模块已通过隔离部署关口，BM-02人员/物理资源/周班表及远程事实后端模块已通过隔离部署；下一步BM-03预约；预约工作台未完成。
 > **执行方式：** 使用`superpowers:executing-plans`逐任务实施，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -302,6 +302,29 @@ BM02-a具体合同：
 - [x] b2 DTO/Service/Mapper/Controller实现，原生GREEN、输入边界/真实安全过滤器HTTP回归，执行一次守卫消融RED→恢复GREEN。
 - [x] b3 同步矩阵/对象/API/方法清单，一次独立审查及必要重要修复，保存检查点。BM02-c及整体部署仍为后续；不把资源维护通过当作预约可用或BM-02部署完成。
 
+### 2.14 BM02-c周班表与远程事实接入实施（2026-10-21）
+
+基线226d46dc8；延续已批准BM02-c及模块部署关口，档位1，Java21/既有包规范、旧迁移及美业私有V1冻结。
+
+**周班表合同：**
+- GET /biz/schedules：ScheduleQuery(Set<String> resourceNos,OffsetDateTime from,to)，1..50规范资源号，正区间最多31日。ScheduleVO含当前门店ACTIVE规则、展开窗口、各resourceRevision及查询区间；规则和窗口只是工作时间事实，不是预约余量，历史/例外/请假不伪装已实现。
+- POST /biz/schedule-rules：新增P1共用写入口，SaveScheduleRuleReq(ruleNo?,resourceNo,expectedRevision,timezone,weekdayMask,startMinute,endMinute,endDayOffset,validFrom,validTo,status,reason)。expectedRevision是资源根revision，初始资源也须传现revision；返回ScheduleRuleVO(ruleNo,resourceNo,resourceRevision,status)。时区沿ZoneId，mask1..127，开始0..1439、结束0..1440、跨日0/1、实际本地持续1..1440分钟。validTo首版必填且包含最后开始日，区间最多366日，日期留SQL/UTC两日边界余量；reason1..500。无限规则写入暂不开放，便于完整有效期验证；已存无限规则仍可按查询窗口读取。
+- 新建仅ACTIVE；替换/停用须命中当前店ACTIVE旧ruleNo，旧行只标INACTIVE且原内容留存，新ACTIVE版本另号写入；INACTIVE命令返回旧号且不新建规则。resourceNo/storeNo不可迁移；重放在重新修改前返回原号。每资源最多200条ACTIVE规则，保留INACTIVE历史不占上限。
+- 写锁主体/店活跃父链→STAFF人员根（适用）→规范资源根；锁内重新验身份及canonical引用，物理限本店，STAFF必须有本店任职。ACTIVE规则须存在有效任职裁剪后的窗口；暂停人员/资源不能新增ACTIVE。同资源根CAS同时保护物理资源和班表写入，不建立独立可绕过修订。
+- 人员任职新增/替换在相同人员→资源锁下，遇本店任一ACTIVE周规则明确拒绝（含历史日期规则，避免跨日/时区筛漏）；须先显式停用相关规则再变更任职/资格，防止激活已存规则被任职裁剪掉的跨店重叠。代价是维护前需处理旧ACTIVE规则，不自动重排。
+- 更新/新建周规则均采用同一保守影响守卫：主体任一ACCEPTED命令、该资源开放占用/正容量计数/未释放单位/异常孤儿证据拒绝。只证明守卫检查通过，不宣称自动迁移预约任务。
+- 每次ACTIVE提交按31日分片复用ScheduleWindowsPort/Assembler检查整个最多366日期间并留跨日UTC边界，跨店重叠/任职歧义/DST端点缺失或重复明确CONFLICT；任职之外的窗口裁剪，不把同人多店当不同容量。变更记录严格写mch_schedule_change_log（affectedRefs=[]表示守卫下无已接受占用，非完整任务影响报告），原子审计/幂等/事件沿共用发布器；shop.schedule.publication.archive-only显式开启才归档。
+- 商家入口沿biz:store:admin、可信entity/currentStore/actor与原始X-Store-No检查；STAFF班表是店内维护，不授予账号权限。BAPI023/024的P3例外审批保持未实施。
+
+**远程事实合同：** shop-base新增MerchantFactsInternalApi的三条受凭证保护POST：/internal/merchant/facts/personnel、resources、schedules，使用既有三种Port.Query及各List事实返回。平台portal.internal.InternalMerchantFactsController复用InternalServiceResponses，在执行前校验MAIN、32字范围/号码及真实StoreDirectoryPort规范主体门店。无匿名/用户目录入口，不传账号/联系资料，失败不返回空闲；三个拥有方的任职歧义/窗口冲突明确转为HTTP409，不能由全局异常包装改成HTTP200错误对象。
+独立服务beauty-channel分别实现RemotePersonnelFactsPort/RemoteResourceFactsPort/RemoteScheduleWindowsPort，导入BeautyMerchantClientConfiguration；embedded继续本地提供者。沿InternalHttp内部凭证和ServiceCalls错误语义，不新增数据副本或独立员工表。
+
+**文件/方法与顺序：**
+- [x] c1 原生ScheduleMaintenanceIT RED→GREEN：Service接口ScheduleService.listSchedules/saveScheduleRule、Impl；ScheduleQuery/SaveScheduleRuleReq/ScheduleVO/ScheduleRuleVO；BizScheduleController；ResourceMapper必要revision CAS；ScheduleChanged；历史保留/完整区间冲突/裁剪/夏令时/作用域/占用/事件回滚。
+- [x] c2 ScheduleControllerTest及ScheduleInputTest、一次消融；真实TCP MerchantFactsTransportTest及内部凭证/范围入口测试RED→GREEN；上述远程事实三适配器与装配。
+- [x] c3 一次独立审查、重要问题一轮RED→GREEN、共享/独立reactor回归；同步矩阵/对象/API/Java清单。继承原160项设计编号，新增周规则写入口作为BAPI022的P1补充，不把P3影响审批改成写入口。
+- [x] c4 干净重建实际embedded/standalone宿主、beauty-server、默认零售构件；隔离MySQL正式登录→人员/任职/资格→资源→周班表→远程事实链、跨店冲突/停用/幂等/回滚/重启/依赖失败验证；通过才认定BM-02后端模块完成，继承既有平台结构夹具/历史迁移债务的证据边界。
+
 ## §3 数据层之后的业务任务与启动深化
 
 每部分开工前重新核对功能矩阵对应行、API输入输出、类/方法、表字段、权限与真实跨域提供方，提交“可实施 / 需先补合同 / 延后关闭”结论，再编码。上次形成的类清单不代替这次业务规则梳理。
@@ -355,7 +378,7 @@ python3 scripts/gen-beauty-development-plan.py --check
 
 ## §6 下一次领取任务与本轮交付
 
-**当前下一步：BM02-c周班表及standalone事实接入。BM02-a人员及b资源维护内部检查点已完成（§23/§24），BM-01已通过§22隔离部署关口；BM-02整体尚未完成或部署。** 后续按BM-03预约等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
+**当前下一步：BM-03预约业务模块，先深化预约写入、来源冻结、组合资源占用与恢复需求。BM-02人员/资源/周班表及standalone事实后端模块已通过§25隔离部署关口，BM-01已通过§22关口。** 后续按BM-03预约等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
 
 初始计划阶段产物（2026-10-20，非当前工程状态）：本TDD、开发任务JSON、生成任务对照索引和校验器；当时尚未编码。之后实际实现及验收按§7–20逐批记录，当前总览与后续领取以§21为准。
 
@@ -987,7 +1010,7 @@ schema-lineage仍为14通过/2既有失败，详见方案日志，不宣称全�
 | 顺序/业务模块 | 当前状态及包含原任务 | 本模块完整交付范围 | 本模块部署验证的业务主线 |
 |---|---|---|---|
 | **BM-01 服务项目与门店政策** | **后端模块完成，隔离部署通过（§22）**；POL-01、DEF-01，所需ENG-03/SHR-03 | 共用商品/SKU及门店报价引用；服务执行定义与历史版本；门店服务政策/公开营业信息；相应权限、幂等、审计、事件及部署适配 | 使用真实商品提供方完成查询→发布→门店读取→历史版本回查；验证越权/重复发布/失败回滚，重启后结果保留 |
-| **BM-02 服务人员、排班与服务资源** | BM02-a人员及b物理资源维护检查点完成，班表写入/远程事实及模块部署未完成；SHR-01及SHR-02主档部分 | 业务人员与可选账号、多店任职、岗位/资格、班表维护与例外/变更影响；床位/房间/设备等资源维护；同人STAFF规范身份和受权事实查询 | 建立无账号人员→任职/资格→排班→关联服务资源→查询匹配事实；验证跨店同人、停用/资格过期/班表变更与范围隔离 |
+| **BM-02 服务人员、排班与服务资源** | BM-02 P1后端模块隔离部署通过（§25）；人员/任职/资格、物理资源、周规则及远程事实已实现；P3例外审批/完整任务影响仍后续 | 业务人员与可选账号、多店任职、岗位/资格、班表维护与例外/变更影响；床位/房间/设备等资源维护；同人STAFF规范身份和受权事实查询 | 建立无账号人员→任职/资格→排班→关联服务资源→查询匹配事实；验证跨店同人、停用/资格过期/班表变更与范围隔离 |
 | **BM-03 预约管理** | 仅数据和仲裁基础；AVL-01、APT-01/02/03，所需SHR02b/ENG-03/SHR-03 | 可约/预览、自约/代约、指定或自动匹配、预约列表详情、改约/取消/爽约；完整资源冻结/预留/确认/续期/释放/过期/替换及原号恢复，必要的占用查询 | 创建→查询→改约→取消完整链路；并发争抢不超售、改约失败保旧、响应丢失原号恢复、租期与未知结果正确保护；不要求先做实际服务执行 |
 | **BM-04 到店接待、工单与交易来源** | 数据基础，业务闭环未完成；REC-01、WO-01、SRC-01及所需SHR-03 | 临客认领、预约签到/直客接待、工单项目范围/加项、真实订单报价/来源提交/绑定/逐来源账单及恢复；权限/审计/事件、到店与取消互斥 | 预约到店或直客→幂等建工单→真实来源提交/绑定→查询账单；验证重复签到、越权、报价失效和来源结果未知；未就绪来源不能标为可开工 |
 | **BM-05 服务作业与履约** | 任务数据基础，业务执行未完成；TASK-01/02/03，SHR02b实际占用及超时部分 | 接单、开工、工作流步骤、实际参与/交接、暂停/延长/提前结束、清洁、完工数量、履约确认和工单关闭；实际占用/开放占用/超时阻断及恢复 | 接单→开工→步骤→交接/暂停→完工→清洁释放→履约/关闭；验证不双扣、不双完工、未清洁不放开、超时与未来预约并存及冲突开工阻断 |
@@ -1154,3 +1177,63 @@ BAPI012～016落在共用shop-merchant；美业继续引用人员/任职/岗位/
 边界与取舍：STAFF只读、已有任意历史桶冻结容量，代价是人员变更走人员维护、已使用物理容量待未来版本化协议；主体存在未恢复命令可暂时阻断无关资源维护。并发维护/admission交错、同时同revision提交，真实未释放/孤儿单位及confirmed计数，审计故障/已有资源更新发布失败/真实消费者投递未在本批额外注入；代码复用既有根锁/CAS/影响SQL及事务发布器，仅主张上述实际测试范围。完整历史迁移、真实构件部署、班表及容量/任务生命周期仍是后续范围，不能由本检查点推断通过。已知全仓Architecture/SchemaDrift/lineage债务未修改或声称转绿。
 
 **下一项BM02-c：** 先深化周规则读写、跨店人员冲突/有效任职裁剪/时区边界及standalone事实反向接入；完成后按§21.4部署验证整个BM-02。BAPI023/024的P3例外审批不冒充P1周班表维护。
+
+
+## §25 BM-02人员、资源与周班表后端模块部署关口（2026-10-21）
+
+**模块结论：BM-02 P1后端基础模块完成，隔离实际构件部署关口通过。** 本模块是共用人员/资源/工作窗口维护与事实运输，不包含前端、预约工作台、容量承诺、自动任务交接、P3请假/例外审批或生产发布。
+
+### 25.1 需求 → 设计 → 实现对账
+
+| 需求/所有者 | 实际文件与验收 |
+|---|---|
+| 当前店周规则查询与维护 | merchant的ScheduleService/Impl、BizScheduleController、ScheduleQuery/SaveScheduleRuleReq/ScheduleVO/ScheduleRuleVO；GET /biz/schedules，P1补充POST /biz/schedule-rules |
+| 统一根修订、历史/冲突 | MerchantMappers.ResourceMapper.advanceScheduleRevision与countStoreScheduleRules；ScheduleMaintenanceIT的规则持久化/替换/停用、跨月冲突、任职裁剪、DST、同revision并发及回滚共10项 |
+| 任职变化不绕过排班 | PersonnelServiceImpl.assignPersonnel在既有人→资源锁下拒绝本店任一ACTIVE周规则；employmentExtensionCannotReactivateClippedCrossStoreOverlap、newEmploymentInAnUnassignedGapCannotActivateStoredWeeklyConflict先RED后GREEN，并验证停用旧规则后可变更 |
+| 原子变更证据 | 既有mch_schedule_change_log严格记录reason/actor/前后资源修订；ScheduleChanged复用平台发布器。无真实消费者归档仅显式开关；不新增表/独立流水/旧slot改写 |
+| 独立事实运输 | shop-base MerchantFactsInternalApi；平台portal/internal.InternalMerchantFactsController；beauty-channel的三Remote*Port及BeautyMerchantClientConfiguration，独立server导入；原Personnel/Resource/ScheduleWindowsPort是唯一权威 |
+| 凭证、范围与错误 | MerchantFactsControllerTest含真实GlobalExceptionHandler，三种拥有方歧义明确HTTP409；MerchantFactsTransportTest真实TCP；ScheduleControllerTest真实安全过滤器；ScheduleInputTest及有效期守卫消融 |
+| 实际构件部署 | scripts/verify-beauty-bm02-deployment.mjs复用BM01框架并扩展lib/beauty-bm02-runtime.mjs；外部测试驱动fixtures/BeautyMerchantFactsProbe.java以实际提取server类路径启动原应用，不新增生产探针入口或提供方替身 |
+
+人员revision和资源revision不同：既有人员建档生成STAFF时资源初始revision=0，人员为1；周规则写入必须从资源目录/班表响应读取实际resourceRevision，不凭人员revision猜测。
+
+### 25.2 测试、消融与一次审查
+
+| 证据 | 实际结果 |
+|---|---|
+| 排班初始反例 / 最终 | `/tmp/schedule-maintenance-red.log` 8 assertion failures / 0 errors；`/tmp/schedule-maintenance-final.log` 10 tests / 0 failures / 0 errors |
+| 两项重要问题反例 | `/tmp/schedule-employment-red.log` 2 assertion failures / 0 errors；`/tmp/merchant-conflict-red.log` 2 tests / 1 assertion failure / 0 errors，实际409期望/200错误对象 |
+| 有效期守卫消融 | `/tmp/schedule-input-ablation-red.log` 2 tests / 1 assertion failure / 0 errors；源码finally恢复后输入测试通过 |
+| 改动人员路径的完整原生回归 | `/tmp/bm02-personnel-final.log` 13 tests / 0 failures / 0 errors |
+| 最终共享merchant依赖reactor | `/tmp/bm02-merchant-final.log` 296 tests / 0 failures / 0 errors |
+| 最终输入/HTTP/成员门店会话 | `/tmp/bm02-final-http.log` 35 tests / 0 failures / 0 errors |
+| clean独立美业reactor | `/tmp/bm02-beauty-final-build.log` 65 tests / 0 failures / 0 errors，含三种反向事实传输及原目录/版本回归 |
+| 餐饮影响 | `/tmp/bm02-food-impact.log` 21 tests / 0 failures / 0 errors，幂等/outbox/条件装配 |
+| 全仓架构守卫 | `/tmp/bm02-architecture.log` 16 tests / 1 failure / 0 errors；唯一noFullyQualifiedReferences指向未修改的OpsPointsInspectionController，和基线相同。其余15项通过，不声称全仓绿色 |
+
+一次独立审查0 Critical / 2 Important / 1 Minor；两重要问题均在一次修复中RED→GREEN并通过最终回归，没有二次审查。Minor延期：外部构件探针验证数量、资格存在和容量，未逐项断言返回身份/窗口端点；实际SQL原生身份断言和正式HTTP链已有覆盖，未将该探针当全字段证明。
+生产规模性能、真实admission持续争用及BM03尚未实现的消费行为未作运行认证；原生与部署库均为显式结构夹具，不是平台全历史Flyway重放。SchemaDrift/lineage债务未重跑或修改。
+
+### 25.3 实际隔离部署与构件
+
+最终输出：`/tmp/beauty-bm02-accepted-deployment/result.json`，status=BM02_RUNTIME_CASES_PASSED。
+数据库为自建MySQL9.7.2 tmpfs、回环随机端口，平台结构夹具＋真实V536；美业私有V1校验，历史0/1重启不变。无共享/生产库操作或外部发布。
+
+- 实际embedded宿主：正式密码登录，实际商品拥有方SKU资格、无登录建档与幂等、物理资源维护、相同人员跨店任职且仅一个STAFF、跨店周规则冲突/相邻放行、容量计数/历史桶阻断、成员关联与暂停/恢复（恢复业务人员不恢复账号）、stale回滚与重启查询均通过。
+- 普通standalone宿主与beauty-server实际JAR启动，原目录/政策链继续通过；共用维护仍在PLATFORM。测试驱动对提取且记录摘要的同一server构件启动原BeautyApplication，验证三个实际远程Bean→真实PLATFORM事实、故意注入跨店规则冲突后返回BizException(CONFLICT)/HTTP409、连接故障三种事实均拒绝；冲突注入SQL已恢复，未冒充普通写入口。
+- 默认零售真实构件：无美业路由，共用商品/人员资源/周班表仍可读取；餐饮影响由上述21项回归核验，未声称餐饮生产部署。
+- 宿主readiness实测200；独立服务整体readiness仍503，这是未开放预约/完整营业能力的既有关口；不因本模块通过就改成200。进程与自建容器均自动清理。
+
+| 构件 | SHA-256 |
+|---|---|
+| embedded | `77dbdabf52a9e64abf46290a1da546a3c5b1db345c28cf89c648417ef2cdc30a` |
+| standaloneHost | `3715eb6d16e747a2ebb19df072dd45990645057b1f773fb95de8c6108d1607a6` |
+| defaultRetail | `4f5e80a03857a577d51535979619a1f289c394084db98597df3e2d63920e13d1` |
+| beautyServer | `ec56e931abb66f1b65223244230b5d322cf7145099e024166720b76b59894964` |
+
+### 25.4 当前取舍与下一业务模块
+
+新规则需明确结束日且最多366日，长期班表续排；已有ACTIVE周规则时，须先显式停用再新增/替换本店任职/资格（包括历史日期规则，避免跨日筛漏），不自动重排。已使用物理资源容量仍冻结，等待未来版本化容量方案。
+独立事实测试驱动只证明当前真实Bean/运输/拥有方链，不能替代尚未实现的预约消费端点；完整生产迁移、全仓守卫和最终发布仍有独立关口。
+
+下一项BM-03：先按已批准矩阵/API深化预约创建/改期/取消、可信顾客与临客范围、单次先付/无交易来源、来源冻结、组合容量占用/替换和未知恢复，再编码；预约详情/查询与恢复随模块交付，完成后再做一次实际构件部署验收。

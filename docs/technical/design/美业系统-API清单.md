@@ -95,11 +95,11 @@
 
 | 编号 / 功能 / 阶段 | 方法与路径或合同 | 操作与关键入参 | 返回 / 状态 |
 |---|---|---|---|
-| BAPI-012<br>BTY-C01、BTY-C03<br>P1 | `GET /biz/personnel` | 查人员公开或内部档案<br>PersonnelQuery(page,size,status,keyword,storeNo?,skill?=goodsNo)；当前店、biz:store:admin | PageData<PersonnelVO>按用途脱敏<br>BM02-a已实现并测试通过；资源维护见BM02-b，BM02-c及完整模块部署未完成，详见主TDD§23/§24 |
-| BAPI-013<br>BTY-C01<br>P1 | `POST /biz/personnel` | 建立可无登录的业务人员<br>CreatePersonnelReq(displayName,avatarRef?,assignment)；无登录建档，初始当前店任职/岗位/资格/STAFF原子写 | PersonnelVO<br>BM02-a已实现并测试通过；资源维护见BM02-b，BM02-c及完整模块部署未完成，详见主TDD§23/§24 |
-| BAPI-014<br>BTY-C01、BTY-C05<br>P1 | `POST /biz/personnel/{personnelNo}/status-changes` | 人员停用与在途影响协调<br>ChangePersonnelStatusReq(expectedRevision,status,reason)；owner，未处理影响409，账号根锁与实际停用回查 | PersonnelChangeVO含受影响预约/任务<br>BM02-a已实现并测试通过；资源维护见BM02-b，BM02-c及完整模块部署未完成，详见主TDD§23/§24 |
-| BAPI-015<br>BTY-C01<br>P1 | `POST /biz/personnel/{personnelNo}/account-links` | 绑定/解绑可选登录账号<br>LinkPersonnelAccountReq(expectedRevision,accountNo?)；owner；null显式解绑，保留旧/新关联审计 | PersonnelAccountLinkVO<br>BM02-a已实现并测试通过；资源维护见BM02-b，BM02-c及完整模块部署未完成，详见主TDD§23/§24 |
-| BAPI-016<br>BTY-C01、BTY-C03<br>P1 | `POST /biz/personnel/{personnelNo}/assignments` | 维护任职岗位与资格有效期<br>AssignPersonnelReq(expectedRevision,assignmentNo?,storeNo,validFrom,validTo?,publicVisible,levelCode?,sortOrder,positions,skills[goodsNo,skuNo,levelCode?]) | PersonnelAssignmentVO<br>BM02-a已实现并测试通过；资源维护见BM02-b，BM02-c及完整模块部署未完成，详见主TDD§23/§24 |
+| BAPI-012<br>BTY-C01、BTY-C03<br>P1 | `GET /biz/personnel` | 查人员公开或内部档案<br>PersonnelQuery(page,size,status,keyword,storeNo?,skill?=goodsNo)；当前店、biz:store:admin | PageData<PersonnelVO>按用途脱敏<br>BM-02 P1后端模块隔离部署通过；P3例外审批/预约/容量许可仍后续，见主TDD§25 |
+| BAPI-013<br>BTY-C01<br>P1 | `POST /biz/personnel` | 建立可无登录的业务人员<br>CreatePersonnelReq(displayName,avatarRef?,assignment)；无登录建档，初始当前店任职/岗位/资格/STAFF原子写 | PersonnelVO<br>BM-02 P1后端模块隔离部署通过；P3例外审批/预约/容量许可仍后续，见主TDD§25 |
+| BAPI-014<br>BTY-C01、BTY-C05<br>P1 | `POST /biz/personnel/{personnelNo}/status-changes` | 人员停用与在途影响协调<br>ChangePersonnelStatusReq(expectedRevision,status,reason)；owner，未处理影响409，账号根锁与实际停用回查 | PersonnelChangeVO含受影响预约/任务<br>BM-02 P1后端模块隔离部署通过；P3例外审批/预约/容量许可仍后续，见主TDD§25 |
+| BAPI-015<br>BTY-C01<br>P1 | `POST /biz/personnel/{personnelNo}/account-links` | 绑定/解绑可选登录账号<br>LinkPersonnelAccountReq(expectedRevision,accountNo?)；owner；null显式解绑，保留旧/新关联审计 | PersonnelAccountLinkVO<br>BM-02 P1后端模块隔离部署通过；P3例外审批/预约/容量许可仍后续，见主TDD§25 |
+| BAPI-016<br>BTY-C01、BTY-C03<br>P1 | `POST /biz/personnel/{personnelNo}/assignments` | 维护任职岗位与资格有效期<br>AssignPersonnelReq(expectedRevision,assignmentNo?,storeNo,validFrom,validTo?,publicVisible,levelCode?,sortOrder,positions,skills[goodsNo,skuNo,levelCode?]) | PersonnelAssignmentVO<br>BM-02 P1后端模块隔离部署通过；P3例外审批/预约/容量许可仍后续，见主TDD§25 |
 | BAPI-017<br>BTY-C02<br>P1 | `CONTRACT merchant.roles-and-permissions` | 维护账号门店角色及操作范围<br>accountNo,storeNo,roleCode,permissionScope | RoleGrantVO不改变业务岗位<br>共用合同接入，路径待核对 |
 | BAPI-018<br>BTY-C04<br>P3 | `POST /biz/personnel-cooperations` | 维护技师助理顾问与顾客负责范围<br>personnelNos,customerScope,validity | PersonnelCooperationVO<br>共用候选新接口 |
 | BAPI-019<br>BTY-C05<br>P1 | `CONTRACT identity.session-revoke` | 撤销离职人员关联账号会话<br>accountNo,reason | SessionRevocationVO与审计<br>共用合同接入，路径待核对 |
@@ -110,9 +110,9 @@
 
 | 编号 / 功能 / 阶段 | 方法与路径或合同 | 操作与关键入参 | 返回 / 状态 |
 |---|---|---|---|
-| BAPI-020<br>BTY-D01<br>P1 | `GET /biz/resources` | 查询规范人员与物理资源<br>ResourceQuery(page,size,storeNo?,type?,status?,keyword?)；当前店物理资源及有效/未来任职STAFF | PageData<ResourceVO><br>BM02-b已实现并测试通过；BM02-c及完整模块部署未完成，详见主TDD§24 |
-| BAPI-021<br>BTY-D01<br>P1 | `POST /biz/resources` | 维护资源及容量<br>SaveResourceReq(resourceNo?,type,personnelNo=null,storeNo?,name,capacity,status,expectedRevision)；仅ROOM/SEAT/DEVICE，身份不可变，强制Idempotency-Key | ResourceVO<br>BM02-b已实现并测试通过；BM02-c及完整模块部署未完成，详见主TDD§24 |
-| BAPI-022<br>BTY-D02<br>P1 | `GET /biz/schedules` | 查询班表与营业例外<br>resourceNos,from,to | ScheduleVO<br>共用候选新接口 |
+| BAPI-020<br>BTY-D01<br>P1 | `GET /biz/resources` | 查询规范人员与物理资源<br>ResourceQuery(page,size,storeNo?,type?,status?,keyword?)；当前店物理资源及有效/未来任职STAFF | PageData<ResourceVO><br>BM-02 P1后端模块隔离部署通过；P3例外审批/预约/容量许可仍后续，见主TDD§25 |
+| BAPI-021<br>BTY-D01<br>P1 | `POST /biz/resources` | 维护资源及容量<br>SaveResourceReq(resourceNo?,type,personnelNo=null,storeNo?,name,capacity,status,expectedRevision)；仅ROOM/SEAT/DEVICE，身份不可变，强制Idempotency-Key | ResourceVO<br>BM-02 P1后端模块隔离部署通过；P3例外审批/预约/容量许可仍后续，见主TDD§25 |
+| BAPI-022<br>BTY-D02<br>P1 | `GET /biz/schedules` | 查询班表与营业例外<br>ScheduleQuery(resourceNos,from,to)；1..50规范号、最多31日；周规则写入口见实施补充 | ScheduleVO（当前店ACTIVE规则、展开窗口、resourceRevisions）<br>BM-02 P1后端模块隔离部署通过；P3例外审批/预约/容量许可仍后续，见主TDD§25 |
 | BAPI-023<br>BTY-D02、BTY-D04<br>P3 | `POST /biz/schedule-changes/previews` | 预览请假加班停约对预约任务影响<br>resourceNos,intervals,changes | ScheduleImpactVO<br>共用候选新接口 |
 | BAPI-024<br>BTY-D02、BTY-D04<br>P3 | `POST /biz/schedule-changes` | 提交排班变更并生成协调待办<br>previewNo,expectedRevisions,reason | ScheduleChangeVO<br>共用候选新接口 |
 | BAPI-025<br>BTY-D03<br>P1 | `GET /biz/x/beauty/workbench/calendar` | 查询日历统一快照<br>storeNo,from,to,view,resourceTypes,resourceCursor | CalendarSnapshotVO见工作台专篇<br>美业候选新接口 |
@@ -501,3 +501,14 @@ P1完成人员/资源统一、单次先付服务、无交易预约、接待工�
 行业路由前缀、权限码、共用CONTRACT的真实入口与来源类型、异步响应适配，以及资源桶精度需在实施评审定稿。当前文档不注册路由，不更新后端已实现API清单，也不创建前端孤立页面。
 
 预约工作台首期选“有水位的全量窗口快照＋短轮询”；可视化按人员/工位切换，并支持未分派任务与异常栏。暂不要求WebSocket或新增通用工作流引擎。具体快照一致性、分页、拖动预览/提交和验收场景见工作台专篇。
+
+## 八、实施补充入口（独立于原160项设计编号）
+
+以下补充P1周规则写入与内部事实协议，不将P3例外审批冒充P1，也不改变原设计任务编号。实际交付以主TDD模块关口为准。
+
+| 方法 / 路径 | 所有者 / 用途 | 请求 | 返回 |
+|---|---|---|---|
+| `POST /biz/schedule-rules` | shop-merchant<br>BAPI022的P1周规则维护补充；不替代BAPI023/024 P3审批 | SaveScheduleRuleReq(ruleNo?,resourceNo,expectedRevision,timezone,weekdayMask,startMinute,endMinute,endDayOffset,validFrom,validTo,status,reason)；key必填，validTo必填且最多366日 | ScheduleRuleVO；资源根revision、历史保留、完整有效期冲突校验 |
+| `POST /internal/merchant/facts/personnel` | PLATFORM portal/internal → 共用personnel所有者<br>受内部凭证及规范主体/店范围保护的只读事实 | PersonnelFactsPort.Query | List<PersonnelFact>；无账号/联系资料 |
+| `POST /internal/merchant/facts/resources` | PLATFORM portal/internal → 共用resource所有者<br>受内部凭证保护；不授予可预约容量 | ResourceFactsPort.Query | List<ResourceFact> |
+| `POST /internal/merchant/facts/schedules` | PLATFORM portal/internal → 共用schedule所有者<br>受内部凭证保护；跨店冲突不能隐藏为空闲 | ScheduleWindowsPort.Query | List<Window> |

@@ -178,7 +178,7 @@ BAPI012～016实际入口归shop-merchant的`/biz/personnel`，使用现有`biz:
 默认严格要求事件路由；无实际消费者的证据归档仅显式`shop.personnel.publication.archive-only=true`启用。
 验证脚本`node scripts/verify-personnel-maintenance.mjs`使用自建/自动清理MySQL8.4；
 `--race-only`、`--directory-only`、`--impact-only`可聚焦竞态、目录和影响补验。产品事实与部分OTP/成员构造边界的替身范围见主TDD§23。
-本批是BM02-a检查点；资源/周班表维护、standalone事实接入及BM-02整模块部署尚未完成，不计作可预约或开工。
+人员维护为BM02-a内部检查点；资源/周班表及standalone事实最终模块验收见主TDD§25，不计作可预约或开工。
 
 ## BM02-b共用物理资源维护
 
@@ -187,4 +187,15 @@ BAPI020/021归shop-merchant：GET/POST `/biz/resources`，沿`biz:store:admin`�
 任意历史容量桶存在时冻结容量；未恢复命令、开放占用及容量证据未解决时拒绝更新，不重写旧slot或容量桶。
 证据事件默认严格交付；显式`shop.resource.publication.archive-only=true`才允许无消费者归档。
 原生验证脚本`node scripts/verify-resource-maintenance.mjs`使用自建/自动清理MySQL8.4结构夹具，非全历史迁移重放。
-BM02-c班表及远程事实接入、BM-02整模块真实构件部署仍待完成，当前不声明可预约或工作流可开工。
+BM02-c班表/远程事实及整模块隔离构件部署已通过主TDD§25关口；预约和工作流仍为后续模块。
+
+## BM02-c周班表与独立事实接入
+
+共用所有者新增GET `/biz/schedules`与POST `/biz/schedule-rules`，沿`biz:store:admin`和当前店；写入必须带Idempotency-Key、资源根expectedRevision及reason。
+查询1..50个资源、最多31日；新周规则必须明确最后开始日、最多366日，长期班表需续排。替换保留旧INACTIVE行，新版本另号；跨店冲突、任职歧义与DST端点异常明确拒绝，不把工作窗口当剩余容量。
+默认证据事件要求正式路由，仅显式`shop.schedule.publication.archive-only=true`允许无消费者归档。
+独立服务的BeautyMerchantClientConfiguration提供三个既有Port的远程实现，使用内部凭证向PLATFORM读取人员、规范资源和周窗口；embedded继续本地所有者，不复制数据。
+原生验证：`node scripts/verify-schedule-maintenance.mjs`，`--employment-only`聚焦任职变更对已有周规则的保护。
+整模块验证：沿BM-01的真实构件环境变量，执行`node scripts/verify-beauty-bm02-deployment.mjs`，可设`BEAUTY_BM02_EVIDENCE_DIR`保存证据。
+部署脚本复用原隔离框架并扩展人员/资源/周规则用例；`scripts/fixtures/BeautyMerchantFactsProbe.java`只在验收中对已提取且记录摘要的实际server类路径启动原BeautyApplication，调用真实远程Bean。它不是生产路由，不替代普通server/host JAR启动，不声称BM03尚未实现的预约消费入口已完成。
+模块隔离部署已通过；实际范围/构件摘要/延期项见主TDD§25。内部事实冲突映射HTTP409；任职变更遇本店ACTIVE规则时须先显式停用，包含历史日期规则。

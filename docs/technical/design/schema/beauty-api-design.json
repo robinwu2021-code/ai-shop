@@ -699,7 +699,7 @@
             "BTY-C03"
           ],
           "phase": "P1",
-          "status": "BM02-a已实现并测试通过；资源维护见BM02-b，BM02-c及完整模块部署未完成，详见主TDD§23/§24"
+          "status": "BM-02 P1后端模块隔离部署通过；P3例外审批/预约/容量许可仍后续，见主TDD§25"
         },
         {
           "id": "BAPI-013",
@@ -712,7 +712,7 @@
             "BTY-C01"
           ],
           "phase": "P1",
-          "status": "BM02-a已实现并测试通过；资源维护见BM02-b，BM02-c及完整模块部署未完成，详见主TDD§23/§24"
+          "status": "BM-02 P1后端模块隔离部署通过；P3例外审批/预约/容量许可仍后续，见主TDD§25"
         },
         {
           "id": "BAPI-014",
@@ -726,7 +726,7 @@
             "BTY-C05"
           ],
           "phase": "P1",
-          "status": "BM02-a已实现并测试通过；资源维护见BM02-b，BM02-c及完整模块部署未完成，详见主TDD§23/§24"
+          "status": "BM-02 P1后端模块隔离部署通过；P3例外审批/预约/容量许可仍后续，见主TDD§25"
         },
         {
           "id": "BAPI-015",
@@ -739,7 +739,7 @@
             "BTY-C01"
           ],
           "phase": "P1",
-          "status": "BM02-a已实现并测试通过；资源维护见BM02-b，BM02-c及完整模块部署未完成，详见主TDD§23/§24"
+          "status": "BM-02 P1后端模块隔离部署通过；P3例外审批/预约/容量许可仍后续，见主TDD§25"
         },
         {
           "id": "BAPI-016",
@@ -753,7 +753,7 @@
             "BTY-C03"
           ],
           "phase": "P1",
-          "status": "BM02-a已实现并测试通过；资源维护见BM02-b，BM02-c及完整模块部署未完成，详见主TDD§23/§24"
+          "status": "BM-02 P1后端模块隔离部署通过；P3例外审批/预约/容量许可仍后续，见主TDD§25"
         },
         {
           "id": "BAPI-017",
@@ -813,7 +813,7 @@
             "BTY-D01"
           ],
           "phase": "P1",
-          "status": "BM02-b已实现并测试通过；BM02-c及完整模块部署未完成，详见主TDD§24"
+          "status": "BM-02 P1后端模块隔离部署通过；P3例外审批/预约/容量许可仍后续，见主TDD§25"
         },
         {
           "id": "BAPI-021",
@@ -826,20 +826,20 @@
             "BTY-D01"
           ],
           "phase": "P1",
-          "status": "BM02-b已实现并测试通过；BM02-c及完整模块部署未完成，详见主TDD§24"
+          "status": "BM-02 P1后端模块隔离部署通过；P3例外审批/预约/容量许可仍后续，见主TDD§25"
         },
         {
           "id": "BAPI-022",
           "method": "GET",
           "path": "/biz/schedules",
           "purpose": "查询班表与营业例外",
-          "request": "resourceNos,from,to",
-          "response": "ScheduleVO",
+          "request": "ScheduleQuery(resourceNos,from,to)；1..50规范号、最多31日；周规则写入口见实施补充",
+          "response": "ScheduleVO（当前店ACTIVE规则、展开窗口、resourceRevisions）",
           "functions": [
             "BTY-D02"
           ],
           "phase": "P1",
-          "status": "共用候选新接口"
+          "status": "BM-02 P1后端模块隔离部署通过；P3例外审批/预约/容量许可仍后续，见主TDD§25"
         },
         {
           "id": "BAPI-023",
@@ -2740,6 +2740,40 @@
           "status": "美业候选新接口"
         }
       ]
+    }
+  ],
+  "implementationEndpoints": [
+    {
+      "method": "POST",
+      "path": "/biz/schedule-rules",
+      "owner": "shop-merchant",
+      "purpose": "BAPI022的P1周规则维护补充；不替代BAPI023/024 P3审批",
+      "request": "SaveScheduleRuleReq(ruleNo?,resourceNo,expectedRevision,timezone,weekdayMask,startMinute,endMinute,endDayOffset,validFrom,validTo,status,reason)；key必填，validTo必填且最多366日",
+      "response": "ScheduleRuleVO；资源根revision、历史保留、完整有效期冲突校验"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/merchant/facts/personnel",
+      "owner": "PLATFORM portal/internal → 共用personnel所有者",
+      "purpose": "受内部凭证及规范主体/店范围保护的只读事实",
+      "request": "PersonnelFactsPort.Query",
+      "response": "List<PersonnelFact>；无账号/联系资料"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/merchant/facts/resources",
+      "owner": "PLATFORM portal/internal → 共用resource所有者",
+      "purpose": "受内部凭证保护；不授予可预约容量",
+      "request": "ResourceFactsPort.Query",
+      "response": "List<ResourceFact>"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/merchant/facts/schedules",
+      "owner": "PLATFORM portal/internal → 共用schedule所有者",
+      "purpose": "受内部凭证保护；跨店冲突不能隐藏为空闲",
+      "request": "ScheduleWindowsPort.Query",
+      "response": "List<Window>"
     }
   ]
 }

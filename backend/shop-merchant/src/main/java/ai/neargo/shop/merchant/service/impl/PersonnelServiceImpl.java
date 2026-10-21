@@ -185,7 +185,10 @@ public class PersonnelServiceImpl implements PersonnelService {
                 PersonnelAssignmentVO.class, trusted -> {
                     var person = lock(trusted, personnelNo, request.expectedRevision());
                     requireActive(person);
-                    fence(trusted, person);
+                    var resource = fence(trusted, person);
+                    if (resources.countStoreScheduleRules(entity, store, resource.getResourceNo()) > 0) {
+                        throw BizException.of(ErrorCode.CONFLICT);
+                    }
                     if (productFailure != null) { throw productFailure; }
                     String assignment = employment(person, store, actor, request);
                     advance(person, actor, person.getStatus());

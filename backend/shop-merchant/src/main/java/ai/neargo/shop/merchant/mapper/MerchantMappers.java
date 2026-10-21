@@ -649,6 +649,19 @@ public final class MerchantMappers {
 
     /** Canonical resources; a staff resource is shared by all valid store assignments of one personnel. */
     public interface ResourceMapper extends BaseMapper<MchResource> {
+        /** Any active local rule must be explicitly retired before employment can activate clipped occurrences. */
+        @Select("SELECT COUNT(*) FROM mch_schedule_rule WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND resource_no=#{resource} AND store_no=#{store} AND status='ACTIVE' AND deleted=0")
+        long countStoreScheduleRules(@Param("entity") String entity, @Param("store") String store,
+                @Param("resource") String resource);
+
+        /** Schedule and physical maintenance share one root revision, including canonical cross-store STAFF. */
+        @Update("UPDATE mch_resource SET version=version+1,updated_by=#{actor},updated_at=#{at} "
+                + "WHERE tenant_no='MAIN' AND entity_no=#{entity} AND resource_no=#{resource} "
+                + "AND version=#{expected} AND version<9223372036854775807 AND deleted=0")
+        int advanceScheduleRevision(@Param("entity") String entity, @Param("resource") String resource,
+                @Param("expected") long expected, @Param("actor") String actor, @Param("at") LocalDateTime at);
+
         /** Historical bucket capacities are immutable until a versioned capacity-change protocol exists. */
         @Select("SELECT COUNT(*) FROM mch_resource_bucket WHERE tenant_no='MAIN' "
                 + "AND entity_no=#{entity} AND resource_no=#{resource}")

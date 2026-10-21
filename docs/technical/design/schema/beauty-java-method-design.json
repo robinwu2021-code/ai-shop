@@ -7707,27 +7707,27 @@
     {
       "apiId": "BAPI-012",
       "owner": "共用人员/资源所有者",
-      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     },
     {
       "apiId": "BAPI-013",
       "owner": "共用人员/资源所有者",
-      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     },
     {
       "apiId": "BAPI-014",
       "owner": "共用人员/资源所有者",
-      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     },
     {
       "apiId": "BAPI-015",
       "owner": "共用人员/资源所有者",
-      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     },
     {
       "apiId": "BAPI-016",
       "owner": "共用人员/资源所有者",
-      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     },
     {
       "apiId": "BAPI-017",
@@ -7747,17 +7747,17 @@
     {
       "apiId": "BAPI-020",
       "owner": "共用人员/资源所有者",
-      "status": "IMPLEMENTED_BM02B_TESTED_MODULE_GATE_PENDING"
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     },
     {
       "apiId": "BAPI-021",
       "owner": "共用人员/资源所有者",
-      "status": "IMPLEMENTED_BM02B_TESTED_MODULE_GATE_PENDING"
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     },
     {
       "apiId": "BAPI-022",
       "owner": "共用人员/资源所有者",
-      "status": "SHARED_CANDIDATE_HTTP"
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     },
     {
       "apiId": "BAPI-023",
@@ -10057,7 +10057,7 @@
           "name": "query"
         }
       ],
-      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     },
     {
       "apiId": "BAPI-013",
@@ -10106,7 +10106,7 @@
           "name": "idempotencyKey"
         }
       ],
-      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     },
     {
       "apiId": "BAPI-014",
@@ -10164,7 +10164,7 @@
           "name": "idempotencyKey"
         }
       ],
-      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     },
     {
       "apiId": "BAPI-015",
@@ -10222,7 +10222,7 @@
           "name": "idempotencyKey"
         }
       ],
-      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     },
     {
       "apiId": "BAPI-016",
@@ -10280,7 +10280,7 @@
           "name": "idempotencyKey"
         }
       ],
-      "status": "IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING"
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     },
     {
       "apiId": "BAPI-018",
@@ -10364,7 +10364,7 @@
           "name": "query"
         }
       ],
-      "status": "IMPLEMENTED_BM02B_TESTED_MODULE_GATE_PENDING"
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     },
     {
       "apiId": "BAPI-021",
@@ -10413,7 +10413,7 @@
           "name": "idempotencyKey"
         }
       ],
-      "status": "IMPLEMENTED_BM02B_TESTED_MODULE_GATE_PENDING"
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     },
     {
       "apiId": "BAPI-022",
@@ -10428,6 +10428,11 @@
           "type": "PersonnelScheduleQuery",
           "name": "query",
           "annotation": "@Valid @ModelAttribute"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)"
         }
       ],
       "serviceParameters": [
@@ -10448,7 +10453,7 @@
           "name": "query"
         }
       ],
-      "status": "CANDIDATE_SHARED_OWNER_NOT_EXISTING_API"
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     },
     {
       "apiId": "BAPI-023",
@@ -10677,6 +10682,75 @@
     {
       "class": "ai.neargo.shop.merchant.dto.ResourceVO",
       "contract": "String resourceNo,type,storeNo,personnelNo,name,status; int capacity; long revision; boolean openOccupied；无物理id/占用凭证/剩余容量"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.dto.ScheduleQuery",
+      "contract": "Set<String> resourceNos; OffsetDateTime from,to；1..50号、最多31日"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.dto.SaveScheduleRuleReq",
+      "contract": "String ruleNo?,resourceNo,timezone,status,reason; Long expectedRevision（资源根）; Integer weekdayMask,startMinute,endMinute,endDayOffset; LocalDate validFrom,validTo（必填，最多366开始日）"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.dto.ScheduleVO",
+      "contract": "OffsetDateTime from,to; Map<String,Long> resourceRevisions; List<Rule> rules; List<ScheduleWindowsPort.Window> windows；非容量余量"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.dto.ScheduleRuleVO",
+      "contract": "String ruleNo,resourceNo,status; long resourceRevision；替换新号，停用旧号"
+    }
+  ],
+  "sharedSupplementalHttpMethods": [
+    {
+      "apiId": "BAPI-022补充",
+      "method": "POST",
+      "path": "/biz/schedule-rules",
+      "controller": "ai.neargo.shop.merchant.api.biz.BizScheduleController",
+      "service": "ai.neargo.shop.merchant.service.ScheduleService",
+      "impl": "ai.neargo.shop.merchant.service.impl.ScheduleServiceImpl",
+      "name": "saveScheduleRule",
+      "inputType": "ai.neargo.shop.merchant.dto.SaveScheduleRuleReq",
+      "returnType": "ScheduleRuleVO",
+      "parameters": [
+        {
+          "type": "SaveScheduleRuleReq",
+          "name": "request",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "key",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)"
+        }
+      ],
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo"
+        },
+        {
+          "type": "String",
+          "name": "currentStoreNo"
+        },
+        {
+          "type": "String",
+          "name": "actorNo"
+        },
+        {
+          "type": "SaveScheduleRuleReq",
+          "name": "request"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey"
+        }
+      ],
+      "status": "IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED"
     }
   ]
 }

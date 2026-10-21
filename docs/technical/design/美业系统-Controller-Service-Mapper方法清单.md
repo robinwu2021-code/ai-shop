@@ -2413,11 +2413,11 @@ OperationVO getOperation(String entityNo, String currentStoreNo, String actorNo,
 
 ## 三、11条共用HTTP目标与实施对照
 
-以下为人员/资源所有者的目标及部分已实施签名；逐项状态见API清单与主TDD。五个人员及两个物理资源维护入口已编码，班表等仍待实施；这些类不在beauty-web/api/core中生成。归shop-merchant自身既有包边界，Service接口/Impl按原规范分包；Controller不得转而依赖人员Mapper。具体共享实现要同步共享契约评审与独立架构扫描。
+以下为人员/资源所有者的目标及部分已实施签名；逐项状态见API清单与主TDD。人员、物理资源、周班表读写已编码，P3例外审批等仍待实施；这些类不在beauty-web/api/core中生成。归shop-merchant自身既有包边界，Service接口/Impl按原规范分包；Controller不得转而依赖人员Mapper。具体共享实现要同步共享契约评审与独立架构扫描。
 
 ### BAPI-012 · GET /biz/personnel
 
-状态：IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING。
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
 
 Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；输入类型：`ai.neargo.shop.merchant.dto.PersonnelQuery`。返回VO沿同域merchant.dto；非美业DTO。
 
@@ -2433,7 +2433,7 @@ PageData<PersonnelVO> listPersonnel(String entityNo, String currentStoreNo, Stri
 
 ### BAPI-013 · POST /biz/personnel
 
-状态：IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING。
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
 
 Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；输入类型：`ai.neargo.shop.merchant.dto.CreatePersonnelReq`。返回VO沿同域merchant.dto；非美业DTO。
 
@@ -2449,7 +2449,7 @@ PersonnelVO createPersonnel(String entityNo, String currentStoreNo, String actor
 
 ### BAPI-014 · POST /biz/personnel/{personnelNo}/status-changes
 
-状态：IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING。
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
 
 Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；输入类型：`ai.neargo.shop.merchant.dto.ChangePersonnelStatusReq`。返回VO沿同域merchant.dto；非美业DTO。
 
@@ -2465,7 +2465,7 @@ PersonnelChangeVO changePersonnelStatus(String entityNo, String currentStoreNo, 
 
 ### BAPI-015 · POST /biz/personnel/{personnelNo}/account-links
 
-状态：IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING。
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
 
 Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；输入类型：`ai.neargo.shop.merchant.dto.LinkPersonnelAccountReq`。返回VO沿同域merchant.dto；非美业DTO。
 
@@ -2481,7 +2481,7 @@ PersonnelAccountLinkVO linkPersonnelAccount(String entityNo, String currentStore
 
 ### BAPI-016 · POST /biz/personnel/{personnelNo}/assignments
 
-状态：IMPLEMENTED_BM02A_TESTED_MODULE_GATE_PENDING。
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
 
 Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；输入类型：`ai.neargo.shop.merchant.dto.AssignPersonnelReq`。返回VO沿同域merchant.dto；非美业DTO。
 
@@ -2513,7 +2513,7 @@ PersonnelCooperationVO setCooperation(String entityNo, String currentStoreNo, St
 
 ### BAPI-020 · GET /biz/resources
 
-状态：IMPLEMENTED_BM02B_TESTED_MODULE_GATE_PENDING。
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
 
 Controller：`ai.neargo.shop.merchant.api.biz.BizResourceController`；输入类型：`ai.neargo.shop.merchant.dto.ResourceQuery`。返回VO沿同域merchant.dto；非美业DTO。
 
@@ -2529,7 +2529,7 @@ PageData<ResourceVO> listResources(String entityNo, String currentStoreNo, Strin
 
 ### BAPI-021 · POST /biz/resources
 
-状态：IMPLEMENTED_BM02B_TESTED_MODULE_GATE_PENDING。
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
 
 Controller：`ai.neargo.shop.merchant.api.biz.BizResourceController`；输入类型：`ai.neargo.shop.merchant.dto.SaveResourceReq`。返回VO沿同域merchant.dto；非美业DTO。
 
@@ -2545,12 +2545,12 @@ ResourceVO saveResource(String entityNo, String currentStoreNo, String actorNo, 
 
 ### BAPI-022 · GET /biz/schedules
 
-状态：CANDIDATE_SHARED_OWNER_NOT_EXISTING_API。
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
 
 Controller：`ai.neargo.shop.merchant.api.biz.BizScheduleController`；输入类型：`ai.neargo.shop.merchant.dto.PersonnelScheduleQuery`。返回VO沿同域merchant.dto；非美业DTO。
 
 ```java
-ScheduleVO getSchedules(@Valid @ModelAttribute PersonnelScheduleQuery query);
+ScheduleVO getSchedules(@Valid @ModelAttribute PersonnelScheduleQuery query, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service：`ai.neargo.shop.merchant.service.PersonnelScheduleService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelScheduleServiceImpl`。
@@ -2591,6 +2591,22 @@ Service：`ai.neargo.shop.merchant.service.PersonnelScheduleService`；Impl：`a
 ScheduleChangeVO changeSchedule(String entityNo, String currentStoreNo, String actorNo, ChangeScheduleReq req, String idempotencyKey);
 ```
 
+### BAPI-022补充 · POST /biz/schedule-rules
+
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizScheduleController`；输入类型：`ai.neargo.shop.merchant.dto.SaveScheduleRuleReq`。返回VO沿同域merchant.dto；非美业DTO。
+
+```java
+ScheduleRuleVO saveScheduleRule(@Valid @RequestBody SaveScheduleRuleReq request, @RequestHeader("Idempotency-Key") String key, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service：`ai.neargo.shop.merchant.service.ScheduleService`；Impl：`ai.neargo.shop.merchant.service.impl.ScheduleServiceImpl`。
+
+```java
+ScheduleRuleVO saveScheduleRule(String entityNo, String currentStoreNo, String actorNo, SaveScheduleRuleReq request, String idempotencyKey);
+```
+
 ### 本批已冻结的共用维护DTO
 
 | 类（shop-merchant） | 字段合同 |
@@ -2607,8 +2623,12 @@ ScheduleChangeVO changeSchedule(String entityNo, String currentStoreNo, String a
 | `ai.neargo.shop.merchant.dto.ResourceQuery` | Integer page,size; String storeNo,type,status,keyword；默认1/20，上限100，storeNo仅当前店确认 |
 | `ai.neargo.shop.merchant.dto.SaveResourceReq` | String resourceNo?,type,personnelNo=null,storeNo?,name,status; Integer capacity; Long expectedRevision；物理类型/归属不可变，STAFF由人员维护 |
 | `ai.neargo.shop.merchant.dto.ResourceVO` | String resourceNo,type,storeNo,personnelNo,name,status; int capacity; long revision; boolean openOccupied；无物理id/占用凭证/剩余容量 |
+| `ai.neargo.shop.merchant.dto.ScheduleQuery` | Set<String> resourceNos; OffsetDateTime from,to；1..50号、最多31日 |
+| `ai.neargo.shop.merchant.dto.SaveScheduleRuleReq` | String ruleNo?,resourceNo,timezone,status,reason; Long expectedRevision（资源根）; Integer weekdayMask,startMinute,endMinute,endDayOffset; LocalDate validFrom,validTo（必填，最多366开始日） |
+| `ai.neargo.shop.merchant.dto.ScheduleVO` | OffsetDateTime from,to; Map<String,Long> resourceRevisions; List<Rule> rules; List<ScheduleWindowsPort.Window> windows；非容量余量 |
+| `ai.neargo.shop.merchant.dto.ScheduleRuleVO` | String ruleNo,resourceNo,status; long resourceRevision；替换新号，停用旧号 |
 
-实际字段校验和修订语义以同域源码及主TDD§2.12为准；不加入美业私有DTO/表统计。
+实际字段校验和修订语义以同域源码及主TDD§2.12（人员）、§2.13（资源）、§2.14（周班表）为准；不加入美业私有DTO/表统计。
 
 共用MerchantMappers与mch表的具体增量不在美业BeautyMappers中生成；人员同主体稳定号、账号可选关联、跨店统一STAFF资源、任职资格有效期及完整资源原子仲裁，沿数据库/工作台方案验证。
 

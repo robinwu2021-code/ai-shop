@@ -78,6 +78,16 @@ def render():
               '## 七、待决与验收边界', '',
               '行业路由前缀、权限码、共用CONTRACT的真实入口与来源类型、异步响应适配，以及资源桶精度需在实施评审定稿。当前文档不注册路由，不更新后端已实现API清单，也不创建前端孤立页面。', '',
               '预约工作台首期选“有水位的全量窗口快照＋短轮询”；可视化按人员/工位切换，并支持未分派任务与异常栏。暂不要求WebSocket或新增通用工作流引擎。具体快照一致性、分页、拖动预览/提交和验收场景见工作台专篇。', '']
+    supplemental = data.get('implementationEndpoints', [])
+    if supplemental:
+        assert len({(x['method'], x['path']) for x in supplemental}) == len(supplemental)
+        assert not ({(x['method'], x['path']) for x in supplemental} & {(x['method'], x['path']) for x in apis})
+        lines += ['## 八、实施补充入口（独立于原160项设计编号）', '',
+                  '以下补充P1周规则写入与内部事实协议，不将P3例外审批冒充P1，也不改变原设计任务编号。实际交付以主TDD模块关口为准。', '',
+                  '| 方法 / 路径 | 所有者 / 用途 | 请求 | 返回 |', '|---|---|---|---|']
+        for x in supplemental:
+            lines.append(f'| `{x["method"]} {x["path"]}` | {x["owner"]}<br>{x["purpose"]} | {x["request"]} | {x["response"]} |')
+        lines.append('')
     return '\n'.join(lines)
 
 

@@ -9,6 +9,8 @@ const name='codex-beauty-bm01-'+randomUUID();const processes=[];
 const docker=(args,input)=>execFileSync('docker',args,{input,encoding:'utf8',maxBuffer:20*1024*1024,stdio:['pipe','pipe','pipe']}).trim();
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const secret=randomBytes(24).toString('hex');
+const bm02=process.env.BEAUTY_VERIFY_MODULE==='BM02' ? await import('./lib/beauty-bm02-runtime.mjs') : null;
+let bm02state;
 let dbPort;
 const sql=text=>docker(['exec','-i',name,'mysql','--default-character-set=utf8mb4','-uroot','-N','-B','beauty_bm01'],text);
 async function startJar(label,jar,extra=[]){
@@ -18,7 +20,8 @@ async function startJar(label,jar,extra=[]){
  '--spring.datasource.url=jdbc:mysql://127.0.0.1:'+dbPort+'/beauty_bm01?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC',
  '--spring.datasource.username=root','--spring.datasource.password=','--spring.flyway.enabled=false',
  '--shop.beauty.enabled='+!extra.includes('--shop.beauty.enabled=false'),'--shop.beauty.migration.mode=migrate',
- '--shop.beauty.publication.archive-only=true','--shop.catalog.publication.archive-only=true','--shop.services.internal-token='+secret,...extra.filter(arg=>arg!=='--shop.beauty.enabled=false')];
+ '--shop.beauty.publication.archive-only=true','--shop.catalog.publication.archive-only=true',
+ ...(bm02?['--shop.personnel.publication.archive-only=true','--shop.resource.publication.archive-only=true','--shop.schedule.publication.archive-only=true']:[]),'--shop.services.internal-token='+secret,...extra.filter(arg=>arg!=='--shop.beauty.enabled=false')];
  const child=spawn(java,args,{cwd:root,stdio:['ignore','pipe','pipe']});let output='';
  const result={child,done:new Promise(resolve=>child.on('exit',resolve))};processes.push(result);
  child.stdout.on('data',b=>{file.write(b);output=(output+b).slice(-120000);});
@@ -114,6 +117,7 @@ try{
  sql("UPDATE prd_store_goods SET on_sale=1 WHERE goods_no='BM01-G'");
  assert.equal(sql("SELECT COUNT(*) FROM sys_outbox WHERE event_type='PRODUCT_STORE_CATALOG_VERSION_PUBLISHED' AND status='ARCHIVED'"),'4');
  console.log('Actual catalog visibility, windows, owner quote, history, replay, scope and rollback passed.');
+ if(bm02)bm02state=await bm02.embedded({request,sql,url:host.url,token});
  const history=sql('SELECT version FROM bty_flyway_history WHERE success=1 AND version IS NOT NULL');
  await stop(host);
  const restarted=await startJar('embedded-restarted',process.env.BEAUTY_EMBEDDED_JAR ?? 'backend/shop-app/target/shop-app-0.1.0-SNAPSHOT.jar',
@@ -121,6 +125,8 @@ try{
  '--shop.inventory.enabled=false','--shop.auth.token-store=memory','--shop.pay.deployment=standalone']);
  assert.equal((await request(restarted.url,'/mp/x/beauty/services/BM01-SKU?storeNo=ST-M-BM01')).priceMinor,12900);
  assert.equal(sql('SELECT version FROM bty_flyway_history WHERE success=1 AND version IS NOT NULL'),history);
+ if(bm02){const auth=await request(restarted.url,'/biz/auth/login',{body:{grantType:'PASSWORD',principal:'19700000001',credential:'admin123',agreed:true}});
+ await bm02.restart({request,url:restarted.url,token:auth.token,state:bm02state});}
  const server=await startJar('standalone-service','backend-plugins/shop-industry-beauty/beauty-server/target/beauty-server-0.1.0-SNAPSHOT.jar',
  ['--shop.beauty.deployment=standalone','--shop.services.targets.PLATFORM='+restarted.url]);
  await request(server.url,'/internal/beauty/catalog/public-service',{body:{skuNo:'BM01-SKU',query:{storeNo:'ST-M-BM01'}},expected:401});
@@ -133,6 +139,8 @@ try{
  '--shop.seed.enabled=false','--shop.inventory.enabled=false','--shop.auth.token-store=memory','--shop.pay.deployment=standalone']);
  assert.equal((await request(standalone.url,'/mp/x/beauty/services/BM01-SKU?storeNo=ST-M-BM01')).priceMinor,12900);
  const remoteAuth=await request(standalone.url,'/biz/auth/login',{body:{grantType:'PASSWORD',principal:'19700000001',credential:'admin123',agreed:true}});
+ if(bm02){await bm02.restart({request,url:standalone.url,token:remoteAuth.token,state:bm02state});
+ bm02.probe({root,dir,dbPort,secret,platform:restarted.url,state:bm02state,sql});}
  const policy2={...policy,expectedRevision:1,policy:{...policy.policy,bookingAheadDays:40}};
  await request(standalone.url,'/biz/x/beauty/store-policies/versions',{token:remoteAuth.token,body:policy2,key:'REMOTE-POLICY'});
  assert.equal((await request(standalone.url,'/mp/x/beauty/stores/ST-M-BM01')).policy.bookingAheadDays,40);
@@ -154,13 +162,14 @@ try{
  assert.equal(absent.status,404,'default retail artifact must not expose beauty routes');
  const retailAuth=await request(retail.url,'/biz/auth/login',{body:{grantType:'PASSWORD',principal:'19700000001',credential:'admin123',agreed:true}});
  assert.equal((await request(retail.url,'/biz/store-sales-catalog',{token:retailAuth.token})).effectiveRevision,3);
+ if(bm02)await bm02.defaultRetail({request,url:retail.url,token:retailAuth.token,state:bm02state});
  console.log('Default retail actual artifact started without beauty and reused the same product-owned catalog.');
  const artifacts={};for(const [key,path] of Object.entries({embedded:process.env.BEAUTY_EMBEDDED_JAR,
  standaloneHost:process.env.BEAUTY_STANDALONE_HOST_JAR,defaultRetail:process.env.BEAUTY_DEFAULT_RETAIL_JAR,beautyServer:root+'/backend-plugins/shop-industry-beauty/beauty-server/target/beauty-server-0.1.0-SNAPSHOT.jar'})) {
  artifacts[key]=createHash('sha256').update(readFileSync(path)).digest('hex');}
- writeFileSync(dir+'/result.json',JSON.stringify({status:'BM01_RUNTIME_CASES_PASSED',dialect:'MySQL 9.7.2',
+ writeFileSync(dir+'/result.json',JSON.stringify({status:bm02?'BM02_RUNTIME_CASES_PASSED':'BM01_RUNTIME_CASES_PASSED',bm02State:bm02state,dialect:'MySQL 9.7.2',
  platformSchema:'explicit platform fixture; historical Flyway replay NOT represented',migration:'actual V536 on platform fixture',
- beautyHistory:history,artifacts,readinessStatus,standaloneReadinessStatus:serviceReadiness.status,scope:'BM-01 only; appointment/resource authority still gated'},null,2));
+ beautyHistory:history,artifacts,readinessStatus,standaloneReadinessStatus:serviceReadiness.status,scope:bm02?'BM-02 personnel/resource/weekly maintenance and standalone owner facts; appointment/capacity/task authority still gated':'BM-01 only; appointment/resource authority still gated'},null,2));
  console.log('Evidence: '+dir);
 
 
