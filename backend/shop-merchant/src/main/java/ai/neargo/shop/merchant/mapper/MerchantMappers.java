@@ -8,6 +8,8 @@ import ai.neargo.shop.merchant.dto.PersonnelPositionFactRow;
 import ai.neargo.shop.merchant.dto.PersonnelQualificationFactRow;
 import ai.neargo.shop.merchant.dto.ResourceFactRow;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
+import ai.neargo.shop.merchant.dto.ResourceBookingAllocationRow;
+import ai.neargo.shop.merchant.dto.ResourceBookingCounterRow;
 import ai.neargo.shop.merchant.dto.ScheduleRuleFactRow;
 import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.entity.MchBookingOwner;
@@ -227,10 +229,62 @@ public final class MerchantMappers {
 
     /** 跨店统一容量仲裁桶数据访问；完整仲裁由后续服务编排。 */
     public interface ResourceBucketMapper extends BaseMapper<MchResourceBucket> {
+        /** Never infer availability from a drifted count or silently drop orphaned/deleted active allocations. */
+        @Select("SELECT COALESCE(SUM(CASE WHEN h.status='HELD' THEN u.qty ELSE 0 END),0) AS held,"
+                + "COALESCE(SUM(CASE WHEN h.status='CONFIRMED' THEN u.qty ELSE 0 END),0) AS confirmed,"
+                + "COALESCE(SUM(CASE WHEN h.id IS NULL OR h.deleted<>0 OR u.deleted<>0 "
+                + "OR h.status NOT IN ('HELD','CONFIRMED') OR o.id IS NULL OR o.deleted<>0 "
+                + "OR o.current_hold_no IS NULL OR o.current_hold_no<>h.hold_no "
+                + "OR o.source_revision<>h.source_revision THEN 1 ELSE 0 END),0) AS invalid "
+                + "FROM mch_booking_hold_unit u LEFT JOIN mch_booking_hold h ON h.tenant_no=u.tenant_no "
+                + "AND h.entity_no=u.entity_no AND h.hold_no=u.hold_no LEFT JOIN mch_booking_owner o "
+                + "ON o.tenant_no=h.tenant_no AND o.entity_no=h.entity_no AND o.store_no=h.store_no "
+                + "AND o.owner_no=h.owner_no WHERE u.tenant_no=#{scope.tenantNo} AND u.entity_no=#{scope.entityNo} "
+                + "AND u.bucket_no=#{bucket} AND u.released_at IS NULL")
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        ResourceBookingCounterRow selectBookingCounters(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("bucket") String bucket);
+
+        /** Root locks are already held; bucket identity deliberately excludes store for shared STAFF capacity. */
+        @Select("SELECT * FROM mch_resource_bucket WHERE tenant_no=#{scope.tenantNo} "
+                + "AND entity_no=#{scope.entityNo} AND resource_no=#{resource} AND start_at=#{start} "
+                + "AND deleted=0 FOR UPDATE")
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        MchResourceBucket lockBookingBucket(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("resource") String resource, @Param("start") LocalDateTime start);
+
+        /** Signed net deltas avoid replacement double charging; SQL independently enforces nonnegative capacity. */
+        @Update("UPDATE mch_resource_bucket SET held_qty=held_qty+#{held},confirmed_qty=confirmed_qty+#{confirmed},"
+                + "version=version+1,updated_by=#{actor},updated_at=#{at} WHERE tenant_no=#{scope.tenantNo} "
+                + "AND entity_no=#{scope.entityNo} AND bucket_no=#{bucket} AND version=#{version} AND deleted=0 "
+                + "AND version<9223372036854775807 AND held_qty+#{held}>=0 AND confirmed_qty+#{confirmed}>=0 "
+                + "AND CAST(held_qty AS DECIMAL(20,0))+confirmed_qty+#{held}+#{confirmed}<=capacity")
+        int adjustBookingCapacity(@Param("scope") ResourceCommandScopeRow scope, @Param("bucket") String bucket,
+                @Param("version") long version, @Param("held") long held, @Param("confirmed") long confirmed,
+                @Param("actor") String actor, @Param("at") LocalDateTime at);
     }
 
     /** 资源集合持有凭证数据访问；完整仲裁由后续服务编排。 */
     public interface BookingHoldMapper extends BaseMapper<MchBookingHold> {
+        /** Acquired after the full personnel/resource union, never before discovering additional roots. */
+        @Select("SELECT * FROM mch_booking_hold WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo} "
+                + "AND store_no=#{scope.storeNo} AND owner_no=#{owner} AND hold_no=#{hold} AND deleted=0 FOR UPDATE")
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        MchBookingHold lockBookingHold(@Param("scope") ResourceCommandScopeRow scope, @Param("owner") String owner,
+                @Param("hold") String hold);
+
+        /** Explicit nullable termination/link writes and revision CAS preserve history and immutable creation hash. */
+        @Update("UPDATE mch_booking_hold SET status=#{next.status},source_revision=#{next.sourceRevision},"
+                + "lease_revision=#{next.leaseRevision},expires_at=#{next.expiresAt},"
+                + "expiration_policy=#{next.expirationPolicy},replaced_by_hold_no=#{next.replacedByHoldNo},"
+                + "termination_reason=#{next.terminationReason},terminated_at=#{next.terminatedAt},"
+                + "version=version+1,updated_by=#{actor},updated_at=#{at} WHERE tenant_no=#{scope.tenantNo} "
+                + "AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo} AND owner_no=#{next.ownerNo} "
+                + "AND hold_no=#{next.holdNo} AND version=#{next.version} AND deleted=0 "
+                + "AND version<9223372036854775807 AND execution_started_at IS NULL")
+        int saveBookingHold(@Param("scope") ResourceCommandScopeRow scope, @Param("next") MchBookingHold next,
+                @Param("actor") String actor, @Param("at") LocalDateTime at);
+
         /** Resolves canonical hold identity and owner/store parent chain before a command can reference it. */
         @Select("""
                 SELECT * FROM mch_booking_hold WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
@@ -254,6 +308,24 @@ public final class MerchantMappers {
 
     /** 资源持有分配历史明细数据访问；完整仲裁由后续服务编排。 */
     public interface BookingHoldUnitMapper extends BaseMapper<MchBookingHoldUnit> {
+        /** Owner root serializes discovery; LEFT JOIN exposes corrupt/deleted parent evidence rather than dropping it. */
+        @Select("SELECT u.unit_no,u.version,u.bucket_no,b.resource_no,b.start_at,b.end_at,u.qty,u.source_line_ref,"
+                + "u.deleted FROM mch_booking_hold_unit u LEFT JOIN mch_resource_bucket b "
+                + "ON b.tenant_no=u.tenant_no AND b.entity_no=u.entity_no AND b.bucket_no=u.bucket_no AND b.deleted=0 "
+                + "WHERE u.tenant_no=#{scope.tenantNo} AND u.entity_no=#{scope.entityNo} "
+                + "AND u.hold_no=#{hold} AND u.released_at IS NULL ORDER BY u.id LIMIT 10001")
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        List<ResourceBookingAllocationRow> selectBookingAllocations(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("hold") String hold);
+
+        /** Unit release is evidence, never deletion; effects are atomic with bucket deltas and the original result. */
+        @Update("UPDATE mch_booking_hold_unit SET released_at=#{at},release_command_no=#{command},version=version+1,"
+                + "updated_at=#{at},updated_by=#{actor} WHERE tenant_no=#{scope.tenantNo} "
+                + "AND entity_no=#{scope.entityNo} AND hold_no=#{hold} AND unit_no=#{unit} AND version=#{version} "
+                + "AND released_at IS NULL AND deleted=0 AND version<9223372036854775807")
+        int releaseBookingUnit(@Param("scope") ResourceCommandScopeRow scope, @Param("hold") String hold,
+                @Param("unit") String unit, @Param("version") long version, @Param("command") String command,
+                @Param("actor") String actor, @Param("at") LocalDateTime at);
     }
 
     public interface MchEntityMapper extends BaseMapper<MchEntity> {
