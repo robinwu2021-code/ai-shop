@@ -158,7 +158,8 @@
     "FOOD-API-152": "MOD-02",
     "FOOD-API-153": "MOD-04",
     "FOOD-API-154": "MOD-04",
-    "FOOD-API-155": "MOD-02"
+    "FOOD-API-155": "MOD-02",
+    "FOOD-API-156": "MOD-03"
   },
   "tableOwners": {
     "fnb_dish": {
@@ -330,7 +331,9 @@
       "writeService": "CheckCartService",
       "customMapperMethods": [
         "selectSelectedLinesForUpdate",
-        "archiveSelectedSubmittedLines"
+        "archiveSelectedSubmittedLines",
+        "history",
+        "retain"
       ]
     },
     "fnb_order_batch": {
@@ -828,6 +831,85 @@
     },
     "FOOD-API-005": {
       "returnType": "ai.neargo.shop.food.dto.MenuConfigResultVO"
+    },
+    "FOOD-API-037": {
+      "controller": "BizCartController",
+      "service": "CheckCartService",
+      "method": "getCart",
+      "returnType": "ai.neargo.shop.food.dto.CartResultVO",
+      "serviceMethod": "getCart"
+    },
+    "FOOD-API-038": {
+      "controller": "BizCartController",
+      "service": "CheckCartService",
+      "method": "createCart",
+      "returnType": "ai.neargo.shop.food.dto.CartResultVO",
+      "requestClass": "ai.neargo.shop.food.dto.CreateCartReq",
+      "serviceMethod": "createCart"
+    },
+    "FOOD-API-039": {
+      "controller": "BizCartController",
+      "service": "CheckCartService",
+      "method": "replaceLine",
+      "returnType": "ai.neargo.shop.food.dto.CartVersionVO",
+      "requestClass": "ai.neargo.shop.food.dto.ReplaceCartLineReq",
+      "serviceMethod": "replaceLine"
+    },
+    "FOOD-API-040": {
+      "controller": "BizCartController",
+      "service": "CheckCartService",
+      "method": "archiveLine",
+      "returnType": "ai.neargo.shop.food.dto.CartVersionVO",
+      "requestClass": "ai.neargo.shop.food.dto.CartVersionReq",
+      "serviceMethod": "archiveLine"
+    },
+    "FOOD-API-126": {
+      "controller": "BizCartController",
+      "service": "CheckCartService",
+      "method": "archiveCart",
+      "returnType": "ai.neargo.shop.food.dto.OperationResultVO",
+      "requestClass": "ai.neargo.shop.food.dto.CartVersionReq",
+      "serviceMethod": "archiveCart"
+    },
+    "FOOD-API-127": {
+      "controller": "MpCartController",
+      "service": "CheckCartService",
+      "method": "customerGetCart",
+      "returnType": "ai.neargo.shop.food.dto.CartResultVO",
+      "serviceMethod": "customerGetCart",
+      "scalarQuery": true
+    },
+    "FOOD-API-128": {
+      "controller": "MpCartController",
+      "service": "CheckCartService",
+      "method": "customerCreateCart",
+      "returnType": "ai.neargo.shop.food.dto.CartResultVO",
+      "requestClass": "ai.neargo.shop.food.dto.CreateCustomerCartReq",
+      "serviceMethod": "customerCreateCart"
+    },
+    "FOOD-API-129": {
+      "controller": "MpCartController",
+      "service": "CheckCartService",
+      "method": "customerReplaceLine",
+      "returnType": "ai.neargo.shop.food.dto.CartVersionVO",
+      "requestClass": "ai.neargo.shop.food.dto.ReplaceCartLineReq",
+      "serviceMethod": "customerReplaceLine"
+    },
+    "FOOD-API-130": {
+      "controller": "MpCartController",
+      "service": "CheckCartService",
+      "method": "customerArchiveLine",
+      "returnType": "ai.neargo.shop.food.dto.CartVersionVO",
+      "requestClass": "ai.neargo.shop.food.dto.CartVersionReq",
+      "serviceMethod": "customerArchiveLine"
+    },
+    "FOOD-API-156": {
+      "controller": "BizCartController",
+      "service": "CheckCartService",
+      "method": "authorizeSession",
+      "requestClass": "ai.neargo.shop.food.dto.AuthorizeCartSessionReq",
+      "returnType": "ai.neargo.shop.food.dto.CartSessionGrantVO",
+      "serviceMethod": "authorizeSession"
     }
   },
   "requestAliases": {
@@ -1448,6 +1530,9 @@
     "MenuSkuRecipeInput": "ai.neargo.shop.food.dto.MenuSkuRecipeInput",
     "WeekScheduleInput": "ai.neargo.shop.food.dto.WeekScheduleInput",
     "ExceptionInput": "ai.neargo.shop.food.dto.ExceptionInput",
-    "ContextInput": "ai.neargo.shop.food.dto.MenuContextInput"
+    "ContextInput": "ai.neargo.shop.food.dto.MenuContextInput",
+    "OrderLineInput": "ai.neargo.shop.food.dto.OrderLineInput",
+    "CartBundleChoiceInput": "ai.neargo.shop.food.dto.CartBundleChoiceInput",
+    "Selection": "ai.neargo.shop.food.dto.CartSelectionInput"
   }
 }

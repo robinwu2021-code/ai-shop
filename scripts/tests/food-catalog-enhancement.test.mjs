@@ -40,7 +40,7 @@ test('menu item overrides and quote provenance are explicit API fields',()=>{
  assert.match(s.dtos.CatalogSku,/pricingStatus:string/);
 });
 test('no recipe or channel management endpoint is accidentally exposed as a consumer write',()=>{
- const s=source();const apis=s.apis.filter(a=>Number(a.id.slice(-3))>=142);
+ const s=source();const apis=s.apis.filter(a=>Number(a.id.slice(-3))>=142&&Number(a.id.slice(-3))<=155);
  assert.equal(apis.length,14);assert(apis.every(a=>a.path.startsWith('/biz/x/food/')));
  const draftIds=new Set(['FOOD-API-152','FOOD-API-148','FOOD-API-149','FOOD-API-150','FOOD-API-151']);
  const managed=new Set(['FOOD-API-142','FOOD-API-143','FOOD-API-144','FOOD-API-145','FOOD-API-155']);

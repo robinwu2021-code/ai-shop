@@ -877,8 +877,39 @@
       "portConcepts": [],
       "customMethods": [],
       "transaction": "READ_ONLY",
-      "note": "",
-      "baseWriteOverrides": {}
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
+      "baseWriteOverrides": {},
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "storeNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "cartNo",
+          "source": "TRUSTED_SCOPE"
+        }
+      ],
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT",
+      "controllerParameters": [
+        {
+          "type": "String",
+          "name": "cartNo",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"cartNo\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
+        }
+      ]
     },
     "FOOD-API-038": {
       "readTables": [
@@ -886,47 +917,262 @@
         "fnb_guest_session"
       ],
       "writeTables": [
-        "fnb_check_cart"
+        "fnb_check_cart",
+        "fnb_action_log"
       ],
       "portConcepts": [],
       "customMethods": [],
       "transaction": "LOCAL_ATOMIC",
-      "note": "",
-      "baseWriteOverrides": {}
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
+      "baseWriteOverrides": {
+        "fnb_check_cart": [
+          "insert"
+        ]
+      },
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "storeNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "actorNo",
+          "source": "AUTHENTICATED_ACTOR"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CreateCartReq",
+          "name": "req",
+          "source": "VALIDATED_PUBLIC_DTO"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT",
+      "controllerParameters": [
+        {
+          "type": "String",
+          "name": "storeNo",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"storeNo\")"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CreateCartReq",
+          "name": "req",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
+        }
+      ]
     },
     "FOOD-API-039": {
       "readTables": [
         "fnb_check_cart",
-        "fnb_check_cart_item"
+        "fnb_check_cart_item",
+        "fnb_check",
+        "fnb_guest_session",
+        "fnb_seat"
       ],
       "writeTables": [
         "fnb_check_cart",
-        "fnb_check_cart_item"
+        "fnb_check_cart_item",
+        "fnb_action_log"
       ],
       "portConcepts": [],
       "customMethods": [
-        "fnb_check_cart.lockCartIfVersion"
+        "fnb_check_cart_item.history",
+        "fnb_check_cart_item.retain"
       ],
       "transaction": "LOCAL_ATOMIC",
-      "note": "",
-      "baseWriteOverrides": {}
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。事务外读取原已发布CatalogService；QR与原车来源目录交集校验。",
+      "baseWriteOverrides": {
+        "fnb_check_cart_item": [
+          "insert"
+        ]
+      },
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "storeNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "cartNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "sourceLineRef",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "actorNo",
+          "source": "AUTHENTICATED_ACTOR"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.ReplaceCartLineReq",
+          "name": "req",
+          "source": "VALIDATED_PUBLIC_DTO"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT",
+      "controllerParameters": [
+        {
+          "type": "String",
+          "name": "cartNo",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"cartNo\")"
+        },
+        {
+          "type": "String",
+          "name": "sourceLineRef",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"sourceLineRef\")"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.ReplaceCartLineReq",
+          "name": "req",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
+        }
+      ],
+      "replaceReadTables": [
+        "fnb_check_cart_item"
+      ]
     },
     "FOOD-API-040": {
       "readTables": [
         "fnb_check_cart",
-        "fnb_check_cart_item"
+        "fnb_check_cart_item",
+        "fnb_check",
+        "fnb_guest_session"
       ],
       "writeTables": [
         "fnb_check_cart",
-        "fnb_check_cart_item"
+        "fnb_check_cart_item",
+        "fnb_action_log"
       ],
       "portConcepts": [],
       "customMethods": [
-        "fnb_check_cart.lockCartIfVersion"
+        "fnb_check_cart_item.history",
+        "fnb_check_cart_item.retain"
       ],
       "transaction": "LOCAL_ATOMIC",
-      "note": "",
-      "baseWriteOverrides": {}
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
+      "baseWriteOverrides": {},
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "storeNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "cartNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "sourceLineRef",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "actorNo",
+          "source": "AUTHENTICATED_ACTOR"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CartVersionReq",
+          "name": "req",
+          "source": "VALIDATED_PUBLIC_DTO"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT",
+      "controllerParameters": [
+        {
+          "type": "String",
+          "name": "cartNo",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"cartNo\")"
+        },
+        {
+          "type": "String",
+          "name": "sourceLineRef",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"sourceLineRef\")"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CartVersionReq",
+          "name": "req",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
+        }
+      ],
+      "replaceReadTables": [
+        "fnb_check_cart_item"
+      ]
     },
     "FOOD-API-041": {
       "readTables": [
@@ -2472,78 +2718,405 @@
     "FOOD-API-126": {
       "readTables": [
         "fnb_check_cart",
-        "fnb_order_batch"
+        "fnb_order_batch",
+        "fnb_check",
+        "fnb_guest_session"
       ],
       "writeTables": [
-        "fnb_check_cart"
+        "fnb_check_cart",
+        "fnb_action_log"
       ],
       "portConcepts": [],
-      "customMethods": [
-        "fnb_check_cart.closeCartIfNoPlacingBatch"
-      ],
+      "customMethods": [],
       "transaction": "LOCAL_ATOMIC",
-      "note": "",
-      "baseWriteOverrides": {}
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
+      "baseWriteOverrides": {},
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "storeNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "cartNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "actorNo",
+          "source": "AUTHENTICATED_ACTOR"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CartVersionReq",
+          "name": "req",
+          "source": "VALIDATED_PUBLIC_DTO"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT",
+      "controllerParameters": [
+        {
+          "type": "String",
+          "name": "cartNo",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"cartNo\")"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CartVersionReq",
+          "name": "req",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
+        }
+      ]
     },
     "FOOD-API-127": {
       "readTables": [
         "fnb_check_cart",
-        "fnb_check_cart_item"
+        "fnb_check_cart_item",
+        "fnb_check",
+        "fnb_guest_session",
+        "fnb_table_occupancy"
       ],
       "writeTables": [],
       "portConcepts": [],
       "customMethods": [],
       "transaction": "READ_ONLY",
-      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
-      "baseWriteOverrides": {}
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
+      "baseWriteOverrides": {},
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "cartNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CartAccess",
+          "name": "access",
+          "source": "VERIFIED_SESSION_TOKEN_AND_CONSUMER"
+        }
+      ],
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT",
+      "controllerParameters": [
+        {
+          "type": "String",
+          "name": "cartNo",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"cartNo\")"
+        },
+        {
+          "type": "String",
+          "name": "sessionNo",
+          "source": "OPTIONAL_QUERY",
+          "annotation": "@RequestParam(\"sessionNo\")"
+        },
+        {
+          "type": "String",
+          "name": "token",
+          "source": "OPTIONAL_HEADER",
+          "annotation": "@RequestHeader(\"X-Food-Session\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
+        }
+      ]
     },
     "FOOD-API-128": {
       "readTables": [
         "fnb_check",
-        "fnb_guest_session"
+        "fnb_guest_session",
+        "fnb_table_occupancy"
       ],
       "writeTables": [
-        "fnb_check_cart"
+        "fnb_check_cart",
+        "fnb_guest_session",
+        "fnb_action_log"
       ],
       "portConcepts": [],
       "customMethods": [],
       "transaction": "LOCAL_ATOMIC",
-      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
-      "baseWriteOverrides": {}
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
+      "baseWriteOverrides": {
+        "fnb_guest_session": [
+          "insert"
+        ],
+        "fnb_check_cart": [
+          "insert"
+        ]
+      },
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "storeNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CartAccess",
+          "name": "access",
+          "source": "VERIFIED_SESSION_TOKEN_AND_CONSUMER"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CreateCustomerCartReq",
+          "name": "req",
+          "source": "VALIDATED_PUBLIC_DTO"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT",
+      "controllerParameters": [
+        {
+          "type": "String",
+          "name": "storeNo",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"storeNo\")"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CreateCustomerCartReq",
+          "name": "req",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "String",
+          "name": "token",
+          "source": "OPTIONAL_HEADER",
+          "annotation": "@RequestHeader(\"X-Food-Session\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
+        }
+      ]
     },
     "FOOD-API-129": {
       "readTables": [
         "fnb_check_cart",
-        "fnb_check_cart_item"
+        "fnb_check_cart_item",
+        "fnb_check",
+        "fnb_guest_session",
+        "fnb_table_occupancy",
+        "fnb_seat"
       ],
       "writeTables": [
         "fnb_check_cart",
-        "fnb_check_cart_item"
+        "fnb_check_cart_item",
+        "fnb_action_log"
       ],
       "portConcepts": [],
       "customMethods": [
-        "fnb_check_cart.lockCartIfVersion"
+        "fnb_check_cart_item.history",
+        "fnb_check_cart_item.retain"
       ],
       "transaction": "LOCAL_ATOMIC",
-      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
-      "baseWriteOverrides": {}
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。事务外读取原已发布CatalogService；QR与原车来源目录交集校验。",
+      "baseWriteOverrides": {
+        "fnb_check_cart_item": [
+          "insert"
+        ]
+      },
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "cartNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "sourceLineRef",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CartAccess",
+          "name": "access",
+          "source": "VERIFIED_SESSION_TOKEN_AND_CONSUMER"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.ReplaceCartLineReq",
+          "name": "req",
+          "source": "VALIDATED_PUBLIC_DTO"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT",
+      "controllerParameters": [
+        {
+          "type": "String",
+          "name": "cartNo",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"cartNo\")"
+        },
+        {
+          "type": "String",
+          "name": "sourceLineRef",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"sourceLineRef\")"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.ReplaceCartLineReq",
+          "name": "req",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "String",
+          "name": "sessionNo",
+          "source": "OPTIONAL_QUERY",
+          "annotation": "@RequestParam(\"sessionNo\")"
+        },
+        {
+          "type": "String",
+          "name": "token",
+          "source": "OPTIONAL_HEADER",
+          "annotation": "@RequestHeader(\"X-Food-Session\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
+        }
+      ],
+      "replaceReadTables": [
+        "fnb_check_cart_item"
+      ]
     },
     "FOOD-API-130": {
       "readTables": [
         "fnb_check_cart",
-        "fnb_check_cart_item"
+        "fnb_check_cart_item",
+        "fnb_check",
+        "fnb_guest_session",
+        "fnb_table_occupancy"
       ],
       "writeTables": [
         "fnb_check_cart",
-        "fnb_check_cart_item"
+        "fnb_check_cart_item",
+        "fnb_action_log"
       ],
       "portConcepts": [],
       "customMethods": [
-        "fnb_check_cart.lockCartIfVersion"
+        "fnb_check_cart_item.history",
+        "fnb_check_cart_item.retain"
       ],
       "transaction": "LOCAL_ATOMIC",
-      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
-      "baseWriteOverrides": {}
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
+      "baseWriteOverrides": {},
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "cartNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "sourceLineRef",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CartAccess",
+          "name": "access",
+          "source": "VERIFIED_SESSION_TOKEN_AND_CONSUMER"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CartVersionReq",
+          "name": "req",
+          "source": "VALIDATED_PUBLIC_DTO"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT",
+      "controllerParameters": [
+        {
+          "type": "String",
+          "name": "cartNo",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"cartNo\")"
+        },
+        {
+          "type": "String",
+          "name": "sourceLineRef",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"sourceLineRef\")"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CartVersionReq",
+          "name": "req",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "String",
+          "name": "sessionNo",
+          "source": "OPTIONAL_QUERY",
+          "annotation": "@RequestParam(\"sessionNo\")"
+        },
+        {
+          "type": "String",
+          "name": "token",
+          "source": "OPTIONAL_HEADER",
+          "annotation": "@RequestHeader(\"X-Food-Session\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
+        }
+      ],
+      "replaceReadTables": [
+        "fnb_check_cart_item"
+      ]
     },
     "FOOD-API-131": {
       "readTables": [
@@ -2994,6 +3567,82 @@
       "note": "ALL-04实际只读当前关系；空路由保留整体关系计数，主体门店隔离",
       "baseWriteOverrides": {},
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    "FOOD-API-156": {
+      "readTables": [
+        "fnb_check",
+        "fnb_guest_session",
+        "fnb_table",
+        "fnb_table_area",
+        "fnb_table_occupancy"
+      ],
+      "writeTables": [
+        "fnb_guest_session",
+        "fnb_action_log"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "复用原哈希会话；店员授权不会泄露凭证，不赋予支付或退款权限。",
+      "baseWriteOverrides": {},
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "storeNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "checkNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "actorNo",
+          "source": "AUTHENTICATED_ACTOR"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.AuthorizeCartSessionReq",
+          "name": "req",
+          "source": "VALIDATED_PUBLIC_DTO"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT",
+      "controllerParameters": [
+        {
+          "type": "String",
+          "name": "checkNo",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"checkNo\")"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.AuthorizeCartSessionReq",
+          "name": "req",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
+        }
+      ]
     }
   },
   "scopeRule": "Controller沿既有身份/门店/工单/设备会话鉴权；Service参数的entity/当前门店/操作者均为可信解析值，不能从Body自报；Mapper只接收服务端构建的Wrapper/实体。",

@@ -26,7 +26,7 @@
     "MpDiningSessionController",
     "BizReservationController",
     "BizCheckController",
-    "BizCheckCartController",
+    "BizCartController",
     "BizDiningQuoteController",
     "BizOrderBatchController",
     "BizKitchenTaskController",
@@ -56,7 +56,7 @@
     "BizDiningActionLogController",
     "BizCatalogController",
     "BizOrderBatchOperationController",
-    "MpCheckCartController",
+    "MpCartController",
     "MpDiningQuoteController",
     "MpOrderBatchController",
     "MpDiningCheckoutController",
@@ -2768,21 +2768,21 @@
     },
     {
       "apiId": "FOOD-API-037",
-      "controller": "BizCheckCartController",
+      "controller": "BizCartController",
       "controllerPackage": "ai.neargo.shop.food.api.biz",
-      "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizCartController",
       "method": "getCart",
       "service": "CheckCartService",
       "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
       "request": null,
-      "response": "ai.neargo.shop.food.dto.CheckCartResultVO",
+      "response": "ai.neargo.shop.food.dto.CartResultVO",
       "httpMethod": "GET",
       "path": "/biz/x/food/carts/{cartNo}",
       "primaryModuleId": "MOD-03",
       "serviceImplClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
       "serviceMethod": "getCart",
       "requestClass": null,
-      "returnType": "ai.neargo.shop.food.dto.CheckCartResultVO",
+      "returnType": "ai.neargo.shop.food.dto.CartResultVO",
       "inputFields": [],
       "outputFields": [
         {
@@ -2800,65 +2800,65 @@
       ],
       "inputBinding": "QUERY",
       "idempotencyKeyRequired": false,
-      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCheckCartController.java",
+      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCartController.java",
       "serviceFile": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/service/CheckCartService.java",
       "serviceImplFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/CheckCartServiceImpl.java",
       "dispatchServiceMethods": [],
-      "contractStatus": "TARGET_NOT_IMPLEMENTED"
+      "contractStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "apiId": "FOOD-API-038",
-      "controller": "BizCheckCartController",
+      "controller": "BizCartController",
       "controllerPackage": "ai.neargo.shop.food.api.biz",
-      "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizCartController",
       "method": "createCart",
       "service": "CheckCartService",
       "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
       "request": "CreateCartReq",
-      "response": "ai.neargo.shop.food.dto.CheckCartResultVO",
+      "response": "ai.neargo.shop.food.dto.CartResultVO",
       "httpMethod": "POST",
       "path": "/biz/x/food/stores/{storeNo}/carts",
       "primaryModuleId": "MOD-03",
       "serviceImplClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
       "serviceMethod": "createCart",
       "requestClass": "ai.neargo.shop.food.dto.CreateCartReq",
-      "returnType": "ai.neargo.shop.food.dto.CheckCartResultVO",
+      "returnType": "ai.neargo.shop.food.dto.CartResultVO",
       "inputFields": [
         {
           "name": "checkNo",
           "type": "string",
           "required": false,
-          "label": "获准台账"
+          "label": "真实OPEN台账"
         },
         {
           "name": "sessionNo",
           "type": "string",
           "required": false,
-          "label": "无台会话"
+          "label": "已获准会话"
         },
         {
           "name": "buyerNo",
           "type": "string",
           "required": false,
-          "label": "受权代客买家"
+          "label": "当前拒绝客户端代客"
         },
         {
           "name": "orderSource",
           "type": "string",
           "required": true,
-          "label": "受控来源"
+          "label": "POS或WAITER"
         },
         {
           "name": "fulfillment",
           "type": "string",
           "required": true,
-          "label": "受控履约"
+          "label": "履约"
         },
         {
           "name": "scheduledAt",
           "type": "datetime",
           "required": false,
-          "label": "定时出餐"
+          "label": "当前拒绝"
         }
       ],
       "outputFields": [
@@ -2866,7 +2866,7 @@
           "name": "cart",
           "type": "Cart",
           "required": true,
-          "label": "购物车"
+          "label": "唯一OPEN共享车"
         }
       ],
       "pathParameters": [
@@ -2877,41 +2877,41 @@
       ],
       "inputBinding": "BODY",
       "idempotencyKeyRequired": true,
-      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCheckCartController.java",
+      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCartController.java",
       "serviceFile": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/service/CheckCartService.java",
       "serviceImplFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/CheckCartServiceImpl.java",
       "dispatchServiceMethods": [],
-      "contractStatus": "TARGET_NOT_IMPLEMENTED"
+      "contractStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "apiId": "FOOD-API-039",
-      "controller": "BizCheckCartController",
+      "controller": "BizCartController",
       "controllerPackage": "ai.neargo.shop.food.api.biz",
-      "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
-      "method": "saveLine",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizCartController",
+      "method": "replaceLine",
       "service": "CheckCartService",
       "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
-      "request": "SaveLineReq",
-      "response": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO",
+      "request": "ReplaceCartLineReq",
+      "response": "ai.neargo.shop.food.dto.CartVersionVO",
       "httpMethod": "PUT",
       "path": "/biz/x/food/carts/{cartNo}/lines/{sourceLineRef}",
       "primaryModuleId": "MOD-03",
       "serviceImplClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
-      "serviceMethod": "saveLine",
-      "requestClass": "ai.neargo.shop.food.dto.SaveLineReq",
-      "returnType": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO",
+      "serviceMethod": "replaceLine",
+      "requestClass": "ai.neargo.shop.food.dto.ReplaceCartLineReq",
+      "returnType": "ai.neargo.shop.food.dto.CartVersionVO",
       "inputFields": [
         {
           "name": "line",
           "type": "OrderLineInput",
           "required": true,
-          "label": "本行"
+          "label": "完整替换源行"
         },
         {
           "name": "version",
           "type": "int64",
           "required": true,
-          "label": "购物车版本"
+          "label": "当前整个车版本"
         }
       ],
       "outputFields": [
@@ -2925,7 +2925,7 @@
           "name": "version",
           "type": "int64",
           "required": true,
-          "label": "新版本"
+          "label": "整体新版本"
         }
       ],
       "pathParameters": [
@@ -2940,35 +2940,35 @@
       ],
       "inputBinding": "BODY",
       "idempotencyKeyRequired": true,
-      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCheckCartController.java",
+      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCartController.java",
       "serviceFile": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/service/CheckCartService.java",
       "serviceImplFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/CheckCartServiceImpl.java",
       "dispatchServiceMethods": [],
-      "contractStatus": "TARGET_NOT_IMPLEMENTED"
+      "contractStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "apiId": "FOOD-API-040",
-      "controller": "BizCheckCartController",
+      "controller": "BizCartController",
       "controllerPackage": "ai.neargo.shop.food.api.biz",
-      "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizCartController",
       "method": "archiveLine",
       "service": "CheckCartService",
       "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
-      "request": "ArchiveLineReq",
-      "response": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO",
+      "request": "CartVersionReq",
+      "response": "ai.neargo.shop.food.dto.CartVersionVO",
       "httpMethod": "POST",
       "path": "/biz/x/food/carts/{cartNo}/lines/{sourceLineRef}:archive",
       "primaryModuleId": "MOD-03",
       "serviceImplClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
       "serviceMethod": "archiveLine",
-      "requestClass": "ai.neargo.shop.food.dto.ArchiveLineReq",
-      "returnType": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO",
+      "requestClass": "ai.neargo.shop.food.dto.CartVersionReq",
+      "returnType": "ai.neargo.shop.food.dto.CartVersionVO",
       "inputFields": [
         {
           "name": "version",
           "type": "int64",
           "required": true,
-          "label": "购物车版本"
+          "label": "当前整个车版本"
         }
       ],
       "outputFields": [
@@ -2982,7 +2982,7 @@
           "name": "version",
           "type": "int64",
           "required": true,
-          "label": "新版本"
+          "label": "整体新版本"
         }
       ],
       "pathParameters": [
@@ -2997,11 +2997,11 @@
       ],
       "inputBinding": "BODY",
       "idempotencyKeyRequired": true,
-      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCheckCartController.java",
+      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCartController.java",
       "serviceFile": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/service/CheckCartService.java",
       "serviceImplFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/CheckCartServiceImpl.java",
       "dispatchServiceMethods": [],
-      "contractStatus": "TARGET_NOT_IMPLEMENTED"
+      "contractStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "apiId": "FOOD-API-041",
@@ -8990,27 +8990,27 @@
     },
     {
       "apiId": "FOOD-API-126",
-      "controller": "BizCheckCartController",
+      "controller": "BizCartController",
       "controllerPackage": "ai.neargo.shop.food.api.biz",
-      "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizCartController",
       "method": "archiveCart",
       "service": "CheckCartService",
       "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
-      "request": "ArchiveCartReq",
+      "request": "CartVersionReq",
       "response": "ai.neargo.shop.food.dto.OperationResultVO",
       "httpMethod": "POST",
       "path": "/biz/x/food/carts/{cartNo}:archive",
       "primaryModuleId": "MOD-03",
       "serviceImplClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
       "serviceMethod": "archiveCart",
-      "requestClass": "ai.neargo.shop.food.dto.ArchiveCartReq",
+      "requestClass": "ai.neargo.shop.food.dto.CartVersionReq",
       "returnType": "ai.neargo.shop.food.dto.OperationResultVO",
       "inputFields": [
         {
           "name": "version",
           "type": "int64",
           "required": true,
-          "label": "购物车版"
+          "label": "当前整个车版本"
         }
       ],
       "outputFields": [
@@ -9018,7 +9018,7 @@
           "name": "operation",
           "type": "Operation",
           "required": true,
-          "label": "关闭结果"
+          "label": "归档回执"
         }
       ],
       "pathParameters": [
@@ -9029,36 +9029,43 @@
       ],
       "inputBinding": "BODY",
       "idempotencyKeyRequired": true,
-      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCheckCartController.java",
+      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCartController.java",
       "serviceFile": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/service/CheckCartService.java",
       "serviceImplFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/CheckCartServiceImpl.java",
       "dispatchServiceMethods": [],
-      "contractStatus": "TARGET_NOT_IMPLEMENTED"
+      "contractStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "apiId": "FOOD-API-127",
-      "controller": "MpCheckCartController",
+      "controller": "MpCartController",
       "controllerPackage": "ai.neargo.shop.food.api.mp",
-      "controllerClass": "ai.neargo.shop.food.api.mp.MpCheckCartController",
-      "method": "getCart",
+      "controllerClass": "ai.neargo.shop.food.api.mp.MpCartController",
+      "method": "customerGetCart",
       "service": "CheckCartService",
       "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
       "request": null,
-      "response": "ai.neargo.shop.food.dto.CheckCartResultVO",
+      "response": "ai.neargo.shop.food.dto.CartResultVO",
       "httpMethod": "GET",
       "path": "/mp/x/food/carts/{cartNo}",
       "primaryModuleId": "MOD-03",
       "serviceImplClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
       "serviceMethod": "customerGetCart",
       "requestClass": null,
-      "returnType": "ai.neargo.shop.food.dto.CheckCartResultVO",
-      "inputFields": [],
+      "returnType": "ai.neargo.shop.food.dto.CartResultVO",
+      "inputFields": [
+        {
+          "name": "sessionNo",
+          "type": "string",
+          "required": false,
+          "label": "扫码必需且H5可省略"
+        }
+      ],
       "outputFields": [
         {
           "name": "cart",
           "type": "Cart",
           "required": true,
-          "label": "获准购物车"
+          "label": "脱敏获准草稿"
         }
       ],
       "pathParameters": [
@@ -9069,53 +9076,53 @@
       ],
       "inputBinding": "QUERY",
       "idempotencyKeyRequired": false,
-      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/mp/MpCheckCartController.java",
+      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/mp/MpCartController.java",
       "serviceFile": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/service/CheckCartService.java",
       "serviceImplFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/CheckCartServiceImpl.java",
       "dispatchServiceMethods": [],
-      "contractStatus": "TARGET_NOT_IMPLEMENTED"
+      "contractStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "apiId": "FOOD-API-128",
-      "controller": "MpCheckCartController",
+      "controller": "MpCartController",
       "controllerPackage": "ai.neargo.shop.food.api.mp",
-      "controllerClass": "ai.neargo.shop.food.api.mp.MpCheckCartController",
-      "method": "createCart",
+      "controllerClass": "ai.neargo.shop.food.api.mp.MpCartController",
+      "method": "customerCreateCart",
       "service": "CheckCartService",
       "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
-      "request": "CustomerCreateCartReq",
-      "response": "ai.neargo.shop.food.dto.CheckCartResultVO",
+      "request": "CreateCustomerCartReq",
+      "response": "ai.neargo.shop.food.dto.CartResultVO",
       "httpMethod": "POST",
       "path": "/mp/x/food/stores/{storeNo}/carts",
       "primaryModuleId": "MOD-03",
       "serviceImplClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
       "serviceMethod": "customerCreateCart",
-      "requestClass": "ai.neargo.shop.food.dto.CustomerCreateCartReq",
-      "returnType": "ai.neargo.shop.food.dto.CheckCartResultVO",
+      "requestClass": "ai.neargo.shop.food.dto.CreateCustomerCartReq",
+      "returnType": "ai.neargo.shop.food.dto.CartResultVO",
       "inputFields": [
         {
           "name": "checkNo",
           "type": "string",
           "required": false,
-          "label": "获准台账"
+          "label": "必须等于已获准会话台账"
+        },
+        {
+          "name": "sessionNo",
+          "type": "string",
+          "required": false,
+          "label": "原扫码会话或服务端H5会话"
         },
         {
           "name": "fulfillment",
           "type": "string",
           "required": true,
-          "label": "受控履约"
+          "label": "履约"
         },
         {
           "name": "scheduledAt",
           "type": "datetime",
           "required": false,
-          "label": "定时出餐"
-        },
-        {
-          "name": "sessionNo",
-          "type": "string",
-          "required": true,
-          "label": "获准会话"
+          "label": "当前拒绝"
         }
       ],
       "outputFields": [
@@ -9123,7 +9130,7 @@
           "name": "cart",
           "type": "Cart",
           "required": true,
-          "label": "购物车"
+          "label": "脱敏获准草稿"
         }
       ],
       "pathParameters": [
@@ -9134,41 +9141,41 @@
       ],
       "inputBinding": "BODY",
       "idempotencyKeyRequired": true,
-      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/mp/MpCheckCartController.java",
+      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/mp/MpCartController.java",
       "serviceFile": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/service/CheckCartService.java",
       "serviceImplFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/CheckCartServiceImpl.java",
       "dispatchServiceMethods": [],
-      "contractStatus": "TARGET_NOT_IMPLEMENTED"
+      "contractStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "apiId": "FOOD-API-129",
-      "controller": "MpCheckCartController",
+      "controller": "MpCartController",
       "controllerPackage": "ai.neargo.shop.food.api.mp",
-      "controllerClass": "ai.neargo.shop.food.api.mp.MpCheckCartController",
-      "method": "saveLine",
+      "controllerClass": "ai.neargo.shop.food.api.mp.MpCartController",
+      "method": "customerReplaceLine",
       "service": "CheckCartService",
       "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
-      "request": "SaveLineReq",
-      "response": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO",
+      "request": "ReplaceCartLineReq",
+      "response": "ai.neargo.shop.food.dto.CartVersionVO",
       "httpMethod": "PUT",
       "path": "/mp/x/food/carts/{cartNo}/lines/{sourceLineRef}",
       "primaryModuleId": "MOD-03",
       "serviceImplClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
-      "serviceMethod": "customerSaveLine",
-      "requestClass": "ai.neargo.shop.food.dto.SaveLineReq",
-      "returnType": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO",
+      "serviceMethod": "customerReplaceLine",
+      "requestClass": "ai.neargo.shop.food.dto.ReplaceCartLineReq",
+      "returnType": "ai.neargo.shop.food.dto.CartVersionVO",
       "inputFields": [
         {
           "name": "line",
           "type": "OrderLineInput",
           "required": true,
-          "label": "本行"
+          "label": "完整替换源行"
         },
         {
           "name": "version",
           "type": "int64",
           "required": true,
-          "label": "购物车版本"
+          "label": "当前整个车版本"
         }
       ],
       "outputFields": [
@@ -9182,7 +9189,7 @@
           "name": "version",
           "type": "int64",
           "required": true,
-          "label": "新版本"
+          "label": "整体新版本"
         }
       ],
       "pathParameters": [
@@ -9197,35 +9204,35 @@
       ],
       "inputBinding": "BODY",
       "idempotencyKeyRequired": true,
-      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/mp/MpCheckCartController.java",
+      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/mp/MpCartController.java",
       "serviceFile": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/service/CheckCartService.java",
       "serviceImplFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/CheckCartServiceImpl.java",
       "dispatchServiceMethods": [],
-      "contractStatus": "TARGET_NOT_IMPLEMENTED"
+      "contractStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "apiId": "FOOD-API-130",
-      "controller": "MpCheckCartController",
+      "controller": "MpCartController",
       "controllerPackage": "ai.neargo.shop.food.api.mp",
-      "controllerClass": "ai.neargo.shop.food.api.mp.MpCheckCartController",
-      "method": "archiveLine",
+      "controllerClass": "ai.neargo.shop.food.api.mp.MpCartController",
+      "method": "customerArchiveLine",
       "service": "CheckCartService",
       "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
-      "request": "ArchiveLineReq",
-      "response": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO",
+      "request": "CartVersionReq",
+      "response": "ai.neargo.shop.food.dto.CartVersionVO",
       "httpMethod": "POST",
       "path": "/mp/x/food/carts/{cartNo}/lines/{sourceLineRef}:archive",
       "primaryModuleId": "MOD-03",
       "serviceImplClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
       "serviceMethod": "customerArchiveLine",
-      "requestClass": "ai.neargo.shop.food.dto.ArchiveLineReq",
-      "returnType": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO",
+      "requestClass": "ai.neargo.shop.food.dto.CartVersionReq",
+      "returnType": "ai.neargo.shop.food.dto.CartVersionVO",
       "inputFields": [
         {
           "name": "version",
           "type": "int64",
           "required": true,
-          "label": "购物车版本"
+          "label": "当前整个车版本"
         }
       ],
       "outputFields": [
@@ -9239,7 +9246,7 @@
           "name": "version",
           "type": "int64",
           "required": true,
-          "label": "新版本"
+          "label": "整体新版本"
         }
       ],
       "pathParameters": [
@@ -9254,11 +9261,11 @@
       ],
       "inputBinding": "BODY",
       "idempotencyKeyRequired": true,
-      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/mp/MpCheckCartController.java",
+      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/mp/MpCartController.java",
       "serviceFile": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/service/CheckCartService.java",
       "serviceImplFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/CheckCartServiceImpl.java",
       "dispatchServiceMethods": [],
-      "contractStatus": "TARGET_NOT_IMPLEMENTED"
+      "contractStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "apiId": "FOOD-API-131",
@@ -10950,6 +10957,71 @@
       "serviceImplFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/StationServiceImpl.java",
       "dispatchServiceMethods": [],
       "contractStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    {
+      "apiId": "FOOD-API-156",
+      "controller": "BizCartController",
+      "controllerPackage": "ai.neargo.shop.food.api.biz",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizCartController",
+      "method": "authorizeSession",
+      "service": "CheckCartService",
+      "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+      "request": "AuthorizeCartSessionReq",
+      "response": "ai.neargo.shop.food.dto.CartSessionGrantVO",
+      "httpMethod": "POST",
+      "path": "/biz/x/food/checks/{checkNo}/cart-sessions",
+      "primaryModuleId": "MOD-03",
+      "serviceImplClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
+      "serviceMethod": "authorizeSession",
+      "requestClass": "ai.neargo.shop.food.dto.AuthorizeCartSessionReq",
+      "returnType": "ai.neargo.shop.food.dto.CartSessionGrantVO",
+      "inputFields": [
+        {
+          "name": "sessionNo",
+          "type": "string",
+          "required": true,
+          "label": "原扫码会话"
+        },
+        {
+          "name": "version",
+          "type": "int64",
+          "required": true,
+          "label": "会话当前版本"
+        }
+      ],
+      "outputFields": [
+        {
+          "name": "sessionNo",
+          "type": "string",
+          "required": true,
+          "label": "获准会话"
+        },
+        {
+          "name": "checkNo",
+          "type": "string",
+          "required": true,
+          "label": "当前OPEN台账"
+        },
+        {
+          "name": "version",
+          "type": "int64",
+          "required": true,
+          "label": "会话新版本"
+        }
+      ],
+      "pathParameters": [
+        {
+          "name": "checkNo",
+          "type": "String"
+        }
+      ],
+      "inputBinding": "BODY",
+      "idempotencyKeyRequired": true,
+      "controllerFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCartController.java",
+      "serviceFile": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/service/CheckCartService.java",
+      "serviceImplFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/CheckCartServiceImpl.java",
+      "dispatchServiceMethods": [],
+      "contractStatus": "IMPLEMENTED_BACKEND_DRAFT"
     }
   ],
   "persistence": [
@@ -11461,7 +11533,9 @@
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodMappers.java",
       "customMapperMethods": [
         "selectSelectedLinesForUpdate",
-        "archiveSelectedSubmittedLines"
+        "archiveSelectedSubmittedLines",
+        "history",
+        "retain"
       ],
       "schemaStatus": "CREATED_LOCAL",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
@@ -12590,7 +12664,8 @@
         "FOOD-API-130",
         "FOOD-API-131",
         "FOOD-API-132",
-        "FOOD-API-133"
+        "FOOD-API-133",
+        "FOOD-API-156"
       ],
       "ownedTables": [
         "fnb_check_cart",

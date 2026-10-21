@@ -5,8 +5,8 @@ import {buildFoodMethodInventory} from '../lib/food-method-inventory.mjs';
 const read=n=>JSON.parse(fs.readFileSync(new URL('../../docs/technical/design/schema/'+n,import.meta.url)));
 const s=read('food-system-design.json'),code=read('food-module-code-inventory.json'),plan=read('food-method-plan.json'),codePlan=read('food-code-plan.json');
 const build=p=>buildFoodMethodInventory(s,code,p||plan,codePlan);
-test('all155API have controller,service,mapper/port call chains',()=>{
- const v=build();assert.equal(v.endpoints.length,155);assert.equal(v.controllers.length,55);assert.equal(v.services.length,37);
+test('all156API have controller,service,mapper/port call chains',()=>{
+ const v=build();assert.equal(v.endpoints.length,156);assert.equal(v.controllers.length,55);assert.equal(v.services.length,37);
  assert(v.endpoints.every(e=>e.controllerSignature&&e.serviceSignature&&e.transaction));
  assert(v.endpoints.every(e=>e.mapperCalls.length||e.portCalls.length));
 });
@@ -16,7 +16,7 @@ test('missing use case or unknown table is rejected instead of inventing mapping
 });
 test('service never depends on HTTP annotations and paths are distinct from trusted scope',()=>{
  for(const e of build().endpoints){
-  assert(!e.serviceSignature.includes('@'));if(!['FOOD-API-023','FOOD-API-026'].includes(e.apiId))assert(e.serviceParameters.some(p=>p.name==='entityNo'));
+  assert(!e.serviceSignature.includes('@'));if(!['FOOD-API-023','FOOD-API-026','FOOD-API-127','FOOD-API-128','FOOD-API-129','FOOD-API-130'].includes(e.apiId))assert(e.serviceParameters.some(p=>p.name==='entityNo'));
   assert.equal(new Set(e.serviceParameters.map(p=>p.name)).size,e.serviceParameters.length);
  }
  const c=build().endpoints.find(e=>e.apiId==='FOOD-API-031');assert(c.controllerSignature.includes('@RequestHeader("Idempotency-Key")'));

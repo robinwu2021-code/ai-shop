@@ -6,7 +6,7 @@ const read=n=>JSON.parse(fs.readFileSync(new URL('../../docs/technical/design/sc
 const s=read('food-system-design.json'),plan=read('food-code-plan.json');
 const inventory=()=>buildFoodModuleInventory(s,read('food-code-inventory.json'),plan,read('food-code-baselines.json'));
 test('ALL155 records the actual read-only station SKU route endpoint and ownership',()=>{
- assert.equal(s.apis.length,155);
+ assert.equal(s.apis.length,156);
  const a=s.apis.find(a=>a.id==='FOOD-API-155');
  assert.equal(a.method,'GET');assert.equal(a.path,'/biz/x/food/stores/{storeNo}/sku-routes/{skuNo}');
  assert.equal(plan.apiOwners[a.id],'MOD-02');assert.equal(plan.methodOverrides[a.id].method,'getRoutes');

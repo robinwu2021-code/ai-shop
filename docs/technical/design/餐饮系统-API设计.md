@@ -1,6 +1,6 @@
 # 餐饮系统API设计
 
-> 状态：待评审 · 2026-10-20 · V1含73张fnb_业务表；增强目标82张，V4新增2张配方草稿表、V5新增1张调整表、另6张PLANNED；当前迁移版本5；目标API不代表全部交付，prn/rpt保持共享候选。
+> 状态：待评审 · 2026-10-21 · V1含73张fnb_业务表；增强目标82张，V4新增2张配方草稿表、V5新增1张调整表、V6新增1张餐牌选配表、V7新增1张渠道草稿表、另4张PLANNED；可用迁移版本7，历史经营库执行证据仍V1/73；目标API不代表全部交付，prn/rpt保持共享候选。
 > 由 `node scripts/gen-food-system-design.mjs` 生成，勿手改；真源：[领域数据库API设计源](./schema/food-system-design.json)。生成依赖沿用 @viz-js/viz，可用 FOOD_ER_VIZ_MODULE 指定模块路径。
 > 业务入口：[后端业务模块功能清单](../../requirements/餐饮系统-后端业务模块功能清单.md) · [数据库与API评审对齐](../TDD-餐饮系统-数据库与API评审对齐.md)。按桌台→菜品→订单查阅，A–L仍保留为持久化分域编号。
 > 项目约束：[底座兼容对齐](./餐饮系统-项目底座兼容对齐.md)，账号、门店、营业时间、公共实体及协议冲突时优先按该对齐说明修订。
@@ -13,8 +13,8 @@
 | 模块 | 名称 | 需求数 | 关联表数 | 关联API数 |
 |---|---|---|---|---|
 | MOD-01 | 桌台与就餐管理 | 8 | 11 | 31 |
-| MOD-02 | 菜品与餐牌管理 | 12 | 27 | 40 |
-| MOD-03 | 点餐与订单管理 | 9 | 14 | 29 |
+| MOD-02 | 菜品与餐牌管理 | 12 | 27 | 41 |
+| MOD-03 | 点餐与订单管理 | 9 | 14 | 30 |
 | MOD-04 | 厨房与履约管理 | 10 | 10 | 17 |
 | MOD-05 | 收银与结账管理 | 11 | 6 | 13 |
 | MOD-06 | 退餐与售后管理 | 8 | 7 | 12 |
@@ -30,7 +30,7 @@
 
 ## 一、协议与能力边界
 
-154个目标端点，统一JSON语义；路径为建议合同，未全部注册在当前Controller。本地适配器和远程适配器遵守相同DTO、权限和幂等。
+156个目标端点，统一JSON语义；路径为建议合同，未全部注册在当前Controller。本地适配器和远程适配器遵守相同DTO、权限和幂等。
 
 - /biz为商家作业，/mp为顾客，/ops为平台，/internal仅服务身份。老板App/收银/厨房复用biz服务，按角色门店工位鉴权，不把平台管理员当商家收银员。
 - Authorization为获准身份；X-Request-Id用于追踪。所有有副作用操作必需Idempotency-Key；作用域含entity/store/operation/key，规范payload哈希同键异参返回409。operator/entity从身份获取，不接受客户端冒充。
@@ -49,7 +49,7 @@
 | A | FOOD-API-003 | PUT `/biz/x/food/stores/{storeNo}/calendar/{localDate}` | 餐饮接单日历例外 |
 | B | FOOD-API-004 | POST `/biz/x/food/stores/{storeNo}/menus` | 创建menus |
 | B | FOOD-API-005 | GET `/biz/x/food/stores/{storeNo}/menus/{configNo}` | 读取menus |
-| B | FOOD-API-006 | POST `/biz/x/food/stores/{storeNo}/menus/{configNo}:publish` | 发布menus |
+| B | FOOD-API-006 | POST `/biz/x/food/stores/{storeNo}/menus/{configNo}:publish` | 发布餐牌 |
 | B | FOOD-API-007 | POST `/biz/x/food/stores/{storeNo}/option-groups` | 创建option-groups |
 | B | FOOD-API-008 | GET `/biz/x/food/stores/{storeNo}/option-groups/{configNo}` | 读取option-groups |
 | B | FOOD-API-009 | POST `/biz/x/food/stores/{storeNo}/option-groups/{configNo}:publish` | 发布option-groups |
@@ -58,7 +58,7 @@
 | B | FOOD-API-012 | POST `/biz/x/food/stores/{storeNo}/bundles/{configNo}:publish` | 发布bundles |
 | B | FOOD-API-013 | POST `/biz/x/food/stores/{storeNo}/stations` | 创建stations |
 | B | FOOD-API-014 | GET `/biz/x/food/stores/{storeNo}/stations/{configNo}` | 读取stations |
-| B | FOOD-API-015 | POST `/biz/x/food/stores/{storeNo}/stations/{configNo}:publish` | 发布stations |
+| B | FOOD-API-015 | POST `/biz/x/food/stores/{storeNo}/stations/{configNo}:publish` | 发布工位 |
 | B | FOOD-API-016 | PUT `/biz/x/food/stores/{storeNo}/dishes/{goodsNo}` | 菜品餐饮属性 |
 | B | FOOD-API-017 | PUT `/biz/x/food/menus/{menuNo}/definition` | 菜单组成与时段配置 |
 | B | FOOD-API-018 | PUT `/biz/x/food/bundles/{skuNo}/definition` | 套餐选择组配置 |
@@ -198,6 +198,8 @@
 | B | FOOD-API-152 | POST `/biz/x/food/recipes/{recipeNo}:publish` | 发布配方 |
 | E | FOOD-API-153 | GET `/biz/x/food/stores/{storeNo}/production-consumptions` | 制作耗用列表 |
 | E | FOOD-API-154 | GET `/biz/x/food/production-consumptions/{consumptionNo}` | 制作耗用详情 |
+| B | FOOD-API-155 | GET `/biz/x/food/stores/{storeNo}/sku-routes/{skuNo}` | 读取SKU工位路由 |
+| D | FOOD-API-156 | POST `/biz/x/food/checks/{checkNo}/cart-sessions` | 授权扫码会话加入共享购物车 |
 
 ## 三、公共DTO输入输出字段
 
@@ -222,13 +224,17 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| sourceLineRef | string | 是 | 源行 |
-| goodsNo | string | 是 | 商品 |
-| skuNo | string | 是 | SKU |
-| qty | decimal | 是 | 正数量 |
-| seatNo | string | 否 | 座位 |
-| courseNo | string | 否 | 道次 |
-| selections | Selection[] | 是 | 选择明细 |
+| sourceLineRef | string | 是 | 端侧稳定源行最长64 |
+| menuNo | string | 是 | 当前餐牌 |
+| menuItemNo | string | 是 | 餐牌菜项 |
+| menuRevisionNo | string | 是 | 仍有效的冻结餐牌修订 |
+| goodsNo | string | 是 | 原商品 |
+| skuNo | string | 是 | 原SKU |
+| qty | decimal | 是 | COUNT正整数不超过999999 |
+| seatNo | string | 否 | 同台账座位 |
+| courseNo | string | 否 | 当前阶段拒绝道次 |
+| selections | Selection[] | 是 | 每份菜选择必需数组 |
+| bundleChoices | CartBundleChoiceInput[] | 是 | 套餐选择必需数组 |
 
 ### QuoteLine
 
@@ -383,10 +389,10 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| categoryNo | string | 是 | 分类 |
-| name | string | 是 | 名称 |
-| sortNo | int32 | 是 | 排序 |
-| items | MenuItemInput[] | 是 | 商品项 |
+| categoryNo | string | 否 | 新分类省略由服务端生成，旧号必须属于本餐牌 |
+| name | string | 是 | 分类名 |
+| sortNo | int32 | 是 | 同级非负唯一 |
+| items | MenuItemInput[] | 是 | 必需，允许空 |
 
 ### MenuItemInput
 
@@ -479,9 +485,8 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| stationNo | string | 是 | 工位 |
-| taskRole | string | 是 | MAKE或ASSEMBLE或PACK |
-| routeVersion | int64 | 是 | 路由版 |
+| stationNo | string | 是 | 同店启用工位 |
+| taskRole | string | 是 | MAKE或ASSEMBLE或PACK，关系版本只由服务端产生 |
 
 ### VersionInput
 
@@ -647,12 +652,16 @@
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | cartNo | string | 是 | 购物车 |
+| storeNo | string | 是 | 真实门店 |
 | checkNo | string | 否 | 台账 |
-| version | int64 | 是 | 版本 |
-| lines | OrderLineInput[] | 是 | 草稿 |
-| orderSource | string | 是 | 来源 |
-| fulfillment | string | 是 | 履约 |
-| scheduledAt | datetime | 否 | 出餐时点 |
+| sessionNo | string | 否 | 无台会话或首建来源不构成共享车授权 |
+| buyerNo | string | 否 | B端真实买家且C端始终隐去 |
+| status | string | 是 | OPEN或SUBMITTING或CLOSED |
+| orderSource | string | 是 | POS或WAITER或QR或H5 |
+| fulfillment | string | 是 | DINE_IN或PICKUP或DELIVERY |
+| scheduledAt | datetime | 否 | 本阶段非空拒绝 |
+| version | int64 | 是 | 整个草稿CAS版本 |
+| lines | OrderLineInput[] | 是 | 活动草稿行 |
 
 ### Operation
 
@@ -711,31 +720,36 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| menuItemNo | string | 是 | 实际餐牌条目 |
-| menuRevisionNo | string | 是 | 餐牌发布修订 |
-| goodsNo | string | 是 | 商品 |
-| skuNo | string | 是 | 规格 |
-| name | string | 是 | 名称 |
-| imageRefs | string[] | 是 | 媒资 |
-| price | Money | 否 | 仅权威报价可用时返回 |
-| pricingStatus | string | 是 | AVAILABLE或UNAVAILABLE |
-| pricePolicyRef | string | 否 | 权威依据 |
-| available | boolean | 是 | 服务端综合可售 |
-| reasonCodes | string[] | 是 | 不可售原因 |
-| configRevisionNos | string[] | 是 | 冻结依赖 |
+| menuNo | string | 是 | 餐牌 |
+| menuItemNo | string | 是 | 菜项身份，不能仅按SKU合并 |
+| categoryNo | string | 是 | 分类 |
+| categoryName | string | 是 | 分类名 |
+| goodsNo | string | 是 | 原商品 |
+| title | string | 是 | 当前原标题 |
+| cover | string | 否 | 当前原封面 |
+| dish | Dish | 是 | 冻结餐饮属性 |
+| optionGroupNos | string[] | 是 | 冻结显式选配 |
+| skus | CatalogSku[] | 是 | 当前权威及限制提示 |
 
 ### SalesRestriction
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | restrictionNo | string | 是 | 约束 |
-| skuNo | string | 是 | SKU |
-| mode | string | 是 | 类型 |
-| status | string | 是 | 状态 |
-| quotaQty | decimal | 否 | 额度 |
-| reservedQty | decimal | 是 | 预占 |
+| storeNo | string | 是 | 授权店 |
+| skuNo | string | 是 | 原SKU |
+| mode | string | 是 | SOLD_OUT或QUOTA或PREORDER_LIMIT |
+| businessDate | date | 否 | 业务日 |
+| quota | decimal | 否 | 额度 |
+| reservedQty | decimal | 是 | 原子预占 |
 | consumedQty | decimal | 是 | 已用 |
-| version | int64 | 是 | 版本 |
+| startsAt | datetime | 是 | 开始 |
+| expiresAt | datetime | 否 | 到期 |
+| status | string | 是 | 当前时点状态含EXPIRED |
+| reason | string | 是 | 原因 |
+| orderSource | string | 否 | 来源过滤 |
+| fulfillment | string | 否 | 履约过滤 |
+| version | int64 | 是 | CAS |
 
 ### MenuSkuRecipeInput
 
@@ -748,13 +762,13 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| bindingNo | string | 是 | 绑定 |
-| menuNo | string | 是 | 餐牌 |
+| bindingNo | string | 是 | 服务端业务号 |
+| menuNo | string | 是 | 本店餐牌 |
 | storeNo | string | 是 | 门店 |
-| provider | string | 是 | 提供方 |
-| channelAccountRef | string | 是 | 已有账号引用 |
-| externalStoreRef | string | 是 | 外部门店 |
-| status | string | 是 | ACTIVE或DISABLED |
+| provider | string | 是 | 渠道 |
+| channelAccountRef | string | 是 | 仅经营授权端可读账号引用 |
+| externalStoreRef | string | 是 | 外部门店引用 |
+| status | string | 是 | DRAFT或ACTIVE或DISABLED |
 | version | int64 | 是 | CAS |
 
 ### CatalogSync
@@ -1259,10 +1273,10 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| validFrom | date | 否 | 含起始日 |
-| validTo | date | 否 | 含结束日 |
-| weekSchedules | WeekScheduleInput[] | 是 | 实际规则 |
-| exceptions | ExceptionInput[] | 是 | 实际例外；whole schedule缺省为旧提供方未知，数组为空才表示已清空 |
+| validFrom | date | 否 | 来源起始日含首日 |
+| validTo | date | 否 | 来源起始日含末日 |
+| weekSchedules | WeekScheduleInput[] | 是 | 必需 |
+| exceptions | ExceptionInput[] | 是 | 必需，日期覆盖周规则 |
 
 ### ReplaceMenuScheduleReq
 
@@ -1274,6 +1288,141 @@
 | exceptions | ExceptionInput[] | 是 | 必需，允许[]不允许null |
 | validFrom | date | 否 | 含首日 |
 | validTo | date | 否 | 含末日；完整storeNos/contexts/categories分支尚未实现，不接受这些字段 |
+
+### MenuComposition
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| categories | MenuCategoryInput[] | 是 | 显式空清空组成，不改时段和上下文 |
+
+### Station
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| configNo | string | 是 | 工位号 |
+| version | int64 | 是 | 工作CAS |
+| status | string | 是 | 工作状态 |
+| storeNo | string | 是 | 授权门店 |
+| name | string | 是 | 名称 |
+| stationType | string | 是 | HOT或COLD或BAR或PACK |
+| enabled | boolean | 是 | 启用 |
+| publishedRevisionNo | string | 否 | 历史发布指针 |
+
+### StationRoutes
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| skuNo | string | 是 | 原SKU |
+| version | int64 | 是 | 整个店SKU路由版本，清空仍保留计数 |
+| routes | RouteInput[] | 是 | 当前有效路由 |
+
+### Catalog
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| storeNo | string | 是 | 获准店 |
+| orderSource | string | 是 | 可信来源 |
+| fulfillment | string | 是 | 履约 |
+| asOf | datetime | 是 | 服务端当前时点 |
+| menus | CatalogMenu[] | 是 | 生效发布 |
+| items | CatalogItem[] | 是 | 保留菜项身份 |
+
+### CatalogMenu
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| menuNo | string | 是 | 餐牌 |
+| revisionNo | string | 是 | 冻结发布号 |
+| revision | int64 | 是 | 发布序号 |
+| name | string | 是 | 冻结名称 |
+| priority | int32 | 是 | 优先级 |
+| exclusiveGroup | string | 否 | 互斥组 |
+| dependencies | CatalogDependency[] | 是 | 冻结依赖 |
+
+### CatalogDependency
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| revisionNo | string | 是 | 冻结发布号 |
+| configKind | string | 是 | 类型 |
+| configNo | string | 是 | 对象 |
+| revision | int64 | 是 | 序号 |
+| contentHash | string | 是 | 校验 |
+| optionGroup | DishOptionGroup | 否 | 公开选配定义 |
+| modifier | CatalogModifier | 否 | 公开小料元数据 |
+| bundle | BundleConfigVO | 否 | 公开套餐选项 |
+| recipe | CatalogRecipe | 否 | 仅配方身份，无原料和耗用 |
+| specValues | CatalogSpecValue[] | 是 | 冻结选项标签及版本 |
+
+### CatalogSku
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| skuNo | string | 是 | 原SKU |
+| spec | string | 否 | 当前规格 |
+| recipeNo | string | 否 | 冻结配方 |
+| priceMinor | int64 | 否 | 真实原CN价格，未知为null，不伪造0 |
+| currency | string | 否 | 已知CN价为CNY |
+| pricingStatus | string | 是 | KNOWN或UNAVAILABLE或UNKNOWN |
+| available | int32 | 否 | 仅权威PLATFORM物理可售件数，未知为null |
+| stockStatus | string | 是 | KNOWN或UNKNOWN或UNAVAILABLE |
+| onSale | boolean | 是 | 当前原上架及审核 |
+| restricted | boolean | 是 | 当前餐饮限制 |
+| remainingQuota | decimal | 否 | 剩余额度 |
+| transactable | boolean | 是 | 保守当前展示提示，不是报价或下单承诺 |
+| requiresSelectionQuote | boolean | 是 | 选配小料套餐配方必须重新权威报价 |
+| reason | string | 否 | 不可成交原因 |
+
+### RepublishConfigReq
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| version | int64 | 是 | 当前工作CAS |
+| effectiveAt | datetime | 是 | 新生效时刻 |
+| reason | string | 是 | 必需原因 |
+| approvalRef | string | 否 | 审批引用 |
+
+### CatalogModifier
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| configNo | string | 是 | 小料号 |
+| version | int64 | 是 | 版本 |
+| status | string | 是 | 状态 |
+| name | string | 是 | 名称 |
+| kind | string | 是 | ADDON或COMPONENT |
+| salesSkuNo | string | 否 | 销售SKU |
+| salesOffer | CatalogSku | 否 | 当前原SKU展示提示，不含组件用量 |
+
+### CatalogRecipe
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| recipeNo | string | 是 | 配方号 |
+| skuNo | string | 是 | 原SKU |
+| storeNo | string | 是 | 授权门店 |
+| version | int64 | 是 | 版本 |
+| configVersion | int64 | 是 | 配置版，不公开原料配比 |
+
+### CatalogSpecValue
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| valueNo | string | 是 | 选项 |
+| dimNo | string | 是 | 维度 |
+| label | string | 是 | 公开标签 |
+| dimName | string | 是 | 公开维度名 |
+| valueType | string | 是 | 值类型 |
+| usageType | string | 是 | 用途 |
+| valueVersion | int64 | 是 | 值版本 |
+| dimVersion | int64 | 是 | 维度版本 |
+
+### CartBundleChoiceInput
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| choiceNo | string | 是 | 冻结套餐选项 |
+| qty | decimal | 是 | 每份套餐选择数量 |
 
 ## 四、逐接口输入输出
 
@@ -1381,7 +1530,7 @@
 
 权限与守卫：原GOODS权限/BizContext/StoreDirectory与实际同主体门店绑定；未知字段拒绝；写操作CAS/幂等/审计/Outbox同事务；timezone与当前生效门店策略一致；只写单店无override头，多店编辑409；完成回执优先重放。
 
-能力依赖：CAT-02A已实现餐牌头管理；时段规则、菜项与发布仍待后续，不表示可售。
+能力依赖：已实现餐牌工作定义管理；发布与历史读取独立，不能将草稿当可售。
 
 路径输入：
 
@@ -1413,7 +1562,7 @@
 
 权限与守卫：原GOODS权限/BizContext/StoreDirectory与实际同主体门店绑定；未知字段拒绝；写操作CAS/幂等/审计/Outbox同事务；timezone与当前生效门店策略一致；只写单店无override头，多店编辑409；完成回执优先重放。
 
-能力依赖：CAT-02A已实现餐牌头管理；时段规则、菜项与发布仍待后续，不表示可售。
+能力依赖：已实现餐牌工作定义管理；发布与历史读取独立，不能将草稿当可售。
 
 路径输入：
 
@@ -1430,16 +1579,18 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| config | Menu | 是 | 当前授权店的工作头，不等于生效发布 |
-| schedule | MenuSchedule | 否 | 新提供方返回，旧提供方缺省表示未知 |
+| config | Menu | 是 | 当前工作头 |
+| schedule | MenuSchedule | 否 | 旧提供方缺省为未知 |
+| composition | MenuComposition | 否 | 分类菜项SKU及选配配方 |
+| contexts | ContextInput[] | 是 | 明确来源及履约 |
 
-### FOOD-API-006 · 发布menus
+### FOOD-API-006 · 发布餐牌
 
 `POST /biz/x/food/stores/{storeNo}/menus/{configNo}:publish`
 
-权限与守卫：CAS草稿头及完整聚合校验；冻结依赖发布版本和definition；发布内容不可改，客户端不可自填已发布凭据。
+权限与守卫：真实GOODS及获准门店；MENU开关独立；外部原身份先于本地事务核验；店级仲裁锁/CAS/actor绑定幂等；冻结定义与依赖、原商品身份且不含价格库存；完成回执先重放；历史内容不变；CHANNEL互斥按冻结的主体/门店/提供方/渠道账号/外部门店身份比较，不能按餐牌私有bindingNo判离散。
 
-能力依赖：餐饮新增。
+能力依赖：ALL-03/04已实现，生效时间及门店范围内选择冻结修订；不表示订单厨房事务已接入。
 
 路径输入：
 
@@ -1634,7 +1785,7 @@
 
 权限与守卫：门店范围与对象权限；写操作CAS版本及幂等。
 
-能力依赖：餐饮新增。
+能力依赖：ALL-04已实现店内工位管理；不派发厨房订单。
 
 路径输入：
 
@@ -1663,7 +1814,7 @@
 
 权限与守卫：门店范围与对象权限；仅授权读取，无写入副作用。
 
-能力依赖：餐饮新增。
+能力依赖：ALL-04已实现。
 
 路径输入：
 
@@ -1680,15 +1831,15 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| config | Config | 是 | 具体配置，类型由路径确定 |
+| config | Station | 是 | 授权工位工作定义及发布指针 |
 
-### FOOD-API-015 · 发布stations
+### FOOD-API-015 · 发布工位
 
 `POST /biz/x/food/stores/{storeNo}/stations/{configNo}:publish`
 
-权限与守卫：CAS草稿头及完整聚合校验；冻结依赖发布版本和definition；发布内容不可改，客户端不可自填已发布凭据。
+权限与守卫：真实GOODS及获准门店；STATION开关独立；外部原身份先于本地事务核验；店级仲裁锁/CAS/actor绑定幂等；冻结定义与依赖、原商品身份且不含价格库存；完成回执先重放；历史内容不变。
 
-能力依赖：餐饮新增。
+能力依赖：ALL-03/04已实现，生效时间及门店范围内选择冻结修订；不表示订单厨房事务已接入。
 
 路径输入：
 
@@ -1746,9 +1897,9 @@
 
 `PUT /biz/x/food/menus/{menuNo}/definition`
 
-权限与守卫：CAT-02B仅SCHEDULE分段；GOODS/BizContext/StoreDirectory/实际同主体当前店；单店无override/CAS/幂等/审计Outbox同事务；当前策略时区一致；跨周重叠拒绝/区间左闭右开/日期例外优先；不改变不可变历史；完整组成及发布冲突校验仍待后续。
+权限与守卫：三个分段只替换自身；真实同主体当前店；CAS及actor绑定幂等审计Outbox同事务；原Goods/SKU事实先在本地事务外批量核验；分类及菜项ID不能借用别的餐牌；ALL/EXPLICIT、INHERIT/REPLACE严格区分；配方同店同SKU；时段按来源日期覆盖、左闭右开；不改历史。
 
-能力依赖：CAT-02B已实现SCHEDULE分段；API017完整门店/入口/分类菜项定义仍待实现，不表示可售。
+能力依赖：ALL-01/02已实现工作组成、时段及上下文；发布另验依赖和冲突，不提供价格或成交授权。
 
 路径输入：
 
@@ -1760,19 +1911,23 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| section | string | 是 | 本批仅SCHEDULE |
-| version | int64 | 是 | 草稿CAS |
-| weekSchedules | WeekScheduleInput[] | 是 | 必需，允许[]不允许null |
-| exceptions | ExceptionInput[] | 是 | 必需，允许[]不允许null |
-| validFrom | date | 否 | 含首日 |
-| validTo | date | 否 | 含末日；完整storeNos/contexts/categories分支尚未实现，不接受这些字段 |
+| section | string | 是 | SCHEDULE或COMPOSITION或CONTEXT显式互斥分段 |
+| version | int64 | 是 | 当前草稿CAS |
+| weekSchedules | WeekScheduleInput[] | 否 | SCHEDULE必需 |
+| exceptions | ExceptionInput[] | 否 | SCHEDULE必需 |
+| validFrom | date | 否 | SCHEDULE来源起日 |
+| validTo | date | 否 | SCHEDULE来源末日 |
+| categories | MenuCategoryInput[] | 否 | COMPOSITION必需，空清空 |
+| contexts | ContextInput[] | 否 | CONTEXT必需，空清空 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| menu | Menu | 是 | 草稿头 |
-| schedule | MenuSchedule | 是 | 规范化时段及例外 |
+| menu | Menu | 是 | 新工作CAS |
+| schedule | MenuSchedule | 否 | 仅SCHEDULE分段回执 |
+| composition | MenuComposition | 否 | 仅COMPOSITION分段回执 |
+| contexts | ContextInput[] | 否 | 仅CONTEXT分段回执 |
 
 ### FOOD-API-018 · 套餐选择组配置
 
@@ -1868,9 +2023,9 @@
 
 `PUT /biz/x/food/stores/{storeNo}/sku-routes/{skuNo}`
 
-权限与守卫：门店范围与对象权限；写操作CAS版本及幂等。
+权限与守卫：原SKU同主体当前店；只允许同店启用工位；店级仲裁行锁；清空墓碑保留路由计数防ABA；actor绑定幂等及审计Outbox同事务；不改实存、不派发历史厨房任务。
 
-能力依赖：餐饮新增。
+能力依赖：ALL-04已实现路由配置，派工读取冻结发布需订单阶段集成。
 
 路径输入：
 
@@ -1883,8 +2038,8 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| routes | RouteInput[] | 是 | stationNo/taskRole/routeVersion |
-| version | int64 | 是 | 版本 |
+| version | int64 | 是 | 整个店SKU关系CAS，首次0 |
+| routes | RouteInput[] | 是 | 最多100个stationNo及taskRole，空清空，不接受客户端routeVersion |
 
 成功输出（data）：
 
@@ -1899,9 +2054,9 @@
 
 `POST /biz/x/food/stores/{storeNo}/sales-restrictions`
 
-权限与守卫：店SKU有效约束串行化；CLEAR仅清指定限制；配额批次幂等预占释放一次且不修改实存。
+权限与守卫：店SKU仲裁行锁；CLEAR只清指定版本；完成回执优先；过期按服务器时点恢复；餐饮额度通过既有OnlineQuotaPort本地原子预占消费释放一次，不重复建立实存账；UNKNOWN不释放；orderSource非空只允许POS/WAITER/KIOSK/QR/H5/APP/CHANNEL，fulfillment非空只允许DINE_IN/PICKUP/DELIVERY，CHANNEL显式履约只允许DELIVERY；null保留通配语义，非法值不得写审计/Outbox。
 
-能力依赖：共享可售约束或新增通用能力。
+能力依赖：ALL-05已实现餐饮限制及在线额度；不表示物理库存或订单报价可用。
 
 路径输入：
 
@@ -1913,47 +2068,65 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| skuNo | string | 是 | SKU |
+| skuNo | string | 是 | 同店原SKU |
 | mode | string | 是 | SOLD_OUT或QUOTA或PREORDER_LIMIT或CLEAR |
-| restrictionNo | string | 否 | CLEAR时必填 |
-| quota | decimal | 否 | 额度模式必填正值 |
-| businessDate | date | 否 | 每日额度必填 |
-| startsAt | datetime | 否 | 缺省现在 |
+| restrictionNo | string | 否 | 编辑或CLEAR对象 |
+| version | int64 | 否 | 已有对象必需CAS |
+| quota | decimal | 否 | 额度模式正decimal(18,6)，物理件数与交易计量另验 |
+| businessDate | date | 否 | 适用营业日 |
+| startsAt | datetime | 否 | 缺省当前 |
 | expiresAt | datetime | 否 | 到期 |
 | reason | string | 是 | 原因 |
+| orderSource | string | 否 | 受控来源 |
+| fulfillment | string | 否 | 履约 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| restrictionNo | string | 是 | 销售约束引用 |
-| status | string | 是 | 结果 |
+| restrictionNo | string | 是 | 约束 |
+| storeNo | string | 是 | 授权店 |
+| skuNo | string | 是 | 原SKU |
+| mode | string | 是 | SOLD_OUT或QUOTA或PREORDER_LIMIT |
+| businessDate | date | 否 | 业务日 |
+| quota | decimal | 否 | 额度 |
+| reservedQty | decimal | 是 | 原子预占 |
+| consumedQty | decimal | 是 | 已用 |
+| startsAt | datetime | 是 | 开始 |
+| expiresAt | datetime | 否 | 到期 |
+| status | string | 是 | 当前时点状态含EXPIRED |
+| reason | string | 是 | 原因 |
+| orderSource | string | 否 | 来源过滤 |
+| fulfillment | string | 否 | 履约过滤 |
+| version | int64 | 是 | CAS |
 
 ### FOOD-API-023 · 顾客菜单视图
 
 `GET /mp/x/food/catalog`
 
-权限与守卫：公开目录或合法会话范围；来源须与客户端身份匹配；用户不能指定任意未来时间绕过接单；菜单条目不可仅按SKU去重；未取得权威报价不显示0元或可成交；用户不能伪造渠道身份。。
+权限与守卫：服务器当前时间；仅已发布冻结定义及其时段来源履约；每菜项保留身份；当前原商品审核上架、原CN/CNY门店及特价和餐饮限制重新读取；未知价格及库存为null且不可成交；复杂选配/套餐/配方需权威报价；公开及顾客目录不暴露channelAccount账号、外部门店、pricePolicyRef或内部依赖快照，渠道上下文不能由用户伪造；不接受任意at未来预览。
 
-能力依赖：餐饮新增。
+能力依赖：ALL-06已实现保守当前展示；PLATFORM物理库存可明确读取，DUAL/INVENTORY或多市场歧义为UNKNOWN；没有报价保留禁成交，不保证下单。
 
 请求Query：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| storeNo | string | 是 | 门店 |
-| sessionNo | string | 否 | 会话 |
-| orderSource | string | 是 | 销售来源 |
-| fulfillment | string | 是 | 履约 |
-| channelBindingNo | string | 否 | 服务端按获准来源解析；外部身份须匹配 |
+| storeNo | string | 是 | 公开门店或原顾客会话门店 |
+| orderSource | string | 是 | H5公开或QR原顾客会话，不能伪造CHANNEL |
+| fulfillment | string | 是 | H5仅PICKUP或DELIVERY，QR仅DINE_IN |
+| sessionNo | string | 否 | QR必需，另需X-Food-Session头原会话凭据 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| menus | Menu[] | 是 | 生效菜单 |
-| items | CatalogItem[] | 是 | 商品规格选配可售提示 |
-| asOf | datetime | 是 | 时点 |
+| storeNo | string | 是 | 获准店 |
+| orderSource | string | 是 | 可信来源 |
+| fulfillment | string | 是 | 履约 |
+| asOf | datetime | 是 | 服务端当前时点 |
+| menus | CatalogMenu[] | 是 | 生效发布 |
+| items | CatalogItem[] | 是 | 保留菜项身份 |
 
 ### FOOD-API-024 · 建桌
 
@@ -2350,9 +2523,9 @@
 
 `GET /biz/x/food/carts/{cartNo}`
 
-权限与守卫：门店范围与对象权限；仅授权读取，无写入副作用。
+权限与守卫：ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。。
 
-能力依赖：餐饮新增。
+能力依赖：只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。。
 
 路径输入：
 
@@ -2374,9 +2547,9 @@
 
 `POST /biz/x/food/stores/{storeNo}/carts`
 
-权限与守卫：无台也需店级授权；session及check归属匹配；来源终端经鉴权验证，客户端不能开启后付能力。
+权限与守卫：ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。。
 
-能力依赖：餐饮新增。
+能力依赖：只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。。
 
 路径输入：
 
@@ -2388,26 +2561,26 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| checkNo | string | 否 | 获准台账 |
-| sessionNo | string | 否 | 无台会话 |
-| buyerNo | string | 否 | 受权代客买家 |
-| orderSource | string | 是 | 受控来源 |
-| fulfillment | string | 是 | 受控履约 |
-| scheduledAt | datetime | 否 | 定时出餐 |
+| checkNo | string | 否 | 真实OPEN台账 |
+| sessionNo | string | 否 | 已获准会话 |
+| buyerNo | string | 否 | 当前拒绝客户端代客 |
+| orderSource | string | 是 | POS或WAITER |
+| fulfillment | string | 是 | 履约 |
+| scheduledAt | datetime | 否 | 当前拒绝 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| cart | Cart | 是 | 购物车 |
+| cart | Cart | 是 | 唯一OPEN共享车 |
 
 ### FOOD-API-039 · 替换草稿行
 
 `PUT /biz/x/food/carts/{cartNo}/lines/{sourceLineRef}`
 
-权限与守卫：path sourceLineRef与line.sourceLineRef必须一致；购物车CAS；未提交且SKU选配合法。
+权限与守卫：ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。。
 
-能力依赖：餐饮新增。
+能力依赖：只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。。
 
 路径输入：
 
@@ -2420,23 +2593,23 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| line | OrderLineInput | 是 | 本行 |
-| version | int64 | 是 | 购物车版本 |
+| line | OrderLineInput | 是 | 完整替换源行 |
+| version | int64 | 是 | 当前整个车版本 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | cartNo | string | 是 | 购物车 |
-| version | int64 | 是 | 新版本 |
+| version | int64 | 是 | 整体新版本 |
 
 ### FOOD-API-040 · 归档购物车草稿行
 
 `POST /biz/x/food/carts/{cartNo}/lines/{sourceLineRef}:archive`
 
-权限与守卫：门店范围与对象权限；写操作CAS版本及幂等。
+权限与守卫：ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。。
 
-能力依赖：餐饮新增。
+能力依赖：只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。。
 
 路径输入：
 
@@ -2449,14 +2622,14 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| version | int64 | 是 | 购物车版本 |
+| version | int64 | 是 | 当前整个车版本 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | cartNo | string | 是 | 购物车 |
-| version | int64 | 是 | 新版本 |
+| version | int64 | 是 | 整体新版本 |
 
 ### FOOD-API-041 · 点单报价
 
@@ -4487,7 +4660,7 @@
 
 权限与守卫：原GOODS权限/BizContext/StoreDirectory与实际同主体门店绑定；未知字段拒绝；写操作CAS/幂等/审计/Outbox同事务；timezone与当前生效门店策略一致；只写单店无override头，多店编辑409；完成回执优先重放。
 
-能力依赖：CAT-02A已实现餐牌头管理；时段规则、菜项与发布仍待后续，不表示可售。
+能力依赖：已实现餐牌工作定义管理；发布与历史读取独立，不能将草稿当可售。
 
 路径输入：
 
@@ -4518,7 +4691,7 @@
 
 权限与守卫：主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；旧订单快照保留。
 
-能力依赖：餐饮新增。
+能力依赖：已实现餐牌工作定义管理；发布与历史读取独立，不能将草稿当可售。
 
 路径输入：
 
@@ -4537,7 +4710,7 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| operation | Operation | 是 | 接单门控结果 |
+| menu | Menu | 是 | 停用后的工作头，不影响旧订单快照 |
 
 ### FOOD-API-112 · 菜品列表
 
@@ -4603,9 +4776,9 @@
 
 `GET /biz/x/food/stores/{storeNo}/catalog`
 
-权限与守卫：主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；仅解析已发布快照；可售提交时再次验证；菜单条目不可仅按SKU去重；未取得权威报价不显示0元或可成交；用户不能伪造渠道身份。。
+权限与守卫：服务器当前时间；仅已发布冻结定义及其时段来源履约；每菜项保留身份；当前原商品审核上架、原CN/CNY门店及特价和餐饮限制重新读取；未知价格及库存为null且不可成交；复杂选配/套餐/配方需权威报价；公开及顾客目录不暴露channelAccount账号、外部门店、pricePolicyRef或内部依赖快照，渠道上下文不能由用户伪造；不接受任意at未来预览。
 
-能力依赖：餐饮新增。
+能力依赖：ALL-06已实现保守当前展示；PLATFORM物理库存可明确读取，DUAL/INVENTORY或多市场歧义为UNKNOWN；没有报价保留禁成交，不保证下单。
 
 路径输入：
 
@@ -4617,18 +4790,20 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| orderSource | string | 是 | 授权来源 |
-| fulfillment | string | 是 | 履约 |
-| at | datetime | 否 | 有预览权限才可指定 |
-| channelBindingNo | string | 否 | 服务端按获准来源解析；外部身份须匹配 |
+| orderSource | string | 是 | POS或WAITER或KIOSK或QR或H5或APP |
+| fulfillment | string | 是 | DINE_IN或PICKUP或DELIVERY |
+| channelBindingNo | string | 否 | 尚无真实渠道目录授权时拒绝 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| menus | Menu[] | 是 | 生效餐牌 |
-| items | CatalogItem[] | 是 | 可售菜品 |
-| asOf | datetime | 是 | 截至 |
+| storeNo | string | 是 | 获准店 |
+| orderSource | string | 是 | 可信来源 |
+| fulfillment | string | 是 | 履约 |
+| asOf | datetime | 是 | 服务端当前时点 |
+| menus | CatalogMenu[] | 是 | 生效发布 |
+| items | CatalogItem[] | 是 | 保留菜项身份 |
 
 ### FOOD-API-115 · 配置发布历史
 
@@ -4660,9 +4835,9 @@
 
 `POST /biz/x/food/config-revisions/{revisionNo}:republish`
 
-权限与守卫：主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；旧快照不可改，旧引用现可售性重新校验。
+权限与守卫：原主体门店及当前工作CAS；只允许已实现kind白名单；重新验真当前原身份及依赖授权，用旧冻结内容追加新发布号；保留原内容哈希及旧引用，不覆盖历史；理由与actor审计同事务；CHANNEL互斥按冻结的主体/门店/提供方/渠道账号/外部门店身份比较，不能按餐牌私有bindingNo判离散。
 
-能力依赖：餐饮新增。
+能力依赖：ALL-03已实现新修订回滚；开关和冲突时间线继续适用；不回滚历史订单事实。
 
 路径输入：
 
@@ -4809,7 +4984,7 @@
 
 权限与守卫：主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id。
 
-能力依赖：餐饮新增。
+能力依赖：ALL-04已实现。
 
 路径输入：
 
@@ -4828,8 +5003,8 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| records | Config[] | 是 | 授权列表 |
-| total | int64 | 是 | 总数 |
+| records | Station[] | 是 | 授权工位 |
+| total | int64 | 是 | 相同过滤总数 |
 | page | int32 | 是 | 页 |
 | size | int32 | 是 | 页长 |
 
@@ -4839,7 +5014,7 @@
 
 权限与守卫：主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id。
 
-能力依赖：餐饮新增。
+能力依赖：ALL-05已实现服务器时点状态及主体门店过滤。
 
 路径输入：
 
@@ -4963,9 +5138,9 @@
 
 `POST /biz/x/food/carts/{cartNo}:archive`
 
-权限与守卫：主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；不删除已提交批次；提交中冻结行须先恢复。
+权限与守卫：ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。。
 
-能力依赖：餐饮新增。
+能力依赖：只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。。
 
 路径输入：
 
@@ -4977,21 +5152,21 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| version | int64 | 是 | 购物车版 |
+| version | int64 | 是 | 当前整个车版本 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| operation | Operation | 是 | 关闭结果 |
+| operation | Operation | 是 | 归档回执 |
 
 ### FOOD-API-127 · 顾客购物车读取
 
 `GET /mp/x/food/carts/{cartNo}`
 
-权限与守卫：会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定。
+权限与守卫：ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。sessionNo query及X-Food-Session头不属于业务DTO。。
 
-能力依赖：餐饮新增。
+能力依赖：只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。。
 
 路径输入：
 
@@ -5001,21 +5176,23 @@
 
 请求Query：
 
-无额外参数。
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| sessionNo | string | 否 | 扫码必需且H5可省略 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| cart | Cart | 是 | 获准购物车 |
+| cart | Cart | 是 | 脱敏获准草稿 |
 
 ### FOOD-API-128 · 顾客创建购物车
 
 `POST /mp/x/food/stores/{storeNo}/carts`
 
-权限与守卫：会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定。
+权限与守卫：ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。。
 
-能力依赖：餐饮新增。
+能力依赖：只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。。
 
 路径输入：
 
@@ -5027,24 +5204,24 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| checkNo | string | 否 | 获准台账 |
-| fulfillment | string | 是 | 受控履约 |
-| scheduledAt | datetime | 否 | 定时出餐 |
-| sessionNo | string | 是 | 获准会话 |
+| checkNo | string | 否 | 必须等于已获准会话台账 |
+| sessionNo | string | 否 | 原扫码会话或服务端H5会话 |
+| fulfillment | string | 是 | 履约 |
+| scheduledAt | datetime | 否 | 当前拒绝 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| cart | Cart | 是 | 购物车 |
+| cart | Cart | 是 | 脱敏获准草稿 |
 
 ### FOOD-API-129 · 顾客替换草稿行
 
 `PUT /mp/x/food/carts/{cartNo}/lines/{sourceLineRef}`
 
-权限与守卫：会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定。
+权限与守卫：ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。sessionNo query及X-Food-Session头不属于业务DTO。。
 
-能力依赖：餐饮新增。
+能力依赖：只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。。
 
 路径输入：
 
@@ -5057,23 +5234,23 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| line | OrderLineInput | 是 | 本行 |
-| version | int64 | 是 | 购物车版本 |
+| line | OrderLineInput | 是 | 完整替换源行 |
+| version | int64 | 是 | 当前整个车版本 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | cartNo | string | 是 | 购物车 |
-| version | int64 | 是 | 新版本 |
+| version | int64 | 是 | 整体新版本 |
 
 ### FOOD-API-130 · 顾客归档购物车草稿行
 
 `POST /mp/x/food/carts/{cartNo}/lines/{sourceLineRef}:archive`
 
-权限与守卫：会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定。
+权限与守卫：ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。sessionNo query及X-Food-Session头不属于业务DTO。。
 
-能力依赖：餐饮新增。
+能力依赖：只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。。
 
 路径输入：
 
@@ -5086,14 +5263,14 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| version | int64 | 是 | 购物车版本 |
+| version | int64 | 是 | 当前整个车版本 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | cartNo | string | 是 | 购物车 |
-| version | int64 | 是 | 新版本 |
+| version | int64 | 是 | 整体新版本 |
 
 ### FOOD-API-131 · 顾客点单报价
 
@@ -5413,9 +5590,9 @@
 
 `POST /biz/x/food/stores/{storeNo}/menu-channel-bindings`
 
-权限与守卫：原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。渠道账号必须验真；Keeta仅规划。。
+权限与守卫：同主体当前店餐牌；新绑定为DRAFT，不宣称已获账号授权；服务端号/CAS/actor绑定幂等/审计Outbox；创建及修改失效餐牌工作CAS。
 
-能力依赖：餐饮新增，未实现；按P1/P2/P4/P5所属切片验收。
+能力依赖：ALL-02已实现渠道引用草稿及受控启停；真实渠道账号/价格授权缺失时ACTIVE拒绝；Keeta仅规划，无真实同步或成交。
 
 路径输入：
 
@@ -5436,7 +5613,14 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| binding | MenuChannelBinding | 是 | 服务端生成绑定 |
+| bindingNo | string | 是 | 服务端业务号 |
+| menuNo | string | 是 | 本店餐牌 |
+| storeNo | string | 是 | 门店 |
+| provider | string | 是 | 渠道 |
+| channelAccountRef | string | 是 | 仅经营授权端可读账号引用 |
+| externalStoreRef | string | 是 | 外部门店引用 |
+| status | string | 是 | DRAFT或ACTIVE或DISABLED |
+| version | int64 | 是 | CAS |
 
 ### FOOD-API-143 · 渠道绑定列表
 
@@ -5444,7 +5628,7 @@
 
 权限与守卫：原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。。
 
-能力依赖：餐饮新增，未实现；按P1/P2/P4/P5所属切片验收。
+能力依赖：ALL-02已实现渠道引用草稿及受控启停；真实渠道账号/价格授权缺失时ACTIVE拒绝；Keeta仅规划，无真实同步或成交。
 
 路径输入：
 
@@ -5474,9 +5658,9 @@
 
 `GET /biz/x/food/menu-channel-bindings/{bindingNo}`
 
-权限与守卫：原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。。
+权限与守卫：真实GOODS权限及获准对象门店；仅经营端返回账号引用，公开目录不得返回。
 
-能力依赖：餐饮新增，未实现；按P1/P2/P4/P5所属切片验收。
+能力依赖：ALL-02已实现渠道引用草稿及受控启停；真实渠道账号/价格授权缺失时ACTIVE拒绝；Keeta仅规划，无真实同步或成交。
 
 路径输入：
 
@@ -5492,15 +5676,22 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| binding | MenuChannelBinding | 是 | 获准对象 |
+| bindingNo | string | 是 | 服务端业务号 |
+| menuNo | string | 是 | 本店餐牌 |
+| storeNo | string | 是 | 门店 |
+| provider | string | 是 | 渠道 |
+| channelAccountRef | string | 是 | 仅经营授权端可读账号引用 |
+| externalStoreRef | string | 是 | 外部门店引用 |
+| status | string | 是 | DRAFT或ACTIVE或DISABLED |
+| version | int64 | 是 | CAS |
 
 ### FOOD-API-145 · 修改渠道绑定
 
 `PUT /biz/x/food/menu-channel-bindings/{bindingNo}`
 
-权限与守卫：原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。不改原provider/账号/menu/store；历史映射保留，停用不取消旧订单。。
+权限与守卫：对象门店/CAS/actor绑定幂等；ACTIVE需真实账号及外部门店授权，Keeta或缺提供方拒绝；provider/账号/menu/store不可换义；停用不取消历史订单。
 
-能力依赖：餐饮新增，未实现；按P1/P2/P4/P5所属切片验收。
+能力依赖：ALL-02已实现渠道引用草稿及受控启停；真实渠道账号/价格授权缺失时ACTIVE拒绝；Keeta仅规划，无真实同步或成交。
 
 路径输入：
 
@@ -5520,7 +5711,14 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| binding | MenuChannelBinding | 是 | 新版本 |
+| bindingNo | string | 是 | 服务端业务号 |
+| menuNo | string | 是 | 本店餐牌 |
+| storeNo | string | 是 | 门店 |
+| provider | string | 是 | 渠道 |
+| channelAccountRef | string | 是 | 仅经营授权端可读账号引用 |
+| externalStoreRef | string | 是 | 外部门店引用 |
+| status | string | 是 | DRAFT或ACTIVE或DISABLED |
+| version | int64 | 是 | CAS |
 
 ### FOOD-API-146 · 发起餐牌渠道同步
 
@@ -5775,6 +5973,62 @@
 |---|---|---|---|
 | consumption | ProductionConsumption | 是 | 原事实与回执 |
 
+### FOOD-API-155 · 读取SKU工位路由
+
+`GET /biz/x/food/stores/{storeNo}/sku-routes/{skuNo}`
+
+权限与守卫：原GOODS权限及真实同主体当前门店；只读店SKU当前路由及整体关系版本，不返回物理id，不写审计或库存。
+
+能力依赖：ALL-04已实现；StationService.getRoutes/BizStationController.getRoutes，空关系保留版本而非重置。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| storeNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+| skuNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Query：
+
+无额外参数。
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| skuNo | string | 是 | 原SKU |
+| version | int64 | 是 | 整个店SKU路由版本，清空仍保留计数 |
+| routes | RouteInput[] | 是 | 当前有效路由 |
+
+### FOOD-API-156 · 授权扫码会话加入共享购物车
+
+`POST /biz/x/food/checks/{checkNo}/cart-sessions`
+
+权限与守卫：原VERIFY门店权限；锁当前区域桌台/check/session，当前有效桌台占用必须属于台账；不可改绑其他台账；原会话撤销过期立即生效。
+
+能力依赖：ORD01辅助合同，复用原GuestSession.checkNo及scope追加CHECK_CART，不增加成员表；审计及DiningSessionChanged Outbox同事务。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| checkNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Body：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| sessionNo | string | 是 | 原扫码会话 |
+| version | int64 | 是 | 会话当前版本 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| sessionNo | string | 是 | 获准会话 |
+| checkNo | string | 是 | 当前OPEN台账 |
+| version | int64 | 是 | 会话新版本 |
+
 ## 五、顾客与设备端复用
 
 顾客catalog/session与购物车、报价、批次、进度、结账、退餐申请/查询、主动结束会话均已逐项登记API编号。只有目录中的 /mp/x/food 白名单可实现，不能将整个biz控制器自动暴露到mp。顾客作用域绑定本人或明确授权的台账/源行，桌码仅授权桌级会话，不自动共享同桌其他独立台账。顾客禁止代客buyerNo、现金确认、审批、签核、任务操作和自造corePaymentToken；点餐机使用已验证设备凭据与短会话。
@@ -6009,7 +6263,7 @@ Catalog.goodsMetadata已实现为GoodsCatalogQueryPort及typed内部查询；其
 | FNB-A06 | 依赖共享/核心合同 | `fnb_store_policy`、`fnb_service_calendar`、`fnb_sales_restriction` | FOOD-API-002、FOOD-API-003、FOOD-API-022 | 暂停/节日限制可配置；全局结构化营业时间与接单容量依赖共享合同，当前openHours文本不能假定覆盖多时段多时区硬校验 |
 | FNB-A07 | 依赖共享/核心合同 | `fnb_store_policy`、`fnb_action_log` | FOOD-API-001、FOOD-API-081 | 沿现有身份/门店授权及共享审批；金额阈值和权限种子需实施时逐项登记，不能由客户端自报主体或审批人 |
 
-## 九、增强跨域合同（设计定义，未实现）
+## 九、增强跨域合同（目标交易合同与已实现只读管理分开验收）
 
 字段类型见上方DTO字典。主体、渠道由可信服务身份解析；终端不可自报价格策略授权。
 

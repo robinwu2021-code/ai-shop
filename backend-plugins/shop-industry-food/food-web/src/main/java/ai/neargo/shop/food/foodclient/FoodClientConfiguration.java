@@ -2,6 +2,7 @@ package ai.neargo.shop.food.foodclient;
 
 import ai.neargo.shop.food.config.ConditionalOnFoodWebEnabled;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration.PolicyEnabled;
+import ai.neargo.shop.food.service.CheckCartService;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.OptionGroupService;
@@ -29,6 +30,7 @@ import ai.neargo.shop.food.service.DiningSessionService;
 import ai.neargo.shop.food.service.ReservationService;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.service.TableService;
+import ai.neargo.shop.food.spi.CartInternalApi;
 import ai.neargo.shop.food.spi.CheckInternalApi;
 import ai.neargo.shop.food.spi.DiningSessionInternalApi;
 import ai.neargo.shop.food.spi.ReservationInternalApi;
@@ -128,6 +130,13 @@ public class FoodClientConfiguration {
     DiningSessionService remoteDiningSessionService(InternalHttp http) {
         return new RemoteDiningSessionService(http.client(ServiceName.FOOD,
                 DiningSessionInternalApi.class, Duration.ofSeconds(5)));
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(CheckCartService.class)
+    CheckCartService remoteCheckCartService(InternalHttp http) {
+        return new RemoteCheckCartService(http.client(ServiceName.FOOD,
+                CartInternalApi.class, Duration.ofSeconds(5)));
     }
 
     @Bean

@@ -230,7 +230,8 @@
         "FOOD-API-130",
         "FOOD-API-131",
         "FOOD-API-132",
-        "FOOD-API-133"
+        "FOOD-API-133",
+        "FOOD-API-156"
       ]
     },
     {
@@ -7186,8 +7187,9 @@
       "path": "/biz/x/food/carts/{cartNo}",
       "input": "",
       "output": "cart:Cart:获准购物车",
-      "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
-      "needs": "餐饮新增"
+      "guard": "ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。",
+      "needs": "只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。",
+      "implementation": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "id": "FOOD-API-038",
@@ -7195,10 +7197,11 @@
       "name": "创建购物车",
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/carts",
-      "input": "checkNo?:string:获准台账;sessionNo?:string:无台会话;buyerNo?:string:受权代客买家;orderSource:string:受控来源;fulfillment:string:受控履约;scheduledAt?:datetime:定时出餐",
-      "output": "cart:Cart:购物车",
-      "guard": "无台也需店级授权；session及check归属匹配；来源终端经鉴权验证，客户端不能开启后付能力",
-      "needs": "餐饮新增"
+      "input": "checkNo?:string:真实OPEN台账;sessionNo?:string:已获准会话;buyerNo?:string:当前拒绝客户端代客;orderSource:string:POS或WAITER;fulfillment:string:履约;scheduledAt?:datetime:当前拒绝",
+      "output": "cart:Cart:唯一OPEN共享车",
+      "guard": "ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。",
+      "needs": "只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。",
+      "implementation": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "id": "FOOD-API-039",
@@ -7206,10 +7209,11 @@
       "name": "替换草稿行",
       "method": "PUT",
       "path": "/biz/x/food/carts/{cartNo}/lines/{sourceLineRef}",
-      "input": "line:OrderLineInput:本行;version:int64:购物车版本",
-      "output": "cartNo:string:购物车;version:int64:新版本",
-      "guard": "path sourceLineRef与line.sourceLineRef必须一致；购物车CAS；未提交且SKU选配合法",
-      "needs": "餐饮新增"
+      "input": "line:OrderLineInput:完整替换源行;version:int64:当前整个车版本",
+      "output": "cartNo:string:购物车;version:int64:整体新版本",
+      "guard": "ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。",
+      "needs": "只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。",
+      "implementation": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "id": "FOOD-API-040",
@@ -7217,10 +7221,11 @@
       "name": "归档购物车草稿行",
       "method": "POST",
       "path": "/biz/x/food/carts/{cartNo}/lines/{sourceLineRef}:archive",
-      "input": "version:int64:购物车版本",
-      "output": "cartNo:string:购物车;version:int64:新版本",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
-      "needs": "餐饮新增"
+      "input": "version:int64:当前整个车版本",
+      "output": "cartNo:string:购物车;version:int64:整体新版本",
+      "guard": "ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。",
+      "needs": "只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。",
+      "implementation": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "id": "FOOD-API-041",
@@ -8169,10 +8174,11 @@
       "name": "关闭草稿购物车",
       "method": "POST",
       "path": "/biz/x/food/carts/{cartNo}:archive",
-      "input": "version:int64:购物车版",
-      "output": "operation:Operation:关闭结果",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；不删除已提交批次；提交中冻结行须先恢复",
-      "needs": "餐饮新增"
+      "input": "version:int64:当前整个车版本",
+      "output": "operation:Operation:归档回执",
+      "guard": "ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。",
+      "needs": "只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。",
+      "implementation": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "id": "FOOD-API-127",
@@ -8180,10 +8186,11 @@
       "name": "顾客购物车读取",
       "method": "GET",
       "path": "/mp/x/food/carts/{cartNo}",
-      "input": "",
-      "output": "cart:Cart:获准购物车",
-      "guard": "会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定",
-      "needs": "餐饮新增"
+      "input": "sessionNo?:string:扫码必需且H5可省略",
+      "output": "cart:Cart:脱敏获准草稿",
+      "guard": "ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。sessionNo query及X-Food-Session头不属于业务DTO。",
+      "needs": "只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。",
+      "implementation": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "id": "FOOD-API-128",
@@ -8191,10 +8198,11 @@
       "name": "顾客创建购物车",
       "method": "POST",
       "path": "/mp/x/food/stores/{storeNo}/carts",
-      "input": "checkNo?:string:获准台账;fulfillment:string:受控履约;scheduledAt?:datetime:定时出餐;sessionNo:string:获准会话",
-      "output": "cart:Cart:购物车",
-      "guard": "会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定",
-      "needs": "餐饮新增"
+      "input": "checkNo?:string:必须等于已获准会话台账;sessionNo?:string:原扫码会话或服务端H5会话;fulfillment:string:履约;scheduledAt?:datetime:当前拒绝",
+      "output": "cart:Cart:脱敏获准草稿",
+      "guard": "ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。",
+      "needs": "只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。",
+      "implementation": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "id": "FOOD-API-129",
@@ -8202,10 +8210,11 @@
       "name": "顾客替换草稿行",
       "method": "PUT",
       "path": "/mp/x/food/carts/{cartNo}/lines/{sourceLineRef}",
-      "input": "line:OrderLineInput:本行;version:int64:购物车版本",
-      "output": "cartNo:string:购物车;version:int64:新版本",
-      "guard": "会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定",
-      "needs": "餐饮新增"
+      "input": "line:OrderLineInput:完整替换源行;version:int64:当前整个车版本",
+      "output": "cartNo:string:购物车;version:int64:整体新版本",
+      "guard": "ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。sessionNo query及X-Food-Session头不属于业务DTO。",
+      "needs": "只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。",
+      "implementation": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "id": "FOOD-API-130",
@@ -8213,10 +8222,11 @@
       "name": "顾客归档购物车草稿行",
       "method": "POST",
       "path": "/mp/x/food/carts/{cartNo}/lines/{sourceLineRef}:archive",
-      "input": "version:int64:购物车版本",
-      "output": "cartNo:string:购物车;version:int64:新版本",
-      "guard": "会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定",
-      "needs": "餐饮新增"
+      "input": "version:int64:当前整个车版本",
+      "output": "cartNo:string:购物车;version:int64:整体新版本",
+      "guard": "ORD01已实现；B端原门店范围及ORDER_VIEW/VERIFY；C端原哈希凭证或真实CONSUMER买家，TABLE_MENU不授予共享车权限；写入整体CAS与actor绑定幂等，C响应buyerNo脱敏。sessionNo query及X-Food-Session头不属于业务DTO。",
+      "needs": "只持久化草稿，无金额计算或库存预占；正式报价/提交属于ORD02/03。菜单及冻结选配必须仍有效。",
+      "implementation": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "id": "FOOD-API-131",
@@ -8497,12 +8507,24 @@
       "guard": "原GOODS权限及真实同主体当前门店；只读店SKU当前路由及整体关系版本，不返回物理id，不写审计或库存",
       "needs": "ALL-04已实现；StationService.getRoutes/BizStationController.getRoutes，空关系保留版本而非重置",
       "implementation": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    {
+      "id": "FOOD-API-156",
+      "domain": "D",
+      "name": "授权扫码会话加入共享购物车",
+      "method": "POST",
+      "path": "/biz/x/food/checks/{checkNo}/cart-sessions",
+      "input": "sessionNo:string:原扫码会话;version:int64:会话当前版本",
+      "output": "sessionNo:string:获准会话;checkNo:string:当前OPEN台账;version:int64:会话新版本",
+      "guard": "原VERIFY门店权限；锁当前区域桌台/check/session，当前有效桌台占用必须属于台账；不可改绑其他台账；原会话撤销过期立即生效",
+      "needs": "ORD01辅助合同，复用原GuestSession.checkNo及scope追加CHECK_CART，不增加成员表；审计及DiningSessionChanged Outbox同事务",
+      "implementation": "IMPLEMENTED_BACKEND_DRAFT"
     }
   ],
   "dtos": {
     "Money": "minor:int64:最小货币单位;currency:string:ISO币种",
     "Selection": "groupNo:string:选择组;sourceKind:string:SPEC_VALUE或MODIFIER;sourceNo:string:编号;qty:decimal:数量;configVersion:int64:规则版本",
-    "OrderLineInput": "sourceLineRef:string:源行;goodsNo:string:商品;skuNo:string:SKU;qty:decimal:正数量;seatNo?:string:座位;courseNo?:string:道次;selections:Selection[]:选择明细",
+    "OrderLineInput": "sourceLineRef:string:端侧稳定源行最长64;menuNo:string:当前餐牌;menuItemNo:string:餐牌菜项;menuRevisionNo:string:仍有效的冻结餐牌修订;goodsNo:string:原商品;skuNo:string:原SKU;qty:decimal:COUNT正整数不超过999999;seatNo?:string:同台账座位;courseNo?:string:当前阶段拒绝道次;selections:Selection[]:每份菜选择必需数组;bundleChoices:CartBundleChoiceInput[]:套餐选择必需数组",
     "QuoteLine": "sourceLineRef:string:源行;skuNo:string:SKU;qty:decimal:数量;amount:Money:核心金额;coreBreakdownRef:string:核心分摊引用",
     "Quote": "quoteNo:string:报价;expiresAt:datetime:失效;scopeHash:string:范围指纹;lines:QuoteLine[]:逐行金额;total:Money:应收;capabilities:string[]:可用能力",
     "Check": "checkNo:string:台账;storeNo:string:门店;businessDate:date:开台营业日;status:string:营业状态;payMode:string:先后付;partySize:int32:人数;tableNos:string[]:占桌;version:int64:版本",
@@ -8541,7 +8563,7 @@
     "BatchDetail": "batch:Batch:批次;lines:FoodLine[]:冻结源行;financialStatus:string:核心资金投影;fulfillmentStatus:string:核心履约投影;pendingOperationNos:string[]:未知操作",
     "FoodLine": "foodLineNo:string:餐饮行;sourceLineRef:string:原源行;goodsNo:string:商品;skuNo:string:SKU;qty:decimal:数量;unit:string:单位;seatNo?:string:座位;configRevisionNos:string[]:发布版本;displaySnapshot:object:受控历史展示;coreAllocations:CoreLineAllocation[]:受权核心分配",
     "CoreLineAllocation": "allocationNo:string:分配号;qty:decimal:数量;amount:Money:核心分配金额;coreSnapshotHash:string:快照摘要",
-    "Cart": "cartNo:string:购物车;checkNo?:string:台账;version:int64:版本;lines:OrderLineInput[]:草稿;orderSource:string:来源;fulfillment:string:履约;scheduledAt?:datetime:出餐时点",
+    "Cart": "cartNo:string:购物车;storeNo:string:真实门店;checkNo?:string:台账;sessionNo?:string:无台会话或首建来源不构成共享车授权;buyerNo?:string:B端真实买家且C端始终隐去;status:string:OPEN或SUBMITTING或CLOSED;orderSource:string:POS或WAITER或QR或H5;fulfillment:string:DINE_IN或PICKUP或DELIVERY;scheduledAt?:datetime:本阶段非空拒绝;version:int64:整个草稿CAS版本;lines:OrderLineInput[]:活动草稿行",
     "Operation": "operationNo:string:操作;status:string:含处理中未知失败;version:int64:当前版本;resultRef?:string:结果号",
     "TableVersionInput": "tableNo:string:桌台;version:int64:资源版本",
     "SelectionRules": "mutexSets:string[][]:不可同选的optionItemNo集合;requires:SelectionDependency[]:选择依赖",
@@ -8611,7 +8633,8 @@
     "RepublishConfigReq": "version:int64:当前工作CAS;effectiveAt:datetime:新生效时刻;reason:string:必需原因;approvalRef?:string:审批引用",
     "CatalogModifier": "configNo:string:小料号;version:int64:版本;status:string:状态;name:string:名称;kind:string:ADDON或COMPONENT;salesSkuNo?:string:销售SKU;salesOffer?:CatalogSku:当前原SKU展示提示，不含组件用量",
     "CatalogRecipe": "recipeNo:string:配方号;skuNo:string:原SKU;storeNo:string:授权门店;version:int64:版本;configVersion:int64:配置版，不公开原料配比",
-    "CatalogSpecValue": "valueNo:string:选项;dimNo:string:维度;label:string:公开标签;dimName:string:公开维度名;valueType:string:值类型;usageType:string:用途;valueVersion:int64:值版本;dimVersion:int64:维度版本"
+    "CatalogSpecValue": "valueNo:string:选项;dimNo:string:维度;label:string:公开标签;dimName:string:公开维度名;valueType:string:值类型;usageType:string:用途;valueVersion:int64:值版本;dimVersion:int64:维度版本",
+    "CartBundleChoiceInput": "choiceNo:string:冻结套餐选项;qty:decimal:每份套餐选择数量"
   },
   "commonFields": [
     [
@@ -8874,7 +8897,8 @@
         "FOOD-API-133",
         "FOOD-API-135",
         "FOOD-API-138",
-        "FOOD-API-139"
+        "FOOD-API-139",
+        "FOOD-API-156"
       ],
       "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
     },
@@ -11130,6 +11154,28 @@
     ],
     "migrationV7Tables": [
       "fnb_menu_channel_binding"
+    ]
+  },
+  "orderingDraft": {
+    "status": "IMPLEMENTED_BACKEND_DRAFT",
+    "date": "2026-10-22",
+    "apis": [
+      "FOOD-API-037",
+      "FOOD-API-038",
+      "FOOD-API-039",
+      "FOOD-API-040",
+      "FOOD-API-126",
+      "FOOD-API-127",
+      "FOOD-API-128",
+      "FOOD-API-129",
+      "FOOD-API-130",
+      "FOOD-API-156"
+    ],
+    "migration": "Reuse frozen V1 cart tables; selection schema=1 envelope",
+    "limitations": [
+      "ORD02报价/ORD03正式提交待开发",
+      "不预占库存、不扣款",
+      "称重、预约、道次与设备凭证另阶段"
     ]
   }
 }

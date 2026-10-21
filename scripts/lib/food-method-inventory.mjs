@@ -12,7 +12,17 @@ function customDefinition(t,p,name){
  const version=param('long','expectedVersion','REQ_VERSION_OR_LOCKED_ENTITY_VERSION'),qty=param('java.math.BigDecimal','qty','VALIDATED_QTY_OR_FROZEN_LINE');
  let args=[...scope,...key],result='int',access='WRITE',guard='更新影响行数必须为1；0行区分无权/不存在、版本冲突、状态或容量不足；不得静默成功。';
  const add=(...xs)=>{for(const x of xs)if(!args.some(p=>p.name===x.name))args.push(x);};
- if(name.startsWith('insert')||name.startsWith('append')){args=[entity];guard='业务唯一键冲突只允许识别同键同参原结果，不吞其他SQL错误；不可变事实仅追加。';}
+ if(name==='history'){
+  args=[entityNo,param('String','cartNo'),param('String','sourceLineRef')];result=e;access='LOCK';
+  guard='原逻辑归档行也读取；显式主体/车/源行与FOR UPDATE，源行身份不可重绑商品或SKU。';
+ }
+ else if(name==='retain'){
+  args=[entityNo,param('String','cartNo'),param('String','sourceLineRef'),qty,param('String','seatNo'),
+   param('String','courseNo'),param('String','selection'),param('int','deleted'),
+   param('String','actorNo','AUTHENTICATED_ACTOR'),param('java.time.LocalDateTime','at','SERVER_CLOCK')];
+  guard='保留原源行/addedBy，按已锁owner/cart CAS更新或复活墓碑；影响行数必须为1。';
+ }
+ else if(name.startsWith('insert')||name.startsWith('append')){args=[entity];guard='业务唯一键冲突只允许识别同键同参原结果，不吞其他SQL错误；不可变事实仅追加。';}
  else if(name==='selectScopedByKeyForUpdate'){result=e;access='LOCK';guard='必须在当前餐饮本地事务内调用，锁到的是已存在父/实体行；空结果不能充当稳定仲裁者。';}
  else if(name.startsWith('select')||name.startsWith('lock')){
   access=name.includes('ForUpdate')||name.startsWith('lock')?'LOCK':'READ';result=e;
@@ -105,8 +115,10 @@ export function buildFoodMethodInventory(s,code,plan,codePlan){
    const allowed=['req','query','idempotencyKey',...(e.apiId==='FOOD-API-023'?['authenticatedSessionNo']:[])];
    serviceArgs.splice(0,serviceArgs.length,...serviceArgs.filter(p=>allowed.includes(p.name)));
   }
+  if(f.serviceParameters)serviceArgs.splice(0,serviceArgs.length,...f.serviceParameters);
+  if(f.controllerParameters)httpArgs.splice(0,httpArgs.length,...f.controllerParameters);
   must(new Set(serviceArgs.map(p=>p.name)).size===serviceArgs.length,'Duplicate service parameter '+e.apiId);
-  const controllerSignature=e.returnType+' '+e.method+'('+httpArgs.map(p=>p.annotation+' '+p.type+' '+p.name).join(', ')+')';
+  const controllerSignature=e.returnType+' '+e.method+'('+httpArgs.map(p=>(p.annotation||'')+' '+p.type+' '+p.name).join(', ')+')';
   return {apiId:e.apiId,moduleId:e.primaryModuleId,httpMethod:e.httpMethod,path:e.path,controllerClass:e.controllerClass,serviceClass:e.serviceClass,implClass:e.serviceImplClass,serviceMethod:e.serviceMethod,controllerParameters:httpArgs,controllerSignature,serviceParameters:serviceArgs,serviceSignature:signature(e.returnType,e.serviceMethod,serviceArgs),returnType:e.returnType,mapperCalls:[...reads,...custom,...writes],portCalls:f.portConcepts,transaction:f.transaction,note:f.note,
    transactionRule:f.transaction==='ORCHESTRATED'?'外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。':f.transaction==='LOCAL_ATOMIC'?'本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。':f.transaction==='READ_ONLY'||f.transaction==='NO_LOCAL_WRITE'?'只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。':'共享任务持有导出/投影写入，本域只调用合同和保存明确的运行引用。',implementationStatus:f.implementationStatus||'TARGET_NOT_IMPLEMENTED'};
  });

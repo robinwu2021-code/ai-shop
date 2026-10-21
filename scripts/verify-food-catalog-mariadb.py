@@ -42,14 +42,16 @@ def main():
         env.update(FOOD_TEST_DISPOSABLE='true', FOOD_TEST_JDBC_URL='jdbc:mysql://' + binding + '/mysql')
         with tempfile.NamedTemporaryFile(prefix='food-catalog-mariadb-', suffix='.log', delete=False) as log:
             result = subprocess.run(['mvn', '-o', '-f', 'backend-plugins/shop-industry-food/pom.xml', '-pl', 'food-server', '-am',
-                                     'test', '-Dtest=MenuServiceTest,MenuCompositionServiceTest,MenuContextServiceTest,MenuChannelBindingServiceTest,StationServiceTest,SalesRestrictionServiceTest,CatalogPublicationServiceTest,CatalogServiceTest,MenuScheduleServiceTest,MenuSchedulePolicyTest,FoodRecipePrimaryDatabaseTest',
+                                     'test', '-Dtest=CartServiceTest,CartLinePolicyTest,MenuServiceTest,MenuCompositionServiceTest,MenuContextServiceTest,MenuChannelBindingServiceTest,StationServiceTest,SalesRestrictionServiceTest,CatalogPublicationServiceTest,CatalogServiceTest,MenuScheduleServiceTest,MenuSchedulePolicyTest,FoodRecipePrimaryDatabaseTest',
                                      '-Dsurefire.failIfNoSpecifiedTests=false'], cwd=ROOT, env=env,
                                     stdout=log, stderr=subprocess.STDOUT)
         print('Food catalog MariaDB log:', log.name, flush=True)
         if result.returncode != 0:
             print('\n'.join(Path(log.name).read_text().splitlines()[-45:]))
             raise RuntimeError('Food catalog MariaDB tests failed')
-        for module, name, expected in [('food-core','MenuServiceTest',7),
+        for module, name, expected in [('food-core','CartServiceTest',10),
+                                        ('food-core','CartLinePolicyTest',11),
+                                        ('food-core','MenuServiceTest',7),
                                         ('food-core','MenuCompositionServiceTest',4),
                                         ('food-core','MenuContextServiceTest',2),
                                         ('food-core','MenuChannelBindingServiceTest',5),

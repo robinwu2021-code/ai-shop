@@ -1,6 +1,8 @@
 package ai.neargo.shop.food.mapper;
 
 import ai.neargo.shop.food.entity.FnbStation;
+import ai.neargo.shop.food.entity.FnbCheckCart;
+import ai.neargo.shop.food.entity.FnbCheckCartItem;
 import ai.neargo.shop.food.entity.FnbSkuStation;
 import ai.neargo.shop.food.entity.FnbSalesRestriction;
 import ai.neargo.shop.food.entity.FnbActionLog;
@@ -40,6 +42,7 @@ import ai.neargo.shop.food.entity.FnbTableOperation;
 import ai.neargo.shop.food.entity.FnbTableToken;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
@@ -50,6 +53,21 @@ import org.apache.ibatis.annotations.Update;
 /** 按实际落地的持久化资源增加嵌套 Mapper，不预生成全域空壳。 */
 public final class FoodMappers {
     private FoodMappers() {
+    }
+
+    public interface CheckCartMapper extends BaseMapper<FnbCheckCart> { }
+    public interface CheckCartItemMapper extends BaseMapper<FnbCheckCartItem> {
+        @Select("SELECT * FROM fnb_check_cart_item WHERE entity_no=#{entity} AND cart_no=#{cart} "
+                + "AND source_line_ref=#{source} FOR UPDATE")
+        FnbCheckCartItem history(@Param("entity") String entity, @Param("cart") String cart,
+                @Param("source") String source);
+        @Update("UPDATE fnb_check_cart_item SET qty=#{qty},seat_no=#{seat},course_no=#{course},"
+                + "selection=#{selection},deleted=#{deleted},version=version+1,updated_by=#{actor},"
+                + "updated_at=#{at} WHERE entity_no=#{entity} AND cart_no=#{cart} AND source_line_ref=#{source}")
+        int retain(@Param("entity") String entity, @Param("cart") String cart, @Param("source") String source,
+                @Param("qty") BigDecimal qty, @Param("seat") String seat, @Param("course") String course,
+                @Param("selection") String selection, @Param("deleted") int deleted,
+                @Param("actor") String actor, @Param("at") LocalDateTime at);
     }
 
     public interface RecipeAdjustmentMapper extends BaseMapper<FnbRecipeAdjustment> {

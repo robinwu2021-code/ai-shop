@@ -4652,38 +4652,43 @@
       "moduleId": "MOD-03",
       "httpMethod": "GET",
       "path": "/biz/x/food/carts/{cartNo}",
-      "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizCartController",
       "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
       "implClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
       "serviceMethod": "getCart",
       "controllerParameters": [
         {
-          "name": "cartNo",
           "type": "String",
+          "name": "cartNo",
           "source": "VALIDATED_PATH",
           "annotation": "@PathVariable(\"cartNo\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
         }
       ],
-      "controllerSignature": "ai.neargo.shop.food.dto.CheckCartResultVO getCart(@PathVariable(\"cartNo\") String cartNo)",
+      "controllerSignature": "ai.neargo.shop.food.dto.CartResultVO getCart(@PathVariable(\"cartNo\") String cartNo,  jakarta.servlet.http.HttpServletRequest request)",
       "serviceParameters": [
         {
           "type": "String",
           "name": "entityNo",
-          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+          "source": "TRUSTED_SCOPE"
         },
         {
           "type": "String",
-          "name": "currentStoreNo",
-          "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+          "name": "storeNo",
+          "source": "TRUSTED_SCOPE"
         },
         {
+          "type": "String",
           "name": "cartNo",
-          "type": "String",
-          "source": "VALIDATED_PATH"
+          "source": "TRUSTED_SCOPE"
         }
       ],
-      "serviceSignature": "ai.neargo.shop.food.dto.CheckCartResultVO getCart(String entityNo, String currentStoreNo, String cartNo)",
-      "returnType": "ai.neargo.shop.food.dto.CheckCartResultVO",
+      "serviceSignature": "ai.neargo.shop.food.dto.CartResultVO getCart(String entityNo, String storeNo, String cartNo)",
+      "returnType": "ai.neargo.shop.food.dto.CartResultVO",
       "mapperCalls": [
         {
           "table": "fnb_check_cart",
@@ -4704,23 +4709,23 @@
       ],
       "portCalls": [],
       "transaction": "READ_ONLY",
-      "note": "",
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
-      "implementationStatus": "TARGET_NOT_IMPLEMENTED"
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "apiId": "FOOD-API-038",
       "moduleId": "MOD-03",
       "httpMethod": "POST",
       "path": "/biz/x/food/stores/{storeNo}/carts",
-      "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizCartController",
       "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
       "implClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
       "serviceMethod": "createCart",
       "controllerParameters": [
         {
-          "name": "storeNo",
           "type": "String",
+          "name": "storeNo",
           "source": "VALIDATED_PATH",
           "annotation": "@PathVariable(\"storeNo\")"
         },
@@ -4735,19 +4740,24 @@
           "name": "idempotencyKey",
           "source": "HEADER",
           "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
         }
       ],
-      "controllerSignature": "ai.neargo.shop.food.dto.CheckCartResultVO createCart(@PathVariable(\"storeNo\") String storeNo, @Valid @RequestBody ai.neargo.shop.food.dto.CreateCartReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+      "controllerSignature": "ai.neargo.shop.food.dto.CartResultVO createCart(@PathVariable(\"storeNo\") String storeNo, @Valid @RequestBody ai.neargo.shop.food.dto.CreateCartReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey,  jakarta.servlet.http.HttpServletRequest request)",
       "serviceParameters": [
         {
           "type": "String",
           "name": "entityNo",
-          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+          "source": "TRUSTED_SCOPE"
         },
         {
-          "name": "storeNo",
           "type": "String",
-          "source": "VALIDATED_PATH"
+          "name": "storeNo",
+          "source": "TRUSTED_SCOPE"
         },
         {
           "type": "String",
@@ -4765,8 +4775,8 @@
           "source": "VALIDATED_HEADER"
         }
       ],
-      "serviceSignature": "ai.neargo.shop.food.dto.CheckCartResultVO createCart(String entityNo, String storeNo, String actorNo, ai.neargo.shop.food.dto.CreateCartReq req, String idempotencyKey)",
-      "returnType": "ai.neargo.shop.food.dto.CheckCartResultVO",
+      "serviceSignature": "ai.neargo.shop.food.dto.CartResultVO createCart(String entityNo, String storeNo, String actorNo, ai.neargo.shop.food.dto.CreateCartReq req, String idempotencyKey)",
+      "returnType": "ai.neargo.shop.food.dto.CartResultVO",
       "mapperCalls": [
         {
           "table": "fnb_check",
@@ -4792,38 +4802,47 @@
           "signature": "int insert(ai.neargo.shop.food.entity.FnbCheckCart row)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
           "branch": "INSERT_NEW_OR_IDEMPOTENT_REUSE"
+        },
+        {
+          "table": "fnb_action_log",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper",
+          "method": "insert",
+          "access": "WRITE",
+          "signature": "int insert(ai.neargo.shop.food.entity.FnbActionLog row)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
+          "branch": "INSERT_NEW_OR_IDEMPOTENT_REUSE"
         }
       ],
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
-      "note": "",
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
-      "implementationStatus": "TARGET_NOT_IMPLEMENTED"
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "apiId": "FOOD-API-039",
       "moduleId": "MOD-03",
       "httpMethod": "PUT",
       "path": "/biz/x/food/carts/{cartNo}/lines/{sourceLineRef}",
-      "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizCartController",
       "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
       "implClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
-      "serviceMethod": "saveLine",
+      "serviceMethod": "replaceLine",
       "controllerParameters": [
         {
-          "name": "cartNo",
           "type": "String",
+          "name": "cartNo",
           "source": "VALIDATED_PATH",
           "annotation": "@PathVariable(\"cartNo\")"
         },
         {
-          "name": "sourceLineRef",
           "type": "String",
+          "name": "sourceLineRef",
           "source": "VALIDATED_PATH",
           "annotation": "@PathVariable(\"sourceLineRef\")"
         },
         {
-          "type": "ai.neargo.shop.food.dto.SaveLineReq",
+          "type": "ai.neargo.shop.food.dto.ReplaceCartLineReq",
           "name": "req",
           "source": "PUBLIC_DTO",
           "annotation": "@Valid @RequestBody"
@@ -4833,29 +4852,34 @@
           "name": "idempotencyKey",
           "source": "HEADER",
           "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
         }
       ],
-      "controllerSignature": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO saveLine(@PathVariable(\"cartNo\") String cartNo, @PathVariable(\"sourceLineRef\") String sourceLineRef, @Valid @RequestBody ai.neargo.shop.food.dto.SaveLineReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+      "controllerSignature": "ai.neargo.shop.food.dto.CartVersionVO replaceLine(@PathVariable(\"cartNo\") String cartNo, @PathVariable(\"sourceLineRef\") String sourceLineRef, @Valid @RequestBody ai.neargo.shop.food.dto.ReplaceCartLineReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey,  jakarta.servlet.http.HttpServletRequest request)",
       "serviceParameters": [
         {
           "type": "String",
           "name": "entityNo",
-          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+          "source": "TRUSTED_SCOPE"
         },
         {
           "type": "String",
-          "name": "currentStoreNo",
-          "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+          "name": "storeNo",
+          "source": "TRUSTED_SCOPE"
         },
         {
+          "type": "String",
           "name": "cartNo",
-          "type": "String",
-          "source": "VALIDATED_PATH"
+          "source": "TRUSTED_SCOPE"
         },
         {
-          "name": "sourceLineRef",
           "type": "String",
-          "source": "VALIDATED_PATH"
+          "name": "sourceLineRef",
+          "source": "TRUSTED_SCOPE"
         },
         {
           "type": "String",
@@ -4863,7 +4887,7 @@
           "source": "AUTHENTICATED_ACTOR"
         },
         {
-          "type": "ai.neargo.shop.food.dto.SaveLineReq",
+          "type": "ai.neargo.shop.food.dto.ReplaceCartLineReq",
           "name": "req",
           "source": "VALIDATED_PUBLIC_DTO"
         },
@@ -4873,8 +4897,8 @@
           "source": "VALIDATED_HEADER"
         }
       ],
-      "serviceSignature": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO saveLine(String entityNo, String currentStoreNo, String cartNo, String sourceLineRef, String actorNo, ai.neargo.shop.food.dto.SaveLineReq req, String idempotencyKey)",
-      "returnType": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO",
+      "serviceSignature": "ai.neargo.shop.food.dto.CartVersionVO replaceLine(String entityNo, String storeNo, String cartNo, String sourceLineRef, String actorNo, ai.neargo.shop.food.dto.ReplaceCartLineReq req, String idempotencyKey)",
+      "returnType": "ai.neargo.shop.food.dto.CartVersionVO",
       "mapperCalls": [
         {
           "table": "fnb_check_cart",
@@ -4885,20 +4909,44 @@
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
-          "table": "fnb_check_cart_item",
-          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
+          "table": "fnb_check",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckMapper",
           "method": "selectList",
           "access": "READ",
-          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbCheckCartItem> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheckCartItem> queryWrapper)",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbCheck> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheck> queryWrapper)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
-          "table": "fnb_check_cart",
-          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper",
-          "method": "lockCartIfVersion",
+          "table": "fnb_guest_session",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbGuestSession> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbGuestSession> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_seat",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.SeatMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbSeat> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbSeat> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_check_cart_item",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
+          "method": "history",
           "access": "LOCK",
-          "signature": "ai.neargo.shop.food.entity.FnbCheckCart lockCartIfVersion(String entityNo, String storeNo, String cartNo, long expectedVersion)",
-          "guard": "显式主体与适用门店/父对象范围；被归档数据只在获准恢复用例读取；LOCK方法要求外层本地事务。"
+          "signature": "ai.neargo.shop.food.entity.FnbCheckCartItem history(String entityNo, String cartNo, String sourceLineRef)",
+          "guard": "原逻辑归档行也读取；显式主体/车/源行与FOR UPDATE，源行身份不可重绑商品或SKU。"
+        },
+        {
+          "table": "fnb_check_cart_item",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
+          "method": "retain",
+          "access": "WRITE",
+          "signature": "int retain(String entityNo, String cartNo, String sourceLineRef, java.math.BigDecimal qty, String seatNo, String courseNo, String selection, int deleted, String actorNo, java.time.LocalDateTime at)",
+          "guard": "保留原源行/addedBy，按已锁owner/cart CAS更新或复活墓碑；影响行数必须为1。"
         },
         {
           "table": "fnb_check_cart",
@@ -4912,43 +4960,52 @@
         {
           "table": "fnb_check_cart_item",
           "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
-          "method": "update",
+          "method": "insert",
           "access": "WRITE",
-          "signature": "int update(ai.neargo.shop.food.entity.FnbCheckCartItem changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheckCartItem> updateWrapper)",
+          "signature": "int insert(ai.neargo.shop.food.entity.FnbCheckCartItem row)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
-          "branch": "UPDATE_EXISTING"
+          "branch": "INSERT_NEW_OR_IDEMPOTENT_REUSE"
+        },
+        {
+          "table": "fnb_action_log",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper",
+          "method": "insert",
+          "access": "WRITE",
+          "signature": "int insert(ai.neargo.shop.food.entity.FnbActionLog row)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
+          "branch": "INSERT_NEW_OR_IDEMPOTENT_REUSE"
         }
       ],
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
-      "note": "",
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。事务外读取原已发布CatalogService；QR与原车来源目录交集校验。",
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
-      "implementationStatus": "TARGET_NOT_IMPLEMENTED"
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "apiId": "FOOD-API-040",
       "moduleId": "MOD-03",
       "httpMethod": "POST",
       "path": "/biz/x/food/carts/{cartNo}/lines/{sourceLineRef}:archive",
-      "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizCartController",
       "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
       "implClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
       "serviceMethod": "archiveLine",
       "controllerParameters": [
         {
-          "name": "cartNo",
           "type": "String",
+          "name": "cartNo",
           "source": "VALIDATED_PATH",
           "annotation": "@PathVariable(\"cartNo\")"
         },
         {
-          "name": "sourceLineRef",
           "type": "String",
+          "name": "sourceLineRef",
           "source": "VALIDATED_PATH",
           "annotation": "@PathVariable(\"sourceLineRef\")"
         },
         {
-          "type": "ai.neargo.shop.food.dto.ArchiveLineReq",
+          "type": "ai.neargo.shop.food.dto.CartVersionReq",
           "name": "req",
           "source": "PUBLIC_DTO",
           "annotation": "@Valid @RequestBody"
@@ -4958,29 +5015,34 @@
           "name": "idempotencyKey",
           "source": "HEADER",
           "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
         }
       ],
-      "controllerSignature": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO archiveLine(@PathVariable(\"cartNo\") String cartNo, @PathVariable(\"sourceLineRef\") String sourceLineRef, @Valid @RequestBody ai.neargo.shop.food.dto.ArchiveLineReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+      "controllerSignature": "ai.neargo.shop.food.dto.CartVersionVO archiveLine(@PathVariable(\"cartNo\") String cartNo, @PathVariable(\"sourceLineRef\") String sourceLineRef, @Valid @RequestBody ai.neargo.shop.food.dto.CartVersionReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey,  jakarta.servlet.http.HttpServletRequest request)",
       "serviceParameters": [
         {
           "type": "String",
           "name": "entityNo",
-          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+          "source": "TRUSTED_SCOPE"
         },
         {
           "type": "String",
-          "name": "currentStoreNo",
-          "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+          "name": "storeNo",
+          "source": "TRUSTED_SCOPE"
         },
         {
+          "type": "String",
           "name": "cartNo",
-          "type": "String",
-          "source": "VALIDATED_PATH"
+          "source": "TRUSTED_SCOPE"
         },
         {
-          "name": "sourceLineRef",
           "type": "String",
-          "source": "VALIDATED_PATH"
+          "name": "sourceLineRef",
+          "source": "TRUSTED_SCOPE"
         },
         {
           "type": "String",
@@ -4988,7 +5050,7 @@
           "source": "AUTHENTICATED_ACTOR"
         },
         {
-          "type": "ai.neargo.shop.food.dto.ArchiveLineReq",
+          "type": "ai.neargo.shop.food.dto.CartVersionReq",
           "name": "req",
           "source": "VALIDATED_PUBLIC_DTO"
         },
@@ -4998,8 +5060,8 @@
           "source": "VALIDATED_HEADER"
         }
       ],
-      "serviceSignature": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO archiveLine(String entityNo, String currentStoreNo, String cartNo, String sourceLineRef, String actorNo, ai.neargo.shop.food.dto.ArchiveLineReq req, String idempotencyKey)",
-      "returnType": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO",
+      "serviceSignature": "ai.neargo.shop.food.dto.CartVersionVO archiveLine(String entityNo, String storeNo, String cartNo, String sourceLineRef, String actorNo, ai.neargo.shop.food.dto.CartVersionReq req, String idempotencyKey)",
+      "returnType": "ai.neargo.shop.food.dto.CartVersionVO",
       "mapperCalls": [
         {
           "table": "fnb_check_cart",
@@ -5010,20 +5072,36 @@
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
-          "table": "fnb_check_cart_item",
-          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
+          "table": "fnb_check",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckMapper",
           "method": "selectList",
           "access": "READ",
-          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbCheckCartItem> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheckCartItem> queryWrapper)",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbCheck> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheck> queryWrapper)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
-          "table": "fnb_check_cart",
-          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper",
-          "method": "lockCartIfVersion",
+          "table": "fnb_guest_session",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbGuestSession> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbGuestSession> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_check_cart_item",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
+          "method": "history",
           "access": "LOCK",
-          "signature": "ai.neargo.shop.food.entity.FnbCheckCart lockCartIfVersion(String entityNo, String storeNo, String cartNo, long expectedVersion)",
-          "guard": "显式主体与适用门店/父对象范围；被归档数据只在获准恢复用例读取；LOCK方法要求外层本地事务。"
+          "signature": "ai.neargo.shop.food.entity.FnbCheckCartItem history(String entityNo, String cartNo, String sourceLineRef)",
+          "guard": "原逻辑归档行也读取；显式主体/车/源行与FOR UPDATE，源行身份不可重绑商品或SKU。"
+        },
+        {
+          "table": "fnb_check_cart_item",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
+          "method": "retain",
+          "access": "WRITE",
+          "signature": "int retain(String entityNo, String cartNo, String sourceLineRef, java.math.BigDecimal qty, String seatNo, String courseNo, String selection, int deleted, String actorNo, java.time.LocalDateTime at)",
+          "guard": "保留原源行/addedBy，按已锁owner/cart CAS更新或复活墓碑；影响行数必须为1。"
         },
         {
           "table": "fnb_check_cart",
@@ -5035,20 +5113,20 @@
           "branch": "UPDATE_EXISTING"
         },
         {
-          "table": "fnb_check_cart_item",
-          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
-          "method": "update",
+          "table": "fnb_action_log",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper",
+          "method": "insert",
           "access": "WRITE",
-          "signature": "int update(ai.neargo.shop.food.entity.FnbCheckCartItem changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheckCartItem> updateWrapper)",
+          "signature": "int insert(ai.neargo.shop.food.entity.FnbActionLog row)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
-          "branch": "UPDATE_EXISTING"
+          "branch": "INSERT_NEW_OR_IDEMPOTENT_REUSE"
         }
       ],
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
-      "note": "",
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
-      "implementationStatus": "TARGET_NOT_IMPLEMENTED"
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "apiId": "FOOD-API-041",
@@ -13823,19 +13901,19 @@
       "moduleId": "MOD-03",
       "httpMethod": "POST",
       "path": "/biz/x/food/carts/{cartNo}:archive",
-      "controllerClass": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizCartController",
       "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
       "implClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
       "serviceMethod": "archiveCart",
       "controllerParameters": [
         {
-          "name": "cartNo",
           "type": "String",
+          "name": "cartNo",
           "source": "VALIDATED_PATH",
           "annotation": "@PathVariable(\"cartNo\")"
         },
         {
-          "type": "ai.neargo.shop.food.dto.ArchiveCartReq",
+          "type": "ai.neargo.shop.food.dto.CartVersionReq",
           "name": "req",
           "source": "PUBLIC_DTO",
           "annotation": "@Valid @RequestBody"
@@ -13845,24 +13923,29 @@
           "name": "idempotencyKey",
           "source": "HEADER",
           "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
         }
       ],
-      "controllerSignature": "ai.neargo.shop.food.dto.OperationResultVO archiveCart(@PathVariable(\"cartNo\") String cartNo, @Valid @RequestBody ai.neargo.shop.food.dto.ArchiveCartReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+      "controllerSignature": "ai.neargo.shop.food.dto.OperationResultVO archiveCart(@PathVariable(\"cartNo\") String cartNo, @Valid @RequestBody ai.neargo.shop.food.dto.CartVersionReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey,  jakarta.servlet.http.HttpServletRequest request)",
       "serviceParameters": [
         {
           "type": "String",
           "name": "entityNo",
-          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+          "source": "TRUSTED_SCOPE"
         },
         {
           "type": "String",
-          "name": "currentStoreNo",
-          "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+          "name": "storeNo",
+          "source": "TRUSTED_SCOPE"
         },
         {
+          "type": "String",
           "name": "cartNo",
-          "type": "String",
-          "source": "VALIDATED_PATH"
+          "source": "TRUSTED_SCOPE"
         },
         {
           "type": "String",
@@ -13870,7 +13953,7 @@
           "source": "AUTHENTICATED_ACTOR"
         },
         {
-          "type": "ai.neargo.shop.food.dto.ArchiveCartReq",
+          "type": "ai.neargo.shop.food.dto.CartVersionReq",
           "name": "req",
           "source": "VALIDATED_PUBLIC_DTO"
         },
@@ -13880,7 +13963,7 @@
           "source": "VALIDATED_HEADER"
         }
       ],
-      "serviceSignature": "ai.neargo.shop.food.dto.OperationResultVO archiveCart(String entityNo, String currentStoreNo, String cartNo, String actorNo, ai.neargo.shop.food.dto.ArchiveCartReq req, String idempotencyKey)",
+      "serviceSignature": "ai.neargo.shop.food.dto.OperationResultVO archiveCart(String entityNo, String storeNo, String cartNo, String actorNo, ai.neargo.shop.food.dto.CartVersionReq req, String idempotencyKey)",
       "returnType": "ai.neargo.shop.food.dto.OperationResultVO",
       "mapperCalls": [
         {
@@ -13900,152 +13983,6 @@
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
-          "table": "fnb_check_cart",
-          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper",
-          "method": "closeCartIfNoPlacingBatch",
-          "access": "WRITE",
-          "signature": "int closeCartIfNoPlacingBatch(String entityNo, String storeNo, String cartNo, long expectedVersion)",
-          "guard": "更新影响行数必须为1；0行区分无权/不存在、版本冲突、状态或容量不足；不得静默成功。"
-        }
-      ],
-      "portCalls": [],
-      "transaction": "LOCAL_ATOMIC",
-      "note": "",
-      "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
-      "implementationStatus": "TARGET_NOT_IMPLEMENTED"
-    },
-    {
-      "apiId": "FOOD-API-127",
-      "moduleId": "MOD-03",
-      "httpMethod": "GET",
-      "path": "/mp/x/food/carts/{cartNo}",
-      "controllerClass": "ai.neargo.shop.food.api.mp.MpCheckCartController",
-      "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
-      "implClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
-      "serviceMethod": "customerGetCart",
-      "controllerParameters": [
-        {
-          "name": "cartNo",
-          "type": "String",
-          "source": "VALIDATED_PATH",
-          "annotation": "@PathVariable(\"cartNo\")"
-        }
-      ],
-      "controllerSignature": "ai.neargo.shop.food.dto.CheckCartResultVO getCart(@PathVariable(\"cartNo\") String cartNo)",
-      "serviceParameters": [
-        {
-          "type": "String",
-          "name": "entityNo",
-          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
-        },
-        {
-          "type": "String",
-          "name": "currentStoreNo",
-          "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
-        },
-        {
-          "name": "cartNo",
-          "type": "String",
-          "source": "VALIDATED_PATH"
-        },
-        {
-          "type": "String",
-          "name": "authenticatedSessionNo",
-          "source": "VERIFIED_SESSION; public catalog/session-create may be null"
-        }
-      ],
-      "serviceSignature": "ai.neargo.shop.food.dto.CheckCartResultVO customerGetCart(String entityNo, String currentStoreNo, String cartNo, String authenticatedSessionNo)",
-      "returnType": "ai.neargo.shop.food.dto.CheckCartResultVO",
-      "mapperCalls": [
-        {
-          "table": "fnb_check_cart",
-          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper",
-          "method": "selectOne",
-          "access": "READ",
-          "signature": "ai.neargo.shop.food.entity.FnbCheckCart selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheckCart> queryWrapper)",
-          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
-        },
-        {
-          "table": "fnb_check_cart_item",
-          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
-          "method": "selectList",
-          "access": "READ",
-          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbCheckCartItem> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheckCartItem> queryWrapper)",
-          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
-        }
-      ],
-      "portCalls": [],
-      "transaction": "READ_ONLY",
-      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
-      "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
-      "implementationStatus": "TARGET_NOT_IMPLEMENTED"
-    },
-    {
-      "apiId": "FOOD-API-128",
-      "moduleId": "MOD-03",
-      "httpMethod": "POST",
-      "path": "/mp/x/food/stores/{storeNo}/carts",
-      "controllerClass": "ai.neargo.shop.food.api.mp.MpCheckCartController",
-      "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
-      "implClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
-      "serviceMethod": "customerCreateCart",
-      "controllerParameters": [
-        {
-          "name": "storeNo",
-          "type": "String",
-          "source": "VALIDATED_PATH",
-          "annotation": "@PathVariable(\"storeNo\")"
-        },
-        {
-          "type": "ai.neargo.shop.food.dto.CustomerCreateCartReq",
-          "name": "req",
-          "source": "PUBLIC_DTO",
-          "annotation": "@Valid @RequestBody"
-        },
-        {
-          "type": "String",
-          "name": "idempotencyKey",
-          "source": "HEADER",
-          "annotation": "@RequestHeader(\"Idempotency-Key\")"
-        }
-      ],
-      "controllerSignature": "ai.neargo.shop.food.dto.CheckCartResultVO createCart(@PathVariable(\"storeNo\") String storeNo, @Valid @RequestBody ai.neargo.shop.food.dto.CustomerCreateCartReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
-      "serviceParameters": [
-        {
-          "type": "String",
-          "name": "entityNo",
-          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
-        },
-        {
-          "name": "storeNo",
-          "type": "String",
-          "source": "VALIDATED_PATH"
-        },
-        {
-          "type": "String",
-          "name": "authenticatedSessionNo",
-          "source": "VERIFIED_SESSION; public catalog/session-create may be null"
-        },
-        {
-          "type": "String",
-          "name": "actorNo",
-          "source": "AUTHENTICATED_ACTOR"
-        },
-        {
-          "type": "ai.neargo.shop.food.dto.CustomerCreateCartReq",
-          "name": "req",
-          "source": "VALIDATED_PUBLIC_DTO"
-        },
-        {
-          "type": "String",
-          "name": "idempotencyKey",
-          "source": "VALIDATED_HEADER"
-        }
-      ],
-      "serviceSignature": "ai.neargo.shop.food.dto.CheckCartResultVO customerCreateCart(String entityNo, String storeNo, String authenticatedSessionNo, String actorNo, ai.neargo.shop.food.dto.CustomerCreateCartReq req, String idempotencyKey)",
-      "returnType": "ai.neargo.shop.food.dto.CheckCartResultVO",
-      "mapperCalls": [
-        {
           "table": "fnb_check",
           "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckMapper",
           "method": "selectList",
@@ -14064,43 +14001,273 @@
         {
           "table": "fnb_check_cart",
           "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper",
+          "method": "update",
+          "access": "WRITE",
+          "signature": "int update(ai.neargo.shop.food.entity.FnbCheckCart changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheckCart> updateWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
+          "branch": "UPDATE_EXISTING"
+        },
+        {
+          "table": "fnb_action_log",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper",
           "method": "insert",
           "access": "WRITE",
-          "signature": "int insert(ai.neargo.shop.food.entity.FnbCheckCart row)",
+          "signature": "int insert(ai.neargo.shop.food.entity.FnbActionLog row)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
           "branch": "INSERT_NEW_OR_IDEMPOTENT_REUSE"
         }
       ],
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
-      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
-      "implementationStatus": "TARGET_NOT_IMPLEMENTED"
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
+    },
+    {
+      "apiId": "FOOD-API-127",
+      "moduleId": "MOD-03",
+      "httpMethod": "GET",
+      "path": "/mp/x/food/carts/{cartNo}",
+      "controllerClass": "ai.neargo.shop.food.api.mp.MpCartController",
+      "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+      "implClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
+      "serviceMethod": "customerGetCart",
+      "controllerParameters": [
+        {
+          "type": "String",
+          "name": "cartNo",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"cartNo\")"
+        },
+        {
+          "type": "String",
+          "name": "sessionNo",
+          "source": "OPTIONAL_QUERY",
+          "annotation": "@RequestParam(\"sessionNo\")"
+        },
+        {
+          "type": "String",
+          "name": "token",
+          "source": "OPTIONAL_HEADER",
+          "annotation": "@RequestHeader(\"X-Food-Session\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
+        }
+      ],
+      "controllerSignature": "ai.neargo.shop.food.dto.CartResultVO customerGetCart(@PathVariable(\"cartNo\") String cartNo, @RequestParam(\"sessionNo\") String sessionNo, @RequestHeader(\"X-Food-Session\") String token,  jakarta.servlet.http.HttpServletRequest request)",
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "cartNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CartAccess",
+          "name": "access",
+          "source": "VERIFIED_SESSION_TOKEN_AND_CONSUMER"
+        }
+      ],
+      "serviceSignature": "ai.neargo.shop.food.dto.CartResultVO customerGetCart(String cartNo, ai.neargo.shop.food.dto.CartAccess access)",
+      "returnType": "ai.neargo.shop.food.dto.CartResultVO",
+      "mapperCalls": [
+        {
+          "table": "fnb_check_cart",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper",
+          "method": "selectOne",
+          "access": "READ",
+          "signature": "ai.neargo.shop.food.entity.FnbCheckCart selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheckCart> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_check_cart_item",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbCheckCartItem> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheckCartItem> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_check",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbCheck> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheck> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_guest_session",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbGuestSession> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbGuestSession> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_table_occupancy",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.TableOccupancyMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbTableOccupancy> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbTableOccupancy> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        }
+      ],
+      "portCalls": [],
+      "transaction": "READ_ONLY",
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
+      "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
+    },
+    {
+      "apiId": "FOOD-API-128",
+      "moduleId": "MOD-03",
+      "httpMethod": "POST",
+      "path": "/mp/x/food/stores/{storeNo}/carts",
+      "controllerClass": "ai.neargo.shop.food.api.mp.MpCartController",
+      "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+      "implClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
+      "serviceMethod": "customerCreateCart",
+      "controllerParameters": [
+        {
+          "type": "String",
+          "name": "storeNo",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"storeNo\")"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CreateCustomerCartReq",
+          "name": "req",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "String",
+          "name": "token",
+          "source": "OPTIONAL_HEADER",
+          "annotation": "@RequestHeader(\"X-Food-Session\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
+        }
+      ],
+      "controllerSignature": "ai.neargo.shop.food.dto.CartResultVO customerCreateCart(@PathVariable(\"storeNo\") String storeNo, @Valid @RequestBody ai.neargo.shop.food.dto.CreateCustomerCartReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey, @RequestHeader(\"X-Food-Session\") String token,  jakarta.servlet.http.HttpServletRequest request)",
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "storeNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CartAccess",
+          "name": "access",
+          "source": "VERIFIED_SESSION_TOKEN_AND_CONSUMER"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CreateCustomerCartReq",
+          "name": "req",
+          "source": "VALIDATED_PUBLIC_DTO"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "serviceSignature": "ai.neargo.shop.food.dto.CartResultVO customerCreateCart(String storeNo, ai.neargo.shop.food.dto.CartAccess access, ai.neargo.shop.food.dto.CreateCustomerCartReq req, String idempotencyKey)",
+      "returnType": "ai.neargo.shop.food.dto.CartResultVO",
+      "mapperCalls": [
+        {
+          "table": "fnb_check",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbCheck> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheck> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_guest_session",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbGuestSession> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbGuestSession> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_table_occupancy",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.TableOccupancyMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbTableOccupancy> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbTableOccupancy> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_check_cart",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper",
+          "method": "insert",
+          "access": "WRITE",
+          "signature": "int insert(ai.neargo.shop.food.entity.FnbCheckCart row)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
+          "branch": "INSERT_NEW_OR_IDEMPOTENT_REUSE"
+        },
+        {
+          "table": "fnb_guest_session",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper",
+          "method": "insert",
+          "access": "WRITE",
+          "signature": "int insert(ai.neargo.shop.food.entity.FnbGuestSession row)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
+          "branch": "INSERT_NEW_OR_IDEMPOTENT_REUSE"
+        },
+        {
+          "table": "fnb_action_log",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper",
+          "method": "insert",
+          "access": "WRITE",
+          "signature": "int insert(ai.neargo.shop.food.entity.FnbActionLog row)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
+          "branch": "INSERT_NEW_OR_IDEMPOTENT_REUSE"
+        }
+      ],
+      "portCalls": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
+      "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "apiId": "FOOD-API-129",
       "moduleId": "MOD-03",
       "httpMethod": "PUT",
       "path": "/mp/x/food/carts/{cartNo}/lines/{sourceLineRef}",
-      "controllerClass": "ai.neargo.shop.food.api.mp.MpCheckCartController",
+      "controllerClass": "ai.neargo.shop.food.api.mp.MpCartController",
       "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
       "implClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
-      "serviceMethod": "customerSaveLine",
+      "serviceMethod": "customerReplaceLine",
       "controllerParameters": [
         {
-          "name": "cartNo",
           "type": "String",
+          "name": "cartNo",
           "source": "VALIDATED_PATH",
           "annotation": "@PathVariable(\"cartNo\")"
         },
         {
-          "name": "sourceLineRef",
           "type": "String",
+          "name": "sourceLineRef",
           "source": "VALIDATED_PATH",
           "annotation": "@PathVariable(\"sourceLineRef\")"
         },
         {
-          "type": "ai.neargo.shop.food.dto.SaveLineReq",
+          "type": "ai.neargo.shop.food.dto.ReplaceCartLineReq",
           "name": "req",
           "source": "PUBLIC_DTO",
           "annotation": "@Valid @RequestBody"
@@ -14110,42 +14277,44 @@
           "name": "idempotencyKey",
           "source": "HEADER",
           "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "String",
+          "name": "sessionNo",
+          "source": "OPTIONAL_QUERY",
+          "annotation": "@RequestParam(\"sessionNo\")"
+        },
+        {
+          "type": "String",
+          "name": "token",
+          "source": "OPTIONAL_HEADER",
+          "annotation": "@RequestHeader(\"X-Food-Session\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
         }
       ],
-      "controllerSignature": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO saveLine(@PathVariable(\"cartNo\") String cartNo, @PathVariable(\"sourceLineRef\") String sourceLineRef, @Valid @RequestBody ai.neargo.shop.food.dto.SaveLineReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+      "controllerSignature": "ai.neargo.shop.food.dto.CartVersionVO customerReplaceLine(@PathVariable(\"cartNo\") String cartNo, @PathVariable(\"sourceLineRef\") String sourceLineRef, @Valid @RequestBody ai.neargo.shop.food.dto.ReplaceCartLineReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey, @RequestParam(\"sessionNo\") String sessionNo, @RequestHeader(\"X-Food-Session\") String token,  jakarta.servlet.http.HttpServletRequest request)",
       "serviceParameters": [
         {
           "type": "String",
-          "name": "entityNo",
-          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
-        },
-        {
-          "type": "String",
-          "name": "currentStoreNo",
-          "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
-        },
-        {
           "name": "cartNo",
-          "type": "String",
-          "source": "VALIDATED_PATH"
+          "source": "TRUSTED_SCOPE"
         },
         {
+          "type": "String",
           "name": "sourceLineRef",
-          "type": "String",
-          "source": "VALIDATED_PATH"
+          "source": "TRUSTED_SCOPE"
         },
         {
-          "type": "String",
-          "name": "authenticatedSessionNo",
-          "source": "VERIFIED_SESSION; public catalog/session-create may be null"
+          "type": "ai.neargo.shop.food.dto.CartAccess",
+          "name": "access",
+          "source": "VERIFIED_SESSION_TOKEN_AND_CONSUMER"
         },
         {
-          "type": "String",
-          "name": "actorNo",
-          "source": "AUTHENTICATED_ACTOR"
-        },
-        {
-          "type": "ai.neargo.shop.food.dto.SaveLineReq",
+          "type": "ai.neargo.shop.food.dto.ReplaceCartLineReq",
           "name": "req",
           "source": "VALIDATED_PUBLIC_DTO"
         },
@@ -14155,8 +14324,8 @@
           "source": "VALIDATED_HEADER"
         }
       ],
-      "serviceSignature": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO customerSaveLine(String entityNo, String currentStoreNo, String cartNo, String sourceLineRef, String authenticatedSessionNo, String actorNo, ai.neargo.shop.food.dto.SaveLineReq req, String idempotencyKey)",
-      "returnType": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO",
+      "serviceSignature": "ai.neargo.shop.food.dto.CartVersionVO customerReplaceLine(String cartNo, String sourceLineRef, ai.neargo.shop.food.dto.CartAccess access, ai.neargo.shop.food.dto.ReplaceCartLineReq req, String idempotencyKey)",
+      "returnType": "ai.neargo.shop.food.dto.CartVersionVO",
       "mapperCalls": [
         {
           "table": "fnb_check_cart",
@@ -14167,20 +14336,52 @@
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
-          "table": "fnb_check_cart_item",
-          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
+          "table": "fnb_check",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckMapper",
           "method": "selectList",
           "access": "READ",
-          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbCheckCartItem> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheckCartItem> queryWrapper)",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbCheck> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheck> queryWrapper)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
-          "table": "fnb_check_cart",
-          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper",
-          "method": "lockCartIfVersion",
+          "table": "fnb_guest_session",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbGuestSession> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbGuestSession> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_table_occupancy",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.TableOccupancyMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbTableOccupancy> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbTableOccupancy> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_seat",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.SeatMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbSeat> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbSeat> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_check_cart_item",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
+          "method": "history",
           "access": "LOCK",
-          "signature": "ai.neargo.shop.food.entity.FnbCheckCart lockCartIfVersion(String entityNo, String storeNo, String cartNo, long expectedVersion)",
-          "guard": "显式主体与适用门店/父对象范围；被归档数据只在获准恢复用例读取；LOCK方法要求外层本地事务。"
+          "signature": "ai.neargo.shop.food.entity.FnbCheckCartItem history(String entityNo, String cartNo, String sourceLineRef)",
+          "guard": "原逻辑归档行也读取；显式主体/车/源行与FOR UPDATE，源行身份不可重绑商品或SKU。"
+        },
+        {
+          "table": "fnb_check_cart_item",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
+          "method": "retain",
+          "access": "WRITE",
+          "signature": "int retain(String entityNo, String cartNo, String sourceLineRef, java.math.BigDecimal qty, String seatNo, String courseNo, String selection, int deleted, String actorNo, java.time.LocalDateTime at)",
+          "guard": "保留原源行/addedBy，按已锁owner/cart CAS更新或复活墓碑；影响行数必须为1。"
         },
         {
           "table": "fnb_check_cart",
@@ -14194,43 +14395,52 @@
         {
           "table": "fnb_check_cart_item",
           "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
-          "method": "update",
+          "method": "insert",
           "access": "WRITE",
-          "signature": "int update(ai.neargo.shop.food.entity.FnbCheckCartItem changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheckCartItem> updateWrapper)",
+          "signature": "int insert(ai.neargo.shop.food.entity.FnbCheckCartItem row)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
-          "branch": "UPDATE_EXISTING"
+          "branch": "INSERT_NEW_OR_IDEMPOTENT_REUSE"
+        },
+        {
+          "table": "fnb_action_log",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper",
+          "method": "insert",
+          "access": "WRITE",
+          "signature": "int insert(ai.neargo.shop.food.entity.FnbActionLog row)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
+          "branch": "INSERT_NEW_OR_IDEMPOTENT_REUSE"
         }
       ],
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
-      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。事务外读取原已发布CatalogService；QR与原车来源目录交集校验。",
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
-      "implementationStatus": "TARGET_NOT_IMPLEMENTED"
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "apiId": "FOOD-API-130",
       "moduleId": "MOD-03",
       "httpMethod": "POST",
       "path": "/mp/x/food/carts/{cartNo}/lines/{sourceLineRef}:archive",
-      "controllerClass": "ai.neargo.shop.food.api.mp.MpCheckCartController",
+      "controllerClass": "ai.neargo.shop.food.api.mp.MpCartController",
       "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
       "implClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
       "serviceMethod": "customerArchiveLine",
       "controllerParameters": [
         {
-          "name": "cartNo",
           "type": "String",
+          "name": "cartNo",
           "source": "VALIDATED_PATH",
           "annotation": "@PathVariable(\"cartNo\")"
         },
         {
-          "name": "sourceLineRef",
           "type": "String",
+          "name": "sourceLineRef",
           "source": "VALIDATED_PATH",
           "annotation": "@PathVariable(\"sourceLineRef\")"
         },
         {
-          "type": "ai.neargo.shop.food.dto.ArchiveLineReq",
+          "type": "ai.neargo.shop.food.dto.CartVersionReq",
           "name": "req",
           "source": "PUBLIC_DTO",
           "annotation": "@Valid @RequestBody"
@@ -14240,42 +14450,44 @@
           "name": "idempotencyKey",
           "source": "HEADER",
           "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "String",
+          "name": "sessionNo",
+          "source": "OPTIONAL_QUERY",
+          "annotation": "@RequestParam(\"sessionNo\")"
+        },
+        {
+          "type": "String",
+          "name": "token",
+          "source": "OPTIONAL_HEADER",
+          "annotation": "@RequestHeader(\"X-Food-Session\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
         }
       ],
-      "controllerSignature": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO archiveLine(@PathVariable(\"cartNo\") String cartNo, @PathVariable(\"sourceLineRef\") String sourceLineRef, @Valid @RequestBody ai.neargo.shop.food.dto.ArchiveLineReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+      "controllerSignature": "ai.neargo.shop.food.dto.CartVersionVO customerArchiveLine(@PathVariable(\"cartNo\") String cartNo, @PathVariable(\"sourceLineRef\") String sourceLineRef, @Valid @RequestBody ai.neargo.shop.food.dto.CartVersionReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey, @RequestParam(\"sessionNo\") String sessionNo, @RequestHeader(\"X-Food-Session\") String token,  jakarta.servlet.http.HttpServletRequest request)",
       "serviceParameters": [
         {
           "type": "String",
-          "name": "entityNo",
-          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
-        },
-        {
-          "type": "String",
-          "name": "currentStoreNo",
-          "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
-        },
-        {
           "name": "cartNo",
-          "type": "String",
-          "source": "VALIDATED_PATH"
+          "source": "TRUSTED_SCOPE"
         },
         {
+          "type": "String",
           "name": "sourceLineRef",
-          "type": "String",
-          "source": "VALIDATED_PATH"
+          "source": "TRUSTED_SCOPE"
         },
         {
-          "type": "String",
-          "name": "authenticatedSessionNo",
-          "source": "VERIFIED_SESSION; public catalog/session-create may be null"
+          "type": "ai.neargo.shop.food.dto.CartAccess",
+          "name": "access",
+          "source": "VERIFIED_SESSION_TOKEN_AND_CONSUMER"
         },
         {
-          "type": "String",
-          "name": "actorNo",
-          "source": "AUTHENTICATED_ACTOR"
-        },
-        {
-          "type": "ai.neargo.shop.food.dto.ArchiveLineReq",
+          "type": "ai.neargo.shop.food.dto.CartVersionReq",
           "name": "req",
           "source": "VALIDATED_PUBLIC_DTO"
         },
@@ -14285,8 +14497,8 @@
           "source": "VALIDATED_HEADER"
         }
       ],
-      "serviceSignature": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO customerArchiveLine(String entityNo, String currentStoreNo, String cartNo, String sourceLineRef, String authenticatedSessionNo, String actorNo, ai.neargo.shop.food.dto.ArchiveLineReq req, String idempotencyKey)",
-      "returnType": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO",
+      "serviceSignature": "ai.neargo.shop.food.dto.CartVersionVO customerArchiveLine(String cartNo, String sourceLineRef, ai.neargo.shop.food.dto.CartAccess access, ai.neargo.shop.food.dto.CartVersionReq req, String idempotencyKey)",
+      "returnType": "ai.neargo.shop.food.dto.CartVersionVO",
       "mapperCalls": [
         {
           "table": "fnb_check_cart",
@@ -14297,20 +14509,44 @@
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
-          "table": "fnb_check_cart_item",
-          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
+          "table": "fnb_check",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckMapper",
           "method": "selectList",
           "access": "READ",
-          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbCheckCartItem> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheckCartItem> queryWrapper)",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbCheck> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheck> queryWrapper)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
-          "table": "fnb_check_cart",
-          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper",
-          "method": "lockCartIfVersion",
+          "table": "fnb_guest_session",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbGuestSession> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbGuestSession> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_table_occupancy",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.TableOccupancyMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbTableOccupancy> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbTableOccupancy> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_check_cart_item",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
+          "method": "history",
           "access": "LOCK",
-          "signature": "ai.neargo.shop.food.entity.FnbCheckCart lockCartIfVersion(String entityNo, String storeNo, String cartNo, long expectedVersion)",
-          "guard": "显式主体与适用门店/父对象范围；被归档数据只在获准恢复用例读取；LOCK方法要求外层本地事务。"
+          "signature": "ai.neargo.shop.food.entity.FnbCheckCartItem history(String entityNo, String cartNo, String sourceLineRef)",
+          "guard": "原逻辑归档行也读取；显式主体/车/源行与FOR UPDATE，源行身份不可重绑商品或SKU。"
+        },
+        {
+          "table": "fnb_check_cart_item",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
+          "method": "retain",
+          "access": "WRITE",
+          "signature": "int retain(String entityNo, String cartNo, String sourceLineRef, java.math.BigDecimal qty, String seatNo, String courseNo, String selection, int deleted, String actorNo, java.time.LocalDateTime at)",
+          "guard": "保留原源行/addedBy，按已锁owner/cart CAS更新或复活墓碑；影响行数必须为1。"
         },
         {
           "table": "fnb_check_cart",
@@ -14322,20 +14558,20 @@
           "branch": "UPDATE_EXISTING"
         },
         {
-          "table": "fnb_check_cart_item",
-          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper",
-          "method": "update",
+          "table": "fnb_action_log",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper",
+          "method": "insert",
           "access": "WRITE",
-          "signature": "int update(ai.neargo.shop.food.entity.FnbCheckCartItem changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheckCartItem> updateWrapper)",
+          "signature": "int insert(ai.neargo.shop.food.entity.FnbActionLog row)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
-          "branch": "UPDATE_EXISTING"
+          "branch": "INSERT_NEW_OR_IDEMPOTENT_REUSE"
         }
       ],
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
-      "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
+      "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
-      "implementationStatus": "TARGET_NOT_IMPLEMENTED"
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
     {
       "apiId": "FOOD-API-131",
@@ -16932,6 +17168,141 @@
       "note": "ALL-04实际只读当前关系；空路由保留整体关系计数，主体门店隔离",
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
+    },
+    {
+      "apiId": "FOOD-API-156",
+      "moduleId": "MOD-03",
+      "httpMethod": "POST",
+      "path": "/biz/x/food/checks/{checkNo}/cart-sessions",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizCartController",
+      "serviceClass": "ai.neargo.shop.food.service.CheckCartService",
+      "implClass": "ai.neargo.shop.food.service.impl.CheckCartServiceImpl",
+      "serviceMethod": "authorizeSession",
+      "controllerParameters": [
+        {
+          "type": "String",
+          "name": "checkNo",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"checkNo\")"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.AuthorizeCartSessionReq",
+          "name": "req",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "jakarta.servlet.http.HttpServletRequest",
+          "name": "request",
+          "source": "REQUEST_CONTEXT"
+        }
+      ],
+      "controllerSignature": "ai.neargo.shop.food.dto.CartSessionGrantVO authorizeSession(@PathVariable(\"checkNo\") String checkNo, @Valid @RequestBody ai.neargo.shop.food.dto.AuthorizeCartSessionReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey,  jakarta.servlet.http.HttpServletRequest request)",
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "storeNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "checkNo",
+          "source": "TRUSTED_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "actorNo",
+          "source": "AUTHENTICATED_ACTOR"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.AuthorizeCartSessionReq",
+          "name": "req",
+          "source": "VALIDATED_PUBLIC_DTO"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "serviceSignature": "ai.neargo.shop.food.dto.CartSessionGrantVO authorizeSession(String entityNo, String storeNo, String checkNo, String actorNo, ai.neargo.shop.food.dto.AuthorizeCartSessionReq req, String idempotencyKey)",
+      "returnType": "ai.neargo.shop.food.dto.CartSessionGrantVO",
+      "mapperCalls": [
+        {
+          "table": "fnb_check",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.CheckMapper",
+          "method": "selectOne",
+          "access": "READ",
+          "signature": "ai.neargo.shop.food.entity.FnbCheck selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCheck> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_guest_session",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbGuestSession> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbGuestSession> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_table",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.TableMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbTable> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbTable> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_table_area",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.TableAreaMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbTableArea> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbTableArea> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_table_occupancy",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.TableOccupancyMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbTableOccupancy> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbTableOccupancy> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_guest_session",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper",
+          "method": "update",
+          "access": "WRITE",
+          "signature": "int update(ai.neargo.shop.food.entity.FnbGuestSession changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbGuestSession> updateWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
+          "branch": "UPDATE_EXISTING"
+        },
+        {
+          "table": "fnb_action_log",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper",
+          "method": "insert",
+          "access": "WRITE",
+          "signature": "int insert(ai.neargo.shop.food.entity.FnbActionLog row)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
+          "branch": "INSERT_NEW_OR_IDEMPOTENT_REUSE"
+        }
+      ],
+      "portCalls": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "复用原哈希会话；店员授权不会泄露凭证，不赋予支付或退款权限。",
+      "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
+      "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     }
   ],
   "controllers": [
@@ -17321,32 +17692,37 @@
       ]
     },
     {
-      "className": "ai.neargo.shop.food.api.biz.BizCheckCartController",
+      "className": "ai.neargo.shop.food.api.biz.BizCartController",
       "methods": [
         {
           "apiId": "FOOD-API-037",
-          "signature": "ai.neargo.shop.food.dto.CheckCartResultVO getCart(@PathVariable(\"cartNo\") String cartNo)",
+          "signature": "ai.neargo.shop.food.dto.CartResultVO getCart(@PathVariable(\"cartNo\") String cartNo,  jakarta.servlet.http.HttpServletRequest request)",
           "delegate": "ai.neargo.shop.food.service.CheckCartService.getCart"
         },
         {
           "apiId": "FOOD-API-038",
-          "signature": "ai.neargo.shop.food.dto.CheckCartResultVO createCart(@PathVariable(\"storeNo\") String storeNo, @Valid @RequestBody ai.neargo.shop.food.dto.CreateCartReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+          "signature": "ai.neargo.shop.food.dto.CartResultVO createCart(@PathVariable(\"storeNo\") String storeNo, @Valid @RequestBody ai.neargo.shop.food.dto.CreateCartReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey,  jakarta.servlet.http.HttpServletRequest request)",
           "delegate": "ai.neargo.shop.food.service.CheckCartService.createCart"
         },
         {
           "apiId": "FOOD-API-039",
-          "signature": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO saveLine(@PathVariable(\"cartNo\") String cartNo, @PathVariable(\"sourceLineRef\") String sourceLineRef, @Valid @RequestBody ai.neargo.shop.food.dto.SaveLineReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
-          "delegate": "ai.neargo.shop.food.service.CheckCartService.saveLine"
+          "signature": "ai.neargo.shop.food.dto.CartVersionVO replaceLine(@PathVariable(\"cartNo\") String cartNo, @PathVariable(\"sourceLineRef\") String sourceLineRef, @Valid @RequestBody ai.neargo.shop.food.dto.ReplaceCartLineReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey,  jakarta.servlet.http.HttpServletRequest request)",
+          "delegate": "ai.neargo.shop.food.service.CheckCartService.replaceLine"
         },
         {
           "apiId": "FOOD-API-040",
-          "signature": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO archiveLine(@PathVariable(\"cartNo\") String cartNo, @PathVariable(\"sourceLineRef\") String sourceLineRef, @Valid @RequestBody ai.neargo.shop.food.dto.ArchiveLineReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+          "signature": "ai.neargo.shop.food.dto.CartVersionVO archiveLine(@PathVariable(\"cartNo\") String cartNo, @PathVariable(\"sourceLineRef\") String sourceLineRef, @Valid @RequestBody ai.neargo.shop.food.dto.CartVersionReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey,  jakarta.servlet.http.HttpServletRequest request)",
           "delegate": "ai.neargo.shop.food.service.CheckCartService.archiveLine"
         },
         {
           "apiId": "FOOD-API-126",
-          "signature": "ai.neargo.shop.food.dto.OperationResultVO archiveCart(@PathVariable(\"cartNo\") String cartNo, @Valid @RequestBody ai.neargo.shop.food.dto.ArchiveCartReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+          "signature": "ai.neargo.shop.food.dto.OperationResultVO archiveCart(@PathVariable(\"cartNo\") String cartNo, @Valid @RequestBody ai.neargo.shop.food.dto.CartVersionReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey,  jakarta.servlet.http.HttpServletRequest request)",
           "delegate": "ai.neargo.shop.food.service.CheckCartService.archiveCart"
+        },
+        {
+          "apiId": "FOOD-API-156",
+          "signature": "ai.neargo.shop.food.dto.CartSessionGrantVO authorizeSession(@PathVariable(\"checkNo\") String checkNo, @Valid @RequestBody ai.neargo.shop.food.dto.AuthorizeCartSessionReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey,  jakarta.servlet.http.HttpServletRequest request)",
+          "delegate": "ai.neargo.shop.food.service.CheckCartService.authorizeSession"
         }
       ]
     },
@@ -17806,26 +18182,26 @@
       ]
     },
     {
-      "className": "ai.neargo.shop.food.api.mp.MpCheckCartController",
+      "className": "ai.neargo.shop.food.api.mp.MpCartController",
       "methods": [
         {
           "apiId": "FOOD-API-127",
-          "signature": "ai.neargo.shop.food.dto.CheckCartResultVO getCart(@PathVariable(\"cartNo\") String cartNo)",
+          "signature": "ai.neargo.shop.food.dto.CartResultVO customerGetCart(@PathVariable(\"cartNo\") String cartNo, @RequestParam(\"sessionNo\") String sessionNo, @RequestHeader(\"X-Food-Session\") String token,  jakarta.servlet.http.HttpServletRequest request)",
           "delegate": "ai.neargo.shop.food.service.CheckCartService.customerGetCart"
         },
         {
           "apiId": "FOOD-API-128",
-          "signature": "ai.neargo.shop.food.dto.CheckCartResultVO createCart(@PathVariable(\"storeNo\") String storeNo, @Valid @RequestBody ai.neargo.shop.food.dto.CustomerCreateCartReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+          "signature": "ai.neargo.shop.food.dto.CartResultVO customerCreateCart(@PathVariable(\"storeNo\") String storeNo, @Valid @RequestBody ai.neargo.shop.food.dto.CreateCustomerCartReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey, @RequestHeader(\"X-Food-Session\") String token,  jakarta.servlet.http.HttpServletRequest request)",
           "delegate": "ai.neargo.shop.food.service.CheckCartService.customerCreateCart"
         },
         {
           "apiId": "FOOD-API-129",
-          "signature": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO saveLine(@PathVariable(\"cartNo\") String cartNo, @PathVariable(\"sourceLineRef\") String sourceLineRef, @Valid @RequestBody ai.neargo.shop.food.dto.SaveLineReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
-          "delegate": "ai.neargo.shop.food.service.CheckCartService.customerSaveLine"
+          "signature": "ai.neargo.shop.food.dto.CartVersionVO customerReplaceLine(@PathVariable(\"cartNo\") String cartNo, @PathVariable(\"sourceLineRef\") String sourceLineRef, @Valid @RequestBody ai.neargo.shop.food.dto.ReplaceCartLineReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey, @RequestParam(\"sessionNo\") String sessionNo, @RequestHeader(\"X-Food-Session\") String token,  jakarta.servlet.http.HttpServletRequest request)",
+          "delegate": "ai.neargo.shop.food.service.CheckCartService.customerReplaceLine"
         },
         {
           "apiId": "FOOD-API-130",
-          "signature": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO archiveLine(@PathVariable(\"cartNo\") String cartNo, @PathVariable(\"sourceLineRef\") String sourceLineRef, @Valid @RequestBody ai.neargo.shop.food.dto.ArchiveLineReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+          "signature": "ai.neargo.shop.food.dto.CartVersionVO customerArchiveLine(@PathVariable(\"cartNo\") String cartNo, @PathVariable(\"sourceLineRef\") String sourceLineRef, @Valid @RequestBody ai.neargo.shop.food.dto.CartVersionReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey, @RequestParam(\"sessionNo\") String sessionNo, @RequestHeader(\"X-Food-Session\") String token,  jakarta.servlet.http.HttpServletRequest request)",
           "delegate": "ai.neargo.shop.food.service.CheckCartService.customerArchiveLine"
         }
       ]
@@ -20430,42 +20806,42 @@
           "apiIds": [
             "FOOD-API-037"
           ],
-          "signature": "ai.neargo.shop.food.dto.CheckCartResultVO getCart(String entityNo, String currentStoreNo, String cartNo)",
+          "signature": "ai.neargo.shop.food.dto.CartResultVO getCart(String entityNo, String storeNo, String cartNo)",
           "parameters": [
             {
               "type": "String",
               "name": "entityNo",
-              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+              "source": "TRUSTED_SCOPE"
             },
             {
               "type": "String",
-              "name": "currentStoreNo",
-              "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+              "name": "storeNo",
+              "source": "TRUSTED_SCOPE"
             },
             {
+              "type": "String",
               "name": "cartNo",
-              "type": "String",
-              "source": "VALIDATED_PATH"
+              "source": "TRUSTED_SCOPE"
             }
           ],
-          "returnType": "ai.neargo.shop.food.dto.CheckCartResultVO"
+          "returnType": "ai.neargo.shop.food.dto.CartResultVO"
         },
         {
           "name": "createCart",
           "apiIds": [
             "FOOD-API-038"
           ],
-          "signature": "ai.neargo.shop.food.dto.CheckCartResultVO createCart(String entityNo, String storeNo, String actorNo, ai.neargo.shop.food.dto.CreateCartReq req, String idempotencyKey)",
+          "signature": "ai.neargo.shop.food.dto.CartResultVO createCart(String entityNo, String storeNo, String actorNo, ai.neargo.shop.food.dto.CreateCartReq req, String idempotencyKey)",
           "parameters": [
             {
               "type": "String",
               "name": "entityNo",
-              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+              "source": "TRUSTED_SCOPE"
             },
             {
-              "name": "storeNo",
               "type": "String",
-              "source": "VALIDATED_PATH"
+              "name": "storeNo",
+              "source": "TRUSTED_SCOPE"
             },
             {
               "type": "String",
@@ -20483,34 +20859,34 @@
               "source": "VALIDATED_HEADER"
             }
           ],
-          "returnType": "ai.neargo.shop.food.dto.CheckCartResultVO"
+          "returnType": "ai.neargo.shop.food.dto.CartResultVO"
         },
         {
-          "name": "saveLine",
+          "name": "replaceLine",
           "apiIds": [
             "FOOD-API-039"
           ],
-          "signature": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO saveLine(String entityNo, String currentStoreNo, String cartNo, String sourceLineRef, String actorNo, ai.neargo.shop.food.dto.SaveLineReq req, String idempotencyKey)",
+          "signature": "ai.neargo.shop.food.dto.CartVersionVO replaceLine(String entityNo, String storeNo, String cartNo, String sourceLineRef, String actorNo, ai.neargo.shop.food.dto.ReplaceCartLineReq req, String idempotencyKey)",
           "parameters": [
             {
               "type": "String",
               "name": "entityNo",
-              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+              "source": "TRUSTED_SCOPE"
             },
             {
               "type": "String",
-              "name": "currentStoreNo",
-              "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+              "name": "storeNo",
+              "source": "TRUSTED_SCOPE"
             },
             {
+              "type": "String",
               "name": "cartNo",
-              "type": "String",
-              "source": "VALIDATED_PATH"
+              "source": "TRUSTED_SCOPE"
             },
             {
-              "name": "sourceLineRef",
               "type": "String",
-              "source": "VALIDATED_PATH"
+              "name": "sourceLineRef",
+              "source": "TRUSTED_SCOPE"
             },
             {
               "type": "String",
@@ -20518,7 +20894,7 @@
               "source": "AUTHENTICATED_ACTOR"
             },
             {
-              "type": "ai.neargo.shop.food.dto.SaveLineReq",
+              "type": "ai.neargo.shop.food.dto.ReplaceCartLineReq",
               "name": "req",
               "source": "VALIDATED_PUBLIC_DTO"
             },
@@ -20528,34 +20904,34 @@
               "source": "VALIDATED_HEADER"
             }
           ],
-          "returnType": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO"
+          "returnType": "ai.neargo.shop.food.dto.CartVersionVO"
         },
         {
           "name": "archiveLine",
           "apiIds": [
             "FOOD-API-040"
           ],
-          "signature": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO archiveLine(String entityNo, String currentStoreNo, String cartNo, String sourceLineRef, String actorNo, ai.neargo.shop.food.dto.ArchiveLineReq req, String idempotencyKey)",
+          "signature": "ai.neargo.shop.food.dto.CartVersionVO archiveLine(String entityNo, String storeNo, String cartNo, String sourceLineRef, String actorNo, ai.neargo.shop.food.dto.CartVersionReq req, String idempotencyKey)",
           "parameters": [
             {
               "type": "String",
               "name": "entityNo",
-              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+              "source": "TRUSTED_SCOPE"
             },
             {
               "type": "String",
-              "name": "currentStoreNo",
-              "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+              "name": "storeNo",
+              "source": "TRUSTED_SCOPE"
             },
             {
+              "type": "String",
               "name": "cartNo",
-              "type": "String",
-              "source": "VALIDATED_PATH"
+              "source": "TRUSTED_SCOPE"
             },
             {
-              "name": "sourceLineRef",
               "type": "String",
-              "source": "VALIDATED_PATH"
+              "name": "sourceLineRef",
+              "source": "TRUSTED_SCOPE"
             },
             {
               "type": "String",
@@ -20563,7 +20939,7 @@
               "source": "AUTHENTICATED_ACTOR"
             },
             {
-              "type": "ai.neargo.shop.food.dto.ArchiveLineReq",
+              "type": "ai.neargo.shop.food.dto.CartVersionReq",
               "name": "req",
               "source": "VALIDATED_PUBLIC_DTO"
             },
@@ -20573,29 +20949,29 @@
               "source": "VALIDATED_HEADER"
             }
           ],
-          "returnType": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO"
+          "returnType": "ai.neargo.shop.food.dto.CartVersionVO"
         },
         {
           "name": "archiveCart",
           "apiIds": [
             "FOOD-API-126"
           ],
-          "signature": "ai.neargo.shop.food.dto.OperationResultVO archiveCart(String entityNo, String currentStoreNo, String cartNo, String actorNo, ai.neargo.shop.food.dto.ArchiveCartReq req, String idempotencyKey)",
+          "signature": "ai.neargo.shop.food.dto.OperationResultVO archiveCart(String entityNo, String storeNo, String cartNo, String actorNo, ai.neargo.shop.food.dto.CartVersionReq req, String idempotencyKey)",
           "parameters": [
             {
               "type": "String",
               "name": "entityNo",
-              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+              "source": "TRUSTED_SCOPE"
             },
             {
               "type": "String",
-              "name": "currentStoreNo",
-              "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+              "name": "storeNo",
+              "source": "TRUSTED_SCOPE"
             },
             {
+              "type": "String",
               "name": "cartNo",
-              "type": "String",
-              "source": "VALIDATED_PATH"
+              "source": "TRUSTED_SCOPE"
             },
             {
               "type": "String",
@@ -20603,7 +20979,7 @@
               "source": "AUTHENTICATED_ACTOR"
             },
             {
-              "type": "ai.neargo.shop.food.dto.ArchiveCartReq",
+              "type": "ai.neargo.shop.food.dto.CartVersionReq",
               "name": "req",
               "source": "VALIDATED_PUBLIC_DTO"
             },
@@ -20620,60 +20996,40 @@
           "apiIds": [
             "FOOD-API-127"
           ],
-          "signature": "ai.neargo.shop.food.dto.CheckCartResultVO customerGetCart(String entityNo, String currentStoreNo, String cartNo, String authenticatedSessionNo)",
+          "signature": "ai.neargo.shop.food.dto.CartResultVO customerGetCart(String cartNo, ai.neargo.shop.food.dto.CartAccess access)",
           "parameters": [
             {
               "type": "String",
-              "name": "entityNo",
-              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
-            },
-            {
-              "type": "String",
-              "name": "currentStoreNo",
-              "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
-            },
-            {
               "name": "cartNo",
-              "type": "String",
-              "source": "VALIDATED_PATH"
+              "source": "TRUSTED_SCOPE"
             },
             {
-              "type": "String",
-              "name": "authenticatedSessionNo",
-              "source": "VERIFIED_SESSION; public catalog/session-create may be null"
+              "type": "ai.neargo.shop.food.dto.CartAccess",
+              "name": "access",
+              "source": "VERIFIED_SESSION_TOKEN_AND_CONSUMER"
             }
           ],
-          "returnType": "ai.neargo.shop.food.dto.CheckCartResultVO"
+          "returnType": "ai.neargo.shop.food.dto.CartResultVO"
         },
         {
           "name": "customerCreateCart",
           "apiIds": [
             "FOOD-API-128"
           ],
-          "signature": "ai.neargo.shop.food.dto.CheckCartResultVO customerCreateCart(String entityNo, String storeNo, String authenticatedSessionNo, String actorNo, ai.neargo.shop.food.dto.CustomerCreateCartReq req, String idempotencyKey)",
+          "signature": "ai.neargo.shop.food.dto.CartResultVO customerCreateCart(String storeNo, ai.neargo.shop.food.dto.CartAccess access, ai.neargo.shop.food.dto.CreateCustomerCartReq req, String idempotencyKey)",
           "parameters": [
             {
               "type": "String",
-              "name": "entityNo",
-              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
-            },
-            {
               "name": "storeNo",
-              "type": "String",
-              "source": "VALIDATED_PATH"
+              "source": "TRUSTED_SCOPE"
             },
             {
-              "type": "String",
-              "name": "authenticatedSessionNo",
-              "source": "VERIFIED_SESSION; public catalog/session-create may be null"
+              "type": "ai.neargo.shop.food.dto.CartAccess",
+              "name": "access",
+              "source": "VERIFIED_SESSION_TOKEN_AND_CONSUMER"
             },
             {
-              "type": "String",
-              "name": "actorNo",
-              "source": "AUTHENTICATED_ACTOR"
-            },
-            {
-              "type": "ai.neargo.shop.food.dto.CustomerCreateCartReq",
+              "type": "ai.neargo.shop.food.dto.CreateCustomerCartReq",
               "name": "req",
               "source": "VALIDATED_PUBLIC_DTO"
             },
@@ -20683,47 +21039,32 @@
               "source": "VALIDATED_HEADER"
             }
           ],
-          "returnType": "ai.neargo.shop.food.dto.CheckCartResultVO"
+          "returnType": "ai.neargo.shop.food.dto.CartResultVO"
         },
         {
-          "name": "customerSaveLine",
+          "name": "customerReplaceLine",
           "apiIds": [
             "FOOD-API-129"
           ],
-          "signature": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO customerSaveLine(String entityNo, String currentStoreNo, String cartNo, String sourceLineRef, String authenticatedSessionNo, String actorNo, ai.neargo.shop.food.dto.SaveLineReq req, String idempotencyKey)",
+          "signature": "ai.neargo.shop.food.dto.CartVersionVO customerReplaceLine(String cartNo, String sourceLineRef, ai.neargo.shop.food.dto.CartAccess access, ai.neargo.shop.food.dto.ReplaceCartLineReq req, String idempotencyKey)",
           "parameters": [
             {
               "type": "String",
-              "name": "entityNo",
-              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
-            },
-            {
-              "type": "String",
-              "name": "currentStoreNo",
-              "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
-            },
-            {
               "name": "cartNo",
-              "type": "String",
-              "source": "VALIDATED_PATH"
+              "source": "TRUSTED_SCOPE"
             },
             {
+              "type": "String",
               "name": "sourceLineRef",
-              "type": "String",
-              "source": "VALIDATED_PATH"
+              "source": "TRUSTED_SCOPE"
             },
             {
-              "type": "String",
-              "name": "authenticatedSessionNo",
-              "source": "VERIFIED_SESSION; public catalog/session-create may be null"
+              "type": "ai.neargo.shop.food.dto.CartAccess",
+              "name": "access",
+              "source": "VERIFIED_SESSION_TOKEN_AND_CONSUMER"
             },
             {
-              "type": "String",
-              "name": "actorNo",
-              "source": "AUTHENTICATED_ACTOR"
-            },
-            {
-              "type": "ai.neargo.shop.food.dto.SaveLineReq",
+              "type": "ai.neargo.shop.food.dto.ReplaceCartLineReq",
               "name": "req",
               "source": "VALIDATED_PUBLIC_DTO"
             },
@@ -20733,47 +21074,32 @@
               "source": "VALIDATED_HEADER"
             }
           ],
-          "returnType": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO"
+          "returnType": "ai.neargo.shop.food.dto.CartVersionVO"
         },
         {
           "name": "customerArchiveLine",
           "apiIds": [
             "FOOD-API-130"
           ],
-          "signature": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO customerArchiveLine(String entityNo, String currentStoreNo, String cartNo, String sourceLineRef, String authenticatedSessionNo, String actorNo, ai.neargo.shop.food.dto.ArchiveLineReq req, String idempotencyKey)",
+          "signature": "ai.neargo.shop.food.dto.CartVersionVO customerArchiveLine(String cartNo, String sourceLineRef, ai.neargo.shop.food.dto.CartAccess access, ai.neargo.shop.food.dto.CartVersionReq req, String idempotencyKey)",
           "parameters": [
             {
               "type": "String",
-              "name": "entityNo",
-              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
-            },
-            {
-              "type": "String",
-              "name": "currentStoreNo",
-              "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
-            },
-            {
               "name": "cartNo",
-              "type": "String",
-              "source": "VALIDATED_PATH"
+              "source": "TRUSTED_SCOPE"
             },
             {
+              "type": "String",
               "name": "sourceLineRef",
-              "type": "String",
-              "source": "VALIDATED_PATH"
+              "source": "TRUSTED_SCOPE"
             },
             {
-              "type": "String",
-              "name": "authenticatedSessionNo",
-              "source": "VERIFIED_SESSION; public catalog/session-create may be null"
+              "type": "ai.neargo.shop.food.dto.CartAccess",
+              "name": "access",
+              "source": "VERIFIED_SESSION_TOKEN_AND_CONSUMER"
             },
             {
-              "type": "String",
-              "name": "actorNo",
-              "source": "AUTHENTICATED_ACTOR"
-            },
-            {
-              "type": "ai.neargo.shop.food.dto.ArchiveLineReq",
+              "type": "ai.neargo.shop.food.dto.CartVersionReq",
               "name": "req",
               "source": "VALIDATED_PUBLIC_DTO"
             },
@@ -20783,7 +21109,47 @@
               "source": "VALIDATED_HEADER"
             }
           ],
-          "returnType": "ai.neargo.shop.food.dto.SaveLineCheckCartResultVO"
+          "returnType": "ai.neargo.shop.food.dto.CartVersionVO"
+        },
+        {
+          "name": "authorizeSession",
+          "apiIds": [
+            "FOOD-API-156"
+          ],
+          "signature": "ai.neargo.shop.food.dto.CartSessionGrantVO authorizeSession(String entityNo, String storeNo, String checkNo, String actorNo, ai.neargo.shop.food.dto.AuthorizeCartSessionReq req, String idempotencyKey)",
+          "parameters": [
+            {
+              "type": "String",
+              "name": "entityNo",
+              "source": "TRUSTED_SCOPE"
+            },
+            {
+              "type": "String",
+              "name": "storeNo",
+              "source": "TRUSTED_SCOPE"
+            },
+            {
+              "type": "String",
+              "name": "checkNo",
+              "source": "TRUSTED_SCOPE"
+            },
+            {
+              "type": "String",
+              "name": "actorNo",
+              "source": "AUTHENTICATED_ACTOR"
+            },
+            {
+              "type": "ai.neargo.shop.food.dto.AuthorizeCartSessionReq",
+              "name": "req",
+              "source": "VALIDATED_PUBLIC_DTO"
+            },
+            {
+              "type": "String",
+              "name": "idempotencyKey",
+              "source": "VALIDATED_HEADER"
+            }
+          ],
+          "returnType": "ai.neargo.shop.food.dto.CartSessionGrantVO"
         }
       ]
     },
@@ -27420,6 +27786,91 @@
           "access": "WRITE",
           "inherited": false,
           "guard": "更新影响行数必须为1；0行区分无权/不存在、版本冲突、状态或容量不足；不得静默成功。"
+        },
+        {
+          "name": "history",
+          "returnType": "ai.neargo.shop.food.entity.FnbCheckCartItem",
+          "parameters": [
+            {
+              "type": "String",
+              "name": "entityNo",
+              "source": "TRUSTED_SCOPE"
+            },
+            {
+              "type": "String",
+              "name": "cartNo",
+              "source": "SERVICE_DERIVED"
+            },
+            {
+              "type": "String",
+              "name": "sourceLineRef",
+              "source": "SERVICE_DERIVED"
+            }
+          ],
+          "signature": "ai.neargo.shop.food.entity.FnbCheckCartItem history(String entityNo, String cartNo, String sourceLineRef)",
+          "access": "LOCK",
+          "inherited": false,
+          "guard": "原逻辑归档行也读取；显式主体/车/源行与FOR UPDATE，源行身份不可重绑商品或SKU。"
+        },
+        {
+          "name": "retain",
+          "returnType": "int",
+          "parameters": [
+            {
+              "type": "String",
+              "name": "entityNo",
+              "source": "TRUSTED_SCOPE"
+            },
+            {
+              "type": "String",
+              "name": "cartNo",
+              "source": "SERVICE_DERIVED"
+            },
+            {
+              "type": "String",
+              "name": "sourceLineRef",
+              "source": "SERVICE_DERIVED"
+            },
+            {
+              "type": "java.math.BigDecimal",
+              "name": "qty",
+              "source": "VALIDATED_QTY_OR_FROZEN_LINE"
+            },
+            {
+              "type": "String",
+              "name": "seatNo",
+              "source": "SERVICE_DERIVED"
+            },
+            {
+              "type": "String",
+              "name": "courseNo",
+              "source": "SERVICE_DERIVED"
+            },
+            {
+              "type": "String",
+              "name": "selection",
+              "source": "SERVICE_DERIVED"
+            },
+            {
+              "type": "int",
+              "name": "deleted",
+              "source": "SERVICE_DERIVED"
+            },
+            {
+              "type": "String",
+              "name": "actorNo",
+              "source": "AUTHENTICATED_ACTOR"
+            },
+            {
+              "type": "java.time.LocalDateTime",
+              "name": "at",
+              "source": "SERVER_CLOCK"
+            }
+          ],
+          "signature": "int retain(String entityNo, String cartNo, String sourceLineRef, java.math.BigDecimal qty, String seatNo, String courseNo, String selection, int deleted, String actorNo, java.time.LocalDateTime at)",
+          "access": "WRITE",
+          "inherited": false,
+          "guard": "保留原源行/addedBy，按已锁owner/cart CAS更新或复活墓碑；影响行数必须为1。"
         }
       ]
     },

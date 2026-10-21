@@ -30,6 +30,10 @@ import ai.neargo.shop.food.policy.BundlePublicationSource;
 import ai.neargo.shop.food.policy.RecipePublicationSource;
 import ai.neargo.shop.food.service.BundleService;
 import ai.neargo.shop.food.service.CheckService;
+import ai.neargo.shop.food.service.CheckCartService;
+import ai.neargo.shop.food.service.impl.CheckCartServiceImpl;
+import ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.service.DiningSessionService;
 import ai.neargo.shop.food.service.DishService;
@@ -400,6 +404,19 @@ public class FoodAutoConfiguration {
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new DiningSessionServiceImpl(
                 areas,tables,tokens,sessions,actions,idem,publisher,manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(CheckCartService.class)
+    CheckCartService checkCartService(CheckCartMapper carts, CheckCartItemMapper items, CheckMapper checks,
+            GuestSessionMapper sessions, SeatMapper seats, TableOccupancyMapper occupancies,
+            TableAreaMapper areas, TableMapper tables, ActionLogMapper actions, IdempotencyService idem,
+            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, CatalogService catalog,
+            ObjectProvider<StoreCardQueryPort> stores, ObjectMapper json,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new CheckCartServiceImpl(carts,items,checks,sessions,seats,occupancies,areas,tables,actions,idem,
+                publisher,catalog,numbers -> stores.getObject().cards(numbers),json,manager,Clock.systemUTC());
     }
 
     @Bean

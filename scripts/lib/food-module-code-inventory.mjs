@@ -39,7 +39,7 @@ export function buildFoodModuleInventory(s,old,plan,baselines){
   const counterpart=old.methods.find(b=>!b.path.startsWith('/mp/')&&b.method.replaceAll('Batche','Batch')===method&&shape(parse(apis.get(b.apiId)?.input))===shape(input));
   if(mp&&!counterpart)req='Customer'+req;
   let requestClass=null;
-  if(input.length){
+  if(input.length&&!override.scalarQuery){
    let cls=override.requestClass||root+'.dto.'+req;
    if(records.has(cls)&&shape(records.get(cls).fields)!==shape(input)){
     req=m.controller.replace(/^(Biz|Mp|Ops|Internal)/,'').replace(/Controller$/,'')+req;cls=root+'.dto.'+req;

@@ -3,6 +3,7 @@ package ai.neargo.shop.food.config;
 import ai.neargo.shop.food.api.FoodBizDataScopeInterceptor;
 import ai.neargo.shop.food.api.FoodRequestScopeValidator;
 import ai.neargo.shop.food.api.biz.BizCheckActionController;
+import ai.neargo.shop.food.api.biz.BizCartController;
 import ai.neargo.shop.food.api.biz.BizCheckController;
 import ai.neargo.shop.food.api.biz.BizCheckSeatController;
 import ai.neargo.shop.food.api.biz.BizReservationController;
@@ -13,8 +14,10 @@ import ai.neargo.shop.food.api.biz.BizTableController;
 import ai.neargo.shop.food.api.biz.BizTableOperationController;
 import ai.neargo.shop.food.api.biz.BizTableSharingController;
 import ai.neargo.shop.food.api.biz.BizTableTokenController;
+import ai.neargo.shop.food.api.mp.MpCartController;
 import ai.neargo.shop.food.api.mp.MpDiningSessionController;
 import ai.neargo.shop.food.foodclient.FoodClientConfiguration;
+import ai.neargo.shop.food.service.CheckCartService;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.OptionGroupService;
@@ -233,6 +236,23 @@ public class FoodWebAutoConfiguration {
             DiningSessionService service, StoreDirectoryPort stores) {
         return new MpDiningSessionController(service,stores);
     }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({CheckCartService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizCartController.class)
+    BizCartController bizCartController(CheckCartService service, StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) {
+        return new BizCartController(service, stores, scope);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean(CheckCartService.class)
+    @ConditionalOnMissingBean(MpCartController.class)
+    MpCartController mpCartController(CheckCartService service) { return new MpCartController(service); }
 
     @Bean
     @Profile("api")
