@@ -107,13 +107,23 @@
         "MG09"
       ],
       "planFile": "2026-10-21-brand-stored-value-organization.md",
-      "status": "RELEASE_READY",
+      "status": "DEPLOYED",
       "implementationNotes": [
         "21 business APIs and one internal Pay read dependency implemented",
         "5 Merchant tables V544; MySQL 9.7.2 scoped rehearsal passed",
         "Final review fixes verified: snapshot/revocation, delegated creator, bootstrap grants, management-scoped discovery, persisted blockers",
         "No real customer stored-value transaction executed"
-      ]
+      ],
+      "releaseEvidence": {
+        "date": "2026-10-22",
+        "core": "a307c7fcd",
+        "pay": "8f9543ab4",
+        "bH5": "07aff311e",
+        "site": "07aff311e",
+        "android": "0.5.99/332",
+        "migration": "V544 success",
+        "report": "docs/technical/delivery/P1-经营组织与品牌管理-交付记录.md"
+      }
     },
     {
       "id": "P2",

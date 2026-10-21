@@ -1,5 +1,5 @@
 {
-  "status": "IMPLEMENTED_ACCEPTANCE_IN_PROGRESS",
+  "status": "IMPLEMENTED_ACCEPTED_DEPLOYED",
   "phase": "P1",
   "databaseTables": [
     "mch_management_space",
