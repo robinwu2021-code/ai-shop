@@ -26,6 +26,7 @@ public final class RemoteResourceCandidatesPort implements ResourceCandidatesPor
         var result = ServiceCalls.call("PLATFORM", () -> api.capacity(query));
         if (result == null || result.stream().anyMatch(c -> c == null || !query.resourceNos().contains(c.resourceNo())
                 || c.from() == null || c.to() == null || !c.to().isAfter(c.from())
+                || !c.from().isBefore(query.to()) || !c.to().isAfter(query.from())
                 || c.capacity() < 0 || c.used() < 0)) { throw new IllegalStateException("invalid capacity response"); }
         return List.copyOf(result);
     }

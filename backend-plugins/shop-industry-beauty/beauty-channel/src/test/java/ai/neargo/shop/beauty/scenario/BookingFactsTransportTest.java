@@ -88,6 +88,31 @@ class BookingFactsTransportTest {
             assertThat(tcp.calls.get()).isEqualTo(before);
         }
     }
+    @Test void capacityRejectsWrongWindowFactsAndPreservesHalfOpenOverlapSemantics() throws Exception {
+        try (var tcp = new Tcp()) {
+            var port = new RemoteResourceCandidatesPort(tcp.http().client("PLATFORM", ResourceBookingInternalApi.class,
+                    Duration.ofSeconds(1)));
+            Instant from = Instant.parse("2026-10-22T00:00:00Z"), to = from.plusSeconds(300);
+            var query = new ResourceCandidatesPort.CapacityQuery(new ResourceBookingPort.Scope("MAIN", "E", "S"),
+                    Set.of("R"), from, to);
+            for (var fact : List.of(
+                    new ResourceCandidatesPort.Capacity("R", from.plusSeconds(2678400),
+                            to.plusSeconds(2678400), 1, 1),
+                    new ResourceCandidatesPort.Capacity("R", from.minusSeconds(600), from.minusSeconds(300), 1, 1),
+                    new ResourceCandidatesPort.Capacity("R", from.minusSeconds(300), from, 1, 1),
+                    new ResourceCandidatesPort.Capacity("R", to, to.plusSeconds(300), 1, 1))) {
+                tcp.reply = body -> JSON.writeValueAsString(List.of(fact));
+                assertThatThrownBy(() -> port.capacity(query)).isInstanceOf(IllegalStateException.class);
+            }
+            for (var fact : List.of(
+                    new ResourceCandidatesPort.Capacity("R", from.minusSeconds(300), from.plusSeconds(1), 1, 1),
+                    new ResourceCandidatesPort.Capacity("R", to.minusSeconds(1), to.plusSeconds(300), 1, 1),
+                    new ResourceCandidatesPort.Capacity("R", from, to, 1, 1))) {
+                tcp.reply = body -> JSON.writeValueAsString(List.of(fact));
+                assertThat(port.capacity(query)).containsExactly(fact);
+            }
+        }
+    }
     @Test void customerReferenceRetainsContextAndUsrNamespaceAndRejectsWrongReturnedIdentity() throws Exception {
         try (var tcp = new Tcp()) {
             var port = new RemoteCustomerIdentityPort(tcp.http().client("PLATFORM", CustomerIdentityInternalApi.class,

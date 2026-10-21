@@ -3,7 +3,6 @@ package ai.neargo.shop.beauty.api.biz;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizContextFilter;
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.auth.StoreRequestScopeValidator;
 import ai.neargo.shop.beauty.config.ConditionalOnBeautyWebEnabled;
 import ai.neargo.shop.beauty.dto.AppointmentChangePreviewVO;
 import ai.neargo.shop.beauty.dto.AppointmentDetailVO;
@@ -20,13 +19,10 @@ import ai.neargo.shop.beauty.dto.PreviewAppointmentChangeReq;
 import ai.neargo.shop.beauty.dto.PreviewAppointmentReq;
 import ai.neargo.shop.beauty.dto.RecordNoShowReq;
 import ai.neargo.shop.beauty.service.AppointmentService;
-import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.ObjectProvider;
-import java.util.List;
 import org.springframework.context.annotation.Profile;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -57,7 +53,7 @@ public class BizAppointmentController {
     @PostMapping("/previews")
     public AppointmentPreviewVO previewAppointment(@Valid @RequestBody PreviewAppointmentReq req,
             @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false) String requestedStore) {
-        requireStore(requestedStore);
+        BookingStoreScope.require(directories, requestedStore);
         return appointmentService.getObject().previewAppointment(BizContext.requireMerchantNo(),
                 BizContext.requireStoreNo(), SecurityUtils.currentUserNo(), req);
     }
@@ -67,7 +63,7 @@ public class BizAppointmentController {
     public AppointmentVO createAppointment(@Valid @RequestBody CreateAppointmentReq req,
             @RequestHeader("Idempotency-Key") String idempotencyKey, @RequestHeader(value =
             BizContextFilter.STORE_HEADER, required = false) String requestedStore) {
-        requireStore(requestedStore);
+        BookingStoreScope.require(directories, requestedStore);
         return appointmentService.getObject().createAppointment(BizContext.requireMerchantNo(),
                 BizContext.requireStoreNo(), SecurityUtils.currentUserNo(), req, idempotencyKey);
     }
@@ -76,7 +72,7 @@ public class BizAppointmentController {
     @GetMapping
     public PageData<AppointmentSummaryVO> listAppointments(@Valid @ModelAttribute AppointmentQuery query,
             @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false) String requestedStore) {
-        requireStore(requestedStore);
+        BookingStoreScope.require(directories, requestedStore);
         return appointmentService.getObject().listAppointments(BizContext.requireMerchantNo(),
                 BizContext.requireStoreNo(), SecurityUtils.currentUserNo(), query);
     }
@@ -85,7 +81,7 @@ public class BizAppointmentController {
     @GetMapping("/{appointmentNo}")
     public AppointmentDetailVO getAppointment(@PathVariable("appointmentNo") String appointmentNo,
             @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false) String requestedStore) {
-        requireStore(requestedStore);
+        BookingStoreScope.require(directories, requestedStore);
         return appointmentService.getObject().getAppointment(BizContext.requireMerchantNo(),
                 BizContext.requireStoreNo(), SecurityUtils.currentUserNo(), appointmentNo);
     }
@@ -95,7 +91,7 @@ public class BizAppointmentController {
     public AppointmentChangePreviewVO previewAppointmentChange(@PathVariable("appointmentNo") String
             appointmentNo, @Valid @RequestBody PreviewAppointmentChangeReq req, @RequestHeader(value =
             BizContextFilter.STORE_HEADER, required = false) String requestedStore) {
-        requireStore(requestedStore);
+        BookingStoreScope.require(directories, requestedStore);
         return appointmentService.getObject().previewAppointmentChange(BizContext.requireMerchantNo(),
                 BizContext.requireStoreNo(), SecurityUtils.currentUserNo(), appointmentNo, req);
     }
@@ -105,7 +101,7 @@ public class BizAppointmentController {
     public AppointmentVO changeAppointment(@PathVariable("appointmentNo") String appointmentNo, @Valid
             @RequestBody ChangeAppointmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false) String requestedStore) {
-        requireStore(requestedStore);
+        BookingStoreScope.require(directories, requestedStore);
         return appointmentService.getObject().changeAppointment(BizContext.requireMerchantNo(),
                 BizContext.requireStoreNo(), SecurityUtils.currentUserNo(), appointmentNo, req, idempotencyKey);
     }
@@ -115,7 +111,7 @@ public class BizAppointmentController {
     public CancellationVO cancelAppointment(@PathVariable("appointmentNo") String appointmentNo, @Valid
             @RequestBody CancelAppointmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false) String requestedStore) {
-        requireStore(requestedStore);
+        BookingStoreScope.require(directories, requestedStore);
         return appointmentService.getObject().cancelAppointment(BizContext.requireMerchantNo(),
                 BizContext.requireStoreNo(), SecurityUtils.currentUserNo(), appointmentNo, req, idempotencyKey);
     }
@@ -125,23 +121,9 @@ public class BizAppointmentController {
     public NoShowVO recordNoShow(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody
             RecordNoShowReq req, @RequestHeader("Idempotency-Key") String idempotencyKey, @RequestHeader(value
             = BizContextFilter.STORE_HEADER, required = false) String requestedStore) {
-        requireStore(requestedStore);
+        BookingStoreScope.require(directories, requestedStore);
         return appointmentService.getObject().recordNoShow(BizContext.requireMerchantNo(),
                 BizContext.requireStoreNo(), SecurityUtils.currentUserNo(), appointmentNo, req, idempotencyKey);
     }
 
-    private void requireStore(String requestedStore) {
-        var user = SecurityUtils.requireUser();
-        if (!"MAIN".equals(user.tenantNo()) || !"MERCHANT".equals(user.realm().name())
-                || !("MCH".equals(user.subjectKind().name()) || "USR".equals(user.subjectKind().name()))) {
-            throw BizException.of(ErrorCode.FORBIDDEN);
-        }
-        var context = BizContext.current();
-        String entity = BizContext.requireMerchantNo();
-        String store = BizContext.requireStoreNo();
-        var target = directories.getObject().cards(List.of(store)).get(store);
-        if (target == null) { throw BizException.of(ErrorCode.NOT_FOUND); }
-        StoreRequestScopeValidator.requireStoreTarget(entity, store, target.entityNo(), target.storeNo(),
-                requestedStore, context.storeNos());
-    }
 }

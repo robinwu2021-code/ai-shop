@@ -15,6 +15,8 @@ import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.DelegatedIdentityContext;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.beauty.api.biz.BizServiceOperationController;
+import ai.neargo.shop.beauty.api.biz.BizAppointmentController;
+import ai.neargo.shop.beauty.api.biz.BizAvailabilityController;
 import ai.neargo.shop.beauty.api.mp.MpAppointmentController;
 import ai.neargo.shop.beauty.api.mp.MpAvailabilityController;
 import ai.neargo.shop.beauty.dto.OperationVO;
@@ -32,6 +34,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -105,6 +110,66 @@ class BeautyBookingIngressTest {
             });
             verifyNoInteractions(recovery);
         } finally { BizContext.clear(); }
+    }
+    @ParameterizedTest
+    @ValueSource(strings = {"appointments", "availability", "operations"})
+    void everyBookingBizIngressRejectsRealmRawHeaderAndForeignScopeBeforeDelegating(String ingress) {
+        var beans = new DefaultListableBeanFactory();
+        var appointments = mock(AppointmentService.class);
+        var availability = mock(AppointmentAvailabilityService.class);
+        var reads = mock(ServiceOperationQueryService.class);
+        var recovery = mock(ServiceOperationRecoveryService.class);
+        var directory = mock(StoreDirectoryPort.class);
+        beans.registerSingleton("appointments", appointments);
+        beans.registerSingleton("availability", availability);
+        beans.registerSingleton("reads", reads);
+        beans.registerSingleton("recovery", recovery);
+        beans.registerSingleton("directory", directory);
+        var mvc = MockMvcBuilders.standaloneSetup(
+                new BizAppointmentController(beans.getBeanProvider(AppointmentService.class),
+                        beans.getBeanProvider(StoreDirectoryPort.class)),
+                new BizAvailabilityController(beans.getBeanProvider(AppointmentAvailabilityService.class),
+                        beans.getBeanProvider(StoreDirectoryPort.class)),
+                new BizServiceOperationController(beans.getBeanProvider(ServiceOperationQueryService.class),
+                        beans.getBeanProvider(ServiceOperationRecoveryService.class),
+                        beans.getBeanProvider(StoreDirectoryPort.class)))
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
+        BizContext.set(new BizContext("E", Set.of(), Set.of(), Set.of("S"), "S", false));
+        try {
+            DelegatedIdentityContext.call(identity(LoginUser.consumer("U", "u")), () -> {
+                try { mvc.perform(bookingBizRequest(ingress).header("X-Store-No", "S"))
+                        .andExpect(jsonPath("$.code").value(10403)); }
+                catch (Exception failure) { throw new RuntimeException(failure); }
+                return null;
+            });
+            verifyNoInteractions(directory, appointments, availability, reads, recovery);
+            when(directory.cards(any())).thenReturn(Map.of("S", new StoreDirectoryPort.StoreCard(
+                    "S", "store", "E", null, "ACTIVE", true, "", "", null, null, 0, 0)));
+            DelegatedIdentityContext.call(identity(LoginUser.merchantByUser("U", "u")), () -> {
+                try { mvc.perform(bookingBizRequest(ingress).header("X-Store-No", "FOREIGN"))
+                        .andExpect(jsonPath("$.code").value(10403)); }
+                catch (Exception failure) { throw new RuntimeException(failure); }
+                return null;
+            });
+            verifyNoInteractions(appointments, availability, reads, recovery);
+            when(directory.cards(any())).thenReturn(Map.of("S", new StoreDirectoryPort.StoreCard(
+                    "S", "store", "FOREIGN_ENTITY", null, "ACTIVE", true, "", "", null, null, 0, 0)));
+            DelegatedIdentityContext.call(identity(LoginUser.merchant("M", "m")), () -> {
+                try { mvc.perform(bookingBizRequest(ingress).header("X-Store-No", "S"))
+                        .andExpect(jsonPath("$.code").value(10403)); }
+                catch (Exception failure) { throw new RuntimeException(failure); }
+                return null;
+            });
+            verifyNoInteractions(appointments, availability, reads, recovery);
+        } finally { BizContext.clear(); }
+    }
+    private MockHttpServletRequestBuilder bookingBizRequest(String ingress) {
+        if (ingress.equals("availability")) {
+            return post("/biz/x/beauty/availability/queries").contentType("application/json").content(
+                    "{\"storeNo\":\"S\",\"items\":[{\"skuNo\":\"SKU\",\"qty\":1}],"
+                    + "\"from\":\"2026-10-22T10:00:00Z\",\"to\":\"2026-10-22T11:00:00Z\"}");
+        }
+        return get("/biz/x/beauty/" + (ingress.equals("operations") ? "operations/O" : "appointments"));
     }
     private DelegatedIdentity identity(LoginUser u) {
         return new DelegatedIdentity(u.tenantNo(), u.realm().name(), u.subjectKind().name(), u.userNo());

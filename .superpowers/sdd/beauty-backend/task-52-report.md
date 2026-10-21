@@ -117,3 +117,30 @@ Exact owned source/test/document/generator files below; controller-owned main TD
 - `docs/technical/design/美业系统-Java类与方法清单.md`
 - `scripts/gen-beauty-api-design.py`
 - `scripts/gen-beauty-java-method-design.py`
+
+## Review fix round 1/5 — 2026-10-22
+
+Base `c5b63aaea`; review input `/tmp/review-bm03-protocol.md`. Both Important findings addressed without changing the baseline160, protocol DTO field types, frozen V1–V4, main TDD, progress, or Task53 scope.
+
+### I1 — capacity must overlap the requested half-open window
+
+RemoteResourceCandidatesPort now enforces the real owner's existing invariant: returned `from < query.to` and `to > query.from`. A populated row for the same resource in a wholly unrelated future/past window fails closed instead of being discarded by the matcher and implying zero occupancy. Touching only the beginning/end boundary is nonoverlap and is rejected. Legitimate partial overlap and exact-window rows remain accepted. The smaller concrete overlap guard was chosen; no new query-snapshot/envelope framework. The review's tentative missing numeric-field concern was disproved by the actual decoder and causes no DTO/type change.
+
+Real TCP test `BookingFactsTransportTest.capacityRejectsWrongWindowFactsAndPreservesHalfOpenOverlapSemantics` sends nonempty facts with all numeric fields present: unrelated future, past, touching both boundaries, legitimate overlap on each side, and exact overlap.
+
+- RED: `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home mvn -o -Dmaven.repo.local=/tmp/codex-beauty-bm01-m2 -f backend-plugins/shop-industry-beauty/pom.xml -pl beauty-channel -am test -Dtest=BookingFactsTransportTest#capacityRejectsWrongWindowFactsAndPreservesHalfOpenOverlapSemantics -Dsurefire.failIfNoSpecifiedTests=false` → 1 test, 1 failure, 0 errors/skips (`/tmp/task52-r1-capacity-red.log`), expected “code to raise a throwable” assertion on wrongly accepted facts.
+- GREEN before scope refactor: same toolchain, `-pl beauty-channel,beauty-web -am test -Dtest=BookingFactsTransportTest,BeautyBookingIngressTest -Dsurefire.failIfNoSpecifiedTests=false` → 12 tests, 0 failures/errors/skips (`/tmp/task52-r1-behavior-before-refactor.log`). Includes all six TCP facts tests and six ingress tests/invocations.
+
+### I2 — single implementation of B booking store-scope validation
+
+Extracted package-private, stateless `beauty-web / ai.neargo.shop.beauty.api.biz.BookingStoreScope`. The exact shared decision body continues to use SecurityUtils, BizContext, StoreDirectoryPort and StoreRequestScopeValidator; lazy ObjectProvider lookup preserves checking the realm before consulting the directory. BizAppointmentController, BizAvailabilityController and BizServiceOperationController now call that helper. No independent auth/permission model or per-endpoint permission move was introduced; actual services retain VIEW/MANAGE and object ownership.
+
+`BeautyBookingIngressTest.everyBookingBizIngressRejectsRealmRawHeaderAndForeignScopeBeforeDelegating` characterizes each of the three actual ingress controllers before extraction and passes after extraction. Each rejects current CONSUMER realm, raw foreign X-Store-No, and a directory fact with foreign entity; verifies zero appointment/availability/operation/recovery service interactions. Wrong realm also performs no directory call. Existing GET-no-recovery and consumer-only/private-vs-anonymous behavior remains covered.
+
+### Final amended verification and warnings
+
+`JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home mvn -o -Dmaven.repo.local=/tmp/codex-beauty-bm01-m2 -f backend-plugins/shop-industry-beauty/pom.xml test` → **93 tests, 0 failures/errors/skips**, all modules BUILD SUCCESS (`/tmp/task52-r1-reactor-green.log`). Breakdown API2/core25/web22/channel19/server25; includes actual TCP/controller/advice tests and 13 architecture tests. `git diff --check` passes. No core/service/schema/owner behavior changed in this fix round; the earlier native MySQL122 and owner/i18n7 evidence remains applicable and was not needlessly rerun.
+
+Output is not pristine: inherited deprecated-API/annotation-processing compilation notices, Mockito dynamic agent warnings, expected negative-context startup WARN messages, and the intentional disconnected-TCP ServiceCalls warning remain visible in logs. Earlier native logs also contain Flyway's MySQL8.4-vs-verified8.1 compatibility warning. They are characterized separately from the zero test failures; this bounded round does not upgrade global test/agent/Flyway infrastructure or claim the warnings resolved. Task53 process/private-DB/real scheduling acceptance remains pending.
+
+Round1 owned files: RemoteResourceCandidatesPort.java, BookingFactsTransportTest.java, BookingStoreScope.java, the three B booking controllers, BeautyBookingIngressTest.java, and this report. Main TDD/progress remain controller-owned and unstaged.
