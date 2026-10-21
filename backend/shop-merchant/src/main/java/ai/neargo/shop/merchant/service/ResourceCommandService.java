@@ -20,6 +20,9 @@ public interface ResourceCommandService {
     /** Must be acquired before local mutations inside the writable primary READ_COMMITTED business transaction. */
     Execution lockForExecution(Scope scope, String commandNo, long version);
 
+    /** Owner-local guards verify the same live credential without consuming its command or exposing its internals. */
+    Scope requireExecution(Execution execution);
+
     /** Joins the credential's transaction; head CAS and immutable command result commit with caller-local effects. */
     Receipt completeSuccess(Execution execution, String resultingHoldNo, String resultPayload);
 

@@ -507,6 +507,24 @@ public final class MerchantMappers {
 
     /** Shared personnel master; login accounts are optional independent associations. */
     public interface PersonnelMapper extends BaseMapper<MchPersonnel> {
+        /** Resolve database-canonical personnel before sorting roots; do not emulate collation in Java. */
+        @Select("""
+                SELECT * FROM mch_personnel WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND personnel_no=#{personnelNo} AND deleted=0
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        MchPersonnel selectScopedPersonnel(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("personnelNo") String personnelNo);
+
+        /** Qualification/employment writers must take this root before any resource root. */
+        @Select("""
+                SELECT * FROM mch_personnel WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND personnel_no=#{personnelNo} AND deleted=0 FOR UPDATE
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        MchPersonnel lockScopedPersonnel(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("personnelNo") String personnelNo);
+
     }
 
     /** Current optional account link; mutations require a future owner workflow and audit. */
@@ -562,6 +580,20 @@ public final class MerchantMappers {
 
     /** Verified effective qualification facts carry their original store scope; no permission inference. */
     public interface PersonnelSkillMapper extends BaseMapper<MchPersonnelSkill> {
+        /** Whole rounded bucket eligibility; SKU-specific facts cannot authorize an unspecified SKU. */
+        @Select("""
+                SELECT COUNT(*) FROM mch_personnel_skill
+                WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo} AND personnel_no=#{personnelNo}
+                  AND deleted=0 AND status='VERIFIED' AND (store_no IS NULL OR store_no=#{scope.storeNo})
+                  AND goods_no=#{goodsNo} AND (sku_no IS NULL OR (#{skuNo} IS NOT NULL AND sku_no=#{skuNo}))
+                  AND valid_from<=#{startAt} AND (valid_to IS NULL OR valid_to>=#{endAt})
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        long countCoveringQualification(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("personnelNo") String personnelNo, @Param("goodsNo") String goodsNo,
+                @Param("skuNo") String skuNo, @Param("startAt") LocalDateTime startAt,
+                @Param("endAt") LocalDateTime endAt);
+
         /** Resolve child references through the master identity under the same owner snapshot. */
         @Select("""
                 <script>
@@ -585,6 +617,26 @@ public final class MerchantMappers {
 
     /** Canonical resources; a staff resource is shared by all valid store assignments of one personnel. */
     public interface ResourceMapper extends BaseMapper<MchResource> {
+        /** Physical resources are store-scoped while staff identity and capacity remain entity-wide. */
+        @Select("""
+                SELECT * FROM mch_resource WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND resource_no=#{resourceNo} AND deleted=0
+                  AND (resource_type='STAFF' OR store_no=#{scope.storeNo})
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        MchResource selectScopedResource(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("resourceNo") String resourceNo);
+
+        /** Individually acquire canonical sorted roots; ORDER BY on an IN query cannot guarantee lock order. */
+        @Select("""
+                SELECT * FROM mch_resource WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND resource_no=#{resourceNo} AND deleted=0
+                  AND (resource_type='STAFF' OR store_no=#{scope.storeNo}) FOR UPDATE
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        MchResource lockScopedResource(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("resourceNo") String resourceNo);
+
         /** Keep joined employment rows to reject overlaps rather than DISTINCT away inconsistent staffing. */
         @Select("""
                 <script>
@@ -652,6 +704,7 @@ public final class MerchantMappers {
                 ORDER BY r.resource_no, w.rule_no, a.assignment_no LIMIT 2001
                 </script>
                 """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
         List<ScheduleRuleFactRow> selectWindowRules(@Param("tenantNo") String tenantNo,
                 @Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
                 @Param("resourceNos") Set<String> resourceNos, @Param("from") LocalDateTime from,

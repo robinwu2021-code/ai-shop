@@ -1,10 +1,10 @@
 # SHR-02b 共用资源容量与组合占用：详细需求与方案
 
-> 状态：**实施中；02b-1a/1b/1c基础完成，原子容量预留与生命周期待实施** · 2026-10-21 · 档位2。
+> 状态：**实施中；02b-1a/1b/1c及2a锁内准入基础完成，原子容量预留与生命周期待实施** · 2026-10-21 · 档位2。
 > 基线：美业隔离分支378a5f2f7；只读核验最新本地餐饮ca71f6092，共用merchant/base及平台迁移相对8e732eeb7无新增。
 > 上游：[多端功能矩阵](../requirements/美业系统-多端功能矩阵.md) D01–D05、H04–H07；[主执行计划](./TDD-美业系统-后端开发计划.md) §11–13。
 > 既有设计：[字段真源](./design/schema/beauty-database-design.json) · [日历设计](./design/美业系统-预约工作台与日历API设计.md) · [旧资源方案](./design/TDD-预约资源域-多行业完整方案.md)。
-> 决策提案：[ADR-043](./ADR/ADR-043-共用资源仲裁归属与命令恢复.md)。交付状态按§5.4–5.6分批记录；未交付的接口、业务任务与跨域恢复仍待后续验收。
+> 决策提案：[ADR-043](./ADR/ADR-043-共用资源仲裁归属与命令恢复.md)。交付状态按§5.4–5.7分批记录；未交付的接口、业务任务与跨域恢复仍待后续验收。
 
 ## §0 定位、现状与需求追溯
 
@@ -245,6 +245,40 @@ Scope为已授权内部调用方的服务端范围；当前登录校验不代替
 **Review Focus：** 同键不同来源死锁/孤儿归属、CI规范号与摘要不一致、终态覆盖或失败误提交、凭证跨事务复用、错误来源hold被接为当前头。
 需求→设计→验收：R01/R07/R08/R16/R18的数据协议部分，对应本批原生IT；资源完整仲裁、来源许可、Outbox及Job执行仍属于02b-2～6。
 
+### 2.6 02b-2a锁内准入基础实施计划（2026-10-21）
+
+档位2，规格为R01–R06、R09及§3.2/§4.3。既有书面方案与连续执行授权不变；executing-plans原会话实施。
+基线4f5e2cac6；最新本地food eb6c686be，仅base两个商品查询合同增加方法，无merchant/平台迁移变更。
+本批是可独立验收的本域事实守卫，不是完整reserve：不写bucket/hold，不开放HTTP/SPI，不改迁移、配置或依赖。
+
+**目标与方法：** 新建`merchant.service.ResourceAdmissionService`及`service.impl.ResourceAdmissionServiceImpl`，
+`Plan lockAndValidate(Execution,List<Demand>,List<Qualification>)`；Qualification(resourceNo,sourceLineRef,goodsNo,skuNo,required)，四参兼容构造默认required=true。
+复用1a Demand/Plan及ScheduleWindowAssembler；不调用拒绝事务的PersonnelFactsPort，也不以Port锁外快照保证准入。
+扩展`ResourceCommandService.requireExecution(Execution)->Scope`，集中校验原私有凭证、主RC事务、当前tenant和保存点失效，供同域守卫使用，不消费命令。
+扩展既有PersonnelMapper、ResourceMapper、PersonnelSkillMapper；现有ScheduleRuleMapper窗口查询强制新读，保留原Port合同。
+测试`ResourceAdmissionPersistenceIT`及`verify-resource-admission-persistence.mjs`，实际V532–V535与MySQL8.4。
+
+| 步骤 | 实现与校验 | 预期证据 |
+|---|---|---|
+| 1 | 先写真实Service原生反射测试并运行 | 缺少服务的断言RED，非编译错误 |
+| 2 | 验证Execution，按显式scope逐引用解析规范resource/personnel身份；人员号排序逐一根锁，再资源号排序逐一根锁并复核发现阶段人员绑定/类型 | foreign scope、旧凭证、身份漂移均拒绝，不能倒序补锁 |
+| 3 | 锁内资源须ACTIVE、物理资源归当前店；STAFF容量1、人员ACTIVE；任何非空openOccupationNo阻断。解析CI别名后统一归一，重复组仍拒绝 | 同人跨店一个根，别名不分裂；并发根锁阻塞由真实第二连接证明 |
+| 4 | 复用归一算法，最早/最晚规范桶构造<=31天窗口；现有窗口SQL/Assembler强制新读，必须一个有效任职窗口完整覆盖每个桶 | 缺班、取整扩展班外、任职间隙/歧义、跨店重叠拒绝，无slot零时段例外 |
+| 5 | 每个STAFF组必须显式声明行业资格策略：所需项目列表，或唯一required=false且goods/sku为空；不可缺省或混合。项目要求由SQL证明VERIFIED资格完整覆盖；全主体或本店、通用或精确SKU；物理资源不声明人员资格 | 缺资格、门店/项目/SKU/有效期错误拒绝；SQL比较引用，不Java模拟CI |
+| 6 | 输入和工作量上限：需求与资格各最多10个原始资源引用、10规范资源/10000组与单位；资格<=10000项，单位×该组资格检查总量<=10000；失败将主事务标rollback-only | 捕获异常不能提交调用方半写，输入不修改、输出Plan不可变 |
+| 7 | 消融开放占用拒绝，反例RED后恢复；运行merchant、命令31、准入原生及旧预约/美业回归 | 真实输出及一次独立只读审查；重要发现一次RED→GREEN，不重审 |
+
+- [x] 原生测试RED→GREEN及根锁双连接竞争证明。
+- [x] 明确每条准入条件的真实反例、一次守卫消融及相关回归。
+- [x] 独立审查、三处对账、生成物/ledger与本地提交。
+
+**Pre-flight：** 1c提供不可伪造Execution，本批只验证/不提前完成；1a输入须规范身份，本批先由DB解析再归一。
+ScheduleWindowAssembler已有跨店/任职/DST规则，当前SQL31天上限保留；不能把90天前瞻写成一次31天以上查询。
+维护写者必须先人员后资源、在同一根下修改任职/资格/班表；本批只有基础与真实遵守根锁的写者互斥证明，未接维护入口不能开放预约营业。
+调用者必须从已冻结来源计划完整构造demands/qualifications；本批不证明二者与frozenPayload相同，不提供来源许可。
+服务端当前时间/提前量、来源冻结合同、TTL及完整bucket仲裁由后续02b-2b/2c实现；Plan不是可交易的预约承诺。
+**Review Focus：** CI别名导致锁序分裂；发现后人员绑定漂移；同事务MyBatis缓存；整桶任职/资格覆盖；捕获异常或旧Execution绕过事务边界。
+
 ## §3 桶、区间与完整组合
 
 ### 3.1 候选工程参数
@@ -433,6 +467,43 @@ UUID临时MySQL8.4、每例独立数据库、真实主库持久层/Service与正
 继承的SchemaDriftTest支付异常表解析1失败与schema-lineage 2失败，基线复现和范围见§5.5；本批无相关变更，未重跑这些全局闸门，
 不沿用旧结果宣称本批全仓通过。业务来源/主体成员授权、完整容量/准入、恢复任务和部署迁移仍由后续验收。
 
+### 5.7 02b-2a实际验收（2026-10-21）
+
+| 验收 | 真实结果 | 证据 |
+|---|---|---|
+| 测试先行 | 17项断言失败、0错误，缺少实际Service | `/tmp/resource-admission-red.log` |
+| 首轮原生 | 17通过；包含真实第二连接等待人员/资源根直至1205锁超时，主事务结束后写入成功 | `/tmp/resource-admission-green.log` |
+| 混合别名边界 | 20项中1个业务校验错误：合法R资格与r需求不匹配；SQL规范化后20通过 | `/tmp/resource-admission-alias-red.log`、`/tmp/resource-admission-alias-green.log`；非编译/基础设施错误 |
+| 跨行业资格策略 | 22项中2项断言失败，缺少显式策略；修复后22通过 | `/tmp/resource-admission-policy-red.log`、`/tmp/resource-admission-policy-green.log` |
+| 开放占用守卫消融 | 22项中1项断言失败、0错误 | `/tmp/resource-admission-ablation.log`，对应rejectsAnyOpenOccupationPointer；自动恢复源码 |
+| 最终原生 | 22通过、0失败/错误/跳过，BUILD SUCCESS | `/tmp/resource-admission-final-native.log` |
+| merchant及依赖 | 268通过、0失败/错误/跳过 | `/tmp/resource-admission-final-merchant.log` |
+| 原命令协议 | 31通过、0失败/错误/跳过 | `/tmp/resource-admission-command-regression.log`；凭证复核提取后运行，之后命令代码未改 |
+| 排班原生回归 | 23通过、0失败/错误/跳过 | `/tmp/resource-admission-schedule.log`，同一正式窗口SQL与Port |
+| 美业/旧路径 | 美业54通过；旧人员/商品服务/单时段预约37通过 | `/tmp/resource-admission-final-beauty.log`、`/tmp/resource-admission-legacy.log` |
+| 文档与生成器 | 五设计检查、冻结V1、Node7、SQL无新增方言、Java120/diff检查通过 | 后端分层/词汇/索引重新生成；无DDL/HTTP/SPI/依赖/配置变更 |
+
+执行：`JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home node scripts/verify-resource-admission-persistence.mjs`。
+正式V532–V535、每例独立数据库、UUID一次性MySQL8.4/utf8mb4_unicode_ci；运行器只清理自身容器，无营业库操作。
+
+| 需求/风险 | 对应真实原生方法 |
+|---|---|
+| 规范身份/原子计划 | returnsCanonicalImmutablePlanWithoutWritingCapacityOrChangingCommand；aliasCannotCreateDuplicateGroupsAndMissingResourceIsRejected；qualificationReferenceMayUseAnotherDatabaseAliasOfTheDemandResource |
+| 可写本域事务/原凭证 | requiresOriginalActiveExecutionAndMarksCaughtFailureRollbackOnly；caughtAdmissionFailureCannotCommitEarlierCallerEffects |
+| 有效资源/门店/开放占用 | rejectsSuspendedResourcesAndPersonnel；rejectsAnyOpenOccupationPointer；physicalResourceMustBelongToCurrentStoreAndNeedsNoPersonnel |
+| 全桶班表/任职 | missingScheduleNeverFallsBackToLegacySlotPermission；roundedWholeBucketMustFitSchedule；employmentMustCoverWholeRoundedBucket；overlappingEmploymentsAndCrossStoreSchedulesFailClosed |
+| 项目与SKU资格 | staffNeedsAnExplicitQualificationRequirement；wrongGoodsSkuStoreAndUnverifiedQualificationsAreRejected；qualificationMustCoverTheEntireRoundedBucket；specificSkuRequiresExactDatabaseIdentityAndGenericQualificationAllowsIt |
+| 三行业显式策略 | explicitNoQualificationPolicySupportsGeneralIndustryStaffWithoutInventedSkills；noQualificationPolicyCannotSilentlyOverrideRequiredProjects |
+| 缓存与规模/互斥 | jdbcChangesCannotBeHiddenBySameTransactionScheduleCache；jdbcChangesCannotBeHiddenByQualificationCache；noPartialPlanForMoreThan31DaysOrExcessiveQualificationChecks；holdsPersonnelAndResourceRootLocksUntilCallerTransactionEnds |
+
+一次独立只读审查：无Critical/Important，1个Minor待补：增加反向别名输入的多资源锁序并发与发现后P→P2绑定漂移反例。
+目前生产排序和漂移拒绝正确，单对根锁保留测试不能证明上述两类回归；不宣称已有动态覆盖。
+审查基于20项阶段；之后自行识别三行业普通员工无需项目资格的策略边界，在一次最终修复中做2项RED→GREEN，最终22项通过，无重审。
+历史1a输入列表非修改断言增强仍待补，1b非空结果映射Minor已在1c关闭。
+
+来源授权及需求/资格与冻结载荷绑定、当前时间/提前量/TTL、bucket容量与生命周期、维护写者统一守卫、Outbox/恢复/营业入口，
+仍属后续交付。SQL排序规则/完整Flyway/上线不由本次一次性库替代；既有SchemaDrift/血缘失败见§5.5，本批未改相关文件也未重跑全局闸门。
+
 ## §6 替换、实际交接与超时
 
 ### 6.1 未开工整计划原子替换
@@ -522,6 +593,25 @@ Receipt补规范来源绑定，完成时再次检查当前登录租户；保留�
 泛型Mapper不是业务安全入口。Scope是已授权内部范围，未来行业入口须先校验成员与来源权限。
 下一步02b-2实施前细化准入、来源冻结许可与原子预留生命周期；随后替换、交接/开放占用、超时保护、恢复与日历读模型。
 保留隔离工作树/ledger，只有本地检查点，无合并、推送或营业库迁移。
+
+### 6.9 02b-2a实现对账与后续边界
+
+| §2.6计划 | 实际文件/职责 |
+|---|---|
+| 锁内准入接口/实现 | ResourceAdmissionService、service.impl.ResourceAdmissionServiceImpl；规范资源解析、人员→资源根锁、完整桶排班/任职/资格 |
+| 既有凭证复核 | ResourceCommandService.requireExecution；原completeSuccess共用checkedExecution，不消费原命令 |
+| 显式范围与当前读 | 原MerchantMappers内PersonnelMapper/ResourceMapper/PersonnelSkillMapper新增守卫查询；ScheduleRuleMapper窗口强制新读 |
+| 原生测试与运行器 | ResourceAdmissionPersistenceIT、verify-resource-admission-persistence.mjs；V532–V535、临时MySQL8.4，双连接真实锁超时 |
+| 设计与派生记录 | 本TDD、主执行计划§18、ADR043、README、分层与原ledger |
+
+偏差：资格引用也需独立由数据库解析规范资源，不能要求与需求引用字面大小写相同；原生反例已证明。
+三行业普通员工可由可信行业策略显式声明无需项目资格，不创建伪造商品/资格；缺少STAFF策略与豁免/项目混合均拒绝。
+需求与资格各10个原始资源引用限制解析成本，单位×项目资格校验不超过10000；不是放大原规范计划上限。
+原merchant AdmissionService管理入驻保证金，与本资源时段资格不同；未复制或改动入驻/订单/商品逻辑。
+
+该基础不产生可缓存/对外售卖的准入凭证，不写容量。下一处理器须从冻结来源构造完整需求/资格策略，
+加服务端时间/提前量和来源fence，再在同一Execution事务接入容量桶/hold/单位/结果；所有维护写者须加入根锁协议。
+Clock/TTL、完整预留/保护/确认/释放、Outbox/恢复及营业入口仍未交付；实际无合并、推送或营业库迁移。
 
 ## §7 数据结构补充提案
 

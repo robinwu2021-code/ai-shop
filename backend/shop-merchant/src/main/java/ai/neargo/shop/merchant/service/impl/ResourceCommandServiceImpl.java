@@ -165,16 +165,28 @@ public class ResourceCommandServiceImpl implements ResourceCommandService {
     }
 
     @Override
+    public Scope requireExecution(Execution execution) {
+        return joined(() -> {
+            var scope = checkedExecution(execution).scope;
+            return new Scope(scope.tenantNo(), scope.entityNo(), scope.storeNo());
+        });
+    }
+
+    private ExecutionHandle checkedExecution(Execution execution) {
+        if (!(execution instanceof ExecutionHandle handle) || handle.service != this
+                || handle.connection != transaction() || handle.thread != Thread.currentThread() || handle.consumed) {
+            throw new IllegalStateException("invalid or consumed resource execution transaction");
+        }
+        if (!handle.scope.tenantNo().equals(SecurityUtils.requireUser().tenantNo())) {
+            throw new IllegalStateException("resource execution login tenant changed");
+        }
+        return handle;
+    }
+
+    @Override
     public Receipt completeSuccess(Execution execution, String resultingHoldNo, String resultPayload) {
         return joined(() -> {
-            if (!(execution instanceof ExecutionHandle handle) || handle.service != this
-                    || handle.connection != transaction() || handle.thread != Thread.currentThread()
-                    || handle.consumed) {
-                throw new IllegalStateException("invalid or consumed resource execution transaction");
-            }
-            if (!handle.scope.tenantNo().equals(SecurityUtils.requireUser().tenantNo())) {
-                throw new IllegalStateException("resource execution login tenant changed");
-            }
+            var handle = checkedExecution(execution);
             jsonObject(resultPayload);
             var command = handle.command;
             String head = validateHead(handle, resultingHoldNo);
