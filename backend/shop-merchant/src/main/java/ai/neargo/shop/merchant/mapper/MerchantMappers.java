@@ -4,6 +4,7 @@ import ai.neargo.shop.merchant.dto.PersonnelAssignmentFactRow;
 import ai.neargo.shop.merchant.dto.PersonnelPositionFactRow;
 import ai.neargo.shop.merchant.dto.PersonnelQualificationFactRow;
 import ai.neargo.shop.merchant.dto.ResourceFactRow;
+import ai.neargo.shop.merchant.dto.ScheduleRuleFactRow;
 import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
@@ -16,9 +17,12 @@ import ai.neargo.shop.merchant.entity.MchPersonnelSkill;
 import ai.neargo.shop.merchant.entity.MchPersonnelStore;
 import ai.neargo.shop.merchant.entity.MchQualification;
 import ai.neargo.shop.merchant.entity.MchResource;
+import ai.neargo.shop.merchant.entity.MchScheduleChangeLog;
+import ai.neargo.shop.merchant.entity.MchScheduleRule;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -449,6 +453,51 @@ public final class MerchantMappers {
         List<ResourceFactRow> selectEffectiveFacts(@Param("tenantNo") String tenantNo,
                 @Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
                 @Param("resourceNos") Set<String> resourceNos, @Param("at") LocalDateTime at);
+    }
+
+
+    /** Weekly rules retain all related store assignments for explicit shared-resource conflict checks. */
+    public interface ScheduleRuleMapper extends BaseMapper<MchScheduleRule> {
+        /** One scoped snapshot; conservative dates precede exact time-zone expansion and employment clipping. */
+        @Select("""
+                <script>
+                SELECT w.rule_no, r.resource_no, s.store_no, q.store_no AS requested_store_no, w.timezone,
+                w.weekday_mask, w.start_minute, w.end_minute, w.end_day_offset, w.valid_from, w.valid_to,
+                (r.resource_type='STAFF') AS staff, a.assignment_no,
+                a.valid_from AS employment_from, a.valid_to AS employment_to
+                FROM mch_schedule_rule w
+                JOIN mch_resource r ON r.tenant_no=w.tenant_no AND r.entity_no=w.entity_no
+                AND r.resource_no=w.resource_no
+                JOIN mch_entity e ON e.tenant_no=r.tenant_no AND e.entity_no=r.entity_no
+                JOIN mch_store s ON s.tenant_no=w.tenant_no AND s.entity_no=w.entity_no AND s.store_no=w.store_no
+                JOIN mch_store q ON q.tenant_no=r.tenant_no AND q.entity_no=r.entity_no AND q.store_no=#{storeNo}
+                LEFT JOIN mch_personnel p ON r.resource_type='STAFF' AND p.tenant_no=r.tenant_no
+                AND p.entity_no=r.entity_no AND p.personnel_no=r.personnel_no AND p.deleted=0 AND p.status='ACTIVE'
+                LEFT JOIN mch_personnel_store a ON r.resource_type='STAFF' AND a.tenant_no=p.tenant_no
+                AND a.entity_no=p.entity_no AND a.personnel_no=p.personnel_no AND a.store_no=s.store_no
+                AND a.deleted=0 AND a.status='ACTIVE' AND a.valid_from &lt; #{until}
+                AND (a.valid_to IS NULL OR a.valid_to>#{from})
+                WHERE w.tenant_no=#{tenantNo} AND w.entity_no=#{entityNo} AND w.deleted=0 AND w.status='ACTIVE'
+                AND r.deleted=0 AND r.status='ACTIVE' AND e.deleted=0 AND e.status='ACTIVE' AND e.archived_at IS NULL
+                AND s.deleted=0 AND s.status='ACTIVE' AND q.deleted=0 AND q.status='ACTIVE'
+                AND ((r.resource_type='STAFF' AND a.assignment_no IS NOT NULL)
+                OR (r.resource_type IN ('ROOM','SEAT','DEVICE') AND r.store_no=s.store_no AND s.store_no=q.store_no))
+                AND w.valid_from &lt;= #{lastAnchor} AND (w.valid_to IS NULL OR w.valid_to>=#{firstAnchor})
+                AND r.resource_no IN
+                <foreach collection="resourceNos" item="resource" open="(" separator="," close=")">
+                #{resource}</foreach>
+                ORDER BY r.resource_no, w.rule_no, a.assignment_no LIMIT 2001
+                </script>
+                """)
+        List<ScheduleRuleFactRow> selectWindowRules(@Param("tenantNo") String tenantNo,
+                @Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("resourceNos") Set<String> resourceNos, @Param("from") LocalDateTime from,
+                @Param("until") LocalDateTime until, @Param("firstAnchor") LocalDate firstAnchor,
+                @Param("lastAnchor") LocalDate lastAnchor);
+    }
+
+    /** Future owner workflows append change evidence; it does not authorize or execute affected booking changes. */
+    public interface ScheduleChangeLogMapper extends BaseMapper<MchScheduleChangeLog> {
     }
 
 }

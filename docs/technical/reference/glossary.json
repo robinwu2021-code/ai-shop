@@ -28376,6 +28376,20 @@
       "package": "ai.neargo.shop.merchant.entity"
     },
     {
+      "table": "mch_schedule_change_log",
+      "class": "MchScheduleChangeLog",
+      "zh": "班表调整历史。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
+      "table": "mch_schedule_rule",
+      "class": "MchScheduleRule",
+      "zh": "资源周班表规则。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
       "table": "mch_service_area",
       "class": "MchServiceArea",
       "zh": "商家的一条地理覆盖项（ADR-013 阶段二）。",

@@ -22,6 +22,7 @@
 | DATA-07 | 数据层完成 | 3项新实体、9条原始Mapper方法，复用已有动作日志；21项真实MySQL通过，见§10 |
 | SHR-01a | 基础切片完成 | 共用人员5表及内部事实查询，见§11；SHR-01/02整体、写维护和远程接入仍未完成 |
 | SHR-02a | 基础切片完成 | 规范资源主档及内部事实查询，见§12；排班/占用仲裁及维护入口后续 |
+| SHR-01b | 基础切片完成 | 周班表及内部窗口查询、变更历史，见§13；审批/写维护与完整SHR-01/02后续 |
 | 后续业务 | 未完成 | 共用资源、排班、来源恢复与预约/日历/任务业务闭环仍待实施，不以数据层通过计作营业可用 |
 
 首批基础阶段验证（后续批次增量见§8、§9）：独立reactor 42项测试通过，Node生成器6项通过，隔离MySQL DDL约束通过，23项真实JDBC IT通过。
@@ -96,6 +97,8 @@ CAL-01可先开发资源占用视图，但完整准出依赖TASK-01任务摘要�
 | 换人、超时、关闭冻结竞争 | 保留历史参与，未交接不静默变人，未知来源不强关工单 | TASK-02/03、RECOVER-01 |
 
 ## §2 首批工程及数据层详细任务
+
+共用排班SHR-01b本批计划见§13.2，验收见§13.3。
 
 后续共用资源SHR-02a的当批实施计划见[§12.2](#122-实施计划本会话直接执行)，验收见§12.3。
 
@@ -662,3 +665,92 @@ merchant及依赖253/253；原账号/slot/商品事实兼容37/37；美业普通
 资源创建/重分配/恢复及其维护鉴权仍为后续写业务；可信内部Port不等于公开或远程授权入口。
 at只选择有效任职，不能重建历史姓名/状态/容量；本批真实DDL验证使用最小父表fixture，未重放全部平台历史迁移或验证所有部署排序规则。
 未来部署仍须按目标环境验收；本批没有合并、推送或营业库发布。保留当前隔离分支与ledger用于后续49任务实施。
+
+
+## §13 SHR-01b：共用周班表与排班窗口
+
+### 13.0 需求与边界
+
+基线94ff55cf7，隔离工作树codex/beauty-foundation干净；最新本地food8e732eeb7，共用merchant/base及迁移无新增。
+依据功能矩阵D02、既有mch_schedule_rule/change_log设计及§12接续顺序；架构决定见[ADR-042](./ADR/ADR-042-共用排班窗口与跨店冲突.md)。
+交付周规则、变更历史2表及可信内部窗口读取，供零售服务、餐饮人员/物理资源、美业资源日历和后续可约计算共用。
+P3的请假/加班/停约例外审批、维护HTTP/写Service、生成容量桶、变更影响协调、远程消费及预约容量仲裁未交付，SHR-01/02整体仍不完成。
+本批周排班窗口不考虑尚未交付的例外或容量，不代表整个项目可约/资格许可；不从班表直接扣旧slot或新建STAFF资源。
+
+### 13.1 合同与语义
+
+- shop-merchant新增MchScheduleRule、MchScheduleChangeLog，MerchantMappers增ScheduleRuleMapper/ScheduleChangeLogMapper；
+  平台V534新增对应2表，字段沿既有设计与BaseEntity；业务唯一号带tenant/entity，不改旧迁移。历史仅作为后续追加证据，维护写入并发/权限仍待业务Service。
+- shop-base/spi/schedule/ScheduleWindowsPort.getBatch(Query)：Query(tenantNo,entityNo,storeNo,Set<String> resourceNos,Instant startAt,Instant endAt)。
+  明确1..50资源，UTC毫秒半开窗口、最长31天；范围须在1000-01-03至9999-12-29 UTC内，保留时区及跨日展开余量。
+  Window(resourceNo,storeNo,assignmentNo,startAt,endAt,List<String> ruleNos)；物理资源assignmentNo为空。输入/输出及规则列表不可变。
+- weekdayMask按ISO星期一bit0至星期日bit6（1..127）；startMinute0..1439、endMinute0..1440、endDayOffset0/1，
+  本地持续时间>0且<=1440分钟，validFrom/validTo是规则开始日的包含端点日期。午夜结束可用1440/offset0或0/offset1。
+- ScheduleRuleMapper.selectWindowRules一次SQL取requested资源及全部相关门店的有效规则、规范资源/人员/门店父链及任职，
+  保留重叠任职行；STAFF同resourceNo跨店检查，物理资源只本店；主动请求门店也须有效。SQL显式tenant/entity范围；最多2000连接行，LIMIT2001哨兵，拒绝超限。
+  规则生效日期用UTC请求日期前后各2日保守预筛，再按规则ZoneId本地锚定日精确展开；有效任职按UTC半开区间裁剪，不能把上班时间扩展到任职之外。
+- merchant.policy.ScheduleWindowAssembler以UTC前后各2日为保守候选开始日、按业务时区展开跨午夜，再精确排除无关时段并裁剪请求/任职边界；非法ZoneId拒绝，不回退UTC。
+  ZoneId允许有效区域或固定偏移；需要季节变化的规则应使用区域时区。DST不存在或重复的本地端点在可能影响请求范围时明确拒绝，不自动移到下一小时或任取一个偏移；有效唯一端点按真实UTC时长返回。
+  同资源同店同任职的重叠/相邻段合并并保留ruleNos，不重复增加容量；跨店重叠或同店不同任职重叠明确拒绝，邻接换店/换任职保持分段。
+  最多10000原始窗口，超限拒绝而非部分返回；先检查全部相关店冲突再只输出请求店，不泄露其他店规则/任职。
+- 一次SQL形成一致语句快照，可信内部查询封装数据域绕过且恢复上下文；新表仍登记merchant主体域。主档读当前姓名/状态，不重建历史资源状态。
+  affectedRefs保存JSON引用快照，beforeRevision>=0、afterRevision>beforeRevision；不能靠历史插入证明影响处理已完成。
+
+### 13.2 实施计划（本会话直接执行）
+
+Java21/Boot4/MyBatis-Plus沿平台，零新增依赖。Spec为本节及既有字段字典；采用原隔离工作树和直接执行方式。
+Review Focus：跨日锚定/日期端点、DST重复或缺失端点、跨店同人冲突及相邻交接、任职裁剪/重叠、范围/数据量/隐私；以下实际MySQL测试覆盖。
+
+| 任务 | 文件与产出 | 验证 |
+|---|---|---|
+| S1 | shop-app/.../scenario/ScheduleWindowsPersistenceIT.java；scripts/verify-schedule-persistence.mjs | 缺类RED，正式V532/533/534实际MySQL，不以H2代替DDL |
+| S2 | shop-base/.../spi/schedule/ScheduleWindowsPort.java；merchant/entity/MchScheduleRule、MchScheduleChangeLog；dto/ScheduleRuleFactRow；policy/ScheduleWindowAssembler；port/ScheduleWindowsPortImpl；原MerchantMappers新增2接口及数据域注册 | ISO周掩码、时区/跨日/日期端点、任职裁剪与合并、跨店冲突、DST、脏数据/父链/规模/不可变输入输出 |
+| S3 | shop-app/.../V534__shared_schedule_rules.sql | 正式字段/唯一键/时间规则/CHECK/JSON/修订约束，真实Entity审计和主体域 |
+| S4 | 本TDD、ADR042、README、ledger、派生H2/表/ER/词汇/分层 | 旧资源19项、人员20项、账号/slot/商品37项、merchant及美业回归、消融/静态检查/一次独立审查、本地提交 |
+
+- [x] S1写反例、运行缺类RED。
+- [x] S2/S3实现至实际MySQL GREEN；跨店冲突消融必须触发断言失败，恢复后全绿。
+- [x] S4完成对账及独立审查，只标本切片完成；P3例外及完整预约/资源业务后续。
+
+
+### 13.3 AC与实际测试对账
+
+| AC | ScheduleWindowsPersistenceIT实际方法 | 行为证据 |
+|---|---|---|
+| ISO星期/包含日期/跨日锚定 | isoWeekdayAndInclusiveRuleDatesProduceRealUtcWindows、overnightUsesPreviousLocalAnchorIncludingItsLastValidDate、timezoneAndQueryClippingDoNotUseUtcWeekdayInsteadOfLocalWeekday、midnightEndCanUseMinute1440WithoutInventingAnExtraDay | 当地星期与规则开始日、末日跨夜、上海本地日/UTC前日、1440午夜结束 |
+| 同店合并与有效任职裁剪 | sameAssignmentRulesMergeWithoutDuplicatingCapacityAndKeepProvenance、employmentClipsWindowsAndAdjacentAssignmentsRemainSeparate | 合并保留W/W2来源，任职裁剪至10–12/12–14并保留A/A2分段 |
+| 跨店冲突/隐私/相邻交接 | crossStoreOverlapFailsEvenWhenCallerRequestsOnlyOneStore、adjacentStoreHandoffIsAllowedAndForeignRulesAreNotExported、overlappingAssignmentsFailInsteadOfBeingMergedAsOneShift | 跨店重叠拒绝，相邻17点换店允许，不输出外店规则/任职号，同店重叠任职拒绝 |
+| 规范身份与物理资源 | caseEquivalentReferencesReturnCanonicalResourceStoreAndAssignment、physicalResourcesUseOnlyTheirOwnStoreWithoutPersonnelAssignment | r/p/s引用按规范R/P/S/A父链；物理房间无任职且不能跨归属店 |
+| 父链/范围/错误传播 | inactiveAndArchivedParentChainsBlockWindows、foreignTenantAndSubjectReferencesCannotProduceWindows、invalidTimezoneAndDatabaseFailuresDoNotPretendNoShiftExists | 停用/软删/归档/错域不返回，坏时区/数据库失败不伪装无班次 |
+| DST真实时间 | dstGapIsRejectedOnlyWhenItsPossibleWindowAffectsTheQuery、dstOverlapIsRejectedRatherThanChoosingAnOffset、midnightDstGapOnNextLocalDateStillChecksItsPossibleUtcRange、uniqueEndpointsAcrossDstReturnActualElapsedTime | 缺失/重复端点影响请求时拒绝，非相关日期不误报，唯一端点跨回拨正确返回04Z–09Z |
+| 规模/不可变与毫秒 | oversizedJoinedRowsAreRejectedBeforeExpansion、excessiveExpandedWindowsFailInsteadOfReturningPartialCalendar、requestAndResultsAreBoundedImmutableAndUsePersistedMillisecondPrecision | 2001连接行/超过10000窗口拒绝，名单/范围/精度与不可变列表验证 |
+| 正式DDL/审计/主体域 | formalDdlRejectsInvalidRuleShapesAndMalformedChangeEvidence、actualEntityInsertUsesAuditAndRuleAndHistorySubjectScopes | 正式V534范围/周掩码/分钟/日期/JSON/修订/唯一键拒绝，实际Entity审计ACTOR及规则/历史主体域 |
+
+实际缺类RED：22断言失败、0错误（/tmp/schedule-missing-red.log），此前断言API编译错误已纠正，不计为功能RED。
+实现后22/22、0失败/错误/跳过（/tmp/schedule-green.log）。跨店守卫消融22项中1断言失败、0错误，
+具体失败为重叠查询未抛异常（/tmp/schedule-cross-store-ablation.log）；finally恢复守卫，最终回归另记。
+
+
+独立审查P2：原候选末日只取请求结束的实际本地日期，漏过午夜跳时后次日规则的可能UTC范围。
+新增midnightDstGapOnNextLocalDateStillChecksItsPossibleUtcRange：Santiago2026-09-06 00:30–02:00，
+短查询03:15Z–03:45Z原本错误返回空；实际MySQL23项中1断言失败/0错误（/tmp/schedule-midnight-red.log）。
+候选锚定日改为UTC前后各2日，与SQL预筛一致，再用原端点范围过滤，覆盖跳过的本地日期且不猜测偏移。
+固定偏移ZoneId保留支持，使用固定偏移不自动随季节变化；需要DST应选区域时区。
+
+
+最终验证：P2反例修复后实际MySQL23/23（/tmp/schedule-fixed-native.log），共用merchant及依赖253/253，
+资源实际MySQL19/19、人员实际MySQL20/20、原账号/slot/商品事实兼容37/37、美业普通reactor54/54，全部0失败/错误/跳过。
+一次独立只读审查，P2以实际RED→GREEN关闭，无遗留Minor，不请求重复审查。
+五组设计生成器、冻结V1、Node6项、SQL无新增方言、词汇检查及git diff --check通过；完整schema-lineage14通过/2既有失败，
+仍为旧跨表键分类及ER键归属不一致，未修改无关资金/来源业务含义，不声称全局闸门全绿。
+
+文件对账：新增平台V534两表、2个Entity、1个共用SPI、1个SQL事实投影、1个窗口Assembler、1个Port实现、1个真实IT与1个一次性MySQL脚本；
+修改原MerchantMappers增2接口、原数据域注册增2表；README、ADR042、本TDD及ledger同步。
+派生H2、表清单、ER、词汇与分层已更新（348平台表）；rule_no与既有分账费率规则同名，登记碰撞而非错误关联。
+未修改旧迁移/冻结美业V1、旧slot/账号/餐饮实现、公开接口、权限、配置、依赖或设计任务JSON状态；实际进度以上表与本节为准。
+
+阶段：仅SHR-01b基础切片完成，SHR-01/02与49任务整体未完成。接下来是SHR-02b容量桶与组合占用仲裁，然后再接维护/远程入口和美业预约日历。
+保留内部可信范围、当前主档过滤与明确规模上限；固定偏移可用但不自动跟随季节变化，需要DST时选区域时区。
+请假/加班/停约审批、完整变更影响协调、写入鉴权/历史追加守卫、容量/资格许可和旧槽迁移仍待后续。
+本批MySQL执行正式V532/533/534但采用最小父表fixture，未重放全部平台历史迁移或覆盖全部部署排序规则，不宣称生产迁移验收。
+仅本地检查点，不合并/推送/营业库迁移；保留隔离工作树及ledger供后续实施。

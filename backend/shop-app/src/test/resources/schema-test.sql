@@ -8329,6 +8329,66 @@ CREATE TABLE IF NOT EXISTS mch_resource
     CONSTRAINT ck_mch_resource_open_ref CHECK ( open_occupation_no IS NULL OR CHAR_LENGTH(TRIM(open_occupation_no)) > 0 )
 );
 
+CREATE TABLE IF NOT EXISTS mch_schedule_rule
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    rule_no VARCHAR(32) NOT NULL,
+    resource_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    timezone VARCHAR(64) NOT NULL,
+    weekday_mask INT NOT NULL,
+    start_minute INT NOT NULL,
+    end_minute INT NOT NULL,
+    end_day_offset INT NOT NULL,
+    valid_from DATE NOT NULL,
+    valid_to DATE NULL,
+    status VARCHAR(24) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_schedule_rule_no UNIQUE (tenant_no, entity_no, rule_no),
+    CONSTRAINT ck_mch_schedule_rule_version CHECK (version >= 0),
+    CONSTRAINT ck_mch_schedule_rule_deleted CHECK (deleted IN (0,1)),
+    CONSTRAINT ck_mch_schedule_rule_days CHECK (weekday_mask BETWEEN 1 AND 127),
+    CONSTRAINT ck_mch_schedule_rule_minutes CHECK (start_minute BETWEEN 0 AND 1439 AND end_minute BETWEEN 0 AND 1440),
+    CONSTRAINT ck_mch_schedule_rule_offset CHECK (end_day_offset IN (0,1)),
+    CONSTRAINT ck_mch_schedule_rule_duration CHECK (end_day_offset*1440+end_minute-start_minute BETWEEN 1 AND 1440),
+    CONSTRAINT ck_mch_schedule_rule_dates CHECK (valid_to IS NULL OR valid_to >= valid_from),
+    CONSTRAINT ck_mch_schedule_rule_status CHECK (status IN ('ACTIVE','INACTIVE')),
+    CONSTRAINT ck_mch_schedule_rule_timezone CHECK (CHAR_LENGTH(TRIM(timezone)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS mch_schedule_change_log
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    change_no VARCHAR(32) NOT NULL,
+    resource_no VARCHAR(32) NOT NULL,
+    source_ref VARCHAR(64) NOT NULL,
+    before_revision BIGINT NOT NULL,
+    after_revision BIGINT NOT NULL,
+    affected_refs TEXT NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_schedule_change_no UNIQUE (tenant_no, entity_no, change_no),
+    CONSTRAINT ck_mch_schedule_change_version CHECK (version >= 0),
+    CONSTRAINT ck_mch_schedule_change_deleted CHECK (deleted IN (0,1)),
+    CONSTRAINT ck_mch_schedule_change_revision CHECK (before_revision >= 0 AND after_revision > before_revision)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
