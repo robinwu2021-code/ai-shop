@@ -586,12 +586,12 @@
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | revisionNo | string | 是 | 冻结发布号 |
-| configKind | string | 是 | 类型 |
+| configKind | string | 是 | OPTION_GROUP或MODIFIER或BUNDLE |
 | configNo | string | 是 | 对象 |
-| revision | int64 | 是 | 发布修订 |
-| effectiveAt | datetime | 是 | 生效 |
-| contentHash | string | 是 | 摘要 |
-| status | string | 是 | 状态 |
+| revision | int64 | 是 | 发布修订非工作CAS |
+| effectiveAt | datetime | 是 | 生效时刻 |
+| contentHash | string | 是 | 规范摘要 |
+| status | string | 是 | SCHEDULED或EFFECTIVE或CANCELLED |
 
 ### Menu
 
@@ -1151,6 +1151,28 @@
 | page | int32 | 否 | 默认1 |
 | size | int32 | 否 | 默认20最大100 |
 
+### BundlePublicationSnapshot
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| contentSchema | int32 | 是 | 固定2 |
+| configKind | string | 是 | 固定BUNDLE |
+| configNo | string | 是 | 主SKU |
+| sourceVersion | int64 | 是 | 严格整数工作CAS |
+| bundle | BundleConfigVO | 是 | 完整冻结定义 |
+| skuFacts | SkuIdentityFact[] | 是 | 所有显式SKU身份版本 |
+| approvalRef | string | 否 | 仅审批引用 |
+
+### SkuIdentityFact
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| skuNo | string | 是 | 原SKU |
+| goodsNo | string | 是 | 原商品 |
+| entityNo | string | 是 | 权威经营主体 |
+| storeNo | string | 是 | 验真门店 |
+| version | int64 | 是 | 严格非负整数身份版本 |
+
 ## 四、逐接口输入输出
 
 ### FOOD-API-001 · 查询营业策略
@@ -1478,9 +1500,9 @@
 
 `POST /biz/x/food/stores/{storeNo}/bundles/{configNo}:publish`
 
-权限与守卫：CAS草稿头及完整聚合校验；冻结依赖发布版本和definition；发布内容不可改，客户端不可自填已发布凭据。
+权限与守卫：已实现；原GOODS及门店目录；完整非空可行套餐、SKU身份和禁止嵌套校验；事务外权威预读后SERIALIZABLE锁头重验；schema2冻结完整定义及SKU身份版本，CAS/幂等/审计/Outbox原子；禁止回填历史。
 
-能力依赖：餐饮新增。
+能力依赖：已实现；shop.food.bundle-publication-enabled默认false，先升级schema2读端再开发布；不授予报价库存或可售权限。
 
 路径输入：
 
@@ -1493,9 +1515,9 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| version | int64 | 是 | 草稿版本 |
-| effectiveAt | datetime | 是 | 生效时刻 |
-| approvalRef | string | 否 | 审批 |
+| version | int64 | 是 | 严格非负整数CAS |
+| effectiveAt | datetime | 是 | 带时区毫秒精度 |
+| approvalRef | string | 否 | 仅审批业务引用 |
 
 成功输出（data）：
 
@@ -4512,13 +4534,13 @@
 
 权限与守卫：已实现；原GOODS及可信当前门店；主体与冻结门店范围过滤先于分页；status按查询时点派生，不使用可变工作头指针作为发布权威。
 
-能力依赖：已实现OPTION_GROUP/MODIFIER发布历史；完整快照读取及按时点解析为内部typed契约。
+能力依赖：已实现OPTION_GROUP/MODIFIER/BUNDLE发布历史；完整快照读取及按时点解析为内部typed契约；schema1旧内容及schema2套餐分别解码。
 
 请求Query：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| configKind | string | 是 | 受控类型 |
+| configKind | string | 是 | OPTION_GROUP或MODIFIER或BUNDLE |
 | configNo | string | 是 | 配置号 |
 | page | int32 | 否 | 默认1 |
 | size | int32 | 否 | 默认20最大100 |

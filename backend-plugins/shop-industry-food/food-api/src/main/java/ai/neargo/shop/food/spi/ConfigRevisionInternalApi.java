@@ -17,12 +17,15 @@ import org.springframework.web.service.annotation.PostExchange;
 /** Publication and immutable reads travel through the existing FOOD service-token channel. */
 public interface ConfigRevisionInternalApi {
     String MODIFIER_PATH = "/internal/food/config-revisions/publish-modifier";
+    String BUNDLE_PATH = "/internal/food/config-revisions/publish-bundle";
     String GROUP_PATH = "/internal/food/config-revisions/publish-option-group";
     String LIST_PATH = "/internal/food/config-revisions/list";
     String GET_PATH = "/internal/food/config-revisions/get";
     String RESOLVE_PATH = "/internal/food/config-revisions/resolve";
     @PostExchange(MODIFIER_PATH)
     PublishConfigResultVO publishModifier(@RequestBody Command command);
+    @PostExchange(BUNDLE_PATH)
+    PublishConfigResultVO publishBundle(@RequestBody Command command);
     @PostExchange(GROUP_PATH)
     PublishConfigResultVO publishOptionGroup(@RequestBody Command command);
     @PostExchange(LIST_PATH)

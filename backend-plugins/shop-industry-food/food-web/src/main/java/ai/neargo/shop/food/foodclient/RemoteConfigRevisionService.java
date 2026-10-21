@@ -6,7 +6,6 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.food.dto.ConfigRevisionContentVO;
 import ai.neargo.shop.food.dto.ConfigRevisionVO;
 import ai.neargo.shop.food.dto.ListConfigRevisionsQuery;
-import ai.neargo.shop.food.dto.PublicationSnapshot;
 import ai.neargo.shop.food.dto.PublishConfigReq;
 import ai.neargo.shop.food.dto.PublishConfigResultVO;
 import ai.neargo.shop.food.policy.PublicationDocuments;
@@ -26,6 +25,14 @@ public class RemoteConfigRevisionService implements ConfigRevisionService {
     private final ConfigRevisionInternalApi api;
     private final JsonMapper json = JsonMapper.builder().findAndAddModules().build();
     public RemoteConfigRevisionService(ConfigRevisionInternalApi api) { this.api = api; }
+
+    @Override
+    public PublishConfigResultVO publishBundle(String entity, String store, String number, String actor,
+            PublishConfigReq req, String key) {
+        var result = invoke(() -> api.publishBundle(new ConfigRevisionInternalApi.Command(
+                entity, store, number, actor, key, req)));
+        return publication(result, "BUNDLE", number);
+    }
 
     @Override
     public PublishConfigResultVO publishModifier(String entity, String store, String number, String actor,
@@ -84,18 +91,12 @@ public class RemoteConfigRevisionService implements ConfigRevisionService {
                 || !PublicationDocuments.hash(json, result.definitionSnapshot()).equals(result.publication().contentHash())) {
             throw malformed();
         }
-        var body = json.readValue(result.definitionSnapshot(), PublicationSnapshot.class);
-        if (body.contentSchema() != 1 || body.sourceVersion() < 0
-                || !result.publication().configKind().equals(body.configKind())
-                || !result.publication().configNo().equals(body.configNo())
-                || "MODIFIER".equals(body.configKind()) && (body.modifier() == null || body.optionGroup() != null)
-                || "OPTION_GROUP".equals(body.configKind()) && (body.optionGroup() == null || body.modifier() != null)) {
-            throw malformed();
-        }
+        PublicationDocuments.validate(json, result.publication().configKind(), result.publication().configNo(),
+                result.definitionSnapshot());
     }
     private static boolean valid(ConfigRevisionVO v) {
         return v != null && key(v.revisionNo()) && key(v.configNo()) && v.configKind() != null
-                && Set.of("MODIFIER", "OPTION_GROUP").contains(v.configKind()) && v.revision() > 0
+                && Set.of("MODIFIER", "OPTION_GROUP", "BUNDLE").contains(v.configKind()) && v.revision() > 0
                 && v.effectiveAt() != null && v.contentHash() != null && v.contentHash().matches("[a-f0-9]{64}")
                 && v.status() != null && Set.of("SCHEDULED", "EFFECTIVE", "CANCELLED").contains(v.status());
     }

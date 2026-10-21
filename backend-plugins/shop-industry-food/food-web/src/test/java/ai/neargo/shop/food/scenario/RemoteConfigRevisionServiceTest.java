@@ -30,6 +30,41 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class RemoteConfigRevisionServiceTest {
+    @Test void bundleCommandAndSchemaTwoContentUseOriginalTypedTransport() {
+        var api = mock(ConfigRevisionInternalApi.class); var service = new RemoteConfigRevisionService(api);
+        var req = new PublishConfigReq(3L, NOW, null);
+        String document = new BundleSnapshotCompatibilityTest().bundle();
+        var json = JsonMapper.builder().findAndAddModules().build();
+        var meta = new ConfigRevisionVO("REV", "BUNDLE", "MEAL", 1, NOW,
+                PublicationDocuments.hash(json, document), "EFFECTIVE");
+        var result = new PublishConfigResultVO(meta);
+        when(api.publishBundle(any())).thenReturn(result);
+        assertThat(service.publishBundle("E", "S", "MEAL", "actor", req, "key")).isEqualTo(result);
+        verify(api).publishBundle(new ConfigRevisionInternalApi.Command("E", "S", "MEAL", "actor", "key", req));
+        when(api.getRevision(any())).thenReturn(new ConfigRevisionContentVO(meta, document));
+        assertThat(service.getRevision("E", "S", "REV").definitionSnapshot()).isEqualTo(document);
+        when(api.resolveRevision(any())).thenReturn(new ConfigRevisionContentVO(meta, document));
+        assertThat(service.resolveRevision("E", "S", "BUNDLE", "MEAL", NOW).publication()).isEqualTo(meta);
+        when(api.listRevisions(any())).thenReturn(PageData.of(List.of(meta), 1, 1, 20));
+        assertThat(service.listRevisions("E", "S", new ListConfigRevisionsQuery("BUNDLE", "MEAL", 1, 20))
+                .records()).containsExactly(meta);
+        String unknown = document.replace("\"contentSchema\":2", "\"contentSchema\":9");
+        var badMeta = new ConfigRevisionVO("REV", "BUNDLE", "MEAL", 1, NOW,
+                PublicationDocuments.hash(json, unknown), "EFFECTIVE");
+        when(api.getRevision(any())).thenReturn(new ConfigRevisionContentVO(badMeta, unknown));
+        assertThatThrownBy(() -> service.getRevision("E", "S", "REV")).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test void bundlePublicationErrorsRemainSingleAttemptAndNeverBecomeSuccess() {
+        var api = mock(ConfigRevisionInternalApi.class);
+        when(api.publishBundle(any())).thenThrow(new ServiceCallException(
+                CallOutcome.TIMEOUT, ServiceName.FOOD, 0, "safe"));
+        var req = new PublishConfigReq(0L, NOW, null);
+        assertThatThrownBy(() -> new RemoteConfigRevisionService(api)
+                .publishBundle("E", "S", "MEAL", "actor", req, "key")).isInstanceOf(ServiceCallException.class);
+        verify(api).publishBundle(new ConfigRevisionInternalApi.Command("E", "S", "MEAL", "actor", "key", req));
+        verifyNoMoreInteractions(api);
+    }
     static final OffsetDateTime NOW = OffsetDateTime.parse("2026-10-21T08:00:00Z");
     @Test void preservesTrustedCommandAndRejectsWrongPublicationIdentity() {
         var api = mock(ConfigRevisionInternalApi.class); var service = new RemoteConfigRevisionService(api);

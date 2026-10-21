@@ -6856,10 +6856,10 @@
       "name": "发布bundles",
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/bundles/{configNo}:publish",
-      "input": "version:int64:草稿版本;effectiveAt:datetime:生效时刻;approvalRef?:string:审批",
+      "input": "version:int64:严格非负整数CAS;effectiveAt:datetime:带时区毫秒精度;approvalRef?:string:仅审批业务引用",
       "output": "publication:ConfigRevision:冻结发布修订",
-      "guard": "CAS草稿头及完整聚合校验；冻结依赖发布版本和definition；发布内容不可改，客户端不可自填已发布凭据",
-      "needs": "餐饮新增"
+      "guard": "已实现；原GOODS及门店目录；完整非空可行套餐、SKU身份和禁止嵌套校验；事务外权威预读后SERIALIZABLE锁头重验；schema2冻结完整定义及SKU身份版本，CAS/幂等/审计/Outbox原子；禁止回填历史",
+      "needs": "已实现；shop.food.bundle-publication-enabled默认false，先升级schema2读端再开发布；不授予报价库存或可售权限"
     },
     {
       "id": "FOOD-API-013",
@@ -7989,10 +7989,10 @@
       "name": "配置发布历史",
       "method": "GET",
       "path": "/biz/x/food/config-revisions",
-      "input": "configKind:string:受控类型;configNo:string:配置号;page?:int32:默认1;size?:int32:默认20最大100",
+      "input": "configKind:string:OPTION_GROUP或MODIFIER或BUNDLE;configNo:string:配置号;page?:int32:默认1;size?:int32:默认20最大100",
       "output": "records:ConfigRevision[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
       "guard": "已实现；原GOODS及可信当前门店；主体与冻结门店范围过滤先于分页；status按查询时点派生，不使用可变工作头指针作为发布权威",
-      "needs": "已实现OPTION_GROUP/MODIFIER发布历史；完整快照读取及按时点解析为内部typed契约"
+      "needs": "已实现OPTION_GROUP/MODIFIER/BUNDLE发布历史；完整快照读取及按时点解析为内部typed契约；schema1旧内容及schema2套餐分别解码"
     },
     {
       "id": "FOOD-API-116",
@@ -8461,7 +8461,7 @@
     "DishPresentation": "displayName?:string:餐饮别名;localizedNames:LocalizedName[]:语言名称;imageRefs:string[]:已有媒资引用;tags:string[]:标签;allergenNotes:string[]:食材过敏提示非医疗保证",
     "LocalizedName": "locale:string:受控语言;name:string:名称",
     "MeasurementPolicy": "unit:string:受控单位;mode:string:COUNT或WEIGHT;scale:int32:精度;allowedDeviation?:decimal:需顾客确认的允差",
-    "ConfigRevision": "revisionNo:string:冻结发布号;configKind:string:类型;configNo:string:对象;revision:int64:发布修订;effectiveAt:datetime:生效;contentHash:string:摘要;status:string:状态",
+    "ConfigRevision": "revisionNo:string:冻结发布号;configKind:string:OPTION_GROUP或MODIFIER或BUNDLE;configNo:string:对象;revision:int64:发布修订非工作CAS;effectiveAt:datetime:生效时刻;contentHash:string:规范摘要;status:string:SCHEDULED或EFFECTIVE或CANCELLED",
     "Menu": "menuNo:string:餐牌;name:string:名称;status:string:草稿头状态;configVersion:int64:草稿规则版;publishedRevision?:ConfigRevision:已生效发布;version:int64:并发版",
     "BatchDetail": "batch:Batch:批次;lines:FoodLine[]:冻结源行;financialStatus:string:核心资金投影;fulfillmentStatus:string:核心履约投影;pendingOperationNos:string[]:未知操作",
     "FoodLine": "foodLineNo:string:餐饮行;sourceLineRef:string:原源行;goodsNo:string:商品;skuNo:string:SKU;qty:decimal:数量;unit:string:单位;seatNo?:string:座位;configRevisionNos:string[]:发布版本;displaySnapshot:object:受控历史展示;coreAllocations:CoreLineAllocation[]:受权核心分配",
@@ -8514,7 +8514,9 @@
     "BundleConfigVO": "configNo:string:原SKU;version:int64:工作头CAS;status:string:DRAFT或ACTIVE或DISABLED;data:BundleConfigData:真实管理定义",
     "BundleConfigData": "configVersion:int64:定义变更次数非发布修订;publishedRevisionNo?:string:管理提示;groups:BundleGroupInput[]:有序组;choices:BundleChoiceInput[]:有序选项",
     "GetBundleVO": "config:BundleConfigVO:真实管理定义",
-    "ListBundlesQuery": "page?:int32:默认1;size?:int32:默认20最大100"
+    "ListBundlesQuery": "page?:int32:默认1;size?:int32:默认20最大100",
+    "BundlePublicationSnapshot": "contentSchema:int32:固定2;configKind:string:固定BUNDLE;configNo:string:主SKU;sourceVersion:int64:严格整数工作CAS;bundle:BundleConfigVO:完整冻结定义;skuFacts:SkuIdentityFact[]:所有显式SKU身份版本;approvalRef?:string:仅审批引用",
+    "SkuIdentityFact": "skuNo:string:原SKU;goodsNo:string:原商品;entityNo:string:权威经营主体;storeNo:string:验真门店;version:int64:严格非负整数身份版本"
   },
   "commonFields": [
     [

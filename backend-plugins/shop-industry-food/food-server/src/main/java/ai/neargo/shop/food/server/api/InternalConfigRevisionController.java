@@ -28,6 +28,12 @@ public class InternalConfigRevisionController {
     private final ConfigRevisionService service;
     public InternalConfigRevisionController(ConfigRevisionService service) { this.service = service; }
 
+    @PostMapping(ConfigRevisionInternalApi.BUNDLE_PATH)
+    public PublishConfigResultVO publishBundle(@Valid @RequestBody ConfigRevisionInternalApi.Command c) {
+        return service.publishBundle(c.entityNo(), c.storeNo(), c.configNo(), c.actorNo(),
+                c.publication(), c.idempotencyKey());
+    }
+
     @PostMapping(ConfigRevisionInternalApi.MODIFIER_PATH)
     public PublishConfigResultVO publishModifier(@Valid @RequestBody ConfigRevisionInternalApi.Command c) {
         return service.publishModifier(c.entityNo(), c.storeNo(), c.configNo(), c.actorNo(),

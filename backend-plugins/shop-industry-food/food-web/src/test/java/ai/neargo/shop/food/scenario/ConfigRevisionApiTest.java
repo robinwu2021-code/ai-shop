@@ -40,6 +40,30 @@ import org.springframework.web.context.WebApplicationContext;
 
 /** Verifies the original auth, ownership and response envelope before reaching configuration service. */
 class ConfigRevisionApiTest {
+    @Test void bundlePublicationUsesOriginalScopeAndRejectsForeignStoresAndFrozenInput() {
+        runner.run(c -> {
+            var mvc = mvc(c); var auth = token(c, "staff");
+            String path = "/biz/x/food/stores/A/bundles/MEAL:publish";
+            mvc.perform(post(path).header("Authorization", auth).header("Idempotency-Key", "bundle")
+                    .contentType(MediaType.APPLICATION_JSON).content(BODY))
+                    .andExpect(jsonPath("$.data.publication.configKind").value("BUNDLE"));
+            mvc.perform(get("/biz/x/food/config-revisions").header("Authorization", auth)
+                    .param("configKind", "BUNDLE").param("configNo", "MEAL"))
+                    .andExpect(jsonPath("$.data.total").value(0));
+            mvc.perform(post(path.replace("/A/", "/B/")).header("Authorization", auth)
+                    .header("Idempotency-Key", "foreign").contentType(MediaType.APPLICATION_JSON).content(BODY))
+                    .andExpect(jsonPath("$.code").value(10403));
+            mvc.perform(post(path).header("Authorization", token(c, "cashier"))
+                    .header("Idempotency-Key", "readonly").contentType(MediaType.APPLICATION_JSON).content(BODY))
+                    .andExpect(jsonPath("$.code").value(70006));
+            for (String field : List.of("definitionSnapshot", "price", "entityNo", "scopeStoreNos")) {
+                mvc.perform(post(path).header("Authorization", auth).header("Idempotency-Key", "bad")
+                        .contentType(MediaType.APPLICATION_JSON).content(BODY.replace("{", "{\"" + field + "\":{},")))
+                        .andExpect(jsonPath("$.code").value(10400));
+            }
+            assertThat(c.getBean(Calls.class).count).hasValue(2);
+        });
+    }
     private static final String ROOT = "/biz/x/food/stores/A/modifiers";
     private static final String BODY = "{\"version\":0,\"effectiveAt\":\"2026-10-21T08:00:00Z\"}";
     private final WebApplicationContextRunner runner = new WebApplicationContextRunner()
@@ -97,6 +121,16 @@ class ConfigRevisionApiTest {
         @Bean Calls publicationCalls() { return new Calls(); }
         @Bean ConfigRevisionService configRevisions(Calls calls) {
             var service = mock(ConfigRevisionService.class);
+            when(service.publishBundle(anyString(), anyString(), anyString(), anyString(), any(), anyString()))
+                    .thenAnswer(i -> {
+                        assertThat((String)i.getArgument(0)).isEqualTo("E");
+                        assertThat((String)i.getArgument(1)).isEqualTo("A");
+                        assertThat((String)i.getArgument(2)).isEqualTo("MEAL");
+                        assertThat((String)i.getArgument(3)).isEqualTo("staff");
+                        calls.count.incrementAndGet();
+                        return new PublishConfigResultVO(new ConfigRevisionVO("BUNDLE_REV", "BUNDLE", "MEAL", 1,
+                                OffsetDateTime.parse("2026-10-21T08:00:00Z"), "a".repeat(64), "EFFECTIVE"));
+                    });
             var receipt = new PublishConfigResultVO(new ConfigRevisionVO("REV", "MODIFIER", "MOD", 1,
                     OffsetDateTime.parse("2026-10-21T08:00:00Z"), "a".repeat(64), "EFFECTIVE"));
             when(service.publishModifier(anyString(), anyString(), anyString(), anyString(), any(), anyString()))

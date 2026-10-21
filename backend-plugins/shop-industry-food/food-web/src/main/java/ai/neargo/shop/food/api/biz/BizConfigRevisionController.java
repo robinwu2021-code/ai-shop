@@ -53,6 +53,20 @@ public class BizConfigRevisionController {
         this.scope = scope;
     }
 
+    /** Publishes a complete bundle for the authorized store through the original configuration revision owner. */
+    @PostMapping("/biz/x/food/stores/{storeNo}/bundles/{configNo}:publish")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    public PublishConfigResultVO publishBundle(
+            @PathVariable("storeNo") @NotBlank @Size(max=32) String storeNo,
+            @PathVariable("configNo") @NotBlank @Size(max=32) String configNo,
+            @Valid @RequestBody PublishConfigReq req,
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) String key, HttpServletRequest request) {
+        queryFields(request, Set.of());
+        var context = requireStore(storeNo, request);
+        return service.publishBundle(context.merchantNo(), storeNo, configNo,
+                SecurityUtils.currentUserNo(), req, key);
+    }
+
     /** Only a store-authorized actor may freeze an entity definition for that store. */
     @PostMapping("/biz/x/food/stores/{storeNo}/option-groups/{configNo}:publish")
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")

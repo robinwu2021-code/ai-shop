@@ -10,6 +10,8 @@ import java.time.OffsetDateTime;
 
 /** Resolves store/time-scoped immutable definitions instead of trusting a mutable shared-head pointer. */
 public interface ConfigRevisionService {
+    PublishConfigResultVO publishBundle(String entityNo, String storeNo, String configNo, String actorNo,
+            PublishConfigReq req, String idempotencyKey);
     PublishConfigResultVO publishModifier(String entityNo, String storeNo, String configNo, String actorNo,
             PublishConfigReq req, String idempotencyKey);
     PublishConfigResultVO publishOptionGroup(String entityNo, String storeNo, String configNo, String actorNo,

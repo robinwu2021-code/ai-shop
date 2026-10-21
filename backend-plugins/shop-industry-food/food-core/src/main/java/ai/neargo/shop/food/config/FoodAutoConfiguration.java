@@ -18,6 +18,8 @@ import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.OptionGroupService;
 import ai.neargo.shop.food.service.ModifierService;
 import ai.neargo.shop.food.service.BundleService;
+import ai.neargo.shop.food.policy.BundlePublicationSource;
+import java.time.Clock;
 import ai.neargo.shop.food.service.impl.BundleServiceImpl;
 import ai.neargo.shop.food.mapper.FoodMappers.BundleMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.BundleGroupMapper;
@@ -49,6 +51,7 @@ import ai.neargo.shop.food.service.impl.StoreOperationServiceImpl;
 import ai.neargo.shop.food.service.impl.TableServiceImpl;
 import ai.neargo.shop.idem.IdempotencyService;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -71,10 +74,12 @@ public class FoodAutoConfiguration {
     @ConditionalOnMissingBean(ConfigRevisionService.class)
     ConfigRevisionService configRevisionService(ConfigRevisionMapper revisions, ModifierMapper modifiers,
             ModifierComponentMapper components, OptionGroupMapper groups, OptionGroupItemMapper items,
+            BundleMapper bundles, BundleGroupMapper bundleGroups, BundleChoiceMapper bundleChoices,
             ActionLogMapper actions, IdempotencyService idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
-            ObjectProvider<GoodsCatalogQueryPort> goods, ObjectProvider<SpecValueCatalogQueryPort> specs) {
+            ObjectProvider<GoodsCatalogQueryPort> goods, ObjectProvider<SpecValueCatalogQueryPort> specs,
+            @Value("${shop.food.bundle-publication-enabled:false}") boolean bundlePublicationEnabled) {
         GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
             @Override public SkuIdentityFact getSku(String entity, String store, String sku) {
                 return goods.getObject().getSku(entity, store, sku);
@@ -87,7 +92,9 @@ public class FoodAutoConfiguration {
             }
         };
         return new ConfigRevisionServiceImpl(revisions, modifiers, components, groups, items, actions, idem,
-                publisher, json, manager, catalog, (entity, numbers) -> specs.getObject().getValues(entity, numbers));
+                publisher, json, manager, catalog, (entity, numbers) -> specs.getObject().getValues(entity, numbers),
+                Clock.systemUTC(), new BundlePublicationSource(bundles, bundleGroups, bundleChoices,
+                        () -> bundlePublicationEnabled));
     }
 
     @Bean
