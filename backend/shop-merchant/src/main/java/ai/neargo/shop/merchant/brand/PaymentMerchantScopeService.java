@@ -19,5 +19,5 @@ public class PaymentMerchantScopeService {
    .filter(row->scene==null||authorizedMethods(str(row,"pay_methods")).contains(scene))
    .map(row->{var result=db.view(row);result.put("payMethods",authorizedMethods(str(row,"pay_methods")));return result;}).toList();
  }
- private List<String> authorizedMethods(String json){try{return json==null?List.of():db.json.readValue(json,db.json.getTypeFactory().constructCollectionType(List.class,String.class));}catch(RuntimeException e){return List.of();}}
+ private List<String> authorizedMethods(String json){try{return json==null?List.of():db.stringList(json);}catch(RuntimeException e){return List.of();}}
 }

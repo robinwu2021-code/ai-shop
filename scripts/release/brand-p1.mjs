@@ -20,7 +20,8 @@ function main(){
  git('merge-base','--is-ancestor',base,head);validateFiles(git('diff','--name-only','--no-renames','-z',base,head).split('\0').filter(Boolean));
  run('git',['diff','--check',base,head]);run('node',['--test','scripts/release/brand-p1.test.mjs']);
  run('mvn',['-o','-pl','shop-app,pay/pay-svc','-am','-DskipTests','test-compile','-q'],resolve(root,'backend'));
- run('npm',['run','type-check','-w','ai-shop-b-app']);run('npm',['run','type-check','-w','ai-shop-c-app']);
+ run('npm',['run','type-check','-w','ai-shop-b-app']);
+ if(git('diff','--name-only',base,head).split('\n').some(f=>f.startsWith('site/')))run('npm',['run','typecheck','-w','ai-shop-site']);run('npm',['run','type-check','-w','ai-shop-c-app']);
  run('python3',['scripts/gen-ui-catalog.py','--check']);run('node',['scripts/check-handrolled-ui.mjs']);
  const api=resolve(root,'docs/api/openapi-b.yaml'),before=readFileSync(api);
  try{run('node',['b-app/scripts/gen-openapi.mjs']);if(!readFileSync(api).equals(before))throw new Error('B OpenAPI is stale');}finally{writeFileSync(api,before);}

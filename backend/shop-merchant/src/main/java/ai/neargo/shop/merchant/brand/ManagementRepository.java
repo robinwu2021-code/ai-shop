@@ -77,6 +77,7 @@ public class ManagementRepository {
   }
   return result;
  }
+ List<String> stringList(String value){return json.readValue(value,json.getTypeFactory().constructCollectionType(List.class,String.class));}
  String encode(Object value){return json.writeValueAsString(value);}
  @SuppressWarnings("unchecked") Map<String,Object> decode(Object value){
   if(value instanceof Map<?,?> map)return (Map<String,Object>)map;

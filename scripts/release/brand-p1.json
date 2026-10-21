@@ -65,6 +65,7 @@
   "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/brand/BrandFixture.java",
   "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/brand/BrandScopeAuthorizationTest.java",
   "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/brand/ManagementReadScopeTest.java",
+  "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/brand/ManagementRepositoryProxyTest.java",
   "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/brand/PaymentMerchantOwnershipTest.java",
   "c-app/src/pages/stored-value-records/index.vue",
   "docs/api/openapi-b.yaml",
@@ -95,7 +96,9 @@
   "prototypes/index.html",
   "prototypes/proto.css",
   "prototypes/registry.json",
+  "scripts/automation/emulator-login.sh",
   "scripts/release/brand-p1.json",
   "scripts/release/brand-p1.mjs",
-  "scripts/release/brand-p1.test.mjs"
+  "scripts/release/brand-p1.test.mjs",
+  "site/lib/site.config.ts"
 ]
