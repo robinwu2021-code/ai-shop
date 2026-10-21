@@ -598,11 +598,15 @@
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | menuNo | string | 是 | 餐牌 |
+| storeNo | string | 是 | 当前授权绑定门店 |
 | name | string | 是 | 名称 |
-| status | string | 是 | 草稿头状态 |
-| configVersion | int64 | 是 | 草稿规则版 |
-| publishedRevision | ConfigRevision | 否 | 已生效发布 |
+| menuType | string | 是 | STANDARD或TIME或SEASON或EVENT |
+| timezone | string | 是 | 当前门店策略时区 |
+| priority | int32 | 是 | 优先级 |
+| exclusiveGroup | string | 否 | 互斥组 |
+| status | string | 是 | DRAFT或PUBLISHED或DISABLED |
 | version | int64 | 是 | 并发版 |
+| configVersion | int64 | 是 | 规则版；CAT-02A为工作头，不冒充已生效修订 |
 
 ### BatchDetail
 
@@ -1230,6 +1234,27 @@
 | publication | PublicationDependency | 是 | 不可变依赖 |
 | definition | object | 是 | 完整schema1组选项文档 |
 
+### CreateMenuReq
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| name | string | 是 | 1到64文本 |
+| menuType | string | 是 | STANDARD或TIME或SEASON或EVENT |
+| timezone | string | 是 | 门店当前生效IANA时区 |
+| priority | int32 | 是 | 必需 |
+| exclusiveGroup | string | 否 | 1到32文本；禁止自报主体/门店/状态/价格 |
+
+### UpdateMenuReq
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| name | string | 是 | 1到64文本 |
+| menuType | string | 是 | STANDARD或TIME或SEASON或EVENT |
+| timezone | string | 是 | 门店当前生效IANA时区 |
+| priority | int32 | 是 | 必需 |
+| exclusiveGroup | string | 否 | 1到32文本；禁止自报主体/门店/状态/价格 |
+| version | int64 | 是 | 非负且小于Long.MAX_VALUE |
+
 ## 四、逐接口输入输出
 
 ### FOOD-API-001 · 查询营业策略
@@ -1334,9 +1359,9 @@
 
 `POST /biz/x/food/stores/{storeNo}/menus`
 
-权限与守卫：门店范围与对象权限；写操作CAS版本及幂等。
+权限与守卫：原GOODS权限/BizContext/StoreDirectory与实际同主体门店绑定；未知字段拒绝；写操作CAS/幂等/审计/Outbox同事务；timezone与当前生效门店策略一致；只写单店无override头，多店编辑409；完成回执优先重放。
 
-能力依赖：餐饮新增。
+能力依赖：CAT-02A已实现餐牌头管理；时段规则、菜项与发布仍待后续，不表示可售。
 
 路径输入：
 
@@ -1366,9 +1391,9 @@
 
 `GET /biz/x/food/stores/{storeNo}/menus/{configNo}`
 
-权限与守卫：门店范围与对象权限；仅授权读取，无写入副作用。
+权限与守卫：原GOODS权限/BizContext/StoreDirectory与实际同主体门店绑定；未知字段拒绝；写操作CAS/幂等/审计/Outbox同事务；timezone与当前生效门店策略一致；只写单店无override头，多店编辑409；完成回执优先重放。
 
-能力依赖：餐饮新增。
+能力依赖：CAT-02A已实现餐牌头管理；时段规则、菜项与发布仍待后续，不表示可售。
 
 路径输入：
 
@@ -1385,7 +1410,7 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| config | Config | 是 | 具体配置，类型由路径确定 |
+| config | Menu | 是 | 当前授权店的工作头，不等于生效发布 |
 
 ### FOOD-API-006 · 发布menus
 
@@ -4408,9 +4433,9 @@
 
 `GET /biz/x/food/stores/{storeNo}/menus`
 
-权限与守卫：主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id。
+权限与守卫：原GOODS权限/BizContext/StoreDirectory与实际同主体门店绑定；未知字段拒绝；写操作CAS/幂等/审计/Outbox同事务；timezone与当前生效门店策略一致；只写单店无override头，多店编辑409；完成回执优先重放；keyword字面包含按数据库排序规则匹配，%/_非通配符；按menuNo稳定排序后真实分页。
 
-能力依赖：餐饮新增。
+能力依赖：CAT-02A已实现餐牌头管理；时段规则、菜项与发布仍待后续，不表示可售。
 
 路径输入：
 
@@ -4440,9 +4465,9 @@
 
 `PUT /biz/x/food/menus/{menuNo}`
 
-权限与守卫：主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；仅改草稿不改变现行发布。
+权限与守卫：原GOODS权限/BizContext/StoreDirectory与实际同主体门店绑定；未知字段拒绝；写操作CAS/幂等/审计/Outbox同事务；timezone与当前生效门店策略一致；只写单店无override头，多店编辑409；完成回执优先重放。
 
-能力依赖：餐饮新增。
+能力依赖：CAT-02A已实现餐牌头管理；时段规则、菜项与发布仍待后续，不表示可售。
 
 路径输入：
 

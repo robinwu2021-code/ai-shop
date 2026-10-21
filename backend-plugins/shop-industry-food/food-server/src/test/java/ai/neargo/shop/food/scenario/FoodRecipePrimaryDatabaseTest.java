@@ -21,6 +21,10 @@ import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.service.RecipeService;
 import ai.neargo.shop.food.spi.ConfigRevisionInternalApi;
 import ai.neargo.shop.food.spi.RecipeInternalApi;
+import ai.neargo.shop.food.spi.MenuInternalApi;
+import ai.neargo.shop.food.dto.CreateMenuReq;
+import ai.neargo.shop.food.dto.UpdateMenuReq;
+import ai.neargo.shop.food.dto.ListMenusQuery;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 import ai.neargo.shop.spi.inventory.MaterialCatalogInternalApi;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
@@ -132,7 +136,9 @@ class FoodRecipePrimaryDatabaseTest {
                         var mvc = MockMvcBuilders.webAppContextSetup(c)
                                 .addFilters(c.getBean(FilterChainProxy.class)).build();
                         for (String path : List.of(RecipeInternalApi.CREATE_PATH, RecipeInternalApi.REPLACE_PATH,
-                                RecipeInternalApi.LIST_PATH, RecipeInternalApi.GET_PATH)) {
+                                RecipeInternalApi.LIST_PATH, RecipeInternalApi.GET_PATH,
+                                MenuInternalApi.CREATE_PATH, MenuInternalApi.UPDATE_PATH,
+                                MenuInternalApi.LIST_PATH, MenuInternalApi.GET_PATH)) {
                             mvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content("{}"))
                                     .andExpect(status().isUnauthorized());
                             mvc.perform(post(path).header(InternalHttp.TOKEN_HEADER, "wire")
@@ -248,6 +254,7 @@ class FoodRecipePrimaryDatabaseTest {
                                 "E", "B", publication.publication().revisionNo())))
                                 .isInstanceOfSatisfying(ServiceCallException.class,
                                         e -> assertThat(e.statusCode()).isEqualTo(404));
+                        menusOverHttp(http, sql);
                         assertThat(bridgeFailure.get()).isNull();
                         for (String table : List.of("prd_goods", "ord_order")) {
                             assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
@@ -279,12 +286,41 @@ class FoodRecipePrimaryDatabaseTest {
         }
     }
 
+    private static void menusOverHttp(InternalHttp http, JdbcTemplate sql) {
+        sql.update("INSERT INTO fnb_store_policy(entity_no,created_at,created_by,updated_at,updated_by,policy_no,"
+                + "store_no,timezone,cutover_minute,effective_from,pay_policy,capabilities,settings) "
+                + "VALUES('E',CURRENT_TIMESTAMP(3),'operator',CURRENT_TIMESTAMP(3),'operator','MENU_POLICY',"
+                + "'A','Asia/Shanghai',240,'2026-01-01 00:00:00','PREPAY','[]','{}')");
+        var api = http.client(ServiceName.FOOD, MenuInternalApi.class, Duration.ofSeconds(5));
+        var create = new MenuInternalApi.CreateCommand("E", "A", "operator", "menu-create",
+                new CreateMenuReq("午餐%_特别", "TIME", "Asia/Shanghai", 10, "MEAL"));
+        var first = api.createMenu(create);
+        assertThat(api.createMenu(create)).isEqualTo(first);
+        var id = first.configNo();
+        assertThat(api.getMenu(new MenuInternalApi.GetQuery("E", "A", id)).config().name()).isEqualTo("午餐%_特别");
+        var update = new MenuInternalApi.UpdateCommand("E", "A", id, "operator", "menu-edit",
+                new UpdateMenuReq("晚餐%_特别", "TIME", "Asia/Shanghai", 20, null, 0L));
+        var edited = api.updateMenu(update);
+        assertThat(api.updateMenu(update)).isEqualTo(edited);
+        assertThat(edited.menu().version()).isEqualTo(1);
+        assertThat(edited.menu().exclusiveGroup()).isNull();
+        assertThat(api.listMenus(new MenuInternalApi.Lookup("E", "A",
+                new ListMenusQuery(1, 20, "DRAFT", "%_"))).records()).containsExactly(edited.menu());
+        assertThat(api.listMenus(new MenuInternalApi.Lookup("E", "B", null)).records()).isEmpty();
+        assertThatThrownBy(() -> api.getMenu(new MenuInternalApi.GetQuery("E", "B", id)))
+                .isInstanceOfSatisfying(ServiceCallException.class, failure -> assertThat(failure.statusCode())
+                        .isEqualTo(404));
+        assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_menu_store", Integer.class)).isEqualTo(1);
+        assertThat(sql.queryForObject("SELECT exclusive_group FROM fnb_menu", String.class)).isNull();
+    }
+
     @Configuration(proxyBeanMethods=false)
     static class Route {
         @Bean UnifiedOutboxFacade facade(DataSource source, PlatformTransactionManager manager, ObjectMapper json) {
             var facade = new UnifiedOutboxFacade(json);
             facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
-            facade.setArchiveOnly(Set.of("PLATFORM:FOOD_RECIPE_CHANGED", "PLATFORM:FOOD_CONFIG_PUBLISHED"));
+            facade.setArchiveOnly(Set.of("PLATFORM:FOOD_RECIPE_CHANGED", "PLATFORM:FOOD_CONFIG_PUBLISHED",
+                    "PLATFORM:FOOD_MENU_CHANGED"));
             return facade;
         }
     }

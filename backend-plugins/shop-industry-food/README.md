@@ -422,3 +422,6 @@ B端入口复用原STORE权限、可信操作人和目录范围；内部typed合
 ### 配方发布读写顺序（RECIPE-01C）
 
 `shop.food.recipe-publication-enabled`默认false，仅控制新RECIPE发布；历史schema1/2/3读取与完成幂等回执不受关闭影响。部署应先升级全部读者，再由运营显式开启写入；首条schema3写入后保留支持该格式的读者。本批仅提供配置发布，不启用报价、库存需求/扣料、渠道同步或生产Outbox消费者。沿V5 schema，无新迁移。
+
+
+CAT-02A implements store-bound menu header creation, editing, detail and pagination through the existing GOODS permission and FOOD typed transport. It reuses V1 `fnb_menu` / `fnb_menu_store` without migration; names such as breakfast/lunch/dinner are configurable. New writes require the current effective store-policy timezone, while completed idempotency receipts and authorized historical working-head reads remain available. Single-store edits reject shared/overridden bindings to prevent cross-store side effects. This is draft management only: schedules, item composition, publication, channel price authority and sellability remain subsequent slices; Keeta stays planned.

@@ -1,6 +1,8 @@
 package ai.neargo.shop.food.mapper;
 
 import ai.neargo.shop.food.entity.FnbActionLog;
+import ai.neargo.shop.food.entity.FnbMenu;
+import ai.neargo.shop.food.entity.FnbMenuStore;
 import ai.neargo.shop.food.entity.FnbBundle;
 import ai.neargo.shop.food.entity.FnbBundleChoice;
 import ai.neargo.shop.food.entity.FnbBundleGroup;
@@ -43,6 +45,9 @@ public final class FoodMappers {
         @Delete("DELETE FROM fnb_recipe_adjustment WHERE entity_no=#{entity} AND recipe_no=#{recipe}")
         int replaceDraftRows(@Param("entity") String entity, @Param("recipe") String recipe);
     }
+
+    public interface MenuMapper extends BaseMapper<FnbMenu> { }
+    public interface MenuStoreMapper extends BaseMapper<FnbMenuStore> { }
 
     public interface RecipeMapper extends BaseMapper<FnbRecipe> { }
     public interface RecipeLineMapper extends BaseMapper<FnbRecipeLine> {

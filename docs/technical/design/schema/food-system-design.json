@@ -6798,8 +6798,8 @@
       "path": "/biz/x/food/stores/{storeNo}/menus",
       "input": "name:string:菜单名;menuType:string:STANDARD或TIME或SEASON或EVENT;timezone:string:时区;priority:int32:优先级;exclusiveGroup?:string:互斥组",
       "output": "configNo:string:配置号;version:int64:草稿版本;status:string:DRAFT",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
-      "needs": "餐饮新增"
+      "guard": "原GOODS权限/BizContext/StoreDirectory与实际同主体门店绑定；未知字段拒绝；写操作CAS/幂等/审计/Outbox同事务；timezone与当前生效门店策略一致；只写单店无override头，多店编辑409；完成回执优先重放",
+      "needs": "CAT-02A已实现餐牌头管理；时段规则、菜项与发布仍待后续，不表示可售"
     },
     {
       "id": "FOOD-API-005",
@@ -6808,9 +6808,9 @@
       "method": "GET",
       "path": "/biz/x/food/stores/{storeNo}/menus/{configNo}",
       "input": "",
-      "output": "config:Config:具体配置，类型由路径确定",
-      "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
-      "needs": "餐饮新增"
+      "output": "config:Menu:当前授权店的工作头，不等于生效发布",
+      "guard": "原GOODS权限/BizContext/StoreDirectory与实际同主体门店绑定；未知字段拒绝；写操作CAS/幂等/审计/Outbox同事务；timezone与当前生效门店策略一致；只写单店无override头，多店编辑409；完成回执优先重放",
+      "needs": "CAT-02A已实现餐牌头管理；时段规则、菜项与发布仍待后续，不表示可售"
     },
     {
       "id": "FOOD-API-006",
@@ -7953,8 +7953,8 @@
       "path": "/biz/x/food/stores/{storeNo}/menus",
       "input": "page?:int32:默认1;size?:int32:默认20最大100;status?:string:状态;keyword?:string:名称",
       "output": "records:Menu[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
-      "needs": "餐饮新增"
+      "guard": "原GOODS权限/BizContext/StoreDirectory与实际同主体门店绑定；未知字段拒绝；写操作CAS/幂等/审计/Outbox同事务；timezone与当前生效门店策略一致；只写单店无override头，多店编辑409；完成回执优先重放；keyword字面包含按数据库排序规则匹配，%/_非通配符；按menuNo稳定排序后真实分页",
+      "needs": "CAT-02A已实现餐牌头管理；时段规则、菜项与发布仍待后续，不表示可售"
     },
     {
       "id": "FOOD-API-110",
@@ -7964,8 +7964,8 @@
       "path": "/biz/x/food/menus/{menuNo}",
       "input": "name:string:名称;menuType:string:受控类型;timezone:string:时区;priority:int32:优先级;exclusiveGroup?:string:互斥组;version:int64:版本",
       "output": "menu:Menu:草稿头",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；仅改草稿不改变现行发布",
-      "needs": "餐饮新增"
+      "guard": "原GOODS权限/BizContext/StoreDirectory与实际同主体门店绑定；未知字段拒绝；写操作CAS/幂等/审计/Outbox同事务；timezone与当前生效门店策略一致；只写单店无override头，多店编辑409；完成回执优先重放",
+      "needs": "CAT-02A已实现餐牌头管理；时段规则、菜项与发布仍待后续，不表示可售"
     },
     {
       "id": "FOOD-API-111",
@@ -8490,7 +8490,7 @@
     "LocalizedName": "locale:string:受控语言;name:string:名称",
     "MeasurementPolicy": "unit:string:受控单位;mode:string:COUNT或WEIGHT;scale:int32:精度;allowedDeviation?:decimal:需顾客确认的允差",
     "ConfigRevision": "revisionNo:string:冻结发布号;configKind:string:OPTION_GROUP或MODIFIER或BUNDLE或RECIPE;configNo:string:对象;revision:int64:发布修订非工作CAS;effectiveAt:datetime:生效时刻;contentHash:string:规范摘要;status:string:SCHEDULED或EFFECTIVE或CANCELLED",
-    "Menu": "menuNo:string:餐牌;name:string:名称;status:string:草稿头状态;configVersion:int64:草稿规则版;publishedRevision?:ConfigRevision:已生效发布;version:int64:并发版",
+    "Menu": "menuNo:string:餐牌;storeNo:string:当前授权绑定门店;name:string:名称;menuType:string:STANDARD或TIME或SEASON或EVENT;timezone:string:当前门店策略时区;priority:int32:优先级;exclusiveGroup?:string:互斥组;status:string:DRAFT或PUBLISHED或DISABLED;version:int64:并发版;configVersion:int64:规则版；CAT-02A为工作头，不冒充已生效修订",
     "BatchDetail": "batch:Batch:批次;lines:FoodLine[]:冻结源行;financialStatus:string:核心资金投影;fulfillmentStatus:string:核心履约投影;pendingOperationNos:string[]:未知操作",
     "FoodLine": "foodLineNo:string:餐饮行;sourceLineRef:string:原源行;goodsNo:string:商品;skuNo:string:SKU;qty:decimal:数量;unit:string:单位;seatNo?:string:座位;configRevisionNos:string[]:发布版本;displaySnapshot:object:受控历史展示;coreAllocations:CoreLineAllocation[]:受权核心分配",
     "CoreLineAllocation": "allocationNo:string:分配号;qty:decimal:数量;amount:Money:核心分配金额;coreSnapshotHash:string:快照摘要",
@@ -8549,7 +8549,9 @@
     "RecipeAdjustmentVO": "adjustmentNo:string:服务端稳定调整编号;optionItemNo:string:选项;targetLineNo:string:本配方行;action:string:SET或ADD或REMOVE;qty?:decimal:SET/ADD非负，REMOVE省略;unit:string:与目标一致;optionIdentityHash:string:服务端保存来源身份摘要，非物理行号或CAS",
     "RecipePublicationSnapshot": "contentSchema:int32:固定3;configKind:string:RECIPE;configNo:string:配方号;sourceVersion:int64:工作CAS;recipe:Recipe:完整工作定义;skuFacts:SkuIdentityFact[]:根规格;materialFacts:MaterialFact[]:真实基础单位物料;optionGroups:RecipeOptionGroupSnapshot[]:完整组选项依赖;approvalRef?:string:审批依据",
     "MaterialFact": "itemId:string:原库存物料;entityNo:string:所属主体;name:string:来源名称;baseUom:string:基础单位;weighed:int32:原计量标记;dataSource:string:原来源;unitSupport:string:BASE_ONLY;postingSupport:string:INTEGER_ONLY;definitionHash:string:语义摘要非CAS",
-    "RecipeOptionGroupSnapshot": "goodsNo:string:实际根商品绑定;publication:PublicationDependency:不可变依赖;definition:object:完整schema1组选项文档"
+    "RecipeOptionGroupSnapshot": "goodsNo:string:实际根商品绑定;publication:PublicationDependency:不可变依赖;definition:object:完整schema1组选项文档",
+    "CreateMenuReq": "name:string:1到64文本;menuType:string:STANDARD或TIME或SEASON或EVENT;timezone:string:门店当前生效IANA时区;priority:int32:必需;exclusiveGroup?:string:1到32文本；禁止自报主体/门店/状态/价格",
+    "UpdateMenuReq": "name:string:1到64文本;menuType:string:STANDARD或TIME或SEASON或EVENT;timezone:string:门店当前生效IANA时区;priority:int32:必需;exclusiveGroup?:string:1到32文本；禁止自报主体/门店/状态/价格;version:int64:非负且小于Long.MAX_VALUE"
   },
   "commonFields": [
     [
