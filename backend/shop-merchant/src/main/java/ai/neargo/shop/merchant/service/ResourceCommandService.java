@@ -57,9 +57,9 @@ public interface ResourceCommandService {
     }
 
     /** Immutable internal recovery evidence; payloads must not be exposed through a public endpoint or logged. */
-    record Receipt(String commandNo, String ownerNo, String sourceType, String sourceNo,
+    record Receipt(Scope scope, String commandNo, String ownerNo, String sourceType, String sourceNo,
             Action action, Status status, long version,
-            long expectedOwnerVersion, long sourceRevision, Target target, String frozenPayload,
+            long expectedOwnerVersion, long sourceRevision, Target target, String payloadHash, String frozenPayload,
             String resultPayload, String rejectionCode, String waitReason, LocalDateTime nextRetryAt,
             String initiatedBy) {
     }

@@ -413,11 +413,13 @@ public class ResourceCommandServiceImpl implements ResourceCommandService {
         }
         Target target = row.getTargetHoldNo() == null ? null : new Target(row.getTargetHoldNo(),
                 row.getExpectedHoldVersion(), row.getExpectedLeaseRevision());
-        return new Receipt(row.getCommandNo(), row.getOwnerNo(), owner.getSourceType(), owner.getSourceNo(),
+        return new Receipt(new Scope(row.getTenantNo(), row.getEntityNo(), row.getStoreNo()),
+                row.getCommandNo(), row.getOwnerNo(), owner.getSourceType(), owner.getSourceNo(),
                 Action.valueOf(row.getAction()),
                 Status.valueOf(row.getStatus()), row.getVersion(), row.getExpectedOwnerVersion(),
                 row.getSourceRevision(),
-                target, row.getFrozenPayload(), row.getResultPayload(), row.getRejectionCode(), row.getWaitReason(),
+                target, row.getPayloadHash(), row.getFrozenPayload(), row.getResultPayload(), row.getRejectionCode(),
+                row.getWaitReason(),
                 row.getNextRetryAt(), row.getInitiatedBy());
     }
 

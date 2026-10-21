@@ -1,10 +1,10 @@
 # SHR-02b 共用资源容量与组合占用：详细需求与方案
 
-> 状态：**实施中；02b-1a/1b/1c及2a锁内准入基础完成，原子容量预留与生命周期待实施** · 2026-10-21 · 档位2。
+> 状态：**实施中；02b-1a/1b/1c、2a准入及2b-1来源消费防线完成；真实来源适配/原子预留待实施** · 2026-10-21 · 档位2。
 > 基线：美业隔离分支378a5f2f7；只读核验最新本地餐饮ca71f6092，共用merchant/base及平台迁移相对8e732eeb7无新增。
 > 上游：[多端功能矩阵](../requirements/美业系统-多端功能矩阵.md) D01–D05、H04–H07；[主执行计划](./TDD-美业系统-后端开发计划.md) §11–13。
 > 既有设计：[字段真源](./design/schema/beauty-database-design.json) · [日历设计](./design/美业系统-预约工作台与日历API设计.md) · [旧资源方案](./design/TDD-预约资源域-多行业完整方案.md)。
-> 决策提案：[ADR-043](./ADR/ADR-043-共用资源仲裁归属与命令恢复.md)。交付状态按§5.4–5.7分批记录；未交付的接口、业务任务与跨域恢复仍待后续验收。
+> 决策提案：[ADR-043](./ADR/ADR-043-共用资源仲裁归属与命令恢复.md)。交付状态按§5.4–5.8分批记录；未交付的接口、业务任务与跨域恢复仍待后续验收。
 
 ## §0 定位、现状与需求追溯
 
@@ -279,6 +279,42 @@ ScheduleWindowAssembler已有跨店/任职/DST规则，当前SQL31天上限保�
 服务端当前时间/提前量、来源冻结合同、TTL及完整bucket仲裁由后续02b-2b/2c实现；Plan不是可交易的预约承诺。
 **Review Focus：** CI别名导致锁序分裂；发现后人员绑定漂移；同事务MyBatis缓存；整桶任职/资格覆盖；捕获异常或旧Execution绕过事务边界。
 
+### 2.7 02b-2b-1来源冻结合同与消费防线实施计划（2026-10-21）
+
+档位2，基线dcc9934ab。最新food69b84d2ce仅增加base规格值查询合同，无merchant/平台迁移增量。
+规格为R07/R10–R18、§5.3及2a的完整需求/资格绑定边界。executing-plans原会话/TDD实施，不重复请求已授权执行。
+现有bty_source_allocation_guard管理订单数量，bty_service_submission管理工单提交，均不具备资源命令fence，不冒充真实来源冻结。
+本批交付共用合同和真实消费防线；零售/餐饮/美业来源持久适配后续分别验收，未注册适配时明确拒绝。无营业入口、迁移或外部副作用。
+
+**类型与文件：** shop-base/spi/resource/ResourceSourceAuthorityPort；merchant.policy.ResourcePlanCodec；
+merchant.service.ResourceSourceAuthorizationService及service.impl；扩展ResourceCommandService.Receipt增加规范scope和原payloadHash，并从实际行回读。
+
+| 单元 | 具体方法/结构 | 验收 |
+|---|---|---|
+| 来源合同 | sourceType(); Decision freeze(Request); Decision query(Request)。Binding(tenantNo,entityNo,storeNo,commandNo,sourceType,sourceNo,sourceRevision,action,commandHash,planHash)；Request(binding,operatorNo,realm,subjectKind) | 强制完整规范绑定、当前恢复actor与原命令绑定分离；八个既有动作；摘要小写SHA256 |
+| 决策 | State UNKNOWN/PENDING/DENIED/AUTHORIZED；Decision(binding,state,decisionNo,fenceNo,fenceRevision,issuedAt,validUntil,reasonCode) | 非授权不能携带fence/许可日期；DENIED须持久决策号/安全原因码；授权须决策/fence/非负修订和毫秒有效区间 |
+| 完整计划 | encode(List<Demand>,List<Qualification>)->String；decode(String)->FrozenPlan；hash(String)->String | V1严格JSON，仅demands与qualifications；冻结资格豁免，深不可变；64KiB/资源/组/原始区间上限；拒绝重复/未知字段/尾随及错误类型 |
+| 来源路由 | Resolution authorize(Scope,String commandNo)调用freeze；recover同签名调用query | 无调用方事务；find验证当前范围/登录并读原ACCEPTED命令；按sourceType唯一注册；零/重复适配拒绝，无默认许可；异常原样传递，不擅自REJECTED |
+| 锁内消费 | FrozenPlan requireAuthorized(Execution,Authorization) | 只认本service签发的私有对象；复用原Execution复核；Scope/命令/来源/修订/动作/commandHash/planHash逐项完全相同；当前凭据池/主体类型/用户号须与签发者相同；时间处于[issuedAt,validUntil)，提交前再次复核身份/到期 |
+
+V1编码固定字段：schemaVersion=1、demands(resourceNo,sourceLineRef,quantity,intervals(startAt,endAt))、
+qualifications(resourceNo,sourceLineRef,goodsNo,skuNo,required)。编码稳定不隐式重组/猜测需求组；摘要覆盖**原始冻结UTF8字节**，包括资格策略和区间细节，不能只hash桶汇总。
+Scope/引用先由行业解析规范身份；不在跨域冻结后修改载荷。ResourcePlanCodec校验结构/规模，完整任职/资源/资格准入仍由2a执行。
+
+- [x] 纯合同/编码反射测试先RED，再实现；绑定/状态形状、深不可变及每项计划证据变化证明。
+- [x] 新原生ResourceSourceAuthorizationIT及verify-resource-source-authorization.mjs先RED；真实主库命令/Execution/回滚，来源仅受控合同double。
+- [x] 实现路由及私有授权对象，注入可控Clock（生产缺省UTC）；验证提供者只能在事务外调用、权限/别名/过期/伪造对象/绑定篡改/未知结果。
+- [x] 消融计划摘要绑定守卫，反例RED恢复GREEN；merchant、命令31、准入22、旧路径及美业回归。
+- [x] 一次独立只读审查，重要发现一次RED→GREEN；三处对账/生成物/ledger与本地提交。
+
+**Pre-flight：** Receipt原先不导出规范scope/payloadHash，新增实际持久字段投影而不重算原命令hash；不改V535。
+1c接受任意冻结对象保持兼容；本消费器仅识别本V1编码，无静默升级旧对象或重写旧命令。
+Authorization仅本进程内部能力，不能跨HTTP反序列化冒充来源凭证；远程实现未来必须经正式可信Port适配再次查询/冻结并校验。
+来源提供者必须持久化同Binding幂等决策，校验主体成员/来源权限、真实业务修订和完整计划，禁止相反动作绕fence。
+validUntil是本次执行许可窗口，**不是来源fence自动解冻时刻**；fence须保留至原命令终态已核实，未知提交不能仅因超时解除。
+本批不证明任何真实源的持久冻结/权限、支付/权益、时间提前量/TTL/bucket事务或业务可预约；合同double不能当三行业接入验收。
+**Review Focus：** 摘要遗漏资格豁免/区间；非授权状态携带许可；错来源/actor/范围重用；事务内远程调用或超时误拒绝持久命令；签发后及提交前到期。
+
 ## §3 桶、区间与完整组合
 
 ### 3.1 候选工程参数
@@ -504,6 +540,44 @@ UUID临时MySQL8.4、每例独立数据库、真实主库持久层/Service与正
 来源授权及需求/资格与冻结载荷绑定、当前时间/提前量/TTL、bucket容量与生命周期、维护写者统一守卫、Outbox/恢复/营业入口，
 仍属后续交付。SQL排序规则/完整Flyway/上线不由本次一次性库替代；既有SchemaDrift/血缘失败见§5.5，本批未改相关文件也未重跑全局闸门。
 
+### 5.8 02b-2b-1实际验收（2026-10-21）
+
+| 验收 | 真实结果 | 日志 |
+|---|---|---|
+| 合同/编码测试先行 | 14项断言失败、0错误；实现后14项通过 | `/tmp/resource-source-contract-red.log`、`/tmp/resource-source-contract-green.log` |
+| 消费防线原生先行 | 缺少Service，14项断言失败、0错误；实现后14项通过 | `/tmp/resource-source-gate-red.log`、`/tmp/resource-source-gate-green.log` |
+| 身份边界 | 16项中2项断言失败；绑定凭据池/主体类型/用户号并提交前复核后16通过 | `/tmp/resource-source-actor-red.log`、`/tmp/resource-source-actor-green.log` |
+| 计划摘要消融 | 16项中1项断言失败、0错误；原命令hash相同仍须拒绝错误planHash | `/tmp/resource-source-ablation.log`；自动恢复源码 |
+| 最终原生消费侧 | 16通过、0失败/错误/跳过，BUILD SUCCESS | `/tmp/resource-source-final-native.log` |
+| merchant及依赖 | 282通过（含合同/编码14项），0失败/错误/跳过 | `/tmp/resource-source-merchant.log` |
+| 命令/准入兼容 | 原命令31、锁内准入22项全部通过 | `/tmp/resource-source-command.log`、`/tmp/resource-source-admission.log` |
+| 美业/旧路径 | 独立美业54、旧预约/人员/商品服务37项全部通过 | `/tmp/resource-source-beauty.log`、`/tmp/resource-source-legacy.log` |
+| 文档/生成物 | 五组设计、冻结V1、Node7、SQL无新增方言、Java120/diff通过 | 分层/词汇/索引重生成；Port166，取值域553；无迁移/HTTP/配置/依赖变化 |
+
+命令：`JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home node scripts/verify-resource-source-authorization.mjs`。
+主库命令/回执/Execution/回滚使用正式V535及独立一次性MySQL8.4；来源TestAuthority明确为合同double，不证明任何真实源冻结或权限。
+零生产适配器时原生验证明确拒绝；重复命名空间启动失败；生成分层清单如实显示Port未实现数量1→2，不注册默认放行实现来掩盖缺口。
+
+| 需求/风险 | 对应测试 |
+|---|---|
+| 原始计划/资格证据 | ResourceSourceContractTest.versionOneRoundTripsStableExactJson、hashIncludesRawIntervalsEvenInsideTheSameBucket、hashIncludesProjectSkuAndExplicitExemption |
+| 严格类型/未知字段/不可变/规模 | decodedPlanAndNestedIntervalsAreImmutable、rejectsUnknownDuplicateTrailingAndWrongVersion、rejectsCoercionsMissingFieldsAndNullStructure、rejectsInvalidQuantityTimeAndNanoseconds、rejectsDuplicateGroupsAndMixedQualificationPolicy、boundsUtf8AndRawIntervalsBeforeExpansion、emptyPlansAndForeignQualificationGroupsAreRejected |
+| 决策形状/actor | sourceBindingRequiresCompleteCanonicalEvidence、authorizedDecisionRequiresDurableFenceAndEffectiveWindow、unknownPendingAndDeniedCannotSmugglePermissionEvidence、requestAlwaysCarriesTheCurrentRecoveryOperator；形状反例独立性待补，见下 |
+| 持久范围/恢复发起者 | ResourceSourceAuthorizationIT.bindsCanonicalDurableCommandAndCurrentRecoveryActorOutsideTransaction、foreignTenantAndDisabledParentCannotTriggerSourceCalls |
+| 无许可与不确定性 | noProviderNeverFallsBackToPermission、duplicateSourceProvidersPreventStartup、unknownPendingDeniedNeverMintAnAuthorizationOrRejectTheResourceCommand、providerFailureAndRecoveryUseOriginalIdentityWithoutGuessingRejection |
+| 绑定/事务边界 | remoteProviderIsNeverInvokedUnderAnAmbientTransaction、planHashMismatchIsRejectedEvenWhenTheOriginalCommandHashMatches、wrongCommandScopeSourceRevisionActionAndCommandHashCannotAuthorize、foreignCommandCannotReuseAuthorizationAndCaughtFailureStillRollsBack |
+| 期限/身份/伪造 | expiredOrNotYetEffectivePermissionCannotBeConsumed、expirationBeforeCommitRollsBackEffectsOwnerAndSuccessfulResult、forgedAuthorizationAndOldExecutionCannotBeUsed、anotherUserOrSubjectCannotConsumeAnIssuedPermission、principalChangeBeforeCommitAlsoRollsBack |
+| 原数据/终态不重冻 | arbitraryLegacyPayloadAndTerminalCommandDoNotFreezeASource |
+
+一次独立只读审查：无Critical/Important，1个Minor待补。非授权形状测试同时放入非法decisionNo或缺失拒绝reason，
+因此去掉fence/date守卫仍可能由其它条件拒绝；应以各状态其余字段合法为基线，逐一注入禁止的许可字段。
+当前生产守卫正确，原生还独立验证各非授权状态不签发授权；本批不把上述测试缺口宣称已排除，无重审。
+历史2a多根锁序/绑定漂移动态反例、1a输入不变性断言增强仍待补；1b结果映射已在1c关闭。
+
+未验收：真实来源身份/成员权限/业务修订/完整计划、持久fence及相反动作互斥/终态核对后解冻、支付/权益与三行业接入、
+SourcePermission→准入→容量写入的完整处理器、Clock提前量/TTL/生命周期、Outbox/Job/对账/维护入口、全部部署排序规则与完整Flyway。
+既有SchemaDrift/血缘失败见§5.5，本批无相关变更且未重跑全局闸门。未接营业库、未推送/合并。
+
 ## §6 替换、实际交接与超时
 
 ### 6.1 未开工整计划原子替换
@@ -612,6 +686,23 @@ Receipt补规范来源绑定，完成时再次检查当前登录租户；保留�
 该基础不产生可缓存/对外售卖的准入凭证，不写容量。下一处理器须从冻结来源构造完整需求/资格策略，
 加服务端时间/提前量和来源fence，再在同一Execution事务接入容量桶/hold/单位/结果；所有维护写者须加入根锁协议。
 Clock/TTL、完整预留/保护/确认/释放、Outbox/恢复及营业入口仍未交付；实际无合并、推送或营业库迁移。
+
+### 6.10 02b-2b-1实现对账
+
+| §2.7计划 | 实际文件/职责 |
+|---|---|
+| 唯一共享来源合同 | shop-base/spi/resource/ResourceSourceAuthorityPort；不复用权益域SourceDecision，不导入merchant/beauty类型 |
+| 完整计划冻结 | merchant.policy.ResourcePlanCodec；V1编码/严格解码/完整字节摘要/深不可变 |
+| 真实回执投影 | ResourceCommandService.Receipt增加scope/payloadHash；原impl从持久行及稳定owner读取，不重算/重写命令 |
+| 许可消费协调 | ResourceSourceAuthorizationService及impl；唯一来源路由、事务外freeze/query、私有proof、锁内及提交前复核 |
+| 验收 | ResourceSourceContractTest、ResourceSourceAuthorizationIT、verify-resource-source-authorization.mjs；14纯测试及16实际消费侧原生 |
+| 设计与派生 | 本TDD、主计划§19、ADR043、README、分层/词汇和原ledger |
+
+偏差：补Request的realm/subjectKind和本地授权持有者身份；只比较tenant或userNo不能区分凭据池/主体表，两个原生反例已证明并修复。
+恢复者可以不同于原发起人，但每次来源权限必须由提供者重新核验；本地proof不能跨principal传递。
+未新增真实源适配器是明确启用门禁，不是模拟提供者已可营业；不能把数量分配guard或一次状态查询冒充持久资源fence。
+下一批02b-2b-2先实现并实际验证美业来源冻结适配：来源意图/修订/计划绑定、成员权限、同Binding重放、相反动作互斥、原号恢复与终态核实；
+零售/餐饮按同合同分别接入，再把许可/原计划/2a准入接入2c容量事务。当前仍无营业入口/容量预留承诺。
 
 ## §7 数据结构补充提案
 

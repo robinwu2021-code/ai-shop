@@ -38436,6 +38436,17 @@
       {
         "name": "State",
         "values": [
+          "UNKNOWN",
+          "PENDING",
+          "DENIED",
+          "AUTHORIZED"
+        ],
+        "zh": "Source truth only; none of these states describes the current resource hold lifecycle.",
+        "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
           "PENDING",
           "AUTHORIZED",
           "CANCELLED",
