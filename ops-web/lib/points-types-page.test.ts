@@ -10,8 +10,8 @@ vi.mock("@/lib/api", () => ({ api: {
 } }));
 vi.mock("@/components/ui/data-table", async () => {
   const { createElement: h } = await import("react");
-  return { DataTable: ({ rows, columns, rowProps }: { rowProps?: (row: never) => Record<string, unknown>; rows?: Array<Record<string, unknown>>; columns: Array<{ cell: (row: never) => unknown }> }) =>
-    h("div", { "data-testid": "points-type-list" }, ...(rows ?? []).map((row, index) =>
+  return { DataTable: ({ rows, columns, rowProps }: { rowProps?: (row: never) => Record<string, unknown>; rows?: Array<Record<string, unknown>>; columns: Array<{ header?: string; cell: (row: never) => unknown }> }) =>
+    h("div", { "data-testid": "points-type-list" }, h("div", {}, ...columns.map((column, i) => h("span", { key: i }, column.header))), ...(rows ?? []).map((row, index) =>
       h("div", { key: index, ...rowProps?.(row as never) }, ...columns.map((column, col) => h("span", { key: col }, column.cell(row as never)))))) };
 });
 vi.mock("@/components/ui/drawer", async () => {
@@ -131,6 +131,7 @@ it("shows the default and offers pause without affecting redemption", async () =
   expect(host.querySelector('[name="reason"]')).toBeNull();
   await act(async () => host.querySelector("form#points-type-state")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   expect(mock.transition).toHaveBeenCalledWith(expect.objectContaining({ typeCode: "HX_TOKEN", action: "PAUSE_EARNING" }));
+  await act(async () => [...host.querySelectorAll("button")].find((b) => b.textContent === "使用说明")!.click());
   expect(host.textContent).toContain("已有积分仍可抵扣");
 });
 
@@ -205,4 +206,34 @@ it("edits the default field independently without a remark", async () => {
   await act(async () => host.querySelector('form#points-type-default')!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   expect(mock.transition).toHaveBeenCalledWith(expect.objectContaining({ typeCode: "OTHER", action: "SET_DEFAULT" }));
   expect(mock.transition.mock.calls[0][0]).not.toHaveProperty("reason");
+});
+
+it("filters the list by name or code and keeps help collapsed initially", async () => {
+  const base = { market: "CN", currency: "CNY", rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, status: "ACTIVE" };
+  mock.types.mockResolvedValue([{ ...base, typeCode: "HX_TOKEN", name: "平台积分" }, { ...base, typeCode: "MEMBER", name: "会员积分" }]);
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: false }))));
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  expect(host.textContent).not.toContain("多个积分类型可同时生效");
+  const search = host.querySelector('input[aria-label="搜索积分名称或代码"]') as HTMLInputElement;
+  expect(search).not.toBeNull();
+  await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(search, "member"); search.dispatchEvent(new Event("input", { bubbles: true })); });
+  const list = host.querySelector('[data-testid="points-type-list"]')!;
+  expect(list.textContent).toContain("会员积分");
+  expect(list.textContent).not.toContain("平台积分");
+});
+
+it("keeps a failed rename and its error within the editable field for retry", async () => {
+  mock.types.mockResolvedValue([{ typeCode: "HX_TOKEN", name: "平台积分", currency: "CNY", rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, status: "ACTIVE", orderDefault: true }]);
+  mock.rename.mockRejectedValue(new Error("暂时无法保存"));
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
+  await act(async () => (host.querySelector('button[aria-label="编辑积分名称"]') as HTMLButtonElement).click());
+  (host.querySelector('[name="name"]') as HTMLInputElement).value = "虹选积分";
+  await act(async () => host.querySelector('#points-type-rename')!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  expect(host.querySelector('#points-type-rename')!.textContent).toContain("暂时无法保存");
+  expect((host.querySelector('[name="name"]') as HTMLInputElement).value).toBe("虹选积分");
+  await act(async () => host.querySelector('#points-type-rename')!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(mock.rename).toHaveBeenCalledTimes(2);
 });

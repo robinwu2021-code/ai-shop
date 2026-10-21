@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 // 右侧抽屉（详情/表单）。基于 radix dialog。
 export function Drawer({
-  open, onOpenChange, title, desc, children, footer, width = "w-[440px]",
+  open, onOpenChange, title, desc, children, footer, width = "w-[440px]", className, headerClassName, bodyClassName, onEscapeKeyDown,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -16,6 +16,10 @@ export function Drawer({
   children: React.ReactNode;
   footer?: React.ReactNode;
   width?: string;
+  className?: string;
+  headerClassName?: string;
+  bodyClassName?: string;
+  onEscapeKeyDown?: (event: KeyboardEvent) => void;
 }) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -29,6 +33,7 @@ export function Drawer({
         */}
         <Dialog.Overlay className="fixed inset-0 z-[var(--z-drawer)] bg-black/40 animate-in fade-in" />
         <Dialog.Content
+          onEscapeKeyDown={onEscapeKeyDown}
           className={cn(
             /*
              * `max-w-full` 不是可选的收尾：抽屉是 `fixed right-0` + 固定宽度，
@@ -39,10 +44,10 @@ export function Drawer({
              */
             "fixed right-0 top-0 z-[var(--z-drawer)] flex h-screen max-w-full flex-col overflow-hidden rounded-l-sheet bg-card shadow-pop outline-none",
             "animate-in slide-in-from-right",
-            width,
+            width, className,
           )}
         >
-          <div className="flex items-start justify-between bg-muted/50 p-5">
+          <div className={cn("flex items-start justify-between bg-muted/50 p-5", headerClassName)}>
             <div>
               <Dialog.Title className="txt-heading">{title}</Dialog.Title>
               {desc && <Dialog.Description className="mt-0.5 txt-body text-muted-foreground">{desc}</Dialog.Description>}
@@ -56,7 +61,7 @@ export function Drawer({
               <X className="size-4" />
             </Dialog.Close>
           </div>
-          <div className="flex-1 overflow-y-auto p-5">{children}</div>
+          <div className={cn("flex-1 overflow-y-auto p-5", bodyClassName)}>{children}</div>
           {footer && <div className="flex justify-end gap-2 bg-muted/40 p-4">{footer}</div>}
         </Dialog.Content>
       </Dialog.Portal>
