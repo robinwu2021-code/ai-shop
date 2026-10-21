@@ -34,4 +34,4 @@ fi
 rm -f "$TMP"
 # 用 am start 不用 monkey：monkey 在这台模拟器上时灵时不灵（点了图标式的启动常常没把 App 拉到前台）
 launch
-echo "已写入票据并冷启动 ${PKG}（$SERIAL），几秒后应进入工作台"
+echo "已写入票据并冷启动 ${PKG}（${SERIAL}），几秒后应进入工作台"
