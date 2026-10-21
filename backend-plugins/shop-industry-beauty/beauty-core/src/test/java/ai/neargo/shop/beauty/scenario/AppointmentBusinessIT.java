@@ -2,6 +2,8 @@ package ai.neargo.shop.beauty.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mockStatic;
 
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.beauty.config.BeautyAppointmentConfiguration;
@@ -20,6 +22,7 @@ import ai.neargo.shop.beauty.dto.RecordNoShowReq;
 import ai.neargo.shop.beauty.service.AppointmentService;
 import ai.neargo.shop.beauty.service.ServiceOperationRecoveryService;
 import ai.neargo.shop.beauty.service.impl.AppointmentRecovery;
+import ai.neargo.shop.beauty.service.impl.AppointmentPersistence;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
@@ -568,6 +571,64 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
     }
 
     @Test
+    void defaultMinuteCadenceMakesProgressBeyondFiftyAuthenticationDependentOperations() {
+        recoveryAcrossBatches(false);
+    }
+
+    @Test
+    void liveLeasesAreExcludedBeforeBatchLimitWithoutStealingThem() {
+        recoveryAcrossBatches(true);
+    }
+
+    private void recoveryAcrossBatches(boolean leased) {
+        business().run(context -> {
+            owner.authority = context.getBean(ResourceSourceAuthorityPort.class);
+            var service = context.getBean(AppointmentService.class);
+            for (int i = 0; i < 51; i++) {
+                var p = service.previewMyAppointment("USR1", preview(1));
+                owner.loseAccept = true;
+                var waiting = service.createMyAppointment("USR1",
+                        new CreateMyAppointmentReq(p.previewNo(), List.of(), null), "WAIT-" + i);
+                assertThat(waiting.operationState()).isEqualTo("PENDING");
+            }
+            var at = AppointmentPersistence.now();
+            sql.update("UPDATE bty_appointment_operation SET next_retry_at=?", at.minusMinutes(1));
+            if (leased) {
+                sql.update("UPDATE bty_appointment_operation SET lease_until=?", at.plusMinutes(5));
+            }
+            owner.loseExecuteAction = "CONFIRM";
+            var p = service.previewMyAppointment("USR1", preview(1));
+            var terminal = service.createMyAppointment("USR1",
+                    new CreateMyAppointmentReq(p.previewNo(), List.of(), null), "LATER-TERMINAL");
+            assertThat(terminal.operationState()).isEqualTo("PENDING");
+            sql.update("UPDATE bty_appointment_operation SET next_retry_at=? WHERE operation_no=?",
+                    at.minusSeconds(30), terminal.operationNo());
+            SecurityContextHolder.clearContext();
+            try (var clock = mockStatic(AppointmentPersistence.class, CALLS_REAL_METHODS)) {
+                clock.when(AppointmentPersistence::now).thenReturn(at);
+                context.getBean(AppointmentRecovery.class).scan();
+                if (!leased) {
+                    assertThat(sql.queryForObject("SELECT state FROM bty_appointment_operation WHERE operation_no=?",
+                            String.class, terminal.operationNo())).isEqualTo("PENDING");
+                    // Next default cron, not an immediate second scan before the first batch becomes due again.
+                    clock.when(AppointmentPersistence::now).thenReturn(at.plusSeconds(60));
+                    context.getBean(AppointmentRecovery.class).scan();
+                }
+            }
+            assertThat(sql.queryForObject("SELECT state FROM bty_appointment_operation WHERE operation_no=?",
+                    String.class, terminal.operationNo())).isEqualTo("SUCCEEDED");
+            assertThat(sql.queryForObject("SELECT status FROM bty_appointment WHERE appointment_no=?",
+                    String.class, terminal.appointmentNo())).isEqualTo("CONFIRMED");
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_operation "
+                    + "WHERE receipt IS NULL AND state='PENDING'", Integer.class)).isEqualTo(51);
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_operation "
+                    + "WHERE lease_until IS NOT NULL",
+                    Integer.class)).isEqualTo(leased ? 51 : 0);
+            assertThat(owner.accepts).hasSize(53); // 51 waiting RESERVE, then the terminal's RESERVE and CONFIRM.
+        });
+    }
+
+    @Test
     void preservedLegacyRootReadsWithoutInventingArrangementEvidence() throws Exception {
         database = new BeautySchemaMigrationIT();
         database.isolatedDatabase();
@@ -612,6 +673,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
         CountDownLatch entered; CountDownLatch proceed;
         Hold hold;
         String brokenSource;
+        String loseExecuteAction;
         final Map<String, Hold> allHolds = new LinkedHashMap<>();
         @Override public Receipt accept(Actor actor, Accept req) {
             outside();
@@ -667,7 +729,8 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
                     original.expectedOwnerVersion(), original.target(), original.frozenPayload(), result,
                     rejected ? "CAPACITY_UNAVAILABLE" : null);
             receipts.replaceAll((key, value) -> value.binding().equals(b) ? terminal : value);
-            if (loseExecute) { loseExecute = false; loseQuery = true; throw new
+            if (loseExecute || b.action().equals(loseExecuteAction)) {
+                loseExecuteAction = null; loseExecute = false; loseQuery = true; throw new
                     IllegalStateException("controlled lost execute response"); }
             return terminal;
         }

@@ -26,6 +26,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -36,8 +37,10 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-/** Bounded sequential P1 matching. Capacity here is advisory; only the real owner may reserve these bytes. */
+/** Bounded P1 allocation search. Facts are advisory; only the real owner may reserve the resulting bytes. */
 public final class AppointmentMatching {
+    private static final int SEARCH_BUDGET = 10_000;
+    private static final int PREPARATION_BUCKET_BUDGET = 100_000;
     private final ServiceCatalogQueryService catalog;
     private final ObjectProvider<ServiceCatalogFactsPort> stores;
     private final ObjectProvider<ResourceCandidatesPort> candidates;
@@ -88,7 +91,8 @@ public final class AppointmentMatching {
             bad();
         }
         var pool = candidates.getObject().candidates(new ResourceCandidatesPort.Query(scope, publicOnly,
-                startAt.toInstant(), 50));
+                startAt.toInstant(), 50)).stream()
+                .sorted(Comparator.comparing(ResourceFactsPort.ResourceFact::resourceNo)).toList();
         if (pool.isEmpty()) { throw BizException.of(ErrorCode.CONFLICT); }
         Set<String> ids = pool.stream().map(ResourceFactsPort.ResourceFact::resourceNo).collect(Collectors.toSet());
         Set<String> people = pool.stream().map(ResourceFactsPort.ResourceFact::personnelNo)
@@ -107,7 +111,9 @@ public final class AppointmentMatching {
         List<AppointmentAssignmentVO> assignments = new ArrayList<>();
         List<ResourcePlanContract.Demand> demands = new ArrayList<>();
         List<ResourcePlanContract.Qualification> qualifications = new ArrayList<>();
-        Map<String, Integer> used = new HashMap<>();
+        var bucketBudget = new BucketBudget();
+        var occupied = occupied(pool, capacity, bucketBudget);
+        List<Slot> slots = new ArrayList<>();
         Set<AppointmentAssignmentReq> consumed = new HashSet<>();
         Instant cursor = startAt.toInstant();
         Instant lastServiceEnd = cursor;
@@ -151,24 +157,22 @@ public final class AppointmentMatching {
                     var wanted = specified.stream().filter(v -> v.itemIndex() == index
                             && rule.getRequirementNo().equals(v.requirementNo())).toList();
                     if (wanted.size() > rule.getQty()) { bad(); }
-                    Set<String> selectedPeople = new HashSet<>();
-                    Set<String> selectedResources = new HashSet<>();
                     for (int n = 0; n < rule.getQty(); n++) {
+                        if (slots.size() >= SEARCH_BUDGET) { throw new IncompleteSearch(); }
                         var explicit = n < wanted.size() ? wanted.get(n) : null;
                         if (explicit != null) { consumed.add(explicit); }
                         String person = explicit == null ? requestedPerson : explicit.personnelNo();
-                        ResourceFactsPort.ResourceFact chosen = null;
+                        List<Choice> choices = new ArrayList<>();
                         for (var resource : pool) {
-                            if (!resource.resourceType().name().equals(rule.getResourceType()) ||
-                                    resource.openOccupied()
-                                    || resource.personnelNo() != null &&
-                                            selectedResources.contains(resource.resourceNo())
+                            boolean isStaff = resource.resourceType() == ResourceFactsPort.Type.STAFF;
+                            if (!resource.resourceType().name().equals(rule.getResourceType())
+                                    || resource.openOccupied() || isStaff && resource.personnelNo() == null
                                     || explicit != null && explicit.resourceNo() != null
                                         && !explicit.resourceNo().equals(resource.resourceNo())
-                                    || resource.personnelNo() != null &&
-                                            (selectedPeople.contains(resource.personnelNo())
-                                        || person != null && !person.equals(resource.personnelNo()))) { continue; }
-                            if (resource.personnelNo() != null && staff.stream().noneMatch(p ->
+                                    || isStaff && person != null && !person.equals(resource.personnelNo())) {
+                                continue;
+                            }
+                            if (isStaff && staff.stream().noneMatch(p ->
                                     p.personnelNo().equals(resource.personnelNo()) && (!publicOnly || p.publicVisible())
                                     && !p.validFrom().isAfter(a) && (p.validTo() == null || !p.validTo().isBefore(b))
                                     && p.qualifications().stream().anyMatch(q ->
@@ -176,57 +180,113 @@ public final class AppointmentMatching {
                                         && (q.skuNo() == null || item.skuNo().equals(q.skuNo()))
                                         && (q.storeNo() == null || scope.storeNo().equals(q.storeNo()))
                                         && !q.validFrom().isAfter(a) && (q.validTo() == null ||
-                                                !q.validTo().isBefore(b))))) {
-                                continue;
-                            }
+                                                !q.validTo().isBefore(b))))) { continue; }
                             if (windows.stream().noneMatch(w -> resource.resourceNo().equals(w.resourceNo())
                                     && !w.startAt().isAfter(a) && !w.endAt().isBefore(b))) { continue; }
-                            if (!available(resource, a, b, used, capacity)) { continue; }
-                            chosen = resource;
-                            break;
+                            List<Bucket> buckets = new ArrayList<>();
+                            for (long bucket = floor(a); bucket < b.getEpochSecond(); bucket += 300) {
+                                bucketBudget.take();
+                                String key = canonical(resource) + ":" + bucket;
+                                buckets.add(new Bucket(key, (isStaff ? 1 : resource.capacity())
+                                        - occupied.getOrDefault(key, 0)));
+                            }
+                            if (buckets.stream().allMatch(bucket -> bucket.remaining() > 0)) {
+                                choices.add(new Choice(resource, buckets));
+                            }
                         }
-                        if (chosen == null) {
-                            if (pool.size() == 50) { throw new IncompleteSearch(); }
-                            throw BizException.of(ErrorCode.CONFLICT);
-                        }
-                        selectedResources.add(chosen.resourceNo());
-                        if (chosen.personnelNo() != null) { selectedPeople.add(chosen.personnelNo()); }
-                        for (long bucket = floor(a); bucket < b.getEpochSecond(); bucket += 300) {
-                            used.merge(chosen.resourceNo() + ":" + bucket, 1, Integer::sum);
-                        }
-                        String group = line + ":" + rule.getRequirementNo() + ":" + n;
-                        demands.add(new ResourcePlanContract.Demand(chosen.resourceNo(), group, 1,
-                                List.of(new ResourcePlanContract.Interval(a, b))));
-                        qualifications.add(new ResourcePlanContract.Qualification(chosen.resourceNo(), group,
-                                chosen.personnelNo() == null ? null : rule.getSkillGoodsNo(),
-                                chosen.personnelNo() == null ? null : item.skuNo(), chosen.personnelNo() != null));
-                        assignments.add(new AppointmentAssignmentVO(line, rule.getRequirementNo(),
-                                chosen.personnelNo(), chosen.resourceNo(), a.atOffset(ZoneOffset.UTC),
-                                b.atOffset(ZoneOffset.UTC)));
+                        slots.add(new Slot(line, rule.getRequirementNo(), rule.getSkillGoodsNo(), item.skuNo(), n,
+                                a, b, choices));
                     }
                 }
                 cursor = ceil(lastServiceEnd.plus(product.duration().bufferAfterMin(), ChronoUnit.MINUTES));
             }
         }
         if (consumed.size() != specified.size()) { bad(); }
+        var selected = allocate(slots, pool.size() == 50);
+        for (int i = 0; i < slots.size(); i++) {
+            var slot = slots.get(i);
+            var chosen = selected[i].resource();
+            String group = slot.line() + ":" + slot.requirement() + ":" + slot.unit();
+            demands.add(new ResourcePlanContract.Demand(chosen.resourceNo(), group, 1,
+                    List.of(new ResourcePlanContract.Interval(slot.from(), slot.to()))));
+            qualifications.add(new ResourcePlanContract.Qualification(chosen.resourceNo(), group,
+                    chosen.personnelNo() == null ? null : slot.goods(),
+                    chosen.personnelNo() == null ? null : slot.sku(), chosen.personnelNo() != null));
+            assignments.add(new AppointmentAssignmentVO(slot.line(), slot.requirement(), chosen.personnelNo(),
+                    chosen.resourceNo(), slot.from().atOffset(ZoneOffset.UTC), slot.to().atOffset(ZoneOffset.UTC)));
+        }
         String plan = ResourcePlanContract.encode(demands, qualifications);
         return new Matched(scope, store.policyVersionNo(), startAt.withOffsetSameInstant(ZoneOffset.UTC),
                 lastServiceEnd.atOffset(ZoneOffset.UTC), plan,
                 new Snapshot(items, assignments, price, store.policy().cancelRule()), pool.size() < 50);
     }
-    private boolean available(ResourceFactsPort.ResourceFact resource, Instant from, Instant to,
-            Map<String, Integer> used, List<ResourceCandidatesPort.Capacity> capacities) {
-        for (long bucket = floor(from); bucket < to.getEpochSecond(); bucket += 300) {
-            Instant at = Instant.ofEpochSecond(bucket);
-            int occupied = capacities.stream().filter(c -> c.resourceNo().equals(resource.resourceNo())
-                    && c.from().isBefore(at.plusSeconds(300)) && c.to().isAfter(at))
-                    .mapToInt(ResourceCandidatesPort.Capacity::used).max().orElse(0);
-            if (occupied + used.getOrDefault(resource.resourceNo() + ":" + bucket, 0) + 1 > resource.capacity()) {
-                return false;
+    /** No IO here: undo every allocation on backtrack and distinguish exhausted work from proven infeasibility. */
+    private Choice[] allocate(List<Slot> slots, boolean truncated) {
+        Choice[] selected = new Choice[slots.size()];
+        int[] next = new int[slots.size()];
+        Map<String, Integer> used = new HashMap<>();
+        int depth = 0;
+        int attempts = 0;
+        while (depth >= 0 && depth < slots.size()) {
+            var choices = slots.get(depth).choices();
+            if (next[depth] == choices.size()) {
+                next[depth] = 0;
+                if (--depth >= 0) {
+                    for (var bucket : selected[depth].buckets()) {
+                        used.compute(bucket.key(), (key, value) -> value == 1 ? null : value - 1);
+                    }
+                    selected[depth] = null;
+                }
+                continue;
+            }
+            if (++attempts > SEARCH_BUDGET) { throw new IncompleteSearch(); }
+            var choice = choices.get(next[depth]++);
+            if (choice.buckets().stream().anyMatch(bucket ->
+                    used.getOrDefault(bucket.key(), 0) >= bucket.remaining())) { continue; }
+            for (var bucket : choice.buckets()) { used.merge(bucket.key(), 1, Integer::sum); }
+            selected[depth++] = choice;
+        }
+        if (depth < 0) {
+            if (truncated) { throw new IncompleteSearch(); }
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        return selected;
+    }
+
+    private Map<String, Integer> occupied(List<ResourceFactsPort.ResourceFact> pool,
+            List<ResourceCandidatesPort.Capacity> capacities, BucketBudget budget) {
+        Map<String, String> identities = pool.stream().collect(Collectors.toMap(
+                ResourceFactsPort.ResourceFact::resourceNo, AppointmentMatching::canonical));
+        Map<String, Integer> occupied = new HashMap<>();
+        for (var capacity : capacities) {
+            var identity = identities.get(capacity.resourceNo());
+            if (identity == null) { continue; }
+            for (long bucket = floor(capacity.from()); bucket < capacity.to().getEpochSecond(); bucket += 300) {
+                budget.take();
+                // Aliases report the same canonical STAFF usage, so merge conservatively without double counting.
+                occupied.merge(identity + ":" + bucket, capacity.used(), Math::max);
             }
         }
-        return true;
+        return occupied;
     }
+
+    private static String canonical(ResourceFactsPort.ResourceFact resource) {
+        return resource.resourceType() == ResourceFactsPort.Type.STAFF
+                ? "STAFF:" + resource.personnelNo() : "RESOURCE:" + resource.resourceNo();
+    }
+
+    /** Bound materialization as well as search; large valid requests remain explicitly undecided. */
+    private static final class BucketBudget {
+        private int used;
+        void take() {
+            if (++used > PREPARATION_BUCKET_BUDGET) { throw new IncompleteSearch(); }
+        }
+    }
+
+    private record Bucket(String key, int remaining) { }
+    private record Choice(ResourceFactsPort.ResourceFact resource, List<Bucket> buckets) { }
+    private record Slot(String line, String requirement, String goods, String sku, int unit, Instant from, Instant to,
+            List<Choice> choices) { }
     private static long floor(Instant value) { return Math.floorDiv(value.getEpochSecond(), 300) * 300; }
     private static Instant ceil(Instant value) {
         return Instant.ofEpochSecond(Math.floorDiv(value.getEpochSecond() + 299, 300) * 300);

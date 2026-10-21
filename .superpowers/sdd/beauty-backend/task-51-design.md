@@ -63,3 +63,21 @@ Request audit evidence uses existing bty_action_log in the same operation-prepar
 - Recovery catches/report failures per claimed operation, keeps original root/fence evidence, persists a 60-second failed-attempt backoff (normal retry is 30 seconds), clears the claim lease by CAS and continues the bounded batch. No failure payload or actor metadata is logged.
 - Supported V2→V4 upgrades preserve legacy roots without fabricating current arrangements, holds or original commands. Such roots remain readable with real existing root status/time, nullable `AppointmentSummaryVO.arrangementRevision`, empty verified arrangement items/assignments and no available mutations. Mutation entry points fail closed without real evidence. No V5/backfill is required.
 - V3/V4 keep separate immutable schema inputs and targets while sharing the deterministic incremental renderer/validation in `beauty-schema-sql.mjs`; V1–V4 SQL bytes remain unchanged. Default private persistence verification now includes `AppointmentBusinessIT`.
+
+
+## Whole BM03 module review round1 (Task53 follow-up)
+
+The prior deterministic first-fit matcher is superseded by bounded reassignment: enumerate facts before search,
+then use an iterative depth-first search in stable resourceNo order. Hard specified assignments remain fixed.
+Candidate-attempt and demand-slot bounds are 10000; total capacity/candidate bucket materialization is bounded at
+100000. Exhaustion is IncompleteSearch, not a proof of conflict. A solution found within a truncated candidate
+set still returns its feasible arrangement with complete=false. STAFF occupancy is canonical by personnelNo and
+unit capacity, including existing capacity reported through another resource alias; physical resources retain
+independent capacity. Backtracking removes all provisional bucket usage before trying another branch.
+
+The recovery batch excludes live leases before LIMIT50 and orders by nextRetryAt,id. Rescheduling no-op or failed
+operations therefore cannot indefinitely monopolize the next one-minute cron. Original identities, lease/version
+CAS, permanent source fences and current-user authorization boundaries remain unchanged. Native regression has
+51 waiting persisted operations before a real bound CONFIRM terminal and advances the clock by the default60s
+cadence, plus a separate51-live-lease case. No DDL change. See task-53-module-fix-report.md for RED/GREEN and current
+artifact/runtime evidence; independent module re-review is still pending.

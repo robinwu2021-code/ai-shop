@@ -1,6 +1,6 @@
 # Task53 BM03 模块部署验收报告
 
-状态：实现及本地证据完成，**待控制器独立 Task53 审查和 BM03 全模块审查**。不提前将 Task53 或 BM04～06 标记完成。
+状态：Task53自有实现/spec/code quality已获独立审查批准；全BM03审查发现I1恢复饥饿及I2贪心误冲突，模块准出仍待修复复审。以下保留c338e5722前原证据；当前修复、构件和新运行证据见[模块修复报告](./task-53-module-fix-report.md)。不提前将Task53模块准出或BM04～06标记完成。
 基线：`50eeaa5d9`，工作树 `/Users/robin/.codex/worktrees/beauty-data/ai-shop-codex`，分支 `codex/beauty-foundation`。
 
 ## 交付与架构

@@ -224,3 +224,12 @@ standalone HOST只含web/channel，无core；SERVER独立私有schema只有23项
 恢复扫描只核验已绑定原终态，不冒充存储的用户或接受新命令；accept回执未知等需授权步骤由当前有权管理者显式恢复原operationNo。共享Job端点实现只有一份，应用与独立服务各一薄适配，无美业私有定时器。
 
 范围与结果以[Task53报告](../../.superpowers/sdd/beauty-backend/task-53-report.md)及主TDD为准：160原始API/49任务基线保留，公开恢复+1和30机器合同另列。基础可约/预约安排时间线是后端能力，不代表BM06全任务日历或前端已交付；归档事件不声称通知已送达；共用容量内核不代表零售/餐饮业务预约流程已实现。
+
+
+### BM03独立模块审查修复（round1）
+
+自动预约匹配采用确定性的有界重分配：先取候选/任职资格/排班/容量事实，再在内存中回溯，搜索节点不RPC、不持DB锁；固定指定项保持硬约束。候选尝试预算10000（需求槽位也不超过10000），预算不足或50候选截断无法确定无解时使用BEAUTY_SEARCH_INCOMPLETE/complete=false，不能把首次贪心失败当确定冲突。STAFF的bucket按personnelNo规范归一、容量1，同人resource别名不会增加容量；物理资源仍按各自resourceNo/capacity。可行解不因候选集截断而丢弃，其complete标志仍准确表示枚举范围。
+
+原操作恢复按nextRetryAt、id稳定排序，每批50，并在LIMIT前排除活租约；30/60秒延期使当前无权自动推进的操作让位于更早到期工作。原号、永久栅栏、版本CAS与不冒充用户的边界不变。实际RED/GREEN、构件与新部署证据见[模块修复报告](../../.superpowers/sdd/beauty-backend/task-53-module-fix-report.md)，独立复审尚待进行。
+
+前置容量/候选bucket物化总预算100000，计入既有占用展开及所有候选5分钟bucket；超过返回IncompleteSearch，而不是继续占用无界内存或断言冲突。合法大数量请求也可能超过预算，其语义为未完成搜索；通过更小查询/明确指定可缩小工作量，不承诺所有合法最大组合能在一次搜索内穷尽。

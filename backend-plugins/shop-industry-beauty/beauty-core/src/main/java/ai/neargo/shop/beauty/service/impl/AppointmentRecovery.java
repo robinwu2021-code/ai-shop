@@ -15,9 +15,14 @@ public final class AppointmentRecovery {
     }
     public int scan() {
         var now = AppointmentPersistence.now();
+        // Rescheduled no-op rows move behind older due work even when every row is due at the next minute tick.
+        // Filter live leases before LIMIT so unclaimable work cannot consume an entire batch.
         var rows = db.read(() -> db.operations.selectList(Wrappers.<BtyAppointmentOperation>lambdaQuery()
                 .eq(BtyAppointmentOperation::getTenantNo, "MAIN").eq(BtyAppointmentOperation::getState, "PENDING")
-                .le(BtyAppointmentOperation::getNextRetryAt, now).orderByAsc(BtyAppointmentOperation::getId)
+                .le(BtyAppointmentOperation::getNextRetryAt, now)
+                .and(q -> q.isNull(BtyAppointmentOperation::getLeaseUntil)
+                        .or().lt(BtyAppointmentOperation::getLeaseUntil, now))
+                .orderByAsc(BtyAppointmentOperation::getNextRetryAt, BtyAppointmentOperation::getId)
                 .last("LIMIT 50")));
         int recovered = 0;
         for (var row : rows) {

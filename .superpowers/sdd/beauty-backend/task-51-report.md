@@ -1,5 +1,7 @@
 # Task 51 implementation report
 
+> Historical slice report: the bounded greedy matching limitation below was superseded by the whole-BM03 round1 bounded reassignment and fair recovery fixes. Current behavior, budgets, tests and artifacts: [Task53 module fix report](./task-53-module-fix-report.md). Independent module re-review remains pending.
+
 Status: Task51 service/source slice implemented. HTTP/delegated actor transport belongs to Task52; deployed external-owner integration belongs to Task53. No deployment, shared database, network dependency download, or push was performed.
 
 ## Delivered behavior
