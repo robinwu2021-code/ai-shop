@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { PointsCreate, PointsTypeChange, PointsTypeConfig } from "@/lib/types";
+import type { PointsCreate, PointsTypeChange, PointsTypeRename, PointsTypeConfig } from "@/lib/types";
 import { PointsTypeCreateForm } from "./type-create-form";
 import { pointsCurrency } from "@/lib/points-currency";
 import { pointsCommand } from "@/lib/points-command";
@@ -15,7 +15,7 @@ import { Drawer } from "@/components/ui/drawer";
 import { Notice } from "@/components/ui/notice";
 import { SectionHeader } from "@/components/ui/section-header";
 
-type Command = { kind: "CREATE"; value: PointsCreate } | { kind: "STATE"; value: PointsTypeChange };
+type Command = { kind: "RENAME"; value: PointsTypeRename } | { kind: "CREATE"; value: PointsCreate } | { kind: "STATE"; value: PointsTypeChange };
 
 export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
   const { t } = usePointsText();
@@ -23,6 +23,7 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
   const types = useQuery({ queryKey: ["points-types"], queryFn: () => api.pointsTypes() });
   const [selectedCode, setSelectedCode] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  const [nameError, setNameError] = useState("");
   const selected = types.data?.find((item) => item.typeCode === selectedCode);
   const intent = useRef<{ body: string; requestId: string } | undefined>(undefined);
   const save = useMutation({
@@ -30,6 +31,7 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
       switch (command.kind) {
         case "CREATE": return api.createPointsType(command.value);
         case "STATE": return api.transitionPointsType(command.value);
+        case "RENAME": return api.renamePointsType(command.value);
       }
     },
     onSuccess: (_result, command) => {
@@ -76,8 +78,8 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
       emptyAction={canEdit ? <Button size="sm" onClick={() => { save.reset(); setCreateOpen(true); }}>{t("新建积分类型", "New points type")}</Button> : undefined}
       rowProps={(row) => ({ role: "button", tabIndex: 0, "aria-label": `${t("查看积分类型", "View points type")} ${row.name}`,
         className: "cursor-pointer hover:bg-accent/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
-        onClick: () => { setSelectedCode(row.typeCode); save.reset(); },
-        onKeyDown: (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedCode(row.typeCode); save.reset(); } },
+        onClick: () => { setSelectedCode(row.typeCode); setNameError(""); save.reset(); },
+        onKeyDown: (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedCode(row.typeCode); setNameError(""); save.reset(); } },
       })} />
 
     <Drawer open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) save.reset(); }}
@@ -101,8 +103,25 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
       {save.isError && <Notice tone="warning">{t(save.error.message, save.error.message)}</Notice>}
       {save.isSuccess && <Notice>{t("已保存，操作号：", "Saved, request ID: ")}{save.data.requestId}</Notice>}
       {selected && <div className={card}>
+        {canEdit && <form id="points-type-rename" key={`${selected.typeCode}:${selected.name}`} className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end" onSubmit={(event) => {
+          event.preventDefault();
+          const form = new FormData(event.currentTarget);
+          const name = String(form.get("name") ?? "").trim();
+          if (!name || name.length > 80) { setNameError(t("积分名称需为 1 至 80 个字符。", "Points name must contain 1 to 80 characters.")); return; }
+          if (types.data?.some((row) => row.typeCode !== selected.typeCode && row.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+            setNameError(t("积分名称已存在，请修改后重试。", "This points name already exists. Change it and try again.")); return;
+          }
+          setNameError("");
+          submit({ kind: "RENAME", value: { requestId: "", typeCode: selected.typeCode, expectedName: selected.name, name, reason: String(form.get("remark") ?? "").trim() } });
+        }}>
+          <label className="space-y-2">{t("积分名称", "Points name")}<Input type="text" name="name" dir="auto" required maxLength={80} defaultValue={selected.name} disabled={save.isPending} onChange={() => setNameError("")} /></label>
+          <label className="space-y-2">{t("备注", "Remark")}<Input type="text" name="remark" dir="auto" required maxLength={1000} disabled={save.isPending} /></label>
+          <Button type="submit" disabled={save.isPending}>{t("保存名称", "Save name")}</Button>
+        </form>}
+        {nameError && <Notice tone="warning">{nameError}</Notice>}
+
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 txt-body">
-          <dt className="text-muted-foreground">{t("积分名称", "Points name")}</dt><dd>{selected.name}</dd>
+          {!canEdit && <><dt className="text-muted-foreground">{t("积分名称", "Points name")}</dt><dd>{selected.name}</dd></>}
           <dt className="text-muted-foreground">{t("积分代码", "Points code")}</dt><dd dir="ltr">{selected.typeCode}</dd>
           <dt className="text-muted-foreground">{t("货币类型", "Currency")}</dt><dd>{(() => { const c = pointsCurrency(selected.currency); return c ? t(c.name, c.english) : selected.currency; })()}</dd>
           <dt className="text-muted-foreground">{t("货币代码", "Currency code")}</dt><dd>{selected.currency}</dd>
@@ -111,7 +130,7 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
           <dt className="text-muted-foreground">{t("兑换积分数量", "Points amount")}</dt><dd>{selected.rate.pointsUnit}</dd>
           <dt className="text-muted-foreground">{t("抵扣上限", "Deduction cap")}</dt><dd>{(selected.deductRatioBp / 100).toFixed(2)}%</dd>
         </dl>
-        <form key={`${selected.typeCode}:${selected.earningPaused}:${selected.orderDefault}:${selected.status}`} className="flex flex-wrap items-end gap-3" onSubmit={(event) => {
+        <form id="points-type-state" key={`${selected.typeCode}:${selected.earningPaused}:${selected.orderDefault}:${selected.status}`} className="flex flex-wrap items-end gap-3" onSubmit={(event) => {
           event.preventDefault(); const form = new FormData(event.currentTarget);
           submit({ kind: "STATE", value: { requestId: "", typeCode: selected.typeCode,
             action: String(form.get("action")) as PointsTypeChange["action"], reason: String(form.get("reason")).trim() } });

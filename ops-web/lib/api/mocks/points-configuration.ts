@@ -30,7 +30,7 @@ function type(code: string) {
   return t;
 }
 export const pointsConfigurationMock: Pick<FinanceApi,
-  "pointsTypes" | "createPointsType" | "transitionPointsType" | "pointsFallback" | "savePointsFallback" |
+  "pointsTypes" | "renamePointsType" | "createPointsType" | "transitionPointsType" | "pointsFallback" | "savePointsFallback" |
   "pointsSwitches" | "changePointsSwitch" | "pointsTerms" | "publishPointsTerms" | "pointsAgreements"> = {
   pointsTypes: () => wait(structuredClone(types)),
   createPointsType: (v) => command("CREATE", { ...v, typeCode: v.command.typeCode }, () => {
@@ -42,6 +42,14 @@ export const pointsConfigurationMock: Pick<FinanceApi,
     let a = rate.pointsUnit, b = rate.minorUnit;
     while (b) { const rest = a % b; a = b; b = rest; }
     types.push({ ...v.command, typeCode: v.command.typeCode.trim(), name: v.command.name.trim(), market: "CN", currency: currency.code, scale: currency.scale, rate: { pointsUnit: rate.pointsUnit / a, minorUnit: rate.minorUnit / a }, deductRatioBp: 3000, idleDays: 365, status: "DRAFT" });
+  }),
+  renamePointsType: (v) => command("RENAME", v, () => {
+    const current = type(v.typeCode);
+    if (current.name !== v.expectedName) fail("名称已被修改，请刷新后重试", "Name changed; reload before saving");
+    const name = v.name.trim();
+    if (!name || name.length > 80) fail("积分名称需为 1 至 80 个字符", "Points name must contain 1 to 80 characters");
+    if (types.some((t) => t.typeCode !== current.typeCode && t.name.toLocaleLowerCase() === name.toLocaleLowerCase())) fail("积分代码或名称已存在，请修改后重试。", "This points code or name already exists. Change it and try again.");
+    current.name = name;
   }),
   transitionPointsType: (v) => command("STATE", v, () => {
     const t = type(v.typeCode);

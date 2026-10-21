@@ -1111,6 +1111,14 @@ export interface PointsCreate {
   /** 服务端不可用原因或操作审计原因 */
   reason: string;
 }
+export interface PointsTypeRename {
+  requestId: string;
+  typeCode: string;
+  expectedName: string;
+  name: string;
+  reason: string;
+}
+
 export interface PointsTypeChange {
   /** 幂等操作请求号，重试必须复用 */
   requestId: string;

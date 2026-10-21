@@ -3,7 +3,7 @@ import type { PointsAdjustmentSubmission, PointsAdjustmentReview, PointsAdjustme
 import type { PointsAccountQ, PointsAccountView, PointsAccountsQ, PointsFreeze, PointsCursorPage, PointsVoucherView, PointsEntriesQ, PointsEntryView, PointsFlowView, PointsPositionQ, PointsPositionView, PointsStatsQ, PointsStats, PointsStatsRebuild, PointsReconRun, PointsRecon, PointsTransactionsQ, PointsTransactionView, PointsTransactionDirection } from "@/lib/types";
 import type { PointsStatementPage, PointsStatementDraft, PointsStatementChange, PointsReference, PointsRevision, PointsRefundView, PointsReceivableRecovery, PointsFundsReference, PointsFundsView, PointsRecovery, PointsRecoveryExecution, PointsEventPage, PointsEventRetry } from "@/lib/types";
 import type { PointsOperation, PointsSubmission, PointsRequestReview, PointsRequestPage, PointsPlanChange, PointsPlanGenerate, PointsPlanReceipt, PointsPlanCancellation, PointsPlanPage, PointsWithdrawal, PointsExecution } from "@/lib/types";
-import type { PointsTypeConfig, PointsChangeResult, PointsCreate, PointsTypeChange, PointsFallback, PointsFallbackChange, PointsCursor, PointsSwitchPage, PointsSwitchChange, PointsTerms, PointsTermsChange, PointsAgreementPage } from "@/lib/types";
+import type { PointsTypeRename, PointsTypeConfig, PointsChangeResult, PointsCreate, PointsTypeChange, PointsFallback, PointsFallbackChange, PointsCursor, PointsSwitchPage, PointsSwitchChange, PointsTerms, PointsTermsChange, PointsAgreementPage } from "@/lib/types";
 // 覆盖范围：分账结算（P-12.1）与提现·发票·个税（P-12.2）。
 import type { PayChannelSetting, PayChannelRateVersion, SettleBatch, MerchantDebt,
   PurchaseInvoice,
@@ -48,6 +48,7 @@ export interface FinanceApi {
   pointsTypes(): Promise<PointsTypeConfig[]>;
   createPointsType(v: PointsCreate): Promise<PointsChangeResult>;
   transitionPointsType(v: PointsTypeChange): Promise<PointsChangeResult>;
+  renamePointsType(v: PointsTypeRename): Promise<PointsChangeResult>;
   pointsFallback(typeCode: string): Promise<PointsFallback>;
   savePointsFallback(v: PointsFallbackChange): Promise<PointsChangeResult>;
   pointsSwitches(q: PointsCursor): Promise<PointsSwitchPage>;

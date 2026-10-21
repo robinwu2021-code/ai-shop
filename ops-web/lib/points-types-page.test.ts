@@ -4,9 +4,9 @@ import { act, createElement as h } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-const mock = vi.hoisted(() => ({ types: vi.fn(), fallback: vi.fn(), terms: vi.fn(), create: vi.fn(), transition: vi.fn() }));
+const mock = vi.hoisted(() => ({ types: vi.fn(), fallback: vi.fn(), terms: vi.fn(), create: vi.fn(), transition: vi.fn(), rename: vi.fn() }));
 vi.mock("@/lib/api", () => ({ api: {
-  pointsTypes: mock.types, pointsFallback: mock.fallback, pointsTerms: mock.terms, createPointsType: mock.create, transitionPointsType: mock.transition,
+  pointsTypes: mock.types, pointsFallback: mock.fallback, pointsTerms: mock.terms, createPointsType: mock.create, transitionPointsType: mock.transition, renamePointsType: mock.rename,
 } }));
 vi.mock("@/components/ui/data-table", async () => {
   const { createElement: h } = await import("react");
@@ -128,7 +128,7 @@ it("shows the default and offers pause without affecting redemption", async () =
   expect([...actions.options].map((o) => o.value)).not.toContain("SET_DEFAULT");
   actions.value = "PAUSE_EARNING";
   (host.querySelector('[name="reason"]') as HTMLInputElement).value = "暂停赠送";
-  await act(async () => host.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  await act(async () => host.querySelector("form#points-type-state")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   expect(mock.transition).toHaveBeenCalledWith(expect.objectContaining({ typeCode: "HX_TOKEN", action: "PAUSE_EARNING", reason: "暂停赠送" }));
   expect(host.textContent).toContain("已有积分仍可抵扣");
 });
@@ -142,4 +142,35 @@ it("offers resume and explicit default selection for a paused independent type",
   const actions = host.querySelector('[name="action"]') as HTMLSelectElement;
   expect([...actions.options].map((o) => o.value)).toContain("RESUME_EARNING");
   expect([...actions.options].map((o) => o.value)).toContain("SET_DEFAULT");
+});
+
+it("edits an active points name in its drawer and refreshes the list", async () => {
+  const original = { typeCode: "HX_TOKEN", name: "平台积分", market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "ACTIVE", orderDefault: true };
+  mock.types.mockResolvedValue([original]);
+  mock.rename.mockImplementation(async () => { mock.types.mockResolvedValue([{ ...original, name: "虹选积分" }]); return { requestId: "RENAME1" }; });
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
+  const name = host.querySelector('form#points-type-rename [name="name"]') as HTMLInputElement;
+  expect(name).not.toBeNull();
+  expect(name.value).toBe("平台积分");
+  name.value = "虹选积分";
+  (host.querySelector('form#points-type-rename [name="remark"]') as HTMLInputElement).value = "更新展示名称";
+  await act(async () => host.querySelector('form#points-type-rename')!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  expect(mock.rename).toHaveBeenCalledWith(expect.objectContaining({ typeCode: "HX_TOKEN", expectedName: "平台积分", name: "虹选积分", reason: "更新展示名称" }));
+  expect(host.querySelector('[data-testid="points-type-list"]')!.textContent).toContain("虹选积分");
+});
+
+it("blocks duplicate names in the drawer before submitting", async () => {
+  const base = { market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "ACTIVE" };
+  mock.types.mockResolvedValue([{ ...base, typeCode: "HX_TOKEN", name: "平台积分" }, { ...base, typeCode: "OTHER", name: "已有积分" }]);
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
+  (host.querySelector('form#points-type-rename [name="name"]') as HTMLInputElement).value = "已有积分";
+  (host.querySelector('form#points-type-rename [name="remark"]') as HTMLInputElement).value = "重复测试";
+  await act(async () => host.querySelector('form#points-type-rename')!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(host.textContent).toContain("积分名称已存在，请修改后重试。");
+  expect(mock.rename).not.toHaveBeenCalled();
 });

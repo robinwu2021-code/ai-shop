@@ -10,6 +10,7 @@ import ai.neargo.shop.pay.points.admin.PointsAdministrationService.SwitchPage;
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService.Terms;
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService.TermsChange;
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService.TypeChange;
+import ai.neargo.shop.pay.points.admin.PointsAdministrationService.TypeRename;
 import ai.neargo.shop.pay.points.model.PointType;
 
 import java.util.List;
@@ -24,6 +25,8 @@ public interface PointsConfigurationAppService {
     ChangeResult create(Create request, String actor);
 
     ChangeResult transition(TypeChange request, String actor);
+
+    ChangeResult rename(TypeRename request, String actor);
 
     FallbackRule fallback(String typeCode);
 

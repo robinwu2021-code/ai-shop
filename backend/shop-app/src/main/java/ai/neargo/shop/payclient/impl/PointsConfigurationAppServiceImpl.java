@@ -11,6 +11,7 @@ import ai.neargo.shop.pay.points.admin.PointsAdministrationService.SwitchPage;
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService.Terms;
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService.TermsChange;
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService.TypeChange;
+import ai.neargo.shop.pay.points.admin.PointsAdministrationService.TypeRename;
 import ai.neargo.shop.pay.points.model.PointType;
 import ai.neargo.shop.payclient.PointsConfigurationAppService;
 import ai.neargo.shop.payclient.PointsOpsAccess;
@@ -49,6 +50,12 @@ public class PointsConfigurationAppServiceImpl implements PointsConfigurationApp
     public ChangeResult transition(TypeChange r, String actor) {
         PointsOpsAccess.platform();
         return PointsOpsErrors.call(() -> service.transition(r, actor));
+    }
+
+    @Override
+    public ChangeResult rename(TypeRename r, String actor) {
+        PointsOpsAccess.platform();
+        return PointsOpsErrors.call(() -> service.rename(r, actor));
     }
 
     @Override

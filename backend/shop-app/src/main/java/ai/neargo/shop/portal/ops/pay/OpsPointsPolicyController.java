@@ -12,6 +12,7 @@ import ai.neargo.shop.pay.points.admin.PointsAdministrationService.SwitchPage;
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService.Terms;
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService.TermsChange;
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService.TypeChange;
+import ai.neargo.shop.pay.points.admin.PointsAdministrationService.TypeRename;
 import ai.neargo.shop.pay.points.model.PointType;
 import ai.neargo.shop.payclient.PointsConfigurationAppService;
 
@@ -57,6 +58,12 @@ public class OpsPointsPolicyController {
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
     public ChangeResult transition(@Valid @RequestBody TypeChange request) {
         return configuration.transition(request, SecurityUtils.currentUserNo());
+    }
+
+    @PostMapping("/ops/points/type-name")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
+    public ChangeResult rename(@Valid @RequestBody TypeRename request) {
+        return configuration.rename(request, SecurityUtils.currentUserNo());
     }
 
     @GetMapping("/ops/points/fallback-rule")

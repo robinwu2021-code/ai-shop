@@ -32,6 +32,7 @@ export const financeHttp: FinanceApi = {
   pointsTypes: () => client.get<PointsTypeConfig[]>("/ops/points/types").then(rows => requirePointsNames(rows, useLocaleStore.getState().locale === "en" ? "Points names failed to load. Please retry." : "积分名称加载失败，请重试。")),
   createPointsType: (v) => client.post("/ops/points/types", v),
   transitionPointsType: (v) => client.post("/ops/points/type-state", v),
+  renamePointsType: (v) => client.post("/ops/points/type-name", v),
   pointsFallback: (typeCode) => client.get("/ops/points/fallback-rule", { typeCode }),
   savePointsFallback: (v) => client.post("/ops/points/fallback-rule", v),
   pointsSwitches: (q) => client.get("/ops/points/switches", q),

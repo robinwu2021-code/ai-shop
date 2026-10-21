@@ -21,6 +21,8 @@ public interface PointsAdministrationService {
 
     ChangeResult transition(TypeChange request, String actor);
 
+    ChangeResult rename(TypeRename request, String actor);
+
     FallbackRule fallback(String typeCode);
 
     ChangeResult saveFallback(FallbackChange request, String actor);
@@ -49,6 +51,8 @@ public interface PointsAdministrationService {
     record Create(String requestId, CreateType command, String reason) {}
 
     record TypeChange(String requestId, String typeCode, TypeAction action, String reason) {}
+
+    record TypeRename(String requestId, String typeCode, String expectedName, String name, String reason) {}
 
     record FallbackRule(long revision, RuleMode mode, long value) {}
 

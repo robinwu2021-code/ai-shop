@@ -96,6 +96,19 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
     }
 
     @Override
+    public void renameType(String type, String expectedName, String name, String actor) {
+        DataScopeContext.executeWithoutScope(() -> {
+            try {
+                if (mapper.renameType(type, expectedName, name, actor) != 1)
+                    throw new IllegalArgumentException("POINTS_TYPE_NAME_CONFLICT");
+            } catch (DuplicateKeyException duplicate) {
+                throw new IllegalArgumentException("POINTS_TYPE_DUPLICATE", duplicate);
+            }
+            return null;
+        });
+    }
+
+    @Override
     public void lockMarketTypes(String market) {
         DataScopeContext.executeWithoutScope(() -> {
             // SQL ORDER BY + filesort does not guarantee InnoDB lock acquisition order.

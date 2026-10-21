@@ -351,6 +351,46 @@ class PointsOpsConfigurationTest {
         assertThat(read.type(first).orElseThrow().orderDefault()).isFalse();
     }
 
+    @Test
+    void rename_is_audited_replayable_and_preserves_financial_and_default_dimensions() {
+        String type = type();
+        fund(type);
+        admin.transition(new TypeChange("ACTIVE:" + type, type, TypeAction.ACTIVATE, "Activate"), "OPS");
+        admin.transition(new TypeChange("DEFAULT:" + type, type, TypeAction.SET_DEFAULT, "Default"), "OPS");
+        admin.transition(new TypeChange("PAUSE:" + type, type, TypeAction.PAUSE_EARNING, "Pause"), "OPS");
+        var before = read.type(type).orElseThrow();
+        var pool = read.pool(type);
+        var request = new PointsAdministrationService.TypeRename("RENAME:" + type, type, before.name(), " Renamed " + type + " ", "Rename display name");
+        var result = admin.rename(request, "OPS");
+        assertThat(admin.rename(request, "OPS")).isEqualTo(result);
+        var after = read.type(type).orElseThrow();
+        assertThat(after.name()).isEqualTo("Renamed " + type);
+        assertThat(after.typeCode()).isEqualTo(before.typeCode());
+        assertThat(after.currency()).isEqualTo(before.currency());
+        assertThat(after.rate()).isEqualTo(before.rate());
+        assertThat(after.status()).isEqualTo(before.status());
+        assertThat(after.earningPaused()).isTrue();
+        assertThat(after.orderDefault()).isTrue();
+        assertThat(read.pool(type)).isEqualTo(pool);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_inbox WHERE type_code=? AND state='CONFIG_APPLIED' AND event_no=?", Long.class, type, ai.neargo.shop.pay.points.model.PointsKeys.position("OC", "RENAME", request.requestId()))).isEqualTo(1);
+        assertThatThrownBy(() -> admin.rename(new PointsAdministrationService.TypeRename("STALE:" + type, type, before.name(), "Stale overwrite", "Stale"), "OPS"))
+                .hasMessage("POINTS_TYPE_NAME_CONFLICT");
+        assertThat(read.type(type).orElseThrow().name()).isEqualTo(after.name());
+    }
+
+    @Test
+    void rename_rejects_duplicate_and_blank_names_without_changing_either_type() {
+        String first = type(), second = type();
+        String original = read.type(first).orElseThrow().name();
+        String other = read.type(second).orElseThrow().name();
+        assertThatThrownBy(() -> admin.rename(new PointsAdministrationService.TypeRename("DUP:" + first, first, original, other, "Duplicate"), "OPS"))
+                .hasMessage("POINTS_TYPE_DUPLICATE");
+        assertThatThrownBy(() -> admin.rename(new PointsAdministrationService.TypeRename("EMPTY:" + first, first, original, "  ", "Blank"), "OPS"))
+                .hasMessage("POINTS_TYPE_INVALID");
+        assertThat(read.type(first).orElseThrow().name()).isEqualTo(original);
+        assertThat(read.type(second).orElseThrow().name()).isEqualTo(other);
+    }
+
     private String type() {
         String type = "OC" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
         var request =

@@ -115,6 +115,19 @@ public class PointsAdministrationServiceImpl implements PointsAdministrationServ
     }
 
     @Override
+    public ChangeResult rename(TypeRename r, String actor) {
+        String name = r.name() == null ? "" : r.name().trim();
+        require(!name.isBlank() && name.length() <= 80 && nonblank(r.expectedName()), "POINTS_TYPE_INVALID");
+        return execute("RENAME", r.requestId(), r.typeCode(), actor, r.reason(), r, false, at -> {
+            var current = config.lockRules(r.typeCode());
+            require(current != null, "POINTS_TYPE_UNKNOWN");
+            require(r.expectedName().equals(current.get("name")), "POINTS_TYPE_NAME_CONFLICT");
+            require(read.types().stream().noneMatch(t -> !t.typeCode().equalsIgnoreCase(r.typeCode()) && t.name().equalsIgnoreCase(name)), "POINTS_TYPE_DUPLICATE");
+            config.renameType(r.typeCode(), r.expectedName(), name, actor);
+        });
+    }
+
+    @Override
     public FallbackRule fallback(String type) {
         require(read.type(type).isPresent(), "POINTS_TYPE_UNKNOWN");
         return rule(config.rules(type));

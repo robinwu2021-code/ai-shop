@@ -15,6 +15,8 @@ public interface PointsConfigurationStore {
 
     void createType(PointType type, String actor);
 
+    void renameType(String typeCode, String expectedName, String name, String actor);
+
     void lockTypeAndPool(String typeCode);
 
     /** Locks the market's types in a stable order before any individual type lock. */

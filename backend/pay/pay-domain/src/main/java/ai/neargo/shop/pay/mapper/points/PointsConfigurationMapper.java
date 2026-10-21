@@ -365,6 +365,10 @@ public interface PointsConfigurationMapper {
             @Param("currency") String currency,
             @Param("actor") String actor);
 
+    @Update("UPDATE pts_point_type SET name=#{name},updated_by=#{actor},updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE type_code=#{type} AND name=#{expectedName} AND deleted=0")
+    int renameType(@Param("type") String type, @Param("expectedName") String expectedName,
+                   @Param("name") String name, @Param("actor") String actor);
+
     @Select("SELECT type_code FROM pts_point_type WHERE market=#{market} ORDER BY type_code")
     List<String> marketTypes(String market);
 

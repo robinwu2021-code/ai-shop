@@ -8403,6 +8403,26 @@ components:
         - "command"
         - "reason"
       additionalProperties: false
+    PointsTypeRename:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+        typeCode:
+          type: "string"
+        expectedName:
+          type: "string"
+        name:
+          type: "string"
+        reason:
+          type: "string"
+      required:
+        - "requestId"
+        - "typeCode"
+        - "expectedName"
+        - "name"
+        - "reason"
+      additionalProperties: false
     PointsTypeChange:
       type: "object"
       properties:
@@ -16128,6 +16148,38 @@ paths:
     post:
       operationId: "transitionPointsType"
       summary: "transitionPointsType"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsChangeResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/type-name":
+    post:
+      operationId: "renamePointsType"
+      summary: "renamePointsType"
       tags:
         - "finance"
       responses:

@@ -65,3 +65,9 @@ it("requires the operator-facing name without changing the ledger code", async (
   client.get.mockResolvedValueOnce([{ typeCode: "SYS_TOKEN" }]);
   await expect(financeHttp.pointsTypes()).rejects.toThrow(/名称.*重试|names.*retry/);
 });
+
+it("sends a display-name change with its original name and no client operator", async () => {
+  const command = { requestId: "RENAME-1", typeCode: "HX_TOKEN", expectedName: "平台积分", name: "虹选积分", reason: "更新名称" };
+  await financeHttp.renamePointsType(command);
+  expect(client.post).toHaveBeenCalledWith("/ops/points/type-name", command);
+});
