@@ -1,6 +1,6 @@
 # Task53 BM03 模块部署验收报告
 
-状态：Task53自有实现/spec/code quality已获独立审查批准；全BM03审查发现I1恢复饥饿及I2贪心误冲突，模块准出仍待修复复审。以下保留c338e5722前原证据；当前修复、构件和新运行证据见[模块修复报告](./task-53-module-fix-report.md)。不提前将Task53模块准出或BM04～06标记完成。
+状态：Task53及BM03后端模块准出已通过独立审查与修复复审（业务HEAD923a3149e）；I1恢复饥饿/I2贪心误冲突均已关闭，最终部署证据为/tmp/beauty-bm03-fix-final2/result.json。以下保留c338e5722前原证据；当前修复、构件和新运行证据见[模块修复报告](./task-53-module-fix-report.md)。不提前将Task53模块准出或BM04～06标记完成。
 基线：`50eeaa5d9`，工作树 `/Users/robin/.codex/worktrees/beauty-data/ai-shop-codex`，分支 `codex/beauty-foundation`。
 
 ## 交付与架构
@@ -98,3 +98,5 @@ embedded 和真正 standalone 均实际证明：
 主 TDD 和 progress 属控制器，不包含在本提交。API基线160、原任务基线49不重编号；明确现状为公开原操作恢复+1、领域machine30（框架job路由另计）、私有23（V1=16/V2=2/V3=4/V4=1）。原41表设计资产不重写成当前已建表事实。
 
 范围仍是 BM03 后端基础可约和预约时间线，非 BM06 UI/日历；没有 BM04 到店接待/工单/交易来源、BM05服务作业/履约交付声明；整体 readiness503符合其能力门控。通知仅ARCHIVED；不声称生产通知送达、生产部署、完整历史平台迁移、所有认证grant路径或跨版本任意升级都已证明。持久层并发/保护由专项native测试证明，与实际JAR HTTP证据分开列出。独立审查及其必要修复尚由控制器推进。
+
+最终独立结论见[修复复审](./review-bm03-module-r1.md)；主计划§31记录模块准出与BM04后续边界。
