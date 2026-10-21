@@ -649,6 +649,21 @@ public final class MerchantMappers {
 
     /** Canonical resources; a staff resource is shared by all valid store assignments of one personnel. */
     public interface ResourceMapper extends BaseMapper<MchResource> {
+        /** Historical bucket capacities are immutable until a versioned capacity-change protocol exists. */
+        @Select("SELECT COUNT(*) FROM mch_resource_bucket WHERE tenant_no='MAIN' "
+                + "AND entity_no=#{entity} AND resource_no=#{resource}")
+        long countMaintenanceBuckets(@Param("entity") String entity, @Param("resource") String resource);
+
+        /** Physical resource CAS cannot rewrite canonical identity, store or occupation credentials. */
+        @Update("UPDATE mch_resource SET name=#{name},capacity=#{capacity},status=#{status},version=version+1,"
+                + "updated_by=#{actor},updated_at=#{at} WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND resource_no=#{resource} AND store_no=#{store} AND resource_type IN ('ROOM','SEAT','DEVICE') "
+                + "AND version=#{expected} AND version<9223372036854775807 AND deleted=0")
+        int saveMaintenance(@Param("entity") String entity, @Param("store") String store,
+                @Param("resource") String resource, @Param("expected") long expected, @Param("name") String name,
+                @Param("capacity") int capacity, @Param("status") String status, @Param("actor") String actor,
+                @Param("at") LocalDateTime at);
+
         /** Physical resources are store-scoped while staff identity and capacity remain entity-wide. */
         @Select("""
                 SELECT * FROM mch_resource WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}

@@ -2413,7 +2413,7 @@ OperationVO getOperation(String entityNo, String currentStoreNo, String actorNo,
 
 ## 三、11条共用HTTP目标与实施对照
 
-以下为人员/资源所有者的目标及部分已实施签名；逐项状态见API清单与主TDD。五个人员维护入口已编码，资源/班表等仍待实施；这些类不在beauty-web/api/core中生成。归shop-merchant自身既有包边界，Service接口/Impl按原规范分包；Controller不得转而依赖人员Mapper。具体共享实现要同步共享契约评审与独立架构扫描。
+以下为人员/资源所有者的目标及部分已实施签名；逐项状态见API清单与主TDD。五个人员及两个物理资源维护入口已编码，班表等仍待实施；这些类不在beauty-web/api/core中生成。归shop-merchant自身既有包边界，Service接口/Impl按原规范分包；Controller不得转而依赖人员Mapper。具体共享实现要同步共享契约评审与独立架构扫描。
 
 ### BAPI-012 · GET /biz/personnel
 
@@ -2513,12 +2513,12 @@ PersonnelCooperationVO setCooperation(String entityNo, String currentStoreNo, St
 
 ### BAPI-020 · GET /biz/resources
 
-状态：CANDIDATE_SHARED_OWNER_NOT_EXISTING_API。
+状态：IMPLEMENTED_BM02B_TESTED_MODULE_GATE_PENDING。
 
 Controller：`ai.neargo.shop.merchant.api.biz.BizResourceController`；输入类型：`ai.neargo.shop.merchant.dto.ResourceQuery`。返回VO沿同域merchant.dto；非美业DTO。
 
 ```java
-PageData<ResourceVO> listResources(@Valid @ModelAttribute ResourceQuery query);
+PageData<ResourceVO> listResources(@Valid @ModelAttribute ResourceQuery query, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service：`ai.neargo.shop.merchant.service.ResourceService`；Impl：`ai.neargo.shop.merchant.service.impl.ResourceServiceImpl`。
@@ -2529,18 +2529,18 @@ PageData<ResourceVO> listResources(String entityNo, String currentStoreNo, Strin
 
 ### BAPI-021 · POST /biz/resources
 
-状态：CANDIDATE_SHARED_OWNER_NOT_EXISTING_API。
+状态：IMPLEMENTED_BM02B_TESTED_MODULE_GATE_PENDING。
 
 Controller：`ai.neargo.shop.merchant.api.biz.BizResourceController`；输入类型：`ai.neargo.shop.merchant.dto.SaveResourceReq`。返回VO沿同域merchant.dto；非美业DTO。
 
 ```java
-ResourceVO saveResource(@Valid @RequestBody SaveResourceReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+ResourceVO saveResource(@Valid @RequestBody SaveResourceReq request, @RequestHeader("Idempotency-Key") String key, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service：`ai.neargo.shop.merchant.service.ResourceService`；Impl：`ai.neargo.shop.merchant.service.impl.ResourceServiceImpl`。
 
 ```java
-ResourceVO saveResource(String entityNo, String currentStoreNo, String actorNo, SaveResourceReq req, String idempotencyKey);
+ResourceVO saveResource(String entityNo, String currentStoreNo, String actorNo, SaveResourceReq request, String idempotencyKey);
 ```
 
 ### BAPI-022 · GET /biz/schedules
@@ -2591,7 +2591,7 @@ Service：`ai.neargo.shop.merchant.service.PersonnelScheduleService`；Impl：`a
 ScheduleChangeVO changeSchedule(String entityNo, String currentStoreNo, String actorNo, ChangeScheduleReq req, String idempotencyKey);
 ```
 
-### 本批已冻结的共用人员DTO
+### 本批已冻结的共用维护DTO
 
 | 类（shop-merchant） | 字段合同 |
 |---|---|
@@ -2604,6 +2604,9 @@ ScheduleChangeVO changeSchedule(String entityNo, String currentStoreNo, String a
 | `ai.neargo.shop.merchant.dto.PersonnelAssignmentVO` | personnelNo,revision,assignmentNo |
 | `ai.neargo.shop.merchant.dto.PersonnelAccountLinkVO` | personnelNo,revision,accountNo |
 | `ai.neargo.shop.merchant.dto.PersonnelChangeVO` | personnelNo,revision,status,accountDisabled（仅实际账号停用已回查后true） |
+| `ai.neargo.shop.merchant.dto.ResourceQuery` | Integer page,size; String storeNo,type,status,keyword；默认1/20，上限100，storeNo仅当前店确认 |
+| `ai.neargo.shop.merchant.dto.SaveResourceReq` | String resourceNo?,type,personnelNo=null,storeNo?,name,status; Integer capacity; Long expectedRevision；物理类型/归属不可变，STAFF由人员维护 |
+| `ai.neargo.shop.merchant.dto.ResourceVO` | String resourceNo,type,storeNo,personnelNo,name,status; int capacity; long revision; boolean openOccupied；无物理id/占用凭证/剩余容量 |
 
 实际字段校验和修订语义以同域源码及主TDD§2.12为准；不加入美业私有DTO/表统计。
 

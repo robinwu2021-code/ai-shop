@@ -699,7 +699,7 @@
             "BTY-C03"
           ],
           "phase": "P1",
-          "status": "BM02-a已实现并测试通过；BM02-b/c、完整模块及部署未完成，详见主TDD§23"
+          "status": "BM02-a已实现并测试通过；资源维护见BM02-b，BM02-c及完整模块部署未完成，详见主TDD§23/§24"
         },
         {
           "id": "BAPI-013",
@@ -712,7 +712,7 @@
             "BTY-C01"
           ],
           "phase": "P1",
-          "status": "BM02-a已实现并测试通过；BM02-b/c、完整模块及部署未完成，详见主TDD§23"
+          "status": "BM02-a已实现并测试通过；资源维护见BM02-b，BM02-c及完整模块部署未完成，详见主TDD§23/§24"
         },
         {
           "id": "BAPI-014",
@@ -726,7 +726,7 @@
             "BTY-C05"
           ],
           "phase": "P1",
-          "status": "BM02-a已实现并测试通过；BM02-b/c、完整模块及部署未完成，详见主TDD§23"
+          "status": "BM02-a已实现并测试通过；资源维护见BM02-b，BM02-c及完整模块部署未完成，详见主TDD§23/§24"
         },
         {
           "id": "BAPI-015",
@@ -739,7 +739,7 @@
             "BTY-C01"
           ],
           "phase": "P1",
-          "status": "BM02-a已实现并测试通过；BM02-b/c、完整模块及部署未完成，详见主TDD§23"
+          "status": "BM02-a已实现并测试通过；资源维护见BM02-b，BM02-c及完整模块部署未完成，详见主TDD§23/§24"
         },
         {
           "id": "BAPI-016",
@@ -753,7 +753,7 @@
             "BTY-C03"
           ],
           "phase": "P1",
-          "status": "BM02-a已实现并测试通过；BM02-b/c、完整模块及部署未完成，详见主TDD§23"
+          "status": "BM02-a已实现并测试通过；资源维护见BM02-b，BM02-c及完整模块部署未完成，详见主TDD§23/§24"
         },
         {
           "id": "BAPI-017",
@@ -807,26 +807,26 @@
           "method": "GET",
           "path": "/biz/resources",
           "purpose": "查询规范人员与物理资源",
-          "request": "storeNo,type,status,page,size",
+          "request": "ResourceQuery(page,size,storeNo?,type?,status?,keyword?)；当前店物理资源及有效/未来任职STAFF",
           "response": "PageData<ResourceVO>",
           "functions": [
             "BTY-D01"
           ],
           "phase": "P1",
-          "status": "共用候选新接口"
+          "status": "BM02-b已实现并测试通过；BM02-c及完整模块部署未完成，详见主TDD§24"
         },
         {
           "id": "BAPI-021",
           "method": "POST",
           "path": "/biz/resources",
           "purpose": "维护资源及容量",
-          "request": "resourceNo?,type,personnelNo?,storeNo?,capacity,expectedRevision",
+          "request": "SaveResourceReq(resourceNo?,type,personnelNo=null,storeNo?,name,capacity,status,expectedRevision)；仅ROOM/SEAT/DEVICE，身份不可变，强制Idempotency-Key",
           "response": "ResourceVO",
           "functions": [
             "BTY-D01"
           ],
           "phase": "P1",
-          "status": "共用候选新接口"
+          "status": "BM02-b已实现并测试通过；BM02-c及完整模块部署未完成，详见主TDD§24"
         },
         {
           "id": "BAPI-022",

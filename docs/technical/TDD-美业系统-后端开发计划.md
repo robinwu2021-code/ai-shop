@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-21 · 按业务模块交付并逐模块部署验证；BM-01后端模块已通过隔离部署关口，BM02-a人员维护已实现；下一步BM02-b规范资源维护及BM02-c周班表写入；预约工作台未完成。
+> 状态：实施中 · 2026-10-21 · 按业务模块交付并逐模块部署验证；BM-01后端模块已通过隔离部署关口，BM02-a人员及BM02-b物理资源维护已实现；下一步BM02-c周班表写入及远程事实接入；预约工作台未完成。
 > **执行方式：** 使用`superpowers:executing-plans`逐任务实施，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -284,6 +284,24 @@ BM02-a具体合同：
 - [x] a2 DTO/Service/Mapper/Controller按规范实现，实际SQL与权限测试及公共事实回归；同步JSON/API/方法与对象文档。
 - [x] a3 一次独立只读审查，重要问题一轮RED→GREEN；记录内部检查点，BM02-b/c尚未完成时不启动模块部署或宣布BM-02完成。
 
+### 2.13 BM02-b规范资源维护实施（2026-10-21）
+
+基线1679a32b0；延续已批准BM02-b，档位1，资源仍由shop-merchant统一所有，沿ADR-041和既有表，不新增迁移。
+
+**合同与边界：**
+- GET /biz/resources：ResourceQuery(page=1,size=20,storeNo?,type?,status?,keyword?)，页1..10000、大小1..100，当前门店物理资源及有当前/未来ACTIVE任职的STAFF；含暂停资源便于维护。返回PageData<ResourceVO>，VO只含resourceNo/type/storeNo/personnelNo/name/capacity/status/revision/openOccupied，不暴露物理id、占用凭证或剩余容量。
+- POST /biz/resources：SaveResourceReq(resourceNo?,type,personnelNo?,storeNo?,name,capacity,status,expectedRevision)；强制Idempotency-Key，作用域及actor取可信会话。新建revision=0、状态ACTIVE；ROOM/SEAT/DEVICE限当前店，容量1..1000。更新保持resourceNo/type/storeNo/personnelNo不变，名称1..64、ACTIVE/SUSPENDED、revision严格CAS。STAFF仅查询，拒绝在此新建/改写，避免绕过人员状态/资格流程和同人唯一身份。
+- 所有端点沿biz:store:admin及原始X-Store-No校验，不新增权限码。storeNo只允许省略或等于当前店；personnelNo必须空（STAFF由人员建档）。不提供迁店、删除、占用指针写入口，不修改旧slot。
+- 写事务沿主体/门店活跃父链→物理资源根；STAFF修改直接拒绝。每次更新均保守检查主体ACCEPTED命令、资源开放占用、未释放单位/计数及异常孤儿证据。容量变更额外拒绝该资源已有任意容量桶（即使已释放），避免历史桶capacity快照与主档产生分歧；不批量重写历史桶。未来容量版本化另作明确设计。
+- 复用IdempotencyService、严格mch_staff_log和PlatformPublicationPublisher，MERCHANT_RESOURCE_CHANGED仅广播不可变安全引用；显式shop.resource.publication.archive-only=true才允许归档。事件/审计失败整笔回滚，返回原请求回放而非再次写入。
+
+**文件与接口：** 新增merchant.dto.ResourceQuery/SaveResourceReq/ResourceVO、service.ResourceService及impl.ResourceServiceImpl、api.biz.BizResourceController；shop-base.spi.resource.ResourceChanged；必要MerchantMappers.ResourceMapper容量桶计数/CAS。原生测试ResourceMaintenanceIT及scripts/verify-resource-maintenance.mjs；HTTP测试ResourceControllerTest；输入边界测试ResourceInputTest。复用现有人员影响计数（暂不另造同义SQL）。
+
+**实施顺序与验收：**
+- [x] b1 先原生RED：物理资源建档与真实ResourceFactsPort读取、分页范围/STAFF唯一查询、幂等及哈希冲突、跨店/大小写别名/身份不可变、stale revision、容量/暂停影响阻断、历史桶容量冻结、事件失败回滚。
+- [x] b2 DTO/Service/Mapper/Controller实现，原生GREEN、输入边界/真实安全过滤器HTTP回归，执行一次守卫消融RED→恢复GREEN。
+- [x] b3 同步矩阵/对象/API/方法清单，一次独立审查及必要重要修复，保存检查点。BM02-c及整体部署仍为后续；不把资源维护通过当作预约可用或BM-02部署完成。
+
 ## §3 数据层之后的业务任务与启动深化
 
 每部分开工前重新核对功能矩阵对应行、API输入输出、类/方法、表字段、权限与真实跨域提供方，提交“可实施 / 需先补合同 / 延后关闭”结论，再编码。上次形成的类清单不代替这次业务规则梳理。
@@ -337,7 +355,7 @@ python3 scripts/gen-beauty-development-plan.py --check
 
 ## §6 下一次领取任务与本轮交付
 
-**当前下一步：BM02-b规范资源维护，再BM02-c周班表及standalone事实接入。BM02-a人员维护内部检查点已完成（§23），BM-01已通过§22隔离部署关口；BM-02整体尚未完成或部署。** 后续按BM-03预约等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
+**当前下一步：BM02-c周班表及standalone事实接入。BM02-a人员及b资源维护内部检查点已完成（§23/§24），BM-01已通过§22隔离部署关口；BM-02整体尚未完成或部署。** 后续按BM-03预约等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
 
 初始计划阶段产物（2026-10-20，非当前工程状态）：本TDD、开发任务JSON、生成任务对照索引和校验器；当时尚未编码。之后实际实现及验收按§7–20逐批记录，当前总览与后续领取以§21为准。
 
@@ -969,7 +987,7 @@ schema-lineage仍为14通过/2既有失败，详见方案日志，不宣称全�
 | 顺序/业务模块 | 当前状态及包含原任务 | 本模块完整交付范围 | 本模块部署验证的业务主线 |
 |---|---|---|---|
 | **BM-01 服务项目与门店政策** | **后端模块完成，隔离部署通过（§22）**；POL-01、DEF-01，所需ENG-03/SHR-03 | 共用商品/SKU及门店报价引用；服务执行定义与历史版本；门店服务政策/公开营业信息；相应权限、幂等、审计、事件及部署适配 | 使用真实商品提供方完成查询→发布→门店读取→历史版本回查；验证越权/重复发布/失败回滚，重启后结果保留 |
-| **BM-02 服务人员、排班与服务资源** | BM02-a人员维护检查点完成，资源/班表写入及模块部署未完成；SHR-01及SHR-02主档部分 | 业务人员与可选账号、多店任职、岗位/资格、班表维护与例外/变更影响；床位/房间/设备等资源维护；同人STAFF规范身份和受权事实查询 | 建立无账号人员→任职/资格→排班→关联服务资源→查询匹配事实；验证跨店同人、停用/资格过期/班表变更与范围隔离 |
+| **BM-02 服务人员、排班与服务资源** | BM02-a人员及b物理资源维护检查点完成，班表写入/远程事实及模块部署未完成；SHR-01及SHR-02主档部分 | 业务人员与可选账号、多店任职、岗位/资格、班表维护与例外/变更影响；床位/房间/设备等资源维护；同人STAFF规范身份和受权事实查询 | 建立无账号人员→任职/资格→排班→关联服务资源→查询匹配事实；验证跨店同人、停用/资格过期/班表变更与范围隔离 |
 | **BM-03 预约管理** | 仅数据和仲裁基础；AVL-01、APT-01/02/03，所需SHR02b/ENG-03/SHR-03 | 可约/预览、自约/代约、指定或自动匹配、预约列表详情、改约/取消/爽约；完整资源冻结/预留/确认/续期/释放/过期/替换及原号恢复，必要的占用查询 | 创建→查询→改约→取消完整链路；并发争抢不超售、改约失败保旧、响应丢失原号恢复、租期与未知结果正确保护；不要求先做实际服务执行 |
 | **BM-04 到店接待、工单与交易来源** | 数据基础，业务闭环未完成；REC-01、WO-01、SRC-01及所需SHR-03 | 临客认领、预约签到/直客接待、工单项目范围/加项、真实订单报价/来源提交/绑定/逐来源账单及恢复；权限/审计/事件、到店与取消互斥 | 预约到店或直客→幂等建工单→真实来源提交/绑定→查询账单；验证重复签到、越权、报价失效和来源结果未知；未就绪来源不能标为可开工 |
 | **BM-05 服务作业与履约** | 任务数据基础，业务执行未完成；TASK-01/02/03，SHR02b实际占用及超时部分 | 接单、开工、工作流步骤、实际参与/交接、暂停/延长/提前结束、清洁、完工数量、履约确认和工单关闭；实际占用/开放占用/超时阻断及恢复 | 接单→开工→步骤→交接/暂停→完工→清洁释放→履约/关闭；验证不双扣、不双完工、未清洁不放开、超时与未来预约并存及冲突开工阻断 |
@@ -1110,3 +1128,29 @@ BAPI012～016落在共用shop-merchant；美业继续引用人员/任职/岗位/
 
 **下一项BM02-b：** 深化并实现BAPI020/021规范资源名单与维护，保留STAFF实体级唯一及ROOM/SEAT/DEVICE店级归属；身份不可改写，容量/停用尊重同根、版本及在途影响。
 之后BM02-c周规则写入/查询及standalone只读事实接入；全部必要功能齐备后执行§21.4的BM-02大模块部署验收，失败留在本模块修复。
+
+
+## §24 BM02-b物理资源维护内部检查点（2026-10-21）
+
+本批对应§2.13及BAPI020/021；BM-02仍未通过完整部署关口，不宣称预约/日历/工作流完成。
+
+| 需求/设计 → 实现 | 实际验收 |
+|---|---|
+| 共用当前店名单、物理维护、唯一STAFF只读 | ResourceService/Impl、BizResourceController、ResourceQuery/SaveResourceReq/ResourceVO；ResourceMaintenanceIT.createsPhysicalResourceWithRealFactsAndDurableReplay及paginatesCurrentStoreResourcesAndOneStaffIdentityWithoutCopyingEmployment真实ResourceFactsPort读取 |
+| 身份/类型不可变、门店与大小写规范、revision/幂等 | scopeCanonicalIdentityAndTypeCannotBeChanged、revisionsProtectCapacityAndSuspensionAndReplayReturnsCommittedResult；真实SQL和幂等记录，不接受自报主体或actor |
+| 容量/开放占用/未恢复命令保护 | usedCapacityIsFrozenAndOutstandingCountersOrOpenOccupationsBlockUpdates、otherStoreUnrecoveredCommandsConservativelyBlockAndLeaveNoPartialWrites；已有桶冻结容量，释放后可暂停/恢复，不改历史桶 |
+| 原子审计及不可变发布证据 | MerchantMappers.ResourceMapper只增桶计数/物理CAS；ResourceChanged复用PlatformPublicationPublisher和严格mch_staff_log；strictPublicationFailureRollsBackResourceAuditAndKey证明新建回滚 |
+| 可信HTTP/字段边界 | ResourceControllerTest两项真实安全过滤器证明匿名/非授权/外店头拒绝、强制key和可信actor；ResourceInputTest两项验证类型/人员引用/容量/名称/修订/分页 |
+
+真实输出：
+- `/tmp/resource-maintenance-red.log`：7 tests / 7 assertion failures / 0 errors（缺实现）；`/tmp/resource-controller-red.log`：2 tests / 2 assertion failures / 0 errors（缺入口）。首次GREEN运行的表名、命令枚举及Jackson异常包装夹具问题已按真实基线修正，不计作业务RED。
+- `/tmp/resource-maintenance-native.log`：7 tests / 0 failures / 0 errors，BUILD SUCCESS。独立MySQL8.4结构夹具，非完整历史Flyway重放，无商品/资源事实替身。
+- `/tmp/resource-input-ablation-red.log`：去掉物理资源personnelNo为空守卫后2 tests / 1 assertion failure / 0 errors；finally恢复源码。
+- `/tmp/resource-merchant-regression.log`：依赖reactor合计294 tests / 0 failures / 0 errors，BUILD SUCCESS；`/tmp/resource-http-regression.log`：输入5项+资源/人员HTTP及成员/门店会话24项，合计29 tests / 0 failures / 0 errors，BUILD SUCCESS。
+- 五份美业设计生成校验、冻结私有V1、SQL方言无新增命中、人员/资源新增Java120列及diff检查通过；没有修改旧迁移、既有slot、全局故障基线或私有库。原49项设计任务定义仍保持原始状态，实际交付归本TDD。
+
+一次独立只读审查：0 Critical / 0 Important / 1 Minor；未启动第二轮审查。延期Minor为生成方法文档共用DTO表尾仅指§2.12，资源语义也应指§2.13；主API/本节/§2.13合同已明确，不影响实际端点。审查未代执行器认证后续回归；最终29项结果由执行器核验。
+
+边界与取舍：STAFF只读、已有任意历史桶冻结容量，代价是人员变更走人员维护、已使用物理容量待未来版本化协议；主体存在未恢复命令可暂时阻断无关资源维护。并发维护/admission交错、同时同revision提交，真实未释放/孤儿单位及confirmed计数，审计故障/已有资源更新发布失败/真实消费者投递未在本批额外注入；代码复用既有根锁/CAS/影响SQL及事务发布器，仅主张上述实际测试范围。完整历史迁移、真实构件部署、班表及容量/任务生命周期仍是后续范围，不能由本检查点推断通过。已知全仓Architecture/SchemaDrift/lineage债务未修改或声称转绿。
+
+**下一项BM02-c：** 先深化周规则读写、跨店人员冲突/有效任职裁剪/时区边界及standalone事实反向接入；完成后按§21.4部署验证整个BM-02。BAPI023/024的P3例外审批不冒充P1周班表维护。

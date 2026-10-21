@@ -7747,12 +7747,12 @@
     {
       "apiId": "BAPI-020",
       "owner": "共用人员/资源所有者",
-      "status": "SHARED_CANDIDATE_HTTP"
+      "status": "IMPLEMENTED_BM02B_TESTED_MODULE_GATE_PENDING"
     },
     {
       "apiId": "BAPI-021",
       "owner": "共用人员/资源所有者",
-      "status": "SHARED_CANDIDATE_HTTP"
+      "status": "IMPLEMENTED_BM02B_TESTED_MODULE_GATE_PENDING"
     },
     {
       "apiId": "BAPI-022",
@@ -10339,6 +10339,11 @@
           "type": "ResourceQuery",
           "name": "query",
           "annotation": "@Valid @ModelAttribute"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)"
         }
       ],
       "serviceParameters": [
@@ -10359,7 +10364,7 @@
           "name": "query"
         }
       ],
-      "status": "CANDIDATE_SHARED_OWNER_NOT_EXISTING_API"
+      "status": "IMPLEMENTED_BM02B_TESTED_MODULE_GATE_PENDING"
     },
     {
       "apiId": "BAPI-021",
@@ -10372,13 +10377,18 @@
       "parameters": [
         {
           "type": "SaveResourceReq",
-          "name": "req",
+          "name": "request",
           "annotation": "@Valid @RequestBody"
         },
         {
           "type": "String",
-          "name": "idempotencyKey",
+          "name": "key",
           "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)"
         }
       ],
       "serviceParameters": [
@@ -10396,14 +10406,14 @@
         },
         {
           "type": "SaveResourceReq",
-          "name": "req"
+          "name": "request"
         },
         {
           "type": "String",
           "name": "idempotencyKey"
         }
       ],
-      "status": "CANDIDATE_SHARED_OWNER_NOT_EXISTING_API"
+      "status": "IMPLEMENTED_BM02B_TESTED_MODULE_GATE_PENDING"
     },
     {
       "apiId": "BAPI-022",
@@ -10655,6 +10665,18 @@
     {
       "class": "ai.neargo.shop.merchant.dto.PersonnelChangeVO",
       "contract": "personnelNo,revision,status,accountDisabled（仅实际账号停用已回查后true）"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.dto.ResourceQuery",
+      "contract": "Integer page,size; String storeNo,type,status,keyword；默认1/20，上限100，storeNo仅当前店确认"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.dto.SaveResourceReq",
+      "contract": "String resourceNo?,type,personnelNo=null,storeNo?,name,status; Integer capacity; Long expectedRevision；物理类型/归属不可变，STAFF由人员维护"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.dto.ResourceVO",
+      "contract": "String resourceNo,type,storeNo,personnelNo,name,status; int capacity; long revision; boolean openOccupied；无物理id/占用凭证/剩余容量"
     }
   ]
 }

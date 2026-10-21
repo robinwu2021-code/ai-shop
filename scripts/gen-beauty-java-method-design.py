@@ -100,7 +100,7 @@ def generate():
     ]
     classes=['# 美业系统 Java 类与方法清单', '']+prefix+['', '## 一、范围与规范', '',
              f'目标包含{len(controllers)}个美业用户Controller、{len(services)}个Service及同名Impl、25个内嵌Mapper、25个Entity、{len(dtos)}个Req/Query/VO和{len(d["supportClasses"])}个必要辅助类。{len(eps)}条美业HTTP方法与{len(d["supplementalServiceMethods"])}条内部业务方法合计{method_count}条Service方法。按需提供同接口远程实现、协议客户端和内部入口，不能把目标清单当已生成源码。', '',
-             '11个共用HTTP目标另列其所属域的类/方法，其中5个人员维护入口已编码，54个CONTRACT是能力接入点而非54条已定Java方法。共享资源、账户、打印、报表等不复制到美业；需要补齐的正式契约在原所有者评审。', '',
+             '11个共用HTTP目标另列其所属域的类/方法，其中5个人员和2个资源维护入口已编码，54个CONTRACT是能力接入点而非54条已定Java方法。共享资源、账户、打印、报表等不复制到美业；需要补齐的正式契约在原所有者评审。', '',
              '![模块依赖](../diagrams/beauty-java-module-dependencies.svg)', '',
              '图由项目结构真源生成。签名清单沿api/core/web/channel/server交付，业务归属不因同库或同名改变。逐API调用与Mapper约束见[方法清单](./美业系统-Controller-Service-Mapper方法清单.md)。', '']
     classes += [f'{i}. {rule}' for i,rule in enumerate(rules,1)]
@@ -171,12 +171,12 @@ def generate():
                 methods += ['', '关键自定义调用：'+'；'.join('`'+mapper_by_table[ref.split('.')[0]]['class'].split('mapper.')[1]+'.'+ref.split('.')[1]+'`' for ref in f['customCalls'])+'。']
             methods += ['', '跨域/基础设施：'+('；'.join(f['externalCapabilities']) if f['externalCapabilities'] else '无新增跨域副作用')+'。', '', '守卫：'+(f['note'] or '按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。')+'。','']
     methods += ['## 三、11条共用HTTP目标与实施对照', '',
-                '以下为人员/资源所有者的目标及部分已实施签名；逐项状态见API清单与主TDD。五个人员维护入口已编码，资源/班表等仍待实施；这些类不在beauty-web/api/core中生成。归shop-merchant自身既有包边界，Service接口/Impl按原规范分包；Controller不得转而依赖人员Mapper。具体共享实现要同步共享契约评审与独立架构扫描。', '']
+                '以下为人员/资源所有者的目标及部分已实施签名；逐项状态见API清单与主TDD。五个人员及两个物理资源维护入口已编码，班表等仍待实施；这些类不在beauty-web/api/core中生成。归shop-merchant自身既有包边界，Service接口/Impl按原规范分包；Controller不得转而依赖人员Mapper。具体共享实现要同步共享契约评审与独立架构扫描。', '']
     for e in d['sharedHttpMethods']:
         a=apis[e['apiId']]
         methods += [f'### {e["apiId"]} · {a["method"]} {a["path"]}', '', f'状态：{e.get("status", "CANDIDATE_SHARED_OWNER_NOT_EXISTING_API")}。', '',f'Controller：`{e["controller"]}`；输入类型：`{e["inputType"]}`。返回VO沿同域merchant.dto；非美业DTO。','', '```java',signature(e['returnType'],e['name'],e['parameters'],True),'```','',f'Service：`{e["service"]}`；Impl：`{e["impl"]}`。','', '```java',signature(e['returnType'],e['name'],e['serviceParameters']),'```','']
     if d.get('sharedDtoContracts'):
-        methods += ['### 本批已冻结的共用人员DTO', '', '| 类（shop-merchant） | 字段合同 |', '|---|---|']
+        methods += ['### 本批已冻结的共用维护DTO', '', '| 类（shop-merchant） | 字段合同 |', '|---|---|']
         for contract in d['sharedDtoContracts']:
             methods.append(f'| `{contract["class"]}` | {contract["contract"]} |')
         methods += ['', '实际字段校验和修订语义以同域源码及主TDD§2.12为准；不加入美业私有DTO/表统计。', '']

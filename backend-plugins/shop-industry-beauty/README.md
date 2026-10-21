@@ -179,3 +179,12 @@ BAPI012～016实际入口归shop-merchant的`/biz/personnel`，使用现有`biz:
 验证脚本`node scripts/verify-personnel-maintenance.mjs`使用自建/自动清理MySQL8.4；
 `--race-only`、`--directory-only`、`--impact-only`可聚焦竞态、目录和影响补验。产品事实与部分OTP/成员构造边界的替身范围见主TDD§23。
 本批是BM02-a检查点；资源/周班表维护、standalone事实接入及BM-02整模块部署尚未完成，不计作可预约或开工。
+
+## BM02-b共用物理资源维护
+
+BAPI020/021归shop-merchant：GET/POST `/biz/resources`，沿`biz:store:admin`及可信当前门店；写入强制Idempotency-Key与expectedRevision。
+物理ROOM/SEAT/DEVICE店内维护，身份/类型/归属不可改写；STAFF只查询，不绕过人员维护流程。
+任意历史容量桶存在时冻结容量；未恢复命令、开放占用及容量证据未解决时拒绝更新，不重写旧slot或容量桶。
+证据事件默认严格交付；显式`shop.resource.publication.archive-only=true`才允许无消费者归档。
+原生验证脚本`node scripts/verify-resource-maintenance.mjs`使用自建/自动清理MySQL8.4结构夹具，非全历史迁移重放。
+BM02-c班表及远程事实接入、BM-02整模块真实构件部署仍待完成，当前不声明可预约或工作流可开工。
