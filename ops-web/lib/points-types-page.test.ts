@@ -4,15 +4,15 @@ import { act, createElement as h } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-const mock = vi.hoisted(() => ({ types: vi.fn(), fallback: vi.fn(), terms: vi.fn(), create: vi.fn() }));
+const mock = vi.hoisted(() => ({ types: vi.fn(), fallback: vi.fn(), terms: vi.fn(), create: vi.fn(), transition: vi.fn() }));
 vi.mock("@/lib/api", () => ({ api: {
-  pointsTypes: mock.types, pointsFallback: mock.fallback, pointsTerms: mock.terms, createPointsType: mock.create,
+  pointsTypes: mock.types, pointsFallback: mock.fallback, pointsTerms: mock.terms, createPointsType: mock.create, transitionPointsType: mock.transition,
 } }));
 vi.mock("@/components/ui/data-table", async () => {
   const { createElement: h } = await import("react");
-  return { DataTable: ({ rows, columns }: { rows?: Array<Record<string, unknown>>; columns: Array<{ cell: (row: never) => unknown }> }) =>
+  return { DataTable: ({ rows, columns, rowProps }: { rowProps?: (row: never) => Record<string, unknown>; rows?: Array<Record<string, unknown>>; columns: Array<{ cell: (row: never) => unknown }> }) =>
     h("div", { "data-testid": "points-type-list" }, ...(rows ?? []).map((row, index) =>
-      h("div", { key: index }, ...columns.map((column, col) => h("span", { key: col }, column.cell(row as never)))))) };
+      h("div", { key: index, ...rowProps?.(row as never) }, ...columns.map((column, col) => h("span", { key: col }, column.cell(row as never)))))) };
 });
 vi.mock("@/components/ui/drawer", async () => {
   const { createElement: h } = await import("react");
@@ -114,4 +114,32 @@ it("sends non-default currency and rate through the page without dropping the se
     command: { typeCode: "KWD_POINTS", name: "第纳尔积分", currency: "KWD", rate: { pointsUnit: 1000, minorUnit: 1000 } },
     reason: "创建积分类型",
   }));
+});
+
+it("shows the default and offers pause without affecting redemption", async () => {
+  mock.types.mockResolvedValue([{ typeCode: "HX_TOKEN", name: "平台积分", market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "ACTIVE", earningPaused: false, orderDefault: true }]);
+  mock.transition.mockResolvedValue({ requestId: "PAUSE1" });
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  expect(host.textContent).toContain("订单默认");
+  await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
+  const actions = host.querySelector('[name="action"]') as HTMLSelectElement;
+  expect([...actions.options].map((o) => o.value)).toContain("PAUSE_EARNING");
+  expect([...actions.options].map((o) => o.value)).not.toContain("SET_DEFAULT");
+  actions.value = "PAUSE_EARNING";
+  (host.querySelector('[name="reason"]') as HTMLInputElement).value = "暂停赠送";
+  await act(async () => host.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(mock.transition).toHaveBeenCalledWith(expect.objectContaining({ typeCode: "HX_TOKEN", action: "PAUSE_EARNING", reason: "暂停赠送" }));
+  expect(host.textContent).toContain("已有积分仍可抵扣");
+});
+
+it("offers resume and explicit default selection for a paused independent type", async () => {
+  mock.types.mockResolvedValue([{ typeCode: "OTHER", name: "其他积分", market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "ACTIVE", earningPaused: true, orderDefault: false }]);
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  expect(host.textContent).toContain("赠送已暂停");
+  await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
+  const actions = host.querySelector('[name="action"]') as HTMLSelectElement;
+  expect([...actions.options].map((o) => o.value)).toContain("RESUME_EARNING");
+  expect([...actions.options].map((o) => o.value)).toContain("SET_DEFAULT");
 });

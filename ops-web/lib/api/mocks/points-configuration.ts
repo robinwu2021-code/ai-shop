@@ -47,7 +47,13 @@ export const pointsConfigurationMock: Pick<FinanceApi,
     const t = type(v.typeCode);
     const target = { ACTIVATE: "ACTIVE", DRAIN: "DRAINING", RETIRE: "RETIRED" } as const;
     if ((v.action === "ACTIVATE" && t.status !== "DRAFT") || (v.action === "DRAIN" && t.status !== "ACTIVE") || (v.action === "RETIRE" && t.status !== "DRAINING")) fail("类型状态不允许此操作", "Type state does not allow this operation");
-    t.status = target[v.action];
+    if (v.action === "PAUSE_EARNING" || v.action === "RESUME_EARNING" || v.action === "SET_DEFAULT") {
+      if (t.status !== "ACTIVE") fail("类型尚未生效", "Type is not active");
+      if (v.action === "SET_DEFAULT") {
+        if (t.currency !== "CNY") fail("默认积分币种必须与市场一致", "Default currency must match the market");
+        types.filter((x) => x.market === t.market).forEach((x) => { x.orderDefault = x.typeCode === t.typeCode; });
+      } else t.earningPaused = v.action === "PAUSE_EARNING";
+    } else t.status = target[v.action];
   }),
   pointsFallback: (code) => { type(code); return wait({ ...(rules.get(code) ?? { revision: 0, mode: "RATIO" as const, value: 0 }) }); },
   savePointsFallback: (v) => command("FALLBACK", v, () => {

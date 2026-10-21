@@ -100,6 +100,16 @@ public class PointsAdministrationServiceImpl implements PointsAdministrationServ
                         case ACTIVATE -> types.activate(r.typeCode(), actor);
                         case DRAIN -> types.drain(r.typeCode(), actor);
                         case RETIRE -> types.retire(r.typeCode(), actor);
+                        case SET_DEFAULT -> types.setDefault(r.typeCode(), actor);
+                        case PAUSE_EARNING, RESUME_EARNING -> {
+                            var locked = config.lockRules(r.typeCode());
+                            require(locked != null && "ACTIVE".equals(locked.get("status")), "POINTS_TYPE_NOT_ACTIVE");
+                            switches.change(new PointsSwitchService.Command(
+                                    PointsKeys.position("OS", "TYPE_STATE", r.requestId()),
+                                    PointsSwitchService.Scope.TYPE, r.typeCode(), r.typeCode(),
+                                    r.action() == TypeAction.RESUME_EARNING, at, actor, r.reason(),
+                                    PointsSwitchService.Flow.EARN));
+                        }
                     }
                 });
     }
@@ -254,6 +264,10 @@ public class PointsAdministrationServiceImpl implements PointsAdministrationServ
                         && nonblank(actor)
                         && nonblank(reason),
                 "POINTS_OPERATOR_INPUT_INVALID");
+        if (request instanceof TypeChange change && change.action() == TypeAction.SET_DEFAULT) {
+            String market = read.type(type).orElseThrow(() -> new IllegalArgumentException("POINTS_TYPE_UNKNOWN")).market();
+            config.lockMarketTypes(market);
+        }
         if (!creating) {
             if ("*".equals(type)) {
                 read.types().stream()

@@ -117,6 +117,22 @@ public class PointTypeServiceImpl implements PointTypeService {
     }
 
     @Override
+    public PointType setDefault(String no, String actor) {
+        if (actor == null || actor.isBlank()) throw new IllegalArgumentException("POINTS_OPERATOR_REQUIRED");
+        PointType initial = read.type(no).orElseThrow(() -> new IllegalArgumentException("POINTS_TYPE_UNKNOWN"));
+        config.lockMarketTypes(initial.market());
+        config.lockTypeAndPool(no);
+        // Current status must be re-read under the acquired lock, not a repeatable-read snapshot.
+        var row = config.lockRules(no);
+        if (row == null || !"ACTIVE".equals(row.get("status")))
+            throw new IllegalArgumentException("POINTS_TYPE_NOT_ACTIVE");
+        if (markets.find(initial.market()).filter(m -> m.enabled() && m.currency().equals(initial.currency())).isEmpty())
+            throw new IllegalArgumentException("POINTS_DEFAULT_CURRENCY_MISMATCH");
+        config.setOrderDefault(no, initial.market(), actor);
+        return read.type(no).orElseThrow();
+    }
+
+    @Override
     public PointType drain(String no, String actor) {
         if (actor == null || actor.isBlank()) {
             throw new IllegalArgumentException("POINTS_OPERATOR_REQUIRED");

@@ -4,7 +4,7 @@ import { requirePointsNames } from "../../../../packages/shared/src/utils/points
 import { client } from "../http-client";
 import type { FinanceApi } from "../contracts/finance";
 import type {
-  PurchaseInvoice,
+  PurchaseInvoice, PointsTypeConfig,
   BuyerInvoiceRequest, Settlement,
   Page, PayoutAccount, PayoutList, SettleStatRow,
   BankFlowImportResult,
@@ -29,7 +29,7 @@ export const financeHttp: FinanceApi = {
   pointsEarningHistory: (scope, typeCode) => client.get("/ops/points/earning-rule-history", {scope,typeCode}),
   changePointsEarningRule: (v) => client.post("/ops/points/earning-rules", v),
   previewPointsEarning: (v) => client.post("/ops/points/earning-preview", v),
-  pointsTypes: () => client.get<import("@/lib/types").PointsTypeConfig[]>("/ops/points/types").then(rows => requirePointsNames(rows, useLocaleStore.getState().locale === "en" ? "Points names failed to load. Please retry." : "积分名称加载失败，请重试。")),
+  pointsTypes: () => client.get<PointsTypeConfig[]>("/ops/points/types").then(rows => requirePointsNames(rows, useLocaleStore.getState().locale === "en" ? "Points names failed to load. Please retry." : "积分名称加载失败，请重试。")),
   createPointsType: (v) => client.post("/ops/points/types", v),
   transitionPointsType: (v) => client.post("/ops/points/type-state", v),
   pointsFallback: (typeCode) => client.get("/ops/points/fallback-rule", { typeCode }),

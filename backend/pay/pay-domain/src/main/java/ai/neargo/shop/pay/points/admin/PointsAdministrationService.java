@@ -40,7 +40,10 @@ public interface PointsAdministrationService {
     enum TypeAction {
         ACTIVATE,
         DRAIN,
-        RETIRE
+        RETIRE,
+        PAUSE_EARNING,
+        RESUME_EARNING,
+        SET_DEFAULT
     }
 
     record Create(String requestId, CreateType command, String reason) {}

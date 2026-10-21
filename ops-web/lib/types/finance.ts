@@ -2,7 +2,7 @@
 export type PointsTypeConfigStatus = "DRAFT" | "ACTIVE" | "DRAINING" | "RETIRED";
 
 /** PointsTypeChange 的 action 取值域，按服务端契约校验。 */
-export type PointsTypeChangeAction = "ACTIVATE" | "DRAIN" | "RETIRE";
+export type PointsTypeChangeAction = "ACTIVATE" | "DRAIN" | "RETIRE" | "PAUSE_EARNING" | "RESUME_EARNING" | "SET_DEFAULT";
 
 /** PointsFallback 的 mode 取值域，按服务端契约校验。 */
 export type PointsFallbackMode = "FIXED" | "RATIO";
@@ -1081,6 +1081,8 @@ export interface PointsTypeConfig {
   idleDays: number;
   /** 服务端业务状态 */
   status: PointsTypeConfigStatus;
+  earningPaused?: boolean;
+  orderDefault?: boolean;
 }
 export interface PointsChangeResult {
   /** 幂等操作请求号，重试必须复用 */

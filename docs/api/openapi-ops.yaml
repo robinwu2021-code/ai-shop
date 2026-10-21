@@ -6644,6 +6644,9 @@ components:
         - "ACTIVATE"
         - "DRAIN"
         - "RETIRE"
+        - "PAUSE_EARNING"
+        - "RESUME_EARNING"
+        - "SET_DEFAULT"
       description: "PointsTypeChange 的 action 取值域，按服务端契约校验。"
     PointsFallbackMode:
       type: "string"
@@ -8320,6 +8323,10 @@ components:
         status:
           "$ref": "#/components/schemas/PointsTypeConfigStatus"
           description: "服务端业务状态"
+        earningPaused:
+          type: "boolean"
+        orderDefault:
+          type: "boolean"
       required:
         - "typeCode"
         - "name"

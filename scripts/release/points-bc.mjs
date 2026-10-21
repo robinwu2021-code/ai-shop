@@ -15,7 +15,8 @@ git('diff','--check',base,head);
 const run=(cmd,args,cwd)=>execFileSync(cmd,args,{cwd,stdio:'inherit'});
 if(files.some(file=>file.startsWith('backend/')))
   run('mvn',['-o','-pl','shop-app','-am','-Dmaven.test.skip=true','compile','-q'],'backend');
-for(const app of ['b-app','c-app'])run('npm',['run','type-check'],app);
+for(const app of ['b-app','c-app'])
+  if(files.some(file=>file.startsWith(`${app}/`) || file.startsWith('packages/'))) run('npm',['run','type-check'],app);
 
 
 if(files.some(file=>file.startsWith('ops-web/'))) run('npm',['run','typecheck'],'ops-web');
@@ -25,4 +26,10 @@ if(files.includes('packages/shared/src/utils/points-name.ts')) {
   run('npm',['test','--','tests/points-ledger-api.test.ts','tests/points-account.test.ts','tests/points-order-earning.test.ts','tests/points-quote-api.test.ts'],'c-app');
   run('npm',['test','--','lib/api/points-configuration.test.ts','lib/points-store-access-page.test.ts','lib/points-types-page.test.ts'],'ops-web');
 }
+
+
+if(files.some(file => file.includes('/points/type/') || file.includes('PointsAdministrationService'))) {
+  run('mvn',['-o','-pl','shop-app','-am','-Dtest=PointsOpsConfigurationTest,PointTypeActivationTest,PointsOrderTermsPortTest,AcceptedEarnBudgetTest,PointsDefaultLockOrderTest','-Dsurefire.failIfNoSpecifiedTests=false','test','-q'],'backend');
+}
+if(files.includes('ops-web/app/points/types-tab.tsx')) run('npm',['test','--','lib/points-types-page.test.ts','lib/api/points-configuration.test.ts'],'ops-web');
 console.log(`points-bc scoped checks passed: ${head} (${files.length} files)`);

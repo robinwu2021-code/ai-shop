@@ -17,6 +17,12 @@ public interface PointsConfigurationStore {
 
     void lockTypeAndPool(String typeCode);
 
+    /** Locks the market's types in a stable order before any individual type lock. */
+    void lockMarketTypes(String market);
+
+    /** Changes only future order routing, within the caller's pay transaction. */
+    void setOrderDefault(String typeCode, String market, String actor);
+
     /** Current locking read after the type/pool lock, including under repeatable-read isolation. */
     Map<String, Object> lockRefundPreparation(String preparationNo);
 

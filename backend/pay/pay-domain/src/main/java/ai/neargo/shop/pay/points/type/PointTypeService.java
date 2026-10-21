@@ -18,6 +18,8 @@ public interface PointTypeService {
 
     PointType retire(String typeCode, String actor);
 
+    PointType setDefault(String typeCode, String actor);
+
     @JsonInclude(JsonInclude.Include.NON_NULL)
     record CreateType(String typeCode, String name, String currency, RedeemRate rate) {
         /** Only this command requires exact integer JSON units; never truncate a fractional rate. */

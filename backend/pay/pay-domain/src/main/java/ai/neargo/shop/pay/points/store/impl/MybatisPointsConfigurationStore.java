@@ -96,6 +96,27 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
     }
 
     @Override
+    public void lockMarketTypes(String market) {
+        DataScopeContext.executeWithoutScope(() -> {
+            // SQL ORDER BY + filesort does not guarantee InnoDB lock acquisition order.
+            // Match the explicit type-code order used by global availability switches.
+            mapper.marketTypes(market).stream().sorted().forEach(mapper::lockType);
+            return null;
+        });
+    }
+
+    @Override
+    public void setOrderDefault(String type, String market, String actor) {
+        DataScopeContext.executeWithoutScope(() -> {
+            mapper.clearOrderDefault(market, actor);
+            if (mapper.setOrderDefault(type, market, actor) != 1) {
+                throw new IllegalStateException("POINTS_TYPE_STATE_CONFLICT");
+            }
+            return null;
+        });
+    }
+
+    @Override
     public void changeTypeStatus(
             String type,
             PointType.Status expected,

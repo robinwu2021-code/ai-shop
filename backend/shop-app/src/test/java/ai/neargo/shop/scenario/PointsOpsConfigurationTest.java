@@ -301,6 +301,56 @@ class PointsOpsConfigurationTest {
         assertThat(read.type(code).orElseThrow().rate()).isEqualTo(new RedeemRate(5, 2));
     }
 
+    @Test
+    void temporary_pause_stops_new_grants_but_preserves_redemption_and_replay() {
+        String type = type();
+        fund(type);
+        admin.transition(new TypeChange("ACTIVE:" + type, type, TypeAction.ACTIVATE, "ACTIVATE"), "OPS");
+        var prior = grant(type, "PRIOR", 4);
+        assertThat(earning.grant(prior).grantedPoints()).isEqualTo(4);
+        var pause = new TypeChange("PAUSE:" + type, type, TypeAction.valueOf("PAUSE_EARNING"), "Pause new earning");
+        var receipt = admin.transition(pause, "OPS");
+        assertThat(admin.transition(pause, "OPS")).isEqualTo(receipt);
+        assertThat(read.enabled(new Availability(type, "USER", "STORE", "MERCHANT", "CN", "ONLINE", "H5", Flow.EARN))).isFalse();
+        assertThat(read.enabled(new Availability(type, "USER", "STORE", "MERCHANT", "CN", "ONLINE", "H5", Flow.REDEEM))).isTrue();
+        assertThat(read.type(type).orElseThrow().status()).isEqualTo(ai.neargo.shop.pay.points.model.PointType.Status.ACTIVE);
+        assertThat(earning.grant(prior).grantedPoints()).isEqualTo(4);
+        assertThat(earning.grant(grant(type, "AFTER_PAUSE", 7)).reason()).isEqualTo("POINTS_DISABLED");
+        assertThat(read.type(type).orElseThrow().earningPaused()).isTrue();
+        assertThat(read.account(type, HolderType.USER, "USER").points(Bucket.PENDING)).isEqualTo(4);
+        admin.transition(new TypeChange("RESUME:" + type, type, TypeAction.valueOf("RESUME_EARNING"), "Resume"), "OPS");
+        assertThat(earning.grant(grant(type, "AFTER_RESUME", 7)).grantedPoints()).isEqualTo(7);
+        assertThat(read.type(type).orElseThrow().earningPaused()).isFalse();
+        assertThat(admin.switches(type, 0, 50).rows()).hasSize(1);
+    }
+
+    @Test
+    void explicit_default_switch_is_replayable_and_rejects_inactive_or_foreign_currency_types() {
+        String first = type(), second = type();
+        admin.transition(new TypeChange("ACTIVE:" + first, first, TypeAction.ACTIVATE, "ACTIVATE"), "OPS");
+        var switchDefault = new TypeChange("DEFAULT:" + second, second, TypeAction.valueOf("SET_DEFAULT"), "Switch future orders");
+        assertThatThrownBy(() -> admin.transition(switchDefault, "OPS")).hasMessageContaining("POINTS_TYPE_NOT_ACTIVE");
+        admin.transition(new TypeChange("ACTIVE:" + second, second, TypeAction.ACTIVATE, "ACTIVATE"), "OPS");
+        var receipt = admin.transition(switchDefault, "OPS");
+        assertThat(admin.transition(switchDefault, "OPS")).isEqualTo(receipt);
+        assertThat(admin.orderDefault("CN").typeCode()).isEqualTo(second);
+        assertThat(read.type(second).orElseThrow().orderDefault()).isTrue();
+        assertThat(read.type(first).orElseThrow().orderDefault()).isFalse();
+        assertThat(read.type(first).orElseThrow().status()).isEqualTo(ai.neargo.shop.pay.points.model.PointType.Status.ACTIVE);
+        admin.transition(new TypeChange("PAUSE:" + second, second, TypeAction.valueOf("PAUSE_EARNING"), "Pause"), "OPS");
+        assertThat(admin.orderDefault("CN").typeCode()).isEqualTo(second);
+        assertThat(read.type(second).orElseThrow().orderDefault()).isTrue();
+        assertThat(read.type(first).orElseThrow().orderDefault()).isFalse();
+        String fx = "FX" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+        admin.create(new Create("CREATE:" + fx, new PointTypeService.CreateType(fx, "Foreign " + fx, "AED", new RedeemRate(1, 1)), "FX"), "OPS");
+        admin.transition(new TypeChange("ACTIVE:" + fx, fx, TypeAction.ACTIVATE, "ACTIVATE"), "OPS");
+        assertThatThrownBy(() -> admin.transition(new TypeChange("DEFAULT:" + fx, fx, TypeAction.valueOf("SET_DEFAULT"), "FX"), "OPS"))
+                .hasMessageContaining("POINTS_DEFAULT_CURRENCY_MISMATCH");
+        assertThat(admin.orderDefault("CN").typeCode()).isEqualTo(second);
+        assertThat(read.type(second).orElseThrow().orderDefault()).isTrue();
+        assertThat(read.type(first).orElseThrow().orderDefault()).isFalse();
+    }
+
     private String type() {
         String type = "OC" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
         var request =

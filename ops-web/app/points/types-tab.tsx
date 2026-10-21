@@ -57,8 +57,9 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
     { header: t("兑换积分数量", "Points amount"), numeric: true, cell: (row: PointsTypeConfig) => row.rate.pointsUnit },
     { header: t("抵扣上限", "Deduction cap"), numeric: true, cell: (row: PointsTypeConfig) => `${(row.deductRatioBp / 100).toFixed(2)}%` },
     { header: t("状态", "Status"), cell: (row: PointsTypeConfig) => t(
-      row.status === "DRAFT" ? "草稿" : row.status === "ACTIVE" ? "生效中" : row.status === "DRAINING" ? "清偿中" : "已退役", row.status,
+      row.status === "DRAFT" ? "草稿" : row.status === "ACTIVE" ? (row.earningPaused ? "赠送已暂停" : "生效中") : row.status === "DRAINING" ? "清偿中" : "已退役", row.status,
     ) },
+    { header: t("订单默认", "Order default"), cell: (row: PointsTypeConfig) => row.orderDefault ? t("是", "Yes") : t("否", "No") },
     { header: "", cell: () => <span className="text-muted-foreground">{t("查看详情 →", "View details →")}</span> },
   ];
   const card = "space-y-3 rounded-card border border-border p-4";
@@ -69,7 +70,7 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
       <SectionHeader title={t("积分设置", "Points settings")} summary={types.data?.length ?? 0} className="mb-0" />
       {canEdit && <Button onClick={() => { save.reset(); setCreateOpen(true); }}>{t("新建积分类型", "New points type")}</Button>}
     </div>
-    <Notice>{t("多个积分类型可同时生效，各类型分别划拨、发放和核销。新类型生效后，现有订单默认积分保持不变。", "Multiple points types can be active, with separate allocations, grants and redemptions. Activating a new type preserves the existing order default.")}</Notice>
+    <Notice>{t("多个积分类型可同时生效，各类型分别划拨、发放和核销。新类型生效后，现有订单默认积分保持不变。暂停只停止新增赠送，已有积分仍可抵扣。设为默认只影响后续订单。", "Multiple points types can be active, with separate allocations, grants and redemptions. Activating a new type preserves the existing order default. Pausing only stops new earning; existing points remain redeemable. Changing the default only affects future orders.")}</Notice>
     <DataTable columns={columns} rows={types.data} loading={types.isPending} error={types.error} onRetry={() => void types.refetch()}
       rowKey={(row) => row.typeCode} empty={t("还没有积分类型，请先新建。", "No points types yet. Create one to get started.")}
       emptyAction={canEdit ? <Button size="sm" onClick={() => { save.reset(); setCreateOpen(true); }}>{t("新建积分类型", "New points type")}</Button> : undefined}
@@ -110,18 +111,22 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
           <dt className="text-muted-foreground">{t("兑换积分数量", "Points amount")}</dt><dd>{selected.rate.pointsUnit}</dd>
           <dt className="text-muted-foreground">{t("抵扣上限", "Deduction cap")}</dt><dd>{(selected.deductRatioBp / 100).toFixed(2)}%</dd>
         </dl>
-        <form className="flex flex-wrap items-end gap-3" onSubmit={(event) => {
+        <form key={`${selected.typeCode}:${selected.earningPaused}:${selected.orderDefault}:${selected.status}`} className="flex flex-wrap items-end gap-3" onSubmit={(event) => {
           event.preventDefault(); const form = new FormData(event.currentTarget);
           submit({ kind: "STATE", value: { requestId: "", typeCode: selected.typeCode,
             action: String(form.get("action")) as PointsTypeChange["action"], reason: String(form.get("reason")).trim() } });
         }}>
-          <label>{t("状态流转", "State transition")}<Select name="action" disabled={!canEdit || selected.status === "RETIRED"}>
+          <label>{t("操作", "Action")}<Select name="action" disabled={!canEdit || selected.status === "RETIRED"}>
             {selected.status === "DRAFT" && <option value="ACTIVATE">{t("生效", "Activate")}</option>}
+            {selected.status === "ACTIVE" && <>
+              <option value={selected.earningPaused ? "RESUME_EARNING" : "PAUSE_EARNING"}>{selected.earningPaused ? t("恢复赠送", "Resume earning") : t("暂停赠送", "Pause earning")}</option>
+              {!selected.orderDefault && <option value="SET_DEFAULT">{t("设为订单默认", "Set as order default")}</option>}
+            </>}
             {selected.status === "ACTIVE" && <option value="DRAIN">{t("清偿停用", "Drain")}</option>}
             {selected.status === "DRAINING" && <option value="RETIRE">{t("退役（须全部清偿）", "Retire (all obligations must be cleared)")}</option>}
           </Select></label>
-          <label>{t("原因", "Reason")}<Input dir="auto" name="reason" required disabled={!canEdit} /></label>
-          {canEdit && selected.status !== "RETIRED" && <Button disabled={save.isPending} type="submit">{t("提交状态变更", "Change state")}</Button>}
+          <label>{t("备注", "Remark")}<Input dir="auto" name="reason" required disabled={!canEdit} /></label>
+          {canEdit && selected.status !== "RETIRED" && <Button disabled={save.isPending} type="submit">{t("确认操作", "Confirm action")}</Button>}
         </form>
       </div>}
 

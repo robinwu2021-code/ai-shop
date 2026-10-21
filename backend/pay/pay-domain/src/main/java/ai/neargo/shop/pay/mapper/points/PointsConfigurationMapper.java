@@ -33,15 +33,18 @@ public interface PointsConfigurationMapper {
             @Param("body") String body,
             @Param("actor") String actor);
 
-    @Select("SELECT * FROM pts_point_type WHERE type_code=#{type}")
+    String TYPE_VIEW = "SELECT t.*, EXISTS(SELECT 1 FROM pts_switch s WHERE s.type_code=t.type_code"
+            + " AND s.scope='EARN_TYPE' AND s.scope_no=t.type_code AND s.state='OFF' AND s.deleted=0) AS earning_paused"
+            + " FROM pts_point_type t";
+
+    @Select(TYPE_VIEW + " WHERE t.type_code=#{type}")
     Map<String, Object> type(String type);
 
     @Select(
-            "SELECT * FROM pts_point_type WHERE active_market=#{market} AND status IN"
-                    + " ('ACTIVE','DRAINING')")
+            TYPE_VIEW + " WHERE t.active_market=#{market} AND t.status IN ('ACTIVE','DRAINING')")
     Map<String, Object> activeType(String market);
 
-    @Select("SELECT * FROM pts_point_type ORDER BY id")
+    @Select(TYPE_VIEW + " ORDER BY t.id")
     List<Map<String, Object>> types();
 
     @Select("SELECT * FROM pts_fund_pool WHERE type_code=#{type}")
@@ -361,6 +364,15 @@ public interface PointsConfigurationMapper {
             @Param("type") String type,
             @Param("currency") String currency,
             @Param("actor") String actor);
+
+    @Select("SELECT type_code FROM pts_point_type WHERE market=#{market} ORDER BY type_code")
+    List<String> marketTypes(String market);
+
+    @Update("UPDATE pts_point_type SET active_market=NULL,version=version+1,updated_by=#{actor},updated_at=CURRENT_TIMESTAMP WHERE active_market=#{market}")
+    int clearOrderDefault(@Param("market") String market, @Param("actor") String actor);
+
+    @Update("UPDATE pts_point_type SET active_market=#{market},version=version+1,updated_by=#{actor},updated_at=CURRENT_TIMESTAMP WHERE type_code=#{type} AND market=#{market} AND status='ACTIVE'")
+    int setOrderDefault(@Param("type") String type, @Param("market") String market, @Param("actor") String actor);
 
     @Select("SELECT type_code FROM pts_point_type WHERE type_code=#{type} FOR UPDATE")
     String lockType(String type);
