@@ -179,6 +179,11 @@ public class ResourceBookingServiceImpl implements ResourceBookingService {
             oldPlan = ResourcePlanCodec.decode(creation.getFrozenPayload());
         }
         Map<String, MchResource> roots = lockRoots(scope, frozen, oldPlan, allocations);
+        // An orphan has no trustworthy resource/time identity. Under READ_COMMITTED, inspect committed
+        // entity evidence without taking unrelated roots or mistaking another transaction's partial writes for truth.
+        if (units.hasBookingOrphans(scope)) {
+            throw new IllegalStateException("entity has unreleased orphan allocation evidence");
+        }
         if (oldPlan != null) { verifyAllocations(scope, oldPlan, allocations, roots); }
         if (old != null) {
             old = holds.lockBookingHold(scope, original.ownerNo(), old.getHoldNo());
@@ -197,12 +202,13 @@ public class ResourceBookingServiceImpl implements ResourceBookingService {
         MchBookingHold next = creating ? newHold(scope, original, old, now) : old;
         var changes = new TreeMap<BucketKey, Delta>(Comparator.comparing(BucketKey::resource)
                 .thenComparing(BucketKey::start));
-        if (retiring || confirming) {
-            boolean held = "HELD".equals(old.getStatus());
-            for (var allocation : allocations) {
-                Delta delta = changes.computeIfAbsent(new BucketKey(allocation.resourceNo(), allocation.startAt()),
-                        ignored -> new Delta());
-                if (held) { delta.held -= allocation.qty(); } else { delta.confirmed -= allocation.qty(); }
+        for (var allocation : allocations) {
+            // Lease-only actions also validate every old bucket and all its active parent/count evidence.
+            Delta delta = changes.computeIfAbsent(new BucketKey(allocation.resourceNo(), allocation.startAt()),
+                    ignored -> new Delta());
+            if (retiring || confirming) {
+                if ("HELD".equals(old.getStatus())) { delta.held -= allocation.qty(); }
+                else { delta.confirmed -= allocation.qty(); }
                 if (confirming) { delta.confirmed += allocation.qty(); }
             }
         }
@@ -215,7 +221,8 @@ public class ResourceBookingServiceImpl implements ResourceBookingService {
             }
         }
         Map<BucketKey, MchResourceBucket> locked = new HashMap<>();
-        // Validate every net delta before writing the first count. Root locks also serialize missing buckets.
+        // Validate all touched buckets, including zero deltas, before writing the first count.
+        // Root locks also serialize missing buckets; the entity orphan guard prevents identity reconstruction.
         for (var entry : changes.entrySet()) {
             var key = entry.getKey();
             var bucket = buckets.lockBookingBucket(scope, key.resource(), key.start());
@@ -244,6 +251,7 @@ public class ResourceBookingServiceImpl implements ResourceBookingService {
             locked.put(key, bucket);
         }
         for (var entry : changes.entrySet()) {
+            if (entry.getValue().held == 0 && entry.getValue().confirmed == 0) { continue; }
             var bucket = locked.get(entry.getKey());
             one(buckets.adjustBookingCapacity(scope, bucket.getBucketNo(), bucket.getVersion(),
                     entry.getValue().held, entry.getValue().confirmed, actor(), now));

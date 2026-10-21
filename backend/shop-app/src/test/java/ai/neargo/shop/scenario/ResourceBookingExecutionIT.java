@@ -19,6 +19,8 @@ import ai.neargo.shop.merchant.service.ResourceCommandService.Scope;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Status;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Target;
 import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
+import com.baomidou.mybatisplus.core.incrementer.DefaultIdentifierGenerator;
+import com.baomidou.mybatisplus.core.incrementer.IdentifierGenerator;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
@@ -33,8 +35,10 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -46,6 +50,10 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.ApplicationContext;
@@ -146,6 +154,7 @@ class ResourceBookingExecutionIT {
                     Class.forName("ai.neargo.shop.merchant.service.impl.ResourceSourceAuthorizationServiceImpl"),
                     Class.forName("ai.neargo.shop.merchant.service.impl.ResourceBookingServiceImpl"))
                     .withBean(AuditMetaObjectHandler.class).withBean(Clock.class, () -> clock)
+                    .withBean(IdentifierGenerator.class, () -> new DefaultIdentifierGenerator(1, 1))
                     .withBean(ObjectMapper.class, JsonMapper::new)
                     .withBean(ResourceSourceAuthorityPort.class, () -> source)
                     .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
@@ -478,6 +487,86 @@ class ResourceBookingExecutionIT {
             assertThat(number("SELECT COUNT(*) FROM mch_booking_hold")).isOne();
             assertThat(commands(ctx).find(S, command.commandNo()).orElseThrow().status()).isEqualTo(Status.ACCEPTED);
         });
+    }
+
+    @Test
+    void missingOccupiedBucketCannotBeRecreatedAsNewCapacity() {
+        runner().run(ctx -> {
+            execute(ctx, accept(ctx, S, Action.RESERVE, "A", 0, 1, null, "B"));
+            sql.execute("DELETE FROM mch_resource_bucket WHERE resource_no='B'");
+            var command = accept(ctx, S, Action.RESERVE, "NEW", 0, 1, null, "B");
+            var before = bookingRows();
+            assertThatThrownBy(() -> execute(ctx, command)).isInstanceOf(IllegalStateException.class);
+            assertThat(bookingRows()).isEqualTo(before);
+            assertThat(number("SELECT COUNT(*) FROM mch_resource_bucket")).isZero();
+            assertThat(number("SELECT COUNT(*) FROM mch_booking_hold")).isOne();
+            assertThat(number("SELECT COUNT(*) FROM sys_outbox")).isOne();
+            assertThat(commands(ctx).find(S, command.commandNo()).orElseThrow()).isEqualTo(command);
+        });
+    }
+
+    @ParameterizedTest(name = "{0} refuses {1} without extending the lease or committing effects")
+    @MethodSource("leaseIntegrityCases")
+    void leaseOnlyActionsRequireCompleteBucketAndParentEvidence(Action action, Corruption corruption) {
+        runner().run(ctx -> {
+            execute(ctx, accept(ctx, S, Action.RESERVE, "A", 0, 1, null, "B"));
+            String h = current();
+            if (corruption == Corruption.COUNTER) {
+                sql.execute("UPDATE mch_resource_bucket SET held_qty=0 WHERE resource_no='B'");
+            } else if (corruption == Corruption.MISSING_BUCKET) {
+                sql.execute("DELETE FROM mch_resource_bucket WHERE resource_no='B'");
+            } else {
+                // A separate valid hold becomes corrupt while this target's plan and units remain complete.
+                execute(ctx, accept(ctx, S, Action.RESERVE, "OTHER", 0, 1, null, "C"));
+                String other = sql.queryForObject(
+                        "SELECT current_hold_no FROM mch_booking_owner WHERE source_no='OTHER'", String.class);
+                switch (corruption) {
+                    case MISSING_HOLD -> sql.update("DELETE FROM mch_booking_hold WHERE hold_no=?", other);
+                    case DELETED_HOLD -> sql.update("UPDATE mch_booking_hold SET deleted=1 WHERE hold_no=?", other);
+                    case TERMINAL_HOLD -> sql.update("UPDATE mch_booking_hold SET status='RELEASED',"
+                            + "termination_reason='FIXTURE',terminated_at=NOW() WHERE hold_no=?", other);
+                    default -> throw new AssertionError("unexpected corruption fixture");
+                }
+            }
+            clock.time.set(NOW.plusSeconds(30));
+            var command = accept(ctx, S, action, "A", 1, 2, target(h), "B");
+            var before = bookingRows();
+            assertThatThrownBy(() -> execute(ctx, command)).isInstanceOf(IllegalStateException.class);
+            assertThat(bookingRows()).isEqualTo(before);
+            assertThat(commands(ctx).find(S, command.commandNo()).orElseThrow()).isEqualTo(command);
+        });
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Action.class, names = {"PROTECT", "RENEW"})
+    void leaseOnlySuccessValidatesBucketsWithoutChangingTheirCountersOrVersions(Action action) {
+        runner().run(ctx -> {
+            execute(ctx, accept(ctx, S, Action.RESERVE, "A", 0, 1, null, "B"));
+            var before = sql.queryForList("SELECT * FROM mch_resource_bucket ORDER BY id");
+            clock.time.set(NOW.plusSeconds(30));
+            var result = execute(ctx, accept(ctx, S, action, "A", 1, 2, target(current()), "B"));
+            assertThat(result.status()).isEqualTo(Status.SUCCEEDED);
+            assertThat(sql.queryForList("SELECT * FROM mch_resource_bucket ORDER BY id")).isEqualTo(before);
+            assertThat(number("SELECT lease_revision FROM mch_booking_hold")).isEqualTo(2);
+        });
+    }
+
+    private static Stream<Arguments> leaseIntegrityCases() {
+        return Stream.of(Action.PROTECT, Action.RENEW).flatMap(action ->
+                Stream.of(Corruption.values()).map(corruption -> Arguments.of(action, corruption)));
+    }
+
+    private Map<String, List<Map<String, Object>>> bookingRows() {
+        var rows = new LinkedHashMap<String, List<Map<String, Object>>>();
+        for (String table : List.of("mch_booking_owner", "mch_resource_command", "mch_resource_bucket",
+                "mch_booking_hold", "mch_booking_hold_unit", "sys_outbox")) {
+            rows.put(table, sql.queryForList("SELECT * FROM " + table + " ORDER BY id"));
+        }
+        return rows;
+    }
+
+    private enum Corruption {
+        COUNTER, MISSING_BUCKET, MISSING_HOLD, DELETED_HOLD, TERMINAL_HOLD
     }
 
     @Test

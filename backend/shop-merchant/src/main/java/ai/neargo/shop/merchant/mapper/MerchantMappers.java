@@ -308,6 +308,20 @@ public final class MerchantMappers {
 
     /** 资源持有分配历史明细数据访问；完整仲裁由后续服务编排。 */
     public interface BookingHoldUnitMapper extends BaseMapper<MchBookingHoldUnit> {
+        /** Missing bucket identity cannot be inferred as free; conservatively stop the entity until repair. */
+        @Select("SELECT EXISTS(SELECT 1 FROM mch_booking_hold_unit u LEFT JOIN mch_resource_bucket b "
+                + "ON b.tenant_no=u.tenant_no AND b.entity_no=u.entity_no AND b.bucket_no=u.bucket_no "
+                + "LEFT JOIN mch_booking_hold h ON h.tenant_no=u.tenant_no AND h.entity_no=u.entity_no "
+                + "AND h.hold_no=u.hold_no LEFT JOIN mch_booking_owner o ON o.tenant_no=h.tenant_no "
+                + "AND o.entity_no=h.entity_no AND o.store_no=h.store_no AND o.owner_no=h.owner_no "
+                + "WHERE u.tenant_no=#{scope.tenantNo} AND u.entity_no=#{scope.entityNo} "
+                + "AND u.released_at IS NULL AND (u.deleted<>0 OR b.id IS NULL OR b.deleted<>0 "
+                + "OR h.id IS NULL OR h.deleted<>0 OR h.status NOT IN ('HELD','CONFIRMED') "
+                + "OR o.id IS NULL OR o.deleted<>0 OR o.current_hold_no IS NULL "
+                + "OR o.current_hold_no<>h.hold_no OR o.source_revision<>h.source_revision))")
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        boolean hasBookingOrphans(@Param("scope") ResourceCommandScopeRow scope);
+
         /** Owner root serializes discovery; LEFT JOIN exposes corrupt/deleted parent evidence rather than dropping it. */
         @Select("SELECT u.unit_no,u.version,u.bucket_no,b.resource_no,b.start_at,b.end_at,u.qty,u.source_line_ref,"
                 + "u.deleted FROM mch_booking_hold_unit u LEFT JOIN mch_resource_bucket b "

@@ -1,6 +1,6 @@
 # Task50 BM03 shared atomic capacity implementation report
 
-Status: implemented; native/MySQL and affected-kernel verification results below. Base `7ed33ff72`, worktree `beauty-data`, branch `codex/beauty-foundation`. Implementer self-review only; no subagents/reviewers spawned. Controller owns main TDD/ledger and any independent review.
+Status: original implementation committed as `8cb79f5f7`; review round1 fixes and fresh verification are appended below. The following original-delivery sections retain their historical counts. Base `7ed33ff72`, worktree `beauty-data`, branch `codex/beauty-foundation`. Implementer self-review only; no subagents/reviewers spawned. Controller owns main TDD/ledger and any independent review.
 
 ## Delivered contract and transaction protocol
 
@@ -110,3 +110,39 @@ Cross-store fixture qualification: ScheduleWindowAssembler correctly rejects ove
 9. .superpowers/sdd/beauty-backend/task-50-report.md
 
 Main beauty TDD and progress ledger modifications visible in the shared worktree belong to the controller and are excluded from this commit.
+
+
+## Review fix round1 — Important integrity guards
+
+Review source: `/tmp/review-bm03-capacity.md`, read completely. Review verdict was spec noncompliance / quality Needs fixes. Both Important findings were independently reproduced against `8cb79f5f7` using the actual executor and disposable MySQL before production edits. No reviewers/subagents were spawned by this implementer.
+
+| Severity / issue | Disposition and concrete change | Native regression |
+|---|---|---|
+| Important1: physically missing occupied bucket was recreated with a new number, hiding old unreleased units and manufacturing capacity | Fixed. `BookingHoldUnitMapper.hasBookingOrphans` performs an explicit tenant/entity-scoped EXISTS across all unreleased units, including soft-deleted units and missing/deleted buckets, missing/deleted/terminal hold parents, and missing/deleted/mismatched owner heads. The executor calls it after the complete canonical personnel/resource union is locked and before bucket allocation or effects. A missing resource/time identity is never reconstructed as availability. | `missingOccupiedBucketCannotBeRecreatedAsNewCapacity`: reserveB, delete occupiedB buckets, reserveB at identical times for another owner; failure preserves the full six-table snapshot, original owner/head/hold/outbox, ACCEPTED new command and zero recreated buckets. |
+| Important2: PROTECT/RENEW skipped bucket count/legal-parent checks when their capacity delta was empty | Fixed. Every old allocation inserts its bucket key in the sorted validation map, even with delta0. Missing buckets, capacity facts, all active-unit quantities and legal parents are checked before retaining/extending the claim. Only nonzero deltas execute counter SQL; no bucket count/audit/version writes occur for pure lease actions. | `leaseOnlyActionsRequireCompleteBucketAndParentEvidence`: PROTECT and RENEW × drifted counter, missing bucket, missing/deleted/terminal hold parents (10 native invocations). All preserve the exact six-table snapshot and original ACCEPTED command. |
+| Important2: unchanged counters should not create incidental bucket revisions | Fixed with the same nonzero-delta SQL guard. | `leaseOnlySuccessValidatesBucketsWithoutChangingTheirCountersOrVersions`: both PROTECT and RENEW succeed, advance leaseRevision to2, and preserve every bucket column, including version/audit fields (2 native invocations). |
+| Minor: inaccurate impression of pristine output | Addressed own actionable fixture noise and documented remaining existing fixture/environment warnings precisely below. No global logging/agent flags or unrelated tests were changed. | New executor fixture supplies test-only `DefaultIdentifierGenerator(1,1)` via the existing IdentifierGenerator extension point; real Mappers and database effects remain unchanged. |
+
+The conservative entity guard is intentional and controller-approved: an orphan unit contains only bucketNo, not redundant resource/time identity. It can block otherwise unrelated mutations within the same tenant/entity until that corrupt evidence is repaired/reconciled. The query uses the current READ_COMMITTED committed view and does not acquire unrelated resource/owner locks, so it neither reverses the canonical root order nor sees another transaction's uncommitted intermediate state. Proper owner writers remain atomic under the existing root protocol. No resource-transaction source/RPC, new contract, schema/migration, public HTTP or industry behavior was added.
+
+Fresh RED/GREEN evidence (same Java21/offline isolated-cache wrapper as the original report):
+
+| Phase | Actual output | Log |
+|---|---|---|
+| Review regression RED before fixes | Tests run:46, Failures:9, Errors:0, Skipped:0. Deleted-bucket fresh reserve and 8 lease counter/invalid-parent cases fail because old executor performs the prohibited effects instead of throwing. The 2 existing missing-own-bucket refusals and 2 clean zero-delta assertions already pass. | `/tmp/task50-r1-red.log` |
+| Focused GREEN after fixes | Tests run:46, Failures:0, Errors:0, Skipped:0; foundation17 + executor29; BUILD SUCCESS. | `/tmp/task50-r1-green.log` |
+| Final restored affected shared selection | 215 total (base9 + merchant31 + app175), 214 pass, 1 unchanged baseline ArchitectureTest.noFullyQualifiedReferences failure; booking46 and all other shared-resource tests pass; i18n6 pass; Errors:0, Skipped:0. Combined command exits1 solely for the already-disclosed OpsPointsInspectionController.java:84 annotation, unchanged versus8cb79f5f7. | `/tmp/task50-r1-shared.log` |
+
+The final combined invocation reuses `/tmp/task50-shared.mjs` and the exact same 16-class selection already documented above; only the new parameterized invocations increase counts. No unrelated application suite, production deployment or global release-green claim is made. The original guard-ablation evidence remains `/tmp/task50-ablation-red.log`; this round adds direct pre-fix RED proof for both reviewed guards and fresh post-fix focused/shared verification rather than broadening into unrelated tests.
+
+### Warning characterization
+
+Output is **not pristine**; test-pass counts do not imply absence of fixture/environment warnings.
+
+- Original focused `/tmp/task50-green3.log:588,663` emitted `com.baomidou.mybatisplus.core.toolkit.Sequence — Initialization Sequence Very Slow! Get datacenterId:0 workerId:6`. The fresh focused log has only the preexisting foundation-fixture warning at `/tmp/task50-r1-green.log:588` (`workerId:7`), within the unchanged `ResourceBookingPersistenceIT` fixture; the new `ResourceBookingExecutionIT` fixture no longer initializes the environment-derived ID generator and emits no Sequence warning. Fixed worker/datacenter IDs exist only in this test fixture; production ID allocation was not changed.
+- Original shared `/tmp/task50-shared-green.log:644–646` reported `ClassPathMapperScanner: Skipping MapperFactoryBean ... Bean already defined with the same name!` for `afterSaleItemMapper` (`AfterSaleItemMapper`), `refundExecutionMapper` (`RefundExecutionMapper`) and `shipmentMapper` (`ShipmentMapper`). These occur in existing `ResourceRecoveryFactsIT.actualHostMapperScanWiresBothOwnerReads`, which deliberately loads the actual host `MybatisPlusConfig` in its existing fixture. This round changes neither that fixture nor host mapper scanning. Fresh shared locations: `/tmp/task50-r1-shared.log:604–606`.
+- Original shared `/tmp/task50-shared-green.log:685–690` emitted Mockito inline-mock-maker self-attachment guidance, OpenJDK `Sharing is only supported for boot loader classes because bootstrap classpath has been appended`, and dynamic Java-agent warnings for `/tmp/codex-beauty-bm01-m2/net/bytebuddy/byte-buddy-agent/1.17.8/byte-buddy-agent-1.17.8.jar`, including the future default prohibition. These arise in the existing mocked `MerchantFactsControllerTest`, not native booking tests. No global JVM/pom/agent configuration was changed to hide them. Fresh shared locations: `/tmp/task50-r1-shared.log:645–650`.
+- Existing `ResourceSourceAuthorizationIT.duplicateSourceProvidersPreventStartup` intentionally emits an `AnnotationConfigApplicationContext` refresh-cancel/`BeanCreationException` warning when the source service constructor rejects duplicate providers; that test passes. Fresh shared location: `/tmp/task50-r1-shared.log:845`.
+- Compiler output retains existing annotation-processor discovery and deprecated/unchecked-source notices when reactor modules recompile; no dependency or compiler policy was changed. Other existing shared MyBatis Sequence warnings are environment-derived ID setup in unchanged fixtures; they are not new integrity-test failures.
+
+Self-review checked the missing-identity path before initialize, inclusion of deleted/unreleased evidence, zero-delta validation and skipped SQL writes, explicit tenant/entity conditions, unchanged root lock order, source IO outside the transaction, and exact snapshot assertions. `git diff --check` and SQL portability were rerun after the fixes. Controller TDD/ledger edits remain excluded. This fix commit owns only the executor, booking-unit mapper addition, executor test fixture/regressions, and this appended report.
