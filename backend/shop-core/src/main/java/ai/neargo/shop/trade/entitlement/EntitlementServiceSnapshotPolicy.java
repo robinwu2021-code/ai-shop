@@ -18,18 +18,25 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.TreeMap;
 import java.util.Map;
 import java.util.Set;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
 
-/** The exact original JSON is hashed; technical state/version updates cannot change source facts. */
+/** Source hashes cover JSON content; database object ordering and whitespace are not business facts. */
 public final class EntitlementServiceSnapshotPolicy {
     private EntitlementServiceSnapshotPolicy() { }
     public record FrozenSource(String tenantNo, SourceRef source, String userNo, String entityNo, String storeNo,
             String currency, List<UseItem> items, String storeName, String staffName,
             Map<String, List<String>> categories, Instant performedAt) { }
     public static ServiceOrderSnapshot snapshot(OrdEntServiceOrder row, ObjectMapper json) {
-        if (!hash(row.getSourceSnapshot()).equals(row.getSourceHash())) throw BizException.of(ErrorCode.CONFLICT);
+        // Retain exact-text legacy snapshots; new writes use the database-independent content hash.
+        if (!hash(row.getSourceSnapshot()).equals(row.getSourceHash())
+                && !sourceHash(row.getSourceSnapshot(), json).equals(row.getSourceHash())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
         var source = json.readValue(row.getSourceSnapshot(), FrozenSource.class);
         if (!source.tenantNo().equals(row.getTenantNo()) || !source.userNo().equals(row.getUserNo())
                 || !source.entityNo().equals(row.getEntityNo()) || !source.storeNo().equals(row.getStoreNo())
@@ -51,6 +58,22 @@ public final class EntitlementServiceSnapshotPolicy {
                 row.getDecisionSnapshot() == null ? null
                         : json.readValue(row.getDecisionSnapshot(), DecisionRef.class),
                 row.getDeadline().toInstant(ZoneOffset.UTC), row.getCancellationReason());
+    }
+    public static String sourceHash(String snapshot, ObjectMapper json) {
+        return hash(json.writeValueAsString(normalize(json.readTree(snapshot))));
+    }
+    private static Object normalize(JsonNode node) {
+        if (node.isObject()) {
+            var fields = new TreeMap<String, Object>();
+            node.properties().forEach(entry -> fields.put(entry.getKey(), normalize(entry.getValue())));
+            return fields;
+        }
+        if (node.isArray()) {
+            var values = new ArrayList<Object>();
+            node.forEach(value -> values.add(normalize(value)));
+            return values;
+        }
+        return node;
     }
     public static String orderNo(EntitlementContext ctx, String entity, String key, ObjectMapper json) {
         String digest = hash(json.writeValueAsString(List.of(ctx.tenantNo(), entity, ctx.actorNo(), key)));

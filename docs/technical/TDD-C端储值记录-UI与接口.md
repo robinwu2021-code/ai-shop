@@ -310,3 +310,18 @@ H2新增V543段使用scoped generator生成并追加；全量schema generator受
 环境归属核对：最初唯一储值账户属于尾号8000的线索人档，尚未绑定C账号，与当前尾号8359账号不同；其3笔历史到账没有被错误展示或挪给当前用户。数据库跨历史表排序规则不同，诊断用只读CAST AS BINARY连接，没有修改表结构或业务数据。
 
 自动审批拒绝了尚未获明确授权的测试服务商品创建/上架；未执行该操作。进一步只读核对显示该门店只有水果经营类目，因此将临时增加生活服务、创建上架1分服务商品、测试后下架并恢复原类目作为一组具体配置另行请求授权。等待授权时停用已创建测试方案，不扩大已批准的交易次数或金额。真实小程序截图：`/tmp/consumer-sv-simulator/real-credit-record.png`。
+
+
+### 11.7 全流程授权与MySQL服务快照冲突修复（2026-10-21）
+
+用户已批准临时增加生活服务类目、创建上架一分钱测试服务商品，并在测试后下架、恢复原经营类目。不重复充值。
+
+真实核销预览发现10409：ord_ent_service_order.source_snapshot是MySQL JSON列，写入会改变对象字段顺序和空白；EntitlementServiceSnapshotPolicy原先对JSON原文字节做摘要。只读SQL验证同一对象经JSON转换后原文SHA256不同；当时实际服务单行数为0，预览创建在快照校验失败后回滚，没有扣款。
+
+档位0修复：新增快照内容摘要，只规范JSON对象键排序，不改变数组顺序和标量值。服务单写入和读取采用同一摘要；保留原文字节摘要的兼容校验，不更改源事实、金额、身份或权限。修改EntitlementServiceSnapshotPolicy、EntitlementServiceOrderServiceImpl，新增EntitlementServiceSnapshotJsonTest。红阶段4项中1项正确复现格式转换冲突；金额篡改、数组顺序篡改继续拒绝。
+
+测试环境清理约束：删除经营类目会检查该类目全部商品，包含下架行；因此测试后需将已下架的测试商品行改名为已结束测试、移回原有类目，再恢复门店类目。历史服务单使用冻结项目快照，不随商品后续改名或类目变更。
+
+首次上架正常触发商品审核，使用既有ST-GOODS自动化白名单通过公开审核接口审批本次测试商品，没有关闭审核。联调脚本初次误用auditStatus字段和SELF_PICKUP枚举，已按公开GoodsVO.status、STORE_PICKUP修正；业务代码未为测试放宽校验。清理结果：商品已下架、类目已恢复；业务核销仍等待摘要修复部署后续测。
+
+摘要修复验证：EntitlementServiceSnapshotJsonTest 4/4通过；去掉内容摘要校验消融后格式转换方法1项正确失败，恢复后4/4通过。受影响的StoredValueConsumptionHttpFlowTest 1/1通过；Maven反应堆主/测试源码编译完成。仅验证修复点，未跑全量。

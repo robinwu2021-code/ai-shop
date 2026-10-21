@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
 import static ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy.hash;
+import static ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy.sourceHash;
 import static ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy.orderNo;
 import static ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy.operationNo;
 import static ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy.reference;
@@ -156,7 +157,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         row.setOperationNo(operationNo(no)); row.setEntityNo(entity); row.setStoreNo(storeNo);
         row.setUserNo(userNo); row.setOperatorNo(ctx.actorNo()); row.setRequestKeyHash(hash(key));
         row.setPayloadHash(payload); row.setSourceSnapshot(json.writeValueAsString(frozen));
-        row.setSourceHash(hash(row.getSourceSnapshot())); row.setContextSnapshot(json.writeValueAsString(ctx));
+        row.setSourceHash(sourceHash(row.getSourceSnapshot(), json)); row.setContextSnapshot(json.writeValueAsString(ctx));
         row.setDeadline(LocalDateTime.ofInstant(at.plusSeconds(900), ZoneOffset.UTC));
         row.setCreatedAt(LocalDateTime.ofInstant(at, ZoneOffset.UTC)); row.setUpdatedAt(row.getCreatedAt());
         row.setCreatedBy(ctx.actorNo()); row.setUpdatedBy(ctx.actorNo());
