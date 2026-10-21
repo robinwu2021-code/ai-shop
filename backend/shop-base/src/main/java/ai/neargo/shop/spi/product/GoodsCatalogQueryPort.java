@@ -1,6 +1,7 @@
 package ai.neargo.shop.spi.product;
 
 import java.util.List;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 /** Store-owned management metadata. These facts grant no price, stock or permission to transact. */
 public interface GoodsCatalogQueryPort {
@@ -16,7 +17,8 @@ public interface GoodsCatalogQueryPort {
         throw new UnsupportedOperationException("SKU identity lookup is unavailable");
     }
 
-    record SkuIdentityFact(String skuNo, String goodsNo, String entityNo, String storeNo, long version) { }
+    record SkuIdentityFact(String skuNo, String goodsNo, String entityNo, String storeNo,
+            @JsonDeserialize(using=CatalogRevisionDeserializer.class) long version) { }
 
     GoodsFact getGoods(String entityNo, String storeNo, String goodsNo);
 

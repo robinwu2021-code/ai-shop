@@ -11,6 +11,7 @@ public final class FoodDataScopeRegistration implements DataScopeRegistrar {
     public void register(DataScopeTableRegistry registry) {
         registry.register("fnb_dish", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_dish_option_group", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_config_revision", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_modifier", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_modifier_component", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_option_group", Map.of(ScopeDim.MERCHANT, "entity_no"));

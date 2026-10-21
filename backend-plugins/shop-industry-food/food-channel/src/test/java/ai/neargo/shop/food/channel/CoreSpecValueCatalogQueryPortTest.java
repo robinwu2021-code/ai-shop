@@ -61,6 +61,26 @@ class CoreSpecValueCatalogQueryPortTest {
         } finally { server.stop(0); }
     }
 
+    @Test void fractionalWireRevisionsAreRejectedBeforeTheyCanBeFrozen() throws Exception {
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext(SpecValueCatalogInternalApi.BATCH_PATH, ex -> {
+            byte[] bytes = ("[{\"valueNo\":\"V\",\"dimNo\":\"D\",\"label\":\"半糖\",\"dimName\":\"糖度\","
+                    + "\"valueType\":\"ENUM\",\"usageType\":\"PROP\",\"valueScope\":\"PLATFORM\","
+                    + "\"valueEntityNo\":null,\"dimScope\":\"PLATFORM\",\"dimEntityNo\":null,"
+                    + "\"valueVersion\":2.5,\"dimVersion\":1}]").getBytes(StandardCharsets.UTF_8);
+            ex.getResponseHeaders().set("Content-Type", "application/json");
+            ex.sendResponseHeaders(200, bytes.length); ex.getResponseBody().write(bytes); ex.close();
+        });
+        server.start();
+        try {
+            new ApplicationContextRunner().withUserConfiguration(FoodCatalogClientConfiguration.class)
+                    .withPropertyValues("shop.food.enabled=true", "shop.services.internal-token=wire",
+                            "shop.services.targets.PLATFORM=http://127.0.0.1:" + server.getAddress().getPort())
+                    .run(c -> assertThatThrownBy(() -> c.getBean(SpecValueCatalogQueryPort.class)
+                            .getValues("E", List.of("V"))).isInstanceOf(ServiceCallException.class));
+        } finally { server.stop(0); }
+    }
+
     @Test void refusesNullExtraDuplicateAndIndependentlyForeignScopeFacts() {
         var normal = fact("V", "PLATFORM", "PLATFORM", "PLATFORM", "PLATFORM");
         for (List<SpecValueFact> response : Arrays.asList(null, Arrays.asList((SpecValueFact) null),

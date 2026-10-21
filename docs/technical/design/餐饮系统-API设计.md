@@ -1066,6 +1066,31 @@
 | status | string | 是 | DRAFT或ACTIVE或DISABLED |
 | data | ModifierConfigData | 是 | 管理定义 |
 
+### PublishConfigReq
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| version | int64 | 是 | 工作头CAS整数 |
+| effectiveAt | datetime | 是 | 带时区毫秒精度 |
+| approvalRef | string | 否 | 审批业务引用 |
+
+### ConfigRevisionContent
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| publication | ConfigRevision | 是 | 修订元数据 |
+| definitionSnapshot | string | 是 | 仅内部读取的完整JSON冻结文档 |
+
+### PublicationDependency
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| revisionNo | string | 是 | 依赖修订 |
+| configKind | string | 是 | 类型 |
+| configNo | string | 是 | 对象 |
+| revision | int64 | 是 | 单调修订 |
+| contentHash | string | 是 | 规范摘要 |
+
 ## 四、逐接口输入输出
 
 ### FOOD-API-001 · 查询营业策略
@@ -1311,9 +1336,9 @@
 
 `POST /biz/x/food/stores/{storeNo}/option-groups/{configNo}:publish`
 
-权限与守卫：CAS草稿头及完整聚合校验；冻结依赖发布版本和definition；发布内容不可改，客户端不可自填已发布凭据。
+权限与守卫：已实现；原GOODS及门店目录权限，主体共享头；完整聚合及可满足性校验；按门店和父生效时点冻结不可变依赖；事务外原SKU/规格权威预读，锁头重验一致；CAS/幂等/审计/Outbox原子；禁止历史回填。
 
-能力依赖：餐饮新增。
+能力依赖：已实现OPTION_GROUP/MODIFIER配置发布；不授予价格库存或可售权限。
 
 路径输入：
 
@@ -1326,9 +1351,9 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| version | int64 | 是 | 草稿版本 |
-| effectiveAt | datetime | 是 | 生效时刻 |
-| approvalRef | string | 否 | 审批 |
+| version | int64 | 是 | 工作头CAS |
+| effectiveAt | datetime | 是 | 带时区毫秒精度生效时刻 |
+| approvalRef | string | 否 | 审批业务引用 |
 
 成功输出（data）：
 
@@ -4425,9 +4450,9 @@
 
 `GET /biz/x/food/config-revisions`
 
-权限与守卫：主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id。
+权限与守卫：已实现；原GOODS及可信当前门店；主体与冻结门店范围过滤先于分页；status按查询时点派生，不使用可变工作头指针作为发布权威。
 
-能力依赖：餐饮新增。
+能力依赖：已实现OPTION_GROUP/MODIFIER发布历史；完整快照读取及按时点解析为内部typed契约。
 
 请求Query：
 
@@ -4480,9 +4505,9 @@
 
 `POST /biz/x/food/modifiers/{modifierNo}:publish`
 
-权限与守卫：主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；递归检查循环及计量，冻结成员版本。
+权限与守卫：已实现；原GOODS及门店目录权限，主体共享头；完整聚合及可满足性校验；按门店和父生效时点冻结不可变依赖；事务外原SKU/规格权威预读，锁头重验一致；CAS/幂等/审计/Outbox原子；禁止历史回填。
 
-能力依赖：餐饮新增。
+能力依赖：已实现OPTION_GROUP/MODIFIER配置发布；不授予价格库存或可售权限。
 
 路径输入：
 
@@ -4494,8 +4519,9 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| version | int64 | 是 | 草稿版 |
-| effectiveAt | datetime | 是 | 生效 |
+| version | int64 | 是 | 工作头CAS |
+| effectiveAt | datetime | 是 | 带时区毫秒精度生效时刻 |
+| approvalRef | string | 否 | 审批业务引用 |
 
 成功输出（data）：
 

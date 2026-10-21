@@ -6,6 +6,8 @@ import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.OptionGroupService;
 import ai.neargo.shop.food.service.ModifierService;
+import ai.neargo.shop.food.service.ConfigRevisionService;
+import ai.neargo.shop.food.spi.ConfigRevisionInternalApi;
 import ai.neargo.shop.food.spi.ModifierInternalApi;
 import ai.neargo.shop.food.spi.OptionGroupInternalApi;
 import ai.neargo.shop.food.spi.DishInternalApi;
@@ -39,6 +41,13 @@ import org.springframework.context.annotation.Profile;
 @Conditional(PolicyEnabled.class)
 @Profile({"api", "ops"})
 public class FoodClientConfiguration {
+    @Bean
+    @ConditionalOnMissingBean(ConfigRevisionService.class)
+    ConfigRevisionService remoteConfigRevisionService(InternalHttp http) {
+        return new RemoteConfigRevisionService(http.client(ServiceName.FOOD, ConfigRevisionInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
+
     @Bean
     @ConditionalOnMissingBean(ModifierService.class)
     ModifierService remoteModifierService(InternalHttp http) {

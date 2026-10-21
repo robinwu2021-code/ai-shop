@@ -5,6 +5,7 @@ import ai.neargo.shop.food.entity.FnbDish;
 import ai.neargo.shop.food.entity.FnbDishOptionGroup;
 import ai.neargo.shop.food.entity.FnbOptionGroup;
 import ai.neargo.shop.food.entity.FnbModifier;
+import ai.neargo.shop.food.entity.FnbConfigRevision;
 import ai.neargo.shop.food.entity.FnbModifierComponent;
 import ai.neargo.shop.food.entity.FnbOptionGroupItem;
 
@@ -24,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
@@ -45,6 +47,23 @@ public final class FoodMappers {
         @Delete("DELETE FROM fnb_option_group_item WHERE entity_no=#{entity} AND group_no=#{group}")
         int replaceDraftRows(@Param("entity") String entity, @Param("group") String group);
     }
+    /** No generic update/delete API is exposed for publication facts. */
+    public interface ConfigRevisionMapper {
+        @Select("SELECT * FROM fnb_config_revision WHERE entity_no=#{entity} AND config_kind=#{kind} "
+                + "AND config_no=#{number} AND deleted=0 ORDER BY revision DESC")
+        List<FnbConfigRevision> findObject(@Param("entity") String entity, @Param("kind") String kind,
+                @Param("number") String number);
+        @Select("SELECT * FROM fnb_config_revision WHERE entity_no=#{entity} AND revision_no=#{number} AND deleted=0")
+        FnbConfigRevision findRevision(@Param("entity") String entity, @Param("number") String number);
+        @Insert("INSERT INTO fnb_config_revision(entity_no,created_at,created_by,updated_at,updated_by,"
+                + "revision_no,config_kind,config_no,revision,content_schema,definition_snapshot,content_hash,"
+                + "effective_at,status,previous_revision_no,scope_store_nos) VALUES(#{entityNo},CURRENT_TIMESTAMP(3),"
+                + "#{createdBy},CURRENT_TIMESTAMP(3),#{createdBy},#{revisionNo},#{configKind},#{configNo},#{revision},"
+                + "#{contentSchema},#{definitionSnapshot},#{contentHash},#{effectiveAt},#{status},"
+                + "#{previousRevisionNo},#{scopeStoreNos})")
+        int append(FnbConfigRevision row);
+    }
+
     public interface ModifierMapper extends BaseMapper<FnbModifier> { }
     public interface ModifierComponentMapper extends BaseMapper<FnbModifierComponent> {
         // Replace only the editable composition, never a published revision or transaction fact.

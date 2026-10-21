@@ -84,6 +84,24 @@ class FoodIdempotencyTest extends FoodWriteGuardFixture {
         });
     }
 
+    @Test void completedLookupNeverClaimsWorkAndPreservesActorFingerprintAndIncompleteGuards() {
+        runner().run(context -> {
+            var f = prepare(context); var idem = context.getBean(IdempotencyService.class);
+            assertThat(idem.findCompleted("key", "FOOD:fixture:E:A", "actor", "hash", String.class)).isEmpty();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_idempotent", Integer.class)).isZero();
+            f.tx().execute(status -> idem.execute("key", "FOOD:fixture:E:A", "actor", "hash", String.class, () -> "first"));
+            assertThat(idem.findCompleted("key", "FOOD:fixture:E:A", "actor", "hash", String.class)).contains("first");
+            assertThat(idem.findCompleted("key", "FOOD:fixture:E:B", "actor", "hash", String.class)).isEmpty();
+            assertThatThrownBy(() -> idem.findCompleted("key", "FOOD:fixture:E:A", "another", "hash", String.class))
+                    .isInstanceOfSatisfying(BizException.class, e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.NOT_FOUND));
+            assertThatThrownBy(() -> idem.findCompleted("key", "FOOD:fixture:E:A", "actor", "changed", String.class))
+                    .isInstanceOfSatisfying(BizException.class, e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+            f.sql().update("UPDATE sys_idempotent SET result_json=NULL");
+            assertThatThrownBy(() -> idem.findCompleted("key", "FOOD:fixture:E:A", "actor", "hash", String.class))
+                    .isInstanceOf(IdempotencyService.ConcurrentRequestException.class);
+        });
+    }
+
     @Configuration(proxyBeanMethods = false)
     static class ExistingPlatform {
         @Bean MapperFactoryBean<SysIdempotentMapper> existingSysIdempotentMapper(

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
@@ -66,6 +67,22 @@ public class IdempotencyService {
         return result;
     }
 
+    /**
+     * Reads a completed non-null receipt without claiming work, locking, or invoking a command.
+     * Recovery must not depend on mutable drafts or remote services still accepting the original command.
+     * A concurrent first attempt may still be absent; callers must retain transactional execute afterwards.
+     */
+    public <T> Optional<T> findCompleted(String idemKey, String endpoint, String userNo, String requestHash,
+            Class<T> type) {
+        if (idemKey == null || idemKey.isBlank()) return Optional.empty();
+        SysIdempotent existing = mapper.selectOne(Wrappers.<SysIdempotent>lambdaQuery()
+                .eq(SysIdempotent::getIdemKey, idemKey).eq(SysIdempotent::getEndpoint, endpoint));
+        if (existing == null) return Optional.empty();
+        T value = completedResult(existing, userNo, requestHash, type);
+        if (value == null) throw new IllegalStateException("completed receipt must be non-null");
+        return Optional.of(value);
+    }
+
     private <T> T replay(String idemKey, String endpoint, String userNo, String requestHash, Class<T> type) {
         SysIdempotent existing = mapper.selectOne(Wrappers.<SysIdempotent>lambdaQuery()
                 .eq(SysIdempotent::getIdemKey, idemKey)
@@ -73,6 +90,10 @@ public class IdempotencyService {
         if (existing == null) {
             throw new ConcurrentRequestException();
         }
+        return completedResult(existing, userNo, requestHash, type);
+    }
+
+    private <T> T completedResult(SysIdempotent existing, String userNo, String requestHash, Class<T> type) {
         if (!Objects.equals(existing.getUserNo(), userNo)) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }

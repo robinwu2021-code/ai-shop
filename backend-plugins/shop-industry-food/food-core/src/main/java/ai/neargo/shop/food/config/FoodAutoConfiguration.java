@@ -17,6 +17,9 @@ import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.OptionGroupService;
 import ai.neargo.shop.food.service.ModifierService;
+import ai.neargo.shop.food.service.ConfigRevisionService;
+import ai.neargo.shop.food.service.impl.ConfigRevisionServiceImpl;
+import ai.neargo.shop.food.mapper.FoodMappers.ConfigRevisionMapper;
 import ai.neargo.shop.food.service.impl.ModifierServiceImpl;
 import ai.neargo.shop.food.mapper.FoodMappers.ModifierComponentMapper;
 import ai.neargo.shop.food.service.impl.OptionGroupServiceImpl;
@@ -58,6 +61,30 @@ import tools.jackson.databind.ObjectMapper;
 @ConditionalOnFoodEnabled
 @EnableConfigurationProperties(FoodProperties.class)
 public class FoodAutoConfiguration {
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(ConfigRevisionService.class)
+    ConfigRevisionService configRevisionService(ConfigRevisionMapper revisions, ModifierMapper modifiers,
+            ModifierComponentMapper components, OptionGroupMapper groups, OptionGroupItemMapper items,
+            ActionLogMapper actions, IdempotencyService idem,
+            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
+            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            ObjectProvider<GoodsCatalogQueryPort> goods, ObjectProvider<SpecValueCatalogQueryPort> specs) {
+        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
+            @Override public SkuIdentityFact getSku(String entity, String store, String sku) {
+                return goods.getObject().getSku(entity, store, sku);
+            }
+            @Override public GoodsFact getGoods(String entity, String store, String number) {
+                return goods.getObject().getGoods(entity, store, number);
+            }
+            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
+                return goods.getObject().getGoodsBatch(entity, store, numbers);
+            }
+        };
+        return new ConfigRevisionServiceImpl(revisions, modifiers, components, groups, items, actions, idem,
+                publisher, json, manager, catalog, (entity, numbers) -> specs.getObject().getValues(entity, numbers));
+    }
+
     @Bean
     @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
     @ConditionalOnMissingBean(ModifierService.class)

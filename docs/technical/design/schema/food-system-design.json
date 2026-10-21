@@ -6823,10 +6823,10 @@
       "name": "发布option-groups",
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/option-groups/{configNo}:publish",
-      "input": "version:int64:草稿版本;effectiveAt:datetime:生效时刻;approvalRef?:string:审批",
+      "input": "version:int64:工作头CAS;effectiveAt:datetime:带时区毫秒精度生效时刻;approvalRef?:string:审批业务引用",
       "output": "publication:ConfigRevision:冻结发布修订",
-      "guard": "CAS草稿头及完整聚合校验；冻结依赖发布版本和definition；发布内容不可改，客户端不可自填已发布凭据",
-      "needs": "餐饮新增"
+      "guard": "已实现；原GOODS及门店目录权限，主体共享头；完整聚合及可满足性校验；按门店和父生效时点冻结不可变依赖；事务外原SKU/规格权威预读，锁头重验一致；CAS/幂等/审计/Outbox原子；禁止历史回填",
+      "needs": "已实现OPTION_GROUP/MODIFIER配置发布；不授予价格库存或可售权限"
     },
     {
       "id": "FOOD-API-010",
@@ -7991,8 +7991,8 @@
       "path": "/biz/x/food/config-revisions",
       "input": "configKind:string:受控类型;configNo:string:配置号;page?:int32:默认1;size?:int32:默认20最大100",
       "output": "records:ConfigRevision[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
-      "needs": "餐饮新增"
+      "guard": "已实现；原GOODS及可信当前门店；主体与冻结门店范围过滤先于分页；status按查询时点派生，不使用可变工作头指针作为发布权威",
+      "needs": "已实现OPTION_GROUP/MODIFIER发布历史；完整快照读取及按时点解析为内部typed契约"
     },
     {
       "id": "FOOD-API-116",
@@ -8011,10 +8011,10 @@
       "name": "配料组合发布",
       "method": "POST",
       "path": "/biz/x/food/modifiers/{modifierNo}:publish",
-      "input": "version:int64:草稿版;effectiveAt:datetime:生效",
+      "input": "version:int64:工作头CAS;effectiveAt:datetime:带时区毫秒精度生效时刻;approvalRef?:string:审批业务引用",
       "output": "publication:ConfigRevision:发布快照",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；递归检查循环及计量，冻结成员版本",
-      "needs": "餐饮新增"
+      "guard": "已实现；原GOODS及门店目录权限，主体共享头；完整聚合及可满足性校验；按门店和父生效时点冻结不可变依赖；事务外原SKU/规格权威预读，锁头重验一致；CAS/幂等/审计/Outbox原子；禁止历史回填",
+      "needs": "已实现OPTION_GROUP/MODIFIER配置发布；不授予价格库存或可售权限"
     },
     {
       "id": "FOOD-API-118",
@@ -8503,7 +8503,10 @@
     "ModifierComponentInput": "memberNo:string:单项配料业务号;quantity:decimal:正组合份数DECIMAL12,3",
     "ModifierComponentVO": "componentNo:string:服务端生成明细业务号;memberNo:string:单项配料;quantity:decimal:每组合份数",
     "ModifierConfigData": "name:string:名称;salesSkuNo?:string:原计价SKU;publishedRevisionNo?:string:已有发布引用;components:ModifierComponentVO[]:当前工作成员",
-    "ModifierConfigVO": "configNo:string:配料业务号;kind:string:ADDON或COMBO;version:int64:工作头CAS;status:string:DRAFT或ACTIVE或DISABLED;data:ModifierConfigData:管理定义"
+    "ModifierConfigVO": "configNo:string:配料业务号;kind:string:ADDON或COMBO;version:int64:工作头CAS;status:string:DRAFT或ACTIVE或DISABLED;data:ModifierConfigData:管理定义",
+    "PublishConfigReq": "version:int64:工作头CAS整数;effectiveAt:datetime:带时区毫秒精度;approvalRef?:string:审批业务引用",
+    "ConfigRevisionContent": "publication:ConfigRevision:修订元数据;definitionSnapshot:string:仅内部读取的完整JSON冻结文档",
+    "PublicationDependency": "revisionNo:string:依赖修订;configKind:string:类型;configNo:string:对象;revision:int64:单调修订;contentHash:string:规范摘要"
   },
   "commonFields": [
     [

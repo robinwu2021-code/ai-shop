@@ -4,6 +4,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import java.util.HashSet;
 import java.util.List;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 /** Original dictionary identity facts; neither category templates nor restaurant sale authorization. */
 public interface SpecValueCatalogQueryPort {
@@ -13,7 +14,8 @@ public interface SpecValueCatalogQueryPort {
     /** Preserves both ownership axes and revisions without inventing product, price or unit authority. */
     record SpecValueFact(String valueNo, String dimNo, String label, String dimName, String valueType,
             String usageType, String valueScope, String valueEntityNo, String dimScope, String dimEntityNo,
-            long valueVersion, long dimVersion) { }
+            @JsonDeserialize(using=CatalogRevisionDeserializer.class) long valueVersion,
+            @JsonDeserialize(using=CatalogRevisionDeserializer.class) long dimVersion) { }
 
     /** The same bounded identity contract is enforced locally, before remote calls and after token validation. */
     static void validateLookup(String entity, List<String> numbers) {
