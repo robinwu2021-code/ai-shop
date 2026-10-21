@@ -74,6 +74,20 @@ def main():
             if int(guard.attrib['tests']) < minimum or any(int(guard.attrib[k]) for k in ['failures', 'errors', 'skipped']):
                 raise RuntimeError('Expected executed write guards: ' + name)
             guards += int(guard.attrib['tests'])
+        with tempfile.NamedTemporaryFile(prefix='food-spec-authority-tests-', suffix='.log', delete=False) as spec_log:
+            spec_result = subprocess.run(['mvn', '-o', '-f', 'backend/pom.xml', '-pl', 'shop-core', '-am',
+                                          'test', '-Dtest=SpecValueCatalogQueryPortTest',
+                                          '-Dsurefire.failIfNoSpecifiedTests=false'], cwd=ROOT, env=env,
+                                         stdout=spec_log, stderr=subprocess.STDOUT)
+        print('Original spec authority log:', spec_log.name)
+        spec_report = ROOT / 'backend/shop-core/target/surefire-reports/TEST-ai.neargo.shop.product.SpecValueCatalogQueryPortTest.xml'
+        if spec_result.returncode != 0:
+            print('\n'.join(Path(spec_log.name).read_text().splitlines()[-45:]))
+            raise RuntimeError('Original spec authority MySQL test failed')
+        spec = ET.parse(spec_report).getroot()
+        if int(spec.attrib['tests']) < 4 or any(int(spec.attrib[k]) for k in ['failures', 'errors', 'skipped']):
+            raise RuntimeError('Expected executed original spec authority guards')
+        print('Original spec authority MySQL:', spec.attrib['tests'], 'passed; no skipped tests')
         print('Food primary MySQL:', suite.attrib['tests'], '+ guards', guards,
               '+ standalone', int(server.attrib['tests']) + int(dish.attrib['tests']) + int(group.attrib['tests']), 'passed; no skipped tests')
     finally:

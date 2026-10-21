@@ -19,6 +19,8 @@ import ai.neargo.shop.food.server.FoodApplication;
 import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.spi.DishInternalApi;
 import ai.neargo.shop.spi.product.GoodsCatalogInternalApi;
+import ai.neargo.shop.spi.product.SpecValueCatalogInternalApi;
+import ai.neargo.shop.spi.product.SpecValueCatalogQueryPort;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.ServiceName;
 import ai.neargo.svc.client.ServiceCallException;
@@ -94,6 +96,20 @@ class FoodDishPrimaryDatabaseTest {
             ex.getResponseHeaders().add("Content-Type","application/json");
             ex.sendResponseHeaders(200,response.length);ex.getResponseBody().write(response);ex.close();
         });
+        var specCalls = new AtomicInteger();
+        server.createContext(SpecValueCatalogInternalApi.BATCH_PATH, ex -> {
+            specCalls.incrementAndGet();
+            assertThat(ex.getRequestHeaders().getFirst(InternalHttp.TOKEN_HEADER)).isEqualTo("wire");
+            assertThat(new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8))
+                    .contains("\"entityNo\":\"E\"", "\"valueNos\":[\"V\"]");
+            byte[] response = """
+                    [{"valueNo":"V","dimNo":"D","label":"半糖","dimName":"糖度",
+                      "valueType":"ENUM","usageType":"PROP","valueScope":"MERCHANT","valueEntityNo":"E",
+                      "dimScope":"PLATFORM","dimEntityNo":"PLATFORM","valueVersion":2,"dimVersion":1}]
+                    """.getBytes(StandardCharsets.UTF_8);
+            ex.getResponseHeaders().set("Content-Type", "application/json");
+            ex.sendResponseHeaders(200, response.length); ex.getResponseBody().write(response); ex.close();
+        });
         server.start();
         try {
             String url = adminUrl.replace("/mysql", "/" + database);
@@ -112,7 +128,10 @@ class FoodDishPrimaryDatabaseTest {
                                     + "DataRedisAutoConfiguration,org.springframework.boot.data.redis.autoconfigure."
                                     + "DataRedisRepositoriesAutoConfiguration")
                     .run(c -> {
-                        assertThat(c).hasNotFailed().hasSingleBean(DishService.class);
+                        assertThat(c).hasNotFailed().hasSingleBean(DishService.class)
+                                .hasSingleBean(SpecValueCatalogQueryPort.class);
+                        assertThat(c.getBean(SpecValueCatalogQueryPort.class).getValues("E", List.of("V")))
+                                .extracting(value -> value.label()).containsExactly("半糖");
                         var mvc = MockMvcBuilders.webAppContextSetup(c)
                                 .addFilters(c.getBean(FilterChainProxy.class)).build();
                         mvc.perform(post(DishInternalApi.SAVE_PATH).contentType(MediaType.APPLICATION_JSON)
@@ -193,6 +212,7 @@ class FoodDishPrimaryDatabaseTest {
                         }
                     });
             assertThat(calls.get()).isEqualTo(7);
+            assertThat(specCalls).hasValue(1);
         } finally {
             server.stop(0);
             executor.shutdownNow();

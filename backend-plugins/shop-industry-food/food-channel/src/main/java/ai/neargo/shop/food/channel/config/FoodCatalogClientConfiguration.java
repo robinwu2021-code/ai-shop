@@ -1,6 +1,9 @@
 package ai.neargo.shop.food.channel.config;
 
 import ai.neargo.shop.food.channel.port.CoreGoodsCatalogQueryPortImpl;
+import ai.neargo.shop.food.channel.port.CoreSpecValueCatalogQueryPortImpl;
+import ai.neargo.shop.spi.product.SpecValueCatalogInternalApi;
+import ai.neargo.shop.spi.product.SpecValueCatalogQueryPort;
 import ai.neargo.shop.spi.product.GoodsCatalogInternalApi;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import ai.neargo.shop.svc.ConfigServiceLocator;
@@ -21,6 +24,17 @@ import org.springframework.context.annotation.Lazy;
 @EnableConfigurationProperties(ConfigServiceLocator.class)
 @Import(InternalHttp.class)
 public class FoodCatalogClientConfiguration {
+    @Bean
+    @Lazy
+    SpecValueCatalogInternalApi specValueCatalogInternalApi(InternalHttp http) {
+        return http.client(ServiceName.PLATFORM, SpecValueCatalogInternalApi.class, Duration.ofSeconds(5));
+    }
+
+    @Bean
+    SpecValueCatalogQueryPort coreSpecValueCatalogQueryPort(ObjectProvider<SpecValueCatalogInternalApi> api) {
+        return new CoreSpecValueCatalogQueryPortImpl(api::getObject);
+    }
+
     @Bean
     @Lazy
     GoodsCatalogInternalApi goodsCatalogInternalApi(InternalHttp http) {

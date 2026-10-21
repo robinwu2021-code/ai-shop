@@ -10942,6 +10942,31 @@
         "transport": "现有类型化内部通信；提供方实现前不注册运行时路由",
         "queryRecovery": "用原requestKey/operationRef查询UNKNOWN；不可另起业务键重发",
         "precisionRule": "仅权威明确支持的单位和精度可交易；库存当前int协议不足以承接克重，不截断、不用换小单位规避成本精度"
+      },
+      "specValues": {
+        "implementation": "IMPLEMENTED_IDENTITY_ONLY",
+        "authority": "PLATFORM original product/spec dictionary",
+        "inputDto": "SpecValueCatalogInternalApi.BatchLookup",
+        "outputDto": "SpecValueCatalogQueryPort.SpecValueFact[]",
+        "required": [
+          "entityNo",
+          "valueNos",
+          "valueScope/valueEntityNo",
+          "dimScope/dimEntityNo",
+          "valueVersion/dimVersion"
+        ],
+        "errors": [
+          "BAD_REQUEST",
+          "FORBIDDEN",
+          "NOT_FOUND",
+          "CONFLICT",
+          "UNAVAILABLE"
+        ],
+        "transport": "POST /internal/product/catalog/spec-values/batch；原service-token及typed PLATFORM；无自动重试或失败回退",
+        "queryRecovery": "纯只读查询，无写入UNKNOWN；权威不可用时失败，不伪造空数组",
+        "ownershipRule": "原规格值与维度分别校验PLATFORM或当前主体MERCHANT、ACTIVE及逻辑删除，合并值拒绝；不提供类目模板、餐饮可选或可售授权",
+        "widthBoundary": "原valueNo64完整保留；旧餐饮条目字段32的写入兼容须在API019实施时单独解决，不截断",
+        "receipt": "docs/technical/TDD-餐饮系统-CAT-04B-规格值权威读取实施.md"
       }
     },
     "configurationSlice": {

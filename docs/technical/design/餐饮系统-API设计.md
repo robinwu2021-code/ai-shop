@@ -5772,5 +5772,6 @@ Catalog.goodsMetadata已实现为GoodsCatalogQueryPort及typed内部查询；其
 |---|---|---|---|---|
 | pricing / PLATFORM product/quote | ChannelQuoteReq | ChannelQuoteResult | PENDING | BAD_REQUEST/FORBIDDEN/NOT_FOUND/CONFLICT/UNAVAILABLE/UNKNOWN；用原requestKey/operationRef查询UNKNOWN；不可另起业务键重发 |
 | inventory / INVENTORY | MaterialConsumptionReq | MaterialConsumptionResult | PENDING | BAD_REQUEST/FORBIDDEN/NOT_FOUND/CONFLICT/UNAVAILABLE/UNKNOWN；用原requestKey/operationRef查询UNKNOWN；不可另起业务键重发 |
+| specValues / PLATFORM original product/spec dictionary | SpecValueCatalogInternalApi.BatchLookup | SpecValueCatalogQueryPort.SpecValueFact[] | IMPLEMENTED_IDENTITY_ONLY | BAD_REQUEST/FORBIDDEN/NOT_FOUND/CONFLICT/UNAVAILABLE；纯只读查询，无写入UNKNOWN；权威不可用时失败，不伪造空数组 |
 
 Keeta：首批规划渠道，按用户决定暂不接入；不注册真实适配器或同步任务。真实报价和库存合同未验收前，增强交易保持关闭。
