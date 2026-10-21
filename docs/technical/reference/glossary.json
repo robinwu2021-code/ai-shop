@@ -37093,6 +37093,21 @@
         "module": "shop-core"
       },
       {
+        "name": "Action",
+        "values": [
+          "RESERVE",
+          "PROTECT",
+          "CONFIRM",
+          "RENEW",
+          "RELEASE",
+          "EXPIRE",
+          "RECONCILE",
+          "REPLACE"
+        ],
+        "zh": "Existing booking actions only; occupation actions require their own future contract.",
+        "module": "shop-merchant"
+      },
+      {
         "name": "ActivationAction",
         "values": [
           "NONE",
@@ -38491,6 +38506,16 @@
         ],
         "zh": "",
         "module": "shop-core"
+      },
+      {
+        "name": "Status",
+        "values": [
+          "ACCEPTED",
+          "SUCCEEDED",
+          "REJECTED"
+        ],
+        "zh": "Terminal journal outcomes do not describe the current lifecycle state of a hold.",
+        "module": "shop-merchant"
       },
       {
         "name": "StoreActivityType",

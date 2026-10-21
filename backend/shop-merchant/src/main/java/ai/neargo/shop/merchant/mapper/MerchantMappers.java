@@ -4,6 +4,7 @@ import ai.neargo.shop.merchant.dto.PersonnelAssignmentFactRow;
 import ai.neargo.shop.merchant.dto.PersonnelPositionFactRow;
 import ai.neargo.shop.merchant.dto.PersonnelQualificationFactRow;
 import ai.neargo.shop.merchant.dto.ResourceFactRow;
+import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
 import ai.neargo.shop.merchant.dto.ScheduleRuleFactRow;
 import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.entity.MchBookingOwner;
@@ -26,11 +27,13 @@ import ai.neargo.shop.merchant.entity.MchScheduleChangeLog;
 import ai.neargo.shop.merchant.entity.MchScheduleRule;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -51,10 +54,126 @@ public final class MerchantMappers {
 
     /** 稳定资源仲裁归属数据访问；完整仲裁由后续服务编排。 */
     public interface BookingOwnerMapper extends BaseMapper<MchBookingOwner> {
+        /**
+         * Shared parent guards use explicit trusted scope. JSQLParser cannot parse LOCK IN SHARE MODE, so only
+         * this fully scoped statement skips data-permission rewriting; generic mapper interception stays enabled.
+         */
+        @InterceptorIgnore(dataPermission = "true")
+        @Select("""
+                SELECT e.tenant_no,e.entity_no,s.store_no FROM mch_entity e
+                JOIN mch_store s ON s.tenant_no=e.tenant_no AND s.entity_no=e.entity_no
+                WHERE e.tenant_no=#{tenantNo} AND e.entity_no=#{entityNo} AND s.store_no=#{storeNo}
+                  AND e.status='ACTIVE' AND e.archived_at IS NULL AND e.deleted=0
+                  AND s.status='ACTIVE' AND s.deleted=0 LOCK IN SHARE MODE
+                """)
+        ResourceCommandScopeRow lockScope(@Param("tenantNo") String tenantNo, @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo);
+
+        /** Current root read; a missing row is established by scoped unique insert, not an unlocked absence check. */
+        @Select("""
+                SELECT * FROM mch_booking_owner WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND store_no=#{scope.storeNo} AND source_type=#{sourceType} AND source_no=#{sourceNo}
+                  AND deleted=0 FOR UPDATE
+                """)
+        MchBookingOwner lockBySource(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("sourceType") String sourceType, @Param("sourceNo") String sourceNo);
+
+        /** Nonlocking replay read occurs only after the duplicate-insert transaction has rolled back. */
+        @Select("""
+                SELECT * FROM mch_booking_owner WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND store_no=#{scope.storeNo} AND source_type=#{sourceType} AND source_no=#{sourceNo} AND deleted=0
+                """)
+        MchBookingOwner selectBySource(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("sourceType") String sourceType, @Param("sourceNo") String sourceNo);
+
+        /** Stable source binding for recovery receipts; no caller-supplied source identity is trusted on query. */
+        @Select("""
+                SELECT * FROM mch_booking_owner WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND store_no=#{scope.storeNo} AND owner_no=#{ownerNo} AND deleted=0
+                """)
+        MchBookingOwner selectOwner(@Param("scope") ResourceCommandScopeRow scope, @Param("ownerNo") String ownerNo);
+
+        /** Must precede command/resource locks; every business command serializes on this stable root. */
+        @Select("""
+                SELECT * FROM mch_booking_owner WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND store_no=#{scope.storeNo} AND owner_no=#{ownerNo} AND deleted=0 FOR UPDATE
+                """)
+        MchBookingOwner lockOwner(@Param("scope") ResourceCommandScopeRow scope, @Param("ownerNo") String ownerNo);
+
+        /** Root CAS is part of the same local transaction as capacity evidence and the terminal command result. */
+        @Update("""
+                UPDATE mch_booking_owner SET current_hold_no=#{holdNo},source_revision=#{sourceRevision},
+                  owner_version=owner_version+1,version=version+1,updated_at=#{now},updated_by=#{actor}
+                WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo}
+                  AND owner_no=#{ownerNo} AND owner_version=#{expectedVersion} AND deleted=0
+                  AND owner_version<9223372036854775807 AND version<9223372036854775807
+                  AND (current_hold_no=#{previousHoldNo} OR (current_hold_no IS NULL AND #{previousHoldNo} IS NULL))
+                """)
+        int advanceHead(@Param("scope") ResourceCommandScopeRow scope, @Param("ownerNo") String ownerNo,
+                @Param("expectedVersion") long expectedVersion, @Param("previousHoldNo") String previousHoldNo,
+                @Param("holdNo") String holdNo, @Param("sourceRevision") Long sourceRevision,
+                @Param("actor") String actor, @Param("now") LocalDateTime now);
+
     }
 
     /** 资源持久命令与结果数据访问；完整仲裁由后续服务编排。 */
     public interface ResourceCommandMapper extends BaseMapper<MchResourceCommand> {
+        /** Explicit parent chain prevents recovery by command number from crossing scope or a foreign owner. */
+        @Select("""
+                SELECT c.* FROM mch_resource_command c JOIN mch_booking_owner o
+                  ON o.tenant_no=c.tenant_no AND o.entity_no=c.entity_no AND o.store_no=c.store_no
+                  AND o.owner_no=c.owner_no AND o.deleted=0
+                WHERE c.tenant_no=#{scope.tenantNo} AND c.entity_no=#{scope.entityNo} AND c.store_no=#{scope.storeNo}
+                  AND c.command_no=#{commandNo} AND c.deleted=0
+                """)
+        MchResourceCommand selectCommand(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("commandNo") String commandNo);
+
+        /** Immutable key evidence; no update is performed during a replay. */
+        @Select("""
+                SELECT c.* FROM mch_resource_command c JOIN mch_booking_owner o
+                  ON o.tenant_no=c.tenant_no AND o.entity_no=c.entity_no AND o.store_no=c.store_no
+                  AND o.owner_no=c.owner_no AND o.deleted=0
+                WHERE c.tenant_no=#{scope.tenantNo} AND c.entity_no=#{scope.entityNo} AND c.store_no=#{scope.storeNo}
+                  AND c.action=#{action} AND c.request_key_hash=#{keyHash} AND c.deleted=0
+                """)
+        MchResourceCommand selectByKey(@Param("scope") ResourceCommandScopeRow scope, @Param("action") String action,
+                @Param("keyHash") String keyHash);
+
+        /** Caller has already locked the scoped owner; this current read cannot reuse an old RR snapshot. */
+        @Select("""
+                SELECT * FROM mch_resource_command WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND store_no=#{scope.storeNo} AND owner_no=#{ownerNo} AND command_no=#{commandNo}
+                  AND deleted=0 FOR UPDATE
+                """)
+        MchResourceCommand lockCommand(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("ownerNo") String ownerNo, @Param("commandNo") String commandNo);
+
+        /** Explicit audit/version and ACCEPTED predicate protect terminal records from stale recovery workers. */
+        @Update("""
+                UPDATE mch_resource_command SET wait_reason=#{reason},next_retry_at=#{retryAt},version=version+1,
+                  updated_at=#{now},updated_by=#{actor}
+                WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo}
+                  AND command_no=#{commandNo} AND status='ACCEPTED' AND version=#{version} AND deleted=0
+                  AND version<9223372036854775807
+                """)
+        int markWaiting(@Param("scope") ResourceCommandScopeRow scope, @Param("commandNo") String commandNo,
+                @Param("version") long version, @Param("reason") String reason,
+                @Param("retryAt") LocalDateTime retryAt, @Param("actor") String actor,
+                @Param("now") LocalDateTime now);
+
+        /** Frozen request columns are deliberately absent; clearing retry fields is part of terminalization. */
+        @Update("""
+                UPDATE mch_resource_command SET status=#{status},result_payload=#{result},rejection_code=#{code},
+                  wait_reason=NULL,next_retry_at=NULL,version=version+1,updated_at=#{now},updated_by=#{actor}
+                WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo}
+                  AND command_no=#{commandNo} AND status='ACCEPTED' AND version=#{version} AND deleted=0
+                  AND version<9223372036854775807
+                """)
+        int finishAccepted(@Param("scope") ResourceCommandScopeRow scope, @Param("commandNo") String commandNo,
+                @Param("version") long version, @Param("status") String status, @Param("result") String result,
+                @Param("code") String code, @Param("actor") String actor, @Param("now") LocalDateTime now);
+
     }
 
     /** 跨店统一容量仲裁桶数据访问；完整仲裁由后续服务编排。 */
@@ -63,6 +182,25 @@ public final class MerchantMappers {
 
     /** 资源集合持有凭证数据访问；完整仲裁由后续服务编排。 */
     public interface BookingHoldMapper extends BaseMapper<MchBookingHold> {
+        /** Resolves canonical hold identity and owner/store parent chain before a command can reference it. */
+        @Select("""
+                SELECT * FROM mch_booking_hold WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND store_no=#{scope.storeNo} AND owner_no=#{ownerNo} AND hold_no=#{holdNo} AND deleted=0
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        MchBookingHold selectOwnedHold(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("ownerNo") String ownerNo, @Param("holdNo") String holdNo);
+
+        /** Old-head retirement includes soft-deleted unreleased units; deletion must never manufacture a release. */
+        @Select("""
+                SELECT COUNT(*) FROM mch_booking_hold_unit
+                WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo} AND hold_no=#{holdNo}
+                  AND released_at IS NULL AND (#{includeDeleted}=TRUE OR deleted=0)
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        long countUnreleased(@Param("scope") ResourceCommandScopeRow scope, @Param("holdNo") String holdNo,
+                @Param("includeDeleted") boolean includeDeleted);
+
     }
 
     /** 资源持有分配历史明细数据访问；完整仲裁由后续服务编排。 */

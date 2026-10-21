@@ -1,10 +1,10 @@
 # SHR-02b 共用资源容量与组合占用：详细需求与方案
 
-> 状态：**实施中；02b-1a算法/1b数据契约完成，持久命令协议与预留尚未实现** · 2026-10-21 · 档位2。
+> 状态：**实施中；02b-1a/1b/1c基础完成，原子容量预留与生命周期待实施** · 2026-10-21 · 档位2。
 > 基线：美业隔离分支378a5f2f7；只读核验最新本地餐饮ca71f6092，共用merchant/base及平台迁移相对8e732eeb7无新增。
 > 上游：[多端功能矩阵](../requirements/美业系统-多端功能矩阵.md) D01–D05、H04–H07；[主执行计划](./TDD-美业系统-后端开发计划.md) §11–13。
 > 既有设计：[字段真源](./design/schema/beauty-database-design.json) · [日历设计](./design/美业系统-预约工作台与日历API设计.md) · [旧资源方案](./design/TDD-预约资源域-多行业完整方案.md)。
-> 决策提案：[ADR-043](./ADR/ADR-043-共用资源仲裁归属与命令恢复.md)。交付状态按§5.4/5.5分批记录；未交付的接口、业务任务与跨域恢复仍待后续验收。
+> 决策提案：[ADR-043](./ADR/ADR-043-共用资源仲裁归属与命令恢复.md)。交付状态按§5.4–5.6分批记录；未交付的接口、业务任务与跨域恢复仍待后续验收。
 
 ## §0 定位、现状与需求追溯
 
@@ -15,7 +15,7 @@
 |---|---|---|
 | PersonnelFactsPort、mch_personnel五表 | 明确人员名单、有效任职/岗位/资格事实 | 不等于整个服务时段的开工许可；现有Port拒绝调用方事务 |
 | ResourceFactsPort、mch_resource | 同主体同人一个STAFF资源，容量1；物理资源归店 | openOccupationNo只有字段，尚无占用仲裁 |
-| ScheduleWindowsPort、周规则/变更历史 | 31天内周窗口、任职裁剪、跨店重叠拒绝、DST守卫 | 尚无P3例外审批、容量桶及写入期间的规则变更协调 |
+| ScheduleWindowsPort、周规则/变更历史 | 31天内周窗口、任职裁剪、跨店重叠拒绝、DST守卫 | 仅有容量桶数据契约；P3例外审批及写入期间规则变更协调未完成 |
 | 预约/工单/任务及来源恢复数据层 | 已有聚合、修订、提交意图和来源guard持久化 | 完整Service协调、实际来源决策和可用的工作台尚未全部完成 |
 | 旧AppointmentSlotPort | 零售等已有门店单时段占位/释放 | 没有多资源原子事务、跨店STAFF或本域幂等释放 |
 
@@ -199,6 +199,52 @@
 R07/R08→scopedCommandAndOwnerIdentitySurviveConcurrentInsertAndDeletion；R18/R19→allocationHistoryAndExactGroupIdentityArePreserved。
 仅这些需求的数据约束部分完成；不替代后续服务级幂等、原子预留、来源恢复验收。
 
+### 2.5 02b-1c持久命令与归属CAS实施计划（2026-10-21）
+
+档位2，继续executing-plans/TDD，基线88e49acd0。最新本地food5a10a94e0对14f90a9ad的merchant/base/平台迁移无变更。
+本批不改V535/私有V1，不新增HTTP/SPI/依赖/配置。可信内部kernel，行业入口仍须先完成真实来源授权与业务权限。
+
+**类型/文件：** `merchant.service.ResourceCommandService`及`service.impl.ResourceCommandServiceImpl`，
+`merchant.dto.ResourceCommandScopeRow`；扩展原MerchantMappers中的BookingOwnerMapper/ResourceCommandMapper/BookingHoldMapper。
+测试`shop-app/.../scenario/ResourceCommandPersistenceIT`与`verify-resource-command-persistence.mjs`。
+所有公开类型归接口：Scope(tenantNo,entityNo,storeNo)、Action八种既有动作、Target(holdNo,holdVersion,leaseRevision)、
+Accept(scope,action,key,sourceType,sourceNo,expectedOwnerVersion,sourceRevision,target,frozenPayload)、
+OwnerHead(ownerNo,currentHoldNo,ownerVersion,sourceRevision)、Receipt(命令号/归属号/规范来源类型与来源号/动作/状态/实体版本/期望头版本/来源修订/目标/冻结载荷/结果/拒绝码/重试信息/原发起人)、Execution(只读command/owner访问)。
+
+| 方法 | 事务/成功条件 | 关键拒绝/恢复 |
+|---|---|---|
+| `Receipt accept(Accept)` | 拒绝调用方事务，自建READ_COMMITTED短事务；当前有效主体/门店规范化并共享锁，来源归属建立/根锁，再插入ACCEPTED提交 | 同键冲突仅在确认唯一冲突事务已回滚后，另开事务读原命令；同参返回原结果，异参拒绝。未知提交异常原样抛出，原号查询，不猜REJECTED |
+| `Optional<Receipt> find(Scope,String commandNo)` | 拒绝调用方事务，当前有效父链、当前登录租户与显式范围复核，返回冻结命令/当前命令状态 | 没有相应范围记录为空；知道命令号不能绕过范围；不包含当前hold状态的猜测 |
+| `Receipt markWaiting(Scope,String commandNo,long version,String reason,LocalDateTime nextRetryAt)` | 独立RC事务，锁owner→command，只有ACCEPTED且版本相同可写；显式updatedAt/By及version+1 | 旧任务、终态不得更新，冻结载荷/摘要/发起者不变；不自动执行或延长hold TTL |
+| `Execution lockForExecution(Scope,String commandNo,long version)` | 仅加入主库可写READ_COMMITTED事务；父链共享锁→owner根→command当前读；检查命令ACCEPTED及实体/归属版本 | 拒绝无事务、只读、RR、错误数据库事务。失败将当前主库事务标rollback-only |
+| `Receipt completeSuccess(Execution,String resultingHoldNo,String resultPayload)` | 同一service/线程/ConnectionHolder事务凭证，单次消费；未来仲裁器必须先lock再写资源/hold；本方法同事务CAS归属头＋命令SUCCEEDED | ownerVersion只在成功时+1；新hold须同主体/店/owner、来源修订相同且HELD/CONFIRMED并有活动单位；移走旧head需其终态且全部单位已释放。失配/结果非法一律rollback-only，防调用方捕获异常提交半写 |
+| `Receipt rejectAfterRollback(Scope,String commandNo,long version,String code,String resultPayload)` | 拒绝调用方事务，已知无副作用/已证明业务事务回滚后独立持久拒绝；不推进ownerVersion | 终态返回既有权威Receipt，不覆盖并发成功；ACCEPTED旧版本拒绝。提交未知不得调用此方法 |
+
+**凭证：** 实现私有ExecutionHandle，记录所属service、线程、主DataSource ConnectionHolder及原命令/归属快照。
+仅同一活动事务可消费，事务结束/REQUIRES_NEW/其他线程/伪造实现/二次消费均拒绝；不导出JSON或跨进程使用。
+任何保存点回滚均使已签发凭证失效，不能以仍相同的ConnectionHolder证明副作用仍存在。
+占用及未释放单位证据查询显式flushCache且useCache=false，防MyBatis SESSION缓存遮蔽同事务JdbcTemplate写入。
+本批只承接本地事务检查点，不以已有hold和单位的形状检查代替完整资源/来源准入。
+RESERVE/REPLACE成功必须有非空head；PROTECT/CONFIRM/RENEW必须保留已有同一规范head，不能接管孤儿hold。RELEASE/EXPIRE必须清空；RECONCILE两种都可。
+新head来源修订取冻结command，不接受第二个客户端修订字段；更新原子归属版本与BaseEntity.version均+1。
+
+**幂等/输入：** Scope和引用按owner SQL当前父链解析规范号，不在Java模拟CI/AI；来源类型精确大写命名空间。
+键校验/长度前缀摘要复用IdempotencyScope。payloadHash覆盖规范owner、动作、期望头版本、来源修订、规范target及版本和冻结JSON。
+冻结JSON为<=64KiB的单个对象，拒绝重复键、尾随内容；按UTF8字节精确防重，不自动重排/改写，行业生成稳定编码。
+发起/恢复操作者只取SecurityUtils.requireUser，登录tenant必须匹配规范tenant，complete再次复核当前登录tenant；不接受actor入参，不默认SYSTEM。
+Scope为已授权内部调用方的服务端范围；当前登录校验不代替行业入口主体成员/来源授权，未完成入口不开放。
+方法返回不可变记录，不导出可变Entity；重放不改updatedAt/TTL/发起人。重试/拒绝原因非空有长度上限；版本防long溢出。
+
+- [x] 先写真实MySQL反射契约用例，运行确认缺少Service的断言RED；不把编译错误计作RED。
+- [x] 实现上述方法、当前父链/稳定owner/冻结command SQL与原子CAS；无需新表或空转Repository。
+- [x] 验证同键/异键并发、CI别名、作用域/租户/停用父链、所有冻结字段防重、旧版本拒绝、失败不消费ownerVersion、新key重试。
+- [x] 验证终态非空result/rejectionCode回读（补1b Minor）、同事务副作用与归属/结果全回滚、跨事务凭证/捕获异常仍回滚、旧任务不能改终态；补充目标hold的JDBC写后当前读与嵌套保存点回滚。
+- [x] 消融owner CAS版本守卫，竞争用例必须RED，恢复GREEN；运行merchant全套、真实数据层及旧预约/美业相关回归。
+- [x] 独立只读审查一次，重要发现RED→GREEN；同步文档/生成物/ledger并本地检查点提交。
+
+**Review Focus：** 同键不同来源死锁/孤儿归属、CI规范号与摘要不一致、终态覆盖或失败误提交、凭证跨事务复用、错误来源hold被接为当前头。
+需求→设计→验收：R01/R07/R08/R16/R18的数据协议部分，对应本批原生IT；资源完整仲裁、来源许可、Outbox及Job执行仍属于02b-2～6。
+
 ## §3 桶、区间与完整组合
 
 ### 3.1 候选工程参数
@@ -360,6 +406,33 @@ open指针或单位父链残缺、阻断原因不一致时失败关闭并进入�
 当前两个Entity字段正确，状态约束已由真实SQL覆盖；该映射覆盖增强排入1c结果/恢复测试，不宣称已完成。
 前批1a的输入列表非修改断言增强也仍未实施。
 
+### 5.6 02b-1c实际验收（2026-10-21）
+
+| 验收 | 真实结果 | 证据 |
+|---|---|---|
+| 测试先行 | 19项断言失败、0错误，缺少Service | `/tmp/resource-command-red.log`；测试夹具编译修正不算功能RED |
+| 边界补强 | 租户变更/恢复来源23项中2项失败；随后保留头28项中1项失败，分别修复转绿 | `/tmp/resource-command-boundaries-red.log`、`/tmp/resource-command-head-red.log` |
+| owner SQL CAS消融 | 28项中1项断言失败、0错误；恢复SQL后28项通过 | `/tmp/resource-command-ablation.log`、`/tmp/resource-command-final-native.log`；绕过Service检查直接证明SQL守卫 |
+| 最终审查修复 | 31项中3项断言失败、0错误；修复后31通过、0失败/错误/跳过 | `/tmp/resource-command-review-red.log`、`/tmp/resource-command-review-green.log` |
+| merchant及依赖 | 268通过、0失败/错误/跳过，BUILD SUCCESS | `/tmp/resource-command-final-merchant.log` |
+| 五表原生回归 | 17通过、0失败/错误/跳过 | `/tmp/resource-command-foundation-regression.log` |
+| 美业独立reactor | 54通过、0失败/错误/跳过 | `/tmp/resource-command-beauty-regression.log` |
+| 旧预约/人员/商品服务 | 37通过、0失败/错误/跳过 | `/tmp/resource-command-legacy-regression.log` |
+| 设计与生成器 | 五组设计检查、冻结V1、Node7及SQL无新增方言通过 | 分层/词汇/索引同步；无迁移、依赖、配置或HTTP变更 |
+
+命令：`JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home node scripts/verify-resource-command-persistence.mjs`。
+UUID临时MySQL8.4、每例独立数据库、真实主库持久层/Service与正式V535；不接营业库，不代表完整Flyway或全部部署排序规则。
+覆盖同键/异键竞争、规范CI引用、所有冻结版本/字节、终态不可覆盖、范围/登录/停用父链、独立接受及同事务成功、
+错误数据库/只读/RR/跨事务/重复凭证、同源归属版本CAS、错误hold与旧head释放证据、非空拒绝结果恢复。
+
+独立只读审查一次：两项Important，无Critical/Minor。三个原生反例实证：目标hold的缓存使合法释放被拒；
+缓存来源修订使错误确认被接受；嵌套保存点回滚后凭证仍可成功。修复为占用/单位查询flushCache并禁L2缓存，
+保存点回滚同步使已有Execution失效。只做一次RED→GREEN修复，不再重审；最初新增测试误用不存在的夹具列已修正，不算功能RED。
+1b的非空resultPayload/rejectionCode回读Minor已由本批真实拒绝/恢复用例关闭；1a输入不变性断言增强仍待补。
+
+继承的SchemaDriftTest支付异常表解析1失败与schema-lineage 2失败，基线复现和范围见§5.5；本批无相关变更，未重跑这些全局闸门，
+不沿用旧结果宣称本批全仓通过。业务来源/主体成员授权、完整容量/准入、恢复任务和部署迁移仍由后续验收。
+
 ## §6 替换、实际交接与超时
 
 ### 6.1 未开工整计划原子替换
@@ -431,6 +504,24 @@ block不能替代实际容量台账：保留原单位计数，超出原窗口的
 跨表父链、来源权限/租户授权及当前资源事实校验仍由1c/2写入服务验收；数据域投影隔离不代替业务授权。
 02b-1b数据契约完成，02b-1整体及预约营业未完成；下一步1c按当前五表冻结命令接受/查询/恢复与归属根CAS方法。
 无合并/推送/营业库迁移；保留隔离工作树和ledger。
+
+### 6.8 02b-1c实现对账与后续边界
+
+| §2.5计划 | 实际交付 |
+|---|---|
+| 持久命令接口/协调 | ResourceCommandService及service.impl.ResourceCommandServiceImpl；accept/find/markWaiting/lockForExecution/completeSuccess/rejectAfterRollback |
+| 显式范围和SQL | ResourceCommandScopeRow；原MerchantMappers内归属/命令/hold Mapper扩展，owner→command锁及双CAS |
+| 原生验收 | ResourceCommandPersistenceIT、verify-resource-command-persistence.mjs，31项；SQL CAS消融与审查反例 |
+| 文档和派生物 | 本TDD、主执行计划§17、ADR043、README、分层/词汇及原ledger |
+
+偏差：真实集成发现JSQLParser无法处理父链共享锁语法，只有显式完整范围的lockScope方法忽略dataPermission拦截；
+其它Mapper保持拦截，当前登录租户/活动父链及显式SQL范围仍强制。BaseEntity版本由数据库默认写入，接受后读取持久行，不假定insert对象已回填。
+Receipt补规范来源绑定，完成时再次检查当前登录租户；保留头动作禁止接管孤儿hold；上述均有实际RED→GREEN。
+
+仅持久命令与归属检查点完成。它不证明资源/人员/班表准入、bucket计数完整性、目标动作的全部状态机或来源副作用许可；
+泛型Mapper不是业务安全入口。Scope是已授权内部范围，未来行业入口须先校验成员与来源权限。
+下一步02b-2实施前细化准入、来源冻结许可与原子预留生命周期；随后替换、交接/开放占用、超时保护、恢复与日历读模型。
+保留隔离工作树/ledger，只有本地检查点，无合并、推送或营业库迁移。
 
 ## §7 数据结构补充提案
 
@@ -557,4 +648,4 @@ owner、command、hold、unit、occupation、block的跨父链校验需实际SQL
 | 锁序/维护写守卫 | §4.3统一根锁与人员顺序 | 同步人员/排班/资源维护；未参加守卫的写入口不开放 |
 | 正常open/超时处理 | capacity1正常open；超时多原因全资源保守block | 实测餐饮/美业冲突协调，不能假定预计结束释放 |
 
-本轮在方案基础上实施02b-1a纯算法；未写迁移或访问营业库，02b-1整体及后续仍未完成。已有V532–V534与美业V1保持不变；1b真源41项、49个任务数量不变，业务协议后续。
+当前已交付02b-1a归一、1b五表数据契约与1c持久命令/归属CAS；未访问营业库。V532–V535及美业V1本批不改；真源41项、49任务数量不变。完整准入/原子预留与后续生命周期尚未交付。
