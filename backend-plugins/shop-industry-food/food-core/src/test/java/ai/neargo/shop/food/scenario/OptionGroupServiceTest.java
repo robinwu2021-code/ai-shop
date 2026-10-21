@@ -10,6 +10,12 @@ import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.dto.CreateOptionGroupReq;
 import ai.neargo.shop.food.dto.ListOptionGroupsQuery;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.DishMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.DishOptionGroupMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ModifierMapper;
+import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
+import ai.neargo.shop.spi.product.SpecValueCatalogQueryPort;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper;
 import ai.neargo.shop.food.service.OptionGroupService;
@@ -32,7 +38,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Exercises real primary Mappers and the original idempotency/audit/outbox transaction. */
 class OptionGroupServiceTest extends FoodWriteGuardFixture {
-    private Fixture fixture(AssertableApplicationContext c) {
+    Fixture fixture(AssertableApplicationContext c) {
         var f = prepare(c);
         StorePolicyPublicationTest.createPolicyTables(f);
         String common = "id BIGINT AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) DEFAULT 'MAIN',"
@@ -42,7 +48,7 @@ class OptionGroupServiceTest extends FoodWriteGuardFixture {
                 + "name VARCHAR(64),min_qty DECIMAL(18,6),max_qty DECIMAL(18,6),"
                 + "published_revision_no VARCHAR(32),status VARCHAR(16),selection_rules TEXT)");
         f.sql().execute("CREATE TABLE fnb_option_group_item (" + common + "option_item_no VARCHAR(32) UNIQUE,"
-                + "group_no VARCHAR(32),source_kind VARCHAR(16),spec_value_no VARCHAR(32),modifier_no VARCHAR(32),"
+                + "group_no VARCHAR(32),source_kind VARCHAR(16),spec_value_no VARCHAR(64),modifier_no VARCHAR(32),"
                 + "min_qty DECIMAL(18,6),max_qty DECIMAL(18,6),default_qty DECIMAL(18,6),sort_no INT)");
         c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_OPTION_GROUP_CHANGED"));
         return f;
@@ -152,10 +158,40 @@ class OptionGroupServiceTest extends FoodWriteGuardFixture {
         });
     }
 
+    static class Sources implements GoodsCatalogQueryPort, SpecValueCatalogQueryPort {
+        @Override public GoodsFact getGoods(String entity, String store, String goods) {
+            throw new UnsupportedOperationException("Only the tested batch protocol is required");
+        }
+        @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> goods) {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            return goods.stream().filter(g -> "G".equals(g) && "A".equals(store)
+                    || "X".equals(g) && "B".equals(store)).map(g ->
+                    new GoodsSummary(g, entity, store, g, null, false, "PENDING", 0)).toList();
+        }
+        @Override public List<SpecValueFact> getValues(String entity, List<String> values) {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            return values.stream().filter(v -> !"MISSING".equals(v)).map(v -> new SpecValueFact(v, "D", "半糖",
+                    "糖度", "QUANT".equals(v) ? "QUANT" : "ENUM", "PROP", "MERCHANT",
+                    "FOREIGN".equals(v) ? "OTHER" : entity, "PLATFORM", null, 0, 0)).toList();
+        }
+    }
+
     static class Failure { final AtomicBoolean enabled = new AtomicBoolean(); }
 
     @Configuration(proxyBeanMethods = false)
     static class Groups {
+        @Bean Sources optionSources() { return new Sources(); }
+        @Bean MapperFactoryBean<DishMapper> optionDishes(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) {
+            var f = new MapperFactoryBean<>(DishMapper.class); f.setSqlSessionTemplate(t); return f;
+        }
+        @Bean MapperFactoryBean<DishOptionGroupMapper> optionLinks(
+                @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) {
+            var f = new MapperFactoryBean<>(DishOptionGroupMapper.class); f.setSqlSessionTemplate(t); return f;
+        }
+        @Bean MapperFactoryBean<ModifierMapper> optionModifiers(
+                @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) {
+            var f = new MapperFactoryBean<>(ModifierMapper.class); f.setSqlSessionTemplate(t); return f;
+        }
         @Bean Failure optionGroupFailure() { return new Failure(); }
         @Bean MapperFactoryBean<OptionGroupMapper> groups(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) {
             var f = new MapperFactoryBean<>(OptionGroupMapper.class); f.setSqlSessionTemplate(t); return f;
@@ -167,13 +203,15 @@ class OptionGroupServiceTest extends FoodWriteGuardFixture {
         @Bean OptionGroupService optionGroupService(OptionGroupMapper groups, OptionGroupItemMapper items,
                 ActionLogMapper actions, IdempotencyService idem,
                 @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
-                PlatformTransactionManager manager, Failure failure) {
+                PlatformTransactionManager manager, Failure failure, DishMapper dishes, DishOptionGroupMapper bindings,
+                ModifierMapper modifiers, Sources sources) {
             OutboxPublisher checked = (event, options) -> {
                 var receipt = publisher.publish(event, options);
                 if (failure.enabled.get()) throw new IllegalStateException("after-group-publish");
                 return receipt;
             };
-            return new OptionGroupServiceImpl(groups, items, actions, idem, checked, json, manager);
+            return new OptionGroupServiceImpl(groups, items, actions, idem, checked, json, manager,
+                    dishes, bindings, modifiers, sources, sources);
         }
     }
 }

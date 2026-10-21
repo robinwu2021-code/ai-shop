@@ -2,6 +2,7 @@ package ai.neargo.shop.food.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
@@ -11,6 +12,8 @@ import ai.neargo.shop.auth.store.MemoryTokenStore;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration;
 import ai.neargo.shop.food.dto.CreateOptionGroupReq;
+import ai.neargo.shop.food.dto.ReplaceOptionGroupItemsReq;
+import ai.neargo.shop.food.dto.OptionGroupMutationVO;
 import ai.neargo.shop.food.dto.CreateOptionGroupResultVO;
 import ai.neargo.shop.food.dto.ListOptionGroupsQuery;
 import ai.neargo.shop.food.dto.OptionGroupConfigVO;
@@ -93,6 +96,26 @@ class OptionGroupApiTest {
         });
     }
 
+    @Test void replacesItemsWithTrustedCurrentStoreAndRejectsForgedNestedFields() {
+        runner.run(c -> {
+            var mvc = mvc(c); var auth = token(c, "staff");
+            String body = "{\"version\":0,\"items\":[],\"goodsNos\":[],"
+                    + "\"selectionRules\":{\"mutexSets\":[],\"requires\":[]}}";
+            String path = "/biz/x/food/option-groups/OG/items";
+            mvc.perform(put(path).header("Authorization", auth).header("Idempotency-Key", "original")
+                    .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(jsonPath("$.data.configNo").value("OG"))
+                    .andExpect(jsonPath("$.data.version").value(1));
+            mvc.perform(put(path).header("Authorization", token(c, "cashier"))
+                    .header("Idempotency-Key", "original").contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(jsonPath("$.code").value(70006));
+            mvc.perform(put(path).header("Authorization", auth).header("Idempotency-Key", "original")
+                    .contentType(MediaType.APPLICATION_JSON).content(body.replace("\"mutexSets\"", "\"price\":1,\"mutexSets\"")))
+                    .andExpect(jsonPath("$.code").value(10400));
+            assertThat(c.getBean(Calls.class).count).hasValue(1);
+        });
+    }
+
     private String token(WebApplicationContext c, String actor) {
         return "Bearer " + c.getBean(MemoryTokenStore.class)
                 .issue(TokenStore.SessionData.of(LoginUser.merchant(actor, actor)));
@@ -114,6 +137,12 @@ class OptionGroupApiTest {
                     return new OptionGroupConfigVO("OG", "OPTION_GROUP", 0, "DRAFT",
                             new OptionGroupConfigVO.Data("糖度", BigDecimal.ZERO, BigDecimal.ONE, null,
                                     Map.of(), List.of()));
+                }
+                @Override public OptionGroupMutationVO replaceOptionGroupItems(String entity, String store,
+                        String group, String actor, ReplaceOptionGroupItemsReq req, String key) {
+                    scope(entity, store); assertThat(group).isEqualTo("OG");
+                    assertThat(actor).isEqualTo("staff"); assertThat(key).isEqualTo("original");
+                    return new OptionGroupMutationVO(group, req.version() + 1);
                 }
                 @Override public CreateOptionGroupResultVO createOptionGroup(String entity, String store,
                         String actor, CreateOptionGroupReq req, String key) {

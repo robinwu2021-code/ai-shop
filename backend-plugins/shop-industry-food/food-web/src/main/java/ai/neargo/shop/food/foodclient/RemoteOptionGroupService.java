@@ -3,6 +3,8 @@ package ai.neargo.shop.food.foodclient;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.food.dto.ReplaceOptionGroupItemsReq;
+import ai.neargo.shop.food.dto.OptionGroupMutationVO;
 import ai.neargo.shop.food.dto.CreateOptionGroupReq;
 import ai.neargo.shop.food.dto.CreateOptionGroupResultVO;
 import ai.neargo.shop.food.dto.ListOptionGroupsQuery;
@@ -21,6 +23,18 @@ import java.util.function.Supplier;
 public class RemoteOptionGroupService implements OptionGroupService {
     private final OptionGroupInternalApi api;
     public RemoteOptionGroupService(OptionGroupInternalApi api) { this.api = api; }
+
+    @Override
+    public OptionGroupMutationVO replaceOptionGroupItems(String entity, String store, String group, String actor,
+            ReplaceOptionGroupItemsReq req, String key) {
+        var result = invoke(() -> api.replaceOptionGroupItems(
+                new OptionGroupInternalApi.ReplaceCommand(entity, store, group, actor, key, req)));
+        if (result == null || !group.equals(result.configNo()) || result.version() < 1
+                || req == null || req.version() == null || result.version() != req.version() + 1) {
+            throw new IllegalStateException("Invalid option-group replacement receipt");
+        }
+        return result;
+    }
 
     @Override
     public CreateOptionGroupResultVO createOptionGroup(String entity, String store, String actor,

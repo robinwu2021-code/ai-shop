@@ -21,6 +21,8 @@ import ai.neargo.shop.food.service.impl.DishServiceImpl;
 import ai.neargo.shop.food.mapper.FoodMappers.DishMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.DishOptionGroupMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ModifierMapper;
+import ai.neargo.shop.spi.product.SpecValueCatalogQueryPort;
 import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper;
 import java.util.List;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
@@ -59,8 +61,20 @@ public class FoodAutoConfiguration {
     OptionGroupService optionGroupService(OptionGroupMapper groups, OptionGroupItemMapper items,
             ActionLogMapper actions, IdempotencyService idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
-        return new OptionGroupServiceImpl(groups, items, actions, idem, publisher, json, manager);
+            @Qualifier("transactionManager") PlatformTransactionManager manager, DishMapper dishes,
+            DishOptionGroupMapper bindings, ModifierMapper modifiers, ObjectProvider<GoodsCatalogQueryPort> catalogs,
+            ObjectProvider<SpecValueCatalogQueryPort> specs) {
+        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
+            @Override public GoodsFact getGoods(String entity, String store, String goods) {
+                return catalogs.getObject().getGoods(entity, store, goods);
+            }
+            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
+                return catalogs.getObject().getGoodsBatch(entity, store, numbers);
+            }
+        };
+        return new OptionGroupServiceImpl(groups, items, actions, idem, publisher, json, manager,
+                dishes, bindings, modifiers, catalog,
+                (entity, numbers) -> specs.getObject().getValues(entity, numbers));
     }
 
     @Bean

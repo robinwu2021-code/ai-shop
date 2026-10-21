@@ -54,7 +54,14 @@ public final class FoodSchemaValidator {
             require(state.equals("SUCCESS") || state.equals("BASELINE"), "food migration state: " + state);
         }
         var current = flyway.info().current();
-        require(current != null && "2".equals(current.getVersion().getVersion()), "food migration version must be 2");
+        require(current != null && "3".equals(current.getVersion().getVersion()), "food migration version must be 3");
+        try (var connection = source.getConnection();
+                var column = connection.getMetaData().getColumns(connection.getCatalog(), connection.getSchema(),
+                        "fnb_option_group_item", "spec_value_no")) {
+            require(column.next() && column.getInt("COLUMN_SIZE") == 64, "spec_value_no must preserve 64 characters");
+        } catch (SQLException failure) {
+            throw new IllegalStateException("Cannot validate original specification identity width");
+        }
         var actual = columns(source);
         List<String> missing = new ArrayList<>();
         expected.forEach((table, fields) -> fields.forEach(field -> {
@@ -64,7 +71,7 @@ public final class FoodSchemaValidator {
         missing.addAll(missingCoreCapabilities(actual));
         missing.addAll(missingCoreUniqueKeys(source, actual));
         Collections.sort(missing);
-        return new FoodSchemaReady(true, "2", missing);
+        return new FoodSchemaReady(true, "3", missing);
     }
 
     private static List<String> missingCoreCapabilities(Map<String, Set<String>> actual) {

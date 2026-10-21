@@ -1,6 +1,8 @@
 package ai.neargo.shop.food.spi;
 
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.food.dto.ReplaceOptionGroupItemsReq;
+import ai.neargo.shop.food.dto.OptionGroupMutationVO;
 import ai.neargo.shop.food.dto.CreateOptionGroupReq;
 import ai.neargo.shop.food.dto.CreateOptionGroupResultVO;
 import ai.neargo.shop.food.dto.ListOptionGroupsQuery;
@@ -25,6 +27,14 @@ public interface OptionGroupInternalApi {
     OptionGroupResultVO getOptionGroup(@RequestBody Identity query);
     @PostExchange(LIST_PATH)
     PageData<OptionGroupConfigVO> listOptionGroups(@RequestBody Lookup query);
+
+    String REPLACE_PATH = "/internal/food/option-groups/replace-items";
+    @PostExchange(REPLACE_PATH)
+    OptionGroupMutationVO replaceOptionGroupItems(@RequestBody ReplaceCommand command);
+
+    record ReplaceCommand(@NotBlank @Size(max=32) String entityNo, @NotBlank @Size(max=32) String storeNo,
+            @NotBlank @Size(max=32) String groupNo, @NotBlank @Size(max=32) String actorNo,
+            @NotBlank @Size(max=128) String idempotencyKey, @NotNull @Valid ReplaceOptionGroupItemsReq definition) { }
 
     record CreateCommand(@NotBlank @Size(max=32) String entityNo, @NotBlank @Size(max=32) String storeNo,
             @NotBlank @Size(max=32) String actorNo, @NotBlank @Size(max=128) String idempotencyKey,

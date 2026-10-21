@@ -6,6 +6,9 @@ import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.food.dto.ReplaceOptionGroupItemsReq;
+import ai.neargo.shop.food.dto.OptionGroupMutationVO;
+import org.springframework.web.bind.annotation.PutMapping;
 import ai.neargo.shop.food.dto.OptionGroupConfigVO;
 import ai.neargo.shop.food.dto.OptionGroupResultVO;
 import ai.neargo.shop.food.dto.ListOptionGroupsQuery;
@@ -52,6 +55,21 @@ public class BizOptionGroupController {
         this.service = service;
         this.stores = stores;
         this.scope = scope;
+    }
+
+    /** Uses the resolved current store; a body field cannot select another store or entity. */
+    @PutMapping("/biz/x/food/option-groups/{groupNo}/items")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    public OptionGroupMutationVO replaceOptionGroupItems(
+            @PathVariable("groupNo") @NotBlank @Size(max=32) String groupNo,
+            @Valid @RequestBody ReplaceOptionGroupItemsReq req,
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) String key, HttpServletRequest request) {
+        var context = BizContext.current();
+        if (context.currentStoreNo() == null) throw BizException.of(ErrorCode.BAD_REQUEST);
+        requireStore(context.currentStoreNo(), request);
+        queryFields(request, Set.of());
+        return service.replaceOptionGroupItems(context.merchantNo(), context.currentStoreNo(), groupNo,
+                SecurityUtils.currentUserNo(), req, key);
     }
 
     /** Creates a shared draft through an authorized store without accepting a client-supplied owner or number. */

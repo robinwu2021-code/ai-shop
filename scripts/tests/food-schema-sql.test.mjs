@@ -81,3 +81,14 @@ test('V2 sharing mode preserves pinned V1 and cannot silently change shape',()=>
  changed.tables.find(t=>t.name==='fnb_table_occupancy').fields.find(f=>f.name==='sharing_mode').type='varchar(32)';
  assert.throws(()=>renderFoodV1(changed),/V2 sharing_mode contract differs/);
 });
+
+test('V3 preserves spec64 without changing frozen V1 or V2',()=>{
+ const v2=new URL('../../backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V2__table_occupancy_sharing_mode.sql',import.meta.url);
+ assert.equal(createHash('sha256').update(fs.readFileSync(v2)).digest('hex'),'172e222b81f5ceded0b3294f8918a735f418642878dff900fbda4dbebc315f10');
+ const field=s.tables.find(t=>t.name==='fnb_option_group_item').fields.find(f=>f.name==='spec_value_no');
+ assert.equal(field.type,'varchar(64)');
+ assert.match(renderFoodV1(s),/`spec_value_no` VARCHAR\(32\)/);
+ const file=new URL('../../backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V3__option_spec_value_identity_width.sql',import.meta.url);
+ assert.match(fs.readFileSync(file,'utf8'),/MODIFY COLUMN `spec_value_no` VARCHAR\(64\)/);
+ assert.equal(s.databaseInitialization.targetSchemaVersion,3);
+});

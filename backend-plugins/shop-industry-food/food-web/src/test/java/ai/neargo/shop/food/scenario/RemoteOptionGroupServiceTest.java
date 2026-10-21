@@ -6,11 +6,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doReturn;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.food.dto.CreateOptionGroupReq;
+import ai.neargo.shop.food.dto.ReplaceOptionGroupItemsReq;
+import ai.neargo.shop.food.dto.OptionGroupMutationVO;
+import ai.neargo.shop.food.dto.SelectionRules;
 import ai.neargo.shop.food.dto.CreateOptionGroupResultVO;
 import ai.neargo.shop.food.dto.ListOptionGroupsQuery;
 import ai.neargo.shop.food.dto.OptionGroupConfigVO;
@@ -126,6 +130,24 @@ class RemoteOptionGroupServiceTest {
             assertThatThrownBy(() -> service.listOptionGroups("E", "A", new ListOptionGroupsQuery(1, 20)))
                     .isInstanceOf(IllegalStateException.class);
         }
+    }
+
+    @Test void replaceUsesTypedTrustedCommandAndValidatesExpectedNextVersion() {
+        var api = mock(OptionGroupInternalApi.class);
+        var request = new ReplaceOptionGroupItemsReq(2L, List.of(), List.of(),
+                new SelectionRules(List.of(), List.of()));
+        when(api.replaceOptionGroupItems(any())).thenAnswer(invocation -> {
+            OptionGroupInternalApi.ReplaceCommand c = invocation.getArgument(0);
+            assertThat(c.entityNo()).isEqualTo("E"); assertThat(c.storeNo()).isEqualTo("A");
+            assertThat(c.actorNo()).isEqualTo("actor"); assertThat(c.groupNo()).isEqualTo("OG");
+            assertThat(c.idempotencyKey()).isEqualTo("stable");
+            return new OptionGroupMutationVO("OG", 3);
+        });
+        var service = new RemoteOptionGroupService(api);
+        assertThat(service.replaceOptionGroupItems("E", "A", "OG", "actor", request, "stable").version()).isEqualTo(3);
+        doReturn(new OptionGroupMutationVO("OG", 2)).when(api).replaceOptionGroupItems(any());
+        assertThatThrownBy(() -> service.replaceOptionGroupItems("E", "A", "OG", "actor", request, "stable"))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     private static RemoteOptionGroupService remote(HttpServer server) {

@@ -941,7 +941,7 @@
         },
         {
           "name": "spec_value_no",
-          "type": "varchar(32)",
+          "type": "varchar(64)",
           "label": "基础口味值",
           "nullable": true,
           "ref": "prd_spec_value.value_no"
@@ -6933,10 +6933,10 @@
       "name": "配置选择项",
       "method": "PUT",
       "path": "/biz/x/food/option-groups/{groupNo}/items",
-      "input": "version:int64:版本;items:OptionItemInput[]:optionItemNo/sourceKind/specValueNo或modifierNo/maxQty/defaultQty/sortNo;goodsNos:string[]:绑定商品;selectionRules:SelectionRules:互斥依赖结构",
+      "input": "version:int64:版本;items:OptionItemInput[]:最多100;goodsNos:string[]:当前获准店绑定完整集合最多100;selectionRules:SelectionRules:互斥依赖结构",
       "output": "configNo:string:组;version:int64:新版本",
-      "guard": "SPEC_VALUE与MODIFIER二选一；绑定菜品可有多组选配；min/default/max及互斥不得矛盾；依赖图拒循环",
-      "needs": "餐饮新增"
+      "guard": "原GOODS权限、可信主体及当前门店；V3规格引用64字符；原规格ENUM或主体有效配料工作头；循环/互斥矛盾/默认约束拒绝；CAS幂等审计Outbox同事务；保留外店及无法确认归属的原绑定；仅修改工作头",
+      "needs": "已实现工作头选项与当前门店商品绑定，不代表发布或可售"
     },
     {
       "id": "FOOD-API-020",
@@ -8448,7 +8448,7 @@
     "ContextInput": "orderSource:string:受控来源;fulfillment:string:受控履约;channelBindingNo?:string:受权渠道绑定，本地省略;pricePolicyRef?:string:权威价格策略引用，不接受金额",
     "BundleGroupInput": "groupNo:string:组号;name:string:名称;minQty:decimal:最少;maxQty:decimal:最多;baseSkuNo?:string:补差基准;sortNo:int32:排序",
     "BundleChoiceInput": "choiceNo:string:选项;groupNo:string:组;skuNo:string:SKU;unitsPerPick:decimal:每选用量;priceMode:string:INCLUDED或ADD_SKU或DIFF_BASE;defaultQty:decimal:默认;minQty:decimal:下限;maxQty:decimal:上限;sortNo:int32:排序",
-    "OptionItemInput": "optionItemNo:string:项号;sourceKind:string:SPEC_VALUE或MODIFIER;specValueNo?:string:字典值;modifierNo?:string:配料;maxQty:decimal:上限;defaultQty:decimal:默认;sortNo:int32:排序;minQty:decimal:本选项下限",
+    "OptionItemInput": "optionItemNo:string:稳定业务引用最长32;sourceKind:string:SPEC_VALUE或MODIFIER;specValueNo?:string:原字典值最长64;modifierNo?:string:配料;maxQty:decimal:上限;defaultQty:decimal:默认;sortNo:int32:排序;minQty:decimal:本选项下限",
     "ComponentInput": "memberNo:string:叶子配料;quantity:decimal:正用量",
     "RouteInput": "stationNo:string:工位;taskRole:string:MAKE或ASSEMBLE或PACK;routeVersion:int64:路由版",
     "VersionInput": "checkNo:string:台账;version:int64:版本",
@@ -10854,9 +10854,10 @@
     "apiImplemented": false,
     "executionRecord": "docs/technical/TDD-餐饮系统-数据库初始化.md",
     "additionalMigrations": [
-      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V2__table_occupancy_sharing_mode.sql"
+      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V2__table_occupancy_sharing_mode.sql",
+      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V3__option_spec_value_identity_width.sql"
     ],
-    "targetSchemaVersion": 2
+    "targetSchemaVersion": 3
   },
   "catalogEnhancement": {
     "version": 1,
@@ -10965,7 +10966,7 @@
         "transport": "POST /internal/product/catalog/spec-values/batch；原service-token及typed PLATFORM；无自动重试或失败回退",
         "queryRecovery": "纯只读查询，无写入UNKNOWN；权威不可用时失败，不伪造空数组",
         "ownershipRule": "原规格值与维度分别校验PLATFORM或当前主体MERCHANT、ACTIVE及逻辑删除，合并值拒绝；不提供类目模板、餐饮可选或可售授权",
-        "widthBoundary": "原valueNo64完整保留；旧餐饮条目字段32的写入兼容须在API019实施时单独解决，不截断",
+        "widthBoundary": "V3将餐饮条目spec_value_no扩为64，与原字典一致；V1/V2冻结不改，不截断原编号",
         "receipt": "docs/technical/TDD-餐饮系统-CAT-04B-规格值权威读取实施.md"
       }
     },

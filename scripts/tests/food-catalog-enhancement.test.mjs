@@ -9,7 +9,7 @@ test('enhancement schema traces nine target objects without pretending to have m
  const s=source();assert.equal(s.catalogEnhancement?.version,1);
  assert.equal(s.tables.filter(t=>t.name.startsWith('fnb_')).length,82);
  for(const name of added)assert.equal(s.tables.find(t=>t.name===name)?.deployment,'PLANNED',name);
- assert.equal(s.databaseInitialization.targetSchemaVersion,2);
+ assert.equal(s.databaseInitialization.targetSchemaVersion,3);
  assert.equal(s.catalogEnhancement.runtimeEnabled,false);
  assertFrozenFoodV1(renderFoodV1(s));
 });

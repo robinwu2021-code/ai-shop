@@ -2,6 +2,7 @@ package ai.neargo.shop.food.server.api;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.food.dto.OptionGroupMutationVO;
 import ai.neargo.shop.food.dto.OptionGroupConfigVO;
 import ai.neargo.shop.food.dto.OptionGroupResultVO;
 
@@ -27,6 +28,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class InternalOptionGroupController {
     private final OptionGroupService service;
     public InternalOptionGroupController(OptionGroupService service) { this.service = service; }
+
+    @PostMapping(OptionGroupInternalApi.REPLACE_PATH)
+    public OptionGroupMutationVO replaceOptionGroupItems(
+            @Valid @RequestBody OptionGroupInternalApi.ReplaceCommand c) {
+        return service.replaceOptionGroupItems(c.entityNo(), c.storeNo(), c.groupNo(), c.actorNo(),
+                c.definition(), c.idempotencyKey());
+    }
 
     @PostMapping(OptionGroupInternalApi.CREATE_PATH)
     public CreateOptionGroupResultVO createOptionGroup(@Valid @RequestBody OptionGroupInternalApi.CreateCommand c) {

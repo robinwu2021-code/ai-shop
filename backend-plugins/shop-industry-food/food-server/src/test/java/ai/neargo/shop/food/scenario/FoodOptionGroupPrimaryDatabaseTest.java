@@ -8,6 +8,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.dto.CreateOptionGroupReq;
+import ai.neargo.shop.food.dto.OptionItemInput;
+import ai.neargo.shop.food.dto.ReplaceOptionGroupItemsReq;
+import ai.neargo.shop.food.dto.SelectionRules;
+import ai.neargo.shop.spi.product.SpecValueCatalogInternalApi;
 import ai.neargo.shop.food.dto.ListOptionGroupsQuery;
 import ai.neargo.shop.food.server.FoodApplication;
 import ai.neargo.shop.food.service.OptionGroupService;
@@ -18,12 +22,14 @@ import ai.neargo.svc.client.ServiceCallException;
 import com.sun.net.httpserver.HttpServer;
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Executors;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
@@ -52,6 +58,19 @@ class FoodOptionGroupPrimaryDatabaseTest {
         String database = "food_group_it_" + UUID.randomUUID().toString().replace("-", "");
         admin.execute("CREATE DATABASE " + database);
         var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        var executor = Executors.newCachedThreadPool();
+        server.setExecutor(executor);
+        server.createContext(SpecValueCatalogInternalApi.BATCH_PATH, ex -> {
+            assertThat(ex.getRequestHeaders().getFirst(InternalHttp.TOKEN_HEADER)).isEqualTo("wire");
+            String number = "V".repeat(64);
+            String body = "[{\"valueNo\":\"" + number + "\",\"dimNo\":\"D\",\"label\":\"半糖\","
+                    + "\"dimName\":\"糖度\",\"valueType\":\"ENUM\",\"usageType\":\"PROP\","
+                    + "\"valueScope\":\"MERCHANT\",\"valueEntityNo\":\"E\",\"dimScope\":\"PLATFORM\","
+                    + "\"dimEntityNo\":null,\"valueVersion\":0,\"dimVersion\":0}]";
+            byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+            ex.getResponseHeaders().set("Content-Type", "application/json");
+            ex.sendResponseHeaders(200, bytes.length); ex.getResponseBody().write(bytes); ex.close();
+        });
         server.start();
         try {
             String url = adminUrl.replace("/mysql", "/" + database);
@@ -65,6 +84,7 @@ class FoodOptionGroupPrimaryDatabaseTest {
                     .withUserConfiguration(FoodApplication.class, Route.class)
                     .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
                             "spring.datasource.password=", "shop.services.internal-token=wire",
+                            "shop.services.targets.PLATFORM=http://127.0.0.1:" + server.getAddress().getPort(),
                             "spring.autoconfigure.exclude=org.springframework.boot.data.redis.autoconfigure."
                                     + "DataRedisAutoConfiguration,org.springframework.boot.data.redis.autoconfigure."
                                     + "DataRedisRepositoriesAutoConfiguration")
@@ -73,7 +93,7 @@ class FoodOptionGroupPrimaryDatabaseTest {
                         var mvc = MockMvcBuilders.webAppContextSetup(c)
                                 .addFilters(c.getBean(FilterChainProxy.class)).build();
                         for (String path : List.of(OptionGroupInternalApi.CREATE_PATH, OptionGroupInternalApi.GET_PATH,
-                                OptionGroupInternalApi.LIST_PATH)) {
+                                OptionGroupInternalApi.LIST_PATH, OptionGroupInternalApi.REPLACE_PATH)) {
                             mvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content("{}"))
                                     .andExpect(status().isUnauthorized());
                             mvc.perform(post(path).header(InternalHttp.TOKEN_HEADER, "wire")
@@ -104,10 +124,18 @@ class FoodOptionGroupPrimaryDatabaseTest {
                         assertThat(first.configNo()).isNotBlank();
                         assertThat(first.status()).isEqualTo("DRAFT");
                         assertThat(api.createOptionGroup(command)).isEqualTo(first);
+                        var replacement = new ReplaceOptionGroupItemsReq(0L, List.of(new OptionItemInput("I",
+                                "SPEC_VALUE", "V".repeat(64), null, BigDecimal.ZERO, BigDecimal.ONE,
+                                BigDecimal.ZERO, 0)), List.of(), new SelectionRules(List.of(), List.of()));
+                        var replaceCommand = new OptionGroupInternalApi.ReplaceCommand("E", "A", first.configNo(),
+                                "operator", "replace", replacement);
+                        assertThat(api.replaceOptionGroupItems(replaceCommand).version()).isEqualTo(1);
+                        assertThat(api.replaceOptionGroupItems(replaceCommand).version()).isEqualTo(1);
                         var detail = api.getOptionGroup(
                                 new OptionGroupInternalApi.Identity("E", "A", first.configNo()));
                         assertThat(detail.config().data().name()).isEqualTo("糖度");
-                        assertThat(detail.config().data().selectionRules()).isEmpty();
+                        assertThat(detail.config().revision()).isEqualTo(1);
+                        assertThat(detail.config().data().items().getFirst().specValueNo()).isEqualTo("V".repeat(64));
                         var page = api.listOptionGroups(new OptionGroupInternalApi.Lookup("E", "A",
                                 new ListOptionGroupsQuery(1, 20)));
                         assertThat(page.total()).isOne();
@@ -123,11 +151,12 @@ class FoodOptionGroupPrimaryDatabaseTest {
                                         e -> assertThat(e.statusCode()).isEqualTo(409));
                         var sql = new JdbcTemplate(c.getBean(DataSource.class));
                         assertThat(sql.queryForObject("SELECT JSON_LENGTH(selection_rules) FROM fnb_option_group",
-                                Integer.class)).isZero();
-                        for (String table : List.of("fnb_option_group", "fnb_action_log",
+                                Integer.class)).isEqualTo(2);
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_option_group", Integer.class)).isOne();
+                        for (String table : List.of("fnb_action_log",
                                 "sys_outbox", "sys_idempotent")) {
                             assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class))
-                                    .as(table).isOne();
+                                    .as(table).isEqualTo(2);
                         }
                         for (String table : List.of("prd_goods", "ord_order")) {
                             assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
@@ -135,6 +164,7 @@ class FoodOptionGroupPrimaryDatabaseTest {
                     });
         } finally {
             server.stop(0);
+            executor.shutdownNow();
             admin.execute("DROP DATABASE " + database);
         }
     }

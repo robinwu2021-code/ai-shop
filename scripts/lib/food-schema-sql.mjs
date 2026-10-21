@@ -25,7 +25,8 @@ function checks(t){
 export function renderFoodSchema(s){
  validateFoodDesign(s);
  const tables=s.tables.filter(t=>t.name.startsWith('fnb_'));
- const version=tables.some(t=>t.name==='fnb_table_occupancy'&&t.fields.some(f=>f.name==='sharing_mode'))?2:1;
+ const spec=tables.find(t=>t.name==='fnb_option_group_item')?.fields.find(f=>f.name==='spec_value_no');
+ const version=spec?.type==='varchar(64)'?3:tables.some(t=>t.name==='fnb_table_occupancy'&&t.fields.some(f=>f.name==='sharing_mode'))?2:1;
  let sql='-- Food-owned tables only; use the existing product/order database.\n-- Flyway location: db/industry/food; history: fnb_flyway_history; version: '+version+'.\n-- Frozen after application. Add a new migration for any subsequent change.\n-- No cross-domain physical foreign keys; services must enforce ownership and concurrency.\n\n';
  if(s.catalogEnhancement)sql='-- TARGET DESIGN ONLY; planned objects are not applied migrations.\n'+sql;
  for(const t of tables){
@@ -83,6 +84,9 @@ export function renderFoodV1(s){
   for(const row of v1.requirementAlignment)row.tables=row.tables.filter(name=>!planned.has(name));
   delete v1.catalogEnhancement;
  }
+ const spec=v1.tables.find(t=>t.name==='fnb_option_group_item')?.fields.find(f=>f.name==='spec_value_no');
+ if(!spec||spec.type!=='varchar(64)')throw Error('V3 spec_value_no contract differs; create a reviewed migration instead');
+ spec.type='varchar(32)';
  const table=v1.tables.find(t=>t.name==='fnb_table_occupancy');
  const field=table?.fields.find(f=>f.name==='sharing_mode');
  if(!field||field.type!=='varchar(16)'||field.nullable!==false)

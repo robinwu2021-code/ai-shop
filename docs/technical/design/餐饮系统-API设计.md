@@ -1,6 +1,6 @@
 # 餐饮系统API设计
 
-> 状态：待评审 · 2026-10-20 · V1含73张fnb_业务表；增强目标82张（9张PLANNED），当前迁移版本2；目标API不代表已交付，prn/rpt保持共享候选。
+> 状态：待评审 · 2026-10-20 · V1含73张fnb_业务表；增强目标82张（9张PLANNED），当前迁移版本3；目标API不代表已交付，prn/rpt保持共享候选。
 > 由 `node scripts/gen-food-system-design.mjs` 生成，勿手改；真源：[领域数据库API设计源](./schema/food-system-design.json)。生成依赖沿用 @viz-js/viz，可用 FOOD_ER_VIZ_MODULE 指定模块路径。
 > 业务入口：[后端业务模块功能清单](../../requirements/餐饮系统-后端业务模块功能清单.md) · [数据库与API评审对齐](../TDD-餐饮系统-数据库与API评审对齐.md)。按桌台→菜品→订单查阅，A–L仍保留为持久化分域编号。
 > 项目约束：[底座兼容对齐](./餐饮系统-项目底座兼容对齐.md)，账号、门店、营业时间、公共实体及协议冲突时优先按该对齐说明修订。
@@ -459,9 +459,9 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| optionItemNo | string | 是 | 项号 |
+| optionItemNo | string | 是 | 稳定业务引用最长32 |
 | sourceKind | string | 是 | SPEC_VALUE或MODIFIER |
-| specValueNo | string | 否 | 字典值 |
+| specValueNo | string | 否 | 原字典值最长64 |
 | modifierNo | string | 否 | 配料 |
 | maxQty | decimal | 是 | 上限 |
 | defaultQty | decimal | 是 | 默认 |
@@ -1564,9 +1564,9 @@
 
 `PUT /biz/x/food/option-groups/{groupNo}/items`
 
-权限与守卫：SPEC_VALUE与MODIFIER二选一；绑定菜品可有多组选配；min/default/max及互斥不得矛盾；依赖图拒循环。
+权限与守卫：原GOODS权限、可信主体及当前门店；V3规格引用64字符；原规格ENUM或主体有效配料工作头；循环/互斥矛盾/默认约束拒绝；CAS幂等审计Outbox同事务；保留外店及无法确认归属的原绑定；仅修改工作头。
 
-能力依赖：餐饮新增。
+能力依赖：已实现工作头选项与当前门店商品绑定，不代表发布或可售。
 
 路径输入：
 
@@ -1579,8 +1579,8 @@
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | version | int64 | 是 | 版本 |
-| items | OptionItemInput[] | 是 | optionItemNo/sourceKind/specValueNo或modifierNo/maxQty/defaultQty/sortNo |
-| goodsNos | string[] | 是 | 绑定商品 |
+| items | OptionItemInput[] | 是 | 最多100 |
+| goodsNos | string[] | 是 | 当前获准店绑定完整集合最多100 |
 | selectionRules | SelectionRules | 是 | 互斥依赖结构 |
 
 成功输出（data）：

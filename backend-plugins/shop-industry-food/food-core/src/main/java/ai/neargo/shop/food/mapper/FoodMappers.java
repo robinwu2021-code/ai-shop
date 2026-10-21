@@ -4,6 +4,7 @@ import ai.neargo.shop.food.entity.FnbActionLog;
 import ai.neargo.shop.food.entity.FnbDish;
 import ai.neargo.shop.food.entity.FnbDishOptionGroup;
 import ai.neargo.shop.food.entity.FnbOptionGroup;
+import ai.neargo.shop.food.entity.FnbModifier;
 import ai.neargo.shop.food.entity.FnbOptionGroupItem;
 
 import ai.neargo.shop.food.entity.FnbCheck;
@@ -21,6 +22,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
@@ -29,9 +31,20 @@ public final class FoodMappers {
     private FoodMappers() {
     }
 
-    public interface DishOptionGroupMapper extends BaseMapper<FnbDishOptionGroup> { }
+    public interface DishOptionGroupMapper extends BaseMapper<FnbDishOptionGroup> {
+        // Only the authorized current-store working association is replaced, never another store's binding.
+        @Delete("DELETE FROM fnb_dish_option_group WHERE entity_no=#{entity} "
+                + "AND group_no=#{group} AND goods_no=#{goods}")
+        int removeDraftBinding(@Param("entity") String entity, @Param("group") String group,
+                @Param("goods") String goods);
+    }
     public interface OptionGroupMapper extends BaseMapper<FnbOptionGroup> { }
-    public interface OptionGroupItemMapper extends BaseMapper<FnbOptionGroupItem> { }
+    public interface OptionGroupItemMapper extends BaseMapper<FnbOptionGroupItem> {
+        // Working rows are replaceable; execution/history must use complete immutable revision snapshots.
+        @Delete("DELETE FROM fnb_option_group_item WHERE entity_no=#{entity} AND group_no=#{group}")
+        int replaceDraftRows(@Param("entity") String entity, @Param("group") String group);
+    }
+    public interface ModifierMapper extends BaseMapper<FnbModifier> { }
 
     public interface DishMapper extends BaseMapper<FnbDish> { }
 
