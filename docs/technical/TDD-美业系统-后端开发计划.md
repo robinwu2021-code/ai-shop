@@ -1,7 +1,7 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-21 · 按业务模块交付并逐模块部署验证；BM-01后端模块已通过隔离部署关口，BM-02人员/物理资源/周班表及远程事实后端模块已通过隔离部署；BM03-a2-1共用权限/原命令核验读取检查点完成；预约工作台未完成。
-> **执行方式：** 使用`superpowers:executing-plans`逐任务实施，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
+> 状态：实施中 · 2026-10-21 · 按业务模块交付并逐模块部署验证；BM-01后端模块已通过隔离部署关口，BM-02人员/物理资源/周班表及远程事实后端模块已通过隔离部署；BM03共用原子容量与真实预约Service检查点已审查通过，端点/协议及模块部署待完成；预约工作台未完成。
+> **执行方式：** 使用`superpowers:subagent-driven-development`逐任务实施及独立审查，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
 ## 当前执行记录（2026-10-21）
@@ -411,16 +411,16 @@ Owner本地可增加必要的有界hold/occupancy查询；原命令Receipt保持
 #### Task 51: BM03真实预约来源与业务服务
 
 **文件责任：** beauty-api Req/VO与AppointmentService；beauty-core预约准备/匹配/来源授权/协调Service及Mapper；
-必要追加V3私有迁移、独立增量真源与严格validator清单。不得回写V1/V2，不依赖merchant实现。
+必要追加V3/V4私有迁移、独立增量真源与严格validator清单。不得回写V1/V2，不依赖merchant实现。
 **接口：** 与Task50通过shop-base资源Booking Port接线（由本任务补端口及owner薄适配），行业生成原计划，owner处理容量。
 
-- [ ] 先对齐原API038～045、147～153、160及AVL-01/APT-01～03实际字段；持久预览含真实政策/商品/定义版本、安排和修订，禁止客户端提供frozenPlan/holdNo当真相。
-- [ ] 用真实门店、服务商品、定义、人员资格/周班表、资源事实生成有界可约候选和完整计划；指定与自动匹配，包含缓冲、多人/多资源；匹配不等于容量承诺。
-- [ ] 持久准备→owner.accept→绑定真实原命令→预约根/fence/intent授权→owner.execute→原命令核验→本域终态落地/历史安排→释放fence。
+- [x] 先对齐原API038～045、147～153、160及AVL-01/APT-01～03实际字段；持久预览含真实政策/商品/定义版本、安排和修订，禁止客户端提供frozenPlan/holdNo当真相。
+- [x] 用真实门店、服务商品、定义、人员资格/周班表、资源事实生成有界可约候选和完整计划；指定与自动匹配，包含缓冲、多人/多资源；匹配不等于容量承诺。
+- [x] 持久准备→owner.accept→绑定真实原命令→预约根/fence/intent授权→owner.execute→原命令核验→本域终态落地/历史安排→释放fence。
   许可超时不自动解fence；网络未知返回operation并按原号恢复；改约失败保留旧安排。
   最小恢复扫描复用现有JobHandler/Outbox，持久操作号、当前命令、重试时点及版本/短租约CAS；进程重启可按原号继续，不靠内存Future或GET查询产生隐式新命令。
   创建的预留成功后用下一独立原命令确认，最终预约CONFIRMED须与真实CONFIRMED hold一致；中间未知保留操作进度，未确认HELD不宣称成约。
-- [ ] 当前经营权限逐次验证，消费者自约绑定本人，代约顾客与临客不伪造订单买家；创建/列表/详情/改约/取消/爽约与恢复全部Service联验。
+- [x] 当前经营权限逐次验证，消费者自约绑定本人，代约顾客与临客不伪造订单买家；创建/列表/详情/改约/取消/爽约与恢复全部Service联验。
 **身份与来源实施裁决：** C端只认CONSUMER/USR当前认证本人，B端只认MERCHANT/MCH或USR当前经营授权。
 内部协议必须原样携带realm/subjectKind并使用既有LoginUser恢复审计上下文，不把所有调用者转成MCH。
 预约权限复用平台BizPerms管理机制，新增跨行业`biz:booking:view`（查看预约）与`biz:booking:manage`（创建、调整及取消预约）。
@@ -434,7 +434,7 @@ ResourceBookingPort是受信行业服务端合同：accept/query/execute/queryHo
 付款/权益的sourceRefs非空时，必须接真实来源合同，否则明确能力关闭；不在BM03创建消费者订单或宣称已收费。
 完整资金/工单绑定仍按BM04/05原业务计划交付，不能用sourceRefs字符串替代证明。
 
-- [ ] 真MySQL验证来源不可伪造、持久幂等、并发同预约、旧版本拒绝、当前撤权、失败保旧、终态对账、原号恢复，提交。
+- [x] 真MySQL验证来源不可伪造、持久幂等、并发同预约、旧版本拒绝、当前撤权、失败保旧、终态对账、原号恢复，提交。
 
 #### Task 52: BM03端点与独立协议
 
@@ -443,6 +443,22 @@ ResourceBookingPort是受信行业服务端合同：accept/query/execute/queryHo
 
 - [ ] 按Task51真实Service接入B/C端，校验trusted context和门店范围；真实TCP覆盖错误令牌、跨主体/跨店、UNKNOWN及断连，不返回伪成功。
 - [ ] embedded与standalone只注册唯一真实provider，禁用不注册；三端路由与API/Java清单增量对账，不生成未实现壳。
+**端点落实：** 保持原BAPI010、038～045、146～153、160路径、DTO和真实Service签名，实际实现后再更新状态。
+新增`POST /biz/x/beauty/operations/{operationNo}/recoveries`是明确增量，不改写原160项基线；GET只读。
+B端可信BizContext、原始X-Store-No与当前MCH/USR成员；C私有预约虽在permitAll的/mp链上仍逐次要求CONSUMER/USR本人。
+Availability公开入口保持匿名；不让请求体覆盖tenant/entity/actor/realm/subjectKind。
+
+**协议落实：** channel仅依赖api和共用合同。传递完整可信LoginUser命名空间并在机器鉴权后恢复上下文，finally清理；
+原MCH-only政策协议保留兼容，新预约协议不能将B-USR/C强转MCH。Booking/Candidates当前合同接真实merchant owner，
+BEAUTY_APPOINTMENT反向freeze/query只认完整持久Binding。独立服务B端识别顾客经真实CustomerIdentityPort远程只读合同，
+不降级成guest，不增加扣款许可。商品master revision经原事实协议完整透传，不以null/默认0补证据。
+owner和source异常显式403/409/503，禁止HTTP200错误对象被当作空事实；远端比对完整返回身份及Binding。
+真实TCP测试带全局异常处理、错误令牌无owner调用、跨店/主体、B-MCH/B-USR/C、UNKNOWN、断连、畸形返回和上下文复用。
+
+**装配落实：** embedded唯一local source；standalone HOST只有web+channel而无core、使用remote source callback；
+standalone SERVER有core和local source、通过remote owner访问平台。禁用或ops形态不注册预约路由/恢复Job。
+记录下一任务需要的JAR、配置、机器协议与provider类；三端API/方法增量对账，不提前打开BM04/06。
+
 - [ ] 测试并提交。
 
 #### Task 53: BM03模块验收与部署
@@ -450,6 +466,54 @@ ResourceBookingPort是受信行业服务端合同：accept/query/execute/queryHo
 - [ ] 联验实际创建→查询→确认/改约→取消/爽约→恢复；完整组合并发、失败保旧、过期许可与未知保护。
 - [ ] 构建实际JAR，临时MySQL真实迁移与embedded/standalone启动，经HTTP调用真实provider完成上述闭环；默认零售和餐饮回归。
 - [ ] 记录测试/迁移/配置/影响范围、消融和模块准出证据；独立全模块审查及必要修复；未完成项如实记载，不把基础readiness等同全部49任务交付。
+
+### 2.18 Task51预约真实来源/业务详细结构（服务检查点完成）
+
+Task50已通过审查，当前基线ac76c2af8。原Service方法及DTO命名沿方法JSON的BAPI010、038～045、146～153、160；不提前实现052接待工单。
+
+| 文件/组件 | 消费→产出 |
+|---|---|
+| base ResourceBookingPort＋merchant owner适配 | 显式Scope/Actor、Accept、原Receipt与Hold；accept/query/execute/queryHold，reconcile仅受信原Binding终态读取，不接受或执行新命令 |
+| base ResourceCandidatesPort＋merchant owner适配 | 有界候选/区间容量；B/C可见人员边界，资格/班表事实和真实桶余量，不返回跨店他人业务引用 |
+| api AppointmentService/AppointmentAvailabilityService/ServiceOperationQueryService | 原Req/Query/VO合同；公开入口不接受frozenPlan、可信actor、主体或hold作为授权 |
+| core匹配/准备/协调/来源权威/查询 | 每个组件单一职责；事实RPC先于本域短事务，provider不急切依赖executor避免Bean循环 |
+| core RecoveryJob | 已有JobHandler，短租约CAS，仅核验/协调原绑定终态；没有用户在场时不伪造LoginUser或新签许可 |
+
+**V3追加四表：** preparation保存有期限预览及规范顾客/临客、原始计划与安排快照；operation保存幂等键/请求摘要、稳定接受载荷/步骤、已绑定原回执、进度/重试租约；arrangement保存不可变安排修订和快照；current明确当前安排指针。
+V3已经临时库实际执行，保持其摘要冻结；追加V4的bty_appointment_resource_decision持久保存原intent/command/decision对应的fenceNo/fenceRevision，V2仍拥有原Binding/许可窗口。
+独立增量真源/生成器和严格manifest/readiness4；V1/V2/V3不变，原41表目标清单保持历史基线，新增五表按本节增量对账。
+BaseEntity.version是预约根修订，appointmentRevision是安排修订，状态更新不得导致历史安排丢失或读入所有历史项目。
+
+**商品版本事实补齐：** ServiceProductFactsPort.Fact与ServiceCatalogFactsPort.Service追加可空goodsRevision/skuRevision，旧构造器明确为null保持既有调用兼容；
+真实商品适配从PrdGoods/PrdSku.version读取并传播，美业预约必须取得真实非空非负修订并冻结，不能把缺字段伪造为0。
+这些是商品/SKU主数据修订，**不是报价版本**；GoodsQueryPort仍拥有门店价/限时活动覆盖，预约只冻结观察到的实际报价/时长及修订，并在提交时重验。
+不为取版本持锁调用商品/活动，不宣称跨域原子报价，不开启订单/付款。真实adapter测试覆盖DB版本含合法0、旧构造器null及既有读取兼容。
+
+**匹配细则：** 项目按顺序执行，qty展开重复服务实例；缓冲占用按五分钟桶对齐，下一个项目在前项缓冲结束向上取整后再预留自己的前缓冲。
+同资源的所有需求按规范resourceNo/桶跟踪使用，避免相邻非五分钟项目产生必然失败的假预览；STAFF数量须不同规范人员/资源。
+root起止与逐项实际服务时间明确展示缓冲/间隔后的总时间线。候选扫描上限50，达到上限标记complete=false，不把未查全当作确定无可约资源。
+
+**编排：** 预览先读取当前真实商品/政策/项目定义与所有要求，生成完整组合后持久化，无容量承诺。
+创建先本域原子保存HELD根(version1)、永久空fence和持久operation；接受参数/键必须在owner.accept之前落库。
+拿到owner实际Receipt后绑定intent/fence；RESERVE成功核验后，持久化下一独立CONFIRM接受载荷及键；仅真实CONFIRMED hold可把预约标记CONFIRMED。
+任何丢响应都回查原号或重放同接受参数；不从变化后的当前owner重新猜预期版本。
+改约REPLACE成功才原子切current安排，拒绝保旧；取消/爽约RELEASE有真实终态才改状态，历史不删除。
+根修改、安排切换、intent终态协调与fence解除在同一个根锁短事务内，原始结果查询在事务外。
+
+**许可与恢复裁决：** 原decisionNo/issuedAt/validUntil同Binding不可续写；过期保留原授权形状直到owner确定终态，随后协调解fence。
+同Binding在phase3已协调后仍按当前真实actor权限返回原始决定（包括原fence修订），不把已知历史改成UNKNOWN；owner先核验原命令终态，旧决定不能复用到新命令。
+原fence元数据必须持久化，不能编码在ID、从计数推导或依赖审计保留期限；丢失/损坏则失败关闭。
+不能以“用户又点了一次”延长原许可。确实需要新动作时，仅在旧号已确定终态后，以新的已授权业务动作/明确持久步骤取得新命令。
+RESERVE已成功而CONFIRM被拒绝时保持真实HELD和持久RELEASE_REQUIRED，不能伪造成约成功或已释放；允许经本人/有权经营人员明确取消完成释放。
+后台只协调已经绑定的原终态；未取得接受回执、仍ACCEPTED或下一CONFIRM需要新授权时，保留操作及准确阻断原因，等待当前认证用户按原键重放。
+为解决发起员工撤权后的在途操作，增加ServiceOperationRecoveryService.recoverOperation(entityNo,currentStoreNo,actorNo,operationNo)→OperationVO，
+仅当前同店MERCHANT MCH/USR且BOOKING_MANAGE允许。它重推准确持久原键/原命令，不改原actor、幂等命名空间或initiatedBy；
+Task52新增POST /biz/x/beauty/operations/{operationNo}/recoveries（BM03恢复增量接口，映射既有BTY-T03/T04），操作号本身绑定幂等恢复目标，不另造预约/资源来源。
+必须验证撤权发起者→另一当前有权人员恢复同原命令；无权限者、跨店或非当前操作不能推进。
+查询API只读进度，不在GET中隐式执行。原计划READ_MODEL预览的“无占位”语义保留，但持久预览需短元数据写事务，不使用数据库readOnly写入。
+
+**验收归属：** Task51原生真实私表/服务测试可使用明确外部事实和owner合同夹具；不得把其当实际共享owner或独立反向协议证明。
+Task52接真实HTTP和身份传输；Task53必须在独立平台宿主（仅web/channel）→美业server→平台owner→美业来源的真实双向路径验收，不能沿旧embedded owner本地授权形成假通过。
 
 ## §3 数据层之后的业务任务与启动深化
 
@@ -504,7 +568,7 @@ python3 scripts/gen-beauty-development-plan.py --check
 
 ## §6 下一次领取任务与本轮交付
 
-**当前执行：按§2.17连续完成BM03模块（Task50共用容量→Task51真实来源/预约Service→Task52端点/协议→Task53模块部署）；a1存储和a2-1共用核验读取已完成，见§26/§27。BM-02人员/资源/周班表及standalone事实后端模块已通过§25隔离部署关口，BM-01已通过§22关口。** 后续按BM-03预约等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
+**当前执行：按§2.17连续完成BM03模块（Task50共用容量及Task51真实来源/预约Service已审查通过→当前Task52端点/协议→Task53模块部署）；a1存储和a2-1共用核验读取已完成，见§26/§27。BM-02人员/资源/周班表及standalone事实后端模块已通过§25隔离部署关口，BM-01已通过§22关口。** 后续按BM-03预约等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
 
 初始计划阶段产物（2026-10-20，非当前工程状态）：本TDD、开发任务JSON、生成任务对照索引和校验器；当时尚未编码。之后实际实现及验收按§7–20逐批记录，当前总览与后续领取以§21为准。
 
@@ -1453,3 +1517,26 @@ ArchitectureTest实际16项、1项失败，仍是未改动OpsPointsInspectionCon
 
 Architecture剩余失败为未修改的OpsPointsInspectionController.java:84全限定PathVariable，基线已存在；不冒充全局绿灯。
 SQL方言无新增、diff空白检查通过。无新增DDL、旧slot切写、实际作业占用、业务库发布或推送；主任务清单继续Task51→52→53。
+
+
+## §29 BM03真实预约Service检查点（2026-10-21）
+
+Task51实现1293e87e6、修复7724577f6，独立审查与增量复审通过。预约准备、真实来源授权、RESERVE→独立CONFIRM、创建/改约/取消/爽约、原号协调、当前管理者显式恢复已落地。
+身份保留MERCHANT MCH/USR及CONSUMER USR，逐次校验当前预约权限与本人归属；商品/SKU真实修订及观察报价提交重验。
+V3追加四表、V4追加原决定fence元数据，严格manifest最新4；V1～V4冻结。根修订与不可变安排修订分离。
+
+审查六项修复：终态同事务安全预约outbox及重放去重；改约使用经来源和owner双重核验的原hold排除投影，其他占用仍计量；
+容量factAt独立于查询回看窗口；恢复逐条隔离失败并回退60秒；历史无current指针预约只读且安排修订未知，不编造安排/hold；
+V3/V4生成器共用确定性renderer，迁移字节不变。默认私有验证已含业务场景。
+
+| 实际验证 | 证据 |
+|---|---|
+| 私有MySQL完整122项通过，含预约16项/真实V2→V4保留旧预约读取 | /tmp/task51-r1-full-beauty-final2.log |
+| 实际资源owner完整50项通过，含原hold精确排除、防伪及新生效任职 | /tmp/task51-r1-full-owner.log |
+| 常规独立五模块reactor72项通过；SQL renderer8项通过 | /tmp/task51-r1-reactor.log；/tmp/task51-r1-renderer-final.log |
+| 缺陷RED与容量消融（精确1预期失败，恢复后绿灯） | /tmp/task51-r1-red.log；/tmp/task51-r1-owner-red.log；/tmp/task51-r1-owner-ablation.log |
+| 独立审查六Important全部关闭，噪声Minor记录 | /tmp/review-bm03-business.md；/tmp/review-bm03-business-r1.md |
+
+私有业务测试的外部事实/owner是明确合同夹具，实际owner原生另验；不作为完整部署链证明。
+归档事件不是已投递通知，正常模式仍需平台消费者路由；后台不伪造用户授权，需新授权的步骤等待认证原键重放或有权人员恢复。
+独立HTTP身份传递、真实来源回调、任务调度及实际JAR闭环归Task52/53；整个BM03尚未准出，BM04/05/06及订单/资金/疗程权益接入不提前宣称交付。
