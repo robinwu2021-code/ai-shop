@@ -13373,6 +13373,9 @@ components:
               const: "MEMBER"
             memberNo:
               type: "string"
+            memberScope:
+              type: "string"
+              const: "OPERATING"
           required:
             - "type"
             - "memberNo"
@@ -13448,6 +13451,73 @@ components:
       required:
         - "expectedRevision"
         - "reason"
+      additionalProperties: false
+    ScopeCandidateQuery:
+      type: "object"
+      properties:
+        keyword:
+          type: "string"
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+      additionalProperties: false
+    ScopeSelectCustomerReq:
+      type: "object"
+      properties:
+        source:
+          "$ref": "#/components/schemas/ScopeSelectionSource"
+      required:
+        - "source"
+      additionalProperties: false
+    ScopeSelectionSource:
+      anyOf:
+        - type: "object"
+          properties:
+            type:
+              type: "string"
+              const: "MEMBER"
+            memberNo:
+              type: "string"
+          required:
+            - "type"
+            - "memberNo"
+          additionalProperties: false
+        - type: "object"
+          properties:
+            type:
+              type: "string"
+              const: "ACCOUNT"
+            accountRef:
+              type: "string"
+          required:
+            - "type"
+            - "accountRef"
+          additionalProperties: false
+        - type: "object"
+          properties:
+            type:
+              type: "string"
+              const: "MEMBER_CODE"
+            code:
+              type: "string"
+          required:
+            - "type"
+            - "code"
+          additionalProperties: false
+    ScopeMemberCreateReq:
+      type: "object"
+      properties:
+        phone:
+          type: "string"
+        remark:
+          type: "string"
+        tagNos:
+          type: "array"
+          items:
+            type: "string"
+      required:
+        - "phone"
       additionalProperties: false
     MerchantOrderActionKind:
       type: "string"
@@ -14419,6 +14489,14 @@ components:
           type: "string"
         pendingScope:
           type: "string"
+        sourceStoreNo:
+          type:
+            - "string"
+            - "null"
+        sourceStoreName:
+          type:
+            - "string"
+            - "null"
         memberNo:
           type:
             - "string"
@@ -14513,6 +14591,128 @@ components:
       additionalProperties: false
     ManagementRecipientPage:
       "$ref": "#/components/schemas/ManagementPage_ManagementRecipient"
+    ScopeCandidatePage:
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/ScopeMemberCandidate"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+        identityConflictCount:
+          type: "number"
+      required:
+        - "items"
+        - "nextCursor"
+        - "identityConflictCount"
+      additionalProperties: false
+    ScopeMemberCandidate:
+      type: "object"
+      properties:
+        displayName:
+          type: "string"
+        phoneMasked:
+          type: "string"
+        memberStatus:
+          type: "string"
+        canRecharge:
+          type: "boolean"
+        unavailableReason:
+          type:
+            - "string"
+            - "null"
+        account:
+          anyOf:
+            - type: "object"
+              properties:
+                accountRef:
+                  type: "string"
+                currency:
+                  "$ref": "#/components/schemas/CurrencyCode"
+                availableMinor:
+                  type: "number"
+              required:
+                - "accountRef"
+                - "currency"
+                - "availableMinor"
+              additionalProperties: false
+            - type: "null"
+        memberNo:
+          type:
+            - "string"
+            - "null"
+        sourceStoreNo:
+          type:
+            - "string"
+            - "null"
+        sourceStoreName:
+          type:
+            - "string"
+            - "null"
+        lastRechargeAt:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "account"
+        - "canRecharge"
+        - "displayName"
+        - "memberNo"
+        - "memberStatus"
+        - "phoneMasked"
+        - "sourceStoreName"
+        - "sourceStoreNo"
+        - "unavailableReason"
+      additionalProperties: false
+    ScopeSelectedCustomer:
+      type: "object"
+      properties:
+        selection:
+          "$ref": "#/components/schemas/SvSelectedCustomer"
+        sourceStoreNo:
+          type:
+            - "string"
+            - "null"
+        sourceStoreName:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "selection"
+        - "sourceStoreNo"
+        - "sourceStoreName"
+      additionalProperties: false
+    ScopeMemberSummary:
+      type: "object"
+      properties:
+        scopeMemberNo:
+          type: "string"
+        displayName:
+          type: "string"
+        phoneMasked:
+          type: "string"
+        status:
+          type: "string"
+        sourceStoreNo:
+          type: "string"
+        sourceStoreName:
+          type: "string"
+        remark:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "scopeMemberNo"
+        - "displayName"
+        - "phoneMasked"
+        - "status"
+        - "sourceStoreNo"
+        - "sourceStoreName"
+        - "remark"
+      additionalProperties: false
     Record_Lang_string:
       type: "object"
       properties:
@@ -14679,6 +14879,132 @@ components:
         - "nextCursor"
       additionalProperties: false
 paths:
+  "/biz/stores/{store}/stored-value/customer-candidates":
+    get:
+      operationId: "mScopeCandidates"
+      summary: "品牌或单店会员候选"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "keyword"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ScopeCandidatePage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stores/{store}/stored-value/customer-selections":
+    post:
+      operationId: "mScopeSelectCustomer"
+      summary: "识别当前运营范围会员"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ScopeSelectedCustomer"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ScopeSelectCustomerReq"
+  "/biz/stores/{store}/members":
+    post:
+      operationId: "mScopeEnrollMember"
+      summary: "在当前品牌或门店录入会员"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ScopeMemberSummary"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ScopeMemberCreateReq"
   "/biz/management/spaces/{m}/recipients":
     get:
       operationId: "mManagementRecipients"

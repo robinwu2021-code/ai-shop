@@ -364,3 +364,7 @@ AuthorizedPaymentMerchant返回payMerchantRef、entityNo、payChannel、applySta
 ### MG09 管理空间可授权人员（P1补充）
 
 `GET /biz/management/spaces/{managementNo}/recipients`，参数cursor/size；响应items[{actorNo,displayName}]/nextCursor。需要management.resource.read及management.grant.manage；仅当前操作者可控主体的有效成员，不使用当前门店上下文。
+
+## P2已实现契约补充
+
+MB01/02/03已实现，权限映射到既有门店CUSTOMER/SV_RECHARGE_CREATE及单独SV_ACCOUNT_READ；MB02返回selection及sourceStoreNo/Name，MB01含identityConflictCount和默认本店已储值账户。旧主体接口不自动变为品牌营销授权。详细字段、前后端类及边界见[TDD-P2实施设计](TDD-P2-品牌会员共享-实施设计.md)。

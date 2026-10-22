@@ -15,6 +15,9 @@ export interface EndpointDef {
 
 /** key 与 MerchantApi 的方法名一一对应，缺一个就编译不过 */
 export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
+  mScopeCandidates: {method:"GET",path:"/biz/stores/:store/stored-value/customer-candidates",auth:true,summary:"品牌或单店会员候选"},
+  mScopeSelectCustomer: {method:"POST",path:"/biz/stores/:store/stored-value/customer-selections",auth:true,summary:"识别当前运营范围会员"},
+  mScopeEnrollMember: {method:"POST",path:"/biz/stores/:store/members",auth:true,summary:"在当前品牌或门店录入会员"},
   mManagementRecipients: {method:"GET",path:"/biz/management/spaces/{m}/recipients",auth:true,summary:"管理空间可授权人员"},
   mManagementContext: {method:"GET",path:"/biz/management/context",auth:true,summary:"管理空间上下文"},
   mCreateManagementSpace: {method:"POST",path:"/biz/management/spaces",auth:true,summary:"创建管理空间"},

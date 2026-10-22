@@ -62,3 +62,6 @@ mBrandAudit	P1已冻结组织API契约；品牌/空间下的嵌套资源，与�
 mStoreOperatingContext	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
 mCheckBrandChange	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
 mSubmitBrandChange	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
+mScopeCandidates	P2既定MB契约以当前门店为路径边界，与服务端保持一致
+mScopeSelectCustomer	P2既定MB契约以当前门店为路径边界，与服务端保持一致
+mScopeEnrollMember	P2既定MB契约以当前门店为路径边界，与服务端保持一致

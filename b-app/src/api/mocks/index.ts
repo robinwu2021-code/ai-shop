@@ -21,6 +21,9 @@ import { inventoryMock } from "./inventory";
 
 export const mockApi: MerchantApi = {
   ...managementMock,
+  mScopeCandidates:async()=>{throw Error('Member scopes require real backend')},
+  mScopeSelectCustomer:async()=>{throw Error('Member scopes require real backend')},
+  mScopeEnrollMember:async()=>{throw Error('Member scopes require real backend')},
   mOrderPointsEarning: async () => [],
   ...storedValueMock,
   ...accountMock,

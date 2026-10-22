@@ -168,3 +168,5 @@ export type SvRecordPage=SvPage<SvRecord>;
 export interface SvRechargeResolve {found:boolean;recharge:SvProgress|null}
 
 export type ManagementRecipientPage=ManagementPage<ManagementRecipient>;
+
+export type {ScopeCandidatePage,ScopeSelectedCustomer,ScopeMemberSummary} from './stored-value-types';

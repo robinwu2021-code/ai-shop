@@ -152,6 +152,9 @@ if (Object.keys(renamed).length) {
 
 /** 契约方法 → 响应类型名 */
 const RESPONSE_TYPES = {
+  mScopeCandidates: "ScopeCandidatePage",
+  mScopeSelectCustomer: "ScopeSelectedCustomer",
+  mScopeEnrollMember: "ScopeMemberSummary",
   mSvCandidates: "PageResult<SvCandidate>",
   mSvSelectCustomer: "SvSelectedCustomer",
   mSvConfirmOffline: "SvProgress",
@@ -549,6 +552,9 @@ const RESPONSE_TYPES = {
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+  mScopeCandidates: "ScopeCandidateQuery",
+  mScopeSelectCustomer: "ScopeSelectCustomerReq",
+  mScopeEnrollMember: "ScopeMemberCreateReq",
   mSvCandidates: "SvCandidatesQuery",
   mSvSelectCustomer: "SvSelectCustomerReq",
   mSvConfirmOffline: "SvRechargeCreate",

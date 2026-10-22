@@ -204,6 +204,9 @@ import type {
 
 export const httpApi: MerchantApi = {
   ...managementHttpApi,
+  mScopeCandidates:(store,q)=>http.get(buildPath(E.mScopeCandidates.path,{store}),q),
+  mScopeSelectCustomer:(store,body)=>http.post(buildPath(E.mScopeSelectCustomer.path,{store}),body),
+  mScopeEnrollMember:(store,body)=>http.post(buildPath(E.mScopeEnrollMember.path,{store}),body),
   mSvCandidates:(q)=>http.get<PageResult<SV.SvCandidate>>(E.mSvCandidates.path,q),
   mSvSelectCustomer:(body)=>http.post<SV.SvSelectedCustomer>(E.mSvSelectCustomer.path,body),
   mSvConfirmOffline:(body,key)=>http.post<SV.SvProgress>(E.mSvConfirmOffline.path,body,{'Idempotency-Key':key}),

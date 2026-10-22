@@ -203,7 +203,13 @@
         "MB03"
       ],
       "planFile": "2026-10-21-brand-stored-value-membership.md",
-      "status": "NOT_STARTED"
+      "status": "AWAITING_FINAL_REVIEW",
+      "implementationNotes": [
+        "V545: three scope tables + nullable ticket facts",
+        "MB01/02/03 implemented; legacy membership numbers and store wallets unchanged",
+        "Private legacy remarks not inferred or copied; old subject block remains subject scoped",
+        "B app 0.6.0/333 candidate; no actual financial transaction"
+      ]
     },
     {
       "id": "P3",

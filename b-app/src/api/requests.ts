@@ -831,3 +831,8 @@ export interface SvPlansQuery {storeNo:string;status?:string;cursor?:string;size
 export interface SvAccountsQuery {storeNo:string;keyword?:string;cursor?:string;size?:number}
 export interface SvPlanStatusReq {storeNo:string;status:string;expectedRevision:number}
 export interface SvCancelReq {expectedRevision:number;reason:string}
+
+export interface ScopeCandidateQuery {keyword?:string;cursor?:string;size?:number}
+import type {ScopeSelectionSource} from './stored-value-types';
+export interface ScopeSelectCustomerReq {source:ScopeSelectionSource}
+export interface ScopeMemberCreateReq {phone:string;remark?:string;tagNos?:string[]}

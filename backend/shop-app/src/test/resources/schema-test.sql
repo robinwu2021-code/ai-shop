@@ -6336,6 +6336,10 @@ CREATE TABLE IF NOT EXISTS mbr_identity_ticket
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    operator_scope_type VARCHAR(24) NULL,
+    issuer_no VARCHAR(64) NULL,
+    brand_scope_revision BIGINT NULL,
+    scope_member_no VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_member_identity_hash UNIQUE (tenant_no,ticket_hash),
     CHECK (expires_at>issued_at),
@@ -13944,4 +13948,68 @@ CREATE TABLE IF NOT EXISTS mch_brand_change
     CONSTRAINT mch_brand_change_uk_1 UNIQUE (tenant_no,change_no),
     CONSTRAINT mch_brand_change_uk_2 UNIQUE (tenant_no,store_no,command_key),
     CONSTRAINT mch_brand_change_uk_3 UNIQUE (tenant_no,pending_store_no)
+);
+
+CREATE TABLE IF NOT EXISTS mbr_scope_member
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    scope_member_no VARCHAR(64) NOT NULL,
+    scope_type VARCHAR(24) NOT NULL,
+    scope_no VARCHAR(64) NOT NULL,
+    customer_no VARCHAR(64) NOT NULL,
+    first_store_no VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    joined_at DATETIME(3) NOT NULL,
+    shared_profile TEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mbr_scope_member_uk_1 UNIQUE (tenant_no,scope_member_no),
+    CONSTRAINT mbr_scope_member_uk_2 UNIQUE (tenant_no,scope_type,scope_no,customer_no),
+    CHECK (scope_type IN ('BRAND','STORE'))
+);
+
+CREATE TABLE IF NOT EXISTS mbr_store_profile
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    store_profile_no VARCHAR(64) NOT NULL,
+    customer_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    remark VARCHAR(500) NULL,
+    advisor_actor_no VARCHAR(64) NULL,
+    first_seen_at DATETIME(3) NOT NULL,
+    last_seen_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mbr_store_profile_uk_1 UNIQUE (tenant_no,store_profile_no),
+    CONSTRAINT mbr_store_profile_uk_2 UNIQUE (tenant_no,store_no,customer_no)
+);
+
+CREATE TABLE IF NOT EXISTS mbr_scope_legacy_link
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    link_no VARCHAR(64) NOT NULL,
+    legacy_member_no VARCHAR(64) NOT NULL,
+    scope_member_no VARCHAR(64) NOT NULL,
+    migration_no VARCHAR(64) NOT NULL,
+    identity_evidence TEXT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mbr_scope_legacy_link_uk_1 UNIQUE (tenant_no,link_no),
+    CONSTRAINT mbr_scope_legacy_link_uk_2 UNIQUE (tenant_no,legacy_member_no,scope_member_no)
 );

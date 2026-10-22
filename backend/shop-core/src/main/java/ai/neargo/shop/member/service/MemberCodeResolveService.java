@@ -13,5 +13,7 @@ public interface MemberCodeResolveService {
 
     CustomerReference selectCustomer(MemberCodeScope scope,String customerNo,String userNo);
 
+    CustomerReference selectScopedCustomer(MemberCodeScope scope,String scopeMemberNo);
+
     ResolvedCustomer requireReference(MemberCodeScope scope, String customerRef);
 }

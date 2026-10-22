@@ -94,6 +94,8 @@ export default {
   }
 },
   storedValue: {
+    "sourceStore": "Joined at",
+    "identityConflict": "Some member identities need verification",
     "memberSuggest": "Name, note or phone",
     "suggestHint": "Enter 2 characters or 3 digits",
     "resumePending": "Resume pending top-up",

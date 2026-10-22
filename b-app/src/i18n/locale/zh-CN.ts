@@ -96,6 +96,8 @@ export default {
   }
 },
   storedValue: {
+    "sourceStore": "来源门店",
+    "identityConflict": "部分会员身份待核实",
     "memberSuggest": "姓名、备注或手机号",
     "suggestHint": "输入至少2个字或3位号码",
     "resumePending": "继续处理未完成储值",

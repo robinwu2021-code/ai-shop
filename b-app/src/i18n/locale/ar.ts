@@ -94,6 +94,8 @@ export default {
   }
 },
   storedValue: {
+    "sourceStore": "متجر التسجيل",
+    "identityConflict": "بعض هويات الأعضاء بحاجة إلى التحقق",
     "memberSuggest": "الاسم أو الملاحظة أو الهاتف",
     "suggestHint": "أدخل حرفين أو ثلاثة أرقام",
     "resumePending": "متابعة الشحن المعلق",

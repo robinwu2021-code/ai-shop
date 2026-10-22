@@ -37,6 +37,9 @@ public final class BizKey {
     public static final String PERSON = "PS";
     /** 会员：一个人 × 一家主体的关系。与 PERSON 分开 —— 一份人档可以是好几家店的会员 */
     public static final String MEMBER = "MB";
+    public static final String SCOPE_MEMBER = "MSM";
+    public static final String STORE_MEMBER_PROFILE = "MSP";
+    public static final String MEMBER_SCOPE_LINK = "MSL";
     /** 会员来源明细。每一次来源一行 */
     public static final String MEMBER_SOURCE = "MS";
     /** 会员标签。号不可变，名字可改 —— 关系表存的是它 */

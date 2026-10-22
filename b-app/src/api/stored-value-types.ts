@@ -12,6 +12,12 @@ export interface SvReceipt { expectedRevision:number;actualAmountMinor:number;co
 export interface SvReceive { expectedRevision:number;receiptNo:string;confirmationNote:string }
 export interface SvCustomer { customerRef:string;maskedName:string;expiresAt:string }
 
-export type SvSelectionSource={type:'MEMBER';memberNo:string}|{type:'ACCOUNT';accountRef:string};
+export type SvSelectionSource={type:'MEMBER';memberNo:string;memberScope?:'OPERATING'}|{type:'ACCOUNT';accountRef:string};
 export interface SvCandidate {memberNo:string;displayName:string;phoneMasked:string;memberStatus:string;canRecharge:boolean;unavailableReason:string|null;account:{accountRef:string;currency:CurrencyCode;availableMinor:number}|null}
-export interface SvSelectedCustomer {customerRef:string;expiresAt:string;pendingScope?:string;memberNo?:string|null;displayName:string;phoneMasked:string;account:SvCandidate['account']}
+export interface SvSelectedCustomer {customerRef:string;expiresAt:string;pendingScope?:string;sourceStoreNo?:string|null;sourceStoreName?:string|null;memberNo?:string|null;displayName:string;phoneMasked:string;account:SvCandidate['account']}
+
+export interface ScopeMemberCandidate extends Omit<SvCandidate,'memberNo'> {memberNo:string|null;sourceStoreNo:string|null;sourceStoreName:string|null;lastRechargeAt?:string|null}
+export interface ScopeCandidatePage {items:ScopeMemberCandidate[];nextCursor:string|null;identityConflictCount:number}
+export type ScopeSelectionSource={type:'MEMBER';memberNo:string}|{type:'ACCOUNT';accountRef:string}|{type:'MEMBER_CODE';code:string};
+export interface ScopeSelectedCustomer {selection:SvSelectedCustomer;sourceStoreNo:string|null;sourceStoreName:string|null}
+export interface ScopeMemberSummary {scopeMemberNo:string;displayName:string;phoneMasked:string;status:string;sourceStoreNo:string;sourceStoreName:string;remark:string|null}

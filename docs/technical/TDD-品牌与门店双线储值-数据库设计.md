@@ -718,3 +718,7 @@ sv_issuer_version.collection_config保存经核验的版本化route引用数组�
 | sv_lot | collection_pay_merchant_no、collection_pay_channel | 跟随原充值事实冻结，历史追溯不查询当前默认商户推断 |
 
 新增表数量仍26张，扩展表仍10张；新增的是现有交易表上的渠道追溯字段，没有创建第二套支付商户。品牌/单店账户键仍是tenant+issuer+customer+currency，不能按充值渠道切钱包。储值清分账单按主体结算，渠道向商户结算继续沿用原支付系统。
+
+## P2迁移实施
+
+V545只新增mbr_scope_member/mbr_store_profile/mbr_scope_legacy_link及mbr_identity_ticket的operator_scope_type、issuer_no、brand_scope_revision、scope_member_no兼容列；与P1同用utf8mb4_unicode_520_ci。历史主体备注不具备撰写门店证据，留原表，不推测复制；新profile只接受明确当前店写入，导入查询不更新last_seen。范围身份不改钱包客户键或余额。

@@ -845,6 +845,9 @@ export interface EstateList {
 }
 
 export interface MerchantApi extends ManagementApi {
+  mScopeCandidates(store:string,q:{keyword?:string;cursor?:string;size?:number}):Promise<SV.ScopeCandidatePage>;
+  mScopeSelectCustomer(store:string,body:{source:SV.ScopeSelectionSource}):Promise<SV.ScopeSelectedCustomer>;
+  mScopeEnrollMember(store:string,body:{phone:string;remark?:string;tagNos?:string[]}):Promise<SV.ScopeMemberSummary>;
   mSvCandidates(q:{storeNo:string;phone?:string;keyword?:string}):Promise<PageResult<SV.SvCandidate>>;
   mSvSelectCustomer(body:{storeNo:string;source:SV.SvSelectionSource}):Promise<SV.SvSelectedCustomer>;
   mSvConfirmOffline(body:SV.SvRechargeCreate,key:string):Promise<SV.SvProgress>;
