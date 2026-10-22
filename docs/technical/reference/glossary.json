@@ -28684,6 +28684,20 @@
       "package": "ai.neargo.shop.trade.order.entity"
     },
     {
+      "table": "ord_pricing_template",
+      "class": "OrdPricingTemplate",
+      "zh": "Pricing publication evidence uses business numbers; immutable revisions are insert/query only.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_pricing_template_revision",
+      "class": "OrdPricingTemplateRevision",
+      "zh": "Pricing publication evidence uses business numbers; immutable revisions are insert/query only.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
       "table": "ord_refund_execution",
       "class": "OrdRefundExecution",
       "zh": "The immutable refund plan survives gateway ambiguity and independent resource recovery.",
@@ -28701,6 +28715,20 @@
       "table": "ord_status_log",
       "class": "OrdStatusLog",
       "zh": "订单状态时间线（C-OC-03 / C5）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_store_pricing_config",
+      "class": "OrdStorePricingConfig",
+      "zh": "Pricing publication evidence uses business numbers; immutable revisions are insert/query only.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_store_pricing_revision",
+      "class": "OrdStorePricingRevision",
+      "zh": "Pricing publication evidence uses business numbers; immutable revisions are insert/query only.",
       "module": "shop-core",
       "package": "ai.neargo.shop.trade.entity"
     },
@@ -31960,6 +31988,13 @@
         "name": "JOB",
         "value": "JOB",
         "zh": "定时任务调度器。",
+        "module": "shop-base"
+      },
+      {
+        "host": "ServiceName",
+        "name": "FOOD",
+        "value": "FOOD",
+        "zh": "餐饮独立进程。",
         "module": "shop-base"
       },
       {
@@ -37119,6 +37154,33 @@
         "module": "shop-core"
       },
       {
+        "name": "Algorithm",
+        "values": [
+          "SHARED_COUPON_V1",
+          "OWNER_FROZEN_V1"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "AmountBasis",
+        "values": [
+          "PAYABLE_GROSS",
+          "TAX_EXCLUSIVE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "AmountBasis",
+        "values": [
+          "TAX_EXCLUSIVE",
+          "PAYABLE_GROSS"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "AssetKind",
         "values": [
           "ORDER_COUPON",
@@ -37149,6 +37211,23 @@
           "AUTHORIZED",
           "CANCELLED",
           "EXPIRED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "BenefitKind",
+        "values": [
+          "ACTIVITY",
+          "PERCENT_COUPON",
+          "CASH_COUPON",
+          "DEDUCTION_COUPON",
+          "STORED_VALUE",
+          "POINTS",
+          "MANUAL_PERCENT",
+          "MANUAL_AMOUNT",
+          "MANUAL_WAIVER",
+          "CASH_ROUNDING"
         ],
         "zh": "",
         "module": "shop-base"
@@ -37219,6 +37298,24 @@
         "module": "shop-base"
       },
       {
+        "name": "CombinationMode",
+        "values": [
+          "MULTI_KIND",
+          "SINGLE_KIND"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "CouponMode",
+        "values": [
+          "SINGLE",
+          "MULTI"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "Decision",
         "values": [
           "CANCEL",
@@ -37239,6 +37336,15 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "Deployment",
+        "values": [
+          "EMBEDDED",
+          "STANDALONE"
+        ],
+        "zh": "",
+        "module": "shop-app"
       },
       {
         "name": "Dim",
@@ -37527,6 +37633,28 @@
         "module": "shop-base"
       },
       {
+        "name": "EvaluatorType",
+        "values": [
+          "FORBID_COMBINATION",
+          "COUNT_LIMIT",
+          "REQUIRE_CAPABILITY",
+          "SCOPE_OVERLAP",
+          "ORDER_AND_REMAINDER",
+          "REQUIRE_APPROVAL",
+          "CONSERVATION",
+          "TAX_POLICY_VALIDITY",
+          "TAX_PRICE_MODE",
+          "TAX_CLASSIFICATION",
+          "TAX_ADJUSTMENT_CLASSIFICATION",
+          "TAX_ROUNDING",
+          "TAX_FINALIZATION",
+          "TAX_PRESENTATION",
+          "TAX_HISTORY"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "FactKind",
         "values": [
           "PAID",
@@ -37534,6 +37662,27 @@
           "REFUND_SUCCEEDED",
           "FINALIZED",
           "REFUND_CLOSED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "FixedPolicy",
+        "values": [
+          "B03",
+          "B06",
+          "B09",
+          "B10",
+          "B11",
+          "B12",
+          "T01",
+          "T02",
+          "T03",
+          "T04",
+          "T05",
+          "T06",
+          "T07",
+          "T08"
         ],
         "zh": "",
         "module": "shop-base"
@@ -37637,6 +37786,26 @@
         ],
         "zh": "Four business holders and one issuance register form the conserved points ledger.",
         "module": "pay/pay-domain"
+      },
+      {
+        "name": "IndustryRestriction",
+        "values": [
+          "PUBLISHED_MENU_CHANNEL_PRICE_ONLY",
+          "BUNDLE_PARENT_OR_LEAF_PRICING",
+          "ROOT_CHECKOUT_SCOPE_COUPON_LIMIT",
+          "FROZEN_POSTPAID_BATCHES",
+          "LEGACY_RETAIL_NOT_AUTO_MIGRATED",
+          "ORIGINAL_FUNDER_ALLOCATION",
+          "OFFLINE_PLATFORM_COUPON_RESTRICTIONS",
+          "FREIGHT_ELIGIBILITY_SEPARATE",
+          "ORIGINAL_SERVICE_SOURCE",
+          "RIGHTS_SEPARATE_FROM_MONEY",
+          "STORED_REDEMPTION_FULL_COVER_ONLY",
+          "NO_AUTOMATIC_STORED_CASH_MIX",
+          "NO_NEW_ONLINE_STORED_REVERSAL"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "IntentKind",
@@ -37762,6 +37931,18 @@
         "module": "shop-store-mybatis"
       },
       {
+        "name": "LimitPath",
+        "values": [
+          "TOTAL",
+          "PERCENT",
+          "CASH",
+          "DEDUCTION",
+          "AMOUNT_TOTAL"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "LoginEvent",
         "values": [
           "LOGIN",
@@ -37792,6 +37973,16 @@
         ],
         "zh": "",
         "module": "pay/pay-domain"
+      },
+      {
+        "name": "Mode",
+        "values": [
+          "EXPLICIT",
+          "CANDIDATE_POOL",
+          "AUTO_BEST"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "Mode",
@@ -37918,6 +38109,16 @@
         "module": "shop-base"
       },
       {
+        "name": "OverlapMode",
+        "values": [
+          "DISJOINT",
+          "BEST_ONE",
+          "STACK"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "OwnerSystem",
         "values": [
           "CORE_LEGACY",
@@ -38033,6 +38234,25 @@
         "module": "shop-base"
       },
       {
+        "name": "PriceTaxMode",
+        "values": [
+          "INCLUSIVE",
+          "EXCLUSIVE"
+        ],
+        "zh": "The source price owns this dimension; a UI display switch cannot change it.",
+        "module": "shop-base"
+      },
+      {
+        "name": "PricingRole",
+        "values": [
+          "NONE",
+          "PARENT",
+          "LEAF"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "Quality",
         "values": [
           "SALEABLE",
@@ -38072,6 +38292,16 @@
           "CREDITED",
           "CANCELLED",
           "REJECTED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "RecipeStatus",
+        "values": [
+          "COMPLETE",
+          "INELIGIBLE",
+          "UNAVAILABLE"
         ],
         "zh": "",
         "module": "shop-base"
@@ -38150,6 +38380,16 @@
         "module": "pay/pay-domain"
       },
       {
+        "name": "ScopeStatus",
+        "values": [
+          "OPEN",
+          "PAID",
+          "UNKNOWN"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "SettleMode",
         "values": [
           "PER_ORDER",
@@ -38208,6 +38448,26 @@
           "MKT_LEGACY",
           "PMT",
           "PAY"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Stage",
+        "values": [
+          "BUSINESS_PRE_TAX"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Stage",
+        "values": [
+          "CONFIGURATION",
+          "SELECTION",
+          "ELIGIBILITY",
+          "APPROVAL",
+          "AMOUNT"
         ],
         "zh": "",
         "module": "shop-base"
@@ -38351,6 +38611,28 @@
       {
         "name": "Status",
         "values": [
+          "SELECTED",
+          "NO_LEGAL_PLAN",
+          "INVALID_SELECTION",
+          "PLAN_SEARCH_LIMIT",
+          "EVALUATION_INCOMPLETE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Status",
+        "values": [
+          "CALCULATED",
+          "REJECTED",
+          "UNAVAILABLE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Status",
+        "values": [
           "SUCCEEDED",
           "PROCESSING",
           "TERMINAL_FAILED",
@@ -38417,6 +38699,37 @@
         "module": "pay/pay-domain"
       },
       {
+        "name": "TaxClass",
+        "values": [
+          "STANDARD",
+          "ZERO_RATED",
+          "EXEMPT",
+          "OUT_OF_SCOPE",
+          "UNKNOWN"
+        ],
+        "zh": "Tax eligibility is independent of participation in promotions; unknown is never zero-rated.",
+        "module": "shop-base"
+      },
+      {
+        "name": "TaxPointStatus",
+        "values": [
+          "ESTIMATED",
+          "CONFIRMED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "TaxTreatment",
+        "values": [
+          "REDUCES_TAX_BASE",
+          "SETTLES_CONSIDERATION",
+          "UNKNOWN"
+        ],
+        "zh": "Owner and regional evidence decide tax effects rather than a coupon or points label.",
+        "module": "shop-base"
+      },
+      {
         "name": "TicketRealm",
         "values": [
           "B",
@@ -38437,6 +38750,16 @@
         ],
         "zh": "统一的物流状态（TDD-圆通物流直连 §5）。",
         "module": "shop-base"
+      },
+      {
+        "name": "TransactionDirection",
+        "values": [
+          "EARN",
+          "REDEEM",
+          "REVERSAL"
+        ],
+        "zh": "",
+        "module": "pay/pay-domain"
       },
       {
         "name": "TriggerType",
@@ -42696,6 +43019,14 @@
       "type": "int",
       "value": "4",
       "zh": "用户自提",
+      "module": "shop-base"
+    },
+    {
+      "host": "MoneyMinor",
+      "name": "MAX_JSON_SAFE_MINOR",
+      "type": "long",
+      "value": "9_007_199_254_740_991L",
+      "zh": "",
       "module": "shop-base"
     },
     {

@@ -74,6 +74,10 @@ def _h2_type(col: str) -> str:
     **修在生成器而不是产物**：手改 schema-test.sql 会在下一次重新生成时被冲掉，
     这一条已经被覆盖过三次。生产库仍是 JSON，那边没有这个问题。
     """
+    # H2 has no JSON_VALID function. Preserve checks using its equivalent JSON predicate.
+    if re.match(r"\s*(?:CONSTRAINT\s+\w+\s+)?CHECK\b", col, re.I):
+        col = re.sub(r"\bJSON_VALID\(\s*(`?\w+`?)\s*\)", r"(\1 IS JSON)", col, flags=re.I)
+        return col
     return _h2_generated_column(re.sub(r"(?<![\w])JSON(?![\w])", "TEXT", col, flags=re.I))
 
 
@@ -588,7 +592,7 @@ def _apply_action(table, action, cols):
     if add_check:
         name, expression = add_check.groups()
         prefix = f"CONSTRAINT {name} " if name else ""
-        cols.append(f"    {prefix}CHECK {expression}")
+        cols.append(_h2_type(f"    {prefix}CHECK {expression}"))
         return
 
     if re.match(r"ADD\s+(?:INDEX|KEY)\s+(?:IF\s+NOT\s+EXISTS\s+)?\w*\s*\(", action, re.I):

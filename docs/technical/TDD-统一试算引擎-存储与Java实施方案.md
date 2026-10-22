@@ -1,6 +1,6 @@
 # 统一试算引擎：存储与Java实施方案
 
-> 状态：部分实施（CKO-02～07共享值对象、配置编译、业务规则、候选、公式及纯税内核），其余按计划待开发 · 2026-10-22 · 档位2。本文细化已讨论规则的存储、Java职责、接口和开发顺序，不表示表、API或资金适配已交付。沿用[ADR-040权威边界](./ADR/ADR-040-餐饮销售配置与耗用权威边界.md)，不重新建立商品、订单或资金权威。
+> 状态：部分实施（CKO-02～08共享内核及4表配置发布事务），其余按计划待开发 · 2026-10-22 · 档位2。本文细化已讨论规则的存储、Java职责、接口和开发顺序，不表示报价表、API或资金适配已交付。沿用[ADR-040权威边界](./ADR/ADR-040-餐饮销售配置与耗用权威边界.md)，不重新建立商品、订单或资金权威。
 >
 > 规则依据：[三行业优惠组合与多券](./TDD-三行业优惠规则-组合与多券.md)、[规则公式及门店配置](./TDD-统一试算引擎-规则公式与多行业模型.md)、[54条规则目录](./TDD-统一试算引擎-三行业规则与规则引擎.md)。需求沿用[餐饮完整需求](../requirements/餐饮系统-完整需求文档.md)中报价、结账、资金与报表要求，以及上述三行业专项规则。
 
@@ -10,7 +10,7 @@
 
 CKO-01已完成源码合同核验：[能力、字段差异及纯内核合同基线](./TDD-订单结账-CKO01合同与字段核验.md)。共同时间精度收口为现有DATETIME(3)，经营币种列为CHAR(3)；不代表实际数据库或外部资金合同已验收。
 
-CKO-02实现收据：[定点金额、计价份额、事实集合及SPI来源引用](./TDD-订单结账-CKO02定点金额与事实对象.md)。这些基础对象已实现；[CKO-03配置编译收据](./TDD-订单结账-CKO03规则配置编译.md)记录已实现的类型化编译、强制目录、覆盖/reset及能力校验。[CKO-04业务规则收据](./TDD-订单结账-CKO04业务规则校验.md)记录B01～B12及显式份额金额/原owner/审批校验。[CKO-05多券计划收据](./TDD-订单结账-CKO05多券候选与份额计划.md)记录已实现的有界子集搜索与完整报价评估合同，输出仍为BUSINESS_PRE_TAX。[CKO-06公式与守恒收据](./TDD-订单结账-CKO06公式分摊与守恒.md)记录固定金额公式、原owner逐步报价/资方/尾差及独立复核，输出仍为税前业务证据。[CKO-07地区税收据](./TDD-订单结账-CKO07地区税与最终定税.md)记录纯税预估/最终定税、税类与对价分类及冻结原税AA分配；正式税档发布、税后候选编排、配置/报价表、实际owner适配及交易Service仍待后续任务。
+CKO-02实现收据：[定点金额、计价份额、事实集合及SPI来源引用](./TDD-订单结账-CKO02定点金额与事实对象.md)。这些基础对象已实现；[CKO-03配置编译收据](./TDD-订单结账-CKO03规则配置编译.md)记录已实现的类型化编译、强制目录、覆盖/reset及能力校验。[CKO-04业务规则收据](./TDD-订单结账-CKO04业务规则校验.md)记录B01～B12及显式份额金额/原owner/审批校验。[CKO-05多券计划收据](./TDD-订单结账-CKO05多券候选与份额计划.md)记录已实现的有界子集搜索与完整报价评估合同，输出仍为BUSINESS_PRE_TAX。[CKO-06公式与守恒收据](./TDD-订单结账-CKO06公式分摊与守恒.md)记录固定金额公式、原owner逐步报价/资方/尾差及独立复核，输出仍为税前业务证据。[CKO-07地区税收据](./TDD-订单结账-CKO07地区税与最终定税.md)记录纯税预估/最终定税、税类与对价分类及冻结原税AA分配；[CKO-08配置发布收据](./TDD-订单结账-CKO08配置发布与事务.md)记录4表及内部发布Service；正式税档/种子导入、配置API、税后候选编排、报价表、实际owner适配及交易Service仍待后续任务。
 
 ## L1 定位
 
@@ -284,7 +284,7 @@ S先确定，积分及人工抹零不得侵入已冻结资金计划。人工扣�
 
 ### 2.7 Java代码清单与类关系
 
-沿现有包规范；下表中**包名＋类名**构成完整类名。枚举、record按真实复杂度合并，不为每个字段生成Service。下列MoneyMinor、PricingFacts、PricingUnit及SPI的PricingSourceRef已由CKO-02实现；PricingConfigCompiler、EffectivePricingConfig、RuleDefinition及编译辅助对象已由CKO-03实现；PricingRuleEngine、RuleEvaluator、RuleViolation及业务事实/候选包装已由CKO-04实现；BenefitPlanSelector、BenefitSelection、CalculationPlan及PlanSelectionResult已由CKO-05实现；PricingEngine、FormulaRegistry、PricingFormula、PricingResult及PricingInvariantChecker已由CKO-06实现；TaxEngine、TaxAdjustmentResolver、TaxPolicy、TaxLineResult及TaxResult已由CKO-07实现；其余新类仍是目标，不代表已交付。
+沿现有包规范；下表中**包名＋类名**构成完整类名。枚举、record按真实复杂度合并，不为每个字段生成Service。下列MoneyMinor、PricingFacts、PricingUnit及SPI的PricingSourceRef已由CKO-02实现；PricingConfigCompiler、EffectivePricingConfig、RuleDefinition及编译辅助对象已由CKO-03实现；PricingRuleEngine、RuleEvaluator、RuleViolation及业务事实/候选包装已由CKO-04实现；BenefitPlanSelector、BenefitSelection、CalculationPlan及PlanSelectionResult已由CKO-05实现；PricingEngine、FormulaRegistry、PricingFormula、PricingResult及PricingInvariantChecker已由CKO-06实现；TaxEngine、TaxAdjustmentResolver、TaxPolicy、TaxLineResult及TaxResult已由CKO-07实现；OrdPricingTemplate、OrdPricingTemplateRevision、OrdStorePricingConfig、OrdStorePricingRevision、PricingTemplateService及StorePricingConfigService已由CKO-08实现；其余新类仍是目标，不代表已交付。
 
 | 模块 | 完整包名 | 类名及关键方法 |
 |---|---|---|
@@ -472,4 +472,4 @@ C端不提供配置发布API，也不能仅凭quoteNo读取别人报价。平台
 
 ## §6 本轮产物与对账
 
-本实施方案复用既有规则目录与SVG；后续新增税费补充、详细种子及PRICING_RULE_SPEC_V4，完善P09和含税/对价口径。后续CKO-01完成合同核验，CKO-02～07实现共享值对象、配置编译、业务规则、候选、固定公式及纯地区税内核，详见前述收据；未创建数据库表、未发布门店配置或开放报价/资金接口。下一步CKO-08配置表及发布事务；schema/API/权限在对应应用任务实施时登记并以真实测试证据回填。
+本实施方案复用既有规则目录与SVG；后续新增税费补充、详细种子及PRICING_RULE_SPEC_V4，完善P09和含税/对价口径。后续CKO-01完成合同核验，CKO-02～07实现共享值对象、配置编译、业务规则、候选、固定公式及纯地区税内核，详见前述收据；已增加4配置表迁移并在一次性MariaDB验证，未迁移既有业务库、未发布真实门店配置或开放报价/资金接口。下一步CKO-09受控种子及配置API；schema/API/权限在对应应用任务实施时登记并以真实测试证据回填。

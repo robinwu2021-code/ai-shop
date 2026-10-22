@@ -240,7 +240,7 @@ shop:
   outbox:
     enabled: ${SHOP_OUTBOX_ENABLED:true}
     maintenance: ${SHOP_OUTBOX_MAINTENANCE:false}
-    archive-only: []
+    archive-only: ["PLATFORM:PRICING_CONFIG_PUBLISHED"]
     concurrency: 5
     queue-capacity: 500
     recovery-interval: 5s

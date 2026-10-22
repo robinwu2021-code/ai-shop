@@ -8170,6 +8170,128 @@ CREATE TABLE IF NOT EXISTS pmt_pay_coupon_projection
     CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(fact_hash)=64)
 );
 
+CREATE TABLE IF NOT EXISTS ord_pricing_template
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    template_no VARCHAR(32) NOT NULL,
+    industry_code VARCHAR(32) NOT NULL,
+    template_code VARCHAR(32) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    active_revision_no VARCHAR(32) DEFAULT NULL,
+    draft_content LONGTEXT NOT NULL,
+    draft_schema_version INT NOT NULL,
+    draft_version BIGINT NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_pricing_template_no UNIQUE (tenant_no,template_no),
+    CHECK (draft_version >= 0),
+    CHECK (status IN ('ACTIVE','ARCHIVED')),
+    CONSTRAINT uk_ord_pricing_template_code UNIQUE (tenant_no,industry_code,template_code),
+    CHECK ((draft_content IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS ord_pricing_template_revision
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    revision_no VARCHAR(32) NOT NULL,
+    template_no VARCHAR(32) NOT NULL,
+    revision BIGINT NOT NULL,
+    industry_code VARCHAR(32) NOT NULL,
+    schema_version INT NOT NULL,
+    definition_snapshot LONGTEXT NOT NULL,
+    definition_hash CHAR(64) NOT NULL,
+    engine_spec_version VARCHAR(64) NOT NULL,
+    rule_catalog_version VARCHAR(64) NOT NULL,
+    previous_revision_no VARCHAR(32) DEFAULT NULL,
+    published_at DATETIME(3) NOT NULL,
+    published_by VARCHAR(32) NOT NULL,
+    publish_reason VARCHAR(256) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_pricing_template_revision_no UNIQUE (tenant_no,revision_no),
+    CONSTRAINT uk_ord_pricing_template_revision_seq UNIQUE (tenant_no,template_no,revision),
+    CHECK (revision >= 1),
+    CHECK ((definition_snapshot IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS ord_store_pricing_config
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    config_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    industry_code VARCHAR(32) NOT NULL,
+    template_no VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    active_revision_no VARCHAR(32) DEFAULT NULL,
+    draft_template_revision_no VARCHAR(32) NOT NULL,
+    draft_override LONGTEXT NOT NULL,
+    draft_schema_version INT NOT NULL,
+    draft_version BIGINT NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_store_pricing_config_no UNIQUE (tenant_no,config_no),
+    CHECK (draft_version >= 0),
+    CHECK (status IN ('ACTIVE','ARCHIVED')),
+    CONSTRAINT uk_ord_store_pricing_scope UNIQUE (tenant_no,store_no,industry_code),
+    CHECK ((draft_override IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS ord_store_pricing_revision
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    revision_no VARCHAR(32) NOT NULL,
+    config_no VARCHAR(32) NOT NULL,
+    revision BIGINT NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    industry_code VARCHAR(32) NOT NULL,
+    template_revision_no VARCHAR(32) NOT NULL,
+    override_snapshot LONGTEXT NOT NULL,
+    effective_snapshot LONGTEXT NOT NULL,
+    schema_version INT NOT NULL,
+    effective_hash CHAR(64) NOT NULL,
+    engine_spec_version VARCHAR(64) NOT NULL,
+    rule_catalog_version VARCHAR(64) NOT NULL,
+    previous_revision_no VARCHAR(32) DEFAULT NULL,
+    rollback_from_revision_no VARCHAR(32) DEFAULT NULL,
+    published_at DATETIME(3) NOT NULL,
+    published_by VARCHAR(32) NOT NULL,
+    publish_reason VARCHAR(256) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_store_pricing_revision_no UNIQUE (tenant_no,revision_no),
+    CONSTRAINT uk_ord_store_pricing_revision_seq UNIQUE (tenant_no,config_no,revision),
+    CHECK (revision >= 1),
+    CHECK ((override_snapshot IS JSON)),
+    CHECK ((effective_snapshot IS JSON))
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
