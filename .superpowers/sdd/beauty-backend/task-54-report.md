@@ -108,3 +108,37 @@ Native scenarios, exact method names in MemberGuestRegistrationIT:
 - `docs/technical/reference/中英文对照-词条.md`
 - `docs/technical/reference/静态常量清单.md`
 - `scripts/verify-member-guest-registration.mjs`
+
+
+## Independent review fix round 1/5 — I1 generated API source consistency
+
+FIX_BASE: 6932ef5c41e4ef093eda570545748f2abdb354eb. Read complete /tmp/review-bm04-identity.md. Its sole Important I1 is confirmed: Task54 had appended section nine directly to generated API Markdown, while the API JSON and Java implementationProtocols sources still ended at the original resolve-reference. Before the fix, `python3 scripts/gen-beauty-api-design.py --check` exited1 with `AssertionError: API文档过期，请重新生成`.
+
+Registered only the five implemented machine routes (guest register/get/verify/claim and verify-consumer-proof) in beauty-api-design.json implementationEndpoints. Each contains the actual owner, typed request/response, current authorization/replay semantics and a link to the maintained beauty README for the complete Task54 cryptography/configuration/security boundary. Regeneration removes the handwritten section; no security note now relies on manually editing a generated artifact. The original modules/160 numbered API baseline is byte-for-data identical to FIX_BASE.
+
+Checked the related Java-method source and added the same five routes to implementationProtocols with identical method/path/owner/request/response fields. Its implementationTopology now names the already implemented local MemberGuestRegistrationPortImpl and independent RemoteGuestRegistrationPort. Regenerated its two method/class documents. No runtime, migration, generator implementation, unrelated baseline design or controller-owned plan was changed.
+
+Exact commands and outputs from the worktree:
+
+| Command | Result / evidence |
+|---|---|
+| `python3 scripts/gen-beauty-api-design.py` | `docs/technical/design/美业系统-API清单.md`; /tmp/task54-fix1-api-regenerate.log |
+| `python3 scripts/gen-beauty-java-method-design.py` | PASS beauty class/method design: controllers44, services28, serviceMethods101, dtos162, mappers25, customMapperMethods38, ownedHttp95, sharedHttp11; /tmp/task54-fix1-java-regenerate.log |
+| `python3 scripts/gen-beauty-api-design.py --check` | `PASS: 20模块、118功能覆盖、编号/路径唯一、阶段与生成物一致`; /tmp/task54-fix1-gen-beauty-api-design.log |
+| `python3 scripts/gen-beauty-java-method-design.py --check` | `PASS beauty class/method design: {"controllers": 44, "services": 28, "serviceMethods": 101, "dtos": 162, "mappers": 25, "customMapperMethods": 38, "ownedHttp": 95, "sharedHttp": 11}`; /tmp/task54-fix1-gen-beauty-java-method-design.log |
+| `python3 scripts/gen-beauty-java-project-design.py --check` | `PASS: 五模块无环、20模块归属、160项API/合同归属、25私有表；44个候选Controller；生成物一致`; /tmp/task54-fix1-gen-beauty-java-project-design.log |
+| `python3 scripts/gen-beauty-database-design.py --check` | `41 table designs validated; 10 generated files current`; /tmp/task54-fix1-gen-beauty-database-design.log |
+| `python3 scripts/gen-beauty-development-plan.py --check` | `PASS beauty development task plan: {"tasks": 49, "apis": 160, "features": 118, "tables": 41}`; /tmp/task54-fix1-gen-beauty-development-plan.log |
+| `python3 /tmp/task54-fix1-invariants.py` | `PASS: unchanged160 baseline; exactly5 actual supplemental routes; matching Java protocol fields; maintained security links`; /tmp/task54-fix1-invariants.log |
+| `git diff --check` | exit0, no whitespace errors |
+
+Docs/source consistency fix only: no native/Maven/full runtime suite rerun, no containers started, no change to prior native/TCP/runtime evidence or the three characterized baseline guard failures. Controller-owned TDD/progress/brief/ADR edits are excluded. Independent re-review remains controller-owned; this fix is not BM04 module acceptance.
+
+Exact owned fix paths:
+
+- `.superpowers/sdd/beauty-backend/task-54-report.md`
+- `docs/technical/design/schema/beauty-api-design.json`
+- `docs/technical/design/schema/beauty-java-method-design.json`
+- `docs/technical/design/美业系统-API清单.md`
+- `docs/technical/design/美业系统-Java类与方法清单.md`
+- `docs/technical/design/美业系统-Controller-Service-Mapper方法清单.md`

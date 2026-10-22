@@ -3038,6 +3038,46 @@
       "purpose": "只读原actor绑定成员识别票据；保留EntitlementContext和委托身份；无guest/扣款许可降级",
       "request": "CustomerIdentityInternalApi.Request(identity,context,query)",
       "response": "Resolution含完整身份/上下文/query与ResolvedCustomer；远端比对并验证userNo"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/guest-registration/register",
+      "owner": "PLATFORM / InternalGuestRegistrationController → MemberGuestRegistrationPortImpl (shop-core/member)",
+      "purpose": "Task54实际增量；当前完整MERCHANT MCH/USR、真实entity/store和当店biz:customer；登记幂等命名空间含realm/kind/actor/店，同键改参409。安全、配置与验证边界见[Task54共用身份说明](../../../backend-plugins/shop-industry-beauty/README.md)。",
+      "request": "GuestRegistrationInternalApi.Register(scope,RegisterCommand(contact?,displayName?,consent,idempotencyKey))",
+      "response": "Registered(request,Registration(guestNo,claimToken,state,revision))；完整请求回显；服务端随机原凭证，加密持久原键重放"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/guest-registration/get",
+      "owner": "PLATFORM / InternalGuestRegistrationController → MemberGuestRegistrationPortImpl (shop-core/member)",
+      "purpose": "Task54实际增量；同店当前有权员工可交接读取；完整身份/门店权限重核，不冒充登记员工。安全、配置与验证边界见[Task54共用身份说明](../../../backend-plugins/shop-industry-beauty/README.md)。",
+      "request": "GuestRegistrationInternalApi.Get(scope,guestNo)",
+      "response": "Found(request,GuestFact(guestNo,state,userNo?,revision))；完整请求回显，无contact/密文"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/guest-registration/verify",
+      "owner": "PLATFORM / InternalGuestRegistrationController → MemberGuestRegistrationPortImpl (shop-core/member)",
+      "purpose": "Task54实际增量；当前当店biz:customer，加原guest随机凭证；错误/未知凭证404。安全、配置与验证边界见[Task54共用身份说明](../../../backend-plugins/shop-industry-beauty/README.md)。",
+      "request": "GuestRegistrationInternalApi.Verify(scope,guestNo,claimToken)",
+      "response": "Verified(request,GuestFact)；完整请求回显，不提供支付授权"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/guest-registration/claim",
+      "owner": "PLATFORM / InternalGuestRegistrationController → MemberGuestRegistrationPortImpl (shop-core/member)",
+      "purpose": "Task54实际增量；当前完整namespace/actor/store绑定的有效cr1加原guest凭证，同guest根锁唯一真实用户；旧无namespace票据拒绝。精确原key/hash/full claim actor/secret可在cr1过期后回原结果，仍重核当前权限及活动用户；新key/改参/异身份409。安全、配置与验证边界见[Task54共用身份说明](../../../backend-plugins/shop-industry-beauty/README.md)。",
+      "request": "GuestRegistrationInternalApi.ClaimRequest(scope,guestNo,ClaimCommand(verifiedIdentity,claimToken,idempotencyKey))",
+      "response": "Claimed(request,Claim(guestNo,userNo,revision))；完整请求回显，不改绑或创建账号/订单"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/customer-identity/verify-consumer-proof",
+      "owner": "PLATFORM / InternalCustomerIdentityController → MemberCustomerIdentityPortImpl",
+      "purpose": "Task54实际增量；当前CONSUMER/USR、同租户/本人活动账号及原MEMBER_CODE短票据；不接受登录token/手机号/任意字符串，识别不授予支付授权。安全、配置与验证边界见[Task54共用身份说明](../../../backend-plugins/shop-industry-beauty/README.md)。",
+      "request": "CustomerIdentityInternalApi.ProofRequest(identity,EntitlementContext,memberCode)",
+      "response": "ProofResolution(request,ResolvedCustomer)；完整身份/上下文/原memberCode请求回显，必须解析为当前用户；过期/伪造mc1为400"
     }
   ]
 }

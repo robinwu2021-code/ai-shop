@@ -3459,12 +3459,17 @@ a2仍须实现正式权限、持久预约生成计划、同Binding幂等及可�
 | `POST /internal/resource-booking/candidates` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | ResourceCandidatesPort.Query | List<ResourceFact>；错误不作为空事实 |
 | `POST /internal/resource-booking/capacity` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | ResourceCandidatesPort.CapacityQuery（独立factAt、Replacement完整Binding+Target） | List<Capacity>；错误不作为空事实 |
 | `POST /internal/customer-identity/resolve-reference` | PLATFORM / InternalCustomerIdentityController → MemberCustomerIdentityPortImpl | CustomerIdentityInternalApi.Request(identity,context,query) | Resolution含完整身份/上下文/query与ResolvedCustomer；远端比对并验证userNo |
+| `POST /internal/guest-registration/register` | PLATFORM / InternalGuestRegistrationController → MemberGuestRegistrationPortImpl (shop-core/member) | GuestRegistrationInternalApi.Register(scope,RegisterCommand(contact?,displayName?,consent,idempotencyKey)) | Registered(request,Registration(guestNo,claimToken,state,revision))；完整请求回显；服务端随机原凭证，加密持久原键重放 |
+| `POST /internal/guest-registration/get` | PLATFORM / InternalGuestRegistrationController → MemberGuestRegistrationPortImpl (shop-core/member) | GuestRegistrationInternalApi.Get(scope,guestNo) | Found(request,GuestFact(guestNo,state,userNo?,revision))；完整请求回显，无contact/密文 |
+| `POST /internal/guest-registration/verify` | PLATFORM / InternalGuestRegistrationController → MemberGuestRegistrationPortImpl (shop-core/member) | GuestRegistrationInternalApi.Verify(scope,guestNo,claimToken) | Verified(request,GuestFact)；完整请求回显，不提供支付授权 |
+| `POST /internal/guest-registration/claim` | PLATFORM / InternalGuestRegistrationController → MemberGuestRegistrationPortImpl (shop-core/member) | GuestRegistrationInternalApi.ClaimRequest(scope,guestNo,ClaimCommand(verifiedIdentity,claimToken,idempotencyKey)) | Claimed(request,Claim(guestNo,userNo,revision))；完整请求回显，不改绑或创建账号/订单 |
+| `POST /internal/customer-identity/verify-consumer-proof` | PLATFORM / InternalCustomerIdentityController → MemberCustomerIdentityPortImpl | CustomerIdentityInternalApi.ProofRequest(identity,EntitlementContext,memberCode) | ProofResolution(request,ResolvedCustomer)；完整身份/上下文/原memberCode请求回显，必须解析为当前用户；过期/伪造mc1为400 |
 
 | 部署形态 | 唯一来源provider | owner / 装配 |
 |---|---|---|
-| embedded HOST | beauty-core / ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl | 本地ResourceBookingPortImpl/ResourceCandidatesPortImpl/MemberCustomerIdentityPortImpl<br>唯一local source；channel自动配置因core class存在不注册remote source |
+| embedded HOST | beauty-core / ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl | 本地ResourceBookingPortImpl/ResourceCandidatesPortImpl/MemberCustomerIdentityPortImpl/MemberGuestRegistrationPortImpl<br>唯一local source；channel自动配置因core class存在不注册remote source |
 | standalone HOST | beauty-channel / ai.neargo.shop.beauty.port.RemoteAppointmentSourceAuthorityPort | 平台本地真实共用owner；无beauty-core<br>BeautyChannelAutoConfiguration；真实反向BEAUTY目标；四个typed Remote*Service |
-| standalone SERVER | beauty-core / ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl | BeautyMerchantClientConfiguration / RemoteResourceBookingPort,RemoteResourceCandidatesPort,RemoteCustomerIdentityPort<br>core存在；HOST remote source不注册；api默认profile使恢复Job接线 |
+| standalone SERVER | beauty-core / ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl | BeautyMerchantClientConfiguration / RemoteResourceBookingPort,RemoteResourceCandidatesPort,RemoteCustomerIdentityPort,RemoteGuestRegistrationPort<br>core存在；HOST remote source不注册；api默认profile使恢复Job接线 |
 | disabled / ops / no API | disabled无新增source provider | 不改变共用owner<br>public controllers仅api+enabled；恢复Job仅api；独立SERVER默认api且没有beauty-web |
 
 机器身份为shop-base的DelegatedIdentity与shop-base-auth的DelegatedIdentityContext；只在令牌校验后以consumer/merchantByUser/merchant恢复精确命名空间，finally恢复先前上下文。无存储用户名伪造身份。
