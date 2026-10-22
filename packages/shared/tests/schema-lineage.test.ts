@@ -187,6 +187,9 @@ const NAME_COLLISIONS: Record<string, string> = {
   ledger_no: "pts_user_ledger 与 pts_merchant_ledger 各自的主业务键，互不引用。",
   express_no: "ord_sub_order 是发货快递单号；ord_after_sale 是用户退货的快递单号。方向相反。",
   operator_no: "ord_status_log 与 ful_verify_log 各自记录操作人，不是同一张表的外键。",
+  apply_no:
+    "usr_merchant_apply 是平台自己的入驻申请单号（主业务键，BizKey 生成）；" +
+    "usr_merchant_payment 是支付通道侧的进件申请单号（微信/支付宝回执回填）。两次申请、两套编号。",
 };
 
 describe("对账血缘", () => {
