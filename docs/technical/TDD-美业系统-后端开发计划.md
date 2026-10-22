@@ -659,7 +659,7 @@ owner内部校验当前SecurityUtils完整身份等于Scope.identity，以及真
 20. 测试WalkInRecoveryIT：真实完整组合成功→唯一预约/工单/任务，accept/confirm已提交响应丢失及服务重启恢复原号；resource未知不建单、无DB锁中RPC、第二当前授权员工恢复，不伪造旧用户。实际ownerHTTP与容量并发在60真实部署另验。
 21. 测试GuestClaimReceiptIT：当前同店员工交接、guest→规范USER回执、消费/C分页本人归属；shared成功后本域回滚再原号补记、重复/异用户改绑拒绝、旧匿名BTG不能假认领。
 22. 测试WorkOrderScopeIT：无预约未安排单不假占资源、已签到原项目完整快照、重复转单/多qty/不同定义、软删/陌生父链、异常记录幂等/outbox原子去重；移除fence检查或task父链条件做一次有效消融。
-23. 先RED/GREEN，再beauty常规reactor及相关BM03原生回归/正式V1→V5升级严格漂移验证，目标架构/三语/生成物/SQL守卫。54共享实现未变时复用其已审专项，只在新调用触发具体风险时补测试。Controller/协议归59，55不得声称HTTP或BM04部署已过。
+23. 先RED/GREEN，再beauty常规reactor及相关BM03原生回归/正式V1→V5升级严格漂移验证，目标架构/三语/生成物/SQL守卫。V5字符串状态与char_length约束需要时可按闭合语法扩展CHECK规范化，但不得忽略unsupported或扩大豁免；字面量大小写及未知函数拒绝须有反例。54共享实现未变时复用其已审专项，只在新调用触发具体风险时补测试。Controller/协议归59，55不得声称HTTP或BM04部署已过。
 
 Bean图约束：AppointmentService.openWorkOrderFromAppointment与WorkOrderService.openWorkOrder共用同域WorkOrderCoordinator/Preparation辅助，后者只消费AppointmentPersistence/Matching/Preparation/Coordinator及本域Mapper，不反向依赖AppointmentService，避免Service循环。ReceptionCoordinator也调用该辅助，不复制一次转单逻辑。GuestRegistrationService独立只管共享调用及claim receipt。配置沿现有启用/形态条件，外部Port按调用取用；不得为装配绿写fake provider或缺表静默返回空结果。
 
@@ -669,7 +669,11 @@ Bean图约束：AppointmentService.openWorkOrderFromAppointment与WorkOrderServi
 
 **精确设计冻结决策：** 采用task-55-design.md所列方法/DTO/V5四表及锁序，按55A身份引用/到店码、55B签到/重排、55C工单范围、55D直客恢复四关依次实现和独立审查，仍属同一Task55。V5在55A执行后冻结，后续追加版本而不回改。052新增接口暂以fail-closed default兼容既有Remote，本地实现必须覆盖，不能计远程交付，59接线后移除default。OperationVO增workOrderNo/failureCode并保留原构造器；get/recover按可信scope分派接待原号。真实member身份消费链放shop-app原生bridge，beauty-core资源fixture边界明示，不添加跨域生产依赖。未安排task保持真实PENDING，另以assignmentState=UNASSIGNED表达。安全事件/Outbox随最早使用的55A实现，冻结规则读取辅助先在55B落地供55C复用。
 
-登记031直接委托共享owner，使用完整命名空间派生原键，不在美业复制联系方式或其无密钥摘要、也不创建虚假的本域登记operation；未知operationNo可空，明确原actor同原请求重放。032认领继续先持久已核验USER/guest意图及原号、再外调、后原子回执。后台恢复只扫描实际无需用户新授权即可读取的资源终态；待原人或新proof项不轮占队首，必须覆盖超过50待用户项仍不饿死后续可恢复项。
+登记031直接委托共享owner，使用完整命名空间派生原键，不在美业复制联系方式或其无密钥摘要、也不创建虚假的本域登记operation；未知operationNo可空，明确原actor同原请求重放。032认领继续先持久已核验USER/guest意图及原号、再外调、后原子回执。实际模块边界补充：GuestRegistrationPort新增仅表示通信结果未知的ResultUnknown异常，remote只转换明确TIMEOUT/UNREACHABLE及REMOTE_ERROR/status=0的无可核验owner结果（含响应无法解码）；不带原请求或敏感资料，core只捕获该类型，不依赖svc-client。403、owner明确能力不可用503和NOT_CONFIGURED仍失败，不能广捕RuntimeException当PENDING；channel分类测试覆盖。后台恢复只扫描实际无需用户新授权即可读取的资源终态；待原人或新proof项不轮占队首，必须覆盖超过50待用户项仍不饿死后续可恢复项。
+
+**55A独立审查修复方案（fix round1，BASE de8409ea4）：** I1在任何新claim intent之前用共享member owner真实严格能力核验当前tenant/realm/kind/actor/entity/store及当前CUSTOMER，已CLAIMED分支同样执行；旧resolveReference兼容合同保持，不让美业读member表/解析私有票据。必要新增fail-closed strict-reference SPI/typed owner协议和local/remote真实实现，生成真源同步。精确合同：CustomerIdentityPort.default resolveClaimReference(EntitlementContext,ReferenceQuery)→ResolvedCustomer fail-closed；owner复用requireGuestClaimReference并实时CUSTOMER授权。新增POST /internal/customer-identity/resolve-claim-reference，ClaimReferenceRequest(identity,context,query)→ClaimReferenceResolution(request,customer)，完整echo校验，Remote不回落legacy。真实host覆盖same actorNo的MCH↔USR、REGISTERED/CLAIMED两状态，拒绝后无新intent/receipt/outbox；合法原intent当前员工恢复保持。I2先核当前身份/权限、preview归属和完整原请求摘要，再查原键已接受operation；存在则用原冻结规范身份/原号续行，新请求才核owner当前guest与preview一致性；覆盖成功后claim重放、未知后claim续行及创建前claim冲突。I3以V6__beauty_reception_identity_guard.sql新增ck_bty_reception_operation_5追加SQL NULL成对完整性约束，V5字节/SHA不变；同步manifest/ready=6、生成真源/字典/夹具，V1→V6有效历史升级及NULL四组合/非法kind/空ref真实MySQL反例，非法存量不得静默修复。I4词法层处理引用identifier，保留literal全部内容或拒绝不支持内容；不全局删反引号，补parser及原生literal反引号漂移反例。四项一次修复后独立窄范围复审，55B仍不得启动。隔离环境调整：首次V6 native所在自建MySQL被4GB Docker VM OOM终止（epoch1792664905），5项通过/47连接setup errors不计业务结果。后续仅自建UUID/--rm容器改用随删除清理的默认writable layer而非tmpfs，64MB buffer、performance_schema关闭及合理内存/连接限制；无host/shared volume、不改生产配置、不碰其他food/pricing容器，仍--pull never/随机localhost/TCP readiness/finally清自己。
+
+**当前子步骤：** 55A完成（2bf892b98..59d49ed1b；统一修复I1–I4后Spec PASS/Quality Approved，历史U1/U2证据限制保留），55B已按[精确任务](../../.superpowers/sdd/beauty-backend/task-55b-brief.md)冻结启动。55B实现047/154/053业务及内部RECEPTION_CHANGE，DTO/签名沿精确设计§2/3，补ReceptionCoordinator与FrozenAppointmentScope及matchFrozen、currentArrangementEvidence；锁序/成功hold取证/资源REPLACE/原定义buffer与政策快照不变、合法状态与异常Outbox事务按本节执行。无新增表前提下沿冻结V6，不写签到/重排空壳、不创建工单/直客/资金，也不提前开放052或公开wire。新增反例先RED再改代码，至少一次有效fence双防线消融；真实member消费链放host、资源fixture边界明示。当前低内存native以BEAUTY_TEST_DISK=1单容器执行。55B完成独立审查后再C/D，整个BM04统一部署仍归60。
 
 **启动与验收：** 先据本节及方法JSON生成task-55-design.md，列确切DTO字段/Service方法、表约束、Bean图和AC→测试映射；任何未定事项在编码前由控制器裁决并同步本节。不得靠旧清单自动生成空方法计完成。目标031/032/047/048/052/053/054/055/154/155及到店码增量；P3候位049–051、关闭工单065–067和来源/账单056/071不在本任务。
 
@@ -769,7 +773,7 @@ python3 scripts/gen-beauty-development-plan.py --check
 
 ## §6 下一次领取任务与本轮交付
 
-**当前交付：BM-03预约后端模块完成，Task50–53及修复复审通过，embedded/standalone真实构件隔离部署验收通过，详见§31；BM-02/BM-01分别见§25/§22。BM-04的Task54共用临客及身份能力已完成任务验收，Task55接待与工单正在设计冻结，详细执行见§2.22；BM04整体尚未完成。** 后续按BM-04接待工单等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
+**当前交付：BM-03预约后端模块完成，Task50–53及修复复审通过，embedded/standalone真实构件隔离部署验收通过，详见§31；BM-02/BM-01分别见§25/§22。BM-04的Task54共用临客及身份能力已完成任务验收，Task55接待与工单设计已冻结，55A身份引用/到店码已复审完成，55B签到与重排启动，详细执行见§2.22；BM04整体尚未完成。** 后续按BM-04接待工单等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
 
 初始计划阶段产物（2026-10-20，非当前工程状态）：本TDD、开发任务JSON、生成任务对照索引和校验器；当时尚未编码。之后实际实现及验收按§7–20逐批记录，当前总览与后续领取以§21为准。
 
@@ -1817,10 +1821,16 @@ embedded停止后才启动真正无core的standalone HOST；独立SERVER单一�
 
 本轮裁决：有限预算匹配必须诚实报告搜索不完整，不能以贪心设计解释假无解；较大合法请求可能需要缩小查询或增加明确指定。ops/no-api禁止公开预约入口与Job，受机器令牌保护的内部协议按已批准合同保留。这些边界改变将需要明确的后续任务。下一模块按§21.3先深化BM04，不重复领取已完成BM03。
 
-## §32 BM04进度：共用身份完成，接待与工单设计中
+## §32 BM04进度：共用身份完成，接待与工单实施中
 
 Task54实现6932ef5c4及文档源修复7b3142e3f已通过独立任务审查。[实现与验证报告](../../.superpowers/sdd/beauty-backend/task-54-report.md)、[完整审查](../../.superpowers/sdd/beauty-backend/review-task-54.md)、[修复复审](../../.superpowers/sdd/beauty-backend/review-task-54-r1.md)保留实际命令/日志、原生库/真实TCP/fixture边界。共用member owner提供临客登记/验证/不可变认领及本人mc1核验；行业不复制顾客主档，不授付款权。新增平台V537/V538已执行并冻结，旧迁移未改。
 
 Task54 native13+独立JVM重放1及beauty109项通过；平台相关40通过、2profile跳过、3守卫失败分别是历史OpsPoints全限定注解、历史支付表解析差异及本分支BM03引入的JobLockConfiguration未登记包。第三项必须在Task60部署前迁入已登记job.config并回归，前两项继续如实披露。文档修复后五生成器及协议/160基线一致性检查通过，未重跑无关运行时套件。
 
 Task55先按§2详细规则冻结方法/DTO、V5四表及事务恢复方案，再编码；Task56/57分别实现真实订单报价及资金原号，Task58来源绑定/账单，Task59协议，Task60统一部署及模块审查。BM04尚未完成，尚未有本模块真实部署准出，不据任务54通过声称后续业务已完成。
+
+### 32.1 Task55A身份引用与到店码验收
+
+实现de8409ea4、统一修复59d49ed1b。[报告](../../.superpowers/sdd/beauty-backend/task-55a-report.md)、[完整审查](../../.superpowers/sdd/beauty-backend/review-task-55a.md)、[修复复审](../../.superpowers/sdd/beauty-backend/review-task-55a-r1.md)记录4项Important的关闭及证据。最终115常规/52原生/8真实host/10owner与旧会员码测试通过，12生成/SQL检查通过。九个原缺陷反例及两个权限补强反例先实际RED后GREEN；原始claim/host实现前RED缺失及V5首次执行时独立hash时间链不足仍保留，不能倒补历史。
+
+V1–V5未改，V6只加身份NULL成对guard，27私表，ready=6；[V6执行前独立SQL/hash/UTC记录](../../.superpowers/sdd/beauty-backend/v6-preexecution-root-record.json)与首次执行/最终内容一致。首轮V6测试5项通过后MySQL OOM、47setup errors单独披露；低内存隔离diskdatadir后52项全过，没有修改生产或其他容器。三项全局guard仍按Task60边界追踪，不称全部backend绿。55A只交付service、身份回执、归属查询、到店码与数据基础；接待公开wire/整个BM04部署尚未完成。

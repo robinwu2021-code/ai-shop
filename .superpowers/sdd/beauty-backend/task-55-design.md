@@ -6,6 +6,8 @@
 
 **工作流：** 按 brainstorming/writing-plans 完成架构核对与自审。主 TDD 是正式规格/计划真源，本文件是供控制器归并的 Task55 精确设计附件；下列四个子步骤建议逐个 RED→GREEN→独立 spec/quality review，不新建子代理。公开 Controller/wire 归59，owner HTTP/容量与部署验收归60，交易来源/金额/支付归56–58。
 
+**审查修复增量：** task-55a-fix-design.md及主TDD当前方案优先：新接待claim/证明使用共享严格resolveClaimReference，旧resolveReference只保留兼容；V5四表仍冻结，追加V6身份NULL完整性guard，当前manifest/ready=6、27私表。原V5结构描述是首次基础迁移，不代表已修复的最新校验版本；后续55B–D按V6基线继续，不回改旧迁移。
+
 ## 1. 已核实的代码与设计选择
 
 - `beauty-api/.../service/AppointmentService.java` 已实现十五个预约方法，尚无052方法；ReceptionService、GuestRegistrationService、WorkOrderService 尚不存在，不能把方法 JSON 当已实现代码。
@@ -158,7 +160,7 @@ BeautyDataScopeRegistration增四表。BeautySchemaValidator manifest严格23+4=
 - 154/155：当前CONSUMER/USR，userNo等于SecurityUtils；不接受MCH或其他realm借同字面userNo。
 - 原键成功重放先检查当前身份与当前权限，然后读取原结果。仅成功结果重读无需让过期原cr1/mc1重新有效；未验证的新动作不能用旧缓存逃过权限撤销。
 
-`ReceptionIdentity`（core policy helper）只返回 `VerifiedIdentity(kind,reference)` 和必要不可变receipt证据：B USER用CustomerIdentityPort.resolveReference(EntitlementContext,ReferenceQuery)且owner结论必须等于预约规范USER；C用verifyConsumerProof(context,memberCode)且结果等于当前user和授权根。B GUEST用GuestRegistrationPort.verify(scope,guestNo,token)；guestNo须等于预约正式guestRef。未claim维持GUEST；已claim可与本域receipt映射USER核对。receipt缺失不自动授权C，必须显式032核验/补齐。
+`ReceptionIdentity`（core policy helper）只返回 `VerifiedIdentity(kind,reference)` 和必要不可变receipt证据：B USER用CustomerIdentityPort.resolveClaimReference(EntitlementContext,ReferenceQuery)且owner结论必须等于预约规范USER；C用verifyConsumerProof(context,memberCode)且结果等于当前user和授权根。B GUEST用GuestRegistrationPort.verify(scope,guestNo,token)；guestNo须等于预约正式guestRef。未claim维持GUEST；已claim可与本域receipt映射USER核对。receipt缺失不自动授权C，必须显式032核验/补齐。
 
 WalkIn/无预约open的guestNo由当前CUSTOMER调用owner.get核实同店实际guest；REGISTERED得到GUEST，CLAIMED得到USER。此授权是员工登记接待，不宣称该guest已提供C本人凭证。旧BTG未在owner存在时明确BEAUTY_IDENTITY_REQUIRED，不猜号、不迁移假guest。
 

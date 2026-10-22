@@ -1,0 +1,18 @@
+# Task55B：签到、异常协调与内部接待重排（已冻结实施）
+55A在59d49ed1b完成统一修复并独立复审SpecPASS/QualityApproved；本文件已按实际A接口/报告冻结，授权本步编码。主需求task-55-brief.md和精确设计task-55-design.md，范围只B。
+
+实现ReceptionService checkIn/checkInMyAppointment/coordinateReceptionException及对应DTO/Impl/Coordinator；不新增公开Controller/remote wire，不创建工单/tasks，不实现直客或支付。052入口归C，本步实现其将消费的内部接待重排真实能力。
+B真实CUSTOMER+BOOKING_MANAGE、严格当前完整namespace的cr1或正式guest proof（复用55A-I1修复的真实owner能力，不回落legacy resolveReference）；C严格CONSUMER/USR+本人真实mc1+同店活跃arrivalChallenge。owner/事实调用全锁外，不能把有登录态当到店证明。
+签到CONFIRMED→CHECKED_IN，server UTC，EARLY/ON_TIME/LATE，end已过明确要求重排。根→fence→current→reception operation短事务，核expectedRevision/current无操作/完整成功arrangement及hold绑定未变/无工单。缺fence及未知current拒绝；checkin不释放hold、不核销、不建单。原键成功重放当前权限仍校验，不重复event/action。
+提取唯一currentArrangementEvidence，以当前成功arrangement定位成功owner操作，不能选最新失败变更。queryHold与精确source/planHash/版本证据锁外，根锁内只比已观察本域事实。
+内部RECEPTION_CHANGE仅CHECKED_IN且无工单/实际task，真实whole-plan REPLACE。不能直接更新assignment；UNKNOWN保持原号/current/fence；确定失败保留旧hold/旧安排；成功保留checkedInAt/状态。普通CHANGE状态与权限不扩宽。
+FrozenAppointmentScope从本域原不可变definitionVersion/requirements及原安排重建并核旧plan、buffer、时长/数量；当前资源/资格/班表/容量事实用于新时段。复用原同一个bounded Slot allocator，不复制matcher或接受公开frozenPlan。仅换人/工位不隐式换到最新定义/政策或服务范围；原展示价格非资金事实，保持其原引用不把当前目录价格当成交价。
+assignments必须完整覆盖冻结展开itemIndex；新安排新itemNo，保存old→new映射。原开始已过需明确未来5分钟网格startAt，before buffer资源起点也未来；不静默挪动、不额外30分钟上限。目录明确不再允许该服务时阻断要求显式服务变更。
+053仅append-only ActionLog+共用安全Outbox同事务，PENDING_REVIEW原requestNo/实际受影响task引用；kind/proposal严格枚举，不自动cancel/release/签发开工或资金。reason只本域，事件无reason/proof/frozenPlan。无公共审批owner不虚构待办已创建。
+AC测试：ReceptionBusinessIT到店无副作用、C本人挑战、跨scope/撤权、早迟到/end、签到取消两连接竞争、旧fence/current未知、REPLACE冻结原规则/成功/失败保旧/响应未知不清fence；旧AppointmentBusinessIT及MatchingSearch回归。member新proof消费链真实host bridge，资源fixture边界明示，真实owner部署归60。
+至少一次有效消融：去掉Service/SQL两层fence检查后孤立active-fence反例必须RED，恢复GREEN；不能被另一层挡住仍称有效。V1–V5已冻结不改，55A修复追加V6后也冻结；本步不需新字段则不造后续迁移，确实新字段先报控制器方案。
+交付task-55b-report.md含RED/GREEN/消融命令输出与native/fixture边界；精确owned提交，不碰controllerTDD/progress/brief。报告完成停独立review，不越C。环境沿55A修复的BEAUTY_TEST_DISK=1、64MB buffer/performance_schema关闭/自建--rm UUID writable datadir无host/shared挂载；单一缓存MySQL/原生TCP/finally cleanup/不动其他food/pricing容器/JDK21隔离m2。
+
+实际A衔接：ReceptionPreparation现仅findClaim/beginClaim/derived/ClaimPayload；本步添加实际B所需泛化操作与typed payload，保留原claim语义。ReceptionAccess.customer负责实时CUSTOMER；BOOKING_MANAGE/VIEW及C完整身份复用AppointmentAccess。ReceptionIdentity.customer现在调用真实共享resolveClaimReference；guest只get规范事实，本步另补真正verify token和verifyConsumerProof调用，不把get当持有证明。CustomerOwnership已有完整receipt scope SQL，可复用。V6校验值220ed777c56a77c22cf835f2a5bcc42ccb41cc98a4348831df06e0e404b89f20，V5为8e9aec144736ee3502fb9c0f9c4c95edf6f4a02c1cecbd597ff0c3b51aa4eab5；必须保留。
+
+报告路径task-55b-report.md；product BASE由dispatch提供。先读本brief再按需查task-55-design.md §2/3/5/6/8/9/10，勿读巨大主TDD全历史。明确真实owner与受控fixture边界；行为RED必须在实际实现前达到业务反例，不以编译/setup错误替代。所有新变更先在本域设计附件记录准确方法/字段/状态与AC，存在实质方案缺口及时向控制器报告并继续独立可做工作，无需新用户审批。不spawn subagents、不扩到C。

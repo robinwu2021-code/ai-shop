@@ -11,6 +11,8 @@
 - 本步不要新增052默认方法/OperationVO字段或genericOperation分派（所属55C/D）；不要实现签到、重排、工单/任务、直客、recovery scanner/Job、公开Controller和远程接待wire。未实现方法不生成空壳。
 - ReceptionPreparation/Access/Identity/CustomerOwnership按本步需要做真实最小实现，future功能不预填空方法。生产不依赖shop-core，真实member消费链测试在shop-app BeautyReceptionIdentityIT；beauty-core原生GuestClaimReceiptIT用明确controlled owner边界，不冒称owner网络/容量已验收。
 
+实现期已核实增量：GuestRegistrationPort增加typed ResultUnknown（只通信结果未知、无敏感payload），Remote仅把明确TIMEOUT/UNREACHABLE及REMOTE_ERROR/status=0无可核验owner结果（含响应无法解码）映射；core仅捕此异常而不依赖svc-client，403/明确503能力缺失/NOT_CONFIGURED不能吞成PENDING。补对应channel分类用例；不扩大其他Port。
+
 ## 验收
 1. GuestClaimReceiptIT原生MySQL：认领先验目标/原号、owner提交后本域回滚重放补receipt、异USER/异scope拒绝、C分页total/items本人并集、软删/父链/匿名拒绝。
 2. BeautyReceptionIdentityIT真实member/mc1/cr1/guest存储的新消费链：当前身份/权限、同店交接、原key改contact由owner HMAC冲突、未知register无本域联系方式hash/原人恢复、真实claim及缺capability明确拒绝。
@@ -21,5 +23,5 @@
 
 ## 环境及交付
 工作树/branch以dispatch为准；JDK21 /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home；离线m2 /tmp/codex-beauty-bm01-m2。共享构件改变先install后消费。
-只一自建MySQL8.4 native或9.7.2 deploy同时运行，--pull never、tmpfs、随机localhost端口、TCP readiness、finally清理自己资源；六个既存food容器不能动。无共享/生产操作。
+只一自建MySQL8.4 native或9.7.2 deploy同时运行，--pull never、默认tmpfs；55A修复实测OOM后可仅自建--rm容器用可删除默认writable layer（无host/shared volume、64MB buffer/performance_schema关闭），随机localhost端口、TCP readiness、finally清理自己资源；六个既存food容器不能动。无共享/生产操作。
 先TDD RED→GREEN。完整报告task-55a-report.md：确切AC→测试、commands/log outputs、RED/GREEN/消融、schemaSHA、owned paths/commit和fixture边界。只提交自己产品/生成物/报告；排除controller主TDD/progress/55brief/本brief/总体design。不要spawn subagents。完成本步停给控制器独立审查，不能自行越到55B。
