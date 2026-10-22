@@ -9,7 +9,8 @@ import java.util.regex.Pattern;
 /** Closed numeric/time/ASCII-enum grammar; grouping is retained in the operator tree. */
 final class BeautyCheckExpression {
     private static final Pattern TOKEN = Pattern.compile(
-            "\\G\\s*('(?:''|[^'])*'|[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|<=|>=|<>|!=|[()=<>+,])");
+            "\\G\\s*((?:_utf8mb4|_latin1)\\\\'[a-zA-Z_]+\\\\'|`[^`]+`|'(?:''|[^'])*'"
+                    + "|[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|<=|>=|<>|!=|[()=<>+,])");
     private final List<String> tokens;
     private int position;
 
@@ -18,14 +19,21 @@ final class BeautyCheckExpression {
     }
 
     static String canonical(String expression) {
-        String input = expression.strip().replace("`", "");
-        // MySQL CHECK_CLAUSE escapes literal delimiters. Only ASCII enum literals are normalized here.
-        input = input.replaceAll("(_utf8mb4|_latin1)\\\\'([a-zA-Z_]+)\\\\'", "$1'$2'");
+        String input = expression.strip();
         List<String> tokens = new ArrayList<>();
         var matcher = TOKEN.matcher(input);
         int end = 0;
         while (matcher.find()) {
             String token = matcher.group(1);
+            // Decode only a complete charset-prefixed ASCII enum token, never text inside another literal.
+            int escapedLiteral = token.indexOf("\\'");
+            if (escapedLiteral > 0 && (token.startsWith("_utf8mb4") || token.startsWith("_latin1"))) {
+                token = "'" + token.substring(escapedLiteral + 2, token.length() - 2) + "'";
+            }
+            if (token.startsWith("`")) {
+                require(token.matches("`[a-zA-Z_][a-zA-Z0-9_]*`"));
+                token = token.substring(1, token.length() - 1);
+            }
             tokens.add(token.startsWith("'") ? token : token.toLowerCase(Locale.ROOT));
             end = matcher.end();
         }

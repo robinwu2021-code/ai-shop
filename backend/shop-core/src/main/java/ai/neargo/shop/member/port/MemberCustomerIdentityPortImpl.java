@@ -1,5 +1,8 @@
 package ai.neargo.shop.member.port;
 
+import ai.neargo.shop.auth.BizPerms;
+import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.member.dto.MemberCodeScope;
@@ -13,8 +16,23 @@ import org.springframework.stereotype.Component;
 public class MemberCustomerIdentityPortImpl implements CustomerIdentityPort {
     private final MemberCodeResolveService service;
 
-    public MemberCustomerIdentityPortImpl(MemberCodeResolveService service) {
-        this.service = service;
+    private final MerchantOperatorAccessPort operators;
+    public MemberCustomerIdentityPortImpl(MemberCodeResolveService service, MerchantOperatorAccessPort operators) {
+        this.service = service; this.operators = operators;
+    }
+
+    @Override
+    public ResolvedCustomer resolveClaimReference(EntitlementContext context, ReferenceQuery query) {
+        if (context == null || query == null) { throw BizException.of(ErrorCode.BAD_REQUEST); }
+        var current = SecurityUtils.requireUser();
+        if (!"MERCHANT".equals(current.realm().name()) || !current.tenantNo().equals(context.tenantNo())
+                || !current.userNo().equals(context.actorNo())
+                || !("MCH".equals(current.subjectKind().name()) || "USR".equals(current.subjectKind().name()))
+                || !operators.allowed(new MerchantOperatorAccessPort.Query(context.tenantNo(), query.entityNo(),
+                        query.storeNo(), context.actorNo(), current.realm().name(), current.subjectKind().name(),
+                        BizPerms.CUSTOMER))) { throw BizException.of(ErrorCode.FORBIDDEN); }
+        return service.requireGuestClaimReference(new MemberCodeScope(context.tenantNo(), query.entityNo(),
+                query.storeNo(), context.actorNo()), query.customerRef());
     }
 
     @Override

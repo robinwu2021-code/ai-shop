@@ -43,7 +43,7 @@ public class BeautyWriteGuardConfiguration {
             ObjectProvider<OutboxConsumer> consumers,
             @Value("${shop.beauty.publication.archive-only:false}") boolean archiveOnly,
             @Value("${shop.outbox.maintenance:false}") boolean maintenance) {
-        if (!"5".equals(schema.version())) {
+        if (!"6".equals(schema.version())) {
             throw new IllegalStateException("Beauty write guards require validated primary schema");
         }
         return PlatformPublicationPublisher.create(facades::getIfAvailable, manager, sources::getObject, json,

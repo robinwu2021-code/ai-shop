@@ -128,3 +128,96 @@ Only the paths below plus this report are staged. Controller-owned mainTDD/progr
 - `scripts/gen-beauty-reception-schema.mjs`
 - `scripts/verify-beauty-persistence.mjs`
 - `scripts/verify-member-guest-registration.mjs`
+
+## Unified fix round 1 / 5 (I1–I4, U1–U2)
+
+FIX_BASE: `de8409ea40b22029e66b1d71033a7bca035fd0b2`. Review input: `/tmp/review-bm04-55a.md`. Scope and exact contracts are in `task-55a-fix-design.md`; all four Important findings are addressed together, with no Task55B implementation.
+
+I1: reception consumes a new fail-closed `CustomerIdentityPort.resolveClaimReference(EntitlementContext, ReferenceQuery)` capability before new claim intent or CLAIMED fast path. The real member owner checks current merchant namespace/context and live CUSTOMER permission, then uses existing `requireGuestClaimReference` for full namespace/entity/store/ticket validation. Legacy resolveReference is unchanged. A typed machine-token route and fully echoed request are added to the JSON protocol source and real local/remote adapters; no beauty access to member tables. Real host tests cover both same-number MCH↔USR directions in REGISTERED and CLAIMED states, zero new intent/receipt/outbox on rejection, and old resolver compatibility; existing validated-intent recovery under a current second employee remains covered.
+
+I2: current BOOKING_MANAGE, explicit-guest CUSTOMER authorization, scoped preview ownership, and original key/full request hash precede original operation recovery. An accepted request uses persisted canonical identity even after the guest is claimed. Only new requests resolve live guest state against preview. Both success and prior-unknown paths cover exact replay, changed parameters, all-permission revocation, and CUSTOMER-only revocation while BOOKING_MANAGE remains true; no new operation is created on rejection. ReceptionAccess is injected into the existing service/configuration for authorization without a new guest read.
+
+I3: append frozen V6 CHECK guard; V1–V5 byte comparisons against FIX_BASE pass. NULL/NULL remains valid; non-NULL kind/ref must have USER/GUEST kind and nonempty reference. Native tests cover all four NULL combinations, illegal kind/empty reference, unchanged valid V5 history/checksum through V6, invalid V5 data blocking migration without repair or baseline, and removal of the new guard failing strict validation. Dedicated JSON/renderer and the strict SHA-verified ALTER manifest, ready6/configuration/fixtures/dictionary are synchronized. No old migration is modified.
+
+I4: lexical quoted identifier tokens replace global backtick stripping. Backticks inside string literals retain their identity. Charset-prefixed escaped ASCII enum decoding occurs only on its complete token, never inside another literal. Existing unknown syntax/function rejection and literal case distinctions stay strict. Parser and native altered-literal CHECK counterexamples cover the issue.
+
+U1 evidence limitation: inspected available original `/tmp/task55a*.log` evidence. Original DTO/parser RED and later challenge failure/receipt ablation exist, but no original preimplementation claim/real-host behavioral RED was found. The earlier report's general TDD description is not evidence of those missing historical sequences. This round records actual behavioral RED before these fixes; it does not retroactively claim historical TDD.
+
+U2 evidence limitation: the original first-execution V5 hash timing has no independent raw snapshot. The prior wording that it was frozen at first execution describes the implementation history, not independently provable chronology. The independently reviewable guarantee for this fix is byte identity of V1–V5 against committed FIX_BASE. V5 SHA remains `8e9aec144736ee3502fb9c0f9c4c95edf6f4a02c1cecbd597ff0c3b51aa4eab5`.
+
+V6 was generated and its actual file/SHA sent to the controller before execution. The controller independently read it at **2026-10-22 10:22:25 UTC** and persisted the SQL/UTC/hash in controller-owned `.superpowers/sdd/beauty-backend/v6-preexecution-root-record.json` before releasing execution. SHA: `220ed777c56a77c22cf835f2a5bcc42ccb41cc98a4348831df06e0e404b89f20`. First actual V6 migration began at 10:25:35 UTC in `/tmp/task55a-fix-native-first.log`. V6 has remained byte-identical since that independent record. The controller record is referenced, not staged in this implementation commit.
+
+### Behavioral RED and intermediate failures
+
+All Maven commands use JDK21 at `/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`, offline `-o`, and repository `/tmp/codex-beauty-bm01-m2`. Native scripts supply the random localhost-only JDBC URL. Logs below are actual local command output.
+
+| Command / evidence | Observed result |
+| --- | --- |
+| `BEAUTY_RECEPTION_TESTS=BeautyReceptionIdentityIT#sameActorNumberDifferentKindCannotCreateClaimIntent node scripts/verify-member-guest-registration.mjs --beauty-reception`; `/tmp/task55a-fix-i1-red.log` | Before product changes: 4 tests, 4 assertion failures, 0 errors. Wrong kind wrote an intent or succeeded on CLAIMED. |
+| `node scripts/verify-beauty-persistence.mjs --reception-fix-red`; `/tmp/task55a-fix-i234-red.log` | Before product changes: 5 tests, 5 assertion failures, 0 errors. Two exact replay failures after claim, accepted half-null row, parser/native backtick drift accepted. |
+| `node scripts/verify-beauty-persistence.mjs --reception-with-appointments`; `/tmp/task55a-fix-native-first.log` | First V6 run: 52 tests, 5 passed, 47 setup/connection errors, 0 assertion failures. V6 applied successfully before the container died. This is environment failure, not behavioral RED or final GREEN. |
+| `/tmp/task55a-fix-oom-events.jsonl` | Docker OOM event for only `codex-beauty-jdbc-2934ae68-c34d-45e7-a2f4-6bb04ad8cba9`, epoch1792664905 (10:28:25 UTC). Docker VM memory4096294912 bytes; EOF followed by refused connections. Finally removed only this run's container. |
+| `BEAUTY_TEST_DISK=1 BEAUTY_TESTS=AppointmentBusinessIT#guestCreationReplaysOriginalOperationAfterClaim node scripts/verify-beauty-persistence.mjs`; `/tmp/task55a-fix-customer-red.log` | Additional authorization gap reproduced after initial I2 rearrangement: 2 tests, 2 assertion failures, 0 errors with only CUSTOMER revoked. |
+| Same targeted command; `/tmp/task55a-fix-customer-green.log` | Initial compile attempt found an existing direct constructor fixture needing the additional ReceptionAccess argument. Fixed the fixture; no business result claimed from compilation failure. |
+| Same targeted command; `/tmp/task55a-fix-customer-green-final.log` | After live CUSTOMER gate and fixture update: 2 passed, 0 failures/errors/skips. |
+
+Environment adjustment was explicitly accepted by the controller. `BEAUTY_TEST_DISK=1` uses an isolated container writable datadir `/var/lib/beauty-test`, 64MB InnoDB buffer and disabled performance_schema; no host/shared mount or production configuration change. The first two-case diagnostic used the image's disposable default data volume, also deleted in finally; subsequent runs use the explicit writable datadir. The unchanged default harness option retains tmpfs. Both harnesses keep pull-never, localhost TCP/readiness, UUID ownership and finally remove their container/anonymous image volumes. Six preexisting food and two pricing containers were not modified. Runs are sequential with at most one owned native container.
+
+### Final fix verification
+
+Common Maven prefix: `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home mvn -o -Dmaven.repo.local=/tmp/codex-beauty-bm01-m2`. Native commands use the same JAVA_HOME prefix.
+
+| Complete scoped command after common prefix / evidence | Result |
+| --- | --- |
+| `-f backend/pom.xml -pl shop-base -am install -DskipTests`; `/tmp/task55a-fix-shared-install.log` | PASS; strict SPI installed before consumers. |
+| `-f backend/pom.xml -pl shop-core -am install -DskipTests`; `/tmp/task55a-fix-core-install.log` | PASS; real strict owner installed before host. |
+| `-f backend/pom.xml -pl shop-app -am test -Dtest=GuestOwnerMachineTransportTest,MemberCodeResolveFlowTest -Dsurefire.failIfNoSpecifiedTests=false`; `/tmp/task55a-fix-owner-green.log` | 10 passed (strict/old machine route2 + legacy member reference8), 0 failures/errors/skips. |
+| `BEAUTY_TEST_DISK=1 node scripts/verify-beauty-persistence.mjs --reception-with-appointments`; `/tmp/task55a-fix-native-green.log` | 52 passed: appointment21/schema22/receipt6/resource migration3; 0 failures/errors/skips. |
+| `-f backend-plugins/shop-industry-beauty/pom.xml install`; `/tmp/task55a-fix-reactor-green.log` | 115 passed: api2/core38/web22/channel25/server28; 0 failures/errors/skips. Includes parser8, real TCP identity6, beauty architecture13 and disabled/remote/local wiring. Installed before host. |
+| `BEAUTY_TEST_DISK=1 node scripts/verify-member-guest-registration.mjs --beauty-reception`; `/tmp/task55a-fix-host-green.log` | 8 passed, 0 failures/errors/skips: real current member proof owner/local beauty service consumption, same-number different-kind rejection, legitimate original-intent second-employee recovery. |
+| Five Python `gen-beauty-{database-design,java-method-design,java-project-design,development-plan,api-design}.py --check`; JS `gen-beauty-{schema,resource-intent-schema,appointment-business-schema,appointment-decision-schema,reception-schema,reception-identity-guard-schema}.mjs --check`; `node scripts/check-sql-portability.mjs`; `/tmp/task55a-fix-generation.log` | All12 commands PASS. |
+| `git diff --check`; byte comparisons of V1–V5 against FIX_BASE; SHA comparison of V6 to independent controller record | PASS. Six frozen SQL files remain unchanged from their accepted baselines. |
+
+No new unresolved functional issue found within I1–I4. Scope limitations: current platform host fixture plus official V537/V538 is not full historical platform Flyway replay; beauty V1–V6 is real migration execution. Core appointment external resource owner remains a controlled fixture; actual member consumption is proven in the host. Machine HTTP strict route is tested with a controlled identity owner and real HTTP/status/echo semantics, while real member persistence is covered through the native host bridge. Historical U1/U2 limits above remain explicit. No full backend or complete Task54 suite was rerun, and the three previously tracked global guard failures were not reclassified as fixed. No new rule bypass or ratchet change.
+
+### Fix owned paths
+
+Only these UTF-8 paths are staged for this unified fix. Controller mainTDD/progress/brief/overall design/reviewbrief/V6 preexecution record remain excluded; original-cwd unrelated work is untouched.
+
+- `.superpowers/sdd/beauty-backend/task-55a-fix-design.md`
+- `.superpowers/sdd/beauty-backend/task-55a-report.md`
+- `backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemoteCustomerIdentityPort.java`
+- `backend-plugins/shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/scenario/GuestIdentityTransportTest.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyAppointmentConfiguration.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyCheckExpression.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyPersistenceConfiguration.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySchemaReady.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySchemaValidator.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyWriteGuardConfiguration.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/ReceptionIdentity.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/AppointmentServiceImpl.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V6__beauty_reception_identity_guard.sql`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/config/BeautyCheckExpressionTest.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/AppointmentBusinessIT.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/AppointmentIncompleteSearchTest.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautyPersistenceWiringTest.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautySchemaMigrationIT.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautyWriteGuardHostWiringTest.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/GuestClaimReceiptIT.java`
+- `backend/shop-app/src/main/java/ai/neargo/shop/portal/internal/InternalCustomerIdentityController.java`
+- `backend/shop-app/src/test/java/ai/neargo/shop/portal/internal/GuestOwnerMachineTransportTest.java`
+- `backend/shop-app/src/test/java/ai/neargo/shop/scenario/BeautyReceptionIdentityIT.java`
+- `backend/shop-base/src/main/java/ai/neargo/shop/spi/member/CustomerIdentityInternalApi.java`
+- `backend/shop-base/src/main/java/ai/neargo/shop/spi/member/CustomerIdentityPort.java`
+- `backend/shop-core/src/main/java/ai/neargo/shop/member/port/MemberCustomerIdentityPortImpl.java`
+- `docs/technical/design/schema/beauty-api-design.json`
+- `docs/technical/design/schema/beauty-java-method-design.json`
+- `docs/technical/design/schema/beauty-reception-identity-guard-schema.json`
+- `docs/technical/design/美业系统-API清单.md`
+- `docs/technical/design/美业系统-Controller-Service-Mapper方法清单.md`
+- `docs/technical/design/美业系统-Java类与方法清单.md`
+- `docs/technical/design/美业系统-数据库字段字典.md`
+- `scripts/gen-beauty-database-design.py`
+- `scripts/gen-beauty-reception-identity-guard-schema.mjs`
+- `scripts/verify-beauty-persistence.mjs`
+- `scripts/verify-member-guest-registration.mjs`

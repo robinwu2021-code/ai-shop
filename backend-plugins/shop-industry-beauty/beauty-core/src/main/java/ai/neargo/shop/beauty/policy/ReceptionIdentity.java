@@ -29,7 +29,7 @@ public final class ReceptionIdentity {
     public String customer(String entity, String store, String reference) {
         var user = SecurityUtils.requireUser();
         access.customer(entity, store, user.userNo());
-        var result = customers.getObject().resolveReference(new EntitlementContext(user.tenantNo(), user.userNo(),
+        var result = customers.getObject().resolveClaimReference(new EntitlementContext(user.tenantNo(), user.userNo(),
                 BizKey.next("BTCR"), IdempotencyScope.requestHash(reference)),
                 new CustomerIdentityPort.ReferenceQuery(entity, store, reference));
         if (result == null || result.userNo() == null || result.userNo().isBlank()) {

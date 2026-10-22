@@ -7,6 +7,13 @@ import org.springframework.web.service.annotation.PostExchange;
 
 /** Read-only actor-bound customer identification, never payment or debit permission. */
 public interface CustomerIdentityInternalApi {
+    String CLAIM_REFERENCE_PATH = "/internal/customer-identity/resolve-claim-reference";
+    @PostExchange(CLAIM_REFERENCE_PATH)
+    ClaimReferenceResolution resolveClaimReference(@RequestBody ClaimReferenceRequest request);
+    record ClaimReferenceRequest(DelegatedIdentity identity, EntitlementContext context,
+            CustomerIdentityPort.ReferenceQuery query) { }
+    record ClaimReferenceResolution(ClaimReferenceRequest request,
+            CustomerIdentityPort.ResolvedCustomer customer) { }
     String PROOF_PATH = "/internal/customer-identity/verify-consumer-proof";
     @PostExchange(PROOF_PATH) ProofResolution verifyConsumerProof(@RequestBody ProofRequest request);
     record ProofRequest(DelegatedIdentity identity, EntitlementContext context, String memberCode) {

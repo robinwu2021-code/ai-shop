@@ -75,4 +75,10 @@ class BeautyCheckExpressionTest {
         assertThrows(IllegalStateException.class, () -> canonical("concat(code) = 'x'"));
         assertThrows(IllegalStateException.class, () -> canonical("phase = 'unterminated"));
     }
+    @Test void quotedIdentifierNeverErasesLiteralContent() {
+        assertEquals(canonical("phase = 'RECEIVED'"), canonical("`phase` = 'RECEIVED'"));
+        assertNotEquals(canonical("phase = 'RECEIVED'"), canonical("phase = 'RECE`IVED'"));
+        assertThrows(IllegalStateException.class, () -> canonical("phase = _utf8mb4\\'RECE`IVED\\'"));
+    }
+
 }

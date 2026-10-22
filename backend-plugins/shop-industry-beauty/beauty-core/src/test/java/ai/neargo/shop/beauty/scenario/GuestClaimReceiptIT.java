@@ -18,6 +18,7 @@ import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
+import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.member.GuestRegistrationPort;
 import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 import java.util.List;
@@ -78,10 +79,16 @@ class GuestClaimReceiptIT extends BeautyExecutionFixture {
                 .withBean(MerchantOperatorAccessPort.class, () -> q -> {
                     outside(); return allowed && "E".equals(q.entityNo()) && "S".equals(q.storeNo());
                 })
-                .withBean(CustomerIdentityPort.class, () -> (context, query) -> {
-                    outside(); if (!proofValid) { throw BizException.of(ErrorCode.NOT_FOUND); }
-                    assertThat(query.customerRef()).isEqualTo(claim.verifiedIdentity());
-                    return new CustomerIdentityPort.ResolvedCustomer(target);
+                .withBean(CustomerIdentityPort.class, () -> new CustomerIdentityPort() {
+                    @Override public ResolvedCustomer resolveReference(EntitlementContext context, ReferenceQuery query) {
+                        throw new AssertionError("legacy reference must not authorize a new claim");
+                    }
+                    @Override public ResolvedCustomer resolveClaimReference(EntitlementContext context,
+                            ReferenceQuery query) {
+                        outside(); if (!proofValid) { throw BizException.of(ErrorCode.NOT_FOUND); }
+                        assertThat(query.customerRef()).isEqualTo(claim.verifiedIdentity());
+                        return new ResolvedCustomer(target);
+                    }
                 }).withInitializer(application -> application.getBeanFactory().addBeanPostProcessor(
                         new BeanPostProcessor() {
                             @Override public Object postProcessAfterInitialization(Object bean, String name) {

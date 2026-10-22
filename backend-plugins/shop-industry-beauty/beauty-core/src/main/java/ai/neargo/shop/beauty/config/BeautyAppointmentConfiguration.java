@@ -4,6 +4,7 @@ import ai.neargo.shop.beauty.job.AppointmentRecoveryJob;
 import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
+import ai.neargo.shop.beauty.policy.ReceptionAccess;
 import ai.neargo.shop.beauty.policy.CustomerOwnership;
 import ai.neargo.shop.beauty.policy.ReceptionIdentity;
 import org.springframework.context.annotation.Import;
@@ -88,8 +89,8 @@ public class BeautyAppointmentConfiguration {
     @Bean
     AppointmentServiceImpl appointmentServiceImpl(AppointmentPersistence db, AppointmentAccess access,
             AppointmentMatching matching, AppointmentPreparationService preparation, AppointmentCoordinator
-            coordinator) {
-        return new AppointmentServiceImpl(db, access, matching, preparation, coordinator);
+            coordinator, ReceptionAccess receptionAccess) {
+        return new AppointmentServiceImpl(db, access, matching, preparation, coordinator, receptionAccess);
     }
     @Bean
     AppointmentAvailabilityServiceImpl appointmentAvailabilityServiceImpl(AppointmentMatching matching,

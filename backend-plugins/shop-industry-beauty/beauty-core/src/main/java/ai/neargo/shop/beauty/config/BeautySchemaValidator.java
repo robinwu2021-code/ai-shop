@@ -39,6 +39,9 @@ public final class BeautySchemaValidator {
     private static final String V5 = "db/industry/beauty/V5__beauty_reception_work_order.sql";
     private static final String V5_SHA256 = "8e9aec144736ee3502fb9c0f9c4c95edf6f4a02c1cecbd597ff0c3b51aa4eab5";
 
+    private static final String V6 = "db/industry/beauty/V6__beauty_reception_identity_guard.sql";
+    private static final String V6_SHA256 = "220ed777c56a77c22cf835f2a5bcc42ccb41cc98a4348831df06e0e404b89f20";
+
     /** Migration must be explicitly requested by a single deployment executor; validation is read only. */
     public void initialize(DataSource dataSource, String mode) {
         require("validate".equals(mode) || "migrate".equals(mode), "Beauty schema mode must be validate or migrate");
@@ -62,7 +65,7 @@ public final class BeautySchemaValidator {
         }
         flyway.validate();
         var current = flyway.info().current();
-        require(current != null && "5".equals(current.getVersion().getVersion()), "Beauty schema version must be 5");
+        require(current != null && "6".equals(current.getVersion().getVersion()), "Beauty schema version must be 6");
         for (var migration : flyway.info().all()) {
             String state = migration.getState().name();
             require("SUCCESS".equals(state) || "BASELINE".equals(state), "Unexpected beauty migration state: " + state);
@@ -84,7 +87,36 @@ public final class BeautySchemaValidator {
         manifest(V5, V5_SHA256, 4).forEach((table, contract) -> {
             require(result.putIfAbsent(table, contract) == null, "Duplicate beauty migration table");
         });
+        addIdentityGuard(result);
         return result;
+    }
+
+    private static void addIdentityGuard(Map<String, TableContract> contracts) {
+        String sql = frozenText(V6, V6_SHA256).replaceAll("(?m)^--[^\\n]*\\n", "").strip();
+        var match = Pattern.compile("ALTER TABLE `([^`]+)`\\s+ADD CONSTRAINT `([^`]+)` CHECK \\((.+)\\);",
+                Pattern.DOTALL).matcher(sql);
+        require(match.matches() && "bty_reception_operation".equals(match.group(1))
+                && "ck_bty_reception_operation_5".equals(match.group(2)), "Unexpected V6 identity guard migration");
+        var table = contracts.get(match.group(1));
+        require(table != null, "V6 target must already belong to the frozen manifest");
+        Map<String, String> checks = new TreeMap<>(table.checks());
+        require(checks.putIfAbsent(match.group(2), normalizeCheck(match.group(3))) == null,
+                "V6 cannot replace a frozen CHECK");
+        contracts.put(match.group(1), new TableContract(table.columns(), table.uniqueKeys(),
+                table.columnDefinitions(), checks, table.modifiers(), table.indexes()));
+    }
+
+    private static String frozenText(String resource, String expectedHash) {
+        try {
+            var resources = Collections.list(BeautySchemaValidator.class.getClassLoader().getResources(resource));
+            require(resources.size() == 1, "Beauty migration must have exactly one resource owner: " + resource);
+            byte[] bytes;
+            try (var stream = resources.getFirst().openStream()) { bytes = stream.readAllBytes(); }
+            String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+            require(expectedHash.equals(hash), "Frozen beauty migration changed; append a migration: " + resource);
+            return new String(bytes, StandardCharsets.UTF_8);
+        } catch (IllegalStateException ex) { throw ex; }
+        catch (Exception ex) { throw new IllegalStateException("Cannot read immutable beauty migration"); }
     }
 
     private static Map<String, TableContract> manifest(String resource, String expectedHash, int expectedTables) {

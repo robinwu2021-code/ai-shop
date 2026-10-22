@@ -3078,6 +3078,14 @@
       "purpose": "Task54实际增量；当前CONSUMER/USR、同租户/本人活动账号及原MEMBER_CODE短票据；不接受登录token/手机号/任意字符串，识别不授予支付授权。安全、配置与验证边界见[Task54共用身份说明](../../../backend-plugins/shop-industry-beauty/README.md)。",
       "request": "CustomerIdentityInternalApi.ProofRequest(identity,EntitlementContext,memberCode)",
       "response": "ProofResolution(request,ResolvedCustomer)；完整身份/上下文/原memberCode请求回显，必须解析为当前用户；过期/伪造mc1为400"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/customer-identity/resolve-claim-reference",
+      "owner": "PLATFORM / InternalCustomerIdentityController → MemberCustomerIdentityPortImpl",
+      "purpose": "Task55A fix1：当前完整realm/kind/actor/entity/store与CUSTOMER严格核验后建claim intent；旧resolveReference兼容不变",
+      "request": "CustomerIdentityInternalApi.ClaimReferenceRequest(identity,EntitlementContext,ReferenceQuery)",
+      "response": "ClaimReferenceResolution(request,ResolvedCustomer)；全请求回显核对，不是资金授权"
     }
   ]
 }

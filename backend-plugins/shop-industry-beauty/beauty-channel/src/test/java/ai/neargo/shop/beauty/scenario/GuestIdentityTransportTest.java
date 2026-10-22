@@ -189,6 +189,41 @@ class GuestIdentityTransportTest {
             });
         }
     }
+    @Test void strictClaimReferenceCannotUseLegacyCapabilityOrMismatchedEcho() throws Exception {
+        var context = new EntitlementContext("MAIN", "U", "strict", "c".repeat(64));
+        var query = new CustomerIdentityPort.ReferenceQuery("E", "S", "cr1_" + "c".repeat(43));
+        CustomerIdentityPort legacy = (c, q) -> new CustomerIdentityPort.ResolvedCustomer("LEGACY");
+        assertThatThrownBy(() -> legacy.resolveClaimReference(context, query))
+                .isInstanceOf(UnsupportedOperationException.class);
+        try (var tcp = new Tcp()) {
+            var port = new RemoteCustomerIdentityPort(tcp.http().client("PLATFORM", CustomerIdentityInternalApi.class,
+                    Duration.ofSeconds(2)));
+            DelegatedIdentityContext.call(ID, () -> {
+                tcp.reply = body -> {
+                    var request = JSON.readValue(body, CustomerIdentityInternalApi.ClaimReferenceRequest.class);
+                    assertThat(request.identity()).isEqualTo(ID); assertThat(request.context()).isEqualTo(context);
+                    assertThat(request.query()).isEqualTo(query);
+                    return json(new CustomerIdentityInternalApi.ClaimReferenceResolution(request,
+                            new CustomerIdentityPort.ResolvedCustomer("CUSTOMER")));
+                };
+                assertThat(port.resolveClaimReference(context, query).userNo()).isEqualTo("CUSTOMER");
+                for (String field : new String[]{"kind", "actor", "entity", "store", "proof"}) {
+                    var identity = new DelegatedIdentity("MAIN", "MERCHANT", field.equals("kind") ? "MCH" : "USR",
+                            field.equals("actor") ? "OTHER" : "U");
+                    var changed = new CustomerIdentityPort.ReferenceQuery(field.equals("entity") ? "OTHER" : "E",
+                            field.equals("store") ? "OTHER" : "S", field.equals("proof") ? "OTHER" : query.customerRef());
+                    tcp.reply = body -> json(new CustomerIdentityInternalApi.ClaimReferenceResolution(
+                            new CustomerIdentityInternalApi.ClaimReferenceRequest(identity, context, changed),
+                            new CustomerIdentityPort.ResolvedCustomer("CUSTOMER")));
+                    assertThatThrownBy(() -> port.resolveClaimReference(context, query))
+                            .isInstanceOf(IllegalStateException.class);
+                }
+                tcp.reply = body -> "{\"code\":503,\"message\":\"unavailable\"}";
+                assertThatThrownBy(() -> port.resolveClaimReference(context, query)).isInstanceOf(RuntimeException.class);
+                return null;
+            });
+        }
+    }
     private static String json(Object value) { return JSON.writeValueAsString(value); }
     private static final class Tcp implements AutoCloseable {
         final HttpServer server;

@@ -74,7 +74,7 @@ class AppointmentIncompleteSearchTest {
                         PersonnelFactsPort.class),
                 beans.getBeanProvider(ScheduleWindowsPort.class), rules);
         var access = mock(AppointmentAccess.class);
-        var appointments = new AppointmentServiceImpl(null, access, matching, null, null);
+        var appointments = new AppointmentServiceImpl(null, access, matching, null, null, null);
         var at = OffsetDateTime.now(ZoneOffset.UTC).plusHours(1).withSecond(0).withNano(0);
         at = at.plusMinutes(Math.floorMod(-at.getMinute(), 5));
         var preview = new PreviewMyAppointmentReq("S", List.of(new AppointmentItemReq("SKU", 1)), at, null);

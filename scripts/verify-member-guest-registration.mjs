@@ -11,7 +11,8 @@ const docker = (args, input) => execFileSync('docker', args,
   {encoding: 'utf8', input, stdio: ['pipe', 'pipe', 'pipe']}).trim();
 try {
   docker(['run', '--pull', 'never', '--detach', '--name', name, '--publish', '127.0.0.1::3306',
-    '--tmpfs', '/var/lib/mysql', '--env', 'MYSQL_ALLOW_EMPTY_PASSWORD=yes', '--env', 'MYSQL_ROOT_HOST=%', 'mysql:8.4']);
+    ...(process.env.BEAUTY_TEST_DISK === '1' ? [] : ['--tmpfs', '/var/lib/mysql']), '--env', 'MYSQL_ALLOW_EMPTY_PASSWORD=yes', '--env', 'MYSQL_ROOT_HOST=%', 'mysql:8.4',
+    ...(process.env.BEAUTY_TEST_DISK === '1' ? ['--datadir=/var/lib/beauty-test', '--innodb-buffer-pool-size=64M', '--performance-schema=OFF'] : [])]);
   let ready = false;
   for (let i = 0; i < 150; i++) {
     try { docker(['exec', name, 'mysql', '--protocol=TCP', '-h127.0.0.1', '-uroot', '-e', 'SELECT 1']);
@@ -37,7 +38,7 @@ try {
       readFileSync(root + 'backend/shop-app/src/main/resources/db/migration/V538__member_reference_actor_namespace.sql', 'utf8'));
   }
   const args = ['-o', '-Dmaven.repo.local=/tmp/codex-beauty-bm01-m2', '-f', root + 'backend/pom.xml',
-    '-pl', 'shop-app', '-am', 'test', '-Dtest=' + (beautyReception ? 'BeautyReceptionIdentityIT' : process.env.MEMBER_GUEST_TESTS || 'MemberGuestRegistrationIT'),
+    '-pl', 'shop-app', '-am', 'test', '-Dtest=' + (beautyReception ? process.env.BEAUTY_RECEPTION_TESTS || 'BeautyReceptionIdentityIT' : process.env.MEMBER_GUEST_TESTS || 'MemberGuestRegistrationIT'),
     '-Dsurefire.failIfNoSpecifiedTests=false', '-Dmember-guest.test.native=true',
     '-Dspring.datasource.url=jdbc:mysql://' + address + '/guest_test?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC',
     '-Dspring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver', '-Dspring.datasource.username=root',
@@ -53,5 +54,5 @@ try {
   }
 } finally {
   rmSync(restartFile, {force: true});
-  try { docker(['rm', '--force', name]); } catch { /* Only this run's container may be removed. */ }
+  try { docker(['rm', '--force', '--volumes', name]); } catch { /* Only this run's container may be removed. */ }
 }

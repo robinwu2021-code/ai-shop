@@ -10,6 +10,8 @@ import ai.neargo.shop.member.service.MemberCodeResolveService;
 import ai.neargo.shop.member.service.MemberGuestRegistrationService;
 import ai.neargo.shop.member.service.impl.MemberGuestRegistrationServiceImpl;
 import ai.neargo.shop.spi.member.GuestRegistrationPort;
+import ai.neargo.shop.spi.member.CustomerIdentityPort;
+import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.security.DelegatedIdentity;
 import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 import ai.neargo.shop.spi.user.MerchantScopeFactsPort;
@@ -21,6 +23,8 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -37,7 +41,7 @@ import org.springframework.util.ClassUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Native current platform fixture + official V537/V538 + beauty V1–V5; real mc1/cr1 and guest owner.
+/** Native current platform fixture + official V537/V538 + beauty V1–V6; real mc1/cr1 and guest owner.
  * Reflection keeps default retail compilation independent of the optional beauty module.
  * The only fault injection drops a response after the real owner returns from its committed transaction. */
 @SpringBootTest(properties = {"shop.member-code.enabled=true", "shop.beauty.enabled=true",
@@ -53,6 +57,7 @@ class BeautyReceptionIdentityIT {
     @Autowired MemberCodeResolveService codes;
     @Autowired MemberGuestRegistrationService owner;
     @Autowired FaultPort faults;
+    @Autowired CustomerIdentityPort identities;
     @Autowired MemberGuestRegistrationMapper mapper;
     @Autowired MerchantOperatorAccessPort access;
     @Autowired MerchantScopeFactsPort stores;
@@ -139,6 +144,48 @@ class BeautyReceptionIdentityIT {
         rejected(() -> as(manager, () -> register("contact", "unavailable")), ErrorCode.MEMBER_GUEST_UNAVAILABLE);
         assertThat(count("mbr_guest_registration")).isOne();
         assertThat(count("bty_reception_operation")).isOne();
+    }
+    @ParameterizedTest
+    @CsvSource({"MCH,USR,false", "USR,MCH,false", "MCH,USR,true", "USR,MCH,true"})
+    void sameActorNumberDifferentKindCannotCreateClaimIntent(String originalKind, String currentKind,
+            boolean alreadyClaimed) {
+        Object registration = as(actor, () -> register("contact", "registration"));
+        String guest = (String) value(registration, "guestNo"), token = (String) value(registration, "claimToken");
+        var original = new DelegatedIdentity("MAIN", "MERCHANT", originalKind, actor);
+        var current = new DelegatedIdentity("MAIN", "MERCHANT", currentKind, actor);
+        for (var identity : List.of(original, current)) {
+            assertThat(DelegatedIdentityContext.call(identity, () -> access.allowed(
+                    new MerchantOperatorAccessPort.Query("MAIN", entity, store, actor, "MERCHANT",
+                            identity.subjectKind(), "biz:customer")))).isTrue();
+        }
+        String code = codes.issue("MAIN", user).memberCode();
+        String ref = DelegatedIdentityContext.call(original, () -> codes.resolve(
+                new MemberCodeScope("MAIN", entity, store, actor), code).customerRef());
+        var identityContext = new EntitlementContext("MAIN", actor, "strict-test", "c".repeat(64));
+        var query = new CustomerIdentityPort.ReferenceQuery(entity, store, ref);
+        assertThat(DelegatedIdentityContext.call(current, () -> identities.resolveReference(identityContext, query))
+                .userNo()).isEqualTo(user);
+        if (alreadyClaimed) {
+            DelegatedIdentityContext.call(original, () -> owner.claim(new GuestRegistrationPort.Scope(entity, store,
+                    original), guest, new GuestRegistrationPort.ClaimCommand(ref, token, "owner-fixture")));
+        }
+        rejected(() -> DelegatedIdentityContext.call(current, () -> call(service, "claimGuest", entity, store,
+                actor, guest, dto("ClaimGuestReq", ref, token), "new-claim")), ErrorCode.NOT_FOUND);
+        assertThat(count("bty_reception_operation")).isZero();
+        assertThat(count("bty_guest_claim_receipt")).isZero();
+        assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE aggregate_id=?", Integer.class, guest))
+                .isZero();
+    }
+    @Test void strictOwnerCapabilityChecksCurrentCustomerGrantAndContextBeforeTicket() {
+        String ref = reference(actor);
+        var c = new EntitlementContext("MAIN", actor, "strict", "b".repeat(64));
+        var query = new CustomerIdentityPort.ReferenceQuery(entity, store, ref);
+        assertThat(as(actor, () -> identities.resolveClaimReference(c, query)).userNo()).isEqualTo(user);
+        rejected(() -> as(manager, () -> identities.resolveClaimReference(c, query)), ErrorCode.FORBIDDEN);
+        rejected(() -> as(actor, () -> identities.resolveClaimReference(c,
+                new CustomerIdentityPort.ReferenceQuery(entity, "FOREIGN", ref))), ErrorCode.FORBIDDEN);
+        sql.update("UPDATE mch_account SET status='SUSPENDED' WHERE mch_account_no=?", actor);
+        rejected(() -> as(actor, () -> identities.resolveClaimReference(c, query)), ErrorCode.FORBIDDEN);
     }
     private String reference(String account) {
         String mc1 = codes.issue("MAIN", user).memberCode(); assertThat(mc1).startsWith("mc1_");

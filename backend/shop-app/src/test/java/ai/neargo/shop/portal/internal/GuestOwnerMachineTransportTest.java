@@ -91,6 +91,39 @@ class GuestOwnerMachineTransportTest {
             assertThat(DelegatedIdentityContext.current()).isEqualTo(outer); return null;
         });
     }
+    @Test void strictReferenceIngressRetainsMachineAuthenticationNamespaceAndExplicitFailure() throws Exception {
+        try (var host = new SpringApplicationBuilder(Host.class).web(WebApplicationType.SERVLET)
+                .run("--server.port=0", "--server.address=127.0.0.1", "--shop.services.internal-token=owner-key")) {
+            String url = "http://127.0.0.1:" + ((WebServerApplicationContext) host).getWebServer().getPort();
+            var api = new InternalHttp(service -> Optional.of(url), "owner-key")
+                    .client("PLATFORM", CustomerIdentityInternalApi.class, Duration.ofSeconds(2));
+            var c = new EntitlementContext("MAIN", "U", "strict", "c".repeat(64));
+            var i = new DelegatedIdentity("MAIN", "MERCHANT", "MCH", "U");
+            var q = new CustomerIdentityPort.ReferenceQuery("E", "S", "cr1");
+            var request = new CustomerIdentityInternalApi.ClaimReferenceRequest(i, c, q);
+            var result = api.resolveClaimReference(request);
+            assertThat(result.request()).isEqualTo(request); assertThat(result.customer().userNo()).isEqualTo("CUSTOMER");
+            var json = new ObjectMapper();
+            assertThat(strictStatus(url, json.writeValueAsString(request), "bad")).isEqualTo(401);
+            assertThat(strictStatus(url, "{}", "owner-key")).isEqualTo(400);
+            var spoof = new CustomerIdentityInternalApi.ClaimReferenceRequest(
+                    new DelegatedIdentity("MAIN", "MERCHANT", "USR", "OTHER"), c, q);
+            assertThat(strictStatus(url, json.writeValueAsString(spoof), "owner-key")).isEqualTo(403);
+            for (var failure : java.util.Map.of("FORBIDDEN", 403, "NOT_FOUND", 404).entrySet()) {
+                var denied = new CustomerIdentityInternalApi.ClaimReferenceRequest(i, c,
+                        new CustomerIdentityPort.ReferenceQuery("E", "S", failure.getKey()));
+                assertThat(strictStatus(url, json.writeValueAsString(denied), "owner-key"))
+                        .isEqualTo(failure.getValue());
+            }
+        }
+        assertThat(SecurityUtils.currentUser()).isEmpty();
+    }
+    private int strictStatus(String url, String body, String token) throws Exception {
+        return HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create(url
+                + CustomerIdentityInternalApi.CLAIM_REFERENCE_PATH)).header(InternalHttp.TOKEN_HEADER, token)
+                .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body)).build(),
+                HttpResponse.BodyHandlers.ofString()).statusCode();
+    }
     private int status(String url, String action, String body, String token) throws Exception {
         return HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create(url
                 + GuestRegistrationInternalApi.BASE + action)).header(InternalHttp.TOKEN_HEADER, token)
@@ -128,6 +161,13 @@ class GuestOwnerMachineTransportTest {
         @Bean CustomerIdentityPort customers() {
             return new CustomerIdentityPort() {
                 @Override public ResolvedCustomer resolveReference(EntitlementContext c, ReferenceQuery q) {
+                    return new ResolvedCustomer("CUSTOMER");
+                }
+                @Override public ResolvedCustomer resolveClaimReference(EntitlementContext c, ReferenceQuery q) {
+                    assertThat(SecurityUtils.requireUser().realm().name()).isEqualTo("MERCHANT");
+                    assertThat(SecurityUtils.requireUser().subjectKind().name()).isEqualTo("MCH");
+                    assertThat(SecurityUtils.requireUser().userNo()).isEqualTo(c.actorNo());
+                    if (!"cr1".equals(q.customerRef())) { throw BizException.of(ErrorCode.valueOf(q.customerRef())); }
                     return new ResolvedCustomer("CUSTOMER");
                 }
                 @Override public ResolvedCustomer verifyConsumerProof(EntitlementContext c, String code) {

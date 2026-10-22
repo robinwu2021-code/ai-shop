@@ -1,6 +1,7 @@
 package ai.neargo.shop.beauty.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mockStatic;
@@ -59,6 +60,8 @@ import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -83,6 +86,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
     private final ObjectMapper json = new ObjectMapper();
     private final ControlledOwner owner = new ControlledOwner();
     private boolean allowed = true;
+    private boolean customerAllowed = true;
     private boolean guestClaimed;
     private String revokedActor;
     private boolean occupied;
@@ -139,7 +143,8 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
                     return new CustomerIdentityPort.ResolvedCustomer("USR1");
                 })
                 .withBean(MerchantOperatorAccessPort.class, () -> q -> allowed && !q.operatorNo().equals(revokedActor)
-                        && Set.of("biz:booking:manage", "biz:customer").contains(q.permission()))
+                        && Set.of("biz:booking:manage", "biz:customer").contains(q.permission())
+                        && (customerAllowed || !"biz:customer".equals(q.permission())))
                 .withBean(ServiceCatalogFactsPort.class, () -> new ServiceCatalogFactsPort() {
                     @Override public Store store(String number) {
                         outside();
@@ -471,6 +476,47 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
                     String.class, claimed.previewNo())).isEqualTo("USR1");
             assertThatThrownBy(() -> service.previewAppointment("E", "S", "M1", new PreviewAppointmentReq("S",
                     null, request.items(), List.of(), start, "UNKNOWN"))).isInstanceOf(BizException.class);
+        });
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void guestCreationReplaysOriginalOperationAfterClaim(boolean unknown) {
+        var guests = org.mockito.Mockito.mock(GuestRegistrationPort.class);
+        org.mockito.Mockito.when(guests.get(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq("GUE1"))).thenAnswer(invocation ->
+                new GuestRegistrationPort.GuestFact("GUE1", guestClaimed ? "CLAIMED" : "REGISTERED",
+                        guestClaimed ? "USR1" : null, guestClaimed ? 2 : 1));
+        business().withBean(GuestRegistrationPort.class, () -> guests).run(context -> {
+            owner.authority = context.getBean(ResourceSourceAuthorityPort.class);
+            var service = context.getBean(AppointmentService.class);
+            login(LoginUser.merchant("M1", "staff"));
+            var preview = service.previewAppointment("E", "S", "M1", new PreviewAppointmentReq("S", null,
+                    List.of(new AppointmentItemReq("SKU", 1)), List.of(), start, "GUE1"));
+            var request = new CreateAppointmentReq(preview.previewNo(), null, List.of(), null, "GUE1");
+            owner.freezeOnly = unknown;
+            var original = service.createAppointment("E", "S", "M1", request, "ORIGINAL");
+            assertThat(original.operationState()).isEqualTo(unknown ? "PENDING" : "SUCCEEDED");
+            guestClaimed = true; owner.freezeOnly = false;
+            var replay = assertDoesNotThrow(() -> service.createAppointment("E", "S", "M1", request, "ORIGINAL"));
+            assertThat(replay.appointmentNo()).isEqualTo(original.appointmentNo());
+            assertThat(replay.operationNo()).isEqualTo(original.operationNo());
+            assertThat(replay.operationState()).isEqualTo("SUCCEEDED");
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment", Integer.class)).isOne();
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_operation", Integer.class)).isOne();
+            assertThatThrownBy(() -> service.createAppointment("E", "S", "M1",
+                    new CreateAppointmentReq(preview.previewNo(), null, List.of(), null, "OTHER"), "ORIGINAL"))
+                    .isInstanceOf(BizException.class);
+            customerAllowed = false;
+            assertThat(context.getBean(MerchantOperatorAccessPort.class).allowed(new MerchantOperatorAccessPort.Query(
+                    "MAIN", "E", "S", "M1", "MERCHANT", "MCH", "biz:booking:manage"))).isTrue();
+            assertThatThrownBy(() -> service.createAppointment("E", "S", "M1", request, "ORIGINAL"))
+                    .isInstanceOf(BizException.class);
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_operation", Integer.class)).isOne();
+            customerAllowed = true;
+            allowed = false;
+            assertThatThrownBy(() -> service.createAppointment("E", "S", "M1", request, "ORIGINAL"))
+                    .isInstanceOf(BizException.class);
         });
     }
 

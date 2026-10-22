@@ -28,6 +28,7 @@ import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
 import ai.neargo.shop.beauty.policy.CustomerOwnership;
+import ai.neargo.shop.beauty.policy.ReceptionAccess;
 import ai.neargo.shop.beauty.service.AppointmentService;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -49,10 +50,11 @@ public final class AppointmentServiceImpl implements AppointmentService {
     private final AppointmentMatching matching;
     private final AppointmentPreparationService preparations;
     private final AppointmentCoordinator coordinator;
+    private final ReceptionAccess receptionAccess;
     public AppointmentServiceImpl(AppointmentPersistence db, AppointmentAccess access, AppointmentMatching matching,
-            AppointmentPreparationService preparations, AppointmentCoordinator coordinator) {
+            AppointmentPreparationService preparations, AppointmentCoordinator coordinator, ReceptionAccess receptionAccess) {
         this.db = db; this.access = access; this.matching = matching;
-        this.preparations = preparations; this.coordinator = coordinator;
+        this.preparations = preparations; this.coordinator = coordinator; this.receptionAccess = receptionAccess;
     }
     @Override
     public AppointmentPreviewVO previewAppointment(String entity, String store, String actor, PreviewAppointmentReq
@@ -75,9 +77,15 @@ public final class AppointmentServiceImpl implements AppointmentService {
         access.merchant(entity, store, actor, true);
         var p = db.preview(req.previewNo());
         AppointmentPersistence.require(entity.equals(p.getEntityNo()) && store.equals(p.getStoreNo()));
-        // The preview's canonical customer is immutable. Re-resolve a supplied member reference before comparing.
+        preparations.own(p);
+        if (req.guestNo() != null) { receptionAccess.customer(entity, store, actor); }
+        financial(req.sourceRefs(), req.consentRef());
+        String request = db.json.writeValueAsString(req);
+        var prior = preparations.find(entity, store, key, IdempotencyScope.requestHash("CREATE", request));
+        if (prior != null) { return outcome(coordinator.advance(prior.getOperationNo())); }
+        // Only a new request may bind the preview to the currently observed guest/customer identity.
         preparations.customer(p, req.customerRef(), req.guestNo());
-        return create(req.previewNo(), req.sourceRefs(), req.consentRef(), key, db.json.writeValueAsString(req));
+        return create(req.previewNo(), req.sourceRefs(), req.consentRef(), key, request);
     }
     @Override
     public MyAppointmentVO createMyAppointment(String user, CreateMyAppointmentReq req, String key) {

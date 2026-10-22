@@ -1,6 +1,7 @@
 package ai.neargo.shop.beauty.scenario;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
+import org.flywaydb.core.Flyway;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -197,6 +198,70 @@ class BeautySchemaMigrationIT {
         execute("ALTER TABLE bty_reception_operation ADD CONSTRAINT ck_bty_reception_operation_3 "
                 + "CHECK (phase IN ('received','RESOURCE_PENDING','ARRIVAL_PENDING',"
                 + "'OPEN_PENDING','SUCCEEDED','REJECTED'))");
+        assertThrows(IllegalStateException.class, () -> initialize("validate"));
+    }
+
+    @Test void identityPairRejectsHalfNullAndInvalidReferences() throws SQLException {
+        initialize("migrate");
+        assertDoesNotThrow(() -> insertIdentity(null, null));
+        assertDoesNotThrow(() -> insertIdentity("USER", "U1"));
+        assertDoesNotThrow(() -> insertIdentity("GUEST", "G1"));
+        assertThrows(SQLException.class, () -> insertIdentity("USER", null));
+        assertThrows(SQLException.class, () -> insertIdentity(null, "U1"));
+        assertThrows(SQLException.class, () -> insertIdentity("OTHER", "U1"));
+        assertThrows(SQLException.class, () -> insertIdentity("USER", ""));
+    }
+    private void insertIdentity(String kind, String ref) throws SQLException {
+        try (var connection = source.getConnection(); var statement = connection.prepareStatement(
+                "INSERT INTO bty_reception_operation (entity_no,store_no,operation_no,created_at,updated_at,"
+                        + "actor_no,actor_realm,actor_kind,endpoint,action,key_hash,request_hash,phase,frozen_payload,"
+                        + "identity_kind,identity_ref) VALUES ('E','S',?,NOW(),NOW(),'A','MERCHANT','MCH','BAPI-032',"
+                        + "'CLAIM_GUEST',?,?,'RECEIVED','{}',?,?)")) {
+            String id = UUID.randomUUID().toString().replace("-", "");
+            statement.setString(1, id); statement.setString(2, id.repeat(2)); statement.setString(3, id.repeat(2));
+            statement.setString(4, kind); statement.setString(5, ref); statement.executeUpdate();
+        }
+    }
+    @Test void rejectsBacktickInsideCheckLiteral() throws SQLException {
+        initialize("migrate");
+        execute("ALTER TABLE bty_reception_operation DROP CHECK ck_bty_reception_operation_3");
+        execute("ALTER TABLE bty_reception_operation ADD CONSTRAINT ck_bty_reception_operation_3 "
+                + "CHECK (phase IN ('RECE`IVED','RESOURCE_PENDING','ARRIVAL_PENDING',"
+                + "'OPEN_PENDING','SUCCEEDED','REJECTED'))");
+        assertThrows(IllegalStateException.class, () -> initialize("validate"));
+    }
+
+    private void migrateThroughV5() {
+        Flyway.configure().dataSource(source).locations("classpath:db/industry/beauty")
+                .table("bty_flyway_history").target("5").baselineVersion("0").baselineOnMigrate(true)
+                .createSchemas(false).placeholderReplacement(false).load().migrate();
+    }
+    @Test void validV5IdentityHistoryUpgradesWithoutRewrite() throws SQLException {
+        migrateThroughV5(); insertIdentity(null, null); insertIdentity("USER", "U1"); insertIdentity("GUEST", "G1");
+        int checksum = count("SELECT checksum FROM bty_flyway_history WHERE version='5'");
+        assertThrows(RuntimeException.class, () -> initialize("validate"));
+        initialize("migrate"); initialize("validate");
+        assertEquals(3, count("SELECT COUNT(*) FROM bty_reception_operation"));
+        assertEquals(checksum, count("SELECT checksum FROM bty_flyway_history WHERE version='5'"));
+        assertEquals(1, count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='6' AND success=1"));
+        assertEquals(1, count("SELECT COUNT(*) FROM bty_reception_operation WHERE identity_kind IS NULL "
+                + "AND identity_ref IS NULL"));
+        assertEquals(1, count("SELECT COUNT(*) FROM bty_reception_operation WHERE identity_kind='USER' "
+                + "AND identity_ref='U1'"));
+    }
+    @Test void invalidV5IdentityBlocksUpgradeWithoutRepairOrBaseline() throws SQLException {
+        migrateThroughV5(); insertIdentity(null, "U1");
+        assertThrows(RuntimeException.class, () -> initialize("migrate"));
+        assertEquals(1, count("SELECT COUNT(*) FROM bty_reception_operation WHERE identity_kind IS NULL "
+                + "AND identity_ref='U1'"));
+        assertEquals(1, count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='5' AND success=1"));
+        assertEquals(0, count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='6' AND success=1"));
+        assertThrows(RuntimeException.class, () -> initialize("migrate"));
+        assertThrows(RuntimeException.class, () -> initialize("validate"));
+    }
+    @Test void droppingV6GuardCannotPassValidation() throws SQLException {
+        initialize("migrate");
+        execute("ALTER TABLE bty_reception_operation DROP CHECK ck_bty_reception_operation_5");
         assertThrows(IllegalStateException.class, () -> initialize("validate"));
     }
 

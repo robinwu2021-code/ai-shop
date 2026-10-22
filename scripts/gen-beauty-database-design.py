@@ -26,7 +26,7 @@ def generate():
         for f in t['fields']:
             assert f.get('references', '') in names | EXTERNAL | {''}, (t['name'], f)
     lines = ['# 美业与共用人员资源数据库字段字典', '',
-             '> 状态：原41项目标基线保留；Task55A正式V1–V5共27项私表，增量另列 · 2026-10-22',
+             '> 状态：原41项目标基线保留；Task55A正式V1–V6共27项私表，增量另列 · 2026-10-22',
              '> 由 `python3 scripts/gen-beauty-database-design.py` 生成，勿手改；真源：[数据库设计源](./schema/beauty-database-design.json)。',
              '> 业务约束及复用边界：[数据库结构设计](./美业系统-数据库结构设计.md)。本册不是Flyway迁移，不输出可执行建表SQL。', '',
              '## 一、公共字段与约束', '',
@@ -111,6 +111,11 @@ def generate():
             lines.append(f'| {field["name"]} | {field["type"]} | {field["nullable"]} | {field["description"]} |')
         lines += ['', '唯一键：' + '；'.join(', '.join(key) for key in table['unique']) + '。',
                   'CHECK：' + '；'.join(table['checks']) + '。', '']
+    guard = json.loads((SOURCE.parent / 'beauty-reception-identity-guard-schema.json').read_text())
+    lines += ['## Task55A修复增量（私有V6）', '',
+              'V5保持原字节；其nullable identity CHECK允许UNKNOWN。本版本追加明确kind非空分支，四种NULL组合按同空或合法非空处理。无新表，无数据修复/伪baseline；非法V5存量阻断升级。', '',
+              '真源：[beauty-reception-identity-guard-schema.json](./schema/beauty-reception-identity-guard-schema.json)。', '',
+              '`' + guard['table'] + '` / `' + guard['constraint'] + '`：', '', guard['expression'], '']
     outputs[OUTPUT] = '\n'.join(lines)
     return outputs, tables
 

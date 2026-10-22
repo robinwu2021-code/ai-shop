@@ -36,6 +36,20 @@ public class InternalCustomerIdentityController {
                     request.query(), customers.resolveReference(c, request.query())));
         }); } catch (RuntimeException unavailable) { return ResponseEntity.status(503).build(); }
     }
+    @PostMapping(CustomerIdentityInternalApi.CLAIM_REFERENCE_PATH)
+    public ResponseEntity<?> resolveClaimReference(@RequestBody CustomerIdentityInternalApi.ClaimReferenceRequest req,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        try { return InternalServiceResponses.invoke(token, given, () -> {
+            if (req == null || req.identity() == null || req.context() == null || req.query() == null) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            var identity = req.identity(); var context = req.context();
+            if (!"MERCHANT".equals(identity.realm()) || !identity.tenantNo().equals(context.tenantNo())
+                    || !identity.actorNo().equals(context.actorNo())) { throw BizException.of(ErrorCode.FORBIDDEN); }
+            return DelegatedIdentityContext.call(identity, () -> new CustomerIdentityInternalApi.ClaimReferenceResolution(
+                    req, customers.resolveClaimReference(context, req.query())));
+        }); } catch (RuntimeException unavailable) { return ResponseEntity.status(503).build(); }
+    }
     @PostMapping(CustomerIdentityInternalApi.PROOF_PATH)
     public ResponseEntity<?> verifyConsumerProof(@RequestBody CustomerIdentityInternalApi.ProofRequest request,
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {

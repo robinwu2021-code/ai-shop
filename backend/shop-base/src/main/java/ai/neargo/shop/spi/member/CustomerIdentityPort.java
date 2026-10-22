@@ -6,6 +6,11 @@ import ai.neargo.shop.spi.entitlement.EntitlementContext;
 public interface CustomerIdentityPort {
     ResolvedCustomer resolveReference(EntitlementContext context, ReferenceQuery query);
 
+    /** Current full-namespace claim proof; legacy reference providers deliberately do not authorize this. */
+    default ResolvedCustomer resolveClaimReference(EntitlementContext context, ReferenceQuery query) {
+        throw new UnsupportedOperationException("strict claim reference unavailable");
+    }
+
     /** Optional capability defaults closed so legacy functional providers cannot invent a consumer identity. */
     default ResolvedCustomer verifyConsumerProof(EntitlementContext context, String memberCode) {
         throw new UnsupportedOperationException("consumer proof unavailable");
