@@ -545,3 +545,23 @@ P1完成人员/资源统一、单次先付服务、无交易预约、接待工�
 | `POST /internal/resource-booking/candidates` | PLATFORM / InternalResourceBookingController → 共用真实resource owner<br>中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务 | ResourceCandidatesPort.Query | List<ResourceFact>；错误不作为空事实 |
 | `POST /internal/resource-booking/capacity` | PLATFORM / InternalResourceBookingController → 共用真实resource owner<br>中立机器协议，令牌不替代实际operator/来源校验；禁止RPC置于事务 | ResourceCandidatesPort.CapacityQuery（独立factAt、Replacement完整Binding+Target） | List<Capacity>；错误不作为空事实 |
 | `POST /internal/customer-identity/resolve-reference` | PLATFORM / InternalCustomerIdentityController → MemberCustomerIdentityPortImpl<br>只读原actor绑定成员识别票据；保留EntitlementContext和委托身份；无guest/扣款许可降级 | CustomerIdentityInternalApi.Request(identity,context,query) | Resolution含完整身份/上下文/query与ResolvedCustomer；远端比对并验证userNo |
+
+
+## 九、Task54 共用身份实际增量（独立于160项基线）
+
+新增5个PLATFORM机器入口，沿shop-base/spi/member唯一中立契约。GuestRegistrationInternalApi的scope包含完整DelegatedIdentity；响应回显完整scope、command/query，remote严格比较。旧resolve-reference合同保持。此前30机器合同加本次5项为35；不重编号160设计基线，不代表BM04模块准出。
+
+| 方法 / 路径 | 实际所有者 / 权限 | 请求 | 返回 |
+|---|---|---|---|
+| `POST /internal/guest-registration/register` | portal/internal → shop-core/member；当前MERCHANT MCH/USR、真实entity/store和当店biz:customer | Register(scope,RegisterCommand(contact?,displayName?,consent,key)) | Registered(request,Registration(guestNo,claimToken,state,revision))；原键命名空间含realm/kind/actor/店，同键改参409 |
+| `POST /internal/guest-registration/get` | 同上；同店当前有权员工可交接读取 | Get(scope,guestNo) | Found(request,GuestFact(guestNo,state,userNo?,revision))；无contact/密文 |
+| `POST /internal/guest-registration/verify` | 同上；原guest随机凭证校验 | Verify(scope,guestNo,claimToken) | Verified(request,GuestFact)；未知/错误凭证404 |
+| `POST /internal/guest-registration/claim` | 同上；当前员工自己的actor/store绑定cr1加原guest凭证；同guest根锁、唯一真实用户 | ClaimRequest(scope,guestNo,ClaimCommand(verifiedIdentity,claimToken,key)) | Claimed(request,Claim(guestNo,userNo,revision))；同键改参/改绑409 |
+| `POST /internal/customer-identity/verify-consumer-proof` | portal/internal → 原member票据所有者；当前CONSUMER/USR及活动真实用户 | ProofRequest(identity,EntitlementContext,memberCode) | ProofResolution(request,ResolvedCustomer)；只接受原MEMBER_CODE短票据，不接受登录token、手机号或任意字符串 |
+
+所有入口先验X-Service-Token，再构造委托身份并finally恢复；机器令牌不替代当前成员/当店权限。内部状态沿400/401/403/404/409/503，过期或伪造mc1为400，HTTP200错误对象不被remote当事实。身份识别不授予支付/扣款能力，不按contact创建账号/会员/订单，不将BTG字符串伪造成公共guest。
+
+配置：`shop.member.guest.credential-key`必须显式提供32字节base64密钥，无默认值；缺失/非法仅关闭guest能力，错误40042 / err.member.guest_unavailable，机器协议503。member新增正式V537的mbr_guest_registration；contact和原claimToken用AES-GCM随机IV加密，AAD v1固定长度分帧tenant/entity/store/guest/purpose，密文篡改拒绝。幂等原key和请求仅存hash，不把原凭证放入日志/outbox/幂等JSON。轮换密钥须后续显式迁移，不可静默替换。
+
+
+Task54安全补充：V537保持冻结，独立V538给原mbr_identity_ticket追加actor_realm/actor_kind。真实当前MERCHANT发行的cr1绑定完整身份；guest认领走requireGuestClaimReference严格核当前realm/kind/actor/store及活动用户，旧无namespace票据只兼容原resolve-reference，不能认领guest。登记请求指纹是显式owner key下用途域隔离HmacSHA256，避免手机号等低熵contact的无密钥摘要成为离线猜测oracle。原claim已提交时，原key/request hash/full claim actor namespace和原secret精确匹配可读回持久结果，即使cr1已过期；每次仍先重核当前CUSTOMER和锁外活动用户事实，锁内匹配不可变user/revision。新claim仍需有效cr1，异身份或改参不能借重放重新绑定。

@@ -233,3 +233,15 @@ standalone HOST只含web/channel，无core；SERVER独立私有schema只有23项
 原操作恢复按nextRetryAt、id稳定排序，每批50，并在LIMIT前排除活租约；30/60秒延期使当前无权自动推进的操作让位于更早到期工作。原号、永久栅栏、版本CAS与不冒充用户的边界不变。实际RED/GREEN、构件与新部署证据见[模块修复报告](../../.superpowers/sdd/beauty-backend/task-53-module-fix-report.md)，独立复审已通过，I1/I2均关闭；模块准出见主TDD§31。
 
 前置容量/候选bucket物化总预算100000，计入既有占用展开及所有候选5分钟bucket；超过返回IncompleteSearch，而不是继续占用无界内存或断言冲突。合法大数量请求也可能超过预算，其语义为未完成搜索；通过更小查询/明确指定可缩小工作量，不承诺所有合法最大组合能在一次搜索内穷尽。
+
+
+## BM04 Task54：共用临客与本人身份核验
+
+共享guest归shop-core/member，契约唯一位于shop-base/spi/member，平台追加V537；行业不建bty_guest或伪买家。独立SERVER在BeautyMerchantClientConfiguration装配RemoteGuestRegistrationPort，embedded/default复用本地唯一owner。完整委托身份、原请求和作用域回显核验；新增4个guest机器入口和1个consumer-proof入口另记，160项设计基线不变，当前机器合同30+5=35。
+
+显式配置`shop.member.guest.credential-key`（32字节base64，无默认密钥），未配置只禁用guest能力；零售默认启动及会员码原流程保持。AES-GCM独立随机IV和tenant/entity/store/guest/purpose AAD保护contact和原凭证；原键可在进程重启后解密重放。原登记actor命名空间仅限定登记幂等键，当前同店有biz:customer的员工可交接，认领必须其本人actor/store绑定cr1和原guest随机凭证。消费本人proof只接受当前CONSUMER-USR对应的真实活动账号和原mc1短票据；所有识别均不授予支付授权。
+
+复现：`JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home node scripts/verify-member-guest-registration.mjs`。脚本只使用已缓存MySQL8.4、--pull never、tmpfs和localhost随机端口，finally清理自有容器；当前平台DDL fixture+正式V537/V538，明确不是全历史平台迁移重放。原生owner、JVM重启重放、真实TCP边界及H2原会员码回归证据见task-54-report.md；Task54不是BM04全模块准出。
+
+
+Task54增量安全规则：独立V538扩展原member ticket的actor realm/kind，保留V537冻结字节；guest只接受当前完整namespace绑定的cr1，旧无namespace票据仅保持旧解析接口兼容。登记contact请求指纹改用显式owner key和独立用途域的HmacSHA256。已提交claim的精确原请求可在cr1过期后读回持久结果，仍须当前CUSTOMER权限、原claim完整身份、原secret及活动用户；不将重放当新授权或改绑入口。

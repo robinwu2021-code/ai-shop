@@ -10,6 +10,16 @@ import ai.neargo.svc.client.ServiceCalls;
 public final class RemoteCustomerIdentityPort implements CustomerIdentityPort {
     private final CustomerIdentityInternalApi api;
     public RemoteCustomerIdentityPort(CustomerIdentityInternalApi api) { this.api = api; }
+    @Override public ResolvedCustomer verifyConsumerProof(EntitlementContext context, String memberCode) {
+        var identity = DelegatedIdentityContext.current(context.actorNo());
+        var request = new CustomerIdentityInternalApi.ProofRequest(identity, context, memberCode);
+        var result = ServiceCalls.call("PLATFORM", () -> api.verifyConsumerProof(request));
+        if (result == null || !request.equals(result.request()) || result.customer() == null
+                || !context.actorNo().equals(result.customer().userNo())) {
+            throw new IllegalStateException("invalid consumer proof response");
+        }
+        return result.customer();
+    }
     @Override public ResolvedCustomer resolveReference(EntitlementContext context, ReferenceQuery query) {
         var identity = DelegatedIdentityContext.current(context.actorNo());
         var result = ServiceCalls.call("PLATFORM", () -> api.resolve(

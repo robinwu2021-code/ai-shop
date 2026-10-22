@@ -6333,10 +6333,15 @@ CREATE TABLE IF NOT EXISTS mbr_identity_ticket
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    actor_realm VARCHAR(16) NULL,
+    actor_kind VARCHAR(8) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_member_identity_hash UNIQUE (tenant_no,ticket_hash),
     CHECK (expires_at>issued_at),
-    CHECK ((purpose='MEMBER_CODE' AND entity_no IS NULL AND store_no IS NULL AND actor_no IS NULL AND source_ticket_hash IS NULL) OR (purpose='CUSTOMER_REFERENCE' AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NOT NULL))
+    CHECK ((purpose='MEMBER_CODE' AND entity_no IS NULL AND store_no IS NULL AND actor_no IS NULL AND source_ticket_hash IS NULL) OR (purpose='CUSTOMER_REFERENCE' AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NOT NULL)),
+    CONSTRAINT ck_mbr_ticket_actor_namespace CHECK (
+        (actor_realm IS NULL AND actor_kind IS NULL)
+        OR (purpose='CUSTOMER_REFERENCE' AND actor_realm='MERCHANT' AND actor_kind IN ('MCH','USR')))
 );
 
 CREATE TABLE IF NOT EXISTS ord_ent_authorization
@@ -8643,6 +8648,44 @@ CREATE TABLE IF NOT EXISTS prd_store_catalog_version
     CONSTRAINT ck_prd_catalog_payload CHECK ((frozen_payload IS JSON)),
     CONSTRAINT ck_prd_catalog_hash CHECK (CHAR_LENGTH(snapshot_hash) = 64),
     CONSTRAINT ck_prd_catalog_version_deleted CHECK (deleted IN (0,1))
+);
+
+CREATE TABLE IF NOT EXISTS mbr_guest_registration
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    guest_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_realm VARCHAR(16) NOT NULL,
+    actor_kind VARCHAR(8) NOT NULL,
+    key_hash CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    contact_cipher TEXT NULL,
+    display_name VARCHAR(80) NULL,
+    claim_token_hash CHAR(64) NOT NULL,
+    claim_token_cipher TEXT NOT NULL,
+    state VARCHAR(16) NOT NULL,
+    claimed_user_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    claimed_at DATETIME(3) NULL,
+    claim_key_hash CHAR(64) NULL,
+    claim_request_hash CHAR(64) NULL,
+    claim_actor_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    claim_actor_realm VARCHAR(16) NULL,
+    claim_actor_kind VARCHAR(8) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mbr_guest_no UNIQUE (tenant_no, guest_no),
+    CONSTRAINT uk_mbr_guest_key UNIQUE (tenant_no, entity_no, store_no, actor_realm, actor_kind, actor_no, key_hash),
+    CONSTRAINT ck_mbr_guest_actor CHECK (actor_realm='MERCHANT' AND actor_kind IN ('MCH','USR')),
+    CONSTRAINT ck_mbr_guest_state CHECK ( (state='REGISTERED' AND version=1 AND claimed_user_no IS NULL AND claimed_at IS NULL AND claim_key_hash IS NULL AND claim_request_hash IS NULL AND claim_actor_no IS NULL AND claim_actor_realm IS NULL AND claim_actor_kind IS NULL) OR (state='CLAIMED' AND version=2 AND claimed_user_no IS NOT NULL AND claimed_at IS NOT NULL AND claim_key_hash IS NOT NULL AND claim_request_hash IS NOT NULL AND claim_actor_no IS NOT NULL AND claim_actor_realm='MERCHANT' AND claim_actor_kind IN ('MCH','USR'))),
+    CONSTRAINT ck_mbr_guest_deleted CHECK (deleted IN (0,1))
 );
 
 -- 种子数据

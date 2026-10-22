@@ -25,7 +25,8 @@ public final class InternalServiceResponses {
                 case FORBIDDEN -> 403;
                 case NOT_FOUND -> 404;
                 case CONFLICT -> 409;
-                case ENTITLEMENT_FEATURE_UNAVAILABLE -> 503;
+                case ENTITLEMENT_FEATURE_UNAVAILABLE, MEMBER_GUEST_UNAVAILABLE -> 503;
+                case MEMBER_CODE_INVALID -> 400;
                 case BEAUTY_SEARCH_INCOMPLETE -> 422;
                 default -> 500;
             };

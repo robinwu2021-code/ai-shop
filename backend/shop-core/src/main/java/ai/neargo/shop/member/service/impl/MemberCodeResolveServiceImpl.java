@@ -1,6 +1,7 @@
 package ai.neargo.shop.member.service.impl;
 
 import ai.neargo.shop.member.service.MemberCodeResolveService;
+import ai.neargo.shop.auth.SecurityUtils;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
@@ -73,6 +74,11 @@ public class MemberCodeResolveServiceImpl implements MemberCodeResolveService {
         ref.setEntityNo(scope.entityNo());
         ref.setStoreNo(scope.storeNo());
         ref.setActorNo(scope.actorNo());
+        SecurityUtils.currentUser().ifPresent(current -> {
+            if (!"MERCHANT".equals(current.realm().name()) || !current.tenantNo().equals(scope.tenantNo())
+                    || !current.userNo().equals(scope.actorNo())) { throw BizException.of(ErrorCode.FORBIDDEN); }
+            ref.setActorRealm(current.realm().name()); ref.setActorKind(current.subjectKind().name());
+        });
         ref.setSourceTicketHash(code.getTicketHash());
         persist(ref);
         return new CustomerReference(raw, mask(user.nickname()), ref.getExpiresAt().toInstant(ZoneOffset.UTC));
@@ -89,6 +95,40 @@ public class MemberCodeResolveServiceImpl implements MemberCodeResolveService {
         }
         activeUser(scope.tenantNo(), ref.getUserNo());
         return new ResolvedCustomer(ref.getUserNo());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResolvedCustomer requireGuestClaimReference(MemberCodeScope scope, String customerRef) {
+        var current = SecurityUtils.requireUser();
+        if (scope == null || !"MERCHANT".equals(current.realm().name())
+                || !current.tenantNo().equals(scope.tenantNo()) || !current.userNo().equals(scope.actorNo())) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        requireMerchant(scope);
+        var ref = lookup(scope.tenantNo(), REFERENCE, "cr1_", customerRef, ErrorCode.NOT_FOUND);
+        if (!scope.entityNo().equals(ref.getEntityNo()) || !scope.storeNo().equals(ref.getStoreNo())
+                || !scope.actorNo().equals(ref.getActorNo()) || !current.realm().name().equals(ref.getActorRealm())
+                || !current.subjectKind().name().equals(ref.getActorKind())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        activeUser(scope.tenantNo(), ref.getUserNo());
+        return new ResolvedCustomer(ref.getUserNo());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResolvedCustomer requireConsumerProof(String tenantNo, String userNo, String memberCode) {
+        var current = SecurityUtils.requireUser();
+        if (!"CONSUMER".equals(current.realm().name()) || !"USR".equals(current.subjectKind().name())
+                || !current.tenantNo().equals(tenantNo) || !current.userNo().equals(userNo)) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        requireEnabled();
+        var ticket = lookup(tenantNo, CODE, "mc1_", memberCode, ErrorCode.MEMBER_CODE_INVALID);
+        if (!userNo.equals(ticket.getUserNo())) { throw BizException.of(ErrorCode.MEMBER_CODE_INVALID); }
+        activeUser(tenantNo, userNo);
+        return new ResolvedCustomer(userNo);
     }
 
     private MbrIdentityTicket lookup(String tenant, String purpose, String prefix, String raw, ErrorCode failure) {

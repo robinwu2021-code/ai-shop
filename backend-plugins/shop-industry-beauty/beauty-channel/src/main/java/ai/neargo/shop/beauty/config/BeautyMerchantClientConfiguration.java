@@ -4,6 +4,9 @@ import ai.neargo.shop.beauty.port.RemoteMerchantOperatorAccessPort;
 import ai.neargo.shop.beauty.port.RemoteResourceBookingPort;
 import ai.neargo.shop.beauty.port.RemoteResourceCandidatesPort;
 import ai.neargo.shop.beauty.port.RemoteCustomerIdentityPort;
+import ai.neargo.shop.beauty.port.RemoteGuestRegistrationPort;
+import ai.neargo.shop.spi.member.GuestRegistrationPort;
+import ai.neargo.shop.spi.member.GuestRegistrationInternalApi;
 import ai.neargo.shop.spi.resource.ResourceBookingPort;
 import ai.neargo.shop.spi.resource.ResourceCandidatesPort;
 import ai.neargo.shop.spi.resource.ResourceBookingInternalApi;
@@ -75,6 +78,12 @@ public class BeautyMerchantClientConfiguration {
     @ConditionalOnMissingBean(CustomerIdentityPort.class)
     CustomerIdentityPort beautyRemoteCustomerIdentityPort(InternalHttp http) {
         return new RemoteCustomerIdentityPort(http.client(ServiceName.PLATFORM, CustomerIdentityInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
+    @Bean
+    @ConditionalOnMissingBean(GuestRegistrationPort.class)
+    GuestRegistrationPort beautyRemoteGuestRegistrationPort(InternalHttp http) {
+        return new RemoteGuestRegistrationPort(http.client(ServiceName.PLATFORM, GuestRegistrationInternalApi.class,
                 Duration.ofSeconds(5)));
     }
     private ResourceBookingInternalApi bookingApi(InternalHttp http) {

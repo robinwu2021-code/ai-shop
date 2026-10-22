@@ -6,6 +6,11 @@ import ai.neargo.shop.spi.entitlement.EntitlementContext;
 public interface CustomerIdentityPort {
     ResolvedCustomer resolveReference(EntitlementContext context, ReferenceQuery query);
 
+    /** Optional capability defaults closed so legacy functional providers cannot invent a consumer identity. */
+    default ResolvedCustomer verifyConsumerProof(EntitlementContext context, String memberCode) {
+        throw new UnsupportedOperationException("consumer proof unavailable");
+    }
+
     /** Actor comes from the original authenticated merchant, frozen by the source owner for later C confirmation. */
     record ReferenceQuery(String entityNo, String storeNo, String customerRef) {
         @Override

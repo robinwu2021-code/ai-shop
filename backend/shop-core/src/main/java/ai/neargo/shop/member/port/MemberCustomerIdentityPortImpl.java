@@ -18,6 +18,12 @@ public class MemberCustomerIdentityPortImpl implements CustomerIdentityPort {
     }
 
     @Override
+    public ResolvedCustomer verifyConsumerProof(EntitlementContext context, String memberCode) {
+        if (context == null) { throw BizException.of(ErrorCode.BAD_REQUEST); }
+        return service.requireConsumerProof(context.tenantNo(), context.actorNo(), memberCode);
+    }
+
+    @Override
     public ResolvedCustomer resolveReference(EntitlementContext context, ReferenceQuery query) {
         if (context == null || query == null) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

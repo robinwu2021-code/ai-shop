@@ -536,6 +536,7 @@ public enum ErrorCode {
     /** A disabled new rights workflow is not a missing staff permission and must not trigger a login redirect. */
     ENTITLEMENT_FEATURE_UNAVAILABLE(40040, "err.entitlement.feature_unavailable"),
     MEMBER_CODE_INVALID(40041, "err.member.code_invalid"),
+    MEMBER_GUEST_UNAVAILABLE(40042, "err.member.guest_unavailable"),
 
     // ---- 5xxxx 资金 ----
     SPLIT_RECEIVER_NOT_READY(50001, "err.settle.receiver_not_ready"),
