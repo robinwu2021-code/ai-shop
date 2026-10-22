@@ -37788,6 +37788,15 @@
         "module": "pay/pay-domain"
       },
       {
+        "name": "ImportMode",
+        "values": [
+          "DRY_RUN",
+          "DRAFT"
+        ],
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "name": "IndustryRestriction",
         "values": [
           "PUBLISHED_MENU_CHANNEL_PRICE_ONLY",

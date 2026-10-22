@@ -8189,12 +8189,19 @@ CREATE TABLE IF NOT EXISTS ord_pricing_template
     draft_content LONGTEXT NOT NULL,
     draft_schema_version INT NOT NULL,
     draft_version BIGINT NOT NULL,
+    seed_version VARCHAR(64) DEFAULT NULL,
+    seed_hash CHAR(64) DEFAULT NULL,
+    seed_snapshot LONGTEXT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_pricing_template_no UNIQUE (tenant_no,template_no),
     CHECK (draft_version >= 0),
     CHECK (status IN ('ACTIVE','ARCHIVED')),
     CONSTRAINT uk_ord_pricing_template_code UNIQUE (tenant_no,industry_code,template_code),
-    CHECK ((draft_content IS JSON))
+    CHECK ((draft_content IS JSON)),
+    CONSTRAINT ck_ord_pricing_seed_shape CHECK (
+        (seed_version IS NULL AND seed_hash IS NULL AND seed_snapshot IS NULL)
+        OR (seed_version IS NOT NULL AND seed_hash IS NOT NULL AND seed_snapshot IS NOT NULL)),
+    CONSTRAINT ck_ord_pricing_seed_json CHECK (seed_snapshot IS NULL OR (seed_snapshot IS JSON))
 );
 
 CREATE TABLE IF NOT EXISTS ord_pricing_template_revision

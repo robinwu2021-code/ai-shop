@@ -105,7 +105,7 @@ public class PricingPublicationPolicy {
                         row.setName(req.name());
                         row.setStatus("ACTIVE");
                         row.setDraftVersion(0L);
-                        row.setDraftSchemaVersion(4);
+                        row.setDraftSchemaVersion(2);
                         row.setDraftContent(normalized.definition());
                         templates.insert(row);
                         return head(c, row.getTemplateNo(), true, false).draft();
@@ -135,7 +135,7 @@ public class PricingPublicationPolicy {
                 row.setTemplateNo(template.getTemplateNo());
                 row.setStatus("ACTIVE");
                 row.setDraftVersion(0L);
-                row.setDraftSchemaVersion(4);
+                row.setDraftSchemaVersion(2);
                 row.setDraftOverride("{}");
                 row.setDraftTemplateRevisionNo(template.getRevisionNo());
                 stores.insert(row);
@@ -294,7 +294,7 @@ public class PricingPublicationPolicy {
             row.setTemplateNo(head.draft().no());
             row.setRevision(number);
             row.setIndustryCode(head.draft().industryCode());
-            row.setSchemaVersion(4);
+            row.setSchemaVersion(compilation.config().definition().schemaVersion());
             row.setDefinitionSnapshot(effective);
             row.setDefinitionHash(hash);
             row.setEngineSpecVersion(ENGINE);
@@ -316,7 +316,7 @@ public class PricingPublicationPolicy {
             row.setTemplateRevisionNo(templateRevision);
             row.setOverrideSnapshot(patch);
             row.setEffectiveSnapshot(effective);
-            row.setSchemaVersion(4);
+            row.setSchemaVersion(compilation.config().definition().schemaVersion());
             row.setEffectiveHash(hash);
             row.setEngineSpecVersion(ENGINE);
             row.setRuleCatalogVersion(digest(canonical(SystemConstraints.standard().rules())));

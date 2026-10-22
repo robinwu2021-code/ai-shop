@@ -19,4 +19,8 @@ public class OrdPricingTemplate extends BaseEntity {
     private String draftContent;
     private Integer draftSchemaVersion;
     private Long draftVersion;
+    /** Immutable import provenance survives receipt expiry; draft editing never replaces it. */
+    private String seedVersion;
+    private String seedHash;
+    private String seedSnapshot;
 }

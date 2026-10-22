@@ -250,9 +250,11 @@ mvn -o -f backend-plugins/shop-industry-food/pom.xml -pl food-core -am test -Dte
 
 接口：`importDrafts(seed,registryVersion,DRY_RUN|DRAFT)`；Ops模板、B门店草稿/预览/发布/升级/回滚按原设计合同。
 
-- [ ] 写importIsIdempotentAndDoesNotPublish：20规则、3模板、2AE税档、示例门店/能力夹具不进入真实配置；同版本异hash拒绝。
+- [x] 写importIsIdempotentAndDoesNotPublish：20规则、3模板、2AE税档、示例门店/能力夹具不进入真实配置；同版本异hash拒绝。
 - [ ] 实现受控种子导入、地区税档及门店覆盖API；平台税率权限和门店可改项分开，C端无配置写入口。
 - [ ] 验证越权、三语错误码、模板升级不隐式迁移、法定税档有效性门禁；验证并提交。
+
+实施进度：[CKO-09种子与配置API](./TDD-订单结账-CKO09种子与配置API.md)。A/B种子校验与草稿导入已实现；20规则、3模板草稿、2待审核税档候选，不导入示例门店/能力。C步平台/门店API与真实来源仍待实现，CKO-09整体未完成。用户确认正式税档由平台运营审核，门店关联主体税登记。
 
 ### CKO-10 3张报价表与快照
 

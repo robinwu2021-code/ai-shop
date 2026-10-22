@@ -76,6 +76,10 @@ class PricingConfigServiceTest {
         for (String sql : ddl.split(";")) {
             if (!sql.isBlank()) jdbc.execute(sql);
         }
+        for (String sql : Files.readString(Path.of("../shop-app/src/main/resources/db/migration/"
+                + "V533__pricing_seed_provenance.sql")).split(";")) {
+            if (!sql.isBlank()) jdbc.execute(sql);
+        }
         jdbc.execute("CREATE TABLE sys_idempotent(id BIGINT AUTO_INCREMENT PRIMARY KEY,idem_key VARCHAR(128),"
                 + "endpoint VARCHAR(128),user_no VARCHAR(64),request_hash CHAR(64),result_json LONGTEXT,"
                 + "created_at DATETIME,expire_at DATETIME,UNIQUE(idem_key,endpoint)) ENGINE=InnoDB");
@@ -120,6 +124,8 @@ class PricingConfigServiceTest {
         var revision = templates.publish(platform(), draft.no(), new PublishReq(0, null,
                 preview.previewHash(), "first", null), "PUB1");
         assertThat(revision.revision()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT schema_version FROM ord_pricing_template_revision WHERE revision_no=?",
+                Integer.class, revision.revisionNo())).isEqualTo(2);
         assertThat(revision.previousRevisionNo()).isNull();
         assertThat(count("sys_outbox")).isEqualTo(1);
     }
