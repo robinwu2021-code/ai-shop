@@ -113,7 +113,7 @@
     "name": "NEW_INDUSTRY_SAFE_DEFAULT_V1",
     "appliesToExistingRetailAutomatically": false,
     "manualPercentAndAmount": "EXCLUSIVE_ON_OVERLAP",
-    "manualPromotionAndActivityOrCoupon": "EXCLUSIVE_ON_OVERLAP_UNLESS_OWNER_AND_PROFILE_ALLOW",
+    "manualPromotionAndActivityOrCoupon": "MANUAL_PERCENT_EXCLUSIVE_REQUIRED; OTHER_MANUAL_PROMOTIONS_DEFAULT_DENY",
     "couponLimitPerOrder": 1,
     "percentAndCashCoupon": "EXCLUSIVE_BY_DEFAULT",
     "explicitCouponStackOrder": [
@@ -123,7 +123,9 @@
     "unknownCompatibility": "DENY",
     "cashRoundingEnabled": false,
     "manualWaiverEnabled": "REQUIRES_CONFIGURED_CAP_AND_AUTHORITY",
-    "storedValueEnabled": "REQUIRES_REAL_PAY_CAPABILITY"
+    "storedValueEnabled": "REQUIRES_REAL_PAY_CAPABILITY",
+    "storedValueAndPercentCoupon": "EXCLUSIVE_REQUIRED",
+    "couponAndManualWaiver": "EXCLUSIVE_REQUIRED"
   },
   "selectionModes": {
     "EXPLICIT": "Conflicting selected rules block confirmation; never silently replace selections",
@@ -183,7 +185,6 @@
       ],
       "on": "OVERLAP",
       "default": "EXCLUSIVE",
-      "override": "OWNER_AND_PROFILE_APPROVAL",
       "order": [
         "MANUAL_PERCENT",
         "MANUAL_AMOUNT"
@@ -195,8 +196,7 @@
         "ACTIVITY"
       ],
       "on": "OVERLAP",
-      "default": "EXCLUSIVE",
-      "override": "OWNER_AND_PROFILE_APPROVAL"
+      "default": "EXCLUSIVE"
     },
     {
       "pair": [
@@ -213,8 +213,7 @@
         "PERCENT_COUPON"
       ],
       "on": "OVERLAP",
-      "default": "EXCLUSIVE",
-      "override": "OWNER_AND_PROFILE_APPROVAL"
+      "default": "EXCLUSIVE"
     },
     {
       "pair": [
@@ -222,8 +221,7 @@
         "CASH_COUPON"
       ],
       "on": "OVERLAP",
-      "default": "EXCLUSIVE",
-      "override": "OWNER_AND_PROFILE_APPROVAL"
+      "default": "EXCLUSIVE"
     },
     {
       "pair": [
@@ -326,7 +324,7 @@
         "PERCENT_COUPON"
       ],
       "on": "PAYMENT_MODE",
-      "default": "OWNER_AND_CAPABILITY_DEFINED"
+      "default": "EXCLUSIVE"
     },
     {
       "pair": [
@@ -335,6 +333,144 @@
       ],
       "on": "PAYMENT_MODE",
       "default": "OWNER_AND_CAPABILITY_DEFINED"
+    },
+    {
+      "pair": [
+        "PERCENT_COUPON",
+        "MANUAL_WAIVER"
+      ],
+      "on": "ORDER",
+      "default": "EXCLUSIVE"
+    },
+    {
+      "pair": [
+        "CASH_COUPON",
+        "MANUAL_WAIVER"
+      ],
+      "on": "ORDER",
+      "default": "EXCLUSIVE"
     }
-  ]
+  ],
+  "configurationModel": {
+    "status": "PROPOSED_NOT_IMPLEMENTED",
+    "layers": [
+      "SYSTEM_CONSTRAINTS",
+      "PINNED_INDUSTRY_TEMPLATE",
+      "STORE_OVERRIDES"
+    ],
+    "effective": "Validate(ApplyFieldOverrides(pinnedIndustryTemplate, storeOverrides), systemConstraints, selectedRuntimeCapabilities)",
+    "binding": [
+      "industryNo",
+      "templateNo",
+      "templateVersion",
+      "storeNo",
+      "storeConfigVersion",
+      "effectiveConfigHash"
+    ],
+    "overrideSemantics": {
+      "missing": "INHERIT",
+      "false": "EXPLICIT_FALSE",
+      "null": "REJECT",
+      "arrays": "REPLACE_WHOLE_FIELD",
+      "reset": "REMOVE_OVERRIDE"
+    },
+    "templateUpgrade": "EXPLICIT_STORE_UPGRADE_NO_SILENT_REBASE",
+    "mandatoryRules": [
+      "STORED_VALUE_EXCLUDES_PERCENT_COUPON",
+      "COUPON_EXCLUDES_MANUAL_PERCENT",
+      "COUPON_EXCLUDES_MANUAL_WAIVER",
+      "MANUAL_PERCENT_EXCLUDES_OTHER_BENEFITS",
+      "NON_NEGATIVE_AND_CONSERVATION",
+      "SOURCE_SCOPE_PERMISSION_AND_ASSET_CAPABILITY"
+    ],
+    "storeEditable": [
+      "benefitCombinationMode",
+      "couponMode",
+      "couponLimits",
+      "allowedCouponCombinations",
+      "pointsEnabled",
+      "storedValueEnabled",
+      "manualOperationEnabled",
+      "reasonCategories",
+      "approvalLimits",
+      "excludedItemRules"
+    ],
+    "notStoreEditable": [
+      "arithmeticVersion",
+      "allocationAlgorithmVersion",
+      "formulaExecutionOrder",
+      "mandatoryRules",
+      "assetEligibilityOrOwnership",
+      "authorizationChecks"
+    ],
+    "industryTemplates": [
+      {
+        "industryNo": "FOOD",
+        "templateNo": "PRICING_FOOD_DEFAULT",
+        "version": 1,
+        "benefitCombinationMode": "MULTI_KIND",
+        "couponMode": "SINGLE",
+        "couponLimit": 1,
+        "storedValueEnabled": false,
+        "pointsEnabled": true,
+        "pointsAutoApply": false,
+        "pointsStage": "AFTER_STORED_VALUE",
+        "manualDiscount": "REQUIRES_AUTHORITY_POLICY",
+        "manualWaiver": "ONLY_NO_COUPON_AND_APPROVED"
+      },
+      {
+        "industryNo": "RETAIL",
+        "templateNo": "PRICING_RETAIL_DEFAULT",
+        "version": 1,
+        "benefitCombinationMode": "MULTI_KIND",
+        "couponMode": "SINGLE",
+        "couponLimit": 1,
+        "storedValueEnabled": false,
+        "pointsEnabled": true,
+        "pointsAutoApply": false,
+        "pointsStage": "AFTER_STORED_VALUE",
+        "manualDiscount": "REQUIRES_AUTHORITY_POLICY",
+        "manualWaiver": "ONLY_NO_COUPON_AND_APPROVED",
+        "migration": "NO_AUTOMATIC_REPLACEMENT_OF_EXISTING_RETAIL"
+      },
+      {
+        "industryNo": "BEAUTY_SERVICE",
+        "templateNo": "PRICING_BEAUTY_SERVICE_DEFAULT",
+        "version": 1,
+        "benefitCombinationMode": "SINGLE_KIND",
+        "couponMode": "SINGLE",
+        "couponLimit": 1,
+        "storedValueEnabled": false,
+        "pointsEnabled": true,
+        "pointsAutoApply": false,
+        "pointsStage": "AFTER_STORED_VALUE",
+        "manualDiscount": "REQUIRES_AUTHORITY_POLICY",
+        "manualWaiver": "ONLY_NO_COUPON_AND_APPROVED",
+        "rights": "TIMES_OR_PROJECT_RIGHTS_REMAIN_SEPARATE_FROM_MONEY"
+      }
+    ],
+    "storeExample": {
+      "industryNo": "FOOD",
+      "templateNo": "PRICING_FOOD_DEFAULT",
+      "templateVersion": 1,
+      "storeNo": "STORE_A",
+      "storeConfigVersion": 1,
+      "overrides": {
+        "benefitCombinationMode": "MULTI_KIND",
+        "couponMode": "MULTI",
+        "couponLimits": {
+          "total": 3,
+          "cash": 2,
+          "deduction": 1
+        },
+        "allowedCouponCombinations": [
+          [
+            "CASH_COUPON",
+            "DEDUCTION_COUPON"
+          ]
+        ]
+      },
+      "requires": "DEDUCTION_COUPON is an owner-resolved contract classification; actual authority must support multi-coupon use"
+    }
+  }
 }
