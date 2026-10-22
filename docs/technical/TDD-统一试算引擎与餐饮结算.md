@@ -1,5 +1,7 @@
 # 统一试算引擎与餐饮结算
 
+> 新模板优惠组合以[三行业优惠规则：组合与多券](./TDD-三行业优惠规则-组合与多券.md)为准：活动与券互斥，默认可用1张折扣券＋1张金额券，多折扣券按范围和重叠模式配置。
+
 > 详细行业规则及规则引擎设计：[餐饮、零售、美业54条规则与引擎](./TDD-统一试算引擎-三行业规则与规则引擎.md)。本轮新模板计算顺序及强制约束以该细化文档为准，存量规则不自动迁移。
 
 > 状态：设计提案，未实现 · 2026-10-22 · 档位2。用户已确认：当前统一调用Java后端API；进一步要求未来前端也可计算、核心支持多行业，并先冻结优惠冲突规则。本篇是可评审的接口、对象与执行方案，不代表接口、表或SDK已经存在。不改冻结V1–V7迁移。
@@ -237,10 +239,8 @@ B/C分别定义Req；不能用同一个包含approvalRef/cash字段的“大DTO�
 {
   "cartNo": "FCRT01", "cartVersion": 8,
   "benefits": {"couponRefs": ["UC01"], "mode": "EXPLICIT"},
-  "adjustments": [
-    {"kind": "UNIT_PRICE_OVERRIDE", "lineRef": "L1", "componentRef": "BASE", "targetUnitMinor": 12120, "reason": "店长调价", "approvalRef": "AP01"}
-  ],
-  "funding": {"storedValue": {"mode": "EXACT", "requestedMinor": 10000}, "cash": {"tenderedMinor": 6000}}
+  "adjustments": [],
+  "funding": {"storedValue": {"mode": "EXACT", "requestedMinor": 10000}, "cash": {"tenderedMinor": 7000}}
 }
 ```
 
@@ -248,7 +248,7 @@ B/C分别定义Req；不能用同一个包含approvalRef/cash字段的“大DTO�
 
 **报价响应关键形状**：
 
-本例假定原券明确允许获准人工改价商品及活动后用券；本例用券后不再人工抹零，且所有资金合同均已具备；不是新行业默认允许人工折扣再叠券。
+本例只有金额券，无活动、无人工优惠，并假定原券及所有资金合同均已具备。
 
 ```json
 {
@@ -256,16 +256,16 @@ B/C分别定义Req；不能用同一个包含approvalRef/cash字段的“大DTO�
     "quoteNo": "PQ01", "sourceMode": "LIVE_CART", "cartVersion": 8,
     "state": "READY", "confirmable": true, "currency": "CNY", "minorUnit": 2,
     "receivable": {
-      "originalGoodsMinor": 18680, "priceAdjustmentMinor": -680,
-      "activityDiscountMinor": 1000, "couponDiscountMinor": 2000,
-      "feeMinor": 230, "taxMinor": 0, "waiverMinor": 0, "receivableMinor": 15230
+      "originalGoodsMinor": 18680, "priceAdjustmentMinor": 0,
+      "activityDiscountMinor": 0, "couponDiscountMinor": 2000,
+      "feeMinor": 230, "taxMinor": 0, "waiverMinor": 0, "receivableMinor": 16910
     },
     "funding": {
       "confirmedNetPaidMinor": 0, "pendingFundingMinor": 0,
       "plannedStoredValueMinor": 10000, "plannedOnlineMinor": 0,
-      "cashDueMinor": 5230, "remainingAfterPlanMinor": 0
+      "cashDueMinor": 6910, "remainingAfterPlanMinor": 0
     },
-    "cash": {"cashTenderedMinor": 6000, "changeMinor": 770, "shortageMinor": 0},
+    "cash": {"cashTenderedMinor": 7000, "changeMinor": 90, "shortageMinor": 0},
     "profileVersion": "FOOD_STANDARD_V1", "quoteFingerprint": "<sha256>",
     "economicsHash": "<sha256>", "expiresAt": "2026-10-22T12:02:00Z",
     "issues": [], "lines": [], "allocations": []
@@ -360,7 +360,7 @@ QUOTE的存储不会冻结远端余额；保留quote并不代替prepare。快照
 | 餐饮定价 | 早餐/晚餐/渠道价；相同SKU不同做法；小料组合；父套餐价与补差；收费项被调价时作用域清楚；当前COUNT不伪支持称重 |
 | 优惠权益 | 活动后券门槛；原券PERCENT语义；资方/原分摊；叠券能力；换支付方式；买家/同桌数据隔离；过期券不静默替换 |
 | 储值 | 仅CORE/SERVICE_USE现合同拒餐饮；新来源合法/伪造拒绝；本金/赠金/持有/门店限制；部分余额/跨币种；并发消费；报价后冻结/撤销 |
-| 现金/抹零 | 15230应收、储值10000、现金收6000，找770；现金不足；无现金但电子超付不找零；支付后降价走调整退款；分付最终片段抹零一次 |
+| 现金/抹零 | 16910应收、储值10000、现金收7000，找90；现金不足；无现金但电子超付不找零；支付后降价走调整退款；分付最终片段抹零一次 |
 | 前后确认 | 价格变、金额相同但券/资方变、源版本/审批过期、已有支付/UNKNOWN变化；不同hash需显式差异确认 |
 | 正式事务与恢复 | 双端提交同源一个赢家；同key异参拒绝；多服务prepare部分成功、UNKNOWN、乱序回调；失败后原指令查回；已成功重放不重算当前价 |
 | 账单/AA/退款 | 冻结批次不按现价；源行部分结账限额；优惠与分摊只一次；全退/部分退/赠金退回；不得通过小份额连续抹零套利 |

@@ -1,6 +1,6 @@
 {
   "status": "PROPOSED_NOT_IMPLEMENTED",
-  "version": "PRICING_RULE_SPEC_V2",
+  "version": "PRICING_RULE_SPEC_V3",
   "date": "2026-10-22",
   "scope": "Multi-industry pure fixed-point engine; Java server now, conforming client runtime later",
   "authority": "Server confirmation and original product/order/benefit/PAY owners",
@@ -122,8 +122,8 @@
     "appliesToExistingRetailAutomatically": false,
     "manualPercentAndAmount": "EXCLUSIVE_ON_OVERLAP",
     "manualPromotionAndActivityOrCoupon": "MANUAL_PERCENT_EXCLUSIVE_REQUIRED; OTHER_MANUAL_PROMOTIONS_DEFAULT_DENY",
-    "couponLimitPerOrder": 1,
-    "percentAndCashCoupon": "EXCLUSIVE_BY_DEFAULT",
+    "couponLimitPerOrder": 2,
+    "percentAndCashCoupon": "ALLOW_ONE_EACH_WHEN_OWNERS_ALLOW",
     "explicitCouponStackOrder": [
       "CASH_COUPON",
       "PERCENT_COUPON"
@@ -133,7 +133,21 @@
     "manualWaiverEnabled": "REQUIRES_CONFIGURED_CAP_AND_AUTHORITY",
     "storedValueEnabled": "REQUIRES_REAL_PAY_CAPABILITY",
     "storedValueAndPercentCoupon": "EXCLUSIVE_REQUIRED",
-    "couponAndManualWaiver": "EXCLUSIVE_REQUIRED"
+    "couponAndManualWaiver": "EXCLUSIVE_REQUIRED",
+    "activityAndCoupons": "EXCLUSIVE_REQUIRED_FOR_NEW_TEMPLATES",
+    "discountCouponPolicy": {
+      "maxUsedPerOrder": 1,
+      "overlapMode": "DISJOINT",
+      "maxUsedPerItem": 1,
+      "stackingEnabled": false,
+      "availableModes": [
+        "DISJOINT",
+        "BEST_ONE",
+        "STACK"
+      ],
+      "capabilityRequiredForMultiple": true
+    },
+    "amountCouponLimitPerOrder": 1
   },
   "selectionModes": {
     "EXPLICIT": "Conflicting selected rules block confirmation; never silently replace selections",
@@ -154,7 +168,14 @@
       "percentDueMinor": 14000,
       "cashDueMinor": 18000,
       "explicitBoth": "CONFLICT",
-      "autoSelected": "PERCENT_COUPON"
+      "autoSelected": "PERCENT_COUPON",
+      "profileOverrides": {
+        "couponMode": "SINGLE",
+        "couponLimits": {
+          "total": 1
+        }
+      },
+      "description": "Store explicitly narrows new default to one coupon; both selected conflict"
     },
     {
       "id": "approved_stack",
@@ -257,8 +278,7 @@
         "CASH_COUPON"
       ],
       "on": "ORDER_COUPON_GROUP",
-      "default": "EXCLUSIVE",
-      "override": "OWNER_AND_PROFILE_APPROVAL",
+      "default": "CHECK_COUNTS_AND_OWNER_COMPATIBILITY",
       "order": [
         "CASH_COUPON",
         "PERCENT_COUPON"
@@ -269,8 +289,13 @@
         "PERCENT_COUPON",
         "PERCENT_COUPON"
       ],
-      "on": "ORDER_COUPON_GROUP",
-      "default": "EXCLUSIVE"
+      "on": "SAME_PRICING_ITEM_OR_ORDER_COUNT",
+      "default": "CHECK_COUNT_AND_OVERLAP_MODE",
+      "allowedModes": [
+        "DISJOINT",
+        "BEST_ONE",
+        "STACK_WITH_OWNER_CAPABILITY"
+      ]
     },
     {
       "pair": [
@@ -286,7 +311,7 @@
         "PERCENT_COUPON"
       ],
       "on": "OVERLAP",
-      "default": "OWNER_DEFINED"
+      "default": "EXCLUSIVE"
     },
     {
       "pair": [
@@ -294,7 +319,7 @@
         "CASH_COUPON"
       ],
       "on": "OVERLAP",
-      "default": "OWNER_DEFINED"
+      "default": "EXCLUSIVE"
     },
     {
       "pair": [
@@ -391,7 +416,8 @@
       "COUPON_EXCLUDES_MANUAL_WAIVER",
       "MANUAL_PERCENT_EXCLUDES_OTHER_BENEFITS",
       "NON_NEGATIVE_AND_CONSERVATION",
-      "SOURCE_SCOPE_PERMISSION_AND_ASSET_CAPABILITY"
+      "SOURCE_SCOPE_PERMISSION_AND_ASSET_CAPABILITY",
+      "ACTIVITY_EXCLUDES_ALL_COUPONS"
     ],
     "storeEditable": [
       "benefitCombinationMode",
@@ -419,44 +445,116 @@
         "templateNo": "PRICING_FOOD_DEFAULT",
         "version": 1,
         "benefitCombinationMode": "MULTI_KIND",
-        "couponMode": "SINGLE",
-        "couponLimit": 1,
+        "couponMode": "MULTI",
+        "couponLimit": 2,
         "storedValueEnabled": false,
         "pointsEnabled": true,
         "pointsAutoApply": false,
         "pointsStage": "AFTER_STORED_VALUE",
         "manualDiscount": "REQUIRES_AUTHORITY_POLICY",
-        "manualWaiver": "ONLY_NO_COUPON_AND_APPROVED"
+        "manualWaiver": "ONLY_NO_COUPON_AND_APPROVED",
+        "activityAndCoupons": "EXCLUSIVE",
+        "discountCouponPolicy": {
+          "maxUsedPerOrder": 1,
+          "overlapMode": "DISJOINT",
+          "maxUsedPerItem": 1,
+          "stackingEnabled": false
+        },
+        "couponLimits": {
+          "total": 2,
+          "percent": 1,
+          "amountTotal": 1,
+          "cash": 1,
+          "deduction": 1
+        },
+        "allowedCouponCombinations": [
+          [
+            "PERCENT_COUPON",
+            "CASH_COUPON"
+          ],
+          [
+            "PERCENT_COUPON",
+            "DEDUCTION_COUPON"
+          ]
+        ]
       },
       {
         "industryNo": "RETAIL",
         "templateNo": "PRICING_RETAIL_DEFAULT",
         "version": 1,
         "benefitCombinationMode": "MULTI_KIND",
-        "couponMode": "SINGLE",
-        "couponLimit": 1,
+        "couponMode": "MULTI",
+        "couponLimit": 2,
         "storedValueEnabled": false,
         "pointsEnabled": true,
         "pointsAutoApply": false,
         "pointsStage": "AFTER_STORED_VALUE",
         "manualDiscount": "REQUIRES_AUTHORITY_POLICY",
         "manualWaiver": "ONLY_NO_COUPON_AND_APPROVED",
-        "migration": "NO_AUTOMATIC_REPLACEMENT_OF_EXISTING_RETAIL"
+        "migration": "NO_AUTOMATIC_REPLACEMENT_OF_EXISTING_RETAIL",
+        "activityAndCoupons": "EXCLUSIVE",
+        "discountCouponPolicy": {
+          "maxUsedPerOrder": 1,
+          "overlapMode": "DISJOINT",
+          "maxUsedPerItem": 1,
+          "stackingEnabled": false
+        },
+        "couponLimits": {
+          "total": 2,
+          "percent": 1,
+          "amountTotal": 1,
+          "cash": 1,
+          "deduction": 1
+        },
+        "allowedCouponCombinations": [
+          [
+            "PERCENT_COUPON",
+            "CASH_COUPON"
+          ],
+          [
+            "PERCENT_COUPON",
+            "DEDUCTION_COUPON"
+          ]
+        ]
       },
       {
         "industryNo": "BEAUTY_SERVICE",
         "templateNo": "PRICING_BEAUTY_SERVICE_DEFAULT",
         "version": 1,
         "benefitCombinationMode": "SINGLE_KIND",
-        "couponMode": "SINGLE",
-        "couponLimit": 1,
+        "couponMode": "MULTI",
+        "couponLimit": 2,
         "storedValueEnabled": false,
         "pointsEnabled": true,
         "pointsAutoApply": false,
         "pointsStage": "AFTER_STORED_VALUE",
         "manualDiscount": "REQUIRES_AUTHORITY_POLICY",
         "manualWaiver": "ONLY_NO_COUPON_AND_APPROVED",
-        "rights": "TIMES_OR_PROJECT_RIGHTS_REMAIN_SEPARATE_FROM_MONEY"
+        "rights": "TIMES_OR_PROJECT_RIGHTS_REMAIN_SEPARATE_FROM_MONEY",
+        "activityAndCoupons": "EXCLUSIVE",
+        "discountCouponPolicy": {
+          "maxUsedPerOrder": 1,
+          "overlapMode": "DISJOINT",
+          "maxUsedPerItem": 1,
+          "stackingEnabled": false
+        },
+        "couponLimits": {
+          "total": 2,
+          "percent": 1,
+          "amountTotal": 1,
+          "cash": 1,
+          "deduction": 1
+        },
+        "allowedCouponCombinations": [
+          [
+            "PERCENT_COUPON",
+            "CASH_COUPON"
+          ],
+          [
+            "PERCENT_COUPON",
+            "DEDUCTION_COUPON"
+          ]
+        ]
       }
     ],
     "storeExample": {
@@ -498,5 +596,42 @@
       "description": "Explicit original-owner order and allocation, no automatic migration"
     }
   ],
-  "industryRuleCatalog": "pricing-industry-rule-catalog.json"
+  "industryRuleCatalog": "pricing-industry-rule-catalog.json",
+  "multiDiscountExamples": [
+    {
+      "mode": "DISJOINT",
+      "lines": [
+        {
+          "amountMinor": 10000,
+          "payableRateBp": 8000
+        },
+        {
+          "amountMinor": 5000,
+          "payableRateBp": 9000
+        }
+      ],
+      "dueMinor": 12500
+    },
+    {
+      "mode": "BEST_ONE",
+      "amountMinor": 10000,
+      "ratesBp": [
+        8000,
+        9000
+      ],
+      "dueMinor": 8000,
+      "usedCouponCount": 1
+    },
+    {
+      "mode": "STACK",
+      "amountMinor": 10000,
+      "ratesBp": [
+        8000,
+        9000
+      ],
+      "dueMinor": 7200,
+      "usedCouponCount": 2,
+      "requiresOwnerApproval": true
+    }
+  ]
 }
