@@ -203,13 +203,22 @@
         "MB03"
       ],
       "planFile": "2026-10-21-brand-stored-value-membership.md",
-      "status": "AWAITING_FINAL_REVIEW",
+      "status": "DEPLOYED",
       "implementationNotes": [
         "V545: three scope tables + nullable ticket facts",
         "MB01/02/03 implemented; legacy membership numbers and store wallets unchanged",
         "Private legacy remarks not inferred or copied; old subject block remains subject scoped",
         "B app 0.6.0/333 candidate; no actual financial transaction"
-      ]
+      ],
+      "releaseEvidence": {
+        "date": "2026-10-22",
+        "core": "7e1c0646a",
+        "bH5": "7e1c0646a",
+        "site": "8ac189b15",
+        "android": "0.6.0/333",
+        "migration": "V545 success",
+        "report": "docs/technical/delivery/P2-品牌会员共享-交付记录.md"
+      }
     },
     {
       "id": "P3",
