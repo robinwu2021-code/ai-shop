@@ -1,0 +1,1538 @@
+{
+  "status": "PROPOSED",
+  "date": "2026-10-21",
+  "source": "food-system-design.json",
+  "scope": "目标与实际后端合同混合清单；implemented字段仅标已实现管理范围；不改冻结V1，不等同订单交易/报价/称重/耗用或Keeta完成",
+  "apiOwners": {
+    "FOOD-API-001": "MOD-13",
+    "FOOD-API-002": "MOD-13",
+    "FOOD-API-003": "MOD-13",
+    "FOOD-API-004": "MOD-02",
+    "FOOD-API-005": "MOD-02",
+    "FOOD-API-006": "MOD-02",
+    "FOOD-API-007": "MOD-02",
+    "FOOD-API-008": "MOD-02",
+    "FOOD-API-009": "MOD-02",
+    "FOOD-API-010": "MOD-02",
+    "FOOD-API-011": "MOD-02",
+    "FOOD-API-012": "MOD-02",
+    "FOOD-API-013": "MOD-02",
+    "FOOD-API-014": "MOD-02",
+    "FOOD-API-015": "MOD-02",
+    "FOOD-API-016": "MOD-02",
+    "FOOD-API-017": "MOD-02",
+    "FOOD-API-018": "MOD-02",
+    "FOOD-API-019": "MOD-02",
+    "FOOD-API-020": "MOD-02",
+    "FOOD-API-021": "MOD-02",
+    "FOOD-API-022": "MOD-02",
+    "FOOD-API-023": "MOD-02",
+    "FOOD-API-024": "MOD-01",
+    "FOOD-API-025": "MOD-01",
+    "FOOD-API-026": "MOD-01",
+    "FOOD-API-027": "MOD-01",
+    "FOOD-API-028": "MOD-01",
+    "FOOD-API-029": "MOD-01",
+    "FOOD-API-030": "MOD-01",
+    "FOOD-API-031": "MOD-01",
+    "FOOD-API-032": "MOD-01",
+    "FOOD-API-033": "MOD-01",
+    "FOOD-API-034": "MOD-01",
+    "FOOD-API-035": "MOD-01",
+    "FOOD-API-036": "MOD-01",
+    "FOOD-API-037": "MOD-03",
+    "FOOD-API-038": "MOD-03",
+    "FOOD-API-039": "MOD-03",
+    "FOOD-API-040": "MOD-03",
+    "FOOD-API-041": "MOD-03",
+    "FOOD-API-042": "MOD-03",
+    "FOOD-API-043": "MOD-03",
+    "FOOD-API-044": "MOD-04",
+    "FOOD-API-045": "MOD-04",
+    "FOOD-API-046": "MOD-04",
+    "FOOD-API-047": "MOD-04",
+    "FOOD-API-048": "MOD-04",
+    "FOOD-API-049": "MOD-04",
+    "FOOD-API-050": "MOD-04",
+    "FOOD-API-051": "MOD-04",
+    "FOOD-API-052": "MOD-04",
+    "FOOD-API-053": "MOD-04",
+    "FOOD-API-054": "MOD-04",
+    "FOOD-API-055": "MOD-04",
+    "FOOD-API-056": "MOD-05",
+    "FOOD-API-057": "MOD-05",
+    "FOOD-API-058": "MOD-05",
+    "FOOD-API-059": "MOD-05",
+    "FOOD-API-060": "MOD-05",
+    "FOOD-API-061": "MOD-05",
+    "FOOD-API-062": "MOD-06",
+    "FOOD-API-063": "MOD-06",
+    "FOOD-API-064": "MOD-06",
+    "FOOD-API-065": "MOD-07",
+    "FOOD-API-066": "MOD-07",
+    "FOOD-API-067": "MOD-07",
+    "FOOD-API-068": "MOD-08",
+    "FOOD-API-069": "MOD-08",
+    "FOOD-API-070": "MOD-08",
+    "FOOD-API-071": "MOD-08",
+    "FOOD-API-072": "MOD-09",
+    "FOOD-API-073": "MOD-09",
+    "FOOD-API-074": "MOD-09",
+    "FOOD-API-075": "MOD-09",
+    "FOOD-API-076": "MOD-09",
+    "FOOD-API-077": "MOD-10",
+    "FOOD-API-078": "MOD-10",
+    "FOOD-API-079": "MOD-10",
+    "FOOD-API-080": "MOD-10",
+    "FOOD-API-081": "MOD-13",
+    "FOOD-API-082": "MOD-12",
+    "FOOD-API-083": "MOD-12",
+    "FOOD-API-084": "MOD-12",
+    "FOOD-API-085": "MOD-11",
+    "FOOD-API-086": "MOD-11",
+    "FOOD-API-087": "MOD-11",
+    "FOOD-API-088": "MOD-11",
+    "FOOD-API-089": "MOD-11",
+    "FOOD-API-090": "MOD-11",
+    "FOOD-API-091": "MOD-11",
+    "FOOD-API-092": "MOD-01",
+    "FOOD-API-093": "MOD-01",
+    "FOOD-API-094": "MOD-01",
+    "FOOD-API-095": "MOD-01",
+    "FOOD-API-096": "MOD-01",
+    "FOOD-API-097": "MOD-01",
+    "FOOD-API-098": "MOD-01",
+    "FOOD-API-099": "MOD-01",
+    "FOOD-API-100": "MOD-01",
+    "FOOD-API-101": "MOD-01",
+    "FOOD-API-102": "MOD-01",
+    "FOOD-API-103": "MOD-01",
+    "FOOD-API-104": "MOD-01",
+    "FOOD-API-105": "MOD-01",
+    "FOOD-API-106": "MOD-01",
+    "FOOD-API-107": "MOD-01",
+    "FOOD-API-108": "MOD-01",
+    "FOOD-API-109": "MOD-02",
+    "FOOD-API-110": "MOD-02",
+    "FOOD-API-111": "MOD-02",
+    "FOOD-API-112": "MOD-02",
+    "FOOD-API-113": "MOD-02",
+    "FOOD-API-114": "MOD-02",
+    "FOOD-API-115": "MOD-02",
+    "FOOD-API-116": "MOD-02",
+    "FOOD-API-117": "MOD-02",
+    "FOOD-API-118": "MOD-02",
+    "FOOD-API-119": "MOD-02",
+    "FOOD-API-120": "MOD-02",
+    "FOOD-API-121": "MOD-02",
+    "FOOD-API-122": "MOD-02",
+    "FOOD-API-123": "MOD-03",
+    "FOOD-API-124": "MOD-03",
+    "FOOD-API-125": "MOD-03",
+    "FOOD-API-126": "MOD-03",
+    "FOOD-API-127": "MOD-03",
+    "FOOD-API-128": "MOD-03",
+    "FOOD-API-129": "MOD-03",
+    "FOOD-API-130": "MOD-03",
+    "FOOD-API-131": "MOD-03",
+    "FOOD-API-132": "MOD-03",
+    "FOOD-API-133": "MOD-03",
+    "FOOD-API-134": "MOD-05",
+    "FOOD-API-135": "MOD-05",
+    "FOOD-API-136": "MOD-06",
+    "FOOD-API-137": "MOD-06",
+    "FOOD-API-138": "MOD-01",
+    "FOOD-API-139": "MOD-01",
+    "FOOD-API-140": "MOD-05",
+    "FOOD-API-141": "MOD-02",
+    "FOOD-API-142": "MOD-02",
+    "FOOD-API-143": "MOD-02",
+    "FOOD-API-144": "MOD-02",
+    "FOOD-API-145": "MOD-02",
+    "FOOD-API-146": "MOD-12",
+    "FOOD-API-147": "MOD-12",
+    "FOOD-API-148": "MOD-02",
+    "FOOD-API-149": "MOD-02",
+    "FOOD-API-150": "MOD-02",
+    "FOOD-API-151": "MOD-02",
+    "FOOD-API-152": "MOD-02",
+    "FOOD-API-153": "MOD-04",
+    "FOOD-API-154": "MOD-04",
+    "FOOD-API-155": "MOD-02",
+    "FOOD-API-156": "MOD-03"
+  },
+  "tableOwners": {
+    "fnb_dish": {
+      "moduleId": "MOD-02",
+      "writeService": "DishService",
+      "customMapperMethods": []
+    },
+    "fnb_bundle": {
+      "moduleId": "MOD-02",
+      "writeService": "BundleService",
+      "customMapperMethods": []
+    },
+    "fnb_bundle_group": {
+      "moduleId": "MOD-02",
+      "writeService": "BundleService",
+      "customMapperMethods": []
+    },
+    "fnb_bundle_choice": {
+      "moduleId": "MOD-02",
+      "writeService": "BundleService",
+      "customMapperMethods": []
+    },
+    "fnb_modifier": {
+      "moduleId": "MOD-02",
+      "writeService": "ModifierService",
+      "customMapperMethods": []
+    },
+    "fnb_modifier_component": {
+      "moduleId": "MOD-02",
+      "writeService": "ModifierService",
+      "customMapperMethods": []
+    },
+    "fnb_option_group": {
+      "moduleId": "MOD-02",
+      "writeService": "OptionGroupService",
+      "customMapperMethods": []
+    },
+    "fnb_option_group_item": {
+      "moduleId": "MOD-02",
+      "writeService": "OptionGroupService",
+      "customMapperMethods": []
+    },
+    "fnb_dish_option_group": {
+      "moduleId": "MOD-02",
+      "writeService": "OptionGroupService",
+      "customMapperMethods": []
+    },
+    "fnb_menu": {
+      "moduleId": "MOD-02",
+      "writeService": "MenuService",
+      "customMapperMethods": []
+    },
+    "fnb_menu_store": {
+      "moduleId": "MOD-02",
+      "writeService": "MenuService",
+      "customMapperMethods": []
+    },
+    "fnb_menu_context": {
+      "moduleId": "MOD-02",
+      "writeService": "MenuService",
+      "customMapperMethods": []
+    },
+    "fnb_menu_schedule": {
+      "moduleId": "MOD-02",
+      "writeService": "MenuService",
+      "customMapperMethods": []
+    },
+    "fnb_menu_exception": {
+      "moduleId": "MOD-02",
+      "writeService": "MenuService",
+      "customMapperMethods": []
+    },
+    "fnb_menu_category": {
+      "moduleId": "MOD-02",
+      "writeService": "MenuService",
+      "customMapperMethods": []
+    },
+    "fnb_menu_item": {
+      "moduleId": "MOD-02",
+      "writeService": "MenuService",
+      "customMapperMethods": []
+    },
+    "fnb_menu_item_sku": {
+      "moduleId": "MOD-02",
+      "writeService": "MenuService",
+      "customMapperMethods": []
+    },
+    "fnb_station": {
+      "moduleId": "MOD-02",
+      "writeService": "StationService",
+      "customMapperMethods": []
+    },
+    "fnb_sku_station": {
+      "moduleId": "MOD-02",
+      "writeService": "KitchenRouteService",
+      "customMapperMethods": []
+    },
+    "fnb_store_policy": {
+      "moduleId": "MOD-13",
+      "writeService": "StoreOperationService",
+      "customMapperMethods": []
+    },
+    "fnb_service_calendar": {
+      "moduleId": "MOD-13",
+      "writeService": "StoreOperationService",
+      "customMapperMethods": []
+    },
+    "fnb_table": {
+      "moduleId": "MOD-01",
+      "writeService": "TableService",
+      "customMapperMethods": [
+        "selectForUpdateByStoreAndTableNo",
+        "updateCapacityIfVersion"
+      ]
+    },
+    "fnb_table_token": {
+      "moduleId": "MOD-01",
+      "writeService": "TableService",
+      "customMapperMethods": [
+        "selectValidByTokenHash"
+      ]
+    },
+    "fnb_reservation": {
+      "moduleId": "MOD-01",
+      "writeService": "ReservationService",
+      "customMapperMethods": []
+    },
+    "fnb_check": {
+      "moduleId": "MOD-01",
+      "writeService": "CheckService",
+      "customMapperMethods": [
+        "updatePartySizeIfVersion",
+        "closeIfSettlementConfirmed"
+      ]
+    },
+    "fnb_table_occupancy": {
+      "moduleId": "MOD-01",
+      "writeService": "CheckService",
+      "customMapperMethods": [
+        "selectActiveByTableForUpdate",
+        "endOccupancyIfActive"
+      ]
+    },
+    "fnb_check_relation": {
+      "moduleId": "MOD-01",
+      "writeService": "CheckService",
+      "customMapperMethods": []
+    },
+    "fnb_guest_session": {
+      "moduleId": "MOD-01",
+      "writeService": "DiningSessionService",
+      "customMapperMethods": []
+    },
+    "fnb_seat": {
+      "moduleId": "MOD-01",
+      "writeService": "CheckService",
+      "customMapperMethods": []
+    },
+    "fnb_check_cart": {
+      "moduleId": "MOD-03",
+      "writeService": "CheckCartService",
+      "customMapperMethods": [
+        "lockCartIfVersion",
+        "closeCartIfNoPlacingBatch"
+      ]
+    },
+    "fnb_check_cart_item": {
+      "moduleId": "MOD-03",
+      "writeService": "CheckCartService",
+      "customMapperMethods": [
+        "selectSelectedLinesForUpdate",
+        "archiveSelectedSubmittedLines",
+        "history",
+        "retain"
+      ]
+    },
+    "fnb_order_batch": {
+      "moduleId": "MOD-03",
+      "writeService": "DiningOrderService",
+      "customMapperMethods": [
+        "insertBatchIfAbsent",
+        "bindCoreResultIfVersion",
+        "advancePlacementIfStatus"
+      ]
+    },
+    "fnb_core_order_binding": {
+      "moduleId": "MOD-03",
+      "writeService": "DiningOrderService",
+      "customMapperMethods": []
+    },
+    "fnb_order_line": {
+      "moduleId": "MOD-03",
+      "writeService": "DiningOrderService",
+      "customMapperMethods": []
+    },
+    "fnb_core_line_allocation": {
+      "moduleId": "MOD-03",
+      "writeService": "DiningOrderService",
+      "customMapperMethods": [
+        "insertAllocationIfAbsent",
+        "selectAllocationsByFoodLine"
+      ]
+    },
+    "fnb_order_component": {
+      "moduleId": "MOD-03",
+      "writeService": "DiningOrderService",
+      "customMapperMethods": []
+    },
+    "fnb_order_modifier": {
+      "moduleId": "MOD-03",
+      "writeService": "DiningOrderService",
+      "customMapperMethods": []
+    },
+    "fnb_course": {
+      "moduleId": "MOD-04",
+      "writeService": "CourseService",
+      "customMapperMethods": []
+    },
+    "fnb_kitchen_ticket": {
+      "moduleId": "MOD-04",
+      "writeService": "KitchenTaskService",
+      "customMapperMethods": [
+        "insertDispatchIfAbsent"
+      ]
+    },
+    "fnb_kitchen_task": {
+      "moduleId": "MOD-04",
+      "writeService": "KitchenTaskService",
+      "customMapperMethods": [
+        "advanceTaskQuantityIfVersion",
+        "changePendingStateIfVersion"
+      ]
+    },
+    "fnb_service_event": {
+      "moduleId": "MOD-04",
+      "writeService": "KitchenTaskService",
+      "customMapperMethods": [
+        "appendEventIfAbsent"
+      ]
+    },
+    "fnb_settlement": {
+      "moduleId": "MOD-05",
+      "writeService": "DiningCheckoutService",
+      "customMapperMethods": [
+        "insertFrozenScope",
+        "finalizeIfCoreConfirmed"
+      ]
+    },
+    "fnb_settlement_item": {
+      "moduleId": "MOD-05",
+      "writeService": "DiningCheckoutService",
+      "customMapperMethods": []
+    },
+    "fnb_charge_intent": {
+      "moduleId": "MOD-05",
+      "writeService": "DiningCheckoutService",
+      "customMapperMethods": [
+        "insertIntentIfAbsent",
+        "confirmIntentFromCoreIfStatus"
+      ]
+    },
+    "fnb_return": {
+      "moduleId": "MOD-06",
+      "writeService": "DiningReturnService",
+      "customMapperMethods": []
+    },
+    "fnb_return_item": {
+      "moduleId": "MOD-06",
+      "writeService": "DiningReturnService",
+      "customMapperMethods": [
+        "selectActiveReturnQuantityByFoodLine"
+      ]
+    },
+    "fnb_action_log": {
+      "moduleId": "MOD-13",
+      "writeService": "DiningAuditService",
+      "customMapperMethods": []
+    },
+    "fnb_business_day": {
+      "moduleId": "MOD-09",
+      "writeService": "BusinessCloseService",
+      "customMapperMethods": [
+        "replaceCurrentCloseIfVersion"
+      ]
+    },
+    "fnb_cash_shift": {
+      "moduleId": "MOD-08",
+      "writeService": "CashShiftService",
+      "customMapperMethods": [
+        "selectActiveDrawerForUpdate",
+        "handoverIfVersion"
+      ]
+    },
+    "fnb_cash_entry": {
+      "moduleId": "MOD-08",
+      "writeService": "CashShiftService",
+      "customMapperMethods": []
+    },
+    "fnb_cash_payment_link": {
+      "moduleId": "MOD-08",
+      "writeService": "CashShiftService",
+      "customMapperMethods": [
+        "linkCorePaymentIfAbsent"
+      ]
+    },
+    "fnb_cash_count": {
+      "moduleId": "MOD-08",
+      "writeService": "CashShiftService",
+      "customMapperMethods": []
+    },
+    "fnb_close_run": {
+      "moduleId": "MOD-09",
+      "writeService": "BusinessCloseService",
+      "customMapperMethods": [
+        "signIfVersionHashAndWatermark"
+      ]
+    },
+    "fnb_close_balance": {
+      "moduleId": "MOD-09",
+      "writeService": "BusinessCloseService",
+      "customMapperMethods": []
+    },
+    "fnb_close_exception": {
+      "moduleId": "MOD-09",
+      "writeService": "BusinessCloseService",
+      "customMapperMethods": []
+    },
+    "fnb_close_adjustment": {
+      "moduleId": "MOD-09",
+      "writeService": "BusinessCloseService",
+      "customMapperMethods": []
+    },
+    "fnb_metric_definition": {
+      "moduleId": "MOD-10",
+      "writeService": "DiningReportService",
+      "customMapperMethods": []
+    },
+    "fnb_report_run": {
+      "moduleId": "MOD-10",
+      "writeService": "DiningReportService",
+      "customMapperMethods": []
+    },
+    "fnb_external_mapping": {
+      "moduleId": "MOD-12",
+      "writeService": "ExternalMappingService",
+      "customMapperMethods": []
+    },
+    "fnb_sync_batch": {
+      "moduleId": "MOD-12",
+      "writeService": "SyncBatchService",
+      "customMapperMethods": [
+        "insertSyncBatchIfAbsent",
+        "selectAcceptedThrough"
+      ]
+    },
+    "fnb_edge_lease": {
+      "moduleId": "MOD-12",
+      "writeService": "SyncBatchService",
+      "customMapperMethods": [
+        "renewLeaseIfEpoch",
+        "selectLeaseByStoreEpochForUpdate"
+      ]
+    },
+    "fnb_integration_exception": {
+      "moduleId": "MOD-12",
+      "writeService": "IntegrationExceptionService",
+      "customMapperMethods": []
+    },
+    "fnb_dining_entitlement": {
+      "moduleId": "MOD-11",
+      "writeService": "DiningEntitlementService",
+      "customMapperMethods": []
+    },
+    "fnb_banquet_plan": {
+      "moduleId": "MOD-11",
+      "writeService": "BanquetPlanService",
+      "customMapperMethods": []
+    },
+    "fnb_bottle_custody": {
+      "moduleId": "MOD-11",
+      "writeService": "BottleCustodyService",
+      "customMapperMethods": [
+        "withdrawIfRemaining"
+      ]
+    },
+    "fnb_custody_entry": {
+      "moduleId": "MOD-11",
+      "writeService": "BottleCustodyService",
+      "customMapperMethods": []
+    },
+    "fnb_room_charge_intent": {
+      "moduleId": "MOD-11",
+      "writeService": "RoomChargeService",
+      "customMapperMethods": []
+    },
+    "prn_device": {
+      "moduleId": "MOD-07",
+      "writeService": "PrintService",
+      "customMapperMethods": []
+    },
+    "prn_template": {
+      "moduleId": "MOD-07",
+      "writeService": "PrintService",
+      "customMapperMethods": []
+    },
+    "prn_route": {
+      "moduleId": "MOD-07",
+      "writeService": "PrintService",
+      "customMapperMethods": []
+    },
+    "prn_job": {
+      "moduleId": "MOD-07",
+      "writeService": "PrintService",
+      "customMapperMethods": []
+    },
+    "prn_attempt": {
+      "moduleId": "MOD-07",
+      "writeService": "PrintService",
+      "customMapperMethods": []
+    },
+    "rpt_food_metric_daily": {
+      "moduleId": "MOD-10",
+      "writeService": "DiningReportService",
+      "customMapperMethods": [
+        "queryByMetricVersionAndWatermark",
+        "upsertProjectionIfSourceVersion"
+      ]
+    },
+    "fnb_table_area": {
+      "moduleId": "MOD-01",
+      "writeService": "TableService",
+      "customMapperMethods": []
+    },
+    "fnb_table_operation": {
+      "moduleId": "MOD-01",
+      "writeService": "CheckService",
+      "customMapperMethods": [
+        "insertOperationIfAbsent",
+        "advanceOperationIfVersion"
+      ]
+    },
+    "fnb_config_revision": {
+      "moduleId": "MOD-02",
+      "writeService": "ConfigRevisionService",
+      "customMapperMethods": [
+        "insertImmutableRevision",
+        "selectEffectiveByConfigAndTime"
+      ]
+    },
+    "fnb_sales_restriction": {
+      "moduleId": "MOD-02",
+      "writeService": "SalesRestrictionService",
+      "customMapperMethods": [
+        "reserveQuotaIfCapacity",
+        "consumeQuotaIfReserved",
+        "releaseQuotaIfReserved"
+      ]
+    },
+    "fnb_check_batch_membership": {
+      "moduleId": "MOD-01",
+      "writeService": "CheckService",
+      "customMapperMethods": [
+        "selectActiveByBatchForUpdate",
+        "detachMembershipIfActive"
+      ]
+    },
+    "fnb_sales_quota_claim": {
+      "moduleId": "MOD-02",
+      "writeService": "SalesRestrictionService",
+      "customMapperMethods": [
+        "insertClaimIfAbsent",
+        "advanceClaimIfStatus"
+      ]
+    },
+    "fnb_menu_channel_binding": {
+      "moduleId": "MOD-02",
+      "writeService": "MenuChannelBindingService",
+      "customMapperMethods": []
+    },
+    "fnb_menu_item_option_group": {
+      "moduleId": "MOD-02",
+      "writeService": "MenuService",
+      "customMapperMethods": []
+    },
+    "fnb_recipe": {
+      "moduleId": "MOD-02",
+      "writeService": "RecipeService",
+      "customMapperMethods": []
+    },
+    "fnb_recipe_line": {
+      "moduleId": "MOD-02",
+      "writeService": "RecipeService",
+      "customMapperMethods": []
+    },
+    "fnb_recipe_adjustment": {
+      "moduleId": "MOD-02",
+      "writeService": "RecipeService",
+      "customMapperMethods": []
+    },
+    "fnb_production_consumption": {
+      "moduleId": "MOD-04",
+      "writeService": "ProductionConsumptionService",
+      "customMapperMethods": []
+    },
+    "fnb_production_consumption_line": {
+      "moduleId": "MOD-04",
+      "writeService": "ProductionConsumptionService",
+      "customMapperMethods": []
+    },
+    "fnb_catalog_sync_job": {
+      "moduleId": "MOD-12",
+      "writeService": "CatalogSyncService",
+      "customMapperMethods": []
+    },
+    "fnb_catalog_sync_item": {
+      "moduleId": "MOD-12",
+      "writeService": "CatalogSyncService",
+      "customMapperMethods": []
+    }
+  },
+  "methodOverrides": {
+    "FOOD-API-105": {
+      "service": "CheckService",
+      "method": "openSharedCheck"
+    },
+    "FOOD-API-108": {
+      "service": "DiningAuditService"
+    },
+    "FOOD-API-115": {
+      "service": "ConfigRevisionService"
+    },
+    "FOOD-API-116": {
+      "service": "ConfigRevisionService",
+      "controller": "BizConfigRevisionController",
+      "method": "republishRevision",
+      "returnType": "ai.neargo.shop.food.dto.PublishConfigResultVO",
+      "requestClass": "ai.neargo.shop.food.dto.RepublishConfigReq"
+    },
+    "FOOD-API-142": {
+      "service": "MenuChannelBindingService",
+      "method": "createBinding",
+      "returnType": "ai.neargo.shop.food.dto.MenuChannelBindingVO",
+      "requestClass": "ai.neargo.shop.food.dto.CreateMenuChannelBindingReq"
+    },
+    "FOOD-API-143": {
+      "service": "MenuChannelBindingService",
+      "method": "listBindings"
+    },
+    "FOOD-API-144": {
+      "service": "MenuChannelBindingService",
+      "method": "getBinding",
+      "returnType": "ai.neargo.shop.food.dto.MenuChannelBindingVO"
+    },
+    "FOOD-API-145": {
+      "service": "MenuChannelBindingService",
+      "method": "updateBinding",
+      "returnType": "ai.neargo.shop.food.dto.MenuChannelBindingVO",
+      "requestClass": "ai.neargo.shop.food.dto.UpdateMenuChannelBindingReq"
+    },
+    "FOOD-API-146": {
+      "service": "CatalogSyncService",
+      "method": "createCatalogSync"
+    },
+    "FOOD-API-147": {
+      "service": "CatalogSyncService",
+      "method": "getCatalogSync"
+    },
+    "FOOD-API-148": {
+      "service": "RecipeService",
+      "method": "createRecipe"
+    },
+    "FOOD-API-149": {
+      "service": "RecipeService",
+      "method": "listRecipes"
+    },
+    "FOOD-API-150": {
+      "service": "RecipeService",
+      "method": "getRecipe"
+    },
+    "FOOD-API-151": {
+      "service": "RecipeService",
+      "method": "saveRecipeDefinition"
+    },
+    "FOOD-API-152": {
+      "service": "RecipeService",
+      "method": "publishRecipe"
+    },
+    "FOOD-API-153": {
+      "service": "ProductionConsumptionService",
+      "method": "listProductionConsumptions"
+    },
+    "FOOD-API-154": {
+      "service": "ProductionConsumptionService",
+      "method": "getProductionConsumption"
+    },
+    "FOOD-API-006": {
+      "service": "ConfigRevisionService",
+      "controller": "BizConfigRevisionController",
+      "method": "publishMenu",
+      "returnType": "ai.neargo.shop.food.dto.PublishConfigResultVO"
+    },
+    "FOOD-API-015": {
+      "service": "ConfigRevisionService",
+      "controller": "BizConfigRevisionController",
+      "method": "publishStation",
+      "returnType": "ai.neargo.shop.food.dto.PublishConfigResultVO"
+    },
+    "FOOD-API-021": {
+      "service": "StationService",
+      "controller": "BizStationController",
+      "method": "replaceRoutes",
+      "requestClass": "ai.neargo.shop.food.dto.StationContracts.ReplaceStationRoutesReq"
+    },
+    "FOOD-API-022": {
+      "method": "manage",
+      "service": "SalesRestrictionService",
+      "requestClass": "ai.neargo.shop.food.dto.SalesRestrictionReq",
+      "returnType": "ai.neargo.shop.food.dto.SalesRestrictionVO"
+    },
+    "FOOD-API-122": {
+      "method": "list",
+      "service": "SalesRestrictionService",
+      "requestClass": "ai.neargo.shop.food.dto.SalesRestrictionQuery"
+    },
+    "FOOD-API-023": {
+      "service": "CatalogService",
+      "controller": "MpCatalogController",
+      "method": "read",
+      "serviceMethod": "publicCatalog"
+    },
+    "FOOD-API-114": {
+      "service": "CatalogService",
+      "controller": "BizCatalogController",
+      "method": "read",
+      "serviceMethod": "read",
+      "requestClass": "ai.neargo.shop.food.dto.CatalogQuery"
+    },
+    "FOOD-API-155": {
+      "method": "getRoutes",
+      "service": "StationService",
+      "controller": "BizStationController"
+    },
+    "FOOD-API-013": {
+      "requestClass": "ai.neargo.shop.food.dto.StationContracts.CreateStationReq",
+      "returnType": "ai.neargo.shop.food.dto.StationContracts.StationMutationVO"
+    },
+    "FOOD-API-121": {
+      "returnType": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.StationContracts.StationVO>"
+    },
+    "FOOD-API-014": {
+      "returnType": "ai.neargo.shop.food.dto.StationContracts.GetStationVO"
+    },
+    "FOOD-API-111": {
+      "method": "disableMenu",
+      "service": "MenuService",
+      "returnType": "ai.neargo.shop.food.dto.MenuResultVO"
+    },
+    "FOOD-API-017": {
+      "method": "replaceDefinition",
+      "service": "MenuService",
+      "dispatchServiceMethods": [
+        "replaceSchedule",
+        "replaceComposition",
+        "replaceContexts"
+      ],
+      "returnType": "Object",
+      "requestClass": "ai.neargo.shop.food.dto.MenuDefinitionCommand",
+      "requestKind": "DISCRIMINATED_UNION"
+    },
+    "FOOD-API-005": {
+      "returnType": "ai.neargo.shop.food.dto.MenuConfigResultVO"
+    },
+    "FOOD-API-037": {
+      "controller": "BizCartController",
+      "service": "CheckCartService",
+      "method": "getCart",
+      "returnType": "ai.neargo.shop.food.dto.CartResultVO",
+      "serviceMethod": "getCart"
+    },
+    "FOOD-API-038": {
+      "controller": "BizCartController",
+      "service": "CheckCartService",
+      "method": "createCart",
+      "returnType": "ai.neargo.shop.food.dto.CartResultVO",
+      "requestClass": "ai.neargo.shop.food.dto.CreateCartReq",
+      "serviceMethod": "createCart"
+    },
+    "FOOD-API-039": {
+      "controller": "BizCartController",
+      "service": "CheckCartService",
+      "method": "replaceLine",
+      "returnType": "ai.neargo.shop.food.dto.CartVersionVO",
+      "requestClass": "ai.neargo.shop.food.dto.ReplaceCartLineReq",
+      "serviceMethod": "replaceLine"
+    },
+    "FOOD-API-040": {
+      "controller": "BizCartController",
+      "service": "CheckCartService",
+      "method": "archiveLine",
+      "returnType": "ai.neargo.shop.food.dto.CartVersionVO",
+      "requestClass": "ai.neargo.shop.food.dto.CartVersionReq",
+      "serviceMethod": "archiveLine"
+    },
+    "FOOD-API-126": {
+      "controller": "BizCartController",
+      "service": "CheckCartService",
+      "method": "archiveCart",
+      "returnType": "ai.neargo.shop.food.dto.OperationResultVO",
+      "requestClass": "ai.neargo.shop.food.dto.CartVersionReq",
+      "serviceMethod": "archiveCart"
+    },
+    "FOOD-API-127": {
+      "controller": "MpCartController",
+      "service": "CheckCartService",
+      "method": "customerGetCart",
+      "returnType": "ai.neargo.shop.food.dto.CartResultVO",
+      "serviceMethod": "customerGetCart",
+      "scalarQuery": true
+    },
+    "FOOD-API-128": {
+      "controller": "MpCartController",
+      "service": "CheckCartService",
+      "method": "customerCreateCart",
+      "returnType": "ai.neargo.shop.food.dto.CartResultVO",
+      "requestClass": "ai.neargo.shop.food.dto.CreateCustomerCartReq",
+      "serviceMethod": "customerCreateCart"
+    },
+    "FOOD-API-129": {
+      "controller": "MpCartController",
+      "service": "CheckCartService",
+      "method": "customerReplaceLine",
+      "returnType": "ai.neargo.shop.food.dto.CartVersionVO",
+      "requestClass": "ai.neargo.shop.food.dto.ReplaceCartLineReq",
+      "serviceMethod": "customerReplaceLine"
+    },
+    "FOOD-API-130": {
+      "controller": "MpCartController",
+      "service": "CheckCartService",
+      "method": "customerArchiveLine",
+      "returnType": "ai.neargo.shop.food.dto.CartVersionVO",
+      "requestClass": "ai.neargo.shop.food.dto.CartVersionReq",
+      "serviceMethod": "customerArchiveLine"
+    },
+    "FOOD-API-156": {
+      "controller": "BizCartController",
+      "service": "CheckCartService",
+      "method": "authorizeSession",
+      "requestClass": "ai.neargo.shop.food.dto.AuthorizeCartSessionReq",
+      "returnType": "ai.neargo.shop.food.dto.CartSessionGrantVO",
+      "serviceMethod": "authorizeSession"
+    }
+  },
+  "requestAliases": {
+    "FOOD-API-061": "CreateDiningAdjustmentReq",
+    "FOOD-API-076": "CreateCloseAdjustmentReq",
+    "FOOD-API-069": "CreateCashEntryReq",
+    "FOOD-API-090": "CreateCustodyEntryReq",
+    "FOOD-API-006": "PublishConfigReq",
+    "FOOD-API-009": "PublishConfigReq",
+    "FOOD-API-012": "PublishConfigReq",
+    "FOOD-API-015": "PublishConfigReq"
+  },
+  "moduleDetails": {
+    "MOD-01": {
+      "phase": "FIRST",
+      "auxiliary": [
+        {
+          "package": "policy",
+          "name": "TableOccupancyPolicy",
+          "purpose": "容量、先占后放、跨台协作守卫"
+        },
+        {
+          "package": "statemachine",
+          "name": "FoodCheckStateMachine",
+          "purpose": "服务台账状态；不接管核心资金状态"
+        },
+        {
+          "package": "job",
+          "name": "TableOperationRecoveryJob",
+          "purpose": "按原操作号恢复资源与占用"
+        },
+        {
+          "package": "assembler",
+          "name": "TableViewAssembler",
+          "purpose": "桌态、占用和资金摘要分别投影"
+        }
+      ],
+      "tests": [
+        "TableServiceTest",
+        "FoodStoreScopeTest",
+        "TableOccupancyConcurrencyTest",
+        "TableTransferRecoveryTest",
+        "DiningSessionTest"
+      ],
+      "portConcepts": [
+        "StoreDirectoryPort",
+        "ResourcePort",
+        "ApprovalPort"
+      ]
+    },
+    "MOD-02": {
+      "phase": "SECOND",
+      "auxiliary": [
+        {
+          "package": "policy",
+          "name": "MenuAvailabilityPolicy",
+          "purpose": "门店/时段/商品可售求交"
+        },
+        {
+          "package": "policy",
+          "name": "SelectionRulePolicy",
+          "purpose": "必选互斥、组合循环及单位校验"
+        },
+        {
+          "package": "policy",
+          "name": "ConfigPublicationPolicy",
+          "purpose": "不可变发布及回滚新修订"
+        },
+        {
+          "package": "policy",
+          "name": "SalesQuotaPolicy",
+          "purpose": "额度预占、消费、释放幂等"
+        },
+        {
+          "package": "job",
+          "name": "FoodSalesRestrictionExpiryJob",
+          "purpose": "限制到期，不回填实存"
+        }
+      ],
+      "tests": [
+        "MenuPublicationTest",
+        "SelectionRuleTest",
+        "SalesRestrictionTest",
+        "ConfigRevisionServiceTest"
+      ],
+      "portConcepts": [
+        "GoodsQueryPort",
+        "StoreDirectoryPort",
+        "GoodsCatalogQueryPort",
+        "DishOfferQueryPort"
+      ]
+    },
+    "MOD-03": {
+      "phase": "THIRD",
+      "auxiliary": [
+        {
+          "package": "policy",
+          "name": "OrderPlacementPolicy",
+          "purpose": "报价指纹、源行与车版本"
+        },
+        {
+          "package": "statemachine",
+          "name": "OrderBatchStateMachine",
+          "purpose": "建单/UNKNOWN/受理/取消状态"
+        },
+        {
+          "package": "policy",
+          "name": "OrderLineAllocationPolicy",
+          "purpose": "源行和核心成交行数量金额守恒"
+        },
+        {
+          "package": "job",
+          "name": "FoodPlacementRecoveryJob",
+          "purpose": "同键查询原核心结果"
+        },
+        {
+          "package": "event",
+          "name": "CoreSubOrderPaidConsumer",
+          "purpose": "可信支付事实只受理一次"
+        }
+      ],
+      "tests": [
+        "CheckCartTest",
+        "OrderPlacementContractTest",
+        "DiningRecoveryTest",
+        "DiningPrepayFlowTest",
+        "DiningPostpayFlowTest"
+      ],
+      "portConcepts": [
+        "OrderPlacementPort",
+        "InventoryCommitmentPort",
+        "GoodsQueryPort"
+      ]
+    },
+    "MOD-04": {
+      "phase": "FOLLOW_UP",
+      "auxiliary": [
+        {
+          "package": "policy",
+          "name": "KitchenTaskPolicy",
+          "purpose": "制作上菜撤菜数量守卫"
+        },
+        {
+          "package": "event",
+          "name": "KitchenDispatchConsumer",
+          "purpose": "只由正式受理派工，事件去重"
+        }
+      ],
+      "tests": [
+        "KitchenTaskConcurrencyTest",
+        "DiningFulfillmentContractTest"
+      ],
+      "portConcepts": [
+        "DiningFulfillmentPort"
+      ]
+    },
+    "MOD-05": {
+      "phase": "FOLLOW_UP",
+      "auxiliary": [
+        {
+          "package": "policy",
+          "name": "SettlementPolicy",
+          "purpose": "范围冻结、防重复收款、未知资金守卫"
+        },
+        {
+          "package": "job",
+          "name": "FoodChargeRecoveryJob",
+          "purpose": "查原资金意图恢复"
+        }
+      ],
+      "tests": [
+        "DiningSettlementFreezeTest",
+        "DiningSplitPaymentTest",
+        "DiningCashPaymentTest"
+      ],
+      "portConcepts": [
+        "CashierPort",
+        "PaymentQueryPort",
+        "OrderAdjustmentPort",
+        "MemberAssetPort",
+        "AccountsReceivablePort"
+      ]
+    },
+    "MOD-06": {
+      "phase": "FOLLOW_UP",
+      "auxiliary": [
+        {
+          "package": "policy",
+          "name": "FoodReturnPolicy",
+          "purpose": "可退数量、审批、财务/厨房分轨"
+        },
+        {
+          "package": "job",
+          "name": "FoodReturnRecoveryJob",
+          "purpose": "原退款请求查询恢复"
+        }
+      ],
+      "tests": [
+        "DiningReturnBaselineTest",
+        "DiningPartialReturnTest"
+      ],
+      "portConcepts": [
+        "AfterSalePort",
+        "ApprovalPort",
+        "OrderAdjustmentPort"
+      ]
+    },
+    "MOD-07": {
+      "phase": "FOLLOW_UP",
+      "auxiliary": [
+        {
+          "package": "assembler",
+          "name": "FoodPrintDocumentAssembler",
+          "purpose": "food-core冻结内容交共享打印，不另造打印队列"
+        }
+      ],
+      "tests": [
+        "PrintDeliveryTest",
+        "FoodPrintDocumentAssemblerTest"
+      ],
+      "portConcepts": [
+        "PrintPort"
+      ]
+    },
+    "MOD-08": {
+      "phase": "FOLLOW_UP",
+      "auxiliary": [
+        {
+          "package": "policy",
+          "name": "CashDrawerPolicy",
+          "purpose": "活跃钱箱班次、实收找零与盘点差异"
+        }
+      ],
+      "tests": [
+        "CashShiftReconcileTest",
+        "CashDrawerConcurrencyTest"
+      ],
+      "portConcepts": [
+        "PaymentQueryPort",
+        "ReconciliationPort",
+        "ApprovalPort"
+      ]
+    },
+    "MOD-09": {
+      "phase": "FOLLOW_UP",
+      "auxiliary": [
+        {
+          "package": "policy",
+          "name": "BusinessClosePolicy",
+          "purpose": "资金证据、水位指纹与正式版本"
+        },
+        {
+          "package": "job",
+          "name": "FoodBusinessDayRolloverJob",
+          "purpose": "营业日滚动不等于签核"
+        },
+        {
+          "package": "job",
+          "name": "FoodClosePrecheckJob",
+          "purpose": "预结巡检和异常清单"
+        }
+      ],
+      "tests": [
+        "BusinessCloseEvidenceTest"
+      ],
+      "portConcepts": [
+        "ReconciliationPort",
+        "DiningReportPort",
+        "ApprovalPort"
+      ]
+    },
+    "MOD-10": {
+      "phase": "FOLLOW_UP",
+      "auxiliary": [
+        {
+          "package": "job",
+          "name": "FoodReportWatermarkJob",
+          "purpose": "投影水位、幂等重算"
+        }
+      ],
+      "tests": [
+        "DiningReportRebuildTest",
+        "DiningReportAuthorizationTest"
+      ],
+      "portConcepts": [
+        "DiningReportPort"
+      ]
+    },
+    "MOD-11": {
+      "phase": "FOLLOW_UP",
+      "auxiliary": [
+        {
+          "package": "policy",
+          "name": "DiningEntitlementPolicy",
+          "purpose": "限时入场、频控与最后点单"
+        },
+        {
+          "package": "policy",
+          "name": "CustodyQuantityPolicy",
+          "purpose": "寄存领用/报损上限"
+        },
+        {
+          "package": "job",
+          "name": "FoodRoomChargeRecoveryJob",
+          "purpose": "原PMS/应收意图查询恢复"
+        }
+      ],
+      "tests": [
+        "DiningEntitlementTest",
+        "BanquetPlanTest",
+        "BottleCustodyTest",
+        "RoomChargeContractTest"
+      ],
+      "portConcepts": [
+        "RoomAccountPort",
+        "AccountsReceivablePort",
+        "MemberAssetPort"
+      ]
+    },
+    "MOD-12": {
+      "phase": "FOLLOW_UP",
+      "auxiliary": [
+        {
+          "package": "policy",
+          "name": "EdgeWriterLeasePolicy",
+          "purpose": "租约代次与单写者隔离；正式协议仍待专项"
+        },
+        {
+          "package": "job",
+          "name": "FoodSyncRecoveryJob",
+          "purpose": "连续同步水位和冲突认领"
+        }
+      ],
+      "tests": [
+        "ExternalDiningContractTest",
+        "OfflineSplitBrainTest",
+        "OfflineReplayReconcileTest",
+        "FoodDeploymentContractTest"
+      ],
+      "portConcepts": [
+        "ExternalRestaurantPort",
+        "PaymentQueryPort"
+      ]
+    },
+    "MOD-13": {
+      "phase": "FOUNDATION_FOR_EACH_SLICE",
+      "auxiliary": [
+        {
+          "package": "config",
+          "name": "FoodAutoConfiguration",
+          "purpose": "启用/禁用与自动装配"
+        },
+        {
+          "package": "config",
+          "name": "FoodProperties",
+          "purpose": "沿主库的餐饮配置"
+        },
+        {
+          "package": "config",
+          "name": "FoodPersistenceConfiguration",
+          "purpose": "主DataSource与独立fnb迁移记录，唯一执行者"
+        },
+        {
+          "package": "config",
+          "name": "FoodPortConfiguration",
+          "purpose": "本地/远程适配互斥"
+        }
+      ],
+      "tests": [
+        "FoodArchitectureTest",
+        "StoreOperationServiceTest"
+      ],
+      "portConcepts": [
+        "StoreDirectoryPort",
+        "ApprovalPort"
+      ]
+    }
+  },
+  "portCatalog": {
+    "StoreDirectoryPort": {
+      "interfaceClass": "ai.neargo.shop.spi.user.StoreDirectoryPort",
+      "existingSource": "backend/shop-base/src/main/java/ai/neargo/shop/spi/user/StoreDirectoryPort.java",
+      "status": "EXISTS_SIGNATURE_AUDIT_REQUIRED",
+      "localClass": "ai.neargo.shop.merchant.port.StoreDirectoryPortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemoteStoreDirectoryPortImpl",
+      "localModule": "backend/shop-merchant",
+      "remoteModule": "food-channel",
+      "interfaceRule": "本地直接复用既有唯一提供方，不在industrybridge重复创建；独立餐饮只补门店事实协议，不处理用户身份"
+    },
+    "GoodsQueryPort": {
+      "interfaceClass": "ai.neargo.shop.spi.product.GoodsQueryPort",
+      "existingSource": "backend/shop-base/src/main/java/ai/neargo/shop/spi/product/GoodsQueryPort.java",
+      "status": "EXISTS_SIGNATURE_AUDIT_REQUIRED",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.GoodsQueryPortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemoteGoodsQueryPortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "OrderPlacementPort": {
+      "interfaceClass": "ai.neargo.shop.spi.trade.OrderPlacementPort",
+      "existingSource": null,
+      "status": "TARGET_NOT_PRESENT",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.OrderPlacementPortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemoteOrderPlacementPortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "InventoryCommitmentPort": {
+      "interfaceClass": "ai.neargo.shop.spi.inventory.InventoryCommitmentPort",
+      "existingSource": null,
+      "status": "TARGET_NOT_PRESENT",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.InventoryCommitmentPortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemoteInventoryCommitmentPortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "DiningFulfillmentPort": {
+      "interfaceClass": "ai.neargo.shop.spi.trade.DiningFulfillmentPort",
+      "existingSource": null,
+      "status": "TARGET_NOT_PRESENT",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.DiningFulfillmentPortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemoteDiningFulfillmentPortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "CashierPort": {
+      "interfaceClass": "ai.neargo.shop.spi.trade.CashierPort",
+      "existingSource": null,
+      "status": "TARGET_NOT_PRESENT",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.CashierPortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemoteCashierPortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "PaymentQueryPort": {
+      "interfaceClass": "ai.neargo.shop.spi.pay.PaymentQueryPort",
+      "existingSource": null,
+      "status": "TARGET_NOT_PRESENT",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.PaymentQueryPortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemotePaymentQueryPortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "OrderAdjustmentPort": {
+      "interfaceClass": "ai.neargo.shop.spi.trade.OrderAdjustmentPort",
+      "existingSource": null,
+      "status": "TARGET_NOT_PRESENT",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.OrderAdjustmentPortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemoteOrderAdjustmentPortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "AfterSalePort": {
+      "interfaceClass": "ai.neargo.shop.spi.trade.AfterSalePort",
+      "existingSource": null,
+      "status": "TARGET_NOT_PRESENT",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.AfterSalePortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemoteAfterSalePortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "ResourcePort": {
+      "interfaceClass": "ai.neargo.shop.spi.user.ResourcePort",
+      "existingSource": null,
+      "status": "TARGET_NOT_PRESENT",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.ResourcePortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemoteResourcePortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "ApprovalPort": {
+      "interfaceClass": "ai.neargo.shop.spi.approval.ApprovalPort",
+      "existingSource": null,
+      "status": "TARGET_NOT_PRESENT",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.ApprovalPortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemoteApprovalPortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "DiningReportPort": {
+      "interfaceClass": "ai.neargo.shop.spi.report.DiningReportPort",
+      "existingSource": null,
+      "status": "TARGET_NOT_PRESENT",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.DiningReportPortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemoteDiningReportPortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "ReconciliationPort": {
+      "interfaceClass": "ai.neargo.shop.spi.pay.ReconciliationPort",
+      "existingSource": null,
+      "status": "TARGET_NOT_PRESENT",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.ReconciliationPortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemoteReconciliationPortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "MemberAssetPort": {
+      "interfaceClass": "ai.neargo.shop.spi.member.MemberAssetPort",
+      "existingSource": null,
+      "status": "TARGET_NOT_PRESENT",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.MemberAssetPortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemoteMemberAssetPortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "AccountsReceivablePort": {
+      "interfaceClass": "ai.neargo.shop.spi.pay.AccountsReceivablePort",
+      "existingSource": null,
+      "status": "TARGET_NOT_PRESENT",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.AccountsReceivablePortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemoteAccountsReceivablePortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "PrintPort": {
+      "interfaceClass": "ai.neargo.shop.spi.print.PrintPort",
+      "existingSource": null,
+      "status": "TARGET_NOT_PRESENT",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.PrintPortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemotePrintPortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "RoomAccountPort": {
+      "interfaceClass": "ai.neargo.shop.spi.food.RoomAccountPort",
+      "existingSource": null,
+      "status": "TARGET_NOT_PRESENT",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.RoomAccountPortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemoteRoomAccountPortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "ExternalRestaurantPort": {
+      "interfaceClass": "ai.neargo.shop.spi.food.ExternalRestaurantPort",
+      "existingSource": null,
+      "status": "TARGET_NOT_PRESENT",
+      "localClass": "ai.neargo.shop.industrybridge.food.port.ExternalRestaurantPortImpl",
+      "remoteClass": "ai.neargo.shop.food.port.RemoteExternalRestaurantPortImpl",
+      "localModule": "backend/shop-app",
+      "remoteModule": "food-channel",
+      "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
+    },
+    "GoodsCatalogQueryPort": {
+      "interfaceClass": "ai.neargo.shop.spi.product.GoodsCatalogQueryPort",
+      "existingSource": "backend/shop-base/src/main/java/ai/neargo/shop/spi/product/GoodsCatalogQueryPort.java",
+      "status": "EXISTS_SIGNATURE_AUDIT_REQUIRED",
+      "localClass": "ai.neargo.shop.product.port.GoodsCatalogQueryPortImpl",
+      "remoteClass": "ai.neargo.shop.food.channel.port.CoreGoodsCatalogQueryPortImpl",
+      "localModule": "backend/shop-core",
+      "remoteModule": "food-channel",
+      "interfaceRule": "原商品管理事实，仅单查/有界批量图文规格；不含价格库存；提供方及客户端一起重建"
+    },
+    "DishOfferQueryPort": {
+      "interface": "ai.neargo.shop.spi.product.DishOfferQueryPort",
+      "sourceFile": "backend/shop-base/src/main/java/ai/neargo/shop/spi/product/DishOfferQueryPort.java",
+      "status": "IMPLEMENTED_READ_ONLY_LOCAL_CN",
+      "localClass": "ai.neargo.shop.product.port.DishOfferQueryPortImpl",
+      "remoteClass": "ai.neargo.shop.food.channel.port.CoreDishOfferQueryPortImpl",
+      "localModule": "backend/shop-core",
+      "remoteModule": "food-channel",
+      "interfaceRule": "LOCAL原CN/CNY base→store→flash；空价不造0，仅权威PLATFORM库存，无报价/预占/写入；DUAL/INVENTORY和多市场歧义UNKNOWN"
+    }
+  },
+  "deploymentArchitecture": {
+    "status": "IMPLEMENTED_PARTIAL_BACKEND",
+    "publicIngress": "shop-app mounts restaurant-owned food-web",
+    "clientPrefixes": {
+      "consumer": "/mp/x/food",
+      "business": "/biz/x/food",
+      "operator": "/ops/x/food"
+    },
+    "interfaceModule": "food-api",
+    "dtoModule": "food-api",
+    "implementationModule": "food-core",
+    "standaloneSurface": "/internal/food/** only",
+    "deploymentProperty": "shop.food.deployment",
+    "values": [
+      "embedded",
+      "standalone"
+    ],
+    "authOwner": "platform existing auth and BizContext",
+    "paymentAuthority": "existing SettlePort/pay bridge -> independent PAY; full collection/refund remote chain must be audited",
+    "stockAuthority": "PLATFORM通过原StoreStockReader读取；DUAL/INVENTORY无获准可售读提供方时UNKNOWN；订单写权威不因目录变化",
+    "noSecondOrderStockReservation": true,
+    "frontendControllerModule": "food-web",
+    "modules": [
+      "food-api",
+      "food-core",
+      "food-web",
+      "food-channel",
+      "food-server"
+    ],
+    "webModuleRole": "restaurant-owned reusable controllers and deployment adapters; mounted once by platform, not another process",
+    "sharedPrintControllerModule": "platform/shared-print unchanged"
+  },
+  "dtoTypeOverrides": {
+    "Station": "ai.neargo.shop.food.dto.StationContracts.StationVO",
+    "StationRoutes": "ai.neargo.shop.food.dto.StationContracts.StationRoutesVO",
+    "MenuCategoryInput": "ai.neargo.shop.food.dto.MenuCategoryInput",
+    "MenuItemInput": "ai.neargo.shop.food.dto.MenuItemInput",
+    "MenuSkuRecipeInput": "ai.neargo.shop.food.dto.MenuSkuRecipeInput",
+    "WeekScheduleInput": "ai.neargo.shop.food.dto.WeekScheduleInput",
+    "ExceptionInput": "ai.neargo.shop.food.dto.ExceptionInput",
+    "ContextInput": "ai.neargo.shop.food.dto.MenuContextInput",
+    "OrderLineInput": "ai.neargo.shop.food.dto.OrderLineInput",
+    "CartBundleChoiceInput": "ai.neargo.shop.food.dto.CartBundleChoiceInput",
+    "Selection": "ai.neargo.shop.food.dto.CartSelectionInput"
+  }
+}

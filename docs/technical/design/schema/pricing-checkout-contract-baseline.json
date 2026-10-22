@@ -1,0 +1,1381 @@
+{
+  "status": "SOURCE_CONTRACT_BASELINE_AUDITED_NOT_RUNTIME_ACCEPTANCE",
+  "date": "2026-10-22",
+  "baselineCommit": "217f4182a",
+  "scope": "CKO-01_ONLY",
+  "workspacePolicy": "Existing authorized codex/food-next01 branch; documentation and read-only evidence only; preserve unrelated changes",
+  "scopeRuling": "User execution refers to immediately proposed CKO-01; no runtime task 02-31 is claimed completed",
+  "gates": {
+    "pureKernelDevelopment": "READY",
+    "configMigrationDevelopment": "READY_AFTER_CKO_03_SCHEMA_COMPILER",
+    "liveFoodQuote": "BLOCKED_UNTIL_TRUSTED_FACTS_AND_OWNER_ADAPTERS",
+    "standalonePayment": "BLOCKED_CONTRACT_AND_ENVIRONMENT",
+    "standaloneInventory": "BLOCKED_CONTRACT_AND_ENVIRONMENT",
+    "foodPartialStoredValue": "BLOCKED",
+    "aaMixedAndPostpay": "BLOCKED_UNTIL_OWNER_CONTRACTS"
+  },
+  "capabilities": [
+    {
+      "id": "CT01",
+      "capability": "原商品/SKU报价事实",
+      "owner": "product",
+      "sourceStatus": "SUPPORTED",
+      "environmentStatus": "EXTERNAL_VERIFICATION_REQUIRED",
+      "currentSignatures": [
+        "Map<String, SkuSnapshot> snapshot(List<String> skuNos)",
+        "Map<String, SkuSnapshot> snapshot(List<String> skuNos, Map<String, String> storeByEntity)"
+      ],
+      "gaps": [
+        "No proven full VAT tax class / supplier registration / tax point fact contract",
+        "Food published selections must resolve to original SKU authority"
+      ],
+      "evidence": [
+        {
+          "file": "backend/shop-base/src/main/java/ai/neargo/shop/spi/product/GoodsQueryPort.java",
+          "line": 151,
+          "anchor": "record SkuSnapshot",
+          "sha256": "14772792252acd4927b5c1a9dbecd7d5dd1d2446ca27c3cee2c4801521c5c284"
+        },
+        {
+          "file": "backend/shop-base/src/main/java/ai/neargo/shop/spi/user/StoreDirectoryPort.java",
+          "line": 84,
+          "anchor": "record StoreCard",
+          "sha256": "8d5cde2e8f31938e5e0b5c788e374d1f11accaa6d63ca3fa24ca5569f780e7e9"
+        }
+      ],
+      "nextTask": "CKO-11"
+    },
+    {
+      "id": "CT02",
+      "capability": "零售预览与单券计算",
+      "owner": "trade/marketing",
+      "sourceStatus": "SUPPORTED",
+      "environmentStatus": "EXTERNAL_VERIFICATION_REQUIRED",
+      "currentSignatures": [
+        "OrderVO preview(CreateOrderCommand cmd)",
+        "Allocation allocate(String userNo, String userCouponNo, List<MerchantAmount> groups)",
+        "void markUsed(String userNo, String userCouponNo, String orderNo, Allocation allocation)",
+        "void release(String orderNo)"
+      ],
+      "gaps": [
+        "Current CreateOrderCommand has one couponNo",
+        "Existing discountsOf applies activity then coupon; do not silently replace legacy",
+        "No per-priced-unit amount-then-percent multi-coupon evidence in this contract"
+      ],
+      "evidence": [
+        {
+          "file": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java",
+          "line": 1234,
+          "anchor": "private Discounts discountsOf(CreateOrderCommand cmd, Split split, String userNo)",
+          "sha256": "f33a879ec476d8e59676370328f1da32f9c91bd82d9b01c5c0c037935b33af83"
+        },
+        {
+          "file": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CouponPort.java",
+          "line": 19,
+          "anchor": "Allocation allocate(",
+          "sha256": "13453b0f619c924f80c2a9676d71b30933cf06c08bacb6d4f3bea576ecc5e2bd"
+        },
+        {
+          "file": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/OrderService.java",
+          "line": 269,
+          "anchor": "record CreateOrderCommand",
+          "sha256": "395c44c7e249d23257de7e5a75a6ea2adc06506905466eca7d30ae22323c44d5"
+        }
+      ],
+      "nextTask": "CKO-05/06/11"
+    },
+    {
+      "id": "CT03",
+      "capability": "统一权益使用协议",
+      "owner": "entitlement/PAY",
+      "sourceStatus": "SUPPORTED",
+      "environmentStatus": "EXTERNAL_VERIFICATION_REQUIRED",
+      "currentSignatures": [
+        "QuoteView quote(EntitlementContext context, QuoteCommand command)",
+        "HoldView prepare(EntitlementContext context, UseCommand command)",
+        "UseReceipt commit(EntitlementContext context, UseDecision command)",
+        "HoldView release(EntitlementContext context, CancelUse command)",
+        "HoldView query(EntitlementContext context, String entityNo, String operationNo)"
+      ],
+      "gaps": [
+        "Selected instance list does not alone prove same-item multi-percent stacking or exact new monetary-then-percent basis",
+        "UseItem quantity is int; fractional food quantities need explicit adaptation",
+        "Original source/decision and authorization still required"
+      ],
+      "evidence": [
+        {
+          "file": "backend/shop-base/src/main/java/ai/neargo/shop/spi/entitlement/EntitlementUsePort.java",
+          "line": 116,
+          "anchor": "record UseItem",
+          "sha256": "1e7bc38087841558b4a3ed533eeb7b6877513964433acace575a06000f57d704"
+        }
+      ],
+      "nextTask": "CKO-11/21"
+    },
+    {
+      "id": "CT04",
+      "capability": "储值报价/使用",
+      "owner": "storedvalue/PAY",
+      "sourceStatus": "CONTRACT_GAP",
+      "environmentStatus": "EXTERNAL_VERIFICATION_REQUIRED",
+      "currentSignatures": [
+        "Quote quote(EntitlementContext context, SourceRef source)"
+      ],
+      "gaps": [
+        "Only MAIN / CORE SERVICE_USE / CNY / freight=0 in current source validator",
+        "redeemable requires full applicable amount; no food partial funding proof",
+        "No AED food source, partial stored+cash, tax-treatment support inferred"
+      ],
+      "evidence": [
+        {
+          "file": "backend/shop-base/src/main/java/ai/neargo/shop/spi/storedvalue/StoredValueUseQuotePort.java",
+          "line": 27,
+          "anchor": "amountMinor == applicableMinor",
+          "sha256": "9689bffcc37afb8ba6b29ee5ec485260f66d106a9cbf7c2575ed0bacc05e8728"
+        },
+        {
+          "file": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/service/impl/StoredValueRedemptionServiceImpl.java",
+          "line": 141,
+          "anchor": "!\"CORE\".equals(ref.sourceSystem())",
+          "sha256": "208c41ffa05176944072ed21034344c7b41f7296aad273178080fb9f343be199"
+        }
+      ],
+      "nextTask": "CKO-21"
+    },
+    {
+      "id": "CT05",
+      "capability": "积分报价/冻结/释放与生命周期",
+      "owner": "points/PAY",
+      "sourceStatus": "SUPPORTED",
+      "environmentStatus": "EXTERNAL_VERIFICATION_REQUIRED",
+      "currentSignatures": [
+        "RedeemQuote quote(RedeemQuery query)",
+        "HoldOutcome hold(HoldCommand command)",
+        "HoldOutcome release(ReleaseCommand command)",
+        "void accept(LifecycleFact fact)",
+        "Optional<Terms> resolve(String market, String userNo, String merchantNo, String storeNo, String scene, String client)"
+      ],
+      "gaps": [
+        "Reuse real PointsRedeemPort; do not create duplicate PointsDebitPort",
+        "Food source / after-stored-value basis / regional tax classification and durable outcome proof need verification",
+        "Fact-driven settlement not a fabricated prepare/commit/query facade"
+      ],
+      "evidence": [
+        {
+          "file": "backend/shop-base/src/main/java/ai/neargo/shop/spi/points/PointsRedeemPort.java",
+          "line": 10,
+          "anchor": "RedeemQuote quote(",
+          "sha256": "49ed8d2bd8fa25aec8a6a1f99e19495efcc6dca35c3c9c165c9f9215fd18b770"
+        },
+        {
+          "file": "backend/shop-base/src/main/java/ai/neargo/shop/spi/points/PointsFactPort.java",
+          "line": 11,
+          "anchor": "void accept(LifecycleFact fact)",
+          "sha256": "ce5b3e84ef542a5a5116cab35f8b02bf4f9158fec1b22afdb5501c19f88cf660"
+        },
+        {
+          "file": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/port/PointsRedeemPortImpl.java",
+          "line": 13,
+          "anchor": "return service.hold(c)",
+          "sha256": "a48d77baa7d13ad9b3221364ee537bd7f737cab6f96cbf98d9e7023829c09526"
+        }
+      ],
+      "nextTask": "CKO-22"
+    },
+    {
+      "id": "CT06",
+      "capability": "普通订单收退款本地桥接",
+      "owner": "settle/PAY",
+      "sourceStatus": "SUPPORTED",
+      "environmentStatus": "EXTERNAL_VERIFICATION_REQUIRED",
+      "currentSignatures": [
+        "String openPayment(PaymentOpen cmd)",
+        "PayInitResult initPayment(PaymentOpen cmd)",
+        "PaymentReceipt paymentByOutTradeNo(String outTradeNo)",
+        "RefundDispatchResult requestRefund(RefundRequest request)",
+        "RefundDispatchResult queryRefundExecution(RefundRequest request)"
+      ],
+      "gaps": [
+        "Default Port methods may return null/FAILED/UNKNOWN; actual provider override required",
+        "PaymentOpen compatibility constructor defaults CNY; AED must be explicit and provider-verified",
+        "Current SettlePortImpl directly depends on local payment services"
+      ],
+      "evidence": [
+        {
+          "file": "backend/shop-base/src/main/java/ai/neargo/shop/spi/settle/SettlePort.java",
+          "line": 185,
+          "anchor": "record PaymentOpen",
+          "sha256": "49a0ddccef2afb6f111490b1683ff106aeab270f061cf544a281bde98258e3f5"
+        },
+        {
+          "file": "backend/shop-app/src/main/java/ai/neargo/shop/paybridge/port/SettlePortImpl.java",
+          "line": 62,
+          "anchor": "private final PaymentLedgerService paymentLedger",
+          "sha256": "520f452cbab686125c88736ac04bacef90bd630c11d85f2b6c1fc60e3599fdb2"
+        }
+      ],
+      "nextTask": "CKO-12/15"
+    },
+    {
+      "id": "CT07",
+      "capability": "普通支付独立HTTP装配",
+      "owner": "PAY bridge",
+      "sourceStatus": "CONTRACT_GAP",
+      "environmentStatus": "EXTERNAL_VERIFICATION_REQUIRED",
+      "currentSignatures": [],
+      "gaps": [
+        "No ordinary open/init/query/close/refund full remote SettlePort bridge proven in current PayInternalApi",
+        "Entitlement payment-attempt endpoint is not ordinary payment execution",
+        "Real remote service, credentials, sandbox channel and trace not examined"
+      ],
+      "evidence": [
+        {
+          "file": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/client/PayInternalApi.java",
+          "line": 69,
+          "anchor": "public interface PayInternalApi",
+          "sha256": "90aadbf0b8771f3cf365ac288a84d93209b973c415bf9599427195db0a64acea"
+        },
+        {
+          "file": "backend/shop-app/src/main/java/ai/neargo/shop/paybridge/port/SettlePortImpl.java",
+          "line": 47,
+          "anchor": "public class SettlePortImpl",
+          "sha256": "520f452cbab686125c88736ac04bacef90bd630c11d85f2b6c1fc60e3599fdb2"
+        }
+      ],
+      "nextTask": "CKO-12"
+    },
+    {
+      "id": "CT08",
+      "capability": "本地库存预留履约",
+      "owner": "inventory",
+      "sourceStatus": "SUPPORTED",
+      "environmentStatus": "EXTERNAL_VERIFICATION_REQUIRED",
+      "currentSignatures": [
+        "List<String> lock(String lockNo, List<SkuQty> items)",
+        "void release(String lockNo)",
+        "void confirm(String lockNo)",
+        "String reserve(String ownerId, String externalRef, List<Line> lines, long ttlSeconds)",
+        "void cancelByRef(String ownerId, String externalRef)"
+      ],
+      "gaps": [
+        "StockPort SkuQty quantity int; do not truncate measured food quantities",
+        "ReservationService does not expose full query-by-original-ref outcome contract",
+        "Independent DB does not prove independent HTTP deployment"
+      ],
+      "evidence": [
+        {
+          "file": "backend/shop-base/src/main/java/ai/neargo/shop/spi/product/StockPort.java",
+          "line": 170,
+          "anchor": "record SkuQty",
+          "sha256": "43789d95c4593a5fe0b9c049a11a10f7a0d4ca9808abe4099dc9ed73570396d8"
+        },
+        {
+          "file": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/ReservationService.java",
+          "line": 29,
+          "anchor": "String reserve(",
+          "sha256": "179b672b6cbd155bf13a742b90dc039ec61f637cad4294c6787989f34f6a1500"
+        },
+        {
+          "file": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/port/InventoryStockPort.java",
+          "line": 49,
+          "anchor": "class InventoryStockPort",
+          "sha256": "9560c4f69b8ddc05d73148eb19e642df2b52c5ed68a113c6da3adb240b96d993"
+        }
+      ],
+      "nextTask": "CKO-13"
+    },
+    {
+      "id": "CT09",
+      "capability": "独立库存HTTP恢复合同",
+      "owner": "inventory",
+      "sourceStatus": "CONTRACT_GAP",
+      "environmentStatus": "EXTERNAL_VERIFICATION_REQUIRED",
+      "currentSignatures": [],
+      "gaps": [
+        "Complete reserve/commit/release/query-original-ref internal typed HTTP chain not proven",
+        "Do not substitute public stock:sync for order reservation",
+        "SOURCE_SCOPE_VALIDATION and cancellation tombstone required"
+      ],
+      "evidence": [
+        {
+          "file": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/ReservationService.java",
+          "line": 69,
+          "anchor": "void cancelByRef",
+          "sha256": "179b672b6cbd155bf13a742b90dc039ec61f637cad4294c6787989f34f6a1500"
+        }
+      ],
+      "nextTask": "CKO-13"
+    },
+    {
+      "id": "CT10",
+      "capability": "餐饮后付/AA/跨根及订金",
+      "owner": "trade + food mapping",
+      "sourceStatus": "CONTRACT_GAP",
+      "environmentStatus": "EXTERNAL_VERIFICATION_REQUIRED",
+      "currentSignatures": [],
+      "gaps": [
+        "No implemented DiningCheckoutService or target controller in inspected food source",
+        "Frozen scope row exists but does not implement core atomic allocation/locks",
+        "Postpay acceptance cannot use allocatePaid as unpaid commitment",
+        "Each split/mixed/deposit capability independently gated"
+      ],
+      "evidence": [
+        {
+          "file": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+          "line": 1064,
+          "anchor": "CREATE TABLE `fnb_settlement_item`",
+          "sha256": "215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9"
+        }
+      ],
+      "nextTask": "CKO-16/19/20"
+    },
+    {
+      "id": "CT11",
+      "capability": "原售后与部分现金退款边界",
+      "owner": "trade/PAY",
+      "sourceStatus": "SUPPORTED",
+      "environmentStatus": "EXTERNAL_VERIFICATION_REQUIRED",
+      "currentSignatures": [],
+      "gaps": [
+        "Existing implementation explicitly restricts a physical-return cash path to full-child refunds",
+        "Do not claim no partial-refund infrastructure exists; food line/tax/asset allocations still need new policy",
+        "Original execution recovery and original split reversal remain required"
+      ],
+      "evidence": [
+        {
+          "file": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/AfterSaleServiceImpl.java",
+          "line": 754,
+          "anchor": "This release only supports full-child cash refunds",
+          "sha256": "316d6e90c783c640113ef2824486a1af3ae8d1abab2be685435596c3ffe619c3"
+        }
+      ],
+      "nextTask": "CKO-23"
+    },
+    {
+      "id": "CT12",
+      "capability": "销售VAT及统一规则引擎",
+      "owner": "trade/common.pricing",
+      "sourceStatus": "CONTRACT_GAP",
+      "environmentStatus": "EXTERNAL_VERIFICATION_REQUIRED",
+      "currentSignatures": [],
+      "gaps": [
+        "No current pure pricing package/evaluator registry or 7 quote/config tables proven",
+        "No complete trusted VAT input from existing product/store interfaces",
+        "Design seed is not a published legal tax policy"
+      ],
+      "evidence": [
+        {
+          "file": "backend/shop-base/src/main/java/ai/neargo/shop/spi/product/GoodsQueryPort.java",
+          "line": 151,
+          "anchor": "record SkuSnapshot",
+          "sha256": "14772792252acd4927b5c1a9dbecd7d5dd1d2446ca27c3cee2c4801521c5c284"
+        },
+        {
+          "file": "backend/shop-base/src/main/java/ai/neargo/shop/spi/user/StoreDirectoryPort.java",
+          "line": 84,
+          "anchor": "record StoreCard",
+          "sha256": "8d5cde2e8f31938e5e0b5c788e374d1f11accaa6d63ca3fa24ca5569f780e7e9"
+        }
+      ],
+      "nextTask": "CKO-02/07/08/10/11"
+    },
+    {
+      "id": "CT13",
+      "capability": "打印/当班/日结报表",
+      "owner": "shared owners + food orchestration",
+      "sourceStatus": "CONTRACT_GAP",
+      "environmentStatus": "EXTERNAL_VERIFICATION_REQUIRED",
+      "currentSignatures": [],
+      "gaps": [
+        "Shared prn/rpt table designs do not prove PrintService provider exists",
+        "No food CashShift/DailyClose runtime implementation found in inspected Java paths",
+        "Existing reporting owner must be reused; fiscal invoice and physical print require separate validation"
+      ],
+      "evidence": [
+        {
+          "file": "backend/shop-app/src/main/java/ai/neargo/shop/reportbridge/DailyReportService.java",
+          "line": 39,
+          "anchor": "class DailyReportService",
+          "sha256": "e6e3c5ba04ef0c6074680489de88e738a9af935a310f2adeef465e000182eb29"
+        },
+        {
+          "file": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+          "line": 1220,
+          "anchor": "CREATE TABLE `fnb_cash_shift`",
+          "sha256": "215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9"
+        }
+      ],
+      "nextTask": "CKO-17/24/25"
+    }
+  ],
+  "schema": {
+    "verificationLevel": "REPOSITORY_MIGRATIONS_ONLY_NO_DATABASE_CONNECTION",
+    "coreMaxMigrationAtAudit": 531,
+    "foodMaxMigrationAtAudit": 7,
+    "newOrdTables": [
+      {
+        "table": "ord_pricing_template",
+        "status": "ABSENT_CREATE_IN_SCANNED_MIGRATIONS",
+        "owner": "shop-core.trade",
+        "migrationOwner": "backend/shop-app/src/main/resources/db/migration"
+      },
+      {
+        "table": "ord_pricing_template_revision",
+        "status": "ABSENT_CREATE_IN_SCANNED_MIGRATIONS",
+        "owner": "shop-core.trade",
+        "migrationOwner": "backend/shop-app/src/main/resources/db/migration"
+      },
+      {
+        "table": "ord_store_pricing_config",
+        "status": "ABSENT_CREATE_IN_SCANNED_MIGRATIONS",
+        "owner": "shop-core.trade",
+        "migrationOwner": "backend/shop-app/src/main/resources/db/migration"
+      },
+      {
+        "table": "ord_store_pricing_revision",
+        "status": "ABSENT_CREATE_IN_SCANNED_MIGRATIONS",
+        "owner": "shop-core.trade",
+        "migrationOwner": "backend/shop-app/src/main/resources/db/migration"
+      },
+      {
+        "table": "ord_price_quote",
+        "status": "ABSENT_CREATE_IN_SCANNED_MIGRATIONS",
+        "owner": "shop-core.trade",
+        "migrationOwner": "backend/shop-app/src/main/resources/db/migration"
+      },
+      {
+        "table": "ord_price_quote_line",
+        "status": "ABSENT_CREATE_IN_SCANNED_MIGRATIONS",
+        "owner": "shop-core.trade",
+        "migrationOwner": "backend/shop-app/src/main/resources/db/migration"
+      },
+      {
+        "table": "ord_price_quote_allocation",
+        "status": "ABSENT_CREATE_IN_SCANNED_MIGRATIONS",
+        "owner": "shop-core.trade",
+        "migrationOwner": "backend/shop-app/src/main/resources/db/migration"
+      }
+    ],
+    "existingFoodTables": [
+      {
+        "table": "fnb_settlement",
+        "status": "EXISTS_IN_FROZEN_MIGRATION_NOT_LIVE_DB_VERIFIED",
+        "columns": [
+          {
+            "name": "id",
+            "type": "BIGINT"
+          },
+          {
+            "name": "tenant_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "entity_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME(3)"
+          },
+          {
+            "name": "created_by",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME(3)"
+          },
+          {
+            "name": "updated_by",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "version",
+            "type": "BIGINT"
+          },
+          {
+            "name": "deleted",
+            "type": "INT"
+          },
+          {
+            "name": "settlement_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "store_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "currency",
+            "type": "CHAR(3)"
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR(24)"
+          },
+          {
+            "name": "scope_hash",
+            "type": "CHAR(64)"
+          },
+          {
+            "name": "quote_ref",
+            "type": "VARCHAR(64)"
+          },
+          {
+            "name": "due_minor",
+            "type": "BIGINT"
+          },
+          {
+            "name": "core_cashier_ref",
+            "type": "VARCHAR(64)"
+          },
+          {
+            "name": "expires_at",
+            "type": "DATETIME(3)"
+          }
+        ],
+        "indexes": [
+          "PRIMARY KEY (`id`)",
+          "UNIQUE KEY `uk_food_1` (`settlement_no`)",
+          "KEY `ix_food_audit` (`entity_no`, `created_at`, `id`)",
+          "KEY `ix_food_store` (`entity_no`, `store_no`, `updated_at`, `id`)"
+        ],
+        "evidence": {
+          "file": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+          "line": 1039,
+          "anchor": "CREATE TABLE `fnb_settlement`",
+          "sha256": "215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9"
+        }
+      },
+      {
+        "table": "fnb_settlement_item",
+        "status": "EXISTS_IN_FROZEN_MIGRATION_NOT_LIVE_DB_VERIFIED",
+        "columns": [
+          {
+            "name": "id",
+            "type": "BIGINT"
+          },
+          {
+            "name": "tenant_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "entity_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME(3)"
+          },
+          {
+            "name": "created_by",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME(3)"
+          },
+          {
+            "name": "updated_by",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "version",
+            "type": "BIGINT"
+          },
+          {
+            "name": "deleted",
+            "type": "INT"
+          },
+          {
+            "name": "scope_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "settlement_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "check_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "payment_root_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "store_order_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "allocation_ref",
+            "type": "VARCHAR(64)"
+          },
+          {
+            "name": "due_minor",
+            "type": "BIGINT"
+          },
+          {
+            "name": "core_version",
+            "type": "VARCHAR(64)"
+          },
+          {
+            "name": "scope_key",
+            "type": "VARCHAR(128)"
+          }
+        ],
+        "indexes": [
+          "PRIMARY KEY (`id`)",
+          "UNIQUE KEY `uk_food_1` (`scope_no`)",
+          "UNIQUE KEY `uk_food_2` (`settlement_no`, `scope_key`)",
+          "KEY `ix_food_audit` (`entity_no`, `created_at`, `id`)",
+          "KEY `ix_food_ref_1` (`entity_no`, `check_no`, `id`)"
+        ],
+        "evidence": {
+          "file": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+          "line": 1064,
+          "anchor": "CREATE TABLE `fnb_settlement_item`",
+          "sha256": "215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9"
+        }
+      },
+      {
+        "table": "fnb_charge_intent",
+        "status": "EXISTS_IN_FROZEN_MIGRATION_NOT_LIVE_DB_VERIFIED",
+        "columns": [
+          {
+            "name": "id",
+            "type": "BIGINT"
+          },
+          {
+            "name": "tenant_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "entity_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME(3)"
+          },
+          {
+            "name": "created_by",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME(3)"
+          },
+          {
+            "name": "updated_by",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "version",
+            "type": "BIGINT"
+          },
+          {
+            "name": "deleted",
+            "type": "INT"
+          },
+          {
+            "name": "intent_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "settlement_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "kind",
+            "type": "VARCHAR(24)"
+          },
+          {
+            "name": "request_key",
+            "type": "VARCHAR(64)"
+          },
+          {
+            "name": "core_reference",
+            "type": "VARCHAR(64)"
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR(24)"
+          },
+          {
+            "name": "request_hash",
+            "type": "CHAR(64)"
+          },
+          {
+            "name": "cash_shift_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "request_snapshot",
+            "type": "JSON"
+          }
+        ],
+        "indexes": [
+          "PRIMARY KEY (`id`)",
+          "UNIQUE KEY `uk_food_1` (`intent_no`)",
+          "UNIQUE KEY `uk_food_2` (`settlement_no`, `request_key`)",
+          "KEY `ix_food_audit` (`entity_no`, `created_at`, `id`)",
+          "KEY `ix_food_ref_1` (`entity_no`, `cash_shift_no`, `id`)"
+        ],
+        "evidence": {
+          "file": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+          "line": 1090,
+          "anchor": "CREATE TABLE `fnb_charge_intent`",
+          "sha256": "215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9"
+        }
+      },
+      {
+        "table": "fnb_cash_shift",
+        "status": "EXISTS_IN_FROZEN_MIGRATION_NOT_LIVE_DB_VERIFIED",
+        "columns": [
+          {
+            "name": "id",
+            "type": "BIGINT"
+          },
+          {
+            "name": "tenant_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "entity_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME(3)"
+          },
+          {
+            "name": "created_by",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME(3)"
+          },
+          {
+            "name": "updated_by",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "version",
+            "type": "BIGINT"
+          },
+          {
+            "name": "deleted",
+            "type": "INT"
+          },
+          {
+            "name": "shift_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "store_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "drawer_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "owner_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "currency",
+            "type": "CHAR(3)"
+          },
+          {
+            "name": "opening_minor",
+            "type": "BIGINT"
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR(16)"
+          },
+          {
+            "name": "opened_at",
+            "type": "DATETIME(3)"
+          },
+          {
+            "name": "closed_at",
+            "type": "DATETIME(3)"
+          }
+        ],
+        "indexes": [
+          "PRIMARY KEY (`id`)",
+          "UNIQUE KEY `uk_food_1` (`shift_no`)",
+          "KEY `ix_food_audit` (`entity_no`, `created_at`, `id`)",
+          "KEY `ix_food_store` (`entity_no`, `store_no`, `updated_at`, `id`)"
+        ],
+        "evidence": {
+          "file": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+          "line": 1220,
+          "anchor": "CREATE TABLE `fnb_cash_shift`",
+          "sha256": "215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9"
+        }
+      },
+      {
+        "table": "fnb_cash_entry",
+        "status": "EXISTS_IN_FROZEN_MIGRATION_NOT_LIVE_DB_VERIFIED",
+        "columns": [
+          {
+            "name": "id",
+            "type": "BIGINT"
+          },
+          {
+            "name": "tenant_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "entity_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME(3)"
+          },
+          {
+            "name": "created_by",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME(3)"
+          },
+          {
+            "name": "updated_by",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "version",
+            "type": "BIGINT"
+          },
+          {
+            "name": "deleted",
+            "type": "INT"
+          },
+          {
+            "name": "entry_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "shift_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "kind",
+            "type": "VARCHAR(24)"
+          },
+          {
+            "name": "amount_minor",
+            "type": "BIGINT"
+          },
+          {
+            "name": "direction",
+            "type": "VARCHAR(8)"
+          },
+          {
+            "name": "voucher_ref",
+            "type": "VARCHAR(64)"
+          },
+          {
+            "name": "approval_ref",
+            "type": "VARCHAR(64)"
+          },
+          {
+            "name": "operation_key",
+            "type": "VARCHAR(64)"
+          }
+        ],
+        "indexes": [
+          "PRIMARY KEY (`id`)",
+          "UNIQUE KEY `uk_food_1` (`entry_no`)",
+          "UNIQUE KEY `uk_food_2` (`operation_key`)",
+          "KEY `ix_food_audit` (`entity_no`, `created_at`, `id`)",
+          "KEY `ix_food_ref_1` (`entity_no`, `shift_no`, `id`)"
+        ],
+        "evidence": {
+          "file": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+          "line": 1246,
+          "anchor": "CREATE TABLE `fnb_cash_entry`",
+          "sha256": "215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9"
+        }
+      },
+      {
+        "table": "fnb_return",
+        "status": "EXISTS_IN_FROZEN_MIGRATION_NOT_LIVE_DB_VERIFIED",
+        "columns": [
+          {
+            "name": "id",
+            "type": "BIGINT"
+          },
+          {
+            "name": "tenant_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "entity_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME(3)"
+          },
+          {
+            "name": "created_by",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME(3)"
+          },
+          {
+            "name": "updated_by",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "version",
+            "type": "BIGINT"
+          },
+          {
+            "name": "deleted",
+            "type": "INT"
+          },
+          {
+            "name": "return_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "store_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "check_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "reason",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "approval_ref",
+            "type": "VARCHAR(64)"
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR(24)"
+          },
+          {
+            "name": "financial_status",
+            "type": "VARCHAR(24)"
+          },
+          {
+            "name": "core_case_ref",
+            "type": "VARCHAR(64)"
+          },
+          {
+            "name": "kitchen_status",
+            "type": "VARCHAR(24)"
+          }
+        ],
+        "indexes": [
+          "PRIMARY KEY (`id`)",
+          "UNIQUE KEY `uk_food_1` (`return_no`)",
+          "KEY `ix_food_audit` (`entity_no`, `created_at`, `id`)",
+          "KEY `ix_food_store` (`entity_no`, `store_no`, `updated_at`, `id`)",
+          "KEY `ix_food_ref_1` (`entity_no`, `check_no`, `id`)"
+        ],
+        "evidence": {
+          "file": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+          "line": 1116,
+          "anchor": "CREATE TABLE `fnb_return`",
+          "sha256": "215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9"
+        }
+      },
+      {
+        "table": "fnb_return_item",
+        "status": "EXISTS_IN_FROZEN_MIGRATION_NOT_LIVE_DB_VERIFIED",
+        "columns": [
+          {
+            "name": "id",
+            "type": "BIGINT"
+          },
+          {
+            "name": "tenant_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "entity_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME(3)"
+          },
+          {
+            "name": "created_by",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME(3)"
+          },
+          {
+            "name": "updated_by",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "version",
+            "type": "BIGINT"
+          },
+          {
+            "name": "deleted",
+            "type": "INT"
+          },
+          {
+            "name": "return_item_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "return_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "food_line_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "component_no",
+            "type": "VARCHAR(32)"
+          },
+          {
+            "name": "qty",
+            "type": "DECIMAL(18,6)"
+          },
+          {
+            "name": "kitchen_disposition",
+            "type": "VARCHAR(16)"
+          },
+          {
+            "name": "core_line_allocation_ref",
+            "type": "VARCHAR(64)"
+          }
+        ],
+        "indexes": [
+          "PRIMARY KEY (`id`)",
+          "UNIQUE KEY `uk_food_1` (`return_item_no`)",
+          "KEY `ix_food_audit` (`entity_no`, `created_at`, `id`)",
+          "KEY `ix_food_ref_1` (`entity_no`, `return_no`, `id`)",
+          "KEY `ix_food_ref_2` (`entity_no`, `food_line_no`, `id`)",
+          "KEY `ix_food_ref_3` (`entity_no`, `component_no`, `id`)"
+        ],
+        "evidence": {
+          "file": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+          "line": 1142,
+          "anchor": "CREATE TABLE `fnb_return_item`",
+          "sha256": "215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9"
+        }
+      }
+    ],
+    "requiredDifferences": [
+      {
+        "table": "fnb_settlement",
+        "keep": [
+          "settlement_no",
+          "quote_ref",
+          "scope_hash",
+          "core_cashier_ref",
+          "status"
+        ],
+        "gap": [
+          "No explicit source/config/scope revision binding columns; use immutable core scopeRef + queryable binding with increment migration if required",
+          "due_minor definition must be core checkout-scope customer due, not inferred invoiceGross when consideration offsets exist",
+          "expires_at must not erase already paid/UNKNOWN intent evidence"
+        ],
+        "decision": "REUSE_NOT_RECREATE"
+      },
+      {
+        "table": "fnb_settlement_item",
+        "keep": [
+          "payment_root_no",
+          "store_order_no",
+          "allocation_ref",
+          "core_version",
+          "scope_key"
+        ],
+        "gap": [
+          "Unique settlement_no+scope_key does not serialize same source scope across two settlements",
+          "Core must own payable scope reservation and paid/UNKNOWN overlap detection",
+          "Preserve original core scope version and quantity/tax allocation identity"
+        ],
+        "decision": "CORE_SCOPE_LOCK_REQUIRED"
+      },
+      {
+        "table": "fnb_charge_intent",
+        "keep": [
+          "intent_no",
+          "settlement_no",
+          "request_key",
+          "request_hash",
+          "request_snapshot",
+          "core_reference",
+          "status",
+          "cash_shift_no"
+        ],
+        "gap": [
+          "Original schema lacks an explicit unique shared consumer key for the same core payable scope across different settlements",
+          "Core must enforce stable source/operation key; request key per settlement alone is insufficient",
+          "No general external transaction success proof can be inferred from CONFIRMED string"
+        ],
+        "decision": "REUSE_INTENT_CORE_OWNS_FINANCIAL_IDEMPOTENCY"
+      }
+    ],
+    "commonFieldDecisions": {
+      "timeType": "DATETIME(3), align actual BaseEntity and existing food migrations; supersedes candidate DATETIME(6)",
+      "currencyType": "CHAR(3), align existing fiat-currency contracts",
+      "businessNo": "VARCHAR(32), quote_ref existing VARCHAR(64) preserved",
+      "hash": "CHAR(64)",
+      "json": "MySQL JSON as existing migration",
+      "money": "BIGINT checked arithmetic",
+      "quantity": "DECIMAL(20,6) only for canonical pricing facts; source-specific precision must validate; do not truncate int stock/entitlement contracts",
+      "tenant": "MAIN current; keep tenant_no, do not invent enabled multi-tenancy"
+    }
+  },
+  "apis": [
+    {
+      "apiNo": "FOOD-API-041",
+      "canonicalRoute": "POST /biz/x/food/stores/{storeNo}/quotes",
+      "targetBinding": "BizDiningQuoteController.quote",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-042",
+      "canonicalRoute": "POST /biz/x/food/stores/{storeNo}/batches",
+      "targetBinding": "BizOrderBatchController.place",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-056",
+      "canonicalRoute": "POST /biz/x/food/stores/{storeNo}/settlements",
+      "targetBinding": "BizDiningCheckoutController.createSettlement",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-057",
+      "canonicalRoute": "GET /biz/x/food/settlements/{settlementNo}",
+      "targetBinding": "BizDiningCheckoutController.getSettlement",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-058",
+      "canonicalRoute": "POST /biz/x/food/settlements/{settlementNo}:pay",
+      "targetBinding": "BizDiningCheckoutController.paySettlement",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-059",
+      "canonicalRoute": "POST /biz/x/food/settlements/{settlementNo}:cancel",
+      "targetBinding": "BizDiningCheckoutController.cancelSettlement",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-060",
+      "canonicalRoute": "POST /biz/x/food/settlements/{settlementNo}:finalize",
+      "targetBinding": "BizDiningCheckoutController.finalizeSettlement",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-061",
+      "canonicalRoute": "POST /biz/x/food/settlements/{settlementNo}/adjustments",
+      "targetBinding": "BizDiningAdjustmentController.createAdjustment",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-062",
+      "canonicalRoute": "POST /biz/x/food/stores/{storeNo}/returns",
+      "targetBinding": "BizDiningReturnController.createReturn",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-063",
+      "canonicalRoute": "POST /biz/x/food/returns/{returnNo}:execute",
+      "targetBinding": "BizDiningReturnController.executeReturn",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-064",
+      "canonicalRoute": "GET /biz/x/food/returns/{returnNo}",
+      "targetBinding": "BizDiningReturnController.getReturn",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-065",
+      "canonicalRoute": "POST /biz/print/jobs",
+      "targetBinding": "BizPrintJobController.createJob",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-066",
+      "canonicalRoute": "GET /biz/print/jobs/{jobNo}",
+      "targetBinding": "BizPrintJobController.getJob",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-067",
+      "canonicalRoute": "POST /biz/print/jobs/{jobNo}:reprint",
+      "targetBinding": "BizPrintJobController.reprintJob",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-068",
+      "canonicalRoute": "POST /biz/x/food/stores/{storeNo}/cash-shifts",
+      "targetBinding": "BizCashShiftController.createCashShift",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-069",
+      "canonicalRoute": "POST /biz/x/food/cash-shifts/{shiftNo}/entries",
+      "targetBinding": "BizCashEntryController.createEntry",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-070",
+      "canonicalRoute": "POST /biz/x/food/cash-shifts/{shiftNo}:count",
+      "targetBinding": "BizCashShiftController.countCashShift",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-071",
+      "canonicalRoute": "POST /biz/x/food/cash-shifts/{shiftNo}:handover",
+      "targetBinding": "BizCashShiftController.handoverCashShift",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-131",
+      "canonicalRoute": "POST /mp/x/food/stores/{storeNo}/quotes",
+      "targetBinding": "MpDiningQuoteController.quote",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-132",
+      "canonicalRoute": "POST /mp/x/food/stores/{storeNo}/batches",
+      "targetBinding": "MpOrderBatchController.place",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-134",
+      "canonicalRoute": "GET /mp/x/food/settlements/{settlementNo}",
+      "targetBinding": "MpDiningCheckoutController.getSettlement",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-135",
+      "canonicalRoute": "POST /mp/x/food/settlements/{settlementNo}:pay",
+      "targetBinding": "MpDiningCheckoutController.paySettlement",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    },
+    {
+      "apiNo": "FOOD-API-140",
+      "canonicalRoute": "POST /mp/x/food/checks/{checkNo}/settlements",
+      "targetBinding": "MpDiningCheckoutController.createSettlement",
+      "status": "PLANNED_NOT_IMPLEMENTED_IN_FOOD_SOURCE"
+    }
+  ],
+  "permissions": [
+    {
+      "code": "biz:order:view",
+      "status": "EXISTING_READ_ONLY",
+      "file": "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BizPerms.java"
+    },
+    {
+      "code": "biz:verify",
+      "status": "EXISTING_NOT_PRICING_PUBLISH_AUTHORITY",
+      "file": "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BizPerms.java"
+    },
+    {
+      "code": "biz:pricing:config:read",
+      "status": "PROPOSED_NOT_REGISTERED",
+      "owner": "auth/BizPerms",
+      "activation": "REGISTER_WITH_CONTROLLER_ROLE_MATRIX_AND_I18N_NOT_THIS_AUDIT"
+    },
+    {
+      "code": "biz:pricing:config:update",
+      "status": "PROPOSED_NOT_REGISTERED",
+      "owner": "auth/BizPerms",
+      "activation": "REGISTER_WITH_CONTROLLER_ROLE_MATRIX_AND_I18N_NOT_THIS_AUDIT"
+    },
+    {
+      "code": "biz:pricing:config:publish",
+      "status": "PROPOSED_NOT_REGISTERED",
+      "owner": "auth/BizPerms",
+      "activation": "REGISTER_WITH_CONTROLLER_ROLE_MATRIX_AND_I18N_NOT_THIS_AUDIT"
+    },
+    {
+      "code": "biz:order:adjust",
+      "status": "PROPOSED_NOT_REGISTERED",
+      "owner": "auth/BizPerms",
+      "activation": "REGISTER_WITH_CONTROLLER_ROLE_MATRIX_AND_I18N_NOT_THIS_AUDIT"
+    },
+    {
+      "code": "biz:order:waive",
+      "status": "PROPOSED_NOT_REGISTERED",
+      "owner": "auth/BizPerms",
+      "activation": "REGISTER_WITH_CONTROLLER_ROLE_MATRIX_AND_I18N_NOT_THIS_AUDIT"
+    },
+    {
+      "code": "pricing:template:read",
+      "status": "PROPOSED_NOT_REGISTERED",
+      "owner": "auth/Perms",
+      "activation": "REGISTER_WITH_CONTROLLER_ROLE_MATRIX_AND_I18N_NOT_THIS_AUDIT"
+    },
+    {
+      "code": "pricing:template:update",
+      "status": "PROPOSED_NOT_REGISTERED",
+      "owner": "auth/Perms",
+      "activation": "REGISTER_WITH_CONTROLLER_ROLE_MATRIX_AND_I18N_NOT_THIS_AUDIT"
+    },
+    {
+      "code": "pricing:template:publish",
+      "status": "PROPOSED_NOT_REGISTERED",
+      "owner": "auth/Perms",
+      "activation": "REGISTER_WITH_CONTROLLER_ROLE_MATRIX_AND_I18N_NOT_THIS_AUDIT"
+    },
+    {
+      "code": "pricing:tax:publish",
+      "status": "PROPOSED_NOT_REGISTERED",
+      "owner": "auth/Perms",
+      "activation": "REGISTER_WITH_CONTROLLER_ROLE_MATRIX_AND_I18N_NOT_THIS_AUDIT"
+    }
+  ],
+  "errors": {
+    "reuse": [
+      "CONFLICT",
+      "PRICE_CHANGED"
+    ],
+    "proposedNotRegistered": [
+      "PRICING_CONFIG_INVALID",
+      "PRICING_RULE_CONFLICT",
+      "PRICING_OWNER_UNSUPPORTED",
+      "PRICING_QUOTE_EXPIRED",
+      "PRICING_SCOPE_CHANGED",
+      "PRICING_PLAN_SEARCH_LIMIT",
+      "PRICING_ADJUSTMENT_DENIED",
+      "PRICING_TAX_POLICY_MISSING",
+      "PRICING_TAX_CLASS_UNKNOWN",
+      "PRICING_TAX_TREATMENT_UNKNOWN",
+      "PRICING_TAX_ADJUSTMENT_UNREPRESENTABLE"
+    ],
+    "numericAllocation": "Allocate from current ErrorCode namespace at implementation; no enum values added by audit",
+    "i18nFiles": [
+      "backend/shop-app/src/main/resources/i18n/messages.properties",
+      "backend/shop-app/src/main/resources/i18n/messages_en.properties",
+      "backend/shop-app/src/main/resources/i18n/messages_ar.properties"
+    ]
+  },
+  "testPolicy": "Evidence hashes/anchors, schema and API references only; no Java/database/payment/environment test claimed"
+}
