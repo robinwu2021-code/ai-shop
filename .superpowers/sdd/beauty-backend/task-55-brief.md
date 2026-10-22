@@ -45,6 +45,10 @@ Bean图约束：AppointmentService.openWorkOrderFromAppointment与WorkOrderServi
 
 工单初始来源意图：创建工单/任务同事务创建bty_service_submission的OPEN/RECEIVED草稿，frozenCommand含版本、范围摘要、规范身份和taskRefs，不含cr1/mc1/secret，不据此执行外部建单。Task58由当前合法人明确提交后才进入真实source阶段；原request_key_hash应按actor完整命名空间+endpoint+key稳定派生，适配现有entity/store唯一索引，不让不同操作的同字面key误碰。初始VO返回submissionNo及未绑定状态。
 
+**精确设计冻结决策：** 采用task-55-design.md所列方法/DTO/V5四表及锁序，按55A身份引用/到店码、55B签到/重排、55C工单范围、55D直客恢复四关依次实现和独立审查，仍属同一Task55。V5在55A执行后冻结，后续追加版本而不回改。052新增接口暂以fail-closed default兼容既有Remote，本地实现必须覆盖，不能计远程交付，59接线后移除default。OperationVO增workOrderNo/failureCode并保留原构造器；get/recover按可信scope分派接待原号。真实member身份消费链放shop-app原生bridge，beauty-core资源fixture边界明示，不添加跨域生产依赖。未安排task保持真实PENDING，另以assignmentState=UNASSIGNED表达。安全事件/Outbox随最早使用的55A实现，冻结规则读取辅助先在55B落地供55C复用。
+
+登记031直接委托共享owner，使用完整命名空间派生原键，不在美业复制联系方式或其无密钥摘要、也不创建虚假的本域登记operation；未知operationNo可空，明确原actor同原请求重放。032认领继续先持久已核验USER/guest意图及原号、再外调、后原子回执。后台恢复只扫描实际无需用户新授权即可读取的资源终态；待原人或新proof项不轮占队首，必须覆盖超过50待用户项仍不饿死后续可恢复项。
+
 **启动与验收：** 先据本节及方法JSON生成task-55-design.md，列确切DTO字段/Service方法、表约束、Bean图和AC→测试映射；任何未定事项在编码前由控制器裁决并同步本节。不得靠旧清单自动生成空方法计完成。目标031/032/047/048/052/053/054/055/154/155及到店码增量；P3候位049–051、关闭工单065–067和来源/账单056/071不在本任务。
 
 - [ ] 设计冻结后RED/GREEN和消融，完成真实本域事务、原生并发/恢复及严格V1→V5升级。
