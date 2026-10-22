@@ -22,7 +22,7 @@ public class MemberScopeService {
   });
  }
  public MemberScopeModels.ScopeMember require(String tenant,String entity,String store,String no){var scope=scope(tenant,entity,store);var member=db.member(db.one("SELECT * FROM mbr_scope_member WHERE tenant_no=? AND scope_member_no=? AND scope_type=? AND scope_no=? AND deleted=0",tenant,no,scope.scopeType(),scope.scopeNo()));identity(tenant,member.customerNo());
-  if(!"BLOCKED".equals(member.status())&&db.one("SELECT l.link_no FROM mbr_scope_legacy_link l JOIN mbr_member m ON m.tenant_no=l.tenant_no AND m.member_no=l.legacy_member_no WHERE l.tenant_no=? AND l.scope_member_no=? AND l.status='VERIFIED' AND l.deleted=0 AND m.deleted=0 AND m.entity_no=? AND m.status NOT IN ('ACTIVE','LEAD')",tenant,no,entity)!=null)return new MemberScopeModels.ScopeMember(member.scopeMemberNo(),member.customerNo(),member.scopeType(),member.scopeNo(),member.firstStoreNo(),"BLOCKED");
+  if(!"BLOCKED".equals(member.status())&&db.one("SELECT member_no FROM mbr_member WHERE tenant_no=? AND entity_no=? AND person_no=? AND deleted=0 AND status NOT IN ('ACTIVE','LEAD')",tenant,entity,member.customerNo())!=null)return new MemberScopeModels.ScopeMember(member.scopeMemberNo(),member.customerNo(),member.scopeType(),member.scopeNo(),member.firstStoreNo(),"BLOCKED");
   return member;}
  public void linkLegacy(String tenant,String legacyNo,String memberNo,String sourceStore,String actor){db.write(()->{
   var member=db.member(db.one("SELECT * FROM mbr_scope_member WHERE tenant_no=? AND scope_member_no=? AND deleted=0",tenant,memberNo));var old=db.one("SELECT * FROM mbr_member WHERE tenant_no=? AND member_no=? AND deleted=0",tenant,legacyNo);

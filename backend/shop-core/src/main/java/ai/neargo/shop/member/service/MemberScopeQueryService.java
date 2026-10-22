@@ -16,7 +16,12 @@ public class MemberScopeQueryService {
   while(items.size()<size+1){var batch=db.rows("SELECT * FROM mbr_scope_member WHERE tenant_no=? AND scope_type=? AND scope_no=? AND deleted=0 AND id<? ORDER BY id DESC LIMIT 100",tenant,scope.scopeType(),scope.scopeNo(),after);if(batch.isEmpty())break;
    var ids=batch.stream().map(x->s(x,"customer_no")).toList();var matched=identities.match(tenant,ids,keyword).stream().filter(MemberIdentityFactsPort.Identity::consistent).map(MemberIdentityFactsPort.Identity::customerNo).collect(java.util.stream.Collectors.toSet());
    for(var row:batch){long id=n(row,"id");String customer=s(row,"customer_no");var profile=db.one("SELECT remark FROM mbr_store_profile WHERE tenant_no=? AND store_no=? AND customer_no=? AND deleted=0",tenant,store,customer);String remark=s(profile,"remark");boolean hit=matched.contains(customer)||!keyword.matches("[0-9]+")&&remark!=null&&remark.contains(keyword);
-    if(hit){if(items.size()==size){more=true;break;}items.add(detail(tenant,entity,store,s(row,"scope_member_no")));}after=id;
+    if(hit){
+     var identity=identities.find(tenant,customer);
+     if(identity.isEmpty()||!identity.get().consistent()||!customer.equals(identity.get().customerNo())){conflicts++;after=id;continue;}
+     if(items.size()==size){more=true;break;}
+     items.add(detail(tenant,entity,store,s(row,"scope_member_no")));
+    }after=id;
    }if(more||batch.size()<100)break;
   }
   var current=members.scope(tenant,entity,store);if(!current.scopeType().equals(scope.scopeType())||!current.scopeNo().equals(scope.scopeNo())||current.revision()!=scope.revision())throw BizException.of(ErrorCode.CONFLICT);
