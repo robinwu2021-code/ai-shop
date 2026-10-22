@@ -1,0 +1,557 @@
+{
+  "status": "PROPOSED_NOT_IMPLEMENTED",
+  "version": "INDUSTRY_RULE_CATALOG_V1",
+  "date": "2026-10-22",
+  "commonRules": [
+    {
+      "ruleNo": "COM-01",
+      "industry": "ALL",
+      "name": "真实源与门店身份",
+      "defaultRule": "源、买家、主体、门店、渠道来自可信上下文，源版本一致",
+      "storeOverride": "不可放宽",
+      "failureReason": "SOURCE_SCOPE_MISMATCH",
+      "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+      "status": "PROPOSED_NOT_IMPLEMENTED"
+    },
+    {
+      "ruleNo": "COM-02",
+      "industry": "ALL",
+      "name": "非活动商品隔离",
+      "defaultRule": "非活动项保留应收但不进活动/券基数；积分、储值资格独立",
+      "storeOverride": "可维护受控商品范围",
+      "failureReason": "ITEM_NOT_ELIGIBLE",
+      "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+      "status": "PROPOSED_NOT_IMPLEMENTED"
+    },
+    {
+      "ruleNo": "COM-03",
+      "industry": "ALL",
+      "name": "优惠种类及券数量",
+      "defaultRule": "先限优惠种类，再同时限券总数、各券类张数和次数",
+      "storeOverride": "可在能力上限内调整",
+      "failureReason": "BENEFIT_LIMIT_EXCEEDED",
+      "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+      "status": "PROPOSED_NOT_IMPLEMENTED"
+    },
+    {
+      "ruleNo": "COM-04",
+      "industry": "ALL",
+      "name": "储值与折扣券互斥",
+      "defaultRule": "已接纳的储值选择与折扣券不能同单采用",
+      "storeOverride": "不可放宽",
+      "failureReason": "STORED_VALUE_PERCENT_CONFLICT",
+      "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+      "status": "PROPOSED_NOT_IMPLEMENTED"
+    },
+    {
+      "ruleNo": "COM-05",
+      "industry": "ALL",
+      "name": "用券后限制人工优惠",
+      "defaultRule": "已接纳券后禁止人工打折和人工抹零",
+      "storeOverride": "不可放宽",
+      "failureReason": "COUPON_MANUAL_CONFLICT",
+      "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+      "status": "PROPOSED_NOT_IMPLEMENTED"
+    },
+    {
+      "ruleNo": "COM-06",
+      "industry": "ALL",
+      "name": "人工折扣独立",
+      "defaultRule": "人工打折与其他活动、券、储值、积分优惠选择互斥",
+      "storeOverride": "不可放宽",
+      "failureReason": "MANUAL_PERCENT_CONFLICT",
+      "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+      "status": "PROPOSED_NOT_IMPLEMENTED"
+    },
+    {
+      "ruleNo": "COM-07",
+      "industry": "ALL",
+      "name": "人工原因及审批",
+      "defaultRule": "有分类、操作者、额度、有效审批与源hash绑定；填写原因不等于授权",
+      "storeOverride": "可配类别及受控额度",
+      "failureReason": "MANUAL_APPROVAL_REQUIRED",
+      "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+      "status": "PROPOSED_NOT_IMPLEMENTED"
+    },
+    {
+      "ruleNo": "COM-08",
+      "industry": "ALL",
+      "name": "储值真实能力",
+      "defaultRule": "仅使用PAY合法offer和本人授权；本金赠金与核销不在本域改写",
+      "storeOverride": "可关闭；开启须能力验收",
+      "failureReason": "FUNDING_CAPABILITY_UNAVAILABLE",
+      "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+      "status": "PROPOSED_NOT_IMPLEMENTED"
+    },
+    {
+      "ruleNo": "COM-09",
+      "industry": "ALL",
+      "name": "积分末段处理",
+      "defaultRule": "选用时在本次储值分配后计算，按原积分规则及剩余基数封顶，不自动使用",
+      "storeOverride": "可关闭及配获准组合；不可改顺序",
+      "failureReason": "POINTS_NOT_APPLICABLE",
+      "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+      "status": "PROPOSED_NOT_IMPLEMENTED"
+    },
+    {
+      "ruleNo": "COM-10",
+      "industry": "ALL",
+      "name": "抹零末段与额度",
+      "defaultRule": "积分后对获准未结剩余抹零；有券禁止；0余额不再减免",
+      "storeOverride": "可关闭及配受控上限",
+      "failureReason": "WAIVER_NOT_ALLOWED",
+      "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+      "status": "PROPOSED_NOT_IMPLEMENTED"
+    },
+    {
+      "ruleNo": "COM-11",
+      "industry": "ALL",
+      "name": "定点与金额守恒",
+      "defaultRule": "有限币种、数量精度、明确舍入与分摊；不负应收，不隐藏超收",
+      "storeOverride": "不可放宽算法约束",
+      "failureReason": "AMOUNT_INVARIANT_FAILED",
+      "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+      "status": "PROPOSED_NOT_IMPLEMENTED"
+    },
+    {
+      "ruleNo": "COM-12",
+      "industry": "ALL",
+      "name": "快照及确认",
+      "defaultRule": "绑定模板/门店/源版本、规则及报价指纹；UNKNOWN锁定范围，历史按原快照",
+      "storeOverride": "不可放宽",
+      "failureReason": "REQUOTE_OR_RECOVERY_REQUIRED",
+      "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+      "status": "PROPOSED_NOT_IMPLEMENTED"
+    }
+  ],
+  "industryRules": {
+    "FOOD": [
+      {
+        "ruleNo": "FOOD-01",
+        "industry": "FOOD",
+        "name": "餐牌及渠道计价",
+        "defaultRule": "只使用当前获准餐段/渠道/菜单发布修订；不能挑另渠道低价",
+        "storeOverride": "可配置已发布餐牌/渠道策略",
+        "failureReason": "MENU_REVISION_INVALID",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "FOOD-02",
+        "industry": "FOOD",
+        "name": "菜品与小料资格",
+        "defaultRule": "小料独立计价且可有独立优惠标记；不因主菜可优惠而自动优惠全部小料",
+        "storeOverride": "可按商品/组件配置排除",
+        "failureReason": "COMPONENT_ELIGIBILITY_INVALID",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "FOOD-03",
+        "industry": "FOOD",
+        "name": "套餐计价唯一",
+        "defaultRule": "父套餐价加补差与组件独立价选一种模型；冻结分摊，不重复收费",
+        "storeOverride": "只能选提供方支持的已发布模型",
+        "failureReason": "BUNDLE_PRICE_MODEL_CONFLICT",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "FOOD-04",
+        "industry": "FOOD",
+        "name": "商品排除默认",
+        "defaultRule": "酒水/特价菜等只有显式标记才排除；不能仅凭分类名硬编码",
+        "storeOverride": "可维护排除商品/分类",
+        "failureReason": "FOOD_PROMOTION_SCOPE_INVALID",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "FOOD-05",
+        "industry": "FOOD",
+        "name": "活动与券",
+        "defaultRule": "默认MULTI_KIND但每对组合依原权威允许；抵扣在折扣前的公式须受原合同支持",
+        "storeOverride": "可收紧及选择已注册策略",
+        "failureReason": "FOOD_STACK_NOT_ALLOWED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "FOOD-06",
+        "industry": "FOOD",
+        "name": "单券与多券",
+        "defaultRule": "默认1张；多现金券加抵扣券需原能力和总/分类限额",
+        "storeOverride": "可按能力开启及限额",
+        "failureReason": "FOOD_COUPON_LIMIT",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "FOOD-07",
+        "industry": "FOOD",
+        "name": "储值预留",
+        "defaultRule": "默认关闭；将来支持已验证餐饮来源及混合支付后启用",
+        "storeOverride": "可在验收后开启",
+        "failureReason": "FOOD_STORED_VALUE_UNAVAILABLE",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "FOOD-08",
+        "industry": "FOOD",
+        "name": "积分及服务费用",
+        "defaultRule": "积分末段；服务费/包装/配送不得默认用于凑商品券门槛",
+        "storeOverride": "可选原提供方允许的范围",
+        "failureReason": "FOOD_FEE_BENEFIT_SCOPE",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "FOOD-09",
+        "industry": "FOOD",
+        "name": "先吃后付与加菜",
+        "defaultRule": "已下单批次用冻结价；新增批次独立计价，账单优惠不重复应用",
+        "storeOverride": "不可回写历史单价",
+        "failureReason": "FOOD_FROZEN_PRICE_REQUIRED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "FOOD-10",
+        "industry": "FOOD",
+        "name": "AA及并桌",
+        "defaultRule": "受益、未付范围、券次数按核心原根及份额校验，不因换桌/拆份重置",
+        "storeOverride": "可开启已验收结账模式",
+        "failureReason": "FOOD_SCOPE_ALREADY_CLAIMED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "FOOD-11",
+        "industry": "FOOD",
+        "name": "员工优惠原因",
+        "defaultRule": "建议服务补偿、出品问题、获准议价、尾数减免、其他必填说明",
+        "storeOverride": "可维护分类/权限/审批额",
+        "failureReason": "FOOD_MANUAL_REASON_REQUIRED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "FOOD-12",
+        "industry": "FOOD",
+        "name": "退餐与制作分离",
+        "defaultRule": "退餐按冻结行价和优惠/资金分摊；制作损耗不自动变现金减免或可售库存",
+        "storeOverride": "不可绕过正式退餐协议",
+        "failureReason": "FOOD_RETURN_SOURCE_REQUIRED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "FOOD-13",
+        "industry": "FOOD",
+        "name": "收费与小费",
+        "defaultRule": "仅已发布收费策略；未验收的小费、最低消费等不得暗加",
+        "storeOverride": "可启用已支持费项；不得任意表达式",
+        "failureReason": "FOOD_FEE_POLICY_UNAVAILABLE",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "FOOD-14",
+        "industry": "FOOD",
+        "name": "抹零与现金找零",
+        "defaultRule": "用券禁人工抹零；无券依未付/额度；现金实收差额找零始终单列",
+        "storeOverride": "可收紧人工减免，不得混淆现金找零",
+        "failureReason": "FOOD_CASH_OR_WAIVER_INVALID",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      }
+    ],
+    "RETAIL": [
+      {
+        "ruleNo": "RETAIL-01",
+        "industry": "RETAIL",
+        "name": "SKU门店价格",
+        "defaultRule": "原SKU/门店/渠道价格及库存事实决定报价；会员价有权威来源",
+        "storeOverride": "可绑定已支持价格策略",
+        "failureReason": "RETAIL_PRICE_SOURCE_INVALID",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "RETAIL-02",
+        "industry": "RETAIL",
+        "name": "商品优惠范围",
+        "defaultRule": "特价品/赠品等显式排除；不得用不可优惠商品凑门槛",
+        "storeOverride": "可维护原规则允许的排除",
+        "failureReason": "RETAIL_ITEM_SCOPE_INVALID",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "RETAIL-03",
+        "industry": "RETAIL",
+        "name": "活动档位",
+        "defaultRule": "同活动按原活动规则择档，不能每个满减档重复相加",
+        "storeOverride": "可选择原权威已发布活动",
+        "failureReason": "RETAIL_ACTIVITY_TIER_CONFLICT",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "RETAIL-04",
+        "industry": "RETAIL",
+        "name": "活动与券顺序",
+        "defaultRule": "存量保持活动后用券及对应门槛；新公式不得自动改老券语义",
+        "storeOverride": "可关闭叠加，不可擅改提供方算法",
+        "failureReason": "RETAIL_ORDERING_UNSUPPORTED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "RETAIL-05",
+        "industry": "RETAIL",
+        "name": "单券与多券",
+        "defaultRule": "默认1张；多券能力未验收不能只靠门店开关开启",
+        "storeOverride": "可在验收上限内调整",
+        "failureReason": "RETAIL_MULTI_COUPON_UNAVAILABLE",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "RETAIL-06",
+        "industry": "RETAIL",
+        "name": "出资方及线下限制",
+        "defaultRule": "平台/商家优惠分列；线下不扩大当前平台券/活动适用性",
+        "storeOverride": "不可放宽原出资/支付约束",
+        "failureReason": "RETAIL_PLATFORM_BENEFIT_OFFLINE",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "RETAIL-07",
+        "industry": "RETAIL",
+        "name": "运费独立",
+        "defaultRule": "券/积分是否可作用运费按原权威；默认不把运费算商品门槛",
+        "storeOverride": "可选已支持运费优惠策略",
+        "failureReason": "RETAIL_FREIGHT_SCOPE_INVALID",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "RETAIL-08",
+        "industry": "RETAIL",
+        "name": "多门店分摊",
+        "defaultRule": "各门店、主体、币种和出资方分别核验；商家券不抵别店",
+        "storeOverride": "不可跨主体任意通用",
+        "failureReason": "RETAIL_STORE_ALLOCATION_INVALID",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "RETAIL-09",
+        "industry": "RETAIL",
+        "name": "会员价与折扣",
+        "defaultRule": "会员价是已解析基价或有身份的优惠，不能重复当两种价减两次",
+        "storeOverride": "可选原价策及合法叠加档案",
+        "failureReason": "RETAIL_MEMBER_PRICE_DUPLICATED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "RETAIL-10",
+        "industry": "RETAIL",
+        "name": "赠品与零金额",
+        "defaultRule": "赠品有来源/数量/分摊；0应收需合法零金额订单确认，不伪造支付成功",
+        "storeOverride": "可选已支持赠品活动",
+        "failureReason": "RETAIL_ZERO_DUE_UNVERIFIED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "RETAIL-11",
+        "industry": "RETAIL",
+        "name": "储值及积分",
+        "defaultRule": "储值默认关闭；积分由本人选择、末段按原规则；不改变原门禁",
+        "storeOverride": "可按真实能力启用或关闭",
+        "failureReason": "RETAIL_ASSET_CAPABILITY_REQUIRED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "RETAIL-12",
+        "industry": "RETAIL",
+        "name": "员工优惠原因",
+        "defaultRule": "建议商品瑕疵、价格纠错、客服补偿、获准议价、尾数减免",
+        "storeOverride": "可配原因及审批额度",
+        "failureReason": "RETAIL_MANUAL_REASON_REQUIRED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "RETAIL-13",
+        "industry": "RETAIL",
+        "name": "称重与数量",
+        "defaultRule": "仅在核心/库存协议支持的精度内计算；不把小数数量截成整数",
+        "storeOverride": "可选已支持计量模式",
+        "failureReason": "RETAIL_MEASURE_UNSUPPORTED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "RETAIL-14",
+        "industry": "RETAIL",
+        "name": "部分退款",
+        "defaultRule": "按原行价、资方、优惠和实付分摊退；不按当前门槛重新算整单",
+        "storeOverride": "不可改变已确认历史分摊",
+        "failureReason": "RETAIL_ORIGINAL_ALLOCATION_REQUIRED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      }
+    ],
+    "BEAUTY_SERVICE": [
+      {
+        "ruleNo": "BEAUTY-01",
+        "industry": "BEAUTY_SERVICE",
+        "name": "服务SKU计价",
+        "defaultRule": "项目/时长/技师等级差异用原正式SKU/受控价格策略",
+        "storeOverride": "可绑定已支持服务SKU",
+        "failureReason": "BEAUTY_SERVICE_PRICE_INVALID",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "BEAUTY-02",
+        "industry": "BEAUTY_SERVICE",
+        "name": "附加项目",
+        "defaultRule": "升级护理、材料、产品等分别有合法计价源行；备注不产生收费",
+        "storeOverride": "可维护可售附加项",
+        "failureReason": "BEAUTY_ADDON_SOURCE_REQUIRED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "BEAUTY-03",
+        "industry": "BEAUTY_SERVICE",
+        "name": "预约与成交",
+        "defaultRule": "预约估价不等于最终成交；服务加项、改价需新确认，不回写原消费",
+        "storeOverride": "可设报价有效期上限内策略",
+        "failureReason": "BEAUTY_SERVICE_RECONFIRM_REQUIRED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "BEAUTY-04",
+        "industry": "BEAUTY_SERVICE",
+        "name": "服务包与重复收费",
+        "defaultRule": "已被合法疗程/次数权益覆盖的项目不能再按完整现金价收费",
+        "storeOverride": "次卡未开通时不可启用",
+        "failureReason": "BEAUTY_RIGHTS_DOUBLE_CHARGE",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "BEAUTY-05",
+        "industry": "BEAUTY_SERVICE",
+        "name": "优惠组合",
+        "defaultRule": "默认SINGLE_KIND，券最多1张；多种优惠须逐项能力及规则验证",
+        "storeOverride": "可开启已支持组合",
+        "failureReason": "BEAUTY_BENEFIT_CONFLICT",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "BEAUTY-06",
+        "industry": "BEAUTY_SERVICE",
+        "name": "储值来源",
+        "defaultRule": "储值消费用真实CORE/SERVICE_USE等已支持来源；不能伪造普通订单",
+        "storeOverride": "可开启已验收路径",
+        "failureReason": "BEAUTY_STORED_SOURCE_INVALID",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "BEAUTY-07",
+        "industry": "BEAUTY_SERVICE",
+        "name": "储值不足",
+        "defaultRule": "首期服务核销需全额合格储值覆盖；不足拒绝，不自动扣余额补现金",
+        "storeOverride": "当前不可放宽；混合需新合同验收",
+        "failureReason": "BEAUTY_FULL_STORED_VALUE_REQUIRED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "BEAUTY-08",
+        "industry": "BEAUTY_SERVICE",
+        "name": "本金赠金范围",
+        "defaultRule": "批次/门店/项目限制由PAY决定，外端只展示获准总额",
+        "storeOverride": "不可自选绕开受限批次",
+        "failureReason": "BEAUTY_LOT_SCOPE_INVALID",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "BEAUTY-09",
+        "industry": "BEAUTY_SERVICE",
+        "name": "身份与消费者确认",
+        "defaultRule": "会员码只识别本人/账户，核销还需核对项目金额并确认",
+        "storeOverride": "不可关闭真实授权",
+        "failureReason": "BEAUTY_CONSENT_REQUIRED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "BEAUTY-10",
+        "industry": "BEAUTY_SERVICE",
+        "name": "储值折扣与券",
+        "defaultRule": "储值支付不自动附带会员折扣；折扣作为独立规则参与互斥",
+        "storeOverride": "可配已发布会员优惠但不可破强制互斥",
+        "failureReason": "BEAUTY_CARD_DISCOUNT_CONFLICT",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "BEAUTY-11",
+        "industry": "BEAUTY_SERVICE",
+        "name": "积分末段",
+        "defaultRule": "仅在原源类型/积分规则均支持时选用；全额储值后无剩余不继续抵积分",
+        "storeOverride": "可关闭，不能虚构核销积分接线",
+        "failureReason": "BEAUTY_POINTS_SOURCE_UNSUPPORTED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "BEAUTY-12",
+        "industry": "BEAUTY_SERVICE",
+        "name": "员工优惠原因",
+        "defaultRule": "建议服务补偿、服务调整、获准议价、价格纠错、尾数减免",
+        "storeOverride": "可配原因及受控审批额",
+        "failureReason": "BEAUTY_MANUAL_REASON_REQUIRED",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "BEAUTY-13",
+        "industry": "BEAUTY_SERVICE",
+        "name": "同服务来源唯一",
+        "defaultRule": "同一任务不能同时建现金单和储值核销来源重复结清；未知时不换路径",
+        "storeOverride": "不可放宽",
+        "failureReason": "BEAUTY_SOURCE_ALREADY_BOUND",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "ruleNo": "BEAUTY-14",
+        "industry": "BEAUTY_SERVICE",
+        "name": "售后当前边界",
+        "defaultRule": "冻结原核销依据；首期不提供线上退款/冲正，不删流水或人工改余额",
+        "storeOverride": "仅预留后续正式售后协议",
+        "failureReason": "BEAUTY_REFUND_CAPABILITY_UNAVAILABLE",
+        "ownerValidation": "ORIGINAL_DOMAIN_FACTS_REQUIRED",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      }
+    ]
+  },
+  "reasonCodesStatus": "PROPOSED_NOT_EXISTING_ERRORCODE",
+  "unresolvedTerminology": "人工找零按人工抹零建模，真实现金找零始终独立；业务术语仍需最终确认"
+}

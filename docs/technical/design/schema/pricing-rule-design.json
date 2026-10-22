@@ -1,6 +1,6 @@
 {
   "status": "PROPOSED_NOT_IMPLEMENTED",
-  "version": "PRICING_RULE_SPEC_V1",
+  "version": "PRICING_RULE_SPEC_V2",
   "date": "2026-10-22",
   "scope": "Multi-industry pure fixed-point engine; Java server now, conforming client runtime later",
   "authority": "Server confirmation and original product/order/benefit/PAY owners",
@@ -28,8 +28,9 @@
     "ACTIVITY",
     "COUPON",
     "FEE_TAX",
-    "MANUAL_WAIVER",
     "FUNDING",
+    "POINTS",
+    "MANUAL_WAIVER",
     "CASH_ROUNDING",
     "CASH_TENDER"
   ],
@@ -107,6 +108,13 @@
       "stage": "CASH_TENDER",
       "basis": "CASH_DUE",
       "note": "Only cash tender yields change"
+    },
+    {
+      "kind": "POINTS",
+      "category": "SETTLEMENT_DEDUCTION",
+      "stage": "POINTS",
+      "basis": "OWNER_VERIFIED_REMAINDER_AFTER_STORED_VALUE",
+      "note": "No automatic use; source and actual points owner must support the sequence"
     }
   ],
   "referenceProfile": {
@@ -117,8 +125,8 @@
     "couponLimitPerOrder": 1,
     "percentAndCashCoupon": "EXCLUSIVE_BY_DEFAULT",
     "explicitCouponStackOrder": [
-      "PERCENT_COUPON",
-      "CASH_COUPON"
+      "CASH_COUPON",
+      "PERCENT_COUPON"
     ],
     "unknownCompatibility": "DENY",
     "cashRoundingEnabled": false,
@@ -154,19 +162,21 @@
       "payableRateBp": 9000,
       "cashCouponMinor": 2000,
       "profileAndOwnerPermit": true,
-      "dueMinor": 16000,
-      "reverseOrderDueMinor": 16200
+      "dueMinor": 16200,
+      "reverseOrderDueMinor": 16000,
+      "formulaId": "DEDUCT_THEN_DISCOUNT_V1"
     },
     {
       "id": "waiver_and_cash",
       "baseMinor": 10987,
-      "couponMinor": 1000,
       "waiverMinor": 87,
       "dueMinor": 9900,
       "storedValueMinor": 6000,
       "cashDueMinor": 3900,
       "cashTenderedMinor": 4000,
-      "changeMinor": 100
+      "changeMinor": 100,
+      "activityMinor": 1000,
+      "couponCount": 0
     }
   ],
   "compatibilityRules": [
@@ -250,8 +260,8 @@
       "default": "EXCLUSIVE",
       "override": "OWNER_AND_PROFILE_APPROVAL",
       "order": [
-        "PERCENT_COUPON",
-        "CASH_COUPON"
+        "CASH_COUPON",
+        "PERCENT_COUPON"
       ]
     },
     {
@@ -472,5 +482,21 @@
       },
       "requires": "DEDUCTION_COUPON is an owner-resolved contract classification; actual authority must support multi-coupon use"
     }
-  }
+  },
+  "formulaCatalog": [
+    {
+      "formulaId": "DEDUCT_THEN_DISCOUNT_V1",
+      "description": "Eligible amount minus owner-approved monetary deductions, then payable rate; excluded items added back",
+      "supportedOnlyIf": "Benefit owners support this exact base/order"
+    },
+    {
+      "formulaId": "DEDUCT_THEN_STORED_VALUE_V1",
+      "description": "Monetary deductions, then approved stored-value amount; no percent coupon"
+    },
+    {
+      "formulaId": "LEGACY_OWNER_COMPAT",
+      "description": "Explicit original-owner order and allocation, no automatic migration"
+    }
+  ],
+  "industryRuleCatalog": "pricing-industry-rule-catalog.json"
 }
