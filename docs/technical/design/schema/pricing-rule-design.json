@@ -1,6 +1,6 @@
 {
   "status": "PROPOSED_NOT_IMPLEMENTED",
-  "version": "PRICING_RULE_SPEC_V3",
+  "version": "PRICING_RULE_SPEC_V4",
   "date": "2026-10-22",
   "scope": "Multi-industry pure fixed-point engine; Java server now, conforming client runtime later",
   "authority": "Server confirmation and original product/order/benefit/PAY owners",
@@ -32,6 +32,7 @@
     "POINTS",
     "MANUAL_WAIVER",
     "CASH_ROUNDING",
+    "TAX_FINALIZE",
     "CASH_TENDER"
   ],
   "ruleTypes": [
@@ -115,6 +116,13 @@
       "stage": "POINTS",
       "basis": "OWNER_VERIFIED_REMAINDER_AFTER_STORED_VALUE",
       "note": "No automatic use; source and actual points owner must support the sequence"
+    },
+    {
+      "kind": "TAX",
+      "category": "TAX",
+      "stage": "FEE_TAX",
+      "basis": "VERIFIED_REGIONAL_TAX_CLASS_AND_CONSIDERATION",
+      "note": "Provisional line tax before funding, final tax after accepted points/waiver; never add tax twice to inclusive prices"
     }
   ],
   "referenceProfile": {
@@ -429,7 +437,8 @@
       "manualOperationEnabled",
       "reasonCategories",
       "approvalLimits",
-      "excludedItemRules"
+      "excludedItemRules",
+      "taxBindingToVerifiedRegionalProfile"
     ],
     "notStoreEditable": [
       "arithmeticVersion",
@@ -437,7 +446,10 @@
       "formulaExecutionOrder",
       "mandatoryRules",
       "assetEligibilityOrOwnership",
-      "authorizationChecks"
+      "authorizationChecks",
+      "legalTaxRate",
+      "legalTaxClassDefinition",
+      "taxRoundingAlgorithm"
     ],
     "industryTemplates": [
       {
@@ -476,7 +488,14 @@
             "PERCENT_COUPON",
             "DEDUCTION_COUPON"
           ]
-        ]
+        ],
+        "schemaVersion": 2,
+        "taxBinding": {
+          "taxProfileNo": null,
+          "resolveFrom": "VERIFIED_STORE_REGION_AND_TRANSACTION_CONTEXT",
+          "missingPolicy": "BLOCK",
+          "storeMayEditRate": false
+        }
       },
       {
         "industryNo": "RETAIL",
@@ -515,7 +534,14 @@
             "PERCENT_COUPON",
             "DEDUCTION_COUPON"
           ]
-        ]
+        ],
+        "schemaVersion": 2,
+        "taxBinding": {
+          "taxProfileNo": null,
+          "resolveFrom": "VERIFIED_STORE_REGION_AND_TRANSACTION_CONTEXT",
+          "missingPolicy": "BLOCK",
+          "storeMayEditRate": false
+        }
       },
       {
         "industryNo": "BEAUTY_SERVICE",
@@ -554,7 +580,14 @@
             "PERCENT_COUPON",
             "DEDUCTION_COUPON"
           ]
-        ]
+        ],
+        "schemaVersion": 2,
+        "taxBinding": {
+          "taxProfileNo": null,
+          "resolveFrom": "VERIFIED_STORE_REGION_AND_TRANSACTION_CONTEXT",
+          "missingPolicy": "BLOCK",
+          "storeMayEditRate": false
+        }
       }
     ],
     "storeExample": {
@@ -579,7 +612,8 @@
         ]
       },
       "requires": "DEDUCTION_COUPON is an owner-resolved contract classification; actual authority must support multi-coupon use"
-    }
+    },
+    "initialDataSource": "pricing-initial-data.example.json"
   },
   "formulaCatalog": [
     {
@@ -633,5 +667,51 @@
       "usedCouponCount": 2,
       "requiresOwnerApproval": true
     }
-  ]
+  ],
+  "stageSemantics": {
+    "FEE_TAX": "FEE_ASSESSMENT_AND_PROVISIONAL_TAX_FOR_FUNDING_PLAN",
+    "TAX_FINALIZE": "ONE_FINAL_TAX_PASS_AFTER_ACCEPTED_POINTS_WAIVER_AND_CASH_ROUNDING; NO_RESELECTING_FUNDING_OR_BENEFITS"
+  },
+  "taxModel": {
+    "status": "PROPOSED_NOT_IMPLEMENTED",
+    "initialDataSource": "pricing-initial-data.example.json",
+    "taxModes": [
+      "INCLUSIVE",
+      "EXCLUSIVE"
+    ],
+    "regionalAuthority": "PLATFORM_VALIDATED_REGION_POLICY_NOT_FREE_STORE_RATE",
+    "uaeStandardRateBp": 500,
+    "uaeConsumerDisplayMode": "INCLUSIVE",
+    "taxClassUnknown": "BLOCK",
+    "adjustmentTreatments": [
+      "REDUCES_TAX_BASE",
+      "SETTLES_CONSIDERATION"
+    ],
+    "taxFinalization": "AFTER_POINTS_AND_WAIVER_BEFORE_TENDER",
+    "storedValueChangesTaxBase": false,
+    "frozenTaxPointPolicy": "VERIFY_LEGAL_TAX_POINT_FROM_SOURCE_NOT_PAYMENT_CLOCK",
+    "snapshotFields": [
+      "taxPolicyNo",
+      "taxPolicyVersion",
+      "taxPoint",
+      "supplierTaxRegistrationRef",
+      "taxClass",
+      "rateBp",
+      "priceTaxMode",
+      "netMinor",
+      "taxMinor",
+      "grossMinor",
+      "roundingAlgorithmVersion"
+    ],
+    "requiresInvoiceCustomerAndThirdPartyConsiderationReconciliation": true,
+    "invoiceLineIdentity": "FROZEN_TAX_INVOICE_LINE_REF_DISTINCT_FROM_PRICING_UNIT",
+    "adjustmentAmountBasis": [
+      "TAX_EXCLUSIVE",
+      "PAYABLE_GROSS"
+    ],
+    "finalizationPasses": 1,
+    "considerationOffsets": "VERIFIED_POINTS_OR_VOUCHER_CONSIDERATION_SEPARATE_FROM_PRICE_DISCOUNTS_AND_STORED_PAYMENT",
+    "vatReferences": "pricing-initial-data.example.json#sourceReferences"
+  },
+  "exampleTaxScope": "Existing promotion-only examples are not region-specific taxable invoices; use initial-data calculationVectors for VAT net/tax/gross examples."
 }
