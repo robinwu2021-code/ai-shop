@@ -9,6 +9,7 @@ import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
 import ai.neargo.shop.beauty.entity.BtyAppointmentPreparation;
 import ai.neargo.shop.beauty.entity.BtyAppointmentResourceFence;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
+import ai.neargo.shop.beauty.policy.ReceptionIdentity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -29,19 +30,36 @@ public final class AppointmentPreparationService {
     private final AppointmentAccess access;
     private final ObjectProvider<CustomerIdentityPort> customers;
     private final ObjectProvider<ServiceCatalogFactsPort> products;
+    private final ReceptionIdentity identities;
     public AppointmentPreparationService(AppointmentPersistence db, AppointmentAccess access,
-            ObjectProvider<CustomerIdentityPort> customers, ObjectProvider<ServiceCatalogFactsPort> products) {
+            ObjectProvider<CustomerIdentityPort> customers, ObjectProvider<ServiceCatalogFactsPort> products,
+            ReceptionIdentity identities) {
         this.db = db;
         this.access = access;
         this.customers = customers;
         this.products = products;
+        this.identities = identities;
     }
     public AppointmentPreviewVO save(AppointmentMatching.Matched match, String customerRef, BtyAppointment target,
             long expected) {
+        return save(match, customerRef, null, target, expected);
+    }
+    public AppointmentPreviewVO save(AppointmentMatching.Matched match, String customerRef, String guestNo,
+            BtyAppointment target, long expected) {
         var user = SecurityUtils.requireUser();
         String customer;
-        if (user.isConsumer()) { access.consumer(user.userNo()); customer = user.userNo(); }
+        String verifiedGuest = null;
+        if (customerRef != null && guestNo != null) { throw BizException.of(ErrorCode.BAD_REQUEST); }
+        ReceptionIdentity.VerifiedIdentity guest = guestNo == null ? null
+                : identities.guest(match.scope().entityNo(), match.scope().storeNo(), guestNo);
+        if (user.isConsumer()) {
+            access.consumer(user.userNo()); customer = target == null ? user.userNo() : target.getCustomerRef();
+        }
         else if (target != null) { customer = target.getCustomerRef(); }
+        else if (guest != null) {
+            customer = "USER".equals(guest.kind()) ? guest.reference() : null;
+            verifiedGuest = "GUEST".equals(guest.kind()) ? guest.reference() : null;
+        }
         else if (customerRef == null) { customer = null; }
         else {
             customer = customers.getObject().resolveReference(new EntitlementContext("MAIN", user.userNo(),
@@ -55,7 +73,8 @@ public final class AppointmentPreparationService {
         p.setPreviewNo(BizKey.next("BTPR")); p.setActorNo(user.userNo());
         p.setActorRealm(user.realm().name()); p.setActorKind(user.subjectKind().name());
         p.setCustomerRef(customer);
-        p.setGuestRef(customer == null ? target == null ? BizKey.next("BTG") : target.getGuestRef() : null);
+        p.setGuestRef(customer == null ? verifiedGuest != null ? verifiedGuest
+                : target == null ? BizKey.next("BTG") : target.getGuestRef() : null);
         p.setAppointmentNo(target == null ? null : target.getAppointmentNo()); p.setExpectedRevision(expected);
         p.setPolicyVersionNo(match.policyVersionNo()); p.setStartAt(match.startAt().toLocalDateTime());
         p.setEndAt(match.endAt().toLocalDateTime()); p.setTimezone("UTC");
@@ -65,7 +84,18 @@ public final class AppointmentPreparationService {
         db.tx(() -> { db.preparations.insert(p); return null; });
         return view(p);
     }
-    public void customer(BtyAppointmentPreparation preview, String reference) {
+    public void customer(BtyAppointmentPreparation preview, String reference, String guestNo) {
+        if (guestNo != null) {
+            if (reference != null) { throw BizException.of(ErrorCode.BAD_REQUEST); }
+            var identity = identities.guest(preview.getEntityNo(), preview.getStoreNo(), guestNo);
+            AppointmentPersistence.require("USER".equals(identity.kind())
+                    ? identity.reference().equals(preview.getCustomerRef()) && preview.getGuestRef() == null
+                    : preview.getCustomerRef() == null && identity.reference().equals(preview.getGuestRef()));
+            return;
+        }
+        if (preview.getGuestRef() != null && !preview.getGuestRef().startsWith("BTG")) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         if (reference == null) { AppointmentPersistence.require(preview.getCustomerRef() == null); return; }
         var resolved = customers.getObject().resolveReference(new EntitlementContext("MAIN",
                 access.actor().operatorNo(),

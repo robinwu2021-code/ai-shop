@@ -68,7 +68,7 @@ class BeautySchemaMigrationIT {
         initialize("migrate");
         initialize("validate");
         initialize("migrate");
-        assertEquals(24, count("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"));
+        assertEquals(28, count("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"));
         assertEquals(1, count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='1' AND success=1"));
         assertEquals(0, count("SELECT COUNT(*) FROM information_schema.tables "
                 + "WHERE table_schema=DATABASE() AND table_name='flyway_schema_history'"));
@@ -168,6 +168,35 @@ class BeautySchemaMigrationIT {
         initialize("migrate");
         execute("ALTER TABLE bty_store_policy DROP INDEX uk_bty_store_policy_2, "
                 + "ADD UNIQUE KEY uk_bty_store_policy_2 (tenant_no,entity_no,store_no(1))");
+        assertThrows(IllegalStateException.class, () -> initialize("validate"));
+    }
+
+    @Test void v5ReceiptScopeAndChecksAreStrictlyValidated() throws SQLException {
+        initialize("migrate");
+        assertEquals(1, count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='5' AND success=1"));
+        execute("ALTER TABLE bty_guest_claim_receipt DROP INDEX uk_bty_guest_claim_receipt_1");
+        assertThrows(IllegalStateException.class, () -> initialize("validate"));
+    }
+    @Test void v5ChallengeConstraintAndColumnsCannotDrift() throws SQLException {
+        initialize("migrate");
+        execute("ALTER TABLE bty_arrival_challenge DROP CHECK ck_bty_arrival_challenge_4");
+        assertThrows(IllegalStateException.class, () -> initialize("validate"));
+    }
+    @Test void jdbcEnumRepresentationAndLiteralCaseDriftRemainStrict() throws SQLException {
+        initialize("migrate");
+        try (var connection = source.getConnection(); var statement = connection.createStatement();
+                var rows = statement.executeQuery("SELECT check_clause FROM information_schema.check_constraints "
+                        + "WHERE constraint_schema=DATABASE() AND constraint_name='ck_bty_reception_operation_3'")) {
+            assertTrue(rows.next());
+            String clause = rows.getString(1);
+            // Integer codepoints distinguish JDBC raw characters from CLI/JSON escaping.
+            System.out.println("V5_JDBC_CHECK_CODEPOINTS=" + clause.codePoints().boxed().toList());
+            assertTrue(clause.contains("RECEIVED"));
+        }
+        execute("ALTER TABLE bty_reception_operation DROP CHECK ck_bty_reception_operation_3");
+        execute("ALTER TABLE bty_reception_operation ADD CONSTRAINT ck_bty_reception_operation_3 "
+                + "CHECK (phase IN ('received','RESOURCE_PENDING','ARRIVAL_PENDING',"
+                + "'OPEN_PENDING','SUCCEEDED','REJECTED'))");
         assertThrows(IllegalStateException.class, () -> initialize("validate"));
     }
 

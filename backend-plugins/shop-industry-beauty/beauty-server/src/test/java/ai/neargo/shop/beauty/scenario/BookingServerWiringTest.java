@@ -40,7 +40,8 @@ class BookingServerWiringTest {
                 BeautyMappers.AppointmentResourceIntentMapper.class, BeautyMappers.AppointmentResourceFenceMapper.class,
                 BeautyMappers.AppointmentItemMapper.class, BeautyMappers.AppointmentAssignmentMapper.class,
                 BeautyMappers.ActionLogMapper.class, BeautyMappers.AppointmentResourceDecisionMapper.class,
-                BeautyMappers.ServiceRequirementMapper.class}) {
+                BeautyMappers.ServiceRequirementMapper.class, BeautyMappers.ReceptionOperationMapper.class,
+                BeautyMappers.GuestClaimReceiptMapper.class, BeautyMappers.ArrivalChallengeMapper.class}) {
             runner = runner.withBean(type, () -> mock(type));
         }
         return runner;

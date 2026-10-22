@@ -9,8 +9,16 @@ import java.time.OffsetDateTime;
 
 /** Appointment protocol projection; resource evidence stays on trusted server links. */
 public record PreviewAppointmentReq(String storeNo, String customerRef, List<AppointmentItemReq> items,
-        List<AppointmentAssignmentReq> requestedAssignments, OffsetDateTime startAt) {
+        List<AppointmentAssignmentReq> requestedAssignments, OffsetDateTime startAt, String guestNo) {
+    public PreviewAppointmentReq(String storeNo, String customerRef, List<AppointmentItemReq> items,
+            List<AppointmentAssignmentReq> requestedAssignments, OffsetDateTime startAt) {
+        this(storeNo, customerRef, items, requestedAssignments, startAt, null);
+    }
+
     public PreviewAppointmentReq {
+        if (guestNo != null && (guestNo.isBlank() || guestNo.length() > 32 || customerRef != null)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         if ((storeNo == null || storeNo.isBlank() || storeNo.length() > 32)
                 || (items == null || items.isEmpty() || items.size() > 10 || items.stream().anyMatch(Objects::isNull))
                 || (startAt == null)

@@ -1,0 +1,59 @@
+package ai.neargo.shop.beauty.service.impl;
+
+import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
+import ai.neargo.shop.beauty.mapper.BeautyMappers;
+import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.idem.IdempotencyScope;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.dao.DuplicateKeyException;
+
+/** Durable verified claim intents contain only canonical references, never tickets or contact fingerprints. */
+public final class ReceptionPreparation {
+    private final AppointmentPersistence db;
+    private final BeautyMappers.ReceptionOperationMapper operations;
+    public ReceptionPreparation(AppointmentPersistence db, BeautyMappers.ReceptionOperationMapper operations) {
+        this.db = db; this.operations = operations;
+    }
+    public BtyReceptionOperation findClaim(String entity, String store, String key, String hash) {
+        var user = SecurityUtils.requireUser();
+        var prior = db.read(() -> operations.selectOne(Wrappers.<BtyReceptionOperation>lambdaQuery()
+                .eq(BtyReceptionOperation::getTenantNo, user.tenantNo()).eq(BtyReceptionOperation::getEntityNo, entity)
+                .eq(BtyReceptionOperation::getStoreNo, store).eq(BtyReceptionOperation::getActorNo, user.userNo())
+                .eq(BtyReceptionOperation::getActorRealm, user.realm().name())
+                .eq(BtyReceptionOperation::getActorKind, user.subjectKind().name())
+                .eq(BtyReceptionOperation::getEndpoint, "BAPI-032")
+                .eq(BtyReceptionOperation::getKeyHash,
+                        IdempotencyScope.requestHash(IdempotencyScope.requireKey(key)))));
+        if (prior != null) { AppointmentPersistence.require(hash.equals(prior.getRequestHash())); }
+        return prior;
+    }
+    public BtyReceptionOperation beginClaim(String entity, String store, String guest, String target,
+            String key, String hash) {
+        var prior = findClaim(entity, store, key, hash);
+        if (prior != null) { return prior; }
+        var user = SecurityUtils.requireUser();
+        var op = new BtyReceptionOperation();
+        op.setEntityNo(entity); op.setStoreNo(store); op.setOperationNo(BizKey.next("BTRO"));
+        op.setActorNo(user.userNo()); op.setActorRealm(user.realm().name()); op.setActorKind(user.subjectKind().name());
+        op.setEndpoint("BAPI-032"); op.setAction("CLAIM_GUEST");
+        op.setKeyHash(IdempotencyScope.requestHash(IdempotencyScope.requireKey(key))); op.setRequestHash(hash);
+        op.setIdentityKind("USER"); op.setIdentityRef(target); op.setPhase("RECEIVED");
+        op.setDerivedKeyHash(derived(entity, store, "BAPI-032", key));
+        op.setFrozenPayload(db.json.writeValueAsString(new ClaimPayload(1, guest, target)));
+        try { db.tx(() -> { operations.insert(op); return null; }); }
+        catch (DuplicateKeyException raced) {
+            var winner = findClaim(entity, store, key, hash);
+            if (winner == null) { throw raced; }
+            return winner;
+        }
+        return op;
+    }
+    public static String derived(String entity, String store, String endpoint, String key) {
+        var user = SecurityUtils.requireUser();
+        return IdempotencyScope.requestHash("BEAUTY_RECEPTION_V1", user.tenantNo(), entity, store,
+                user.realm().name(), user.subjectKind().name(), user.userNo(), endpoint,
+                IdempotencyScope.requestHash(IdempotencyScope.requireKey(key)));
+    }
+    public record ClaimPayload(int schemaVersion, String guestNo, String targetUserNo) { }
+}

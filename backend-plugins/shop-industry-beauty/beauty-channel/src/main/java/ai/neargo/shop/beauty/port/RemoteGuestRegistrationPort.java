@@ -4,6 +4,9 @@ import ai.neargo.shop.auth.DelegatedIdentityContext;
 import ai.neargo.shop.spi.member.GuestRegistrationInternalApi;
 import ai.neargo.shop.spi.member.GuestRegistrationPort;
 import ai.neargo.svc.client.ServiceCalls;
+import ai.neargo.svc.client.ServiceCallException;
+import ai.neargo.svc.client.CallOutcome;
+import java.util.function.Supplier;
 
 /** Only complete owner responses matching the authenticated request become shared guest facts. */
 public final class RemoteGuestRegistrationPort implements GuestRegistrationPort {
@@ -12,7 +15,7 @@ public final class RemoteGuestRegistrationPort implements GuestRegistrationPort 
     @Override public Registration register(Scope scope, RegisterCommand command) {
         current(scope);
         var request = new GuestRegistrationInternalApi.Register(scope, command);
-        var result = ServiceCalls.call("PLATFORM", () -> api.register(request));
+        var result = write(() -> api.register(request));
         require(result != null && request.equals(result.request()) && result.registration() != null);
         var registration = result.registration();
         require(id(registration.guestNo()) && "REGISTERED".equals(registration.state()) && registration.revision() == 1
@@ -36,11 +39,21 @@ public final class RemoteGuestRegistrationPort implements GuestRegistrationPort 
     @Override public Claim claim(Scope scope, String guestNo, ClaimCommand command) {
         current(scope);
         var request = new GuestRegistrationInternalApi.ClaimRequest(scope, guestNo, command);
-        var result = ServiceCalls.call("PLATFORM", () -> api.claim(request));
+        var result = write(() -> api.claim(request));
         require(result != null && request.equals(result.request()) && result.claim() != null);
         var claim = result.claim();
         require(guestNo.equals(claim.guestNo()) && id(claim.userNo()) && claim.revision() == 2);
         return claim;
+    }
+    private static <T> T write(Supplier<T> invocation) {
+        try { return ServiceCalls.call("PLATFORM", invocation); }
+        catch (ServiceCallException failure) {
+            if (failure.statusCode() == 0 && (failure.outcome() == CallOutcome.TIMEOUT
+                    || failure.outcome() == CallOutcome.UNREACHABLE || failure.outcome() == CallOutcome.REMOTE_ERROR)) {
+                throw new GuestRegistrationPort.ResultUnknown();
+            }
+            throw failure;
+        }
     }
     private static GuestFact fact(GuestFact fact, String guestNo) {
         require(fact != null && guestNo.equals(fact.guestNo())

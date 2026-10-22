@@ -4,6 +4,9 @@ import ai.neargo.shop.beauty.job.AppointmentRecoveryJob;
 import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
+import ai.neargo.shop.beauty.policy.CustomerOwnership;
+import ai.neargo.shop.beauty.policy.ReceptionIdentity;
+import org.springframework.context.annotation.Import;
 import ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl;
 import ai.neargo.shop.beauty.service.ServiceCatalogQueryService;
 import ai.neargo.shop.beauty.service.impl.AppointmentAvailabilityServiceImpl;
@@ -35,6 +38,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Source authority has no eager executor dependency; external provider capabilities resolve per call. */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnBeautyEnabled
+@Import(BeautyReceptionConfiguration.class)
 public class BeautyAppointmentConfiguration {
     @Bean
     AppointmentPersistence appointmentPersistence(BeautyMappers.AppointmentMapper roots,
@@ -49,8 +53,9 @@ public class BeautyAppointmentConfiguration {
                 items, assignments, actions, json, manager);
     }
     @Bean
-    AppointmentAccess appointmentAccess(ObjectProvider<MerchantOperatorAccessPort> access) {
-        return new AppointmentAccess(access);
+    AppointmentAccess appointmentAccess(ObjectProvider<MerchantOperatorAccessPort> access,
+            CustomerOwnership ownership) {
+        return new AppointmentAccess(access, ownership);
     }
     @Bean
     AppointmentMatching appointmentMatching(ServiceCatalogQueryService catalog,
@@ -61,8 +66,9 @@ public class BeautyAppointmentConfiguration {
     }
     @Bean
     AppointmentPreparationService appointmentPreparationService(AppointmentPersistence db, AppointmentAccess access,
-            ObjectProvider<CustomerIdentityPort> customers, ObjectProvider<ServiceCatalogFactsPort> products) {
-        return new AppointmentPreparationService(db, access, customers, products);
+            ObjectProvider<CustomerIdentityPort> customers, ObjectProvider<ServiceCatalogFactsPort> products,
+            ReceptionIdentity identity) {
+        return new AppointmentPreparationService(db, access, customers, products, identity);
     }
     @Bean
     AppointmentCoordinator appointmentCoordinator(AppointmentPersistence db, AppointmentAccess access,

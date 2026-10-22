@@ -4,6 +4,7 @@ import {fileURLToPath} from 'node:url';
 import {randomUUID} from 'node:crypto';
 import assert from 'node:assert/strict';
 const root = fileURLToPath(new URL('../', import.meta.url));
+const beautyReception = process.argv.includes('--beauty-reception');
 const name = 'codex-member-guest-' + randomUUID();
 const restartFile = '/tmp/' + name + '.properties';
 const docker = (args, input) => execFileSync('docker', args,
@@ -36,15 +37,16 @@ try {
       readFileSync(root + 'backend/shop-app/src/main/resources/db/migration/V538__member_reference_actor_namespace.sql', 'utf8'));
   }
   const args = ['-o', '-Dmaven.repo.local=/tmp/codex-beauty-bm01-m2', '-f', root + 'backend/pom.xml',
-    '-pl', 'shop-app', '-am', 'test', '-Dtest=' + (process.env.MEMBER_GUEST_TESTS || 'MemberGuestRegistrationIT'),
+    '-pl', 'shop-app', '-am', 'test', '-Dtest=' + (beautyReception ? 'BeautyReceptionIdentityIT' : process.env.MEMBER_GUEST_TESTS || 'MemberGuestRegistrationIT'),
     '-Dsurefire.failIfNoSpecifiedTests=false', '-Dmember-guest.test.native=true',
     '-Dspring.datasource.url=jdbc:mysql://' + address + '/guest_test?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC',
     '-Dspring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver', '-Dspring.datasource.username=root',
     '-Dspring.datasource.password=', '-Dspring.sql.init.mode=never',
     '-Dmember-guest.test.restart-file=' + restartFile];
+  if (beautyReception) args.push('-Pbeauty-embedded', '-Dbeauty.reception.test.native=true');
   const run = selected => spawnSync('mvn', selected, {cwd: root, env: process.env, stdio: 'inherit'});
   assert.equal(run(args).status, 0, 'Member guest native tests failed');
-  if (!process.argv.includes('--red') && !process.env.MEMBER_GUEST_TESTS) {
+  if (!beautyReception && !process.argv.includes('--red') && !process.env.MEMBER_GUEST_TESTS) {
     const second = args.map(arg => arg.startsWith('-Dtest=')
       ? '-Dtest=MemberGuestRegistrationIT#restartJvmReplaysOriginalKeyFromEncryptedStorage' : arg);
     assert.equal(run(second).status, 0, 'Member guest fresh JVM replay failed');

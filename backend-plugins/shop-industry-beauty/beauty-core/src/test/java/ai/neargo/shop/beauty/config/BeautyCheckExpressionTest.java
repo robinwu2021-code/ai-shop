@@ -64,4 +64,15 @@ class BeautyCheckExpressionTest {
         assertThrows(IllegalStateException.class, () -> canonical("a > 0; SELECT 1"));
         assertThrows(IllegalStateException.class, () -> canonical("a >="));
     }
+    @Test
+    void receptionStringChecksPreserveCaseAndRejectUnknownFunctions() {
+        assertEquals(canonical("phase IN ('RECEIVED','SUCCEEDED')"),
+                canonical("(`phase` in (_utf8mb4'RECEIVED',_utf8mb4'SUCCEEDED'))"));
+        assertNotEquals(canonical("phase = 'USER'"), canonical("phase = 'user'"));
+        assertEquals(canonical("phase = 'USER'"), canonical("phase = _utf8mb4\\'USER\\'"));
+        assertEquals(canonical("phase = 'USER'"), canonical("phase = _latin1\\'USER\\'"));
+        assertEquals(canonical("CHAR_LENGTH(code) = 43"), canonical("(char_length(`code`) = 43)"));
+        assertThrows(IllegalStateException.class, () -> canonical("concat(code) = 'x'"));
+        assertThrows(IllegalStateException.class, () -> canonical("phase = 'unterminated"));
+    }
 }

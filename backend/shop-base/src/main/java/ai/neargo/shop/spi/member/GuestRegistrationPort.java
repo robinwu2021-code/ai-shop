@@ -9,6 +9,11 @@ public interface GuestRegistrationPort {
     GuestFact verify(Scope scope, String guestNo, String claimToken);
     Claim claim(Scope scope, String guestNo, ClaimCommand command);
 
+    /** Only a transport outcome with an unknown committed result; capability and permission failures stay errors. */
+    final class ResultUnknown extends RuntimeException {
+        public ResultUnknown() { super("guest owner result unknown"); }
+    }
+
     record Scope(String entityNo, String storeNo, DelegatedIdentity identity) { }
     record RegisterCommand(String contact, String displayName, boolean consent, String idempotencyKey) {
         @Override public String toString() { return "RegisterCommand[REDACTED]"; }

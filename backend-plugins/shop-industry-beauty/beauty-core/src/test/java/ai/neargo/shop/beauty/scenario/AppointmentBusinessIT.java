@@ -24,11 +24,13 @@ import ai.neargo.shop.beauty.service.ServiceOperationRecoveryService;
 import ai.neargo.shop.beauty.service.impl.AppointmentRecovery;
 import ai.neargo.shop.beauty.service.impl.AppointmentPersistence;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
+import ai.neargo.shop.spi.member.GuestRegistrationPort;
 import ai.neargo.shop.spi.personnel.PersonnelFactsPort;
 import ai.neargo.shop.spi.product.ServiceCatalogFactsPort;
 import ai.neargo.shop.spi.product.StoreSalesCatalogPort;
@@ -81,6 +83,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
     private final ObjectMapper json = new ObjectMapper();
     private final ControlledOwner owner = new ControlledOwner();
     private boolean allowed = true;
+    private boolean guestClaimed;
     private String revokedActor;
     private boolean occupied;
     private boolean otherOccupied;
@@ -136,7 +139,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
                     return new CustomerIdentityPort.ResolvedCustomer("USR1");
                 })
                 .withBean(MerchantOperatorAccessPort.class, () -> q -> allowed && !q.operatorNo().equals(revokedActor)
-                        && "biz:booking:manage".equals(q.permission()))
+                        && Set.of("biz:booking:manage", "biz:customer").contains(q.permission()))
                 .withBean(ServiceCatalogFactsPort.class, () -> new ServiceCatalogFactsPort() {
                     @Override public Store store(String number) {
                         outside();
@@ -431,6 +434,43 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
                     + "WHERE action='APPOINTMENT_NO_SHOW_PREPARED'", String.class))
                     .contains("not arrived", "EVIDENCE");
             assertThat(owner.hold.status()).isEqualTo("RELEASED");
+        });
+    }
+
+    @Test
+    void explicitOwnerGuestIdentitySurvivesCreationAndClaimedGuestMapsToUser() {
+        var guestOwner = org.mockito.Mockito.mock(GuestRegistrationPort.class);
+        org.mockito.Mockito.when(guestOwner.get(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.anyString())).thenAnswer(invocation -> {
+            outside(); String guest = invocation.getArgument(1);
+            if (!"GUE1".equals(guest)) { throw BizException.of(ErrorCode.NOT_FOUND); }
+            return new GuestRegistrationPort.GuestFact(guest, guestClaimed ? "CLAIMED" : "REGISTERED",
+                    guestClaimed ? "USR1" : null, guestClaimed ? 2 : 1);
+        });
+        business().withBean(GuestRegistrationPort.class, () -> guestOwner).run(context -> {
+            owner.authority = context.getBean(ResourceSourceAuthorityPort.class);
+            var service = context.getBean(AppointmentService.class);
+            login(LoginUser.merchant("M1", "staff"));
+            var request = new PreviewAppointmentReq("S", null, List.of(new AppointmentItemReq("SKU", 1)),
+                    List.of(), start, "GUE1");
+            var preview = service.previewAppointment("E", "S", "M1", request);
+            assertThatThrownBy(() -> service.createAppointment("E", "S", "M1",
+                    new CreateAppointmentReq(preview.previewNo(), null, List.of(), null), "missing"))
+                    .isInstanceOf(BizException.class);
+            var created = service.createAppointment("E", "S", "M1",
+                    new CreateAppointmentReq(preview.previewNo(), null, List.of(), null, "GUE1"), "guest");
+            assertThat(sql.queryForObject("SELECT guest_ref FROM bty_appointment WHERE appointment_no=?",
+                    String.class, created.appointmentNo())).isEqualTo("GUE1");
+            var beforeClaim = service.previewAppointment("E", "S", "M1", request);
+            guestClaimed = true;
+            assertThatThrownBy(() -> service.createAppointment("E", "S", "M1",
+                    new CreateAppointmentReq(beforeClaim.previewNo(), null, List.of(), null, "GUE1"), "changed"))
+                    .isInstanceOf(BizException.class);
+            var claimed = service.previewAppointment("E", "S", "M1", request);
+            assertThat(sql.queryForObject("SELECT customer_ref FROM bty_appointment_preparation WHERE preview_no=?",
+                    String.class, claimed.previewNo())).isEqualTo("USR1");
+            assertThatThrownBy(() -> service.previewAppointment("E", "S", "M1", new PreviewAppointmentReq("S",
+                    null, request.items(), List.of(), start, "UNKNOWN"))).isInstanceOf(BizException.class);
         });
     }
 

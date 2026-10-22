@@ -1,5 +1,13 @@
 package ai.neargo.shop.beauty.mapper;
 
+import ai.neargo.shop.beauty.entity.BtyArrivalChallenge;
+
+import ai.neargo.shop.beauty.entity.BtyGuestClaimReceipt;
+
+import ai.neargo.shop.beauty.entity.BtyWorkOrderContext;
+
+import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
+
 import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentResourceDecision;
@@ -763,4 +771,25 @@ public final class BeautyMappers {
                 @Param("until") LocalDateTime until);
     }
     public interface AppointmentResourceDecisionMapper extends BaseMapper<BtyAppointmentResourceDecision> { }
+    /** Scoped reception persistence; authorization remains in services. */
+    public interface ReceptionOperationMapper extends BaseMapper<BtyReceptionOperation> {
+        @Select("""
+                SELECT * FROM bty_reception_operation WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                AND store_no=#{storeNo} AND operation_no=#{operationNo} AND deleted=0 FOR UPDATE
+                """)
+        BtyReceptionOperation selectScopedForUpdate(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo, @Param("operationNo") String operationNo);
+    }
+
+    /** Scoped reception persistence; authorization remains in services. */
+    public interface WorkOrderContextMapper extends BaseMapper<BtyWorkOrderContext> {
+    }
+
+    /** Scoped reception persistence; authorization remains in services. */
+    public interface GuestClaimReceiptMapper extends BaseMapper<BtyGuestClaimReceipt> {
+    }
+
+    /** Scoped reception persistence; authorization remains in services. */
+    public interface ArrivalChallengeMapper extends BaseMapper<BtyArrivalChallenge> {
+    }
 }

@@ -9,6 +9,11 @@ import java.util.Map;
 public final class BeautyDataScopeRegistration implements DataScopeRegistrar {
     @Override
     public void register(DataScopeTableRegistry registry) {
+        registry.register("bty_reception_operation", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("bty_work_order_context", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("bty_guest_claim_receipt", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("bty_arrival_challenge", Map.of(ScopeDim.MERCHANT, "entity_no"));
+
         registry.register("bty_service_submission", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("bty_trade_binding", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("bty_source_allocation_guard", Map.of(ScopeDim.MERCHANT, "entity_no"));

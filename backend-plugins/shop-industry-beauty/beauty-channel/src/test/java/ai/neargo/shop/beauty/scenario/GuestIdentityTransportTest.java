@@ -12,6 +12,8 @@ import ai.neargo.shop.spi.member.GuestRegistrationPort;
 import ai.neargo.shop.spi.member.GuestRegistrationPort.Scope;
 import ai.neargo.shop.spi.security.DelegatedIdentity;
 import ai.neargo.shop.svc.InternalHttp;
+import ai.neargo.svc.client.CallOutcome;
+import ai.neargo.svc.client.ServiceCallException;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -132,11 +134,67 @@ class GuestIdentityTransportTest {
             assertThat(c.getBean(GuestRegistrationPort.class)).isSameAs(local);
         });
     }
+    @Test void writeTransportClassificationDoesNotTurnOwnerRejectionIntoPending() {
+        var api = org.mockito.Mockito.mock(GuestRegistrationInternalApi.class);
+        var port = new RemoteGuestRegistrationPort(api);
+        var register = new GuestRegistrationPort.RegisterCommand("contact", "Guest", true, "key");
+        var claim = new GuestRegistrationPort.ClaimCommand("cr1", "token", "key");
+        DelegatedIdentityContext.call(ID, () -> {
+            for (var outcome : new CallOutcome[]{CallOutcome.TIMEOUT, CallOutcome.UNREACHABLE,
+                    CallOutcome.REMOTE_ERROR}) {
+                var failure = new ServiceCallException(outcome, "PLATFORM", 0, "unknown", null);
+                org.mockito.Mockito.when(api.register(org.mockito.ArgumentMatchers.any())).thenThrow(failure);
+                org.mockito.Mockito.when(api.claim(org.mockito.ArgumentMatchers.any())).thenThrow(failure);
+                assertThatThrownBy(() -> port.register(SCOPE, register))
+                        .isInstanceOf(GuestRegistrationPort.ResultUnknown.class).hasNoCause();
+                assertThatThrownBy(() -> port.claim(SCOPE, "G", claim))
+                        .isInstanceOf(GuestRegistrationPort.ResultUnknown.class).hasNoCause();
+                org.mockito.Mockito.reset(api);
+            }
+            for (int status : new int[]{0, 403, 503}) {
+                var outcome = status == 0 ? CallOutcome.NOT_CONFIGURED : CallOutcome.REMOTE_ERROR;
+                var failure = new ServiceCallException(outcome, "PLATFORM", status, "rejected", null);
+                org.mockito.Mockito.when(api.register(org.mockito.ArgumentMatchers.any())).thenThrow(failure);
+                org.mockito.Mockito.when(api.claim(org.mockito.ArgumentMatchers.any())).thenThrow(failure);
+                assertThatThrownBy(() -> port.register(SCOPE, register)).isSameAs(failure);
+                assertThatThrownBy(() -> port.claim(SCOPE, "G", claim)).isSameAs(failure);
+                org.mockito.Mockito.reset(api);
+            }
+            return null;
+        });
+    }
+    @Test void actualHttpDenialsMissingAddressAndUnreadableResponseAreClassified() throws Exception {
+        var command = new GuestRegistrationPort.RegisterCommand("private-contact", "Guest", true, "key");
+        try (var tcp = new Tcp()) {
+            var port = new RemoteGuestRegistrationPort(tcp.http().client("PLATFORM", GuestRegistrationInternalApi.class,
+                    Duration.ofSeconds(2)));
+            DelegatedIdentityContext.call(ID, () -> {
+                for (int status : new int[]{403, 503}) {
+                    tcp.status = status;
+                    assertThatThrownBy(() -> port.register(SCOPE, command))
+                            .isInstanceOfSatisfying(ServiceCallException.class,
+                                    failure -> assertThat(failure.statusCode()).isEqualTo(status));
+                }
+                tcp.status = 200; tcp.reply = body -> "not-json";
+                assertThatThrownBy(() -> port.register(SCOPE, command))
+                        .isInstanceOf(GuestRegistrationPort.ResultUnknown.class)
+                        .hasMessage("guest owner result unknown").hasNoCause();
+                var absent = new InternalHttp(service -> Optional.empty(), "key");
+                var unavailable = new RemoteGuestRegistrationPort(absent.client("PLATFORM",
+                        GuestRegistrationInternalApi.class, Duration.ofSeconds(2)));
+                assertThatThrownBy(() -> unavailable.register(SCOPE, command))
+                        .isInstanceOfSatisfying(ServiceCallException.class,
+                                failure -> assertThat(failure.outcome()).isEqualTo(CallOutcome.NOT_CONFIGURED));
+                return null;
+            });
+        }
+    }
     private static String json(Object value) { return JSON.writeValueAsString(value); }
     private static final class Tcp implements AutoCloseable {
         final HttpServer server;
         final AtomicInteger calls = new AtomicInteger();
         Function<String, String> reply = body -> "{}";
+        int status = 200;
         Tcp() throws Exception {
             server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
             server.createContext("/", exchange -> {
@@ -147,7 +205,7 @@ class GuestIdentityTransportTest {
                             StandardCharsets.UTF_8))
                             .getBytes(StandardCharsets.UTF_8);
                     exchange.getResponseHeaders().set("Content-Type", "application/json");
-                    exchange.sendResponseHeaders(200, body.length); exchange.getResponseBody().write(body);
+                    exchange.sendResponseHeaders(status, body.length); exchange.getResponseBody().write(body);
                 } finally { exchange.close(); }
             });
             server.start();

@@ -27,6 +27,7 @@ import ai.neargo.shop.beauty.entity.BtyAppointment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
+import ai.neargo.shop.beauty.policy.CustomerOwnership;
 import ai.neargo.shop.beauty.service.AppointmentService;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -60,7 +61,7 @@ public final class AppointmentServiceImpl implements AppointmentService {
         AppointmentPersistence.require(store.equals(req.storeNo()));
         var scope = matching.scope(store); AppointmentPersistence.require(entity.equals(scope.entityNo()));
         return preparations.save(matching.match(scope, false, req.items(), req.requestedAssignments(), null,
-                req.startAt()), req.customerRef(), null, 0);
+                req.startAt()), req.customerRef(), req.guestNo(), null, 0);
     }
     @Override
     public AppointmentPreviewVO previewMyAppointment(String user, PreviewMyAppointmentReq req) {
@@ -75,7 +76,7 @@ public final class AppointmentServiceImpl implements AppointmentService {
         var p = db.preview(req.previewNo());
         AppointmentPersistence.require(entity.equals(p.getEntityNo()) && store.equals(p.getStoreNo()));
         // The preview's canonical customer is immutable. Re-resolve a supplied member reference before comparing.
-        preparations.customer(p, req.customerRef());
+        preparations.customer(p, req.customerRef(), req.guestNo());
         return create(req.previewNo(), req.sourceRefs(), req.consentRef(), key, db.json.writeValueAsString(req));
     }
     @Override
@@ -245,7 +246,8 @@ public final class AppointmentServiceImpl implements AppointmentService {
     @Override
     public PageData<MyAppointmentVO> listMyAppointments(String user, MyAppointmentQuery q) {
         access.consumer(user);
-        var page = page(query(q.from(), q.to(), q.status()).eq(BtyAppointment::getCustomerRef, user), q.page(),
+        var page = page(query(q.from(), q.to(), q.status()).apply(CustomerOwnership.appointmentPredicate(), user),
+                q.page(),
                 q.size());
         return new PageData<>(page.getRecords().stream().map(root -> new MyAppointmentVO(root.getAppointmentNo(),
                 root.getVersion(), root.getStatus(), currentOperation(root), null)).toList(),

@@ -16,7 +16,12 @@ try {
   const address = docker(['port', name, '3306/tcp']);
   assert.match(address, /^127\.0\.0\.1:[0-9]+$/);
   const jdbc = `jdbc:mysql://${address}/mysql?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC`;
-  const selection = process.argv.includes('--appointment-business-only') ? 'AppointmentBusinessIT'
+  const selection = process.argv.includes('--receipt-ownership-only')
+    ? 'GuestClaimReceiptIT#receiptOwnershipIsAppliedBeforePagingAndRequiresCompleteScope'
+    : process.argv.includes('--reception-with-appointments')
+    ? 'GuestClaimReceiptIT,BeautySchemaMigrationIT,ResourceIntentMigrationIT,AppointmentBusinessIT'
+    : process.argv.includes('--reception-only') ? 'GuestClaimReceiptIT,BeautySchemaMigrationIT,ResourceIntentMigrationIT'
+    : process.argv.includes('--appointment-business-only') ? 'AppointmentBusinessIT'
     : process.argv.includes('--appointment-migrations-only') ? 'BeautySchemaMigrationIT,ResourceIntentMigrationIT'
     : process.argv.includes('--resource-intent-only') ? 'ResourceIntentPersistenceIT,ResourceIntentMigrationIT'
     : process.argv.includes('--publication-only') ? 'BeautyPolicyPublicationIT'

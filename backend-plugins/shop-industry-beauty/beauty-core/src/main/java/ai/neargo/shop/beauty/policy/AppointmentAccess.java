@@ -15,7 +15,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** Checks real current actor namespaces and live store grants; a stored actor name is never an authority. */
 public final class AppointmentAccess {
     private final ObjectProvider<MerchantOperatorAccessPort> access;
-    public AppointmentAccess(ObjectProvider<MerchantOperatorAccessPort> access) { this.access = access; }
+    private final CustomerOwnership ownership;
+    public AppointmentAccess(ObjectProvider<MerchantOperatorAccessPort> access, CustomerOwnership ownership) {
+        this.access = access; this.ownership = ownership;
+    }
     public LoginUser current(String actor) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("appointment actor checks require no caller transaction");
@@ -40,7 +43,7 @@ public final class AppointmentAccess {
         var user = SecurityUtils.requireUser();
         if ("CONSUMER".equals(user.realm().name())) {
             consumer(user.userNo());
-            if (!user.userNo().equals(root.getCustomerRef())) { denied(); }
+            if (!ownership.owns(root, user.userNo())) { denied(); }
         } else {
             merchant(root.getEntityNo(), root.getStoreNo(), user.userNo(), write);
         }

@@ -885,7 +885,7 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.ChangeAppointmentReq` | REQ | previewNo,expectedRevision,reason,consentRef?；previewNo,expectedRevision,consentRef? | BAPI-043、BAPI-152 |
 | `ai.neargo.shop.beauty.dto.ChangeResourcesReq` | REQ | previewNo,expectedRevision,reason | BAPI-028 |
 | `ai.neargo.shop.beauty.dto.CheckInReq` | REQ | appointmentNo,identityProof | BAPI-047 |
-| `ai.neargo.shop.beauty.dto.ClaimGuestReq` | REQ | verifiedIdentity,claimToken | BAPI-032 |
+| `ai.neargo.shop.beauty.dto.ClaimGuestReq` | REQ | String verifiedIdentity(cr1_43), claimToken(base64url43)；toString脱敏 | BAPI-032 |
 | `ai.neargo.shop.beauty.dto.CloseWorkOrderReq` | REQ | previewNo,expectedRevision | BAPI-066 |
 | `ai.neargo.shop.beauty.dto.ClosurePreviewVO` | VO | ClosurePreviewVO含阻断项 | BAPI-065 |
 | `ai.neargo.shop.beauty.dto.CommissionEntryQuery` | QUERY | storeNo,personnelNo,period,page,size | BAPI-108 |
@@ -895,7 +895,7 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.CommissionPolicyVersionVO` | VO | CommissionPolicyVersionVO | BAPI-107 |
 | `ai.neargo.shop.beauty.dto.CompleteServiceStepReq` | REQ | expectedRevision,completedQuantity,evidenceRef? | BAPI-060 |
 | `ai.neargo.shop.beauty.dto.CompleteTaskReq` | REQ | expectedRevision,bindingRevision,quantity,consentRef? | BAPI-064 |
-| `ai.neargo.shop.beauty.dto.CreateAppointmentReq` | REQ | previewNo,customerRef,sourceRefs?,consentRef? | BAPI-039 |
+| `ai.neargo.shop.beauty.dto.CreateAppointmentReq` | REQ | previewNo,customerRef,sourceRefs?,consentRef?,guestNo?；保留原4参构造器 | BAPI-039 |
 | `ai.neargo.shop.beauty.dto.CreateMyAppointmentReq` | REQ | previewNo,sourceRefs?,consentRef? | BAPI-148 |
 | `ai.neargo.shop.beauty.dto.CreateServicePrintDocumentReq` | REQ | documentType,workOrderNo/sourceRef,templateVersion | BAPI-130 |
 | `ai.neargo.shop.beauty.dto.CreateTreatmentPlanReq` | REQ | customerNo,entitlementRef?,sessions | BAPI-087 |
@@ -908,8 +908,8 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.FollowUpTaskVO` | VO | PageData<FollowUpTaskVO>；FollowUpTaskVO | BAPI-126、BAPI-127 |
 | `ai.neargo.shop.beauty.dto.GroupSchedulePreviewVO` | VO | GroupSchedulePreviewVO仅规划 | BAPI-029 |
 | `ai.neargo.shop.beauty.dto.GroupScheduleQuery` | QUERY | participants,items,locations,requirements | BAPI-029 |
-| `ai.neargo.shop.beauty.dto.GuestClaimVO` | VO | GuestClaimVO | BAPI-032 |
-| `ai.neargo.shop.beauty.dto.GuestRegistrationVO` | VO | GuestRegistrationVO不伪造买家 | BAPI-031 |
+| `ai.neargo.shop.beauty.dto.GuestClaimVO` | VO | String operationNo,guestNo,userNo; Long claimRevision; String operationState,recoveryAction | BAPI-032 |
+| `ai.neargo.shop.beauty.dto.GuestRegistrationVO` | VO | String operationNo(nullable), guestNo, claimToken, state; Long revision; String operationState,recoveryAction；unknown无本域operation，REQUIRES_ORIGINAL_ACTOR | BAPI-031 |
 | `ai.neargo.shop.beauty.dto.HandoverTaskReq` | REQ | previewNo,expectedRevision,reason | BAPI-062 |
 | `ai.neargo.shop.beauty.dto.InterruptTaskReq` | REQ | expectedRevision,action,reason,actualQuantity | BAPI-063 |
 | `ai.neargo.shop.beauty.dto.JoinWaitingQueueReq` | REQ | customerRef,items | BAPI-050 |
@@ -935,7 +935,7 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.PlanWorkOrderStagesReq` | REQ | stageItems,resourceRequirements,expectedRevision | BAPI-067 |
 | `ai.neargo.shop.beauty.dto.PolicyVersionVO` | VO | PolicyVersionVO | BAPI-002 |
 | `ai.neargo.shop.beauty.dto.PreviewAppointmentChangeReq` | REQ | expectedRevision,items,startAt,assignments | BAPI-042 |
-| `ai.neargo.shop.beauty.dto.PreviewAppointmentReq` | REQ | storeNo,customerRef,items,requestedAssignments,startAt | BAPI-038 |
+| `ai.neargo.shop.beauty.dto.PreviewAppointmentReq` | REQ | storeNo,customerRef,items,requestedAssignments,startAt,guestNo?；保留原5参构造器 | BAPI-038 |
 | `ai.neargo.shop.beauty.dto.PreviewMyAppointmentChangeReq` | REQ | expectedRevision,startAt,items,requestedPersonnelNo | BAPI-151 |
 | `ai.neargo.shop.beauty.dto.PreviewMyAppointmentReq` | REQ | storeNo,items,startAt,requestedPersonnelNo | BAPI-147 |
 | `ai.neargo.shop.beauty.dto.PreviewResourceChangeReq` | REQ | targetRef,newAssignments,newEndAt,expectedRevision | BAPI-027 |
@@ -962,7 +962,7 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.RecoveryWorkitemQuery` | QUERY | entityNo,storeNo,kind,page,size | BAPI-138 |
 | `ai.neargo.shop.beauty.dto.RecoveryWorkitemVO` | VO | PageData<RecoveryWorkitemVO> | BAPI-138 |
 | `ai.neargo.shop.beauty.dto.RegisterAssetDisputeReq` | REQ | sourceRef,assetUseNo,reason,evidence | BAPI-103 |
-| `ai.neargo.shop.beauty.dto.RegisterGuestReq` | REQ | contact,displayName,consent | BAPI-031 |
+| `ai.neargo.shop.beauty.dto.RegisterGuestReq` | REQ | String contact, String displayName, boolean consent；031 owner HMAC同键变参校验，本域不存联系资料hash | BAPI-031 |
 | `ai.neargo.shop.beauty.dto.RemedyCaseVO` | VO | RemedyCaseVO审批不等于退款成功 | BAPI-102 |
 | `ai.neargo.shop.beauty.dto.ReportExportVO` | VO | ReportExportVO含水位与到期下载；ReportExportVO下载二次鉴权 | BAPI-121、BAPI-122 |
 | `ai.neargo.shop.beauty.dto.RequestReportExportReq` | REQ | storeNos,reportType,filters,purpose | BAPI-121 |
@@ -1212,3 +1212,22 @@ a2仍须实现正式权限、持久预约生成计划、同Binding幂等及可�
 机器身份为shop-base的DelegatedIdentity与shop-base-auth的DelegatedIdentityContext；只在令牌校验后以consumer/merchantByUser/merchant恢复精确命名空间，finally恢复先前上下文。无存储用户名伪造身份。
 BOOKING VIEW或MANAGE可读、MANAGE写；C私有入口显式CONSUMER/USR；公开availability匿名。search incomplete独立ErrorCode80104（三语），内部422保留语义，availability返回complete=false。
 所有远程请求在事务外；Lookup显式found，失败不作为absence；source完整Binding和owner完整返回身份校验，capacity透传独立factAt及完整Replacement。CustomerIdentity只读真实成员所有者，不增加金融许可。
+
+
+## Task55A身份/认领/到店码增量
+
+Task55A service only; original 160 identifiers unchanged; no reception HTTP/remote/job yet
+
+```java
+GuestRegistrationVO GuestRegistrationService.registerGuest(String entityNo, String storeNo, String actorNo, RegisterGuestReq req, String idempotencyKey)
+GuestClaimVO GuestRegistrationService.claimGuest(String entityNo, String storeNo, String actorNo, String guestNo, ClaimGuestReq req, String idempotencyKey)
+ArrivalChallengeVO ReceptionService.issueArrivalChallenge(String entityNo, String storeNo, String actorNo, String idempotencyKey)
+GuestClaimVO GuestRegistrationServiceImpl.recoverClaim(String entityNo, String storeNo, String actorNo, String operationNo) [internal]
+```
+
+ArrivalChallengeVO(challengeNo,storeNo,code,issuedAt,expiresAt)：SecureRandom32字节43字符；UTC毫秒；固定90秒原键不续期，禁止进入日志/operation/outbox。
+ReceptionAccess/Identity/Preparation/CustomerOwnership：当前CUSTOMER核验、真实GuestRegistrationPort/CustomerIdentityPort、immutable guest/USER intent、同tenant/entity/store receipt归属；sql先过滤再page/count。
+BeautyMappers新增ReceptionOperationMapper.selectScopedForUpdate(entityNo,storeNo,operationNo)及WorkOrderContextMapper/GuestClaimReceiptMapper/ArrivalChallengeMapper继承BaseMapper；entity继承BaseEntity。
+REGISTER直接owner派生完整namespace key；本域无登记operation或低熵联系资料摘要。CLAIM本域成功时receipt+operation+ActionLog+BeautyReceptionStateChanged/outbox同事务。
+ResultUnknown只表示通信结果未知；Remote明确HTTP403/503及NOT_CONFIGURED保持失败；合法owner CLAIMED仅在先存规范USER匹配后允许当前员工补receipt，不冒充原actor。
+真实member/mc1/cr1消费bridge位于shop-app；core owner/resource边界用controlled fixture，非真实资源网络验收。

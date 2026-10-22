@@ -23,7 +23,7 @@ class ResourceIntentMigrationIT extends BeautyExecutionFixture {
         assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_flyway_history WHERE version='2' AND success=1",
                 Integer.class)).isOne();
         assertThat(sql.queryForObject("SELECT COUNT(*) FROM information_schema.tables "
-                + "WHERE table_schema=DATABASE()", Integer.class)).isEqualTo(24);
+                + "WHERE table_schema=DATABASE()", Integer.class)).isEqualTo(28);
     }
     @Test
     void v1RequiresExplicitUpgradeAndRetainsExistingAppointments() {

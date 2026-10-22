@@ -26,7 +26,7 @@ def generate():
         for f in t['fields']:
             assert f.get('references', '') in names | EXTERNAL | {''}, (t['name'], f)
     lines = ['# 美业与共用人员资源数据库字段字典', '',
-             '> 状态：原41项目标基线保留；BM03正式V1–V4共23项私表，增量另列 · 2026-10-22',
+             '> 状态：原41项目标基线保留；Task55A正式V1–V5共27项私表，增量另列 · 2026-10-22',
              '> 由 `python3 scripts/gen-beauty-database-design.py` 生成，勿手改；真源：[数据库设计源](./schema/beauty-database-design.json)。',
              '> 业务约束及复用边界：[数据库结构设计](./美业系统-数据库结构设计.md)。本册不是Flyway迁移，不输出可执行建表SQL。', '',
              '## 一、公共字段与约束', '',
@@ -101,6 +101,16 @@ def generate():
             for field in table['fields']:
                 lines.append(f'| {field["name"]} | {field["type"]} | {field["nullable"]} | {field["description"]} |')
             lines += ['', '唯一键均含tenant_no/entity_no：' + '；'.join(', '.join(key) for key in table['unique']) + '。', '']
+    lines += ['## Task55A接待身份基础（私有V5）', '',
+              '四项增量表使私表合计27，历史表另计。这里只交付登记/认领回执/到店码及基础表；签到、工单、恢复扫描尚未交付。V1–V4保持冻结。', '',
+              '真源：[beauty-reception-schema.json](./schema/beauty-reception-schema.json)；生成器gen-beauty-reception-schema.mjs；正式迁移SHA及原生测试见Task55A报告。', '']
+    reception = json.loads((SOURCE.parent / 'beauty-reception-schema.json').read_text())
+    for table in reception['tables']:
+        lines += ['### ' + table['name'], '', '| 字段 | 类型 | 可空 | 含义 |', '|---|---|---|---|']
+        for field in table['fields']:
+            lines.append(f'| {field["name"]} | {field["type"]} | {field["nullable"]} | {field["description"]} |')
+        lines += ['', '唯一键：' + '；'.join(', '.join(key) for key in table['unique']) + '。',
+                  'CHECK：' + '；'.join(table['checks']) + '。', '']
     outputs[OUTPUT] = '\n'.join(lines)
     return outputs, tables
 

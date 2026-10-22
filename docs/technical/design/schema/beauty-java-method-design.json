@@ -738,7 +738,8 @@
       "inputType": "RegisterGuestReq",
       "flow": "guest",
       "readOnly": false,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK55A_SERVICE_ONLY_HTTP_PENDING"
     },
     {
       "apiId": "BAPI-032",
@@ -802,7 +803,8 @@
       "inputType": "ClaimGuestReq",
       "flow": "guest",
       "readOnly": false,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK55A_SERVICE_ONLY_HTTP_PENDING"
     },
     {
       "apiId": "BAPI-034",
@@ -6390,7 +6392,7 @@
       "class": "ai.neargo.shop.beauty.dto.RegisterGuestReq",
       "kind": "REQ",
       "fieldsContract": [
-        "contact,displayName,consent"
+        "String contact, String displayName, boolean consent；031 owner HMAC同键变参校验，本域不存联系资料hash"
       ],
       "apiIds": [
         "BAPI-031"
@@ -6400,7 +6402,7 @@
       "class": "ai.neargo.shop.beauty.dto.GuestRegistrationVO",
       "kind": "VO",
       "fieldsContract": [
-        "GuestRegistrationVO不伪造买家"
+        "String operationNo(nullable), guestNo, claimToken, state; Long revision; String operationState,recoveryAction；unknown无本域operation，REQUIRES_ORIGINAL_ACTOR"
       ],
       "apiIds": [
         "BAPI-031"
@@ -6410,7 +6412,7 @@
       "class": "ai.neargo.shop.beauty.dto.ClaimGuestReq",
       "kind": "REQ",
       "fieldsContract": [
-        "verifiedIdentity,claimToken"
+        "String verifiedIdentity(cr1_43), claimToken(base64url43)；toString脱敏"
       ],
       "apiIds": [
         "BAPI-032"
@@ -6420,7 +6422,7 @@
       "class": "ai.neargo.shop.beauty.dto.GuestClaimVO",
       "kind": "VO",
       "fieldsContract": [
-        "GuestClaimVO"
+        "String operationNo,guestNo,userNo; Long claimRevision; String operationState,recoveryAction"
       ],
       "apiIds": [
         "BAPI-032"
@@ -6510,7 +6512,7 @@
       "class": "ai.neargo.shop.beauty.dto.PreviewAppointmentReq",
       "kind": "REQ",
       "fieldsContract": [
-        "storeNo,customerRef,items,requestedAssignments,startAt"
+        "storeNo,customerRef,items,requestedAssignments,startAt,guestNo?；保留原5参构造器"
       ],
       "apiIds": [
         "BAPI-038"
@@ -6532,7 +6534,7 @@
       "class": "ai.neargo.shop.beauty.dto.CreateAppointmentReq",
       "kind": "REQ",
       "fieldsContract": [
-        "previewNo,customerRef,sourceRefs?,consentRef?"
+        "previewNo,customerRef,sourceRefs?,consentRef?,guestNo?；保留原4参构造器"
       ],
       "apiIds": [
         "BAPI-039"
@@ -11118,5 +11120,22 @@
       "owner": "不改变共用owner",
       "rule": "public controllers仅api+enabled；恢复Job仅api；独立SERVER默认api且没有beauty-web"
     }
-  ]
+  ],
+  "receptionFoundation": {
+    "status": "Task55A service only; original 160 identifiers unchanged; no reception HTTP/remote/job yet",
+    "methods": [
+      "GuestRegistrationVO GuestRegistrationService.registerGuest(String entityNo, String storeNo, String actorNo, RegisterGuestReq req, String idempotencyKey)",
+      "GuestClaimVO GuestRegistrationService.claimGuest(String entityNo, String storeNo, String actorNo, String guestNo, ClaimGuestReq req, String idempotencyKey)",
+      "ArrivalChallengeVO ReceptionService.issueArrivalChallenge(String entityNo, String storeNo, String actorNo, String idempotencyKey)",
+      "GuestClaimVO GuestRegistrationServiceImpl.recoverClaim(String entityNo, String storeNo, String actorNo, String operationNo) [internal]"
+    ],
+    "contracts": [
+      "ArrivalChallengeVO(challengeNo,storeNo,code,issuedAt,expiresAt)：SecureRandom32字节43字符；UTC毫秒；固定90秒原键不续期，禁止进入日志/operation/outbox。",
+      "ReceptionAccess/Identity/Preparation/CustomerOwnership：当前CUSTOMER核验、真实GuestRegistrationPort/CustomerIdentityPort、immutable guest/USER intent、同tenant/entity/store receipt归属；sql先过滤再page/count。",
+      "BeautyMappers新增ReceptionOperationMapper.selectScopedForUpdate(entityNo,storeNo,operationNo)及WorkOrderContextMapper/GuestClaimReceiptMapper/ArrivalChallengeMapper继承BaseMapper；entity继承BaseEntity。",
+      "REGISTER直接owner派生完整namespace key；本域无登记operation或低熵联系资料摘要。CLAIM本域成功时receipt+operation+ActionLog+BeautyReceptionStateChanged/outbox同事务。",
+      "ResultUnknown只表示通信结果未知；Remote明确HTTP403/503及NOT_CONFIGURED保持失败；合法owner CLAIMED仅在先存规范USER匹配后允许当前员工补receipt，不冒充原actor。",
+      "真实member/mc1/cr1消费bridge位于shop-app；core owner/resource边界用controlled fixture，非真实资源网络验收。"
+    ]
+  }
 }

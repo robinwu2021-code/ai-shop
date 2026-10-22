@@ -6,10 +6,10 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-/** Small closed grammar for the frozen numeric/time invariants; grouping is retained in the operator tree. */
+/** Closed numeric/time/ASCII-enum grammar; grouping is retained in the operator tree. */
 final class BeautyCheckExpression {
     private static final Pattern TOKEN = Pattern.compile(
-            "\\G\\s*([a-z_][a-z0-9_]*|[0-9]+|<=|>=|<>|!=|[()=<>+,])");
+            "\\G\\s*('(?:''|[^'])*'|[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|<=|>=|<>|!=|[()=<>+,])");
     private final List<String> tokens;
     private int position;
 
@@ -18,12 +18,15 @@ final class BeautyCheckExpression {
     }
 
     static String canonical(String expression) {
-        String input = expression.strip().toLowerCase(Locale.ROOT).replace("`", "");
+        String input = expression.strip().replace("`", "");
+        // MySQL CHECK_CLAUSE escapes literal delimiters. Only ASCII enum literals are normalized here.
+        input = input.replaceAll("(_utf8mb4|_latin1)\\\\'([a-zA-Z_]+)\\\\'", "$1'$2'");
         List<String> tokens = new ArrayList<>();
         var matcher = TOKEN.matcher(input);
         int end = 0;
         while (matcher.find()) {
-            tokens.add(matcher.group(1));
+            String token = matcher.group(1);
+            tokens.add(token.startsWith("'") ? token : token.toLowerCase(Locale.ROOT));
             end = matcher.end();
         }
         require(end == input.length() && !tokens.isEmpty());
@@ -89,9 +92,14 @@ final class BeautyCheckExpression {
         }
         require(position < tokens.size());
         String token = tokens.get(position++);
+        if (Set.of("_utf8mb4", "_latin1").contains(token)) {
+            require(position < tokens.size() && tokens.get(position).startsWith("'"));
+            token = tokens.get(position++);
+        }
+        if (token.startsWith("'")) { return "literal(" + token + ")"; }
         require(token.matches("[a-z_][a-z0-9_]*|[0-9]+"));
         if (take("(")) {
-            require(Set.of("json_valid", "octet_length", "length").contains(token));
+            require(Set.of("json_valid", "octet_length", "length", "char_length").contains(token));
             String argument = primary();
             expect(")");
             // MySQL stores OCTET_LENGTH as its byte-length synonym LENGTH in CHECK_CLAUSE.

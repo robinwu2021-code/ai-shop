@@ -264,6 +264,10 @@ def generate():
         'BOOKING VIEW或MANAGE可读、MANAGE写；C私有入口显式CONSUMER/USR；公开availability匿名。search incomplete独立ErrorCode80104（三语），内部422保留语义，availability返回complete=false。',
         '所有远程请求在事务外；Lookup显式found，失败不作为absence；source完整Binding和owner完整返回身份校验，capacity透传独立factAt及完整Replacement。CustomerIdentity只读真实成员所有者，不增加金融许可。', '']
     increment += booking_increment
+    foundation = d['receptionFoundation']
+    increment += ['', '## Task55A身份/认领/到店码增量', '', foundation['status'], '', '```java']
+    increment += foundation['methods']
+    increment += ['```', ''] + foundation['contracts'] + ['']
     classes += increment
     methods += increment
     stats={'controllers':len(controllers),'services':len(services),'serviceMethods':method_count,'dtos':len(dtos),'mappers':len(mappers),'customMapperMethods':sum(len(m['customMethods']) for m in mappers),'ownedHttp':len(eps),'sharedHttp':len(d['sharedHttpMethods'])}
