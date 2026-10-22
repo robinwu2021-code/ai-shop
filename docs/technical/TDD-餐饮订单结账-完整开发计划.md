@@ -158,7 +158,7 @@ mvn -o -f backend-plugins/shop-industry-food/pom.xml -pl food-core -am test -Dte
 - [x] 登记权限/错误码、canonical API及类清单；未来新合同给出精确签名后再进入相应任务。
 - [x] 评审字段/方法/任务映射及原零售影响，保存可执行合同基线；只提交本任务文档变化。
 
-完成证据：[CKO-01核验收据](./TDD-订单结账-CKO01合同与字段核验.md)及[机器合同基线](./design/schema/pricing-checkout-contract-baseline.json)。仅源码/迁移核验完成，外部合同补齐与营业验证留在对应任务；02～31尚未执行。
+完成证据：[CKO-01核验收据](./TDD-订单结账-CKO01合同与字段核验.md)及[机器合同基线](./design/schema/pricing-checkout-contract-baseline.json)。仅源码/迁移核验完成，外部合同补齐与营业验证留在对应任务；当前进度见§6及CKO-02收据。
 
 ### CKO-02 定点值对象与标准事实
 
@@ -166,9 +166,11 @@ mvn -o -f backend-plugins/shop-industry-food/pom.xml -pl food-core -am test -Dte
 
 接口：`MoneyMinor#add/subtract`；`PricingUnit`固定sourceLineNo/componentRef/quantityRange/taxInvoiceLineRef，qty不使用double。
 
-- [ ] 写MoneyMinorTest#rejectOverflowAndCurrencyMismatch：MAX_VALUE加1、不同币种相加均拒绝；0.1数量按受控精度计算，不静默截断。
-- [ ] 运行目标测试确认实现前失败；实现最小金额/事实record及边界校验。
-- [ ] 检查JSON安全金额上限、负数/比例/数量边界，运行测试并仅提交本任务文件。
+- [x] 写MoneyMinorTest#rejectOverflowAndCurrencyMismatch：MAX_VALUE加1、不同币种相加均拒绝；0.1数量按受控精度计算，不静默截断。
+- [x] 运行目标测试确认实现前失败；实现最小金额/事实record及边界校验。
+- [x] 检查JSON安全金额上限、负数/比例/数量边界，运行测试并仅提交本任务文件。
+
+实施证据：[CKO-02定点金额与标准事实对象](./TDD-订单结账-CKO02定点金额与事实对象.md)。新增4个record及18个测试；架构检查保留原有1处失败，详见收据，不声称全量架构通过。
 
 ### CKO-03 JSON类型化编译器
 
@@ -176,7 +178,7 @@ mvn -o -f backend-plugins/shop-industry-food/pom.xml -pl food-core -am test -Dte
 
 接口：`compile(template, override, systemConstraints, capabilities) → CompilationResult`；输出不可变配置及问题；无IO，不使用任意反射路径或脚本。
 
-- [ ] 写rejectUnknownEvaluatorAndInvalidOverride：未知Evaluator/路径/null、SINGLE却total=3、门店删除强制规则拒绝；false保留、数组整替换、reset恢复继承。
+- [ ] 写rejectUnknownEvaluatorAndInvalidOverride：未知Evaluator/路径/null、SINGLE却total=3、payableRateBp超出0～10000、门店删除强制规则拒绝；false保留、数组整替换、reset恢复继承。
 - [ ] 确认失败后实现字段白名单/有限参数解码/覆盖合并/编译；强制规则以代码目录核验，不信客户端mandatory。
 - [ ] 验证同输入编译/hash确定性；缓存按不可变版本；运行目标测试并独立提交。
 
@@ -525,8 +527,10 @@ mvn -o -f backend-plugins/shop-industry-food/pom.xml -pl food-core -am test -Dte
 
 ## §6 执行记录及设计 → 实现对账
 
-本轮计划及共享归属确认已记录；后续已执行CKO-01源码合同核验并勾选其4个步骤，02～31未执行。未建表、导入种子、编码或部署。后续逐任务回填：任务编号、起止基线、实际文件/迁移/API、测试证据、提交、偏差与仍关闭的能力。原后端计划与本清单一对多映射；本清单细化结账主线，不推翻桌台、菜品和厨房的原实现记录。
+本轮计划及共享归属确认已记录；后续已执行CKO-01源码合同核验及CKO-02共享值对象开发，03～31未执行。未建表、导入种子、开放报价/支付或部署。后续逐任务回填：任务编号、起止基线、实际文件/迁移/API、测试证据、提交、偏差与仍关闭的能力。原后端计划与本清单一对多映射；本清单细化结账主线，不推翻桌台、菜品和厨房的原实现记录。
 
 本轮计划检查：31个任务编号连续且唯一、各任务含依赖/文件/至少3个未勾选步骤、共95个执行步骤；11项需求映射及本地链接、代码围栏检查通过。未运行Java/数据库/支付/库存或打印验收。
 
 执行进度（2026-10-22）：CKO-01完成源码合同/迁移基线核验，下一步CKO-02；外部环境全部仍待验证，不因此开放交易。
+
+执行进度（2026-10-22，CKO-02）：共享定点金额/计价份额/事实及来源引用已实现，18个新增测试通过，shop-base全套96通过；架构16项中1项基线已存在失败保留。下一步CKO-03。
