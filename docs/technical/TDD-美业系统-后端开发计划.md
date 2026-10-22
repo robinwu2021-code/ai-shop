@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-22 · 按业务模块交付并逐模块部署验证；BM-01后端模块已通过隔离部署关口，BM-02人员/物理资源/周班表及远程事实后端模块已通过隔离部署；BM03预约后端已通过独立全模块审查、修复复审及embedded/standalone隔离部署验收（§31）；完整任务工作台未完成，下一模块BM04。
+> 状态：实施中 · 2026-10-22 · 按业务模块交付并逐模块部署验证；BM-01后端模块已通过隔离部署关口，BM-02人员/物理资源/周班表及远程事实后端模块已通过隔离部署；BM03预约后端已通过独立全模块审查、修复复审及embedded/standalone隔离部署验收（§31）；完整任务工作台未完成，当前推进BM04需求细化与Task54公共身份能力。
 > **执行方式：** 使用`superpowers:subagent-driven-development`逐任务实施及独立审查，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -579,6 +579,80 @@ CONFIRM已提交而响应丢失，由实际job-worker调度已绑定原终态协
 - 行为反例：同项目15/60分钟双角色，P1整小时、P2仅前15分钟，自动及部分指定应找到可行解；固定短角色=P1应无解。覆盖预算耗尽、STAFF别名、物理容量和回溯撤销。
 - 验收：先反例RED再GREEN，重跑受影响常规及原生业务测试；重新构建受影响构件，在新的隔离目录重跑实际部署，保留旧证据与新SHA。独立窄范围复审通过后，才能标记Task53/BM03完成。
 
+### 2.22 BM04到店接待、工单与交易来源实施计划（2026-10-22）
+
+目标沿REC-01/WO-01/SRC-01/SHR-03：真实顾客/临客→到店或直客→幂等工单及任务范围→普通服务订单来源→逐来源账单及原号恢复。延续原自动执行及SDD方式；本模块完成后双形态隔离部署与独立全模块审查。BM05执行/完工、BM06完整任务日历不提前交付。
+
+已核对BM03准出和原数据原语、方法JSON；临客登记/认领尚无公共owner。普通OrderService.createFor可复用，目录revision不等于报价，权益服务单不替代普通订单。具体交易审计见[合同审计](../../.superpowers/sdd/beauty-backend/bm04-trade-contract-audit.md)。选择真实C接管checkout，复用STORE_VERIFY并在交易owner原子登记受管理履约及统一旧完成防线；禁止APPOINTMENT旧slot双扣和STORE_PICKUP回落。原V1–V4、平台V1–V536冻结。
+
+| 需求/API | 子任务 | 验收焦点 |
+|---|---|---|
+| BTY-E02 / 031、032 | 54公共身份、55行业接待 | 无虚假买家，真实身份及持有凭证双验证、并发唯一认领 |
+| G01/02/04/05 / 047、048、052、053、154 | 55业务、58入口 | 签到取消互斥、一次转单、整组合资源、异常协调不核销 |
+| H01/H03 / 054、055、056、155 | 55/57业务、58入口 | 项目范围版本、快照与数量守恒，未就绪不得开工 |
+| I01–05 / 068–073、必要来源确认 | 56真实owner、57编排 | 同次成交价格校验、当前买家确认、原号及真实金额 |
+| 模块准出 | 59 | 双部署/私有库/当前构件、零售餐饮影响及独立审查 |
+
+全局约束沿§1；原49任务/160API目标不改写，新增共用合同/机器协议单列。每个子任务启动前继续深化本节接口、字段、状态与AC，不按空Port计算交付。
+
+#### Task 54: 共用临客登记认领与本人身份核验
+
+**Files与归属：** shop-base/spi/member新增GuestRegistrationPort/GuestRegistrationInternalApi；CustomerIdentityPort/InternalApi增量本人核验；shop-core/member新增MbrGuestRegistration、MemberGuestRegistrationMapper、MemberGuestRegistrationService/Impl、MemberGuestCrypto及Port实现，扩展MemberCodeResolveService/Impl复用现有会员码；shop-app/portal/internal新增InternalGuestRegistrationController、扩展InternalCustomerIdentityController；beauty-channel新增RemoteGuestRegistrationPort及现有RemoteCustomerIdentityPort/owner接线。追加平台V537__shared_guest_registration.sql（落盘前核对最新号），按需同步当前schema-test夹具及生成字典；原迁移不动。测试/原生脚本按下述实际覆盖新增，配置/错误码/三语同步。
+
+**Interfaces（唯一契约shop-base，不导入其他域实体）：**
+- GuestRegistrationPort.Scope(String entityNo,String storeNo,DelegatedIdentity identity)。
+- Registration register(Scope scope,RegisterCommand command)；RegisterCommand(String contact,String displayName,boolean consent,String idempotencyKey)；Registration(String guestNo,String claimToken,String state,long revision)。
+- GuestFact get(Scope scope,String guestNo)；GuestFact verify(Scope scope,String guestNo,String claimToken)；GuestFact(String guestNo,String state,String userNo,long revision)。
+- Claim claim(Scope scope,String guestNo,ClaimCommand command)；ClaimCommand(String verifiedIdentity,String claimToken,String idempotencyKey)；Claim(String guestNo,String userNo,long revision)。
+- CustomerIdentityPort增加default ResolvedCustomer verifyConsumerProof(EntitlementContext context,String memberCode)，默认明确不支持，兼容原单抽象方法；真实member owner覆盖。MemberCodeResolveService增加ResolvedCustomer requireConsumerProof(String tenantNo,String userNo,String memberCode)。
+
+**身份/数据：** 公共临客归member，不新增bty_guest。实体沿BaseEntity，含entity/store/guestNo、登记actorNo/Realm/Kind、原keyHash/requestHash、加密contact、displayName、claimTokenHash/密文、REGISTERED/CLAIMED状态和claimedUserNo/claimedAt；原键唯一索引包含身份命名空间与店，认领同guest根锁。contact最长128且可空，displayName最长80，consent必须true；不按contact自动创建账号/会员/订单。claimToken服务端SecureRandom32字节base64url，哈希比对、密文用于同键重放，禁止原凭证出现在日志/outbox/幂等JSON，相关DTO.toString脱敏。
+MemberGuestCrypto采用AES-GCM随机IV和tenant/entity/store/guestNo/purpose关联数据，配置shop.member.guest.credential-key为32字节base64，无默认密钥；未配时仅本能力关闭，不破坏默认零售启动。MEMBER_GUEST_UNAVAILABLE=40042 / err.member.guest_unavailable（加前核对唯一），三语和InternalServiceResponses的503映射一起补齐。
+
+owner内部校验当前SecurityUtils完整身份等于Scope.identity，以及真实门店归属/当前当店BizPerms.CUSTOMER权限。机器令牌不赋权。claim同时校验原guest凭证与当前actor/store绑定cr1引用解析的活动真实用户；绑定后不能改为另一个人，重复原键回原结果、改参冲突。get/verify不泄露contact/密文。本人proof只认原MEMBER_CODE短票据，同租户/当前CONSUMER-USR及活动用户，不接受登录令牌/手机号/任意字符串。身份核验不提供支付授权；现有BTG仅匿名引用，兼容在55详定，不凭格式伪造公共guest。
+
+**协议：** register/get/verify/claim及verify-consumer-proof强类型完整identity/scope/请求回显核验；错token在owner之前拒绝，DelegatedIdentityContext finally恢复。沿真实400/401/403/404/409/503，HTTP200错误对象不能当事实；旧协议兼容。remote-owner形态唯一装配，embedded/default无重复provider。
+
+- [ ] RED：MemberGuestRegistrationIT及协议测试覆盖登记幂等/改参/跨realm、跨店/他人/撤权、真实mc1过期/他人/伪造拒绝；原生并发认领只有一个真实用户胜出，回滚不新增账号/订单；缺密钥明确不可用、重启后原键重放、存储不含原始contact/token、密文篡改拒绝。编译/环境错误不算行为RED。
+- [ ] 实现上述合同、owner、迁移、加密和远程协议；只用自建隔离缓存MySQL8.4、localhost端口、--pull never，finally清理，不并行启动多个native库。
+- [ ] GREEN：目标native、真实TCP及全局Advice/当前identity；原会员码流程、三语/架构/SQL方言和beauty装配按影响回归。消融身份或唯一认领约束使反例变红再还原。
+- [ ] 精确提交本任务文件及task-54-report.md（列H2/native/TCP/fixture边界），controller主TDD/progress不提交；独立spec/quality审查通过后进入55。54不是BM04模块准出。
+
+#### Task 55: 接待、临客引用与工单范围
+
+消费54真实guest/proof和BM03资源/预约；实现031/032/047/048/052/053/054/055/154/155的DTO/Service及本域业务。预约根/fence/工单唯一键解决签到取消互斥与一次转单；核验整组合安排后冻结任务/规则快照，无来源任务不可开工。直客先占真实完整资源，再持久原号幂等转单，未知不新增占位。开工前详定匿名BTG兼容、guest认领传播、proof/早到迟到/异常待办、范围版本/任务快照与精确签名；必要beauty V5只追加。
+
+- [ ] 细化方案、AC及文件后TDD实现；原生并发/回滚/outbox去重。
+- [ ] 提交并独立spec/quality审查。
+
+#### Task 56: 普通服务交易的真实共用owner
+
+按审计§10先冻结CheckoutPort八方法/DTO：prepare、readQuote、confirm、place、findOperation、source、initiatePayment、findPayment，confirm/place/initiatePayment只允许真实当前C。复用现有OrderService和同次writer定价，原子比对封版报价，持久过程事实/稳定来源行/原号映射，不复制订单/支付账。SERVICE商品必须真实支持STORE_VERIFY；成交时原子登记managed authority，通用完成写门及全部旧核销/收货/自动完成入口关闭提前完成，BM05执行继续门控。正式线下receipt需资金owner补完整命令/原号/金额/证据/真实operator，不能把旧confirmOfflinePay输出包装成资金凭证。开工前详定签名/状态/SQL/配置/AC、追加平台最新迁移及ADR。
+
+- [ ] 按审计补完整可执行设计，不以未实现Port或手写PAID替身交付。
+- [ ] RED/GREEN验证真实quote/create/买家确认/价格变化/原号支付恢复/旧完成入口防线，native仅隔离已有mockchannel；提交并独立审查。
+
+#### Task 57: 来源提交、绑定与逐来源账单
+
+消费55真实范围和56实际CheckoutPort，实现056/071/072/073及P1必要来源确认/trace。外调前持久原意图/原号/摘要，来源buyer/store/行/量/版本核实后按guard→工单→任务的既有锁序CAS绑定；数量守恒，旧范围晚回执不能覆盖。UNKNOWN不新号建单/支付，账单金额读取owner且按币种，缺失明确不完整。开工前补完整签名与绑定/撤销边界。
+
+- [ ] 细化方案后TDD实现，native并发数量/重复绑定/原号恢复/owner异常/账单不完整验证。
+- [ ] 提交并独立审查，不提前开放BM05。
+
+#### Task 58: BM04公开入口与双向协议
+
+按原API方法清单落Controller、RemoteService、typed内部API和SERVER ingress。api-only公开入口，默认关闭；B-MCH/B-USR/C、当店/本人隔离、完整回显核验及finally清理。原160目标编号保留，增量合同单列；开工前逐API/Bean图冻结实际签名。
+
+- [ ] RED/GREEN真实TCP+全局Advice/鉴权/错scope/错误200/断连及embedded/HOST/SERVER/disabled/ops装配。
+- [ ] 提交并独立审查，留真实构件和配置/HTTP清单。
+
+#### Task 59: BM04大模块部署及独立准出
+
+- [ ] 对账本节AC/矩阵/API/方法/表，全部真实owner可用。
+- [ ] 当前JAR embedded、无core HOST、私有SERVER、默认零售及必要pay/job构件，真实认证完成身份→签到/直客→一次工单→quote/本人确认/真实普通订单/原支付→绑定/账单/恢复；故障丢响应和重启、撤权、旧核销不能提前完成。支付第三方仅隔离mockchannel，不发真实外部资金操作。
+- [ ] 验证正式迁移/升级、零售餐饮影响，留当前SHA和HTTP/DB证据；finally仅清理本任务资源。
+- [ ] 全BM04独立审查及必要修复复审通过，更新三处对账/README/主计划，再进入BM05；不以readiness或测试Bean代真实部署。
+
 ## §3 数据层之后的业务任务与启动深化
 
 每部分开工前重新核对功能矩阵对应行、API输入输出、类/方法、表字段、权限与真实跨域提供方，提交“可实施 / 需先补合同 / 延后关闭”结论，再编码。上次形成的类清单不代替这次业务规则梳理。
@@ -632,7 +706,7 @@ python3 scripts/gen-beauty-development-plan.py --check
 
 ## §6 下一次领取任务与本轮交付
 
-**当前交付：BM-03预约后端模块完成，Task50–53及修复复审通过，embedded/standalone真实构件隔离部署验收通过，详见§31；BM-02/BM-01分别见§25/§22。下一领取BM-04到店接待与工单，先深化需求及真实订单/资金来源合同，再编码，本轮不提前启动。** 后续按BM-04接待工单等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
+**当前交付：BM-03预约后端模块完成，Task50–53及修复复审通过，embedded/standalone真实构件隔离部署验收通过，详见§31；BM-02/BM-01分别见§25/§22。当前已启动BM-04需求/合同细化与Task54共用临客及身份能力，详细执行见§2.22；BM04整体尚未完成。** 后续按BM-04接待工单等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
 
 初始计划阶段产物（2026-10-20，非当前工程状态）：本TDD、开发任务JSON、生成任务对照索引和校验器；当时尚未编码。之后实际实现及验收按§7–20逐批记录，当前总览与后续领取以§21为准。
 
