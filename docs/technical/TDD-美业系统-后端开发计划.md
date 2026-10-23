@@ -681,6 +681,8 @@ Bean图约束：AppointmentService.openWorkOrderFromAppointment与WorkOrderServi
 
 **55C开发方案技术收口（2026-10-23，BASEf1d5daf80）：** 精确方案task-55c-design.md已核对，先真实业务RED再编码。把已审reassign移入单一ReceptionReassignment，接待/工单都向下消费，禁止双向Coordinator依赖。prepareReception重载在原root→fence→current→接待operation短事务原子绑定外层原号，不能包新REQUIRES_NEW。PreparedWorkOrderScope追加从真实事实得到的可信Scope，无预约不伪造hold；markWorkOrderOpened保持CHECKED_IN仅version+1。准备scopeHash使用语义项目索引/定义/规则/身份/数量单位/安排，排除最终随机task/workOrder/submission号；最终context保存完整冻结范围/hold引用和真实任务映射，submission草稿保存真实taskRefs与同一hash。先核当前权限/完整hash再成功重放，REPLACE未知不建单，成功以完整持久receipt绑定的确切revision续行。V1–7冻结/ready7，公开wire、直客恢复与资金仍后续任务。
 
+**55C隔离验证环境增量（2026-10-23）：** 后续内核global_oom记录以精确本容器ID确认两次mysqld被VM全局OOM终止；先前仅events时原因未知的报告保留，不回填历史。Docker VM约3.8GiB、其他匿名聚合约3.2GiB、可用约188MiB，无已安装host MySQL8.4。仅本任务自建容器允许显式opt-in低内存模式：128MiB memory/swap硬上限、pool16M/log-buffer4M/redo16M/key-buffer1M、连接16/thread-cache0/table-open64/table-definition400、mysqlx及performance_schema关闭、仍磁盘datadir且不改事务持久性。默认64M测试路径不变，不改生产或其他容器/VM全局配置，不调OOM优先级。可用内存至少160MiB才校准单case，记录自身peak/variables/events；成功后相同单case配置完成剩余验证，若再次cgroup/globalOOM立即停止新容器并如实列未验证AC，不以H2替代。
+
 **启动与验收：** 先据本节及方法JSON生成task-55-design.md，列确切DTO字段/Service方法、表约束、Bean图和AC→测试映射；任何未定事项在编码前由控制器裁决并同步本节。不得靠旧清单自动生成空方法计完成。目标031/032/047/048/052/053/054/055/154/155及到店码增量；P3候位049–051、关闭工单065–067和来源/账单056/071不在本任务。
 
 - [ ] 设计冻结后RED/GREEN和消融，完成真实本域事务、原生并发/恢复及严格V1→V5升级。
@@ -720,6 +722,8 @@ Bean图约束：AppointmentService.openWorkOrderFromAppointment与WorkOrderServi
 #### Task 60: BM04大模块部署及独立准出
 
 部署前先补已定位的BM03基础设施包遗漏：c338e5722引入的shop-store-mybatis/ai.neargo.shop.store.config.JobLockConfiguration未纳入顶层包架构登记。优先移至已登记的ai.neargo.shop.job.config（同模块），更新ShedLockConfig与BeautyJobTargetConfiguration薄imports，保持唯一Bean/disabled无DataSource/锁和令牌行为并验证；不通过扩大业务豁免或改棘轮遮盖。该项是Task54基线已有，非新身份代码引入，但须在BM04模块准出前收口。
+
+55C宿主守卫在-Pbeauty-embedded下进一步实测发现ArchitectureTest.topLevelPackagesMustBeRegistered的缺口为[beauty,store]：beauty是本分支BM01新增行业域尚未登记，不能归为仓库原有无关问题。Task60必须将beauty加入DOMAINS业务域并接受现有域间依赖守卫，不得加到infra豁免；若登记暴露真实跨域依赖，修实际越界而非放宽规则。与上文store迁job.config一起在正式部署前验证；普通beauty自身Architecture13通过不能替代宿主这项检查。
 
 - [ ] 对账本节AC/矩阵/API/方法/表，全部真实owner可用。
 - [ ] 当前JAR embedded、无core HOST、私有SERVER、默认零售及必要pay/job构件，真实认证完成身份→签到/直客→一次工单→quote/本人确认/真实普通订单/原支付→绑定/账单/恢复；故障丢响应和重启、撤权、旧核销不能提前完成。支付第三方仅隔离mockchannel，不发真实外部资金操作。
@@ -1849,3 +1853,26 @@ V1–V5未改，V6只加身份NULL成对guard，27私表，ready=6；[V6执行�
 初版115常规、48原生、真实HOST B1/C1及i18n6通过；双层fence消融1断言失败/0错误，恢复通过。后续容量修复的最终代码分别通过matching12、数量3、边界2、V7升级及五类漂移2、server10；不是同一轮全套结果。真实V7后、比较修改前的三场景RED为3断言失败/0错误。首次targeted轮4个连接错误与EOF原因未证实、夹具问题和helper专属前置RED缺失均按报告披露，不虚构历史。
 
 既有matching允许同需求多份容量而旧assignment组合唯一键拒绝落库；V7只将该键改同列普通索引，保留每份planned_assignment_no唯一，不改V1–6或合并数量。当前ready7/27私表，[执行前独立SQL/hash记录](../../.superpowers/sdd/beauty-backend/v7-preexecution-root-record.json)与最终SHA一致。公开HTTP/remote接待、C/D工单与恢复及真实资源owner部署仍未交付；依次继续55C、55D、56–60，BM04尚未准出。
+
+
+### Task55C 当前执行状态（2026-10-23，未完成）
+
+55B已完成独立审查和V7原生验证；55C工单范围代码已有实现快照，但尚未提交产品commit或验收。独立审查发现5项Important：I5测试容器启动失败/超时清理已修复，经真实node子进程行为测试6/6通过并复审关闭；修复方案的RESOURCE_PENDING续行和REGISTERED临客状态描述亦已纠正并复审通过。
+
+仍待完成4项生产修复：I1同原键成功竞态重放、I2成功phase不可回退、I3新052/省略身份054真实guest owner核验、I4已有孤立实际task防线。精确方案及未验证用例见[55C方案](../../.superpowers/sdd/beauty-backend/task-55c-design.md)和[55C报告](../../.superpowers/sdd/beauty-backend/task-55c-report.md)。这些方案不代表对应修复已实现或验证。
+
+原生验证受Colima测试实例colima-hxkey-tests内存阻塞：已确认自建MySQL被全局OOM及128MiB校准cgroup OOM；最近只读复核MemAvailable236384KiB、无swap。停止新建测试容器，未操作其他任务容器。需恢复至少约512MiB可用内存或独立MySQL8.4后，取得真实业务RED，再实施上述修复/GREEN及剩余父链、B回归、最终wiring/host验证。不用环境错误充业务RED，不以历史118项reactor通过推断最终快照全绿。55D及56–60未启动，BM04尚未完成模块部署验收。
+
+
+### Task55C 环境恢复与继续执行（2026-10-23）
+
+用户已明确将本轮美业原生验证统一到项目现用的 MySQL 9.7.2。历史 MySQL 8.4 的结果仍按原版本保留，V1–V7迁移字节不变，不将旧结果改记为9.7证据。用户授权清理后，19个无挂载临时测试容器已删除，Colima可用内存恢复3653792KiB，环境阻塞解除；4个带数据库卷的已停止实例保留。
+
+现在恢复55C第3轮修复和原生验证，使用普通BEAUTY_TEST_DISK=1/64MiB buffer与缓存mysql:9.7.2，停止沿用失败的128MiB校准。先复验受阻父链用例，再取得I1–I4真实业务RED、修复及GREEN，完成B定向回归和必要HOST/wiring后独立复审。当前仍未验收55C或BM04，未启动55D/结算/公开接线或模块部署。
+
+
+### Task55C 验收完成（2026-10-23）
+
+工单范围已提交22e1d8938a6ad2a45b2c44e40480d7a7d64668bf，41文件，commit tree与已审快照27a3c950c269fe1f817e50cea60e659f6e560ed1一致。独立复审SpecPASS/QualityApproved，I1–I4关闭，先前I5与方案纠正项维持关闭，无新增finding。最终普通美业118/118、真实宿主身份3/3、约定接待回归3/3及工单权限/原键/终态定向回归通过；本轮原生MySQL9.7.2，V1–V7不变。完整证据与历史失败见[55C报告](../../.superpowers/sdd/beauty-backend/task-55c-report.md)及[最终复审](../../.superpowers/sdd/beauty-backend/review-task-55c-r3.md)。历史SQL/Query专属前置RED缺口如实保留，本轮不补造历史。
+
+CLAIMED→USER同时实际REPLACE已由静态链路核对兼容，但未独立执行此组合；作为Task60真实模块验证补充项，不把静态核对写成测试通过。下一项55D直客接待、原号恢复及后台有界对账，仍先精确设计后编码，统一MySQL9.7.2。55整体与BM04尚未完成，公开接线59、模块真实部署60，未向远程或生产发布。
