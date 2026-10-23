@@ -679,6 +679,8 @@ Bean图约束：AppointmentService.openWorkOrderFromAppointment与WorkOrderServi
 
 **2026-10-23当前状态覆盖：** 55B实现115d1cb74、统一修复714542115已独立复审Spec PASS/Quality Approved；V7追加修正容量份数索引，当前ready7、27私表，V1–V7冻结。进入55C工单范围的精确方案整理；实施依据[55C任务](../../.superpowers/sdd/beauty-backend/task-55c-brief.md)。实际B的reassign在ReceptionCoordinator，C必须先明确其与WorkOrderCoordinator的单向共用归属，禁止后续形成双向Bean依赖或复制实现；精确设计核对后继续RED/编码。
 
+**55C开发方案技术收口（2026-10-23，BASEf1d5daf80）：** 精确方案task-55c-design.md已核对，先真实业务RED再编码。把已审reassign移入单一ReceptionReassignment，接待/工单都向下消费，禁止双向Coordinator依赖。prepareReception重载在原root→fence→current→接待operation短事务原子绑定外层原号，不能包新REQUIRES_NEW。PreparedWorkOrderScope追加从真实事实得到的可信Scope，无预约不伪造hold；markWorkOrderOpened保持CHECKED_IN仅version+1。准备scopeHash使用语义项目索引/定义/规则/身份/数量单位/安排，排除最终随机task/workOrder/submission号；最终context保存完整冻结范围/hold引用和真实任务映射，submission草稿保存真实taskRefs与同一hash。先核当前权限/完整hash再成功重放，REPLACE未知不建单，成功以完整持久receipt绑定的确切revision续行。V1–7冻结/ready7，公开wire、直客恢复与资金仍后续任务。
+
 **启动与验收：** 先据本节及方法JSON生成task-55-design.md，列确切DTO字段/Service方法、表约束、Bean图和AC→测试映射；任何未定事项在编码前由控制器裁决并同步本节。不得靠旧清单自动生成空方法计完成。目标031/032/047/048/052/053/054/055/154/155及到店码增量；P3候位049–051、关闭工单065–067和来源/账单056/071不在本任务。
 
 - [ ] 设计冻结后RED/GREEN和消融，完成真实本域事务、原生并发/恢复及严格V1→V5升级。
