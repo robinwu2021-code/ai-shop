@@ -90,4 +90,25 @@ class StoredValueMigrationManifestTest {
         assertThat(f.data().jdbc().queryForObject("SELECT COUNT(*) FROM sv_customer_identity",Long.class)).isZero();
     }
 
+    @Test void trustedProbeScopesSubjectsAndPreparesTheSameDurableManifest() throws Exception {
+        var f=fixture(true,false);
+        f.data().jdbc().update("INSERT INTO sv_account(tenant_no,account_no,entity_no,store_no,deleted) VALUES('MAIN','OTHER','E1','S2',0)");
+        var probe=f.service().probe(f.evidence().authorities());
+        assertThat(probe.subjects()).extracting(s->s.accountNo()).containsExactly("A1");
+        assertThat(probe.scopes().getFirst().issuerNo()).isEqualTo("I1");
+        var input=new ai.neargo.shop.spi.storedvalue.StoredValueMigrationPlans.Preparation(probe.scopes(),
+                List.of(new ai.neargo.shop.spi.storedvalue.StoredValueMigrationPlans.Identity("P1","U1")));
+        var manifest=f.service().prepareTrusted(input,"CORE1");
+        assertThat(manifest.manifestNo()).isEqualTo(f.service().prepare(f.evidence(),"CORE1").manifestNo());
+        assertThat(f.data().jdbc().queryForObject("SELECT issuer_no FROM sv_account WHERE account_no='A1'",String.class)).isNull();
+    }
+    @Test void changedStoreAuthorityOrMissingProvenanceCannotProduceTrustedSubjects() throws Exception {
+        var f=fixture(true,false);
+        var changed=List.of(new StoreAuthority("MAIN","AUDITOR","E1","S1","本店",8));
+        assertThatThrownBy(()->f.service().probe(changed)).isInstanceOf(BizException.class);
+        f.data().jdbc().update("UPDATE sv_account SET store_no=NULL");
+        assertThatThrownBy(()->f.service().probe(f.evidence().authorities())).isInstanceOf(BizException.class);
+        assertThatThrownBy(()->fixture(false,false).service().probe(f.evidence().authorities())).isInstanceOf(BizException.class);
+    }
+
 }

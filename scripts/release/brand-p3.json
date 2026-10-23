@@ -43,5 +43,14 @@
   "docs/technical/delivery/P3-发行方与旧账升级-开发记录.md",
   "scripts/release/brand-p3.json",
   "scripts/release/brand-p3.mjs",
-  "scripts/release/brand-p3.test.mjs"
+  "scripts/release/brand-p3.test.mjs",
+  "backend/shop-base/src/main/java/ai/neargo/shop/spi/storedvalue/StoredValueMigrationPlans.java",
+  "backend/shop-app/src/main/java/ai/neargo/shop/paybridge/StoredValueMigrationCoordinator.java",
+  "backend/shop-app/src/main/java/ai/neargo/shop/payclient/StoredValueMigrationAppService.java",
+  "backend/shop-app/src/main/java/ai/neargo/shop/payclient/impl/StoredValueMigrationAppServiceImpl.java",
+  "backend/shop-app/src/main/java/ai/neargo/shop/payclient/impl/RemoteStoredValueMigrationAppService.java",
+  "backend/shop-app/src/test/java/ai/neargo/shop/paybridge/StoredValueMigrationCoordinatorTest.java",
+  "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/client/PayStoredValueMigrationRequests.java",
+  "backend/pay/pay-svc/src/main/java/ai/neargo/shop/pay/svc/InternalStoredValueMigrationEndpoint.java",
+  "backend/pay/pay-svc/src/test/java/ai/neargo/shop/pay/svc/StoredValueMigrationInternalApiTest.java"
 ]

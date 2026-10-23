@@ -389,3 +389,16 @@ Evidence是服务端合同，不作为公开用户DTO。执行只使用服务器
 ### 发行配置版本并发口径（P3，2026-10-23）
 
 发行配置 `View.revision` 与配置写入的 `Config.expectedRevision` 均表示不可变配置的 `version_index - 1`，首次配置为 0。保存时在发行方行锁内核对当前配置版本，过期配置提交仍返回冲突。同幂等键、相同内容返回原配置版本，不返回后续版本。`sv_issuer.version` 仅用于数据库行级变更，旧账映射、写入栅栏或状态维护增加该值，不应让未变化的配置变成过期。此修复不等于 IS03/IS04 的受控变更检查、权限及完整 HTTP 流程已交付。
+
+### P3 可信迁移预审对接（2026-10-23，默认关闭）
+
+Core 内部 StoredValueMigrationCoordinator.prepare(actor, storeNos, key) 仅接收当前认证身份、门店编号和幂等键。先逐店校验当前主体所有人权限，再经 Pay 获取存量账户身份标识，用 User 人档端口校验既有绑定，最后再次检查门店权限/版本并提交预审。不新增人档、绑定、会员、发行方或账户；门店须先完成发行基础准备。无 B/C 端公开入口。
+
+| 内部接口 | 入参 | 返回 | 约束 |
+| --- | --- | --- | --- |
+| POST /internal/pay/stored-value/migrations/probe | Probe(scopes: StoreAuthority[]) | Probe(scopes: Scope[], subjects: Subject[]) | 内部 token；migration-enabled；MAIN；实际 STORE 发行方与来源版本校验；只返回指定门店账户及身份标识，无金额/手机号 |
+| POST /internal/pay/stored-value/migrations/prepare | Prepare(input: Preparation, key) | Manifest(manifestNo, fingerprint, authorityHash, accountCount) | 内部 token；migration-enabled；Pay 完整账本预审通过才保存清单；幂等回放；不要求 issuer-mode |
+
+共享 DTO 在 shop-base/spi/storedvalue/StoredValueMigrationPlans；嵌入及独立部署均经 StoredValueMigrationAppService，独立部署使用 PayInternalApi。每批最多100店、1000账户，超过上限明确拒绝，绝不截断后视为完成。来源缺失、跨店/主体、重复账户、身份不一致、门店版本变化均阻断。旧账号标识仅通过既有 user→person 绑定解析，再复核 canonical 人档；未注册人档保留 userNo 为空。最终审计仍检查完整存量，不假设 probe 后账本未变化。
+
+仅服务间预审：apply、暂停写入和激活未开放 HTTP。全写入节点就绪、维护栅栏及切换流程仍是正式执行前置条件。

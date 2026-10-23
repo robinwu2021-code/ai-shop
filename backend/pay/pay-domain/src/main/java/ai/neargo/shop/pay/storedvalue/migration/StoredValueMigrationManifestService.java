@@ -4,6 +4,7 @@ import static ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.*;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository;
 import ai.neargo.shop.spi.entitlement.ContractChecks;
+import ai.neargo.shop.spi.storedvalue.StoredValueMigrationPlans;
 import ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreAuthority;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
@@ -61,6 +62,42 @@ public class StoredValueMigrationManifestService {
             @Value("${shop.pay.stored-value.migration-enabled:false}") boolean maintenanceEnabled,
             @Value("${shop.pay.stored-value.issuer-mode:false}") boolean writersEnabled) {
         this.db=db;this.migration=migration;this.maintenanceEnabled=maintenanceEnabled;this.writersEnabled=writersEnabled;
+    }
+    /** Bounded exhaustive discovery; callers must resolve canonical identities in Core before prepareTrusted. */
+    public StoredValueMigrationPlans.Probe probe(List<StoreAuthority> input) {
+        requireMaintenance();
+        if(input==null||input.isEmpty()||input.size()>100)throw BizException.of(ErrorCode.BAD_REQUEST);
+        var scopes=new ArrayList<StoredValueMigrationPlans.Scope>();
+        for(var authority:input) {
+            if(authority==null)throw BizException.of(ErrorCode.BAD_REQUEST);
+            var issuer=db.one("SELECT issuer_no FROM sv_issuer WHERE tenant_no=? AND scope_type='STORE' AND scope_no=? AND deleted=0",authority.tenantNo(),authority.storeNo());
+            if(issuer==null)throw BizException.of(ErrorCode.NOT_FOUND);
+            scopes.add(new StoredValueMigrationPlans.Scope(authority,text(issuer,"issuer_no")));
+        }
+        var evidence=trusted(new StoredValueMigrationPlans.Preparation(scopes,List.of()));
+        evidence.verifyPayScope(db,false);
+        var subjects=new ArrayList<StoredValueMigrationPlans.Subject>();
+        for(var store:evidence.batch().stores()) {
+            var rows=db.rows("SELECT account_no,store_no,entity_no,customer_no,user_no FROM sv_account WHERE tenant_no=? AND (store_no=? OR (store_no IS NULL AND entity_no=?)) AND deleted=0 ORDER BY account_no LIMIT 1001",evidence.batch().tenantNo(),store.storeNo(),store.entityNo());
+            if(subjects.size()+rows.size()>1000)throw BizException.of(ErrorCode.CONFLICT);
+            for(var row:rows) {
+                if(!store.storeNo().equals(text(row,"store_no"))||!store.entityNo().equals(text(row,"entity_no")))throw BizException.of(ErrorCode.CONFLICT);
+                subjects.add(new StoredValueMigrationPlans.Subject(text(row,"account_no"),store.storeNo(),store.entityNo(),text(row,"customer_no"),text(row,"user_no")));
+            }
+        }
+        return new StoredValueMigrationPlans.Probe(scopes,subjects);
+    }
+    public StoredValueMigrationPlans.Manifest prepareTrusted(StoredValueMigrationPlans.Preparation input,String key) {
+        var result=prepare(trusted(input),key);
+        return new StoredValueMigrationPlans.Manifest(result.manifestNo(),result.fingerprint(),result.authorityHash(),result.accountCount());
+    }
+    private Evidence trusted(StoredValueMigrationPlans.Preparation input) {
+        if(input==null||input.scopes().isEmpty()||input.scopes().size()>100||input.identities().size()>1000)throw BizException.of(ErrorCode.BAD_REQUEST);
+        var first=input.scopes().getFirst().authority();
+        return new Evidence(new StoredValueIssuerMigrationService.Batch(first.tenantNo(),first.actorNo(),
+                input.scopes().stream().map(s->new StoredValueIssuerMigrationService.StoreMapping(s.authority().storeNo(),s.authority().entityNo(),s.issuerNo())).toList(),
+                input.identities().stream().map(i->new StoredValueIssuerMigrationService.IdentityEvidence(i.customerNo(),i.userNo())).toList()),
+                input.scopes().stream().map(StoredValueMigrationPlans.Scope::authority).toList()).canonical();
     }
     /** Persist the complete successful audit, including original-to-issuer mappings; no balances are mutated. */
     public Manifest prepare(Evidence input,String key) {
