@@ -15,7 +15,7 @@ class IssuerStorePreparationEndpointTest {
     @Test void internalTokenIsRequiredBeforeAnyIssuerWriteAndAuthorizedReplayIsStable() throws Exception {
         var ds=new DriverManagerDataSource("jdbc:h2:mem:issuer-endpoint-"+UUID.randomUUID()+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1","sa","");
         var j=new JdbcTemplate(ds);
-        var sql=Files.readString(Path.of("../../shop-app/src/main/resources/db/migration/V546__stored_value_issuer_foundation.sql"))
+        var sql=Files.readString(Path.of("../../shop-app/src/main/resources/db/migration/V548__stored_value_issuer_foundation.sql"))
                 .replaceAll("(?m)^--.*$", "").replace(" ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci", "")
                 .replace(" JSON", " VARCHAR(10000)").replace("CHECK (scope_type IN ('BRAND','STORE'))", "CHECK (CASE scope_type WHEN 'BRAND' THEN TRUE WHEN 'STORE' THEN TRUE ELSE FALSE END)");
         for(String part:sql.split(";"))if(!part.isBlank()) {

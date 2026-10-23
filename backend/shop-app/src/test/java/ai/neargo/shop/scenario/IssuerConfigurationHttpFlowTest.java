@@ -25,7 +25,7 @@ class IssuerConfigurationHttpFlowTest {
     @Autowired TokenStores tokens;
 
     @Test void brandIssuerRequiresSettlementGrantAndNeverCreatesAnAccount() throws Exception {
-        String ddl=Files.readString(Path.of("src/main/resources/db/migration/V546__stored_value_issuer_foundation.sql"))
+        String ddl=Files.readString(Path.of("src/main/resources/db/migration/V548__stored_value_issuer_foundation.sql"))
                 .replaceAll("(?m)^--.*$", "").replace(" ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci", "")
                 .replace(" JSON", " VARCHAR(10000)").replace("CHECK (scope_type IN ('BRAND','STORE'))", "CHECK (CASE scope_type WHEN 'BRAND' THEN TRUE WHEN 'STORE' THEN TRUE ELSE FALSE END)");
         for(String part:ddl.split(";")) if(!part.isBlank()) {

@@ -16,7 +16,7 @@ class IssuerRechargeRecoveryTest {
     Fixture fixture() throws Exception {
         var ds=new DriverManagerDataSource("jdbc:h2:mem:quota-"+UUID.randomUUID()+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1","sa","");
         var j=new JdbcTemplate(ds);
-        String sql=Files.readString(Path.of("../../shop-app/src/main/resources/db/migration/V547__stored_value_issuer_ledger_dimensions.sql"));
+        String sql=Files.readString(Path.of("../../shop-app/src/main/resources/db/migration/V549__stored_value_issuer_ledger_dimensions.sql"));
         for(String table:List.of("sv_issue_quota","sv_issue_quota_reservation")) {
             int start=sql.indexOf("CREATE TABLE "+table+" (");String part=sql.substring(start,sql.indexOf(';',start));
             part=part.replace(" ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci", "").replace(" JSON", " VARCHAR(10000)").replace("KEY uk_","KEY "+table+"_uk_");j.execute(part);

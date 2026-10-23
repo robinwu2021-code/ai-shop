@@ -24,7 +24,7 @@ class IssuerCollectionRouteTest {
     private StoredValueIssuerService service() throws Exception {
         var ds = new DriverManagerDataSource("jdbc:h2:mem:"+UUID.randomUUID()+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1", "sa", "");
         var jdbc = new JdbcTemplate(ds);
-        var ddl = Files.readString(Path.of("../../shop-app/src/main/resources/db/migration/V546__stored_value_issuer_foundation.sql"));
+        var ddl = Files.readString(Path.of("../../shop-app/src/main/resources/db/migration/V548__stored_value_issuer_foundation.sql"));
         ddl = ddl.replace(" JSON", " VARCHAR(10000)").replace("CHECK (scope_type IN ('BRAND','STORE'))", "CHECK (CASE scope_type WHEN 'BRAND' THEN TRUE WHEN 'STORE' THEN TRUE ELSE FALSE END)");
         ddl = ddl.replaceAll("(?m)^--.*$", "").replace(" ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci", "");
         for (String part : ddl.split(";")) if (!part.isBlank()) {

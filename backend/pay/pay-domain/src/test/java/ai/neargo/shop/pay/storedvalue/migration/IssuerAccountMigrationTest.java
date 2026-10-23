@@ -103,7 +103,7 @@ class IssuerAccountMigrationTest {
         j.execute("ALTER TABLE sv_lot ADD COLUMN credited_at timestamp");
         j.update("UPDATE sv_lot SET credited_at='2026-10-20 01:00:00'");
         j.execute("CREATE TABLE pay_ent_command_dedup(id bigint auto_increment primary key,tenant_no varchar,operation_kind varchar,request_key varchar,payload_hash varchar,resource_no varchar,result_status varchar,response_snapshot varchar(20000),version bigint,deleted int,created_at timestamp,updated_at timestamp,created_by varchar,updated_by varchar,UNIQUE(tenant_no,operation_kind,request_key))");
-        String ddl=java.nio.file.Files.readString(java.nio.file.Path.of("../../shop-app/src/main/resources/db/migration/V547__stored_value_issuer_ledger_dimensions.sql"))
+        String ddl=java.nio.file.Files.readString(java.nio.file.Path.of("../../shop-app/src/main/resources/db/migration/V549__stored_value_issuer_ledger_dimensions.sql"))
                 .replaceAll("(?m)^--.*$", "").replace(" ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci", "").replace(" JSON", " VARCHAR(10000)");
         for(String part:ddl.split(";")) if(!part.isBlank()) {
             var m=java.util.regex.Pattern.compile("CREATE TABLE ([a-z_]+)").matcher(part);
