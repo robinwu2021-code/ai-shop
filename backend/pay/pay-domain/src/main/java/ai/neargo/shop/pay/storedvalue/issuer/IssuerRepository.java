@@ -33,6 +33,8 @@ public class IssuerRepository {
         return rows.isEmpty() ? null : rows.getFirst();
     }
 
+    public List<Map<String,Object>> rows(String sql, Object... args) { return jdbc.queryForList(sql, args); }
+
     public int update(String sql, Object... args) { return jdbc.update(sql, args); }
 
     public void insert(String table, Map<String,Object> values) {
