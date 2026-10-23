@@ -336,12 +336,13 @@
           "Durable internal local-writer fence with original audit recheck and replay (no execution HTTP)",
           "Read-only per-process capability and sealed-inventory readiness checks (fresh challenge/build/process/ledger/flags; not deployed or financial authorization)",
           "Issuer wallet selection wired to posting/balance/quote/debit, verified canonical aliases and shadow/version conflict rejection; live inventory-file reload (not deployed)",
-          "Core实时证据与新鲜证明驱动的暂停/元数据映射；Pay实际进程复核、链接暂停回执、提交前过期回滚；默认execution-enabled=false，未部署"
+          "Core实时证据与新鲜证明驱动的暂停/元数据映射；Pay实际进程复核、链接暂停回执、提交前过期回滚；默认execution-enabled=false，未部署",
+          "Ledger-wide index/data preflight and schema-step recovery planning; preserves account identity keys, scans all tenants/deleted rows; no DDL execution or authorization"
         ],
         "verification": "Core/Pay compile and focused tests passed; no full suite or online financial writes",
         "remaining": [
           "Complete operator cutover/resume beyond delivered pause+metadata mapping; actual deployment inventory sealing and maintenance/cutover acceptance",
-          "Explicit cutover and conditional keys; issuer account selection now wired",
+          "Explicit global cutover authorization, mapped-receipt coverage, durable MySQL DDL execution/recovery, mandatory dimensions and writer resume; read-only key preflight now implemented",
           "Complete IS/RC/RD and B app UI",
           "MySQL concurrency acceptance and complete stage release"
         ]

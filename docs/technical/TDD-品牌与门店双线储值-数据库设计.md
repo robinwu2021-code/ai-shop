@@ -736,3 +736,20 @@ V545只新增mbr_scope_member/mbr_store_profile/mbr_scope_legacy_link及mbr_iden
 复用 pay_ent_command_dedup，不新增表，不修改 V548/V549 或旧唯一键。外层 operation_kind 为 SV_MAINTENANCE_PAUSE、SV_MAINTENANCE_APPLY，resource_no 使用 SVM 维护回执编号；response_snapshot 保存 MaintenanceResult。pause 的 payload_hash 绑定原 manifest、规范化服务器证据、inventoryHash；apply 额外绑定 pauseReceiptNo。内层 fence/map 使用从操作、外层键、清单和 manifest 派生的独立幂等键，不能用旧基础命令冒充完整维护批准。
 
 暂停与映射分别提交。映射及提交前证明时效检查处于同一 Pay 事务；失败时原账户维度与本次内外层回执共同回滚，已提交暂停不回滚。保持 accountNo、金额、账序和原身份不变。MySQL 唯一键的条件切换、DDL 失败恢复与正式恢复发行仍待实现，不能将事务内映射视为已完成 DDL。
+
+### P3 全库唯一键预检与断点识别（2026-10-23）
+
+StoredValueAccountKeyInspector 从 Pay 数据源读取 MySQL information_schema.STATISTICS 和账户/发行方数据。扫描不按租户或 deleted 过滤账户，因为真实唯一键覆盖整表。返回仅含结构摘要、账户数、阻断类别及固定 SQL 建议，不返回顾客、余额或连接信息。该结果是只读预检，不能作为全库 DDL 授权或账本完整性证明；schemaHash 只表示索引结构，不代表资金或账户内容摘要。
+
+| 实际索引状态 | 下一步 |
+| --- | --- |
+| 两个旧键精确定义均存在，新键不存在 | ADD_ISSUER_KEY：仅建议创建 uk_sv_issuer_customer(tenant_no,issuer_no,customer_no,currency) |
+| 新键精确定义已存在，仍有旧键 | DROP_LEGACY_KEYS：仅建议删除仍存在的已知旧键 |
+| 新键正确、两个旧键已不存在 | KEYS_READY：仅索引就绪，不表示可以恢复写入 |
+| 定义、数据或暂停检查不通过 | BLOCKED：不返回任何 DDL |
+
+索引按名称、唯一性、完整列顺序检查，拒绝前缀、表达式、非BTREE及未审查的其他唯一索引；PRIMARY(id)、uk_sv_account(tenant_no,account_no)必须保留。新键缺失且旧保护不完整时阻断，不自动补猜。重复元数据、缺失元数据也不能生成绿色计划。
+
+数据阻断包括：关键维度为空、冻结发行版本/发行方/币种/STORE来源不匹配、同发行方顾客币种重复，以及任一有效发行方未FENCED（即使该发行方暂无账户）。重复分组由数据库按实际列排序规则完成，不在Java中按字符串去重。已删除账户同样参与数据核验，不能用软删除绕过唯一键。
+
+本轮不执行 ALTER。正式执行器仍须有全库运维授权、全范围已完成映射回执、新鲜节点证明、部署冻结与每步重检；MySQL DDL隐式提交，必须逐步记录并从实际schema恢复，不能声称事务回滚可撤销DDL。issuer/customer等必填约束、切写和恢复也尚未完成。H2定向验证数据扫描和计划逻辑；真实MySQL元数据及DDL行为留本阶段隔离演练验收。

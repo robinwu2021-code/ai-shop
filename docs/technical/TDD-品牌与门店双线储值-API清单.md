@@ -456,3 +456,9 @@ Core 内部 StoredValueMigrationMaintenanceService.pause/apply 先取得当前�
 接口经原内部 token 鉴权；Core 和 Pay 均要求 shop.pay.stored-value.migration.execution-enabled=true，默认 false。原 migration-enabled、issuer-mode 及冻结预审约束继续生效。proof 包含同次读取的封存 Inventory 与 Report。Pay 重新计算证明，核对实际执行进程、数据库摘要、开关、构建和时效；事务提交前再次检查时效，包含等待锁和映射耗时。
 
 apply 必须引用同租户、原清单、当前证据及同 inventoryHash 的已完成 pause 回执；基础 fence 回执不能替代。暂停、映射分别提交，映射失败或证明过期回滚本次元数据及回执，保留此前已提交的 FENCED。相同幂等键可用同清单的新鲜证明重试；清单摘要变化须重新取得暂停回执。本链路不执行唯一键 DDL、不解除暂停、不启用发行。前述“未接入编排”仅剩完整切换部分，暂停及元数据回填已接通；线上尚未部署或启用。
+
+### P3 全库索引预检内部合同（2026-10-23）
+
+仅新增内部 Java StoredValueAccountKeyInspector.inspect()，没有新增 B/C/运营/内部HTTP接口。返回 Plan(ready,nextStep,schemaHash,accounts,issues,statements)。ready 只表示当前索引步骤的预检通过；KEYS_READY也不是资金写入准入。不得把现有门店所有人的维护权限扩展成整库DDL权限，不接受公开请求上传扫描结果或直接执行返回的SQL。
+
+此预检尚未连接pause/apply的DDL执行阶段，不自动运行任何语句。原暂停、元数据映射回执与开关行为不变。

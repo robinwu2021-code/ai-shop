@@ -72,5 +72,9 @@
   "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueMigrationExecutionService.java",
   "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueMigrationExecutionTest.java",
   "backend/shop-app/src/main/java/ai/neargo/shop/paybridge/StoredValueMigrationMaintenanceService.java",
-  "backend/shop-app/src/test/java/ai/neargo/shop/paybridge/StoredValueMigrationMaintenanceTest.java"
+  "backend/shop-app/src/test/java/ai/neargo/shop/paybridge/StoredValueMigrationMaintenanceTest.java",
+  "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueAccountKeyPlan.java",
+  "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueAccountKeyPlanTest.java",
+  "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueAccountKeyInspector.java",
+  "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueAccountKeyInspectorTest.java"
 ]

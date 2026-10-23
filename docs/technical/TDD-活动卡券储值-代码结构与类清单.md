@@ -897,3 +897,13 @@ LegacyCouponIdentityPort新增core本地模板主体/已提交模板目录读取
 | Core/Pay transport | StoredValueMigrationAppService、PayInternalApi、PayStoredValueMigrationRequests、InternalStoredValueMigrationEndpoint | 嵌入/独立 Pay typed pause/apply，沿用内部 token；不新增公开 API |
 
 本轮没有唯一键 DDL、恢复发行或品牌资金激活类；全阶段仍在开发。
+
+### P3 唯一键切换预检（2026-10-23）
+
+| 模块 | 类/合同 | 职责 |
+| --- | --- | --- |
+| pay-domain/storedvalue/migration | StoredValueAccountKeyPlan.evaluate | 精确校验索引结构和汇总阻断条件，生成先建新键、再移旧键的固定下一步；按实际状态识别断点 |
+| pay-domain/storedvalue/migration | StoredValueAccountKeyInspector.inspect | 只读MySQL元数据及全租户账户/冻结版本/发行方扫描，包含已删除行；不执行DDL、不公开资金数据 |
+| pay-domain测试 | StoredValueAccountKeyPlanTest / StoredValueAccountKeyInspectorTest | 结构、顺序、断点、全库数据、前缀伪装与读取失败；不作为MySQL真实DDL验收替代 |
+
+正式DDL执行器、持久步骤回执、全库操作授权与恢复发行仍待实现。
