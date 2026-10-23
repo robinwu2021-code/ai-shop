@@ -1,24 +1,19 @@
 package ai.neargo.shop.beauty.mapper;
 
-import ai.neargo.shop.beauty.entity.BtyArrivalChallenge;
-
-import ai.neargo.shop.beauty.entity.BtyGuestClaimReceipt;
-
-import ai.neargo.shop.beauty.entity.BtyWorkOrderContext;
-
-import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
-
 import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
-import ai.neargo.shop.beauty.entity.BtyAppointmentResourceDecision;
-import ai.neargo.shop.beauty.entity.BtyAppointmentPreparation;
-import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
 import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
-import ai.neargo.shop.beauty.entity.BtyAppointmentCurrent;
 import ai.neargo.shop.beauty.entity.BtyAppointmentAssignment;
+import ai.neargo.shop.beauty.entity.BtyAppointmentCurrent;
 import ai.neargo.shop.beauty.entity.BtyAppointmentItem;
+import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
+import ai.neargo.shop.beauty.entity.BtyAppointmentPreparation;
+import ai.neargo.shop.beauty.entity.BtyAppointmentResourceDecision;
 import ai.neargo.shop.beauty.entity.BtyAppointmentResourceFence;
 import ai.neargo.shop.beauty.entity.BtyAppointmentResourceIntent;
+import ai.neargo.shop.beauty.entity.BtyArrivalChallenge;
+import ai.neargo.shop.beauty.entity.BtyGuestClaimReceipt;
+import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
 import ai.neargo.shop.beauty.entity.BtyServiceDefinition;
 import ai.neargo.shop.beauty.entity.BtyServiceDefinitionVersion;
 import ai.neargo.shop.beauty.entity.BtyServiceParticipation;
@@ -31,6 +26,7 @@ import ai.neargo.shop.beauty.entity.BtyStorePolicy;
 import ai.neargo.shop.beauty.entity.BtyStorePolicyVersion;
 import ai.neargo.shop.beauty.entity.BtyTradeBinding;
 import ai.neargo.shop.beauty.entity.BtyWorkOrder;
+import ai.neargo.shop.beauty.entity.BtyWorkOrderContext;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -121,6 +117,25 @@ public final class BeautyMappers {
 
     /** 预约单；业务事务先锁预约根，再处理项目及安排历史。 */
     public interface AppointmentMapper extends BaseMapper<BtyAppointment> {
+        /** Conversion advances only the revision; execution still has not started. */
+        @Update("""
+                UPDATE bty_appointment SET version=version+1,updated_by=#{actorNo},updated_at=#{updatedAt}
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                AND appointment_no=#{appointmentNo} AND deleted=0 AND version=#{expectedVersion}
+                AND status='CHECKED_IN' AND checked_in_at IS NOT NULL
+                AND EXISTS (SELECT 1 FROM bty_appointment_current c WHERE c.tenant_no=bty_appointment.tenant_no
+                  AND c.entity_no=bty_appointment.entity_no AND c.appointment_no=bty_appointment.appointment_no
+                  AND c.deleted=0 AND c.operation_no IS NULL)
+                AND EXISTS (SELECT 1 FROM bty_appointment_resource_fence f WHERE f.tenant_no=bty_appointment.tenant_no
+                  AND f.entity_no=bty_appointment.entity_no AND f.appointment_no=bty_appointment.appointment_no
+                  AND f.deleted=0 AND f.active_intent_no IS NULL)
+                AND NOT EXISTS (SELECT 1 FROM bty_work_order w WHERE w.tenant_no=bty_appointment.tenant_no
+                  AND w.entity_no=bty_appointment.entity_no AND w.appointment_no=bty_appointment.appointment_no)
+                """)
+        int markWorkOrderOpened(@Param("entityNo") String entityNo,@Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo,@Param("expectedVersion") long expectedVersion,
+                @Param("actorNo") String actorNo,@Param("updatedAt") LocalDateTime updatedAt);
+
         /** Existing order roots forbid reception replacement even before actual task execution. */
         @Select("""
                 SELECT (SELECT COUNT(*) FROM bty_work_order w WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo}
@@ -373,6 +388,32 @@ public final class BeautyMappers {
 
     /** 服务工单；调用者在本域短事务按根→任务→子行锁序操作。 */
     public interface WorkOrderMapper extends BaseMapper<BtyWorkOrder> {
+        /** Current scope is part of SQL authorization, including canonical root/context encoding. */
+        @Select("""
+                SELECT w.* FROM bty_work_order w WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo}
+                AND w.store_no=#{storeNo} AND w.work_order_no=#{workOrderNo} AND w.deleted=0
+                AND (NOT EXISTS (SELECT 1 FROM bty_work_order_context any_context
+                  WHERE any_context.tenant_no=w.tenant_no AND any_context.work_order_no=w.work_order_no)
+                  OR EXISTS (SELECT 1 FROM bty_work_order_context c WHERE c.tenant_no=w.tenant_no
+                    AND c.entity_no=w.entity_no AND c.store_no=w.store_no AND c.work_order_no=w.work_order_no
+                    AND c.deleted=0 AND w.customer_ref=CONCAT(c.identity_kind,':',c.identity_ref)))
+                """)
+        BtyWorkOrder selectScoped(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo);
+        /** Consumer ownership is proved before any child read, never by external mutable guest state. */
+        @Select("""
+                SELECT w.* FROM bty_work_order w JOIN bty_work_order_context c
+                  ON c.tenant_no=w.tenant_no AND c.entity_no=w.entity_no AND c.store_no=w.store_no
+                  AND c.work_order_no=w.work_order_no AND c.deleted=0
+                  AND w.customer_ref=CONCAT(c.identity_kind,':',c.identity_ref)
+                WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
+                  AND ((c.identity_kind='USER' AND c.identity_ref=#{userNo})
+                  OR (c.identity_kind='GUEST' AND EXISTS (SELECT 1 FROM bty_guest_claim_receipt r
+                    WHERE r.tenant_no=w.tenant_no AND r.entity_no=w.entity_no AND r.store_no=w.store_no
+                    AND r.guest_no=c.identity_ref AND r.user_no=#{userNo} AND r.deleted=0)))
+                """)
+        BtyWorkOrder selectOwned(@Param("userNo") String userNo, @Param("workOrderNo") String workOrderNo);
+
         /** 显式父链范围读取；不会按当前人员反推历史安排。 */
         @Select("""
                 SELECT * FROM bty_work_order WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND
@@ -452,6 +493,21 @@ public final class BeautyMappers {
 
     /** 可独立执行服务任务；调用者在本域短事务按根→任务→子行锁序操作。 */
     public interface ServiceTaskMapper extends BaseMapper<BtyServiceTask> {
+        /** Every child proves the complete live root and optional original appointment-item parent. */
+        @Select("""
+                SELECT t.* FROM bty_service_task t JOIN bty_work_order w
+                  ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no AND w.work_order_no=t.work_order_no
+                WHERE t.tenant_no='MAIN' AND t.entity_no=#{entityNo} AND t.work_order_no=#{workOrderNo}
+                  AND t.deleted=0 AND w.deleted=0 AND w.store_no=#{storeNo}
+                  AND t.scope_revision>0 AND t.scope_revision<=w.scope_revision
+                  AND (t.appointment_item_no IS NULL OR EXISTS (SELECT 1 FROM bty_appointment_item i
+                    WHERE i.tenant_no=t.tenant_no AND i.entity_no=t.entity_no
+                    AND i.appointment_item_no=t.appointment_item_no AND i.appointment_no=w.appointment_no
+                    AND i.deleted=0)) ORDER BY t.id
+                """)
+        List<BtyServiceTask> selectForWorkOrder(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo);
+
         /** 显式父链范围读取；不会按当前人员反推历史安排。 */
         @Select("""
                 SELECT t.* FROM bty_service_task t JOIN bty_work_order w
@@ -567,6 +623,23 @@ public final class BeautyMappers {
 
     /** 任务步骤实例；调用者在本域短事务按根→任务→子行锁序操作。 */
     public interface ServiceStepMapper extends BaseMapper<BtyServiceStep> {
+        /** A task number alone cannot authorize rows from a foreign or deleted parent. */
+        @Select("""
+                SELECT c.* FROM bty_service_step c JOIN bty_service_task t
+                  ON t.tenant_no=c.tenant_no AND t.entity_no=c.entity_no AND t.task_no=c.task_no
+                JOIN bty_work_order w ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no
+                  AND w.work_order_no=t.work_order_no
+                WHERE c.tenant_no='MAIN' AND c.entity_no=#{entityNo} AND c.task_no=#{taskNo} AND c.deleted=0
+                  AND t.work_order_no=#{workOrderNo} AND t.deleted=0 AND w.deleted=0 AND w.store_no=#{storeNo}
+                  AND t.scope_revision>0 AND t.scope_revision<=w.scope_revision
+                  AND (t.appointment_item_no IS NULL OR EXISTS (SELECT 1 FROM bty_appointment_item i
+                    WHERE i.tenant_no=t.tenant_no AND i.entity_no=t.entity_no
+                    AND i.appointment_item_no=t.appointment_item_no AND i.appointment_no=w.appointment_no
+                    AND i.deleted=0)) ORDER BY c.id
+                """)
+        List<BtyServiceStep> selectForTask(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo, @Param("taskNo") String taskNo);
+
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
         @Update("""
                 UPDATE bty_service_step s
@@ -598,6 +671,24 @@ public final class BeautyMappers {
 
     /** 实际服务人员参与段；调用者在本域短事务按根→任务→子行锁序操作。 */
     public interface ServiceParticipationMapper extends BaseMapper<BtyServiceParticipation> {
+        /** A task number alone cannot authorize rows from a foreign or deleted parent. */
+        @Select("""
+                SELECT c.* FROM bty_service_participation c JOIN bty_service_task t
+                  ON t.tenant_no=c.tenant_no AND t.entity_no=c.entity_no AND t.task_no=c.task_no
+                JOIN bty_work_order w ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no
+                  AND w.work_order_no=t.work_order_no
+                WHERE c.tenant_no='MAIN' AND c.entity_no=#{entityNo} AND c.task_no=#{taskNo} AND c.deleted=0
+                  AND t.work_order_no=#{workOrderNo} AND t.deleted=0 AND w.deleted=0 AND w.store_no=#{storeNo}
+                  AND t.scope_revision>0 AND t.scope_revision<=w.scope_revision
+                  AND (t.appointment_item_no IS NULL OR EXISTS (SELECT 1 FROM bty_appointment_item i
+                    WHERE i.tenant_no=t.tenant_no AND i.entity_no=t.entity_no
+                    AND i.appointment_item_no=t.appointment_item_no AND i.appointment_no=w.appointment_no
+                    AND i.deleted=0)) ORDER BY c.id
+                """)
+        List<BtyServiceParticipation> selectForTask(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo, @Param("taskNo") String taskNo);
+
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
         @Update("""
                 UPDATE bty_service_participation p
@@ -622,6 +713,17 @@ public final class BeautyMappers {
 
     /** 提交与恢复意图；外部权威结果由业务Service验证，不持锁调用外部。 */
     public interface ServiceSubmissionMapper extends BaseMapper<BtyServiceSubmission> {
+        /** Only a real OPEN draft belonging to this authorized live root is projected. */
+        @Select("""
+                SELECT s.* FROM bty_service_submission s JOIN bty_work_order w
+                  ON w.tenant_no=s.tenant_no AND w.entity_no=s.entity_no AND w.store_no=s.store_no
+                  AND w.work_order_no=s.work_order_no
+                WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
+                  AND s.work_order_no=#{workOrderNo} AND s.action='OPEN' AND s.deleted=0 AND w.deleted=0
+                """)
+        BtyServiceSubmission selectOpenForWorkOrder(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo, @Param("workOrderNo") String workOrderNo);
+
         /** 只读取已授权本地事实；不存在的行不提供创建互斥。 */
         @Select("""
                 SELECT * FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
@@ -808,7 +910,16 @@ public final class BeautyMappers {
     /** Persistent server previews; bytes must not be accepted from a public binding. */
     public interface AppointmentPreparationMapper extends BaseMapper<BtyAppointmentPreparation> { }
     public interface AppointmentArrangementMapper extends BaseMapper<BtyAppointmentArrangement> { }
-    public interface AppointmentCurrentMapper extends BaseMapper<BtyAppointmentCurrent> { }
+    public interface AppointmentCurrentMapper extends BaseMapper<BtyAppointmentCurrent> {
+        @Select("""
+                SELECT c.* FROM bty_appointment_current c JOIN bty_appointment a
+                ON a.tenant_no=c.tenant_no AND a.entity_no=c.entity_no AND a.appointment_no=c.appointment_no
+                WHERE c.tenant_no='MAIN' AND c.entity_no=#{entityNo} AND c.appointment_no=#{appointmentNo}
+                AND c.deleted=0 AND a.deleted=0 AND a.store_no=#{storeNo} FOR UPDATE
+                """)
+        BtyAppointmentCurrent selectScopedForUpdate(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,@Param("appointmentNo") String appointmentNo);
+ }
     /** Durable operation claim; CAS leases are independent of actor authority and never authorize commands. */
     public interface AppointmentOperationMapper extends BaseMapper<BtyAppointmentOperation> {
         @Update("""
@@ -824,6 +935,23 @@ public final class BeautyMappers {
     public interface AppointmentResourceDecisionMapper extends BaseMapper<BtyAppointmentResourceDecision> { }
     /** Scoped reception persistence; authorization remains in services. */
     public interface ReceptionOperationMapper extends BaseMapper<BtyReceptionOperation> {
+        /** A successful opening is read only through its exact original context and live order parent. */
+        @Select("""
+                SELECT o.* FROM bty_reception_operation o JOIN bty_work_order_context c
+                  ON c.tenant_no=o.tenant_no AND c.entity_no=o.entity_no AND c.store_no=o.store_no
+                  AND c.source_reception_operation_no=o.operation_no AND c.work_order_no=o.work_order_no
+                  AND c.identity_kind=o.identity_kind AND c.identity_ref=o.identity_ref AND c.deleted=0
+                JOIN bty_work_order w ON w.tenant_no=c.tenant_no AND w.entity_no=c.entity_no
+                  AND w.store_no=c.store_no AND w.work_order_no=c.work_order_no AND w.deleted=0
+                  AND w.customer_ref=CONCAT(c.identity_kind,':',c.identity_ref)
+                WHERE o.tenant_no='MAIN' AND o.entity_no=#{entityNo} AND o.store_no=#{storeNo}
+                  AND o.work_order_no=#{workOrderNo} AND o.operation_no=#{operationNo} AND o.deleted=0
+                  AND o.action='OPEN_WORK_ORDER' AND o.phase='SUCCEEDED'
+                """)
+        BtyReceptionOperation selectOpenedForWorkOrder(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo, @Param("workOrderNo") String workOrderNo,
+                @Param("operationNo") String operationNo);
+
         @Select("""
                 SELECT * FROM bty_reception_operation WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                 AND store_no=#{storeNo} AND operation_no=#{operationNo} AND deleted=0 FOR UPDATE
@@ -834,6 +962,13 @@ public final class BeautyMappers {
 
     /** Scoped reception persistence; authorization remains in services. */
     public interface WorkOrderContextMapper extends BaseMapper<BtyWorkOrderContext> {
+        @Select("""
+                SELECT * FROM bty_work_order_context WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                  AND store_no=#{storeNo} AND work_order_no=#{workOrderNo} AND deleted=0
+                """)
+        BtyWorkOrderContext selectScoped(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo);
+
     }
 
     /** Scoped reception persistence; authorization remains in services. */

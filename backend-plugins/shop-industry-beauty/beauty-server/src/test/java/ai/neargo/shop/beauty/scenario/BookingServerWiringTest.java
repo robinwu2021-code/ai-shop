@@ -11,6 +11,7 @@ import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl;
 import ai.neargo.shop.beauty.port.RemoteResourceBookingPort;
 import ai.neargo.shop.beauty.service.ServiceCatalogQueryService;
+import ai.neargo.shop.beauty.service.WorkOrderService;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.spi.resource.ResourceBookingPort;
 import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
@@ -43,7 +44,10 @@ class BookingServerWiringTest {
                 BeautyMappers.ServiceRequirementMapper.class, BeautyMappers.ServiceDefinitionMapper.class,
                 BeautyMappers.ServiceDefinitionVersionMapper.class, BeautyMappers.StorePolicyMapper.class,
                 BeautyMappers.StorePolicyVersionMapper.class, BeautyMappers.ReceptionOperationMapper.class,
-                BeautyMappers.GuestClaimReceiptMapper.class, BeautyMappers.ArrivalChallengeMapper.class}) {
+                BeautyMappers.GuestClaimReceiptMapper.class, BeautyMappers.ArrivalChallengeMapper.class,
+                BeautyMappers.WorkOrderMapper.class, BeautyMappers.WorkOrderContextMapper.class,
+                BeautyMappers.ServiceTaskMapper.class, BeautyMappers.ServiceStepMapper.class,
+                BeautyMappers.ServiceParticipationMapper.class, BeautyMappers.ServiceSubmissionMapper.class}) {
             runner = runner.withBean(type, () -> mock(type));
         }
         return runner;
@@ -51,7 +55,8 @@ class BookingServerWiringTest {
     @Test void standaloneServerHasLocalUniqueSourceAndRemoteOwnerWithoutProviderConstructorCycle() {
         runner().withPropertyValues("spring.profiles.active=api").run(ctx -> {
             assertThat(ctx).hasNotFailed().hasSingleBean(ResourceSourceAuthorityPort.class)
-                    .hasSingleBean(ResourceBookingPort.class).hasSingleBean(AppointmentRecoveryJob.class)
+                    .hasSingleBean(ResourceBookingPort.class).hasSingleBean(WorkOrderService.class)
+                    .hasSingleBean(AppointmentRecoveryJob.class)
                     .hasSingleBean(JobDeclaration.class);
             assertThat(ctx.getBean(JobDeclaration.class).handlerName())
                     .isEqualTo(ctx.getBean(AppointmentRecoveryJob.class).name());

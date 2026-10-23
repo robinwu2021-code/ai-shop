@@ -1,13 +1,12 @@
 package ai.neargo.shop.beauty.config;
 
-import ai.neargo.shop.beauty.job.AppointmentRecoveryJob;
 import ai.neargo.job.api.JobDeclaration;
+import ai.neargo.shop.beauty.job.AppointmentRecoveryJob;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
-import ai.neargo.shop.beauty.policy.ReceptionAccess;
 import ai.neargo.shop.beauty.policy.CustomerOwnership;
+import ai.neargo.shop.beauty.policy.ReceptionAccess;
 import ai.neargo.shop.beauty.policy.ReceptionIdentity;
-import org.springframework.context.annotation.Import;
 import ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl;
 import ai.neargo.shop.beauty.service.ServiceCatalogQueryService;
 import ai.neargo.shop.beauty.service.impl.AppointmentAvailabilityServiceImpl;
@@ -20,6 +19,7 @@ import ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl;
 import ai.neargo.shop.beauty.service.impl.AppointmentSourceAuthority;
 import ai.neargo.shop.beauty.service.impl.ServiceOperationQueryServiceImpl;
 import ai.neargo.shop.beauty.service.impl.ServiceOperationRecoveryServiceImpl;
+import ai.neargo.shop.beauty.service.impl.WorkOrderCoordinator;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.personnel.PersonnelFactsPort;
@@ -31,8 +31,9 @@ import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Profile;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.PlatformTransactionManager;
 import tools.jackson.databind.ObjectMapper;
 
@@ -68,8 +69,8 @@ public class BeautyAppointmentConfiguration {
     @Bean
     AppointmentPreparationService appointmentPreparationService(AppointmentPersistence db, AppointmentAccess access,
             ObjectProvider<CustomerIdentityPort> customers, ObjectProvider<ServiceCatalogFactsPort> products,
-            ReceptionIdentity identity) {
-        return new AppointmentPreparationService(db, access, customers, products, identity);
+            ReceptionIdentity identity, BeautyMappers.ReceptionOperationMapper receptions) {
+        return new AppointmentPreparationService(db, access, customers, products, identity, receptions);
     }
     @Bean
     AppointmentCoordinator appointmentCoordinator(AppointmentPersistence db, AppointmentAccess access,
@@ -89,8 +90,8 @@ public class BeautyAppointmentConfiguration {
     @Bean
     AppointmentServiceImpl appointmentServiceImpl(AppointmentPersistence db, AppointmentAccess access,
             AppointmentMatching matching, AppointmentPreparationService preparation, AppointmentCoordinator
-            coordinator, ReceptionAccess receptionAccess) {
-        return new AppointmentServiceImpl(db, access, matching, preparation, coordinator, receptionAccess);
+            coordinator, ReceptionAccess receptionAccess, WorkOrderCoordinator workOrders) {
+        return new AppointmentServiceImpl(db, access, matching, preparation, coordinator, receptionAccess, workOrders);
     }
     @Bean
     AppointmentAvailabilityServiceImpl appointmentAvailabilityServiceImpl(AppointmentMatching matching,

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
 import ai.neargo.shop.beauty.dto.AppointmentItemReq;
 import ai.neargo.shop.beauty.dto.PreviewMyAppointmentReq;
 import ai.neargo.shop.beauty.dto.PublicAvailabilityQuery;
@@ -23,8 +22,8 @@ import ai.neargo.shop.beauty.service.impl.AppointmentMatching;
 import ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.spi.product.ServiceCatalogFactsPort;
 import ai.neargo.shop.spi.personnel.PersonnelFactsPort;
+import ai.neargo.shop.spi.product.ServiceCatalogFactsPort;
 import ai.neargo.shop.spi.product.StoreSalesCatalogPort;
 import ai.neargo.shop.spi.resource.ResourceCandidatesPort;
 import ai.neargo.shop.spi.resource.ResourceFactsPort;
@@ -74,7 +73,7 @@ class AppointmentIncompleteSearchTest {
                         PersonnelFactsPort.class),
                 beans.getBeanProvider(ScheduleWindowsPort.class), rules);
         var access = mock(AppointmentAccess.class);
-        var appointments = new AppointmentServiceImpl(null, access, matching, null, null, null);
+        var appointments = new AppointmentServiceImpl(null, access, matching, null, null, null, null);
         var at = OffsetDateTime.now(ZoneOffset.UTC).plusHours(1).withSecond(0).withNano(0);
         at = at.plusMinutes(Math.floorMod(-at.getMinute(), 5));
         var preview = new PreviewMyAppointmentReq("S", List.of(new AppointmentItemReq("SKU", 1)), at, null);

@@ -5,18 +5,23 @@ import ai.neargo.shop.beauty.policy.AppointmentAccess;
 import ai.neargo.shop.beauty.policy.CustomerOwnership;
 import ai.neargo.shop.beauty.policy.ReceptionAccess;
 import ai.neargo.shop.beauty.policy.ReceptionIdentity;
-import ai.neargo.shop.beauty.service.impl.AppointmentPersistence;
-import ai.neargo.shop.beauty.service.impl.GuestRegistrationServiceImpl;
-import ai.neargo.shop.beauty.service.impl.ReceptionPreparation;
-import ai.neargo.shop.beauty.service.impl.ReceptionCoordinator;
 import ai.neargo.shop.beauty.service.impl.AppointmentCoordinator;
 import ai.neargo.shop.beauty.service.impl.AppointmentMatching;
+import ai.neargo.shop.beauty.service.impl.AppointmentPersistence;
 import ai.neargo.shop.beauty.service.impl.AppointmentPreparationService;
-import ai.neargo.shop.beauty.service.impl.WorkOrderPreparation;
+import ai.neargo.shop.beauty.service.impl.GuestRegistrationServiceImpl;
+import ai.neargo.shop.beauty.service.impl.ReceptionCoordinator;
+import ai.neargo.shop.beauty.service.impl.ReceptionPreparation;
+import ai.neargo.shop.beauty.service.impl.ReceptionReassignment;
 import ai.neargo.shop.beauty.service.impl.ReceptionServiceImpl;
+import ai.neargo.shop.beauty.service.impl.WorkOrderCoordinator;
+import ai.neargo.shop.beauty.service.impl.WorkOrderPreparation;
+import ai.neargo.shop.beauty.service.impl.WorkOrderQuery;
+import ai.neargo.shop.beauty.service.impl.WorkOrderServiceImpl;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.member.GuestRegistrationPort;
+import ai.neargo.shop.spi.product.ServiceCatalogFactsPort;
 import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 import java.time.Clock;
 import org.springframework.beans.factory.ObjectProvider;
@@ -49,19 +54,45 @@ public class BeautyReceptionConfiguration {
     @Bean WorkOrderPreparation workOrderPreparation(AppointmentPersistence db, AppointmentCoordinator appointments,
             BeautyMappers.ServiceDefinitionMapper definitions, BeautyMappers.ServiceDefinitionVersionMapper versions,
             BeautyMappers.ServiceRequirementMapper requirements, BeautyMappers.StorePolicyMapper policies,
-            BeautyMappers.StorePolicyVersionMapper policyVersions) {
+            BeautyMappers.StorePolicyVersionMapper policyVersions, ObjectProvider<ServiceCatalogFactsPort> products) {
         return new WorkOrderPreparation(db, appointments, definitions, versions, requirements, policies,
-                policyVersions);
+                policyVersions, products);
+    }
+    @Bean ReceptionReassignment receptionReassignment(AppointmentPersistence db, AppointmentAccess access,
+            ReceptionAccess receptionAccess, AppointmentCoordinator appointments, AppointmentMatching matching,
+            AppointmentPreparationService preparations, WorkOrderPreparation workOrders) {
+        return new ReceptionReassignment(db, access, receptionAccess, appointments, matching, preparations, workOrders);
+    }
+    @Bean WorkOrderCoordinator workOrderCoordinator(AppointmentPersistence db, AppointmentAccess access,
+            ReceptionAccess receptionAccess, ReceptionIdentity identities, CustomerOwnership ownership,
+            ReceptionPreparation operations,
+            WorkOrderPreparation preparation, ReceptionReassignment reassignment, AppointmentCoordinator appointments,
+            BeautyMappers.ReceptionOperationMapper receptionRows, BeautyMappers.WorkOrderMapper orders,
+            BeautyMappers.WorkOrderContextMapper contexts, BeautyMappers.ServiceTaskMapper tasks,
+            BeautyMappers.ServiceSubmissionMapper submissions,
+            @Qualifier("beautyOutboxPublisher") OutboxPublisher publisher,
+            @Qualifier("beautyReceptionClock") Clock clock) {
+        return new WorkOrderCoordinator(db, access, receptionAccess, identities, ownership, operations, preparation,
+                reassignment, appointments, receptionRows, orders, contexts, tasks, submissions, publisher, clock);
+    }
+    @Bean WorkOrderQuery workOrderQuery(AppointmentPersistence db, BeautyMappers.WorkOrderContextMapper contexts,
+            BeautyMappers.ServiceTaskMapper tasks, BeautyMappers.ServiceStepMapper steps,
+            BeautyMappers.ServiceParticipationMapper participations,
+            BeautyMappers.ServiceSubmissionMapper submissions, BeautyMappers.ReceptionOperationMapper operations) {
+        return new WorkOrderQuery(db, contexts, tasks, steps, participations, submissions, operations);
+    }
+    @Bean WorkOrderServiceImpl workOrderServiceImpl(WorkOrderCoordinator coordinator, WorkOrderQuery query,
+            AppointmentPersistence db, AppointmentAccess access, BeautyMappers.WorkOrderMapper orders) {
+        return new WorkOrderServiceImpl(coordinator, query, db, access, orders);
     }
     @Bean ReceptionCoordinator receptionCoordinator(AppointmentPersistence db, AppointmentAccess access,
             ReceptionAccess receptionAccess, ReceptionIdentity identities, CustomerOwnership ownership,
             ReceptionPreparation preparations, AppointmentCoordinator appointments,
             BeautyMappers.ReceptionOperationMapper operations, BeautyMappers.ArrivalChallengeMapper challenges,
             @Qualifier("beautyOutboxPublisher") OutboxPublisher publisher,
-            @Qualifier("beautyReceptionClock") Clock clock, AppointmentMatching matching,
-            AppointmentPreparationService appointmentPreparations, WorkOrderPreparation workOrders) {
+            @Qualifier("beautyReceptionClock") Clock clock, ReceptionReassignment reassignment) {
         return new ReceptionCoordinator(db, access, receptionAccess, identities, ownership, preparations,
-                appointments, operations, challenges, publisher, clock, matching, appointmentPreparations, workOrders);
+                appointments, operations, challenges, publisher, clock, reassignment);
     }
     @Bean ReceptionServiceImpl receptionServiceImpl(AppointmentPersistence db, AppointmentAccess access,
             BeautyMappers.ArrivalChallengeMapper challenges, @Qualifier("beautyReceptionClock") Clock clock,

@@ -1,10 +1,8 @@
 package ai.neargo.shop.beauty.service.impl;
 
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.beauty.dto.ArrivalVO;
 import ai.neargo.shop.beauty.dto.AppointmentAssignmentReq;
-import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
-import java.time.OffsetDateTime;
+import ai.neargo.shop.beauty.dto.ArrivalVO;
 import ai.neargo.shop.beauty.dto.CheckInReq;
 import ai.neargo.shop.beauty.dto.MyArrivalVO;
 import ai.neargo.shop.beauty.dto.MyCheckInReq;
@@ -13,14 +11,15 @@ import ai.neargo.shop.beauty.dto.ReceptionExceptionVO;
 import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
+import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
 import ai.neargo.shop.beauty.entity.BtyArrivalChallenge;
 import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
 import ai.neargo.shop.beauty.policy.CustomerOwnership;
 import ai.neargo.shop.beauty.policy.ReceptionAccess;
-import ai.neargo.shop.beauty.policy.ReceptionIdentity;
 import ai.neargo.shop.beauty.policy.ReceptionIdentity.VerifiedIdentity;
+import ai.neargo.shop.beauty.policy.ReceptionIdentity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -31,13 +30,11 @@ import ai.neargo.shop.spi.beauty.BeautyReceptionStateChanged;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Objects;
-import java.util.Comparator;
-import java.util.HashSet;
 
 /** Arrival observes owner proof outside locks and commits only local presence/audit facts under the root lock. */
 public final class ReceptionCoordinator {
@@ -52,19 +49,16 @@ public final class ReceptionCoordinator {
     private final BeautyMappers.ArrivalChallengeMapper challenges;
     private final OutboxPublisher publisher;
     private final Clock clock;
-    private final AppointmentMatching matching;
-    private final AppointmentPreparationService appointmentPreparations;
-    private final WorkOrderPreparation workOrders;
+    private final ReceptionReassignment reassignment;
     public ReceptionCoordinator(AppointmentPersistence db, AppointmentAccess access, ReceptionAccess receptionAccess,
             ReceptionIdentity identities, CustomerOwnership ownership, ReceptionPreparation preparations,
             AppointmentCoordinator appointments, BeautyMappers.ReceptionOperationMapper operations,
             BeautyMappers.ArrivalChallengeMapper challenges, OutboxPublisher publisher, Clock clock,
-            AppointmentMatching matching, AppointmentPreparationService appointmentPreparations,
-            WorkOrderPreparation workOrders) {
+            ReceptionReassignment reassignment) {
         this.db = db; this.access = access; this.receptionAccess = receptionAccess; this.identities = identities;
         this.ownership = ownership; this.preparations = preparations; this.appointments = appointments;
         this.operations = operations; this.challenges = challenges; this.publisher = publisher; this.clock = clock;
-        this.matching = matching; this.appointmentPreparations = appointmentPreparations; this.workOrders = workOrders;
+        this.reassignment = reassignment;
     }
     public ArrivalVO checkIn(String entity, String store, String actor, CheckInReq req, String key) {
         access.merchant(entity, store, actor, true); receptionAccess.customer(entity, store, actor);
@@ -134,7 +128,8 @@ public final class ReceptionCoordinator {
                     new ReceptionPreparation.ArrivalPayload(1, root.getAppointmentNo(), revision));
             AppointmentPersistence.require(db.roots.markArrived(root.getEntityNo(), root.getStoreNo(),
                     root.getAppointmentNo(), revision, "CONFIRMED", at, actor, at) == 1);
-            String timing = at.isBefore(root.getStartAt()) ? "EARLY" : at.equals(root.getStartAt()) ? "ON_TIME" : "LATE";
+            String timing = at.isBefore(root.getStartAt()) ? "EARLY" : at.equals(root
+                    .getStartAt()) ? "ON_TIME" : "LATE";
             var result = new ArrivalVO(root.getAppointmentNo(), revision + 1, "CHECKED_IN", at.atOffset(ZoneOffset.UTC),
                     timing, root.getStartAt().atOffset(ZoneOffset.UTC), root.getEndAt().atOffset(ZoneOffset.UTC),
                     op.getOperationNo(), "SUCCEEDED");
@@ -172,71 +167,11 @@ public final class ReceptionCoordinator {
             return result;
         });
     }
-    /** Internal preparation for later work-order opening; no order or task is created here. */
+    /** The shared helper keeps later walk-in orchestration independent from order opening. */
     public BtyAppointmentOperation reassign(String entity, String store, String actor, String appointment,
             long revision, List<AppointmentAssignmentReq> assignments, OffsetDateTime startAt, String key) {
-        access.merchant(entity, store, actor, true); receptionAccess.customer(entity, store, actor);
-        var root = scoped(entity, store, appointment);
-        String hash = IdempotencyScope.requestHash("RECEPTION_CHANGE_V1", appointment, Long.toString(revision),
-                db.json.writeValueAsString(assignments), db.json.writeValueAsString(startAt));
-        var prior = appointmentPreparations.find(entity, store, key, hash);
-        if (prior != null) { return appointments.advance(prior.getOperationNo()); }
-        AppointmentPersistence.require(root.getVersion() == revision && "CHECKED_IN".equals(root.getStatus()));
-        var replacement = appointments.replacementForReception(root);
-        var prepared = workOrders.fromAppointment(root);
-        List<AppointmentAssignmentReq> existing = new ArrayList<>();
-        for (int i = 0; i < prepared.frozen().items().size(); i++) {
-            String item = prepared.frozen().items().get(i).appointmentItemNo();
-            for (var a : prepared.assignments()) {
-                if (item.equals(a.appointmentItemNo())) {
-                    existing.add(new AppointmentAssignmentReq(i, a.requirementNo(), a.resourceNo(), a.personnelNo()));
-                }
-            }
-        }
-        boolean retained = assignments == null || assignments.isEmpty();
-        var requested = retained ? List.copyOf(existing) : List.copyOf(assignments);
-        if (!retained && new HashSet<>(requested).size() != requested.size()) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        boolean same = retained || matchesExistingAssignments(existing, requested);
-        var chosenStart = startAt == null ? root.getStartAt().atOffset(ZoneOffset.UTC) : startAt;
-        if (same && chosenStart.toInstant().equals(root.getStartAt().toInstant(ZoneOffset.UTC))) { return null; }
-        var match = matching.matchFrozen(matching.scope(store), prepared.frozen(), requested, chosenStart, replacement,
-                retained);
-        var preview = appointmentPreparations.save(match, null, root, revision);
-        List<ItemMapping> mappings = new ArrayList<>();
-        for (int i = 0; i < match.snapshot().items().size(); i++) {
-            mappings.add(new ItemMapping(prepared.frozen().items().get(i).appointmentItemNo(),
-                    match.snapshot().items().get(i).appointmentItemNo()));
-        }
-        var op = appointmentPreparations.prepareReception(db.preview(preview.previewNo()), root, revision, key, hash,
-                prepared, workOrders, db.json.writeValueAsString(new ReplacementSnapshot(mappings)));
-        return appointments.advance(op.getOperationNo());
+        return reassignment.reassign(entity, store, actor, appointment, revision, assignments, startAt, key);
     }
-    /** Consume each persisted unit once; a broad personnel request cannot consume a fixed resource first. */
-    private boolean matchesExistingAssignments(List<AppointmentAssignmentReq> existing,
-            List<AppointmentAssignmentReq> requested) {
-        if (existing.size() != requested.size()) { return false; }
-        var remaining = new ArrayList<>(existing);
-        var ordered = new ArrayList<>(requested);
-        ordered.sort(Comparator.comparing(value -> value.resourceNo() == null));
-        for (var value : ordered) {
-            int found = -1;
-            for (int i = 0; i < remaining.size(); i++) {
-                var old = remaining.get(i);
-                if (value.itemIndex() == old.itemIndex() && value.requirementNo().equals(old.requirementNo())
-                        && (value.resourceNo() == null || value.resourceNo().equals(old.resourceNo()))
-                        && (value.personnelNo() == null || value.personnelNo().equals(old.personnelNo()))) {
-                    found = i;
-                    break;
-                }
-            }
-            if (found < 0) { return false; }
-            remaining.remove(found);
-        }
-        return remaining.isEmpty();
-    }
-
     private void verifyArrangement(BtyAppointment root, HoldEvidence evidence) {
         var row = db.arrangements.selectOne(Wrappers.<BtyAppointmentArrangement>lambdaQuery()
                 .eq(BtyAppointmentArrangement::getTenantNo, root.getTenantNo())
@@ -288,7 +223,5 @@ public final class ReceptionCoordinator {
         publisher.publish(new BeautyReceptionStateChanged(root.getAppointmentNo(), root.getEntityNo(),
                 root.getStoreNo(), revision, state), new PublishOptions("BEAUTY:RECEPTION:" + op.getOperationNo(), 1));
     }
-    private record ItemMapping(String oldItemNo, String newItemNo) { }
-    private record ReplacementSnapshot(List<ItemMapping> items) { }
     private record ExceptionSnapshot(String kind, String proposal, List<String> affectedTaskNos) { }
 }

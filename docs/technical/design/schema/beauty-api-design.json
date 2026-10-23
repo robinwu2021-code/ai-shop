@@ -1342,13 +1342,13 @@
           "method": "POST",
           "path": "/biz/x/beauty/appointments/{appointmentNo}/work-orders",
           "purpose": "预约转工单并确认接待安排",
-          "request": "expectedRevision,assignments",
+          "request": "expectedRevision,assignments,startAt?",
           "response": "WorkOrderVO幂等返回原工单",
           "functions": [
             "BTY-G04"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "Task55C本地Service已实现；公开HTTP与remote接线待Task59"
         },
         {
           "id": "BAPI-053",
@@ -1389,13 +1389,13 @@
           "method": "POST",
           "path": "/biz/x/beauty/work-orders",
           "purpose": "建立工单项目行及来源提交意图",
-          "request": "customerRef,storeNo,items,appointmentNo?",
+          "request": "customerRef?,storeNo,items,appointmentNo?,guestNo?,expectedRevision?,assignments,startAt?",
           "response": "WorkOrderVO",
           "functions": [
             "BTY-H01"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "Task55C本地Service已实现；公开HTTP与remote接线待Task59"
         },
         {
           "id": "BAPI-055",
@@ -1408,7 +1408,7 @@
             "BTY-H01"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "Task55C本地Service已实现；公开HTTP与remote接线待Task59"
         },
         {
           "id": "BAPI-056",
@@ -1580,7 +1580,7 @@
             "BTY-H06"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "Task55C本地Service已实现；公开HTTP与remote接线待Task59"
         },
         {
           "id": "BAPI-159",

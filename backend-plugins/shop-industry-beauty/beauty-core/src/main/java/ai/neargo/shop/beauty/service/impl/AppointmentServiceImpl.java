@@ -18,11 +18,13 @@ import ai.neargo.shop.beauty.dto.MyAppointmentDetailVO;
 import ai.neargo.shop.beauty.dto.MyAppointmentQuery;
 import ai.neargo.shop.beauty.dto.MyAppointmentVO;
 import ai.neargo.shop.beauty.dto.NoShowVO;
+import ai.neargo.shop.beauty.dto.OpenAppointmentWorkOrderReq;
 import ai.neargo.shop.beauty.dto.PreviewAppointmentChangeReq;
 import ai.neargo.shop.beauty.dto.PreviewAppointmentReq;
 import ai.neargo.shop.beauty.dto.PreviewMyAppointmentChangeReq;
 import ai.neargo.shop.beauty.dto.PreviewMyAppointmentReq;
 import ai.neargo.shop.beauty.dto.RecordNoShowReq;
+import ai.neargo.shop.beauty.dto.WorkOrderVO;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
@@ -51,10 +53,19 @@ public final class AppointmentServiceImpl implements AppointmentService {
     private final AppointmentPreparationService preparations;
     private final AppointmentCoordinator coordinator;
     private final ReceptionAccess receptionAccess;
+    private final WorkOrderCoordinator workOrders;
     public AppointmentServiceImpl(AppointmentPersistence db, AppointmentAccess access, AppointmentMatching matching,
-            AppointmentPreparationService preparations, AppointmentCoordinator coordinator, ReceptionAccess receptionAccess) {
+            AppointmentPreparationService preparations, AppointmentCoordinator coordinator,
+                    ReceptionAccess receptionAccess,
+            WorkOrderCoordinator workOrders) {
         this.db = db; this.access = access; this.matching = matching;
         this.preparations = preparations; this.coordinator = coordinator; this.receptionAccess = receptionAccess;
+        this.workOrders = workOrders;
+    }
+    @Override
+    public WorkOrderVO openWorkOrderFromAppointment(String entity, String store, String actor, String appointment,
+            OpenAppointmentWorkOrderReq req, String key) {
+        return workOrders.openFromAppointment(entity, store, actor, appointment, req, key, "BAPI-052");
     }
     @Override
     public AppointmentPreviewVO previewAppointment(String entity, String store, String actor, PreviewAppointmentReq

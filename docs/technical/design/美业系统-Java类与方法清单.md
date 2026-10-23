@@ -6,7 +6,7 @@
 
 ## 一、范围与规范
 
-目标包含44个美业用户Controller、28个Service及同名Impl、25个内嵌Mapper、25个Entity、167个Req/Query/VO和7个必要辅助类。95条美业HTTP方法与6条内部业务方法合计101条Service方法。按需提供同接口远程实现、协议客户端和内部入口，不能把目标清单当已生成源码。
+目标包含44个美业用户Controller、28个Service及同名Impl、25个内嵌Mapper、25个Entity、171个Req/Query/VO和7个必要辅助类。95条美业HTTP方法与6条内部业务方法合计101条Service方法。按需提供同接口远程实现、协议客户端和内部入口，不能把目标清单当已生成源码。
 
 11个共用HTTP目标另列其所属域的类/方法，其中5个人员、2个资源和1个班表查询已编码，另补1个P1周规则写入口，54个CONTRACT是能力接入点而非54条已定Java方法。共享资源、账户、打印、报表等不复制到美业；需要补齐的正式契约在原所有者评审。
 
@@ -821,14 +821,14 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | bty_service_definition | `ai.neargo.shop.beauty.entity.BtyServiceDefinition` | `ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceDefinitionMapper` | 2 |
 | bty_service_definition_version | `ai.neargo.shop.beauty.entity.BtyServiceDefinitionVersion` | `ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceDefinitionVersionMapper` | 0 |
 | bty_service_requirement | `ai.neargo.shop.beauty.entity.BtyServiceRequirement` | `ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceRequirementMapper` | 0 |
-| bty_appointment | `ai.neargo.shop.beauty.entity.BtyAppointment` | `ai.neargo.shop.beauty.mapper.BeautyMappers.AppointmentMapper` | 6 |
+| bty_appointment | `ai.neargo.shop.beauty.entity.BtyAppointment` | `ai.neargo.shop.beauty.mapper.BeautyMappers.AppointmentMapper` | 7 |
 | bty_appointment_item | `ai.neargo.shop.beauty.entity.BtyAppointmentItem` | `ai.neargo.shop.beauty.mapper.BeautyMappers.AppointmentItemMapper` | 0 |
 | bty_appointment_assignment | `ai.neargo.shop.beauty.entity.BtyAppointmentAssignment` | `ai.neargo.shop.beauty.mapper.BeautyMappers.AppointmentAssignmentMapper` | 1 |
-| bty_work_order | `ai.neargo.shop.beauty.entity.BtyWorkOrder` | `ai.neargo.shop.beauty.mapper.BeautyMappers.WorkOrderMapper` | 4 |
-| bty_service_task | `ai.neargo.shop.beauty.entity.BtyServiceTask` | `ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceTaskMapper` | 4 |
-| bty_service_step | `ai.neargo.shop.beauty.entity.BtyServiceStep` | `ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceStepMapper` | 1 |
-| bty_service_participation | `ai.neargo.shop.beauty.entity.BtyServiceParticipation` | `ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceParticipationMapper` | 1 |
-| bty_service_submission | `ai.neargo.shop.beauty.entity.BtyServiceSubmission` | `ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceSubmissionMapper` | 4 |
+| bty_work_order | `ai.neargo.shop.beauty.entity.BtyWorkOrder` | `ai.neargo.shop.beauty.mapper.BeautyMappers.WorkOrderMapper` | 6 |
+| bty_service_task | `ai.neargo.shop.beauty.entity.BtyServiceTask` | `ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceTaskMapper` | 5 |
+| bty_service_step | `ai.neargo.shop.beauty.entity.BtyServiceStep` | `ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceStepMapper` | 2 |
+| bty_service_participation | `ai.neargo.shop.beauty.entity.BtyServiceParticipation` | `ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceParticipationMapper` | 2 |
+| bty_service_submission | `ai.neargo.shop.beauty.entity.BtyServiceSubmission` | `ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceSubmissionMapper` | 5 |
 | bty_trade_binding | `ai.neargo.shop.beauty.entity.BtyTradeBinding` | `ai.neargo.shop.beauty.mapper.BeautyMappers.TradeBindingMapper` | 1 |
 | bty_action_log | `ai.neargo.shop.beauty.entity.BtyActionLog` | `ai.neargo.shop.beauty.mapper.BeautyMappers.ActionLogMapper` | 0 |
 | bty_care_profile | `ai.neargo.shop.beauty.entity.BtyCareProfile` | `ai.neargo.shop.beauty.mapper.BeautyMappers.CareProfileMapper` | 2 |
@@ -900,6 +900,7 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.CreateMyAppointmentReq` | REQ | previewNo,sourceRefs?,consentRef? | BAPI-148 |
 | `ai.neargo.shop.beauty.dto.CreateServicePrintDocumentReq` | REQ | documentType,workOrderNo/sourceRef,templateVersion | BAPI-130 |
 | `ai.neargo.shop.beauty.dto.CreateTreatmentPlanReq` | REQ | customerNo,entitlementRef?,sessions | BAPI-087 |
+| `ai.neargo.shop.beauty.dto.CustomerIdentityVO` | VO | kind,reference；规范身份，非凭据，C视图不返回 | BAPI-055、BAPI-155 |
 | `ai.neargo.shop.beauty.dto.CustomerTimelineQuery` | QUERY | storeNo,from,to,page,size | BAPI-116 |
 | `ai.neargo.shop.beauty.dto.CustomerTimelineVO` | VO | PageData<CustomerTimelineVO> | BAPI-116 |
 | `ai.neargo.shop.beauty.dto.ExceptionResolutionVO` | VO | ExceptionResolutionVO不绕过原聚合校验 | BAPI-125 |
@@ -924,10 +925,10 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.MyTimelineVO` | VO | PageData<MyTimelineVO> | BAPI-158 |
 | `ai.neargo.shop.beauty.dto.MyTreatmentPlanQuery` | QUERY | page,size | BAPI-156 |
 | `ai.neargo.shop.beauty.dto.MyTreatmentPlanVO` | VO | PageData<MyTreatmentPlanVO> | BAPI-156 |
-| `ai.neargo.shop.beauty.dto.MyWorkOrderVO` | VO | MyWorkOrderVO | BAPI-155 |
+| `ai.neargo.shop.beauty.dto.MyWorkOrderVO` | VO | workOrder,originalScopeRevision,tasks,availableActions；USER或同scope不可变claim receipt授权，不回显身份 | BAPI-155 |
 | `ai.neargo.shop.beauty.dto.NoShowVO` | VO | NoShowVO不自动扣款扣次 | BAPI-045 |
-| `ai.neargo.shop.beauty.dto.OpenAppointmentWorkOrderReq` | REQ | expectedRevision,assignments | BAPI-052 |
-| `ai.neargo.shop.beauty.dto.OpenWorkOrderReq` | REQ | customerRef,storeNo,items,appointmentNo? | BAPI-054 |
+| `ai.neargo.shop.beauty.dto.OpenAppointmentWorkOrderReq` | REQ | expectedRevision,assignments,startAt?；CHECKED_IN方可开单，原键完整hash | BAPI-052 |
+| `ai.neargo.shop.beauty.dto.OpenWorkOrderReq` | REQ | customerRef?,storeNo,items,appointmentNo?,guestNo?,expectedRevision?,assignments,startAt?；无预约客户恰一且qty展开≤10 | BAPI-054 |
 | `ai.neargo.shop.beauty.dto.OperationVO` | VO | OperationVO含目标引用和恢复入口 | BAPI-160 |
 | `ai.neargo.shop.beauty.dto.ParticipationVO` | VO | ParticipationVO含历史交接区间 | BAPI-105 |
 | `ai.neargo.shop.beauty.dto.PerformanceAdjustmentReq` | REQ | entryNo,sourceRevision,evidence,reason | BAPI-109 |
@@ -1009,11 +1010,14 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.WalkInVO` | VO | WalkInVO含预约/工单引用 | BAPI-048 |
 | `ai.neargo.shop.beauty.dto.WorkOrderBillVO` | VO | WorkOrderBillVO不生成混合收款单 | BAPI-071 |
 | `ai.neargo.shop.beauty.dto.WorkOrderClosureVO` | VO | WorkOrderClosureVO | BAPI-066 |
-| `ai.neargo.shop.beauty.dto.WorkOrderDetailVO` | VO | WorkOrderDetailVO | BAPI-055 |
+| `ai.neargo.shop.beauty.dto.WorkOrderDetailVO` | VO | workOrder,customer,originalScopeRevision,tasks,availableActions；SQL同店root/context授权，legacy只读UNKNOWN动作空 | BAPI-055 |
+| `ai.neargo.shop.beauty.dto.WorkOrderParticipationVO` | VO | participationNo,personnelNo,roleCode,startedAt,endedAt；SQL完整父链真实参与 | BAPI-055、BAPI-155 |
 | `ai.neargo.shop.beauty.dto.WorkOrderRequirementVO` | VO | requirementNo,roleCode,resourceType,skillGoodsNo,qty,sequenceNo,offsetMin,durationMin,selectionRule | 内部产出分配 |
 | `ai.neargo.shop.beauty.dto.WorkOrderStepTemplateVO` | VO | stepCode,sequenceNo | 内部产出分配 |
+| `ai.neargo.shop.beauty.dto.WorkOrderStepVO` | VO | stepNo,stepCode,sequenceNo,status,startedAt,finishedAt；SQL完整父链真实步骤 | BAPI-055、BAPI-155 |
 | `ai.neargo.shop.beauty.dto.WorkOrderTaskSnapshotVO` | VO | schemaVersion,goodsNo,skuNo,definitionVersionNo,definitionHash,durationMin,bufferBeforeMin,bufferAfterMin,requirements,stepsTemplate,notes；原不可变规则，列表防御复制 | 内部产出分配 |
-| `ai.neargo.shop.beauty.dto.WorkOrderVO` | VO | WorkOrderVO幂等返回原工单；WorkOrderVO | BAPI-052、BAPI-054 |
+| `ai.neargo.shop.beauty.dto.WorkOrderTaskVO` | VO | taskNo,appointmentItemNo,scopeRevision,skuNo,definitionVersionNo,qty,doneQty,voidedQty,uom,status,bindingRevision,assignmentState,sourceState,canStart,plannedStartAt,plannedEndAt,actualStartedAt,assignments,taskSnapshot,steps,participations,availableActions；初始PENDING/0/UNBOUND/false，执行子行只读真实持久事实 | BAPI-055、BAPI-155 |
+| `ai.neargo.shop.beauty.dto.WorkOrderVO` | VO | workOrderNo,appointmentNo,scopeRevision,status,submissionNo,sourceState,operationNo,operationState,taskNos,plannedStartAt；初始OPEN/1/UNBOUND，UNKNOWN返回PENDING无工单号 | BAPI-052、BAPI-054 |
 | `ai.neargo.shop.beauty.dto.WorkbenchExceptionQuery` | QUERY | storeNo,from,to,kind,page,size | BAPI-124 |
 | `ai.neargo.shop.beauty.dto.WorkbenchSummaryQuery` | QUERY | storeNo,businessDate | BAPI-117 |
 | `ai.neargo.shop.beauty.dto.WorkbenchSummaryVO` | VO | WorkbenchSummaryVO含asOf独立水位 | BAPI-117 |
@@ -1222,7 +1226,7 @@ BOOKING VIEW或MANAGE可读、MANAGE写；C私有入口显式CONSUMER/USR；公�
 
 ## Task55A身份/认领/到店码增量
 
-Task55A+B service only; original 160 identifiers unchanged; no reception HTTP/remote/job, work-order opening or walk-in yet
+Task55A+B+C local services only; original 160 identifiers unchanged; 052/054/055/155 local scope implemented; reception HTTP/remote/walk-in/execution/source submission remain Task55D/56–60
 
 ```java
 GuestRegistrationVO GuestRegistrationService.registerGuest(String entityNo, String storeNo, String actorNo, RegisterGuestReq req, String idempotencyKey)
@@ -1236,6 +1240,20 @@ BtyAppointmentOperation ReceptionCoordinator.reassign(String entity,String store
 HoldEvidence AppointmentCoordinator.currentArrangementEvidence(BtyAppointment root) [internal]
 PreparedWorkOrderScope WorkOrderPreparation.fromAppointment(BtyAppointment root); void verifyLocked(PreparedWorkOrderScope scope) [internal]
 Matched AppointmentMatching.matchFrozen(Scope scope,FrozenAppointmentScope frozen,List<AppointmentAssignmentReq> assignments,OffsetDateTime startAt,Replacement replacement) [internal]
+WorkOrderVO AppointmentService.openWorkOrderFromAppointment(String entityNo,String currentStoreNo,String actorNo,String appointmentNo,OpenAppointmentWorkOrderReq req,String idempotencyKey) [local override; remote fail-closed default until Task59]
+WorkOrderVO WorkOrderService.openWorkOrder(String entityNo,String currentStoreNo,String actorNo,OpenWorkOrderReq req,String idempotencyKey)
+WorkOrderDetailVO WorkOrderService.getWorkOrder(String entityNo,String currentStoreNo,String actorNo,String workOrderNo)
+MyWorkOrderVO WorkOrderService.getMyWorkOrder(String userNo,String workOrderNo)
+WorkOrderDetailVO WorkOrderQuery.detail(BtyWorkOrder authorizedRoot) [ServiceImpl current access then direct WorkOrderMapper SQL root authorization; projection only]
+PreparedWorkOrderScope WorkOrderPreparation.unassigned(String entity,String store,VerifiedIdentity identity,List<AppointmentItemReq> items) [real directory/P1 definition, no hold]
+BtyAppointmentOperation ReceptionReassignment.reassign(String entity,String store,String actor,String appointment,long revision,List<AppointmentAssignmentReq> assignments,OffsetDateTime startAt,String key,String receptionOperationNo) [single replacement implementation; old overload/delegate retained]
+BtyAppointmentOperation AppointmentPreparationService.prepareReception(BtyAppointmentPreparation preview,BtyAppointment target,long expected,String key,String hash,PreparedWorkOrderScope scope,WorkOrderPreparation frozen,String requestEvidence,String receptionOperationNo) [links original outer operation in existing root/fence/current short TX]
+BtyWorkOrderContext WorkOrderContextMapper.selectScoped(String entityNo,String storeNo,String workOrderNo) [MAIN+active+complete scope]
+BtyReceptionOperation ReceptionOperationMapper.selectScopedForUpdate(String entityNo,String storeNo,String operationNo) [permanent original reception row lock]
+BtyReceptionOperation ReceptionOperationMapper.selectOpenedForWorkOrder(String entityNo,String storeNo,String workOrderNo,String operationNo) [SQL exact original context/root/canonical identity + OPEN_WORK_ORDER/SUCCEEDED; no guessed success]
+WorkOrderVO WorkOrderCoordinator.completedOrThrow(String entity,String store,String actor,String endpoint,String key,String hash,BtyReceptionOperation original,BizException stale) [private; CONFLICT only, exact original namespace/hash/operation SUCCEEDED]
+boolean WorkOrderCoordinator.sameOperation(BtyReceptionOperation expected,BtyReceptionOperation actual) [private; full tenant/entity/store/actor realm-kind/endpoint/key/hash/operation binding]
+PreparedWorkOrderScope WorkOrderCoordinator.preparedForIdentity(BtyAppointment root,PreparedWorkOrderScope prepared,VerifiedIdentity canonical) [private; no historical appointment rewrite, USER bridge only same-scope immutable receipt]
 ```
 
 ArrivalChallengeVO(challengeNo,storeNo,code,issuedAt,expiresAt)：SecureRandom32字节43字符；UTC毫秒；固定90秒原键不续期，禁止进入日志/operation/outbox。
@@ -1251,3 +1269,10 @@ Task55B：currentArrangementEvidence按current.arrangementRevision+成功operati
 ReceptionPreparation泛化完整endpoint/actor命名空间find/begin，typed ArrivalPayload/ExceptionPayload，无原proof持久化；A claim路径不变。
 053仅append-only ActionLog+原requestNo+实际受影响task及共用安全Outbox，同事务原键重放，无公共审批owner假成功。
 V1–V6冻结不变；55B修复追加V7将assignment资源组合唯一索引改同列普通索引，保留每unit安排号唯一键。就绪/严格manifest为7；其余Mapper守卫SQL、Service/DTO/Bean DAG、host真实member消费及controlled资源fixture边界不变。
+C范围：CHECKED_IN预约原冻结项目或真实未安排SERVICE/P1定义；工单OPEN/scope1，task逐项目PENDING/donevoid0/binding0/UNBOUND/canStartfalse/actualStartnull；无模板伪step/participation。
+C原键：当前BOOKING_MANAGE+CUSTOMER→完整endpoint请求hash→成功原结果；旧revision/过期cr1成功重放，变参冲突；异key同预约输家CONFLICT。REPLACE UNKNOWN持久原outer/derived/appointment operation，不创建范围。
+C最终单TX：root→fence→current→原接待op→稳定去重heads→workOrder/context/tasks/OPEN RECEIVED草稿/log/safeOutbox/op成功；任一失败全回滚。无owner IO/嵌套REQUIRES_NEW。
+CscopeHash显式schema/scope/规范身份/scopeRev/原item或展开index/SKU/原定义hash及typed规则/qtyCOUNT/原policy规则/全部资源份额与时间；不含最终随机业务号、ObservedHeads或临时hold观测revision。context保留完整typed冻结证据与真实task映射；草稿同hash/真实taskRefs，无proof/外部下单指令/nextRetryAt。
+C读取ServiceImpl先当前权限/consumer本人并直接SQL授权root/context编码，再WorkOrderQuery.detail投影真实子行；C guest仅同scope不可变receipt可见。无context仅B legacy UNKNOWN只读，C拒；子行完整活跃父链。
+C修复I1/I2：begin返回SUCCEEDED立即回原result；stale scope CONFLICT只同完整namespace/key/hash及同outer成功重读，当前权限/身份owner错误不吞。新建intent显式tenantNo与DB一致，不放宽namespace比较。REPLACE短TX锁内先SUCCEEDED不改payload/phase/result；完整原绑定RESOURCE_PENDING→OPEN_PENDING，已OPEN_PENDING同binding/openingRevision幂等恢复。
+C修复I3/I4：新052/省略身份054锁外真实guest.get，REGISTERED/revision1/user空；CLAIMED/revision2/user非空须同scope不可变receipt。只规范新prepared，原预约GUEST保留；已有pending取原outer canonical/hash不重生成。最终根/fence/current/outer锁内复用countWorkOrders阻断已有工单或实际task，保留软删历史CAS/唯一键。

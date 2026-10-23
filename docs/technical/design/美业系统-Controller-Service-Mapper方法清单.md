@@ -6,7 +6,7 @@
 
 ## 一、方法及持久化规则
 
-本清单逐项覆盖95条美业候选HTTP、11条共用候选HTTP，并保留54项共用CONTRACT对照。Mapper共25个，新增40个必要自定义锁/CAS/查询方法；其余使用继承CRUD。类总表、完整Service与Impl签名、DTO和辅助类见[Java类与方法清单](./美业系统-Java类与方法清单.md)。
+本清单逐项覆盖95条美业候选HTTP、11条共用候选HTTP，并保留54项共用CONTRACT对照。Mapper共25个，新增47个必要自定义锁/CAS/查询方法；其余使用继承CRUD。类总表、完整Service与Impl签名、DTO和辅助类见[Java类与方法清单](./美业系统-Java类与方法清单.md)。
 
 - Controller仅绑定路径/Body/Query/协议头、鉴权与调用Service，返回业务VO/PageData；沿平台ApiResponseWrapper，不再包ApiResult。声明省略import、类级条件、Mapping和权限注解，HTTP方法/路径在标题；实施必须补齐其对应注解及“为什么”的公开API Javadoc。
 - Service接口归beauty-api/service，Impl归beauty-core/service/impl且同名后缀Impl；Service方法无HTTP注解，Impl直接注入本域Mapper。禁止新增Repository、等义Application/DomainService或一个巨型BeautyManager。
@@ -2788,6 +2788,12 @@ List<String> affectedTaskNos(String entityNo, String storeNo, String appointment
 
 READ守卫：异常协调只返回同实体同门店预约下未删除工单的实际未删除task引用，不生成任务或待办。
 
+```java
+int markWorkOrderOpened(String entityNo, String storeNo, String appointmentNo, long expectedVersion, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：CHECKED_IN+checkedInAt非空+空current/fence+无历史工单条件CAS，仅version+1，实际执行未开始；同TX检查影响行1。
+
 ### ai.neargo.shop.beauty.mapper.BeautyMappers.AppointmentItemMapper
 
 表：`bty_appointment_item`；Entity：`ai.neargo.shop.beauty.entity.BtyAppointmentItem`。
@@ -2862,6 +2868,18 @@ int closeFrozenScope(String entityNo, String storeNo, String workOrderNo, long e
 
 CAS守卫：真实任务/绑定版本已重验且全部满足时关闭；不能只查陈旧完成计数；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
 
+```java
+BtyWorkOrder selectScoped(String entityNo, String storeNo, String workOrderNo);
+```
+
+READ守卫：MAIN/entity/store活跃根；context须完整同scope且USER:/GUEST:编码相等；真正无context仅B legacy只读。
+
+```java
+BtyWorkOrder selectOwned(String userNo, String workOrderNo);
+```
+
+READ守卫：单条SQL先INNER JOIN完整同scope活跃context及canonical root编码，再USER本人或同scope不可变guest claim receipt；无context拒绝。
+
 ### ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceTaskMapper
 
 表：`bty_service_task`；Entity：`ai.neargo.shop.beauty.entity.BtyServiceTask`。
@@ -2900,6 +2918,12 @@ int switchBindingRevision(String entityNo, String storeNo, String taskNo, long e
 
 CAS守卫：新绑定和source guard已提交；新revision>旧revision，不覆盖旧绑定行；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
 
+```java
+List<BtyServiceTask> selectForWorkOrder(String entityNo, String storeNo, String workOrderNo);
+```
+
+READ守卫：活跃root父链/同tenant/entity/store，0<task.scopeRevision≤root；引用预约item时同原预约且item活跃。
+
 ### ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceStepMapper
 
 表：`bty_service_step`；Entity：`ai.neargo.shop.beauty.entity.BtyServiceStep`。
@@ -2920,6 +2944,12 @@ int completeStep(String entityNo, String storeNo, String stepNo, String taskNo, 
 
 CAS守卫：先按固定顺序锁workOrder/task，再校验step状态与顺序，完成只追加合法结果；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
 
+```java
+List<BtyServiceStep> selectForTask(String entityNo, String storeNo, String workOrderNo, String taskNo);
+```
+
+READ守卫：按指定root/task完整SQL父链及活跃行读取；跨entity同taskNo、软删task/item、错工单不返回。
+
 ### ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceParticipationMapper
 
 表：`bty_service_participation`；Entity：`ai.neargo.shop.beauty.entity.BtyServiceParticipation`。
@@ -2939,6 +2969,12 @@ int endParticipation(String entityNo, String storeNo, String participationNo, lo
 ```
 
 CAS守卫：只收口尚未结束区间；新参与段另insert，开始前后不得倒置；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+```java
+List<BtyServiceParticipation> selectForTask(String entityNo, String storeNo, String workOrderNo, String taskNo);
+```
+
+READ守卫：按指定root/task完整SQL父链及活跃行读取；跨entity同taskNo、软删task/item、错工单不返回。
 
 ### ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceSubmissionMapper
 
@@ -2977,6 +3013,12 @@ int advanceProgress(String entityNo, String storeNo, String submissionNo, long e
 ```
 
 CAS守卫：按固定状态迁移推进；未知不能写成失败后另起来源；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。 活动态租约按DATETIME(3)持久化精度严格晚于updatedAt；终态清空retry，REJECTED需安全错误码。
+
+```java
+BtyServiceSubmission selectOpenForWorkOrder(String entityNo, String storeNo, String workOrderNo);
+```
+
+READ守卫：JOIN活跃root，完整MAIN/entity/store/workOrder，action=OPEN且submission活跃。
 
 ### ai.neargo.shop.beauty.mapper.BeautyMappers.TradeBindingMapper
 
@@ -3492,7 +3534,7 @@ BOOKING VIEW或MANAGE可读、MANAGE写；C私有入口显式CONSUMER/USR；公�
 
 ## Task55A身份/认领/到店码增量
 
-Task55A+B service only; original 160 identifiers unchanged; no reception HTTP/remote/job, work-order opening or walk-in yet
+Task55A+B+C local services only; original 160 identifiers unchanged; 052/054/055/155 local scope implemented; reception HTTP/remote/walk-in/execution/source submission remain Task55D/56–60
 
 ```java
 GuestRegistrationVO GuestRegistrationService.registerGuest(String entityNo, String storeNo, String actorNo, RegisterGuestReq req, String idempotencyKey)
@@ -3506,6 +3548,20 @@ BtyAppointmentOperation ReceptionCoordinator.reassign(String entity,String store
 HoldEvidence AppointmentCoordinator.currentArrangementEvidence(BtyAppointment root) [internal]
 PreparedWorkOrderScope WorkOrderPreparation.fromAppointment(BtyAppointment root); void verifyLocked(PreparedWorkOrderScope scope) [internal]
 Matched AppointmentMatching.matchFrozen(Scope scope,FrozenAppointmentScope frozen,List<AppointmentAssignmentReq> assignments,OffsetDateTime startAt,Replacement replacement) [internal]
+WorkOrderVO AppointmentService.openWorkOrderFromAppointment(String entityNo,String currentStoreNo,String actorNo,String appointmentNo,OpenAppointmentWorkOrderReq req,String idempotencyKey) [local override; remote fail-closed default until Task59]
+WorkOrderVO WorkOrderService.openWorkOrder(String entityNo,String currentStoreNo,String actorNo,OpenWorkOrderReq req,String idempotencyKey)
+WorkOrderDetailVO WorkOrderService.getWorkOrder(String entityNo,String currentStoreNo,String actorNo,String workOrderNo)
+MyWorkOrderVO WorkOrderService.getMyWorkOrder(String userNo,String workOrderNo)
+WorkOrderDetailVO WorkOrderQuery.detail(BtyWorkOrder authorizedRoot) [ServiceImpl current access then direct WorkOrderMapper SQL root authorization; projection only]
+PreparedWorkOrderScope WorkOrderPreparation.unassigned(String entity,String store,VerifiedIdentity identity,List<AppointmentItemReq> items) [real directory/P1 definition, no hold]
+BtyAppointmentOperation ReceptionReassignment.reassign(String entity,String store,String actor,String appointment,long revision,List<AppointmentAssignmentReq> assignments,OffsetDateTime startAt,String key,String receptionOperationNo) [single replacement implementation; old overload/delegate retained]
+BtyAppointmentOperation AppointmentPreparationService.prepareReception(BtyAppointmentPreparation preview,BtyAppointment target,long expected,String key,String hash,PreparedWorkOrderScope scope,WorkOrderPreparation frozen,String requestEvidence,String receptionOperationNo) [links original outer operation in existing root/fence/current short TX]
+BtyWorkOrderContext WorkOrderContextMapper.selectScoped(String entityNo,String storeNo,String workOrderNo) [MAIN+active+complete scope]
+BtyReceptionOperation ReceptionOperationMapper.selectScopedForUpdate(String entityNo,String storeNo,String operationNo) [permanent original reception row lock]
+BtyReceptionOperation ReceptionOperationMapper.selectOpenedForWorkOrder(String entityNo,String storeNo,String workOrderNo,String operationNo) [SQL exact original context/root/canonical identity + OPEN_WORK_ORDER/SUCCEEDED; no guessed success]
+WorkOrderVO WorkOrderCoordinator.completedOrThrow(String entity,String store,String actor,String endpoint,String key,String hash,BtyReceptionOperation original,BizException stale) [private; CONFLICT only, exact original namespace/hash/operation SUCCEEDED]
+boolean WorkOrderCoordinator.sameOperation(BtyReceptionOperation expected,BtyReceptionOperation actual) [private; full tenant/entity/store/actor realm-kind/endpoint/key/hash/operation binding]
+PreparedWorkOrderScope WorkOrderCoordinator.preparedForIdentity(BtyAppointment root,PreparedWorkOrderScope prepared,VerifiedIdentity canonical) [private; no historical appointment rewrite, USER bridge only same-scope immutable receipt]
 ```
 
 ArrivalChallengeVO(challengeNo,storeNo,code,issuedAt,expiresAt)：SecureRandom32字节43字符；UTC毫秒；固定90秒原键不续期，禁止进入日志/operation/outbox。
@@ -3521,3 +3577,10 @@ Task55B：currentArrangementEvidence按current.arrangementRevision+成功operati
 ReceptionPreparation泛化完整endpoint/actor命名空间find/begin，typed ArrivalPayload/ExceptionPayload，无原proof持久化；A claim路径不变。
 053仅append-only ActionLog+原requestNo+实际受影响task及共用安全Outbox，同事务原键重放，无公共审批owner假成功。
 V1–V6冻结不变；55B修复追加V7将assignment资源组合唯一索引改同列普通索引，保留每unit安排号唯一键。就绪/严格manifest为7；其余Mapper守卫SQL、Service/DTO/Bean DAG、host真实member消费及controlled资源fixture边界不变。
+C范围：CHECKED_IN预约原冻结项目或真实未安排SERVICE/P1定义；工单OPEN/scope1，task逐项目PENDING/donevoid0/binding0/UNBOUND/canStartfalse/actualStartnull；无模板伪step/participation。
+C原键：当前BOOKING_MANAGE+CUSTOMER→完整endpoint请求hash→成功原结果；旧revision/过期cr1成功重放，变参冲突；异key同预约输家CONFLICT。REPLACE UNKNOWN持久原outer/derived/appointment operation，不创建范围。
+C最终单TX：root→fence→current→原接待op→稳定去重heads→workOrder/context/tasks/OPEN RECEIVED草稿/log/safeOutbox/op成功；任一失败全回滚。无owner IO/嵌套REQUIRES_NEW。
+CscopeHash显式schema/scope/规范身份/scopeRev/原item或展开index/SKU/原定义hash及typed规则/qtyCOUNT/原policy规则/全部资源份额与时间；不含最终随机业务号、ObservedHeads或临时hold观测revision。context保留完整typed冻结证据与真实task映射；草稿同hash/真实taskRefs，无proof/外部下单指令/nextRetryAt。
+C读取ServiceImpl先当前权限/consumer本人并直接SQL授权root/context编码，再WorkOrderQuery.detail投影真实子行；C guest仅同scope不可变receipt可见。无context仅B legacy UNKNOWN只读，C拒；子行完整活跃父链。
+C修复I1/I2：begin返回SUCCEEDED立即回原result；stale scope CONFLICT只同完整namespace/key/hash及同outer成功重读，当前权限/身份owner错误不吞。新建intent显式tenantNo与DB一致，不放宽namespace比较。REPLACE短TX锁内先SUCCEEDED不改payload/phase/result；完整原绑定RESOURCE_PENDING→OPEN_PENDING，已OPEN_PENDING同binding/openingRevision幂等恢复。
+C修复I3/I4：新052/省略身份054锁外真实guest.get，REGISTERED/revision1/user空；CLAIMED/revision2/user非空须同scope不可变receipt。只规范新prepared，原预约GUEST保留；已有pending取原outer canonical/hash不重生成。最终根/fence/current/outer锁内复用countWorkOrders阻断已有工单或实际task，保留软删历史CAS/唯一键。

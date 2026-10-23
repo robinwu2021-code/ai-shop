@@ -2,13 +2,13 @@ package ai.neargo.shop.beauty.service.impl;
 
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
-import ai.neargo.shop.beauty.policy.ReceptionIdentity.VerifiedIdentity;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
+import ai.neargo.shop.beauty.policy.ReceptionIdentity.VerifiedIdentity;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.idem.IdempotencyScope;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /** Durable verified claim intents contain only canonical references, never tickets or contact fingerprints. */
 public final class ReceptionPreparation {
@@ -71,20 +71,31 @@ public final class ReceptionPreparation {
         var existing = find(entity, store, actor, endpoint, key, hash);
         if (existing != null) { return existing; }
         var user = SecurityUtils.requireUser();
-        var op = new BtyReceptionOperation(); op.setEntityNo(entity); op.setStoreNo(store);
+        var op = new BtyReceptionOperation(); op.setTenantNo(user.tenantNo());
+        op.setEntityNo(entity); op.setStoreNo(store);
         op.setOperationNo(BizKey.next("BTRO")); op.setActorNo(actor); op.setActorRealm(user.realm().name());
         op.setActorKind(user.subjectKind().name()); op.setEndpoint(endpoint);
-        op.setAction(payload instanceof ArrivalPayload ? "CHECK_IN" : "RECEPTION_EXCEPTION");
+        op.setAction(payload instanceof ArrivalPayload ? "CHECK_IN"
+                : payload instanceof WorkOrderCoordinator.OpenPayload ? "OPEN_WORK_ORDER" : "RECEPTION_EXCEPTION");
         op.setKeyHash(IdempotencyScope.requestHash(IdempotencyScope.requireKey(key))); op.setRequestHash(hash);
-        op.setAppointmentNo(payload.appointmentNo()); op.setPhase("RECEIVED");
+        op.setAppointmentNo(payload.appointmentNo());
+        op.setPhase(payload instanceof WorkOrderCoordinator.OpenPayload ? "OPEN_PENDING" : "RECEIVED");
         if (identity != null) { op.setIdentityKind(identity.kind()); op.setIdentityRef(identity.reference()); }
         op.setDerivedKeyHash(derived(entity, store, endpoint, key));
         op.setFrozenPayload(db.json.writeValueAsString(payload));
         if (TransactionSynchronizationManager.isActualTransactionActive()) { operations.insert(op); }
-        else { db.tx(() -> { operations.insert(op); return null; }); }
+        else {
+            try { db.tx(() -> { operations.insert(op); return null; }); }
+            catch (DuplicateKeyException raced) {
+                var winner = find(entity, store, actor, endpoint, key, hash);
+                if (winner == null) { throw raced; }
+                return winner;
+            }
+        }
         return op;
     }
-    public sealed interface ReceptionPayload permits ArrivalPayload, ExceptionPayload {
+    public sealed interface ReceptionPayload permits ArrivalPayload, ExceptionPayload,
+            WorkOrderCoordinator.OpenPayload {
         String appointmentNo();
     }
     public record ArrivalPayload(int schemaVersion, String appointmentNo, long expectedRevision)

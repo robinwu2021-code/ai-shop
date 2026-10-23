@@ -1,44 +1,45 @@
 package ai.neargo.shop.scenario;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ai.neargo.shop.auth.DelegatedIdentityContext;
-import ai.neargo.shop.idem.IdempotencyScope;
-import ai.neargo.shop.spi.resource.ResourceBookingPort;
-import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
-import ai.neargo.shop.spi.resource.ResourcePlanContract;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
-import java.util.Map;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Optional;
-import tools.jackson.databind.ObjectMapper;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.member.config.MemberGuestCrypto;
 import ai.neargo.shop.member.dto.MemberCodeScope;
 import ai.neargo.shop.member.mapper.MemberGuestRegistrationMapper;
 import ai.neargo.shop.member.service.MemberCodeResolveService;
 import ai.neargo.shop.member.service.MemberGuestRegistrationService;
 import ai.neargo.shop.member.service.impl.MemberGuestRegistrationServiceImpl;
-import ai.neargo.shop.spi.member.GuestRegistrationPort;
-import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
+import ai.neargo.shop.spi.member.CustomerIdentityPort;
+import ai.neargo.shop.spi.member.GuestRegistrationPort;
+import ai.neargo.shop.spi.resource.ResourceBookingPort;
+import ai.neargo.shop.spi.resource.ResourcePlanContract;
+import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
 import ai.neargo.shop.spi.security.DelegatedIdentity;
 import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 import ai.neargo.shop.spi.user.MerchantScopeFactsPort;
 import ai.neargo.shop.spi.user.UserScopeFactsPort;
 import java.lang.reflect.InvocationTargetException;
+import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -50,9 +51,9 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.ClassUtils;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import tools.jackson.databind.ObjectMapper;
 
 /** Native current platform fixture + official V537/V538 + beauty V1–V6; real mc1/cr1 and guest owner.
  * Reflection keeps default retail compilation independent of the optional beauty module.
@@ -95,7 +96,8 @@ class BeautyReceptionIdentityIT {
         sql.update("INSERT INTO usr_account(user_no,nickname,status,created_at,updated_at) "
                 + "VALUES (?,'reception customer','NORMAL',NOW(),NOW())", user);
         service = context.getBean(type("service.GuestRegistrationService"));
-        faults.delegate = owner; faults.dropRegister = false; faults.dropClaim = false; faults.claimCalls = 0;
+        faults.delegate = owner; faults.dropRegister = false; faults.dropClaim = false;
+        faults.claimCalls = 0; faults.getCalls = 0;
     }
     @Test void registrationUnknownHasNoLocalOracleAndOnlyOriginalActorReplaysOwnerKey() {
         faults.dropRegister = true;
@@ -257,6 +259,178 @@ class BeautyReceptionIdentityIT {
         assertThat(count("bty_reception_operation")).isOne();
         assertThat(count("bty_work_order")).isZero(); assertThat(count("bty_service_task")).isZero();
     }
+    @Test void workOrderOpeningUsesRealCustomerAndGuestFacts() {
+        Object reception = context.getBean(type("service.ReceptionService"));
+        Object orders = context.getBean(type("service.WorkOrderService"));
+        String appointment = arrivalRoot(user, null);
+        workOrderFacts(appointment);
+        String ref = reference(actor);
+        Object arrived = as(actor, () -> call(reception, "checkIn", entity, store, actor,
+                dto("CheckInReq", appointment, dto("ReceptionIdentityProof", ref, null, null), 7L), "ARRIVE"));
+        Object forged = dto("OpenWorkOrderReq", "cr1_" + "x".repeat(43), store, List.of(), appointment, null,
+                value(arrived, "revision"), List.of(), null);
+        rejected(() -> as(actor, () -> call(orders, "openWorkOrder", entity, store, actor, forged, "OPEN")),
+                ErrorCode.NOT_FOUND);
+        Object req = dto("OpenWorkOrderReq", ref, store, List.of(), appointment, null,
+                value(arrived, "revision"), List.of(), null);
+        Object opened = as(actor, () -> call(orders, "openWorkOrder", entity, store, actor, req, "OPEN"));
+        String number = (String) value(opened, "workOrderNo");
+        assertThat(value(opened, "status")).isEqualTo("OPEN");
+        assertThat(sql.queryForObject("SELECT customer_ref FROM bty_work_order WHERE work_order_no=?", String.class,
+                number)).isEqualTo("USER:" + user);
+        sql.update("UPDATE mbr_identity_ticket SET expires_at=DATE_SUB(NOW(),INTERVAL 1 SECOND), "
+                + "issued_at=DATE_SUB(NOW(),INTERVAL 3 MINUTE) WHERE user_no=?", user);
+        assertThat(as(actor, () -> call(orders, "openWorkOrder", entity, store, actor, req, "OPEN"))).isEqualTo(opened);
+        String expiredAppointment = arrivalRoot(user, null); workOrderItem(expiredAppointment);
+        sql.update("UPDATE bty_appointment SET status='CHECKED_IN',checked_in_at=NOW(),version=8 WHERE appointment_no=?",
+                expiredAppointment);
+        Object expiredNew = dto("OpenWorkOrderReq", ref, store, List.of(), expiredAppointment, null,
+                8L, List.of(), null);
+        rejected(() -> as(actor, () -> call(orders, "openWorkOrder", entity, store, actor, expiredNew, "NEW")),
+                ErrorCode.NOT_FOUND);
+        var consumer = new DelegatedIdentity("MAIN", "CONSUMER", "USR", user);
+        assertThat(DelegatedIdentityContext.call(consumer, () -> call(orders, "getMyWorkOrder", user, number)))
+                .isNotNull();
+        Object registration = as(actor, () -> register("scope-contact", "scope-guest"));
+        String guest = (String) value(registration, "guestNo");
+        String guestAppointment = arrivalRoot(null, guest); workOrderItem(guestAppointment);
+        Object guestArrived = as(actor, () -> call(reception, "checkIn", entity, store, actor,
+                dto("CheckInReq", guestAppointment, dto("ReceptionIdentityProof", null, guest,
+                        value(registration, "claimToken")), 7L), "GUEST-ARRIVE"));
+        Object legacyGuest = dto("OpenWorkOrderReq", null, store, List.of(), guestAppointment, "BTG_LEGACY",
+                value(guestArrived, "revision"), List.of(), null);
+        rejected(() -> as(actor, () -> call(orders, "openWorkOrder", entity, store, actor, legacyGuest, "LEGACY")),
+                ErrorCode.NOT_FOUND);
+        Object guestReq = dto("OpenWorkOrderReq", null, store, List.of(), guestAppointment, guest,
+                value(guestArrived, "revision"), List.of(), null);
+        Object guestOpened = as(actor, () -> call(orders, "openWorkOrder", entity, store, actor, guestReq,
+                "GUEST-OPEN"));
+        String guestOrder = (String) value(guestOpened, "workOrderNo");
+        rejected(() -> DelegatedIdentityContext.call(consumer,
+                () -> call(orders, "getMyWorkOrder", user, guestOrder)), ErrorCode.NOT_FOUND);
+        String claimRef = reference(actor);
+        as(actor, () -> call(service, "claimGuest", entity, store, actor, guest,
+                dto("ClaimGuestReq", claimRef, value(registration, "claimToken")), "SCOPE-CLAIM"));
+        assertThat(DelegatedIdentityContext.call(consumer,
+                () -> call(orders, "getMyWorkOrder", user, guestOrder))).isNotNull();
+        // A CLAIMED guest fact normalizes to USER when checked against an existing USER appointment scope.
+        String claimedAppointment = arrivalRoot(user, null); workOrderItem(claimedAppointment);
+        Object claimedArrived = as(actor, () -> call(reception, "checkIn", entity, store, actor,
+                dto("CheckInReq", claimedAppointment, dto("ReceptionIdentityProof", claimRef, null, null), 7L),
+                        "CLAIMED-ARRIVE"));
+        Object claimedReq = dto("OpenWorkOrderReq", null, store, List.of(), claimedAppointment, guest,
+                value(claimedArrived, "revision"), List.of(), null);
+        Object claimedOrder = as(actor, () -> call(orders, "openWorkOrder", entity, store, actor, claimedReq,
+                "CLAIMED-OPEN"));
+        assertThat(sql.queryForObject("SELECT customer_ref FROM bty_work_order WHERE work_order_no=?", String.class,
+                value(claimedOrder, "workOrderNo"))).isEqualTo("USER:" + user);
+        sql.update("UPDATE mch_account SET status='SUSPENDED' WHERE mch_account_no=?", actor);
+        rejected(() -> as(actor, () -> call(orders, "openWorkOrder", entity, store, actor, req, "OPEN")),
+                ErrorCode.FORBIDDEN);
+        assertThat(count("bty_work_order")).isEqualTo(3);
+    }
+    @ParameterizedTest @CsvSource({"false", "true"})
+    void omittedGuestIdentityUsesCurrentOwnerAndScopedReceipt(boolean full) {
+        Object registration = as(actor, () -> register("guest-owner", "OWNER"));
+        String guest = (String) value(registration, "guestNo");
+        String first = arrivalRoot(null, guest); workOrderFacts(first);
+        Object arrived = guestArrival(first, registration, "FIRST");
+        int before = faults.getCalls;
+        Object opened = omittedGuestOpen(full, first, value(arrived, "revision"), "FIRST-OPEN");
+        assertThat(faults.getCalls).isEqualTo(before + 1);
+        assertThat(sql.queryForObject("SELECT customer_ref FROM bty_work_order WHERE work_order_no=?", String.class,
+                value(opened, "workOrderNo"))).isEqualTo("GUEST:" + guest);
+        String bridged = arrivalRoot(null, guest); workOrderItem(bridged);
+        Object bridgedArrival = guestArrival(bridged, registration, "BRIDGED");
+        String foreignReceipt = arrivalRoot(null, guest); workOrderItem(foreignReceipt);
+        Object foreignArrival = guestArrival(foreignReceipt, registration, "FOREIGN-RECEIPT");
+        String ref = reference(actor);
+        as(actor, () -> call(service, "claimGuest", entity, store, actor, guest,
+                dto("ClaimGuestReq", ref, value(registration, "claimToken")), "CLAIM"));
+        before = faults.getCalls;
+        assertThat(omittedGuestOpen(full, first, value(arrived, "revision"), "FIRST-OPEN")).isEqualTo(opened);
+        assertThat(faults.getCalls).isEqualTo(before);
+        Object normalized = omittedGuestOpen(full, bridged, value(bridgedArrival, "revision"), "BRIDGED-OPEN");
+        assertThat(sql.queryForObject("SELECT customer_ref FROM bty_work_order WHERE work_order_no=?", String.class,
+                value(normalized, "workOrderNo"))).isEqualTo("USER:" + user);
+        assertThat(sql.queryForObject("SELECT guest_ref FROM bty_appointment WHERE appointment_no=?", String.class,
+                bridged)).isEqualTo(guest);
+        assertThat(sql.queryForObject("SELECT customer_ref FROM bty_appointment WHERE appointment_no=?", String.class,
+                bridged)).isNull();
+        sql.update("UPDATE bty_guest_claim_receipt SET store_no='FOREIGN' WHERE guest_no=? AND entity_no=?",
+                guest, entity);
+        rejected(() -> omittedGuestOpen(full, foreignReceipt, value(foreignArrival, "revision"), "FOREIGN-OPEN"),
+                ErrorCode.CONFLICT);
+        sql.update("UPDATE bty_guest_claim_receipt SET store_no=? WHERE guest_no=? AND entity_no=?",
+                store, guest, entity);
+        Object wrong = as(actor, () -> register("wrong-scope", "WRONG"));
+        String wrongGuest = (String) value(wrong, "guestNo");
+        String wrongRoot = arrivalRoot(null, wrongGuest); workOrderItem(wrongRoot);
+        Object wrongArrival = guestArrival(wrongRoot, wrong, "WRONG-ARRIVE");
+        sql.update("UPDATE mbr_guest_registration SET store_no='FOREIGN' WHERE guest_no=? AND entity_no=?",
+                wrongGuest, entity);
+        rejected(() -> omittedGuestOpen(full, wrongRoot, value(wrongArrival, "revision"), "WRONG-OPEN"),
+                ErrorCode.NOT_FOUND);
+        sql.update("UPDATE mbr_guest_registration SET store_no=? WHERE guest_no=? AND entity_no=?",
+                store, wrongGuest, entity);
+        Object unbridged = as(actor, () -> register("no-local-receipt", "UNBRIDGED"));
+        String noReceiptGuest = (String) value(unbridged, "guestNo");
+        String noReceiptRoot = arrivalRoot(null, noReceiptGuest); workOrderItem(noReceiptRoot);
+        Object noReceiptArrival = guestArrival(noReceiptRoot, unbridged, "NO-RECEIPT-ARRIVE");
+        var actorIdentity = new DelegatedIdentity("MAIN", "MERCHANT", "MCH", actor);
+        as(actor, () -> owner.claim(new GuestRegistrationPort.Scope(entity, store, actorIdentity), noReceiptGuest,
+                new GuestRegistrationPort.ClaimCommand(reference(actor), (String) value(unbridged, "claimToken"),
+                        "DIRECT-OWNER-CLAIM")));
+        assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_guest_claim_receipt WHERE guest_no=?", Integer.class,
+                noReceiptGuest)).isZero();
+        rejected(() -> omittedGuestOpen(full, noReceiptRoot, value(noReceiptArrival, "revision"), "NO-RECEIPT-OPEN"),
+                ErrorCode.CONFLICT);
+        assertThat(count("bty_work_order")).isEqualTo(2);
+        assertThat(count("bty_service_submission")).isEqualTo(2);
+    }
+    private Object guestArrival(String appointment, Object registration, String key) {
+        return as(actor, () -> call(context.getBean(type("service.ReceptionService")), "checkIn", entity, store, actor,
+                dto("CheckInReq", appointment, dto("ReceptionIdentityProof", null, value(registration, "guestNo"),
+                        value(registration, "claimToken")), 7L), key));
+    }
+    private Object omittedGuestOpen(boolean full, String appointment, Object revision, String key) {
+        return as(actor, () -> full
+                ? call(context.getBean(type("service.WorkOrderService")), "openWorkOrder", entity, store, actor,
+                        dto("OpenWorkOrderReq", null, store, List.of(), appointment, null, revision,
+                                List.of(), null), key)
+                : call(context.getBean(type("service.AppointmentService")), "openWorkOrderFromAppointment",
+                        entity, store,
+                        actor, appointment, dto("OpenAppointmentWorkOrderReq", revision, List.of()), key));
+    }
+    private void workOrderFacts(String appointment) {
+        var effective = LocalDateTime.of(2025, 1, 1, 0, 0);
+        String cancel = "{\"freeCancelBeforeMinutes\":60,\"allowCustomerCancel\":true}";
+        row("bty_store_policy", "policy_no", "P", "store_no", store, "current_policy_version_no", "PV", "status",
+                "ACTIVE");
+        row("bty_store_policy_version", "policy_version_no", "PV", "policy_no", "P", "revision_index", 1,
+                "booking_ahead_days", 30, "cancel_rule", cancel, "allowed_modes", "[\"PREPAID_SINGLE\"]",
+                "effective_at", effective, "schema_version", 1, "snapshot_hash", IdempotencyScope.requestHash(
+                        effective.atOffset(ZoneOffset.UTC).toString(), "30", "60", "true", "PREPAID_SINGLE"));
+        row("bty_service_definition", "definition_no", "D", "store_no", store, "sku_no", "SKU",
+                "current_definition_version_no", "DV", "status", "ACTIVE");
+        Object duration = dto("PublishServiceDefinitionVersionReq$Duration", 20, 0, 0);
+        Object requirement = dto("PublishServiceDefinitionVersionReq$Requirement", "MAIN", "STAFF", "G", 1, 0, 0, 20,
+                "ANY_QUALIFIED");
+        row("bty_service_definition_version", "definition_no", "D", "definition_version_no", "DV", "revision_index", 1,
+                "duration_min_snapshot", 20, "buffer_before_min", 0, "buffer_after_min", 0, "steps_template",
+                "[{\"stepCode\":\"SERVICE\",\"sequenceNo\":0}]", "notes", "[]", "schema_version", 1,
+                "snapshot_hash", IdempotencyScope.requestHash("SKU", json.writeValueAsString(duration),
+                        json.writeValueAsString(List.of(requirement))));
+        row("bty_service_requirement", "requirement_no", "REQ", "definition_version_no", "DV", "role_code", "MAIN",
+                "resource_type", "STAFF", "skill_goods_no", "G", "qty", 1, "sequence_no", 0, "offset_min", 0,
+                "duration_min", 20, "selection_rule", "ANY_QUALIFIED");
+        workOrderItem(appointment);
+    }
+    private void workOrderItem(String appointment) {
+        row("bty_appointment_item", "appointment_item_no", "BL-" + appointment, "appointment_no", appointment,
+                "sku_no", "SKU", "definition_version_no", "DV", "qty", 1, "uom", "COUNT", "sequence_no", 0,
+                "execution_snapshot", "{}");
+    }
     /** Only resource admission is fixture evidence here; member tickets, grants and beauty writes are real. */
     private String arrivalRoot(String customer, String guest) {
         String number = "BA-" + UUID.randomUUID().toString().substring(0, 8);
@@ -326,7 +500,9 @@ class BeautyReceptionIdentityIT {
         return ClassUtils.resolveClassName("ai.neargo.shop.beauty." + name, getClass().getClassLoader());
     }
     private Object dto(String name, Object... args) {
-        try { return type("dto." + name).getConstructors()[0].newInstance(args); }
+        try { return Arrays.stream(type("dto." + name).getConstructors())
+                .filter(constructor -> constructor
+                        .getParameterCount() == args.length).findFirst().orElseThrow().newInstance(args); }
         catch (ReflectiveOperationException e) { throw new AssertionError(e); }
     }
     private Object value(Object object, String field) { return call(object, field); }
@@ -368,7 +544,7 @@ class BeautyReceptionIdentityIT {
     static class FaultPort implements GuestRegistrationPort {
         MemberGuestRegistrationService delegate;
         boolean dropRegister, dropClaim;
-        int claimCalls;
+        int claimCalls, getCalls;
         String lastActor;
         FaultPort(MemberGuestRegistrationService delegate) { this.delegate = delegate; }
         @Override public Registration register(Scope scope, RegisterCommand command) {
@@ -376,7 +552,8 @@ class BeautyReceptionIdentityIT {
             if (dropRegister) { dropRegister = false; throw new ResultUnknown(); } return result;
         }
         @Override public GuestFact get(Scope scope, String guest) {
-            lastActor = scope.identity().actorNo(); return delegate.get(scope, guest);
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            getCalls++; lastActor = scope.identity().actorNo(); return delegate.get(scope, guest);
         }
         @Override public GuestFact verify(Scope scope, String guest, String token) {
             return delegate.verify(scope, guest, token);

@@ -170,7 +170,7 @@
 | BAPI-049<br>BTY-G03<br>P3 | `GET /biz/x/beauty/waiting-tickets` | 查询等候队列<br>storeNo,status,page,size | PageData<WaitingTicketVO><br>美业候选新接口 |
 | BAPI-050<br>BTY-G03<br>P3 | `POST /biz/x/beauty/waiting-tickets` | 取号加入等候<br>customerRef,items | WaitingTicketVO<br>美业候选新接口 |
 | BAPI-051<br>BTY-G03<br>P3 | `POST /biz/x/beauty/waiting-tickets/{ticketNo}/actions` | 叫号过号取消等候<br>action,expectedRevision | WaitingTicketVO<br>美业候选新接口 |
-| BAPI-052<br>BTY-G04<br>P1 | `POST /biz/x/beauty/appointments/{appointmentNo}/work-orders` | 预约转工单并确认接待安排<br>expectedRevision,assignments | WorkOrderVO幂等返回原工单<br>美业候选新接口 |
+| BAPI-052<br>BTY-G04<br>P1 | `POST /biz/x/beauty/appointments/{appointmentNo}/work-orders` | 预约转工单并确认接待安排<br>expectedRevision,assignments,startAt? | WorkOrderVO幂等返回原工单<br>Task55C本地Service已实现；公开HTTP与remote接线待Task59 |
 | BAPI-053<br>BTY-G05<br>P1 | `POST /biz/x/beauty/reception-exceptions` | 迟到早到及无法服务协调<br>appointmentNo,kind,proposal,reason | ReceptionExceptionVO含受影响待办<br>美业候选新接口 |
 | BAPI-154<br>BTY-G01<br>P1 | `POST /mp/x/beauty/arrivals` | 本人到店签到<br>appointmentNo,checkInProof | MyArrivalVO<br>美业候选新接口 |
 
@@ -180,8 +180,8 @@
 
 | 编号 / 功能 / 阶段 | 方法与路径或合同 | 操作与关键入参 | 返回 / 状态 |
 |---|---|---|---|
-| BAPI-054<br>BTY-H01<br>P1 | `POST /biz/x/beauty/work-orders` | 建立工单项目行及来源提交意图<br>customerRef,storeNo,items,appointmentNo? | WorkOrderVO<br>美业候选新接口 |
-| BAPI-055<br>BTY-H01<br>P1 | `GET /biz/x/beauty/work-orders/{workOrderNo}` | 查工单任务来源与进度<br>workOrderNo | WorkOrderDetailVO<br>美业候选新接口 |
+| BAPI-054<br>BTY-H01<br>P1 | `POST /biz/x/beauty/work-orders` | 建立工单项目行及来源提交意图<br>customerRef?,storeNo,items,appointmentNo?,guestNo?,expectedRevision?,assignments,startAt? | WorkOrderVO<br>Task55C本地Service已实现；公开HTTP与remote接线待Task59 |
+| BAPI-055<br>BTY-H01<br>P1 | `GET /biz/x/beauty/work-orders/{workOrderNo}` | 查工单任务来源与进度<br>workOrderNo | WorkOrderDetailVO<br>Task55C本地Service已实现；公开HTTP与remote接线待Task59 |
 | BAPI-056<br>BTY-H01、BTY-H03<br>P1 | `POST /biz/x/beauty/work-orders/{workOrderNo}/service-submissions` | 提交新项目/加项及可信来源绑定流程<br>items,quoteNo,customerConsent,expectedRevision | ServiceSubmissionVO含恢复号<br>美业候选新接口 |
 | BAPI-057<br>BTY-H02<br>P1 | `GET /biz/x/beauty/tasks` | 查询我的或受权任务<br>storeNo,from,to,status,personnelNo,page,size,assignmentState | PageData<ServiceTaskVO><br>美业候选新接口 |
 | BAPI-058<br>BTY-H02<br>P1 | `POST /biz/x/beauty/tasks/{taskNo}/acceptances` | 接单<br>expectedRevision | TaskActionResultVO<br>美业候选新接口 |
@@ -194,7 +194,7 @@
 | BAPI-065<br>BTY-H07<br>P1 | `POST /biz/x/beauty/work-orders/{workOrderNo}/closure-previews` | 检查真实任务/来源版本和未结项<br>expectedRevision | ClosurePreviewVO含阻断项<br>美业候选新接口 |
 | BAPI-066<br>BTY-H07<br>P1 | `POST /biz/x/beauty/work-orders/{workOrderNo}/closures` | 冻结范围后关闭并释放占用<br>previewNo,expectedRevision | WorkOrderClosureVO<br>美业候选新接口 |
 | BAPI-067<br>BTY-H08<br>P4 | `POST /biz/x/beauty/work-orders/{workOrderNo}/stage-plans` | 跨日多阶段并行与上门作业计划<br>stageItems,resourceRequirements,expectedRevision | StagePlanVO仅能力开放后<br>美业候选新接口 |
-| BAPI-155<br>BTY-H01、BTY-H02、BTY-H06<br>P1 | `GET /mp/x/beauty/work-orders/{workOrderNo}` | 本人服务任务及完成进度<br>workOrderNo | MyWorkOrderVO<br>美业候选新接口 |
+| BAPI-155<br>BTY-H01、BTY-H02、BTY-H06<br>P1 | `GET /mp/x/beauty/work-orders/{workOrderNo}` | 本人服务任务及完成进度<br>workOrderNo | MyWorkOrderVO<br>Task55C本地Service已实现；公开HTTP与remote接线待Task59 |
 | BAPI-159<br>BTY-H01、BTY-H02<br>P1 | `GET /biz/x/beauty/tasks/{taskNo}` | 查询具体任务步骤与安排/实际参与摘要<br>taskNo | ServiceTaskDetailVO含来源状态及允许动作<br>美业候选新接口 |
 
 ### I 共用交易与收银

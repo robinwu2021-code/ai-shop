@@ -15,15 +15,23 @@ import ai.neargo.shop.beauty.dto.MyAppointmentDetailVO;
 import ai.neargo.shop.beauty.dto.MyAppointmentQuery;
 import ai.neargo.shop.beauty.dto.MyAppointmentVO;
 import ai.neargo.shop.beauty.dto.NoShowVO;
+import ai.neargo.shop.beauty.dto.OpenAppointmentWorkOrderReq;
 import ai.neargo.shop.beauty.dto.PreviewAppointmentChangeReq;
 import ai.neargo.shop.beauty.dto.PreviewAppointmentReq;
 import ai.neargo.shop.beauty.dto.PreviewMyAppointmentChangeReq;
 import ai.neargo.shop.beauty.dto.PreviewMyAppointmentReq;
 import ai.neargo.shop.beauty.dto.RecordNoShowReq;
+import ai.neargo.shop.beauty.dto.WorkOrderVO;
 import ai.neargo.shop.common.PageData;
 
 /** Current authenticated scope is verified for every appointment operation. */
 public interface AppointmentService {
+    /** Local opening is delivered independently of the Task59 remote reception protocol. */
+    default WorkOrderVO openWorkOrderFromAppointment(String entityNo, String currentStoreNo, String actorNo,
+            String appointmentNo, OpenAppointmentWorkOrderReq req, String idempotencyKey) {
+        throw new UnsupportedOperationException("reception wire is owned by Task59");
+    }
+
     AppointmentPreviewVO previewAppointment(String entityNo, String currentStoreNo, String actorNo,
             PreviewAppointmentReq req);
     AppointmentVO createAppointment(String entityNo, String currentStoreNo, String actorNo, CreateAppointmentReq

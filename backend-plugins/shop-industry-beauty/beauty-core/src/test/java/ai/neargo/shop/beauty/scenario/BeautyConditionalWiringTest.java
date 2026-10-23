@@ -23,6 +23,16 @@ class BeautyConditionalWiringTest {
     }
 
     @Test
+    void workOrderWiringHasNoCycle() throws Exception {
+        // Direct import must honor the disabled switch without resolving any local business dependency.
+        new ApplicationContextRunner().withUserConfiguration(Class.forName(
+                "ai.neargo.shop.beauty.config.BeautyAppointmentConfiguration"))
+                .withPropertyValues("shop.beauty.enabled=false").run(context -> assertThat(context).hasNotFailed()
+                        .doesNotHaveBean("workOrderCoordinator").doesNotHaveBean("workOrderServiceImpl"));
+        // Native WorkOrderScopeIT starts these actual strong constructor beans and exercises both services.
+    }
+
+    @Test
     void discoversBeautyConfiguration() {
         assertThat(ImportCandidates.load(AutoConfiguration.class, getClass().getClassLoader()).getCandidates())
                 .contains("ai.neargo.shop.beauty.config.BeautyAutoConfiguration");
