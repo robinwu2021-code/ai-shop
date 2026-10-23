@@ -774,3 +774,35 @@ Snapshot：`schemaVersion=1, scope, subjectNo, source, channel, prices, composit
 Node交付/定价生成9项、Python配置合同4项及UI交付合同4项通过；SQL/Ops出口守卫无新增欠账；分层/词典/索引/餐饮清单均由生成器生成。消融将餐饮taxInvoiceLineRef改成componentRef，原发票行测试由1行变2行按预期失败，字节恢复后完整餐饮回归成功。最终独立审查无待修或minor项。
 
 下一步：11B2闭合实际优惠资格/活动事实、券与资金owner能力及有效配置读取，再接统一规则/公式/税计算与CKO10报价存储，提供B/C报价/读取/复核。CKO11整体保持未完成；无新金融能力放行或远端推送。
+
+### CKO-11B2A 当前规则与报价上下文准入（2026-10-23）
+
+§0 本批闭合11B2中的有效配置读取/准入及与11B1事实、既有商家税配置的绑定。旧活动/券合同仍不能证明餐饮多券、储值组合的完整执行能力，不新增生产假证据提供方。R01只读取同MAIN/主体/门店/行业唯一ACTIVE头指向的不可变schema3版本；R02从原模板冻结定义＋原覆盖重新编译，校验有效定义、语义hash、引擎与规则目录版本；R03真实owner证据必须唯一、同范围、稳定引用、非空来源、有效且≤5分钟，无证据/能力不足阻断；R04读取期间配置头变化冲突，草稿变化不改现行规则；R05报价准备从原source鉴权读取，绑定规则、能力、商家税配置，前后复核变化冲突；R06确认重新完成鉴权/来源/规则/税读取，旧摘要不续权；R07上下文仅后端使用，不是报价、不计算优惠、不扣资产/库存，无新表/公开接口。
+
+§1 核心新增PricingRuntimeConfigService/Impl与纯PricingRuntimeConfigPolicy；复用ord_store_pricing_config/revision及ord_pricing_template_revision Mapper。PricingPreparationService/Impl组合PricingSourceService、PricingRuntimeConfigService、PricingTaxSettingPort，按来源system对应FOOD/RETAIL/BEAUTY_SERVICE行业，不收客户端行业/税率/能力。返回只读Prepared，保留原Source与投影hash、规则快照、真实owner证据和MerchantTaxSnapshot；不推断商品优惠资格/税分类。core保留跨行业共享能力，food不复制规则。
+
+§2 A实现当前配置准入、编译；B组合source/config/tax与复核、编译；C统一做纯校验、来源重新鉴权、税/规则/owner变化以及真实MariaDB范围/版本读取测试、消融、完整核心和宿主守卫、一次独立评审及本地提交。遵从用户分阶段开发编译后统一测试。
+
+§3 后端 Java 合同（非HTTP，客户端不能直接构造已授权Scope）：
+
+| 类 / 方法 | 输入 | 输出 / 校验 |
+|---|---|---|
+| PricingRuntimeConfigService.resolve | authorizedScope(tenantNo,entityNo,storeNo)、industry | RuntimeConfig：scope/industry、configNo/revisionNo/revision、templateRevisionNo、engineSpecVersion/ruleCatalogVersion、EffectivePricingConfig、真实Evidence、snapshotHash |
+| PricingRuntimeConfigPolicy.verify | 冻结门店revision、原模板revision、真实PricingCapabilities | 重编译EffectivePricingConfig；严格拒绝重复JSON字段，规范化对象键/排版后核验原语义hash，内容变化仍拒绝 |
+| PricingPreparationService.staff | 服务端已授权Scope、PricingSourceRef | Prepared：完整授权Source、RuntimeConfig、MerchantTaxSnapshot、expiresAt、preparationHash |
+| customer | PricingSourceRef、Credentials | 原来源owner每次执行C端鉴权；Prepared不含凭证 |
+| confirmStaff / confirmCustomer | 原读取参数、expectedPreparationHash | 完整重新读取后比较，不使用旧摘要恢复已撤销的权限 |
+
+Evidence必须有稳定reference/expiry与来源版本；同一owner身份出现不同版本也拒绝。源引用集合与旧schema2税档集合排序后入摘要，排列变化不造成假冲突。Prepared摘要绑定source.snapshotHash、规则快照（含能力/证据）、完整商家税快照与到期时间；税快照包含managedVersion，税率不变但继承/覆盖版本变化也冲突。读取时间不参与摘要。上下文没有优惠金额/税计算/最终应收价，也不授予下单权限；后续落单必须再次复核。
+
+失败：输入非法400；来源原授权失败原样传播；无唯一当前配置/唯一真实owner、schema/范围/版本目录不兼容、内容篡改、证据过期或能力下降40190；前后版本或预期摘要不一致409。禁止在已有数据库事务内调用，避免持锁访问跨owner。只读乐观复核不能代替未来落单时的最终校验。
+
+§4 验收映射：R01/R04→PricingConfigServiceTest新增三项真实MariaDB测试（草稿隔离、门店隔离/有效hash篡改、owner读取期间活动指针切换）；R02/R03→PricingRuntimeConfigServiceTest（冻结输入重编译、schema/目录版本、证据缺失/多实现/异范围/过期/冲突版本、能力下降、语义排版稳定）；R05/R06→PricingPreparationServiceTest（来源/规则/税变更、managedVersion、旧摘要不续权、C端凭证透传、拒绝前不读取税配置）；R07→独立只读审查及宿主装配/架构守卫。
+
+§5 验证结果：两阶段开发编译成功；共享基础272项实际通过；核心572项中513实际通过、59原生数据库条件跳过，无失败。临时MariaDB统一59项实际通过、0跳过（配置发布23、种子8、商家税18、报价存储10），运行后确认只删除本次临时容器，不连接业务数据库。18项新增纯/服务测试覆盖上述准入和准备上下文；新增3项真实数据库测试归入配置发布23项。
+
+宿主选定40项：31通过、1条件跳过、8既有失败；Architecture7项失败消息与基线逐字一致，SchemaDrift1项缺列集合与基线一致，无新增失败。Node交付/定价生成9项、Python配置合同4项及UI交付合同4项通过；SQL/Ops守卫无新增欠账，分层/词典/索引生成完成。
+
+消融：临时删除effectiveHash比较，篡改摘要测试按预期失败；字节恢复后完整核心回归通过。JSON等价排版测试先失败、规范化校验后通过。最终一次独立审查发现owner回调继承数据权限绕过：即便尚无生产provider，也作为共享基础设施边界问题处理；新增回归先失败，随后将绕过收窄到三个显式限定范围的Mapper查询，完整核心/原生数据库再次通过。无未解决审查项。
+
+本批不新增表/迁移/公开API，也不实现真实资金能力。C2.4实际生产owner能力、优惠资格/活动事实与完整11B quote仍待后续合同闭合；Prepared仅供后端准备，不能作为资金、下单或税分类授权。下一步先闭合真实owner及活动资格合同，再组合统一规则/公式/税计算、CKO10快照存储和B/C报价接口。

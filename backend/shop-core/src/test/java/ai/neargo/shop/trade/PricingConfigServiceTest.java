@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.LinkedHashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -30,8 +31,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import tools.jackson.databind.json.JsonMapper;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.pricing.PricingCapabilities;
+import ai.neargo.shop.spi.trade.PricingSourceRef;
+import ai.neargo.shop.spi.trade.PricingConfigEvidencePort;
+import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope;
+import ai.neargo.shop.trade.service.impl.PricingRuntimeConfigServiceImpl;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.event.OutboxPump;
 import ai.neargo.shop.event.SysOutboxMapper;
@@ -442,6 +448,66 @@ class PricingConfigServiceTest {
                 "{\"couponMode\":\"SINGLE\",\"couponMode\":\"MULTI\"}"), "DUPLICATE"))
                 .isInstanceOf(BizException.class);
         assertThat(count("ord_pricing_template")).isZero();
+    }
+
+    @Test
+    void runtimeReadsPublishedRevisionWithoutConsumingWorkingDraft() throws Exception {
+        var published = initializeRuntimeConfig();
+        var runtime = runtimeConfig(scope -> { });
+        var before = runtime.resolve(new Scope("MAIN", "E1", "S1"), "FOOD");
+        assertThat(before.revisionNo()).isEqualTo(published.revisionNo());
+        var draft = stores.getDraft(store(), published.parentNo());
+        stores.saveDraft(store(), draft.no(), new DraftSaveReq(draft.draftVersion(),
+                "{\"couponLimits\":{\"total\":1}}", draft.templateRevisionNo()), "RUNTIME_DRAFT");
+        assertThat(runtime.resolve(new Scope("MAIN", "E1", "S1"), "FOOD").snapshotHash())
+                .isEqualTo(before.snapshotHash());
+    }
+
+    @Test
+    void runtimeRejectsForeignStoreAndTamperedEffectiveHash() throws Exception {
+        var published = initializeRuntimeConfig();
+        var runtime = runtimeConfig(scope -> { });
+        assertThatThrownBy(() -> runtime.resolve(new Scope("MAIN", "E2", "S1"), "FOOD"))
+                .isInstanceOf(BizException.class);
+        jdbc.update("UPDATE ord_store_pricing_revision SET effective_hash=? WHERE revision_no=?",
+                "0".repeat(64), published.revisionNo());
+        assertThatThrownBy(() -> runtime.resolve(new Scope("MAIN", "E1", "S1"), "FOOD"))
+                .isInstanceOf(BizException.class);
+    }
+
+    @Test
+    void runtimeDetectsActivePointerMovedDuringOwnerRead() throws Exception {
+        var published = initializeRuntimeConfig();
+        var runtime = runtimeConfig(scope -> jdbc.update(
+                "UPDATE ord_store_pricing_config SET active_revision_no='MOVED' WHERE config_no=?",
+                published.parentNo()));
+        assertThatThrownBy(() -> runtime.resolve(new Scope("MAIN", "E1", "S1"), "FOOD"))
+                .isInstanceOfSatisfying(BizException.class, error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+    }
+
+    private RevisionVO initializeRuntimeConfig() throws Exception {
+        String next = JSON.readTree(Files.readString(Path.of("../../docs/technical/design/schema/"
+                + "pricing-merchant-tax-initial-data.example.json"))).path("industryTemplates").get(0)
+                .path("definition").toString();
+        var draft = templates.create(platform(), new CreateTemplateReq("FOOD", "RUNTIME", "Food", next),
+                "RUNTIME_CREATE");
+        var revision = templates.publish(platform(), draft.no(), request(draft), "RUNTIME_PUBLISH");
+        return stores.initialize(store(), new InitializeReq(revision.revisionNo(), "runtime"), "RUNTIME_INIT");
+    }
+
+    private PricingRuntimeConfigServiceImpl runtimeConfig(
+            Consumer<PricingConfigEvidencePort.Scope> duringRead) {
+        var beans = new DefaultListableBeanFactory();
+        var expires = Instant.now().plusSeconds(180);
+        beans.registerSingleton("runtimeOwner", (PricingConfigEvidencePort) scope -> {
+            duringRead.accept(scope);
+            return new PricingConfigEvidencePort.Evidence(scope, capabilities(), "CAP_RUNTIME", expires, Set.of(),
+                    List.of(new PricingSourceRef("OWNER", "CAPABILITY", "CAP_RUNTIME", 1, "S1", 1L)));
+        });
+        return new PricingRuntimeConfigServiceImpl(session.getMapper(TradeMappers.StorePricingConfigMapper.class),
+                session.getMapper(TradeMappers.StorePricingRevisionMapper.class),
+                session.getMapper(TradeMappers.PricingTemplateRevisionMapper.class),
+                beans.getBeanProvider(PricingConfigEvidencePort.class));
     }
 
     private static PricingPublicationPolicy buildPolicy(IdempotencyService idempotency) {
