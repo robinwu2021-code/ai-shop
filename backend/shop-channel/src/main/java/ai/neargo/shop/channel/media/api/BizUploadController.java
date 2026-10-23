@@ -138,7 +138,8 @@ public class BizUploadController {
          */
         String url = SysMediaAsset.GOODS.equals(type)
                 ? mediaStore.publicUrl(key) : mediaStore.privatePath(key);
-        return Map.of("url", url);
+        // Stable identity lets domain extensions verify ownership without parsing provider/CDN URLs.
+        return Map.of("url", url, "assetKey", key);
     }
 
 }

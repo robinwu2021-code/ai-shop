@@ -24,10 +24,20 @@ public final class OpenHours {
      * @return 认不出来返回 null —— 页面据此不画那个标签，不猜
      */
     public static Boolean openNow(String hours) {
-        return openAt(hours, LocalTime.now(ZoneId.systemDefault()));
+        return openAtLegacy(hours, LocalTime.now(ZoneId.systemDefault()));
     }
 
-    static Boolean openAt(String hours, LocalTime t) {
+    /** Strict given-clock entry for business decisions; old display behavior remains in openNow. */
+    public static Boolean openAt(String hours, LocalTime time) {
+        if (hours == null || time == null) return null;
+        Matcher matcher = HOURS.matcher(hours);
+        if (!matcher.matches() || Integer.parseInt(matcher.group(1)) > 23
+                || Integer.parseInt(matcher.group(2)) > 59 || Integer.parseInt(matcher.group(3)) > 23
+                || Integer.parseInt(matcher.group(4)) > 59) return null;
+        return openAtLegacy(hours, time);
+    }
+
+    private static Boolean openAtLegacy(String hours, LocalTime t) {
         if (hours == null || hours.isBlank()) {
             return null;
         }

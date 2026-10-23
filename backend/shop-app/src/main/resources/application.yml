@@ -103,6 +103,8 @@ management:
       enabled: false   # token-store=memory 时没有 Redis，开着会让 readiness 常绿变常红
 
 shop:
+  management:
+    signing-key: ${SHOP_MANAGEMENT_SIGNING_KEY:}
   core:
     entitlement:
       # Offline source fencing only; an empty key leaves migration transitions closed.
@@ -240,7 +242,7 @@ shop:
   outbox:
     enabled: ${SHOP_OUTBOX_ENABLED:true}
     maintenance: ${SHOP_OUTBOX_MAINTENANCE:false}
-    archive-only: []
+    archive-only: ["PLATFORM:PRICING_CONFIG_PUBLISHED"]
     concurrency: 5
     queue-capacity: 500
     recovery-interval: 5s

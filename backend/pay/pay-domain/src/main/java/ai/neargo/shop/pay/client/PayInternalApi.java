@@ -400,4 +400,6 @@ public interface PayInternalApi {
     StoredValuePlanRecharges.ReplayResult svPlanRechargeReplay(@RequestBody PayStoredValuePlanRechargeRequests.Replay r);
     @PostExchange(PayInternalPaths.SV_PLAN_RECHARGE_CANCEL_CREATION)
     StoredValuePort.RechargeView svPlanRechargeCancelCreation(@RequestBody PayStoredValuePlanRechargeRequests.Replay r);
+    @PostExchange(PayInternalPaths.SV_ORGANIZATION_IMPACT)
+    ai.neargo.shop.spi.storedvalue.StoredValueOrganizationImpactPort.Impact svOrganizationImpact(@RequestBody PayStoredValueMerchantRequests.OrganizationImpact request);
 }

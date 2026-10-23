@@ -53,6 +53,21 @@ public class MemberServiceImpl implements MemberService {
     private final MemberSourceMapper sourceMapper;
     private final SettingMapper settingMapper;
     private final PersonPort personPort;
+    private ai.neargo.shop.member.service.MemberScopeService scopeMembers;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setScopeMembers(ai.neargo.shop.member.service.MemberScopeService members){this.scopeMembers=members;}
+    private void syncScope(MbrMember m,String store,String actor,String privateRemark){
+        if(scopeMembers==null||store==null||store.isBlank())return;
+        // Old inserts rely on the database tenant default; use the persisted row, never guess a tenant.
+        if(m.getTenantNo()==null){var persisted=memberMapper.selectById(m.getId());if(persisted==null||persisted.getTenantNo()==null)throw BizException.of(ErrorCode.CONFLICT);m.setTenantNo(persisted.getTenantNo());}
+        // Missing historical store/identity must be handled before joining a write transaction;
+        // catching a failed inner TransactionTemplate would leave the legacy transaction rollback-only.
+        try{scopeMembers.scope(m.getTenantNo(),m.getEntityNo(),store);scopeMembers.identity(m.getTenantNo(),m.getPersonNo());}
+        catch(BizException e){if(e.errorCode()==ErrorCode.NOT_FOUND){log.debug("[member-scope] legacy membership retained without unverified scope mapping");return;}throw e;}
+        var scoped=scopeMembers.enroll(m.getTenantNo(),m.getEntityNo(),store,m.getPersonNo(),actor==null?"SYSTEM":actor,privateRemark);
+        scopeMembers.linkLegacy(m.getTenantNo(),m.getMemberNo(),scoped.scopeMemberNo(),store,actor==null?"SYSTEM":actor);
+    }
+
     /** 详情页要显示他身上的标签。同域直接依赖，不必绕 Port */
     private final ai.neargo.shop.member.service.MemberTagService tagService;
 
@@ -166,6 +181,7 @@ public class MemberServiceImpl implements MemberService {
         memberMapper.updateById(m);
 
         applyStore(m, storeNo, amountMinor, paidAt, fresh);
+        syncScope(m,storeNo,"SYSTEM",null);
         if (byScan) {
             /*
              * 扫码那一下单独记一行，且它才是 isFirst。
@@ -194,11 +210,13 @@ public class MemberServiceImpl implements MemberService {
         }
         Optional<MbrMember> exist = find(entityNo, personNo);
         if (exist.isPresent()) {
+            syncScope(exist.get(),storeNo,"SYSTEM",null);
             return exist.get();     // 重复点「加入」是常态，不该报错
         }
         long now = System.currentTimeMillis();
         MbrMember m = create(entityNo, personNo, MbrMember.SOURCE_SEARCH, storeNo, now);
         recordSource(m, MbrMember.SOURCE_SEARCH, storeNo, true, now, null, null, null, null, null);
+        syncScope(m,storeNo,"SYSTEM",null);
         return m;
     }
 
@@ -233,6 +251,7 @@ public class MemberServiceImpl implements MemberService {
         if (tagNos != null && !tagNos.isEmpty()) {
             tagService.tag(entityNo, List.of(m.getMemberNo()), tagNos, List.of(), operatorNo);
         }
+        syncScope(m,storeNo,operatorNo,remark);
         return m;
     }
 
@@ -256,6 +275,7 @@ public class MemberServiceImpl implements MemberService {
             m.setClaimedAt(now);
             memberMapper.updateById(m);
         }
+        if(scopeMembers!=null)leads.stream().map(MbrMember::getTenantNo).filter(java.util.Objects::nonNull).distinct().forEach(tenant->scopeMembers.claim(tenant,personNo));
         if (!leads.isEmpty()) {
             log.info("[member] 人档 {} 绑定账号，{} 条线索会员转正", personNo, leads.size());
         }

@@ -3,6 +3,7 @@ import {computed,onUnmounted,ref,watch} from 'vue';
 import {onHide,onShow} from '@dcloudio/uni-app';
 import {useI18n} from 'vue-i18n';
 import {api} from '@/api';
+import {selectStoredValueMember} from '@/api/member-scopes';
 import {useMerchantStore} from '@/stores/merchant';
 import {money} from '@shared/utils/money';
 import {storedValuePending,type SvPending} from '@/shared/stored-value-pending';
@@ -67,7 +68,7 @@ async function load(){
    if(all.length===1){await restore(all[0]!.pending,all[0]!.scope,token);return;}
    throw Error(t('storedValue.chooseMember'));
   }
-  const c=props.identified??await api.mSvSelectCustomer({storeNo:store,source:props.source!});if(!live(token))return;
+  const c=props.identified??await selectStoredValueMember(store,props.source!);if(!live(token))return;
   pendingScope=c.pendingScope||JSON.stringify(props.source||c.customerRef);
   const original=recovery.entries()[pendingScope];const old=recovery.legacy();
   if(original||(old&&sameCustomer(old,c))){if(await restore(original||old!,pendingScope,token))return;if(!live(token))return;}
@@ -87,7 +88,7 @@ async function submit(){
    // Refresh selection only before creating a durable command. An unknown original keeps its body/key intact.
    if(Date.parse(customer.value.expiresAt)<=Date.now()){
     if(!props.source)throw Error(t('storedValue.referenceExpired'));
-    const c=await api.mSvSelectCustomer({storeNo:store,source:props.source});if(!live(token))return;customer.value=c;
+    const c=await selectStoredValueMember(store,props.source);if(!live(token))return;customer.value=c;
    }
    pending.value={body:{storeNo:store,customerRef:customer.value.customerRef,planNo:selected.value.planNo,versionNo:selected.value.versionNo},key:idempotencyKey(),customer:customer.value,plan:selected.value,progress:null};persist();
   }

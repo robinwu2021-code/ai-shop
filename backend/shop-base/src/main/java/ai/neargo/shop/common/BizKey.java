@@ -15,6 +15,10 @@ import java.time.format.DateTimeFormatter;
  * 真撞了也有唯一索引兜底（业务键在库里一律建 UNIQUE）。
  */
 public final class BizKey {
+    public static final String MANAGEMENT_SPACE = "MGS";
+    public static final String MANAGEMENT_GRANT = "MGG";
+    public static final String BRAND = "BR";
+    public static final String BRAND_BINDING = "BRB";
 
     /** 前缀是语义的一部分：看到 {@code SUB} 就知道这是子订单，不用去查表。 */
     public static final String ACTIVITY_VERSION = "AV";
@@ -33,6 +37,9 @@ public final class BizKey {
     public static final String PERSON = "PS";
     /** 会员：一个人 × 一家主体的关系。与 PERSON 分开 —— 一份人档可以是好几家店的会员 */
     public static final String MEMBER = "MB";
+    public static final String SCOPE_MEMBER = "MSM";
+    public static final String STORE_MEMBER_PROFILE = "MSP";
+    public static final String MEMBER_SCOPE_LINK = "MSL";
     /** 会员来源明细。每一次来源一行 */
     public static final String MEMBER_SOURCE = "MS";
     /** 会员标签。号不可变，名字可改 —— 关系表存的是它 */

@@ -1,5 +1,9 @@
 package ai.neargo.shop.trade.mapper;
 
+import ai.neargo.shop.trade.entity.OrdPricingTemplate;
+import ai.neargo.shop.trade.entity.OrdPricingTemplateRevision;
+import ai.neargo.shop.trade.entity.OrdStorePricingConfig;
+import ai.neargo.shop.trade.entity.OrdStorePricingRevision;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdExpressPickup;
 import ai.neargo.shop.trade.entity.OrdInvoiceRequest;
@@ -125,4 +129,9 @@ public final class TradeMappers {
         @Select("SELECT next_value FROM sys_sequence WHERE seq_name = #{name}")
         Long peek(@Param("name") String name);
     }
+    public interface PricingTemplateMapper extends BaseMapper<OrdPricingTemplate> { }
+    public interface PricingTemplateRevisionMapper extends BaseMapper<OrdPricingTemplateRevision> { }
+    public interface StorePricingConfigMapper extends BaseMapper<OrdStorePricingConfig> { }
+    public interface StorePricingRevisionMapper extends BaseMapper<OrdStorePricingRevision> { }
+
 }

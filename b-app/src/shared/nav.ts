@@ -1,6 +1,15 @@
 // B 端路由与底部菜单。C 端的 TABS 是消费者视角（首页/分类/购物车/我的），
 // 商家看的是「工作台/订单/商品/我的」—— 两套导航没有共用的意义，各自维护。
 export const ROUTES = {
+  management: "/pages/management/index",
+  brand_list: "/pages/brand-list/index",
+  brand_edit: "/pages/brand-edit/index",
+  brand_detail: "/pages/brand-detail/index",
+  management_resources: "/pages/management-resources/index",
+  store_brand: "/pages/store-brand/index",
+  management_grants: "/pages/management-grants/index",
+  brand_change: "/pages/brand-change/index",
+
   storedValue: "/pages/stored-value/index",
   storedValuePlanEdit: "/pages/stored-value-plan-edit/index",
   storedValuePlanDetail: "/pages/stored-value-plan-detail/index",

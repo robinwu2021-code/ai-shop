@@ -2,9 +2,9 @@
 import { expect,it,vi,beforeEach } from 'vitest';
 import {mount,flushPromises} from '@vue/test-utils';
 import './component-setup';
-const m=vi.hoisted(()=>({select:vi.fn(),plans:vi.fn(),confirm:vi.fn(),query:vi.fn(),resolve:vi.fn(),cancel:vi.fn(),hide:()=>{},show:()=>{}}));
+const m=vi.hoisted(()=>({scoped:vi.fn(),select:vi.fn(),plans:vi.fn(),confirm:vi.fn(),query:vi.fn(),resolve:vi.fn(),cancel:vi.fn(),hide:()=>{},show:()=>{}}));
 vi.mock('@dcloudio/uni-app',()=>({onHide:(f:()=>void)=>{m.hide=f;},onShow:(f:()=>void)=>{m.show=f;}}));
-vi.mock('@/api',()=>({api:{mSvSelectCustomer:m.select,mSvPlans:m.plans,mSvConfirmOffline:m.confirm,mSvRecharge:m.query,mSvResolveRecharge:m.resolve,mSvCancelCreate:m.cancel}}));
+vi.mock('@/api',()=>({api:{mScopeSelectCustomer:m.scoped,mSvSelectCustomer:m.select,mSvPlans:m.plans,mSvConfirmOffline:m.confirm,mSvRecharge:m.query,mSvResolveRecharge:m.resolve,mSvCancelCreate:m.cancel}}));
 vi.mock('@/stores/merchant',()=>({useMerchantStore:()=>({storeNo:'S1',profile:{merchantNo:'M1'},can:()=>true})}));
 vi.mock('vue-i18n',()=>({useI18n:()=>({t:(s:string)=>s})}));
 Object.assign(uni,{removeStorageSync:vi.fn()});
@@ -91,4 +91,12 @@ it('keeps a single-plan sheet spacious without a receipt explanation or confirma
  expect(w.text()).not.toContain('storedValue.offlineHint');
  expect(m.confirm).not.toHaveBeenCalled();
  w.unmount();
+});
+
+it('refreshes an expired operating-scope member reference through MB02 before creating a command',async()=>{
+ const base={memberNo:'MSM1',displayName:'顾客',phoneMasked:'138****8000',account:null,pendingScope:'STABLE'};
+ m.scoped.mockResolvedValueOnce({selection:{...base,customerRef:'EXPIRED',expiresAt:new Date(Date.now()-1000).toISOString()},sourceStoreNo:'S2',sourceStoreName:'乙店'}).mockResolvedValueOnce({selection:{...base,customerRef:'FRESH',expiresAt:new Date(Date.now()+120000).toISOString()},sourceStoreNo:'S2',sourceStoreName:'乙店'});
+ m.confirm.mockResolvedValue({rechargeNo:'R1',status:'CREDITED',storeNo:'S1',currency:'CNY'});
+ const w=mount(Sheet,{props:{visible:true,source:{type:'MEMBER',memberNo:'MSM1',memberScope:'OPERATING'}}});await flushPromises();await w.find('[data-testid="recharge-plan"]').trigger('tap');await w.find('[data-testid="confirm-offline"]').trigger('tap');await flushPromises();
+ expect(m.scoped).toHaveBeenCalledTimes(2);expect(m.select).not.toHaveBeenCalled();expect(m.confirm.mock.calls[0][0].customerRef).toBe('FRESH');w.unmount();
 });

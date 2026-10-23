@@ -807,3 +807,32 @@ export interface StorePointStatementLinesQuery extends StorePointStatementQuery 
   /** 本页条数上限 */
   limit?: number;
 }
+
+// P1 organization request bodies and query strings; authenticated identity is never a wire field.
+export type {GrantCommand as ManagementGrantReq,BrandDraft as ManagementBrandCreateReq,BrandEdit as ManagementBrandEditReq,BrandChangeSubmit as ManagementBrandChangeSubmitReq} from './management-types';
+export interface ManagementSpaceCreateReq {name:string;sourceAccountNo:string}
+export interface ManagementResourcesQuery {resourceType?:string;view?:'EFFECTIVE'|'GRANTS';actorNo?:string;cursor?:string;size?:number}
+export interface ManagementRevokeQuery {expectedRevision:number;reason:string}
+export interface ManagementPageQuery {cursor?:string;size?:number}
+export interface ManagementStoresQuery extends ManagementPageQuery {brandNo?:string}
+export interface ManagementMerchantsQuery {managementNo:string;payChannel?:string;payScene?:string;storeNo?:string}
+export interface ManagementBrandsQuery extends ManagementPageQuery {managementNo:string;status?:string;keyword?:string}
+export interface ManagementBrandStatusReq {targetStatus:'ACTIVE'|'INACTIVE';expectedRevision:number;reason:string}
+export interface ManagementStoreContextQuery {managementNo:string}
+export interface ManagementBrandCheckReq {managementNo:string;toBrandNo:string|null}
+export interface ManagementBrandDecisionReq {decision:'APPROVE'|'REJECT';expectedRevision:number;reason:string}
+
+export type {SvPlanCreate,SvRechargeCreate,SvReceipt,SvReceive,SvRecordsQuery} from './stored-value-types';
+import type {SvSelectionSource} from './stored-value-types';
+export interface SvCandidatesQuery {storeNo:string;phone?:string;keyword?:string}
+export interface SvSelectCustomerReq {storeNo:string;source:SvSelectionSource}
+export interface SvStoreQuery {storeNo:string}
+export interface SvPlansQuery {storeNo:string;status?:string;cursor?:string;size?:number}
+export interface SvAccountsQuery {storeNo:string;keyword?:string;cursor?:string;size?:number}
+export interface SvPlanStatusReq {storeNo:string;status:string;expectedRevision:number}
+export interface SvCancelReq {expectedRevision:number;reason:string}
+
+export interface ScopeCandidateQuery {keyword?:string;cursor?:string;size?:number}
+import type {ScopeSelectionSource} from './stored-value-types';
+export interface ScopeSelectCustomerReq {source:ScopeSelectionSource}
+export interface ScopeMemberCreateReq {phone:string;remark?:string;tagNos?:string[]}

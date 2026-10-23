@@ -403,7 +403,6 @@ onShow(load);
 }
 .led__doc {
   display: block;
-  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

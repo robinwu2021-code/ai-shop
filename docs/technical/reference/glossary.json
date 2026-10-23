@@ -4816,6 +4816,18 @@
           "ar": "سجّل الدخول للمتابعة"
         },
         {
+          "key": "points.accountExpiry",
+          "zh-CN": "到期时间",
+          "en": "Expires at",
+          "ar": "تاريخ الانتهاء"
+        },
+        {
+          "key": "points.accountFrozen",
+          "zh-CN": "账户已冻结",
+          "en": "Account frozen",
+          "ar": "الحساب مجمد"
+        },
+        {
           "key": "points.after",
           "zh-CN": "余 {n}",
           "en": "bal {n}",
@@ -4840,10 +4852,184 @@
           "ar": "نقاط محجوزة"
         },
         {
+          "key": "points.bucketISSUABLE",
+          "zh-CN": "可发放积分",
+          "en": "Issuable points",
+          "ar": "نقاط قابلة للإصدار"
+        },
+        {
+          "key": "points.bucketISSUED",
+          "zh-CN": "已发行积分",
+          "en": "Issued points",
+          "ar": "نقاط مصدرة"
+        },
+        {
           "key": "points.bucketPENDING",
           "zh-CN": "待生效积分",
           "en": "Pending points",
           "ar": "نقاط قيد التفعيل"
+        },
+        {
+          "key": "points.bucketRECIRCULATABLE",
+          "zh-CN": "可回收积分",
+          "en": "Recirculatable points",
+          "ar": "نقاط قابلة لإعادة التداول"
+        },
+        {
+          "key": "points.bucketREFUND_RESERVED",
+          "zh-CN": "退款预留积分",
+          "en": "Refund reserved points",
+          "ar": "نقاط محجوزة للاسترداد"
+        },
+        {
+          "key": "points.code",
+          "zh-CN": "积分代码",
+          "en": "Points code",
+          "ar": "رمز النقاط"
+        },
+        {
+          "key": "points.currency",
+          "zh-CN": "币种",
+          "en": "Currency",
+          "ar": "العملة"
+        },
+        {
+          "key": "points.directionEARN",
+          "zh-CN": "发放",
+          "en": "Earning",
+          "ar": "منح"
+        },
+        {
+          "key": "points.directionFINALIZE",
+          "zh-CN": "完成入账",
+          "en": "Completion credit",
+          "ar": "قيد الإكمال"
+        },
+        {
+          "key": "points.directionHOLD",
+          "zh-CN": "预占",
+          "en": "Hold",
+          "ar": "حجز"
+        },
+        {
+          "key": "points.directionOTHER",
+          "zh-CN": "账务变动",
+          "en": "Ledger adjustment",
+          "ar": "تغيير محاسبي"
+        },
+        {
+          "key": "points.directionREDEEM",
+          "zh-CN": "核销",
+          "en": "Redemption",
+          "ar": "استخدام"
+        },
+        {
+          "key": "points.directionRELEASE",
+          "zh-CN": "释放",
+          "en": "Release",
+          "ar": "تحرير"
+        },
+        {
+          "key": "points.directionREVERSAL",
+          "zh-CN": "冲正 / 退回",
+          "en": "Reversal / return",
+          "ar": "عكس / إرجاع"
+        },
+        {
+          "key": "points.earningAVAILABLE",
+          "zh-CN": "已到账",
+          "en": "Credited",
+          "ar": "تمت الإضافة"
+        },
+        {
+          "key": "points.earningBudgetPending",
+          "zh-CN": "平台积分预算待补足，正在处理中",
+          "en": "Points funding is pending. Processing will continue.",
+          "ar": "بانتظار تمويل النقاط. ستستمر المعالجة."
+        },
+        {
+          "key": "points.earningCancelled",
+          "zh-CN": "订单已取消，不赠送积分",
+          "en": "Order cancelled. No points will be granted.",
+          "ar": "تم إلغاء الطلب. لن تمنح نقاط."
+        },
+        {
+          "key": "points.earningCredited",
+          "zh-CN": "已到账积分",
+          "en": "Credited points",
+          "ar": "النقاط المضافة"
+        },
+        {
+          "key": "points.earningDelayed",
+          "zh-CN": "积分正在处理，请稍后刷新",
+          "en": "Points are processing. Please refresh later.",
+          "ar": "النقاط قيد المعالجة. يرجى التحديث لاحقاً."
+        },
+        {
+          "key": "points.earningEXPECTED",
+          "zh-CN": "预计赠送",
+          "en": "Estimated",
+          "ar": "متوقعة"
+        },
+        {
+          "key": "points.earningExpected",
+          "zh-CN": "预计积分",
+          "en": "Estimated points",
+          "ar": "النقاط المتوقعة"
+        },
+        {
+          "key": "points.earningMANUAL",
+          "zh-CN": "处理中，待人工处理",
+          "en": "Awaiting review",
+          "ar": "بانتظار المراجعة"
+        },
+        {
+          "key": "points.earningNotGranted",
+          "zh-CN": "本次未赠送积分，请查看积分规则",
+          "en": "No points granted. See the earning rules.",
+          "ar": "لم تمنح نقاط. راجع قواعد المكافآت."
+        },
+        {
+          "key": "points.earningPENDING",
+          "zh-CN": "待入账",
+          "en": "Pending credit",
+          "ar": "بانتظار الإضافة"
+        },
+        {
+          "key": "points.earningPROCESSING",
+          "zh-CN": "处理中",
+          "en": "Processing",
+          "ar": "قيد المعالجة"
+        },
+        {
+          "key": "points.earningRECLAIMED",
+          "zh-CN": "已追回",
+          "en": "Reclaimed",
+          "ar": "تم الاسترداد"
+        },
+        {
+          "key": "points.earningRETRYABLE",
+          "zh-CN": "处理中，等待重试",
+          "en": "Awaiting retry",
+          "ar": "بانتظار إعادة المحاولة"
+        },
+        {
+          "key": "points.earningReclaimed",
+          "zh-CN": "已追回积分",
+          "en": "Reclaimed points",
+          "ar": "النقاط المستردة"
+        },
+        {
+          "key": "points.earningRetry",
+          "zh-CN": "积分状态加载失败，点击重试",
+          "en": "Points unavailable. Tap to retry",
+          "ar": "تعذر تحميل النقاط. أعد المحاولة"
+        },
+        {
+          "key": "points.earningSKIPPED",
+          "zh-CN": "未赠送",
+          "en": "Not granted",
+          "ar": "لم تمنح"
         },
         {
           "key": "points.empty",
@@ -4876,6 +5062,12 @@
           "ar": "{n} نقطة محجوزة"
         },
         {
+          "key": "points.historyTerms",
+          "zh-CN": "历史条款（只读）",
+          "en": "Historical terms (read only)",
+          "ar": "الشروط السابقة (للقراءة فقط)"
+        },
+        {
           "key": "points.idleRule",
           "zh-CN": "连续 {n} 天无积分变动后到期",
           "en": "Expires after {n} days without points activity",
@@ -4894,10 +5086,28 @@
           "ar": "جارٍ التحميل…"
         },
         {
+          "key": "points.nameLoadFailed",
+          "zh-CN": "积分名称加载失败，点击重试",
+          "en": "Points names failed to load. Tap to retry.",
+          "ar": "تعذر تحميل أسماء النقاط. اضغط لإعادة المحاولة."
+        },
+        {
+          "key": "points.noHistoryTerms",
+          "zh-CN": "暂无历史条款",
+          "en": "No historical terms",
+          "ar": "لا توجد شروط سابقة"
+        },
+        {
           "key": "points.notActive",
           "zh-CN": "当前类型非正常开放状态，使用以结算页报价为准",
           "en": "This type is not fully active; check the checkout quote for availability",
           "ar": "هذا النوع غير نشط بالكامل؛ تحقق من عرض السعر عند الدفع"
+        },
+        {
+          "key": "points.orderEarning",
+          "zh-CN": "订单积分",
+          "en": "Order points",
+          "ar": "نقاط الطلب"
         },
         {
           "key": "points.pendingCount",
@@ -4906,10 +5116,88 @@
           "ar": "{n} نقطة قيد التفعيل"
         },
         {
+          "key": "points.posted",
+          "zh-CN": "已记账",
+          "en": "Posted",
+          "ar": "تم القيد"
+        },
+        {
           "key": "points.records",
           "zh-CN": "积分明细",
           "en": "History",
           "ar": "السجل"
+        },
+        {
+          "key": "points.redemptionCONSUMED",
+          "zh-CN": "已核销积分",
+          "en": "Points consumed",
+          "ar": "نقاط مستخدمة"
+        },
+        {
+          "key": "points.redemptionHELD",
+          "zh-CN": "已预占积分",
+          "en": "Points held",
+          "ar": "نقاط محجوزة"
+        },
+        {
+          "key": "points.redemptionPARTIALLY_RETURNED",
+          "zh-CN": "积分已部分退回",
+          "en": "Points partly returned",
+          "ar": "تمت إعادة بعض النقاط"
+        },
+        {
+          "key": "points.redemptionPROCESSING",
+          "zh-CN": "抵扣处理中",
+          "en": "Redemption processing",
+          "ar": "الاستخدام قيد المعالجة"
+        },
+        {
+          "key": "points.redemptionREFUND_PROCESSING",
+          "zh-CN": "积分退款处理中",
+          "en": "Points refund processing",
+          "ar": "استرداد النقاط قيد المعالجة"
+        },
+        {
+          "key": "points.redemptionRELEASED",
+          "zh-CN": "已释放积分",
+          "en": "Points released",
+          "ar": "نقاط محررة"
+        },
+        {
+          "key": "points.redemptionRETURNED",
+          "zh-CN": "积分已退回",
+          "en": "Points returned",
+          "ar": "تمت إعادة النقاط"
+        },
+        {
+          "key": "points.refundCOMPLETED",
+          "zh-CN": "已完成",
+          "en": "Completed",
+          "ar": "مكتمل"
+        },
+        {
+          "key": "points.refundMANUAL",
+          "zh-CN": "待人工处理",
+          "en": "Awaiting review",
+          "ar": "بانتظار المراجعة"
+        },
+        {
+          "key": "points.refundPROCESSING",
+          "zh-CN": "处理中",
+          "en": "Processing",
+          "ar": "قيد المعالجة"
+        },
+        {
+          "key": "points.refundPoints",
+          "zh-CN": "退款积分进度",
+          "en": "Points refund",
+          "ar": "استرداد النقاط"
+        },
+        {
+          "key": "points.returnedPoints",
+          "zh-CN": "累计退回积分",
+          "en": "Total points returned",
+          "ar": "إجمالي النقاط المعادة"
         },
         {
           "key": "points.ruleCap",
@@ -4946,6 +5234,12 @@
           "zh-CN": "查看积分账本",
           "en": "View points ledger",
           "ar": "عرض سجل النقاط"
+        },
+        {
+          "key": "points.viewOrder",
+          "zh-CN": "查看关联订单",
+          "en": "View order",
+          "ar": "عرض الطلب"
         },
         {
           "key": "poster.drawing",
@@ -5972,6 +6266,264 @@
           "zh-CN": "已取消收藏",
           "en": "Removed",
           "ar": "أُزيل من المحفوظات"
+        },
+        {
+          "key": "storedValue.ALL",
+          "zh-CN": "全部",
+          "en": "All",
+          "ar": "الكل"
+        },
+        {
+          "key": "storedValue.RECHARGE",
+          "zh-CN": "储值",
+          "en": "Top-ups",
+          "ar": "الشحن"
+        },
+        {
+          "key": "storedValue.REDEMPTION",
+          "zh-CN": "核销",
+          "en": "Redemptions",
+          "ar": "الخصم"
+        },
+        {
+          "key": "storedValue.apply",
+          "zh-CN": "确定",
+          "en": "Apply",
+          "ar": "تطبيق"
+        },
+        {
+          "key": "storedValue.backStores",
+          "zh-CN": "返回门店列表",
+          "en": "Back to stores",
+          "ar": "العودة للمتاجر"
+        },
+        {
+          "key": "storedValue.cancel",
+          "zh-CN": "取消",
+          "en": "Cancel",
+          "ar": "إلغاء"
+        },
+        {
+          "key": "storedValue.clearFilters",
+          "zh-CN": "清除筛选",
+          "en": "Clear filters",
+          "ar": "مسح التصفية"
+        },
+        {
+          "key": "storedValue.emptyFiltered",
+          "zh-CN": "没有符合条件的记录",
+          "en": "No matching records",
+          "ar": "لا توجد سجلات مطابقة"
+        },
+        {
+          "key": "storedValue.emptyRecords",
+          "zh-CN": "暂无收支记录",
+          "en": "No activity yet",
+          "ar": "لا توجد معاملات بعد"
+        },
+        {
+          "key": "storedValue.emptyStores",
+          "zh-CN": "还没有储值记录",
+          "en": "No stored value records yet",
+          "ar": "لا توجد سجلات رصيد مخزن بعد"
+        },
+        {
+          "key": "storedValue.emptyStoresTip",
+          "zh-CN": "到店储值到账后，可在这里查看记录。",
+          "en": "Records appear here after your in-store top-up is credited.",
+          "ar": "ستظهر السجلات بعد إضافة رصيدك في المتجر."
+        },
+        {
+          "key": "storedValue.endDate",
+          "zh-CN": "结束日期",
+          "en": "End date",
+          "ar": "تاريخ النهاية"
+        },
+        {
+          "key": "storedValue.entryHint",
+          "zh-CN": "查看门店收支",
+          "en": "View store activity",
+          "ar": "عرض معاملات المتجر"
+        },
+        {
+          "key": "storedValue.focused",
+          "zh-CN": "通知对应记录",
+          "en": "Record from notification",
+          "ar": "السجل المرتبط بالإشعار"
+        },
+        {
+          "key": "storedValue.invalidDates",
+          "zh-CN": "开始日期不能晚于结束日期",
+          "en": "Start date must not be after end date",
+          "ar": "يجب ألا تتجاوز البداية تاريخ النهاية"
+        },
+        {
+          "key": "storedValue.loadMore",
+          "zh-CN": "加载更多",
+          "en": "Load more",
+          "ar": "تحميل المزيد"
+        },
+        {
+          "key": "storedValue.loadingMore",
+          "zh-CN": "加载中…",
+          "en": "Loading…",
+          "ar": "جارٍ التحميل…"
+        },
+        {
+          "key": "storedValue.moreFailed",
+          "zh-CN": "加载更多失败，点击重试",
+          "en": "Could not load more. Tap to retry",
+          "ar": "تعذر تحميل المزيد. اضغط لإعادة المحاولة"
+        },
+        {
+          "key": "storedValue.notificationContent",
+          "zh-CN": "通知包含门店、消费项目、核销金额和发生时间，点击通知可查看对应记录。",
+          "en": "Notifications include the store, service, redeemed amount and time. Open one to view the matching record.",
+          "ar": "يتضمن الإشعار المتجر والخدمة والمبلغ المخصوم والوقت. افتحه لعرض السجل المطابق."
+        },
+        {
+          "key": "storedValue.notificationHint",
+          "zh-CN": "核销完成后，及时查看门店消费结果。",
+          "en": "See the result after an in-store redemption.",
+          "ar": "اطلع على النتيجة بعد إتمام الخصم في المتجر."
+        },
+        {
+          "key": "storedValue.notificationOnce",
+          "zh-CN": "微信订阅为一次性授权，不保证每次消费均有微信消息。",
+          "en": "WeChat authorization is for one message. It does not guarantee a message for every redemption.",
+          "ar": "تفويض WeChat صالح لرسالة واحدة ولا يضمن إشعارًا لكل عملية."
+        },
+        {
+          "key": "storedValue.notificationOtherPlatform",
+          "zh-CN": "请在微信小程序中授权；也可从消息中心查看消费结果。",
+          "en": "Authorize in the WeChat mini program, or check the message center for results.",
+          "ar": "امنح التفويض من برنامج WeChat المصغر، أو راجع مركز الرسائل."
+        },
+        {
+          "key": "storedValue.notificationUnavailable",
+          "zh-CN": "微信消费通知暂未开放，可从消息中心查看结果。",
+          "en": "WeChat redemption notifications are not available yet. Check the message center.",
+          "ar": "إشعارات WeChat غير متاحة حاليًا. راجع مركز الرسائل."
+        },
+        {
+          "key": "storedValue.notifications",
+          "zh-CN": "消费通知",
+          "en": "Redemption notifications",
+          "ar": "إشعارات الخصم"
+        },
+        {
+          "key": "storedValue.recordsTitle",
+          "zh-CN": "收支记录",
+          "en": "Store activity",
+          "ar": "معاملات المتجر"
+        },
+        {
+          "key": "storedValue.reset",
+          "zh-CN": "重置",
+          "en": "Reset",
+          "ar": "إعادة تعيين"
+        },
+        {
+          "key": "storedValue.startDate",
+          "zh-CN": "开始日期",
+          "en": "Start date",
+          "ar": "تاريخ البداية"
+        },
+        {
+          "key": "storedValue.storeLocalTime",
+          "zh-CN": "门店当地时间",
+          "en": "Store local time",
+          "ar": "التوقيت المحلي للمتجر"
+        },
+        {
+          "key": "storedValue.storesHint",
+          "zh-CN": "选择门店，查看已到账储值和已完成核销。",
+          "en": "Choose a store to view credited top-ups and completed redemptions.",
+          "ar": "اختر متجرًا لعرض عمليات الشحن المضافة والخصم المكتملة."
+        },
+        {
+          "key": "storedValue.subscribe",
+          "zh-CN": "授权微信消费通知",
+          "en": "Authorize WeChat notification",
+          "ar": "تفويض إشعار WeChat"
+        },
+        {
+          "key": "storedValue.subscribeAccepted",
+          "zh-CN": "本次订阅已授权",
+          "en": "This subscription was authorized",
+          "ar": "تم تفويض هذا الاشتراك"
+        },
+        {
+          "key": "storedValue.subscribeFailed",
+          "zh-CN": "未获得授权，请稍后重试",
+          "en": "Authorization unavailable. Try again later",
+          "ar": "تعذر التفويض. حاول لاحقًا"
+        },
+        {
+          "key": "storedValue.subscribeRejected",
+          "zh-CN": "未授权微信消费通知",
+          "en": "WeChat notification not authorized",
+          "ar": "لم يتم تفويض الإشعار"
+        },
+        {
+          "key": "storedValue.subscribeReportFailed",
+          "zh-CN": "授权结果保存失败，请重试",
+          "en": "Could not save authorization result. Please retry",
+          "ar": "تعذر حفظ نتيجة التفويض. أعد المحاولة"
+        },
+        {
+          "key": "storedValue.time",
+          "zh-CN": "时间",
+          "en": "Date",
+          "ar": "التاريخ"
+        },
+        {
+          "key": "storedValue.timeHint",
+          "zh-CN": "按门店当地自然日（{zone}）筛选，包含开始和结束当天。",
+          "en": "Store local dates ({zone}); both start and end dates are included.",
+          "ar": "بالتاريخ المحلي للمتجر ({zone})، شاملًا يومي البداية والنهاية."
+        },
+        {
+          "key": "storedValue.timeTitle",
+          "zh-CN": "筛选时间",
+          "en": "Filter by date",
+          "ar": "تصفية حسب التاريخ"
+        },
+        {
+          "key": "storedValue.title",
+          "zh-CN": "储值记录",
+          "en": "Stored value records",
+          "ar": "سجل الرصيد المخزن"
+        },
+        {
+          "key": "storedValue.unavailable",
+          "zh-CN": "无法访问此门店记录",
+          "en": "Store records unavailable",
+          "ar": "سجلات المتجر غير متاحة"
+        },
+        {
+          "key": "storedValue.unavailableTip",
+          "zh-CN": "请返回门店列表，选择有本人储值记录的门店。",
+          "en": "Return to the store list and choose a store with your records.",
+          "ar": "ارجع لقائمة المتاجر واختر متجرًا له سجلات تخصك."
+        },
+        {
+          "key": "storedValue.unlimited",
+          "zh-CN": "不限",
+          "en": "Any date",
+          "ar": "أي تاريخ"
+        },
+        {
+          "key": "storedValue.viewMessages",
+          "zh-CN": "查看消息中心",
+          "en": "Open message center",
+          "ar": "فتح مركز الرسائل"
+        },
+        {
+          "key": "storedValue.viewRecords",
+          "zh-CN": "查看记录",
+          "en": "View records",
+          "ar": "عرض السجلات"
         },
         {
           "key": "tab.cart",
@@ -12980,6 +13532,510 @@
           "ar": "دخول التاجر"
         },
         {
+          "key": "management.audit",
+          "zh-CN": "操作记录",
+          "en": "Activity log",
+          "ar": "سجل العمليات"
+        },
+        {
+          "key": "management.auditAction.BRAND_CREATE",
+          "zh-CN": "创建品牌",
+          "en": "Brand created",
+          "ar": "إنشاء علامة"
+        },
+        {
+          "key": "management.auditAction.BRAND_EDIT",
+          "zh-CN": "修改品牌",
+          "en": "Brand updated",
+          "ar": "تعديل علامة"
+        },
+        {
+          "key": "management.auditAction.BRAND_STATUS",
+          "zh-CN": "调整品牌状态",
+          "en": "Brand status changed",
+          "ar": "تغيير حالة العلامة"
+        },
+        {
+          "key": "management.auditAction.BRAND_STORE_CHANGED",
+          "zh-CN": "调整品牌门店",
+          "en": "Brand stores changed",
+          "ar": "تغيير متاجر العلامة"
+        },
+        {
+          "key": "management.blocked",
+          "zh-CN": "暂不可变更",
+          "en": "Change unavailable",
+          "ar": "التغيير غير متاح"
+        },
+        {
+          "key": "management.blocker.DEPENDENCY_NOT_READY",
+          "zh-CN": "共享能力尚未就绪",
+          "en": "Shared capabilities are not ready",
+          "ar": "المزايا المشتركة غير جاهزة"
+        },
+        {
+          "key": "management.blocker.IMPACT_UNKNOWN",
+          "zh-CN": "业务影响尚未确认，请稍后重试",
+          "en": "Impact is not confirmed. Retry later",
+          "ar": "لم يتأكد الأثر بعد، أعد المحاولة لاحقاً"
+        },
+        {
+          "key": "management.blocker.STORED_VALUE_UNRESOLVED",
+          "zh-CN": "存在余额或未完成储值，请先处理",
+          "en": "Outstanding stored value requires resolution",
+          "ar": "يلزم معالجة الرصيد أو العمليات غير المكتملة"
+        },
+        {
+          "key": "management.brand",
+          "zh-CN": "所属品牌",
+          "en": "Brand",
+          "ar": "العلامة التجارية"
+        },
+        {
+          "key": "management.brandChange",
+          "zh-CN": "品牌变更",
+          "en": "Brand change",
+          "ar": "تغيير العلامة"
+        },
+        {
+          "key": "management.brandDetail",
+          "zh-CN": "品牌详情",
+          "en": "Brand details",
+          "ar": "تفاصيل العلامة"
+        },
+        {
+          "key": "management.brandInfo",
+          "zh-CN": "品牌资料",
+          "en": "Brand information",
+          "ar": "معلومات العلامة"
+        },
+        {
+          "key": "management.brandName",
+          "zh-CN": "品牌名称",
+          "en": "Brand name",
+          "ar": "اسم العلامة"
+        },
+        {
+          "key": "management.brandStoredValue",
+          "zh-CN": "品牌储值",
+          "en": "Brand stored value",
+          "ar": "رصيد العلامة"
+        },
+        {
+          "key": "management.brands",
+          "zh-CN": "品牌管理",
+          "en": "Brands",
+          "ar": "العلامات التجارية"
+        },
+        {
+          "key": "management.choose",
+          "zh-CN": "请选择",
+          "en": "Choose",
+          "ar": "اختيار"
+        },
+        {
+          "key": "management.chooseEntity",
+          "zh-CN": "选择经营主体",
+          "en": "Choose operating entity",
+          "ar": "اختيار الكيان المشغل"
+        },
+        {
+          "key": "management.chooseSpace",
+          "zh-CN": "切换管理空间",
+          "en": "Switch workspace",
+          "ar": "تبديل مساحة الإدارة"
+        },
+        {
+          "key": "management.configureBrand",
+          "zh-CN": "配置门店品牌",
+          "en": "Configure store brand",
+          "ar": "تعيين علامة المتجر"
+        },
+        {
+          "key": "management.confirm",
+          "zh-CN": "确认",
+          "en": "Confirm",
+          "ar": "تأكيد"
+        },
+        {
+          "key": "management.createBrand",
+          "zh-CN": "新建品牌",
+          "en": "Create brand",
+          "ar": "إنشاء علامة تجارية"
+        },
+        {
+          "key": "management.createEntity",
+          "zh-CN": "新增经营主体",
+          "en": "Add operating entity",
+          "ar": "إضافة كيان مشغل"
+        },
+        {
+          "key": "management.createSpace",
+          "zh-CN": "创建管理空间",
+          "en": "Create workspace",
+          "ar": "إنشاء مساحة إدارة"
+        },
+        {
+          "key": "management.createdAt",
+          "zh-CN": "创建时间",
+          "en": "Created",
+          "ar": "تاريخ الإنشاء"
+        },
+        {
+          "key": "management.edit",
+          "zh-CN": "编辑",
+          "en": "Edit",
+          "ar": "تعديل"
+        },
+        {
+          "key": "management.empty",
+          "zh-CN": "暂无记录",
+          "en": "No records",
+          "ar": "لا توجد سجلات"
+        },
+        {
+          "key": "management.enableBrand",
+          "zh-CN": "启用品牌",
+          "en": "Activate brand",
+          "ar": "تفعيل العلامة"
+        },
+        {
+          "key": "management.entities",
+          "zh-CN": "经营主体",
+          "en": "Operating entities",
+          "ar": "الكيانات المشغلة"
+        },
+        {
+          "key": "management.grant",
+          "zh-CN": "确认授权",
+          "en": "Grant access",
+          "ar": "منح الصلاحية"
+        },
+        {
+          "key": "management.grants",
+          "zh-CN": "资源授权",
+          "en": "Resource access",
+          "ar": "صلاحيات الموارد"
+        },
+        {
+          "key": "management.importResources",
+          "zh-CN": "导入本人经营资源",
+          "en": "Import owned resources",
+          "ar": "إضافة الموارد المملوكة"
+        },
+        {
+          "key": "management.leaveBrand",
+          "zh-CN": "退出当前品牌",
+          "en": "Leave current brand",
+          "ar": "مغادرة العلامة الحالية"
+        },
+        {
+          "key": "management.loading",
+          "zh-CN": "请稍候",
+          "en": "Please wait",
+          "ar": "يرجى الانتظار"
+        },
+        {
+          "key": "management.managePayment",
+          "zh-CN": "收款配置",
+          "en": "Payment configuration",
+          "ar": "إعدادات التحصيل"
+        },
+        {
+          "key": "management.more",
+          "zh-CN": "加载更多",
+          "en": "Load more",
+          "ar": "تحميل المزيد"
+        },
+        {
+          "key": "management.noAccess",
+          "zh-CN": "暂无管理权限",
+          "en": "No management access",
+          "ar": "لا توجد صلاحية إدارة"
+        },
+        {
+          "key": "management.noBrand",
+          "zh-CN": "未关联品牌",
+          "en": "No brand",
+          "ar": "غير مرتبط بعلامة"
+        },
+        {
+          "key": "management.notEnabled",
+          "zh-CN": "暂未开通",
+          "en": "Not enabled",
+          "ar": "غير مفعّل"
+        },
+        {
+          "key": "management.ownedEntity",
+          "zh-CN": "本人经营主体",
+          "en": "Owned entity",
+          "ar": "كيان مملوك"
+        },
+        {
+          "key": "management.paymentMerchants",
+          "zh-CN": "支付商户",
+          "en": "Payment merchants",
+          "ar": "تجار الدفع"
+        },
+        {
+          "key": "management.permission.brand_audit_read",
+          "zh-CN": "查看品牌记录",
+          "en": "View brand log",
+          "ar": "عرض سجل العلامة"
+        },
+        {
+          "key": "management.permission.brand_change_decide",
+          "zh-CN": "处理品牌变更",
+          "en": "Decide brand changes",
+          "ar": "معالجة تغييرات العلامة"
+        },
+        {
+          "key": "management.permission.brand_change_read",
+          "zh-CN": "查看品牌变更",
+          "en": "View brand changes",
+          "ar": "عرض تغييرات العلامة"
+        },
+        {
+          "key": "management.permission.brand_manage",
+          "zh-CN": "管理品牌",
+          "en": "Manage brand",
+          "ar": "إدارة العلامة"
+        },
+        {
+          "key": "management.permission.brand_read",
+          "zh-CN": "查看品牌",
+          "en": "View brand",
+          "ar": "عرض العلامة"
+        },
+        {
+          "key": "management.permission.entity_read",
+          "zh-CN": "查看经营主体",
+          "en": "View entity",
+          "ar": "عرض الكيان"
+        },
+        {
+          "key": "management.permission.management_enter",
+          "zh-CN": "进入管理空间",
+          "en": "Enter workspace",
+          "ar": "دخول مساحة الإدارة"
+        },
+        {
+          "key": "management.permission.management_grant_manage",
+          "zh-CN": "管理资源授权",
+          "en": "Manage access",
+          "ar": "إدارة الصلاحيات"
+        },
+        {
+          "key": "management.permission.management_resource_read",
+          "zh-CN": "查看经营资源",
+          "en": "View resources",
+          "ar": "عرض الموارد"
+        },
+        {
+          "key": "management.permission.payment_merchant_read",
+          "zh-CN": "查看支付商户",
+          "en": "View payment merchant",
+          "ar": "عرض تاجر الدفع"
+        },
+        {
+          "key": "management.permission.store_brand_change",
+          "zh-CN": "配置门店品牌",
+          "en": "Configure store brand",
+          "ar": "تعيين علامة المتجر"
+        },
+        {
+          "key": "management.permission.store_read",
+          "zh-CN": "查看门店",
+          "en": "View store",
+          "ar": "عرض المتجر"
+        },
+        {
+          "key": "management.reason",
+          "zh-CN": "处理说明",
+          "en": "Reason",
+          "ar": "السبب"
+        },
+        {
+          "key": "management.refresh",
+          "zh-CN": "刷新",
+          "en": "Refresh",
+          "ar": "تحديث"
+        },
+        {
+          "key": "management.reject",
+          "zh-CN": "拒绝变更",
+          "en": "Reject",
+          "ar": "رفض"
+        },
+        {
+          "key": "management.resource",
+          "zh-CN": "经营资源",
+          "en": "Resource",
+          "ar": "المورد"
+        },
+        {
+          "key": "management.retry",
+          "zh-CN": "操作未完成，请刷新后重试",
+          "en": "Operation incomplete. Refresh and retry",
+          "ar": "لم تكتمل العملية، حدّث وأعد المحاولة"
+        },
+        {
+          "key": "management.revoke",
+          "zh-CN": "撤销授权",
+          "en": "Revoke access",
+          "ar": "إلغاء الصلاحية"
+        },
+        {
+          "key": "management.save",
+          "zh-CN": "保存",
+          "en": "Save",
+          "ar": "حفظ"
+        },
+        {
+          "key": "management.search",
+          "zh-CN": "搜索",
+          "en": "Search",
+          "ar": "بحث"
+        },
+        {
+          "key": "management.searchBrand",
+          "zh-CN": "搜索品牌名称",
+          "en": "Search brands",
+          "ar": "البحث عن علامة"
+        },
+        {
+          "key": "management.spaceName",
+          "zh-CN": "管理空间名称",
+          "en": "Workspace name",
+          "ar": "اسم مساحة الإدارة"
+        },
+        {
+          "key": "management.staff",
+          "zh-CN": "员工",
+          "en": "Staff",
+          "ar": "الموظف"
+        },
+        {
+          "key": "management.state.ACTIVE",
+          "zh-CN": "已启用",
+          "en": "Active",
+          "ar": "مفعّل"
+        },
+        {
+          "key": "management.state.APPLYING",
+          "zh-CN": "申请中",
+          "en": "Applying",
+          "ar": "قيد الطلب"
+        },
+        {
+          "key": "management.state.BANNED",
+          "zh-CN": "已封禁",
+          "en": "Banned",
+          "ar": "محظور نهائياً"
+        },
+        {
+          "key": "management.state.BLOCKED",
+          "zh-CN": "已阻断",
+          "en": "Blocked",
+          "ar": "محظور"
+        },
+        {
+          "key": "management.state.CHECKED",
+          "zh-CN": "待处理",
+          "en": "Pending decision",
+          "ar": "بانتظار القرار"
+        },
+        {
+          "key": "management.state.COMPLETED",
+          "zh-CN": "已完成",
+          "en": "Completed",
+          "ar": "مكتمل"
+        },
+        {
+          "key": "management.state.DRAFT",
+          "zh-CN": "草稿",
+          "en": "Draft",
+          "ar": "مسودة"
+        },
+        {
+          "key": "management.state.INACTIVE",
+          "zh-CN": "已停用",
+          "en": "Inactive",
+          "ar": "غير مفعّل"
+        },
+        {
+          "key": "management.state.PENDING_LICENSE",
+          "zh-CN": "待补资质",
+          "en": "Qualification required",
+          "ar": "يلزم استكمال التأهيل"
+        },
+        {
+          "key": "management.state.PREPARING",
+          "zh-CN": "准备中",
+          "en": "Preparing",
+          "ar": "قيد التحضير"
+        },
+        {
+          "key": "management.state.READONLY",
+          "zh-CN": "只读",
+          "en": "Read only",
+          "ar": "للقراءة فقط"
+        },
+        {
+          "key": "management.state.REJECTED",
+          "zh-CN": "已拒绝",
+          "en": "Rejected",
+          "ar": "مرفوض"
+        },
+        {
+          "key": "management.state.REVOKED",
+          "zh-CN": "已撤销",
+          "en": "Revoked",
+          "ar": "ملغى"
+        },
+        {
+          "key": "management.state.SUSPENDED",
+          "zh-CN": "已暂停",
+          "en": "Suspended",
+          "ar": "موقوف"
+        },
+        {
+          "key": "management.stopBrand",
+          "zh-CN": "停用品牌",
+          "en": "Deactivate brand",
+          "ar": "تعطيل العلامة"
+        },
+        {
+          "key": "management.storeBrand",
+          "zh-CN": "门店品牌",
+          "en": "Store brand",
+          "ar": "علامة المتجر"
+        },
+        {
+          "key": "management.stores",
+          "zh-CN": "门店管理",
+          "en": "Stores",
+          "ar": "المتاجر"
+        },
+        {
+          "key": "management.title",
+          "zh-CN": "经营管理",
+          "en": "Business management",
+          "ar": "إدارة الأعمال"
+        },
+        {
+          "key": "management.updatedAt",
+          "zh-CN": "修改时间",
+          "en": "Updated",
+          "ar": "آخر تعديل"
+        },
+        {
+          "key": "management.updatedBy",
+          "zh-CN": "修改人",
+          "en": "Updated by",
+          "ar": "عدّله"
+        },
+        {
           "key": "market.AE",
           "zh-CN": "阿联酋 · 迪拉姆",
           "en": "UAE · AED",
@@ -17264,6 +18320,18 @@
           "ar": "أرصدة الحساب"
         },
         {
+          "key": "points.accountExpiry",
+          "zh-CN": "到期时间",
+          "en": "Expires at",
+          "ar": "تاريخ الانتهاء"
+        },
+        {
+          "key": "points.accountFrozen",
+          "zh-CN": "账户已冻结",
+          "en": "Account frozen",
+          "ar": "الحساب مجمد"
+        },
+        {
           "key": "points.actionFailed",
           "zh-CN": "操作失败，请刷新后重试",
           "en": "Action failed. Refresh and retry.",
@@ -17288,10 +18356,208 @@
           "ar": "الرصيد بعد الحركة"
         },
         {
+          "key": "points.bucketAVAILABLE",
+          "zh-CN": "可用积分",
+          "en": "Available points",
+          "ar": "نقاط متاحة"
+        },
+        {
+          "key": "points.bucketHELD",
+          "zh-CN": "占用积分",
+          "en": "Held points",
+          "ar": "نقاط محجوزة"
+        },
+        {
+          "key": "points.bucketISSUABLE",
+          "zh-CN": "可发放积分",
+          "en": "Issuable points",
+          "ar": "نقاط قابلة للإصدار"
+        },
+        {
+          "key": "points.bucketISSUED",
+          "zh-CN": "已发行积分",
+          "en": "Issued points",
+          "ar": "نقاط مصدرة"
+        },
+        {
+          "key": "points.bucketPENDING",
+          "zh-CN": "待入账积分",
+          "en": "Pending points",
+          "ar": "نقاط معلقة"
+        },
+        {
+          "key": "points.bucketRECIRCULATABLE",
+          "zh-CN": "可回收积分",
+          "en": "Recirculatable points",
+          "ar": "نقاط قابلة لإعادة التداول"
+        },
+        {
+          "key": "points.bucketREFUND_RESERVED",
+          "zh-CN": "退款预留积分",
+          "en": "Refund reserved points",
+          "ar": "نقاط محجوزة للاسترداد"
+        },
+        {
+          "key": "points.code",
+          "zh-CN": "积分代码",
+          "en": "Points code",
+          "ar": "رمز النقاط"
+        },
+        {
+          "key": "points.currency",
+          "zh-CN": "币种",
+          "en": "Currency",
+          "ar": "العملة"
+        },
+        {
+          "key": "points.directionEARN",
+          "zh-CN": "发放",
+          "en": "Earning",
+          "ar": "منح"
+        },
+        {
+          "key": "points.directionFINALIZE",
+          "zh-CN": "完成入账",
+          "en": "Completion credit",
+          "ar": "قيد الإكمال"
+        },
+        {
+          "key": "points.directionHOLD",
+          "zh-CN": "预占",
+          "en": "Hold",
+          "ar": "حجز"
+        },
+        {
+          "key": "points.directionOTHER",
+          "zh-CN": "账务变动",
+          "en": "Ledger adjustment",
+          "ar": "تغيير محاسبي"
+        },
+        {
+          "key": "points.directionREDEEM",
+          "zh-CN": "核销",
+          "en": "Redemption",
+          "ar": "استخدام"
+        },
+        {
+          "key": "points.directionRELEASE",
+          "zh-CN": "释放",
+          "en": "Release",
+          "ar": "تحرير"
+        },
+        {
+          "key": "points.directionREVERSAL",
+          "zh-CN": "冲正 / 退回",
+          "en": "Reversal / return",
+          "ar": "عكس / إرجاع"
+        },
+        {
+          "key": "points.earningAVAILABLE",
+          "zh-CN": "已到账",
+          "en": "Credited",
+          "ar": "تمت الإضافة"
+        },
+        {
+          "key": "points.earningBudgetPending",
+          "zh-CN": "平台积分预算待补足，正在处理中",
+          "en": "Points funding is pending. Processing will continue.",
+          "ar": "بانتظار تمويل النقاط. ستستمر المعالجة."
+        },
+        {
+          "key": "points.earningCancelled",
+          "zh-CN": "订单已取消，不赠送积分",
+          "en": "Order cancelled. No points will be granted.",
+          "ar": "تم إلغاء الطلب. لن تمنح نقاط."
+        },
+        {
+          "key": "points.earningCredited",
+          "zh-CN": "已到账积分",
+          "en": "Credited points",
+          "ar": "النقاط المضافة"
+        },
+        {
+          "key": "points.earningDelayed",
+          "zh-CN": "积分正在处理，请稍后刷新",
+          "en": "Points are processing. Please refresh later.",
+          "ar": "النقاط قيد المعالجة. يرجى التحديث لاحقاً."
+        },
+        {
+          "key": "points.earningEXPECTED",
+          "zh-CN": "预计赠送",
+          "en": "Estimated",
+          "ar": "متوقعة"
+        },
+        {
+          "key": "points.earningExpected",
+          "zh-CN": "预计积分",
+          "en": "Estimated points",
+          "ar": "النقاط المتوقعة"
+        },
+        {
+          "key": "points.earningMANUAL",
+          "zh-CN": "处理中，待人工处理",
+          "en": "Awaiting review",
+          "ar": "بانتظار المراجعة"
+        },
+        {
+          "key": "points.earningNotGranted",
+          "zh-CN": "本次未赠送积分，请查看积分规则",
+          "en": "No points granted. See the earning rules.",
+          "ar": "لم تمنح نقاط. راجع قواعد المكافآت."
+        },
+        {
+          "key": "points.earningPENDING",
+          "zh-CN": "待入账",
+          "en": "Pending credit",
+          "ar": "بانتظار الإضافة"
+        },
+        {
+          "key": "points.earningPROCESSING",
+          "zh-CN": "处理中",
+          "en": "Processing",
+          "ar": "قيد المعالجة"
+        },
+        {
+          "key": "points.earningRECLAIMED",
+          "zh-CN": "已追回",
+          "en": "Reclaimed",
+          "ar": "تم الاسترداد"
+        },
+        {
+          "key": "points.earningRETRYABLE",
+          "zh-CN": "处理中，等待重试",
+          "en": "Awaiting retry",
+          "ar": "بانتظار إعادة المحاولة"
+        },
+        {
+          "key": "points.earningReclaimed",
+          "zh-CN": "已追回积分",
+          "en": "Reclaimed points",
+          "ar": "النقاط المستردة"
+        },
+        {
+          "key": "points.earningRetry",
+          "zh-CN": "积分状态加载失败，点击重试",
+          "en": "Points unavailable. Tap to retry",
+          "ar": "تعذر تحميل النقاط. أعد المحاولة"
+        },
+        {
+          "key": "points.earningSKIPPED",
+          "zh-CN": "未赠送",
+          "en": "Not granted",
+          "ar": "لم تمنح"
+        },
+        {
           "key": "points.emptyAccount",
           "zh-CN": "当前门店在此类型下暂无账本记录",
           "en": "No ledger activity for this store and type",
           "ar": "لا توجد قيود لهذا المتجر وهذا النوع"
+        },
+        {
+          "key": "points.historyTerms",
+          "zh-CN": "历史条款（只读）",
+          "en": "Historical terms (read only)",
+          "ar": "الشروط السابقة (للقراءة فقط)"
         },
         {
           "key": "points.loadMore",
@@ -17304,6 +18570,12 @@
           "zh-CN": "最小货币单位",
           "en": "minor currency units",
           "ar": "وحدة نقدية صغرى"
+        },
+        {
+          "key": "points.noHistoryTerms",
+          "zh-CN": "暂无历史条款",
+          "en": "No historical terms",
+          "ar": "لا توجد شروط سابقة"
         },
         {
           "key": "points.noStatements",
@@ -17324,6 +18596,12 @@
           "ar": "لا توجد أنواع نقاط بعد"
         },
         {
+          "key": "points.orderEarning",
+          "zh-CN": "订单积分",
+          "en": "Order points",
+          "ar": "نقاط الطلب"
+        },
+        {
           "key": "points.perOrder",
           "zh-CN": "随单结算",
           "en": "Per order",
@@ -17342,6 +18620,12 @@
           "ar": "نقطة"
         },
         {
+          "key": "points.posted",
+          "zh-CN": "已记账",
+          "en": "Posted",
+          "ar": "تم القيد"
+        },
+        {
           "key": "points.records",
           "zh-CN": "查看积分流水",
           "en": "View points entries",
@@ -17358,6 +18642,78 @@
           "zh-CN": "门店积分流水",
           "en": "Store points entries",
           "ar": "قيود نقاط المتجر"
+        },
+        {
+          "key": "points.redemptionCONSUMED",
+          "zh-CN": "已核销积分",
+          "en": "Points consumed",
+          "ar": "نقاط مستخدمة"
+        },
+        {
+          "key": "points.redemptionHELD",
+          "zh-CN": "已预占积分",
+          "en": "Points held",
+          "ar": "نقاط محجوزة"
+        },
+        {
+          "key": "points.redemptionPARTIALLY_RETURNED",
+          "zh-CN": "积分已部分退回",
+          "en": "Points partly returned",
+          "ar": "تمت إعادة بعض النقاط"
+        },
+        {
+          "key": "points.redemptionPROCESSING",
+          "zh-CN": "抵扣处理中",
+          "en": "Redemption processing",
+          "ar": "الاستخدام قيد المعالجة"
+        },
+        {
+          "key": "points.redemptionREFUND_PROCESSING",
+          "zh-CN": "积分退款处理中",
+          "en": "Points refund processing",
+          "ar": "استرداد النقاط قيد المعالجة"
+        },
+        {
+          "key": "points.redemptionRELEASED",
+          "zh-CN": "已释放积分",
+          "en": "Points released",
+          "ar": "نقاط محررة"
+        },
+        {
+          "key": "points.redemptionRETURNED",
+          "zh-CN": "积分已退回",
+          "en": "Points returned",
+          "ar": "تمت إعادة النقاط"
+        },
+        {
+          "key": "points.refundCOMPLETED",
+          "zh-CN": "已完成",
+          "en": "Completed",
+          "ar": "مكتمل"
+        },
+        {
+          "key": "points.refundMANUAL",
+          "zh-CN": "待人工处理",
+          "en": "Awaiting review",
+          "ar": "بانتظار المراجعة"
+        },
+        {
+          "key": "points.refundPROCESSING",
+          "zh-CN": "处理中",
+          "en": "Processing",
+          "ar": "قيد المعالجة"
+        },
+        {
+          "key": "points.refundPoints",
+          "zh-CN": "退款积分进度",
+          "en": "Points refund",
+          "ar": "استرداد النقاط"
+        },
+        {
+          "key": "points.returnedPoints",
+          "zh-CN": "累计退回积分",
+          "en": "Total points returned",
+          "ar": "إجمالي النقاط المعادة"
         },
         {
           "key": "points.sign",
@@ -17544,6 +18900,12 @@
           "zh-CN": "积分类型",
           "en": "Points type",
           "ar": "نوع النقاط"
+        },
+        {
+          "key": "points.viewOrder",
+          "zh-CN": "查看关联订单",
+          "en": "View order",
+          "ar": "عرض الطلب"
         },
         {
           "key": "purchase.addItem",
@@ -23288,6 +24650,624 @@
           "ar": "اختيار الفرع"
         },
         {
+          "key": "storedValue.accountDetail",
+          "zh-CN": "会员详情",
+          "en": "Member details",
+          "ar": "تفاصيل العضو"
+        },
+        {
+          "key": "storedValue.active",
+          "zh-CN": "已启用",
+          "en": "Active",
+          "ar": "مفعّلة"
+        },
+        {
+          "key": "storedValue.afterBalance",
+          "zh-CN": "变动后余额",
+          "en": "Balance after transaction",
+          "ar": "الرصيد بعد الحركة"
+        },
+        {
+          "key": "storedValue.all",
+          "zh-CN": "全部",
+          "en": "All",
+          "ar": "الكل"
+        },
+        {
+          "key": "storedValue.allPlans",
+          "zh-CN": "全部方案",
+          "en": "All plans",
+          "ar": "جميع الخطط"
+        },
+        {
+          "key": "storedValue.allRecords",
+          "zh-CN": "全部记录",
+          "en": "All transactions",
+          "ar": "جميع الحركات"
+        },
+        {
+          "key": "storedValue.back",
+          "zh-CN": "返回",
+          "en": "Back",
+          "ar": "رجوع"
+        },
+        {
+          "key": "storedValue.balance",
+          "zh-CN": "可用余额",
+          "en": "Available balance",
+          "ar": "الرصيد المتاح"
+        },
+        {
+          "key": "storedValue.bonus",
+          "zh-CN": "赠送金额",
+          "en": "Bonus",
+          "ar": "المكافأة"
+        },
+        {
+          "key": "storedValue.businessNo",
+          "zh-CN": "业务单号",
+          "en": "Business reference",
+          "ar": "رقم العملية"
+        },
+        {
+          "key": "storedValue.cancel",
+          "zh-CN": "取消",
+          "en": "Cancel",
+          "ar": "إلغاء"
+        },
+        {
+          "key": "storedValue.cancelRecharge",
+          "zh-CN": "取消办理",
+          "en": "Cancel recharge",
+          "ar": "إلغاء الشحن"
+        },
+        {
+          "key": "storedValue.cancelled",
+          "zh-CN": "已取消",
+          "en": "Cancelled",
+          "ar": "ملغاة"
+        },
+        {
+          "key": "storedValue.cash",
+          "zh-CN": "现金",
+          "en": "Cash",
+          "ar": "نقداً"
+        },
+        {
+          "key": "storedValue.chooseMember",
+          "zh-CN": "请选择会员",
+          "en": "Select a member",
+          "ar": "اختر عضواً"
+        },
+        {
+          "key": "storedValue.confirm",
+          "zh-CN": "确定",
+          "en": "Confirm",
+          "ar": "تأكيد"
+        },
+        {
+          "key": "storedValue.confirmReceipt",
+          "zh-CN": "确认收款并入账",
+          "en": "Confirm receipt and credit",
+          "ar": "تأكيد الاستلام وإضافة الرصيد"
+        },
+        {
+          "key": "storedValue.create",
+          "zh-CN": "创建方案",
+          "en": "Create plan",
+          "ar": "إنشاء الخطة"
+        },
+        {
+          "key": "storedValue.createConfirm",
+          "zh-CN": "确认储值方案",
+          "en": "Confirm plan",
+          "ar": "تأكيد الخطة"
+        },
+        {
+          "key": "storedValue.createdAt",
+          "zh-CN": "创建时间",
+          "en": "Created at",
+          "ar": "تاريخ الإنشاء"
+        },
+        {
+          "key": "storedValue.credited",
+          "zh-CN": "已到账",
+          "en": "Credited",
+          "ar": "تمت الإضافة"
+        },
+        {
+          "key": "storedValue.currentStore",
+          "zh-CN": "当前门店",
+          "en": "Current store",
+          "ar": "المتجر الحالي"
+        },
+        {
+          "key": "storedValue.customers",
+          "zh-CN": "顾客账户",
+          "en": "Customers",
+          "ar": "حسابات العملاء"
+        },
+        {
+          "key": "storedValue.detail",
+          "zh-CN": "详情",
+          "en": "Details",
+          "ar": "التفاصيل"
+        },
+        {
+          "key": "storedValue.empty",
+          "zh-CN": "暂无记录",
+          "en": "No records",
+          "ar": "لا توجد سجلات"
+        },
+        {
+          "key": "storedValue.enable",
+          "zh-CN": "启用方案",
+          "en": "Enable plan",
+          "ar": "تفعيل الخطة"
+        },
+        {
+          "key": "storedValue.enableConfirm",
+          "zh-CN": "启用后可办理新储值。",
+          "en": "Enabling allows new recharges.",
+          "ar": "التفعيل يسمح بعمليات شحن جديدة."
+        },
+        {
+          "key": "storedValue.end",
+          "zh-CN": "结束日期",
+          "en": "End date",
+          "ar": "تاريخ النهاية"
+        },
+        {
+          "key": "storedValue.findMember",
+          "zh-CN": "查询会员",
+          "en": "Find member",
+          "ar": "البحث عن عضو"
+        },
+        {
+          "key": "storedValue.finish",
+          "zh-CN": "完成",
+          "en": "Done",
+          "ar": "تم"
+        },
+        {
+          "key": "storedValue.identified",
+          "zh-CN": "已识别",
+          "en": "Identified",
+          "ar": "تم التحديد"
+        },
+        {
+          "key": "storedValue.identify",
+          "zh-CN": "识别顾客",
+          "en": "Identify customer",
+          "ar": "تحديد العميل"
+        },
+        {
+          "key": "storedValue.identityConflict",
+          "zh-CN": "部分会员身份待核实",
+          "en": "Some member identities need verification",
+          "ar": "بعض هويات الأعضاء بحاجة إلى التحقق"
+        },
+        {
+          "key": "storedValue.inactive",
+          "zh-CN": "已停用",
+          "en": "Inactive",
+          "ar": "متوقفة"
+        },
+        {
+          "key": "storedValue.invalidAmount",
+          "zh-CN": "请输入有效金额",
+          "en": "Enter a valid amount",
+          "ar": "أدخل مبلغاً صالحاً"
+        },
+        {
+          "key": "storedValue.invalidDate",
+          "zh-CN": "请选择有效时间范围",
+          "en": "Choose a valid date range",
+          "ar": "اختر فترة زمنية صالحة"
+        },
+        {
+          "key": "storedValue.lastActivity",
+          "zh-CN": "最近收支",
+          "en": "Latest transaction",
+          "ar": "آخر حركة"
+        },
+        {
+          "key": "storedValue.lastRecharge",
+          "zh-CN": "最近储值",
+          "en": "Last top-up",
+          "ar": "آخر شحن"
+        },
+        {
+          "key": "storedValue.leaveStore",
+          "zh-CN": "门店已切换，请返回列表",
+          "en": "Store changed. Return to the list.",
+          "ar": "تغير المتجر. ارجع إلى القائمة."
+        },
+        {
+          "key": "storedValue.loading",
+          "zh-CN": "加载中",
+          "en": "Loading",
+          "ar": "جارٍ التحميل"
+        },
+        {
+          "key": "storedValue.memberBlocked",
+          "zh-CN": "该会员暂不可办理储值",
+          "en": "Top-up is unavailable for this member",
+          "ar": "الشحن غير متاح لهذا العضو"
+        },
+        {
+          "key": "storedValue.memberCode",
+          "zh-CN": "会员码",
+          "en": "Member code",
+          "ar": "رمز العضوية"
+        },
+        {
+          "key": "storedValue.memberPhone",
+          "zh-CN": "输入完整手机号",
+          "en": "Enter full mobile number",
+          "ar": "أدخل رقم الجوال كاملاً"
+        },
+        {
+          "key": "storedValue.memberSuggest",
+          "zh-CN": "姓名、备注或手机号",
+          "en": "Name, note or phone",
+          "ar": "الاسم أو الملاحظة أو الهاتف"
+        },
+        {
+          "key": "storedValue.method",
+          "zh-CN": "收款方式",
+          "en": "Payment method",
+          "ar": "طريقة الاستلام"
+        },
+        {
+          "key": "storedValue.more",
+          "zh-CN": "加载更多",
+          "en": "Load more",
+          "ar": "تحميل المزيد"
+        },
+        {
+          "key": "storedValue.networkUnknown",
+          "zh-CN": "结果待确认，请查询原单或按原操作重试。",
+          "en": "Result unconfirmed. Check the original operation or retry it.",
+          "ar": "النتيجة غير مؤكدة. تحقق من العملية الأصلية أو أعد محاولتها."
+        },
+        {
+          "key": "storedValue.newPlan",
+          "zh-CN": "新建储值方案",
+          "en": "New plan",
+          "ar": "خطة جديدة"
+        },
+        {
+          "key": "storedValue.next",
+          "zh-CN": "下一步",
+          "en": "Next",
+          "ar": "التالي"
+        },
+        {
+          "key": "storedValue.noMember",
+          "zh-CN": "未找到该会员",
+          "en": "No member found",
+          "ar": "لم يتم العثور على عضو"
+        },
+        {
+          "key": "storedValue.noPermission",
+          "zh-CN": "暂无操作权限",
+          "en": "Permission required",
+          "ar": "ليست لديك صلاحية"
+        },
+        {
+          "key": "storedValue.notFunded",
+          "zh-CN": "未储值",
+          "en": "No top-ups yet",
+          "ar": "لم يتم الشحن بعد"
+        },
+        {
+          "key": "storedValue.occurredAt",
+          "zh-CN": "发生时间",
+          "en": "Time",
+          "ar": "الوقت"
+        },
+        {
+          "key": "storedValue.offlineConfirm",
+          "zh-CN": "储值",
+          "en": "Top up",
+          "ar": "شحن الرصيد"
+        },
+        {
+          "key": "storedValue.offlineHint",
+          "zh-CN": "确认表示已线下收取 {amount}",
+          "en": "Confirm that {amount} was collected offline",
+          "ar": "التأكيد يعني استلام {amount} خارج المنصة"
+        },
+        {
+          "key": "storedValue.paid",
+          "zh-CN": "实收金额",
+          "en": "Amount received",
+          "ar": "المبلغ المستلم"
+        },
+        {
+          "key": "storedValue.planDetail",
+          "zh-CN": "储值方案详情",
+          "en": "Plan details",
+          "ar": "تفاصيل الخطة"
+        },
+        {
+          "key": "storedValue.planName",
+          "zh-CN": "方案名称",
+          "en": "Plan name",
+          "ar": "اسم الخطة"
+        },
+        {
+          "key": "storedValue.plans",
+          "zh-CN": "储值方案",
+          "en": "Plans",
+          "ar": "خطط الشحن"
+        },
+        {
+          "key": "storedValue.processing",
+          "zh-CN": "处理中",
+          "en": "Processing",
+          "ar": "قيد المعالجة"
+        },
+        {
+          "key": "storedValue.readOnly",
+          "zh-CN": "只读",
+          "en": "Read only",
+          "ar": "للقراءة فقط"
+        },
+        {
+          "key": "storedValue.receipt",
+          "zh-CN": "收款凭证号",
+          "en": "Receipt reference",
+          "ar": "رقم إثبات الاستلام"
+        },
+        {
+          "key": "storedValue.receiptHint",
+          "zh-CN": "填写线下收据或转账凭据编号",
+          "en": "Enter the offline receipt or transfer reference",
+          "ar": "أدخل رقم الإيصال أو التحويل"
+        },
+        {
+          "key": "storedValue.receiptRequired",
+          "zh-CN": "请填写收款凭证号",
+          "en": "Enter a receipt reference",
+          "ar": "أدخل رقم إثبات الاستلام"
+        },
+        {
+          "key": "storedValue.receivePending",
+          "zh-CN": "已提交，请有收款确认权限的人员确认",
+          "en": "Submitted. An authorized operator must confirm receipt.",
+          "ar": "تم الإرسال. يجب على موظف مخوّل تأكيد الاستلام."
+        },
+        {
+          "key": "storedValue.received",
+          "zh-CN": "已收款，待到账",
+          "en": "Payment received, credit pending",
+          "ar": "تم الاستلام وبانتظار إضافة الرصيد"
+        },
+        {
+          "key": "storedValue.recent",
+          "zh-CN": "最近收支",
+          "en": "Recent transactions",
+          "ar": "الحركات الأخيرة"
+        },
+        {
+          "key": "storedValue.recharge",
+          "zh-CN": "储值",
+          "en": "Recharge",
+          "ar": "شحن"
+        },
+        {
+          "key": "storedValue.rechargeTitle",
+          "zh-CN": "办理储值",
+          "en": "Recharge",
+          "ar": "شحن الرصيد"
+        },
+        {
+          "key": "storedValue.recordDetail",
+          "zh-CN": "收支详情",
+          "en": "Transaction details",
+          "ar": "تفاصيل الحركة"
+        },
+        {
+          "key": "storedValue.records",
+          "zh-CN": "收支记录",
+          "en": "Transactions",
+          "ar": "الحركات"
+        },
+        {
+          "key": "storedValue.redemption",
+          "zh-CN": "核销",
+          "en": "Redemption",
+          "ar": "استخدام"
+        },
+        {
+          "key": "storedValue.referenceExpired",
+          "zh-CN": "顾客识别已过期，请重新扫码",
+          "en": "Identification expired. Scan again.",
+          "ar": "انتهت صلاحية التعريف. امسح الرمز مجدداً."
+        },
+        {
+          "key": "storedValue.refresh",
+          "zh-CN": "刷新进度",
+          "en": "Refresh status",
+          "ar": "تحديث الحالة"
+        },
+        {
+          "key": "storedValue.rejected",
+          "zh-CN": "已拒绝",
+          "en": "Rejected",
+          "ar": "مرفوضة"
+        },
+        {
+          "key": "storedValue.required",
+          "zh-CN": "请填写必填项",
+          "en": "Complete required fields",
+          "ar": "أكمل الحقول المطلوبة"
+        },
+        {
+          "key": "storedValue.reset",
+          "zh-CN": "重置",
+          "en": "Reset",
+          "ar": "إعادة تعيين"
+        },
+        {
+          "key": "storedValue.resume",
+          "zh-CN": "恢复原操作",
+          "en": "Resume operation",
+          "ar": "استئناف العملية"
+        },
+        {
+          "key": "storedValue.resumePending",
+          "zh-CN": "继续处理未完成储值",
+          "en": "Resume pending top-up",
+          "ar": "متابعة الشحن المعلق"
+        },
+        {
+          "key": "storedValue.retry",
+          "zh-CN": "重试",
+          "en": "Retry",
+          "ar": "إعادة المحاولة"
+        },
+        {
+          "key": "storedValue.saveAndRecharge",
+          "zh-CN": "保存并储值",
+          "en": "Save and top up",
+          "ar": "حفظ وشحن"
+        },
+        {
+          "key": "storedValue.savePending",
+          "zh-CN": "上次储值结果查询中",
+          "en": "Checking previous top-up",
+          "ar": "جار التحقق من الشحن السابق"
+        },
+        {
+          "key": "storedValue.saved",
+          "zh-CN": "已保存",
+          "en": "Saved",
+          "ar": "تم الحفظ"
+        },
+        {
+          "key": "storedValue.scan",
+          "zh-CN": "扫码",
+          "en": "Scan",
+          "ar": "مسح"
+        },
+        {
+          "key": "storedValue.search",
+          "zh-CN": "搜索姓名或手机号",
+          "en": "Search name or phone",
+          "ar": "البحث بالاسم أو الهاتف"
+        },
+        {
+          "key": "storedValue.select",
+          "zh-CN": "请选择",
+          "en": "Choose",
+          "ar": "اختر"
+        },
+        {
+          "key": "storedValue.selectPlan",
+          "zh-CN": "选择储值方案",
+          "en": "Choose a plan",
+          "ar": "اختر خطة"
+        },
+        {
+          "key": "storedValue.sourceStore",
+          "zh-CN": "来源门店",
+          "en": "Joined at",
+          "ar": "متجر التسجيل"
+        },
+        {
+          "key": "storedValue.start",
+          "zh-CN": "开始日期",
+          "en": "Start date",
+          "ar": "تاريخ البداية"
+        },
+        {
+          "key": "storedValue.stop",
+          "zh-CN": "停用方案",
+          "en": "Disable plan",
+          "ar": "إيقاف الخطة"
+        },
+        {
+          "key": "storedValue.stopConfirm",
+          "zh-CN": "停用后不支持新办理，已有余额不受影响。",
+          "en": "Disabling stops new recharges. Existing balances remain available.",
+          "ar": "الإيقاف يمنع الشحن الجديد ولا يؤثر في الرصيد الحالي."
+        },
+        {
+          "key": "storedValue.store",
+          "zh-CN": "门店",
+          "en": "Store",
+          "ar": "المتجر"
+        },
+        {
+          "key": "storedValue.submitted",
+          "zh-CN": "待确认收款",
+          "en": "Awaiting receipt confirmation",
+          "ar": "بانتظار تأكيد الاستلام"
+        },
+        {
+          "key": "storedValue.suggestHint",
+          "zh-CN": "输入至少2个字或3位号码",
+          "en": "Enter 2 characters or 3 digits",
+          "ar": "أدخل حرفين أو ثلاثة أرقام"
+        },
+        {
+          "key": "storedValue.time",
+          "zh-CN": "时间",
+          "en": "Time",
+          "ar": "الوقت"
+        },
+        {
+          "key": "storedValue.timeZone",
+          "zh-CN": "门店时区",
+          "en": "Store time zone",
+          "ar": "المنطقة الزمنية للمتجر"
+        },
+        {
+          "key": "storedValue.title",
+          "zh-CN": "储值管理",
+          "en": "Stored value",
+          "ar": "إدارة الرصيد"
+        },
+        {
+          "key": "storedValue.total",
+          "zh-CN": "到账金额",
+          "en": "Amount credited",
+          "ar": "المبلغ المضاف"
+        },
+        {
+          "key": "storedValue.transfer",
+          "zh-CN": "转账",
+          "en": "Transfer",
+          "ar": "تحويل"
+        },
+        {
+          "key": "storedValue.unknown",
+          "zh-CN": "结果待确认",
+          "en": "Result unconfirmed",
+          "ar": "النتيجة غير مؤكدة"
+        },
+        {
+          "key": "storedValue.unlimited",
+          "zh-CN": "不限时间",
+          "en": "Any time",
+          "ar": "أي وقت"
+        },
+        {
+          "key": "storedValue.updatedAt",
+          "zh-CN": "修改时间",
+          "en": "Updated at",
+          "ar": "تاريخ التعديل"
+        },
+        {
+          "key": "storedValue.waitCollection",
+          "zh-CN": "待收款",
+          "en": "Awaiting payment",
+          "ar": "بانتظار الدفع"
+        },
+        {
           "key": "stores.add",
           "zh-CN": "＋ 新建门店",
           "en": "+ New store",
@@ -27129,6 +29109,12 @@
           "ar": "لا يمكن لمقدم الطلب مراجعة طلبه المالي. يلزم مراجع آخر مخوّل."
         },
         {
+          "key": "err.points.type_duplicate",
+          "zh-CN": "积分代码或名称已存在，请修改后重试。",
+          "en": "This points code or name already exists. Change it and try again.",
+          "ar": "رمز النقاط أو اسمها موجود بالفعل. غيّره ثم أعد المحاولة."
+        },
+        {
           "key": "err.presale.cutoff_after_arrival",
           "zh-CN": "截单时间必须早于到货时间，否则货到了还能继续下单",
           "en": "The cut-off must come before the arrival time, or people keep ordering after the goods land",
@@ -28558,6 +30544,13 @@
       "package": "ai.neargo.shop.message.entity"
     },
     {
+      "table": "notify_stored_value_task",
+      "class": "StoredValueNotifyTask",
+      "zh": "Single committed consumption notification; SENDING is never automatically replayed.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.message.entity"
+    },
+    {
       "table": "notify_subscribe",
       "class": "MsgSubscribe",
       "zh": "订阅消息授权（C-MS-01）。",
@@ -28684,6 +30677,20 @@
       "package": "ai.neargo.shop.trade.order.entity"
     },
     {
+      "table": "ord_pricing_template",
+      "class": "OrdPricingTemplate",
+      "zh": "Pricing publication evidence uses business numbers; immutable revisions are insert/query only.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_pricing_template_revision",
+      "class": "OrdPricingTemplateRevision",
+      "zh": "Pricing publication evidence uses business numbers; immutable revisions are insert/query only.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
       "table": "ord_refund_execution",
       "class": "OrdRefundExecution",
       "zh": "The immutable refund plan survives gateway ambiguity and independent resource recovery.",
@@ -28701,6 +30708,20 @@
       "table": "ord_status_log",
       "class": "OrdStatusLog",
       "zh": "订单状态时间线（C-OC-03 / C5）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_store_pricing_config",
+      "class": "OrdStorePricingConfig",
+      "zh": "Pricing publication evidence uses business numbers; immutable revisions are insert/query only.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_store_pricing_revision",
+      "class": "OrdStorePricingRevision",
+      "zh": "Pricing publication evidence uses business numbers; immutable revisions are insert/query only.",
       "module": "shop-core",
       "package": "ai.neargo.shop.trade.entity"
     },
@@ -29379,6 +31400,27 @@
     {
       "table": "sv_recharge",
       "class": "SvRecharge",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_recharge_plan",
+      "class": "SvRechargePlan",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_recharge_plan_version",
+      "class": "SvRechargePlanVersion",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_statement",
+      "class": "SvStatement",
       "zh": "",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.storedvalue.entity"
@@ -30956,6 +32998,34 @@
       },
       {
         "host": "BizKey",
+        "name": "MANAGEMENT_SPACE",
+        "value": "MGS",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "MANAGEMENT_GRANT",
+        "value": "MGG",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "BRAND",
+        "value": "BR",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "BRAND_BINDING",
+        "value": "BRB",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
         "name": "ACTIVITY_VERSION",
         "value": "AV",
         "zh": "前缀是语义的一部分：看到 SUB 就知道这是子订单，不用去查表。",
@@ -31008,6 +33078,27 @@
         "name": "MEMBER",
         "value": "MB",
         "zh": "会员：一个人 × 一家主体的关系。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "SCOPE_MEMBER",
+        "value": "MSM",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORE_MEMBER_PROFILE",
+        "value": "MSP",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "MEMBER_SCOPE_LINK",
+        "value": "MSL",
+        "zh": "",
         "module": "shop-base"
       },
       {
@@ -31960,6 +34051,13 @@
         "name": "JOB",
         "value": "JOB",
         "zh": "定时任务调度器。",
+        "module": "shop-base"
+      },
+      {
+        "host": "ServiceName",
+        "name": "FOOD",
+        "value": "FOOD",
+        "zh": "餐饮独立进程。",
         "module": "shop-base"
       },
       {
@@ -36970,6 +39068,26 @@
       {
         "name": "Action",
         "values": [
+          "EARN",
+          "HOLD",
+          "RELEASE",
+          "FREEZE",
+          "REFUND_PREPARE",
+          "REFUND_AUTHORIZE",
+          "REFUND_CONFIRM",
+          "REFUND_ABORT",
+          "REFUND_COMPENSATE",
+          "LIFECYCLE",
+          "REFUND_FACT",
+          "CLOSURE",
+          "ZERO_CASH"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Action",
+        "values": [
           "BEGIN_DRAIN",
           "FREEZE",
           "ABORT"
@@ -37119,6 +39237,33 @@
         "module": "shop-core"
       },
       {
+        "name": "Algorithm",
+        "values": [
+          "SHARED_COUPON_V1",
+          "OWNER_FROZEN_V1"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "AmountBasis",
+        "values": [
+          "PAYABLE_GROSS",
+          "TAX_EXCLUSIVE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "AmountBasis",
+        "values": [
+          "TAX_EXCLUSIVE",
+          "PAYABLE_GROSS"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "AssetKind",
         "values": [
           "ORDER_COUPON",
@@ -37149,6 +39294,23 @@
           "AUTHORIZED",
           "CANCELLED",
           "EXPIRED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "BenefitKind",
+        "values": [
+          "ACTIVITY",
+          "PERCENT_COUPON",
+          "CASH_COUPON",
+          "DEDUCTION_COUPON",
+          "STORED_VALUE",
+          "POINTS",
+          "MANUAL_PERCENT",
+          "MANUAL_AMOUNT",
+          "MANUAL_WAIVER",
+          "CASH_ROUNDING"
         ],
         "zh": "",
         "module": "shop-base"
@@ -37213,7 +39375,26 @@
         "name": "CollectionMethod",
         "values": [
           "CASH",
-          "TRANSFER"
+          "TRANSFER",
+          "MERCHANT_OFFLINE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "CombinationMode",
+        "values": [
+          "MULTI_KIND",
+          "SINGLE_KIND"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "CouponMode",
+        "values": [
+          "SINGLE",
+          "MULTI"
         ],
         "zh": "",
         "module": "shop-base"
@@ -37239,6 +39420,15 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "Deployment",
+        "values": [
+          "EMBEDDED",
+          "STANDALONE"
+        ],
+        "zh": "",
+        "module": "shop-app"
       },
       {
         "name": "Dim",
@@ -37268,6 +39458,52 @@
           "UNKNOWN"
         ],
         "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "DocumentOwner",
+        "values": [
+          "CORE",
+          "PAY"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "DocumentType",
+        "values": [
+          "SV_RECHARGE",
+          "SV_VOUCHER",
+          "ENTITLEMENT_USAGE",
+          "ENTITLEMENT_GRANT",
+          "ENTITLEMENT_ISSUE_BATCH",
+          "POINTS_VOUCHER",
+          "LEGACY_COUPON_ISSUE",
+          "ENTITLEMENT_MIGRATION_PLAN",
+          "ENTITLEMENT_MIGRATION_IMPORT",
+          "ENTITLEMENT_MIGRATION_STAGE",
+          "ENTITLEMENT_RECON_RUN",
+          "ENTITLEMENT_RECON_DIFF",
+          "ENTITLEMENT_EXCEPTION",
+          "ENTITLEMENT_EXCEPTION_ACTION",
+          "INVENTORY_SYNC",
+          "INVENTORY_ALIGNMENT",
+          "MARKETING_ACTIVITY",
+          "MARKETING_COUPON_TEMPLATE",
+          "MARKETING_COUPON_ISSUE",
+          "MARKETING_USER_COUPON",
+          "TRADE_ORDER",
+          "TRADE_SUBORDER",
+          "PAYMENT_ATTEMPT",
+          "AFTER_SALE",
+          "TRADE_INVOICE_REQUEST",
+          "WITHDRAWAL",
+          "SETTLEMENT_BATCH",
+          "SETTLEMENT_BILL",
+          "SETTLEMENT_INVOICE_REQUEST",
+          "BRAND_CHANGE"
+        ],
+        "zh": "Human-facing document namespace。",
         "module": "shop-base"
       },
       {
@@ -37407,6 +39643,7 @@
           "POINTS_FUNDS_UNAVAILABLE",
           "POINTS_EVIDENCE_REQUIRED",
           "POINTS_OPERATION_REJECTED",
+          "POINTS_TYPE_DUPLICATE",
           "RISK_BLOCKED",
           "RISK_EVENT_HANDLED",
           "RISK_VERDICT_REQUIRED",
@@ -37527,6 +39764,28 @@
         "module": "shop-base"
       },
       {
+        "name": "EvaluatorType",
+        "values": [
+          "FORBID_COMBINATION",
+          "COUNT_LIMIT",
+          "REQUIRE_CAPABILITY",
+          "SCOPE_OVERLAP",
+          "ORDER_AND_REMAINDER",
+          "REQUIRE_APPROVAL",
+          "CONSERVATION",
+          "TAX_POLICY_VALIDITY",
+          "TAX_PRICE_MODE",
+          "TAX_CLASSIFICATION",
+          "TAX_ADJUSTMENT_CLASSIFICATION",
+          "TAX_ROUNDING",
+          "TAX_FINALIZATION",
+          "TAX_PRESENTATION",
+          "TAX_HISTORY"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "FactKind",
         "values": [
           "PAID",
@@ -37534,6 +39793,27 @@
           "REFUND_SUCCEEDED",
           "FINALIZED",
           "REFUND_CLOSED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "FixedPolicy",
+        "values": [
+          "B03",
+          "B06",
+          "B09",
+          "B10",
+          "B11",
+          "B12",
+          "T01",
+          "T02",
+          "T03",
+          "T04",
+          "T05",
+          "T06",
+          "T07",
+          "T08"
         ],
         "zh": "",
         "module": "shop-base"
@@ -37627,6 +39907,15 @@
         "module": "shop-base"
       },
       {
+        "name": "Holder",
+        "values": [
+          "USER",
+          "STORE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "HolderType",
         "values": [
           "MINT",
@@ -37637,6 +39926,35 @@
         ],
         "zh": "Four business holders and one issuance register form the conserved points ledger.",
         "module": "pay/pay-domain"
+      },
+      {
+        "name": "ImportMode",
+        "values": [
+          "DRY_RUN",
+          "DRAFT"
+        ],
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "name": "IndustryRestriction",
+        "values": [
+          "PUBLISHED_MENU_CHANNEL_PRICE_ONLY",
+          "BUNDLE_PARENT_OR_LEAF_PRICING",
+          "ROOT_CHECKOUT_SCOPE_COUPON_LIMIT",
+          "FROZEN_POSTPAID_BATCHES",
+          "LEGACY_RETAIL_NOT_AUTO_MIGRATED",
+          "ORIGINAL_FUNDER_ALLOCATION",
+          "OFFLINE_PLATFORM_COUPON_RESTRICTIONS",
+          "FREIGHT_ELIGIBILITY_SEPARATE",
+          "ORIGINAL_SERVICE_SOURCE",
+          "RIGHTS_SEPARATE_FROM_MONEY",
+          "STORED_REDEMPTION_FULL_COVER_ONLY",
+          "NO_AUTOMATIC_STORED_CASH_MIX",
+          "NO_NEW_ONLINE_STORED_REVERSAL"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "IntentKind",
@@ -37762,6 +40080,18 @@
         "module": "shop-store-mybatis"
       },
       {
+        "name": "LimitPath",
+        "values": [
+          "TOTAL",
+          "PERCENT",
+          "CASH",
+          "DEDUCTION",
+          "AMOUNT_TOTAL"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "LoginEvent",
         "values": [
           "LOGIN",
@@ -37792,6 +40122,16 @@
         ],
         "zh": "",
         "module": "pay/pay-domain"
+      },
+      {
+        "name": "Mode",
+        "values": [
+          "EXPLICIT",
+          "CANDIDATE_POOL",
+          "AUTO_BEST"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "Mode",
@@ -37918,6 +40258,16 @@
         "module": "shop-base"
       },
       {
+        "name": "OverlapMode",
+        "values": [
+          "DISJOINT",
+          "BEST_ONE",
+          "STACK"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "OwnerSystem",
         "values": [
           "CORE_LEGACY",
@@ -38033,6 +40383,25 @@
         "module": "shop-base"
       },
       {
+        "name": "PriceTaxMode",
+        "values": [
+          "INCLUSIVE",
+          "EXCLUSIVE"
+        ],
+        "zh": "The source price owns this dimension; a UI display switch cannot change it.",
+        "module": "shop-base"
+      },
+      {
+        "name": "PricingRole",
+        "values": [
+          "NONE",
+          "PARENT",
+          "LEAF"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "Quality",
         "values": [
           "SALEABLE",
@@ -38072,6 +40441,16 @@
           "CREDITED",
           "CANCELLED",
           "REJECTED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "RecipeStatus",
+        "values": [
+          "COMPLETE",
+          "INELIGIBLE",
+          "UNAVAILABLE"
         ],
         "zh": "",
         "module": "shop-base"
@@ -38150,6 +40529,16 @@
         "module": "pay/pay-domain"
       },
       {
+        "name": "ScopeStatus",
+        "values": [
+          "OPEN",
+          "PAID",
+          "UNKNOWN"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "SettleMode",
         "values": [
           "PER_ORDER",
@@ -38186,6 +40575,14 @@
       {
         "name": "Source",
         "values": [
+          "TRADE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Source",
+        "values": [
           "PLATFORM",
           "INVENTORY"
         ],
@@ -38208,6 +40605,26 @@
           "MKT_LEGACY",
           "PMT",
           "PAY"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Stage",
+        "values": [
+          "BUSINESS_PRE_TAX"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Stage",
+        "values": [
+          "CONFIGURATION",
+          "SELECTION",
+          "ELIGIBILITY",
+          "APPROVAL",
+          "AMOUNT"
         ],
         "zh": "",
         "module": "shop-base"
@@ -38351,11 +40768,47 @@
       {
         "name": "Status",
         "values": [
+          "SELECTED",
+          "NO_LEGAL_PLAN",
+          "INVALID_SELECTION",
+          "PLAN_SEARCH_LIMIT",
+          "EVALUATION_INCOMPLETE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Status",
+        "values": [
+          "CALCULATED",
+          "REJECTED",
+          "UNAVAILABLE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Status",
+        "values": [
           "SUCCEEDED",
           "PROCESSING",
           "TERMINAL_FAILED",
           "MANUAL_REQUIRED",
           "UNKNOWN"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Status",
+        "values": [
+          "ACCEPTED",
+          "PROCESSING",
+          "SUCCEEDED",
+          "SKIPPED",
+          "RETRYABLE",
+          "MANUAL",
+          "REJECTED"
         ],
         "zh": "",
         "module": "shop-base"
@@ -38417,6 +40870,37 @@
         "module": "pay/pay-domain"
       },
       {
+        "name": "TaxClass",
+        "values": [
+          "STANDARD",
+          "ZERO_RATED",
+          "EXEMPT",
+          "OUT_OF_SCOPE",
+          "UNKNOWN"
+        ],
+        "zh": "Tax eligibility is independent of participation in promotions; unknown is never zero-rated.",
+        "module": "shop-base"
+      },
+      {
+        "name": "TaxPointStatus",
+        "values": [
+          "ESTIMATED",
+          "CONFIRMED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "TaxTreatment",
+        "values": [
+          "REDUCES_TAX_BASE",
+          "SETTLES_CONSIDERATION",
+          "UNKNOWN"
+        ],
+        "zh": "Owner and regional evidence decide tax effects rather than a coupon or points label.",
+        "module": "shop-base"
+      },
+      {
         "name": "TicketRealm",
         "values": [
           "B",
@@ -38439,6 +40923,16 @@
         "module": "shop-base"
       },
       {
+        "name": "TransactionDirection",
+        "values": [
+          "EARN",
+          "REDEEM",
+          "REVERSAL"
+        ],
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
         "name": "TriggerType",
         "values": [
           "CRON",
@@ -38454,7 +40948,10 @@
         "values": [
           "ACTIVATE",
           "DRAIN",
-          "RETIRE"
+          "RETIRE",
+          "PAUSE_EARNING",
+          "RESUME_EARNING",
+          "SET_DEFAULT"
         ],
         "zh": "",
         "module": "pay/pay-domain"
@@ -38739,7 +41236,8 @@
         "values": [
           "AVAILABLE",
           "PENDING",
-          "HELD"
+          "HELD",
+          "REFUND_RESERVED"
         ],
         "zh": "BuyerPointsEntry 的 bucket 取值域，按服务端契约校验。"
       },
@@ -39170,7 +41668,8 @@
         "values": [
           "GET",
           "POST",
-          "PUT"
+          "PUT",
+          "DELETE"
         ],
         "zh": ""
       },
@@ -40186,12 +42685,25 @@
         "zh": "PointsStatsQ 的 scope 取值域，按服务端契约校验。"
       },
       {
+        "name": "PointsTransactionDirection",
+        "client": "ops-web",
+        "values": [
+          "EARN",
+          "REDEEM",
+          "REVERSAL"
+        ],
+        "zh": ""
+      },
+      {
         "name": "PointsTypeChangeAction",
         "client": "ops-web",
         "values": [
           "ACTIVATE",
           "DRAIN",
-          "RETIRE"
+          "RETIRE",
+          "PAUSE_EARNING",
+          "RESUME_EARNING",
+          "SET_DEFAULT"
         ],
         "zh": "PointsTypeChange 的 action 取值域，按服务端契约校验。"
       },
@@ -40281,6 +42793,20 @@
         "name": "ROUTES",
         "client": "b-app",
         "values": [
+          "/pages/management/index",
+          "/pages/brand-list/index",
+          "/pages/brand-edit/index",
+          "/pages/brand-detail/index",
+          "/pages/management-resources/index",
+          "/pages/store-brand/index",
+          "/pages/management-grants/index",
+          "/pages/brand-change/index",
+          "/pages/stored-value/index",
+          "/pages/stored-value-plan-edit/index",
+          "/pages/stored-value-plan-detail/index",
+          "/pages/stored-value-account/index",
+          "/pages/stored-value-record/index",
+          "/pages/stored-value-recharge/index",
           "/pages/home/index",
           "/pages/orders/index",
           "/pages/goods-list/index",
@@ -40394,6 +42920,8 @@
           "/pages/cards/index",
           "/pages/messages/index",
           "/pages/request-create/index",
+          "/pages/stored-value/index",
+          "/pages/stored-value-records/index",
           "/pages/points/index",
           "/pages/review-write/index",
           "/pages/group/index",
@@ -40995,6 +43523,16 @@
         "zh": "一家店怎么进入买家的「我的店」（`usr_store_view.first_source`）。"
       },
       {
+        "name": "StoredValueType",
+        "client": "c-app",
+        "values": [
+          "ALL",
+          "RECHARGE",
+          "REDEMPTION"
+        ],
+        "zh": ""
+      },
+      {
         "name": "SubOrderStatus",
         "client": "shared",
         "values": [
@@ -41540,6 +44078,14 @@
     },
     {
       "host": "PayInternalPaths",
+      "name": "SV_ORGANIZATION_IMPACT",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/organization-impact\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
       "name": "LEGACY_TEMPLATE_ARCHIVE",
       "type": "String",
       "value": "\"/internal/pay/entitlement/legacy-template/archive\"",
@@ -42012,6 +44558,30 @@
     },
     {
       "host": "PayInternalPaths",
+      "name": "SV_CONSUMER_STORE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/consumer/store\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CONSUMER_RECORDS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/consumer/records\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_NOTIFICATION_FACT",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/consumer/notification-fact\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
       "name": "SV_STORES",
       "type": "String",
       "value": "\"/internal/pay/stored-value/query/stores\"",
@@ -42395,6 +44965,126 @@
       "module": "pay/pay-domain"
     },
     {
+      "host": "PayInternalPaths",
+      "name": "SV_PLAN_CREATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/plans/create\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_PLAN_GET",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/plans/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_PLAN_LIST",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/plans/list\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_PLAN_STATUS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/plans/status\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CUSTOMER_BIND",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/customers/bind\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_PLAN_RECHARGE_CONFIRM_OFFLINE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/plan-recharges/confirm-offline\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_PLAN_RECHARGE_CREATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/plan-recharges/create\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_PLAN_RECHARGE_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/plan-recharges/query\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_PLAN_RECHARGE_RECOVER",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/plan-recharges/recover\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MERCHANT_DIRECTORY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/merchant/directory\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MERCHANT_ACCOUNT",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/merchant/account\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MERCHANT_RECORDS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/merchant/records\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MERCHANT_RECORD",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/merchant/record\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_PLAN_RECHARGE_REPLAY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/plan-recharges/replay\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_PLAN_RECHARGE_CANCEL_CREATION",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/plan-recharges/cancel-creation\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
       "host": "CouponQuotePolicy",
       "name": "FREIGHT_LINE",
       "type": "String",
@@ -42699,6 +45389,14 @@
       "module": "shop-base"
     },
     {
+      "host": "MoneyMinor",
+      "name": "MAX_JSON_SAFE_MINOR",
+      "type": "long",
+      "value": "9_007_199_254_740_991L",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
       "host": "EntitlementCoreInternal",
       "name": "LEGACY_COUPON_AUDIENCE",
       "type": "String",
@@ -42996,10 +45694,26 @@
     },
     {
       "host": "BizPerms",
+      "name": "SV_PLAN_READ",
+      "type": "String",
+      "value": "\"pay:sv:plan:read\"",
+      "zh": "查看主体级权益目录，不授予变更能力。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "SV_PLAN_MANAGE",
+      "type": "String",
+      "value": "\"pay:sv:plan:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
       "name": "SV_RECHARGE_CREATE",
       "type": "String",
       "value": "\"pay:sv:recharge:create\"",
-      "zh": "查看主体级权益目录，不授予变更能力。",
+      "zh": "",
       "module": "shop-base-auth"
     },
     {
@@ -43094,7 +45808,7 @@
       "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },

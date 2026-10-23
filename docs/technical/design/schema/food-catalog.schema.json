@@ -1,6 +1,6 @@
 {
   "title": "餐饮菜品数据模型 Food catalog data model",
-  "status": "PROPOSED / 待评审",
+  "status": "ALIGNED_PROJECTION / 与综合真源对齐；非独立迁移源",
   "tables": [
     {
       "name": "prd_goods",
@@ -139,7 +139,6 @@
           "name": "goods_no",
           "type": "varchar(32)",
           "label": "基础商品 Product",
-          "key": "PK,FK",
           "ref": "prd_goods.goods_no",
           "nullable": false
         },
@@ -147,7 +146,6 @@
           "name": "dish_kind",
           "type": "varchar(16)",
           "label": "类型 SINGLE / BUNDLE / ADDON",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -155,7 +153,6 @@
           "name": "prep_seconds",
           "type": "int",
           "label": "建议制作秒数 Prep seconds",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -163,12 +160,38 @@
           "name": "status",
           "type": "varchar(16)",
           "label": "配置状态 Status",
-          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "presentation",
+          "type": "json",
+          "label": "餐饮别名/多语言/标签/过敏展示覆盖；基础图文仍引用商品",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "measurement_policy",
+          "type": "json",
+          "label": "单位及称重允差，成交计量须核心支持",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "config_version",
+          "type": "bigint",
+          "label": "餐饮属性规则版本",
           "ref": null,
           "nullable": false
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "goods_no"
+        ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
     },
     {
       "name": "fnb_bundle",
@@ -179,7 +202,6 @@
           "name": "sku_no",
           "type": "varchar(32)",
           "label": "套餐规格 Bundle SKU",
-          "key": "PK,FK",
           "ref": "prd_sku.sku_no",
           "nullable": false
         },
@@ -187,7 +209,6 @@
           "name": "config_version",
           "type": "bigint",
           "label": "配置版本 Version",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -195,12 +216,24 @@
           "name": "status",
           "type": "varchar(16)",
           "label": "状态 Status",
-          "key": "",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "published_revision_no",
+          "type": "varchar(32)",
+          "label": "当前已生效配置快照",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "sku_no"
+        ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
     },
     {
       "name": "fnb_bundle_group",
@@ -211,7 +244,6 @@
           "name": "group_no",
           "type": "varchar(32)",
           "label": "选购组编号 Group ID",
-          "key": "PK",
           "ref": null,
           "nullable": false
         },
@@ -219,7 +251,6 @@
           "name": "bundle_sku_no",
           "type": "varchar(32)",
           "label": "所属套餐 Bundle",
-          "key": "FK",
           "ref": "fnb_bundle.sku_no",
           "nullable": false
         },
@@ -227,23 +258,20 @@
           "name": "name",
           "type": "varchar(64)",
           "label": "组名 Group name",
-          "key": "",
           "ref": null,
           "nullable": false
         },
         {
           "name": "min_qty",
-          "type": "int",
+          "type": "decimal(18,6)",
           "label": "最少选几份 Minimum",
-          "key": "",
           "ref": null,
           "nullable": false
         },
         {
           "name": "max_qty",
-          "type": "int",
+          "type": "decimal(18,6)",
           "label": "最多选几份 Maximum",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -251,7 +279,6 @@
           "name": "base_sku_no",
           "type": "varchar(32)",
           "label": "差价基准 SKU",
-          "key": "FK",
           "ref": "prd_sku.sku_no",
           "nullable": true
         },
@@ -259,12 +286,17 @@
           "name": "sort_no",
           "type": "int",
           "label": "展示顺序 Sort",
-          "key": "",
           "ref": null,
           "nullable": false
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "group_no"
+        ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_bundle_choice",
@@ -275,7 +307,6 @@
           "name": "choice_no",
           "type": "varchar(32)",
           "label": "选项编号 Choice ID",
-          "key": "PK",
           "ref": null,
           "nullable": false
         },
@@ -283,7 +314,6 @@
           "name": "group_no",
           "type": "varchar(32)",
           "label": "所属组 Group",
-          "key": "FK",
           "ref": "fnb_bundle_group.group_no",
           "nullable": false
         },
@@ -291,7 +321,6 @@
           "name": "sku_no",
           "type": "varchar(32)",
           "label": "成员规格 Member SKU",
-          "key": "FK",
           "ref": "prd_sku.sku_no",
           "nullable": false
         },
@@ -299,31 +328,27 @@
           "name": "units_per_pick",
           "type": "decimal(12,3)",
           "label": "每次选择份数 Units",
-          "key": "",
           "ref": null,
           "nullable": false
         },
         {
           "name": "min_qty",
-          "type": "int",
+          "type": "decimal(18,6)",
           "label": "单项最少选择 Min picks",
-          "key": "",
           "ref": null,
           "nullable": false
         },
         {
           "name": "max_qty",
-          "type": "int",
+          "type": "decimal(18,6)",
           "label": "单项最多选择 Max picks",
-          "key": "",
           "ref": null,
           "nullable": false
         },
         {
           "name": "default_qty",
-          "type": "int",
+          "type": "decimal(18,6)",
           "label": "默认选择 Default picks",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -331,7 +356,6 @@
           "name": "price_mode",
           "type": "varchar(24)",
           "label": "计价 INCLUDED / ADD_SKU / DIFF_BASE",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -339,7 +363,6 @@
           "name": "sort_no",
           "type": "int",
           "label": "顺序 Sort",
-          "key": "",
           "ref": null,
           "nullable": false
         }
@@ -348,8 +371,13 @@
         [
           "group_no",
           "sku_no"
+        ],
+        [
+          "choice_no"
         ]
-      ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_modifier",
@@ -360,7 +388,6 @@
           "name": "modifier_no",
           "type": "varchar(32)",
           "label": "配料编号 Modifier ID",
-          "key": "PK",
           "ref": null,
           "nullable": false
         },
@@ -368,15 +395,13 @@
           "name": "name",
           "type": "varchar(64)",
           "label": "名称 Name",
-          "key": "",
           "ref": null,
           "nullable": false
         },
         {
           "name": "kind",
           "type": "varchar(16)",
-          "label": "类型 FLAVOR / ADDON / COMBO",
-          "key": "",
+          "label": "类型 ADDON / COMBO；免费口味复用SPEC_VALUE",
           "ref": null,
           "nullable": false
         },
@@ -384,7 +409,6 @@
           "name": "sales_sku_no",
           "type": "varchar(32)",
           "label": "计价规格 Pricing SKU",
-          "key": "FK",
           "ref": "prd_sku.sku_no",
           "nullable": true
         },
@@ -392,12 +416,24 @@
           "name": "status",
           "type": "varchar(16)",
           "label": "状态 Status",
-          "key": "",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "published_revision_no",
+          "type": "varchar(32)",
+          "label": "当前已生效配置快照",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "modifier_no"
+        ]
+      ],
+      "domain": "B",
+      "rules": "kind仅ADDON/COMBO；收费对象引用sales_sku_no；口味值复用prd_spec_value，不另建字典。"
     },
     {
       "name": "fnb_modifier_component",
@@ -408,7 +444,6 @@
           "name": "component_no",
           "type": "varchar(32)",
           "label": "组合明细编号 Component ID",
-          "key": "PK",
           "ref": null,
           "nullable": false
         },
@@ -416,7 +451,6 @@
           "name": "combo_no",
           "type": "varchar(32)",
           "label": "组合配料 Combo",
-          "key": "FK",
           "ref": "fnb_modifier.modifier_no",
           "nullable": false
         },
@@ -424,7 +458,6 @@
           "name": "member_no",
           "type": "varchar(32)",
           "label": "单项配料 Member",
-          "key": "FK",
           "ref": "fnb_modifier.modifier_no",
           "nullable": false
         },
@@ -432,7 +465,6 @@
           "name": "quantity",
           "type": "decimal(12,3)",
           "label": "每组合用量 Quantity",
-          "key": "",
           "ref": null,
           "nullable": false
         }
@@ -441,8 +473,13 @@
         [
           "combo_no",
           "member_no"
+        ],
+        [
+          "component_no"
         ]
-      ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_option_group",
@@ -453,36 +490,59 @@
           "name": "group_no",
           "type": "varchar(32)",
           "label": "组编号 Group ID",
-          "key": "PK",
           "ref": null,
           "nullable": false
         },
         {
           "name": "name",
           "type": "varchar(64)",
-          "label": "名称 Name",
-          "key": "",
+          "label": "组名",
           "ref": null,
           "nullable": false
         },
         {
           "name": "min_qty",
-          "type": "int",
-          "label": "最少选几项 Minimum",
-          "key": "",
+          "type": "decimal(18,6)",
+          "label": "最少总选择量",
           "ref": null,
           "nullable": false
         },
         {
           "name": "max_qty",
-          "type": "int",
-          "label": "最多选几项 Maximum",
-          "key": "",
+          "type": "decimal(18,6)",
+          "label": "最多总选择量",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "published_revision_no",
+          "type": "varchar(32)",
+          "label": "当前已生效配置快照",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "DRAFT / ACTIVE / DISABLED",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "selection_rules",
+          "type": "json",
+          "label": "有schema的互斥/依赖约束，按选项号引用",
           "ref": null,
           "nullable": false
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "group_no"
+        ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
     },
     {
       "name": "fnb_option_group_item",
@@ -490,47 +550,84 @@
       "existing": false,
       "fields": [
         {
+          "name": "option_item_no",
+          "type": "varchar(32)",
+          "label": "选项编号",
+          "nullable": false,
+          "ref": null
+        },
+        {
           "name": "group_no",
           "type": "varchar(32)",
-          "label": "选配组 Group",
-          "key": "PK,FK",
-          "ref": "fnb_option_group.group_no",
-          "nullable": false
+          "label": "选择组",
+          "nullable": false,
+          "ref": "fnb_option_group.group_no"
+        },
+        {
+          "name": "source_kind",
+          "type": "varchar(16)",
+          "label": "SPEC_VALUE/MODIFIER",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "spec_value_no",
+          "type": "varchar(64)",
+          "label": "基础口味值",
+          "nullable": true,
+          "ref": "prd_spec_value.value_no"
         },
         {
           "name": "modifier_no",
           "type": "varchar(32)",
-          "label": "口味或配料 Modifier",
-          "key": "PK,FK",
-          "ref": "fnb_modifier.modifier_no",
-          "nullable": false
+          "label": "餐饮配料",
+          "nullable": true,
+          "ref": "fnb_modifier.modifier_no"
         },
         {
           "name": "max_qty",
-          "type": "int",
-          "label": "单项最多几份 Max units",
-          "key": "",
-          "ref": null,
-          "nullable": false
+          "type": "decimal(18,6)",
+          "label": "单项上限",
+          "nullable": false,
+          "ref": null
         },
         {
           "name": "default_qty",
-          "type": "int",
-          "label": "默认几份 Default units",
-          "key": "",
-          "ref": null,
-          "nullable": false
+          "type": "decimal(18,6)",
+          "label": "默认数量",
+          "nullable": false,
+          "ref": null
         },
         {
           "name": "sort_no",
           "type": "int",
-          "label": "顺序 Sort",
-          "key": "",
+          "label": "排序",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "min_qty",
+          "type": "decimal(18,6)",
+          "label": "本选项最小选择量",
           "ref": null,
           "nullable": false
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "option_item_no"
+        ],
+        [
+          "group_no",
+          "spec_value_no"
+        ],
+        [
+          "group_no",
+          "modifier_no"
+        ]
+      ],
+      "domain": "B",
+      "rules": "source_kind决定且仅允许一个引用非空；SPEC_VALUE须经prd_spec_dim语义及组绑定校验；不直接用PROP描述值作为顾客选择授权。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_dish_option_group",
@@ -541,7 +638,6 @@
           "name": "goods_no",
           "type": "varchar(32)",
           "label": "菜品 Product",
-          "key": "PK,FK",
           "ref": "fnb_dish.goods_no",
           "nullable": false
         },
@@ -549,7 +645,6 @@
           "name": "group_no",
           "type": "varchar(32)",
           "label": "选配组 Group",
-          "key": "PK,FK",
           "ref": "fnb_option_group.group_no",
           "nullable": false
         },
@@ -557,12 +652,18 @@
           "name": "sort_no",
           "type": "int",
           "label": "顺序 Sort",
-          "key": "",
           "ref": null,
           "nullable": false
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "goods_no",
+          "group_no"
+        ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_menu",
@@ -573,7 +674,6 @@
           "name": "menu_no",
           "type": "varchar(32)",
           "label": "餐牌编号 Menu ID",
-          "key": "PK",
           "ref": null,
           "nullable": false
         },
@@ -581,7 +681,6 @@
           "name": "name",
           "type": "varchar(64)",
           "label": "名称 Name",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -589,7 +688,6 @@
           "name": "menu_type",
           "type": "varchar(16)",
           "label": "类型 STANDARD / TIME / SEASON / EVENT",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -597,7 +695,6 @@
           "name": "timezone",
           "type": "varchar(64)",
           "label": "时区 Time zone",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -605,23 +702,20 @@
           "name": "valid_from",
           "type": "date",
           "label": "生效日 Valid from",
-          "key": "",
-          "ref": "",
+          "ref": null,
           "nullable": true
         },
         {
           "name": "valid_to",
           "type": "date",
           "label": "结束日 Valid to",
-          "key": "",
-          "ref": "",
+          "ref": null,
           "nullable": true
         },
         {
           "name": "priority",
           "type": "int",
           "label": "互斥组内优先级 Priority",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -629,15 +723,13 @@
           "name": "exclusive_group",
           "type": "varchar(32)",
           "label": "互斥餐牌组 Exclusive group",
-          "key": "",
-          "ref": "",
+          "ref": null,
           "nullable": true
         },
         {
           "name": "status",
           "type": "varchar(16)",
           "label": "DRAFT / PUBLISHED / DISABLED",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -645,12 +737,24 @@
           "name": "config_version",
           "type": "bigint",
           "label": "配置版本 Version",
-          "key": "",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "published_revision_no",
+          "type": "varchar(32)",
+          "label": "当前已生效配置快照",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "menu_no"
+        ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
     },
     {
       "name": "fnb_menu_store",
@@ -661,7 +765,6 @@
           "name": "menu_no",
           "type": "varchar(32)",
           "label": "餐牌 Menu",
-          "key": "PK,FK",
           "ref": "fnb_menu.menu_no",
           "nullable": false
         },
@@ -669,12 +772,25 @@
           "name": "store_no",
           "type": "varchar(32)",
           "label": "门店 Store",
-          "key": "PK,FK",
           "ref": "mch_store.store_no",
           "nullable": false
+        },
+        {
+          "name": "override_revision_no",
+          "type": "varchar(32)",
+          "label": "获准门店差异快照",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "menu_no",
+          "store_no"
+        ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_menu_context",
@@ -685,7 +801,6 @@
           "name": "context_no",
           "type": "varchar(32)",
           "label": "范围编号 Context ID",
-          "key": "PK",
           "ref": null,
           "nullable": false
         },
@@ -693,7 +808,6 @@
           "name": "menu_no",
           "type": "varchar(32)",
           "label": "餐牌 Menu",
-          "key": "FK",
           "ref": "fnb_menu.menu_no",
           "nullable": false
         },
@@ -701,7 +815,6 @@
           "name": "order_source",
           "type": "varchar(24)",
           "label": "下单来源 Source",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -709,18 +822,44 @@
           "name": "fulfillment",
           "type": "varchar(24)",
           "label": "履约方式 Fulfillment",
-          "key": "",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "channel_binding_no",
+          "type": "varchar(32)",
+          "label": "外送绑定；本地为空",
+          "ref": "fnb_menu_channel_binding.binding_no",
+          "nullable": true
+        },
+        {
+          "name": "channel_scope_key",
+          "type": "varchar(32)",
+          "label": "服务端归一为LOCAL或绑定号",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "price_policy_ref",
+          "type": "varchar(64)",
+          "label": "报价权威价格策略引用",
+          "ref": null,
+          "nullable": true
         }
       ],
       "unique": [
         [
           "menu_no",
           "order_source",
-          "fulfillment"
+          "fulfillment",
+          "channel_scope_key"
+        ],
+        [
+          "context_no"
         ]
-      ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。；channel_scope_key不接受客户端设置，LOCAL与绑定号归一；外送不得回退堂食价，策略未受权核验保持草稿。"
     },
     {
       "name": "fnb_menu_schedule",
@@ -731,7 +870,6 @@
           "name": "schedule_no",
           "type": "varchar(32)",
           "label": "时段编号 Schedule ID",
-          "key": "PK",
           "ref": null,
           "nullable": false
         },
@@ -739,7 +877,6 @@
           "name": "menu_no",
           "type": "varchar(32)",
           "label": "餐牌 Menu",
-          "key": "FK",
           "ref": "fnb_menu.menu_no",
           "nullable": false
         },
@@ -747,7 +884,6 @@
           "name": "weekday",
           "type": "tinyint",
           "label": "周一至周日 1-7",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -755,7 +891,6 @@
           "name": "start_time",
           "type": "time",
           "label": "开始时间 Start",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -763,7 +898,6 @@
           "name": "end_time",
           "type": "time",
           "label": "结束时间 End",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -771,12 +905,17 @@
           "name": "end_day_offset",
           "type": "tinyint",
           "label": "跨日偏移 0 / 1",
-          "key": "",
           "ref": null,
           "nullable": false
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "schedule_no"
+        ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_menu_exception",
@@ -787,7 +926,6 @@
           "name": "exception_no",
           "type": "varchar(32)",
           "label": "例外编号 Exception ID",
-          "key": "PK",
           "ref": null,
           "nullable": false
         },
@@ -795,7 +933,6 @@
           "name": "menu_no",
           "type": "varchar(32)",
           "label": "餐牌 Menu",
-          "key": "FK",
           "ref": "fnb_menu.menu_no",
           "nullable": false
         },
@@ -803,7 +940,6 @@
           "name": "local_date",
           "type": "date",
           "label": "本地日期 Local date",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -811,7 +947,6 @@
           "name": "mode",
           "type": "varchar(16)",
           "label": "CLOSED / OPEN",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -819,23 +954,20 @@
           "name": "start_time",
           "type": "time",
           "label": "营业开始 Start",
-          "key": "",
-          "ref": "",
+          "ref": null,
           "nullable": true
         },
         {
           "name": "end_time",
           "type": "time",
           "label": "营业结束 End",
-          "key": "",
-          "ref": "",
+          "ref": null,
           "nullable": true
         },
         {
           "name": "end_day_offset",
           "type": "tinyint",
           "label": "跨日偏移 Offset",
-          "key": "",
           "ref": null,
           "nullable": false
         }
@@ -844,8 +976,13 @@
         [
           "menu_no",
           "local_date"
+        ],
+        [
+          "exception_no"
         ]
-      ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_menu_category",
@@ -856,7 +993,6 @@
           "name": "category_no",
           "type": "varchar(32)",
           "label": "分类编号 Category ID",
-          "key": "PK",
           "ref": null,
           "nullable": false
         },
@@ -864,7 +1000,6 @@
           "name": "menu_no",
           "type": "varchar(32)",
           "label": "所属餐牌 Menu",
-          "key": "FK",
           "ref": "fnb_menu.menu_no",
           "nullable": false
         },
@@ -872,7 +1007,6 @@
           "name": "name",
           "type": "varchar(64)",
           "label": "名称 Name",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -880,12 +1014,17 @@
           "name": "sort_no",
           "type": "int",
           "label": "顺序 Sort",
-          "key": "",
           "ref": null,
           "nullable": false
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "category_no"
+        ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_menu_item",
@@ -896,7 +1035,6 @@
           "name": "menu_item_no",
           "type": "varchar(32)",
           "label": "条目编号 Item ID",
-          "key": "PK",
           "ref": null,
           "nullable": false
         },
@@ -904,7 +1042,6 @@
           "name": "category_no",
           "type": "varchar(32)",
           "label": "所属分类 Category",
-          "key": "FK",
           "ref": "fnb_menu_category.category_no",
           "nullable": false
         },
@@ -912,7 +1049,6 @@
           "name": "goods_no",
           "type": "varchar(32)",
           "label": "基础商品 Product",
-          "key": "FK",
           "ref": "prd_goods.goods_no",
           "nullable": false
         },
@@ -920,7 +1056,6 @@
           "name": "sort_no",
           "type": "int",
           "label": "顺序 Sort",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -928,7 +1063,20 @@
           "name": "enabled",
           "type": "boolean",
           "label": "是否启用 Enabled",
-          "key": "",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "sku_scope",
+          "type": "varchar(16)",
+          "label": "ALL / EXPLICIT；EXPLICIT必须非空",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "option_mode",
+          "type": "varchar(16)",
+          "label": "INHERIT / REPLACE；REPLACE空组禁选",
           "ref": null,
           "nullable": false
         }
@@ -937,8 +1085,13 @@
         [
           "category_no",
           "goods_no"
+        ],
+        [
+          "menu_item_no"
         ]
-      ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_menu_item_sku",
@@ -949,7 +1102,6 @@
           "name": "menu_item_no",
           "type": "varchar(32)",
           "label": "餐牌条目 Menu item",
-          "key": "PK,FK",
           "ref": "fnb_menu_item.menu_item_no",
           "nullable": false
         },
@@ -957,12 +1109,32 @@
           "name": "sku_no",
           "type": "varchar(32)",
           "label": "可售规格 SKU",
-          "key": "PK,FK",
           "ref": "prd_sku.sku_no",
           "nullable": false
+        },
+        {
+          "name": "selection_mode",
+          "type": "varchar(16)",
+          "label": "EXPLICIT；空白名单语义存父项",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "recipe_no",
+          "type": "varchar(32)",
+          "label": "同SKU配方变体引用",
+          "ref": "fnb_recipe.recipe_no",
+          "nullable": true
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "menu_item_no",
+          "sku_no"
+        ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_station",
@@ -973,7 +1145,6 @@
           "name": "station_no",
           "type": "varchar(32)",
           "label": "工位编号 Station ID",
-          "key": "PK",
           "ref": null,
           "nullable": false
         },
@@ -981,7 +1152,6 @@
           "name": "store_no",
           "type": "varchar(32)",
           "label": "所属门店 Store",
-          "key": "FK",
           "ref": "mch_store.store_no",
           "nullable": false
         },
@@ -989,7 +1159,6 @@
           "name": "name",
           "type": "varchar(64)",
           "label": "名称 Name",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -997,7 +1166,6 @@
           "name": "station_type",
           "type": "varchar(24)",
           "label": "HOT / COLD / BAR / PACK",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -1005,12 +1173,24 @@
           "name": "enabled",
           "type": "boolean",
           "label": "启用 Enabled",
-          "key": "",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "published_revision_no",
+          "type": "varchar(32)",
+          "label": "当前已生效配置快照",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "station_no"
+        ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
     },
     {
       "name": "fnb_sku_station",
@@ -1021,7 +1201,6 @@
           "name": "sku_no",
           "type": "varchar(32)",
           "label": "菜品或配料规格 SKU",
-          "key": "PK,FK",
           "ref": "prd_sku.sku_no",
           "nullable": false
         },
@@ -1029,7 +1208,6 @@
           "name": "station_no",
           "type": "varchar(32)",
           "label": "制作工位 Station",
-          "key": "PK,FK",
           "ref": "fnb_station.station_no",
           "nullable": false
         },
@@ -1037,7 +1215,6 @@
           "name": "task_role",
           "type": "varchar(16)",
           "label": "MAKE / ASSEMBLE / PACK",
-          "key": "",
           "ref": null,
           "nullable": false
         },
@@ -1045,12 +1222,27 @@
           "name": "route_version",
           "type": "bigint",
           "label": "路由版本 Version",
-          "key": "",
           "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "路由适用门店",
+          "ref": "mch_store.store_no",
           "nullable": false
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "store_no",
+          "sku_no",
+          "station_no",
+          "task_role"
+        ]
+      ],
+      "domain": "B",
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。；派工时按受理瞬间route_version冻结路由到ticket/task，即使当前头被改也不能重算旧任务目标。"
     },
     {
       "name": "fnb_order_line",
@@ -1219,6 +1411,473 @@
         }
       ],
       "unique": []
+    },
+    {
+      "name": "fnb_menu_channel_binding",
+      "domain": "B",
+      "label": "餐牌渠道绑定 Menu channel binding",
+      "fields": [
+        {
+          "name": "binding_no",
+          "type": "varchar(32)",
+          "label": "渠道绑定 Binding",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "menu_no",
+          "type": "varchar(32)",
+          "label": "餐牌 Menu",
+          "ref": "fnb_menu.menu_no",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "门店 Store",
+          "ref": "mch_store.store_no",
+          "nullable": false
+        },
+        {
+          "name": "provider",
+          "type": "varchar(32)",
+          "label": "渠道提供方 Provider",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "channel_account_ref",
+          "type": "varchar(64)",
+          "label": "已有渠道账号引用 Account reference",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "external_store_ref",
+          "type": "varchar(64)",
+          "label": "外部门店 External store",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "ACTIVE / DISABLED",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "binding_no"
+        ],
+        [
+          "menu_no",
+          "store_no",
+          "provider",
+          "channel_account_ref"
+        ]
+      ],
+      "rules": "账号和门店必须归当前主体；只存已验真的外部引用，不存密钥；Keeta仅规划，当前不能上传或宣称已联通。",
+      "deployment": "PLANNED"
+    },
+    {
+      "name": "fnb_menu_item_option_group",
+      "domain": "B",
+      "label": "餐牌菜项选配 Menu item options",
+      "fields": [
+        {
+          "name": "menu_item_no",
+          "type": "varchar(32)",
+          "label": "餐牌菜项 Item",
+          "ref": "fnb_menu_item.menu_item_no",
+          "nullable": false
+        },
+        {
+          "name": "group_no",
+          "type": "varchar(32)",
+          "label": "选配组 Group",
+          "ref": "fnb_option_group.group_no",
+          "nullable": false
+        },
+        {
+          "name": "sort_no",
+          "type": "int",
+          "label": "顺序 Sort",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "menu_item_no",
+          "group_no"
+        ]
+      ],
+      "rules": "INHERIT读取商品默认组；REPLACE只读取本项显式组，空组即禁选，不回退；发布冻结组修订。",
+      "deployment": "PLANNED"
+    },
+    {
+      "name": "fnb_recipe",
+      "domain": "B",
+      "label": "SKU配方工作头 SKU recipe",
+      "fields": [
+        {
+          "name": "recipe_no",
+          "type": "varchar(32)",
+          "label": "配方编号 Recipe",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "门店 Store",
+          "ref": "mch_store.store_no",
+          "nullable": false
+        },
+        {
+          "name": "sku_no",
+          "type": "varchar(32)",
+          "label": "销售规格 SKU",
+          "ref": "prd_sku.sku_no",
+          "nullable": false
+        },
+        {
+          "name": "recipe_code",
+          "type": "varchar(32)",
+          "label": "DEFAULT或受控配方变体 Variant",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "yield_qty",
+          "type": "decimal(18,6)",
+          "label": "基准产出 Positive yield",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "yield_unit",
+          "type": "varchar(16)",
+          "label": "产出单位 Controlled unit",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "config_version",
+          "type": "bigint",
+          "label": "配方内容版本 Configuration version",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "published_revision_no",
+          "type": "varchar(32)",
+          "label": "冻结修订 Published revision",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "DRAFT / ACTIVE / DISABLED",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "recipe_no"
+        ],
+        [
+          "store_no",
+          "sku_no",
+          "recipe_code"
+        ]
+      ],
+      "rules": "同门店SKU只有一个DEFAULT；变体经菜单SKU显式引用；历史内容冻结在ConfigRevision，不从当前工作头回算旧单。 RECIPE-01A只维护DRAFT；yield_unit=EA表示SKU配置份数，不是物理单位权威；选配调整与发布待后续。",
+      "deployment": "MIGRATION_V4"
+    },
+    {
+      "name": "fnb_recipe_line",
+      "domain": "B",
+      "label": "配方物料行 Recipe material line",
+      "fields": [
+        {
+          "name": "line_no",
+          "type": "varchar(32)",
+          "label": "物料行编号 Recipe line",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "recipe_no",
+          "type": "varchar(32)",
+          "label": "配方 Recipe",
+          "ref": "fnb_recipe.recipe_no",
+          "nullable": false
+        },
+        {
+          "name": "item_ref",
+          "type": "varchar(32)",
+          "label": "进销存物料引用 Inventory item",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "qty",
+          "type": "decimal(18,6)",
+          "label": "每基准产出净用量 Net requirement",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "unit",
+          "type": "varchar(16)",
+          "label": "权威物料单位 Material unit",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "conversion_ref",
+          "type": "varchar(64)",
+          "label": "保留真实换算引用；本批NULL Reserved true conversion reference",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "loss_rate",
+          "type": "decimal(12,6)",
+          "label": "投入损失比例 0<=rate<1",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "material_definition_hash",
+          "type": "varchar(64)",
+          "label": "物料定义内容摘要 Material definition hash (not CAS/conversion)",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "sort_no",
+          "type": "int",
+          "label": "草稿行顺序 Draft line order",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "line_no"
+        ],
+        [
+          "recipe_no",
+          "line_no"
+        ]
+      ],
+      "rules": "qty为净用量，毛需求=净需求/(1-loss_rate)；损失不混用加成比例；单位/精度归进销存，不能截断；物料不是另建销售商品。 RECIPE-01A仅baseUom，definitionHash独立保存不是换算修订，conversion_ref为NULL；小数草稿不代表整数库存可扣料。",
+      "deployment": "MIGRATION_V4"
+    },
+    {
+      "name": "fnb_recipe_adjustment",
+      "domain": "B",
+      "label": "选配配方调整 Recipe selection adjustment",
+      "fields": [
+        {
+          "name": "adjustment_no",
+          "type": "varchar(32)",
+          "label": "调整编号 Adjustment",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "recipe_no",
+          "type": "varchar(32)",
+          "label": "配方 Recipe",
+          "ref": "fnb_recipe.recipe_no",
+          "nullable": false
+        },
+        {
+          "name": "option_item_no",
+          "type": "varchar(32)",
+          "label": "触发选项 Selection",
+          "ref": "fnb_option_group_item.option_item_no",
+          "nullable": false
+        },
+        {
+          "name": "target_line_no",
+          "type": "varchar(32)",
+          "label": "目标物料行 Material line",
+          "ref": "fnb_recipe_line.line_no",
+          "nullable": false
+        },
+        {
+          "name": "action",
+          "type": "varchar(16)",
+          "label": "SET / ADD / REMOVE",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "qty",
+          "type": "decimal(18,6)",
+          "label": "SET/ADD非负量，REMOVE为空",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "unit",
+          "type": "varchar(16)",
+          "label": "与目标物料一致 Unit",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "sort_no",
+          "type": "int",
+          "label": "草稿调整顺序 Draft adjustment order",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "option_identity_hash",
+          "type": "varchar(64)",
+          "label": "选项来源语义身份摘要 Option semantic identity hash (not CAS)",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "adjustment_no"
+        ],
+        [
+          "recipe_no",
+          "option_item_no",
+          "target_line_no"
+        ]
+      ],
+      "rules": "先唯一SET或原值再合计ADD；REMOVE与其他同目标调整互斥；不允许负需求，不能猜少糖等于50%。 RECIPE-01B仅维护工作配置；省略/null保留，[]清空；同主体有效工作选项及本配方行，编号不可重绑。跨选项冲突在实际选择求值时处理，不提前误判互斥口味。 既有调整保留option_identity_hash，不允许选项删后同号换来源；新来源需新调整号。",
+      "deployment": "MIGRATION_V5"
+    },
+    {
+      "name": "fnb_config_revision",
+      "label": "餐饮配置发布快照 Config revision",
+      "domain": "B",
+      "existing": false,
+      "fields": [
+        {
+          "name": "revision_no",
+          "type": "varchar(32)",
+          "label": "快照业务号",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "config_kind",
+          "type": "varchar(24)",
+          "label": "MENU / BUNDLE / OPTION_GROUP / MODIFIER / STATION / RECIPE",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "config_no",
+          "type": "varchar(32)",
+          "label": "配置业务号或SKU，按kind引用",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "revision",
+          "type": "bigint",
+          "label": "单配置单调发布修订号",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "content_schema",
+          "type": "int",
+          "label": "冻结文档结构版本",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "definition_snapshot",
+          "type": "json",
+          "label": "完整聚合定义及引用发布版本，不存资金真源",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "content_hash",
+          "type": "char(64)",
+          "label": "规范内容摘要",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "effective_at",
+          "type": "datetime(3)",
+          "label": "计划生效",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "SCHEDULED / EFFECTIVE / CANCELLED",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "previous_revision_no",
+          "type": "varchar(32)",
+          "label": "前修订",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
+        },
+        {
+          "name": "scope_store_nos",
+          "type": "json",
+          "label": "冻结的授权适用门店集合，配置头归主体",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "revision_no"
+        ],
+        [
+          "entity_no",
+          "config_kind",
+          "config_no",
+          "revision"
+        ]
+      ],
+      "rules": "关系表保存当前草稿/头；发布事务校验完整聚合并冻结子表及依赖快照版本。可售目录按时点解析已发布快照，不读取可变草稿；下单保存revision_no。已发布内容不可改，回滚以旧内容发布新修订；暂停是门控，不篡改快照。"
+    },
+    {
+      "name": "prd_spec_value",
+      "label": "既有规格字典值 Existing specification value",
+      "existing": true,
+      "fields": [
+        {
+          "name": "value_no",
+          "type": "varchar(64)",
+          "label": "既有规格值编号 Spec value ID",
+          "key": "UK",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "value_no"
+        ]
+      ]
     }
   ],
   "groups": [
@@ -1261,7 +1920,9 @@
         "fnb_menu_exception",
         "fnb_menu_category",
         "fnb_menu_item",
-        "fnb_menu_item_sku"
+        "fnb_menu_item_sku",
+        "fnb_menu_channel_binding",
+        "fnb_menu_item_option_group"
       ]
     },
     {
@@ -1277,6 +1938,17 @@
         "fnb_order_component",
         "fnb_order_modifier"
       ]
+    },
+    {
+      "id": "recipe",
+      "title": "配方与选配调整 Recipes & Adjustments",
+      "tables": [
+        "fnb_recipe",
+        "fnb_recipe_line",
+        "fnb_recipe_adjustment",
+        "fnb_option_group_item",
+        "fnb_config_revision"
+      ]
     }
   ],
   "notes": [
@@ -1286,7 +1958,7 @@
     },
     {
       "title": "配料与组合 Modifiers and combos",
-      "body": "FLAVOR 是免费做法，例如少冰；ADDON 是单项加料，例如珍珠，对应基础销售 SKU；COMBO 是有独立计价 SKU 的配料组合，例如珍珠+椰果。组合明细指向单项 ADDON 并保存用量。选配组表达糖度单选、配料多选及数量上限；菜品绑定可复用的选配组。成员配料不再叠加收费，组合价格仅收一次。可选的配料组合用选配组让顾客自由组合，固定组合用 COMBO 明细表达；不需要嵌套组。"
+      "body": "免费做法复用商品 SPEC_VALUE，例如少冰，不建 FLAVOR 配料；ADDON 是单项加料，例如珍珠，对应基础销售 SKU；COMBO 是有独立计价 SKU 的配料组合，例如珍珠+椰果。组合明细指向单项 ADDON 并保存用量。选配组表达糖度单选、配料多选及数量上限；菜品绑定可复用的选配组。成员配料不再叠加收费，组合价格仅收一次。可选的配料组合用选配组让顾客自由组合，固定组合用 COMBO 明细表达；不需要嵌套组。"
     },
     {
       "title": "餐牌 Menu types",
@@ -1294,7 +1966,7 @@
     },
     {
       "title": "计价与库存 Pricing and stock",
-      "body": "套餐基础价、单项配料价、组合配料价都读基础 SKU 的门店/活动有效价格。套餐选项可 INCLUDED（已含）、ADD_SKU（追加成员当前价）、DIFF_BASE（相对组内基准 SKU 的非负差价）。金额必须由交易基座认可的报价扩展统一计算并冻结，不能让餐饮直接覆盖订单金额；当前核心没有完整组合计价接线，本设计不是零改动即可运行。套餐和组合按实际选中的叶子 SKU 汇总库存需求，容器 SKU 不同时扣同一份成员库存；配料数量单位与库存单位必须一致，存在原料克重换算时另接配方/物料系统。"
+      "body": "套餐基础价、单项配料价、组合配料价都读基础 SKU 的门店/活动有效价格。套餐选项可 INCLUDED（已含）、ADD_SKU（追加成员当前价）、DIFF_BASE（相对组内基准 SKU 的非负差价）。金额必须由交易基座认可的报价扩展统一计算并冻结，不能让餐饮直接覆盖订单金额；当前核心没有完整组合计价接线，本设计不是零改动即可运行。套餐和组合按实际选中的叶子 SKU 汇总库存需求，容器 SKU 不同时扣同一份成员库存；配料数量单位与库存单位必须一致，存在原料克重换算时另接配方/物料系统。 渠道差异引用pricePolicyRef，不在餐饮存另一套成交价；当前报价与库存精度合同PENDING。配方和制作耗用按综合设计，Keeta仅规划不接入。"
     },
     {
       "title": "下单快照 Order snapshots",
@@ -1305,14 +1977,15 @@
     "bundle": "同一基础商品下可有多个套餐规格；套餐按 SKU 定义选购组。组和候选均有数量约束；两个指向 SKU 的关系分别表达候选商品与差价基准。",
     "modifier": "菜品和选配组是多对多，组和配料也是多对多。组合表两次引用配料表，分别表示组合头与成员；只允许 COMBO → ADDON。免费口味不需要销售 SKU。",
     "menu": "餐牌通过门店和入口范围决定在哪可见，通过周时段和例外日决定何时可售。餐牌条目引用商品，可通过白名单限制 SKU；同一商品可以进入多份餐牌。",
-    "snapshot": "工位按店定义，SKU 与工位为多对多。订单快照独立于当前配置，生产历史不随配置变化。图中仅展示本分组内部关联，套餐选项/配料的跨组引用见字段表。打印设备与任务沿独立打印域，本模型不复制打印表。"
+    "snapshot": "工位按店定义，SKU 与工位为多对多。订单快照独立于当前配置，生产历史不随配置变化。图中仅展示本分组内部关联，套餐选项/配料的跨组引用见字段表。打印设备与任务沿独立打印域，本模型不复制打印表。",
+    "recipe": "配方绑定原SKU及门店；物料单位、换算与历史成本归进销存。发布修订不可变；净用量/(1-lossRate)为毛需求，实际耗用须权威回执。"
   },
   "rules": [
     "所有新增配置表按 entity_no 隔离；关联商品、配料、门店和工位须属于同一主体。SKU 必须属于引用的商品；跨租户关系禁止写入。",
     "已存在表字段类型为设计引用投影，不是 ALTER TABLE；新表 PK/FK 为逻辑合同，实施需按仓库主键、数据域、审计及软删除规范落迁移。",
     "发布套餐必须有至少一个组，每组有可用候选；0≤min_qty≤max_qty，max_qty>0，默认选择满足组和候选上下限。固定项 min=max；按套餐每份计算，再乘购买份数。",
     "fnb_bundle 的 SKU 必须属于 dish_kind=BUNDLE 的餐饮商品。成员候选不允许 BUNDLE；配料组合禁止自引用、嵌套 COMBO 和重复成员，quantity>0。",
-    "FLAVOR.sales_sku_no 必须为空；ADDON/COMBO 必填有效 SKU。COMBO 必须至少一个成员。收费组合的成员只展开制作/耗用，不再累加成员售价。",
+    "免费口味source_kind=SPEC_VALUE，引用prd_spec_value，不建FLAVOR对象；ADDON/COMBO 必填有效 SKU。COMBO 必须至少一个成员。收费组合的成员只展开制作/耗用，不再累加成员售价。",
     "组内同配料唯一；default_qty 在 0..max_qty 内。组 min/max 按选择份数求和，不按不同选项个数求和。要限制单选可令 max_qty=1。",
     "price_mode=DIFF_BASE 时所属组 base_sku_no 必填；差价=max(0,候选有效单价-基准有效单价)，按 units_per_pick 和选择份数计算；基准与候选须同币种、可比销售单位。不支持负差价退款，另行设计折让规则。",
     "成交总额由核心报价产生：套餐基价+候选追加/差价+所选配料费用，再应用统一优惠分摊；内部金额使用最小货币单位，数量计算及舍入规则由核心统一。金额只计一次；库存按展开的叶子需求聚合一次。",
@@ -1320,12 +1993,16 @@
     "一个餐牌发布后必须显式绑定门店和 context；context 可用受控 ALL 枚举表示不限，不用空值猜测。来源包括扫码、H5、点餐机、店员、第三方；履约方式必须来自基座合法取值。",
     "非 TIME 餐牌无 schedule 表示营业日内全天；TIME 必须有时段。日期范围按时区中的营业起始日计算；区间左闭右开，跨午夜归开始日。例外日 CLOSED 禁售，OPEN 的起止时间必填并替换该开始日周规则；每个开始日仅一条例外。",
     "无 exclusive_group 的餐牌可同时展示；同店、同入口、同履约且同互斥组时取最高 priority，可能重叠且同优先级的配置发布时拒绝。跨餐牌相同商品可分别展示，提交时必须携带准确 menu_item_no。",
-    "menu_item_sku 无行表示该商品的全部可售 SKU；有行表示严格白名单，不能引用其他商品的 SKU。停售由统一可售校验处理，不通过菜单恢复实际库存。",
+    "menu_item.sku_scope显式ALL/EXPLICIT；ALL使用全部可售SKU，EXPLICIT须非空严格白名单，不能引用其他商品的 SKU。停售由统一可售校验处理，不通过菜单恢复实际库存。",
     "套餐候选和配料不要求另作为餐牌独立条目显示，但必须通过其门店基础上架/可售与库存校验；已下架的成员不能因在套餐里就绕过基础限制。",
     "各 SKU 工位路由按 station 所属门店过滤，允许多工位协作；发布时校验需要制作的 SKU 有可用路由。工位快照与实际改派记录属于制作任务域，不在本图重复建表。",
     "fnb_order_component.choice_no 必须属于该订单行套餐配置；fnb_order_modifier.component_no 非空时必须属于同 food_line_no，所选组须绑定该成员菜品。消费与补打只读冻结快照，不依赖配置当前名称。",
     "所有金额快照都引用核心核定的结果，JSON 仅存不可变事实；配置查询/关联用关系表。订单快照存配置号、版本、名称、价格依据和数量单位，禁止只存 JSON 而无可追溯编号。",
     "当前售后仍按已有整门店订单退款边界；套餐成员不因有快照行就自动拥有独立退款权。开放部分退套餐需另行确认并建设分摊与权益逆向。",
-    "建议索引：所有引用列；menu(status,entity_no)、menu_store(store_no,menu_no)、menu_schedule(menu_no,weekday)、station(store_no,enabled)、order_line(order_item_id)、order_component(food_line_no)、order_modifier(food_line_no,component_no)。业务唯一键见各表；停用保留记录，重新启用更新原配置避免软删除重复键。"
-  ]
+    "建议索引：所有引用列；menu(status,entity_no)、menu_store(store_no,menu_no)、menu_schedule(menu_no,weekday)、station(store_no,enabled)、order_line(order_item_id)、order_component(food_line_no)、order_modifier(food_line_no,component_no)。业务唯一键见各表；停用保留记录，重新启用更新原配置避免软删除重复键。",
+    "菜项option_mode为INHERIT或REPLACE；REPLACE空组选配表示无选配，不回退商品默认组。",
+    "渠道身份从获准绑定解析，channel_scope_key为LOCAL或bindingNo；同SKU不同menuItem不合并；价格来自权威pricePolicyRef。",
+    "本文件仅为综合真源投影，新增配方及渠道对象PLANNED，不代表V1/V2已经迁移。"
+  ],
+  "canonicalSource": "food-system-design.json"
 }

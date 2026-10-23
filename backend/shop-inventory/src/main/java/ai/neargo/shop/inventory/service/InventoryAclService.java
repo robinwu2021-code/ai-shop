@@ -1,5 +1,7 @@
 package ai.neargo.shop.inventory.service;
 
+import java.util.List;
+
 /**
  * 防腐层：平台的键 ↔ 本域的键。
  *
@@ -11,6 +13,12 @@ package ai.neargo.shop.inventory.service;
  * 反向多一条，就有了两个真相源，而两个真相源的冲突是静默的。
  */
 public interface InventoryAclService {
+
+    /** Internal projection; external owner lookup stays here and must never create a missing owner. */
+    record MaterialIdentity(String itemId, String name, String baseUom, Integer weighed, String dataSource) { }
+
+    /** Active material definitions only, in the isolated inventory read transaction; no stock reads or writes. */
+    List<MaterialIdentity> findMaterials(String entityNo, List<String> itemIds);
 
     /** 平台主体 → 业主。**1:1**（已定）：多执照商家仍是一个业主 —— 货是同一批货。 */
     String ownerIdOf(String entityNo);

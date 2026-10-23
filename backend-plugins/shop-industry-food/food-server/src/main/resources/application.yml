@@ -1,0 +1,36 @@
+# 独立餐饮服务；不承载三端登录或公网 Controller。
+server:
+  port: ${FOOD_SERVER_PORT:8086}
+
+spring:
+  application:
+    name: food-server
+  datasource:
+    # 和商品、订单使用同一主库；必填连接不提供开发凭证回退。
+    url: ${FOOD_DB_URL:}
+    username: ${FOOD_DB_USER:}
+    password: ${FOOD_DB_PASSWORD:}
+  # 本进程禁止驱动平台 core 迁移；餐饮专用校验使用独立历史，默认只读 validate。
+  flyway:
+    enabled: false
+
+shop:
+  food:
+    enabled: ${SHOP_FOOD_ENABLED:true}
+    deployment: standalone
+  services:
+    internal-token: ${SHOP_INTERNAL_TOKEN:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,foodReadiness

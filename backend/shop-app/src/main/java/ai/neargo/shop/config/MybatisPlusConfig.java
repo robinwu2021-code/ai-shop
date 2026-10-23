@@ -1,19 +1,11 @@
 package ai.neargo.shop.config;
 
-import ai.neargo.common.data.scope.DataScopeHandler;
-import ai.neargo.common.data.scope.DataScopeRegistrar;
-import ai.neargo.common.data.scope.DataScopeTableRegistry;
-import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
-import com.baomidou.mybatisplus.extension.plugins.inner.DataPermissionInterceptor;
-import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
-import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
+import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.List;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
 
 /**
  * MyBatis-Plus 装配：**数据权限 → 分页 → 乐观锁**，顺序不能换。
@@ -23,6 +15,7 @@ import java.util.List;
  * —— 表现为「总数 100 条但只能翻 3 页」，且不报错。
  */
 @Configuration
+@Import(PrimaryPersistenceConfiguration.class)
 /*
  * ⚠️ **进销存的 Mapper 必须排除在外**。
  *
@@ -41,10 +34,13 @@ import java.util.List;
         // 见 PlatformDataSourceConfig 的类注释。
         sqlSessionFactoryRef = "sqlSessionFactory",
         /*
-         * 两个域走各自的 SqlSessionFactory，所以都要从全局扫描里排除：
+         * 业务域需要显式管理扫描，所以从全局扫描里排除：
          *   inventory —— 另一个库（InventoryDataSourceConfig）
          *   pay       —— 同一个库但**独立的事务管理器**（PayDataSourceConfig），
          *                目的是让跨域事务在物理上写不出来
+         *
+         *   food      —— 与商品订单共主库，但只允许由餐饮 enabled 条件配置注册，
+         *                防止关闭餐饮时全局扫描提前装入 Mapper。
          *
          * 漏掉哪一个，那个域的 Mapper 都会被注册到平台工厂上。
          * inventory 漏了会报「表不存在」；**pay 漏了什么都不会报** ——
@@ -53,7 +49,7 @@ import java.util.List;
          */
         excludeFilters = @ComponentScan.Filter(
                 type = FilterType.REGEX,
-                pattern = "ai\\.neargo\\.shop\\.(inventory|pay)\\..*"))
+                pattern = "ai\\.neargo\\.shop\\.(inventory|pay|food)\\..*"))
 /*
  * 第二个 @MapperScan：**不继承 BaseMapper 的 Mapper**。
  *
@@ -77,25 +73,4 @@ import java.util.List;
         annotationClass = org.apache.ibatis.annotations.Mapper.class,
         sqlSessionFactoryRef = "sqlSessionFactory")
 public class MybatisPlusConfig {
-
-    @Bean
-    DataScopeTableRegistry dataScopeTableRegistry(List<DataScopeRegistrar> registrars) {
-        DataScopeTableRegistry registry = new DataScopeTableRegistry();
-        registrars.forEach(r -> r.register(registry));
-        return registry;
-    }
-
-    @Bean
-    DataScopeHandler dataScopeHandler(DataScopeTableRegistry registry) {
-        return new DataScopeHandler(registry);
-    }
-
-    @Bean
-    MybatisPlusInterceptor mybatisPlusInterceptor(DataScopeHandler dataScopeHandler) {
-        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
-        interceptor.addInnerInterceptor(new DataPermissionInterceptor(dataScopeHandler));
-        interceptor.addInnerInterceptor(new PaginationInnerInterceptor());
-        interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
-        return interceptor;
-    }
 }

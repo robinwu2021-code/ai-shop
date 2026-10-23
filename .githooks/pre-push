@@ -13,7 +13,7 @@ set -euo pipefail
 # Explicit points operations release: a separate, bounded check plan.
 # The default all-project gate below is unchanged.
 if [ -n "${SHOP_RELEASE_PROFILE:-}" ]; then
-  case "$SHOP_RELEASE_PROFILE" in points-ops|points-bc) ;; *) echo "Unknown release profile" >&2; exit 1;; esac
+  case "$SHOP_RELEASE_PROFILE" in points-ops|points-bc|brand-p1|brand-p2) ;; *) echo "Unknown release profile" >&2; exit 1;; esac
   PROFILE_ROOT="$(git rev-parse --show-toplevel)"
   PROFILE_TMP="$(mktemp -d)"
   trap 'git worktree remove --force "$PROFILE_TMP/head" >/dev/null 2>&1 || true; rm -rf "$PROFILE_TMP"' EXIT
@@ -28,7 +28,9 @@ if [ -n "${SHOP_RELEASE_PROFILE:-}" ]; then
     export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
     export PATH="$JAVA_HOME/bin:$PATH"
   fi
-  if [ "$SHOP_RELEASE_PROFILE" = "points-bc" ]; then
+  if [ "$SHOP_RELEASE_PROFILE" = "brand-p1" ] || [ "$SHOP_RELEASE_PROFILE" = "brand-p2" ]; then
+    (cd "$PROFILE_TMP/head" && node "scripts/release/$SHOP_RELEASE_PROFILE.mjs" < "$PROFILE_TMP/updates")
+  elif [ "$SHOP_RELEASE_PROFILE" = "points-bc" ]; then
     (cd "$PROFILE_TMP/head" && node scripts/release/points-bc.mjs < "$PROFILE_TMP/updates")
   else
     node "$PROFILE_TMP/head/scripts/release/points-ops.mjs" < "$PROFILE_TMP/updates"

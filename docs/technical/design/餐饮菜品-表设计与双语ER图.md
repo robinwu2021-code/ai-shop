@@ -10,7 +10,7 @@
 
 菜品、套餐和可售配料都引用基础商品与 SKU。餐饮扩展保存套餐选择规则、口味配料组合、餐牌可见范围和工位；不复制商品主数据、门店价格或库存账。
 
-本模型有 **22 张拟新增表、4 张已有表的关联投影**。ER 图按四个主题展开；英文表名与中文业务名称同时显示。箭头从引用表指向被引用表，标注每个父对象可拥有的子行数与每个子行的父对象数。FK 为逻辑关系，不表示已建立数据库外键；跨模块仍由服务校验。
+本模型有 **28 张拟新增表、5 张已有表的关联投影**。ER 图按主题展开；英文表名与中文业务名称同时显示。箭头从引用表指向被引用表，标注每个父对象可拥有的子行数与每个子行的父对象数。FK 为逻辑关系，不表示已建立数据库外键；跨模块仍由服务校验。
 
 ### 套餐 Bundle
 
@@ -18,7 +18,7 @@
 
 ### 配料与组合 Modifiers and combos
 
-FLAVOR 是免费做法，例如少冰；ADDON 是单项加料，例如珍珠，对应基础销售 SKU；COMBO 是有独立计价 SKU 的配料组合，例如珍珠+椰果。组合明细指向单项 ADDON 并保存用量。选配组表达糖度单选、配料多选及数量上限；菜品绑定可复用的选配组。成员配料不再叠加收费，组合价格仅收一次。可选的配料组合用选配组让顾客自由组合，固定组合用 COMBO 明细表达；不需要嵌套组。
+免费做法复用商品 SPEC_VALUE，例如少冰，不建 FLAVOR 配料；ADDON 是单项加料，例如珍珠，对应基础销售 SKU；COMBO 是有独立计价 SKU 的配料组合，例如珍珠+椰果。组合明细指向单项 ADDON 并保存用量。选配组表达糖度单选、配料多选及数量上限；菜品绑定可复用的选配组。成员配料不再叠加收费，组合价格仅收一次。可选的配料组合用选配组让顾客自由组合，固定组合用 COMBO 明细表达；不需要嵌套组。
 
 ### 餐牌 Menu types
 
@@ -26,7 +26,7 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 ### 计价与库存 Pricing and stock
 
-套餐基础价、单项配料价、组合配料价都读基础 SKU 的门店/活动有效价格。套餐选项可 INCLUDED（已含）、ADD_SKU（追加成员当前价）、DIFF_BASE（相对组内基准 SKU 的非负差价）。金额必须由交易基座认可的报价扩展统一计算并冻结，不能让餐饮直接覆盖订单金额；当前核心没有完整组合计价接线，本设计不是零改动即可运行。套餐和组合按实际选中的叶子 SKU 汇总库存需求，容器 SKU 不同时扣同一份成员库存；配料数量单位与库存单位必须一致，存在原料克重换算时另接配方/物料系统。
+套餐基础价、单项配料价、组合配料价都读基础 SKU 的门店/活动有效价格。套餐选项可 INCLUDED（已含）、ADD_SKU（追加成员当前价）、DIFF_BASE（相对组内基准 SKU 的非负差价）。金额必须由交易基座认可的报价扩展统一计算并冻结，不能让餐饮直接覆盖订单金额；当前核心没有完整组合计价接线，本设计不是零改动即可运行。套餐和组合按实际选中的叶子 SKU 汇总库存需求，容器 SKU 不同时扣同一份成员库存；配料数量单位与库存单位必须一致，存在原料克重换算时另接配方/物料系统。 渠道差异引用pricePolicyRef，不在餐饮存另一套成交价；当前报价与库存精度合同PENDING。配方和制作耗用按综合设计，Keeta仅规划不接入。
 
 ### 下单快照 Order snapshots
 
@@ -57,6 +57,12 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 ![工位与成交快照 Stations & Snapshots](../diagrams/food-catalog-snapshot.svg)
 
 工位按店定义，SKU 与工位为多对多。订单快照独立于当前配置，生产历史不随配置变化。图中仅展示本分组内部关联，套餐选项/配料的跨组引用见字段表。打印设备与任务沿独立打印域，本模型不复制打印表。
+
+### 配方与选配调整 Recipes & Adjustments
+
+![配方与选配调整 Recipes & Adjustments](../diagrams/food-catalog-recipe.svg)
+
+配方绑定原SKU及门店；物料单位、换算与历史成本归进销存。发布修订不可变；净用量/(1-lossRate)为毛需求，实际耗用须权威回执。
 
 ## 三、字段与约束 Tables and constraints
 
@@ -108,10 +114,15 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`goods_no`|varchar(32)|基础商品 Product|PK,FK → `prd_goods.goods_no`|否 No|
+|`goods_no`|varchar(32)|基础商品 Product|UK/FK → `prd_goods.goods_no`|否 No|
 |`dish_kind`|varchar(16)|类型 SINGLE / BUNDLE / ADDON|—|否 No|
 |`prep_seconds`|int|建议制作秒数 Prep seconds|—|否 No|
 |`status`|varchar(16)|配置状态 Status|—|否 No|
+|`presentation`|json|餐饮别名/多语言/标签/过敏展示覆盖；基础图文仍引用商品|—|否 No|
+|`measurement_policy`|json|单位及称重允差，成交计量须核心支持|—|否 No|
+|`config_version`|bigint|餐饮属性规则版本|—|否 No|
+
+唯一约束 Unique：`(goods_no)`。
 
 ### 套餐规格 Bundle SKU · fnb_bundle
 
@@ -119,9 +130,12 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`sku_no`|varchar(32)|套餐规格 Bundle SKU|PK,FK → `prd_sku.sku_no`|否 No|
+|`sku_no`|varchar(32)|套餐规格 Bundle SKU|UK/FK → `prd_sku.sku_no`|否 No|
 |`config_version`|bigint|配置版本 Version|—|否 No|
 |`status`|varchar(16)|状态 Status|—|否 No|
+|`published_revision_no`|varchar(32)|当前已生效配置快照|FK → `fnb_config_revision.revision_no`|是 Yes|
+
+唯一约束 Unique：`(sku_no)`。
 
 ### 套餐选购组 Bundle group · fnb_bundle_group
 
@@ -129,13 +143,15 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`group_no`|varchar(32)|选购组编号 Group ID|PK|否 No|
+|`group_no`|varchar(32)|选购组编号 Group ID|UK|否 No|
 |`bundle_sku_no`|varchar(32)|所属套餐 Bundle|FK → `fnb_bundle.sku_no`|否 No|
 |`name`|varchar(64)|组名 Group name|—|否 No|
-|`min_qty`|int|最少选几份 Minimum|—|否 No|
-|`max_qty`|int|最多选几份 Maximum|—|否 No|
+|`min_qty`|decimal(18,6)|最少选几份 Minimum|—|否 No|
+|`max_qty`|decimal(18,6)|最多选几份 Maximum|—|否 No|
 |`base_sku_no`|varchar(32)|差价基准 SKU|FK → `prd_sku.sku_no`|是 Yes|
 |`sort_no`|int|展示顺序 Sort|—|否 No|
+
+唯一约束 Unique：`(group_no)`。
 
 ### 套餐可选项 Bundle choice · fnb_bundle_choice
 
@@ -143,17 +159,17 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`choice_no`|varchar(32)|选项编号 Choice ID|PK|否 No|
-|`group_no`|varchar(32)|所属组 Group|FK → `fnb_bundle_group.group_no`|否 No|
-|`sku_no`|varchar(32)|成员规格 Member SKU|FK → `prd_sku.sku_no`|否 No|
+|`choice_no`|varchar(32)|选项编号 Choice ID|UK|否 No|
+|`group_no`|varchar(32)|所属组 Group|UK/FK → `fnb_bundle_group.group_no`|否 No|
+|`sku_no`|varchar(32)|成员规格 Member SKU|UK/FK → `prd_sku.sku_no`|否 No|
 |`units_per_pick`|decimal(12,3)|每次选择份数 Units|—|否 No|
-|`min_qty`|int|单项最少选择 Min picks|—|否 No|
-|`max_qty`|int|单项最多选择 Max picks|—|否 No|
-|`default_qty`|int|默认选择 Default picks|—|否 No|
+|`min_qty`|decimal(18,6)|单项最少选择 Min picks|—|否 No|
+|`max_qty`|decimal(18,6)|单项最多选择 Max picks|—|否 No|
+|`default_qty`|decimal(18,6)|默认选择 Default picks|—|否 No|
 |`price_mode`|varchar(24)|计价 INCLUDED / ADD_SKU / DIFF_BASE|—|否 No|
 |`sort_no`|int|顺序 Sort|—|否 No|
 
-唯一约束 Unique：`(group_no, sku_no)`。
+唯一约束 Unique：`(group_no, sku_no)`；`(choice_no)`。
 
 ### 口味与配料 Modifier · fnb_modifier
 
@@ -161,11 +177,14 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`modifier_no`|varchar(32)|配料编号 Modifier ID|PK|否 No|
+|`modifier_no`|varchar(32)|配料编号 Modifier ID|UK|否 No|
 |`name`|varchar(64)|名称 Name|—|否 No|
-|`kind`|varchar(16)|类型 FLAVOR / ADDON / COMBO|—|否 No|
+|`kind`|varchar(16)|类型 ADDON / COMBO；免费口味复用SPEC_VALUE|—|否 No|
 |`sales_sku_no`|varchar(32)|计价规格 Pricing SKU|FK → `prd_sku.sku_no`|是 Yes|
 |`status`|varchar(16)|状态 Status|—|否 No|
+|`published_revision_no`|varchar(32)|当前已生效配置快照|FK → `fnb_config_revision.revision_no`|是 Yes|
+
+唯一约束 Unique：`(modifier_no)`。
 
 ### 配料组合明细 Modifier component · fnb_modifier_component
 
@@ -173,12 +192,12 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`component_no`|varchar(32)|组合明细编号 Component ID|PK|否 No|
-|`combo_no`|varchar(32)|组合配料 Combo|FK → `fnb_modifier.modifier_no`|否 No|
-|`member_no`|varchar(32)|单项配料 Member|FK → `fnb_modifier.modifier_no`|否 No|
+|`component_no`|varchar(32)|组合明细编号 Component ID|UK|否 No|
+|`combo_no`|varchar(32)|组合配料 Combo|UK/FK → `fnb_modifier.modifier_no`|否 No|
+|`member_no`|varchar(32)|单项配料 Member|UK/FK → `fnb_modifier.modifier_no`|否 No|
 |`quantity`|decimal(12,3)|每组合用量 Quantity|—|否 No|
 
-唯一约束 Unique：`(combo_no, member_no)`。
+唯一约束 Unique：`(combo_no, member_no)`；`(component_no)`。
 
 ### 选配组 Option group · fnb_option_group
 
@@ -186,10 +205,15 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`group_no`|varchar(32)|组编号 Group ID|PK|否 No|
-|`name`|varchar(64)|名称 Name|—|否 No|
-|`min_qty`|int|最少选几项 Minimum|—|否 No|
-|`max_qty`|int|最多选几项 Maximum|—|否 No|
+|`group_no`|varchar(32)|组编号 Group ID|UK|否 No|
+|`name`|varchar(64)|组名|—|否 No|
+|`min_qty`|decimal(18,6)|最少总选择量|—|否 No|
+|`max_qty`|decimal(18,6)|最多总选择量|—|否 No|
+|`published_revision_no`|varchar(32)|当前已生效配置快照|FK → `fnb_config_revision.revision_no`|是 Yes|
+|`status`|varchar(16)|DRAFT / ACTIVE / DISABLED|—|否 No|
+|`selection_rules`|json|有schema的互斥/依赖约束，按选项号引用|—|否 No|
+
+唯一约束 Unique：`(group_no)`。
 
 ### 组内选项 Group option · fnb_option_group_item
 
@@ -197,11 +221,17 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`group_no`|varchar(32)|选配组 Group|PK,FK → `fnb_option_group.group_no`|否 No|
-|`modifier_no`|varchar(32)|口味或配料 Modifier|PK,FK → `fnb_modifier.modifier_no`|否 No|
-|`max_qty`|int|单项最多几份 Max units|—|否 No|
-|`default_qty`|int|默认几份 Default units|—|否 No|
-|`sort_no`|int|顺序 Sort|—|否 No|
+|`option_item_no`|varchar(32)|选项编号|UK|否 No|
+|`group_no`|varchar(32)|选择组|UK/FK → `fnb_option_group.group_no`|否 No|
+|`source_kind`|varchar(16)|SPEC_VALUE/MODIFIER|—|否 No|
+|`spec_value_no`|varchar(32)|基础口味值|UK/FK → `prd_spec_value.value_no`|是 Yes|
+|`modifier_no`|varchar(32)|餐饮配料|UK/FK → `fnb_modifier.modifier_no`|是 Yes|
+|`max_qty`|decimal(18,6)|单项上限|—|否 No|
+|`default_qty`|decimal(18,6)|默认数量|—|否 No|
+|`sort_no`|int|排序|—|否 No|
+|`min_qty`|decimal(18,6)|本选项最小选择量|—|否 No|
+
+唯一约束 Unique：`(option_item_no)`；`(group_no, spec_value_no)`；`(group_no, modifier_no)`。
 
 ### 菜品选配绑定 Dish options · fnb_dish_option_group
 
@@ -209,9 +239,11 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`goods_no`|varchar(32)|菜品 Product|PK,FK → `fnb_dish.goods_no`|否 No|
-|`group_no`|varchar(32)|选配组 Group|PK,FK → `fnb_option_group.group_no`|否 No|
+|`goods_no`|varchar(32)|菜品 Product|UK/FK → `fnb_dish.goods_no`|否 No|
+|`group_no`|varchar(32)|选配组 Group|UK/FK → `fnb_option_group.group_no`|否 No|
 |`sort_no`|int|顺序 Sort|—|否 No|
+
+唯一约束 Unique：`(goods_no, group_no)`。
 
 ### 餐牌 Menu · fnb_menu
 
@@ -219,7 +251,7 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`menu_no`|varchar(32)|餐牌编号 Menu ID|PK|否 No|
+|`menu_no`|varchar(32)|餐牌编号 Menu ID|UK|否 No|
 |`name`|varchar(64)|名称 Name|—|否 No|
 |`menu_type`|varchar(16)|类型 STANDARD / TIME / SEASON / EVENT|—|否 No|
 |`timezone`|varchar(64)|时区 Time zone|—|否 No|
@@ -229,6 +261,9 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 |`exclusive_group`|varchar(32)|互斥餐牌组 Exclusive group|—|是 Yes|
 |`status`|varchar(16)|DRAFT / PUBLISHED / DISABLED|—|否 No|
 |`config_version`|bigint|配置版本 Version|—|否 No|
+|`published_revision_no`|varchar(32)|当前已生效配置快照|FK → `fnb_config_revision.revision_no`|是 Yes|
+
+唯一约束 Unique：`(menu_no)`。
 
 ### 餐牌门店 Menu stores · fnb_menu_store
 
@@ -236,8 +271,11 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`menu_no`|varchar(32)|餐牌 Menu|PK,FK → `fnb_menu.menu_no`|否 No|
-|`store_no`|varchar(32)|门店 Store|PK,FK → `mch_store.store_no`|否 No|
+|`menu_no`|varchar(32)|餐牌 Menu|UK/FK → `fnb_menu.menu_no`|否 No|
+|`store_no`|varchar(32)|门店 Store|UK/FK → `mch_store.store_no`|否 No|
+|`override_revision_no`|varchar(32)|获准门店差异快照|FK → `fnb_config_revision.revision_no`|是 Yes|
+
+唯一约束 Unique：`(menu_no, store_no)`。
 
 ### 餐牌入口 Menu context · fnb_menu_context
 
@@ -245,12 +283,15 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`context_no`|varchar(32)|范围编号 Context ID|PK|否 No|
-|`menu_no`|varchar(32)|餐牌 Menu|FK → `fnb_menu.menu_no`|否 No|
-|`order_source`|varchar(24)|下单来源 Source|—|否 No|
-|`fulfillment`|varchar(24)|履约方式 Fulfillment|—|否 No|
+|`context_no`|varchar(32)|范围编号 Context ID|UK|否 No|
+|`menu_no`|varchar(32)|餐牌 Menu|UK/FK → `fnb_menu.menu_no`|否 No|
+|`order_source`|varchar(24)|下单来源 Source|UK|否 No|
+|`fulfillment`|varchar(24)|履约方式 Fulfillment|UK|否 No|
+|`channel_binding_no`|varchar(32)|外送绑定；本地为空|FK → `fnb_menu_channel_binding.binding_no`|是 Yes|
+|`channel_scope_key`|varchar(32)|服务端归一为LOCAL或绑定号|UK|否 No|
+|`price_policy_ref`|varchar(64)|报价权威价格策略引用|—|是 Yes|
 
-唯一约束 Unique：`(menu_no, order_source, fulfillment)`。
+唯一约束 Unique：`(menu_no, order_source, fulfillment, channel_scope_key)`；`(context_no)`。
 
 ### 餐牌时段 Menu schedule · fnb_menu_schedule
 
@@ -258,12 +299,14 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`schedule_no`|varchar(32)|时段编号 Schedule ID|PK|否 No|
+|`schedule_no`|varchar(32)|时段编号 Schedule ID|UK|否 No|
 |`menu_no`|varchar(32)|餐牌 Menu|FK → `fnb_menu.menu_no`|否 No|
 |`weekday`|tinyint|周一至周日 1-7|—|否 No|
 |`start_time`|time|开始时间 Start|—|否 No|
 |`end_time`|time|结束时间 End|—|否 No|
 |`end_day_offset`|tinyint|跨日偏移 0 / 1|—|否 No|
+
+唯一约束 Unique：`(schedule_no)`。
 
 ### 餐牌例外日 Menu exception · fnb_menu_exception
 
@@ -271,15 +314,15 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`exception_no`|varchar(32)|例外编号 Exception ID|PK|否 No|
-|`menu_no`|varchar(32)|餐牌 Menu|FK → `fnb_menu.menu_no`|否 No|
-|`local_date`|date|本地日期 Local date|—|否 No|
+|`exception_no`|varchar(32)|例外编号 Exception ID|UK|否 No|
+|`menu_no`|varchar(32)|餐牌 Menu|UK/FK → `fnb_menu.menu_no`|否 No|
+|`local_date`|date|本地日期 Local date|UK|否 No|
 |`mode`|varchar(16)|CLOSED / OPEN|—|否 No|
 |`start_time`|time|营业开始 Start|—|是 Yes|
 |`end_time`|time|营业结束 End|—|是 Yes|
 |`end_day_offset`|tinyint|跨日偏移 Offset|—|否 No|
 
-唯一约束 Unique：`(menu_no, local_date)`。
+唯一约束 Unique：`(menu_no, local_date)`；`(exception_no)`。
 
 ### 餐牌分类 Menu category · fnb_menu_category
 
@@ -287,10 +330,12 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`category_no`|varchar(32)|分类编号 Category ID|PK|否 No|
+|`category_no`|varchar(32)|分类编号 Category ID|UK|否 No|
 |`menu_no`|varchar(32)|所属餐牌 Menu|FK → `fnb_menu.menu_no`|否 No|
 |`name`|varchar(64)|名称 Name|—|否 No|
 |`sort_no`|int|顺序 Sort|—|否 No|
+
+唯一约束 Unique：`(category_no)`。
 
 ### 餐牌菜品 Menu item · fnb_menu_item
 
@@ -298,13 +343,15 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`menu_item_no`|varchar(32)|条目编号 Item ID|PK|否 No|
-|`category_no`|varchar(32)|所属分类 Category|FK → `fnb_menu_category.category_no`|否 No|
-|`goods_no`|varchar(32)|基础商品 Product|FK → `prd_goods.goods_no`|否 No|
+|`menu_item_no`|varchar(32)|条目编号 Item ID|UK|否 No|
+|`category_no`|varchar(32)|所属分类 Category|UK/FK → `fnb_menu_category.category_no`|否 No|
+|`goods_no`|varchar(32)|基础商品 Product|UK/FK → `prd_goods.goods_no`|否 No|
 |`sort_no`|int|顺序 Sort|—|否 No|
 |`enabled`|boolean|是否启用 Enabled|—|否 No|
+|`sku_scope`|varchar(16)|ALL / EXPLICIT；EXPLICIT必须非空|—|否 No|
+|`option_mode`|varchar(16)|INHERIT / REPLACE；REPLACE空组禁选|—|否 No|
 
-唯一约束 Unique：`(category_no, goods_no)`。
+唯一约束 Unique：`(category_no, goods_no)`；`(menu_item_no)`。
 
 ### 餐牌可售规格 Menu SKU · fnb_menu_item_sku
 
@@ -312,8 +359,12 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`menu_item_no`|varchar(32)|餐牌条目 Menu item|PK,FK → `fnb_menu_item.menu_item_no`|否 No|
-|`sku_no`|varchar(32)|可售规格 SKU|PK,FK → `prd_sku.sku_no`|否 No|
+|`menu_item_no`|varchar(32)|餐牌条目 Menu item|UK/FK → `fnb_menu_item.menu_item_no`|否 No|
+|`sku_no`|varchar(32)|可售规格 SKU|UK/FK → `prd_sku.sku_no`|否 No|
+|`selection_mode`|varchar(16)|EXPLICIT；空白名单语义存父项|—|否 No|
+|`recipe_no`|varchar(32)|同SKU配方变体引用|FK → `fnb_recipe.recipe_no`|是 Yes|
+
+唯一约束 Unique：`(menu_item_no, sku_no)`。
 
 ### 制作工位 Kitchen station · fnb_station
 
@@ -321,11 +372,14 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`station_no`|varchar(32)|工位编号 Station ID|PK|否 No|
+|`station_no`|varchar(32)|工位编号 Station ID|UK|否 No|
 |`store_no`|varchar(32)|所属门店 Store|FK → `mch_store.store_no`|否 No|
 |`name`|varchar(64)|名称 Name|—|否 No|
 |`station_type`|varchar(24)|HOT / COLD / BAR / PACK|—|否 No|
 |`enabled`|boolean|启用 Enabled|—|否 No|
+|`published_revision_no`|varchar(32)|当前已生效配置快照|FK → `fnb_config_revision.revision_no`|是 Yes|
+
+唯一约束 Unique：`(station_no)`。
 
 ### 规格工位路由 SKU routing · fnb_sku_station
 
@@ -333,10 +387,13 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 
 |字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
 |---|---|---|---|---|
-|`sku_no`|varchar(32)|菜品或配料规格 SKU|PK,FK → `prd_sku.sku_no`|否 No|
-|`station_no`|varchar(32)|制作工位 Station|PK,FK → `fnb_station.station_no`|否 No|
-|`task_role`|varchar(16)|MAKE / ASSEMBLE / PACK|—|否 No|
+|`sku_no`|varchar(32)|菜品或配料规格 SKU|UK/FK → `prd_sku.sku_no`|否 No|
+|`station_no`|varchar(32)|制作工位 Station|UK/FK → `fnb_station.station_no`|否 No|
+|`task_role`|varchar(16)|MAKE / ASSEMBLE / PACK|UK|否 No|
 |`route_version`|bigint|路由版本 Version|—|否 No|
+|`store_no`|varchar(32)|路由适用门店|UK/FK → `mch_store.store_no`|否 No|
+
+唯一约束 Unique：`(store_no, sku_no, station_no, task_role)`。
 
 ### 餐饮点单行 Food order line · fnb_order_line
 
@@ -377,13 +434,121 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 |`quantity`|decimal(12,3)|选择数量 Quantity|—|否 No|
 |`modifier_snapshot`|json|口味配料及展开快照 Snapshot|—|否 No|
 
+### 餐牌渠道绑定 Menu channel binding · fnb_menu_channel_binding
+
+拟新增 Proposed — 餐饮扩展。
+
+|字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
+|---|---|---|---|---|
+|`binding_no`|varchar(32)|渠道绑定 Binding|UK|否 No|
+|`menu_no`|varchar(32)|餐牌 Menu|UK/FK → `fnb_menu.menu_no`|否 No|
+|`store_no`|varchar(32)|门店 Store|UK/FK → `mch_store.store_no`|否 No|
+|`provider`|varchar(32)|渠道提供方 Provider|UK|否 No|
+|`channel_account_ref`|varchar(64)|已有渠道账号引用 Account reference|UK|否 No|
+|`external_store_ref`|varchar(64)|外部门店 External store|—|否 No|
+|`status`|varchar(16)|ACTIVE / DISABLED|—|否 No|
+
+唯一约束 Unique：`(binding_no)`；`(menu_no, store_no, provider, channel_account_ref)`。
+
+### 餐牌菜项选配 Menu item options · fnb_menu_item_option_group
+
+拟新增 Proposed — 餐饮扩展。
+
+|字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
+|---|---|---|---|---|
+|`menu_item_no`|varchar(32)|餐牌菜项 Item|UK/FK → `fnb_menu_item.menu_item_no`|否 No|
+|`group_no`|varchar(32)|选配组 Group|UK/FK → `fnb_option_group.group_no`|否 No|
+|`sort_no`|int|顺序 Sort|—|否 No|
+
+唯一约束 Unique：`(menu_item_no, group_no)`。
+
+### SKU配方工作头 SKU recipe · fnb_recipe
+
+拟新增 Proposed — 餐饮扩展。
+
+|字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
+|---|---|---|---|---|
+|`recipe_no`|varchar(32)|配方编号 Recipe|UK|否 No|
+|`store_no`|varchar(32)|门店 Store|UK/FK → `mch_store.store_no`|否 No|
+|`sku_no`|varchar(32)|销售规格 SKU|UK/FK → `prd_sku.sku_no`|否 No|
+|`recipe_code`|varchar(32)|DEFAULT或受控配方变体 Variant|UK|否 No|
+|`yield_qty`|decimal(18,6)|基准产出 Positive yield|—|否 No|
+|`yield_unit`|varchar(16)|产出单位 Controlled unit|—|否 No|
+|`config_version`|bigint|配方内容版本 Configuration version|—|否 No|
+|`published_revision_no`|varchar(32)|冻结修订 Published revision|FK → `fnb_config_revision.revision_no`|是 Yes|
+|`status`|varchar(16)|DRAFT / ACTIVE / DISABLED|—|否 No|
+
+唯一约束 Unique：`(recipe_no)`；`(store_no, sku_no, recipe_code)`。
+
+### 配方物料行 Recipe material line · fnb_recipe_line
+
+拟新增 Proposed — 餐饮扩展。
+
+|字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
+|---|---|---|---|---|
+|`line_no`|varchar(32)|物料行编号 Recipe line|UK|否 No|
+|`recipe_no`|varchar(32)|配方 Recipe|UK/FK → `fnb_recipe.recipe_no`|否 No|
+|`item_ref`|varchar(64)|进销存物料引用 Inventory item|—|否 No|
+|`qty`|decimal(18,6)|每基准产出净用量 Net requirement|—|否 No|
+|`unit`|varchar(16)|权威物料单位 Material unit|—|否 No|
+|`conversion_ref`|varchar(64)|权威换算版本 Conversion reference|—|否 No|
+|`loss_rate`|decimal(12,6)|投入损失比例 0<=rate<1|—|否 No|
+
+唯一约束 Unique：`(line_no)`；`(recipe_no, line_no)`。
+
+### 选配配方调整 Recipe selection adjustment · fnb_recipe_adjustment
+
+拟新增 Proposed — 餐饮扩展。
+
+|字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
+|---|---|---|---|---|
+|`adjustment_no`|varchar(32)|调整编号 Adjustment|UK|否 No|
+|`recipe_no`|varchar(32)|配方 Recipe|UK/FK → `fnb_recipe.recipe_no`|否 No|
+|`option_item_no`|varchar(32)|触发选项 Selection|UK/FK → `fnb_option_group_item.option_item_no`|否 No|
+|`target_line_no`|varchar(32)|目标物料行 Material line|UK/FK → `fnb_recipe_line.line_no`|否 No|
+|`action`|varchar(16)|SET / ADD / REMOVE|—|否 No|
+|`qty`|decimal(18,6)|SET/ADD非负量，REMOVE为空|—|是 Yes|
+|`unit`|varchar(16)|与目标物料一致 Unit|—|否 No|
+
+唯一约束 Unique：`(adjustment_no)`；`(recipe_no, option_item_no, target_line_no)`。
+
+### 餐饮配置发布快照 Config revision · fnb_config_revision
+
+拟新增 Proposed — 餐饮扩展。
+
+|字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
+|---|---|---|---|---|
+|`revision_no`|varchar(32)|快照业务号|UK|否 No|
+|`config_kind`|varchar(24)|MENU / BUNDLE / OPTION_GROUP / MODIFIER / STATION|UK|否 No|
+|`config_no`|varchar(32)|配置业务号或SKU，按kind引用|UK|否 No|
+|`revision`|bigint|单配置单调发布修订号|UK|否 No|
+|`content_schema`|int|冻结文档结构版本|—|否 No|
+|`definition_snapshot`|json|完整聚合定义及引用发布版本，不存资金真源|—|否 No|
+|`content_hash`|char(64)|规范内容摘要|—|否 No|
+|`effective_at`|datetime(3)|计划生效|—|否 No|
+|`status`|varchar(16)|SCHEDULED / EFFECTIVE / CANCELLED|—|否 No|
+|`previous_revision_no`|varchar(32)|前修订|FK → `fnb_config_revision.revision_no`|是 Yes|
+|`scope_store_nos`|json|冻结的授权适用门店集合，配置头归主体|—|否 No|
+
+唯一约束 Unique：`(revision_no)`；`(entity_no, config_kind, config_no, revision)`。
+
+### 既有规格字典值 Existing specification value · prd_spec_value
+
+已有表 Existing — 仅关联字段投影。
+
+|字段 Field|类型 Type|含义 Meaning|键与关联 Key / Reference|可空 Nullable|
+|---|---|---|---|---|
+|`value_no`|varchar(64)|既有规格值编号 Spec value ID|UK|否 No|
+
+唯一约束 Unique：`(value_no)`。
+
 ## 四、发布与交易不变量 Validation rules
 
 1. 所有新增配置表按 entity_no 隔离；关联商品、配料、门店和工位须属于同一主体。SKU 必须属于引用的商品；跨租户关系禁止写入。
 2. 已存在表字段类型为设计引用投影，不是 ALTER TABLE；新表 PK/FK 为逻辑合同，实施需按仓库主键、数据域、审计及软删除规范落迁移。
 3. 发布套餐必须有至少一个组，每组有可用候选；0≤min_qty≤max_qty，max_qty>0，默认选择满足组和候选上下限。固定项 min=max；按套餐每份计算，再乘购买份数。
 4. fnb_bundle 的 SKU 必须属于 dish_kind=BUNDLE 的餐饮商品。成员候选不允许 BUNDLE；配料组合禁止自引用、嵌套 COMBO 和重复成员，quantity>0。
-5. FLAVOR.sales_sku_no 必须为空；ADDON/COMBO 必填有效 SKU。COMBO 必须至少一个成员。收费组合的成员只展开制作/耗用，不再累加成员售价。
+5. 免费口味source_kind=SPEC_VALUE，引用prd_spec_value，不建FLAVOR对象；ADDON/COMBO 必填有效 SKU。COMBO 必须至少一个成员。收费组合的成员只展开制作/耗用，不再累加成员售价。
 6. 组内同配料唯一；default_qty 在 0..max_qty 内。组 min/max 按选择份数求和，不按不同选项个数求和。要限制单选可令 max_qty=1。
 7. price_mode=DIFF_BASE 时所属组 base_sku_no 必填；差价=max(0,候选有效单价-基准有效单价)，按 units_per_pick 和选择份数计算；基准与候选须同币种、可比销售单位。不支持负差价退款，另行设计折让规则。
 8. 成交总额由核心报价产生：套餐基价+候选追加/差价+所选配料费用，再应用统一优惠分摊；内部金额使用最小货币单位，数量计算及舍入规则由核心统一。金额只计一次；库存按展开的叶子需求聚合一次。
@@ -391,10 +556,13 @@ STANDARD 常规、TIME 时段、SEASON 季节、EVENT 活动餐牌均为同一�
 10. 一个餐牌发布后必须显式绑定门店和 context；context 可用受控 ALL 枚举表示不限，不用空值猜测。来源包括扫码、H5、点餐机、店员、第三方；履约方式必须来自基座合法取值。
 11. 非 TIME 餐牌无 schedule 表示营业日内全天；TIME 必须有时段。日期范围按时区中的营业起始日计算；区间左闭右开，跨午夜归开始日。例外日 CLOSED 禁售，OPEN 的起止时间必填并替换该开始日周规则；每个开始日仅一条例外。
 12. 无 exclusive_group 的餐牌可同时展示；同店、同入口、同履约且同互斥组时取最高 priority，可能重叠且同优先级的配置发布时拒绝。跨餐牌相同商品可分别展示，提交时必须携带准确 menu_item_no。
-13. menu_item_sku 无行表示该商品的全部可售 SKU；有行表示严格白名单，不能引用其他商品的 SKU。停售由统一可售校验处理，不通过菜单恢复实际库存。
+13. menu_item.sku_scope显式ALL/EXPLICIT；ALL使用全部可售SKU，EXPLICIT须非空严格白名单，不能引用其他商品的 SKU。停售由统一可售校验处理，不通过菜单恢复实际库存。
 14. 套餐候选和配料不要求另作为餐牌独立条目显示，但必须通过其门店基础上架/可售与库存校验；已下架的成员不能因在套餐里就绕过基础限制。
 15. 各 SKU 工位路由按 station 所属门店过滤，允许多工位协作；发布时校验需要制作的 SKU 有可用路由。工位快照与实际改派记录属于制作任务域，不在本图重复建表。
 16. fnb_order_component.choice_no 必须属于该订单行套餐配置；fnb_order_modifier.component_no 非空时必须属于同 food_line_no，所选组须绑定该成员菜品。消费与补打只读冻结快照，不依赖配置当前名称。
 17. 所有金额快照都引用核心核定的结果，JSON 仅存不可变事实；配置查询/关联用关系表。订单快照存配置号、版本、名称、价格依据和数量单位，禁止只存 JSON 而无可追溯编号。
 18. 当前售后仍按已有整门店订单退款边界；套餐成员不因有快照行就自动拥有独立退款权。开放部分退套餐需另行确认并建设分摊与权益逆向。
 19. 建议索引：所有引用列；menu(status,entity_no)、menu_store(store_no,menu_no)、menu_schedule(menu_no,weekday)、station(store_no,enabled)、order_line(order_item_id)、order_component(food_line_no)、order_modifier(food_line_no,component_no)。业务唯一键见各表；停用保留记录，重新启用更新原配置避免软删除重复键。
+20. 菜项option_mode为INHERIT或REPLACE；REPLACE空组选配表示无选配，不回退商品默认组。
+21. 渠道身份从获准绑定解析，channel_scope_key为LOCAL或bindingNo；同SKU不同menuItem不合并；价格来自权威pricePolicyRef。
+22. 本文件仅为综合真源投影，新增配方及渠道对象PLANNED，不代表V1/V2已经迁移。

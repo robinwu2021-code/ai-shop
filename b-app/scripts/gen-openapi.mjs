@@ -27,7 +27,7 @@ const body = epSrc.slice(epSrc.indexOf("export const ENDPOINTS"));
 
 const endpoints = {};
 const re =
-  /(\w+):\s*\{\s*method:\s*"(GET|POST|PUT)",\s*path:\s*"([^"]+)",\s*auth:\s*(true|false),\s*summary:\s*"([^"]*)"/g;
+  /(\w+):\s*\{\s*method:\s*"(GET|POST|PUT|DELETE)",\s*path:\s*"([^"]+)",\s*auth:\s*(true|false),\s*summary:\s*"([^"]*)"/g;
 let m;
 while ((m = re.exec(body))) {
   endpoints[m[1]] = { method: m[2], path: m[3], auth: m[4] === "true", summary: m[5] };
@@ -152,6 +152,51 @@ if (Object.keys(renamed).length) {
 
 /** 契约方法 → 响应类型名 */
 const RESPONSE_TYPES = {
+  mScopeCandidates: "ScopeCandidatePage",
+  mScopeSelectCustomer: "ScopeSelectedCustomer",
+  mScopeEnrollMember: "ScopeMemberSummary",
+  mSvCandidates: "PageResult<SvCandidate>",
+  mSvSelectCustomer: "SvSelectedCustomer",
+  mSvConfirmOffline: "SvProgress",
+  mSvContext: "SvContext",
+  mSvPlans: "SvPlanPage",
+  mSvPlan: "SvPlan",
+  mSvCreatePlan: "SvPlan",
+  mSvPlanStatus: "SvPlan",
+  mSvAccounts: "SvAccountPage",
+  mSvAccount: "SvAccount",
+  mSvRecords: "SvRecordPage",
+  mSvRecord: "SvRecord",
+  mSvResolveRecharge: "SvRechargeResolve",
+  mSvCancelCreate: "SvProgress",
+  mSvCreateRecharge: "SvProgress",
+  mSvRecharge: "SvProgress",
+  mSvSubmit: "SvProgress",
+  mSvReceive: "SvProgress",
+  mSvCancel: "SvProgress",
+
+  mManagementRecipients: "ManagementRecipientPage",
+  mManagementContext: "ManagementContext",
+  mCreateManagementSpace: "ManagementSpace",
+  mManagementResources: "ManagementGrantPage",
+  mManagementGrant: "ManagementGrant",
+  mRevokeManagementGrant: "ManagementGrant",
+  mManagementEntities: "ManagementResourcePage",
+  mManagementStores: "ManagementResourcePage",
+  mPaymentMerchantCandidates: "PaymentMerchant[]",
+  mBrands: "ManagementBrandPage",
+  mCreateBrand: "Brand",
+  mBrand: "Brand",
+  mEditBrand: "Brand",
+  mBrandStatus: "Brand",
+  mBrandStores: "ManagementResourcePage",
+  mBrandAudit: "ManagementAuditPage",
+  mStoreOperatingContext: "OperatingContext",
+  mCheckBrandChange: "BrandImpact",
+  mSubmitBrandChange: "BrandChange",
+  mBrandChange: "BrandChange",
+  mDecideBrandChange: "BrandChange",
+
   /*
    * 2026-08-28 一次补齐 **97 条**。它们是逐批加进契约的，谁都没回来登记这张表 ——
    * 而漏一条整份 spec 就不生成（硬失败），于是 `openapi-b.yaml` 停在原地，
@@ -507,6 +552,47 @@ const RESPONSE_TYPES = {
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+  mScopeCandidates: "ScopeCandidateQuery",
+  mScopeSelectCustomer: "ScopeSelectCustomerReq",
+  mScopeEnrollMember: "ScopeMemberCreateReq",
+  mSvCandidates: "SvCandidatesQuery",
+  mSvSelectCustomer: "SvSelectCustomerReq",
+  mSvConfirmOffline: "SvRechargeCreate",
+  mSvContext: "SvStoreQuery",
+  mSvPlans: "SvPlansQuery",
+  mSvPlan: "SvStoreQuery",
+  mSvCreatePlan: "SvPlanCreate",
+  mSvPlanStatus: "SvPlanStatusReq",
+  mSvAccounts: "SvAccountsQuery",
+  mSvAccount: "SvStoreQuery",
+  mSvRecords: "SvRecordsQuery",
+  mSvRecord: "SvStoreQuery",
+  mSvResolveRecharge: "SvRechargeCreate",
+  mSvCancelCreate: "SvRechargeCreate",
+  mSvCreateRecharge: "SvRechargeCreate",
+  mSvSubmit: "SvReceipt",
+  mSvReceive: "SvReceive",
+  mSvCancel: "SvCancelReq",
+
+  mCreateManagementSpace: "ManagementSpaceCreateReq",
+  mManagementRecipients: "ManagementResourcesQuery",
+  mManagementResources: "ManagementResourcesQuery",
+  mManagementGrant: "ManagementGrantReq",
+  mRevokeManagementGrant: "ManagementRevokeQuery",
+  mManagementEntities: "ManagementPageQuery",
+  mManagementStores: "ManagementStoresQuery",
+  mPaymentMerchantCandidates: "ManagementMerchantsQuery",
+  mBrands: "ManagementBrandsQuery",
+  mCreateBrand: "ManagementBrandCreateReq",
+  mEditBrand: "ManagementBrandEditReq",
+  mBrandStatus: "ManagementBrandStatusReq",
+  mBrandStores: "ManagementPageQuery",
+  mBrandAudit: "ManagementPageQuery",
+  mStoreOperatingContext: "ManagementStoreContextQuery",
+  mCheckBrandChange: "ManagementBrandCheckReq",
+  mSubmitBrandChange: "ManagementBrandChangeSubmitReq",
+  mDecideBrandChange: "ManagementBrandDecisionReq",
+
   mStorePointStatement: "StorePointStatementQuery",
   mStorePointStatementLines: "StorePointStatementLinesQuery",
   mStorePointStatements: "StorePointsEntriesQuery",
@@ -633,7 +719,7 @@ for (const [key, ep] of Object.entries(endpoints)) {
     required: true,
     schema: { type: "string" },
   }));
-  if (ep.method === "GET" && reqType) params.push(...queryParams(reqType));
+  if ((ep.method === "GET" || ep.method === "DELETE") && reqType) params.push(...queryParams(reqType));
 
   const op = {
     operationId: key,

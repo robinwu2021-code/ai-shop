@@ -8,6 +8,7 @@ package ai.neargo.shop.pay.client;
  * 而测试默认装配的是进程内实现，那个 404 在本地根本碰不到。
  */
 public final class PayInternalPaths {
+    public static final String SV_ORGANIZATION_IMPACT="/internal/pay/stored-value/organization-impact";
     public static final String LEGACY_TEMPLATE_ARCHIVE="/internal/pay/entitlement/legacy-template/archive";
     public static final String LEGACY_ISSUE_CREATE="/internal/pay/entitlement/legacy-issue/create";
     public static final String LEGACY_ISSUE_GET="/internal/pay/entitlement/legacy-issue/get";

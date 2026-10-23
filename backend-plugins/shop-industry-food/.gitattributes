@@ -1,0 +1,2 @@
+# Applied Flyway V1: retain exact bytes, including its existing final blank line.
+food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql -text whitespace=-blank-at-eof

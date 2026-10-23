@@ -1,0 +1,747 @@
+{
+  "status": "IN_PROGRESS",
+  "targetBranch": "codex/ai-shop-codex",
+  "executionMode": "inline",
+  "stages": [
+    {
+      "id": "P1",
+      "slug": "organization",
+      "name": "经营组织、品牌与支付商户",
+      "depends": [],
+      "screens": [
+        "s01",
+        "s02",
+        "s03",
+        "s04",
+        "s05",
+        "s06",
+        "s07",
+        "s08",
+        "s09",
+        "s24"
+      ],
+      "tables": [
+        "mch_management_space",
+        "mch_management_grant",
+        "mch_brand",
+        "mch_brand_store_binding",
+        "mch_brand_change"
+      ],
+      "scope": "交付经营管理空间；品牌、主体、支付商户、门店分别管理；门店可关联品牌，但此时不自动开放品牌资金或改变旧会员范围。",
+      "release": "Merchant/Core/BFF + B端组织页面。品牌门店关系为组织功能；旧单店储值正常运行，不触发资金承接。",
+      "guard": "有存量资金或未完成单的品牌变更继续阻断或进入变更申请；Pay准入联动准备到P3，不能仅改brandNo获得资金权限。",
+      "rollback": "仅增量表和组织数据，可关闭新入口并回退兼容应用；保留新增品牌及授权审计。若已有门店品牌关联，回退前确认旧程序不会据此扩权。",
+      "tests": [
+        "BrandScopeAuthorizationTest",
+        "PaymentMerchantOwnershipTest"
+      ],
+      "fronttest": "brand-management-flow.test.ts",
+      "tasks": [
+        [
+          "管理空间与资源授权",
+          "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementScopeService.java",
+          "ManagementContext resolve(ActorContext actor, String managementNo)",
+          "现有认证身份",
+          "显式品牌、门店、主体及支付商户授权；同tenant不等于全资源授权"
+        ],
+        [
+          "品牌及门店配置",
+          "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/BrandService.java",
+          "BrandChangeResult change(StoreContext store, BrandChangeCommand command)",
+          "ManagementContext",
+          "品牌CRUD、有效绑定唯一性、影响检查及可恢复变更单；不直接改资金归属"
+        ],
+        [
+          "支付商户候选",
+          "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/PaymentMerchantScopeService.java",
+          "List<PaymentMerchantBrief> candidates(EntityContext entity, String channel, String scene)",
+          "主体财务／配置授权",
+          "复用MchPaymentMerchant，检查主体归属、ACTIVE进件及授权支付方式"
+        ],
+        [
+          "B端顶层与门店入口",
+          "b-app/src/pages/management/index.vue; b-app/src/pages/brand-list/index.vue; b-app/src/pages/brand-edit/index.vue; b-app/src/pages/brand-detail/index.vue",
+          "ManagementApi/BrandApi DTO与MG/BR/ST契约一致",
+          "前三任务接口",
+          "品牌、主体、支付商户、门店平级；store配置品牌底部弹框；同页不重复切店"
+        ]
+      ],
+      "cases": [
+        [
+          "rejectTenantWideAccess",
+          "账号只获A品牌管理权，请求B品牌及B主体支付商户",
+          "拒绝，不因tenant相同放行"
+        ],
+        [
+          "twoActiveBrandBindingsConflict",
+          "同门店并发绑定两品牌",
+          "最多一个ACTIVE，另一个冲突"
+        ],
+        [
+          "merchantEntityMismatch",
+          "主体甲选择主体乙的微信商户",
+          "拒绝；主体有效但渠道商户冻结也拒绝"
+        ]
+      ],
+      "apiIds": [
+        "MG01",
+        "MG02",
+        "MG03",
+        "MG04",
+        "MG05",
+        "MG06",
+        "MG07",
+        "BR01",
+        "BR02",
+        "BR03",
+        "BR04",
+        "BR05",
+        "BR06",
+        "BR07",
+        "ST01",
+        "ST02",
+        "ST03",
+        "ST04",
+        "ST05",
+        "MG08",
+        "MG09"
+      ],
+      "planFile": "2026-10-21-brand-stored-value-organization.md",
+      "status": "DEPLOYED",
+      "implementationNotes": [
+        "21 business APIs and one internal Pay read dependency implemented",
+        "5 Merchant tables V544; MySQL 9.7.2 scoped rehearsal passed",
+        "Final review fixes verified: snapshot/revocation, delegated creator, bootstrap grants, management-scoped discovery, persisted blockers",
+        "No real customer stored-value transaction executed"
+      ],
+      "releaseEvidence": {
+        "date": "2026-10-22",
+        "core": "a307c7fcd",
+        "pay": "8f9543ab4",
+        "bH5": "07aff311e",
+        "site": "07aff311e",
+        "android": "0.5.99/332",
+        "migration": "V544 success",
+        "report": "docs/technical/delivery/P1-经营组织与品牌管理-交付记录.md"
+      }
+    },
+    {
+      "id": "P2",
+      "slug": "membership",
+      "name": "平台身份与品牌会员共享",
+      "depends": [
+        "P1"
+      ],
+      "screens": [
+        "s16",
+        "s17"
+      ],
+      "tables": [
+        "mbr_scope_member",
+        "mbr_store_profile",
+        "mbr_scope_legacy_link"
+      ],
+      "scope": "同品牌门店识别同一会员；独立门店会员关系独立；本店私有资料保留。交付B端一个搜索入口和来源店展示，仍不开放品牌钱包。",
+      "release": "Core会员/BFF + B端会员与搜索页面。已有单店储值继续使用原customer身份和本店账户。",
+      "guard": "未确认历史身份、NULL归属及同手机号冲突不自动合并。品牌识别只给最小摘要，不开放他店私有服务档案或财务。",
+      "rollback": "新会员关系与旧memberNo保留映射；停用品牌共享查询可回到旧单店读取，不删除新关系、不回写历史人档。",
+      "tests": [
+        "MemberBrandScopeTest",
+        "MemberIdentityConflictTest"
+      ],
+      "fronttest": "member-brand-search.test.ts",
+      "tasks": [
+        [
+          "稳定身份及历史映射",
+          "backend/shop-core/src/main/java/ai/neargo/shop/member/service/MemberScopeService.java",
+          "ScopeMember enroll(MemberScope scope, VerifiedCustomer customer, String sourceStoreNo)",
+          "P1可信品牌范围",
+          "复用canonical顾客与user绑定；人档不重复创建；旧主体会员到品牌／单店关系可审计映射"
+        ],
+        [
+          "会员共享与私有资料",
+          "backend/shop-core/src/main/java/ai/neargo/shop/member/service/MemberScopeQueryService.java",
+          "MemberSummary find(StoreExecutionContext store, MemberSearch query)",
+          "MemberScope",
+          "跨主体同品牌识别，跨品牌隔离，本店备注和顾问不共享"
+        ],
+        [
+          "选择引用与兼容桥接",
+          "backend/shop-app/src/main/java/ai/neargo/shop/paybridge/StoredValueMemberSelectionService.java",
+          "CustomerSelection select(StoreExecutionContext store, CustomerSelect request)",
+          "P1范围、P2身份",
+          "扩展现有来源检查与短时引用；旧单店选账保持单店，不预造品牌账户"
+        ],
+        [
+          "B端统一搜索与详情",
+          "b-app/src/pages/stored-value-account/index.vue; b-app/src/api/member-scopes.ts",
+          "MemberAccountSummary/CustomerSelection",
+          "MB01/02/03",
+          "联想+搜索按钮，搜索结果能识别未储值品牌会员；无新增会员重复入口"
+        ]
+      ],
+      "cases": [
+        [
+          "sameBrandDifferentEntities",
+          "A/B店不同经营主体、同品牌，同一顾客",
+          "B可识别，customerNo保持一致"
+        ],
+        [
+          "crossBrandPrivateProfileHidden",
+          "同主体不同品牌，或读取另一店私有备注",
+          "不返回未授权数据"
+        ],
+        [
+          "phoneCollisionDoesNotMerge",
+          "两个历史人档手机号相同但身份证据不足",
+          "输出冲突，不合并会员资金"
+        ]
+      ],
+      "apiIds": [
+        "MB01",
+        "MB02",
+        "MB03"
+      ],
+      "planFile": "2026-10-21-brand-stored-value-membership.md",
+      "status": "DEPLOYED",
+      "implementationNotes": [
+        "V545: three scope tables + nullable ticket facts",
+        "MB01/02/03 implemented; legacy membership numbers and store wallets unchanged",
+        "Private legacy remarks not inferred or copied; old subject block remains subject scoped",
+        "B app 0.6.0/333 candidate; no actual financial transaction"
+      ],
+      "releaseEvidence": {
+        "date": "2026-10-22",
+        "core": "7e1c0646a",
+        "bH5": "7e1c0646a",
+        "site": "8ac189b15",
+        "android": "0.6.0/333",
+        "migration": "V545 success",
+        "report": "docs/technical/delivery/P2-品牌会员共享-交付记录.md"
+      }
+    },
+    {
+      "id": "P3",
+      "slug": "issuer-ledger",
+      "name": "储值发行基础、渠道收款与旧账升级",
+      "depends": [
+        "P1",
+        "P2"
+      ],
+      "screens": [
+        "s13",
+        "s17",
+        "s18"
+      ],
+      "tables": [
+        "sv_issuer",
+        "sv_issuer_version",
+        "sv_issuer_store_access",
+        "sv_release",
+        "sv_release_tier",
+        "sv_issue_quota",
+        "sv_issue_quota_reservation",
+        "sv_customer_issuer_index"
+      ],
+      "scope": "每店映射单店发行方，保留已有账户、批次及凭证；新增渠道收款路由和发行方上下文，旧单店储值在新账务维度继续正常办理。品牌发行方可配置草稿但不激活收款。",
+      "release": "先兼容数据库增量，再Pay、Core/BFF和B端发行设置。旧账审计及受控切换完成后启用单店issuer选账；未完成映射不切写。",
+      "guard": "不把旧店余额迁成品牌余额；不提前删旧唯一键；已收款原单按原事实恢复。quota先接账务计数，门店政策发布治理在P4启用，P4后旧接口不再有绕过路径。",
+      "rollback": "索引切换前可回退兼容版本；切换写入后保留issuer读写兼容，禁止直接回滚未改造旧程序。新增金融事实只能向前修复，不还原旧余额快照覆盖新交易。",
+      "tests": [
+        "IssuerAccountMigrationTest",
+        "IssuerCollectionRouteTest",
+        "IssuerRechargeRecoveryTest"
+      ],
+      "fronttest": "stored-value-issuer-context.test.ts",
+      "tasks": [
+        [
+          "发行方与收款路由",
+          "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/StoredValueIssuerService.java",
+          "IssuerView configure(IssuerScope scope, IssuerConfigCommand command)",
+          "P1主体/商户可信授权、P2身份",
+          "一范围一发行方；指定主体旗下多个渠道商户，不按支付渠道拆钱包；线下不伪造商户"
+        ],
+        [
+          "旧账审计与唯一键切换",
+          "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueIssuerMigrationService.java",
+          "MigrationReport audit(MigrationBatch batch); CutoverResult cutover(VerifiedManifest manifest)",
+          "旧account/lot/voucher/hold及可信身份",
+          "建立映射和对账清单；保留原accountNo与金额；冲突阻断；条件式新唯一键替换"
+        ],
+        [
+          "单店原单与额度计数",
+          "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRechargeService.java",
+          "RechargeProgress confirmOffline(StoreExecutionContext context, IssuerRechargeCommand command)",
+          "IssuerScope、原收款事实、既有Posting/Redemption",
+          "新增issuer快照、原单resolve与取消栅栏；未到账额度提交/释放与账本原子一致"
+        ],
+        [
+          "B端发行设置及单店兼容",
+          "b-app/src/api/stored-value-issuers.ts; b-app/src/pages/stored-value/index.vue; backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoredValuePlanRechargeController.java",
+          "IssuerConfig/Recharges DTO，保持旧门店路径语义",
+          "IS/RC/RD接口，BRAND暂不可办理",
+          "界面明确本店范围；旧接口映射单店，不显示或扣品牌资金；渠道收款凭据与实际主体一致"
+        ]
+      ],
+      "cases": [
+        [
+          "migrationPreservesFacts",
+          "已有1分充值/核销及零余额账户，保留原单号",
+          "账户、批次、余额、冻结、凭证和幂等全部勾稽"
+        ],
+        [
+          "channelDoesNotSplitWallet",
+          "同发行方顾客分别微信和支付宝充值",
+          "同账户；原收款商户和渠道分别冻结"
+        ],
+        [
+          "receivedUnknownResumesOriginal",
+          "已收款后过账超时，重放同一幂等命令",
+          "只到账一次；不重复收款、不TTL释放已收款额度"
+        ]
+      ],
+      "apiIds": [
+        "IS01",
+        "IS02",
+        "IS03",
+        "IS04",
+        "IS05",
+        "RC01",
+        "RC02",
+        "RC03",
+        "RC04",
+        "RC05",
+        "RC06",
+        "RD01",
+        "RD02",
+        "IN01",
+        "IN06",
+        "IS06"
+      ],
+      "planFile": "2026-10-21-brand-stored-value-issuer-ledger.md",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "P4",
+      "slug": "activity-governance",
+      "name": "门店活动、多档位、上层管控与审批",
+      "depends": [
+        "P3"
+      ],
+      "screens": [
+        "s10",
+        "s23",
+        "s25",
+        "s26",
+        "s27",
+        "s28",
+        "s29",
+        "s30",
+        "s33"
+      ],
+      "tables": [
+        "sv_issue_policy",
+        "sv_issue_policy_version",
+        "pmt_sv_release_link",
+        "pmt_sv_approval"
+      ],
+      "scope": "完整交付单店多档位活动、顶层限制、提交审批、批准发布和停止新发行；品牌门店仍能发本店活动。品牌活动使用的协调内核同时准备，但品牌资金入口留P5。",
+      "release": "Core活动与Pay策略/发布协议成对上线，再B端管控、审批及门店活动页面；本阶段旧新单店充值路径全部执行同一管控。",
+      "guard": "超硬限制不可审批绕过；审批绑定草稿修订与hash，批准再查新规则；Core与Pay未完成激活确认不显示可办理。停止仅阻断新充值，不冻结旧余额。",
+      "rollback": "已生成审批、策略或发布版本不可删除；只能停新发、保留原单及版本恢复。旧程序若不识别治理规则不能回退成为写入口。",
+      "tests": [
+        "StoreIssuancePolicyTest",
+        "StoredValueApprovalRevisionTest",
+        "StoredValuePublishRecoveryTest"
+      ],
+      "fronttest": "stored-value-governance-flow.test.ts",
+      "tasks": [
+        [
+          "Pay策略与办理额度约束",
+          "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/policy/StoredValueIssuePolicyService.java",
+          "EffectivePolicy evaluate(StoreIssueScope scope, Currency currency); IssuePermit reserve(RechargeIntent intent)",
+          "P1管理范围、P3额度池",
+          "全局/品牌门店/单店约束从严；审批OR、允许AND；发布和实际办理均执行，锁内不RPC Core"
+        ],
+        [
+          "Core活动与发布恢复",
+          "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/StoredValueActivityService.java",
+          "ActivitySubmission submit(ActivityScope scope, DraftRevision draft, ActorContext actor)",
+          "Pay prepared release/hash、策略评估",
+          "复用pmt_activity及版本，金额在Pay；单店范围固定；PREPARING/PAY_READY/ACTIVE持久恢复"
+        ],
+        [
+          "审批及旧接口封口",
+          "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/StoredValueActivityApprovalService.java; backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoredValuePlanController.java",
+          "ApprovalResult decide(ApprovalContext context, ApprovalDecision command)",
+          "精确draftHash和最新EffectivePolicy",
+          "同人自批默认拒绝；草稿变化STALE；旧plan创建只能通过治理适配或明确要求升级"
+        ],
+        [
+          "B端治理闭环",
+          "b-app/src/pages/stored-value-policy/index.vue; b-app/src/pages/stored-value-approval/index.vue; b-app/src/pages/stored-value-plan-edit/index.vue",
+          "Policy/Activity/Approval契约和底部档位组件",
+          "PL/SA/AP接口",
+          "100送30被20%阻断，调整后提交待审批；未批准不出现可办理；批准后仍仅本店"
+        ]
+      ],
+      "cases": [
+        [
+          "strictestPolicyAndNoApprovalBypass",
+          "全局30%、品牌门店20%，门店100送30",
+          "发布/办理/审批均拒绝；100送20可按规则提交"
+        ],
+        [
+          "changedDraftOrPolicyInvalidatesDecision",
+          "申请后改金额，或策略从20%收紧为10%",
+          "旧审批STALE或BLOCKED_POLICY，不激活Pay发行配置"
+        ],
+        [
+          "publishAckLostDoesNotDoubleActivate",
+          "Pay激活成功Core没收到ack后恢复",
+          "原release只激活一次；未知阶段不对外假称可办理"
+        ]
+      ],
+      "apiIds": [
+        "PL01",
+        "PL02",
+        "PL03",
+        "PL04",
+        "PL05",
+        "SA01",
+        "SA02",
+        "SA03",
+        "SA04",
+        "SA05",
+        "SA06",
+        "SA07",
+        "SA08",
+        "AP01",
+        "AP02",
+        "AP03",
+        "IN02",
+        "IN03",
+        "IN04",
+        "IN05"
+      ],
+      "planFile": "2026-10-21-brand-stored-value-activity-governance.md",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "P5",
+      "slug": "brand-redemption",
+      "name": "品牌储值、双账户与跨店核销",
+      "depends": [
+        "P4"
+      ],
+      "screens": [
+        "s11",
+        "s12",
+        "s14",
+        "s15",
+        "s16",
+        "s17",
+        "s18",
+        "s32"
+      ],
+      "tables": [
+        "sv_clearing_entry"
+      ],
+      "scope": "品牌活动创建发布、品牌账户入账、双账户选账、同主体跨店核销、C端issuer目录及消费通知定位。同步生成不可变清分事实；跨主体接受能力待P6账单闭环完成后开放。",
+      "release": "Pay及Core选账/授权协议→B端品牌入口与办理/核销→C端H5/小程序；全部客户端和恢复能力就绪后开放同主体品牌储值，跨主体显示明确尚未开通原因。",
+      "guard": "暂不开放跨经营主体品牌收款/核销；已有跨主体成员仍可共享会员。该限制按系统结算能力判断，不另建手工门店白名单；P6通过后同品牌有效门店完整开放。",
+      "rollback": "品牌新资金发生后不可回滚到仅store选账版本。可停品牌新发行，保留双账户查询、历史核销及原单恢复；清分源事件必须可恢复补齐。",
+      "tests": [
+        "DualIssuerAccountIsolationTest",
+        "BrandStoredValueRedemptionTest",
+        "StoredValueIssuerNotificationTest"
+      ],
+      "fronttest": "stored-value-dual-account-flow.test.ts",
+      "tasks": [
+        [
+          "品牌发行与双账户查询",
+          "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/StoredValueIssuerQueryService.java; backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/StoredValueActivityService.java",
+          "List<AvailableAccount> accounts(StoreExecutionContext store, VerifiedCustomer customer)",
+          "P1品牌准入、P2会员、P3账户、P4活动发布",
+          "一品牌一发行方，STORE与BRAND同客两个账户；无账户返回null，不因会员共享建空钱包"
+        ],
+        [
+          "选账贯穿订单与授权",
+          "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoredValueController.java; backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/EntitlementServiceOrderServiceImpl.java",
+          "ConsumptionPreview preview(StoreExecutionContext store, CustomerRef customer, AccountRef account, ServiceItems items)",
+          "明确选中的issuer/account、Core报价及已有消费者授权",
+          "预览、授权、预占、扣减固定同一账户；不组合余额；旧请求只选本店，禁止自动优先扣品牌"
+        ],
+        [
+          "清分事实及消息/C端读取",
+          "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/clearing/StoredValueClearingService.java; backend/shop-app/src/main/java/ai/neargo/shop/portal/mp/MpStoredValueController.java",
+          "ClearingResult record(CommittedUsage usage, FrozenAllocations allocations); MyIssuerPage issuers(ConsumerContext context, Cursor cursor)",
+          "原凭证和批次分配、issuer配置版本",
+          "生成清分事实防重，品牌C端只出现一次；通知按usage去重定位，不以消息发送证明扣款"
+        ],
+        [
+          "B/C双账户页面",
+          "b-app/src/pages/stored-value-account/index.vue; b-app/src/pages/stored-value/components/StoredValueRechargeSheet.vue; c-app/src/pages/stored-value/index.vue; c-app/src/pages/stored-value-records/index.vue",
+          "MB04/BA/US/MP契约、issuer范围opaque引用",
+          "前三任务接口",
+          "本店60/品牌130分开；切店只改本店；品牌/门店方案底部明确切换；消费记录带实际发生店"
+        ]
+      ],
+      "cases": [
+        [
+          "chooseOneWalletOnly",
+          "本店6000、品牌13000，选择品牌核销5000",
+          "品牌剩8000，本店仍6000；余额不足不暗中合并"
+        ],
+        [
+          "switchStorePreservesBrandWallet",
+          "A本店6000、B本店2000，同品牌账户13000",
+          "切B显示2000/13000；A的customerRef与选择状态不复用"
+        ],
+        [
+          "wrongIssuerAuthorizationRejected",
+          "授权绑定品牌账户，提交时替换为本店账户或改金额",
+          "拒绝，原消费者授权不能移用；清分与通知不重复"
+        ]
+      ],
+      "apiIds": [
+        "BA01",
+        "BA02",
+        "BA03",
+        "BA04",
+        "BA05",
+        "BA06",
+        "BA07",
+        "BA08",
+        "MB04",
+        "US01",
+        "US02",
+        "US03",
+        "MP01",
+        "MP02"
+      ],
+      "planFile": "2026-10-21-brand-stored-value-brand-redemption.md",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "P6",
+      "slug": "settlement-reporting",
+      "name": "清分结算、经营汇总与跨主体正式开放",
+      "depends": [
+        "P5"
+      ],
+      "screens": [
+        "s19",
+        "s20",
+        "s21",
+        "s22",
+        "s31",
+        "s34"
+      ],
+      "tables": [
+        "sv_settlement_bill",
+        "sv_settlement_bill_item",
+        "sv_settlement_payment",
+        "sv_settlement_event",
+        "sv_activity_daily_summary"
+      ],
+      "scope": "活动/发行方/门店汇总、品牌主体清分账单、单店内部对账、争议调整、付款登记与独立收款确认；完成后开放跨经营主体品牌储值。",
+      "release": "Pay报表/账单worker和API→BFF与B端报表结算页面→完整跨主体联调→全品牌接受能力。渠道商户结算继续原支付系统，不冒充issuer内部清分。",
+      "guard": "跨主体开放前必须可查询清分源、生成防重账单、付款登记/收款确认角色隔离及未结异常恢复。没有真实微信模板不阻断账务发布，但必须准确显示渠道未配置而非发送成功。",
+      "rollback": "账单及已确认收款不能删表或还原金额。停新跨主体发行，保留原账户消费处理、收支、清分和结算恢复；差错用原单冲正和后续调整，不能直接改历史。",
+      "tests": [
+        "StoredValueClearingStatementTest",
+        "StoredValueSettlementIdempotencyTest",
+        "StoredValueReceiptAuthorizationTest",
+        "StoredValueActivitySummaryTest"
+      ],
+      "fronttest": "stored-value-settlement-flow.test.ts",
+      "tasks": [
+        [
+          "来源批次报表",
+          "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/report/StoredValueSummaryService.java",
+          "IssuerSummary summarize(AuthorizedReportScope scope, ReportPeriod period)",
+          "P5凭证、批次及清分事实",
+          "期初+期间变动=期末；品牌与单店独立；活动按原分配归因，人数笔数按原业务去重"
+        ],
+        [
+          "账期账单与内部对账",
+          "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/settlement/StoredValueSettlementService.java",
+          "GenerationResult generate(SettlementScope scope, Period period, CommandKey key)",
+          "完整清分水位和P5清分行",
+          "按issuer/payer/payee/currency/period唯一；item独占原行；同主体只内部对账，无假付款"
+        ],
+        [
+          "付款确认与争议调整",
+          "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/settlement/StoredValueSettlementPaymentService.java",
+          "PaymentView register(PayerContext payer, PaymentCommand command); BillView confirmReceipt(PayeeContext payee, ReceiptCommand command)",
+          "已有账单、主体财务授权及私有凭据",
+          "部分付款累计不超应付；收款主体岗位独立确认；已结算调整进入后续账期，渠道商户与主体不混用"
+        ],
+        [
+          "B端报表结算与跨主体放行",
+          "b-app/src/pages/stored-value-summary/index.vue; b-app/src/pages/stored-value-settlement/index.vue; b-app/src/pages/stored-value-settlement-detail/index.vue",
+          "RP/CL契约、CrossEntityReadiness检查结果",
+          "前三任务及P5跨店链路",
+          "品牌/单店Tab、独立财务查看范围、来源明细和手工结算；能力验收通过后完整开放品牌有效门店"
+        ]
+      ],
+      "cases": [
+        [
+          "amountsAndScopeReconcile",
+          "品牌1000000+300000−260000=1040000；单店A48000/B2000",
+          "各自勾稽；门店余额合计50000但不可组合支付，不计入品牌余额"
+        ],
+        [
+          "generateBillTwiceConsumesClearingOnce",
+          "同账期并发生成两次，同清分行重复消息",
+          "唯一账单及唯一bill_item，不重复计应付"
+        ],
+        [
+          "paymentIsNotReceipt",
+          "应付120000，登记40000再80000，付款人尝试确认收款",
+          "登记不等于SETTLED；付款人拒绝，收款岗位确认合计120000后才SETTLED"
+        ],
+        [
+          "crossEntityBrandFlowCloses",
+          "主体甲结算、主体乙店充值办理、主体丙店服务核销",
+          "实际渠道商户属于收款主体，清分到丙，来源与账单可追溯，无伪造甲收款事实"
+        ]
+      ],
+      "apiIds": [
+        "RP01",
+        "RP02",
+        "RP03",
+        "RP04",
+        "RP05",
+        "CL01",
+        "CL02",
+        "CL03",
+        "CL04",
+        "CL05",
+        "CL06",
+        "CL07",
+        "CL08",
+        "CL09",
+        "CL10",
+        "CL11",
+        "CL12"
+      ],
+      "planFile": "2026-10-21-brand-stored-value-settlement-reporting.md",
+      "status": "NOT_STARTED"
+    }
+  ],
+  "apiFirstDelivery": {
+    "MG01": "P1",
+    "MG02": "P1",
+    "MG03": "P1",
+    "MG04": "P1",
+    "MG05": "P1",
+    "MG06": "P1",
+    "MG07": "P1",
+    "BR01": "P1",
+    "BR02": "P1",
+    "BR03": "P1",
+    "BR04": "P1",
+    "BR05": "P1",
+    "BR06": "P1",
+    "BR07": "P1",
+    "ST01": "P1",
+    "ST02": "P1",
+    "ST03": "P1",
+    "ST04": "P1",
+    "ST05": "P1",
+    "PL01": "P4",
+    "PL02": "P4",
+    "PL03": "P4",
+    "PL04": "P4",
+    "PL05": "P4",
+    "IS01": "P3",
+    "IS02": "P3",
+    "IS03": "P3",
+    "IS04": "P3",
+    "IS05": "P3",
+    "BA01": "P5",
+    "BA02": "P5",
+    "BA03": "P5",
+    "BA04": "P5",
+    "BA05": "P5",
+    "BA06": "P5",
+    "BA07": "P5",
+    "BA08": "P5",
+    "SA01": "P4",
+    "SA02": "P4",
+    "SA03": "P4",
+    "SA04": "P4",
+    "SA05": "P4",
+    "SA06": "P4",
+    "SA07": "P4",
+    "SA08": "P4",
+    "AP01": "P4",
+    "AP02": "P4",
+    "AP03": "P4",
+    "MB01": "P2",
+    "MB02": "P2",
+    "MB03": "P2",
+    "MB04": "P5",
+    "RC01": "P3",
+    "RC02": "P3",
+    "RC03": "P3",
+    "RC04": "P3",
+    "RC05": "P3",
+    "RC06": "P3",
+    "US01": "P5",
+    "US02": "P5",
+    "US03": "P5",
+    "RD01": "P3",
+    "RD02": "P3",
+    "RP01": "P6",
+    "RP02": "P6",
+    "RP03": "P6",
+    "RP04": "P6",
+    "RP05": "P6",
+    "CL01": "P6",
+    "CL02": "P6",
+    "CL03": "P6",
+    "CL04": "P6",
+    "CL05": "P6",
+    "CL06": "P6",
+    "CL07": "P6",
+    "CL08": "P6",
+    "CL09": "P6",
+    "CL10": "P6",
+    "CL11": "P6",
+    "CL12": "P6",
+    "MP01": "P5",
+    "MP02": "P5",
+    "IN01": "P3",
+    "IN02": "P4",
+    "IN03": "P4",
+    "IN04": "P4",
+    "IN05": "P4",
+    "IN06": "P3",
+    "MG08": "P1",
+    "IS06": "P3",
+    "MG09": "P1"
+  },
+  "apiLaterScopeExtensions": {
+    "P5": [
+      "IS05:BRAND active accounts",
+      "RC01-RC06:BRAND issuance",
+      "RD01-RD02:BRAND execution records",
+      "IN01-IN04:BRAND activation/access"
+    ]
+  },
+  "existingTableExtensions": {
+    "pmt_activity": "P4",
+    "sv_account": "P3",
+    "sv_recharge": "P3",
+    "sv_lot": "P3",
+    "sv_statement": "P3",
+    "sv_voucher": "P3",
+    "sv_recharge_plan": "P3",
+    "sv_hold_allocation": "P3",
+    "ord_ent_service_order": "P5",
+    "mbr_identity_ticket": "P2"
+  }
+}
