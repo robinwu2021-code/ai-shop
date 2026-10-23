@@ -234,7 +234,7 @@ say "构建中（干净副本，约 2 分钟）…"
     || die "构建失败"
 LOCAL_JAR="$WT/backend/$JAR_IN_REPO"
 [ -f "$LOCAL_JAR" ] || die "构建完了却找不到 jar：$LOCAL_JAR"
-BUILT_SHA="$(unzip -p "$LOCAL_JAR" BOOT-INF/classes/META-INF/build-info.properties | sed -n 's/^build.gitSha=//p' | tr -d '\r')"
+BUILT_SHA="$(unzip -p "$LOCAL_JAR" META-INF/build-info.properties | sed -n 's/^build.gitSha=//p' | tr -d '\r')"
 [ "$BUILT_SHA" = "$FULL_SHA" ] || die "Build metadata does not match exact full source SHA: ${BUILT_SHA:-missing}"
 ok "构建完成 $(du -h "$LOCAL_JAR" | cut -f1)"
 
