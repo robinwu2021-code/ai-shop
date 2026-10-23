@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "用户要求优先后端；此处为配置API，前端页面待后续接入。预览/发布缺正式证据时阻断。",
+  "plan": "docs/technical/TDD-订单结账-CKO09种子与配置API.md",
+  "entries": [
+    {
+      "app": "ops-web",
+      "method": "POST",
+      "path": "/ops/pricing-templates"
+    },
+    {
+      "app": "ops-web",
+      "method": "POST",
+      "path": "/ops/pricing-templates/seed-import"
+    },
+    {
+      "app": "ops-web",
+      "method": "GET",
+      "path": "/ops/pricing-templates/{no}/draft"
+    },
+    {
+      "app": "ops-web",
+      "method": "PUT",
+      "path": "/ops/pricing-templates/{no}/draft"
+    },
+    {
+      "app": "ops-web",
+      "method": "POST",
+      "path": "/ops/pricing-templates/{no}/preview"
+    },
+    {
+      "app": "ops-web",
+      "method": "POST",
+      "path": "/ops/pricing-templates/{no}/publish"
+    },
+    {
+      "app": "ops-web",
+      "method": "GET",
+      "path": "/ops/pricing-templates/{no}/revisions/{revisionNo}"
+    }
+  ]
+}

@@ -351,21 +351,23 @@ BaseMapper技术上暴露通用写方法不等于业务许可；服务只使用�
 
 ### 2.9 API与输入输出
 
-以下为**候选路由**；实施时与餐饮原API041/131等canonical条目对齐，扩展原资源、不重复注册等义接口。全端沿现有返回封装、业务异常、国际化及鉴权风格。
+配置部分已由[CKO-09 C1](./TDD-订单结账-CKO09种子与配置API.md)按原core资源与BizContext风格落地，精确输入输出见[配置OpenAPI](../api/pricing-config.openapi.json)；预览/发布/初始化/回滚缺真实证据仍阻断，C2税档与主体登记来源待实现。下列报价路由仍为候选，实施时与餐饮API041/131等canonical条目对齐，不代表已交付。
 
 | 端 | 方法与候选路径 | 输入 | 输出 |
 |---|---|---|---|
-| 平台运营 | GET/PUT `/ops/x/trade/pricing-templates/{templateNo}/draft` | PUT：expectedDraftVersion、schemaVersion、definition | templateNo、draftVersion、activeRevisionNo、definition |
-| 平台运营 | POST `.../{templateNo}/preview`、`.../{templateNo}/publish` | preview：草稿版本；publish：见下述公共发布参数 | 编译差异/问题；新revisionNo/hash |
-| B端/云店管理 | GET/PUT `/biz/x/trade/stores/{storeNo}/pricing-config` | PUT：templateRevisionNo、expectedDraftVersion、override | configNo、草稿、锁定模板、当前版本、可改字段 |
-| B端/云店管理 | POST `.../pricing-config/reset-overrides` | expectedDraftVersion、resetPaths | 新草稿及继承来源 |
-| B端/云店管理 | POST `.../pricing-config/preview`、`.../publish` | 草稿版本；公共发布参数 | 差异、能力门禁；新版本 |
-| B端/云店管理 | POST `.../pricing-config/upgrade-template`、`.../rollback` | 目标templateRevisionNo或历史revisionNo、预期头版本、原因 | 生成新草稿或新发布版本；升级不会自动激活 |
+| 平台运营 | GET/PUT `/ops/pricing-templates/{no}/draft` | PUT：expectedDraftVersion、content | no、industryCode、draftVersion、activeRevisionNo、content、templateRevisionNo |
+| 平台运营 | POST `/ops/pricing-templates/{no}/preview`、`.../{no}/publish` | preview：草稿版本；publish：见下述公共发布参数 | 编译差异/问题；新revisionNo/hash |
+| B端/云店管理 | GET/PUT `/biz/pricing-configs/{no}/draft` | PUT：templateRevisionNo、expectedDraftVersion、content；主体/门店取BizContext | no、industryCode、draftVersion、activeRevisionNo、content、templateRevisionNo |
+| B端/云店管理 | POST `/biz/pricing-configs/{no}/reset` | expectedDraftVersion、paths | 新草稿及继承来源 |
+| B端/云店管理 | POST `/biz/pricing-configs/{no}/preview`、`.../{no}/publish` | 草稿版本；公共发布参数 | 差异、能力门禁；新版本 |
+| B端/云店管理 | POST `/biz/pricing-configs/{no}/upgrade`、`.../{no}/rollback` | 目标templateRevisionNo或历史revisionNo、预期头版本、原因 | 生成新草稿或新发布版本；升级不会自动激活 |
 | 收银/服务员 | POST `/biz/x/food/carts/{cartNo}/quote` | sourceVersion、benefitSelection、fundingIntent、adjustments、cashTender | PricingQuoteVO |
 | 收银/服务员 | POST `/biz/x/food/checks/{checkNo}/quote` | scopeRef、scopeVersion及上述意图；原根账单不能由客户端重置 | PricingQuoteVO |
 | C端/H5/扫码 | POST `/mp/x/food/carts/{cartNo}/quote` | sourceVersion、本人候选券/资金意图；不含员工调整 | 脱敏PricingQuoteVO |
 | B/C | GET 各自前缀`/food/quotes/{quoteNo}`；POST `.../{quoteNo}/revalidate` | revalidate：sourceVersion、expectedEconomicsHash、scopeVersion | 原报价；UNCHANGED/CHANGED/BLOCKED及受控差异 |
 | 内部 | POST `/internal/x/trade/pricing/quotes`及`.../{quoteNo}/revalidate` | 认证调用系统＋typed来源引用＋同合同意图 | 相同内核结果；调用系统不能自报权威单价 |
+
+C1另有POST `/ops/pricing-templates`创建草稿、POST `/ops/pricing-templates/seed-import`固定注册表导入、POST `/biz/pricing-configs/initialize`发布首版及分端GET `.../{no}/revisions/{revisionNo}`读取历史；16个操作均登记到配置OpenAPI。
 
 公共发布参数：`expectedDraftVersion:long, expectedActiveRevisionNo:string|null, previewHash:string, reason:string`，发布带`Idempotency-Key`；创建配置、升级/回滚等写操作同样幂等。具体新增权限码在实施阶段登记到原权限目录及三端矩阵；配置发布、人工打折、人工抹零需分权限校验，不能因已有ORDER_VIEW而授权发布。不预先伪造当前不存在的权限常量。
 

@@ -47,6 +47,12 @@ import java.util.Map;
  */
 public final class Perms {
 
+    /** Shared pricing configuration: read, draft edit and publication are independent grants. */
+    public static final String PRICING_TEMPLATE_READ = "pricing:template:read";
+    public static final String PRICING_TEMPLATE_UPDATE = "pricing:template:update";
+    public static final String PRICING_TEMPLATE_PUBLISH = "pricing:template:publish";
+
+
     // ── 售后 ────────────────────────────────────────────────────────────────
     public static final String AFTERSALE_TICKET_READ = "aftersale:ticket:read";
 

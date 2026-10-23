@@ -99,3 +99,51 @@ schema生成器Node测试1项通过；最终原生MariaDB24项重跑均通过、
 集成时发现统一分支V538/V539动态CHECK替换及MODIFY/ADD省略COLUMN语法未被原测试schema生成器支持。新增精确完整语句白名单重放（仍拒绝未知/被改动动态SQL），保留其他约束；ADD列捕获收紧以防多空格/换行把UNIQUE/INDEX误吞。5项Node回归均通过，新增路径先RED后GREEN；全库生成362表/2417种子，H2完整加载通过。独立评审确认原V532/V533储值内容不变、餐饮迁移只重编号及无重复版本；其空白回溯发现已补测试修复。
 
 合并结果核心回归477项中453项执行通过/24项条件跳过；对应24项发布/导入在临时MariaDB实跑全通过，无跳过。应用守卫31项中23项通过/8项失败；在原统一基线e9ae7bd2d隔离快照重跑ArchitectureTest/SchemaDriftTest，8个失败方法及逐条错误详情与合并结果完全一致，不视为本次引入，也不声称全应用测试通过。餐饮五模块reactor通过：531项/485执行通过/46条件跳过（food-api5、food-core313/38跳过、food-web146、food-channel24、food-server43/8跳过）；尚未将这些跳过项冒充真实数据库或远端验收。最终SchemaGeneratorTest、SchemaParityTest及BackendI18nParityTest共8项重跑全通过。
+
+
+### C1：分端API与缺证据阻断（2026-10-23，已完成本切片）
+
+使用执行计划技能在已有干净worktree的统一分支5c5b8d154继续，复用前述经确认的CKO-09计划。本切片先提供真实身份下可用的模板/种子草稿API及门店已有配置草稿操作；C2正式税档审核/主体税登记权威尚未实现，整个CKO-09不标完成。
+
+裁决：C步原文“先补齐来源再对接API”调整为先接可验证且无激活副作用的API，所有需要发布证据的入口通过唯一服务端Port加载；无provider、无证据、过期、错作用域均阻断，不写模拟成功provider。代价是C2前初始化/预览/发布/回滚不能成功，门店首次初始化也不会伪造草稿或默认有效配置。该顺序允许独立验收权限和输入边界，不改变税务归属决策。
+
+| AC | C1可验收行为 | 代码/验证 |
+|---|---|---|
+| A01 | 运营只能用OPERATOR登录；B端只能用MERCHANT登录，门店在BizContext授权集合且目录归属一致 | PricingAccessPolicyTest |
+| A02 | HTTP不得接收Context/tenant/entity/store/capabilities/verifiedTaxProfiles；多余字段拒绝 | PricingConfigRequests、API解码测试 |
+| A03 | 原有Service接入controller，CAS/幂等键及previewHash/原因透传，不在Web重算 | OpsPricingTemplateController、BizPricingConfigController |
+| A04 | 预览/发布/初始化/回滚缺证据、过期或作用域不一致阻断；草稿操作不加载证据 | PricingConfigEvidencePort + PricingAccessPolicy |
+| A05 | 6条权限分读/改/发，原角色授权不扩大；新错误码三语完整 | Perms/BizPerms及权限种子，方法安全代理测试 |
+
+输入输出沿PricingConfigCommands的DraftVO/PreviewVO/RevisionVO和SeedService.ImportReport。HTTP请求使用独立PricingConfigRequests闭合record（含Bean Validation），不暴露内部Context构造字段。Idempotency-Key对写操作必传（种子由服务端版本摘要幂等，不接受客户端registryVersion）。registryVersion固定PRICING_RULE_SPEC_V4。
+
+平台：POST /ops/pricing-templates、POST /ops/pricing-templates/seed-import；GET/PUT /ops/pricing-templates/{no}/draft；POST /ops/pricing-templates/{no}/preview、/{no}/publish；GET /ops/pricing-templates/{no}/revisions/{revisionNo}。平台预览为read权限，发布单独publish权限。
+
+门店：POST /biz/pricing-configs/initialize；GET/PUT /biz/pricing-configs/{no}/draft；POST /biz/pricing-configs/{no}/preview、/{no}/publish、/{no}/reset、/{no}/upgrade、/{no}/rollback；GET /biz/pricing-configs/{no}/revisions/{revisionNo}。初始化会发布首版，必须publish权限及证据；reset/upgrade只变更草稿，update权限；C端无配置入口。
+
+证据合同仅在shop-base/spi.trade，返回精确tenant/entity/store/resource/template作用域、到期时间、能力、已核验税档No、来源引用。不提供默认成功实现；由后续真实owner和平台审核/主体登记实现者接通。草稿Context能力为0且已过期，只能进入原草稿操作；绝不能用来预览或发布。发布证据最长5分钟，来源不得为空，读取失败不回落到seed、sys_setting或前端值。
+
+步骤：先写身份/证据/请求与分端授权测试RED→GREEN；实现唯一身份策略和Controller；登记V548 API-only权限点（不分配既有角色）/三语/端点映射；执行核心、API方法鉴权、实际24项DB回归及生成物对账；独立评审后按实际C1状态提交。权限发布与税档发布仍分离，C1不提供税档审核成功接口。
+
+
+### C1评审、验证及代码对账
+
+| 设计 | 实现 |
+|---|---|
+| 可信身份与缺来源门禁 | PricingAccessPolicy；仅OPERATOR/指定MERCHANT门店可用，无默认PricingConfigEvidencePort实现 |
+| 闭合输入与分端Controller | PricingConfigRequests；7个Ops/9个Biz端点；CAS版本必须显式且非null，reason上限沿原256 |
+| 保持幂等恢复 | 两个Service及impl增加惰性证据overload，PricingPublicationPolicy先读原收据再查owner，不将局部SQL scope bypass传播给owner；同actor/tenant/entity/store校验 |
+| 草稿恢复继承 | reset只做可编辑路径及代码结构上界验证，不依赖live证据、不授予实际能力、不移动active指针；新发布仍需真实证据 |
+| 并发种子导入 | 真实并发sys_idempotent插入死锁已复现；仅PessimisticLockingFailure最多3次独立事务重试，ambient事务不自动重试 |
+| 权限、错误与数据库 | 6个常量及Biz标签；V548仅3个Ops ACTION权限点/ui_ready=0，不给旧角色授权；40190三语词条 |
+| API契约与前端阶段 | pricing-config.openapi.json含16个操作、成功/错误ApiResult信封；独立Ops/Biz后端先行清单，经原守卫逐条验证真实handler和专用契约，不扩充旧欠账 |
+
+独立评审的reset过期上下文、reason500/256不一致、错误信封data:null及宽松JSON下CAS null问题，均补失败回归后修复。reset真实DB先1断言失败/0错误；reason/CAS测试先2断言失败/0错误；JSONschema错误信封16个操作先失败后全部通过。API重放收据消融移除前置恢复后1断言失败/0错误（检测到访问已不可用owner），代码已原样恢复。
+
+最终实际证据：16项新增Java测试通过（含HTTP绑定/方法权限/身份/请求/事务重试）；19发布+7种子导入真实MariaDB测试全部通过、无跳过。完整核心reactor BUILD SUCCESS：shop-base 246项、shop-base-auth 28项全部通过，shop-core 495项中469项执行通过、26项条件跳过（这26项已在上述MariaDB独立实跑通过）。Node交付/schema生成共9项、Python交付4项及JSONschema契约3项全部通过，SQL方言扫描无新增依赖。
+
+应用守卫34项中26项通过、8项失败：ArchitectureTest 7项及SchemaDriftTest 1项，失败方法与错误详情均与原统一分支e9ae7bd2d隔离快照一致。SchemaGeneratorTest、SchemaParityTest、BizRoleSeedTest 3项、BizKeyConventionTest 3项、BackendI18nParityTest 6项及OutboxRoutingTest 2项均通过，不声称全应用守卫通过。生成schema为362表/2420种子，增加的3条仅为权限点。
+
+Ops新增7端点全部有权限映射，0条失效映射规则；20个原有未映射端点与基线一致。后端先行交付守卫通过，未分类出口仍为原有10项。角色端点矩阵按实际源码重新生成，同时刷新原fixture遗漏的11个既有积分端点；与C1前实际源码对照，所有非SUPER_ADMIN角色集合不变，SUPER_ADMIN仅由原通配权限获得7个新增API，未修改角色授权。审核完成不等于平台已批准种子税档；本切片没有向业务库执行新迁移或部署运行包。
+
+C2继续事项：原主体税登记及门店绑定来源、平台审核税档完整版本与证据存储，真实能力owner汇总/生效资格解析；再实现PricingConfigEvidencePort并验证稳定证据No/expiry在preview→publish间一致。C2前预览、首次初始化、新发布及回滚返回40190；已成功命令的同身份同键重放仍返回原收据。整个CKO-09不标完成。

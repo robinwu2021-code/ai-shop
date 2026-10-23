@@ -1,0 +1,1777 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Shared pricing configuration API",
+    "version": "1.0.0",
+    "description": "CKO09-C1. Draft APIs available; initialization/preview/publication/rollback require authentic backend evidence. No default provider or legal tax approval is supplied."
+  },
+  "paths": {
+    "/ops/pricing-templates": {
+      "post": {
+        "operationId": "opsPricingTemplateCreate",
+        "security": [
+          {
+            "OpsToken": []
+          }
+        ],
+        "x-permission": "pricing:template:update",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared ApiResult envelope; nonzero code reports a business rejection including 40190 missing verified evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/DraftVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/unknown request fields or missing required input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or scope denied"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Create"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/pricing-templates/seed-import": {
+      "post": {
+        "operationId": "opsPricingTemplateImportSeed",
+        "security": [
+          {
+            "OpsToken": []
+          }
+        ],
+        "x-permission": "pricing:template:update",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Shared ApiResult envelope; nonzero code reports a business rejection including 40190 missing verified evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/ImportReport"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/unknown request fields or missing required input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or scope denied"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Seed"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/pricing-templates/{no}/draft": {
+      "get": {
+        "operationId": "opsPricingTemplateDraft",
+        "security": [
+          {
+            "OpsToken": []
+          }
+        ],
+        "x-permission": "pricing:template:read",
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared ApiResult envelope; nonzero code reports a business rejection including 40190 missing verified evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/DraftVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/unknown request fields or missing required input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or scope denied"
+          }
+        }
+      },
+      "put": {
+        "operationId": "opsPricingTemplateSave",
+        "security": [
+          {
+            "OpsToken": []
+          }
+        ],
+        "x-permission": "pricing:template:update",
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared ApiResult envelope; nonzero code reports a business rejection including 40190 missing verified evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/DraftVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/unknown request fields or missing required input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or scope denied"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Save"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/pricing-templates/{no}/preview": {
+      "post": {
+        "operationId": "opsPricingTemplatePreview",
+        "security": [
+          {
+            "OpsToken": []
+          }
+        ],
+        "x-permission": "pricing:template:read",
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared ApiResult envelope; nonzero code reports a business rejection including 40190 missing verified evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/PreviewVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/unknown request fields or missing required input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or scope denied"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preview"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/pricing-templates/{no}/publish": {
+      "post": {
+        "operationId": "opsPricingTemplatePublish",
+        "security": [
+          {
+            "OpsToken": []
+          }
+        ],
+        "x-permission": "pricing:template:publish",
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared ApiResult envelope; nonzero code reports a business rejection including 40190 missing verified evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/RevisionVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/unknown request fields or missing required input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or scope denied"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Publish"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/pricing-templates/{no}/revisions/{revisionNo}": {
+      "get": {
+        "operationId": "opsPricingTemplateRevision",
+        "security": [
+          {
+            "OpsToken": []
+          }
+        ],
+        "x-permission": "pricing:template:read",
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "revisionNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared ApiResult envelope; nonzero code reports a business rejection including 40190 missing verified evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/RevisionVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/unknown request fields or missing required input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or scope denied"
+          }
+        }
+      }
+    },
+    "/biz/pricing-configs/initialize": {
+      "post": {
+        "operationId": "bizPricingConfigInitialize",
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "x-permission": "biz:pricing:config:publish",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared ApiResult envelope; nonzero code reports a business rejection including 40190 missing verified evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/RevisionVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/unknown request fields or missing required input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or scope denied"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Initialize"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/pricing-configs/{no}/draft": {
+      "get": {
+        "operationId": "bizPricingConfigDraft",
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "x-permission": "biz:pricing:config:read",
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared ApiResult envelope; nonzero code reports a business rejection including 40190 missing verified evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/DraftVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/unknown request fields or missing required input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or scope denied"
+          }
+        }
+      },
+      "put": {
+        "operationId": "bizPricingConfigSave",
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "x-permission": "biz:pricing:config:update",
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared ApiResult envelope; nonzero code reports a business rejection including 40190 missing verified evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/DraftVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/unknown request fields or missing required input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or scope denied"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Save"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/pricing-configs/{no}/preview": {
+      "post": {
+        "operationId": "bizPricingConfigPreview",
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "x-permission": "biz:pricing:config:read",
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared ApiResult envelope; nonzero code reports a business rejection including 40190 missing verified evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/PreviewVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/unknown request fields or missing required input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or scope denied"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preview"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/pricing-configs/{no}/publish": {
+      "post": {
+        "operationId": "bizPricingConfigPublish",
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "x-permission": "biz:pricing:config:publish",
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared ApiResult envelope; nonzero code reports a business rejection including 40190 missing verified evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/RevisionVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/unknown request fields or missing required input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or scope denied"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Publish"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/pricing-configs/{no}/rollback": {
+      "post": {
+        "operationId": "bizPricingConfigRollback",
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "x-permission": "biz:pricing:config:publish",
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared ApiResult envelope; nonzero code reports a business rejection including 40190 missing verified evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/RevisionVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/unknown request fields or missing required input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or scope denied"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Publish"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/pricing-configs/{no}/revisions/{revisionNo}": {
+      "get": {
+        "operationId": "bizPricingConfigRevision",
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "x-permission": "biz:pricing:config:read",
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "revisionNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared ApiResult envelope; nonzero code reports a business rejection including 40190 missing verified evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/RevisionVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/unknown request fields or missing required input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or scope denied"
+          }
+        }
+      }
+    },
+    "/biz/pricing-configs/{no}/reset": {
+      "post": {
+        "operationId": "bizPricingConfigReset",
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "x-permission": "biz:pricing:config:update",
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared ApiResult envelope; nonzero code reports a business rejection including 40190 missing verified evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/DraftVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/unknown request fields or missing required input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or scope denied"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Reset"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/pricing-configs/{no}/upgrade": {
+      "post": {
+        "operationId": "bizPricingConfigUpgrade",
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "x-permission": "biz:pricing:config:update",
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared ApiResult envelope; nonzero code reports a business rejection including 40190 missing verified evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/DraftVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/unknown request fields or missing required input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or scope denied"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Upgrade"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "OpsToken": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "BizToken": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Create": {
+        "type": "object",
+        "properties": {
+          "industryCode": {
+            "type": "string",
+            "enum": [
+              "FOOD",
+              "RETAIL",
+              "BEAUTY_SERVICE"
+            ],
+            "minLength": 1
+          },
+          "templateCode": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "definition": {
+            "type": "string",
+            "maxLength": 65536,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "industryCode",
+          "templateCode",
+          "name",
+          "definition"
+        ],
+        "additionalProperties": false
+      },
+      "Save": {
+        "type": "object",
+        "properties": {
+          "expectedDraftVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 65536,
+            "minLength": 1
+          },
+          "templateRevisionNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          }
+        },
+        "required": [
+          "expectedDraftVersion",
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "Preview": {
+        "type": "object",
+        "properties": {
+          "expectedDraftVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "rollbackFromRevisionNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          }
+        },
+        "required": [
+          "expectedDraftVersion"
+        ],
+        "additionalProperties": false
+      },
+      "Publish": {
+        "type": "object",
+        "properties": {
+          "expectedDraftVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "expectedActiveRevisionNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          },
+          "previewHash": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "rollbackFromRevisionNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          }
+        },
+        "required": [
+          "expectedDraftVersion",
+          "previewHash",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "Initialize": {
+        "type": "object",
+        "properties": {
+          "templateRevisionNo": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "templateRevisionNo",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "Reset": {
+        "type": "object",
+        "properties": {
+          "expectedDraftVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "paths": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "expectedDraftVersion",
+          "paths"
+        ],
+        "additionalProperties": false
+      },
+      "Upgrade": {
+        "type": "object",
+        "properties": {
+          "expectedDraftVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "templateRevisionNo": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "expectedDraftVersion",
+          "templateRevisionNo"
+        ],
+        "additionalProperties": false
+      },
+      "Seed": {
+        "type": "object",
+        "properties": {
+          "seed": {
+            "type": "string",
+            "maxLength": 65536,
+            "minLength": 1
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "DRY_RUN",
+              "DRAFT"
+            ],
+            "minLength": 1
+          }
+        },
+        "required": [
+          "seed",
+          "mode"
+        ],
+        "additionalProperties": false
+      },
+      "DraftVO": {
+        "type": "object",
+        "properties": {
+          "no": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "industryCode": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "draftVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "activeRevisionNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 65536
+          },
+          "templateRevisionNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          }
+        },
+        "required": [
+          "no",
+          "industryCode",
+          "draftVersion",
+          "activeRevisionNo",
+          "content",
+          "templateRevisionNo"
+        ],
+        "additionalProperties": false
+      },
+      "RevisionVO": {
+        "type": "object",
+        "properties": {
+          "revisionNo": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "parentNo": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "templateRevisionNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          },
+          "overrideSnapshot": {
+            "type": "string",
+            "maxLength": 65536
+          },
+          "effectiveSnapshot": {
+            "type": "string",
+            "maxLength": 65536
+          },
+          "effectiveHash": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "previousRevisionNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          },
+          "rollbackFromRevisionNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          }
+        },
+        "required": [
+          "revisionNo",
+          "parentNo",
+          "revision",
+          "templateRevisionNo",
+          "overrideSnapshot",
+          "effectiveSnapshot",
+          "effectiveHash",
+          "previousRevisionNo",
+          "rollbackFromRevisionNo"
+        ],
+        "additionalProperties": false
+      },
+      "PreviewVO": {
+        "type": "object",
+        "properties": {
+          "previewHash": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "compilation": {
+            "type": "object",
+            "properties": {
+              "config": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "EffectivePricingConfig: definition(schemaVersion=2), rules, canonicalJson, configHash; no executable script"
+              },
+              "issues": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "path": {
+                      "type": "string",
+                      "maxLength": 256
+                    },
+                    "message": {
+                      "type": "string",
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "path",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "config",
+              "issues"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "previewHash",
+          "compilation"
+        ],
+        "additionalProperties": false
+      },
+      "ImportReport": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "DRY_RUN",
+              "DRAFT"
+            ]
+          },
+          "seedVersion": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "seedHash": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "ruleCount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "templateCount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "taxDraftCount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "templates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sourceTemplateNo": {
+                  "type": "string",
+                  "maxLength": 32
+                },
+                "templateNo": {
+                  "type": "string",
+                  "maxLength": 32
+                },
+                "industryCode": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "required": [
+                "sourceTemplateNo",
+                "templateNo",
+                "industryCode"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "mode",
+          "seedVersion",
+          "seedHash",
+          "ruleCount",
+          "templateCount",
+          "taxDraftCount",
+          "templates"
+        ],
+        "additionalProperties": false
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "not": {
+              "const": 0
+            }
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "code",
+          "msg"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

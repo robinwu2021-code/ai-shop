@@ -34,6 +34,12 @@ import java.util.Set;
  */
 public final class BizPerms {
 
+    /** Shared pricing configuration: read, draft edit and publication are independent grants. */
+    public static final String PRICING_CONFIG_READ = "biz:pricing:config:read";
+    public static final String PRICING_CONFIG_UPDATE = "biz:pricing:config:update";
+    public static final String PRICING_CONFIG_PUBLISH = "biz:pricing:config:publish";
+
+
     // ---------------------------------------------------------------- 履约（按「面对谁」分三档）
 
     /** 到货登记、分拣单、短少上报。只对货，不对人 —— 分拣单本就不含金额与买家 */
@@ -140,6 +146,9 @@ public final class BizPerms {
      * {@code BizRoleSeedTest} 断言这里覆盖了全部权限码 —— 加码忘了加说明就红。
      */
     public static final Map<String, String> LABELS = Map.ofEntries(
+            Map.entry(PRICING_CONFIG_READ, "查看门店结账规则"),
+            Map.entry(PRICING_CONFIG_UPDATE, "编辑门店结账规则草稿"),
+            Map.entry(PRICING_CONFIG_PUBLISH, "发布门店结账规则"),
             Map.entry(RECEIVE, "到货登记与分拣"),
             Map.entry(VERIFY, "核销取货"),
             Map.entry(SHIP, "发货与标记送达"),

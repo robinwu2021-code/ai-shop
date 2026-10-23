@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import tools.jackson.databind.json.JsonMapper;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.pricing.PricingCapabilities;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.event.OutboxPump;
@@ -113,6 +114,41 @@ class PricingConfigServiceTest {
                 "ord_pricing_template_revision", "ord_pricing_template", "sys_idempotent", "sys_outbox")) {
             jdbc.execute("DELETE FROM " + table);
         }
+    }
+
+    @Test
+    void apiReceiptReplayDoesNotReloadUnavailablePublicationOwners() {
+        var draft = create();
+        var preview = templates.preview(platform(), draft.no(), 0, null);
+        var req = new PublishReq(0, null, preview.previewHash(), "first", null);
+        var first = templates.publish(platform(), draft.no(), req, "API_PUB");
+        var expired = new Context("MAIN", platform().actorNo(), true, null, null,
+                new PricingCapabilities(0, 0, false, false, false), "DRAFT_ONLY", Instant.EPOCH, Set.of());
+        assertThat(assertDoesNotThrow(() -> templates.publish(expired, draft.no(), req, "API_PUB", () -> {
+            throw new AssertionError("Receipt replay must not contact owner");
+        }))).isEqualTo(first);
+        var init = new InitializeReq(first.revisionNo(), "init");
+        var original = stores.initialize(store(), init, "API_INIT");
+        var identity = new Context("MAIN", store().actorNo(), false, "E1", "S1",
+                new PricingCapabilities(0, 0, false, false, false), "DRAFT_ONLY", Instant.EPOCH, Set.of());
+        assertThat(assertDoesNotThrow(() -> stores.initialize(identity, init, "API_INIT", () -> {
+            throw new AssertionError("Initialization receipt must survive owner outage");
+        }))).isEqualTo(original);
+    }
+
+    @Test
+    void publicationEvidenceCannotSwitchTheTrustedOperatorIdentity() {
+        var draft = create();
+        var preview = templates.preview(platform(), draft.no(), 0, null);
+        var req = new PublishReq(0, null, preview.previewHash(), "publish", null);
+        var other = new Context("MAIN", "OTHER_OPS", true, null, null, capabilities(), "CAP1",
+                Instant.now().plusSeconds(60), Set.of());
+        assertThatThrownBy(() -> templates.publish(platform(), draft.no(), req, "SWITCH", () -> {
+            assertThat(DataScopeContext.isSkipped()).isFalse();
+            return other;
+        }))
+                .isInstanceOf(BizException.class);
+        assertThat(count("ord_pricing_template_revision")).isZero();
     }
 
     @Test
@@ -333,20 +369,22 @@ class PricingConfigServiceTest {
         var current = stores.getDraft(store(), first.parentNo());
         var saved = stores.saveDraft(store(), current.no(), new DraftSaveReq(current.draftVersion(),
                 "{\"couponLimits\":{\"total\":1}}", template.revisionNo()), "SAVE1");
+        var drafts = new Context("MAIN", store().actorNo(), false, "E1", "S1",
+                new PricingCapabilities(0, 0, false, false, false), "DRAFT_ONLY", Instant.EPOCH, Set.of());
         var resetReq = new ResetReq(saved.draftVersion(), List.of("couponLimits.total"));
-        var reset = assertDoesNotThrow(() -> stores.resetOverrides(store(), saved.no(), resetReq, "RESET1"));
+        var reset = assertDoesNotThrow(() -> stores.resetOverrides(drafts, saved.no(), resetReq, "RESET1"));
         assertThat(reset.content()).doesNotContain("total");
-        assertThat(stores.resetOverrides(store(), saved.no(), resetReq, "RESET1")).isEqualTo(reset);
+        assertThat(stores.resetOverrides(drafts, saved.no(), resetReq, "RESET1")).isEqualTo(reset);
         assertThat(reset.activeRevisionNo()).isEqualTo(first.revisionNo());
         var templateHead = templates.getDraft(platform(), template.parentNo());
         var second = templates.publish(platform(), template.parentNo(), request(templateHead), "TEMPLATE2");
         var upgradeReq = new UpgradeReq(reset.draftVersion(), second.revisionNo());
-        var upgraded = stores.upgradeTemplate(store(), reset.no(), upgradeReq, "UPGRADE1");
+        var upgraded = stores.upgradeTemplate(drafts, reset.no(), upgradeReq, "UPGRADE1");
         assertThat(upgraded.templateRevisionNo()).isEqualTo(second.revisionNo());
         assertThat(upgraded.activeRevisionNo()).isEqualTo(first.revisionNo());
-        assertThat(stores.upgradeTemplate(store(), reset.no(), upgradeReq, "UPGRADE1")).isEqualTo(upgraded);
+        assertThat(stores.upgradeTemplate(drafts, reset.no(), upgradeReq, "UPGRADE1")).isEqualTo(upgraded);
         assertThat(count("ord_store_pricing_revision")).isEqualTo(1);
-        assertThatThrownBy(() -> stores.resetOverrides(store(), current.no(),
+        assertThatThrownBy(() -> stores.resetOverrides(drafts, current.no(),
                 new ResetReq(upgraded.draftVersion(), List.of("taxBinding.storeMayEditRate")), "PROTECTED"))
                 .isInstanceOf(BizException.class);
     }

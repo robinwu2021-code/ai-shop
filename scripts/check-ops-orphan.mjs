@@ -87,6 +87,11 @@ const allRows = orphans();
 const deferred = readDeferredDelivery(ROOT, 'docs/api/backend-ops-ui-delivery.json', {
   app: 'ops-web', prefix: '/ops', handlers: scanEndpoints(), missing: allRows,
 });
+const pricingDeferred = readDeferredDelivery(ROOT, 'docs/api/pricing-config-ops-ui-delivery.json', {
+  app: 'ops-web', prefix: '/ops', handlers: scanEndpoints(), missing: allRows,
+  contract: 'docs/api/pricing-config.openapi.json',
+});
+for (const entry of pricingDeferred) deferred.add(entry);
 const rows = allRows.filter(row => !deferred.has(`${row.method} ${norm(row.path)}`));
 const check = process.argv.includes("--check");
 const known = existsSync(BASELINE)

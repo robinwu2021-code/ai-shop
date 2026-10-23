@@ -14207,3 +14207,18 @@ INSERT IGNORE INTO notify_scene_channel
 VALUES
     ('MAIN','STORED_VALUE_REDEEMED','C_USER','WXSUB',0,'NORMAL',0,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'SYSTEM','SYSTEM'),
     ('MAIN','STORED_VALUE_REDEEMED','C_USER','INAPP',1,'NORMAL',0,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'SYSTEM','SYSTEM');
+INSERT IGNORE INTO sys_function_point
+    (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,
+     matrix_code,point_type,sort,created_at,updated_at)
+VALUES ('OPS_PRICING_TEMPLATE_READ','OPS_SYSTEM','查看结账模板','结账配置',NULL,
+        'pricing:template:read','pricing:template:read','IMPLEMENTED',0,'P-4.2','ACTION',90,NOW(),NOW());
+INSERT IGNORE INTO sys_function_point
+    (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,
+     matrix_code,point_type,sort,created_at,updated_at)
+VALUES ('OPS_PRICING_TEMPLATE_UPDATE','OPS_SYSTEM','维护结账模板草稿','结账配置',NULL,
+        'pricing:template:update','pricing:template:update','IMPLEMENTED',0,'P-4.2','ACTION',90,NOW(),NOW());
+INSERT IGNORE INTO sys_function_point
+    (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,
+     matrix_code,point_type,sort,created_at,updated_at)
+VALUES ('OPS_PRICING_TEMPLATE_PUBLISH','OPS_SYSTEM','发布结账模板','结账配置',NULL,
+        'pricing:template:publish','pricing:template:publish','IMPLEMENTED',0,'P-4.2','ACTION',90,NOW(),NOW());

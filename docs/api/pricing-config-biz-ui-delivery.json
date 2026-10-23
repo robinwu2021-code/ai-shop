@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "用户要求优先后端；此处为配置API，前端页面待后续接入。预览/发布缺正式证据时阻断。",
+  "plan": "docs/technical/TDD-订单结账-CKO09种子与配置API.md",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pricing-configs/initialize"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/pricing-configs/{no}/draft"
+    },
+    {
+      "app": "b-app",
+      "method": "PUT",
+      "path": "/biz/pricing-configs/{no}/draft"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pricing-configs/{no}/preview"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pricing-configs/{no}/publish"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pricing-configs/{no}/rollback"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/pricing-configs/{no}/revisions/{revisionNo}"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pricing-configs/{no}/reset"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pricing-configs/{no}/upgrade"
+    }
+  ]
+}
