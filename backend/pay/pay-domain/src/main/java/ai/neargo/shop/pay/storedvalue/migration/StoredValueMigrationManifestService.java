@@ -55,6 +55,7 @@ public class StoredValueMigrationManifestService {
     public record Manifest(String manifestNo,String fingerprint,String authorityHash,long accountCount) { }
     public record SavedManifest(Manifest manifest,Evidence evidence,StoredValueIssuerMigrationService.Report report) { }
     public record Applied(String manifestNo,String state,StoredValueIssuerMigrationService.MappingResult mapping) { }
+    public record Fenced(String manifestNo,String state,long issuerCount) { }
     private final IssuerRepository db;
     private final StoredValueIssuerMigrationService migration;
     private final boolean maintenanceEnabled,writersEnabled;
@@ -111,6 +112,31 @@ public class StoredValueMigrationManifestService {
         }).manifest();
     }
     public Manifest find(Evidence input,String manifestNo) { return saved(input.canonical(),manifestNo).manifest(); }
+    /** Internal local-writer maintenance command; this is not proof that every deployed writer is upgraded. */
+    public Fenced fence(Evidence input,String manifestNo,String key) {
+        requireMaintenance();
+        if(!writersEnabled)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        var evidence=input.canonical();ContractChecks.id(key);
+        var original=saved(evidence,manifestNo);
+        String payload=hash(db.encode(List.of(manifestNo,evidence)));
+        return command(evidence,"SV_MIGRATION_FENCE",key,payload,manifestNo,Fenced.class,()->{
+            var batch=evidence.batch();
+            // Same issuer-before-account order as aware money writers: wait for in-flight work, then audit.
+            for(var store:batch.stores()) {
+                var issuer=db.one("SELECT write_mode FROM sv_issuer WHERE tenant_no=? AND issuer_no=? AND scope_type='STORE' AND scope_no=? AND deleted=0 FOR UPDATE",batch.tenantNo(),store.issuerNo(),store.storeNo());
+                if(issuer==null||!Set.of("LEGACY","LEGACY_MAPPED","FENCED").contains(text(issuer,"write_mode")))throw BizException.of(ErrorCode.CONFLICT);
+                db.rows("SELECT account_no FROM sv_account WHERE tenant_no=? AND (store_no=? OR (store_no IS NULL AND entity_no=?)) AND deleted=0 ORDER BY account_no FOR UPDATE",batch.tenantNo(),store.storeNo(),store.entityNo());
+            }
+            evidence.verifyPayScope(db,true);
+            var report=migration.audit(batch);
+            if(!report.ready()||!original.manifest().fingerprint().equals(report.fingerprint()))throw BizException.of(ErrorCode.CONFLICT);
+            var now=Timestamp.from(Instant.now());
+            for(var store:batch.stores()) {
+                if(db.update("UPDATE sv_issuer SET write_mode='FENCED',updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND issuer_no=? AND deleted=0",now,batch.actorNo(),batch.tenantNo(),store.issuerNo())!=1)throw BizException.of(ErrorCode.CONFLICT);
+            }
+            return new Fenced(manifestNo,"WRITE_FENCED",batch.stores().size());
+        });
+    }
     /** Only server-stored immutable audit facts may authorize metadata mapping. Activation/DDL are separate. */
     public Applied apply(Evidence input,String manifestNo,String key) {
         requireMaintenance();

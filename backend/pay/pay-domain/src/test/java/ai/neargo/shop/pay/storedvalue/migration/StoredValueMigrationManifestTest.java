@@ -111,4 +111,34 @@ class StoredValueMigrationManifestTest {
         assertThatThrownBy(()->fixture(false,false).service().probe(f.evidence().authorities())).isInstanceOf(BizException.class);
     }
 
+    @Test void fenceCommandDrainsIssuerGuardAndReplaysWithoutUnfencingOrRepeatingAudit() throws Exception {
+        var f=fixture(true,true);var manifest=f.service().prepare(f.evidence(),"P1");
+        var fenced=f.service().fence(f.evidence(),manifest.manifestNo(),"F1");
+        assertThat(fenced.state()).isEqualTo("WRITE_FENCED");
+        assertThat(f.data().jdbc().queryForObject("SELECT write_mode FROM sv_issuer",String.class)).isEqualTo("FENCED");
+        assertThat(f.data().jdbc().queryForObject("SELECT issuer_no FROM sv_account",String.class)).isNull();
+        assertThat(f.data().jdbc().queryForObject("SELECT status FROM sv_issuer",String.class)).isEqualTo("DRAFT");
+        f.service().apply(f.evidence(),manifest.manifestNo(),"A1");
+        var restarted=new StoredValueMigrationManifestService(f.data().db(),f.data().service(),true,true);
+        assertThat(restarted.fence(f.evidence(),manifest.manifestNo(),"F1")).isEqualTo(fenced);
+        assertThat(f.data().jdbc().queryForObject("SELECT write_mode FROM sv_issuer",String.class)).isEqualTo("FENCED");
+        assertThat(f.data().jdbc().queryForObject("SELECT COUNT(*) FROM sv_voucher",Long.class)).isEqualTo(2);
+    }
+    @Test void staleManifestCannotPauseWritingAndLeavesNoFenceReceipt() throws Exception {
+        var f=fixture(true,true);var manifest=f.service().prepare(f.evidence(),"P1");
+        f.data().jdbc().update("UPDATE sv_account SET version=version+1");
+        assertThatThrownBy(()->f.service().fence(f.evidence(),manifest.manifestNo(),"F1")).isInstanceOf(BizException.class);
+        assertThat(f.data().jdbc().queryForObject("SELECT write_mode FROM sv_issuer",String.class)).isEqualTo("LEGACY");
+        assertThat(f.data().jdbc().queryForObject("SELECT COUNT(*) FROM pay_ent_command_dedup WHERE operation_kind='SV_MIGRATION_FENCE'",Long.class)).isZero();
+    }
+    @Test void fenceCannotDowngradeIssuerModeOrRunWithoutUpgradedLocalWriters() throws Exception {
+        var f=fixture(true,true);var manifest=f.service().prepare(f.evidence(),"P1");
+        var old=new StoredValueMigrationManifestService(f.data().db(),f.data().service(),true,false);
+        assertThatThrownBy(()->old.fence(f.evidence(),manifest.manifestNo(),"F1")).isInstanceOf(BizException.class);
+        f.data().jdbc().update("UPDATE sv_issuer SET write_mode='ISSUER'");
+        assertThatThrownBy(()->f.service().fence(f.evidence(),manifest.manifestNo(),"F1")).isInstanceOf(BizException.class);
+        assertThat(f.data().jdbc().queryForObject("SELECT write_mode FROM sv_issuer",String.class)).isEqualTo("ISSUER");
+        assertThat(f.data().jdbc().queryForObject("SELECT COUNT(*) FROM pay_ent_command_dedup WHERE operation_kind='SV_MIGRATION_FENCE'",Long.class)).isZero();
+    }
+
 }

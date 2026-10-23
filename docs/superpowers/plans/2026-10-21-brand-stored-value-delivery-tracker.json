@@ -332,11 +332,12 @@
           "Legacy creation guard and persistent write-fence guards",
           "Fenced final metadata mapping preserves maintenance fence (post-deploy development)",
           "Durable audited manifest and strictly fenced metadata apply (internal Java contract, not enabled online)",
-          "Trusted Core owner/person evidence preparation with typed embedded/standalone audit contracts (disabled by default)"
+          "Trusted Core owner/person evidence preparation with typed embedded/standalone audit contracts (disabled by default)",
+          "Durable internal local-writer fence with original audit recheck and replay (no execution HTTP)"
         ],
         "verification": "Core/Pay compile and focused tests passed; no full suite or online financial writes",
         "remaining": [
-          "All-writer readiness and durable fence command; trusted Core preparation implemented",
+          "All-writer readiness and safe operator orchestration; trusted preparation and local fence implemented",
           "Explicit cutover, conditional keys and issuer account selection",
           "Complete IS/RC/RD and B app UI",
           "MySQL concurrency acceptance and complete stage release"

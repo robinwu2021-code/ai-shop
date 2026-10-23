@@ -402,3 +402,9 @@ Core 内部 StoredValueMigrationCoordinator.prepare(actor, storeNos, key) 仅接
 共享 DTO 在 shop-base/spi/storedvalue/StoredValueMigrationPlans；嵌入及独立部署均经 StoredValueMigrationAppService，独立部署使用 PayInternalApi。每批最多100店、1000账户，超过上限明确拒绝，绝不截断后视为完成。来源缺失、跨店/主体、重复账户、身份不一致、门店版本变化均阻断。旧账号标识仅通过既有 user→person 绑定解析，再复核 canonical 人档；未注册人档保留 userNo 为空。最终审计仍检查完整存量，不假设 probe 后账本未变化。
 
 仅服务间预审：apply、暂停写入和激活未开放 HTTP。全写入节点就绪、维护栅栏及切换流程仍是正式执行前置条件。
+
+### P3 本地维护栅栏命令（内部 Java，2026-10-23）
+
+StoredValueMigrationManifestService.fence(evidence, manifestNo, key) 复用服务端原清单与独立 SV_MIGRATION_FENCE 幂等记录。需要 migration-enabled 和当前进程 issuer-mode；按发行方顺序取得 issuer→account 锁，再检查来源版本及完整账本指纹。事实变化或已进入 ISSUER 模式时拒绝，事务回滚不留成功回执；成功仅把 write_mode 设为 FENCED，返回 WRITE_FENCED，不改账户余额、配置、业务状态或索引。同请求返回原回执，不重做审计或解除暂停。
+
+本命令没有 HTTP 端点。它使已升级且启用守卫的写入节点使用同一数据库栅栏，不能证明其他旧节点也已升级。全部写入节点就绪证明、正式切换和受控恢复仍未交付；不能凭本地开关或此回执宣布可以切换。
