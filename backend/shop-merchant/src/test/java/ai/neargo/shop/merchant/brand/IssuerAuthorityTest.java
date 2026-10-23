@@ -8,6 +8,20 @@ import static ai.neargo.shop.merchant.brand.ManagementModels.*;
 import static org.assertj.core.api.Assertions.*;
 
 class IssuerAuthorityTest {
+    @Test void preparationUsesLiveStoreOwnerWithoutInventingManagementOrSettlementGrant() throws Exception {
+        var f=new BrandFixture();var service=new IssuerAuthorityService(f.repo,f.scopes,new PaymentMerchantScopeService(f.repo,f.scopes));
+        f.jdbc.update("UPDATE mch_store SET version=7 WHERE store_no='S1'");
+        var scope=service.storePreparationScope(f.owner,"S1");
+        assertThat(scope.entityNo()).isEqualTo("E1");assertThat(scope.storeRevision()).isEqualTo(7);
+        assertThat(scope.storeName()).isEqualTo("甲店");assertThat(scope.actorNo()).isEqualTo("MCH:MA1");
+        assertThatThrownBy(()->service.storePreparationScope(f.other,"S1")).isInstanceOf(BizException.class);
+        assertThatThrownBy(()->service.storePreparationScope(new Actor("OTHER","MCH:MA1"),"S1")).isInstanceOf(BizException.class);
+        f.jdbc.update("UPDATE mch_entity SET status='INACTIVE' WHERE entity_no='E1'");
+        assertThatThrownBy(()->service.storePreparationScope(f.owner,"S1")).isInstanceOf(BizException.class);
+        assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM mch_management_space",Long.class)).isZero();
+        assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM mch_management_grant",Long.class)).isZero();
+    }
+
     @Test void storeManagementDoesNotImplicitlyAuthorizeSettlementAndOfflineHasNoFakeMerchant() throws Exception {
         var f=new BrandFixture();String m=f.no(f.space(),"managementNo");
         var service=new IssuerAuthorityService(f.repo,f.scopes,new PaymentMerchantScopeService(f.repo,f.scopes));

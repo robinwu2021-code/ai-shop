@@ -16,6 +16,15 @@ public class IssuerAuthorityService {
     public IssuerAuthorityService(ManagementRepository db, ManagementScopeService scopes, PaymentMerchantScopeService merchants) {
         this.db=db; this.scopes=scopes; this.merchants=merchants;
     }
+    /** Existing store owners may prepare original liability metadata, never activate brand finance. */
+    public StoreAuthority storePreparationScope(Actor actor,String storeNo) {
+        ai.neargo.shop.spi.entitlement.ContractChecks.id(storeNo);
+        var row=db.one("SELECT s.store_no,s.entity_no,s.name,s.version FROM mch_store s JOIN mch_entity e ON e.tenant_no=s.tenant_no AND e.entity_no=s.entity_no WHERE s.tenant_no=? AND s.store_no=? AND s.status='ACTIVE' AND s.deleted=0 AND e.status='ACTIVE' AND e.deleted=0",actor.tenantNo(),storeNo);
+        if(row==null)throw BizException.of(ErrorCode.NOT_FOUND);
+        String entity=str(row,"entity_no");
+        if(scopes.ownerAccounts(actor).stream().noneMatch(account->entity.equals(str(account,"entity_no"))))throw BizException.of(ErrorCode.FORBIDDEN);
+        return new StoreAuthority(actor.tenantNo(),actor.actorKey(),entity,storeNo,str(row,"name"),num(row,"version"));
+    }
     public AuthorizedScope readScope(Actor actor, String management, String type, String no) {
         return scope(actor,management,type,no,"sv.issuer.read",Set.of(),List.of());
     }

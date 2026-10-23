@@ -12,8 +12,14 @@ import org.springframework.web.bind.annotation.*;
 public class InternalStoredValueIssuerEndpoint {
     private final StoredValueIssuerService issuers;
     private final String token;
-    public InternalStoredValueIssuerEndpoint(StoredValueIssuerService issuers,@Value("${shop.services.internal-token:}") String token) {
-        this.issuers=issuers;this.token=token;
+    private final ai.neargo.shop.pay.storedvalue.issuer.StoredValueStoreIssuerService stores;
+    public InternalStoredValueIssuerEndpoint(StoredValueIssuerService issuers,ai.neargo.shop.pay.storedvalue.issuer.StoredValueStoreIssuerService stores,@Value("${shop.services.internal-token:}") String token) {
+        this.issuers=issuers;this.stores=stores;this.token=token;
+    }
+    @PostMapping(PayInternalPaths.SV_ISSUER_PREPARE_STORE)
+    public ResponseEntity<?> prepareStore(@RequestBody PayStoredValueIssuerRequests.PrepareStore request,
+            @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given) {
+        return InternalServiceResponses.invoke(token,given,()->stores.prepare(request.scope()));
     }
     @PostMapping(PayInternalPaths.SV_ISSUER_FIND)
     public ResponseEntity<?> find(@RequestBody PayStoredValueIssuerRequests.Find request,

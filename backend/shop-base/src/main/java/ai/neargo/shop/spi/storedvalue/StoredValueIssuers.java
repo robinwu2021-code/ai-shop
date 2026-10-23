@@ -7,6 +7,17 @@ import java.util.Set;
 public final class StoredValueIssuers {
     private StoredValueIssuers() { }
 
+    /** Trusted existing store scope resolved by Core; never a public request body or a brand finance grant. */
+    public record StoreAuthority(String tenantNo,String actorNo,String entityNo,String storeNo,String storeName,long storeRevision) {
+        public StoreAuthority {
+            ai.neargo.shop.spi.entitlement.ContractChecks.id(tenantNo);
+            ai.neargo.shop.spi.entitlement.ContractChecks.id(actorNo);
+            ai.neargo.shop.spi.entitlement.ContractChecks.id(entityNo);
+            ai.neargo.shop.spi.entitlement.ContractChecks.id(storeNo);
+            ai.neargo.shop.spi.entitlement.ContractChecks.require(storeName!=null&&!storeName.isBlank()&&storeName.length()<=128&&storeRevision>=0);
+        }
+    }
+
     public record Route(String paymentMerchantNo, String entityNo, String storeNo, String channel, String scene) { }
 
     public record AuthorizedScope(String tenantNo, String actorNo, String managementNo, String scopeType,

@@ -319,7 +319,26 @@
         "IS06"
       ],
       "planFile": "2026-10-21-brand-stored-value-issuer-ledger.md",
-      "status": "IN_PROGRESS"
+      "status": "IN_PROGRESS",
+      "checkpoint": {
+        "date": "2026-10-23",
+        "state": "LOCAL_DEVELOPMENT_NOT_DEPLOYED",
+        "completed": [
+          "Issuer configuration and explicit settlement authority",
+          "Legacy audit and metadata mapping",
+          "Receipt/posting/redemption quota integration",
+          "Default store draft preparation and live owner authority",
+          "Typed internal preparation endpoint",
+          "Legacy creation guard and persistent write-fence guards"
+        ],
+        "verification": "Core/Pay compile and focused tests passed; no full suite or online financial writes",
+        "remaining": [
+          "Verified migration executor and fenced final map",
+          "Conditional key cutover and issuer account selection",
+          "Complete IS/RC/RD and B app UI",
+          "MySQL concurrency acceptance and stage release"
+        ]
+      }
     },
     {
       "id": "P4",

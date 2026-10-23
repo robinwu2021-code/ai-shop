@@ -81,6 +81,7 @@ public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechar
         var scope=new CatalogScope(ctx.tenantNo(),entity,ctx.actorNo(),false);
         var reply=commands.execute(scope,"SV_PLAN_RECHARGE",ctx.requestId(),identity(c.storeNo(),c.planNo(),c.versionNo(),c.referenceHash()),no,RechargeView.class,()->{
             features.requireStoredValue();
+            issuerLedger.beforePlanOriginal(ctx,entity,c.storeNo());
             var p=plans.selectOne(Wrappers.<SvRechargePlan>lambdaQuery()
                     .eq(SvRechargePlan::getTenantNo,ctx.tenantNo()).eq(SvRechargePlan::getEntityNo,entity)
                     .eq(SvRechargePlan::getStoreNo,c.storeNo()).eq(SvRechargePlan::getPlanNo,c.planNo()).last("FOR UPDATE"));

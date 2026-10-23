@@ -7,7 +7,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 @ConditionalOnProperty(name="shop.pay.deployment",havingValue="embedded",matchIfMissing=true)
 public class StoredValueIssuerAppServiceImpl implements StoredValueIssuerAppService {
     private final ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerService target;
-    public StoredValueIssuerAppServiceImpl(ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerService target) { this.target=target; }
+    private final ai.neargo.shop.pay.storedvalue.issuer.StoredValueStoreIssuerService stores;
+    public View prepareStore(StoreAuthority scope) { return stores.prepare(scope); }
+    public StoredValueIssuerAppServiceImpl(ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerService target,ai.neargo.shop.pay.storedvalue.issuer.StoredValueStoreIssuerService stores) { this.target=target;this.stores=stores; }
     public Lookup find(AuthorizedScope scope) { return new Lookup(target.find(scope).orElse(null)); }
     public View configure(AuthorizedScope scope,Config command,String key) { return target.configure(scope,command,key); }
 }

@@ -27,6 +27,7 @@ class StoredValueIssuerLedgerFlowTest {
     @Autowired StoredValuePlanService plans;
     @Autowired StoredValuePlanRechargeService direct;
     @Autowired StoredValueRechargeService receipts;
+    @Autowired StoredValueRechargeWriter writer;
     @Autowired StoredValueRedemptionPostingService redemption;
     static boolean installed;
     @BeforeEach void schema() throws Exception {
@@ -143,6 +144,33 @@ class StoredValueIssuerLedgerFlowTest {
         assertThat(jdbc.queryForObject("SELECT held_principal_minor+held_bonus_minor FROM sv_account WHERE store_no=?",Long.class,f.store())).isEqualTo(1000);
         assertThat(jdbc.queryForObject("SELECT status FROM ent_use_intent WHERE operation_no=?",String.class,use.command().operationNo())).isEqualTo("HELD");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_voucher WHERE biz_type='CONSUME' AND biz_no=?",Long.class,use.command().operationNo())).isZero();
+    }
+    @Test void unadaptedActivityCreationCannotBypassSwitchedStoreIssuer() {
+        var f=fixture();var at=java.time.Instant.now();
+        var source=new ai.neargo.shop.spi.entitlement.SourceRef("CORE","RECHARGE",id(),null,null,null,0);
+        var permit=new ai.neargo.shop.spi.promotion.ActivityParticipationPort.ParticipationPermit(id(),source,"A1","AV1","T1",f.command().userNo(),f.entity(),f.store(),"CNY",5000L,1000L,List.of(),
+                new ai.neargo.shop.spi.entitlement.EntitlementDefinition.RedemptionScope("STORES",List.of(f.store())),"b".repeat(64),at);
+        var participation=new ai.neargo.shop.spi.promotion.ActivityParticipationPort.ReserveActivity(source,"A1","AV1","T1",f.command().userNo(),f.entity(),f.store(),"CNY",1);
+        String rechargeNo="RC"+source.grantKey().substring(0,60);
+        var fact=new RechargeSourcePort.SourceFact(f.actor(),source,rechargeNo,participation,permit,"本店",at,at.plusSeconds(600));
+        assertThatThrownBy(()->writer.create(f.actor(),f.entity(),new StoredValuePort.CreateRecharge(source,permit),fact)).isInstanceOf(BizException.class);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_recharge WHERE recharge_no=?",Long.class,rechargeNo)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_ent_command_dedup WHERE resource_no=?",Long.class,rechargeNo)).isZero();
+    }
+    @Test void persistentWriteFencePausesOriginalAndAccountWritesUntilReleased() {
+        var f=fixture();var created=direct.create(f.actor(),f.entity(),f.command());
+        var command=new StoredValuePort.SubmitRecharge(created.rechargeNo(),created.revision(),5000,StoredValuePort.CollectionMethod.MERCHANT_OFFLINE,id(),"d".repeat(64));var submitter=ctx();
+        jdbc.update("UPDATE sv_issuer SET write_mode='FENCED' WHERE issuer_no=?",f.issuer());
+        assertThatThrownBy(()->receipts.submit(submitter,f.entity(),command)).isInstanceOf(BizException.class);
+        assertThat(jdbc.queryForObject("SELECT status FROM sv_recharge WHERE recharge_no=?",String.class,created.rechargeNo())).isEqualTo("WAIT_COLLECTION");
+        jdbc.update("UPDATE sv_issuer SET write_mode='ISSUER' WHERE issuer_no=?",f.issuer());
+        assertThat(receipts.submit(submitter,f.entity(),command).status().name()).isEqualTo("SUBMITTED");
+        var g=fixture();direct.confirmOffline(g.actor(),g.entity(),g.command());var use=prepared(g,1000);
+        jdbc.update("UPDATE sv_issuer SET write_mode='FENCED' WHERE issuer_no=?",g.issuer());
+        assertThatThrownBy(()->redemption.prepare(ctx(),use)).isInstanceOf(BizException.class);
+        assertThat(jdbc.queryForObject("SELECT held_principal_minor+held_bonus_minor FROM sv_account WHERE store_no=?",Long.class,g.store())).isZero();
+        jdbc.update("UPDATE sv_issuer SET write_mode='ISSUER' WHERE issuer_no=?",g.issuer());
+        assertThat(redemption.prepare(ctx(),use).status().name()).isEqualTo("HELD");
     }
     static String id(){return UUID.randomUUID().toString();}
     static EntitlementContext ctx(){return new EntitlementContext("MAIN","OWNER",id(),"0".repeat(64));}

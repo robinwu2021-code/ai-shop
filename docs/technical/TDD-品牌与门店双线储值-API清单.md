@@ -368,3 +368,10 @@ AuthorizedPaymentMerchant返回payMerchantRef、entityNo、payChannel、applySta
 ## P2已实现契约补充
 
 MB01/02/03已实现，权限映射到既有门店CUSTOMER/SV_RECHARGE_CREATE及单独SV_ACCOUNT_READ；MB02返回selection及sourceStoreNo/Name，MB01含identityConflictCount和默认本店已储值账户。旧主体接口不自动变为品牌营销授权。详细字段、前后端类及边界见[TDD-P2实施设计](TDD-P2-品牌会员共享-实施设计.md)。
+
+### P3 实现增量：单店发行准备（2026-10-23，开发中）
+
+- 内部传输实际路径：`POST /internal/pay/stored-value/issuers/prepare-store`，对应 `StoredValueIssuerAppService.prepareStore(StoreAuthority)`，支持嵌入及独立 Pay；调用需内部服务令牌。
+- Core 先以 `IssuerAuthorityService.storePreparationScope` 核实有效门店、当前经营主体和真实所有人，得到 tenantNo/actorNo/entityNo/storeNo/storeName/storeRevision。公开请求不能绑定 StoreAuthority，不能把门店管理权解释为品牌结算授权。
+- 返回 `StoredValueIssuers.View`；该操作幂等准备 STORE 发行草稿及 PREPARING 准入，can_issue/can_redeem 均为 0。不建立钱包、不激活储值、不迁余额；变更经营主体冲突，不据手机号或同主体合并。
+- 这是 IN01 的单店准备基础，不代表准入修订、迁移切写、IS05 店内发行选项或 B 端入口已全部实现。现网尚未部署该接口。

@@ -25,6 +25,15 @@ public class StoredValueIssuerLedgerBridge {
         this.db=db;this.quotas=quotas;this.commands=commands;this.enabled=enabled;
     }
 
+    /** Issuer precedes an existing plan lock, matching migration issuer -> account/plan ordering. */
+    public void beforePlanOriginal(EntitlementContext ctx,String entity,String store) {
+        if(!enabled)return;
+        transaction();
+        var issuer=db.one("SELECT i.write_mode,i.status,v.settlement_entity_no FROM sv_issuer i JOIN sv_issuer_version v ON v.tenant_no=i.tenant_no AND v.issuer_no=i.issuer_no AND v.issuer_version_no=i.current_issuer_version_no WHERE i.tenant_no=? AND i.scope_type='STORE' AND i.scope_no=? AND i.deleted=0 AND v.deleted=0 FOR UPDATE",ctx.tenantNo(),store);
+        if(issuer==null||!"ISSUER".equals(text(issuer,"write_mode"))||!"ACTIVE".equals(text(issuer,"status"))||!entity.equals(text(issuer,"settlement_entity_no")))
+            throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+    }
+
     /** Called only for a newly inserted original, within its owning Pay transaction. */
     public void freezePlan(EntitlementContext ctx,SvRechargePlan plan,SvRechargePlanVersion version,SvRecharge original) {
         if(!enabled)return;
@@ -62,6 +71,15 @@ public class StoredValueIssuerLedgerBridge {
         quotas.reserve(ctx,original.getRechargeNo());
     }
 
+    /** Legacy activity creation is not an issuer release. Switched/fenced stores cannot create untracked promises. */
+    public void beforeLegacyActivityCreate(EntitlementContext ctx,String entity,String store) {
+        if(!enabled)return;
+        transaction();
+        var issuer=db.one("SELECT i.write_mode,v.settlement_entity_no FROM sv_issuer i JOIN sv_issuer_version v ON v.tenant_no=i.tenant_no AND v.issuer_no=i.issuer_no AND v.issuer_version_no=i.current_issuer_version_no WHERE i.tenant_no=? AND i.scope_type='STORE' AND i.scope_no=? AND i.deleted=0 AND v.deleted=0 FOR UPDATE",ctx.tenantNo(),store);
+        if(issuer!=null&&(!entity.equals(text(issuer,"settlement_entity_no"))||!Set.of("LEGACY","LEGACY_MAPPED").contains(text(issuer,"write_mode"))))
+            throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+    }
+
     /** Always precedes receipt/account row locks, including a replay whose creation closure did not run. */
     public void beforeOriginal(EntitlementContext ctx,String entity,String rechargeNo) {
         if(!enabled)return;
@@ -69,8 +87,9 @@ public class StoredValueIssuerLedgerBridge {
         var row=original(ctx,entity,rechargeNo);
         if(row==null)return;
         if(text(row,"issuer_no")==null) { requireUnswitchedStore(ctx,text(row,"store_no"));return; }
-        var version=db.one("SELECT v.* FROM sv_issuer i JOIN sv_issuer_version v ON v.tenant_no=i.tenant_no AND v.issuer_no=i.issuer_no WHERE i.tenant_no=? AND i.issuer_no=? AND i.scope_type='STORE' AND i.scope_no=? AND v.issuer_version_no=? AND i.deleted=0 AND v.deleted=0",
+        var version=db.one("SELECT i.write_mode AS issuer_write_mode,v.* FROM sv_issuer i JOIN sv_issuer_version v ON v.tenant_no=i.tenant_no AND v.issuer_no=i.issuer_no WHERE i.tenant_no=? AND i.issuer_no=? AND i.scope_type='STORE' AND i.scope_no=? AND v.issuer_version_no=? AND i.deleted=0 AND v.deleted=0 FOR UPDATE",
                 ctx.tenantNo(),text(row,"issuer_no"),text(row,"store_no"),text(row,"issuer_version_no"));
+        if(version!=null&&"FENCED".equals(text(version,"issuer_write_mode")))throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         if(version==null||!text(row,"currency").equals(text(version,"currency"))
                 ||!entity.equals(text(version,"settlement_entity_no"))
                 ||!entity.equals(text(row,"collection_entity_no"))||!entity.equals(text(row,"settlement_entity_no")))throw BizException.of(ErrorCode.CONFLICT);
@@ -118,8 +137,9 @@ public class StoredValueIssuerLedgerBridge {
         if(account==null||!entity.equals(text(account,"entity_no"))||!store.equals(text(account,"store_no"))
                 ||!currency.equals(text(account,"currency")))throw BizException.of(ErrorCode.CONFLICT);
         if(text(account,"issuer_no")==null){requireUnswitchedStore(ctx,store);return;}
-        var issuer=db.one("SELECT * FROM sv_issuer WHERE tenant_no=? AND issuer_no=? AND scope_type='STORE' AND scope_no=? AND deleted=0",ctx.tenantNo(),text(account,"issuer_no"),store);
+        var issuer=db.one("SELECT * FROM sv_issuer WHERE tenant_no=? AND issuer_no=? AND scope_type='STORE' AND scope_no=? AND deleted=0 FOR UPDATE",ctx.tenantNo(),text(account,"issuer_no"),store);
         if(issuer==null)throw BizException.of(ErrorCode.CONFLICT);
+        if("FENCED".equals(text(issuer,"write_mode")))throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         quotas.lockForAccount(ctx,accountNo);
     }
 
@@ -161,8 +181,8 @@ public class StoredValueIssuerLedgerBridge {
         });
     }
     private void requireUnswitchedStore(EntitlementContext ctx,String store) {
-        var issuer=db.one("SELECT write_mode FROM sv_issuer WHERE tenant_no=? AND scope_type='STORE' AND scope_no=? AND deleted=0",ctx.tenantNo(),store);
-        if(issuer!=null&&"ISSUER".equals(text(issuer,"write_mode")))throw BizException.of(ErrorCode.CONFLICT);
+        var issuer=db.one("SELECT write_mode FROM sv_issuer WHERE tenant_no=? AND scope_type='STORE' AND scope_no=? AND deleted=0 FOR UPDATE",ctx.tenantNo(),store);
+        if(issuer!=null&&Set.of("ISSUER","FENCED").contains(text(issuer,"write_mode")))throw BizException.of(ErrorCode.CONFLICT);
     }
     private Map<String,Object> original(EntitlementContext ctx,String entity,String no) {
         var row=db.one("SELECT * FROM sv_recharge WHERE tenant_no=? AND recharge_no=? AND deleted=0",ctx.tenantNo(),no);
