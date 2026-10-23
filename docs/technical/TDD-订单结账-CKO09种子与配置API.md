@@ -192,3 +192,32 @@ round沿现有货币最小单位和逐发票行HALF_UP策略，汇总行结果�
 实施顺序：①详细对齐平台/商家配置来源、版本及分端权限；②调整配置编译/种子合同并保留旧记录可读；③接通真实平台默认与商家设置来源，移除税审批/登记门禁；④贯通报价与下单确认快照；⑤验证继承/覆盖/恢复默认、两种公式、零税率、越权、配置变更重算及历史退款。PricingConfigEvidencePort仍需真实服务端资金/能力来源，不可因取消税审核而用全能力默认provider放行储值或优惠。
 
 本次仅更新需求裁决与设计，未修改Java、数据库或API契约。C2仍未实现，C1现有40190门禁在后续代码接线前仍保留，不能将其当作商家设置已可用。
+
+
+### C2.1实施合同（2026-10-23，合同切片已实现）
+
+沿已批准清单先实施新配置合同，不改历史种子/revision。schemaVersion=2及PRICING_RULE_SPEC_V4保留原校验、目录和hash；schemaVersion=3使用PRICING_RULE_SPEC_V5，仅T01/T02升级为规则版本2，来源为服务端商家覆盖或平台默认，不要求税登记/平台审核。税binding字段暂沿原DTO保持兼容：taxProfileNo必须null、resolveFrom=MERCHANT_OR_PLATFORM_DEFAULT、missingPolicy=BLOCK、storeMayEditRate=true（仅表示商家有独立设置入口，不允许门店规则patch写税率）。配置税率/模式由后续独立商家配置来源读取，规则定义不能内嵌或覆盖商家级税率。
+
+新schema3种子增加platformTaxDefaultExample={rateBp,priceTaxMode}；regionalTaxProfiles必须空，requireValidatedLegalTaxProfiles=false；保留其余只草稿、不建资产、不升级、不自动发布限制。示例默认税配置只保存在来源快照，绝不激活平台默认。HTTP种子导入按服务器支持的schema映射固定V4/V5目录，拒绝不支持版本，不能由客户端指定动态注册表。
+
+文件：PricingRuleCatalog、SystemConstraints、PricingConfigCompiler、PricingSeedValidator；原OpsPricingTemplateController种子注册表选择；新增schema3种子示例及目标测试。先验证新版编译/严格绑定/新种子不含审核条件和税率类型/范围/目录串版拒绝，再实现；原schema2全部测试继续运行，并增加固定历史hash防回写。税配置存储/API及真实发布owner尚属C2.2～4，不能以此合同切片称已可设置或收税。
+
+
+### C2.1实现与验收对账
+
+| 计划 | 实际落点 |
+|---|---|
+| schema2/V4兼容、新schema3/V5 | PricingConfigCompiler/SystemConstraints/PricingRuleCatalog；旧配置固定hash回归，新版仅T01/T02规则版本2 |
+| 新种子不审核/不激活 | PricingSeedValidator及独立pricing-merchant-tax-initial-data.example.json；旧示例不改，零候选税档，默认税率仅来源示例 |
+| 服务端选择固定注册表 | PricingSeedService新增不带registry参数的重载；Ops入口调用此重载，原显式V4内部合同保留 |
+| 实际结构/引擎/目录元数据 | PricingPublicationPolicy及种子导入：创建/保存/导入/门店初始化/升级维护draft_schema_version；不可变revision记实际schema、engineSpec和ruleCatalog |
+| 验证与生成物 | 新增MerchantTaxConfigContractTest 6项；原API方法回归及原生数据库各新增1场景；重新生成分层/词表/文档索引（只有索引有差异） |
+
+测试证据：合同定向35项及API5项通过；原生MariaDB20发布+8导入=28项实际执行通过、无跳过。完整核心reactor通过，shop-base252、shop-base-auth28全通过，shop-core497项中469执行通过、28项条件跳过（已在上述真实DB独立验收）。Node交付/schema生成9项、JSONschema契约3项通过，Ops后端先行出口守卫无新增欠账。
+
+失败证据：最初新版合同3项断言失败；API注册表委托1项断言失败；原生发布V4/V5元数据1项断言失败；扩展输入回归发现Jackson数字长度异常未映射BAD_REQUEST，1项断言失败，已统一包装；独立评审无Critical/Important，发现草稿schema元数据Minor后补原生断言1项失败再修复。草稿允许未完成的非法配置，缺有效schema声明时仍保留旧2标记用于兼容，不代表编译通过；明确整数声明按实际记录，发布只接受受支持版本。
+
+此切片未新增表/迁移、未改公开端点/权限或部署。C2.2平台默认/商家税配置持久化、C2.3实际管理入口及C2.4真实owner证据仍待实现；新种子支持不等于商家税率已可设置或订单已可计税。
+
+
+消融：移除schema3禁止taxProfileNo的条件后，新版禁止审核税档回退用例产生1项断言失败/0错误；随后逐字节恢复源码并再次执行完整核心回归。宿主守卫34项中26通过/8失败，ArchitectureTest7项错误与原统一基线完全一致，SchemaDriftTest仍是同一mbr_identity_ticket.customer_no列差异（列输出顺序不同但集合相同）；H2加载/Parity、角色种子及三语通过。不声称全应用守卫通过。

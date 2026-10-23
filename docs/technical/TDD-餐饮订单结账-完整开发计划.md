@@ -522,7 +522,7 @@ mvn -o -f backend-plugins/shop-industry-food/pom.xml -pl food-core -am test -Dte
 
 依赖同一TDD的[C2新口径](./TDD-订单结账-CKO09种子与配置API.md#c2新口径平台默认商家自主设置2026-10-23设计待实现)。以下按可单独验证切片执行。
 
-- [ ] **09-C2.1 配置合同及兼容编译。** 修改原EffectivePricingConfig/PricingConfigCompiler、PricingSeedValidator及对应种子/测试；定义平台默认和商家自定义来源、rateBp、INCLUSIVE/EXCLUSIVE及稳定版本。旧revision/种子摘要保持不变；新合同可读旧记录，不能把旧null税档默认为0%。验收：两种模式、0/500基点、非法范围、旧版本读取及哈希稳定。
+- [x] **09-C2.1 配置合同及兼容编译。** 修改原EffectivePricingConfig/PricingConfigCompiler、PricingSeedValidator及对应种子/测试；定义平台默认和商家自定义来源、rateBp、INCLUSIVE/EXCLUSIVE及稳定版本。旧revision/种子摘要保持不变；新合同可读旧记录，不能把旧null税档默认为0%。验收：两种模式、0/500基点、非法范围、旧版本读取及哈希稳定。2026-10-23合同切片已实现，实际代码/测试见CKO09收据；商家设置存储及入口未交付。
 - [ ] **09-C2.2 默认/商家配置持久化与解析。** 核查SettingService、MchEntity及现有商家配置存储，先形成实际字段/索引/权限映射再加必要增量迁移；不复制每店配置冒充商家级权威。实现商家覆盖→平台默认，以及恢复默认、CAS、审计、稳定版本。验收：A商家变更不影响B、默认更新不覆盖自定义、恢复后继承新默认、缺配置拒绝计税。
 - [ ] **09-C2.3 分端管理API与授权。** 在原core平台/商家资源及Service/Impl/Mapper规范下交付读取、保存、恢复默认，补请求响应、权限码、三语及OpenAPI。平台维护默认，商家管理自身配置，C端只读报价税明细；门店员工读权限不推导为商家级写权限。验收：跨商家/越权/伪造来源或版本拒绝，无审批流程。
 - [ ] **09-C2.4 配置发布证据接线。** 接通PricingConfigEvidencePort与PricingAccessPolicy，移除平台税档审核及税登记的前置限制；真实税配置版本与真实资金能力仍从服务端加载。验收：配置预览/初始化/发布可用、证据稳定、原键重放不依赖owner在线；缺储值/券owner不能全能力放行。

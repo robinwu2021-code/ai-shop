@@ -22,6 +22,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.CompilationResult;
 import ai.neargo.shop.common.pricing.PricingCapabilities;
+import ai.neargo.shop.common.pricing.PricingRuleCatalog;
 import ai.neargo.shop.common.pricing.PricingConfigCompiler;
 import ai.neargo.shop.common.pricing.SystemConstraints;
 import ai.neargo.shop.event.OutboxEventBus;
@@ -59,7 +60,6 @@ import tools.jackson.databind.ObjectMapper;
 /** Same-store explicit SQL predicates and a short transaction own all publication writes, including receipts/events. */
 @Component
 public class PricingPublicationPolicy {
-    private static final String ENGINE = "PRICING_RULE_SPEC_V4";
 
     private final PricingTemplateMapper templates;
     private final PricingTemplateRevisionMapper templateRevisions;
@@ -107,7 +107,7 @@ public class PricingPublicationPolicy {
                         row.setName(req.name());
                         row.setStatus("ACTIVE");
                         row.setDraftVersion(0L);
-                        row.setDraftSchemaVersion(2);
+                        row.setDraftSchemaVersion(draftSchemaVersion(normalized.definition()));
                         row.setDraftContent(normalized.definition());
                         templates.insert(row);
                         return head(c, row.getTemplateNo(), true, false).draft();
@@ -137,7 +137,7 @@ public class PricingPublicationPolicy {
                 row.setTemplateNo(template.getTemplateNo());
                 row.setStatus("ACTIVE");
                 row.setDraftVersion(0L);
-                row.setDraftSchemaVersion(2);
+                row.setDraftSchemaVersion(compilation.config().definition().schemaVersion());
                 row.setDraftOverride("{}");
                 row.setDraftTemplateRevisionNo(template.getRevisionNo());
                 stores.insert(row);
@@ -338,8 +338,9 @@ public class PricingPublicationPolicy {
             row.setSchemaVersion(compilation.config().definition().schemaVersion());
             row.setDefinitionSnapshot(effective);
             row.setDefinitionHash(hash);
-            row.setEngineSpecVersion(ENGINE);
-            row.setRuleCatalogVersion(digest(canonical(SystemConstraints.standard().rules())));
+            row.setEngineSpecVersion(PricingRuleCatalog.registryVersion(
+                    compilation.config().definition().schemaVersion()));
+            row.setRuleCatalogVersion(digest(canonical(compilation.config().rules())));
             row.setPreviousRevisionNo(previous);
             row.setPublishedAt(LocalDateTime.now());
             row.setPublishedBy(c.actorNo());
@@ -359,8 +360,9 @@ public class PricingPublicationPolicy {
             row.setEffectiveSnapshot(effective);
             row.setSchemaVersion(compilation.config().definition().schemaVersion());
             row.setEffectiveHash(hash);
-            row.setEngineSpecVersion(ENGINE);
-            row.setRuleCatalogVersion(digest(canonical(SystemConstraints.standard().rules())));
+            row.setEngineSpecVersion(PricingRuleCatalog.registryVersion(
+                    compilation.config().definition().schemaVersion()));
+            row.setRuleCatalogVersion(digest(canonical(compilation.config().rules())));
             row.setPreviousRevisionNo(previous);
             row.setRollbackFromRevisionNo(rollback);
             row.setPublishedAt(LocalDateTime.now());
@@ -374,6 +376,12 @@ public class PricingPublicationPolicy {
         return revision(c, head.draft().no(), no, template);
     }
 
+    private int draftSchemaVersion(String definition) {
+        var declared = json.readTree(definition).path("schemaVersion");
+        // Incomplete drafts remain admissible; their legacy marker never grants compilation validity.
+        return declared.isIntegralNumber() && declared.canConvertToInt() ? declared.asInt() : 2;
+    }
+
     private void change(Context c, Head head, String content, String templateRevision, String active,
                     boolean template) {
         long version = head.draft().draftVersion();
@@ -381,7 +389,8 @@ public class PricingPublicationPolicy {
         if (template) {
             var update = new UpdateWrapper<OrdPricingTemplate>().eq("tenant_no", c.tenantNo())
                     .eq("template_no", head.draft().no()).eq("draft_version", version).eq("status", "ACTIVE")
-                    .set("draft_content", content).set("draft_version", Math.addExact(version, 1))
+                    .set("draft_content", content).set("draft_schema_version", draftSchemaVersion(content))
+                    .set("draft_version", Math.addExact(version, 1))
                     .set("active_revision_no", active).set("updated_at", LocalDateTime.now())
                     .set("updated_by", c.actorNo())
                     .setSql("version = version + 1");
@@ -392,7 +401,9 @@ public class PricingPublicationPolicy {
             var update = new UpdateWrapper<OrdStorePricingConfig>().eq("tenant_no", c.tenantNo())
                     .eq("entity_no", c.entityNo()).eq("store_no", c.storeNo()).eq("config_no", head.draft().no())
                     .eq("draft_version", version).eq("status", "ACTIVE").set("draft_override", content)
-                    .set("draft_template_revision_no", templateRevision).set("draft_version", Math.addExact(version, 1))
+                    .set("draft_template_revision_no", templateRevision)
+                    .set("draft_schema_version", templateRevision(c, templateRevision).getSchemaVersion())
+                    .set("draft_version", Math.addExact(version, 1))
                     .set("active_revision_no", active).set("updated_at", LocalDateTime.now())
                     .set("updated_by", c.actorNo())
                     .setSql("version = version + 1");

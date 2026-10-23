@@ -117,6 +117,47 @@ class PricingConfigServiceTest {
     }
 
     @Test
+    void merchantTaxRevisionRecordsItsActualRegistryAndRuleVersions() throws Exception {
+        String next = JSON.readTree(Files.readString(Path.of("../../docs/technical/design/schema/"
+                + "pricing-merchant-tax-initial-data.example.json"))).path("industryTemplates").get(0)
+                .path("definition").toString();
+        var draft = templates.create(platform(), new CreateTemplateReq("FOOD", "MERCHANT_TAX", "Food", next),
+                "MERCHANT_TAX_CREATE");
+        assertThat(jdbc.queryForObject("SELECT draft_schema_version FROM ord_pricing_template"
+                + " WHERE template_no=?", Integer.class, draft.no())).isEqualTo(3);
+        var preview = templates.preview(platform(), draft.no(), 0, null);
+        assertThat(preview.compilation().valid()).isTrue();
+        var revision = templates.publish(platform(), draft.no(),
+                new PublishReq(0, null, preview.previewHash(), "merchant tax", null), "MERCHANT_TAX_PUBLISH");
+        assertThat(jdbc.queryForObject("SELECT engine_spec_version FROM ord_pricing_template_revision"
+                + " WHERE revision_no=?", String.class, revision.revisionNo())).isEqualTo("PRICING_RULE_SPEC_V5");
+        var initialized = stores.initialize(store(), new InitializeReq(revision.revisionNo(), "init"),
+                "MERCHANT_TAX_INIT");
+        assertThat(jdbc.queryForObject("SELECT engine_spec_version FROM ord_store_pricing_revision"
+                + " WHERE revision_no=?", String.class, initialized.revisionNo())).isEqualTo("PRICING_RULE_SPEC_V5");
+        assertThat(jdbc.queryForObject("SELECT schema_version FROM ord_store_pricing_revision"
+                + " WHERE revision_no=?", Integer.class, initialized.revisionNo())).isEqualTo(3);
+        String catalog = jdbc.queryForObject("SELECT rule_catalog_version FROM ord_pricing_template_revision"
+                + " WHERE revision_no=?", String.class, revision.revisionNo());
+        assertThat(jdbc.queryForObject("SELECT rule_catalog_version FROM ord_store_pricing_revision"
+                + " WHERE revision_no=?", String.class, initialized.revisionNo())).isEqualTo(catalog);
+        assertThat(jdbc.queryForObject("SELECT draft_schema_version FROM ord_store_pricing_config"
+                + " WHERE config_no=?", Integer.class, initialized.parentNo())).isEqualTo(3);
+        var saved = templates.saveDraft(platform(), draft.no(), new DraftSaveReq(1, definition, null),
+                "MERCHANT_TAX_SAVE_LEGACY");
+        assertThat(jdbc.queryForObject("SELECT draft_schema_version FROM ord_pricing_template"
+                + " WHERE template_no=?", Integer.class, draft.no())).isEqualTo(2);
+        var legacy = templates.publish(platform(), draft.no(), request(saved), "MERCHANT_TAX_LEGACY");
+        assertThat(jdbc.queryForObject("SELECT rule_catalog_version FROM ord_pricing_template_revision"
+                + " WHERE revision_no=?", String.class, legacy.revisionNo())).isNotEqualTo(catalog);
+        var storeDraft = stores.getDraft(store(), initialized.parentNo());
+        stores.upgradeTemplate(store(), storeDraft.no(), new UpgradeReq(storeDraft.draftVersion(),
+                legacy.revisionNo()), "MERCHANT_TAX_UPGRADE");
+        assertThat(jdbc.queryForObject("SELECT draft_schema_version FROM ord_store_pricing_config"
+                + " WHERE config_no=?", Integer.class, initialized.parentNo())).isEqualTo(2);
+    }
+
+    @Test
     void apiReceiptReplayDoesNotReloadUnavailablePublicationOwners() {
         var draft = create();
         var preview = templates.preview(platform(), draft.no(), 0, null);

@@ -48,11 +48,11 @@ public class OpsPricingTemplateController {
                 req.templateCode(), req.name(), req.definition()), key);
     }
 
-    /** Only the server registry is used; examples cannot grant live capabilities or legal tax approval. */
+    /** The service selects a supported server registry; importing examples cannot activate tax defaults. */
     @PostMapping("/ops/pricing-templates/seed-import")
     @PreAuthorize("@perm.can('" + Perms.PRICING_TEMPLATE_UPDATE + "')")
     public PricingSeedService.ImportReport importSeed(@Valid @RequestBody PricingConfigRequests.Seed req) {
-        return seeds.importDrafts(access.draft(true), req.seed(), "PRICING_RULE_SPEC_V4", req.mode());
+        return seeds.importDrafts(access.draft(true), req.seed(), req.mode());
     }
 
     /** Read uses the trusted current scope, including stores that are preparing an unpublished change. */

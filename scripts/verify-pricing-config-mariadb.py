@@ -47,8 +47,8 @@ def main():
         if method and not re.fullmatch(r'[a-zA-Z][a-zA-Z0-9]+', method):
             raise RuntimeError('Only one explicit Java test method may be selected')
         selection = os.environ.get('PRICING_TEST_SUITE', 'publication' if method else 'all')
-        available = {'publication': [('PricingConfigServiceTest', 19)], 'seed': [('PricingSeedServiceTest', 7)],
-                     'all': [('PricingConfigServiceTest', 19), ('PricingSeedServiceTest', 7)]}
+        available = {'publication': [('PricingConfigServiceTest', 20)], 'seed': [('PricingSeedServiceTest', 8)],
+                     'all': [('PricingConfigServiceTest', 20), ('PricingSeedServiceTest', 8)]}
         if selection not in available or method and selection == 'all':
             raise RuntimeError('Select publication, seed, or all; a method requires one suite')
         suites = available[selection]

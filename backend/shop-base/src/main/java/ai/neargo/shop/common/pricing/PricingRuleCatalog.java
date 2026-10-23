@@ -166,8 +166,22 @@ public final class PricingRuleCatalog {
         return RULES;
     }
 
-    /** Validates seed input against code-owned mandatory policies before accepting any definition. */
+    /** Schema 2 is frozen; only the merchant-managed tax rules change in schema 3. */
+    public static List<RuleDefinition> rulesForSchema(int schemaVersion) {
+        var specs = specsForSchema(schemaVersion);
+        return new TreeMap<>(specs).entrySet().stream()
+                .map(entry -> new RuleDefinition(entry.getKey(), version(entry.getKey(), schemaVersion),
+                        entry.getValue().type(), parameters(entry.getKey(), entry.getValue()))).toList();
+    }
+
+    /** Validates legacy seeds without changing their semantic digest. */
     public static List<RuleDefinition> validateJson(String json) {
+        return validateJson(json, 2);
+    }
+
+    /** Only fixed code-owned registries are supported, never a dynamically supplied evaluator. */
+    public static List<RuleDefinition> validateJson(String json, int schemaVersion) {
+        var specs = specsForSchema(schemaVersion);
         var input = PricingJson.parse(json);
         if (!input.isArray() || input.size() != RULES.size()) {
             throw PricingJson.invalid("The complete mandatory rule catalog is required");
@@ -177,13 +191,14 @@ public final class PricingRuleCatalog {
             var fields = Set.of("ruleNo", "ruleVersion", "name", "evaluatorType", "mandatory", "parameters");
             PricingJson.fields(row, fields, fields);
             if (!row.path("ruleNo").isString() || !row.path("evaluatorType").isString()
-                    || !row.path("ruleVersion").isIntegralNumber() || row.path("ruleVersion").asLong() != 1
+                    || !row.path("ruleVersion").isIntegralNumber()
+                    || row.path("ruleVersion").asLong() != version(row.path("ruleNo").asString(), schemaVersion)
                     || !row.path("mandatory").isBoolean() || !row.path("mandatory").booleanValue()
                     || !row.path("name").isString() || row.path("name").asString().isBlank()) {
                 throw PricingJson.invalid("Invalid mandatory rule metadata");
             }
             String no = row.path("ruleNo").asString();
-            Spec expected = SPECS.get(no);
+            Spec expected = specs.get(no);
             if (expected == null || !seen.add(no)
                     || !expected.type().name().equals(row.path("evaluatorType").asString())
                     || !PricingJson.canonical(PricingJson.parse(expected.parametersJson()))
@@ -191,7 +206,7 @@ public final class PricingRuleCatalog {
                 throw PricingJson.invalid("Mandatory rule version, evaluator, or parameters differ from the registry");
             }
         }
-        return RULES;
+        return rulesForSchema(schemaVersion);
     }
 
     static String semanticHash() {
@@ -199,6 +214,40 @@ public final class PricingRuleCatalog {
         SPECS.forEach((no, spec) -> contents.put(no,
                 List.of(1, spec.type().name(), PricingJson.canonical(PricingJson.parse(spec.parametersJson())))));
         return PricingJson.hash(PricingJson.JSON.writeValueAsString(contents) + "PRICING_RULE_SPEC_V4");
+    }
+
+    static String semanticHash(int schemaVersion) {
+        if (schemaVersion == 2) return semanticHash();
+        var contents = new TreeMap<String, Object>();
+        specsForSchema(schemaVersion).forEach((no, spec) -> contents.put(no,
+                List.of(version(no, schemaVersion), spec.type().name(),
+                        PricingJson.canonical(PricingJson.parse(spec.parametersJson())))));
+        return PricingJson.hash(PricingJson.JSON.writeValueAsString(contents) + "PRICING_RULE_SPEC_V5");
+    }
+
+    public static String registryVersion(int schemaVersion) {
+        if (schemaVersion == 2) return "PRICING_RULE_SPEC_V4";
+        if (schemaVersion == 3) return "PRICING_RULE_SPEC_V5";
+        throw PricingJson.invalid("Unsupported pricing schema");
+    }
+
+    private static Map<String, Spec> specsForSchema(int schemaVersion) {
+        if (schemaVersion == 2) return SPECS;
+        if (schemaVersion != 3) throw PricingJson.invalid("Unsupported pricing schema");
+        var specs = new TreeMap<>(SPECS);
+        specs.put("T01", new Spec(EvaluatorType.TAX_POLICY_VALIDITY, """
+                {"sourceFields":["merchantTaxSettings","platformTaxDefault","taxPoint"],
+                 "unknownPolicy":"BLOCK","platformReviewRequired":false}
+                """));
+        specs.put("T02", new Spec(EvaluatorType.TAX_PRICE_MODE, """
+                {"supportedModes":["INCLUSIVE","EXCLUSIVE"],
+                 "priceModeFrom":"EFFECTIVE_MERCHANT_TAX_SETTINGS"}
+                """));
+        return Map.copyOf(specs);
+    }
+
+    private static int version(String no, int schemaVersion) {
+        return schemaVersion == 3 && Set.of("T01", "T02").contains(no) ? 2 : 1;
     }
 
     private static Parameters parameters(String no, Spec spec) {

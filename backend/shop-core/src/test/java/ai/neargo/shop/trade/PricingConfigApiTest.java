@@ -115,8 +115,10 @@ class PricingConfigApiTest {
     void seedUsesServerRegistryAndTrustedOperatorContext() {
         PricingAccessPolicyTest.login(LoginUser.operator("OPS", "Ops", List.of(),
                 List.of(Perms.PRICING_TEMPLATE_UPDATE)));
-        ops.importSeed(new PricingConfigRequests.Seed("{}", ImportMode.DRY_RUN));
-        verify(seeds).importDrafts(platform, "{}", "PRICING_RULE_SPEC_V4", ImportMode.DRY_RUN);
+        ops.importSeed(new PricingConfigRequests.Seed("{\"schemaVersion\":2}", ImportMode.DRY_RUN));
+        verify(seeds).importDrafts(platform, "{\"schemaVersion\":2}", ImportMode.DRY_RUN);
+        ops.importSeed(new PricingConfigRequests.Seed("{\"schemaVersion\":3}", ImportMode.DRY_RUN));
+        verify(seeds).importDrafts(platform, "{\"schemaVersion\":3}", ImportMode.DRY_RUN);
     }
 
     @Test

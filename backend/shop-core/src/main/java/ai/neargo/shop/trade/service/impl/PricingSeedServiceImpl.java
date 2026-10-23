@@ -44,6 +44,18 @@ public class PricingSeedServiceImpl implements PricingSeedService {
     }
 
     @Override
+    public ImportReport importDrafts(Context c, String source, ImportMode mode) {
+        if (c == null || !c.platformOperator()) throw BizException.of(ErrorCode.FORBIDDEN);
+        final String registry;
+        try {
+            registry = validator.registryVersion(source);
+        } catch (IllegalArgumentException error) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return importDrafts(c, source, registry, mode);
+    }
+
+    @Override
     public ImportReport importDrafts(Context c, String source, String registryVersion, ImportMode mode) {
         if (c == null || !c.platformOperator()) throw BizException.of(ErrorCode.FORBIDDEN);
         if (mode == null) throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -103,7 +115,7 @@ public class PricingSeedServiceImpl implements PricingSeedService {
         row.setName(draft.sourceTemplateNo());
         row.setStatus("ACTIVE");
         row.setDraftContent(draft.definition());
-        row.setDraftSchemaVersion(2);
+        row.setDraftSchemaVersion(draft.schemaVersion());
         row.setDraftVersion(0L);
         row.setSeedVersion(plan.seedVersion());
         row.setSeedHash(plan.seedHash());

@@ -86,9 +86,16 @@ public final class PricingConfigCompiler {
             validateShape(merged, "");
             Definition definition = PricingJson.JSON.treeToValue(merged, Definition.class);
             validateDefinition(definition, constraints, capabilities);
+            if (definition.schemaVersion() == 3) {
+                check(!patch.has("taxBinding") || patch.path("taxBinding").isEmpty(),
+                        "taxBinding", "PROTECTED_OVERRIDE");
+            }
             String canonical = PricingJson.canonical(merged);
-            String hash = PricingJson.hash("PRICING_CONFIG_V4\n" + constraints.semanticHash() + "\n" + canonical);
-            return new CompilationResult(new EffectivePricingConfig(definition, constraints.rules(), canonical, hash),
+            int schema = definition.schemaVersion();
+            String namespace = schema == 2 ? "PRICING_CONFIG_V4" : "PRICING_CONFIG_V5";
+            String hash = PricingJson.hash(namespace + "\n" + constraints.semanticHash(schema) + "\n" + canonical);
+            return new CompilationResult(new EffectivePricingConfig(
+                    definition, constraints.rules(schema), canonical, hash),
                     List.of());
         } catch (InvalidConfig invalid) {
             return failure(invalid.code, invalid.path, invalid.getMessage());
@@ -192,7 +199,7 @@ public final class PricingConfigCompiler {
 
     private static void validateDefinition(Definition config,
             SystemConstraints constraints, PricingCapabilities capabilities) {
-        check(config.schemaVersion() == 2, "schemaVersion", "UNSUPPORTED_VERSION");
+        check(config.schemaVersion() == 2 || config.schemaVersion() == 3, "schemaVersion", "UNSUPPORTED_VERSION");
         check(config.formulaVersion() == 1 && FORMULAS.contains(config.formulaId()),
                 "formulaId", "UNSUPPORTED_FORMULA");
         check(config.ruleRefs().size() == constraints.mandatoryRuleNos().size()
@@ -240,8 +247,14 @@ public final class PricingConfigCompiler {
                 || manual.minPayableRateBp() >= 0 && manual.minPayableRateBp() <= 10000,
                 "manualOperations.minPayableRateBp", "RATE_RANGE");
         var tax = config.taxBinding();
-        check(tax.resolveFrom().equals("VERIFIED_STORE_REGION_AND_TRANSACTION_CONTEXT")
-                && tax.missingPolicy().equals("BLOCK") && !tax.storeMayEditRate(), "taxBinding", "MANDATORY_POLICY");
+        if (config.schemaVersion() == 2) {
+            check(tax.resolveFrom().equals("VERIFIED_STORE_REGION_AND_TRANSACTION_CONTEXT")
+                    && tax.missingPolicy().equals("BLOCK") && !tax.storeMayEditRate(),
+                    "taxBinding", "MANDATORY_POLICY");
+        } else {
+            check(tax.taxProfileNo() == null && tax.resolveFrom().equals("MERCHANT_OR_PLATFORM_DEFAULT")
+                    && tax.missingPolicy().equals("BLOCK") && tax.storeMayEditRate(), "taxBinding", "MANDATORY_POLICY");
+        }
     }
 
     private static void requireText(JsonNode node, String path) {
