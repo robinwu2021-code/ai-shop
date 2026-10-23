@@ -24,6 +24,9 @@ import ai.neargo.shop.food.dto.OptionGroupConfigVO;
 import ai.neargo.shop.food.dto.OrderLineInput;
 import ai.neargo.shop.food.policy.DiningPriceFactsPolicy;
 import ai.neargo.shop.food.policy.DiningPriceSourcePolicy;
+import ai.neargo.shop.food.policy.DiningPricingSourcePolicy;
+import ai.neargo.shop.spi.trade.PricingSourceRef;
+import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope;
 import ai.neargo.shop.spi.product.DishOfferQueryPort.Offer;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort.SkuIdentityFact;
 import java.math.BigDecimal;
@@ -83,6 +86,12 @@ class DiningPriceSourcePolicyTest {
             var valid = facts(cart, catalog(deps, List.of("GROUP"), "SINGLE"),
                     Map.of("S", offer("S", 1000), "ADD", offer("ADD", 101)), units);
             assertThat(DiningPriceFactsPolicy.validate(valid, "E", "A", "C", 4, null)).isEqualTo(valid);
+            var shared = DiningPricingSourcePolicy.project(valid, new Scope("MAIN", "E", "A"),
+                    new PricingSourceRef("FOOD", "CART", "C", 4, null, null), null);
+            assertThat(shared.prices().units()).hasSize(2);
+            assertThat(shared.invoiceBases()).hasSize(1);
+            assertThat(shared.invoiceBases().getFirst().amount().minor()).isEqualTo(2303);
+            assertThat(shared.prices().units()).allMatch(u -> u.taxInvoiceLineRef().equals("L"));
             var p = valid.payload();
             var missing = new DiningPriceFacts.Payload(p.entityNo(), null, p.cart(), p.menus(), p.identities(),
                     p.offers(), p.restrictions().stream().filter(r -> r.skuNo().equals("S")).toList(),
@@ -107,6 +116,12 @@ class DiningPriceSourcePolicyTest {
             assertThat(units.stream().mapToLong(u -> u.amountMinor()).sum()).isEqualTo(2000 + expected);
             var source = facts(input, catalog(deps, List.of(), "BUNDLE"), offers, units);
             assertThat(DiningPriceFactsPolicy.validate(source, "E", "A", "C", 4, null)).isEqualTo(source);
+            var shared = DiningPricingSourcePolicy.project(source, new Scope("MAIN", "E", "A"),
+                    new PricingSourceRef("FOOD", "CART", "C", 4, null, null), null);
+            assertThat(shared.composition()).hasSize(2);
+            assertThat(shared.prices().units()).hasSize("INCLUDED".equals(mode) ? 1 : 2);
+            assertThat(shared.invoiceBases()).hasSize(1);
+            assertThat(shared.invoiceBases().getFirst().amount().minor()).isEqualTo(2000 + expected);
             if ("DIFF_BASE".equals(mode)) {
                 var p = source.payload(); var diff = units.get(1);
                 var zero = new DiningPriceFacts.Unit(diff.sourceLineNo(), diff.componentRef(), diff.kind(),

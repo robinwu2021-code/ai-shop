@@ -21,6 +21,10 @@ import ai.neargo.shop.food.foodclient.FoodClientConfiguration;
 import ai.neargo.shop.food.foodclient.RemoteDiningPricingFactsService;
 import ai.neargo.shop.food.policy.DiningPriceFactsPolicy;
 import ai.neargo.shop.food.policy.DiningPriceSourcePolicy;
+import ai.neargo.shop.food.port.FoodPricingSourceFactsPortImpl;
+import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Credentials;
+import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope;
+import ai.neargo.shop.spi.trade.PricingSourceRef;
 import ai.neargo.shop.food.service.DiningPricingFactsService;
 import ai.neargo.shop.food.spi.PricingSourceInternalApi;
 import ai.neargo.shop.svc.InternalHttp;
@@ -42,7 +46,7 @@ import tools.jackson.databind.ObjectMapper;
 
 class RemoteDiningPricingFactsTest {
     private final ObjectMapper json = new ObjectMapper();
-    private DiningPriceFacts receipt(String subject) {
+    DiningPriceFacts receipt(String subject) {
         String document = """
                 {"entityNo":"E","subjectNo":null,"currency":"CNY","amountMinor":200,
                  "cart":{"cartNo":"C","storeNo":"A","checkNo":"CHECK","sessionNo":"SESSION",
@@ -89,10 +93,15 @@ class RemoteDiningPricingFactsTest {
             var http = new InternalHttp(n -> Optional.of("http://127.0.0.1:" + server.getAddress().getPort()), "wire");
             var service = new RemoteDiningPricingFactsService(http.client(ServiceName.FOOD,
                     PricingSourceInternalApi.class, Duration.ofSeconds(5)));
-            assertThat(service.staff("E", "A", "C", 4).payload().amountMinor()).isEqualTo(200);
+            var adapter = new FoodPricingSourceFactsPortImpl(service);
+            var source = new PricingSourceRef("FOOD", "CART", "C", 4, null, null);
+            var projected = adapter.staff(new Scope("MAIN", "E", "A"), source);
+            assertThat(projected.prices().baseTotal().minor()).isEqualTo(200);
+            assertThat(projected.invoiceBases()).hasSize(1);
             response.set(json.writeValueAsString(receipt("SESSION")));
             var access = new CartAccess("SESSION", "secret", "BUYER");
-            assertThat(service.customer("C", access, 4).payload().subjectNo()).isEqualTo("SESSION");
+            assertThat(adapter.customer(source, new Credentials("SESSION", "secret", "BUYER")).subjectNo())
+                    .isEqualTo("SESSION");
             assertThat(calls.get(1)).contains("\"accessToken\":\"secret\"", "\"expectedVersion\":4");
             response.set(json.writeValueAsString(receipt(null)));
             assertThatThrownBy(() -> service.customer("C", access, 4)).isInstanceOf(BizException.class);

@@ -40094,6 +40094,18 @@
       {
         "name": "Kind",
         "values": [
+          "MAIN",
+          "ADDON",
+          "BUNDLE_INCLUDED",
+          "BUNDLE_ADD",
+          "BUNDLE_DIFFERENCE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Kind",
+        "values": [
           "RECHARGE",
           "SERVICE_USE",
           "ORDER_USE",
