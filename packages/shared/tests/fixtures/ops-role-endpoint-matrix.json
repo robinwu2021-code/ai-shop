@@ -1061,6 +1061,8 @@
     "POST /ops/points/types",
     "GET /ops/points/vouchers",
     "POST /ops/points/withdrawal-execute",
+    "GET /ops/pricing-tax-settings",
+    "PUT /ops/pricing-tax-settings",
     "POST /ops/pricing-templates",
     "GET /ops/pricing-templates/{no}/draft",
     "PUT /ops/pricing-templates/{no}/draft",

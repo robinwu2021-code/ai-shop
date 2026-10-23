@@ -29122,9 +29122,9 @@
         },
         {
           "key": "err.pricing.owner_unsupported",
-          "zh-CN": "尚未取得有效的能力或税务核验证据，暂不能预览或发布结账规则",
-          "en": "Verified capability or tax evidence is unavailable; pricing preview and publication are blocked",
-          "ar": "أدلة التحقق من القدرات أو الضرائب غير متوفرة؛ معاينة قواعد التسوية ونشرها غير متاحين"
+          "zh-CN": "有效的能力或税配置来源暂不可用，请检查配置后重试",
+          "en": "Effective capability or tax configuration source is unavailable; check settings and retry",
+          "ar": "مصدر القدرات أو إعدادات الضريبة الفعالة غير متاح؛ تحقق من الإعدادات وأعد المحاولة"
         },
         {
           "key": "err.reset_token.invalid",
@@ -40582,6 +40582,15 @@
       {
         "name": "Source",
         "values": [
+          "PLATFORM_DEFAULT",
+          "MERCHANT_CUSTOM"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Source",
+        "values": [
           "TRADE"
         ],
         "zh": "",
@@ -45606,6 +45615,22 @@
     },
     {
       "host": "BizPerms",
+      "name": "PRICING_TAX_READ",
+      "type": "String",
+      "value": "\"biz:pricing:tax:read\"",
+      "zh": "查看当前授权商家的有效税配置。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRICING_TAX_UPDATE",
+      "type": "String",
+      "value": "\"biz:pricing:tax:update\"",
+      "zh": "修改全主体所有门店的税配置，仅主体属主，不可按门店委派。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
       "name": "PRICING_CONFIG_READ",
       "type": "String",
       "value": "\"biz:pricing:config:read\"",
@@ -45848,7 +45873,7 @@
       "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },
@@ -45858,6 +45883,22 @@
       "type": "String",
       "value": "AbstractTokenAuthFilter.TOKEN_EXPIRED_ATTR",
       "zh": "@deprecated 已上移到 AbstractTokenAuthFilter#TOKEN_EXPIRED_ATTR。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PRICING_TAX_READ",
+      "type": "String",
+      "value": "\"pricing:tax:read\"",
+      "zh": "查看平台默认税配置。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PRICING_TAX_UPDATE",
+      "type": "String",
+      "value": "\"pricing:tax:update\"",
+      "zh": "维护平台默认税率及价税模式，不涉及商家审批。",
       "module": "shop-base-auth"
     },
     {

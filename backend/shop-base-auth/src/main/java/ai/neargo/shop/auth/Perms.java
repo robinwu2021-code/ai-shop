@@ -47,6 +47,11 @@ import java.util.Map;
  */
 public final class Perms {
 
+    /** 查看平台默认税配置。 */
+    public static final String PRICING_TAX_READ = "pricing:tax:read";
+    /** 维护平台默认税率及价税模式，不涉及商家审批。 */
+    public static final String PRICING_TAX_UPDATE = "pricing:tax:update";
+
     /** Shared pricing configuration: read, draft edit and publication are independent grants. */
     public static final String PRICING_TEMPLATE_READ = "pricing:template:read";
     public static final String PRICING_TEMPLATE_UPDATE = "pricing:template:update";

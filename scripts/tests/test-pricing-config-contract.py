@@ -27,12 +27,27 @@ class PricingConfigContractTest(unittest.TestCase):
         spec.loader.exec_module(module)
         handlers = set(module.backend())
         operations = {(m.upper(), module.norm(p)) for p, methods in SPEC['paths'].items() for m in methods}
-        self.assertEqual(len(operations), 16)
+        self.assertEqual(len(operations), 21)
         self.assertTrue(operations.issubset(handlers), operations - handlers)
         self.assertFalse(any(path.startswith('/mp/') for _, path in operations))
 
+    def test_tax_management_rates_are_explicit_and_owner_writes_are_documented(self):
+        save = SPEC['components']['schemas']['TaxSave']
+        validator = Draft202012Validator(save)
+        valid = {'expectedVersion': 0, 'rateBp': 500, 'priceTaxMode': 'EXCLUSIVE'}
+        self.assertTrue(validator.is_valid(valid))
+        for field in valid:
+            incomplete = dict(valid)
+            del incomplete[field]
+            self.assertFalse(validator.is_valid(incomplete))
+        for rate in [None, '500', 500.5, -1, 10001]:
+            self.assertFalse(validator.is_valid(dict(valid, rateBp=rate)))
+        for method, path in [('put', '/biz/pricing-tax-settings'),
+                             ('post', '/biz/pricing-tax-settings/reset')]:
+            self.assertIn('entity owner only', SPEC['paths'][path][method]['description'])
+
     def test_requests_are_closed_and_modifying_operations_require_idempotency(self):
-        for name in ['Create', 'Save', 'Preview', 'Publish', 'Initialize', 'Reset', 'Upgrade', 'Seed']:
+        for name in ['Create', 'Save', 'Preview', 'Publish', 'Initialize', 'Reset', 'Upgrade', 'Seed', 'TaxSave', 'TaxReset']:
             schema = SPEC['components']['schemas'][name]
             self.assertIs(schema['additionalProperties'], False)
             if 'expectedDraftVersion' in schema['properties']:

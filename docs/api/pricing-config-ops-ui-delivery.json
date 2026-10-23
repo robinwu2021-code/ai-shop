@@ -1,7 +1,7 @@
 {
   "version": 1,
   "stage": "JAVA_BACKEND_UI_DEFERRED",
-  "reason": "用户要求优先后端；此处为配置API，前端页面待后续接入。预览/发布缺正式证据时阻断。",
+  "reason": "用户要求后端优先；模板/规则与税配置管理API已提供，UI后续接入。税配置无审批，规则发布仍需真实能力来源。",
   "plan": "docs/technical/TDD-订单结账-CKO09种子与配置API.md",
   "entries": [
     {
@@ -38,6 +38,16 @@
       "app": "ops-web",
       "method": "GET",
       "path": "/ops/pricing-templates/{no}/revisions/{revisionNo}"
+    },
+    {
+      "app": "ops-web",
+      "method": "GET",
+      "path": "/ops/pricing-tax-settings"
+    },
+    {
+      "app": "ops-web",
+      "method": "PUT",
+      "path": "/ops/pricing-tax-settings"
     }
   ]
 }

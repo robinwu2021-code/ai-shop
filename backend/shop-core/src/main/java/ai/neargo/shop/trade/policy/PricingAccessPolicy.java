@@ -54,7 +54,7 @@ public class PricingAccessPolicy {
                 new PricingCapabilities(0, 0, false, false, false), "DRAFT_ONLY", Instant.EPOCH, Set.of());
     }
 
-    /** Missing or ambiguous providers cannot silently turn examples into live capabilities or legal tax evidence. */
+    /** Missing or ambiguous providers cannot silently turn examples into live capabilities or trusted tax sources. */
     public Context publication(boolean template, String resourceNo) {
         Context identity = draft(template);
         try {

@@ -7,7 +7,8 @@ import ai.neargo.shop.common.pricing.PricingCapabilities;
 
 /**
  * Backend-only publication evidence from real capability and tax owners; never a request DTO.
- * No default provider is supplied: missing tax registration/review provenance must block publication.
+ * No default provider is supplied: absent real funding capability evidence must block publication.
+ * Merchant-managed schema3 tax needs no platform review; verifiedTaxProfiles serves legacy schema2 only.
  */
 public interface PricingConfigEvidencePort {
     /** Read verified owner versions for this exact scope without reserving assets; null means unavailable. */

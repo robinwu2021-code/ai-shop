@@ -9,6 +9,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import static org.mockito.Mockito.when;
+import ai.neargo.shop.spi.user.StoreDirectoryPort;
+import ai.neargo.shop.spi.trade.PricingTaxSettingPort.Scope;
+import ai.neargo.shop.trade.port.PricingTaxSettingPortImpl;
+import ai.neargo.shop.trade.port.PricingTaxCalculationPortImpl;
+import ai.neargo.shop.trade.service.impl.PricingTaxCalculationServiceImpl;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -94,6 +101,29 @@ class PricingTaxSettingServiceTest {
     void reset() {
         jdbc.update("DELETE FROM sys_idempotent");
         jdbc.update("DELETE FROM sys_setting");
+    }
+
+    @Test
+    void persistedTaxSourcePreviewConfirmAndSameValueResetRequireNewCalculation() {
+        var stores = mock(StoreDirectoryPort.class);
+        when(stores.cards(List.of("S1"))).thenReturn(Map.of("S1", new StoreDirectoryPort.StoreCard(
+                "S1", "Store", "M1", "", "ACTIVE", true, "", "", null, null, 0, 0)));
+        var source = new PricingTaxSettingPortImpl(service, stores);
+        var calculation = new PricingTaxCalculationPortImpl(new PricingTaxCalculationServiceImpl(source));
+        var scope = new Scope("MAIN", "M1", "S1");
+        defaults(0, 500, PriceTaxMode.EXCLUSIVE, "D1");
+        var input = PricingTaxCalculationTest.input(10000, 1);
+        var preview = calculation.estimate(scope, input);
+        assertThat(calculation.confirm(scope, input, preview).result().invoiceGross().minor()).isEqualTo(10500);
+        save("M1", "S1", 0, 500, PriceTaxMode.EXCLUSIVE, "M1");
+        assertThatThrownBy(() -> calculation.confirm(scope, input, preview)).isInstanceOf(BizException.class);
+        var custom = calculation.estimate(scope, input);
+        service.resetMerchant(merchant("M1", "S1"), new ResetReq(1), "RESET");
+        assertThatThrownBy(() -> calculation.confirm(scope, input, custom)).isInstanceOf(BizException.class);
+        assertThat(source.resolve(scope).managedVersion()).isEqualTo(2);
+        assertThat(preview.result().invoiceTax().minor()).isEqualTo(500);
+        defaults(1, 600, PriceTaxMode.EXCLUSIVE, "D2");
+        assertThat(calculation.estimate(scope, input).result().invoiceTax().minor()).isEqualTo(600);
     }
 
     @Test

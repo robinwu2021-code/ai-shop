@@ -116,6 +116,9 @@ class BizEndpointPermTest {
      * {@code docs/requirements/三端角色权限功能对齐清单.md} §4。
      */
     private static final Map<String, String> REQUIRED = new LinkedHashMap<>() {{
+        // Resource registry uses stricter write permission; method security tests verify read/write separately.
+        put("/biz/pricing-tax-settings", BizPerms.PRICING_TAX_UPDATE);
+        put("/biz/pricing-tax-settings/reset", BizPerms.PRICING_TAX_UPDATE);
         // ---- 进销存（inv_*，独立库）----
         // 三档权限，判据是「这个动作能改什么」而不是「它在哪一屏」：
         //   · biz:stock          改库存与开单 —— 店员与理货员每天的活

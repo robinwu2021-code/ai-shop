@@ -48,9 +48,9 @@ def main():
             raise RuntimeError('Only one explicit Java test method may be selected')
         selection = os.environ.get('PRICING_TEST_SUITE', 'publication' if method else 'all')
         available = {'publication': [('PricingConfigServiceTest', 20)], 'seed': [('PricingSeedServiceTest', 8)],
-                     'tax': [('PricingTaxSettingServiceTest', 17)],
+                     'tax': [('PricingTaxSettingServiceTest', 18)],
                      'all': [('PricingConfigServiceTest', 20), ('PricingSeedServiceTest', 8),
-                             ('PricingTaxSettingServiceTest', 17)]}
+                             ('PricingTaxSettingServiceTest', 18)]}
         if selection not in available or method and selection == 'all':
             raise RuntimeError('Select publication, seed, tax, or all; a method requires one suite')
         suites = available[selection]

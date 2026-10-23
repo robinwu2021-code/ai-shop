@@ -270,3 +270,69 @@ C2.2评审裁决：审计仍为best-effort，但改为主配置/收据提交后�
 
 
 最终守卫：宿主34项中26通过/8失败，ArchitectureTest 7项错误与原统一分支e9基线逐条相同，SchemaDriftTest仍是mbr_identity_ticket.customer_no同一列集合差异（仅忽略输出列顺序）；SchemaGeneratorTest、SchemaParityTest、BizRoleSeedTest 3项、BizKeyConventionTest 3项、BackendI18nParityTest 6项及OutboxRoutingTest 2项通过。不声称全应用守卫通过。Node9项、JSONschema契约3项及Ops后端先行出口/SQL方言守卫通过，无新增欠账；角色授权、公共API及数据库schema均未变。已重新生成分层、词表及索引，新增Service按现有零售/core包规范，未生成空Controller或平行Mapper。
+
+
+### C2.3～5批次：管理入口、真实税来源与共享计税接线（2026-10-23）
+
+按用户新要求扩大交付粒度：阶段一实现管理HTTP与权限后编译，阶段二实现跨行业来源及计算复核后编译，阶段三补齐合同/迁移生成物及回归代码后编译；三个阶段后统一测试、原生数据库验证和批次评审。不再逐个小任务要求继续。原生资金能力证据仍单独对账，不能因为税无需审批就冒充券/储值全能力。
+
+#### L1 可用边界
+
+平台可设置统一默认税率，商家属主可保存自定义或恢复默认；已授权员工可按独立读权限查看。共享计算通过Java Port供餐饮、零售、美业接入，不提供接受前端任意税率/金额的通用HTTP计算口。此批输出供CKO10/11消费的不可变计算合同，不代表报价表、正式订单、支付扣款和退款已接通。
+
+#### L2 分端API
+
+| 端 | 方法及路径 | 权限/附加身份 | 输入 | 输出 |
+|---|---|---|---|---|
+| 平台 | GET /ops/pricing-tax-settings | pricing:tax:read；Ops登录主体 | 无 | SettingVO |
+| 平台 | PUT /ops/pricing-tax-settings | pricing:tax:update；Ops登录主体 | Save、Idempotency-Key | SettingVO |
+| 商家 | GET /biz/pricing-tax-settings | biz:pricing:tax:read；当前授权门店归属核对 | 无 | SettingVO |
+| 商家 | PUT /biz/pricing-tax-settings | biz:pricing:tax:update及BizContext.owner | Save、Idempotency-Key | SettingVO |
+| 商家 | POST /biz/pricing-tax-settings/reset | 同上 | Reset、Idempotency-Key | SettingVO |
+| C端 | 无税配置管理路由 | 后续只消费报价明细 | 不接收临时报税率 | 见CKO10/11 |
+
+Save={expectedVersion:整数0～9007199254740990,rateBp:整数0～10000,priceTaxMode:EXCLUSIVE|INCLUSIVE}；Reset={expectedVersion}。必须显式传值，拒绝缺失/null/浮点/数值字符串/未知字段，0表示显式零税率。所有身份、配置来源及摘要均由服务端提供。冲突返回既有CONFLICT；缺少/损坏实际税来源返回40190，不默认为零。响应沿统一ApiResult，完整JSON Schema见[合同](../api/pricing-config.openapi.json)。
+
+SettingVO={version,custom,effective}；effective允许null用于管理界面显示“未配置”，有值时为{source,ownerNo,version,rateBp,priceTaxMode,contentHash}。外层version属于商家自身设置；effective.version属于当前选择的商家或平台记录，两者均须冻结。
+
+权限裁决：现有B端角色按门店授权，没有跨全主体的委派模型，因此首版跨店税配置仅主体属主可写。单店tax:update甚至单店裸*也不能突破owner校验；该写码不出现在可委派自定义角色码中。不扩展现有店长/店员或平台非超管角色权限。V549仅新增2个平台API功能点，不创建新表、不激活任何默认税率。
+
+#### L3 来源及对象关系
+
+```mermaid
+classDiagram
+    PricingTaxSettingPort <|.. PricingTaxSettingPortImpl
+    PricingTaxCalculationPort <|.. PricingTaxCalculationPortImpl
+    PricingTaxSettingPortImpl --> PricingTaxSettingService
+    PricingTaxSettingPortImpl --> StoreDirectoryPort
+    PricingTaxCalculationPortImpl --> PricingTaxCalculationService
+    PricingTaxCalculationServiceImpl ..|> PricingTaxCalculationService
+    PricingTaxCalculationServiceImpl --> PricingTaxSettingPort
+    PricingTaxCalculationServiceImpl --> TaxEngine
+    TaxEngine --> MerchantTaxSnapshot
+```
+
+PricingTaxSettingPort.resolve(Scope{tenantNo,entityNo,storeNo})只允许现有MAIN，校验实际StoreDirectory归属，然后读取真实sys_setting版本。调用方先验证其订单/购物车可访问性；本Port不把传入标识当成用户授权。输出MerchantTaxSnapshot包含tenant/entity/store、managedVersion、source、owner、sourceVersion、rate、mode、contentHash，结构构造会核对来源hash与值的一致性；hash只作一致性证据，不是身份令牌。
+
+PricingTaxCalculationPort.estimate(scope,Input)→Calculation；Input={sourceSnapshotHash,sourceVersion,lines}，lines为实际商品/订单owner确认的完整原发票行及价格含税语义，最多1024源分段。Calculation={input,result}；result带MerchantTaxSnapshot、逐行net/tax/gross及汇总。TaxEngine新增estimateConfigured，与旧地区税路径调用同一个calculateLines/reprice方法：不伪造国别、税登记号或审核引用；旧schema2/地区税合同仍保持原限制。
+
+确认调用confirm(scope,currentOwnerInput,expectedCalculation)：先比对当前真实商品事实及版本，再重新读取实际税配置，比较完整作用域、managedVersion和sourceVersion/hash；即使税率未变但恢复默认、来源切换、版本变化也返回CONFLICT要求重算。通过后重用相同引擎重算，绝不使用请求携带的合计作为收款依据。此确认仅复核事实和税设置，不是事务性的订单创建、收款或法定发票签发。CKO10/11/14仍须在其事务边界内接入并持久化快照，解决确认到落单之间的并发窗口。
+
+公式与原行HALF_UP均复用已有TaxEngine；显式零税率可对STANDARD按0计算，ZERO_RATED/EXEMPT/OUT_OF_SCOPE保留各自语义；UNKNOWN阻断。计价模式不匹配阻断。原发票行金额必须完整，AA/拆段不得创造新行或拿部分金额再次计税。历史计算对象不可变，但退款仍须消费未来正式订单冻结分摊，不能把计算对象当成退款凭据。
+
+#### L4 统一验收及剩余依赖
+
+统一验收覆盖两种公式/零税率/最大税率/溢出、逐行和AA完整性、真实方法安全代理与HTTP输入、主体属主与单店通配边界、不同商家/门店及同值换版重算；原生MariaDB从sys_setting经过两个真实Port到试算/确认，验证继承、覆盖、恢复和默认更新。
+
+C2.4尚未整体完成：新增PricingTaxSettingPort已提供实际税来源，并修正EvidencePort过时审核注释；现有CouponPort和StoredValue/Entitlement就绪布尔值不能证明多券数量、混合折扣和叠加原子能力，仍无可安全实现的完整PricingConfigEvidencePort生产provider。本批不设置默认全能力provider，规则预览/初始化/发布仍保留40190；下一批需要由实际权益/资金owner给出可验证、稳定版本的结账能力证据。取消税审批不等于扩大资金权限。CKO10报价、CKO11真实餐饮事实及正式下单依然未完成。
+
+
+#### 批次验收收据
+
+三阶段compile/compile/test-compile均BUILD SUCCESS。统一核心回归：shop-base261、shop-base-auth28全通过；shop-core527项，481执行通过、46条件数据库用例跳过；对应46项在独立原生MariaDB全部实际执行通过（20发布+8种子+18税设置，0跳过）。新增5纯税计算、7计算/来源协作、5安全代理/HTTP用例及1真实数据库贯通用例。OpenAPI4、Node9、分端交付Python4全通过，SQL方言/Ops UI staging守卫无新增欠账。H2生成物362表/2422种子，V549仅新增2权限种子。
+
+宿主既有34项检查：26通过、8失败。Architecture7失败的方法和错误消息与原统一基线逐字相同；SchemaDrift1仍为mbr_identity_ticket列解析差异，actual/expected列集合与原基线相同。Schema生成器真实执行/H2建库、SchemaParity、角色种子、业务键及三语检查通过。不能将此写成宿主全绿。没有连接业务数据库、部署或推送远端。
+
+一次新上下文只读批次评审未发现Critical/Important/待修Minor。评审边界：本Port只复核计算，不承诺订单/支付/发票原子性；事实真实性由内部调用方的商品/订单owner负责，正式消费由CKO10+实现；退款持久化未交付；C2.4完整资金证据provider仍缺失。主体属主写边界是兼容既有门店权限模型的明确裁决，未来委派必须新增主体级授权；当前不扩大单店角色。上述未交付项均保留在总计划，不计作完成。
+
+另修复权限页面矩阵生成器读取现有嵌套目录报EISDIR：递归读取真实文件，不把目录当文件，不跟随符号链接。已重新生成矩阵，未手工补生成产物。40190三语更新为“有效能力或税配置来源暂不可用”，移除旧核验/仅发布措辞，错误码兼容不变。
