@@ -42,3 +42,17 @@
 最终技术核对补充：资金旧owner按全局orderNo/outTradeNo查找，BaseEntity一期MAIN只是审计，不存在已启用的行级租户隔离；guard全局orderNo唯一、operationNo按真实全局Port查询键唯一，LEGACY不被新MAIN硬CHECK截断。现有旧unmanaged OFFLINE确认没有新stl receipt，但线上WAIT_PAY与线下WAIT_OFFLINE_PAY无互转，唯一实际init caller先要求WAIT_PAY；保留旧语义并补真实反例，不把RECEIVE升级成正式现金权限。
 
 已有原单实收以已消费确认→原quote→原order/sub/items一致应收为准，不重新读取商品现价或以当前下架/删除/门店开关后来关闭拒绝承认已收；原quote/place已通过正式四层准入。关单前后首笔实收都保留真实receipt及原late-resolution；原amount/currency不得改零或重算。精确512行设计已通过根技术核对，V540候选7477字节/hash见独立pin；实际文件生成后须根再复算一致才首次执行。
+
+## 实施裁决：正式实收与专用凭证的时间基准
+
+原 OrdOrder.createdAt 由 AuditMetaObjectHandler 使用 JVM 本地 LocalDateTime.now() 写入，未保存 offset；不得在新资金合同中将其硬解释为 UTC。原 CONSUMED confirmation.consumedAt 由 CheckoutQuoteGuard.complete 在真实建单同一事务内使用 CheckoutClock Instant→UTC 持久化。正式实收 receivedAt 下界采用该原确认 consumedAt 的 UTC instant，缺失时拒绝，不推测旧审计时间。代价是下界比订单行创建略晚，事务内极小区间不满足此合同；不得改写真实 receivedAt 绕过校验，也不得因此删除已经接受的资金事实。测试覆盖 JVM +08、边界与原事实恢复。
+
+专用 OFFLINE_RECEIPT 的 MediaUploadService 新用途写入明确 UTC createdAt/上传时刻，旧用途保留既有时间语义；允许将此实际 owner 文件最小追加到 owned 清单，不调整全局审计时间。不可变凭证摘要不使用会变化的 updatedAt。无 DDL 变化，V540 继续冻结。
+
+## 实施裁决：真实成功回执的内部订单投影
+
+实际 DataScopeRegistration 对 ord_order 只登记 SELF/COMMUNITY，正式商家收款 HTTP 上下文会使内部订单投影读不到原单。允许仅在 PaymentDispatch.project 已获得真实资金 owner SUCCESS receipt 后，对内部 OrderRepairPort.markPaid 使用 executeWithoutScope。公共收款接口、当前 B/C 身份/门店/收款权限与原指令校验保留；OrderService 仍在锁外重新读取真实回执、锁内校验订单/买家/金额/币种/通道/交易号。不得扩散到任意 PaymentOpen、公共查询或全局放宽数据域。关单迟收及不匹配仍保留原资金事实与处置记录。测试覆盖合法当店 B 投影成功及越店拒绝。
+
+## R1首次线上发送授权点
+
+对 PREPARED/OPENED（包括别名所指 canonical 根）且尚未开始发送的操作，当前真实 C 重放也要在 trade owner 读取并通过原确认/原订单经济与范围、ONLINE、实际待付状态与期限检查。该检查成功是本次首次发送授权点，之后才无调用方事务/锁地进入 pay 原号仲裁；授权之后发生的取消属于既有迟收竞争。不得重算冻结价格或通道路由，也不得以检查失败删除永久 P0/P1、关闭 UNKNOWN 或隐藏实际 SUCCESS。已开始/未知/已收的请求继续只查原号；已付状态的新键不能制造永久无法绑定、污染成功来源的 PREPARED 映射。实现和原生用例由 R1 验证，未先验认定修复通过。

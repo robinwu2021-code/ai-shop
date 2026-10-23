@@ -704,9 +704,9 @@ Bean图约束：AppointmentService.openWorkOrderFromAppointment与WorkOrderServi
 
 正式OfflineReceiptPort仅pay:cash:receive当前当店操作员；C须先确认并建立OFFLINE订单，金额/币种取owner足额待收、CASH/BANK_TRANSFER按正式策略，transfer必须可信evidenceRef，实际actor不是主体号。复用ledger.open/settle产生真实资金receipt再投影订单；重复或已关闭订单收款进入原resolution，不伪造收款或再次收钱。旧managed confirmOfflinePay捷径拒绝。新pay:cash:receive/trade:checkout:prepare仅OWNER已有*、其他角色不自动加权；RECEIVE理货权限不授收款。
 
-- [ ] 开工前把精确设计八方法的payment分支、PaymentOperationPort/OfflineReceiptPort字段及owner/bridge文件逐项对账，按最新版本追加平台/独立pay迁移，不重写56已冻结DDL。
-- [ ] RED/GREEN真实MySQL ledger、不同key并发、open后崩溃/响应丢失/进程重启、未知不新号、回调与query一致、当前C及cash权限、原号receipt；外部仅隔离mockchannel，锁内无RPC。
-- [ ] 目标原资金/现金/支付竞争回归，提交并独立审查。报价/建单56与本任务均完成后才向美业来源提供完整金融事实。
+- [x] 开工前把精确设计八方法的payment分支、PaymentOperationPort/OfflineReceiptPort字段及owner/bridge文件逐项对账，按最新版本追加平台/独立pay迁移，不重写56已冻结DDL。
+- [x] RED/GREEN真实MySQL ledger、不同key并发、open后崩溃/响应丢失/进程重启、未知不新号、回调与query一致、当前C及cash权限、原号receipt；外部仅隔离mockchannel，锁内无RPC。
+- [x] 目标原资金/现金/支付竞争回归，提交并独立审查。报价/建单56与本任务均完成后才向美业来源提供完整金融事实。
 
 #### Task 58: 来源提交、绑定与逐来源账单
 
@@ -1912,12 +1912,14 @@ V539固定8444bytes/SHA256 5a8e346341e5b378403761f2a77555c0558ff6b27a6071584207a
 
 Task56本地owner完成；BM04整体尚未完成。按[Task57任务](../../.superpowers/sdd/beauty-backend/task-57-brief.md)先审计真实资金owner、全部open入口、原号/凭证/权限与新SQL，再技术核对、RED/编码/原生和独立审查。58来源绑定账单、59美业协议、60大模块真实JAR部署顺序保持，BM05仍关闭。
 
-### 32.6 Task57精确设计已确认，准备实施（未交付）
+### 32.6 Task57已验收：原号支付与正式实收（BM04尚未整体部署）
 
-基于Task56验收及5ef6d5f7f基线，已完成512行精确设计及真实只读审计报告，补充[ADR-047](./ADR/ADR-047-资金原号操作与正式线下实收归属.md)。根技术核对闭合原号canonical/alias、两PREPARED线下证据唯一占用、实际经办/私有用途、锁外I/O、旧线上/线下可达状态、原单关后实收与SQL NULL三值逻辑等问题。真实资金运行测试仍未执行。
+本地产品提交741b38178f01a6f4159fc618d57a45d75a3601e0，父b34e31ba4，98文件树d25c4e58cb7b888bbb900b320c82d4a834183d47与最终独立审查完全一致。CheckoutPort补齐八方法，trade永久P0映射、pay原号canonical与单次发送、正式CASH/BANK_TRANSFER实收、实际操作账号/私有凭证owner及source真实收据引用均已交付；金额仍由stl_payment拥有。
 
-候选平台V540共7477字节，根独立提取全文并复算SHA256 ca76b6512cf79c6f25fa71a4441f533e03cc609c6320611a0dcdc9634a10f745；固定时源码实际最大539，V540文件尚未创建/执行，V539仍原hash。实施生成实际文件后还需根复算一致才可首次执行；以后只追加不回改。记录见[首次执行前独立pin](../../.superpowers/sdd/beauty-backend/task-57-v540-preexecution-root-record.json)。
+独立全审发现3个重要问题，经两轮定点修复与窄复审全部关闭：NOT_SENT/CLOSED不再掩盖后续真实成功来源；canonical关系变化在当前锁读后整次回滚重试一次；未发送操作重查当前订单资格，且同一资金guard内任何已有SUCCESS阻止另一pending原号领取首次发送权。实际相反成功/迟收仍保留，竞争pending可保持原映射并明确CONFLICT/保守UNKNOWN，不伪装结清。审查见[全审](../../.superpowers/sdd/beauty-backend/review-task-57.md)、[R1](../../.superpowers/sdd/beauty-backend/review-task-57-r1.md)、[R2](../../.superpowers/sdd/beauty-backend/review-task-57-r2.md)。
 
-线下仍商户确认外部实收/owner记账，不冒称银行核验；原确认/原报价/原应收不因后来开关或商品变化而改写，已关单实收入原LATE_PAYMENT。当前通道查询缺最终未付证明，UNKNOWN持续原号查询，仅确证NOT_SENT允许真实C新键换号。资金旧identity是全局orderNo，不把默认MAIN审计字段宣称已有多租户隔离。完整要求见[brief](../../.superpowers/sdd/beauty-backend/task-57-brief.md)、[精确设计](../../.superpowers/sdd/beauty-backend/task-57-design.md)、[报告](../../.superpowers/sdd/beauty-backend/task-57-report.md)。
+有限证据：初始资金23项及相关边界38项通过；R1修复原生31项/普通14项，R2原生14项/普通4项均0失败0错误0跳过。批次相互重叠，不累计为独立总数。初始实现真实独立JVM发送前/通道接受后崩溃分别保持send0/1和原号，三防线消融命中3个真实断言、逐字恢复后4项通过；这两类专项未在R1/R2无关重复，不宣称最终全量测试通过。新增native类普通H2隔离41跳过只证明构建入口隔离。全部本任务临时资源已清，无生产资金操作、push或部署。
 
-提交本次根技术记录后给定IMPLEMENTATION_BASE，由原设计实施者继续真实RED→编码→原生/独立进程/消融→独立审查，未提前认定57能力通过。58来源绑定、59消费端协议、60整个BM04部署及基线门禁仍按序，BM05保持关闭。
+V540首次执行前独立pin并复核真实文件7477字节/SHA256 ca76b6512cf79c6f25fa71a4441f533e03cc609c6320611a0dcdc9634a10f745，现已冻结；V539及beautyV1–V7逐字不变。[ADR-047](./ADR/ADR-047-资金原号操作与正式线下实收归属.md)保留全局identity、UTC实收下界与可信内部投影等边界。
+
+完整普通门禁仍有已定位旧架构/四端点登记/标签/生成漂移；Task57 M1未知/空native selector校验作为Minor明确进入Task60最终门，不因本任务验收丢弃。58来源绑定/账单、59公开协议、60整BM04真实JAR部署和whole-branch审查仍按序，BM05保持关闭。完整证据与未验边界见[报告](../../.superpowers/sdd/beauty-backend/task-57-report.md)。
