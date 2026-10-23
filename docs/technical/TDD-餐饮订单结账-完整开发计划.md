@@ -4,7 +4,7 @@
 
 > 执行者：使用superpowers:executing-plans按任务顺序实施；每个任务完成失败测试、最小实现、验证、独立评审及范围明确的提交。不得仅因本计划存在就启动编码或声称能力已交付。
 >
-> 状态：CKO-01～08、09 A/B及C1已实现；09 C2.1/2/3及C2.5共享税合同已实现；CKO-10报价内部存储已实现；C2.4真实发布能力证据及11～31待开发。2026-10-23，档位2；本次任务核对基线`4aae843c1`，统一分支`codex/ai-shop-codex`。历史执行记录保留，当前任务总览以§2.3为准。
+> 状态：CKO-01～08、09 A/B及C1已实现；09 C2.1/2/3及C2.5共享税合同已实现；CKO-10报价内部存储已实现；CKO-11A餐饮权威价格事实已实现；C2.4真实发布能力证据及11B～31待开发。2026-10-23，档位2；本批任务核对基线`aafd94bb5`，统一分支`codex/ai-shop-codex`。历史执行记录保留，当前任务总览以§2.3为准。
 
 **目标：** 基于原商品、订单、支付、库存及账号门店能力，实现从规则配置、报价到先付/后付、收退款、打印、日结及恢复的餐饮结账闭环，并保留零售、美业共享内核的接入路径。
 
@@ -533,7 +533,7 @@ mvn -o -f backend-plugins/shop-industry-food/pom.xml -pl food-core -am test -Dte
 | 待办 | 交付内容 | 依赖及完成标志 |
 |---|---|---|
 | ☑ CKO-10 报价持久化 | 3张报价表、行/优惠/税/资金分摊、有效期、不可变来源与经济摘要 | 06～08；原子回滚、隔离、冻结/保留规则真实DB通过 |
-| ☐ CKO-11 真实报价API | 时段/渠道价格、套餐补差、小料、优惠券及税配置接线；B/C共用Java报价服务 | 09 C2+10；禁止客户端定价、试算不扣资产、不扣库存 |
+| ◐ CKO-11 真实报价API | 11A餐饮权威价格事实已实现；11B优惠券及税配置接线、B/C共用Java报价服务待开发 | 09 C2+10；禁止客户端定价、试算不扣资产、不扣库存 |
 | ☐ CKO-12 支付合同 | 独立PAY支付/关单/退款/原键查询及本地远程同合同 | 可先做合同核验；真实提供方超时查回与沙箱通过 |
 | ☐ CKO-13 库存合同 | SKU/物料数量单位精度、需求预留/提交/释放/查询、历史估值回执 | 不另建库存账；小料/套餐/配方唯一需求树及取消不复活 |
 | ☐ CKO-14 正式下单 | 下单意图、报价重验、批次与核心订单绑定、源行分配、取消与恢复 | 11～13；断电重试同一核心单，确定营业日，不重扣库存 |
@@ -680,3 +680,49 @@ mvn -o -f backend-plugins/shop-industry-food/pom.xml -pl food-core -am test -Dte
 代码：trade.dto.PricingQuoteCommands、trade.assembler.PricingQuoteAssembler、trade.entity.OrdPriceQuote/Line/Allocation、trade.service.PricingQuoteService及impl、TradeMappers三个嵌套Mapper、PricingQuotePersistenceTest。快照仅来源typed records，不接受任意JSON；当前冻结商家税模式与原发票行金额，使用TaxEngine校验逐发票行税合计；基础金额有符号调价之外均非负且JSON安全，资金计划不等于扣款。现金找零仅保存意图，不启用现金营业。
 
 生命周期：保存READY，有效期1～300秒、服务器UTC毫秒；过期读取EXPIRED，替代需同主体/门店/消费者及源根，引用仅READY未过期时允许且按原reference幂等。已引用不可替代，无清理/物理删除入口。hash按字段名递归排序、数量去多余零；经济hash排除报价No/创建/过期时间但包含源身份/配置版本/税源/业务金额和计划，不能因同金额不同优惠/资方而相同。
+
+
+### CKO-11A 餐饮权威价格事实（2026-10-23，执行细化）
+
+沿现有需求及ORD01/CAT餐牌选配套餐方案，采用executing-plans；按用户多阶段开发编译后统一测试。本批独立完成后台价格事实层及本地/远程同合同，不新增公开报价HTTP、不放行未核验券/储值，不提前标CKO11全部完成。
+
+§0 AC：F01从获准购物车读取，不收前端单价；F02当前餐牌/时段/渠道、选配与套餐冻结版本必须匹配；F03主品、小料/组合配料销售SKU、套餐INCLUDED/ADD_SKU/DIFF_BASE分开计价，不重复父子收入；F04源哈希包含版本/真实价格/依赖/选择，不含读取时钟和访问凭证；F05读购物车和目录/价格前后复核变更冲突，来源故障不变0；F06B门店主体与C原会话/买家权限复用CheckCartService；F07嵌入式及独立food提供同typed内部服务，原token过滤先于解析，远端必须校验来源作用域/版本/摘要和金额，暂不作为C端返回值。
+
+§1复用：CheckCartService、CatalogService、CartLinePolicy、DishOfferQueryPort、SalesRestrictionService、StoreCardQueryPort、FoodAutoConfiguration/ServiceCalls/InternalHttp。当前DishOffer提供方仅LOCAL/CNY且没有历史价格revision；冻结真实值内容hash作为价格内容标识，不冒充历史目录版本。外送真实渠道/未知价、预约未来时刻、称重仍阻断；不因报价读取预占或写库存/券/资金。
+
+§2批次：A闭合DiningPriceFacts DTO和可重用SourcePriceMath、DiningPriceFactsPolicy纯校验/组成投影，编译；B DiningPricingFactsService/Impl，复用现有购物车授权，当前目录及SKU提供方前后内容校验；在food-core装配、food-server token保护的两个typed内部路由和food-web Remote适配，编译；C纯政策、服务权限及变更、实际HTTP/token/严格输入、远端损坏响应校验与双装配统一回归、消融和最终评审。
+
+金额：组件数量=父点餐数量×选择数量×每选项单位；组件金额按最小货币单位HALF_UP一次，主品/收费组件分别汇总；共享SourcePriceMath计算乘法和非负补差。DIFF_BASE=max(选项SKU价−同范围基准SKU价,0)，不自动给予负补差；INCLUDED为0且只记录组成。父点餐行及其配料/补差保留同一原发票行身份，供核心统一计税；不在本层拆分税行或计算优惠/税。
+
+输出schema1冻结entity/store/cart/sourceVersion/subject、真实价格来源、pricedUnits与composition/dependencies、sourceHash；不含accessToken/伪造税率/资金资格。staff匿名散客subject可null；C匿名用户必须绑定原session业务No，不能用null跨会话。前后复核是乐观读取稳定性验证，不是跨服务事务或资产确认；CKO11B/14仍须在保存/下单前后重验，过期、已付AA和历史退款不得仅凭本事实执行。
+
+
+#### 11A 合同与代码落点
+
+前端仍不上传可信价格；本批只提供服务内部两条 POST 合同，沿用 `InternalHttp` 服务令牌过滤，不对公众开放。B/C 公开 quote API 属于 11B。
+
+| 服务方法 / 内部路径 | 输入 | 输出 / 失败语义 |
+|---|---|---|
+| `staff` / `/internal/food/pricing-sources/cart` | `entityNo, storeNo, cartNo`（各≤32字符）、`expectedVersion`（必填整数，≥0且小于Long最大值） | `DiningPriceFacts`；门店主体及购物车范围复用原B业务校验；staff的subjectNo为null |
+| `customer` / `/internal/food/pricing-sources/customer-cart` | `cartNo, expectedVersion, access{sessionNo?, accessToken?, buyerNo?}` | 复用原C购物车认证；subjectNo优先原授权会话，省略sessionNo则使用持久化会话；token不进入输出 |
+
+返回 `schemaVersion=1, payload, sourceHash`。payload含主体、授权subject、已保存cart及version、菜单发布引用/依赖摘要、冻结SKU归属、当前Offer、限售与实际组件用量、无读取时钟的Composition投影、currency和amountMinor。Composition提供当前已选餐牌的菜单/选项/套餐定义，既用于本地组价，也供接收端逐项重建；不得把摘要当签名或资金资格证明。sourceHash使用稳定对象键顺序和规范化小数，数组保留业务顺序，不含asOf或访问凭证。2MB上限。
+
+失败：400参数/原选配非法；403范围无权；404原购物车/会话不存在；409购物车或价格版本变动；503（业务码40190）真实来源不完整、币种/业态不支持或远端回执非法。对跨读取范围变化采取乐观冲突检查；读取结束后的变化仍须由11B/14在报价保存和最终下单时再次确认。
+
+代码：共享 `common.pricing.SourcePriceMath/PricingSnapshotHash`；food-api中的DTO、`DiningPricingFactsService`、`PricingSourceInternalApi`与共享纯政策；food-core的`DiningPricingFactsServiceImpl`显式装配；food-server的`InternalPricingSourceController`；food-web的`RemoteDiningPricingFactsService`。`CartLinePolicy`仅移动到food-api供两端复用，包名与原校验逻辑保持一致；没有新增数据库表或Mapper。数量、金额的乘法和HALF_UP归共享地基，餐饮选配与套餐语义留在餐饮包。
+
+审查处置：增加“原购物车仍含收费选择但回执删除组件”和“DIFF_BASE错误改为0，重算摘要”的校验；接收方必须重建完整组件集合、数量、价格、组件引用，而非仅验证现有金额相加。QR目录查询同步原购物车的session回退规则。新增装配开关/显式实现覆盖、严格JSON和真实HTTP回执测试。
+
+下一步11B：将本价格事实适配到共享PricingFacts和原发票行映射，接入真实规则/税配置与已核验的券/资金owner能力，走统一纯引擎和CKO10不可变报价存储，再提供B/C报价、查询和复核接口。仍未核验的券/储值能力保持BLOCKED；CKO11整体、普通支付与下单闭环尚未完成。
+
+
+#### 11A 本批验证结果
+
+- 分阶段编译及餐饮全模块clean后统一测试：549项，503项实际通过、46项数据库条件跳过；随后临时MySQL回归将对应数据库场景实际执行，餐饮19项主库＋290项业务守卫＋9项独立服务/内部接口＝318项通过且无跳过，另原商品属性提供方4项通过。临时容器已删除；未连接业务数据库。
+- 共享shop-base完整265项通过。宿主food-embedded装配6项（5通过、1仅standalone执行而跳过）、food-standalone装配6项全部通过；新服务的本地/远程类路径隔离与显式实现覆盖已验证。
+- 宿主选定守卫40项：31通过、1条件跳过、8失败。Architecture的7条失败消息与既有基线逐字相同；SchemaDrift的1条缺列集合与基线相同，仅输出顺序不同；不将宿主全套宣称为通过。
+- Node交付/定价生成9项、Python定价合同4项及交付4项通过；SQL与Ops出口守卫无新增欠账，暂存diff空白检查通过。价格漂移消融测试在移除复核后按预期失败，恢复后通过。独立审查的两项问题均已复现并修复。
+- 本批修复原生独立服务测试的过期固定日期：原先写死2026-10-22的“未来策略”在当前日期已生效，改为当前时间＋2日、毫秒精度；保留幂等键内容变更冲突验证，不改业务策略逻辑。
+
+本批只做本地统一分支提交；无新表/业务迁移、公开报价接口、资金能力放行、部署或远端推送。后续任务总览继续保留11B及12～31待办。

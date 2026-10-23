@@ -31,6 +31,8 @@ import ai.neargo.shop.food.policy.RecipePublicationSource;
 import ai.neargo.shop.food.service.BundleService;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.CheckCartService;
+import ai.neargo.shop.food.service.DiningPricingFactsService;
+import ai.neargo.shop.food.service.impl.DiningPricingFactsServiceImpl;
 import ai.neargo.shop.food.service.impl.CheckCartServiceImpl;
 import ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper;
@@ -404,6 +406,17 @@ public class FoodAutoConfiguration {
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new DiningSessionServiceImpl(
                 areas,tables,tokens,sessions,actions,idem,publisher,manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(DiningPricingFactsService.class)
+    DiningPricingFactsService diningPricingFactsService(CheckCartService carts, CatalogService catalog,
+            ConfigRevisionService revisions, SalesRestrictionService restrictions,
+            ObjectProvider<DishOfferQueryPort> offers, ObjectProvider<StoreCardQueryPort> stores, ObjectMapper json) {
+        return new DiningPricingFactsServiceImpl(carts, catalog, revisions,
+                (entity, store, numbers) -> offers.getObject().getOffers(entity, store, numbers), restrictions,
+                numbers -> stores.getObject().cards(numbers), json);
     }
 
     @Bean
