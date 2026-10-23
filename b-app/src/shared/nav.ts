@@ -1,6 +1,9 @@
 // B 端路由与底部菜单。C 端的 TABS 是消费者视角（首页/分类/购物车/我的），
 // 商家看的是「工作台/订单/商品/我的」—— 两套导航没有共用的意义，各自维护。
 export const ROUTES = {
+  printCenter: "/pages/print-center/index",
+  printDevices: "/pages/print-devices/index",
+  printTemplates: "/pages/print-templates/index",
   home: "/pages/home/index",
   orders: "/pages/orders/index",
   goods: "/pages/goods-list/index",

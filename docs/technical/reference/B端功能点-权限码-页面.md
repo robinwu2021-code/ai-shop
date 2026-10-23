@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**25 个权限码 × 6 个角色 × 282 个受控功能点**
+统计：**34 个权限码 × 6 个角色 × 341 个受控功能点**
 （另有 39 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -28,23 +28,32 @@
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 24 | ✅ | — | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
+| `biz:print:read` | `PRINT_READ` | 角色 → 权限码 | 15 | ✅ | ✅ | ✅ | — | — | — |
+| `biz:print:config` | `PRINT_CONFIG` | 角色 → 权限码 | 15 | ✅ | ✅ | — | — | — | — |
+| `biz:print:resolve` | `PRINT_RESOLVE` | 角色 → 权限码 | 14 | ✅ | ✅ | — | — | — | — |
 | `biz:ship` | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 8 | ✅ | ✅ | — | — | — | ✅ |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 6 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
+| `biz:print:device` | `PRINT_DEVICE` | 角色 → 权限码 | 6 | ✅ | ✅ | — | — | — | — |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `pay:ent:read` | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `biz:review` | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
 | `pay:sv:recharge:create` | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `pay:ent:use` | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
+| `biz:print:export` | `PRINT_EXPORT` | 角色 → 权限码 | 3 | ✅ | ✅ | ✅ | — | — | — |
 | `pay:sv:consume:create` | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `pay:ent:template:write` | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 2 | ✅ | — | — | — | — | — |
 | `pay:ent:template:publish` | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
+| `biz:print:reprint` | `PRINT_REPRINT` | 角色 → 权限码 | 2 | ✅ | ✅ | ✅ | — | — | — |
+| `biz:print:simulate` | `PRINT_SIMULATE` | 角色 → 权限码 | 2 | ✅ | ✅ | ✅ | — | — | — |
 | `pay:sv:recharge:receive` | `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `pay:sv:recharge:read` | `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `pay:sv:account:read` | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `pay:ent:issue` | `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `pay:ent:issue:manage` | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
+| `biz:print:submit` | `PRINT_SUBMIT` | 角色 → 权限码 | 1 | ✅ | ✅ | ✅ | — | — | — |
+| `biz:print:extra` | `PRINT_EXTRA` | 角色 → 权限码 | 1 | ✅ | ✅ | — | — | — | — |
 | `pay:ent:template:read` | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 
 > `OWNER` 是 `*`：**不走这张表**。新增权限码时老板自动有，其余角色要显式加。
@@ -354,6 +363,71 @@
 | 门店送货方式 | GET | `/biz/stores/:storeNo/fulfillment` | `mStoreFulfillment` | goods-edit、store-scope |
 | 保存门店送货方式 | PUT | `/biz/stores/:storeNo/fulfillment` | `mSaveStoreFulfillment` | store-scope |
 
+### `biz:print:read`　角色 → 权限码
+
+**可用角色**：老板、店长、店员
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/print/adapters` | — | — |
+| —（b-app 未接） | — | `/biz/print/batches/{}` | — | — |
+| —（b-app 未接） | — | `/biz/print/changes` | — | — |
+| —（b-app 未接） | — | `/biz/print/health` | — | — |
+| —（b-app 未接） | — | `/biz/print/jobs` | — | — |
+| —（b-app 未接） | — | `/biz/print/jobs/{}` | — | — |
+| —（b-app 未接） | — | `/biz/print/jobs/{}/attempts` | — | — |
+| —（b-app 未接） | — | `/biz/print/jobs/{}/document` | — | — |
+| —（b-app 未接） | — | `/biz/print/operations/{}` | — | — |
+| —（b-app 未接） | — | `/biz/print/orders/{}/summary` | — | — |
+| —（b-app 未接） | — | `/biz/print/printers` | — | — |
+| —（b-app 未接） | — | `/biz/print/printers/{}` | — | — |
+| —（b-app 未接） | — | `/biz/print/requests` | — | — |
+| —（b-app 未接） | — | `/biz/print/requests/{}` | — | — |
+| —（b-app 未接） | — | `/biz/print/scenes` | — | — |
+
+### `biz:print:config`　角色 → 权限码
+
+**可用角色**：老板、店长
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/print/route-versions/{}/dry-run` | — | — |
+| —（b-app 未接） | — | `/biz/print/route-versions/{}/publish` | — | — |
+| —（b-app 未接） | — | `/biz/print/routes` | — | — |
+| —（b-app 未接） | — | `/biz/print/routes/{}/versions` | — | — |
+| —（b-app 未接） | — | `/biz/print/scene-policies` | — | — |
+| —（b-app 未接） | — | `/biz/print/scene-policies/{}` | — | — |
+| —（b-app 未接） | — | `/biz/print/scene-policies/{}/versions` | — | — |
+| —（b-app 未接） | — | `/biz/print/scenes/{}/examples` | — | — |
+| —（b-app 未接） | — | `/biz/print/scenes/{}/fields` | — | — |
+| —（b-app 未接） | — | `/biz/print/template-resolutions/preview` | — | — |
+| —（b-app 未接） | — | `/biz/print/template-versions/{}` | — | — |
+| —（b-app 未接） | — | `/biz/print/template-versions/{}/preview` | — | — |
+| —（b-app 未接） | — | `/biz/print/template-versions/{}/publish` | — | — |
+| —（b-app 未接） | — | `/biz/print/templates` | — | — |
+| —（b-app 未接） | — | `/biz/print/templates/{}/versions` | — | — |
+
+### `biz:print:resolve`　角色 → 权限码
+
+**可用角色**：老板、店长
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/print/agents/{}/credential-rotations` | — | — |
+| —（b-app 未接） | — | `/biz/print/agents/{}/revocations` | — | — |
+| —（b-app 未接） | — | `/biz/print/printers/{}/connection-changes` | — | — |
+| —（b-app 未接） | — | `/biz/print/printers/{}/credential-rotations` | — | — |
+| —（b-app 未接） | — | `/biz/print/printers/{}/uncertainty-resolutions` | — | — |
+| —（b-app 未接） | — | `/biz/print/action-logs` | — | — |
+| —（b-app 未接） | — | `/biz/print/incidents` | — | — |
+| —（b-app 未接） | — | `/biz/print/incidents/{}/acknowledgements` | — | — |
+| —（b-app 未接） | — | `/biz/print/jobs/{}/manual-confirmations` | — | — |
+| —（b-app 未接） | — | `/biz/print/jobs/{}/receipts` | — | — |
+| —（b-app 未接） | — | `/biz/print/jobs/{}/result-queries` | — | — |
+| —（b-app 未接） | — | `/biz/print/jobs/{}/retries` | — | — |
+| —（b-app 未接） | — | `/biz/print/jobs/{}/stale-releases` | — | — |
+| —（b-app 未接） | — | `/biz/print/requests/{}/generation-retries` | — | — |
+
 ### `biz:ship`　发货、标记自送送达
 
 **可用角色**：老板、店长、店员、配送员
@@ -414,6 +488,19 @@
 | 物流轨迹 | GET | `/biz/order/:orderNo/trace` | `mOrderTrace` | order |
 | 按优先级分页的订单待办 | GET | `/biz/order/worklist` | `mOrderWorklist` | orders |
 
+### `biz:print:device`　角色 → 权限码
+
+**可用角色**：老板、店长
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/print/agents` | — | — |
+| —（b-app 未接） | — | `/biz/print/agents/{}` | — | — |
+| —（b-app 未接） | — | `/biz/print/agents/{}/enrollments` | — | — |
+| —（b-app 未接） | — | `/biz/print/printers/{}/probes` | — | — |
+| —（b-app 未接） | — | `/biz/print/printers/{}/status-changes` | — | — |
+| —（b-app 未接） | — | `/biz/print/printers/{}/test-jobs` | — | — |
+
 ### `biz:receive`　到货登记、分拣单、短少上报
 
 **可用角色**：老板、店长、店员、理货员
@@ -466,6 +553,16 @@
 | —（b-app 未接） | — | `/biz/entitlement-uses` | — | — |
 | —（b-app 未接） | — | `/biz/entitlement-uses/{}/cancel` | — | — |
 
+### `biz:print:export`　角色 → 权限码
+
+**可用角色**：老板、店长、店员
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/print/exports` | — | — |
+| —（b-app 未接） | — | `/biz/print/exports/{}` | — | — |
+| —（b-app 未接） | — | `/biz/print/exports/{}/download-grants` | — | — |
+
 ### `pay:sv:consume:create`　查看主体级权益目录，不授予变更能力
 
 **可用角色**：老板
@@ -492,6 +589,24 @@
 |---|---|---|---|---|
 | —（b-app 未接） | — | `/biz/entitlement-templates/{}/publish` | — | — |
 | —（b-app 未接） | — | `/biz/entitlement-templates/{}/status` | — | — |
+
+### `biz:print:reprint`　角色 → 权限码
+
+**可用角色**：老板、店长、店员
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/print/jobs/{}/reprints` | — | — |
+| —（b-app 未接） | — | `/biz/print/reprints` | — | — |
+
+### `biz:print:simulate`　角色 → 权限码
+
+**可用角色**：老板、店长、店员
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/print/simulations` | — | — |
+| —（b-app 未接） | — | `/biz/print/simulations/{}` | — | — |
 
 ### `pay:sv:recharge:receive`　查看主体级权益目录，不授予变更能力
 
@@ -532,6 +647,22 @@
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
 | —（b-app 未接） | — | `/biz/entitlement-templates/{}/issue-policy` | — | — |
+
+### `biz:print:submit`　角色 → 权限码
+
+**可用角色**：老板、店长、店员
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/print/jobs/{}/cancellations` | — | — |
+
+### `biz:print:extra`　角色 → 权限码
+
+**可用角色**：老板、店长
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/print/jobs/{}/extra-copies` | — | — |
 
 ## 三、页面 × 门禁　—— 前端裁剪与后端判权对不对得上
 
@@ -655,6 +786,65 @@
 | `/biz/entitlements/{}` | `pay:ent:read` | 老板 |
 | `/biz/inventory/export` | `biz:customer` | 老板、店长 |
 | `/biz/marketing-summary` | `biz:campaign` | 老板、店长 |
+| `/biz/print/action-logs` | `biz:print:resolve` | 老板、店长 |
+| `/biz/print/adapters` | `biz:print:read` | 老板、店长、店员 |
+| `/biz/print/agents` | `biz:print:device` | 老板、店长 |
+| `/biz/print/agents/{}` | `biz:print:device` | 老板、店长 |
+| `/biz/print/agents/{}/credential-rotations` | `biz:print:resolve` | 老板、店长 |
+| `/biz/print/agents/{}/enrollments` | `biz:print:device` | 老板、店长 |
+| `/biz/print/agents/{}/revocations` | `biz:print:resolve` | 老板、店长 |
+| `/biz/print/batches/{}` | `biz:print:read` | 老板、店长、店员 |
+| `/biz/print/changes` | `biz:print:read` | 老板、店长、店员 |
+| `/biz/print/exports` | `biz:print:export` | 老板、店长、店员 |
+| `/biz/print/exports/{}` | `biz:print:export` | 老板、店长、店员 |
+| `/biz/print/exports/{}/download-grants` | `biz:print:export` | 老板、店长、店员 |
+| `/biz/print/health` | `biz:print:read` | 老板、店长、店员 |
+| `/biz/print/incidents` | `biz:print:resolve` | 老板、店长 |
+| `/biz/print/incidents/{}/acknowledgements` | `biz:print:resolve` | 老板、店长 |
+| `/biz/print/jobs` | `biz:print:read` | 老板、店长、店员 |
+| `/biz/print/jobs/{}` | `biz:print:read` | 老板、店长、店员 |
+| `/biz/print/jobs/{}/attempts` | `biz:print:read` | 老板、店长、店员 |
+| `/biz/print/jobs/{}/cancellations` | `biz:print:submit` | 老板、店长、店员 |
+| `/biz/print/jobs/{}/document` | `biz:print:read` | 老板、店长、店员 |
+| `/biz/print/jobs/{}/extra-copies` | `biz:print:extra` | 老板、店长 |
+| `/biz/print/jobs/{}/manual-confirmations` | `biz:print:resolve` | 老板、店长 |
+| `/biz/print/jobs/{}/receipts` | `biz:print:resolve` | 老板、店长 |
+| `/biz/print/jobs/{}/reprints` | `biz:print:reprint` | 老板、店长、店员 |
+| `/biz/print/jobs/{}/result-queries` | `biz:print:resolve` | 老板、店长 |
+| `/biz/print/jobs/{}/retries` | `biz:print:resolve` | 老板、店长 |
+| `/biz/print/jobs/{}/stale-releases` | `biz:print:resolve` | 老板、店长 |
+| `/biz/print/operations/{}` | `biz:print:read` | 老板、店长、店员 |
+| `/biz/print/orders/{}/summary` | `biz:print:read` | 老板、店长、店员 |
+| `/biz/print/printers` | `biz:print:read` | 老板、店长、店员 |
+| `/biz/print/printers/{}` | `biz:print:read` | 老板、店长、店员 |
+| `/biz/print/printers/{}/connection-changes` | `biz:print:resolve` | 老板、店长 |
+| `/biz/print/printers/{}/credential-rotations` | `biz:print:resolve` | 老板、店长 |
+| `/biz/print/printers/{}/probes` | `biz:print:device` | 老板、店长 |
+| `/biz/print/printers/{}/status-changes` | `biz:print:device` | 老板、店长 |
+| `/biz/print/printers/{}/test-jobs` | `biz:print:device` | 老板、店长 |
+| `/biz/print/printers/{}/uncertainty-resolutions` | `biz:print:resolve` | 老板、店长 |
+| `/biz/print/reprints` | `biz:print:reprint` | 老板、店长、店员 |
+| `/biz/print/requests` | `biz:print:read` | 老板、店长、店员 |
+| `/biz/print/requests/{}` | `biz:print:read` | 老板、店长、店员 |
+| `/biz/print/requests/{}/generation-retries` | `biz:print:resolve` | 老板、店长 |
+| `/biz/print/route-versions/{}/dry-run` | `biz:print:config` | 老板、店长 |
+| `/biz/print/route-versions/{}/publish` | `biz:print:config` | 老板、店长 |
+| `/biz/print/routes` | `biz:print:config` | 老板、店长 |
+| `/biz/print/routes/{}/versions` | `biz:print:config` | 老板、店长 |
+| `/biz/print/scene-policies` | `biz:print:config` | 老板、店长 |
+| `/biz/print/scene-policies/{}` | `biz:print:config` | 老板、店长 |
+| `/biz/print/scene-policies/{}/versions` | `biz:print:config` | 老板、店长 |
+| `/biz/print/scenes` | `biz:print:read` | 老板、店长、店员 |
+| `/biz/print/scenes/{}/examples` | `biz:print:config` | 老板、店长 |
+| `/biz/print/scenes/{}/fields` | `biz:print:config` | 老板、店长 |
+| `/biz/print/simulations` | `biz:print:simulate` | 老板、店长、店员 |
+| `/biz/print/simulations/{}` | `biz:print:simulate` | 老板、店长、店员 |
+| `/biz/print/template-resolutions/preview` | `biz:print:config` | 老板、店长 |
+| `/biz/print/template-versions/{}` | `biz:print:config` | 老板、店长 |
+| `/biz/print/template-versions/{}/preview` | `biz:print:config` | 老板、店长 |
+| `/biz/print/template-versions/{}/publish` | `biz:print:config` | 老板、店长 |
+| `/biz/print/templates` | `biz:print:config` | 老板、店长 |
+| `/biz/print/templates/{}/versions` | `biz:print:config` | 老板、店长 |
 | `/biz/quote/{}/revise` | `biz:campaign` | 老板、店长 |
 | `/biz/settle/bills/{}` | `biz:finance` | 老板 |
 | `/biz/store/{}/stock-reconcile` | `biz:store:admin` | 老板 |

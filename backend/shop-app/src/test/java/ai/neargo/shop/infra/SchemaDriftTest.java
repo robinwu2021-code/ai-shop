@@ -59,7 +59,7 @@ class SchemaDriftTest {
      */
     private static final Pattern TABLE = Pattern.compile(
             "CREATE TABLE\\s+(?:IF NOT EXISTS\\s+)?(\\w+)\\s*\\((.*?)\\n\\)", Pattern.DOTALL);
-    private static final Pattern COLUMN = Pattern.compile("^\\s{2,}(\\w+)\\s+[A-Z]", Pattern.MULTILINE);
+    private static final Pattern COLUMN = Pattern.compile("^\\h+(\\w+)\\h+(?:BIGINT|INT|INTEGER|SMALLINT|TINYINT|MEDIUMINT|DECIMAL|NUMERIC|FLOAT|DOUBLE|REAL|CHAR|VARCHAR|TEXT|TINYTEXT|MEDIUMTEXT|LONGTEXT|CLOB|JSON|DATE|DATETIME|TIMESTAMP|TIME|BOOL|BOOLEAN|BIT|BLOB|LONGBLOB|VARBINARY|BINARY|ENUM|SET)\\b", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
     private static final Set<String> NOT_COLUMNS = Set.of(
             "UNIQUE", "KEY", "CONSTRAINT", "PRIMARY", "INDEX", "GENERATED");
     private static final Pattern RENAME = Pattern.compile(

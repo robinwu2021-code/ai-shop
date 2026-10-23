@@ -1,0 +1,10 @@
+package ai.neargo.shop.print.api;
+
+import java.math.*;
+import java.time.*;
+import java.util.*;
+
+public enum PdfOutputProfile {
+    ORIGINAL_ROLL,
+    A4_SHEET
+}

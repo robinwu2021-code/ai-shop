@@ -122,6 +122,68 @@ class BizEndpointPermTest {
         //   · biz:customer       报表与导出 —— 含毛利与销量，是**经营数据**，
         //                        店员有 biz:stock 但不该看得到
         //   · biz:store:admin    建仓与改发货源 —— 门店级配置，与改库存是两拨人
+
+        // These sensitive print operations additionally require PRINT_DEVICE in their annotations.
+        put("/biz/print/agents/{agentNo}/credential-rotations", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/agents/{agentNo}/revocations", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/printers/{printerNo}/connection-changes", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/printers/{printerNo}/credential-rotations", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/printers/{printerNo}/uncertainty-resolutions", BizPerms.PRINT_RESOLVE);
+        // Print center (HTTP method-specific permissions remain enforced by controller annotations).
+        put("/biz/print/action-logs", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/adapters", BizPerms.PRINT_READ);
+        put("/biz/print/agents", BizPerms.PRINT_DEVICE);
+        put("/biz/print/agents/{agentNo}", BizPerms.PRINT_DEVICE);
+        put("/biz/print/agents/{agentNo}/enrollments", BizPerms.PRINT_DEVICE);
+        put("/biz/print/batches/{batchNo}", BizPerms.PRINT_READ);
+        put("/biz/print/changes", BizPerms.PRINT_READ);
+        put("/biz/print/exports", BizPerms.PRINT_EXPORT);
+        put("/biz/print/exports/{exportNo}", BizPerms.PRINT_EXPORT);
+        put("/biz/print/exports/{exportNo}/download-grants", BizPerms.PRINT_EXPORT);
+        put("/biz/print/health", BizPerms.PRINT_READ);
+        put("/biz/print/incidents", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/incidents/{incidentNo}/acknowledgements", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/jobs", BizPerms.PRINT_READ);
+        put("/biz/print/jobs/{jobNo}", BizPerms.PRINT_READ);
+        put("/biz/print/jobs/{jobNo}/attempts", BizPerms.PRINT_READ);
+        put("/biz/print/jobs/{jobNo}/cancellations", BizPerms.PRINT_SUBMIT);
+        put("/biz/print/jobs/{jobNo}/document", BizPerms.PRINT_READ);
+        put("/biz/print/jobs/{jobNo}/extra-copies", BizPerms.PRINT_EXTRA);
+        put("/biz/print/jobs/{jobNo}/manual-confirmations", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/jobs/{jobNo}/receipts", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/jobs/{jobNo}/reprints", BizPerms.PRINT_REPRINT);
+        put("/biz/print/jobs/{jobNo}/result-queries", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/jobs/{jobNo}/retries", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/jobs/{jobNo}/stale-releases", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/operations/{operationNo}", BizPerms.PRINT_READ);
+        put("/biz/print/orders/{orderNo}/summary", BizPerms.PRINT_READ);
+        put("/biz/print/printers", BizPerms.PRINT_READ);
+        put("/biz/print/printers/{printerNo}", BizPerms.PRINT_READ);
+        put("/biz/print/printers/{printerNo}/probes", BizPerms.PRINT_DEVICE);
+        put("/biz/print/printers/{printerNo}/status-changes", BizPerms.PRINT_DEVICE);
+        put("/biz/print/printers/{printerNo}/test-jobs", BizPerms.PRINT_DEVICE);
+        put("/biz/print/reprints", BizPerms.PRINT_REPRINT);
+        put("/biz/print/requests", BizPerms.PRINT_READ);
+        put("/biz/print/requests/{requestNo}", BizPerms.PRINT_READ);
+        put("/biz/print/requests/{requestNo}/generation-retries", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/route-versions/{versionNo}/dry-run", BizPerms.PRINT_CONFIG);
+        put("/biz/print/route-versions/{versionNo}/publish", BizPerms.PRINT_CONFIG);
+        put("/biz/print/routes", BizPerms.PRINT_CONFIG);
+        put("/biz/print/routes/{routeNo}/versions", BizPerms.PRINT_CONFIG);
+        put("/biz/print/scene-policies", BizPerms.PRINT_CONFIG);
+        put("/biz/print/scene-policies/{scene}", BizPerms.PRINT_CONFIG);
+        put("/biz/print/scene-policies/{scene}/versions", BizPerms.PRINT_CONFIG);
+        put("/biz/print/scenes", BizPerms.PRINT_READ);
+        put("/biz/print/scenes/{scene}/examples", BizPerms.PRINT_CONFIG);
+        put("/biz/print/scenes/{scene}/fields", BizPerms.PRINT_CONFIG);
+        put("/biz/print/simulations", BizPerms.PRINT_SIMULATE);
+        put("/biz/print/simulations/{simulationNo}", BizPerms.PRINT_SIMULATE);
+        put("/biz/print/template-resolutions/preview", BizPerms.PRINT_CONFIG);
+        put("/biz/print/template-versions/{versionNo}", BizPerms.PRINT_CONFIG);
+        put("/biz/print/template-versions/{versionNo}/preview", BizPerms.PRINT_CONFIG);
+        put("/biz/print/template-versions/{versionNo}/publish", BizPerms.PRINT_CONFIG);
+        put("/biz/print/templates", BizPerms.PRINT_CONFIG);
+        put("/biz/print/templates/{templateNo}/versions", BizPerms.PRINT_CONFIG);
         put("/biz/inventory/summary", BizPerms.STOCK);
         put("/biz/inventory/balances", BizPerms.STOCK);
         // 跨店总览。与 balances 同权：都是「看得见这家的货」，只是维度从「一个库位」换成「全部」

@@ -236,11 +236,28 @@ def _pin_columns(stmt, tables, altered):
     return f"{head} ({', '.join(cols)}) VALUES{rest}"
 
 
+def _h2_constant_json_append(stmt: str) -> str:
+    """Replay constant permission-array appends using H2 string operations.
+
+    Exact quoted-token membership preserves migration idempotency. Only the
+    restricted permission-code alphabet is translated; arbitrary JSON is not.
+    """
+    append = re.compile(r"JSON_ARRAY_APPEND\(\s*(\w+)\s*,\s*'\$'\s*,\s*'([a-z:]+)'\s*\)", re.I)
+    def replace(match):
+        column, permission = match.groups()
+        return (f"CONCAT(LEFT(TRIM({column}),CHAR_LENGTH(TRIM({column}))-1),"
+                f"CASE WHEN TRIM({column})='[]' THEN '' ELSE ',' END,'\"{permission}\"]')")
+    stmt = append.sub(replace, stmt)
+    membership = re.compile(r"JSON_CONTAINS\(\s*(\w+)\s*,\s*JSON_QUOTE\(\s*'([a-z:]+)'\s*\)\s*\)\s*=\s*0", re.I)
+    return membership.sub(lambda m: f"LOCATE('\"{m.group(2)}\"',{m.group(1)})=0", stmt)
+
+
 def replay(sql, tables, order, seeds, renames, altered):
     # 逐语句切分（本项目的迁移脚本里没有存储过程，分号切分是安全的）
     for stmt in [s.strip() for s in strip_comments(sql).split(";") if s.strip()]:
         if not stmt:
             continue
+        stmt = _h2_constant_json_append(stmt)
         low = stmt.lower()
         if low.startswith("create table"):
             create_table(stmt, tables, order)

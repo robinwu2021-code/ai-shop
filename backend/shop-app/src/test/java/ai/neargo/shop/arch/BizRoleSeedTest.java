@@ -88,6 +88,19 @@ class BizRoleSeedTest {
                     .map(String::trim).filter(s -> !s.isEmpty()).toList();
             out.put(m.group(1), perms);
         }
+        // Later migrations append permissions to builtin roles; compare the final seed state.
+        var append = Pattern.compile("UPDATE mch_role SET perms=JSON_ARRAY_APPEND\\(perms,'\\$','([^']+)'\\)[^;]*role_code='([^']+)'[^;]*;");
+        try (var files = Files.list(MIGRATION.getParent())) {
+            for (var file : files.filter(f -> f.getFileName().toString().matches("V[0-9]+__.*[.]sql"))
+                    .sorted(java.util.Comparator.comparingInt(f -> Integer.parseInt(f.getFileName().toString().split("__")[0].substring(1)))).toList()) {
+                var updates = append.matcher(Files.readString(file));
+                while (updates.find()) {
+                    var permissions = new java.util.ArrayList<>(out.getOrDefault(updates.group(2), List.of()));
+                    if (!permissions.contains(updates.group(1))) permissions.add(updates.group(1));
+                    out.put(updates.group(2), permissions);
+                }
+            }
+        }
         assertThat(out).as("一条预置角色都没解析到 —— 正则或迁移文件变了？").isNotEmpty();
         return out;
     }
