@@ -43,3 +43,11 @@
 19. 本机cached mysql:9.7.2，普通DISK64M，不用失败128MiB低内存；各批只读Colima MemAvailable>=512MiB，单自有UUID串行、pullnever/localhost/readiness/finally只清自己，不动他人容器/VM/远程。CHECKOUT_NATIVE_MYSQL_*按实际新runner/fixture准确设计；不要运行会drop共享autotest的scripts/test-on-mysql.sh。JDK21=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home，Maven -o -Dmaven.repo.local=/tmp/codex-beauty-bm01-m2。
 20. 运行与变化相符的owner/retail/food/架构/三语/SQL/生成/迁移检查；旧OpsPoints/V506和beauty/store宿主欠账必须诚实保留给60，不放宽棘轮也不声称全backend绿。SQL现gate只扫backend，插件定向覆盖是60另项。不要无新风险重复大套件。
 21. 持续更新task-56-report.md，含逐AC方法/实际commands/logs/counts/未验证边界/精确owned。根mainTDD/progress/brief/整体方案/reviews是根文件，不进产品stage；设计/实施报告为你owned。未commit快照tree和diff交根独立spec/quality审查，放行才精确产品commit；不push/merge/共享或生产部署。大模块部署统一60；56不等于BM04完整交付，57资金/58绑定账单/59协议/60模块验收顺序不变。
+
+## 既有身份安全合同补充（设计审计绑定）
+
+沿ADR-045及已完成Task54/55：customerRef使用真实共享strict引用，持久冻结只留规范buyer/可信scope与必要安全摘要；cr1/mc1、claimToken、联系方式、当前session/token不落表、不进入日志或DTO.toString，不能当C购买授权。精确设计须明确首次引用核验与原号同键重放的顺序/摘要，避免为重放重签身份或悄改buyer。此为已有共用合同延续，不增加新owner协议。
+
+## 餐饮基线技术裁决（2026-10-23设计审计）
+
+已知本地餐饮分支codex/food-next01=fbda26d2，origin只返回codex/ai-shop-codex=96c94cd18efab05b613faff1111238e88f141b54，无独立food/beauty远程分支；不把本地日期描述成远程最新。OrderServiceImpl、GoodsQueryPortImpl、CampaignPortRouter、CouponPortRouter在该本地餐饮分支与本HEAD相同。餐饮侧13项trade新增978行归9f5140dff/fbda26d2f，属于尚未接线的pricing配置/发布与纯公式引擎；不解决本步显式buyer或PAY优惠路由。整个food差异479文件且V532/V533与当前已用迁移冲突，本步不整体合并、不强制引入未接线引擎。基于已相同的实际普通writer最小扩展并复用同次算法，明确记录差异/成本，不宣称完整餐饮分支合入。精确证据清单由design/report保存。

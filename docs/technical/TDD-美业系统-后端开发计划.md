@@ -692,6 +692,9 @@ Bean图约束：AppointmentService.openWorkOrderFromAppointment与WorkOrderServi
 
 按[精确设计](../../.superpowers/sdd/beauty-backend/bm04-checkout-design.md)冻结CheckoutPort八方法/DTO（支付分支由57补齐）：prepare、readQuote、confirm、place、findOperation、source、initiatePayment、findPayment，confirm/place/initiatePayment只允许真实当前C。复用现有OrderService和同次writer定价，原子比对封版报价，优先采用原doCreate最终同次定价结果之后、库存/订单写入之前的ExpectedCheckoutQuote seal钩子及共享纯经济摘要，不强制整体拆零售定价算法；quote/source/美业任务统一COUNT，拒绝EA等隐式换算。持久过程事实/稳定来源行/原号映射，不复制订单/支付账。SERVICE商品必须真实支持STORE_VERIFY；成交时原子登记managed authority，通用完成写门及全部旧核销/收货/自动完成入口关闭提前完成，BM05执行继续门控。正式支付/线下receipt由Task57独立资金关口补齐；本任务不开放尚未实现的支付入口，不能把旧confirmOfflinePay输出包装成资金凭证。开工前详定签名/状态/SQL/配置/AC、追加平台最新迁移及ADR。
 
+
+实施深化按档位2复用既有美业PRD与主TDD，补充[ADR-046](./ADR/ADR-046-共用购买确认与受管理服务订单归属.md)及[Task56精确设计](../../.superpowers/sdd/beauty-backend/task-56-design.md)。精确设计已通过技术核对，V539候选SQL摘要已固定，进入真实RED与编码；尚未交付56生产能力。方案保留现有零售普通writer，与已知本地餐饮分支实际writer一致；不整分支合并未接线定价引擎。首次成功确认/建单请求键永久绑定，异键冲突后查原操作；来源指纹仅标识真实一致观察，未知资金明确阻断。完整资金及offline receipt仍归57。
+
 - [ ] 按审计补完整可执行设计，不以未实现Port或手写PAID替身交付。
 - [ ] RED/GREEN验证真实quote/create/买家确认/价格变化/原号订单恢复/旧完成入口防线；提交并独立审查。支付实现及其崩溃/原号金融验证归57。
 
