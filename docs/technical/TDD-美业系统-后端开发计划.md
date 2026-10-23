@@ -677,6 +677,8 @@ Bean图约束：AppointmentService.openWorkOrderFromAppointment与WorkOrderServi
 
 **55B独立审查修复增量（2026-10-23，BASE115d1cb74）：** I1接待无变更比较须按资源份数一对一消费，隐式沿用原安排可保留同一资源的多份容量，不放宽公开显式重复输入。真实新回归先发现更早的持久化冲突：已测BM03 physicalCapacityCanBeSharedAcrossDemandUnits允许同一ROOM需求qty=2分配同一capacity=2资源，而旧assignment唯一键uk_bty_appointment_assignment_2禁止这些逐份行落库。控制器裁决保留原容量语义，以V7追加迁移将该键改为同列普通索引，保留每份planned_assignment_no唯一和原根/current/fence/同事务一次提交；不改V1–V6、不合并丢份、不添加无必要ordinal或回填。真源/生成器/manifest/ready7及严格V1→V7升级/漂移负例同步；V7首次执行前由控制器独立留存准确SQL/SHA。当前已部署基线仍6，7待本轮验证。真实create先到达后才运行I1三场景RED，再修一对一比较与内部沿用/新时段匹配，回归原MatchingSearch和容量守恒。该增量覆盖上文55B沿V6的初始假设，C/D在B审查通过后消费新基线。仅fixture/DDL准备错误不算行为RED；M1日志警告分类在报告澄清，不扩无关生产修复。
 
+**2026-10-23当前状态覆盖：** 55B实现115d1cb74、统一修复714542115已独立复审Spec PASS/Quality Approved；V7追加修正容量份数索引，当前ready7、27私表，V1–V7冻结。进入55C工单范围的精确方案整理；实施依据[55C任务](../../.superpowers/sdd/beauty-backend/task-55c-brief.md)。实际B的reassign在ReceptionCoordinator，C必须先明确其与WorkOrderCoordinator的单向共用归属，禁止后续形成双向Bean依赖或复制实现；精确设计核对后继续RED/编码。
+
 **启动与验收：** 先据本节及方法JSON生成task-55-design.md，列确切DTO字段/Service方法、表约束、Bean图和AC→测试映射；任何未定事项在编码前由控制器裁决并同步本节。不得靠旧清单自动生成空方法计完成。目标031/032/047/048/052/053/054/055/154/155及到店码增量；P3候位049–051、关闭工单065–067和来源/账单056/071不在本任务。
 
 - [ ] 设计冻结后RED/GREEN和消融，完成真实本域事务、原生并发/恢复及严格V1→V5升级。
@@ -1836,3 +1838,12 @@ Task55先按§2详细规则冻结方法/DTO、V5四表及事务恢复方案，�
 实现de8409ea4、统一修复59d49ed1b。[报告](../../.superpowers/sdd/beauty-backend/task-55a-report.md)、[完整审查](../../.superpowers/sdd/beauty-backend/review-task-55a.md)、[修复复审](../../.superpowers/sdd/beauty-backend/review-task-55a-r1.md)记录4项Important的关闭及证据。最终115常规/52原生/8真实host/10owner与旧会员码测试通过，12生成/SQL检查通过。九个原缺陷反例及两个权限补强反例先实际RED后GREEN；原始claim/host实现前RED缺失及V5首次执行时独立hash时间链不足仍保留，不能倒补历史。
 
 V1–V5未改，V6只加身份NULL成对guard，27私表，ready=6；[V6执行前独立SQL/hash/UTC记录](../../.superpowers/sdd/beauty-backend/v6-preexecution-root-record.json)与首次执行/最终内容一致。首轮V6测试5项通过后MySQL OOM、47setup errors单独披露；低内存隔离diskdatadir后52项全过，没有修改生产或其他容器。三项全局guard仍按Task60边界追踪，不称全部backend绿。55A只交付service、身份回执、归属查询、到店码与数据基础；接待公开wire/整个BM04部署尚未完成。
+
+
+### 32.2 Task55B签到、异常协调与接待重排验收（2026-10-23）
+
+实现115d1cb74，修复714542115。[报告](../../.superpowers/sdd/beauty-backend/task-55b-report.md)、[完整审查](../../.superpowers/sdd/beauty-backend/review-task-55b.md)、[修复复审](../../.superpowers/sdd/beauty-backend/review-task-55b-r1.md)记录一项Important与告警说明的关闭。交付B/C真实身份与同店到店证明的签到、本域异常登记及冻结原规则的内部整计划REPLACE；不释放hold、不建工单/任务、不授付款或开工。
+
+初版115常规、48原生、真实HOST B1/C1及i18n6通过；双层fence消融1断言失败/0错误，恢复通过。后续容量修复的最终代码分别通过matching12、数量3、边界2、V7升级及五类漂移2、server10；不是同一轮全套结果。真实V7后、比较修改前的三场景RED为3断言失败/0错误。首次targeted轮4个连接错误与EOF原因未证实、夹具问题和helper专属前置RED缺失均按报告披露，不虚构历史。
+
+既有matching允许同需求多份容量而旧assignment组合唯一键拒绝落库；V7只将该键改同列普通索引，保留每份planned_assignment_no唯一，不改V1–6或合并数量。当前ready7/27私表，[执行前独立SQL/hash记录](../../.superpowers/sdd/beauty-backend/v7-preexecution-root-record.json)与最终SHA一致。公开HTTP/remote接待、C/D工单与恢复及真实资源owner部署仍未交付；依次继续55C、55D、56–60，BM04尚未准出。
