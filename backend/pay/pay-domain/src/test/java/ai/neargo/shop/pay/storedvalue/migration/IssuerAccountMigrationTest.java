@@ -9,7 +9,7 @@ import tools.jackson.databind.ObjectMapper;
 import static org.assertj.core.api.Assertions.*;
 
 class IssuerAccountMigrationTest {
-    record Fixture(JdbcTemplate jdbc,StoredValueIssuerMigrationService service) { }
+    record Fixture(JdbcTemplate jdbc,StoredValueIssuerMigrationService service,IssuerRepository db) { }
     Fixture fixture() {
         var ds=new DriverManagerDataSource("jdbc:h2:mem:migration-"+UUID.randomUUID()+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1","sa","");
         var j=new JdbcTemplate(ds);
@@ -26,7 +26,8 @@ class IssuerAccountMigrationTest {
         j.execute("CREATE TABLE sv_issuer_version(tenant_no varchar,issuer_no varchar,issuer_version_no varchar,settlement_entity_no varchar,currency varchar,deleted int)");
         j.update("INSERT INTO sv_issuer VALUES('MAIN','I1','STORE','S1','IV1','DRAFT',0)");
         j.update("INSERT INTO sv_issuer_version VALUES('MAIN','I1','IV1','E1','CNY',0)");
-        return new Fixture(j,new StoredValueIssuerMigrationService(new IssuerRepository(new DataSourceTransactionManager(ds),new ObjectMapper())));
+        var db=new IssuerRepository(new DataSourceTransactionManager(ds),new ObjectMapper());
+        return new Fixture(j,new StoredValueIssuerMigrationService(db),db);
     }
     StoredValueIssuerMigrationService.Batch batch() {
         return new StoredValueIssuerMigrationService.Batch("MAIN","AUDITOR",List.of(new StoredValueIssuerMigrationService.StoreMapping("S1","E1","I1")),List.of(new StoredValueIssuerMigrationService.IdentityEvidence("P1","U1")));

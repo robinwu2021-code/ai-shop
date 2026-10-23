@@ -375,3 +375,13 @@ MB01/02/03已实现，权限映射到既有门店CUSTOMER/SV_RECHARGE_CREATE及�
 - Core 先以 `IssuerAuthorityService.storePreparationScope` 核实有效门店、当前经营主体和真实所有人，得到 tenantNo/actorNo/entityNo/storeNo/storeName/storeRevision。公开请求不能绑定 StoreAuthority，不能把门店管理权解释为品牌结算授权。
 - 返回 `StoredValueIssuers.View`；该操作幂等准备 STORE 发行草稿及 PREPARING 准入，can_issue/can_redeem 均为 0。不建立钱包、不激活储值、不迁余额；变更经营主体冲突，不据手机号或同主体合并。
 - 这是 IN01 的单店准备基础，不代表准入修订、迁移切写、IS05 店内发行选项或 B 端入口已全部实现。现网尚未部署该接口。
+
+### P3 内部迁移清单合同（2026-10-23，开发中，未开放HTTP）
+
+| Java操作 | 输入 | 返回与条件 |
+|---|---|---|
+| StoredValueMigrationManifestService.prepare | Core解析的Evidence、原命令key | 持久Manifest；需migration-enabled，不要求事先打开issuer-mode；无金融修改 |
+| find | 同范围Evidence、manifestNo | 原审计清单标识和摘要；不重新盘账 |
+| apply | 同范围Evidence、manifestNo、原执行key | METADATA_MAPPED；需维护及新写路径开关、目标FENCED和原事实/来源修订一致；成功不释放栅栏 |
+
+Evidence是服务端合同，不作为公开用户DTO。执行只使用服务器保存的摘要；清单包含完整原账户映射和授权/事实快照。持久记录复用pay_ent_command_dedup，独立命令空间避免历史普通映射回执绕过最终维护要求。Core实时证据解析、全进程就绪与维护入口尚待对接；不以这些Java方法代替完整迁移或切写API。

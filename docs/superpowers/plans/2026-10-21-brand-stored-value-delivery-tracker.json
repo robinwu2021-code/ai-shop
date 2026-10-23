@@ -330,14 +330,15 @@
           "Default store draft preparation and live owner authority",
           "Typed internal preparation endpoint",
           "Legacy creation guard and persistent write-fence guards",
-          "Fenced final metadata mapping preserves maintenance fence (post-deploy development)"
+          "Fenced final metadata mapping preserves maintenance fence (post-deploy development)",
+          "Durable audited manifest and strictly fenced metadata apply (internal Java contract, not enabled online)"
         ],
         "verification": "Core/Pay compile and focused tests passed; no full suite or online financial writes",
         "remaining": [
-          "Verified migration executor and fenced final map",
-          "Conditional key cutover and issuer account selection",
+          "Core live evidence adapter, all-writer readiness and durable fence command",
+          "Explicit cutover, conditional keys and issuer account selection",
           "Complete IS/RC/RD and B app UI",
-          "MySQL concurrency acceptance and stage release"
+          "MySQL concurrency acceptance and complete stage release"
         ]
       },
       "foundationRelease": {

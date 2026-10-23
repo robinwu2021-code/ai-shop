@@ -33,24 +33,34 @@ public class StoredValueIssuerMigrationService {
     }
     /** Add scope references only. This never activates issuance or removes legacy indexes. */
     public MappingResult map(Batch batch,String expectedFingerprint,String commandKey) {
+        return map(batch,expectedFingerprint,commandKey,null);
+    }
+    /** Final mapping uses server-resolved evidence and checks FENCED under the same issuer locks. */
+    public MappingResult mapFenced(StoredValueMigrationManifestService.Evidence evidence,String expectedFingerprint,String commandKey) {
+        var canonical=evidence.canonical();
+        return map(canonical.batch(),expectedFingerprint,commandKey,canonical);
+    }
+    private MappingResult map(Batch batch,String expectedFingerprint,String commandKey,StoredValueMigrationManifestService.Evidence evidence) {
         validate(batch);
+        String operation=evidence==null?"SV_ISSUER_MAP":"SV_ISSUER_FENCED_MAP";
         if(expectedFingerprint==null||!expectedFingerprint.matches("[0-9a-f]{64}")||commandKey==null||commandKey.isBlank()||commandKey.length()>64)
             throw BizException.of(ErrorCode.BAD_REQUEST);
-        String payloadHash=hash(db.encode(List.of(batch,expectedFingerprint)));
+        String payloadHash=hash(db.encode(List.of(evidence==null?batch:evidence,expectedFingerprint)));
         return db.write(()->{
-            var command=db.one("SELECT * FROM pay_ent_command_dedup WHERE tenant_no=? AND operation_kind='SV_ISSUER_MAP' AND request_key=? AND deleted=0 FOR UPDATE",batch.tenantNo(),commandKey);
+            var command=db.one("SELECT * FROM pay_ent_command_dedup WHERE tenant_no=? AND operation_kind=? AND request_key=? AND deleted=0 FOR UPDATE",batch.tenantNo(),operation,commandKey);
             if(command!=null) {
                 if(!payloadHash.equals(text(command,"payload_hash"))||!"COMPLETED".equals(text(command,"result_status"))) throw BizException.of(ErrorCode.CONFLICT);
                 return db.decode(text(command,"response_snapshot"),MappingResult.class);
             }
             var now=java.sql.Timestamp.from(java.time.Instant.now());
-            db.update("INSERT INTO pay_ent_command_dedup(tenant_no,operation_kind,request_key,payload_hash,resource_no,result_status,version,deleted,created_at,updated_at,created_by,updated_by) VALUES(?,'SV_ISSUER_MAP',?,?,?,'PENDING',0,0,?,?,?,?)",
-                    batch.tenantNo(),commandKey,payloadHash,BizKey.next(BizKey.STORED_VALUE_MIGRATION),now,now,batch.actorNo(),batch.actorNo());
+            db.update("INSERT INTO pay_ent_command_dedup(tenant_no,operation_kind,request_key,payload_hash,resource_no,result_status,version,deleted,created_at,updated_at,created_by,updated_by) VALUES(?,?,?,?,?,'PENDING',0,0,?,?,?,?)",
+                    batch.tenantNo(),operation,commandKey,payloadHash,BizKey.next(BizKey.STORED_VALUE_MIGRATION),now,now,batch.actorNo(),batch.actorNo());
             for(var store:batch.stores().stream().sorted(Comparator.comparing(StoreMapping::issuerNo)).toList()) {
                 var issuer=db.one("SELECT issuer_no,write_mode FROM sv_issuer WHERE tenant_no=? AND issuer_no=? AND scope_type='STORE' AND scope_no=? AND deleted=0 FOR UPDATE",batch.tenantNo(),store.issuerNo(),store.storeNo());
-                if(issuer==null||!Set.of("LEGACY","LEGACY_MAPPED","FENCED").contains(text(issuer,"write_mode"))) throw BizException.of(ErrorCode.CONFLICT);
+                if(issuer==null||!(evidence==null?Set.of("LEGACY","LEGACY_MAPPED","FENCED"):Set.of("FENCED")).contains(text(issuer,"write_mode"))) throw BizException.of(ErrorCode.CONFLICT);
                 db.rows("SELECT account_no FROM sv_account WHERE tenant_no=? AND (store_no=? OR (store_no IS NULL AND entity_no=?)) AND deleted=0 ORDER BY account_no FOR UPDATE",batch.tenantNo(),store.storeNo(),store.entityNo());
             }
+            if(evidence!=null)evidence.verifyPayScope(db,true);
             var report=inspect(batch);
             if(!report.ready()||!expectedFingerprint.equals(report.fingerprint())) throw BizException.of(ErrorCode.CONFLICT);
             for(var store:batch.stores()) {
@@ -83,7 +93,7 @@ public class StoredValueIssuerMigrationService {
                 db.update("UPDATE sv_issuer SET write_mode=CASE WHEN write_mode='FENCED' THEN 'FENCED' ELSE 'LEGACY_MAPPED' END,updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND issuer_no=?",now,batch.actorNo(),batch.tenantNo(),store.issuerNo());
             }
             var result=new MappingResult("MAPPED",report.accounts().size(),expectedFingerprint);
-            db.update("UPDATE pay_ent_command_dedup SET result_status='COMPLETED',response_snapshot=?,updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND operation_kind='SV_ISSUER_MAP' AND request_key=?",db.encode(result),now,batch.actorNo(),batch.tenantNo(),commandKey);
+            db.update("UPDATE pay_ent_command_dedup SET result_status='COMPLETED',response_snapshot=?,updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND operation_kind=? AND request_key=?",db.encode(result),now,batch.actorNo(),batch.tenantNo(),operation,commandKey);
             return result;
         });
     }
