@@ -30704,6 +30704,13 @@
       "package": "ai.neargo.shop.trade.entity"
     },
     {
+      "table": "ord_pricing_funding_source",
+      "class": "OrdPricingFundingSource",
+      "zh": "Immutable quote binding; lifecycle changes never revise the economic source identity.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
       "table": "ord_pricing_template",
       "class": "OrdPricingTemplate",
       "zh": "Pricing publication evidence uses business numbers; immutable revisions are insert/query only.",
@@ -33336,6 +33343,13 @@
         "name": "SKU",
         "value": "SK",
         "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "PRICING_FUNDING_SOURCE",
+        "value": "PFS",
+        "zh": "报价资金来源日志，仅绑定报价生命周期，不代表扣款授权。",
         "module": "shop-base"
       },
       {

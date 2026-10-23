@@ -8913,6 +8913,35 @@ CREATE TABLE IF NOT EXISTS prd_sku_pricing_policy
     CONSTRAINT ck_sku_pricing_policy_version CHECK (version >= 1 AND version <= 9007199254740991)
 );
 
+CREATE TABLE IF NOT EXISTS ord_pricing_funding_source
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    funding_source_no VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    quote_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    user_no VARCHAR(32) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    economics_hash CHAR(64) NOT NULL,
+    preparation_hash CHAR(64) NOT NULL,
+    snapshot_hash CHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    cancel_reason VARCHAR(128) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_pricing_funding_source_no UNIQUE (funding_source_no),
+    CONSTRAINT uk_pricing_funding_source_quote UNIQUE (tenant_no, quote_no),
+    CONSTRAINT ck_pricing_funding_source_amount CHECK (amount_minor >= 0),
+    CONSTRAINT ck_pricing_funding_source_state CHECK ( (status = 'PENDING' AND cancel_reason IS NULL) OR (status = 'CANCELLED' AND cancel_reason IS NOT NULL))
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

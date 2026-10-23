@@ -913,3 +913,38 @@ PAY原两个Capability实现新增pricing，复用原EntitlementUsePort/StoredVa
 | 测试与生成物 | 四个模块内新增协议/owner/核心/HTTP/remote测试与旧部署夹具；生成分层/词典/常量清单 |
 
 此批补足“owner能准确说明什么”，没有扩大实际资金执行范围。C2.4、FOOD资金执行、多券、活动命中事实和完整11B报价保持未完成；下一步需补餐饮真实结账来源与决策协议，随后才能按已证明的能力开放报价/执行。不得将餐饮购物车改写为旧CORE来源绕过限制。本批无业务库迁移、部署或远端推送。
+
+
+### CKO-11B2D 资金报价来源日志与取消真相（2026-10-23）
+
+档位1，沿用既有结算方案；本批不启用FOOD资产执行或生产发布证据。新增共享ord_pricing_funding_source（V552），属于core报价生命周期，不复制餐饮订单或PAY资产表。实际身份为CORE/PRICING_QUOTE_USE，经济源修订固定1；生命周期version另行递增。
+
+内部PricingFundingSourceService.stage输入服务端Context、凭证、quoteNo、expectedPreparationHash；重新执行customer准备，验证真实FOOD/CART、H5、无session且buyer等于报价subject。首版只接受无优惠、无人工调整、无资金计划的完整MAIN整数数量报价；重新构造报价校验商品可参与性、税类、现行规则/税及完整经济摘要。保存原quoteNo/economicsHash/preparationHash、主体/门店/付款人、币种/原报价应收及短有效期，原报价retain同事务；一报价一来源保证幂等，不以调用方金额生成来源。
+
+get按租户/主体/门店/付款人读取；cancel输入来源号及原因，同事务将来源置CANCELLED并经原EntitlementSourceDecisionService写USE_CANCEL，固定源revision1。query读取真实日志：不存在/错误revision为UNKNOWN，PENDING即使超时仍未决；取消返回原持久决策。超时绝不推断取消，也不复活来源。该金额是原报价应收记录，不是可用券基数或扣储值金额。没有EntitlementUseSourcePort适配、资产授权或提交方法，原PAY能力合同继续拒绝该来源。后续正式结账需建立完整权益基数、付款人授权及提交协议。
+
+顺序：来源策略/服务/迁移编译；原决策查询接线编译；统一单元和原生事务回归、一次独立审查及既有守卫。本批不执行任何业务库迁移、部署或远端推送。
+
+
+本批内部方法（不直接绑定HTTP请求）：
+
+| 方法 | 输入 | 输出 / 错误 |
+|---|---|---|
+| stage | Context(tenant/entity/store/subject/actor)、Credentials、quoteNo、expectedPreparationHash | View(sourceRef/quoteNo/status/expiresAt/snapshotHash)；相同报价及准备摘要返回同一记录，包括已取消记录，不复活；过期准备不能重放stage，可用get查原记录 |
+| get | 同一可信Context、fundingSourceNo | 同一View；过期仍PENDING，需读取expiresAt判断是否可继续；不会自动改变状态 |
+| cancel | 同一可信Context、fundingSourceNo、1–128字符非空白原因 | 同一View；同原因重放返回原取消，换原因409；已过期仍可显式取消以供恢复 |
+| 原SourceDecisionPort.query | 内部EntitlementContext、完整SourceRef | 精确revision1、无line/unit子身份；存在日志为PENDING，原持久USE_CANCEL为CANCELLED；错租户/未知源/错误修订为UNKNOWN。取消与查询竞争时有界重读一次持久决策，仍无决策则409，不猜测取消 |
+| pendingDecision | 内部Context、SourceRef，由原reader在找不到决策时调用 | 仅未决回执；终态日志不独立合成终态，必须回到原reader查实际决策 |
+
+stage参数非法或不支持的组合400，非本人/非门店报价与来源404，状态/摘要变化409；真实准备链路尚无生产证据时保留原40190，不伪造支持。所有来源查询先显式租户和业务范围过滤，再局部忽略DataScope；对外部owner的重新授权在数据库事务外完成。短事务只锁原报价或实际来源行。
+
+表字段：funding_source_no/quote_no/entity_no/store_no/user_no各VARCHAR(32)，currency CHAR(3)，amount_minor BIGINT(原报价应收)，economics_hash/preparation_hash/snapshot_hash各CHAR(64)，status VARCHAR(16)，expires_at DATETIME(3) UTC，cancel_reason VARCHAR(128)可空，复用BaseEntity。funding_source_no全局唯一；(tenant_no,quote_no)唯一；金额非负、状态与取消原因配对CHECK。摘要涵盖固定SourceRef、租户/主体/门店/本人、报价号、原经济摘要、准备摘要、币种金额及有效期，生命周期version/取消原因不改变源事实摘要。没有删除、改金额或提交方法。取消后保留报价引用以保证审计。
+
+实现清单：trade.entity.OrdPricingFundingSource；TradeMappers.PricingFundingSourceMapper；trade.policy.PricingFundingSourcePolicy；trade.service.PricingFundingSourceService及service.impl实现；原entitlement.port.EntitlementSourceDecisionPortImpl只扩充日志未决路由及有界重读；BizKey.PRICING_FUNDING_SOURCE。V552只提交迁移文件及生成H2测试模式。没有餐饮重复资金表，也没有新增Controller、PAY资金SourcePort、生产EvidencePort。
+
+验收映射：冻结/留存/重复/并发stage、取消幂等/固定源修订/并发cancel、过期未决及过期显式取消、租户/门店/本人/子源隔离、篡改摘要、留存+插入回滚、决策+状态回滚、现行商品可参与性/税变化、已有优惠/准备摘要变化、拒绝事务内owner读取，以及取消穿插查询，均在PricingQuotePersistenceTest的新增13项原生InnoDB测试中验证；保留原10项报价回归。审查发现的查询取消竞态先RED再修复；移除日志摘要比较的消融按预期失败后恢复原字节。
+
+
+验证结果：先编译业务/接线，再统一测试。最终shop-base 280项实际通过；shop-core 605项中524实际通过、81原生数据库条件跳过，无失败。一次性MariaDB全部81项实际通过、零跳过（发布23、种子8、税18、报价及日志23、商品9），数据库容器已确认清理。宿主选择50项：41通过、1条件跳过、8原有失败；7项架构消息逐字一致、1项SchemaDrift缺列token集合一致，无新增失败。真实PAY HTTP3、远程2、双部署接线5均实际通过，包含在宿主选择中。Node9、Python定价合同5/交付4、SQL可移植性、Ops双向与B/C正向契约通过；Ops孤儿10和正向缺8、B/C正向缺2均原基线。
+
+一次最终独立审查0Critical/1Important/0Minor，Important为取消穿插查询的正常竞争；新增原生测试先稳定复现CONFLICT，再经有界持久决策重读修复，最终全套原生及核心绿色。没有第二次审查，也没有将跳过算通过。仍缺正式餐饮权益基数、付款人资金授权/提交、活动命中事实及完整公开试算/确认入口；CKO11与09-C2.4继续未完成，不能因日志已落库扩大PAY来源支持或开放生产发布证据。本批只本地提交，V552尚未对业务库执行。
