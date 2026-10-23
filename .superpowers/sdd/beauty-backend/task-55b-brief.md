@@ -16,3 +16,5 @@ AC测试：ReceptionBusinessIT到店无副作用、C本人挑战、跨scope/撤�
 实际A衔接：ReceptionPreparation现仅findClaim/beginClaim/derived/ClaimPayload；本步添加实际B所需泛化操作与typed payload，保留原claim语义。ReceptionAccess.customer负责实时CUSTOMER；BOOKING_MANAGE/VIEW及C完整身份复用AppointmentAccess。ReceptionIdentity.customer现在调用真实共享resolveClaimReference；guest只get规范事实，本步另补真正verify token和verifyConsumerProof调用，不把get当持有证明。CustomerOwnership已有完整receipt scope SQL，可复用。V6校验值220ed777c56a77c22cf835f2a5bcc42ccb41cc98a4348831df06e0e404b89f20，V5为8e9aec144736ee3502fb9c0f9c4c95edf6f4a02c1cecbd597ff0c3b51aa4eab5；必须保留。
 
 报告路径task-55b-report.md；product BASE由dispatch提供。先读本brief再按需查task-55-design.md §2/3/5/6/8/9/10，勿读巨大主TDD全历史。明确真实owner与受控fixture边界；行为RED必须在实际实现前达到业务反例，不以编译/setup错误替代。所有新变更先在本域设计附件记录准确方法/字段/状态与AC，存在实质方案缺口及时向控制器报告并继续独立可做工作，无需新用户审批。不spawn subagents、不扩到C。
+
+55B fixround1控制器补充：保留BM03同需求容量多份语义，授权V7将旧assignment uk2改同列普通索引（planned_assignment_no唯一保留）；V1–6不改，生成SQL后首次执行前控制器独立hash留档，随后真实I1 RED→比较/内部数量修复→GREEN。主TDD本次增量是最新绑定方案；当前ready6，仅V7验收后升级7。

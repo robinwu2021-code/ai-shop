@@ -675,6 +675,8 @@ Bean图约束：AppointmentService.openWorkOrderFromAppointment与WorkOrderServi
 
 **当前子步骤：** 55A完成（2bf892b98..59d49ed1b；统一修复I1–I4后Spec PASS/Quality Approved，历史U1/U2证据限制保留），55B已按[精确任务](../../.superpowers/sdd/beauty-backend/task-55b-brief.md)冻结启动。55B实现047/154/053业务及内部RECEPTION_CHANGE，DTO/签名沿精确设计§2/3，补ReceptionCoordinator与FrozenAppointmentScope及matchFrozen、currentArrangementEvidence；锁序/成功hold取证/资源REPLACE/原定义buffer与政策快照不变、合法状态与异常Outbox事务按本节执行。无新增表前提下沿冻结V6，不写签到/重排空壳、不创建工单/直客/资金，也不提前开放052或公开wire。新增反例先RED再改代码，至少一次有效fence双防线消融；真实member消费链放host、资源fixture边界明示。当前低内存native以BEAUTY_TEST_DISK=1单容器执行。55B完成独立审查后再C/D，整个BM04统一部署仍归60。
 
+**55B独立审查修复增量（2026-10-23，BASE115d1cb74）：** I1接待无变更比较须按资源份数一对一消费，隐式沿用原安排可保留同一资源的多份容量，不放宽公开显式重复输入。真实新回归先发现更早的持久化冲突：已测BM03 physicalCapacityCanBeSharedAcrossDemandUnits允许同一ROOM需求qty=2分配同一capacity=2资源，而旧assignment唯一键uk_bty_appointment_assignment_2禁止这些逐份行落库。控制器裁决保留原容量语义，以V7追加迁移将该键改为同列普通索引，保留每份planned_assignment_no唯一和原根/current/fence/同事务一次提交；不改V1–V6、不合并丢份、不添加无必要ordinal或回填。真源/生成器/manifest/ready7及严格V1→V7升级/漂移负例同步；V7首次执行前由控制器独立留存准确SQL/SHA。当前已部署基线仍6，7待本轮验证。真实create先到达后才运行I1三场景RED，再修一对一比较与内部沿用/新时段匹配，回归原MatchingSearch和容量守恒。该增量覆盖上文55B沿V6的初始假设，C/D在B审查通过后消费新基线。仅fixture/DDL准备错误不算行为RED；M1日志警告分类在报告澄清，不扩无关生产修复。
+
 **启动与验收：** 先据本节及方法JSON生成task-55-design.md，列确切DTO字段/Service方法、表约束、Bean图和AC→测试映射；任何未定事项在编码前由控制器裁决并同步本节。不得靠旧清单自动生成空方法计完成。目标031/032/047/048/052/053/054/055/154/155及到店码增量；P3候位049–051、关闭工单065–067和来源/账单056/071不在本任务。
 
 - [ ] 设计冻结后RED/GREEN和消融，完成真实本域事务、原生并发/恢复及严格V1→V5升级。
