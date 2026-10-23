@@ -27,3 +27,11 @@ PreparedWorkOrderScope已有可信ResourceBookingPort.Scope，WorkOrderPreparati
 真实HOST消费链在shop-app现有BeautyReceptionIdentityIT或同归属IT，验证真实customer/guest/claim/receipt与直客新链，资源准入fixture边界明示，不引入beauty-core到member内部生产依赖。用C相同已有测试夹具复用，别继承IT重复执行整套。B/C/BM03受影响回归选真实存在的方法名并记录实际selector/统计；最终必要reactor/wiring、当前V1→V7严格升级、架构/三语/生成/SQL检查按变化，避免无关全backend反复跑。旧宿主OpsPoints/V506/[beauty,store]归60，不放宽或掩盖。
 原生统一本机cached mysql:9.7.2，普通BEAUTY_TEST_DISK=1/64MB，不用失败128MiB校准。每批启动前只读Colima MemAvailable≥512MiB，单UUID容器串行/pullnever/localhost/readiness/finally只清自己；不足报告不删他人容器、不重启/改全局VM。JDK21=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home；Maven离线repo=/tmp/codex-beauty-bm01-m2。
 更新真实JSON/API/Java方法/数据库设计生成物（不造迁移，ready7/27表）；报告task-55d-report.md含命令与完整输出路径、边界与历史失败；精确owned列表，排除根mainTDD/progress/brief/总体design/review。无push/merge/共享或生产部署。先返回已实现commit前审查快照tree和diff供根独立review，根放行后再精确产品commit；未审不标55D/Task55/BM04完成。后续56–60另任务。
+
+## 启动前技术核对补充（根2026-10-23）
+- CONFIRM明确终态后，既有reconcile会在验证receipt/intent phase3/terminalHash后清active_intent_no，但保留永久fence行与原hold；RELEASE_REQUIRED依旧外层PENDING待当前授权者cancel/release，不能开单。UNKNOWN保留活动指针/current证据。brief的“保留fence”不是强迫已完成命令永远active，禁止修改BM03已审协议来制造此锁死。
+- 当前C persist同TX完成WorkOrderVO结果；D最终WalkInVO必须在同一个范围提交事务内以准确typed包装保存，不可先SUCCEEDED/WorkOrderVO后另TX覆写。扩共享写体的最小结果适配，不复制数据写体/不循环依赖。
+- 当前selectOpenedForWorkOrder仅允许OPEN_WORK_ORDER。D实际048动作须同步加入已实现动作集合，保留原tenant/entity/store/context/root/canonical/sourceOperation等全父链及SUCCEEDED guard；加入D建成后B/C读取和错父链负例。
+- 网格按实际所有项目资源窗口的offset/buffer验证严格未来，包括后续项目较大before-buffer；不把旧草案“第一个项目”文字当放松全部资源窗口约束。
+
+技术核对通过后实施约束：当前恢复员工、原外层命名空间中的员工、已关联预约操作的真实创建员工可能不同；以原记录的完整绑定核验历史，用现有AppointmentAccess/ReceptionAccess核验当前权限，不自造realm/subjectKind白名单或要求三者字面相等。来源详情读取同时限定已实现action/endpoint配对：OPEN_WORK_ORDER对应BAPI-052/BAPI-054，RECEIVE_WALK_IN对应BAPI-048，并保留完整父链。后台SQL资格用于排队，完整Binding/hash/receipt/intent权威核验仍复用Java既有助手，写状态前再锁内核持久证据与版本；不把SQL资格当授权。
