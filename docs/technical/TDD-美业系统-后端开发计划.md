@@ -1834,7 +1834,7 @@ embedded停止后才启动真正无core的standalone HOST；独立SERVER单一�
 
 本轮裁决：有限预算匹配必须诚实报告搜索不完整，不能以贪心设计解释假无解；较大合法请求可能需要缩小查询或增加明确指定。ops/no-api禁止公开预约入口与Job，受机器令牌保护的内部协议按已批准合同保留。这些边界改变将需要明确的后续任务。下一模块按§21.3先深化BM04，不重复领取已完成BM03。
 
-## §32 BM04进度：共用身份完成，接待与工单实施中
+## §32 BM04进度：接待工单与共用建单完成，资金阶段实施中
 
 Task54实现6932ef5c4及文档源修复7b3142e3f已通过独立任务审查。[实现与验证报告](../../.superpowers/sdd/beauty-backend/task-54-report.md)、[完整审查](../../.superpowers/sdd/beauty-backend/review-task-54.md)、[修复复审](../../.superpowers/sdd/beauty-backend/review-task-54-r1.md)保留实际命令/日志、原生库/真实TCP/fixture边界。共用member owner提供临客登记/验证/不可变认领及本人mc1核验；行业不复制顾客主档，不授付款权。新增平台V537/V538已执行并冻结，旧迁移未改。
 
@@ -1911,3 +1911,13 @@ V539固定8444bytes/SHA256 5a8e346341e5b378403761f2a77555c0558ff6b27a6071584207a
 共享静态当前及隔离HEAD基线均19项11通过/8失败：预约权限三语、B端common.delete、实体CHECK解析与12表清单、库存文案参数；属于本美业分支旧预约接线的亦为本项目部署前必修，不称无关历史。旧OpsPoints权限矩阵/文档索引生成漂移同样未放宽checker，不称全backend或全生成gate绿。Task60须连同JobLock迁已登记包、beauty域登记、插件SQL定向覆盖、真实认领+REPLACE和告警分类收口。
 
 Task56本地owner完成；BM04整体尚未完成。按[Task57任务](../../.superpowers/sdd/beauty-backend/task-57-brief.md)先审计真实资金owner、全部open入口、原号/凭证/权限与新SQL，再技术核对、RED/编码/原生和独立审查。58来源绑定账单、59美业协议、60大模块真实JAR部署顺序保持，BM05仍关闭。
+
+### 32.6 Task57精确设计已确认，准备实施（未交付）
+
+基于Task56验收及5ef6d5f7f基线，已完成512行精确设计及真实只读审计报告，补充[ADR-047](./ADR/ADR-047-资金原号操作与正式线下实收归属.md)。根技术核对闭合原号canonical/alias、两PREPARED线下证据唯一占用、实际经办/私有用途、锁外I/O、旧线上/线下可达状态、原单关后实收与SQL NULL三值逻辑等问题。真实资金运行测试仍未执行。
+
+候选平台V540共7477字节，根独立提取全文并复算SHA256 ca76b6512cf79c6f25fa71a4441f533e03cc609c6320611a0dcdc9634a10f745；固定时源码实际最大539，V540文件尚未创建/执行，V539仍原hash。实施生成实际文件后还需根复算一致才可首次执行；以后只追加不回改。记录见[首次执行前独立pin](../../.superpowers/sdd/beauty-backend/task-57-v540-preexecution-root-record.json)。
+
+线下仍商户确认外部实收/owner记账，不冒称银行核验；原确认/原报价/原应收不因后来开关或商品变化而改写，已关单实收入原LATE_PAYMENT。当前通道查询缺最终未付证明，UNKNOWN持续原号查询，仅确证NOT_SENT允许真实C新键换号。资金旧identity是全局orderNo，不把默认MAIN审计字段宣称已有多租户隔离。完整要求见[brief](../../.superpowers/sdd/beauty-backend/task-57-brief.md)、[精确设计](../../.superpowers/sdd/beauty-backend/task-57-design.md)、[报告](../../.superpowers/sdd/beauty-backend/task-57-report.md)。
+
+提交本次根技术记录后给定IMPLEMENTATION_BASE，由原设计实施者继续真实RED→编码→原生/独立进程/消融→独立审查，未提前认定57能力通过。58来源绑定、59消费端协议、60整个BM04部署及基线门禁仍按序，BM05保持关闭。

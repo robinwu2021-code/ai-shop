@@ -30,3 +30,15 @@
 15. 56教训：真正native-only测试在具体类显式条件隔离，普通Maven不误跑；专用runner强制真实native且核新报告非零/0skip/0failure/error。保留错误native配置硬失败，不吞错误、不把skip当资金验证。不得改全局POM排除/放宽checker来造绿。
 16. 与变化相符的pay/trade/零售餐饮/架构/三语/SQL/生成验证。56报告§20与根进度列出Task60基线债：OpsPoints FQN、store迁job.config与beauty域登记、旧V506/实体CHECK解析、12表清单、预约权限三语、common.delete、库存文案参数、生成漂移、插件SQL定向覆盖、CLAIMED→USER+真实REPLACE及55D M1告警分类。保留准确归属，不称全backend绿；本任务新增失败必须本步修，不借旧债遮掩。
 17. report持续记录逐AC、实际全commands/logs/counts/SQL冻结/firstGREEN与消融/未验边界/精确owned。根mainTDD/progress/brief/preflight/整体方案/ADR/reviews不进产品stage；你的design/report owned。完成后未commit冻结tree+精确diff交根独立spec/quality审查，放行后才精确提交，不push/merge/deploy。整个BM04真实JAR部署仍60，57不等于整个美业资金与来源闭环完成。
+
+## 设计审计补充裁决（2026-10-23）
+
+正式线下收款按既有PRD纯记账：授权当前商户确认已外部实收，资金owner落receipt；不表示银行独立核验或钱经过平台。BANK_TRANSFER保留，但要求真实owner附件事实及原订单/操作/方法/实际经办/时间的不可变用途绑定；附件独自不能证明到账。沿docs/technical/TDD-线下收款商家开关.md及PRD-支付方式与预约预定§7.1、PRD-支付域AC3.6/6.3保留四层经营开关、无平台补贴、不抽佣/分账、排除通道对账及影子记账。
+
+早期只读审计已发现旧上传uploadedBy是merchant主体号、旧经营操作Port不暴露SQL已有account_no；必须在真实owner扩最小能力取得当前实际account，保留既有Port签名兼容/数据域/caller-TX禁止，不伪造账号。专用私有收款凭证上传、真实媒体事实核验、保留/删除闭环的精确提案由设计审查，不泛改历史上传或造媒体账。
+
+旧recon暂未found会closeUnpaid，close为REQUIRES_NEW；设计须让SENDING/UNKNOWN保守原号查询，并避免外事务持guard后调用新连接close自锁。所有旧/新派发共用原attempt发送仲裁，多个合法request共享pending时须准确设计canonical operation/别名/不可变hash关系，不允许各op对同outTradeNo重复发送，不把paymentNo改一对一unique违背既有合同。以上是设计闭合要求，不是产品代码或SQL执行放行。
+
+最终技术核对补充：资金旧owner按全局orderNo/outTradeNo查找，BaseEntity一期MAIN只是审计，不存在已启用的行级租户隔离；guard全局orderNo唯一、operationNo按真实全局Port查询键唯一，LEGACY不被新MAIN硬CHECK截断。现有旧unmanaged OFFLINE确认没有新stl receipt，但线上WAIT_PAY与线下WAIT_OFFLINE_PAY无互转，唯一实际init caller先要求WAIT_PAY；保留旧语义并补真实反例，不把RECEIVE升级成正式现金权限。
+
+已有原单实收以已消费确认→原quote→原order/sub/items一致应收为准，不重新读取商品现价或以当前下架/删除/门店开关后来关闭拒绝承认已收；原quote/place已通过正式四层准入。关单前后首笔实收都保留真实receipt及原late-resolution；原amount/currency不得改零或重算。精确512行设计已通过根技术核对，V540候选7477字节/hash见独立pin；实际文件生成后须根再复算一致才首次执行。

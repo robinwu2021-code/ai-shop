@@ -1,0 +1,16 @@
+{
+  "design_base": "5ef6d5f7fa1f9be593e467759ebaa5a8a7caa034",
+  "platform_actual_max": 539,
+  "expected_path": "backend/shop-app/src/main/resources/db/migration/V540__checkout_payment_operation.sql",
+  "expected_bytes": 7477,
+  "expected_sha256": "ca76b6512cf79c6f25fa71a4441f533e03cc609c6320611a0dcdc9634a10f745",
+  "design_sha256": "8eb1f25bb94063d6c933b9966a9f5a05b043bcf4214d7d5ecbec171efb4d740c",
+  "migration_file_absent_before_pin": true,
+  "execution_status": "NOT_CREATED_NOT_EXECUTED",
+  "v539_unchanged": true,
+  "pinned_at_utc": "2026-10-23 15:56:14 UTC",
+  "worktree": "/Users/robin/.codex/worktrees/beauty-data/ai-shop-codex",
+  "reviewer": "root independent full SQL read and SHA256 recomputation",
+  "approved_for_exact_file_creation": true,
+  "first_execution_requires_root_actual_file_rehash": true
+}
