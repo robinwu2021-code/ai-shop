@@ -31131,6 +31131,13 @@
       "package": "ai.neargo.shop.product.entity"
     },
     {
+      "table": "prd_sku_pricing_policy",
+      "class": "PrdSkuPricingPolicy",
+      "zh": "Sparse store/SKU extension: no price copy and no implicit policy for missing rows.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
       "table": "prd_spec_dim",
       "class": "PrdSpecDim",
       "zh": "规格项（维度）：颜色、重量、口径、材质。",
@@ -33329,6 +33336,13 @@
         "name": "SKU",
         "value": "SK",
         "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "SKU_PRICING_POLICY",
+        "value": "SPP",
+        "zh": "Store SKU promotion eligibility and merchant tax classification.",
         "module": "shop-base"
       },
       {

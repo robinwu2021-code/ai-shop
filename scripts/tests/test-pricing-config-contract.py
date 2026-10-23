@@ -27,7 +27,7 @@ class PricingConfigContractTest(unittest.TestCase):
         spec.loader.exec_module(module)
         handlers = set(module.backend())
         operations = {(m.upper(), module.norm(p)) for p, methods in SPEC['paths'].items() for m in methods}
-        self.assertEqual(len(operations), 21)
+        self.assertEqual(len(operations), 23)
         self.assertTrue(operations.issubset(handlers), operations - handlers)
         self.assertFalse(any(path.startswith('/mp/') for _, path in operations))
 
@@ -45,6 +45,24 @@ class PricingConfigContractTest(unittest.TestCase):
         for method, path in [('put', '/biz/pricing-tax-settings'),
                              ('post', '/biz/pricing-tax-settings/reset')]:
             self.assertIn('entity owner only', SPEC['paths'][path][method]['description'])
+
+    def test_goods_policy_has_explicit_required_types_and_merchant_owner_boundary(self):
+        path = '/biz/goods/{goodsNo}/skus/{skuNo}/pricing-policy'
+        operation = SPEC['paths'][path]['put']
+        schema = operation['requestBody']['content']['application/json']['schema']
+        validator = Draft202012Validator(schema)
+        valid = {'expectedVersion': 0, 'promotionEligible': False, 'taxClass': 'STANDARD'}
+        self.assertTrue(validator.is_valid(valid))
+        for field in valid:
+            incomplete = dict(valid)
+            del incomplete[field]
+            self.assertFalse(validator.is_valid(incomplete))
+        for bad in [dict(valid, promotionEligible='true'), dict(valid, promotionEligible=1),
+                    dict(valid, taxClass='UNKNOWN'), dict(valid, expectedVersion=0.1),
+                    dict(valid, entityNo='OTHER')]:
+            self.assertFalse(validator.is_valid(bad))
+        self.assertIn('entity owner only', operation['description'])
+        self.assertEqual(operation['security'], [{'BizToken': []}])
 
     def test_requests_are_closed_and_modifying_operations_require_idempotency(self):
         for name in ['Create', 'Save', 'Preview', 'Publish', 'Initialize', 'Reset', 'Upgrade', 'Seed', 'TaxSave', 'TaxReset']:

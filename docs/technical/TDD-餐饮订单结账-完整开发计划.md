@@ -806,3 +806,49 @@ Evidence必须有稳定reference/expiry与来源版本；同一owner身份出现
 消融：临时删除effectiveHash比较，篡改摘要测试按预期失败；字节恢复后完整核心回归通过。JSON等价排版测试先失败、规范化校验后通过。最终一次独立审查发现owner回调继承数据权限绕过：即便尚无生产provider，也作为共享基础设施边界问题处理；新增回归先失败，随后将绕过收窄到三个显式限定范围的Mapper查询，完整核心/原生数据库再次通过。无未解决审查项。
 
 本批不新增表/迁移/公开API，也不实现真实资金能力。C2.4实际生产owner能力、优惠资格/活动事实与完整11B quote仍待后续合同闭合；Prepared仅供后端准备，不能作为资金、下单或税分类授权。下一步先闭合真实owner及活动资格合同，再组合统一规则/公式/税计算、CKO10快照存储和B/C报价接口。
+
+
+### CKO-11B2B 商品优惠参与与税分类（2026-10-23）
+
+§0 依据[餐饮完整需求§5.1](../requirements/餐饮系统-完整需求文档.md#51-菜单与报价ab组)：11B2需要真实商品资格与税分类，既有prd_goods/prd_sku及GoodsCatalogQueryPort只证明归属，不含这两个事实。依据本文CKO11、11B1-S08及用户“先排除不参与活动商品”“商家自主管理税配置”的要求补齐显式配置。P01同MAIN/主体/门店的实际CN SKU才能配置；P02未配置不默认可优惠/标准税/免税；P03商家指定promotionEligible及明确TaxClass（STANDARD/ZERO_RATED/EXEMPT/OUT_OF_SCOPE），税率/含税方式仍来自原税设置；P04读写按原B权限/门店上下文、版本并发及原键重放，归属变更阻断；P05内部批量查询严格覆盖请求SKU、返回真实版本/稳定摘要；P06报价准备绑定当前商品策略，前后复核及确认重读，变化409；P07不改变商品基础价格/库存/销售，不把配置当法定税务认证或活动命中证明。
+
+§1 存储：V551新增prd_sku_pricing_policy，沿BaseEntity，policy_no稳定业务键；tenant_no/entity_no/store_no/goods_no/sku_no、promotion_eligible、tax_class、version及审计字段。唯一(tenant_no,entity_no,store_no,sku_no)，不复制价格。缺行即未配置；不做批量默认回填，不执行业务库迁移。稀疏扩展表适用于餐饮主菜、小料与套餐收费组件的实际SKU，其他行业复用。
+
+共享商品域新增PrdSkuPricingPolicy、ProductMappers.SkuPricingPolicyMapper、dto.GoodsPricingPolicyCommands、GoodsPricingPolicyService/Impl、GoodsPricingPolicyAccessPolicy、BizGoodsPricingPolicyController；shop-base新增spi.product.GoodsPricingPolicyPort与严格快照校验工具，商品域port实现。复用GoodsMapper/SkuMapper、IdempotencyService及原transactionManager。规则/税运算不复制到商品域。
+
+§2 A完成扩展表、商品服务和严格只读Port后编译；B完成B接口、OpenAPI及后端先行清单、报价准备策略绑定后编译；C统一验证真实数据库创建/更新/幂等/隔离/并发与源归属、严格快照及准备流程版本变化，核心/宿主/合同守卫、消融、一次独立评审后本地提交。沿用户编译优先节奏。
+
+接口GET/PUT /biz/goods/{goodsNo}/skus/{skuNo}/pricing-policy，复用STOCK权限及真实当前门店/主体，写入另要求商家老板身份；请求不能提交身份。PUT输入expectedVersion(0仅首次)、promotionEligible(必填Boolean)、taxClass(明确枚举)、Idempotency-Key；返回policyNo/goodsNo/skuNo/version/配置内容，缺配置GET404。创建version=1，更新CAS+1，旧版本409。每次入口重新验证用户/门店授权，幂等键只重放原作用域/用户/请求。
+
+GoodsPricingPolicyPort.resolve(Scope,List<SkuRef(goodsNo,skuNo)>)只读，限制1..512个不同SKU，缺项/非法/不支持税类阻断40190；返回同scope、每SKU的policyNo/version/promotionEligible/taxClass与snapshotHash，不含价格、权限凭证。配置由真实商品表校验归属；摘要排序后稳定，不是授权。
+
+§5 验收与真实执行结果：
+
+| AC | 测试 / 检查 |
+|---|---|
+| P01/P04 | GoodsPricingPolicyPersistenceTest.foreignStoreGoodsSkuAndMarketCannotReadOrWrite、currentOwnershipIsRequiredEvenWhenAnOldPolicyExists、idempotentReplayStillChecksCurrentProductOwnership；GoodsPricingPolicyApiTest四项真实method-security/请求测试 |
+| P02/P03 | absentPolicyNeverReturnsACompatibleDefault、invalidTaxAndFailedCreateCannotLeaveAReceiptOrImplicitDefault；GoodsPricingPolicyFactsTest四项严格事实测试；严格请求/JSON Schema测试 |
+| P04 | createsUpdatesAndReplaysOriginalResponseWithoutChangingPriceTables、changedRequestAndOldVersionCannotReplaceCurrentPolicy、concurrentEditsCommitOnePolicyAndOneSuccessfulReceipt |
+| P05 | completeBatchAndStableOrderingAreRequired、exactScopeAndCompleteGoodsSkuSetAreRequiredEvenWithAValidDigest、duplicateSkuConflictingOwnersAndUnsafeIdentitiesAreRejected |
+| P06 | PricingPreparationServiceTest.missingOrForeignCatalogPoliciesNeverDefaultToPromotionOrZeroTax、catalogVersionChangeConflictsEvenWithUnchangedEligibilityAndTaxClass；原8项准备测试继续通过 |
+| P07 | 一次独立只读审查；宿主结构/权限/装配守卫与既有基线比较；无价格/库存写入依赖 |
+
+两阶段开发编译成功；共享基础276项全部实际通过，完整核心587项中519实际通过、68原生数据库条件跳过，无失败。临时MariaDB统一68项实际通过、0跳过（原配置23/种子8/税设置18/报价存储10＋商品策略9）；运行后确认删除仅本次临时容器。新策略用独立_product临时schema，不改已有套件夹具或连接业务库。
+
+独立审查1项Important：原幂等回执重放跳过商品归属检查。新增真实DB测试先失败（预期异常未抛），修正普通重放和锁冲突恢复路径的归属复核后，68项原生与完整核心回归通过；原策略普通更新后仍重放原响应。无待修或deferred minor。消融去掉商品策略snapshotHash比较，篡改摘要测试按预期失败；字节恢复后完整核心通过。
+
+宿主选定40项31通过/1条件跳过/8既有失败，Architecture7项消息逐字等于原基线，SchemaDrift1项缺列集合一致。Node9项、Python OpenAPI合同5项及交付合同4项通过；正向B/C契约无新增缺口、SQL/Ops守卫无新增欠账。本批14个定价B端后端先行登记均有效，含新增2个商品策略接口。全局B/C孤儿守卫仍因既有权益清单c-app GET /mp/stored-value/stores已接入却仍登记而失败，使用HEAD原权益清单可重现；本批不修改其他业务清单或抑制该失败。
+
+§6 实现对账：
+
+| 模块 / 包 | 类 / 产物 | 需求落点 |
+|---|---|---|
+| shop-base / ai.neargo.shop.spi.product | GoodsPricingPolicyPort、GoodsPricingPolicyFacts；common.BizKey新增SPP常量 | P02/P03/P05 |
+| shop-core / ai.neargo.shop.product.entity、mapper | PrdSkuPricingPolicy、ProductMappers.SkuPricingPolicyMapper | P01/P04 |
+| shop-core / ai.neargo.shop.product.dto、service、service.impl | GoodsPricingPolicyCommands、GoodsPricingPolicyService/Impl | P01～P05 |
+| shop-core / ai.neargo.shop.product.policy、api.biz、port | GoodsPricingPolicyAccessPolicy、BizGoodsPricingPolicyController、GoodsPricingPolicyPortImpl | P04/P05/P07 |
+| shop-core / ai.neargo.shop.trade.dto、service.impl | PricingPreparation与PricingPreparationServiceImpl，摘要V2绑定商品策略 | P06 |
+| shop-app | V551迁移文件；生成schema-test.sql，不执行业务库迁移 | P01/P04 |
+| 文档 / 守卫 | 既有OpenAPI/B端后端先行清单、完整需求§5.1与本TDD、生成分层/词典/常量清单、原生runner扩充product及全量选择 | 三处对账 |
+
+完整需求§5.1原平台审核口径与已确认的商家管理要求冲突，已同步修正。本表是SKU业务元数据扩展，未放入平台动态参数，也不修改原商品价格。策略只定义商品可参与性，实际活动命中、多券和资金owner合同仍按原计划实现，不以本表推断。V551需按正常迁移部署后使用；本批无部署或远端推送。

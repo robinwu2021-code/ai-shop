@@ -1,8 +1,8 @@
 {
   "version": 1,
   "stage": "JAVA_BACKEND_UI_DEFERRED",
-  "reason": "用户要求后端优先；模板/规则与税配置管理API已提供，UI后续接入。税配置无审批，规则发布仍需真实能力来源。",
-  "plan": "docs/technical/TDD-订单结账-CKO09种子与配置API.md",
+  "reason": "用户要求后端优先；规则、税配置与门店SKU优惠参与/税分类管理API已提供，UI后续接入。税配置无审批，规则发布仍需真实能力来源。",
+  "plan": "docs/technical/TDD-餐饮订单结账-完整开发计划.md",
   "entries": [
     {
       "app": "b-app",
@@ -63,6 +63,16 @@
       "app": "b-app",
       "method": "POST",
       "path": "/biz/pricing-tax-settings/reset"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/goods/{goodsNo}/skus/{skuNo}/pricing-policy"
+    },
+    {
+      "app": "b-app",
+      "method": "PUT",
+      "path": "/biz/goods/{goodsNo}/skus/{skuNo}/pricing-policy"
     }
   ]
 }

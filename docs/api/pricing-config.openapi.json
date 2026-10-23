@@ -1643,6 +1643,281 @@
         },
         "description": "Merchant entity owner only, in addition to permission. A store-level grant cannot change all merchant stores. No platform approval."
       }
+    },
+    "/biz/goods/{goodsNo}/skus/{skuNo}/pricing-policy": {
+      "get": {
+        "operationId": "getGoodsPricingPolicy",
+        "summary": "Read explicit SKU policy",
+        "parameters": [
+          {
+            "name": "goodsNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "skuNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Explicit policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "policyNo",
+                            "goodsNo",
+                            "skuNo",
+                            "version",
+                            "promotionEligible",
+                            "taxClass"
+                          ],
+                          "properties": {
+                            "policyNo": {
+                              "type": "string"
+                            },
+                            "goodsNo": {
+                              "type": "string"
+                            },
+                            "skuNo": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "promotionEligible": {
+                              "type": "boolean"
+                            },
+                            "taxClass": {
+                              "type": "string",
+                              "enum": [
+                                "STANDARD",
+                                "ZERO_RATED",
+                                "EXEMPT",
+                                "OUT_OF_SCOPE"
+                              ]
+                            }
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Wrong realm or unauthorized store/owner"
+          },
+          "404": {
+            "description": "Missing policy or SKU ownership"
+          },
+          "409": {
+            "description": "Version or idempotency conflict"
+          }
+        },
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "description": "Current authenticated store only; entity owner only for PUT. Missing configuration has no default."
+      },
+      "put": {
+        "operationId": "putGoodsPricingPolicy",
+        "summary": "Merchant owner edits explicit SKU policy",
+        "parameters": [
+          {
+            "name": "goodsNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "skuNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Explicit policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "policyNo",
+                            "goodsNo",
+                            "skuNo",
+                            "version",
+                            "promotionEligible",
+                            "taxClass"
+                          ],
+                          "properties": {
+                            "policyNo": {
+                              "type": "string"
+                            },
+                            "goodsNo": {
+                              "type": "string"
+                            },
+                            "skuNo": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "promotionEligible": {
+                              "type": "boolean"
+                            },
+                            "taxClass": {
+                              "type": "string",
+                              "enum": [
+                                "STANDARD",
+                                "ZERO_RATED",
+                                "EXEMPT",
+                                "OUT_OF_SCOPE"
+                              ]
+                            }
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Wrong realm or unauthorized store/owner"
+          },
+          "404": {
+            "description": "Missing policy or SKU ownership"
+          },
+          "409": {
+            "description": "Version or idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "expectedVersion",
+                  "promotionEligible",
+                  "taxClass"
+                ],
+                "properties": {
+                  "expectedVersion": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740990
+                  },
+                  "promotionEligible": {
+                    "type": "boolean"
+                  },
+                  "taxClass": {
+                    "type": "string",
+                    "enum": [
+                      "STANDARD",
+                      "ZERO_RATED",
+                      "EXEMPT",
+                      "OUT_OF_SCOPE"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "description": "Current authenticated store only; entity owner only for PUT. Missing configuration has no default."
+      }
     }
   },
   "components": {

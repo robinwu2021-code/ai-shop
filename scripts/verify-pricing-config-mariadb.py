@@ -52,10 +52,12 @@ def main():
         selection = os.environ.get('PRICING_TEST_SUITE', 'publication' if method else 'all')
         available = {'publication': [('PricingConfigServiceTest', 23)], 'seed': [('PricingSeedServiceTest', 8)],
                      'tax': [('PricingTaxSettingServiceTest', 18)], 'quote': [('PricingQuotePersistenceTest', 10)],
+                     'product': [('ai.neargo.shop.product.GoodsPricingPolicyPersistenceTest', 9)],
                      'all': [('PricingConfigServiceTest', 23), ('PricingSeedServiceTest', 8),
-                             ('PricingTaxSettingServiceTest', 18), ('PricingQuotePersistenceTest', 10)]}
+                             ('PricingTaxSettingServiceTest', 18), ('PricingQuotePersistenceTest', 10),
+                             ('ai.neargo.shop.product.GoodsPricingPolicyPersistenceTest', 9)]}
         if selection not in available or method and selection == 'all':
-            raise RuntimeError('Select publication, seed, tax, quote, or all; a method requires one suite')
+            raise RuntimeError('Select publication, seed, tax, quote, product, or all; a method requires one suite')
         suites = available[selection]
         pattern = ','.join(name + ('#' + method if method else '') for name, count in suites)
         with tempfile.NamedTemporaryFile(prefix='cko08-mariadb-', suffix='.log', delete=False) as log:
@@ -71,7 +73,8 @@ def main():
             print('\n'.join(Path(log.name).read_text().splitlines()[-65:]), flush=True)
             raise RuntimeError('Real pricing publication tests failed')
         for name, minimum in suites:
-            report = ROOT / ('backend/shop-core/target/surefire-reports/TEST-ai.neargo.shop.trade.' + name + '.xml')
+            qualified = name if '.' in name else 'ai.neargo.shop.trade.' + name
+            report = ROOT / ('backend/shop-core/target/surefire-reports/TEST-' + qualified + '.xml')
             suite = ET.parse(report).getroot()
             assert int(suite.attrib['tests']) >= (1 if method else minimum)
             assert all(int(suite.attrib[k]) == 0 for k in ('failures', 'errors', 'skipped'))

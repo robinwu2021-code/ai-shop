@@ -16,6 +16,9 @@ import ai.neargo.shop.common.pricing.MoneyMinor;
 import ai.neargo.shop.common.pricing.PriceTaxMode;
 import ai.neargo.shop.common.pricing.PricingUnit;
 import ai.neargo.shop.common.pricing.TaxSettingDefinition;
+import ai.neargo.shop.spi.product.GoodsPricingPolicyFacts;
+import ai.neargo.shop.spi.product.GoodsPricingPolicyPort;
+import ai.neargo.shop.common.pricing.TaxClass;
 import ai.neargo.shop.spi.trade.PricingConfigEvidencePort;
 import ai.neargo.shop.spi.trade.PricingSourceFacts;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Component;
@@ -45,12 +48,17 @@ class PricingPreparationServiceTest {
     private final PricingSourceService sources = mock(PricingSourceService.class);
     private final PricingRuntimeConfigService rules = mock(PricingRuntimeConfigService.class);
     private final PricingTaxSettingPort taxes = mock(PricingTaxSettingPort.class);
-    private final PricingPreparationServiceImpl service = new PricingPreparationServiceImpl(sources, rules, taxes,
+    private final GoodsPricingPolicyPort catalog = mock(GoodsPricingPolicyPort.class);
+    private final PricingPreparationServiceImpl service = new PricingPreparationServiceImpl(sources, rules, taxes, catalog,
             Clock.fixed(NOW, ZoneOffset.UTC));
     private Snapshot source(String subject, long amount) {
         return PricingSourceFacts.freeze(scope, subject, source, "POS", "a".repeat(64), List.of(new Component(Kind.MAIN,
                 new PricingUnit("L", null, "G", "S", "V", "L", BigDecimal.ZERO, BigDecimal.ONE,
                         new MoneyMinor("CNY", amount), new MoneyMinor("CNY", amount)))));
+    }
+    private GoodsPricingPolicyPort.Snapshot catalog(long version) {
+        return GoodsPricingPolicyFacts.freeze(new GoodsPricingPolicyPort.Scope("MAIN", "E", "A"),
+                List.of(new GoodsPricingPolicyPort.Policy("P", "G", "S", version, true, TaxClass.STANDARD)));
     }
     private MerchantTaxSnapshot tax(long managedVersion) {
         var definition = new TaxSettingDefinition(true, 500, PriceTaxMode.EXCLUSIVE);
@@ -70,6 +78,7 @@ class PricingPreparationServiceTest {
         when(sources.staff(scope, source)).thenReturn(source(null, 100));
         when(rules.resolve(scope, "FOOD")).thenReturn(config("b".repeat(64)));
         when(taxes.resolve(any())).thenReturn(tax(0));
+        when(catalog.resolve(any(), any())).thenReturn(catalog(1));
     }
     @Test void bindsStableSourcesRulesOwnerEvidenceAndManagedTaxWithoutReadClockInDigest() throws Exception {
         ready(); var prepared = service.staff(scope, source);
@@ -116,6 +125,22 @@ class PricingPreparationServiceTest {
         when(sources.staff(scope, source)).thenThrow(BizException.of(ErrorCode.FORBIDDEN));
         assertThatThrownBy(() -> service.staff(scope, source)).isInstanceOf(BizException.class);
         verifyNoInteractions(rules, taxes);
+    }
+    @Test void missingOrForeignCatalogPoliciesNeverDefaultToPromotionOrZeroTax() throws Exception {
+        ready(); when(catalog.resolve(any(), any())).thenReturn(null);
+        assertThatThrownBy(() -> service.staff(scope, source)).isInstanceOf(BizException.class);
+        when(catalog.resolve(any(), any())).thenReturn(GoodsPricingPolicyFacts.freeze(
+                new GoodsPricingPolicyPort.Scope("MAIN", "OTHER", "A"),
+                List.of(new GoodsPricingPolicyPort.Policy("P", "G", "S", 1, true, TaxClass.STANDARD))));
+        assertThatThrownBy(() -> service.staff(scope, source)).isInstanceOf(BizException.class);
+    }
+    @Test void catalogVersionChangeConflictsEvenWithUnchangedEligibilityAndTaxClass() throws Exception {
+        ready(); var prepared = service.staff(scope, source);
+        when(catalog.resolve(any(), any())).thenReturn(catalog(2));
+        assertThatThrownBy(() -> service.confirmStaff(scope, source, prepared.preparationHash()))
+                .isInstanceOfSatisfying(BizException.class, e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+        when(catalog.resolve(any(), any())).thenReturn(catalog(1), catalog(2));
+        assertThatThrownBy(() -> service.staff(scope, source)).isInstanceOf(BizException.class);
     }
     @Test void malformedExpectedHashDoesNotReadAnySource() {
         assertThatThrownBy(() -> service.confirmStaff(scope, source, "invalid")).isInstanceOf(BizException.class);

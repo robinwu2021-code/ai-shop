@@ -3,6 +3,7 @@ package ai.neargo.shop.product.mapper;
 import ai.neargo.shop.product.entity.PrdCategory;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
+import ai.neargo.shop.product.entity.PrdSkuPricingPolicy;
 import ai.neargo.shop.product.entity.PrdSpecTemplate;
 import ai.neargo.shop.product.entity.PrdStockLock;
 import ai.neargo.shop.product.entity.PrdStoreStock;
@@ -16,6 +17,9 @@ import java.util.List;
 public final class ProductMappers {
 
     private ProductMappers() {
+    }
+
+    public interface SkuPricingPolicyMapper extends BaseMapper<PrdSkuPricingPolicy> {
     }
 
     public interface GoodsMapper extends BaseMapper<PrdGoods> {
