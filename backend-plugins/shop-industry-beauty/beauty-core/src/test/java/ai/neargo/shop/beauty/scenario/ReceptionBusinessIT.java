@@ -9,6 +9,9 @@ import static org.mockito.Mockito.mockStatic;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.beauty.config.BeautyAppointmentConfiguration;
 import ai.neargo.shop.beauty.config.BeautyCatalogConfiguration;
+import ai.neargo.shop.beauty.config.BeautyDefinitionConfiguration;
+import ai.neargo.shop.beauty.service.ServiceDefinitionService;
+import ai.neargo.shop.spi.product.ServiceProductFactsPort;
 import ai.neargo.shop.beauty.config.BeautyWriteGuardConfiguration;
 import ai.neargo.shop.beauty.dto.AppointmentItemReq;
 import ai.neargo.shop.beauty.dto.CheckInReq;
@@ -112,6 +115,7 @@ class ReceptionBusinessIT extends BeautyExecutionFixture {
     private boolean customerAllowed = true;
     private boolean guestClaimed;
     private String revokedActor;
+    private boolean roomQuantities;
     private boolean occupied;
     private boolean otherOccupied;
     private boolean failOutbox;
@@ -127,7 +131,8 @@ class ReceptionBusinessIT extends BeautyExecutionFixture {
             var facade = new UnifiedOutboxFacade(mapper);
             facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, mapper), List.of());
             facade.setArchiveOnly(Set.of("PLATFORM:BEAUTY_APPOINTMENT_OPERATION_COMPLETED",
-                    "PLATFORM:BEAUTY_RECEPTION_STATE_CHANGED"));
+                    "PLATFORM:BEAUTY_RECEPTION_STATE_CHANGED",
+                    "PLATFORM:BEAUTY_SERVICE_DEFINITION_VERSION_PUBLISHED"));
             return facade;
         }
     }
@@ -200,7 +205,16 @@ class ReceptionBusinessIT extends BeautyExecutionFixture {
                 })
                 .withBean(ResourceCandidatesPort.class, () -> new ResourceCandidatesPort() {
                     @Override public List<ResourceFactsPort.ResourceFact> candidates(Query query) {
-                        outside(); return List.of(new ResourceFactsPort.ResourceFact("R1", ResourceFactsPort.Type.STAFF,
+                        outside();
+                        if (roomQuantities) {
+                            return List.of(new ResourceFactsPort.ResourceFact("R1", ResourceFactsPort.Type.STAFF,
+                                    null, "P1", "Technician", 1, false),
+                                    new ResourceFactsPort.ResourceFact("ROOM1", ResourceFactsPort.Type.ROOM,
+                                            null, null, "Shared room", 2, false),
+                                    new ResourceFactsPort.ResourceFact("ROOM2", ResourceFactsPort.Type.ROOM,
+                                            null, null, "Other room", 2, false));
+                        }
+                        return List.of(new ResourceFactsPort.ResourceFact("R1", ResourceFactsPort.Type.STAFF,
                                 null, "P1", "Technician", 1, false),
                                 new ResourceFactsPort.ResourceFact("R2", ResourceFactsPort.Type.STAFF,
                                 null, "P2", "Second", 1, false));
@@ -362,6 +376,68 @@ class ReceptionBusinessIT extends BeautyExecutionFixture {
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_work_order", Integer.class)).isZero();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_item", Integer.class)).isEqualTo(4);
         });
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"KEEP", "CHANGE_RESOURCE", "CHANGE_TIME"})
+    void receptionRetainsRepeatedResourceUnits(String change) {
+        roomQuantities = true;
+        business().withUserConfiguration(BeautyDefinitionConfiguration.class)
+                .withBean(ServiceProductFactsPort.class, () -> (entity, store, sku) -> {
+                    outside();
+                    return new ServiceProductFactsPort.Fact(entity, store, sku, "G", 1000, 17, 7L, 0L);
+                }).run(c -> {
+                    login(LoginUser.merchant("A", "operator"));
+                    var published = c.getBean(ServiceDefinitionService.class).publishDefinitionVersion("E", "S", "A",
+                            new PublishServiceDefinitionVersionReq("SKU", 1L,
+                                    new PublishServiceDefinitionVersionReq.Duration(17, 3, 4), List.of(
+                                            new PublishServiceDefinitionVersionReq.Requirement("MAIN", "STAFF", "G",
+                                                    1, 0, 0, 17, "ANY_QUALIFIED"),
+                                            new PublishServiceDefinitionVersionReq.Requirement("ROOM", "ROOM", null,
+                                                    2, 0, 0, 17, "ANY_QUALIFIED"))), "PUBLISH-QUANTITY");
+                    var root = create(c);
+                    login(LoginUser.merchant("A", "operator"));
+                    var originalDetail = c.getBean(AppointmentService.class).getAppointment("E", "S", "A",
+                            root.appointmentNo());
+                    assertThat(originalDetail.items()).allSatisfy(item -> assertThat(item.definitionVersionNo())
+                            .isEqualTo(published.definitionVersionNo()));
+                    assertThat(originalDetail.assignments().stream().map(a -> a.resourceNo()))
+                            .containsExactlyInAnyOrder("R1", "ROOM1", "ROOM1");
+                    login(LoginUser.merchant("A", "operator"));
+                    var arrived = c.getBean(ReceptionService.class).checkIn("E", "S", "A",
+                            request(root.appointmentNo(), root.revision()), "ARRIVE");
+                    var coordinator = c.getBean(ReceptionCoordinator.class);
+                    var original = originalDetail.assignments().stream().map(a -> new AppointmentAssignmentReq(0,
+                            a.requirementNo(), a.resourceNo(), a.personnelNo())).toList();
+                    assertThatThrownBy(() -> coordinator.reassign("E", "S", "A", root.appointmentNo(),
+                            arrived.revision(), original, start, "EXPLICIT-DUPLICATE"))
+                            .isInstanceOf(BizException.class);
+                    var requested = new ArrayList<AppointmentAssignmentReq>();
+                    if ("CHANGE_RESOURCE".equals(change)) {
+                        requested.addAll(original);
+                        var room = requested.stream().filter(a -> "ROOM1".equals(a.resourceNo()))
+                                .findFirst().orElseThrow();
+                        requested.set(requested.indexOf(room),
+                                new AppointmentAssignmentReq(0, room.requirementNo(), "ROOM2", null));
+                    }
+                    var chosenStart = "CHANGE_TIME".equals(change) ? start.plusHours(1) : start;
+                    var result = assertDoesNotThrow(() -> coordinator.reassign("E", "S", "A", root.appointmentNo(),
+                            arrived.revision(), requested, chosenStart, "QUANTITY"));
+                    if ("KEEP".equals(change)) {
+                        assertThat(result).isNull();
+                        assertThat(owner.accepts).hasSize(2);
+                    } else {
+                        assertThat(result).isNotNull();
+                        assertThat(result.getState()).isEqualTo("SUCCEEDED");
+                        assertThat(owner.accepts.values().stream().map(ResourceBookingPort.Accept::action))
+                                .containsExactly("RESERVE", "CONFIRM", "REPLACE");
+                        var fresh = c.getBean(AppointmentService.class).getAppointment("E", "S", "A",
+                                root.appointmentNo());
+                        assertThat(fresh.appointment().startAt()).isEqualTo(chosenStart);
+                        assertThat(fresh.assignments().stream().map(a -> a.resourceNo())).containsExactlyInAnyOrder(
+                                "R1", "ROOM1", "CHANGE_RESOURCE".equals(change) ? "ROOM2" : "ROOM1");
+                    }
+                });
     }
 
     private MyAppointmentVO create(

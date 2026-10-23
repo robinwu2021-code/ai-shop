@@ -9,6 +9,7 @@ import java.util.UUID;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -229,6 +230,76 @@ class BeautySchemaMigrationIT {
                 + "CHECK (phase IN ('RECE`IVED','RESOURCE_PENDING','ARRIVAL_PENDING',"
                 + "'OPEN_PENDING','SUCCEEDED','REJECTED'))");
         assertThrows(IllegalStateException.class, () -> initialize("validate"));
+    }
+
+    @Test void v6AssignmentUnitsUpgradeWithoutRewrite() throws SQLException {
+        Flyway.configure().dataSource(source).locations("classpath:db/industry/beauty")
+                .table("bty_flyway_history").target("6").baselineVersion("0").baselineOnMigrate(true)
+                .createSchemas(false).placeholderReplacement(false).load().migrate();
+        insertAssignmentUnit("UNIT1");
+        var jdbc = new JdbcTemplate(source);
+        var before = jdbc.queryForMap("SELECT * FROM bty_appointment_assignment WHERE planned_assignment_no='UNIT1'");
+        var history = jdbc.queryForList("SELECT version,checksum FROM bty_flyway_history ORDER BY installed_rank");
+        assertThrows(SQLException.class, () -> insertAssignmentUnit("UNIT2"));
+        assertThrows(RuntimeException.class, () -> initialize("validate"));
+        initialize("migrate");
+        initialize("validate");
+        initialize("migrate");
+        assertEquals(before, jdbc.queryForMap(
+                "SELECT * FROM bty_appointment_assignment WHERE planned_assignment_no='UNIT1'"));
+        assertEquals(history, jdbc.queryForList(
+                "SELECT version,checksum FROM bty_flyway_history WHERE version<>'7' ORDER BY installed_rank"));
+        assertEquals(1, count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='7' AND success=1"));
+        insertAssignmentUnit("UNIT2");
+        assertThrows(SQLException.class, () -> insertAssignmentUnit("UNIT1"));
+        assertEquals(2, count("SELECT COUNT(*) FROM bty_appointment_assignment"));
+        assertEquals(2, count("SELECT COUNT(DISTINCT planned_assignment_no) FROM bty_appointment_assignment"));
+        assertEquals(6, count("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() "
+                + "AND table_name='bty_appointment_assignment' AND index_name='idx_bty_appointment_assignment_1' "
+                + "AND non_unique=1"));
+        initialize("validate");
+    }
+
+    private void insertAssignmentUnit(String number) throws SQLException {
+        try (var connection = source.getConnection(); var statement = connection.prepareStatement(
+                "INSERT INTO bty_appointment_assignment(entity_no,created_at,updated_at,planned_assignment_no,"
+                        + "appointment_item_no,appointment_revision,requirement_no,resource_no,hold_no,"
+                        + "start_at,end_at,skill_snapshot) VALUES ('E','2026-10-20 10:00:00','2026-10-20 10:00:00',"
+                        + "?,'ITEM',1,'REQ','ROOM1','HOLD','2026-10-20 10:00:00','2026-10-20 11:00:00','{}')")) {
+            statement.setString(1, number);
+            statement.executeUpdate();
+        }
+    }
+
+    @Test void v7AssignmentIndexDriftCannotPassValidation() throws SQLException {
+        initialize("migrate");
+        int checksum = count("SELECT checksum FROM bty_flyway_history WHERE version='7'");
+        String table = "ALTER TABLE bty_appointment_assignment ";
+        String drop = "DROP INDEX idx_bty_appointment_assignment_1";
+        String columns = "(tenant_no,entity_no,appointment_item_no,appointment_revision,requirement_no,resource_no)";
+        String add = "ADD INDEX idx_bty_appointment_assignment_1 " + columns;
+        for (String drift : new String[]{"MISSING", "UNIQUE", "COLUMN_ORDER", "BUSINESS_UNIQUE", "CHECKSUM"}) {
+            switch (drift) {
+                case "MISSING" -> execute(table + drop);
+                case "UNIQUE" -> execute(table + drop
+                        + ", ADD UNIQUE INDEX idx_bty_appointment_assignment_1 " + columns);
+                case "COLUMN_ORDER" -> execute(table + drop + ", ADD INDEX idx_bty_appointment_assignment_1 "
+                        + "(entity_no,tenant_no,appointment_item_no,appointment_revision,requirement_no,resource_no)");
+                case "BUSINESS_UNIQUE" -> execute(table + "DROP INDEX uk_bty_appointment_assignment_1");
+                case "CHECKSUM" -> execute("UPDATE bty_flyway_history SET checksum=123 WHERE version='7'");
+                default -> throw new AssertionError(drift);
+            }
+            assertThrows(RuntimeException.class, () -> initialize("validate"), drift);
+            switch (drift) {
+                case "MISSING" -> execute(table + add);
+                case "UNIQUE", "COLUMN_ORDER" -> execute(table + drop + ", " + add);
+                case "BUSINESS_UNIQUE" -> execute(table + "ADD UNIQUE INDEX uk_bty_appointment_assignment_1 "
+                        + "(tenant_no,entity_no,planned_assignment_no)");
+                case "CHECKSUM" -> execute("UPDATE bty_flyway_history SET checksum=" + checksum + " WHERE version='7'");
+                default -> throw new AssertionError(drift);
+            }
+            initialize("validate");
+        }
     }
 
     private void migrateThroughV5() {

@@ -42,6 +42,9 @@ public final class BeautySchemaValidator {
     private static final String V6 = "db/industry/beauty/V6__beauty_reception_identity_guard.sql";
     private static final String V6_SHA256 = "220ed777c56a77c22cf835f2a5bcc42ccb41cc98a4348831df06e0e404b89f20";
 
+    private static final String V7 = "db/industry/beauty/V7__beauty_appointment_assignment_units.sql";
+    private static final String V7_SHA256 = "8894786048bf04ca45eff129a83fa7776da867994d72dff2343a91b215d6d3f2";
+
     /** Migration must be explicitly requested by a single deployment executor; validation is read only. */
     public void initialize(DataSource dataSource, String mode) {
         require("validate".equals(mode) || "migrate".equals(mode), "Beauty schema mode must be validate or migrate");
@@ -65,7 +68,7 @@ public final class BeautySchemaValidator {
         }
         flyway.validate();
         var current = flyway.info().current();
-        require(current != null && "6".equals(current.getVersion().getVersion()), "Beauty schema version must be 6");
+        require(current != null && "7".equals(current.getVersion().getVersion()), "Beauty schema version must be 7");
         for (var migration : flyway.info().all()) {
             String state = migration.getState().name();
             require("SUCCESS".equals(state) || "BASELINE".equals(state), "Unexpected beauty migration state: " + state);
@@ -88,6 +91,7 @@ public final class BeautySchemaValidator {
             require(result.putIfAbsent(table, contract) == null, "Duplicate beauty migration table");
         });
         addIdentityGuard(result);
+        allowAssignmentUnits(result);
         return result;
     }
 
@@ -104,6 +108,30 @@ public final class BeautySchemaValidator {
                 "V6 cannot replace a frozen CHECK");
         contracts.put(match.group(1), new TableContract(table.columns(), table.uniqueKeys(),
                 table.columnDefinitions(), checks, table.modifiers(), table.indexes()));
+    }
+
+    /** V7 changes only the capacity-unit index; all other frozen physical contracts stay exact. */
+    private static void allowAssignmentUnits(Map<String, TableContract> contracts) {
+        String sql = frozenText(V7, V7_SHA256).replaceAll("(?m)^--[^\\n]*\\n", "").strip();
+        String tableName = "bty_appointment_assignment";
+        String oldName = "uk_bty_appointment_assignment_2";
+        String newName = "idx_bty_appointment_assignment_1";
+        List<String> columns = List.of("tenant_no", "entity_no", "appointment_item_no", "appointment_revision",
+                "requirement_no", "resource_no");
+        String sqlColumns = "`" + String.join("`, `", columns) + "`";
+        String expected = "ALTER TABLE `" + tableName + "`\n    DROP INDEX `" + oldName + "`,\n"
+                + "    ADD INDEX `" + newName + "` (" + sqlColumns + ");";
+        require(expected.equals(sql), "Unexpected V7 assignment unit migration");
+        var table = contracts.get(tableName);
+        require(table != null, "V7 target must already belong to the frozen manifest");
+        Set<List<String>> uniqueKeys = new HashSet<>(table.uniqueKeys());
+        require(uniqueKeys.remove(columns), "V7 must replace the existing resource-unit unique key");
+        Map<String, String> indexes = new TreeMap<>(table.indexes());
+        require(indexSignature(sqlColumns, true).equals(indexes.remove(oldName)), "Unexpected V7 old index");
+        require(indexes.putIfAbsent(newName, indexSignature(sqlColumns, false)) == null,
+                "V7 ordinary index must be new");
+        contracts.put(tableName, new TableContract(table.columns(), uniqueKeys, table.columnDefinitions(),
+                table.checks(), table.modifiers(), indexes));
     }
 
     private static String frozenText(String resource, String expectedHash) {

@@ -1250,4 +1250,4 @@ Task55B：currentArrangementEvidence按current.arrangementRevision+成功operati
 永久fence acquire/intent authorize SQL仅在current指向PENDING RECEPTION_CHANGE、REPLACE且无工单/task时允许CHECKED_IN。普通CHANGE不扩状态。UNKNOWN原号/current/fence保留，拒绝保旧，成功保留checkedInAt/CHECKED_IN。
 ReceptionPreparation泛化完整endpoint/actor命名空间find/begin，typed ArrivalPayload/ExceptionPayload，无原proof持久化；A claim路径不变。
 053仅append-only ActionLog+原requestNo+实际受影响task及共用安全Outbox，同事务原键重放，无公共审批owner假成功。
-V1–V6冻结不变；本步仅Mapper守卫SQL、Service/DTO/Bean DAG、host真实member消费及controlled资源fixture测试。
+V1–V6冻结不变；55B修复追加V7将assignment资源组合唯一索引改同列普通索引，保留每unit安排号唯一键。就绪/严格manifest为7；其余Mapper守卫SQL、Service/DTO/Bean DAG、host真实member消费及controlled资源fixture边界不变。

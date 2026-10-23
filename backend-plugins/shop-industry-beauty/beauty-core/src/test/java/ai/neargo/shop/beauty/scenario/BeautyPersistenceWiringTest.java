@@ -30,7 +30,7 @@ class BeautyPersistenceWiringTest {
                 wrongFactory ? mock(DataSource.class) : primary));
         when(factory.getConfiguration()).thenReturn(mybatis);
         Class<?> ready = assertDoesNotThrow(() -> Class.forName("ai.neargo.shop.beauty.config.BeautySchemaReady"));
-        Object token = assertDoesNotThrow(() -> ready.getConstructor(String.class).newInstance("6"));
+        Object token = assertDoesNotThrow(() -> ready.getConstructor(String.class).newInstance("7"));
         return new ApplicationContextRunner().withUserConfiguration(configuration())
                 .withBean("dataSource", DataSource.class, () -> primary)
                 .withBean("sqlSessionFactory", SqlSessionFactory.class, () -> factory)

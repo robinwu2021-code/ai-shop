@@ -1,6 +1,7 @@
 package ai.neargo.shop.beauty.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -148,6 +149,39 @@ class AppointmentMatchingSearchTest {
                 "S", null, "Room", 2, false)), List.of(rule("A", "ROOM", 2, 60)), List.of(60));
         var result = matching.match(scope, false, items, List.of(), null, at);
         assertThat(result.snapshot().assignments()).extracting(a -> a.resourceNo()).containsExactly("ROOM", "ROOM");
+    }
+
+    @Test
+    void repeatedPhysicalUnitsRetainCapacityAcrossItemsAndRejectExplicitDuplicates() {
+        var resource = new ResourceFactsPort.ResourceFact("ROOM", ResourceFactsPort.Type.ROOM,
+                "S", null, "Room", 2, false);
+        var matching = fixture(List.of(resource), List.of(rule("A", "ROOM", 2, 60)), List.of(120));
+        var result = matching.match(scope, false, List.of(new AppointmentItemReq("SKU", 2)), List.of(), null, at);
+        assertThat(result.snapshot().items()).hasSize(2);
+        assertThat(result.snapshot().assignments()).hasSize(4);
+        assertThat(ResourcePlanContract.decode(result.plan()).demands()).hasSize(4);
+        assertThat(result.snapshot().items()).allSatisfy(item -> assertThat(result.snapshot().assignments().stream()
+                .filter(a -> a.appointmentItemNo().equals(item.appointmentItemNo()))).hasSize(2));
+        var assignment = new AppointmentAssignmentReq(0, "A", "ROOM", null);
+        assertError(matching, List.of(assignment, assignment), ErrorCode.BAD_REQUEST);
+        var occupied = fixture(List.of(resource), List.of(rule("A", "ROOM", 2, 60)), List.of(120),
+                List.of(new ResourceCandidatesPort.Capacity("ROOM", at.toInstant(),
+                        at.plusHours(2).toInstant(), 2, 1)));
+        assertError(occupied, List.of(), ErrorCode.CONFLICT);
+    }
+
+    @Test
+    void ordinaryExpandedQtyReusesOneExplicitSelection() {
+        var resource = new ResourceFactsPort.ResourceFact("ROOM", ResourceFactsPort.Type.ROOM,
+                "S", null, "Room", 2, false);
+        var matching = fixture(List.of(resource), List.of(rule("A", "ROOM", 2, 60)), List.of(120));
+        var result = assertDoesNotThrow(() -> matching.match(scope, false,
+                List.of(new AppointmentItemReq("SKU", 2)),
+                List.of(new AppointmentAssignmentReq(0, "A", "ROOM", null)), null, at));
+        assertThat(result.snapshot().items()).hasSize(2);
+        assertThat(result.snapshot().assignments()).hasSize(4);
+        assertThat(result.snapshot().assignments()).extracting(a -> a.resourceNo())
+                .containsExactly("ROOM", "ROOM", "ROOM", "ROOM");
     }
 
     private AppointmentMatching asymmetric() {

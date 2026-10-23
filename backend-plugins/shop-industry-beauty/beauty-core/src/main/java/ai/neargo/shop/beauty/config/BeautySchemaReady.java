@@ -3,8 +3,8 @@ package ai.neargo.shop.beauty.config;
 /** Proves local private schema validation only; shared authority readiness is a separate gate. */
 public record BeautySchemaReady(String version) {
     public BeautySchemaReady {
-        if (!"6".equals(version)) {
-            throw new IllegalArgumentException("Beauty P1 requires schema version 6");
+        if (!"7".equals(version)) {
+            throw new IllegalArgumentException("Beauty P1 requires schema version 7");
         }
     }
 }

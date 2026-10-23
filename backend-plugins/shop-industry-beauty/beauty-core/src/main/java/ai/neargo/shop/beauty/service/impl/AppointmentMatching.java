@@ -87,7 +87,7 @@ public final class AppointmentMatching {
                 || !startAt.toInstant().isAfter(Instant.now()) || startAt.getNano() != 0
                 || Math.floorMod(startAt.toEpochSecond(), 300) != 0) { bad(); }
         specified = specified == null ? List.of() : List.copyOf(specified);
-        if (specified.size() > 30) { bad(); }
+        if (specified.size() > 30 || new HashSet<>(specified).size() != specified.size()) { bad(); }
         var store = catalog.getPublicStore(scope.storeNo());
         if (startAt.toInstant().isAfter(Instant.now().plus(store.policy().bookingAheadDays(), ChronoUnit.DAYS))) {
             bad();
@@ -124,9 +124,15 @@ public final class AppointmentMatching {
     /** Frozen service rules and price references share the same Slot search as ordinary appointment matching. */
     public Matched matchFrozen(Scope scope, FrozenAppointmentScope frozen, List<AppointmentAssignmentReq> specified,
             OffsetDateTime startAt, ResourceCandidatesPort.Replacement replacement) {
+        return matchFrozen(scope, frozen, specified, startAt, replacement, false);
+    }
+    /** Only the coordinator may retain server-loaded unit multiplicity; explicit requests stay duplicate-free. */
+    Matched matchFrozen(Scope scope, FrozenAppointmentScope frozen, List<AppointmentAssignmentReq> specified,
+            OffsetDateTime startAt, ResourceCandidatesPort.Replacement replacement, boolean retainedAssignments) {
         if (startAt == null || !startAt.toInstant().isAfter(Instant.now()) || startAt.getNano() != 0
                 || Math.floorMod(startAt.toEpochSecond(), 300) != 0 || specified == null || specified.isEmpty()
-                || specified.size() > 30 || new HashSet<>(specified).size() != specified.size()) { bad(); }
+                || specified.size() > 30
+                || !retainedAssignments && new HashSet<>(specified).size() != specified.size()) { bad(); }
         List<MatchItem> inputs = new ArrayList<>();
         for (int i = 0; i < frozen.items().size(); i++) {
             var item = frozen.items().get(i); var definition = frozen.definitions().get(i);
@@ -173,7 +179,7 @@ public final class AppointmentMatching {
         var bucketBudget = new BucketBudget();
         var occupied = occupied(pool, capacity, bucketBudget);
         List<Slot> slots = new ArrayList<>();
-        Set<AppointmentAssignmentReq> consumed = new HashSet<>();
+        Set<Integer> consumed = new HashSet<>();
         Instant cursor = startAt.toInstant();
         Instant lastServiceEnd = cursor;
         long price = 0;
@@ -196,15 +202,19 @@ public final class AppointmentMatching {
                             .minus(product.duration().bufferBeforeMin(), ChronoUnit.MINUTES);
                     Instant b = serviceStart.plus(rule.offsetMin() + rule.durationMin(), ChronoUnit.MINUTES)
                             .plus(product.duration().bufferAfterMin(), ChronoUnit.MINUTES);
-                    int index = itemIndex;
-                    var wanted = specified.stream().filter(v -> v.itemIndex() == index
-                            && rule.requirementNo().equals(v.requirementNo())).toList();
+                    List<Integer> wanted = new ArrayList<>();
+                    for (int index = 0; index < specified.size(); index++) {
+                        var value = specified.get(index);
+                        if (value.itemIndex() == itemIndex && rule.requirementNo().equals(value.requirementNo())) {
+                            wanted.add(index);
+                        }
+                    }
                     if (wanted.size() > rule.qty() || frozen && wanted.size() != rule.qty()) { bad(); }
                     if (frozen && !a.isAfter(Instant.now())) { bad(); }
                     for (int n = 0; n < rule.qty(); n++) {
                         if (slots.size() >= SEARCH_BUDGET) { throw new IncompleteSearch(); }
-                        var explicit = n < wanted.size() ? wanted.get(n) : null;
-                        if (explicit != null) { consumed.add(explicit); }
+                        var explicit = n < wanted.size() ? specified.get(wanted.get(n)) : null;
+                        if (explicit != null) { consumed.add(wanted.get(n)); }
                         String person = explicit == null ? requestedPerson : explicit.personnelNo();
                         List<Choice> choices = new ArrayList<>();
                         for (var resource : pool) {

@@ -26,7 +26,7 @@ def generate():
         for f in t['fields']:
             assert f.get('references', '') in names | EXTERNAL | {''}, (t['name'], f)
     lines = ['# 美业与共用人员资源数据库字段字典', '',
-             '> 状态：原41项目标基线保留；Task55A正式V1–V6共27项私表，增量另列 · 2026-10-22',
+             '> 状态：原41项目标基线保留；Task55B正式V1–V7共27项私表，增量另列 · 2026-10-23',
              '> 由 `python3 scripts/gen-beauty-database-design.py` 生成，勿手改；真源：[数据库设计源](./schema/beauty-database-design.json)。',
              '> 业务约束及复用边界：[数据库结构设计](./美业系统-数据库结构设计.md)。本册不是Flyway迁移，不输出可执行建表SQL。', '',
              '## 一、公共字段与约束', '',
@@ -116,6 +116,11 @@ def generate():
               'V5保持原字节；其nullable identity CHECK允许UNKNOWN。本版本追加明确kind非空分支，四种NULL组合按同空或合法非空处理。无新表，无数据修复/伪baseline；非法V5存量阻断升级。', '',
               '真源：[beauty-reception-identity-guard-schema.json](./schema/beauty-reception-identity-guard-schema.json)。', '',
               '`' + guard['table'] + '` / `' + guard['constraint'] + '`：', '', guard['expression'], '']
+    units = json.loads((SOURCE.parent / 'beauty-appointment-assignment-units-schema.json').read_text())
+    lines += ['## Task55B容量单位修复（私有V7）', '',
+              'V1–V6字节冻结；同一项目需求可按容量使用同资源多份，每份保留独立planned_assignment_no。只将冲突的资源组合唯一索引改为同列普通索引；不合并、不回写既有行，无新列或新表。', '',
+              '真源：[beauty-appointment-assignment-units-schema.json](./schema/beauty-appointment-assignment-units-schema.json)。', '',
+              '`' + units['table'] + '`：移除唯一索引 `' + units['dropUniqueIndex'] + '`；新增普通索引 `' + units['addIndex'] + '`（' + ', '.join(units['columns']) + '）；保留业务号唯一索引 `' + units['retainedUniqueIndex'] + '`。', '']
     outputs[OUTPUT] = '\n'.join(lines)
     return outputs, tables
 

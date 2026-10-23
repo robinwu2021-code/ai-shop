@@ -36,6 +36,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.Comparator;
+import java.util.HashSet;
 
 /** Arrival observes owner proof outside locks and commits only local presence/audit facts under the root lock. */
 public final class ReceptionCoordinator {
@@ -191,16 +193,16 @@ public final class ReceptionCoordinator {
                 }
             }
         }
-        var requested = assignments == null || assignments.isEmpty() ? List.copyOf(existing) : List.copyOf(assignments);
-        boolean same = requested.size() == existing.size() && existing.stream().allMatch(old ->
-                requested.stream().filter(value -> value.itemIndex() == old.itemIndex()
-                        && value.requirementNo().equals(old.requirementNo())
-                        && (value.resourceNo() == null || value.resourceNo().equals(old.resourceNo()))
-                        && (value.personnelNo() == null
-                                || value.personnelNo().equals(old.personnelNo()))).count() == 1);
+        boolean retained = assignments == null || assignments.isEmpty();
+        var requested = retained ? List.copyOf(existing) : List.copyOf(assignments);
+        if (!retained && new HashSet<>(requested).size() != requested.size()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        boolean same = retained || matchesExistingAssignments(existing, requested);
         var chosenStart = startAt == null ? root.getStartAt().atOffset(ZoneOffset.UTC) : startAt;
         if (same && chosenStart.toInstant().equals(root.getStartAt().toInstant(ZoneOffset.UTC))) { return null; }
-        var match = matching.matchFrozen(matching.scope(store), prepared.frozen(), requested, chosenStart, replacement);
+        var match = matching.matchFrozen(matching.scope(store), prepared.frozen(), requested, chosenStart, replacement,
+                retained);
         var preview = appointmentPreparations.save(match, null, root, revision);
         List<ItemMapping> mappings = new ArrayList<>();
         for (int i = 0; i < match.snapshot().items().size(); i++) {
@@ -211,6 +213,30 @@ public final class ReceptionCoordinator {
                 prepared, workOrders, db.json.writeValueAsString(new ReplacementSnapshot(mappings)));
         return appointments.advance(op.getOperationNo());
     }
+    /** Consume each persisted unit once; a broad personnel request cannot consume a fixed resource first. */
+    private boolean matchesExistingAssignments(List<AppointmentAssignmentReq> existing,
+            List<AppointmentAssignmentReq> requested) {
+        if (existing.size() != requested.size()) { return false; }
+        var remaining = new ArrayList<>(existing);
+        var ordered = new ArrayList<>(requested);
+        ordered.sort(Comparator.comparing(value -> value.resourceNo() == null));
+        for (var value : ordered) {
+            int found = -1;
+            for (int i = 0; i < remaining.size(); i++) {
+                var old = remaining.get(i);
+                if (value.itemIndex() == old.itemIndex() && value.requirementNo().equals(old.requirementNo())
+                        && (value.resourceNo() == null || value.resourceNo().equals(old.resourceNo()))
+                        && (value.personnelNo() == null || value.personnelNo().equals(old.personnelNo()))) {
+                    found = i;
+                    break;
+                }
+            }
+            if (found < 0) { return false; }
+            remaining.remove(found);
+        }
+        return remaining.isEmpty();
+    }
+
     private void verifyArrangement(BtyAppointment root, HoldEvidence evidence) {
         var row = db.arrangements.selectOne(Wrappers.<BtyAppointmentArrangement>lambdaQuery()
                 .eq(BtyAppointmentArrangement::getTenantNo, root.getTenantNo())

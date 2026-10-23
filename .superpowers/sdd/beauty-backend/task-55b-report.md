@@ -156,3 +156,85 @@ Exact owned file count: 42.
 - `docs/technical/design/美业系统-Java类与方法清单.md`
 - `scripts/verify-beauty-persistence.mjs`
 - `scripts/verify-member-guest-registration.mjs`
+
+## Review fix round 1 — investigation before product edits
+
+FIX_BASE `115d1cb74a71ef90dcbbdd9b232d15f18eb40522`. Important I1 was read in full; a short pre-edit fix design and three parameterized native scenarios were added. `/tmp/task55b-fix1-red.log` is a test compilation failure (incorrect summary/detail DTO accessors), corrected only in test code; not business RED.
+
+`/tmp/task55b-fix1-red2.log`: actual ServiceDefinitionService publication and actual matching produced STAFF1 + ROOM2 with [staff,ROOM1,ROOM1], but all 3 cases failed during actual CREATE/arrange with `DuplicateKeyException` on frozen `uk_bty_appointment_assignment_2` (tenant/entity/item/revision/requirement/resource). Result 3 tests /0 assertion failures /3 errors. None reached reception comparison, so this is not claimed as I1 arrival/reassignment RED. V1 and the entity contain no unit ordinal/quantity column for assignment rows. Existing `AppointmentMatchingSearchTest.physicalCapacityCanBeSharedAcrossDemandUnits` explicitly accepts the repeated-resource matcher result; therefore schema and allocator currently disagree. Evidence was sent to controller for a scope/semantic ruling before any product or schema edits. No synthetic persisted success or weakened constraint was used to manufacture the requested I1 history.
+
+M1 warning classification (historical logs, not new guard runs): MySQL8.4/Flyway verified-version and HOST H2/Flyway version messages are environment compatibility warnings; Sequence initialization latency is an environment/performance warning. HOST duplicate mapper-registration warnings are inherited wiring diagnostics, not new B execution proof. Reactor context-initialization warnings include deliberately failing missing-dependency/disabled-configuration negative tests whose test assertions passed. The report's GREEN counts mean assertions/build succeeded, not warning-free logs; no warning suppression or unrelated production fix is included.
+
+### Fix round 1 ruling, V7 release and real I1 RED
+
+Controller design ruling (controller-only commit `e3fc53c92`) preserves the intentional BM03 physical-capacity-unit semantics. Additive V7 changes the resource combination unique index into an ordinary same-column index; every unit retains a distinct `planned_assignment_no`, whose uniqueness remains enforced. No collapse, ordinal, backfill or existing-row rewrite. New schema truth source and frozen generator are owned by this fix; V1–V6 are byte-identical to FIX_BASE. Exact V7 path: `backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V7__beauty_appointment_assignment_units.sql`; SHA256 `8894786048bf04ca45eff129a83fa7776da867994d72dff2343a91b215d6d3f2`.
+
+The generated SQL was sent **unexecuted** for independent controller hashing. Controller recorded it at `2026-10-23T02:26:00.371568+00:00` and released first execution; the durable record is `.superpowers/sdd/beauty-backend/v7-preexecution-root-record.json`, controller-only commit `df3f13ed5`. That record and controller brief/TDD/progress are excluded from this fix's owned commit. BeautySchemaValidator pins exact V7 bytes and transforms only the named index in the manifest; schema readiness/write guards now require7. Generated schema/method docs reflect this additive correction. The earlier first-delivery report's “no migration” statements describe `115d1cb74`, superseded only by this approved fix appendix.
+
+With V7 active but reception comparison/matcher unchanged, `/tmp/task55b-fix1-v7-business-red.log` reached all three actual behavior assertions after real publish→preview→CREATE→arrival: 3 tests /3 failures /0 errors. KEEP and CHANGE_TIME raised unexpected BAD_REQUEST; CHANGE_RESOURCE returned null, violating the expected actual REPLACE result. This is the I1 pre-fix RED; the earlier frozen-schema conflict is recorded separately.
+
+The fix distinguishes null/empty server-side retention from explicit selections. Explicit no-change comparison consumes each old unit once, with resource-constrained choices before personnel-only choices; leftover/missing units prevent the shortcut. Exact explicit duplicate records still reject before the shortcut. Internal retained multiplicity passes a package-private matcher path; it does not alter the public request contract or duplicate the allocator.
+
+Shared allocator accounting now records consumed **input indexes**: ordinary requested item.qty expansion may reuse one explicit input selection across repeated items, while server-derived duplicate retained records have different indexes and count as distinct units. An intermediate integer counter would reject ordinary reuse; `/tmp/task55b-fix1-expanded-selection-red.log` demonstrated that with 1 actual assertion failure /0 errors before the index-set correction. `/tmp/task55b-fix1-matching-final.log`: final matching12/12 GREEN (original10 plus ordinary explicit-reuse and cross-item capacity/duplicate tests).
+
+### Fix round 1 interrupted native run and bounded recovery
+
+`/tmp/task55b-fix1-targeted-green.log` is **not GREEN**: 26 tests /0 failures /4 errors. Original matching10 + persistence wiring5 + write-guard wiring2 passed. Native XML records five passed cases (frozen REPLACE, current permission, UNKNOWN, rejected replacement, new KEEP); new CHANGE_RESOURCE/TIME and old partial/buffer cases failed at schema validation or beforeEach after JDBC `08S01`/EOF. This was a connection/infrastructure interruption, not an assertion against the business outcome; those four cases require recovery runs.
+
+Only our disposable `codex-beauty-jdbc-3a948828-9a6e-483e-b28b-bd642f1a5026` events were retained in `/tmp/task55b-fix1-container-events.log`. They show die exit137/destroy at `02:33:45Z`, coincident with the script's finally force-cleanup; no OOM event exists in the captured interval. Therefore OOM is **not established** and exit137 is not used as proof of it. The underlying cause of the earlier EOF is unconfirmed. Subsequent native batches are limited to ≤3 cases per fresh owned container; live MySQL logs are retained before cleanup. No other business container was inspected for data or mutated. This is bounded recovery, not repeated full115/native48/HOST testing.
+
+### Fix round 1 final targeted verification
+
+All commands below use `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`; Maven uses offline `/tmp/codex-beauty-bm01-m2`. Native commands run sequentially with `BEAUTY_TEST_DISK=1`, the existing UUID/localhost/64MB/performance_schema-off harness, and finally remove only their own container.
+
+```sh
+mvn -o -Dmaven.repo.local=/tmp/codex-beauty-bm01-m2 -f backend-plugins/shop-industry-beauty/pom.xml -pl beauty-core -am test -Dtest=AppointmentMatchingSearchTest -Dsurefire.failIfNoSpecifiedTests=false
+BEAUTY_TEST_DISK=1 BEAUTY_TESTS='ReceptionBusinessIT#receptionRetainsRepeatedResourceUnits' node scripts/verify-beauty-persistence.mjs
+BEAUTY_TEST_DISK=1 BEAUTY_TESTS='ReceptionBusinessIT#replacementRejectsPartialOffGridPastDisabledAndExistingOrder+replacementBeforeBufferMustAlsoRemainInFuture' node scripts/verify-beauty-persistence.mjs
+BEAUTY_TEST_DISK=1 BEAUTY_TESTS='BeautySchemaMigrationIT#v6AssignmentUnitsUpgradeWithoutRewrite+v7AssignmentIndexDriftCannotPassValidation' node scripts/verify-beauty-persistence.mjs
+mvn -o -Dmaven.repo.local=/tmp/codex-beauty-bm01-m2 -f backend-plugins/shop-industry-beauty/pom.xml -pl beauty-server -am test -Dtest=BeautyDeploymentContractTest,BookingServerWiringTest -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+Final-code results (separate executions, not one combined suite):
+
+| Log in /tmp | Assertions / result | Coverage |
+| --- | --- | --- |
+| task55b-fix1-matching-final.log | 12 tests, 0 failures/errors/skips; BUILD SUCCESS | Original matching10 unchanged; explicit selection reuse across ordinary item.qty; cross-item capacity conservation and explicit duplicate rejection |
+| task55b-fix1-quantity-final2.log | 3 tests, 0 failures/errors/skips; BUILD SUCCESS | Real published ROOM qty2 persists distinct business units; unchanged empty selection, explicit resource change, and empty selection/new time; public duplicate input still rejects |
+| task55b-fix1-boundaries-final.log | 2 tests, 0 failures/errors/skips; BUILD SUCCESS | Existing partial/off-grid/past/disabled/work-order and buffer-time constraints |
+| task55b-fix1-v7-upgrade-final.log | 2 tests, 0 failures/errors/skips; BUILD SUCCESS | Native V6→V7 unchanged-row/checksum upgrade, idempotent migrate, distinct assignment identity, business uniqueness; five index/checksum drift mutations each reject, each restoration validates |
+| task55b-fix1-server-final.log | 10 tests, 0 failures/errors/skips; BUILD SUCCESS | Deployment/disabled/health contract8 and reception wiring2, rebuilt against final core |
+
+The earlier interrupted 26-test run's five successful reception cases and ready wiring5+2 are historical targeted evidence before the final index-accounting refinement. They are not represented as final-code reruns or added to the table's counts. Final allocator changes are covered by matching12 and native quantity3/boundaries2 above; no repeat full115/native48/HOST sweep was performed.
+
+`/tmp/task55b-fix1-quantity-final.log` preceded final2: 3 tests /1 assertion failure /0 errors. KEEP and CHANGE_TIME passed; CHANGE_RESOURCE used the last assignment row as the room, but generated requirement business-number ordering can place staff last. The fixture now selects by actual `resourceNo == ROOM1`; production code was unchanged by that correction. Final2 passed all three. The pre-fix I1 RED remains the separate 3-failure/0-error log above, unaffected by this ordering correction.
+
+Owned live diagnostic logs include `/tmp/task55b-fix1-quantity-mysql.log` and `/tmp/task55b-fix1-boundaries-mysql.log`; bounded recovery succeeded. Earlier EOF root cause remains unconfirmed; no OOM claim is made. Existing MySQL8.4/Flyway compatibility warnings persist. Final server context-initialization warnings occur in expected negative deployment cases whose assertions pass; GREEN does not mean warning-free.
+
+`/tmp/task55b-fix1-generation-final.log` records exit0 for `node scripts/gen-beauty-appointment-assignment-units-schema.mjs --check`, `python3 scripts/gen-beauty-database-design.py --check` (41 table designs/10 generated files current), `python3 scripts/gen-beauty-java-method-design.py --check` (44 controllers/28 services/101 methods/167 DTOs/25 mappers/40 custom mapper methods), `node scripts/check-sql-portability.mjs` (no new dialect dependency;162 hits/51 files/54 known baseline entries), and `git diff --check`. It independently compares every V1–V6 file byte-for-byte to FIX_BASE and confirms the controller-pinned V7 SHA256. No inherited platform guard is claimed rerun.
+
+### Fix round 1 ownership and handoff
+
+The fix commit owns exactly the 21 paths listed below, staged by actual UTF-8 path names. Controller design/evidence commits `e3fc53c92` and `df3f13ed5` remain separate; main TDD/progress/brief/review/V7 pre-execution record are excluded. The full fix commit SHA is returned in the handoff (the commit contains this report). No push, merge, deployment or C/D implementation. Independent scoped re-review is required. Original dedicated `currentArrangementEvidence` pre-RED history limitation remains unchanged.
+
+- `.superpowers/sdd/beauty-backend/task-55b-design.md`
+- `.superpowers/sdd/beauty-backend/task-55b-report.md`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyPersistenceConfiguration.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySchemaReady.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySchemaValidator.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyWriteGuardConfiguration.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/AppointmentMatching.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ReceptionCoordinator.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V7__beauty_appointment_assignment_units.sql`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/AppointmentMatchingSearchTest.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautyPersistenceWiringTest.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautySchemaMigrationIT.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautyWriteGuardHostWiringTest.java`
+- `backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/ReceptionBusinessIT.java`
+- `docs/technical/design/schema/beauty-appointment-assignment-units-schema.json`
+- `docs/technical/design/schema/beauty-java-method-design.json`
+- `docs/technical/design/美业系统-Controller-Service-Mapper方法清单.md`
+- `docs/technical/design/美业系统-Java类与方法清单.md`
+- `docs/technical/design/美业系统-数据库字段字典.md`
+- `scripts/gen-beauty-appointment-assignment-units-schema.mjs`
+- `scripts/gen-beauty-database-design.py`
