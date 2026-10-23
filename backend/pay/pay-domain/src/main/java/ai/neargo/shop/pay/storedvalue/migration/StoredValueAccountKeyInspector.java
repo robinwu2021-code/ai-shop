@@ -1,0 +1,47 @@
+package ai.neargo.shop.pay.storedvalue.migration;
+
+import static ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.*;
+import ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository;
+import java.util.*;
+import org.springframework.stereotype.Service;
+
+/** Read-only, ledger-wide MySQL preflight. Not an atomic maintenance approval and never executes the proposed DDL. */
+@Service
+public class StoredValueAccountKeyInspector {
+    private final IssuerRepository db;
+    public StoredValueAccountKeyInspector(IssuerRepository db){this.db=db;}
+    public StoredValueAccountKeyPlan.Plan inspect() {
+        return db.write(()->{
+            var rows=db.rows("SELECT INDEX_NAME AS index_name, NON_UNIQUE AS non_unique, SEQ_IN_INDEX AS seq_in_index, COLUMN_NAME AS column_name, SUB_PART AS sub_part, EXPRESSION AS expression, INDEX_TYPE AS index_type FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='sv_account' ORDER BY INDEX_NAME,SEQ_IN_INDEX");
+            var indexes=new ArrayList<StoredValueAccountKeyPlan.Index>();var groups=new LinkedHashMap<String,List<Map<String,Object>>>();
+            for(var row:rows)groups.computeIfAbsent(text(row,"index_name"),k->new ArrayList<>()).add(row);
+            for(var group:groups.entrySet()) {
+                var columns=new ArrayList<String>();boolean unique=true,partial=false;int expected=1;
+                for(var row:group.getValue()) {
+                    unique &= number(row,"non_unique")==0;
+                    String column=text(row,"column_name");
+                    partial |= column==null||row.get("sub_part")!=null||row.get("expression")!=null||number(row,"seq_in_index")!=expected++||!"BTREE".equals(text(row,"index_type"));
+                    columns.add(Objects.toString(column,"<expression>"));
+                }
+                indexes.add(new StoredValueAccountKeyPlan.Index(group.getKey(),unique,columns,partial));
+            }
+            // No tenant/deleted filter: uniqueness is global to the table, including soft-deleted financial facts.
+            // All compared identifiers are at most 64 utf8mb4 characters (256 bytes); explicit width also avoids H2 default-width truncation.
+            var counts=db.one("""
+                SELECT COUNT(*) AS accounts,
+                  COALESCE(SUM(CASE WHEN a.tenant_no IS NULL OR TRIM(a.tenant_no)='' OR a.issuer_no IS NULL OR TRIM(a.issuer_no)=''
+                    OR a.customer_no IS NULL OR TRIM(a.customer_no)='' OR a.currency IS NULL OR TRIM(a.currency)=''
+                    OR a.issuer_version_no IS NULL OR TRIM(a.issuer_version_no)='' THEN 1 ELSE 0 END),0) AS invalid_dimensions,
+                  COALESCE(SUM(CASE WHEN i.issuer_no IS NULL OR i.deleted<>0 OR v.issuer_version_no IS NULL OR v.deleted<>0
+                    OR CAST(v.issuer_no AS BINARY(256))<>CAST(a.issuer_no AS BINARY(256)) OR CAST(v.currency AS BINARY(256))<>CAST(a.currency AS BINARY(256))
+                    OR (i.scope_type='STORE' AND (a.store_no IS NULL OR CAST(i.scope_no AS BINARY(256))<>CAST(a.store_no AS BINARY(256)))) THEN 1 ELSE 0 END),0) AS broken_references
+                FROM sv_account a
+                LEFT JOIN sv_issuer i ON CAST(i.tenant_no AS BINARY(256))=CAST(a.tenant_no AS BINARY(256)) AND CAST(i.issuer_no AS BINARY(256))=CAST(a.issuer_no AS BINARY(256))
+                LEFT JOIN sv_issuer_version v ON CAST(v.tenant_no AS BINARY(256))=CAST(a.tenant_no AS BINARY(256)) AND CAST(v.issuer_version_no AS BINARY(256))=CAST(a.issuer_version_no AS BINARY(256))
+                """);
+            long duplicateGroups=number(db.one("SELECT COUNT(*) AS n FROM (SELECT tenant_no,issuer_no,customer_no,currency FROM sv_account GROUP BY tenant_no,issuer_no,customer_no,currency HAVING COUNT(*)>1) duplicate_keys"),"n");
+            long unfenced=number(db.one("SELECT COUNT(*) AS n FROM sv_issuer i WHERE i.deleted=0 AND (i.write_mode IS NULL OR i.write_mode<>'FENCED') AND NOT (i.scope_type='BRAND' AND i.status='DRAFT' AND NOT EXISTS (SELECT 1 FROM sv_account a WHERE CAST(a.tenant_no AS BINARY(256))=CAST(i.tenant_no AS BINARY(256)) AND CAST(a.issuer_no AS BINARY(256))=CAST(i.issuer_no AS BINARY(256))))"),"n");
+            return StoredValueAccountKeyPlan.evaluate(new StoredValueAccountKeyPlan.Snapshot(indexes,number(counts,"accounts"),number(counts,"invalid_dimensions"),number(counts,"broken_references"),duplicateGroups,unfenced));
+        });
+    }
+}

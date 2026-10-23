@@ -152,6 +152,21 @@ if (Object.keys(renamed).length) {
 
 /** 契约方法 → 响应类型名 */
 const RESPONSE_TYPES = {
+  mSvIssuer: "SvIssuerLookup",
+  mSvStoreIssuerConfiguration: "SvIssuerLookup",
+  mSvConfigureIssuer: "IssuerView",
+  mSvConfigureStoreIssuer: "IssuerView",
+  mSvIssuerImpact: "IssuerImpact",
+  mSvIssuerVersion: "IssuerView",
+  mSvIssuerEntities: "SvIssuerEntity[]",
+  mSvStoreIssuers: "StoreIssuerOptions",
+  mSvRechargeOptions: "SvIssuerRechargeOptions",
+  mSvIssuerRoutes: "IssuerRoute[]",
+  mSvPrepareIssuer: "IssuerView",
+  mSvRefreshIssuer: "IssuerAccessAck",
+  mSvIssuerRecharge: "SvProgress",
+  mSvIssuerCancel: "SvProgress",
+
   mScopeCandidates: "ScopeCandidatePage",
   mScopeSelectCustomer: "ScopeSelectedCustomer",
   mScopeEnrollMember: "ScopeMemberSummary",
@@ -552,6 +567,19 @@ const RESPONSE_TYPES = {
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+  mSvIssuer: "SvIssuerManagementQuery",
+  mSvStoreIssuerConfiguration: "SvIssuerManagementQuery",
+  mSvConfigureIssuer: "IssuerConfigureRequest",
+  mSvConfigureStoreIssuer: "IssuerConfigureRequest",
+  mSvIssuerImpact: "IssuerConfigureRequest",
+  mSvIssuerVersion: "IssuerConfigureRequest",
+  mSvIssuerEntities: "SvIssuerEntitiesQuery",
+  mSvRechargeOptions: "SvIssuerRechargeOptionsQuery",
+  mSvIssuerRoutes: "SvIssuerRouteQuery",
+  mSvPrepareIssuer: "SvIssuerManagementQuery",
+  mSvRefreshIssuer: "SvIssuerManagementQuery",
+  mSvIssuerCancel: "SvCancelReq",
+
   mScopeCandidates: "ScopeCandidateQuery",
   mScopeSelectCustomer: "ScopeSelectCustomerReq",
   mScopeEnrollMember: "ScopeMemberCreateReq",

@@ -32,9 +32,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
-/** Receipt changes lock only the receipt. Credit takes account -> receipt, never the reverse order. */
+/** Issuer quota precedes receipt locks; credit shares quota -> account -> receipt order. */
 @Service
 public class StoredValueRechargeWriterImpl implements StoredValueRechargeWriter {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerLedgerBridge issuerLedger;
     @org.springframework.beans.factory.annotation.Autowired
     private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     private final SvRechargeMapper recharges;
@@ -64,9 +66,10 @@ public class StoredValueRechargeWriterImpl implements StoredValueRechargeWriter 
     public RechargeView create(EntitlementContext ctx, String entity, CreateRecharge c, SourceFact source) {
         commands.execute(scope(ctx, entity), "SV_CREATE", ctx.requestId(), c, source.rechargeNo(), RechargeView.class,
                 () -> {
+                    issuerLedger.beforeLegacyActivityCreate(ctx,entity,source.permit().storeNo());
                     var prior = recharges.lock(ctx.tenantNo(), source.rechargeNo());
                     if (prior != null) { requireCreate(prior, ctx, entity, c); return view(prior); }
-                    var r = frozen(source); recharges.insert(r); return view(r);
+                    var r = frozen(source); recharges.insert(r); issuerLedger.freezeActivity(ctx,entity,source,r); return view(r);
                 });
         // Creation replay reflects a durable cancellation, never a stale instruction to collect cash.
         var actual = recharges.lock(ctx.tenantNo(), source.rechargeNo()); requireCreate(actual, ctx, entity, c);
@@ -74,6 +77,7 @@ public class StoredValueRechargeWriterImpl implements StoredValueRechargeWriter 
     }
     @Override @Transactional("payTxManager")
     public RechargeView submit(EntitlementContext ctx, String entity, SubmitRecharge c) {
+        issuerLedger.beforeOriginal(ctx,entity,c.rechargeNo());
         return commands.execute(scope(ctx, entity), "SV_SUBMIT", ctx.requestId(), c, c.rechargeNo(),
                 RechargeView.class,
                 () -> {
@@ -87,6 +91,7 @@ public class StoredValueRechargeWriterImpl implements StoredValueRechargeWriter 
     }
     @Override @Transactional("payTxManager")
     public RechargeView receive(EntitlementContext ctx, String entity, ReceiveRecharge c) {
+        issuerLedger.beforeOriginal(ctx,entity,c.rechargeNo());
         return commands.execute(scope(ctx, entity), "SV_RECEIVE", ctx.requestId(), c, c.rechargeNo(),
                 RechargeView.class,
                 () -> {
@@ -109,6 +114,7 @@ public class StoredValueRechargeWriterImpl implements StoredValueRechargeWriter 
     }
     @Override @Transactional("payTxManager")
     public RechargeView cancel(EntitlementContext ctx, String entity, CancelRecharge c, SourceFact source) {
+        issuerLedger.beforeOriginal(ctx,entity,c.rechargeNo());
         return commands.execute(scope(ctx, entity), "SV_CANCEL", ctx.requestId(), c, c.rechargeNo(),
                 RechargeView.class,
                 () -> {
@@ -122,6 +128,7 @@ public class StoredValueRechargeWriterImpl implements StoredValueRechargeWriter 
                     revision(r, c.expectedRevision());
                     if (!List.of("WAIT_COLLECTION", "SUBMITTED").contains(r.getStatus())) conflict();
                     r.setStatus("CANCELLED"); r.setCancellationReason(c.reason()); r.setCancelledAt(now()); save(r, ctx);
+                    issuerLedger.cancelled(ctx,entity,r.getRechargeNo());
                     events.publish(new StoredValueRechargeCancelled(no("SX", List.of(ctx.tenantNo(), r.getRechargeNo()),
                             json), ctx.tenantNo(), r.getRechargeNo(), entity,
                             r.getCancelledAt().toInstant(ZoneOffset.UTC).toEpochMilli()));

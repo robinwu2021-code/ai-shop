@@ -25,6 +25,7 @@ class StoredValueStoreAccountIsolationTest {
                     return account;
                 });
         var service = new StoredValueQueryServiceImpl(accounts, null, null, null, null);
+        org.springframework.test.util.ReflectionTestUtils.setField(service,"issuerAccounts",new ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerAccountService(null,null,false));
         var context = new EntitlementContext("MAIN", "OPERATOR", "req", "0".repeat(64));
         assertThat(service.balance(context, new BalanceQuery("USER", "MERCHANT", "CNY", "STORE_A"))
                 .availableMinor()).isEqualTo(5000L);

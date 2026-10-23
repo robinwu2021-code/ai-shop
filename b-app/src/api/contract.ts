@@ -1,3 +1,4 @@
+import type { IssuerApi } from "./stored-value-issuers";
 import type { ManagementApi } from "./management-types";
 import type { OrderPointsEarning } from "@shared/types";
 import type * as SV from './stored-value-types';
@@ -844,7 +845,7 @@ export interface EstateList {
   stale: boolean;
 }
 
-export interface MerchantApi extends ManagementApi {
+export interface MerchantApi extends ManagementApi,IssuerApi {
   mScopeCandidates(store:string,q:{keyword?:string;cursor?:string;size?:number}):Promise<SV.ScopeCandidatePage>;
   mScopeSelectCustomer(store:string,body:{source:SV.ScopeSelectionSource}):Promise<SV.ScopeSelectedCustomer>;
   mScopeEnrollMember(store:string,body:{phone:string;remark?:string;tagNos?:string[]}):Promise<SV.ScopeMemberSummary>;

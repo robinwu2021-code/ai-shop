@@ -1,6 +1,7 @@
 // B 端词条。与 C 端各自维护 —— 商家看的是「待发货 / 待核销」，消费者看的是「待收货 / 取货码」，
 // 同一笔订单两端说法不同，强行共用一套词条只会互相将就。
 export default {
+ issuer: {"prepareSettings":"开通储值设置","accepted":"已授权","acceptAndChoose":"授权并选择","title": "储值发行设置", "storeScope": "本店储值", "brandScope": "品牌储值", "brandDraftOnly": "当前仅可配置品牌发行草稿", "name": "发行名称", "settlementEntity": "结算主体", "chooseEntity": "选择结算主体", "routes": "收款配置", "addRoute": "添加收款方式", "remove": "移除", "noRoutes": "暂无可用收款方式", "pendingSave": "保存结果待核对，请重试原操作", "retrySave": "重试保存", "states": {"DRAFT": "草稿", "ACTIVE": "已启用", "ISSUE_STOPPED": "已停发"}, "channels": {"MERCHANT_OFFLINE": "线下收款", "WECHAT": "微信支付", "ALIPAY": "支付宝"}, "blockers": {"STALE_CONFIGURATION": "配置已更新，请刷新", "CURRENCY_IMMUTABLE": "币种不可修改", "MAINTENANCE_IN_PROGRESS": "储值维护中", "LIABILITY_RULES_LOCKED": "存在余额或未完成储值，暂不能修改资金规则", "ISSUANCE_NOT_ENABLED": "尚未开通储值发行"}},
  management: {
  "managePayment": "收款配置",
  "createEntity": "新增经营主体",
@@ -74,7 +75,7 @@ export default {
     "IMPACT_UNKNOWN": "业务影响尚未确认，请稍后重试",
     "DEPENDENCY_NOT_READY": "共享能力尚未就绪"
   },
-  "permission": {
+  "permission": {"sv_issuer_read":"查看储值发行设置","sv_issuer_configure":"配置储值发行方","sv_issuer_settlement_authorize":"授权储值结算主体",
     "management_enter": "进入管理空间",
     "management_resource_read": "查看经营资源",
     "management_grant_manage": "管理资源授权",

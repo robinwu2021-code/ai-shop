@@ -72,14 +72,16 @@ async function load(){
   pendingScope=c.pendingScope||JSON.stringify(props.source||c.customerRef);
   const original=recovery.entries()[pendingScope];const old=recovery.legacy();
   if(original||(old&&sameCustomer(old,c))){if(await restore(original||old!,pendingScope,token))return;if(!live(token))return;}
-  customer.value=c;const page=await api.mSvPlans({storeNo:store,status:'ACTIVE'});if(!live(token))return;
+  customer.value=c;const result=await api.mSvRechargeOptions({storeNo:store,customerRef:c.customerRef});if(!live(token))return;
+  if(!result.issuerOptions.legacyMode&&!result.issuerOptions.issuers.some(i=>i.canRecharge))throw Error(t('issuer.blockers.'+(result.issuerOptions.issuers[0]?.unavailableReason||'ISSUANCE_NOT_ENABLED')));
+  const page=result.plans;
   plans.value=page.records;cursor.value=page.nextCursor;selectionReady=true;
   if(props.planNo)selected.value=plans.value.find(p=>p.planNo===props.planNo)||null;
  }catch(e){if(live(token)){failed.value=true;error.value=(e as Error).message;}}
  finally{if(generation===token)loading.value=false;}
 }
 async function chooseRecovery(choice:{scope:string;pending:Pending}){if(busy.value||loading.value)return;const token=generation;recoveryChoices.value=[];loading.value=true;await restore(choice.pending,choice.scope,token);if(token===generation)loading.value=false;}
-async function more(){if(locked.value||!cursor.value)return;const token=generation;loading.value=true;try{const page=await api.mSvPlans({storeNo:store,status:'ACTIVE',cursor:cursor.value});if(live(token)){plans.value.push(...page.records);cursor.value=page.nextCursor;}}catch(e){if(live(token))error.value=(e as Error).message;}finally{if(generation===token)loading.value=false;}}
+async function more(){if(locked.value||!cursor.value)return;const token=generation;loading.value=true;try{if(!customer.value)return;const result=await api.mSvRechargeOptions({storeNo:store,customerRef:customer.value.customerRef,cursor:cursor.value});const page=result.plans;if(live(token)){plans.value.push(...page.records);cursor.value=page.nextCursor;}}catch(e){if(live(token))error.value=(e as Error).message;}finally{if(generation===token)loading.value=false;}}
 async function submit(){
  if(busy.value||loading.value||!allowed.value||store!==merchant.storeNo||!selected.value||!customer.value)return;
  const token=generation;busy.value=true;error.value='';
@@ -104,7 +106,7 @@ async function submit(){
 }
 async function refresh(){
  const p=pending.value;if(!p?.progress?.rechargeNo||busy.value||store!==merchant.storeNo)return;
- const token=generation;busy.value=true;error.value='';try{const r=await api.mSvRecharge(p.progress.rechargeNo);if(live(token)){accept(r);if(!terminal.value)schedule();}}
+ const token=generation;busy.value=true;error.value='';try{const r=await api.mSvIssuerRecharge(p.progress.rechargeNo,store);if(live(token)){accept(r);if(!terminal.value)schedule();}}
  catch(e){if(live(token)){error.value=(e as Error).message;schedule();}}
  finally{if(generation===token)busy.value=false;}
 }

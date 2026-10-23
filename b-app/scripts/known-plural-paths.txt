@@ -65,3 +65,22 @@ mSubmitBrandChange	P1已冻结组织API契约；品牌/空间下的嵌套资源�
 mScopeCandidates	P2既定MB契约以当前门店为路径边界，与服务端保持一致
 mScopeSelectCustomer	P2既定MB契约以当前门店为路径边界，与服务端保持一致
 mScopeEnrollMember	P2既定MB契约以当前门店为路径边界，与服务端保持一致
+
+mSvIssuer	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
+mSvStoreIssuerConfiguration	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
+mSvConfigureIssuer	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
+mSvConfigureStoreIssuer	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
+mSvIssuerImpact	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
+mSvIssuerVersion	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
+mSvStoreIssuers	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
+mSvRechargeOptions	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
+mSvIssuerRoutes	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
+mSvPrepareIssuer	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
+mSvRefreshIssuer	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
+mSvIssuerRecharge	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
+mSvIssuerCancel	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
+mSvConfirmOffline	Approved P3 store-scoped original recharge contract.
+mSvResolveRecharge	Approved P3 store-scoped original recharge recovery contract.
+mSvCancelCreate	Approved P3 store-scoped original recharge cancellation contract.
+mSvRecords	Approved P3 unified issuer record contract.
+mSvRecord	Approved P3 store-scoped original record contract.

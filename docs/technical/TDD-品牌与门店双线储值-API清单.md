@@ -368,3 +368,155 @@ AuthorizedPaymentMerchant返回payMerchantRef、entityNo、payChannel、applySta
 ## P2已实现契约补充
 
 MB01/02/03已实现，权限映射到既有门店CUSTOMER/SV_RECHARGE_CREATE及单独SV_ACCOUNT_READ；MB02返回selection及sourceStoreNo/Name，MB01含identityConflictCount和默认本店已储值账户。旧主体接口不自动变为品牌营销授权。详细字段、前后端类及边界见[TDD-P2实施设计](TDD-P2-品牌会员共享-实施设计.md)。
+
+### P3 实现增量：单店发行准备（2026-10-23，开发中）
+
+- 内部传输实际路径：`POST /internal/pay/stored-value/issuers/prepare-store`，对应 `StoredValueIssuerAppService.prepareStore(StoreAuthority)`，支持嵌入及独立 Pay；调用需内部服务令牌。
+- Core 先以 `IssuerAuthorityService.storePreparationScope` 核实有效门店、当前经营主体和真实所有人，得到 tenantNo/actorNo/entityNo/storeNo/storeName/storeRevision。公开请求不能绑定 StoreAuthority，不能把门店管理权解释为品牌结算授权。
+- 返回 `StoredValueIssuers.View`；该操作幂等准备 STORE 发行草稿及 PREPARING 准入，can_issue/can_redeem 均为 0。不建立钱包、不激活储值、不迁余额；变更经营主体冲突，不据手机号或同主体合并。
+- 这是 IN01 的单店准备基础，不代表准入修订、迁移切写、IS05 店内发行选项或 B 端入口已全部实现。现网尚未部署该接口。
+
+### P3 内部迁移清单合同（2026-10-23，开发中，未开放HTTP）
+
+| Java操作 | 输入 | 返回与条件 |
+|---|---|---|
+| StoredValueMigrationManifestService.prepare | Core解析的Evidence、原命令key | 持久Manifest；需migration-enabled，不要求事先打开issuer-mode；无金融修改 |
+| find | 同范围Evidence、manifestNo | 原审计清单标识和摘要；不重新盘账 |
+| apply | 同范围Evidence、manifestNo、原执行key | METADATA_MAPPED；需维护及新写路径开关、目标FENCED和原事实/来源修订一致；成功不释放栅栏 |
+
+Evidence是服务端合同，不作为公开用户DTO。执行只使用服务器保存的摘要；清单包含完整原账户映射和授权/事实快照。持久记录复用pay_ent_command_dedup，独立命令空间避免历史普通映射回执绕过最终维护要求。Core实时证据解析、全进程就绪与维护入口尚待对接；不以这些Java方法代替完整迁移或切写API。
+
+### 发行配置版本并发口径（P3，2026-10-23）
+
+发行配置 `View.revision` 与配置写入的 `Config.expectedRevision` 均表示不可变配置的 `version_index - 1`，首次配置为 0。保存时在发行方行锁内核对当前配置版本，过期配置提交仍返回冲突。同幂等键、相同内容返回原配置版本，不返回后续版本。`sv_issuer.version` 仅用于数据库行级变更，旧账映射、写入栅栏或状态维护增加该值，不应让未变化的配置变成过期。此修复不等于 IS03/IS04 的受控变更检查、权限及完整 HTTP 流程已交付。
+
+### P3 可信迁移预审对接（2026-10-23，默认关闭）
+
+Core 内部 StoredValueMigrationCoordinator.prepare(actor, storeNos, key) 仅接收当前认证身份、门店编号和幂等键。先逐店校验当前主体所有人权限，再经 Pay 获取存量账户身份标识，用 User 人档端口校验既有绑定，最后再次检查门店权限/版本并提交预审。不新增人档、绑定、会员、发行方或账户；门店须先完成发行基础准备。无 B/C 端公开入口。
+
+| 内部接口 | 入参 | 返回 | 约束 |
+| --- | --- | --- | --- |
+| POST /internal/pay/stored-value/migrations/probe | Probe(scopes: StoreAuthority[]) | Probe(scopes: Scope[], subjects: Subject[]) | 内部 token；migration-enabled；MAIN；实际 STORE 发行方与来源版本校验；只返回指定门店账户及身份标识，无金额/手机号 |
+| POST /internal/pay/stored-value/migrations/prepare | Prepare(input: Preparation, key) | Manifest(manifestNo, fingerprint, authorityHash, accountCount) | 内部 token；migration-enabled；Pay 完整账本预审通过才保存清单；幂等回放；不要求 issuer-mode |
+
+共享 DTO 在 shop-base/spi/storedvalue/StoredValueMigrationPlans；嵌入及独立部署均经 StoredValueMigrationAppService，独立部署使用 PayInternalApi。每批最多100店、1000账户，超过上限明确拒绝，绝不截断后视为完成。来源缺失、跨店/主体、重复账户、身份不一致、门店版本变化均阻断。旧账号标识仅通过既有 user→person 绑定解析，再复核 canonical 人档；未注册人档保留 userNo 为空。最终审计仍检查完整存量，不假设 probe 后账本未变化。
+
+仅服务间预审：apply、暂停写入和激活未开放 HTTP。全写入节点就绪、维护栅栏及切换流程仍是正式执行前置条件。
+
+### P3 本地维护栅栏命令（内部 Java，2026-10-23）
+
+StoredValueMigrationManifestService.fence(evidence, manifestNo, key) 复用服务端原清单与独立 SV_MIGRATION_FENCE 幂等记录。需要 migration-enabled 和当前进程 issuer-mode；按发行方顺序取得 issuer→account 锁，再检查来源版本及完整账本指纹。事实变化或已进入 ISSUER 模式时拒绝，事务回滚不留成功回执；成功仅把 write_mode 设为 FENCED，返回 WRITE_FENCED，不改账户余额、配置、业务状态或索引。同请求返回原回执，不重做审计或解除暂停。
+
+本命令没有 HTTP 端点。它使已升级且启用守卫的写入节点使用同一数据库栅栏，不能证明其他旧节点也已升级。全部写入节点就绪证明、正式切换和受控恢复仍未交付；不能凭本地开关或此回执宣布可以切换。
+
+### P3 写入节点能力与汇总就绪检查（2026-10-23，未部署）
+
+Core 和 Pay 分别提供 POST /internal/pay/stored-value/migrations/capability，使用内部 token，接收 Query(challenge)，返回当前进程 Capability。Core 必须报告本进程，不能代理 Pay；Core 即使使用远程路由，仍可能保留本地 Pay 写入/任务，因此不能凭路由模式将其排除。
+
+| 字段 | 真源及用途 |
+| --- | --- |
+| application/processNo | 当前应用名称、进程启动后稳定的随机标识；别名指向同一进程会被发现，重启要求重新确认清单 |
+| buildSha/protocol | 本产物 META-INF/build-info.properties 的完整40位gitSha、当前协议2；来源未知的普通构建为unknown并阻断 |
+| writerGuardEnabled/maintenanceEnabled | 当前进程实际 issuer-mode/migration-enabled；不使用调用方声明的开关 |
+| ledgerFingerprint | MySQL SHA2(server_uuid + ':' + DATABASE(),256)，只输出摘要，不输出连接地址、库名、凭据或原始数据库标识 |
+| schemaReady | Pay 数据源的 V548/V549/V550 已执行且必需维度列可查询；查询失败返回不可用 |
+| challenge/checkedAt | 原随机挑战和本次探测时间，拒绝跨轮复用与陈旧响应 |
+
+Core 内部 StoredValueMigrationReadinessService.check() 没有公开接口或请求参数；从服务端配置 shop.pay.stored-value.migration.inventory 读取封存清单，经 InternalHttp/PayInternalApi 逐实例直连，超时/异常统一为PROBE_UNAVAILABLE，不返回原始错误。配置缺失、未封存或格式无效不开始探测。最多16个实例。
+
+清单 Inventory(revision, ledgerFingerprint, sealed, nodes[])；Node(nodeId, serviceKey, application, expectedSha, expectedProcessNo)。serviceKey 映射 shop.services.targets 中专用的实例直连地址，不能填负载均衡入口。expectedProcessNo 来自先前已认证能力查询，部署/重启后重新确认。sealed 是运维对“全部账本写入实例（含任务、回调、Core本地写入）均在清单内”的明确声明，程序不能自行发现或证明清单外没有旧进程。
+
+汇总要求：清单封存；实例与进程唯一；恰好覆盖所有清单节点；完整SHA、应用名、进程标识、协议、两个开关、实际账本摘要及迁移状态一致；挑战相同；观测不超过30秒，未来时差不超过5秒。结果包含 inventoryHash、检查/失效时间、脱敏阻断项和节点快照；失效时间取最早观测的30秒到期点。新随机挑战每轮重新生成。
+
+本能力仅用于后续运维预检，不是财务执行授权。fence/apply 尚未对外开放或接入完整切换编排；清单封存、部署冻结、维护窗口、正式恢复仍需完成。当前未配置或自动启用任何线上清单/开关。启用 issuer-mode 会改变全部相关写入路径，不能只为得到就绪结果而擅自开启。
+
+### P3 发行方账户选择适配（2026-10-23，未部署）
+
+B/C 端原余额、储值和核销接口的入参/返回不变。启用 issuer-mode 后，Pay 内部 StoredValueIssuerAccountService 统一选账：当前 STORE 发行方 + canonical顾客 + 币种；主体/门店必须与原账户及冻结发行配置一致。只用已存在的 sv_customer_identity 一对一证据解析 user/person 别名；不按电话识别，不合并、不改绑已有账户。
+
+到账优先使用同键原账户并保留 accountNo、余额、账序及冻结配置。原单已CREDITED但账户缺失时拒绝新建。仅首次有效RECEIVED原单可新建零余额发行账户，issuer/version在同一Pay事务中写入，再由既有posting记账。重复候选、遗留别名账户并存、来源缺失或冻结发行版本无效均拒绝，不任选钱包或静默返回空余额。未注册会员保留userNo为空；已注册但旧钱包未写入userNo，也可经既有身份绑定查到原钱包。
+
+余额、核销报价与最终核销使用同一选择器，最终核销仍严格核对原授权的accountNo。FENCED写入继续阻断，ISSUE_STOPPED仍可恢复已收款原单；未开启发行模式时保持旧路径。此适配不等于唯一键/运行模式已切换，品牌资金仍不开放。
+
+### P3 封存清单无需重启更新（2026-10-23）
+
+新增服务端配置 shop.pay.stored-value.migration.inventory-file，可预先指定文件位置，在节点启动并取得processNo后，原子替换写入封存清单，不重启被观察的进程。每次check开始只读取一次完整快照，最长64KiB，要求普通文件且不跟随文件符号链接。配置文件路径来自服务端，不接受HTTP入参。
+
+指定文件后，文件缺失/不可读/损坏/超限一律返回未就绪，不回退到旧inline清单；未指定文件时继续兼容原inventory配置。原子替换建议由部署运维执行并限制写权限。默认未配置，未在服务器创建文件或开启开关。切换流程未来仍需复核最新清单摘要与时效、冻结部署并消费就绪结果；目前没有对外执行接口。
+
+### P3 暂停与元数据回填维护合同（2026-10-23，源码交付）
+
+Core 内部 StoredValueMigrationMaintenanceService.pause/apply 先取得当前所有人、来源版本和既有会员身份事实，再生成新鲜节点证明，网络探测后再次复核所有人权限。没有新增 B/C/运营公开入口，请求方不能自行提供权限事实或节点清单。
+
+| 内部 Pay 接口 | 请求 | 返回 |
+| --- | --- | --- |
+| POST /internal/pay/stored-value/migrations/pause | input、manifestNo、key、proof | MaintenanceResult：receiptNo、manifestNo、WRITE_FENCED、inventoryHash、issuerCount、accountCount=0 |
+| POST /internal/pay/stored-value/migrations/apply | input、manifestNo、pauseReceiptNo、key、proof | MaintenanceResult：receiptNo、manifestNo、METADATA_MAPPED、inventoryHash、issuerCount、accountCount |
+
+接口经原内部 token 鉴权；Core 和 Pay 均要求 shop.pay.stored-value.migration.execution-enabled=true，默认 false。原 migration-enabled、issuer-mode 及冻结预审约束继续生效。proof 包含同次读取的封存 Inventory 与 Report。Pay 重新计算证明，核对实际执行进程、数据库摘要、开关、构建和时效；事务提交前再次检查时效，包含等待锁和映射耗时。
+
+apply 必须引用同租户、原清单、当前证据及同 inventoryHash 的已完成 pause 回执；基础 fence 回执不能替代。暂停、映射分别提交，映射失败或证明过期回滚本次元数据及回执，保留此前已提交的 FENCED。相同幂等键可用同清单的新鲜证明重试；清单摘要变化须重新取得暂停回执。本链路不执行唯一键 DDL、不解除暂停、不启用发行。前述“未接入编排”仅剩完整切换部分，暂停及元数据回填已接通；线上尚未部署或启用。
+
+### P3 全库索引预检内部合同（2026-10-23）
+
+仅新增内部 Java StoredValueAccountKeyInspector.inspect()，没有新增 B/C/运营/内部HTTP接口。返回 Plan(ready,nextStep,schemaHash,accounts,issues,statements)。ready 只表示当前索引步骤的预检通过；KEYS_READY也不是资金写入准入。不得把现有门店所有人的维护权限扩展成整库DDL权限，不接受公开请求上传扫描结果或直接执行返回的SQL。
+
+此预检尚未连接pause/apply的DDL执行阶段，不自动运行任何语句。原暂停、元数据映射回执与开关行为不变。
+
+### P3 全库授权与逐步索引执行（2026-10-23，未部署）
+
+新增内部Java合同 StoredValueSchemaAuthorization.authorize(operatorNo,approvalNo,proof)、StoredValueAccountKeyCutover.step(operatorNo,approvalNo,proof)。没有新增B/C/运营或内部HTTP入口，operatorNo必须由将来的可信运维入口提供，不能直接接收普通商家请求并据此授权。
+
+服务端开关 shop.pay.stored-value.migration.key-cutover-enabled 默认false；服务端文件 shop.pay.stored-value.migration.key-cutover-approval-file 默认空。只从该文件读取封存批准，不接受请求上传。普通文件、不跟随最终符号链接、64KiB上限；缺失/坏文件默认拒绝，不回退。批准结构：
+
+| 字段 | 含义 |
+| --- | --- |
+| approvalNo / operatorNo | 本次全库维护批准及指定运维操作人；不从门店权限推导 |
+| ledgerFingerprint / inventoryHash | 精确绑定实际Pay账本及封存写节点清单 |
+| expiresAt / sealed | UTC批准有效期及明确封存；每次执行前后重新读取校验 |
+| receipts[] | tenantNo、manifestNo、pauseReceiptNo、mappingReceiptNo；显式链接整库已完成映射 |
+
+批准最多1000回执/1000发行方/10000账户，超限拒绝而非截断。文件上限可能更早限制回执数。核对原清单、暂停和映射的内容摘要/快照/数量/来源版本，复用完整账本审计检查批次、凭证、分录、冻结和未完成充值；当前发行方集合和账户集合必须被完整覆盖，原金额和账序保持一致。全部有效发行方必须FENCED。
+
+step每次有意推进一个索引步骤：先授权，再取得MySQL数据库级互斥，锁后再授权及预检。返回Result(receiptNo,approvalNo,action,state,beforeSchemaHash,afterSchemaHash)。state为APPLIED、RECOVERED或KEYS_READY。有PENDING时必须先恢复该步，本次不再推进下一步；无PENDING的后续调用会有意推进下一步骤，不应被包装成同一公开请求的无条件重试。每次调用应重新取得新鲜proof。
+
+DDL提交前已持久化INTENT，提交后按目标schema摘要复核并完成回执。若连接断开、证明/批准过期或后续核验失败，保留PENDING及全部FENCED，不宣称DDL已回滚。实际schema等于目标则恢复回执，等于执行前且计划仍完全一致才可重试；其他状态拒绝。可明确续期同一批准（只更新expiresAt），但不能改变操作人、账本、清单或回执范围来接管未完成步骤。
+
+KEYS_READY只表示索引步骤完成，不代表发行账户已经满足全部必填约束，也不恢复写入。NULL约束、切写/恢复入口与真实MySQL隔离验收仍待交付；本轮没有自动激活品牌或解除暂停。
+
+
+## P3 batch contract (2026-10-23, coded; acceptance pending)
+
+This section supersedes earlier P3 statements that maintenance is Java-only or has no HTTP entry. Stage delivery is one code/compile batch followed by one focused test chain. P3 remains IN_PROGRESS until evidence is recorded.
+
+### Ownership and API boundary
+
+- Core owns live store/entity/management authorization, canonical member identity resolution and readiness proof collection. Pay owns issuer versions, immutable releases, wallet dimensions, quota, journal and maintenance receipts.
+- GET/POST `/biz/management/stores/{storeNo}/stored-value/issuer` manages store settings; brand equivalent stays DRAFT with no financial activation. GET `/biz/management/stored-value/issuers/{issuerNo}` resolves the natural resource before authorization.
+- POST `.../issuers/{issuerNo}/configuration-checks` previews blockers; POST `.../configuration-versions` writes a revision with Idempotency-Key; GET `.../collection-routes` returns currently authorized routes. Existing liabilities lock settlement/clearing/debit-rule changes.
+- POST `/biz/management/stores/{storeNo}/stored-value/issuer/prepare` takes managementNo. The explicit owner action requires management grant administration, store read and actual entity ownership; it grants only issuer read/configure to that actor. Reading the page grants nothing and preparing never opens finance.
+- GET `/biz/management/stored-value/settlement-entity-candidates` returns entityNo/name/accepted/canAccept. Selecting an owned but unaccepted entity explicitly grants `sv.issuer.settlement.authorize` through the existing management-grant API. No automatic settlement authorization.
+- POST `.../issuer/access-refresh` takes managementNo and returns issuerNo/storeNo/sourceRevision/status. Refresh is monotonic and does not activate access.
+- IS05 GET `/biz/stores/{storeNo}/stored-value/issuers`; RC01 GET `.../recharge-options`; RC02 POST `.../issuer-recharges/confirm-offline`; RC03 GET `.../issuer-recharges/{rechargeNo}`; RC04 POST `.../issuer-recharges/resolve`; RC05 POST `.../issuer-recharges/cancel-create`; RC06 POST `.../issuer-recharges/{rechargeNo}/cancel`; RD01/RD02 `.../issuer-records` list/detail. All are store-scoped, reuse original permission/idempotency rules, and reject brand financial scope in P3. RC06 uses existing recharge-create permission, unpaid cancellation only, no online refund.
+- Owner maintenance: POST `/biz/management/stored-value/migration-manifests` body storeNos; POST `.../{manifestNo}/pause` body storeNos; POST `.../{manifestNo}/map` body storeNos/pauseReceiptNo. All require Idempotency-Key. Authenticated actor is derived server-side; owner/source/member facts are fetched live, never supplied in requests. Execution defaults closed.
+- Global maintenance: token-protected POST `/internal/stored-value/maintenance/{action}` for key-step/guard-dimensions/resume; body operatorNo/approvalNo. GET `/internal/stored-value/commands/{commandNo}` returns the original receipt. Separate server-file approval binds the complete ledger, inventory, operator, validity and mapping receipt chain. Store ownership is insufficient for global DDL.
+
+### Database and cutover
+
+- V548/V549 remain unchanged. Additive V550 adds sv_release.legacy_activity_version_no, sv_release_tier.legacy_tier_key, source uniqueness and LEGACY_ACTIVITY provenance constraint. It does not alter balances or account identifiers.
+- Readiness protocol 2 requires V548/V549/V550 and new source columns. Old protocol 1 nodes cannot pass the sealed inventory check.
+- Under a dedicated database advisory lock, commit each journal intent before fixed-whitelist DDL. First establish issuer/customer/currency uniqueness, then remove old conflicting keys; install enforced `ck_sv_issuer_dimensions` for nonblank issuer/version/customer. Physical nullable definitions remain compatible with old schema until controlled cutover; the enforced CHECK establishes required semantics.
+- Resume requires complete live approval and metadata proof, exact keys, enforced dimensions and no pending DDL intent. One Pay transaction locks all approved STORE issuers/access rows, sets ISSUER write mode and records the receipt. DRAFT becomes ACTIVE; ISSUE_STOPPED stays stopped, canIssue=false. BRAND DRAFT remains closed. Replay returns the original receipt.
+- No copy of funds, no reset of account/lot/voucher/statement sequence and no fresh platform identity. Legacy activity creation in issuer mode freezes source version and tier once under issuer lock, records canonical existing customer, reserves quota and reuses the original synchronous posting/recovery path. Cross-store legacy activities remain blocked until P5.
+
+### B-app behavior and modules
+
+- Top-level brand and store settings use one new issuer page with explicit scope. The in-store entry is read-only for financial settings and does not select another store or brand.
+- Entity/payment-route selection uses shared sh-sheet, page uses sh-scaffold/sh-card/sh-kv/sh-actionbar; all visible copy goes through zh-CN/en/ar catalogs. Configuration impact is checked before write. Unknown save results retain the exact configuration and original key in local storage, lock editing and permit original-command retry.
+- Pay: StoredValueAccountDimensionGuard, StoredValueMigrationResumeService, StoredValueMigrationOperator, StoredValueIssuerService, StoredValueStoreIssuerService, StoredValueIssuerLedgerBridge.
+- Core gateway: StoredValueMigrationOperatorService, BizStoredValueMigrationController, BizStoredValueIssuerController, BizStoredValueIssuerOperationsController; Merchant: IssuerAuthorityService. Remote/embedded typed adapters share the same contracts.
+- Frontend: api/stored-value-issuers.ts, api/stored-value-issuer-http.ts, pages/stored-value-issuer/index.vue. Existing recharge sheet consumes store issuer options and restores original pending commands before checking new-issuance availability.
+
+### Acceptance and rollout
+
+Compile Core (food-embedded), independent Pay and B-app together after all coding. Then run focused issuer/configuration/identity/operator/HTTP/UI tests and isolated native MySQL8.4 constraint/resume/migration tests. No full repository test suite and no duplicate unrelated regressions. Stage signoff requires actual evidence, then one whole-stage review and controlled deployment. New issuer/execution/key-cutover switches remain false during ordinary publication; no online DDL or financial transaction is implied by source deployment.

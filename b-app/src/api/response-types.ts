@@ -170,3 +170,11 @@ export interface SvRechargeResolve {found:boolean;recharge:SvProgress|null}
 export type ManagementRecipientPage=ManagementPage<ManagementRecipient>;
 
 export type {ScopeCandidatePage,ScopeSelectedCustomer,ScopeMemberSummary} from './stored-value-types';
+
+export type {IssuerView,IssuerImpact,StoreIssuerOptions,IssuerRoute} from './stored-value-issuers';
+import type {IssuerView,StoreIssuerOptions} from './stored-value-issuers';
+export interface SvIssuerLookup {issuer:IssuerView|null}
+export interface SvIssuerEntity {entityNo:string;name:string;accepted:boolean;canAccept:boolean}
+export interface SvIssuerRechargeOptions {issuerOptions:StoreIssuerOptions;plans:SvPlanPage}
+
+export type {IssuerAccessAck} from './stored-value-issuers';

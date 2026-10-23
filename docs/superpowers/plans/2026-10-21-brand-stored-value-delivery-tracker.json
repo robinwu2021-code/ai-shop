@@ -319,7 +319,57 @@
         "IS06"
       ],
       "planFile": "2026-10-21-brand-stored-value-issuer-ledger.md",
-      "status": "NOT_STARTED"
+      "status": "IN_PROGRESS",
+      "checkpoint": {
+        "date": "2026-10-23",
+        "state": "FOUNDATION_DEPLOYED_NEXT_WORK_IN_PROGRESS",
+        "completed": [
+          "Issuer configuration and explicit settlement authority",
+          "Legacy audit and metadata mapping",
+          "Receipt/posting/redemption quota integration",
+          "Default store draft preparation and live owner authority",
+          "Typed internal preparation endpoint",
+          "Legacy creation guard and persistent write-fence guards",
+          "Fenced final metadata mapping preserves maintenance fence (post-deploy development)",
+          "Durable audited manifest and strictly fenced metadata apply (internal Java contract, not enabled online)",
+          "Trusted Core owner/person evidence preparation with typed embedded/standalone audit contracts (disabled by default)",
+          "Durable internal local-writer fence with original audit recheck and replay (no execution HTTP)",
+          "Read-only per-process capability and sealed-inventory readiness checks (fresh challenge/build/process/ledger/flags; not deployed or financial authorization)",
+          "Issuer wallet selection wired to posting/balance/quote/debit, verified canonical aliases and shadow/version conflict rejection; live inventory-file reload (not deployed)",
+          "Core实时证据与新鲜证明驱动的暂停/元数据映射；Pay实际进程复核、链接暂停回执、提交前过期回滚；默认execution-enabled=false，未部署",
+          "Ledger-wide index/data preflight and schema-step recovery planning; preserves account identity keys, scans all tenants/deleted rows; no DDL execution or authorization",
+          "Default-closed server-file ledger-wide approval and original mapping-receipt/full-ledger coverage checks; durable schema INTENT, fixed DDL session lock/cleanup and exact before/target recovery (internal Java only, not deployed or real-MySQL accepted)",
+          "Isolated real MySQL8.4 index/JSON/advisory-lock/DDL-lost-response recovery acceptance; cross-collation identifier comparison fixed, original funds/IDs/fence preserved; no online operations"
+        ],
+        "verification": "Core/Pay compile and focused tests passed; no full suite or online financial writes",
+        "remaining": [
+          "Complete operator cutover/resume beyond delivered pause+metadata mapping; actual deployment inventory sealing and maintenance/cutover acceptance",
+          "Mandatory dimensions and formal writer cutover/resume/operator entry; real MySQL8.4 index/lock incremental acceptance passed, full stage/release acceptance pending",
+          "Complete IS/RC/RD and B app UI",
+          "MySQL concurrency acceptance and complete stage release"
+        ]
+      },
+      "foundationRelease": {
+        "status": "DEPLOYED",
+        "commit": "55aa6cc0e09db3c86bd4dd121eb6b2e5cfabe276",
+        "date": "2026-10-23",
+        "coreHealth": 200,
+        "payProtectedEndpoint": 401,
+        "migrationVersions": [
+          546,
+          547,
+          548,
+          549
+        ],
+        "issuerMode": "LEGACY_DISABLED",
+        "scope": "Merged canonical backend with embedded food sources and pricing; no automatic food or issuer activation",
+        "financialTotals": {
+          "accounts": 2,
+          "balanceMinor": 36000,
+          "recharges": 5,
+          "issuers": 0
+        }
+      }
     },
     {
       "id": "P4",
@@ -743,5 +793,37 @@
     "sv_hold_allocation": "P3",
     "ord_ent_service_order": "P5",
     "mbr_identity_ticket": "P2"
+  },
+  "currentBatch": {
+    "stage": "P3",
+    "status": "COMPATIBILITY_PUBLISHED",
+    "baseline": "96c94cd18efab05b613faff1111238e88f141b54",
+    "execution": "Complete all phase coding and compilation, then one focused test chain; retest failures and affected seams only",
+    "backendDistinctTests": 24,
+    "frontendDistinctTests": 15,
+    "review": "One whole-stage reviewer; four important findings fixed with scoped verification",
+    "onlineCutover": "NOT_EXECUTED; issuer, execution and key-cutover switches remain closed",
+    "publication": {
+      "backendSha": "83db9a8ff0900743618e043c98bcfe12779e0852",
+      "bH5AndSiteSha": "87408ba11e98efe74d79de523236a56b24adc548",
+      "appVersion": "0.6.1",
+      "appVersionCode": 334,
+      "appMd5": "21b53a85f567d14312999827ab2e3e64",
+      "schemaVersions": [
+        "548",
+        "549",
+        "550"
+      ],
+      "coreHealth": 200,
+      "payProtectedHealth": 401,
+      "capabilityProtocol": 2,
+      "schemaReady": true,
+      "financialSwitches": false,
+      "device": "INSTALLED_BASIC_UI_VERIFIED_NO_POSTING"
+    },
+    "remaining": [
+      "Controlled online original-ledger mapping, key cutover and STORE resume; not executed",
+      "P3 signoff after controlled rollout; P4-P6 remain separately planned"
+    ]
   }
 }

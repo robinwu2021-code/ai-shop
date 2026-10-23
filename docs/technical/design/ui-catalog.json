@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 105,
+      "count": 106,
       "domains": [
         {
           "name": "工作台",
@@ -703,6 +703,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/brand-change/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stored-value-issuer/index",
+              "title": "储值发行设置",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stored-value-issuer/index"
             }
           ]
         },
@@ -3671,5 +3682,5 @@
       ]
     }
   ],
-  "total": 292
+  "total": 293
 }

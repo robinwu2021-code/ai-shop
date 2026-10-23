@@ -36,6 +36,8 @@ import tools.jackson.databind.ObjectMapper;
 public class StoredValueQueryServiceImpl implements StoredValueQueryService {
     @org.springframework.beans.factory.annotation.Autowired
     private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerAccountService issuerAccounts;
     private final SvAccountMapper accounts;
     private final SvUserStoreIndexMapper stores;
     private final EntUsageMapper usages;
@@ -54,7 +56,8 @@ public class StoredValueQueryServiceImpl implements StoredValueQueryService {
     @Override
     public BalanceView balance(EntitlementContext context, BalanceQuery query) {
         StoredValueAccountScope.requireMigrated(accounts, context.tenantNo(), query.userNo(), query.entityNo(), query.currency());
-        var account = accounts.findOwner(context.tenantNo(), query.userNo(), query.entityNo(), query.currency(), query.storeNo());
+        var selected=issuerAccounts.lookup(context.tenantNo(),query.entityNo(),query.storeNo(),query.currency(),query.userNo(),false);
+        var account=selected.issuerScoped()?accounts.findAccount(context.tenantNo(),selected.accountNo()):accounts.findOwner(context.tenantNo(),query.userNo(),query.entityNo(),query.currency(),query.storeNo());
         if (account == null) return new BalanceView(null, query.currency(), 0, 0, 0, null);
         long balance = Math.addExact(account.getPrincipalMinor(), account.getBonusMinor());
         long held = Math.addExact(account.getHeldPrincipalMinor(), account.getHeldBonusMinor());

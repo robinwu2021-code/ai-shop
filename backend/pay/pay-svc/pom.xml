@@ -13,6 +13,9 @@
 
     <artifactId>pay-svc</artifactId>
     <packaging>jar</packaging>
+    <properties>
+        <git.sha>unknown</git.sha>
+    </properties>
     <description>支付域 · 独立部署形态（形态 B）。不接前端流量，只暴露 /internal 与 /callback</description>
 
     <!-- ⚠️ **这个模块的依赖清单就是它的定义。**
@@ -73,6 +76,15 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>build-info</id>
+                        <goals><goal>build-info</goal></goals>
+                        <configuration>
+                            <additionalProperties><gitSha>${git.sha}</gitSha></additionalProperties>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

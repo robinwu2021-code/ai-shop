@@ -722,3 +722,92 @@ sv_issuer_version.collection_config保存经核验的版本化route引用数组�
 ## P2迁移实施
 
 V545只新增mbr_scope_member/mbr_store_profile/mbr_scope_legacy_link及mbr_identity_ticket的operator_scope_type、issuer_no、brand_scope_revision、scope_member_no兼容列；与P1同用utf8mb4_unicode_520_ci。历史主体备注不具备撰写门店证据，留原表，不推测复制；新profile只接受明确当前店写入，导入查询不更新last_seen。范围身份不改钱包客户键或余额。
+
+### P3 账户读写适配落地补充（2026-10-23）
+
+本轮没有新表、DDL或已执行迁移修改，旧索引全部保留。已存在的sv_account.issuer_no、issuer_version_no、customer_no等V549维度在新建发行账户时直接写入。发行账户技术标识按tenant/issuer/canonicalCustomer/currency确定；选中存量账户时复用其原accountNo，不重新编号、复制余额或重置账序。
+
+选账在tenant/issuer/customer/currency精确匹配后，关联不可变sv_issuer_version验证账户冻结版本、币种和主体，并校验原门店。额外检查同主体/门店（含来源缺失）下的既有person/user别名账户，有第二个候选即阻断。新建不使用INSERT IGNORE吞掉约束冲突，依靠同Pay事务及发行方行锁与现有账务提交顺序执行；来源不明或不一致时回滚，保留原已收款业务的正常恢复机制。
+
+账务锁顺序保持issuer→quota→account，核销仍先持原source/intent栅栏。新SQL与MyBatis使用同一payTxManager数据源；按accountNo读取/锁定的Mapper方法禁用缓存并刷新本地缓存。尚未切换新唯一键或移除旧唯一键；全写入节点就绪、冻结审计及条件式DDL仍是正式切换前置条件，不能将当前代码视为已完成切换。
+
+### P3 维护执行回执（2026-10-23）
+
+复用 pay_ent_command_dedup，不新增表，不修改 V548/V549 或旧唯一键。外层 operation_kind 为 SV_MAINTENANCE_PAUSE、SV_MAINTENANCE_APPLY，resource_no 使用 SVM 维护回执编号；response_snapshot 保存 MaintenanceResult。pause 的 payload_hash 绑定原 manifest、规范化服务器证据、inventoryHash；apply 额外绑定 pauseReceiptNo。内层 fence/map 使用从操作、外层键、清单和 manifest 派生的独立幂等键，不能用旧基础命令冒充完整维护批准。
+
+暂停与映射分别提交。映射及提交前证明时效检查处于同一 Pay 事务；失败时原账户维度与本次内外层回执共同回滚，已提交暂停不回滚。保持 accountNo、金额、账序和原身份不变。MySQL 唯一键的条件切换、DDL 失败恢复与正式恢复发行仍待实现，不能将事务内映射视为已完成 DDL。
+
+### P3 全库唯一键预检与断点识别（2026-10-23）
+
+StoredValueAccountKeyInspector 从 Pay 数据源读取 MySQL information_schema.STATISTICS 和账户/发行方数据。扫描不按租户或 deleted 过滤账户，因为真实唯一键覆盖整表。返回仅含结构摘要、账户数、阻断类别及固定 SQL 建议，不返回顾客、余额或连接信息。该结果是只读预检，不能作为全库 DDL 授权或账本完整性证明；schemaHash 只表示索引结构，不代表资金或账户内容摘要。
+
+| 实际索引状态 | 下一步 |
+| --- | --- |
+| 两个旧键精确定义均存在，新键不存在 | ADD_ISSUER_KEY：仅建议创建 uk_sv_issuer_customer(tenant_no,issuer_no,customer_no,currency) |
+| 新键精确定义已存在，仍有旧键 | DROP_LEGACY_KEYS：仅建议删除仍存在的已知旧键 |
+| 新键正确、两个旧键已不存在 | KEYS_READY：仅索引就绪，不表示可以恢复写入 |
+| 定义、数据或暂停检查不通过 | BLOCKED：不返回任何 DDL |
+
+索引按名称、唯一性、完整列顺序检查，拒绝前缀、表达式、非BTREE及未审查的其他唯一索引；PRIMARY(id)、uk_sv_account(tenant_no,account_no)必须保留。新键缺失且旧保护不完整时阻断，不自动补猜。重复元数据、缺失元数据也不能生成绿色计划。
+
+数据阻断包括：关键维度为空、冻结发行版本/发行方/币种/STORE来源不匹配、同发行方顾客币种重复，以及任一有效发行方未FENCED（即使该发行方暂无账户）。重复分组由数据库按实际列排序规则完成，不在Java中按字符串去重。已删除账户同样参与数据核验，不能用软删除绕过唯一键。
+
+本轮不执行 ALTER。正式执行器仍须有全库运维授权、全范围已完成映射回执、新鲜节点证明、部署冻结与每步重检；MySQL DDL隐式提交，必须逐步记录并从实际schema恢复，不能声称事务回滚可撤销DDL。issuer/customer等必填约束、切写和恢复也尚未完成。H2定向验证数据扫描和计划逻辑；真实MySQL元数据及DDL行为留本阶段隔离演练验收。
+
+### P3 索引执行意图与失败恢复（2026-10-23）
+
+不修改已执行迁移，不新增表。复用pay_ent_command_dedup，保留原PENDING/COMPLETED状态：
+- tenant_no固定保留命名空间__LEDGER__，operation_kind=SV_SCHEMA_KEY_STEP。
+- request_key为approvalNo与action的SHA256；payload_hash绑定批准号、操作人、账本、节点清单及完整映射回执。expiresAt不入稳定摘要，因每次都会从服务器重查有效期，允许运维明确续期原范围。
+- resource_no为SVM维护回执，response_snapshot先存INTENT，含执行前和精确目标schema摘要；成功或恢复后写APPLIED/RECOVERED并标记COMPLETED。
+
+INTENT在独立Pay事务中提交后，才在专用自动提交MySQL连接执行固定白名单DDL。拒绝外层业务事务。GET_LOCK使用数据库名摘要作为锁名，在同一物理会话维持到操作完成；journal/审计事务使用独立Pay连接。锁等待0秒、metadata lock wait 5秒、JDBC语句超时20秒。结束时恢复原session timeout并释放锁；加锁结果不确定或清理失败时abort连接，避免将可能持锁的会话返还池。错误不返回原始SQL连接信息。
+
+计划增加targetSchemaHash。恢复只认可原摘要或精确目标摘要，非预期schema变更继续阻断。新唯一键必须先成功并经实际元数据复核，才进入移除旧键步骤。单次调用最多一个固定ALTER；不允许传任意SQL。DDL发生后即使事务回执未完成也不能回滚DDL，持久PENDING正是恢复依据。
+
+执行器每步复核全范围已映射财务事实与来源、所有发行方FENCED、新鲜实际写进程证明和当前服务器批准；不改账户号、金额、账序或身份。仍未执行issuer/customer必填约束及恢复发行，不允许只见新键就开放财务写入。真实MySQL的metadata/advisory lock/DDL隐式提交语义须在本阶段隔离演练验收；当前未操作线上。
+
+### P3 MySQL 8.4增量验收及排序规则兼容（2026-10-23）
+
+临时独立MySQL8.4验证了实际STATISTICS解析、JSON维护回执、固定建键/删键、DDL提交后模拟响应丢失的持久恢复、跨连接GET_LOCK互斥与释放，以及软删除行和大小写等价顾客仍受新唯一键约束。保留原accountNo、余额、账序及FENCED。该验收不等于全阶段上线验收：全库授权本身由独立账本用例验证，MySQL增量用例用授权边界替身集中验证数据库适配。
+
+真实数据库首次暴露跨表collation不同会报1267错误。StoredValueAccountKeyInspector对租户、发行方、冻结版本、币种和门店标识的跨表比较改为显式BINARY(256)，按标识字节精确比较，不变更任何列的collation或数据。字段最多64个utf8mb4字符，256字节覆盖其实际宽度；显式长度也避免H2的无长度BINARY默认截断。账户重复分组和新唯一键继续按账户列实际排序规则执行，没有改成Java去重或二进制钱包唯一键。
+
+StoredValueAccountKeyMysqlTest仅在显式设置SV_KEY_MYSQL_JDBC时运行，拒绝非127.0.0.1随机端口和非sv_key_test_前缀测试库；默认跳过。测试只创建该隔离库内的账户/发行方/版本/维护回执表，绝不接受线上连接。没有执行线上DDL；必填约束和恢复发行继续待交付。
+
+
+## P3 batch contract (2026-10-23, coded; acceptance pending)
+
+This section supersedes earlier P3 statements that maintenance is Java-only or has no HTTP entry. Stage delivery is one code/compile batch followed by one focused test chain. P3 remains IN_PROGRESS until evidence is recorded.
+
+### Ownership and API boundary
+
+- Core owns live store/entity/management authorization, canonical member identity resolution and readiness proof collection. Pay owns issuer versions, immutable releases, wallet dimensions, quota, journal and maintenance receipts.
+- GET/POST `/biz/management/stores/{storeNo}/stored-value/issuer` manages store settings; brand equivalent stays DRAFT with no financial activation. GET `/biz/management/stored-value/issuers/{issuerNo}` resolves the natural resource before authorization.
+- POST `.../issuers/{issuerNo}/configuration-checks` previews blockers; POST `.../configuration-versions` writes a revision with Idempotency-Key; GET `.../collection-routes` returns currently authorized routes. Existing liabilities lock settlement/clearing/debit-rule changes.
+- POST `/biz/management/stores/{storeNo}/stored-value/issuer/prepare` takes managementNo. The explicit owner action requires management grant administration, store read and actual entity ownership; it grants only issuer read/configure to that actor. Reading the page grants nothing and preparing never opens finance.
+- GET `/biz/management/stored-value/settlement-entity-candidates` returns entityNo/name/accepted/canAccept. Selecting an owned but unaccepted entity explicitly grants `sv.issuer.settlement.authorize` through the existing management-grant API. No automatic settlement authorization.
+- POST `.../issuer/access-refresh` takes managementNo and returns issuerNo/storeNo/sourceRevision/status. Refresh is monotonic and does not activate access.
+- IS05 GET `/biz/stores/{storeNo}/stored-value/issuers`; RC01 GET `.../recharge-options`; RC02 POST `.../issuer-recharges/confirm-offline`; RC03 GET `.../issuer-recharges/{rechargeNo}`; RC04 POST `.../issuer-recharges/resolve`; RC05 POST `.../issuer-recharges/cancel-create`; RC06 POST `.../issuer-recharges/{rechargeNo}/cancel`; RD01/RD02 `.../issuer-records` list/detail. All are store-scoped, reuse original permission/idempotency rules, and reject brand financial scope in P3. RC06 uses existing recharge-create permission, unpaid cancellation only, no online refund.
+- Owner maintenance: POST `/biz/management/stored-value/migration-manifests` body storeNos; POST `.../{manifestNo}/pause` body storeNos; POST `.../{manifestNo}/map` body storeNos/pauseReceiptNo. All require Idempotency-Key. Authenticated actor is derived server-side; owner/source/member facts are fetched live, never supplied in requests. Execution defaults closed.
+- Global maintenance: token-protected POST `/internal/stored-value/maintenance/{action}` for key-step/guard-dimensions/resume; body operatorNo/approvalNo. GET `/internal/stored-value/commands/{commandNo}` returns the original receipt. Separate server-file approval binds the complete ledger, inventory, operator, validity and mapping receipt chain. Store ownership is insufficient for global DDL.
+
+### Database and cutover
+
+- V548/V549 remain unchanged. Additive V550 adds sv_release.legacy_activity_version_no, sv_release_tier.legacy_tier_key, source uniqueness and LEGACY_ACTIVITY provenance constraint. It does not alter balances or account identifiers.
+- Readiness protocol 2 requires V548/V549/V550 and new source columns. Old protocol 1 nodes cannot pass the sealed inventory check.
+- Under a dedicated database advisory lock, commit each journal intent before fixed-whitelist DDL. First establish issuer/customer/currency uniqueness, then remove old conflicting keys; install enforced `ck_sv_issuer_dimensions` for nonblank issuer/version/customer. Physical nullable definitions remain compatible with old schema until controlled cutover; the enforced CHECK establishes required semantics.
+- Resume requires complete live approval and metadata proof, exact keys, enforced dimensions and no pending DDL intent. One Pay transaction locks all approved STORE issuers/access rows, sets ISSUER write mode and records the receipt. DRAFT becomes ACTIVE; ISSUE_STOPPED stays stopped, canIssue=false. BRAND DRAFT remains closed. Replay returns the original receipt.
+- No copy of funds, no reset of account/lot/voucher/statement sequence and no fresh platform identity. Legacy activity creation in issuer mode freezes source version and tier once under issuer lock, records canonical existing customer, reserves quota and reuses the original synchronous posting/recovery path. Cross-store legacy activities remain blocked until P5.
+
+### B-app behavior and modules
+
+- Top-level brand and store settings use one new issuer page with explicit scope. The in-store entry is read-only for financial settings and does not select another store or brand.
+- Entity/payment-route selection uses shared sh-sheet, page uses sh-scaffold/sh-card/sh-kv/sh-actionbar; all visible copy goes through zh-CN/en/ar catalogs. Configuration impact is checked before write. Unknown save results retain the exact configuration and original key in local storage, lock editing and permit original-command retry.
+- Pay: StoredValueAccountDimensionGuard, StoredValueMigrationResumeService, StoredValueMigrationOperator, StoredValueIssuerService, StoredValueStoreIssuerService, StoredValueIssuerLedgerBridge.
+- Core gateway: StoredValueMigrationOperatorService, BizStoredValueMigrationController, BizStoredValueIssuerController, BizStoredValueIssuerOperationsController; Merchant: IssuerAuthorityService. Remote/embedded typed adapters share the same contracts.
+- Frontend: api/stored-value-issuers.ts, api/stored-value-issuer-http.ts, pages/stored-value-issuer/index.vue. Existing recharge sheet consumes store issuer options and restores original pending commands before checking new-issuance availability.
+
+### Acceptance and rollout
+
+Compile Core (food-embedded), independent Pay and B-app together after all coding. Then run focused issuer/configuration/identity/operator/HTTP/UI tests and isolated native MySQL8.4 constraint/resume/migration tests. No full repository test suite and no duplicate unrelated regressions. Stage signoff requires actual evidence, then one whole-stage review and controlled deployment. New issuer/execution/key-cutover switches remain false during ordinary publication; no online DDL or financial transaction is implied by source deployment.

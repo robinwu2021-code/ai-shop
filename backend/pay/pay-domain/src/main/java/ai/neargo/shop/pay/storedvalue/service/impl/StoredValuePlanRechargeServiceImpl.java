@@ -44,6 +44,8 @@ import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechargeService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerLedgerBridge issuerLedger;
     private final ai.neargo.shop.pay.mapper.storedvalue.SvCustomerIdentityMapper identities;
     private final SvRechargeMapper recharges;
     private final SvRechargePlanMapper plans;
@@ -79,6 +81,7 @@ public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechar
         var scope=new CatalogScope(ctx.tenantNo(),entity,ctx.actorNo(),false);
         var reply=commands.execute(scope,"SV_PLAN_RECHARGE",ctx.requestId(),identity(c.storeNo(),c.planNo(),c.versionNo(),c.referenceHash()),no,RechargeView.class,()->{
             features.requireStoredValue();
+            issuerLedger.beforePlanOriginal(ctx,entity,c.storeNo());
             var p=plans.selectOne(Wrappers.<SvRechargePlan>lambdaQuery()
                     .eq(SvRechargePlan::getTenantNo,ctx.tenantNo()).eq(SvRechargePlan::getEntityNo,entity)
                     .eq(SvRechargePlan::getStoreNo,c.storeNo()).eq(SvRechargePlan::getPlanNo,c.planNo()).last("FOR UPDATE"));
@@ -99,7 +102,7 @@ public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechar
             r.setStatus("WAIT_COLLECTION");r.setOperatorNo(ctx.actorNo());r.setExpiresAt(at.plusMinutes(30));
             r.setPermitSnapshot(json.writeValueAsString(funding));
             r.setSourceSnapshot(json.writeValueAsString(new SourceRef("PAY","RECHARGE_PLAN",no,null,null,null,0)));
-            recharges.insert(r);return view(r);
+            recharges.insert(r);issuerLedger.freezePlan(ctx,p,v,r);return view(r);
         });
         return recharges.find(ctx.tenantNo(),no)==null&&reply.status()==RechargeState.CANCELLED?reply:query(ctx,entity,no);
     }
@@ -109,6 +112,7 @@ public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechar
     public RechargeView confirmOffline(EntitlementContext ctx,String entity,Create command) {
         var current=create(ctx,entity,command);
         if(current.status()==RechargeState.CREDITED)return current;
+        issuerLedger.beforeOriginal(ctx,entity,current.rechargeNo());
         if(current.status()==RechargeState.RECEIVED){
             return creditReceipt(ctx,owned(ctx,entity,current.rechargeNo()));
         }
