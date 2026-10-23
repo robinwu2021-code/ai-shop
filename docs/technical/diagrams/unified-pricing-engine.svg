@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="550" viewBox="0 0 1100 550"><title>统一试算引擎与权威边界</title><desc>前端调用餐饮接口，核心报价组织权威事实并复用纯计算内核；确认采用核心订单和独立权益资金服务。</desc><defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8" fill="#475569"/></marker></defs><rect width="1100" height="550" fill="#fff"/><g font-family="Arial, PingFang SC, sans-serif" fill="#0f172a">
+<rect x="35" y="40" width="300" height="85" rx="10" fill="#f8fafc" stroke="#94a3b8"/><text x="51" y="72" font-size="15" font-weight="600">B/C Frontend 前端</text><text x="51" y="98" font-size="13" fill="#475569">仅业务意图 / 源版本 / 已确认报价</text>
+<rect x="395" y="40" width="300" height="85" rx="10" fill="#f8fafc" stroke="#94a3b8"/><text x="411" y="72" font-size="15" font-weight="600">Food Quote API 餐饮接口</text><text x="411" y="98" font-size="13" fill="#475569">身份、桌台、AA范围与草稿版本</text>
+<rect x="755" y="40" width="310" height="85" rx="10" fill="#f8fafc" stroke="#94a3b8"/><text x="771" y="72" font-size="15" font-weight="600">Core Pricing Service 核心报价</text><text x="771" y="98" font-size="13" fill="#475569">事实解析、报价快照、最终确认</text>
+<rect x="755" y="205" width="310" height="100" rx="10" fill="#f8fafc" stroke="#94a3b8"/><text x="771" y="237" font-size="15" font-weight="600">Pricing Engine 纯计算内核</text><text x="771" y="263" font-size="13" fill="#475569">固定顺序 / 定点金额 / 完整分摊</text>
+<rect x="395" y="370" width="310" height="100" rx="10" fill="#f8fafc" stroke="#94a3b8"/><text x="411" y="402" font-size="15" font-weight="600">PAY / Entitlement 权益与资金</text><text x="411" y="428" font-size="13" fill="#475569">券、储值本金赠金、资金证据</text>
+<rect x="755" y="370" width="310" height="100" rx="10" fill="#f8fafc" stroke="#94a3b8"/><text x="771" y="402" font-size="15" font-weight="600">Core Order / Settlement 核心订单</text><text x="771" y="428" font-size="13" fill="#475569">源范围CAS、原意图、冻结历史</text>
+<path d="M335,82 L395,82" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M695,82 L755,82" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M910,125 L910,205" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="740" y="164" font-size="12" fill="#475569">same input → same result</text>
+<path d="M830,305 L830,370" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="775" y="345" font-size="12" fill="#475569">确认：冻结 / 复算 / 原证据</text>
+<path d="M755,255 L550,255 L550,370" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="430" y="245" font-size="12" fill="#475569">权威优惠 / FundingOffer</text>
+<path d="M705,420 L755,420" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="35" y="215" font-size="15" font-weight="600">计算内核无 IO / 无资金写入</text><text x="35" y="245" font-size="13">商品应收 ≠ 优惠分摊 ≠ 付款计划</text><text x="35" y="275" font-size="13">已付款后核对原证据，不按今日价格重算</text><text x="35" y="315" font-size="13" fill="#64748b">设计提案 / Design proposal · 2026-10-22</text><text x="35" y="520" font-size="13" fill="#475569">试算不预占；正式确认沿原 prepare / commit / query 与 Outbox 协议。合同缺失时 BLOCKED。</text></g></svg>

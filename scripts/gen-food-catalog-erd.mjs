@@ -6,7 +6,9 @@ const {instance}=await import(process.env.FOOD_ER_VIZ_MODULE || '@viz-js/viz');
 const viz=await instance();
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const s=JSON.parse(readFileSync(resolve(root,'docs/technical/design/schema/food-catalog.schema.json'),'utf8'));
-const by=new Map(s.tables.map(t=>[t.name,t]));
+for(const t of s.tables)for(const f of t.fields)f.key=f.key??[t.unique.some(k=>k.includes(f.name))?'UK':'',f.ref?'FK':''].filter(Boolean).join('/');
+const canonical=JSON.parse(readFileSync(resolve(root,'docs/technical/design/schema/'+s.canonicalSource),'utf8'));
+const by=new Map([...canonical.tables,...s.tables].map(t=>[t.name,t]));
 const esc=x=>String(x).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 for(const t of s.tables) for(const f of t.fields) if(f.ref){const [tn,fn]=f.ref.split('.'); if(!by.get(tn)?.fields.some(x=>x.name===fn))throw Error(`Broken relation ${t.name}.${f.name}`);}
 const diagrams=[];
@@ -20,7 +22,7 @@ for(const g of s.groups){
  lines.push(`"${t.name}" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="9" COLOR="#8aabbc"><TR><TD BGCOLOR="${color}"><B>${t.name}</B><BR/>${esc(t.label.split(" ")[0])}<BR/>${esc(t.label.split(" ").slice(1).join(" "))}<BR/><FONT POINT-SIZE="10">${t.existing?'已有 Existing':'拟新增 Proposed'}</FONT></TD></TR>${rows}</TABLE>>];`);
  }
  for(const t of ts)for(const f of t.fields)if(f.ref && g.tables.includes(f.ref.split('.')[0])){
- const target=f.ref.split('.')[0]; const single=t.fields.filter(x=>x.key.includes('PK')).length===1 && f.key.includes('PK');
+ const target=f.ref.split('.')[0]; const single=t.unique.some(k=>k.length===1&&k[0]===f.name);
  lines.push(`"${t.name}" -> "${target}" [label="${f.name}\\n${single?'0..1':'0..N'} → ${f.nullable?'0..1':'1'}"];`);
  }
  lines.push('}');
@@ -41,7 +43,7 @@ const intro=`# 餐饮菜品表设计与双语 ER 图 Food Catalog Schema
 
 菜品、套餐和可售配料都引用基础商品与 SKU。餐饮扩展保存套餐选择规则、口味配料组合、餐牌可见范围和工位；不复制商品主数据、门店价格或库存账。
 
-本模型有 **${s.tables.filter(t=>!t.existing).length} 张拟新增表、${s.tables.filter(t=>t.existing).length} 张已有表的关联投影**。ER 图按四个主题展开；英文表名与中文业务名称同时显示。箭头从引用表指向被引用表，标注每个父对象可拥有的子行数与每个子行的父对象数。FK 为逻辑关系，不表示已建立数据库外键；跨模块仍由服务校验。
+本模型有 **${s.tables.filter(t=>!t.existing).length} 张拟新增表、${s.tables.filter(t=>t.existing).length} 张已有表的关联投影**。ER 图按主题展开；英文表名与中文业务名称同时显示。箭头从引用表指向被引用表，标注每个父对象可拥有的子行数与每个子行的父对象数。FK 为逻辑关系，不表示已建立数据库外键；跨模块仍由服务校验。
 
 ${s.notes.map(n=>`### ${n.title}\n\n${n.body}`).join('\n\n')}
 

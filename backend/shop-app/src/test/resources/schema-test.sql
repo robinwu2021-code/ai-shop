@@ -5111,7 +5111,6 @@ CREATE TABLE IF NOT EXISTS lgs_update_log
 CREATE TABLE IF NOT EXISTS pts_point_type
 (
     type_code VARCHAR(40) NOT NULL,
-    name VARCHAR(80) NOT NULL,
     market VARCHAR(16) NOT NULL,
     currency VARCHAR(8) NOT NULL,
     scale INT NOT NULL DEFAULT 2,
@@ -5122,8 +5121,9 @@ CREATE TABLE IF NOT EXISTS pts_point_type
     status VARCHAR(16) NOT NULL DEFAULT 'DRAFT',
     active_market VARCHAR(16) DEFAULT NULL,
     fallback_rule_json MEDIUMTEXT DEFAULT NULL,
-    CONSTRAINT uk_pts_type UNIQUE (type_code),
+    name VARCHAR(80) NOT NULL,
     CONSTRAINT uk_pts_type_name UNIQUE (name),
+    CONSTRAINT uk_pts_type UNIQUE (type_code),
     CONSTRAINT uk_pts_active_market UNIQUE (active_market),
     id BIGINT NOT NULL AUTO_INCREMENT,
     tenant_no VARCHAR(32) DEFAULT NULL,
@@ -6323,7 +6323,6 @@ CREATE TABLE IF NOT EXISTS mbr_identity_ticket
     ticket_hash CHAR(64) NOT NULL,
     purpose VARCHAR(24) NOT NULL,
     user_no VARCHAR(64) NULL,
-    customer_no VARCHAR(64) NULL,
     entity_no VARCHAR(64) NULL,
     store_no VARCHAR(64) NULL,
     actor_no VARCHAR(64) NULL,
@@ -6336,6 +6335,7 @@ CREATE TABLE IF NOT EXISTS mbr_identity_ticket
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    customer_no VARCHAR(64) NULL,
     operator_scope_type VARCHAR(24) NULL,
     issuer_no VARCHAR(64) NULL,
     brand_scope_revision BIGINT NULL,
@@ -6343,7 +6343,11 @@ CREATE TABLE IF NOT EXISTS mbr_identity_ticket
     PRIMARY KEY (id),
     CONSTRAINT uk_member_identity_hash UNIQUE (tenant_no,ticket_hash),
     CHECK (expires_at>issued_at),
-    CHECK ((purpose='MEMBER_CODE' AND entity_no IS NULL AND store_no IS NULL AND actor_no IS NULL AND source_ticket_hash IS NULL) OR (purpose='CUSTOMER_REFERENCE' AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NOT NULL) OR (purpose='CUSTOMER_SELECTION' AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NULL AND customer_no IS NOT NULL))
+    CONSTRAINT ck_mbr_identification_purpose CHECK (
+ (purpose='MEMBER_CODE' AND user_no IS NOT NULL AND entity_no IS NULL AND store_no IS NULL AND actor_no IS NULL AND source_ticket_hash IS NULL)
+ OR (purpose='CUSTOMER_REFERENCE' AND user_no IS NOT NULL AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NOT NULL)
+ OR (purpose='CUSTOMER_SELECTION' AND customer_no IS NOT NULL AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NULL)
+)
 );
 
 CREATE TABLE IF NOT EXISTS ord_ent_authorization
@@ -7277,9 +7281,7 @@ CREATE TABLE IF NOT EXISTS sv_account
     tenant_no VARCHAR(32) NOT NULL,
     account_no VARCHAR(64) NOT NULL,
     user_no VARCHAR(64) NULL,
-    customer_no VARCHAR(64) NULL,
     entity_no VARCHAR(64) NOT NULL,
-    store_no VARCHAR(64) NULL,
     currency VARCHAR(8) NOT NULL,
     status VARCHAR(16) NOT NULL,
     principal_minor BIGINT NOT NULL DEFAULT 0,
@@ -7293,9 +7295,12 @@ CREATE TABLE IF NOT EXISTS sv_account
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NULL,
+    customer_no VARCHAR(64) NULL,
+    CONSTRAINT uk_sv_customer_owner UNIQUE (tenant_no,customer_no,entity_no,store_no,currency),
+    CONSTRAINT uk_sv_owner UNIQUE (tenant_no,user_no,entity_no,store_no,currency),
     PRIMARY KEY (id),
     CONSTRAINT uk_sv_account UNIQUE (tenant_no,account_no),
-    CONSTRAINT uk_sv_owner UNIQUE (tenant_no,user_no,entity_no,store_no,currency),
     CHECK (status IN ('ACTIVE','FROZEN')),
     CHECK (principal_minor>=held_principal_minor AND held_principal_minor>=0 AND bonus_minor>=held_bonus_minor AND held_bonus_minor>=0),
     CONSTRAINT ck_sv_account_total_balance CHECK (principal_minor <= 9223372036854775807 - bonus_minor)
@@ -7308,14 +7313,10 @@ CREATE TABLE IF NOT EXISTS sv_recharge
     recharge_no VARCHAR(64) NOT NULL,
     request_id VARCHAR(64) NOT NULL,
     payload_hash CHAR(64) NOT NULL,
-    source_kind VARCHAR(16) NOT NULL DEFAULT 'ACTIVITY',
-    plan_no VARCHAR(64) NULL,
-    plan_version_no VARCHAR(64) NULL,
     reservation_no VARCHAR(64) NULL,
     activity_no VARCHAR(64) NULL,
     activity_version_no VARCHAR(64) NULL,
     user_no VARCHAR(64) NULL,
-    customer_no VARCHAR(64) NULL,
     entity_no VARCHAR(64) NOT NULL,
     store_no VARCHAR(64) NOT NULL,
     store_name VARCHAR(100) NOT NULL,
@@ -7345,6 +7346,10 @@ CREATE TABLE IF NOT EXISTS sv_recharge
     received_receipt_key CHAR(64) NULL,
     cancellation_reason VARCHAR(500) NULL,
     cancelled_at DATETIME(3) NULL,
+    source_kind VARCHAR(16) NOT NULL DEFAULT 'ACTIVITY',
+    plan_no VARCHAR(64) NULL,
+    plan_version_no VARCHAR(64) NULL,
+    customer_no VARCHAR(64) NULL,
     CONSTRAINT uk_sv_received_receipt UNIQUE (tenant_no,entity_no,received_receipt_key),
     PRIMARY KEY (id),
     CONSTRAINT uk_recharge UNIQUE (tenant_no,recharge_no),
@@ -7352,11 +7357,19 @@ CREATE TABLE IF NOT EXISTS sv_recharge
     CONSTRAINT uk_recharge_permit UNIQUE (tenant_no,reservation_no),
     CHECK (principal_minor>0 AND bonus_minor>=0),
     CHECK (status IN ('WAIT_COLLECTION','SUBMITTED','RECEIVED','CREDITED','CANCELLED','REJECTED')),
-    CHECK (status NOT IN ('SUBMITTED','RECEIVED','CREDITED') OR (collection_method IS NOT NULL AND actual_amount_minor IS NOT NULL AND collection_method IN ('CASH','TRANSFER','MERCHANT_OFFLINE') AND actual_amount_minor=principal_minor AND receipt_ref IS NOT NULL AND receipt_digest IS NOT NULL)),
     CHECK (status NOT IN ('RECEIVED','CREDITED') OR (received_by IS NOT NULL AND received_at IS NOT NULL AND received_decision_snapshot IS NOT NULL)),
     CHECK ((status='CREDITED' AND credited_at IS NOT NULL) OR (status<>'CREDITED' AND credited_at IS NULL)),
     CONSTRAINT ck_sv_cancel_facts CHECK ((status='CANCELLED' AND cancellation_reason IS NOT NULL AND cancelled_at IS NOT NULL)
-        OR (status<>'CANCELLED' AND cancelled_at IS NULL))
+        OR (status<>'CANCELLED' AND cancelled_at IS NULL)),
+    CONSTRAINT ck_sv_recharge_source CHECK (
+ (source_kind='ACTIVITY' AND reservation_no IS NOT NULL AND activity_no IS NOT NULL AND activity_version_no IS NOT NULL AND plan_no IS NULL AND plan_version_no IS NULL)
+ OR (source_kind='PLAN' AND reservation_no IS NULL AND activity_no IS NULL AND activity_version_no IS NULL AND plan_no IS NOT NULL AND plan_version_no IS NOT NULL)),
+    CONSTRAINT ck_sv_collection_receipt CHECK (
+    status NOT IN ('SUBMITTED','RECEIVED','CREDITED') OR
+    (collection_method IS NOT NULL AND actual_amount_minor IS NOT NULL
+     AND collection_method IN ('CASH','TRANSFER','MERCHANT_OFFLINE')
+     AND actual_amount_minor=principal_minor AND receipt_ref IS NOT NULL AND receipt_digest IS NOT NULL)
+)
 );
 
 CREATE TABLE IF NOT EXISTS sv_lot
@@ -7367,8 +7380,6 @@ CREATE TABLE IF NOT EXISTS sv_lot
     account_no VARCHAR(64) NOT NULL,
     recharge_no VARCHAR(64) NOT NULL,
     activity_version_no VARCHAR(64) NULL,
-    plan_version_no VARCHAR(64) NULL,
-    recharge_store_no VARCHAR(64) NULL,
     principal_minor BIGINT NOT NULL,
     bonus_minor BIGINT NOT NULL,
     held_principal_minor BIGINT NOT NULL DEFAULT 0,
@@ -7381,6 +7392,8 @@ CREATE TABLE IF NOT EXISTS sv_lot
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    plan_version_no VARCHAR(64) NULL,
+    recharge_store_no VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sv_lot UNIQUE (tenant_no,lot_no),
     CONSTRAINT uk_lot_recharge UNIQUE (tenant_no,recharge_no),
@@ -7438,7 +7451,6 @@ CREATE TABLE IF NOT EXISTS sv_user_store_index
     id BIGINT NOT NULL AUTO_INCREMENT,
     tenant_no VARCHAR(32) NOT NULL,
     user_no VARCHAR(64) NULL,
-    customer_no VARCHAR(64) NULL,
     entity_no VARCHAR(64) NOT NULL,
     store_no VARCHAR(64) NOT NULL,
     store_name VARCHAR(100) NOT NULL,
@@ -7454,6 +7466,8 @@ CREATE TABLE IF NOT EXISTS sv_user_store_index
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    customer_no VARCHAR(64) NULL,
+    CONSTRAINT uk_sv_customer_store UNIQUE (tenant_no,customer_no,store_no),
     PRIMARY KEY (id),
     CONSTRAINT sv_user_store_index_uk_user_store UNIQUE (tenant_no,user_no,store_no)
 );
@@ -8184,6 +8198,510 @@ CREATE TABLE IF NOT EXISTS pmt_pay_coupon_projection
     CONSTRAINT uk_pay_coupon_projection UNIQUE (tenant_no,instance_no),
     CHECK (source_system IN ('PMT','MKT_LEGACY') AND version=0 AND deleted=0),
     CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(fact_hash)=64)
+);
+
+CREATE TABLE IF NOT EXISTS sv_recharge_plan
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    plan_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    current_version_no VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_sv_plan UNIQUE (tenant_no,plan_no),
+    CONSTRAINT uk_sv_plan_name UNIQUE (tenant_no,entity_no,store_no,name),
+    CHECK (status IN ('ACTIVE','INACTIVE'))
+);
+
+CREATE TABLE IF NOT EXISTS sv_recharge_plan_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    version_no VARCHAR(64) NOT NULL,
+    plan_no VARCHAR(64) NOT NULL,
+    version_index INT NOT NULL,
+    paid_amount_minor BIGINT NOT NULL,
+    bonus_amount_minor BIGINT NOT NULL,
+    scope_snapshot TEXT NOT NULL,
+    schema_version INT NOT NULL,
+    snapshot_hash CHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_sv_plan_version UNIQUE (tenant_no,version_no),
+    CONSTRAINT uk_sv_plan_version_index UNIQUE (tenant_no,plan_no,version_index),
+    CHECK (paid_amount_minor>0 AND bonus_amount_minor>=0),
+    CHECK (paid_amount_minor<=9223372036854775807-bonus_amount_minor)
+);
+
+CREATE TABLE IF NOT EXISTS sv_statement
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    record_no VARCHAR(64) NOT NULL,
+    voucher_no VARCHAR(64) NOT NULL,
+    account_no VARCHAR(64) NOT NULL,
+    account_seq BIGINT NOT NULL,
+    user_no VARCHAR(64) NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    store_name VARCHAR(100) NOT NULL,
+    type VARCHAR(16) NOT NULL,
+    business_no VARCHAR(64) NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    signed_amount_minor BIGINT NOT NULL,
+    balance_after_minor BIGINT NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    plan_no VARCHAR(64) NULL,
+    plan_version_no VARCHAR(64) NULL,
+    paid_amount_minor BIGINT NULL,
+    bonus_amount_minor BIGINT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    customer_no VARCHAR(64) NULL,
+    CONSTRAINT uk_sv_statement UNIQUE (tenant_no,record_no),
+    CONSTRAINT uk_sv_statement_voucher UNIQUE (tenant_no,voucher_no),
+    CHECK (balance_after_minor>=0),
+    CHECK ((type='RECHARGE' AND signed_amount_minor>0) OR (type='REDEMPTION' AND signed_amount_minor<0))
+);
+
+CREATE TABLE IF NOT EXISTS sv_customer_identity
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    customer_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_sv_customer_binding UNIQUE (tenant_no,customer_no),
+    CONSTRAINT uk_sv_user_binding UNIQUE (tenant_no,user_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_earn_rule
+(
+    type_code VARCHAR(64) NOT NULL,
+    scope_no VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL,
+    payload_json MEDIUMTEXT NOT NULL,
+    PRIMARY KEY(type_code, scope_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_earn_rule_revision
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    request_id VARCHAR(100) NOT NULL,
+    type_code VARCHAR(64) NOT NULL,
+    scope_no VARCHAR(64) NOT NULL,
+    revision BIGINT NOT NULL,
+    command_json MEDIUMTEXT NOT NULL,
+    payload_json MEDIUMTEXT NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_ord_earn_request UNIQUE (request_id),
+    CONSTRAINT uk_ord_earn_revision UNIQUE (type_code,scope_no,revision)
+);
+
+CREATE TABLE IF NOT EXISTS pay_document_sequence
+(
+    seq_key VARCHAR(32) NOT NULL,
+    next_value BIGINT NOT NULL DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (seq_key)
+);
+
+CREATE TABLE IF NOT EXISTS core_document_number
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(64) NOT NULL,
+    document_type VARCHAR(40) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_resource_type VARCHAR(64) NOT NULL,
+    source_no VARCHAR(128) NOT NULL,
+    document_no VARCHAR(32) NOT NULL,
+    business_date DATE NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_core_document_no UNIQUE (document_no),
+    CONSTRAINT uk_core_document_source UNIQUE (tenant_no,document_type,source_system,source_resource_type,source_no)
+);
+
+CREATE TABLE IF NOT EXISTS pay_document_number
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(64) NOT NULL,
+    document_type VARCHAR(40) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_resource_type VARCHAR(64) NOT NULL,
+    source_no VARCHAR(128) NOT NULL,
+    document_no VARCHAR(32) NOT NULL,
+    business_date DATE NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_document_no UNIQUE (document_no),
+    CONSTRAINT uk_pay_document_source UNIQUE (tenant_no,document_type,source_system,source_resource_type,source_no)
+);
+
+CREATE TABLE IF NOT EXISTS notify_stored_value_task
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    usage_no VARCHAR(64) NOT NULL,
+    recipient VARCHAR(64) NOT NULL,
+    scene VARCHAR(64) NOT NULL,
+    event_no VARCHAR(128) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    document_no VARCHAR(64) NULL,
+    values_json TEXT NOT NULL,
+    open_id VARCHAR(128) NULL,
+    template_id VARCHAR(128) NULL,
+    status VARCHAR(24) NOT NULL,
+    reason_code VARCHAR(64) NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    next_attempt_at DATETIME NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_sv_notify_business UNIQUE (tenant_no, usage_no, recipient, scene)
+);
+
+CREATE TABLE IF NOT EXISTS mch_management_space
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    owner_actor_no VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    bootstrap_source_account_no VARCHAR(64) NOT NULL,
+    bootstrap_key VARCHAR(64) NOT NULL,
+    bootstrap_hash CHAR(64) NOT NULL,
+    auth_revision BIGINT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mch_management_space_uk_1 UNIQUE (tenant_no,management_no),
+    CONSTRAINT mch_management_space_uk_2 UNIQUE (tenant_no,owner_actor_no,bootstrap_key)
+);
+
+CREATE TABLE IF NOT EXISTS mch_management_grant
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    grant_no VARCHAR(64) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    resource_type VARCHAR(24) NOT NULL,
+    resource_no VARCHAR(64) NOT NULL,
+    permission_code VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    valid_from DATETIME(3) NOT NULL,
+    valid_to DATETIME(3) NULL,
+    authority_source_type VARCHAR(24) NOT NULL,
+    authority_source_no VARCHAR(64) NOT NULL,
+    delegatable TINYINT NOT NULL DEFAULT 0,
+    authority_snapshot TEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mch_management_grant_uk_1 UNIQUE (tenant_no,grant_no),
+    CONSTRAINT mch_management_grant_uk_2 UNIQUE (tenant_no,management_no,actor_no,resource_type,resource_no,permission_code)
+);
+
+CREATE TABLE IF NOT EXISTS mch_brand
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    brand_no VARCHAR(64) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    logo VARCHAR(512) NULL,
+    status VARCHAR(24) NOT NULL,
+    scope_revision BIGINT NOT NULL,
+    name_key VARCHAR(100) NOT NULL,
+    create_key VARCHAR(64) NOT NULL,
+    create_hash CHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mch_brand_uk_1 UNIQUE (tenant_no,brand_no),
+    CONSTRAINT mch_brand_uk_2 UNIQUE (tenant_no,management_no,name_key),
+    CONSTRAINT mch_brand_uk_3 UNIQUE (tenant_no,management_no,create_key)
+);
+
+CREATE TABLE IF NOT EXISTS mch_brand_store_binding
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    binding_no VARCHAR(64) NOT NULL,
+    brand_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    effective_from DATETIME(3) NOT NULL,
+    effective_to DATETIME(3) NULL,
+    scope_revision BIGINT NOT NULL,
+    change_no VARCHAR(64) NOT NULL,
+    active_store_no VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN status='ACTIVE' THEN store_no ELSE NULL END),
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mch_brand_store_binding_uk_1 UNIQUE (tenant_no,binding_no),
+    CONSTRAINT mch_brand_store_binding_uk_2 UNIQUE (tenant_no,active_store_no),
+    CHECK (status IN ('PREPARING','ACTIVE','ENDED'))
+);
+
+CREATE TABLE IF NOT EXISTS mch_brand_change
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    change_no VARCHAR(64) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    from_brand_no VARCHAR(64) NULL,
+    to_brand_no VARCHAR(64) NULL,
+    expected_scope_revision BIGINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    check_snapshot TEXT NOT NULL,
+    authorization_snapshot TEXT NOT NULL,
+    reason VARCHAR(255) NULL,
+    expected_store_version BIGINT NOT NULL,
+    expected_from_brand_revision BIGINT NULL,
+    expected_to_brand_revision BIGINT NULL,
+    command_key VARCHAR(64) NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    check_expires_at DATETIME(3) NOT NULL,
+    submitted_by VARCHAR(64) NOT NULL,
+    decision VARCHAR(16) NULL,
+    decided_by VARCHAR(64) NULL,
+    decided_at DATETIME(3) NULL,
+    decision_key VARCHAR(64) NULL,
+    decision_hash CHAR(64) NULL,
+    pending_store_no VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN status IN ('CHECKED','PREPARING') THEN store_no ELSE NULL END),
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mch_brand_change_uk_1 UNIQUE (tenant_no,change_no),
+    CONSTRAINT mch_brand_change_uk_2 UNIQUE (tenant_no,store_no,command_key),
+    CONSTRAINT mch_brand_change_uk_3 UNIQUE (tenant_no,pending_store_no)
+);
+
+CREATE TABLE IF NOT EXISTS mbr_scope_member
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    scope_member_no VARCHAR(64) NOT NULL,
+    scope_type VARCHAR(24) NOT NULL,
+    scope_no VARCHAR(64) NOT NULL,
+    customer_no VARCHAR(64) NOT NULL,
+    first_store_no VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    joined_at DATETIME(3) NOT NULL,
+    shared_profile TEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mbr_scope_member_uk_1 UNIQUE (tenant_no,scope_member_no),
+    CONSTRAINT mbr_scope_member_uk_2 UNIQUE (tenant_no,scope_type,scope_no,customer_no),
+    CHECK (scope_type IN ('BRAND','STORE'))
+);
+
+CREATE TABLE IF NOT EXISTS mbr_store_profile
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    store_profile_no VARCHAR(64) NOT NULL,
+    customer_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    remark VARCHAR(500) NULL,
+    advisor_actor_no VARCHAR(64) NULL,
+    first_seen_at DATETIME(3) NOT NULL,
+    last_seen_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mbr_store_profile_uk_1 UNIQUE (tenant_no,store_profile_no),
+    CONSTRAINT mbr_store_profile_uk_2 UNIQUE (tenant_no,store_no,customer_no)
+);
+
+CREATE TABLE IF NOT EXISTS mbr_scope_legacy_link
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    link_no VARCHAR(64) NOT NULL,
+    legacy_member_no VARCHAR(64) NOT NULL,
+    scope_member_no VARCHAR(64) NOT NULL,
+    migration_no VARCHAR(64) NOT NULL,
+    identity_evidence TEXT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mbr_scope_legacy_link_uk_1 UNIQUE (tenant_no,link_no),
+    CONSTRAINT mbr_scope_legacy_link_uk_2 UNIQUE (tenant_no,legacy_member_no,scope_member_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_pricing_template
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    template_no VARCHAR(32) NOT NULL,
+    industry_code VARCHAR(32) NOT NULL,
+    template_code VARCHAR(32) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    active_revision_no VARCHAR(32) DEFAULT NULL,
+    draft_content LONGTEXT NOT NULL,
+    draft_schema_version INT NOT NULL,
+    draft_version BIGINT NOT NULL,
+    seed_version VARCHAR(64) DEFAULT NULL,
+    seed_hash CHAR(64) DEFAULT NULL,
+    seed_snapshot LONGTEXT DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_pricing_template_no UNIQUE (tenant_no,template_no),
+    CHECK (draft_version >= 0),
+    CHECK (status IN ('ACTIVE','ARCHIVED')),
+    CONSTRAINT uk_ord_pricing_template_code UNIQUE (tenant_no,industry_code,template_code),
+    CHECK ((draft_content IS JSON)),
+    CONSTRAINT ck_ord_pricing_seed_shape CHECK (
+        (seed_version IS NULL AND seed_hash IS NULL AND seed_snapshot IS NULL)
+        OR (seed_version IS NOT NULL AND seed_hash IS NOT NULL AND seed_snapshot IS NOT NULL)),
+    CONSTRAINT ck_ord_pricing_seed_json CHECK (seed_snapshot IS NULL OR (seed_snapshot IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS ord_pricing_template_revision
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    revision_no VARCHAR(32) NOT NULL,
+    template_no VARCHAR(32) NOT NULL,
+    revision BIGINT NOT NULL,
+    industry_code VARCHAR(32) NOT NULL,
+    schema_version INT NOT NULL,
+    definition_snapshot LONGTEXT NOT NULL,
+    definition_hash CHAR(64) NOT NULL,
+    engine_spec_version VARCHAR(64) NOT NULL,
+    rule_catalog_version VARCHAR(64) NOT NULL,
+    previous_revision_no VARCHAR(32) DEFAULT NULL,
+    published_at DATETIME(3) NOT NULL,
+    published_by VARCHAR(32) NOT NULL,
+    publish_reason VARCHAR(256) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_pricing_template_revision_no UNIQUE (tenant_no,revision_no),
+    CONSTRAINT uk_ord_pricing_template_revision_seq UNIQUE (tenant_no,template_no,revision),
+    CHECK (revision >= 1),
+    CHECK ((definition_snapshot IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS ord_store_pricing_config
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    config_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    industry_code VARCHAR(32) NOT NULL,
+    template_no VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    active_revision_no VARCHAR(32) DEFAULT NULL,
+    draft_template_revision_no VARCHAR(32) NOT NULL,
+    draft_override LONGTEXT NOT NULL,
+    draft_schema_version INT NOT NULL,
+    draft_version BIGINT NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_store_pricing_config_no UNIQUE (tenant_no,config_no),
+    CHECK (draft_version >= 0),
+    CHECK (status IN ('ACTIVE','ARCHIVED')),
+    CONSTRAINT uk_ord_store_pricing_scope UNIQUE (tenant_no,store_no,industry_code),
+    CHECK ((draft_override IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS ord_store_pricing_revision
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    revision_no VARCHAR(32) NOT NULL,
+    config_no VARCHAR(32) NOT NULL,
+    revision BIGINT NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    industry_code VARCHAR(32) NOT NULL,
+    template_revision_no VARCHAR(32) NOT NULL,
+    override_snapshot LONGTEXT NOT NULL,
+    effective_snapshot LONGTEXT NOT NULL,
+    schema_version INT NOT NULL,
+    effective_hash CHAR(64) NOT NULL,
+    engine_spec_version VARCHAR(64) NOT NULL,
+    rule_catalog_version VARCHAR(64) NOT NULL,
+    previous_revision_no VARCHAR(32) DEFAULT NULL,
+    rollback_from_revision_no VARCHAR(32) DEFAULT NULL,
+    published_at DATETIME(3) NOT NULL,
+    published_by VARCHAR(32) NOT NULL,
+    publish_reason VARCHAR(256) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_store_pricing_revision_no UNIQUE (tenant_no,revision_no),
+    CONSTRAINT uk_ord_store_pricing_revision_seq UNIQUE (tenant_no,config_no,revision),
+    CHECK (revision >= 1),
+    CHECK ((override_snapshot IS JSON)),
+    CHECK ((effective_snapshot IS JSON))
 );
 
 -- 种子数据
@@ -13619,397 +14137,73 @@ WHERE source.point_code='OPS_FINANCE__TAB_POINTS' AND source.end_code='OPS' AND 
       AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL))
       AND existing.deleted=0 AND existing.point_code='OPS_POINTS__TAB_STORE_ACCESS'
   );
-
-CREATE TABLE IF NOT EXISTS sv_recharge_plan (
- id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
- tenant_no VARCHAR(32) NOT NULL,
- plan_no VARCHAR(64) NOT NULL,
- entity_no VARCHAR(64) NOT NULL,
- store_no VARCHAR(64) NOT NULL,
- name VARCHAR(100) NOT NULL,
- currency VARCHAR(8) NOT NULL,
- status VARCHAR(16) NOT NULL,
- current_version_no VARCHAR(64) NOT NULL,
- version BIGINT NOT NULL DEFAULT 0,
- deleted TINYINT NOT NULL DEFAULT 0,
- created_at DATETIME(3) NOT NULL,
- updated_at DATETIME(3) NOT NULL,
- created_by VARCHAR(64) NOT NULL,
- updated_by VARCHAR(64) NOT NULL,
- UNIQUE KEY uk_sv_plan (tenant_no,plan_no),
- UNIQUE KEY uk_sv_plan_name (tenant_no,entity_no,store_no,name),
- KEY ix_sv_plan_page (tenant_no,entity_no,store_no,created_at,plan_no),
- CHECK (status IN ('ACTIVE','INACTIVE'))
-);
-
-CREATE TABLE IF NOT EXISTS sv_recharge_plan_version (
- id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
- tenant_no VARCHAR(32) NOT NULL,
- version_no VARCHAR(64) NOT NULL,
- plan_no VARCHAR(64) NOT NULL,
- version_index INT NOT NULL,
- paid_amount_minor BIGINT NOT NULL,
- bonus_amount_minor BIGINT NOT NULL,
- scope_snapshot TEXT NOT NULL,
- schema_version INT NOT NULL,
- snapshot_hash CHAR(64) NOT NULL,
- version BIGINT NOT NULL DEFAULT 0,
- deleted TINYINT NOT NULL DEFAULT 0,
- created_at DATETIME(3) NOT NULL,
- updated_at DATETIME(3) NOT NULL,
- created_by VARCHAR(64) NOT NULL,
- updated_by VARCHAR(64) NOT NULL,
- UNIQUE KEY uk_sv_plan_version (tenant_no,version_no),
- UNIQUE KEY uk_sv_plan_version_index (tenant_no,plan_no,version_index),
- CHECK (paid_amount_minor>0 AND bonus_amount_minor>=0),
- CHECK (paid_amount_minor<=9223372036854775807-bonus_amount_minor)
-);
-
-CREATE TABLE IF NOT EXISTS sv_statement (
- id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
- tenant_no VARCHAR(32) NOT NULL,
- record_no VARCHAR(64) NOT NULL,
- voucher_no VARCHAR(64) NOT NULL,
- account_no VARCHAR(64) NOT NULL,
- account_seq BIGINT NOT NULL,
- user_no VARCHAR(64) NULL,
-    customer_no VARCHAR(64) NULL,
- entity_no VARCHAR(64) NOT NULL,
- store_no VARCHAR(64) NOT NULL,
- store_name VARCHAR(100) NOT NULL,
- type VARCHAR(16) NOT NULL,
- business_no VARCHAR(64) NOT NULL,
- title VARCHAR(100) NOT NULL,
- currency VARCHAR(8) NOT NULL,
- signed_amount_minor BIGINT NOT NULL,
- balance_after_minor BIGINT NOT NULL,
- occurred_at DATETIME(3) NOT NULL,
- plan_no VARCHAR(64) NULL,
- plan_version_no VARCHAR(64) NULL,
- paid_amount_minor BIGINT NULL,
- bonus_amount_minor BIGINT NULL,
- version BIGINT NOT NULL DEFAULT 0,
- deleted TINYINT NOT NULL DEFAULT 0,
- created_at DATETIME(3) NOT NULL,
- updated_at DATETIME(3) NOT NULL,
- created_by VARCHAR(64) NOT NULL,
- updated_by VARCHAR(64) NOT NULL,
- UNIQUE KEY uk_sv_statement (tenant_no,record_no),
- UNIQUE KEY uk_sv_statement_voucher (tenant_no,voucher_no),
- KEY ix_sv_statement_store (tenant_no,entity_no,store_no,occurred_at,record_no),
- KEY ix_sv_statement_type (tenant_no,entity_no,store_no,type,occurred_at,record_no),
- KEY ix_sv_statement_account (tenant_no,entity_no,store_no,account_no,occurred_at,record_no),
- CHECK (balance_after_minor>=0),
- CHECK ((type='RECHARGE' AND signed_amount_minor>0) OR (type='REDEMPTION' AND signed_amount_minor<0))
-);
-
-CREATE UNIQUE INDEX uk_sv_customer_owner ON sv_account(tenant_no,customer_no,entity_no,store_no,currency);
-CREATE UNIQUE INDEX uk_sv_customer_store ON sv_user_store_index(tenant_no,customer_no,store_no);
-CREATE TABLE sv_customer_identity (
- id BIGINT AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) NOT NULL,customer_no VARCHAR(64) NOT NULL,user_no VARCHAR(64) NOT NULL,
- UNIQUE(tenant_no,customer_no),UNIQUE(tenant_no,user_no)
-);
-
--- Shop-owned earning policies. Payment accounts and historical snapshots remain untouched.
-CREATE TABLE IF NOT EXISTS ord_points_earn_rule (
-    type_code VARCHAR(64) NOT NULL,
-    scope_no VARCHAR(64) NOT NULL,
-    version BIGINT NOT NULL,
-    payload_json MEDIUMTEXT NOT NULL,
-    PRIMARY KEY(type_code, scope_no)
-);
-CREATE TABLE IF NOT EXISTS ord_points_earn_rule_revision (
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    request_id VARCHAR(100) NOT NULL,
-    type_code VARCHAR(64) NOT NULL,
-    scope_no VARCHAR(64) NOT NULL,
-    revision BIGINT NOT NULL,
-    command_json MEDIUMTEXT NOT NULL,
-    payload_json MEDIUMTEXT NOT NULL,
-    PRIMARY KEY(id),
-    UNIQUE KEY uk_ord_earn_request(request_id),
-    UNIQUE KEY uk_ord_earn_revision(type_code,scope_no,revision)
-);
-
--- New workspace reuses the established points read/execute permissions.
-INSERT INTO sys_function_point
+UPDATE sys_function
+SET name='积分运营', href='/points/types', updated_at=CURRENT_TIMESTAMP
+WHERE function_code='OPS_POINTS' AND end_code='OPS' AND deleted=0;
+INSERT IGNORE INTO sys_role_point
+  (role_code,point_code,end_code,entity_no,tenant_no,created_at,updated_at)
+SELECT DISTINCT source.role_code,'OPS_POINTS__TAB_CONFIGURATION',source.end_code,source.entity_no,source.tenant_no,
+       CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+FROM sys_role_point source
+WHERE source.end_code='OPS' AND source.deleted=0
+  AND source.point_code IN ('OPS_FINANCE__TAB_POINTS','OPS_FINANCE__TAB_POINTS_POLICY','OPS_POINTS__TAB_STORE_ACCESS')
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_point existing
+    WHERE existing.role_code=source.role_code AND existing.end_code=source.end_code
+      AND existing.tenant_no=source.tenant_no
+      AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL))
+      AND existing.deleted=0 AND existing.point_code='OPS_POINTS__TAB_CONFIGURATION'
+  );
+UPDATE sys_function_point
+SET function_code='OPS_POINTS', name='积分设置', group_name='积分配置', href='/points/types',
+    ui_perm_code='finance:settle:read', perm_code='finance:settle:read', backend_status='IMPLEMENTED',
+    ui_ready=1, matrix_code='P-12.1', sort=10, updated_at=CURRENT_TIMESTAMP
+WHERE point_code='OPS_POINTS__TAB_CONFIGURATION' AND deleted=0;
+UPDATE sys_function_point
+SET function_code='OPS_POINTS', name='平台预算', group_name='积分资金', href='/points/budget',
+    ui_perm_code='finance:settle:read', perm_code='finance:settle:read', backend_status='IMPLEMENTED',
+    ui_ready=1, matrix_code='P-12.1', sort=20, updated_at=CURRENT_TIMESTAMP
+WHERE point_code='OPS_POINTS__TAB_TREASURY' AND deleted=0;
+UPDATE sys_function_point
+SET function_code='OPS_POINTS', name='积分账户', group_name='积分账务', href='/points/accounts',
+    ui_perm_code='finance:settle:read', perm_code='finance:settle:read', backend_status='IMPLEMENTED',
+    ui_ready=1, matrix_code='P-12.1', sort=30, updated_at=CURRENT_TIMESTAMP
+WHERE point_code='OPS_POINTS__TAB_QUERIES' AND deleted=0;
+UPDATE sys_function_point
+SET function_code='OPS_POINTS', name='发放与核销', group_name='积分账务', href='/points/transactions',
+    ui_perm_code='finance:settle:read', perm_code='finance:settle:read', backend_status='IMPLEMENTED',
+    ui_ready=1, matrix_code='P-12.1', sort=40, updated_at=CURRENT_TIMESTAMP
+WHERE point_code='OPS_POINTS__TAB_SETTLEMENTS' AND deleted=0;
+UPDATE sys_role_point
+SET deleted=1, updated_at=CURRENT_TIMESTAMP
+WHERE end_code='OPS' AND point_code IN (
+  'OPS_FINANCE__TAB_POINTS','OPS_FINANCE__TAB_POINTS_POLICY','OPS_POINTS__TAB_STORE_ACCESS'
+) AND deleted=0;
+UPDATE sys_function_point
+SET deleted=1, ui_ready=0, updated_at=CURRENT_TIMESTAMP
+WHERE point_code IN (
+  'OPS_FINANCE__TAB_POINTS','OPS_FINANCE__TAB_POINTS_POLICY','OPS_POINTS__TAB_STORE_ACCESS'
+) AND deleted=0;
+UPDATE pts_point_type SET name=type_code WHERE name IS NULL OR TRIM(name)='';
+UPDATE sv_account SET customer_no=user_no WHERE customer_no IS NULL;
+UPDATE sv_recharge SET customer_no=user_no WHERE customer_no IS NULL;
+UPDATE sv_statement SET customer_no=user_no WHERE customer_no IS NULL;
+UPDATE sv_user_store_index SET customer_no=user_no WHERE customer_no IS NULL;
+UPDATE mbr_identity_ticket SET customer_no=user_no WHERE customer_no IS NULL;
+INSERT IGNORE INTO sys_function_point
  (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,sort,created_at,updated_at)
 SELECT 'OPS_POINTS__TAB_EARNING_RULES','OPS_POINTS','赠送规则','积分配置','/points/earning-rules',
        'finance:settle:read','finance:settle:read','IMPLEMENTED',1,'P-12.1',15,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
 WHERE NOT EXISTS (SELECT 1 FROM sys_function_point WHERE point_code='OPS_POINTS__TAB_EARNING_RULES');
-INSERT INTO sys_role_point(role_code,point_code,end_code,entity_no,tenant_no,created_at,updated_at)
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,entity_no,tenant_no,created_at,updated_at)
 SELECT source.role_code,'OPS_POINTS__TAB_EARNING_RULES',source.end_code,source.entity_no,source.tenant_no,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
 FROM sys_role_point source
 WHERE source.point_code='OPS_POINTS__TAB_CONFIGURATION' AND source.end_code='OPS' AND source.deleted=0
  AND NOT EXISTS (SELECT 1 FROM sys_role_point existing WHERE existing.role_code=source.role_code
  AND existing.point_code='OPS_POINTS__TAB_EARNING_RULES' AND existing.end_code=source.end_code
  AND existing.tenant_no=source.tenant_no AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL)) AND existing.deleted=0);
-
--- V542: service-local human document numbering
--- Human-facing numbers only. Internal financial IDs, order rules and event payloads remain unchanged.
-CREATE TABLE IF NOT EXISTS pay_document_sequence (
-    seq_key VARCHAR(32) NOT NULL,
-    next_value BIGINT NOT NULL DEFAULT 0,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (seq_key)
-);
-
-CREATE TABLE IF NOT EXISTS core_document_number (
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    tenant_no VARCHAR(64) NOT NULL,
-    document_type VARCHAR(40) NOT NULL,
-    source_system VARCHAR(32) NOT NULL,
-    source_resource_type VARCHAR(64) NOT NULL,
-    source_no VARCHAR(128) NOT NULL,
-    document_no VARCHAR(32) NOT NULL,
-    business_date DATE NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_core_document_no (document_no),
-    UNIQUE KEY uk_core_document_source (tenant_no,document_type,source_system,source_resource_type,source_no)
-);
-
-CREATE TABLE IF NOT EXISTS pay_document_number (
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    tenant_no VARCHAR(64) NOT NULL,
-    document_type VARCHAR(40) NOT NULL,
-    source_system VARCHAR(32) NOT NULL,
-    source_resource_type VARCHAR(64) NOT NULL,
-    source_no VARCHAR(128) NOT NULL,
-    document_no VARCHAR(32) NOT NULL,
-    business_date DATE NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pay_document_no (document_no),
-    UNIQUE KEY uk_pay_document_source (tenant_no,document_type,source_system,source_resource_type,source_no)
-);
-
--- V543 scoped generation: python3 backend/scripts/gen-test-schema.py OUT DIR_WITH_V543_ONLY
--- Full generator is blocked by the existing V538 dynamic MySQL SET/PREPARE statements.
-CREATE TABLE IF NOT EXISTS notify_stored_value_task
-(
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL,
-    usage_no VARCHAR(64) NOT NULL,
-    recipient VARCHAR(64) NOT NULL,
-    scene VARCHAR(64) NOT NULL,
-    event_no VARCHAR(128) NOT NULL,
-    store_no VARCHAR(64) NOT NULL,
-    document_no VARCHAR(64) NULL,
-    values_json TEXT NOT NULL,
-    open_id VARCHAR(128) NULL,
-    template_id VARCHAR(128) NULL,
-    status VARCHAR(24) NOT NULL,
-    reason_code VARCHAR(64) NULL,
-    attempts INT NOT NULL DEFAULT 0,
-    next_attempt_at DATETIME NULL,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uk_sv_notify_business UNIQUE (tenant_no, usage_no, recipient, scene)
-);
-
--- 种子数据
 INSERT IGNORE INTO notify_scene_channel
     (tenant_no,scene_code,audience,channel,enabled,push_level,version,deleted,created_at,updated_at,created_by,updated_by)
 VALUES
     ('MAIN','STORED_VALUE_REDEEMED','C_USER','WXSUB',0,'NORMAL',0,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'SYSTEM','SYSTEM'),
     ('MAIN','STORED_VALUE_REDEEMED','C_USER','INAPP',1,'NORMAL',0,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'SYSTEM','SYSTEM');
-
--- V544 scoped generation: brand management organization
-CREATE TABLE IF NOT EXISTS mch_management_space
-(
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL,
-    management_no VARCHAR(64) NOT NULL,
-    name VARCHAR(64) NOT NULL,
-    owner_actor_no VARCHAR(64) NOT NULL,
-    status VARCHAR(24) NOT NULL,
-    bootstrap_source_account_no VARCHAR(64) NOT NULL,
-    bootstrap_key VARCHAR(64) NOT NULL,
-    bootstrap_hash CHAR(64) NOT NULL,
-    auth_revision BIGINT NOT NULL DEFAULT 0,
-    version BIGINT NOT NULL DEFAULT 0,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    created_at DATETIME(3) NOT NULL,
-    updated_at DATETIME(3) NOT NULL,
-    created_by VARCHAR(64) NOT NULL,
-    updated_by VARCHAR(64) NOT NULL,
-    CONSTRAINT mch_management_space_uk_1 UNIQUE (tenant_no,management_no),
-    CONSTRAINT mch_management_space_uk_2 UNIQUE (tenant_no,owner_actor_no,bootstrap_key)
-);
-
-CREATE TABLE IF NOT EXISTS mch_management_grant
-(
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL,
-    grant_no VARCHAR(64) NOT NULL,
-    management_no VARCHAR(64) NOT NULL,
-    actor_no VARCHAR(64) NOT NULL,
-    resource_type VARCHAR(24) NOT NULL,
-    resource_no VARCHAR(64) NOT NULL,
-    permission_code VARCHAR(64) NOT NULL,
-    status VARCHAR(24) NOT NULL,
-    valid_from DATETIME(3) NOT NULL,
-    valid_to DATETIME(3) NULL,
-    authority_source_type VARCHAR(24) NOT NULL,
-    authority_source_no VARCHAR(64) NOT NULL,
-    delegatable TINYINT NOT NULL DEFAULT 0,
-    authority_snapshot TEXT NOT NULL,
-    version BIGINT NOT NULL DEFAULT 0,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    created_at DATETIME(3) NOT NULL,
-    updated_at DATETIME(3) NOT NULL,
-    created_by VARCHAR(64) NOT NULL,
-    updated_by VARCHAR(64) NOT NULL,
-    CONSTRAINT mch_management_grant_uk_1 UNIQUE (tenant_no,grant_no),
-    CONSTRAINT mch_management_grant_uk_2 UNIQUE (tenant_no,management_no,actor_no,resource_type,resource_no,permission_code)
-);
-
-CREATE TABLE IF NOT EXISTS mch_brand
-(
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL,
-    brand_no VARCHAR(64) NOT NULL,
-    management_no VARCHAR(64) NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    logo VARCHAR(512) NULL,
-    status VARCHAR(24) NOT NULL,
-    scope_revision BIGINT NOT NULL,
-    name_key VARCHAR(100) NOT NULL,
-    create_key VARCHAR(64) NOT NULL,
-    create_hash CHAR(64) NOT NULL,
-    version BIGINT NOT NULL DEFAULT 0,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    created_at DATETIME(3) NOT NULL,
-    updated_at DATETIME(3) NOT NULL,
-    created_by VARCHAR(64) NOT NULL,
-    updated_by VARCHAR(64) NOT NULL,
-    CONSTRAINT mch_brand_uk_1 UNIQUE (tenant_no,brand_no),
-    CONSTRAINT mch_brand_uk_2 UNIQUE (tenant_no,management_no,name_key),
-    CONSTRAINT mch_brand_uk_3 UNIQUE (tenant_no,management_no,create_key)
-);
-
-CREATE TABLE IF NOT EXISTS mch_brand_store_binding
-(
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL,
-    binding_no VARCHAR(64) NOT NULL,
-    brand_no VARCHAR(64) NOT NULL,
-    store_no VARCHAR(64) NOT NULL,
-    status VARCHAR(24) NOT NULL,
-    effective_from DATETIME(3) NOT NULL,
-    effective_to DATETIME(3) NULL,
-    scope_revision BIGINT NOT NULL,
-    change_no VARCHAR(64) NOT NULL,
-    active_store_no VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN status='ACTIVE' THEN store_no ELSE NULL END),
-    version BIGINT NOT NULL DEFAULT 0,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    created_at DATETIME(3) NOT NULL,
-    updated_at DATETIME(3) NOT NULL,
-    created_by VARCHAR(64) NOT NULL,
-    updated_by VARCHAR(64) NOT NULL,
-    CONSTRAINT mch_brand_store_binding_uk_1 UNIQUE (tenant_no,binding_no),
-    CONSTRAINT mch_brand_store_binding_uk_2 UNIQUE (tenant_no,active_store_no),
-    CHECK (status IN ('PREPARING','ACTIVE','ENDED'))
-);
-
-CREATE TABLE IF NOT EXISTS mch_brand_change
-(
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL,
-    change_no VARCHAR(64) NOT NULL,
-    management_no VARCHAR(64) NOT NULL,
-    store_no VARCHAR(64) NOT NULL,
-    from_brand_no VARCHAR(64) NULL,
-    to_brand_no VARCHAR(64) NULL,
-    expected_scope_revision BIGINT NOT NULL,
-    status VARCHAR(24) NOT NULL,
-    check_snapshot TEXT NOT NULL,
-    authorization_snapshot TEXT NOT NULL,
-    reason VARCHAR(255) NULL,
-    expected_store_version BIGINT NOT NULL,
-    expected_from_brand_revision BIGINT NULL,
-    expected_to_brand_revision BIGINT NULL,
-    command_key VARCHAR(64) NOT NULL,
-    command_hash CHAR(64) NOT NULL,
-    check_expires_at DATETIME(3) NOT NULL,
-    submitted_by VARCHAR(64) NOT NULL,
-    decision VARCHAR(16) NULL,
-    decided_by VARCHAR(64) NULL,
-    decided_at DATETIME(3) NULL,
-    decision_key VARCHAR(64) NULL,
-    decision_hash CHAR(64) NULL,
-    pending_store_no VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN status IN ('CHECKED','PREPARING') THEN store_no ELSE NULL END),
-    version BIGINT NOT NULL DEFAULT 0,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    created_at DATETIME(3) NOT NULL,
-    updated_at DATETIME(3) NOT NULL,
-    created_by VARCHAR(64) NOT NULL,
-    updated_by VARCHAR(64) NOT NULL,
-    CONSTRAINT mch_brand_change_uk_1 UNIQUE (tenant_no,change_no),
-    CONSTRAINT mch_brand_change_uk_2 UNIQUE (tenant_no,store_no,command_key),
-    CONSTRAINT mch_brand_change_uk_3 UNIQUE (tenant_no,pending_store_no)
-);
-
-CREATE TABLE IF NOT EXISTS mbr_scope_member
-(
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL,
-    scope_member_no VARCHAR(64) NOT NULL,
-    scope_type VARCHAR(24) NOT NULL,
-    scope_no VARCHAR(64) NOT NULL,
-    customer_no VARCHAR(64) NOT NULL,
-    first_store_no VARCHAR(64) NOT NULL,
-    status VARCHAR(24) NOT NULL,
-    joined_at DATETIME(3) NOT NULL,
-    shared_profile TEXT NOT NULL,
-    version BIGINT NOT NULL DEFAULT 0,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    created_at DATETIME(3) NOT NULL,
-    updated_at DATETIME(3) NOT NULL,
-    created_by VARCHAR(64) NOT NULL,
-    updated_by VARCHAR(64) NOT NULL,
-    CONSTRAINT mbr_scope_member_uk_1 UNIQUE (tenant_no,scope_member_no),
-    CONSTRAINT mbr_scope_member_uk_2 UNIQUE (tenant_no,scope_type,scope_no,customer_no),
-    CHECK (scope_type IN ('BRAND','STORE'))
-);
-
-CREATE TABLE IF NOT EXISTS mbr_store_profile
-(
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL,
-    store_profile_no VARCHAR(64) NOT NULL,
-    customer_no VARCHAR(64) NOT NULL,
-    store_no VARCHAR(64) NOT NULL,
-    remark VARCHAR(500) NULL,
-    advisor_actor_no VARCHAR(64) NULL,
-    first_seen_at DATETIME(3) NOT NULL,
-    last_seen_at DATETIME(3) NULL,
-    version BIGINT NOT NULL DEFAULT 0,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    created_at DATETIME(3) NOT NULL,
-    updated_at DATETIME(3) NOT NULL,
-    created_by VARCHAR(64) NOT NULL,
-    updated_by VARCHAR(64) NOT NULL,
-    CONSTRAINT mbr_store_profile_uk_1 UNIQUE (tenant_no,store_profile_no),
-    CONSTRAINT mbr_store_profile_uk_2 UNIQUE (tenant_no,store_no,customer_no)
-);
-
-CREATE TABLE IF NOT EXISTS mbr_scope_legacy_link
-(
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL,
-    link_no VARCHAR(64) NOT NULL,
-    legacy_member_no VARCHAR(64) NOT NULL,
-    scope_member_no VARCHAR(64) NOT NULL,
-    migration_no VARCHAR(64) NOT NULL,
-    identity_evidence TEXT NOT NULL,
-    status VARCHAR(24) NOT NULL,
-    version BIGINT NOT NULL DEFAULT 0,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    created_at DATETIME(3) NOT NULL,
-    updated_at DATETIME(3) NOT NULL,
-    created_by VARCHAR(64) NOT NULL,
-    updated_by VARCHAR(64) NOT NULL,
-    CONSTRAINT mbr_scope_legacy_link_uk_1 UNIQUE (tenant_no,link_no),
-    CONSTRAINT mbr_scope_legacy_link_uk_2 UNIQUE (tenant_no,legacy_member_no,scope_member_no)
-);

@@ -1,57 +1,68 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="680" height="912" viewBox="0 0 680 912" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
-<title>商品与类目 表关系</title><desc>28 张表，箭头由引用方指向被引用方。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="1028" viewBox="0 0 680 1028" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>商品与类目 表关系</title><desc>33 张表，箭头由引用方指向被引用方。</desc>
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
 <style>.n{font-weight:500;fill:#161A21}.s{font-size:11px;fill:#5A6472}
 .l{font-size:10.5px;fill:#5A6472;paint-order:stroke;stroke:#F7F9FB;stroke-width:3.5;stroke-linejoin:round}.b{font-size:11px;fill:#5A6472;letter-spacing:.1em}
-.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}</style></defs><path class="ar" d="M100 494 L100 92 L148 92 L148 77" marker-end="url(#a)"/>
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}</style></defs><path class="ar" d="M100 494 L100 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M100 494 L100 324 L260 324 L260 309" marker-end="url(#a)"/>
 <path class="ar" d="M148 610 L148 556 L100 556 L100 541" marker-end="url(#a)"/>
-<path class="ar" d="M100 262 L100 92 L148 92 L148 77" marker-end="url(#a)"/>
+<path class="ar" d="M100 262 L100 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M100 842 L100 672 L148 672 L148 657" marker-end="url(#a)"/>
 <path class="ar" d="M260 842 L260 684 L148 684 L148 657" marker-end="url(#a)"/>
 <path class="ar" d="M340 610 L340 568 L100 568 L100 541" marker-end="url(#a)"/>
-<path class="ar" d="M260 262 L260 104 L148 104 L148 77" marker-end="url(#a)"/>
+<path class="ar" d="M260 262 L260 104 L100 104 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M420 842 L420 696 L148 696 L148 657" marker-end="url(#a)"/>
-<path class="ar" d="M532 610 L532 92 L340 92 L340 77" marker-end="url(#a)"/>
+<path class="ar" d="M532 610 L532 92 L260 92 L260 77" marker-end="url(#a)"/>
 <path class="ar" d="M532 610 L532 580 L100 580 L100 541" marker-end="url(#a)"/>
-<path class="ar" d="M420 262 L420 116 L532 116 L532 77" marker-end="url(#a)"/>
-<path class="ar" d="M580 262 L580 92 L148 92 L148 77" marker-end="url(#a)"/>
-<path class="ar" d="M580 262 L580 104 L532 104 L532 77" marker-end="url(#a)"/>
-<path class="ar" d="M260 494 L260 104 L148 104 L148 77" marker-end="url(#a)"/>
-<path class="ar" d="M260 494 L260 116 L532 116 L532 77" marker-end="url(#a)"/>
+<path class="ar" d="M420 262 L420 116 L420 116 L420 77" marker-end="url(#a)"/>
+<path class="ar" d="M580 262 L580 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M580 262 L580 104 L420 104 L420 77" marker-end="url(#a)"/>
+<path class="ar" d="M260 494 L260 104 L100 104 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M260 494 L260 116 L420 116 L420 77" marker-end="url(#a)"/>
 <path class="ar" d="M260 494 L260 336 L420 336 L420 309" marker-end="url(#a)"/>
-<path class="ar" d="M100 378 L100 92 L532 92 L532 77" marker-end="url(#a)"/>
-<path class="ar" d="M420 494 L420 92 L532 92 L532 77" marker-end="url(#a)"/>
+<path class="ar" d="M100 378 L100 92 L420 92 L420 77" marker-end="url(#a)"/>
+<path class="ar" d="M420 494 L420 92 L420 92 L420 77" marker-end="url(#a)"/>
 <path class="ar" d="M420 494 L420 348 L420 348 L420 309" marker-end="url(#a)"/>
-<path class="ar" d="M580 494 L580 104 L148 104 L148 77" marker-end="url(#a)"/>
-<path class="ar" d="M580 494 L580 116 L532 116 L532 77" marker-end="url(#a)"/>
+<path class="ar" d="M580 494 L580 104 L100 104 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M580 494 L580 116 L420 116 L420 77" marker-end="url(#a)"/>
 <path class="ar" d="M580 494 L580 324 L420 324 L420 309" marker-end="url(#a)"/>
-<path class="ar" d="M260 378 L260 104 L148 104 L148 77" marker-end="url(#a)"/>
-<path class="ar" d="M420 378 L420 116 L148 116 L148 77" marker-end="url(#a)"/>
+<path class="ar" d="M260 378 L260 104 L100 104 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M420 378 L420 116 L100 116 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M148 726 L148 556 L100 556 L100 541" marker-end="url(#a)"/>
 <path class="ar" d="M340 726 L340 568 L100 568 L100 541" marker-end="url(#a)"/>
-<path class="ar" d="M580 378 L580 92 L148 92 L148 77" marker-end="url(#a)"/>
+<path class="ar" d="M580 378 L580 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M580 842 L580 672 L148 672 L148 657" marker-end="url(#a)"/>
 <path class="ar" d="M532 726 L532 580 L100 580 L100 541" marker-end="url(#a)"/>
-<rect x="63" y="30" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="148" y="50" text-anchor="middle" font-size="13">prd_category</text>
-<text class="s" x="148" y="65" text-anchor="middle">三级类目树</text>
-<rect x="255" y="30" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="340" y="50" text-anchor="middle" font-size="13">prd_topic</text>
-<text class="s" x="340" y="65" text-anchor="middle">主题分类（陈列）。与类目正交，…</text>
-<rect x="447" y="30" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="532" y="50" text-anchor="middle" font-size="13">prd_spec_dim</text>
-<text class="s" x="532" y="65" text-anchor="middle">规格项：一个维度一行，通用维…</text>
-<rect x="63" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="148" y="166" text-anchor="middle" font-size="13">prd_sell_rule</text>
-<text class="s" x="148" y="181" text-anchor="middle">门店线上可售规则。行只改不删…</text>
-<rect x="255" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="340" y="166" text-anchor="middle" font-size="13">prd_store_stock_sync</text>
-<text class="s" x="340" y="181" text-anchor="middle">门店库存同步开关与期初对齐</text>
-<rect x="447" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="532" y="172" text-anchor="middle" font-size="13">prd_stock_restore</text>
+<path class="ar" d="M148 958 L148 672 L148 672 L148 657" marker-end="url(#a)"/>
+<path class="ar" d="M340 958 L340 556 L100 556 L100 541" marker-end="url(#a)"/>
+<path class="ar" d="M340 958 L340 684 L148 684 L148 657" marker-end="url(#a)"/>
+<path class="ar" d="M532 958 L532 568 L100 568 L100 541" marker-end="url(#a)"/>
+<path class="ar" d="M532 958 L532 696 L148 696 L148 657" marker-end="url(#a)"/>
+<rect x="31" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="100" y="50" text-anchor="middle" font-size="13">prd_category</text>
+<text class="s" x="100" y="65" text-anchor="middle">三级类目树</text>
+<rect x="191" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="260" y="50" text-anchor="middle" font-size="13">prd_topic</text>
+<text class="s" x="260" y="65" text-anchor="middle">主题分类（陈列）。与类目…</text>
+<rect x="351" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="420" y="50" text-anchor="middle" font-size="13">prd_spec_dim</text>
+<text class="s" x="420" y="65" text-anchor="middle">规格项：一个维度一行，…</text>
+<rect x="511" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="580" y="50" text-anchor="middle" font-size="13">prd_sell_rule</text>
+<text class="s" x="580" y="65" text-anchor="middle">门店线上可售规则。行只…</text>
+<rect x="31" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="100" y="166" text-anchor="middle" font-size="11">prd_store_stock_sync</text>
+<text class="s" x="100" y="181" text-anchor="middle">门店库存同步开关与期…</text>
+<rect x="191" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="260" y="172" text-anchor="middle" font-size="13">prd_stock_restore</text>
 
+<rect x="351" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="420" y="166" text-anchor="middle" font-size="9.5">prd_stock_alignment_batch</text>
+<text class="s" x="420" y="181" text-anchor="middle">Recoverable stock a…</text>
+<rect x="511" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="580" y="166" text-anchor="middle" font-size="9.5">prd_ent_binding_command</text>
+<text class="s" x="580" y="181" text-anchor="middle">商品权益绑定原命令与…</text>
 <rect x="31" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="100" y="282" text-anchor="middle" font-size="13">prd_spec_template</text>
 <text class="s" x="100" y="297" text-anchor="middle">规格模板（平台维护 +…</text>
@@ -118,33 +129,47 @@
 <rect x="511" y="842" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="580" y="862" text-anchor="middle" font-size="11">prd_stock_sync_log</text>
 <text class="s" x="580" y="877" text-anchor="middle">进销存 → 商城写回明细</text>
-<text class="l" x="124" y="88" text-anchor="middle">category_no</text>
+<rect x="63" y="958" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="148" y="978" text-anchor="middle" font-size="11">prd_stock_sync_operation</text>
+<text class="s" x="148" y="993" text-anchor="middle">Merchant stock reconcilia…</text>
+<rect x="255" y="958" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="340" y="978" text-anchor="middle" font-size="11">prd_stock_alignment_line</text>
+<text class="s" x="340" y="993" text-anchor="middle">Per-SKU stock alignment s…</text>
+<rect x="447" y="958" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="532" y="978" text-anchor="middle" font-size="11">prd_entitlement_binding</text>
+<text class="s" x="532" y="993" text-anchor="middle">CARD商品SKU引用支付权益版…</text>
+<text class="l" x="100" y="88" text-anchor="middle">category_no</text>
 <text class="l" x="180" y="320" text-anchor="middle">std_no</text>
 <text class="l" x="124" y="552" text-anchor="middle">goods_no</text>
-<text class="l" x="124" y="88" text-anchor="middle">category_no</text>
+<text class="l" x="100" y="88" text-anchor="middle">category_no</text>
 <text class="l" x="124" y="668" text-anchor="middle">sku_no</text>
 <text class="l" x="204" y="680" text-anchor="middle">sku_no</text>
 <text class="l" x="220" y="564" text-anchor="middle">goods_no</text>
-<text class="l" x="204" y="100" text-anchor="middle">category_no</text>
+<text class="l" x="180" y="100" text-anchor="middle">category_no</text>
 <text class="l" x="284" y="692" text-anchor="middle">sku_no</text>
-<text class="l" x="436" y="88" text-anchor="middle">topic_no</text>
+<text class="l" x="396" y="88" text-anchor="middle">topic_no</text>
 <text class="l" x="316" y="576" text-anchor="middle">goods_no</text>
-<text class="l" x="476" y="112" text-anchor="middle">dim_no</text>
-<text class="l" x="364" y="88" text-anchor="middle">category_no</text>
-<text class="l" x="556" y="100" text-anchor="middle">dim_no</text>
-<text class="l" x="204" y="100" text-anchor="middle">category_no</text>
-<text class="l" x="396" y="112" text-anchor="middle">dim_no</text>
+<text class="l" x="420" y="112" text-anchor="middle">dim_no</text>
+<text class="l" x="340" y="88" text-anchor="middle">category_no</text>
+<text class="l" x="500" y="100" text-anchor="middle">dim_no</text>
+<text class="l" x="180" y="100" text-anchor="middle">category_no</text>
+<text class="l" x="340" y="112" text-anchor="middle">dim_no</text>
 <text class="l" x="340" y="332" text-anchor="middle">value_no</text>
-<text class="l" x="316" y="88" text-anchor="middle">dim_no</text>
-<text class="l" x="476" y="88" text-anchor="middle">dim_no</text>
+<text class="l" x="260" y="88" text-anchor="middle">dim_no</text>
+<text class="l" x="420" y="88" text-anchor="middle">dim_no</text>
 <text class="l" x="420" y="344" text-anchor="middle">value_no</text>
-<text class="l" x="364" y="100" text-anchor="middle">category_no</text>
-<text class="l" x="556" y="112" text-anchor="middle">dim_no</text>
+<text class="l" x="340" y="100" text-anchor="middle">category_no</text>
+<text class="l" x="500" y="112" text-anchor="middle">dim_no</text>
 <text class="l" x="500" y="320" text-anchor="middle">value_no</text>
-<text class="l" x="204" y="100" text-anchor="middle">category_no</text>
-<text class="l" x="284" y="112" text-anchor="middle">category_no</text>
+<text class="l" x="180" y="100" text-anchor="middle">category_no</text>
+<text class="l" x="260" y="112" text-anchor="middle">category_no</text>
 <text class="l" x="124" y="552" text-anchor="middle">goods_no</text>
 <text class="l" x="220" y="564" text-anchor="middle">goods_no</text>
-<text class="l" x="364" y="88" text-anchor="middle">category_no</text>
+<text class="l" x="340" y="88" text-anchor="middle">category_no</text>
 <text class="l" x="364" y="668" text-anchor="middle">sku_no</text>
-<text class="l" x="316" y="576" text-anchor="middle">goods_no</text></svg>
+<text class="l" x="316" y="576" text-anchor="middle">goods_no</text>
+<text class="l" x="148" y="668" text-anchor="middle">sku_no</text>
+<text class="l" x="220" y="552" text-anchor="middle">goods_no</text>
+<text class="l" x="244" y="680" text-anchor="middle">sku_no</text>
+<text class="l" x="316" y="564" text-anchor="middle">goods_no</text>
+<text class="l" x="340" y="692" text-anchor="middle">sku_no</text></svg>

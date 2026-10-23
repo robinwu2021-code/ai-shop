@@ -1,0 +1,1007 @@
+{
+  "status": "DESIGN_EXAMPLE_NOT_EXECUTABLE_MIGRATION",
+  "schemaVersion": 2,
+  "seedVersion": "PRICING_INITIAL_DATA_V1",
+  "engineSpecVersion": "PRICING_RULE_SPEC_V4",
+  "date": "2026-10-22",
+  "importPolicy": {
+    "defaultMode": "DRY_RUN",
+    "createsAssetBalances": false,
+    "autoPublish": false,
+    "autoUpgradeStores": false,
+    "examplesNeverImportedAsRealStores": true,
+    "requireSupportedEvaluatorRegistry": true,
+    "requireValidatedLegalTaxProfiles": true,
+    "onSameVersionDifferentHash": "REJECT"
+  },
+  "systemRules": [
+    {
+      "ruleNo": "B01",
+      "ruleVersion": 1,
+      "name": "实际参加活动不能用券",
+      "evaluatorType": "FORBID_COMBINATION",
+      "mandatory": true,
+      "parameters": {
+        "leftKinds": [
+          "ACTIVITY"
+        ],
+        "rightKinds": [
+          "PERCENT_COUPON",
+          "CASH_COUPON",
+          "DEDUCTION_COUPON"
+        ],
+        "basis": "ACTUALLY_APPLIED"
+      }
+    },
+    {
+      "ruleNo": "B02",
+      "ruleVersion": 1,
+      "name": "折扣券与储值互斥",
+      "evaluatorType": "FORBID_COMBINATION",
+      "mandatory": true,
+      "parameters": {
+        "leftKinds": [
+          "PERCENT_COUPON"
+        ],
+        "rightKinds": [
+          "STORED_VALUE"
+        ]
+      }
+    },
+    {
+      "ruleNo": "B03",
+      "ruleVersion": 1,
+      "name": "允许的组合仍须原权威同意",
+      "evaluatorType": "REQUIRE_CAPABILITY",
+      "mandatory": true,
+      "parameters": {
+        "allSelectedOwnersMustAllow": true,
+        "requireExactBasisAndOrder": true
+      }
+    },
+    {
+      "ruleNo": "B04",
+      "ruleVersion": 1,
+      "name": "折扣券受单独及总张数限制",
+      "evaluatorType": "COUNT_LIMIT",
+      "mandatory": true,
+      "parameters": {
+        "kind": "PERCENT_COUPON",
+        "limitPath": "couponLimits.percent",
+        "totalLimitPath": "couponLimits.total",
+        "countBy": [
+          "owner",
+          "assetNo"
+        ]
+      }
+    },
+    {
+      "ruleNo": "B05",
+      "ruleVersion": 1,
+      "name": "金额券受分类及合计限制",
+      "evaluatorType": "COUNT_LIMIT",
+      "mandatory": true,
+      "parameters": {
+        "kinds": [
+          "CASH_COUPON",
+          "DEDUCTION_COUPON"
+        ],
+        "limitPaths": [
+          "couponLimits.cash",
+          "couponLimits.deduction",
+          "couponLimits.amountTotal",
+          "couponLimits.total"
+        ]
+      }
+    },
+    {
+      "ruleNo": "B06",
+      "ruleVersion": 1,
+      "name": "多折扣券检查真实计价份额重叠",
+      "evaluatorType": "SCOPE_OVERLAP",
+      "mandatory": true,
+      "parameters": {
+        "modePath": "discountCouponPolicy.overlapMode",
+        "identity": [
+          "sourceLineNo",
+          "componentRef",
+          "quantityRange"
+        ],
+        "rejectParentLeafDoubleCount": true
+      }
+    },
+    {
+      "ruleNo": "B07",
+      "ruleVersion": 1,
+      "name": "有其他优惠或资产抵付不再人工打折扣减",
+      "evaluatorType": "FORBID_COMBINATION",
+      "mandatory": true,
+      "parameters": {
+        "leftKinds": [
+          "MANUAL_PERCENT",
+          "MANUAL_AMOUNT"
+        ],
+        "rightKinds": [
+          "ACTIVITY",
+          "PERCENT_COUPON",
+          "CASH_COUPON",
+          "DEDUCTION_COUPON",
+          "STORED_VALUE",
+          "POINTS"
+        ]
+      }
+    },
+    {
+      "ruleNo": "B08",
+      "ruleVersion": 1,
+      "name": "用任何券后禁止人工抹零",
+      "evaluatorType": "FORBID_COMBINATION",
+      "mandatory": true,
+      "parameters": {
+        "leftKinds": [
+          "PERCENT_COUPON",
+          "CASH_COUPON",
+          "DEDUCTION_COUPON"
+        ],
+        "rightKinds": [
+          "MANUAL_WAIVER",
+          "CASH_ROUNDING"
+        ]
+      }
+    },
+    {
+      "ruleNo": "B09",
+      "ruleVersion": 1,
+      "name": "活动或金额券加储值须真实来源和组合能力",
+      "evaluatorType": "REQUIRE_CAPABILITY",
+      "mandatory": true,
+      "parameters": {
+        "combinations": [
+          [
+            "ACTIVITY",
+            "STORED_VALUE"
+          ],
+          [
+            "CASH_COUPON",
+            "STORED_VALUE"
+          ],
+          [
+            "DEDUCTION_COUPON",
+            "STORED_VALUE"
+          ]
+        ],
+        "cannotOverride": [
+          "B02"
+        ]
+      }
+    },
+    {
+      "ruleNo": "B10",
+      "ruleVersion": 1,
+      "name": "积分在储值后抹零最后且不得侵入已安排资金",
+      "evaluatorType": "ORDER_AND_REMAINDER",
+      "mandatory": true,
+      "parameters": {
+        "order": [
+          "STORED_VALUE_PLAN",
+          "POINTS",
+          "MANUAL_WAIVER"
+        ],
+        "capBy": "OWNER_ELIGIBLE_UNFUNDED_REMAINDER"
+      }
+    },
+    {
+      "ruleNo": "B11",
+      "ruleVersion": 1,
+      "name": "人工操作有权限原因额度及审批",
+      "evaluatorType": "REQUIRE_APPROVAL",
+      "mandatory": true,
+      "parameters": {
+        "reasonCatalogPath": "manualOperations.reasonCategories",
+        "limitsPath": "manualOperations.limits",
+        "approvalMustMatch": [
+          "actor",
+          "store",
+          "sourceScope",
+          "amount",
+          "expiry"
+        ]
+      }
+    },
+    {
+      "ruleNo": "B12",
+      "ruleVersion": 1,
+      "name": "金额份额币种及资产次数守恒",
+      "evaluatorType": "CONSERVATION",
+      "mandatory": true,
+      "parameters": {
+        "keepExcludedItemsCharged": true,
+        "excludePaidAndUnknownScopes": true,
+        "couponCountScope": "ROOT_CHECKOUT_SCOPE",
+        "currencyMustMatch": true
+      }
+    },
+    {
+      "ruleNo": "T01",
+      "ruleVersion": 1,
+      "name": "按可信经营地区及税点选择税版本",
+      "evaluatorType": "TAX_POLICY_VALIDITY",
+      "mandatory": true,
+      "parameters": {
+        "sourceFields": [
+          "supplierRegion",
+          "supplierTaxRegistration",
+          "placeOfSupply",
+          "taxPoint"
+        ],
+        "unknownPolicy": "BLOCK",
+        "rejectExpiredLegalPolicy": true
+      }
+    },
+    {
+      "ruleNo": "T02",
+      "ruleVersion": 1,
+      "name": "价内拆税价外加税不得重复",
+      "evaluatorType": "TAX_PRICE_MODE",
+      "mandatory": true,
+      "parameters": {
+        "supportedModes": [
+          "INCLUSIVE",
+          "EXCLUSIVE"
+        ],
+        "consumerDisplayMustFollowRegionalPolicy": true
+      }
+    },
+    {
+      "ruleNo": "T03",
+      "ruleVersion": 1,
+      "name": "标准税零税免税及范围外分别分类",
+      "evaluatorType": "TAX_CLASSIFICATION",
+      "mandatory": true,
+      "parameters": {
+        "classes": [
+          "STANDARD",
+          "ZERO_RATED",
+          "EXEMPT",
+          "OUT_OF_SCOPE"
+        ],
+        "unknownClass": "BLOCK"
+      }
+    },
+    {
+      "ruleNo": "T04",
+      "ruleVersion": 1,
+      "name": "优惠是否减税基按原资金性质",
+      "evaluatorType": "TAX_ADJUSTMENT_CLASSIFICATION",
+      "mandatory": true,
+      "parameters": {
+        "treatments": [
+          "REDUCES_TAX_BASE",
+          "SETTLES_CONSIDERATION"
+        ],
+        "unknownTreatment": "BLOCK",
+        "requires": [
+          "owner",
+          "funder",
+          "evidenceRef"
+        ]
+      }
+    },
+    {
+      "ruleNo": "T05",
+      "ruleVersion": 1,
+      "name": "税额采用地区行级舍入并守恒",
+      "evaluatorType": "TAX_ROUNDING",
+      "mandatory": true,
+      "parameters": {
+        "roundingModePath": "taxProfile.roundingMode",
+        "roundingScopePath": "taxProfile.roundingScope",
+        "preserveInvoiceLineTaxOnAA": true
+      }
+    },
+    {
+      "ruleNo": "T06",
+      "ruleVersion": 1,
+      "name": "积分抹零后最终定税且不得突破资金计划",
+      "evaluatorType": "TAX_FINALIZATION",
+      "mandatory": true,
+      "parameters": {
+        "after": [
+          "POINTS",
+          "MANUAL_WAIVER",
+          "CASH_ROUNDING"
+        ],
+        "before": "CASH_TENDER",
+        "maxLocalFinalizationPasses": 1,
+        "unrepresentableGrossAdjustment": "BLOCK"
+      }
+    },
+    {
+      "ruleNo": "T07",
+      "ruleVersion": 1,
+      "name": "消费者含税展示并按税类打印",
+      "evaluatorType": "TAX_PRESENTATION",
+      "mandatory": true,
+      "parameters": {
+        "showNetTaxGross": true,
+        "taxInvoiceContextFromSupplier": true,
+        "kitchenTicketHasNoFiscalAuthority": true
+      }
+    },
+    {
+      "ruleNo": "T08",
+      "ruleVersion": 1,
+      "name": "历史税证据及退款按原份额",
+      "evaluatorType": "TAX_HISTORY",
+      "mandatory": true,
+      "parameters": {
+        "freeze": [
+          "taxPolicyVersion",
+          "taxPoint",
+          "taxClass",
+          "rateBp",
+          "priceTaxMode",
+          "roundingAlgorithmVersion",
+          "lineTaxMinor"
+        ],
+        "creditNoteViaOriginalOwner": true
+      }
+    }
+  ],
+  "regionalTaxProfiles": [
+    {
+      "taxProfileNo": "AE_VAT_CONSUMER_V1",
+      "countryCode": "AE",
+      "currency": "AED",
+      "profileVersion": 1,
+      "policyStatus": "REQUIRES_PLATFORM_REVIEW_BEFORE_PUBLICATION",
+      "taxType": "VAT",
+      "taxPointPolicy": "REQUIRE_TRUSTED_SOURCE",
+      "effectiveFrom": "2018-01-01",
+      "effectiveTo": null,
+      "priceTaxMode": "INCLUSIVE",
+      "consumerDisplayMode": "INCLUSIVE",
+      "allowedContexts": [
+        "CONSUMER_STANDARD_RATED_REGISTERED_SUPPLIER"
+      ],
+      "roundingScope": "INVOICE_LINE",
+      "roundingMode": "HALF_UP",
+      "roundingAlgorithmVersion": "AE_LINE_FILS_V1",
+      "taxClasses": [
+        {
+          "code": "STANDARD",
+          "rateBp": 500
+        },
+        {
+          "code": "ZERO_RATED",
+          "rateBp": 0
+        },
+        {
+          "code": "EXEMPT",
+          "rateBp": null
+        },
+        {
+          "code": "OUT_OF_SCOPE",
+          "rateBp": null
+        }
+      ],
+      "unknownClassPolicy": "BLOCK",
+      "storeMayEditRate": false,
+      "allowManualTaxOverride": false,
+      "allowCashRounding": false,
+      "adjustmentTreatmentSource": "VERIFIED_OWNER_AND_REGIONAL_POLICY",
+      "sourceRefs": [
+        "UAE_RATE",
+        "UAE_PRICE",
+        "UAE_DISCOUNT",
+        "UAE_ROUNDING"
+      ]
+    },
+    {
+      "taxProfileNo": "AE_VAT_NET_PRICE_V1",
+      "countryCode": "AE",
+      "currency": "AED",
+      "profileVersion": 1,
+      "policyStatus": "REQUIRES_PLATFORM_REVIEW_BEFORE_PUBLICATION",
+      "taxType": "VAT",
+      "taxPointPolicy": "REQUIRE_TRUSTED_SOURCE",
+      "effectiveFrom": "2018-01-01",
+      "effectiveTo": null,
+      "priceTaxMode": "EXCLUSIVE",
+      "consumerDisplayMode": "INCLUSIVE",
+      "allowedContexts": [
+        "INTERNAL_NET_PRICE_CONVERTED_TO_INCLUSIVE_DISPLAY",
+        "LEGALLY_VERIFIED_EXCLUSIVE_PRICE_EXCEPTION"
+      ],
+      "roundingScope": "INVOICE_LINE",
+      "roundingMode": "HALF_UP",
+      "roundingAlgorithmVersion": "AE_LINE_FILS_V1",
+      "taxClasses": [
+        {
+          "code": "STANDARD",
+          "rateBp": 500
+        },
+        {
+          "code": "ZERO_RATED",
+          "rateBp": 0
+        },
+        {
+          "code": "EXEMPT",
+          "rateBp": null
+        },
+        {
+          "code": "OUT_OF_SCOPE",
+          "rateBp": null
+        }
+      ],
+      "unknownClassPolicy": "BLOCK",
+      "storeMayEditRate": false,
+      "allowManualTaxOverride": false,
+      "allowCashRounding": false,
+      "adjustmentTreatmentSource": "VERIFIED_OWNER_AND_REGIONAL_POLICY",
+      "sourceRefs": [
+        "UAE_RATE",
+        "UAE_PRICE",
+        "UAE_DISCOUNT",
+        "UAE_ROUNDING"
+      ],
+      "requiresContextEvidence": true
+    }
+  ],
+  "industryTemplates": [
+    {
+      "templateNo": "PRICING_FOOD_DEFAULT",
+      "industryCode": "FOOD",
+      "revision": 1,
+      "publicationStatus": "DRAFT",
+      "engineSpecVersion": "PRICING_RULE_SPEC_V4",
+      "definition": {
+        "schemaVersion": 2,
+        "benefitCombinationMode": "MULTI_KIND",
+        "couponMode": "MULTI",
+        "couponLimits": {
+          "total": 2,
+          "percent": 1,
+          "amountTotal": 1,
+          "cash": 1,
+          "deduction": 1
+        },
+        "discountCouponPolicy": {
+          "maxUsedPerOrder": 1,
+          "overlapMode": "DISJOINT",
+          "maxUsedPerItem": 1,
+          "stackingEnabled": false
+        },
+        "allowedCouponCombinations": [
+          [
+            "PERCENT_COUPON",
+            "CASH_COUPON"
+          ],
+          [
+            "PERCENT_COUPON",
+            "DEDUCTION_COUPON"
+          ]
+        ],
+        "activityAndCoupons": "EXCLUSIVE",
+        "storedValueEnabled": false,
+        "pointsEnabled": true,
+        "pointsAutoApply": false,
+        "pointsStage": "AFTER_STORED_VALUE",
+        "optionalCapabilityPolicy": "DISABLED_UNLESS_VERIFIED_SOURCE_AND_OWNER",
+        "formulaId": "DEDUCT_THEN_DISCOUNT_V1",
+        "formulaVersion": 1,
+        "manualOperations": {
+          "enabled": true,
+          "reasonCategories": [
+            "PRICE_CORRECTION",
+            "QUALITY_ISSUE",
+            "SERVICE_COMPENSATION",
+            "AUTHORIZED_NEGOTIATION"
+          ],
+          "limits": {
+            "source": "EXISTING_PERMISSION_AND_APPROVAL_AUTHORITY",
+            "missingPolicy": "DENY"
+          },
+          "amountBasis": "PAYABLE_GROSS",
+          "manualAmountConflictPolicy": "SAME_AS_MANUAL_PERCENT",
+          "cashRoundingEnabled": false
+        },
+        "taxBinding": {
+          "taxProfileNo": null,
+          "resolveFrom": "VERIFIED_STORE_REGION_AND_TRANSACTION_CONTEXT",
+          "missingPolicy": "BLOCK",
+          "storeMayEditRate": false
+        },
+        "ruleRefs": [
+          "B01",
+          "B02",
+          "B03",
+          "B04",
+          "B05",
+          "B06",
+          "B07",
+          "B08",
+          "B09",
+          "B10",
+          "B11",
+          "B12",
+          "T01",
+          "T02",
+          "T03",
+          "T04",
+          "T05",
+          "T06",
+          "T07",
+          "T08"
+        ],
+        "industryRestrictions": [
+          "PUBLISHED_MENU_CHANNEL_PRICE_ONLY",
+          "BUNDLE_PARENT_OR_LEAF_PRICING",
+          "ROOT_CHECKOUT_SCOPE_COUPON_LIMIT",
+          "FROZEN_POSTPAID_BATCHES"
+        ]
+      }
+    },
+    {
+      "templateNo": "PRICING_RETAIL_DEFAULT",
+      "industryCode": "RETAIL",
+      "revision": 1,
+      "publicationStatus": "DRAFT",
+      "engineSpecVersion": "PRICING_RULE_SPEC_V4",
+      "definition": {
+        "schemaVersion": 2,
+        "benefitCombinationMode": "MULTI_KIND",
+        "couponMode": "MULTI",
+        "couponLimits": {
+          "total": 2,
+          "percent": 1,
+          "amountTotal": 1,
+          "cash": 1,
+          "deduction": 1
+        },
+        "discountCouponPolicy": {
+          "maxUsedPerOrder": 1,
+          "overlapMode": "DISJOINT",
+          "maxUsedPerItem": 1,
+          "stackingEnabled": false
+        },
+        "allowedCouponCombinations": [
+          [
+            "PERCENT_COUPON",
+            "CASH_COUPON"
+          ],
+          [
+            "PERCENT_COUPON",
+            "DEDUCTION_COUPON"
+          ]
+        ],
+        "activityAndCoupons": "EXCLUSIVE",
+        "storedValueEnabled": false,
+        "pointsEnabled": true,
+        "pointsAutoApply": false,
+        "pointsStage": "AFTER_STORED_VALUE",
+        "optionalCapabilityPolicy": "DISABLED_UNLESS_VERIFIED_SOURCE_AND_OWNER",
+        "formulaId": "DEDUCT_THEN_DISCOUNT_V1",
+        "formulaVersion": 1,
+        "manualOperations": {
+          "enabled": true,
+          "reasonCategories": [
+            "PRICE_CORRECTION",
+            "QUALITY_ISSUE",
+            "SERVICE_COMPENSATION",
+            "AUTHORIZED_NEGOTIATION"
+          ],
+          "limits": {
+            "source": "EXISTING_PERMISSION_AND_APPROVAL_AUTHORITY",
+            "missingPolicy": "DENY"
+          },
+          "amountBasis": "PAYABLE_GROSS",
+          "manualAmountConflictPolicy": "SAME_AS_MANUAL_PERCENT",
+          "cashRoundingEnabled": false
+        },
+        "taxBinding": {
+          "taxProfileNo": null,
+          "resolveFrom": "VERIFIED_STORE_REGION_AND_TRANSACTION_CONTEXT",
+          "missingPolicy": "BLOCK",
+          "storeMayEditRate": false
+        },
+        "ruleRefs": [
+          "B01",
+          "B02",
+          "B03",
+          "B04",
+          "B05",
+          "B06",
+          "B07",
+          "B08",
+          "B09",
+          "B10",
+          "B11",
+          "B12",
+          "T01",
+          "T02",
+          "T03",
+          "T04",
+          "T05",
+          "T06",
+          "T07",
+          "T08"
+        ],
+        "industryRestrictions": [
+          "LEGACY_RETAIL_NOT_AUTO_MIGRATED",
+          "ORIGINAL_FUNDER_ALLOCATION",
+          "OFFLINE_PLATFORM_COUPON_RESTRICTIONS",
+          "FREIGHT_ELIGIBILITY_SEPARATE"
+        ]
+      }
+    },
+    {
+      "templateNo": "PRICING_BEAUTY_SERVICE_DEFAULT",
+      "industryCode": "BEAUTY_SERVICE",
+      "revision": 1,
+      "publicationStatus": "DRAFT",
+      "engineSpecVersion": "PRICING_RULE_SPEC_V4",
+      "definition": {
+        "schemaVersion": 2,
+        "benefitCombinationMode": "SINGLE_KIND",
+        "couponMode": "MULTI",
+        "couponLimits": {
+          "total": 2,
+          "percent": 1,
+          "amountTotal": 1,
+          "cash": 1,
+          "deduction": 1
+        },
+        "discountCouponPolicy": {
+          "maxUsedPerOrder": 1,
+          "overlapMode": "DISJOINT",
+          "maxUsedPerItem": 1,
+          "stackingEnabled": false
+        },
+        "allowedCouponCombinations": [
+          [
+            "PERCENT_COUPON",
+            "CASH_COUPON"
+          ],
+          [
+            "PERCENT_COUPON",
+            "DEDUCTION_COUPON"
+          ]
+        ],
+        "activityAndCoupons": "EXCLUSIVE",
+        "storedValueEnabled": false,
+        "pointsEnabled": true,
+        "pointsAutoApply": false,
+        "pointsStage": "AFTER_STORED_VALUE",
+        "optionalCapabilityPolicy": "DISABLED_UNLESS_VERIFIED_SOURCE_AND_OWNER",
+        "formulaId": "DEDUCT_THEN_DISCOUNT_V1",
+        "formulaVersion": 1,
+        "manualOperations": {
+          "enabled": true,
+          "reasonCategories": [
+            "PRICE_CORRECTION",
+            "QUALITY_ISSUE",
+            "SERVICE_COMPENSATION",
+            "AUTHORIZED_NEGOTIATION"
+          ],
+          "limits": {
+            "source": "EXISTING_PERMISSION_AND_APPROVAL_AUTHORITY",
+            "missingPolicy": "DENY"
+          },
+          "amountBasis": "PAYABLE_GROSS",
+          "manualAmountConflictPolicy": "SAME_AS_MANUAL_PERCENT",
+          "cashRoundingEnabled": false
+        },
+        "taxBinding": {
+          "taxProfileNo": null,
+          "resolveFrom": "VERIFIED_STORE_REGION_AND_TRANSACTION_CONTEXT",
+          "missingPolicy": "BLOCK",
+          "storeMayEditRate": false
+        },
+        "ruleRefs": [
+          "B01",
+          "B02",
+          "B03",
+          "B04",
+          "B05",
+          "B06",
+          "B07",
+          "B08",
+          "B09",
+          "B10",
+          "B11",
+          "B12",
+          "T01",
+          "T02",
+          "T03",
+          "T04",
+          "T05",
+          "T06",
+          "T07",
+          "T08"
+        ],
+        "industryRestrictions": [
+          "ORIGINAL_SERVICE_SOURCE",
+          "RIGHTS_SEPARATE_FROM_MONEY",
+          "STORED_REDEMPTION_FULL_COVER_ONLY",
+          "NO_AUTOMATIC_STORED_CASH_MIX",
+          "NO_NEW_ONLINE_STORED_REVERSAL"
+        ]
+      }
+    }
+  ],
+  "storeDraftExamples": [
+    {
+      "exampleOnly": true,
+      "storeNo": "EXAMPLE_FOOD_AE",
+      "industryCode": "FOOD",
+      "templateNo": "PRICING_FOOD_DEFAULT",
+      "templateRevision": 1,
+      "override": {
+        "taxBinding": {
+          "taxProfileNo": "AE_VAT_CONSUMER_V1",
+          "resolveFrom": "VERIFIED_STORE_REGION_AND_TRANSACTION_CONTEXT",
+          "missingPolicy": "BLOCK",
+          "storeMayEditRate": false
+        },
+        "couponLimits": {
+          "total": 2,
+          "percent": 1,
+          "amountTotal": 1,
+          "cash": 1,
+          "deduction": 1
+        }
+      }
+    },
+    {
+      "exampleOnly": true,
+      "storeNo": "EXAMPLE_FOOD_MULTIPERCENT",
+      "industryCode": "FOOD",
+      "templateNo": "PRICING_FOOD_DEFAULT",
+      "templateRevision": 1,
+      "override": {
+        "couponLimits": {
+          "total": 3,
+          "percent": 2,
+          "amountTotal": 1,
+          "cash": 1,
+          "deduction": 1
+        },
+        "discountCouponPolicy": {
+          "maxUsedPerOrder": 2,
+          "overlapMode": "DISJOINT",
+          "maxUsedPerItem": 1,
+          "stackingEnabled": false
+        }
+      },
+      "requires": [
+        "VALIDATED_MULTI_COUPON_OWNER_CONTRACT"
+      ]
+    }
+  ],
+  "ownerCapabilityFixtureExamples": [
+    {
+      "exampleOnly": true,
+      "sourceType": "FOOD_CART",
+      "amountThenPercent": true,
+      "multiCoupon": true,
+      "storedPartialFunding": false,
+      "pointsTaxTreatment": "UNKNOWN",
+      "note": "TEST_FIXTURE_NOT_A_REAL_PROVIDER_CAPABILITY"
+    }
+  ],
+  "calculationVectors": [
+    {
+      "caseNo": "VAT_EXCLUSIVE_5",
+      "profileNo": "AE_VAT_NET_PRICE_V1",
+      "lines": [
+        {
+          "ref": "L1",
+          "priceMinor": 10000,
+          "taxClass": "STANDARD"
+        }
+      ],
+      "expected": {
+        "netMinor": 10000,
+        "taxMinor": 500,
+        "invoiceGrossMinor": 10500,
+        "customerDueMinor": 10500
+      }
+    },
+    {
+      "caseNo": "VAT_INCLUSIVE_5",
+      "profileNo": "AE_VAT_CONSUMER_V1",
+      "lines": [
+        {
+          "ref": "L1",
+          "priceMinor": 10500,
+          "taxClass": "STANDARD"
+        }
+      ],
+      "expected": {
+        "netMinor": 10000,
+        "taxMinor": 500,
+        "invoiceGrossMinor": 10500,
+        "customerDueMinor": 10500
+      }
+    },
+    {
+      "caseNo": "AMOUNT_THEN_PERCENT_EXCLUSIVE",
+      "profileNo": "AE_VAT_NET_PRICE_V1",
+      "lines": [
+        {
+          "ref": "L1",
+          "priceMinor": 20000,
+          "taxClass": "STANDARD"
+        }
+      ],
+      "adjustments": [
+        {
+          "kind": "CASH_COUPON",
+          "amountMinor": 2000,
+          "treatment": "REDUCES_TAX_BASE",
+          "amountBasis": "TAX_EXCLUSIVE"
+        },
+        {
+          "kind": "PERCENT_COUPON",
+          "payableRateBp": 9000,
+          "treatment": "REDUCES_TAX_BASE"
+        }
+      ],
+      "requiresFixtureCapabilities": [
+        "EXACT_AMOUNT_THEN_PERCENT_OWNER_SUPPORT"
+      ],
+      "expected": {
+        "netMinor": 16200,
+        "taxMinor": 810,
+        "invoiceGrossMinor": 17010,
+        "customerDueMinor": 17010
+      }
+    },
+    {
+      "caseNo": "MIXED_TAX_CLASSES",
+      "profileNo": "AE_VAT_NET_PRICE_V1",
+      "lines": [
+        {
+          "ref": "L1",
+          "priceMinor": 10000,
+          "taxClass": "STANDARD"
+        },
+        {
+          "ref": "L2",
+          "priceMinor": 5000,
+          "taxClass": "ZERO_RATED"
+        },
+        {
+          "ref": "L3",
+          "priceMinor": 2000,
+          "taxClass": "EXEMPT"
+        }
+      ],
+      "expected": {
+        "netMinor": 17000,
+        "taxMinor": 500,
+        "invoiceGrossMinor": 17500,
+        "customerDueMinor": 17500
+      }
+    },
+    {
+      "caseNo": "LINE_ROUNDING",
+      "profileNo": "AE_VAT_NET_PRICE_V1",
+      "lines": [
+        {
+          "ref": "L1",
+          "priceMinor": 10,
+          "taxClass": "STANDARD"
+        },
+        {
+          "ref": "L2",
+          "priceMinor": 10,
+          "taxClass": "STANDARD"
+        }
+      ],
+      "expected": {
+        "netMinor": 20,
+        "taxMinor": 2,
+        "invoiceGrossMinor": 22,
+        "customerDueMinor": 22
+      }
+    },
+    {
+      "caseNo": "INCLUSIVE_POINTS_AND_WAIVER",
+      "profileNo": "AE_VAT_CONSUMER_V1",
+      "lines": [
+        {
+          "ref": "L1",
+          "priceMinor": 10500,
+          "taxClass": "STANDARD"
+        }
+      ],
+      "adjustments": [
+        {
+          "kind": "POINTS",
+          "amountMinor": 1000,
+          "treatment": "REDUCES_TAX_BASE",
+          "amountBasis": "PAYABLE_GROSS"
+        },
+        {
+          "kind": "MANUAL_WAIVER",
+          "amountMinor": 50,
+          "treatment": "REDUCES_TAX_BASE",
+          "amountBasis": "PAYABLE_GROSS"
+        }
+      ],
+      "requiresFixtureCapabilities": [
+        "POINTS_PRICE_REDUCTION_OWNER",
+        "MANUAL_WAIVER_APPROVAL_AND_TAX_CLASSIFICATION"
+      ],
+      "expected": {
+        "netMinor": 9000,
+        "taxMinor": 450,
+        "invoiceGrossMinor": 9450,
+        "customerDueMinor": 9450
+      }
+    },
+    {
+      "caseNo": "STORED_PAYMENT_NOT_DISCOUNT",
+      "profileNo": "AE_VAT_CONSUMER_V1",
+      "lines": [
+        {
+          "ref": "L1",
+          "priceMinor": 10500,
+          "taxClass": "STANDARD"
+        }
+      ],
+      "funding": {
+        "storedMinor": 6000,
+        "cashDueMinor": 4500,
+        "cashTenderMinor": 5000
+      },
+      "requiresFixtureCapabilities": [
+        "FUTURE_FOOD_PARTIAL_STORED_PAYMENT_CONTRACT"
+      ],
+      "expected": {
+        "netMinor": 10000,
+        "taxMinor": 500,
+        "invoiceGrossMinor": 10500,
+        "customerDueMinor": 10500,
+        "cashChangeMinor": 500
+      }
+    },
+    {
+      "caseNo": "CONSIDERATION_POINTS_NOT_TAX_DISCOUNT",
+      "profileNo": "AE_VAT_CONSUMER_V1",
+      "lines": [
+        {
+          "ref": "L1",
+          "priceMinor": 10500,
+          "taxClass": "STANDARD"
+        }
+      ],
+      "adjustments": [
+        {
+          "kind": "POINTS",
+          "amountMinor": 1000,
+          "treatment": "SETTLES_CONSIDERATION",
+          "amountBasis": "PAYABLE_GROSS"
+        }
+      ],
+      "requiresFixtureCapabilities": [
+        "POINTS_CONSIDERATION_OWNER_WITH_CLEARING_CONTRACT"
+      ],
+      "expected": {
+        "netMinor": 10000,
+        "taxMinor": 500,
+        "invoiceGrossMinor": 10500,
+        "customerDueMinor": 9500,
+        "pointsConsiderationMinor": 1000
+      }
+    }
+  ],
+  "sourceReferences": {
+    "UAE_RATE": "https://mof.gov.ae/en/public-finance/tax/value-added-tax-vat/",
+    "UAE_PRICE": "https://tax.gov.ae/DataFolder/Files/Pdf/Executive%20Regulation%20of%20Federal%20Decree%20Law%20No%208%20of%202017%20-%20Publish-new-2.pdf",
+    "UAE_DISCOUNT": "https://mof.gov.ae/wp-content/uploads/2024/10/Executive-Regulation-of-Federal-Decree-Law-No-8-of-2017.pdf",
+    "UAE_ROUNDING": "https://tax.gov.ae/DataFolder/Files/Pdf/06-Tax-Invoices.pdf"
+  }
+}

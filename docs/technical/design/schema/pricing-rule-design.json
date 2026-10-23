@@ -1,0 +1,717 @@
+{
+  "status": "PROPOSED_NOT_IMPLEMENTED",
+  "version": "PRICING_RULE_SPEC_V4",
+  "date": "2026-10-22",
+  "scope": "Multi-industry pure fixed-point engine; Java server now, conforming client runtime later",
+  "authority": "Server confirmation and original product/order/benefit/PAY owners",
+  "ruleFields": [
+    "ruleNo",
+    "ruleVersion",
+    "kind",
+    "scope",
+    "eligibleLineRefs",
+    "basis",
+    "stage",
+    "parameters",
+    "exclusiveGroup",
+    "compatibleWith",
+    "maxApplications",
+    "stackingOrder",
+    "funder",
+    "permissionRef",
+    "approvalPolicyRef"
+  ],
+  "stages": [
+    "BASE_PRICE",
+    "PRICE_CORRECTION",
+    "MANUAL_PROMOTION",
+    "ACTIVITY",
+    "COUPON",
+    "FEE_TAX",
+    "FUNDING",
+    "POINTS",
+    "MANUAL_WAIVER",
+    "CASH_ROUNDING",
+    "TAX_FINALIZE",
+    "CASH_TENDER"
+  ],
+  "ruleTypes": [
+    {
+      "kind": "PRICE_REPLACE",
+      "category": "PRICE",
+      "stage": "PRICE_CORRECTION",
+      "basis": "NAMED_COMPONENT",
+      "note": "One approved correction per component; benefits must permit manually priced goods"
+    },
+    {
+      "kind": "MANUAL_PERCENT",
+      "category": "DISCOUNT",
+      "stage": "MANUAL_PROMOTION",
+      "basis": "ELIGIBLE_GOODS_CURRENT",
+      "parameter": "payableRateBp",
+      "exclusiveGroup": "MANUAL_PROMOTION"
+    },
+    {
+      "kind": "MANUAL_AMOUNT",
+      "category": "DISCOUNT",
+      "stage": "MANUAL_PROMOTION",
+      "basis": "ELIGIBLE_GOODS_CURRENT",
+      "parameter": "amountMinor",
+      "exclusiveGroup": "MANUAL_PROMOTION"
+    },
+    {
+      "kind": "ACTIVITY",
+      "category": "DISCOUNT",
+      "stage": "ACTIVITY",
+      "basis": "OWNER_DEFINED",
+      "note": "Apply existing owner decisions, never broaden retail/offline rules"
+    },
+    {
+      "kind": "PERCENT_COUPON",
+      "category": "DISCOUNT",
+      "stage": "COUPON",
+      "basis": "POST_ACTIVITY_ELIGIBLE_GOODS",
+      "parameter": "payableRateBp",
+      "exclusiveGroup": "ORDER_COUPON"
+    },
+    {
+      "kind": "CASH_COUPON",
+      "category": "DISCOUNT",
+      "stage": "COUPON",
+      "basis": "POST_ACTIVITY_ELIGIBLE_GOODS",
+      "parameter": "amountMinor",
+      "exclusiveGroup": "ORDER_COUPON"
+    },
+    {
+      "kind": "MANUAL_WAIVER",
+      "category": "RECEIVABLE_ADJUSTMENT",
+      "stage": "MANUAL_WAIVER",
+      "basis": "AUTHORIZED_UNPAID_SCOPE",
+      "note": "Approved cap, no negative due; tax/accounting adaptation required"
+    },
+    {
+      "kind": "STORED_VALUE",
+      "category": "FUNDING",
+      "stage": "FUNDING",
+      "basis": "PAY_VERIFIED_APPLICABLE_SCOPE",
+      "note": "Principal and bonus remain PAY facts; no discount or cash change"
+    },
+    {
+      "kind": "CASH_ROUNDING",
+      "category": "RECEIVABLE_ADJUSTMENT",
+      "stage": "CASH_ROUNDING",
+      "basis": "FINAL_CASH_REMAINDER",
+      "note": "Off until verified policy; once on final scope, avoid repeated waiver"
+    },
+    {
+      "kind": "CASH_TENDER",
+      "category": "TENDER",
+      "stage": "CASH_TENDER",
+      "basis": "CASH_DUE",
+      "note": "Only cash tender yields change"
+    },
+    {
+      "kind": "POINTS",
+      "category": "SETTLEMENT_DEDUCTION",
+      "stage": "POINTS",
+      "basis": "OWNER_VERIFIED_REMAINDER_AFTER_STORED_VALUE",
+      "note": "No automatic use; source and actual points owner must support the sequence"
+    },
+    {
+      "kind": "TAX",
+      "category": "TAX",
+      "stage": "FEE_TAX",
+      "basis": "VERIFIED_REGIONAL_TAX_CLASS_AND_CONSIDERATION",
+      "note": "Provisional line tax before funding, final tax after accepted points/waiver; never add tax twice to inclusive prices"
+    }
+  ],
+  "referenceProfile": {
+    "name": "NEW_INDUSTRY_SAFE_DEFAULT_V1",
+    "appliesToExistingRetailAutomatically": false,
+    "manualPercentAndAmount": "EXCLUSIVE_ON_OVERLAP",
+    "manualPromotionAndActivityOrCoupon": "MANUAL_PERCENT_EXCLUSIVE_REQUIRED; OTHER_MANUAL_PROMOTIONS_DEFAULT_DENY",
+    "couponLimitPerOrder": 2,
+    "percentAndCashCoupon": "ALLOW_ONE_EACH_WHEN_OWNERS_ALLOW",
+    "explicitCouponStackOrder": [
+      "CASH_COUPON",
+      "PERCENT_COUPON"
+    ],
+    "unknownCompatibility": "DENY",
+    "cashRoundingEnabled": false,
+    "manualWaiverEnabled": "REQUIRES_CONFIGURED_CAP_AND_AUTHORITY",
+    "storedValueEnabled": "REQUIRES_REAL_PAY_CAPABILITY",
+    "storedValueAndPercentCoupon": "EXCLUSIVE_REQUIRED",
+    "couponAndManualWaiver": "EXCLUSIVE_REQUIRED",
+    "activityAndCoupons": "EXCLUSIVE_REQUIRED_FOR_NEW_TEMPLATES",
+    "discountCouponPolicy": {
+      "maxUsedPerOrder": 1,
+      "overlapMode": "DISJOINT",
+      "maxUsedPerItem": 1,
+      "stackingEnabled": false,
+      "availableModes": [
+        "DISJOINT",
+        "BEST_ONE",
+        "STACK"
+      ],
+      "capabilityRequiredForMultiple": true
+    },
+    "amountCouponLimitPerOrder": 1
+  },
+  "selectionModes": {
+    "EXPLICIT": "Conflicting selected rules block confirmation; never silently replace selections",
+    "AUTO_BEST": "Enumerate all admitted candidates/combinations within declared bound; min payable then frozen priority then stable rule key; never call truncated search globally best"
+  },
+  "clientRuntime": {
+    "current": "SERVER_API",
+    "future": "LOCAL_ESTIMATE_REQUIRES_SNAPSHOT_RULE_VERSION_AND_CONFORMANCE",
+    "unsupported": "NEEDS_SERVER",
+    "authoritative": false
+  },
+  "examples": [
+    {
+      "id": "exclusive_percent_coupon",
+      "baseMinor": 20000,
+      "payableRateBp": 7000,
+      "cashCouponMinor": 2000,
+      "percentDueMinor": 14000,
+      "cashDueMinor": 18000,
+      "explicitBoth": "CONFLICT",
+      "autoSelected": "PERCENT_COUPON",
+      "profileOverrides": {
+        "couponMode": "SINGLE",
+        "couponLimits": {
+          "total": 1
+        }
+      },
+      "description": "Store explicitly narrows new default to one coupon; both selected conflict"
+    },
+    {
+      "id": "approved_stack",
+      "baseMinor": 20000,
+      "payableRateBp": 9000,
+      "cashCouponMinor": 2000,
+      "profileAndOwnerPermit": true,
+      "dueMinor": 16200,
+      "reverseOrderDueMinor": 16000,
+      "formulaId": "DEDUCT_THEN_DISCOUNT_V1"
+    },
+    {
+      "id": "waiver_and_cash",
+      "baseMinor": 10987,
+      "waiverMinor": 87,
+      "dueMinor": 9900,
+      "storedValueMinor": 6000,
+      "cashDueMinor": 3900,
+      "cashTenderedMinor": 4000,
+      "changeMinor": 100,
+      "activityMinor": 1000,
+      "couponCount": 0
+    }
+  ],
+  "compatibilityRules": [
+    {
+      "pair": [
+        "PRICE_REPLACE",
+        "PRICE_REPLACE"
+      ],
+      "on": "SAME_COMPONENT",
+      "default": "EXCLUSIVE"
+    },
+    {
+      "pair": [
+        "MANUAL_PERCENT",
+        "MANUAL_AMOUNT"
+      ],
+      "on": "OVERLAP",
+      "default": "EXCLUSIVE",
+      "order": [
+        "MANUAL_PERCENT",
+        "MANUAL_AMOUNT"
+      ]
+    },
+    {
+      "pair": [
+        "MANUAL_PERCENT",
+        "ACTIVITY"
+      ],
+      "on": "OVERLAP",
+      "default": "EXCLUSIVE"
+    },
+    {
+      "pair": [
+        "MANUAL_AMOUNT",
+        "ACTIVITY"
+      ],
+      "on": "OVERLAP",
+      "default": "EXCLUSIVE",
+      "override": "OWNER_AND_PROFILE_APPROVAL"
+    },
+    {
+      "pair": [
+        "MANUAL_PERCENT",
+        "PERCENT_COUPON"
+      ],
+      "on": "OVERLAP",
+      "default": "EXCLUSIVE"
+    },
+    {
+      "pair": [
+        "MANUAL_PERCENT",
+        "CASH_COUPON"
+      ],
+      "on": "OVERLAP",
+      "default": "EXCLUSIVE"
+    },
+    {
+      "pair": [
+        "MANUAL_AMOUNT",
+        "PERCENT_COUPON"
+      ],
+      "on": "OVERLAP",
+      "default": "EXCLUSIVE",
+      "override": "OWNER_AND_PROFILE_APPROVAL"
+    },
+    {
+      "pair": [
+        "MANUAL_AMOUNT",
+        "CASH_COUPON"
+      ],
+      "on": "OVERLAP",
+      "default": "EXCLUSIVE",
+      "override": "OWNER_AND_PROFILE_APPROVAL"
+    },
+    {
+      "pair": [
+        "PERCENT_COUPON",
+        "CASH_COUPON"
+      ],
+      "on": "ORDER_COUPON_GROUP",
+      "default": "CHECK_COUNTS_AND_OWNER_COMPATIBILITY",
+      "order": [
+        "CASH_COUPON",
+        "PERCENT_COUPON"
+      ]
+    },
+    {
+      "pair": [
+        "PERCENT_COUPON",
+        "PERCENT_COUPON"
+      ],
+      "on": "SAME_PRICING_ITEM_OR_ORDER_COUNT",
+      "default": "CHECK_COUNT_AND_OVERLAP_MODE",
+      "allowedModes": [
+        "DISJOINT",
+        "BEST_ONE",
+        "STACK_WITH_OWNER_CAPABILITY"
+      ]
+    },
+    {
+      "pair": [
+        "CASH_COUPON",
+        "CASH_COUPON"
+      ],
+      "on": "ORDER_COUPON_GROUP",
+      "default": "EXCLUSIVE"
+    },
+    {
+      "pair": [
+        "ACTIVITY",
+        "PERCENT_COUPON"
+      ],
+      "on": "OVERLAP",
+      "default": "EXCLUSIVE"
+    },
+    {
+      "pair": [
+        "ACTIVITY",
+        "CASH_COUPON"
+      ],
+      "on": "OVERLAP",
+      "default": "EXCLUSIVE"
+    },
+    {
+      "pair": [
+        "PRICE_REPLACE",
+        "ACTIVITY"
+      ],
+      "on": "OVERLAP",
+      "default": "OWNER_DEFINED"
+    },
+    {
+      "pair": [
+        "PRICE_REPLACE",
+        "PERCENT_COUPON"
+      ],
+      "on": "OVERLAP",
+      "default": "OWNER_DEFINED"
+    },
+    {
+      "pair": [
+        "PRICE_REPLACE",
+        "CASH_COUPON"
+      ],
+      "on": "OVERLAP",
+      "default": "OWNER_DEFINED"
+    },
+    {
+      "pair": [
+        "MANUAL_WAIVER",
+        "CASH_ROUNDING"
+      ],
+      "on": "SAME_ADJUSTMENT_SCOPE",
+      "default": "EXCLUSIVE"
+    },
+    {
+      "pair": [
+        "STORED_VALUE",
+        "PERCENT_COUPON"
+      ],
+      "on": "PAYMENT_MODE",
+      "default": "EXCLUSIVE"
+    },
+    {
+      "pair": [
+        "STORED_VALUE",
+        "CASH_COUPON"
+      ],
+      "on": "PAYMENT_MODE",
+      "default": "OWNER_AND_CAPABILITY_DEFINED"
+    },
+    {
+      "pair": [
+        "PERCENT_COUPON",
+        "MANUAL_WAIVER"
+      ],
+      "on": "ORDER",
+      "default": "EXCLUSIVE"
+    },
+    {
+      "pair": [
+        "CASH_COUPON",
+        "MANUAL_WAIVER"
+      ],
+      "on": "ORDER",
+      "default": "EXCLUSIVE"
+    }
+  ],
+  "configurationModel": {
+    "status": "PROPOSED_NOT_IMPLEMENTED",
+    "layers": [
+      "SYSTEM_CONSTRAINTS",
+      "PINNED_INDUSTRY_TEMPLATE",
+      "STORE_OVERRIDES"
+    ],
+    "effective": "Validate(ApplyFieldOverrides(pinnedIndustryTemplate, storeOverrides), systemConstraints, selectedRuntimeCapabilities)",
+    "binding": [
+      "industryNo",
+      "templateNo",
+      "templateVersion",
+      "storeNo",
+      "storeConfigVersion",
+      "effectiveConfigHash"
+    ],
+    "overrideSemantics": {
+      "missing": "INHERIT",
+      "false": "EXPLICIT_FALSE",
+      "null": "REJECT",
+      "arrays": "REPLACE_WHOLE_FIELD",
+      "reset": "REMOVE_OVERRIDE"
+    },
+    "templateUpgrade": "EXPLICIT_STORE_UPGRADE_NO_SILENT_REBASE",
+    "mandatoryRules": [
+      "STORED_VALUE_EXCLUDES_PERCENT_COUPON",
+      "COUPON_EXCLUDES_MANUAL_PERCENT",
+      "COUPON_EXCLUDES_MANUAL_WAIVER",
+      "MANUAL_PERCENT_EXCLUDES_OTHER_BENEFITS",
+      "NON_NEGATIVE_AND_CONSERVATION",
+      "SOURCE_SCOPE_PERMISSION_AND_ASSET_CAPABILITY",
+      "ACTIVITY_EXCLUDES_ALL_COUPONS"
+    ],
+    "storeEditable": [
+      "benefitCombinationMode",
+      "couponMode",
+      "couponLimits",
+      "allowedCouponCombinations",
+      "pointsEnabled",
+      "storedValueEnabled",
+      "manualOperationEnabled",
+      "reasonCategories",
+      "approvalLimits",
+      "excludedItemRules",
+      "taxBindingToVerifiedRegionalProfile"
+    ],
+    "notStoreEditable": [
+      "arithmeticVersion",
+      "allocationAlgorithmVersion",
+      "formulaExecutionOrder",
+      "mandatoryRules",
+      "assetEligibilityOrOwnership",
+      "authorizationChecks",
+      "legalTaxRate",
+      "legalTaxClassDefinition",
+      "taxRoundingAlgorithm"
+    ],
+    "industryTemplates": [
+      {
+        "industryNo": "FOOD",
+        "templateNo": "PRICING_FOOD_DEFAULT",
+        "version": 1,
+        "benefitCombinationMode": "MULTI_KIND",
+        "couponMode": "MULTI",
+        "couponLimit": 2,
+        "storedValueEnabled": false,
+        "pointsEnabled": true,
+        "pointsAutoApply": false,
+        "pointsStage": "AFTER_STORED_VALUE",
+        "manualDiscount": "REQUIRES_AUTHORITY_POLICY",
+        "manualWaiver": "ONLY_NO_COUPON_AND_APPROVED",
+        "activityAndCoupons": "EXCLUSIVE",
+        "discountCouponPolicy": {
+          "maxUsedPerOrder": 1,
+          "overlapMode": "DISJOINT",
+          "maxUsedPerItem": 1,
+          "stackingEnabled": false
+        },
+        "couponLimits": {
+          "total": 2,
+          "percent": 1,
+          "amountTotal": 1,
+          "cash": 1,
+          "deduction": 1
+        },
+        "allowedCouponCombinations": [
+          [
+            "PERCENT_COUPON",
+            "CASH_COUPON"
+          ],
+          [
+            "PERCENT_COUPON",
+            "DEDUCTION_COUPON"
+          ]
+        ],
+        "schemaVersion": 2,
+        "taxBinding": {
+          "taxProfileNo": null,
+          "resolveFrom": "VERIFIED_STORE_REGION_AND_TRANSACTION_CONTEXT",
+          "missingPolicy": "BLOCK",
+          "storeMayEditRate": false
+        }
+      },
+      {
+        "industryNo": "RETAIL",
+        "templateNo": "PRICING_RETAIL_DEFAULT",
+        "version": 1,
+        "benefitCombinationMode": "MULTI_KIND",
+        "couponMode": "MULTI",
+        "couponLimit": 2,
+        "storedValueEnabled": false,
+        "pointsEnabled": true,
+        "pointsAutoApply": false,
+        "pointsStage": "AFTER_STORED_VALUE",
+        "manualDiscount": "REQUIRES_AUTHORITY_POLICY",
+        "manualWaiver": "ONLY_NO_COUPON_AND_APPROVED",
+        "migration": "NO_AUTOMATIC_REPLACEMENT_OF_EXISTING_RETAIL",
+        "activityAndCoupons": "EXCLUSIVE",
+        "discountCouponPolicy": {
+          "maxUsedPerOrder": 1,
+          "overlapMode": "DISJOINT",
+          "maxUsedPerItem": 1,
+          "stackingEnabled": false
+        },
+        "couponLimits": {
+          "total": 2,
+          "percent": 1,
+          "amountTotal": 1,
+          "cash": 1,
+          "deduction": 1
+        },
+        "allowedCouponCombinations": [
+          [
+            "PERCENT_COUPON",
+            "CASH_COUPON"
+          ],
+          [
+            "PERCENT_COUPON",
+            "DEDUCTION_COUPON"
+          ]
+        ],
+        "schemaVersion": 2,
+        "taxBinding": {
+          "taxProfileNo": null,
+          "resolveFrom": "VERIFIED_STORE_REGION_AND_TRANSACTION_CONTEXT",
+          "missingPolicy": "BLOCK",
+          "storeMayEditRate": false
+        }
+      },
+      {
+        "industryNo": "BEAUTY_SERVICE",
+        "templateNo": "PRICING_BEAUTY_SERVICE_DEFAULT",
+        "version": 1,
+        "benefitCombinationMode": "SINGLE_KIND",
+        "couponMode": "MULTI",
+        "couponLimit": 2,
+        "storedValueEnabled": false,
+        "pointsEnabled": true,
+        "pointsAutoApply": false,
+        "pointsStage": "AFTER_STORED_VALUE",
+        "manualDiscount": "REQUIRES_AUTHORITY_POLICY",
+        "manualWaiver": "ONLY_NO_COUPON_AND_APPROVED",
+        "rights": "TIMES_OR_PROJECT_RIGHTS_REMAIN_SEPARATE_FROM_MONEY",
+        "activityAndCoupons": "EXCLUSIVE",
+        "discountCouponPolicy": {
+          "maxUsedPerOrder": 1,
+          "overlapMode": "DISJOINT",
+          "maxUsedPerItem": 1,
+          "stackingEnabled": false
+        },
+        "couponLimits": {
+          "total": 2,
+          "percent": 1,
+          "amountTotal": 1,
+          "cash": 1,
+          "deduction": 1
+        },
+        "allowedCouponCombinations": [
+          [
+            "PERCENT_COUPON",
+            "CASH_COUPON"
+          ],
+          [
+            "PERCENT_COUPON",
+            "DEDUCTION_COUPON"
+          ]
+        ],
+        "schemaVersion": 2,
+        "taxBinding": {
+          "taxProfileNo": null,
+          "resolveFrom": "VERIFIED_STORE_REGION_AND_TRANSACTION_CONTEXT",
+          "missingPolicy": "BLOCK",
+          "storeMayEditRate": false
+        }
+      }
+    ],
+    "storeExample": {
+      "industryNo": "FOOD",
+      "templateNo": "PRICING_FOOD_DEFAULT",
+      "templateVersion": 1,
+      "storeNo": "STORE_A",
+      "storeConfigVersion": 1,
+      "overrides": {
+        "benefitCombinationMode": "MULTI_KIND",
+        "couponMode": "MULTI",
+        "couponLimits": {
+          "total": 3,
+          "cash": 2,
+          "deduction": 1
+        },
+        "allowedCouponCombinations": [
+          [
+            "CASH_COUPON",
+            "DEDUCTION_COUPON"
+          ]
+        ]
+      },
+      "requires": "DEDUCTION_COUPON is an owner-resolved contract classification; actual authority must support multi-coupon use"
+    },
+    "initialDataSource": "pricing-initial-data.example.json"
+  },
+  "formulaCatalog": [
+    {
+      "formulaId": "DEDUCT_THEN_DISCOUNT_V1",
+      "description": "Eligible amount minus owner-approved monetary deductions, then payable rate; excluded items added back",
+      "supportedOnlyIf": "Benefit owners support this exact base/order"
+    },
+    {
+      "formulaId": "DEDUCT_THEN_STORED_VALUE_V1",
+      "description": "Monetary deductions, then approved stored-value amount; no percent coupon"
+    },
+    {
+      "formulaId": "LEGACY_OWNER_COMPAT",
+      "description": "Explicit original-owner order and allocation, no automatic migration"
+    }
+  ],
+  "industryRuleCatalog": "pricing-industry-rule-catalog.json",
+  "multiDiscountExamples": [
+    {
+      "mode": "DISJOINT",
+      "lines": [
+        {
+          "amountMinor": 10000,
+          "payableRateBp": 8000
+        },
+        {
+          "amountMinor": 5000,
+          "payableRateBp": 9000
+        }
+      ],
+      "dueMinor": 12500
+    },
+    {
+      "mode": "BEST_ONE",
+      "amountMinor": 10000,
+      "ratesBp": [
+        8000,
+        9000
+      ],
+      "dueMinor": 8000,
+      "usedCouponCount": 1
+    },
+    {
+      "mode": "STACK",
+      "amountMinor": 10000,
+      "ratesBp": [
+        8000,
+        9000
+      ],
+      "dueMinor": 7200,
+      "usedCouponCount": 2,
+      "requiresOwnerApproval": true
+    }
+  ],
+  "stageSemantics": {
+    "FEE_TAX": "FEE_ASSESSMENT_AND_PROVISIONAL_TAX_FOR_FUNDING_PLAN",
+    "TAX_FINALIZE": "ONE_FINAL_TAX_PASS_AFTER_ACCEPTED_POINTS_WAIVER_AND_CASH_ROUNDING; NO_RESELECTING_FUNDING_OR_BENEFITS"
+  },
+  "taxModel": {
+    "status": "PROPOSED_NOT_IMPLEMENTED",
+    "initialDataSource": "pricing-initial-data.example.json",
+    "taxModes": [
+      "INCLUSIVE",
+      "EXCLUSIVE"
+    ],
+    "regionalAuthority": "PLATFORM_VALIDATED_REGION_POLICY_NOT_FREE_STORE_RATE",
+    "uaeStandardRateBp": 500,
+    "uaeConsumerDisplayMode": "INCLUSIVE",
+    "taxClassUnknown": "BLOCK",
+    "adjustmentTreatments": [
+      "REDUCES_TAX_BASE",
+      "SETTLES_CONSIDERATION"
+    ],
+    "taxFinalization": "AFTER_POINTS_AND_WAIVER_BEFORE_TENDER",
+    "storedValueChangesTaxBase": false,
+    "frozenTaxPointPolicy": "VERIFY_LEGAL_TAX_POINT_FROM_SOURCE_NOT_PAYMENT_CLOCK",
+    "snapshotFields": [
+      "taxPolicyNo",
+      "taxPolicyVersion",
+      "taxPoint",
+      "supplierTaxRegistrationRef",
+      "taxClass",
+      "rateBp",
+      "priceTaxMode",
+      "netMinor",
+      "taxMinor",
+      "grossMinor",
+      "roundingAlgorithmVersion"
+    ],
+    "requiresInvoiceCustomerAndThirdPartyConsiderationReconciliation": true,
+    "invoiceLineIdentity": "FROZEN_TAX_INVOICE_LINE_REF_DISTINCT_FROM_PRICING_UNIT",
+    "adjustmentAmountBasis": [
+      "TAX_EXCLUSIVE",
+      "PAYABLE_GROSS"
+    ],
+    "finalizationPasses": 1,
+    "considerationOffsets": "VERIFIED_POINTS_OR_VOUCHER_CONSIDERATION_SEPARATE_FROM_PRICE_DISCOUNTS_AND_STORED_PAYMENT",
+    "vatReferences": "pricing-initial-data.example.json#sourceReferences"
+  },
+  "exampleTaxScope": "Existing promotion-only examples are not region-specific taxable invoices; use initial-data calculationVectors for VAT net/tax/gross examples."
+}

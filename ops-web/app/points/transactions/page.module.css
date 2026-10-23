@@ -1,0 +1,19 @@
+.page :global(th), .page :global(td) { padding-block: 10px; }
+.filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.filters label { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: 12px; }
+.filters select, .filters input { width: 100%; max-width: 260px; }
+.drawerHead { padding: 14px 18px; background: var(--card); border-bottom: 1px solid var(--border); }
+.drawerHead p { font-size: 12px; }
+.drawerBody { padding: 12px 14px 18px; background: var(--background); }
+.surface { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--card); overflow: hidden; box-shadow: 0 1px 3px #18181b08; }
+.surface h3 { margin: 0; padding: 7px 12px; font-size: 12px; font-weight: 600; background: var(--muted); border-bottom: 1px solid var(--border); }
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; padding: 10px 12px; margin: 0; font-size: 13px; }
+.fields > div { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 6px; align-items: baseline; }
+.fields dt { color: var(--muted-foreground); font-size: 12px; }
+.fields dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+@media (max-width: 480px) { .fields { grid-template-columns: minmax(0, 1fr); } .filters label { width: 100%; } .filters input, .filters select { max-width: none; } .drawerBody { padding: 10px; } }
+.filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--card); }
+.filters input, .filters select { max-width: none; }
+.filterActions { display: flex; gap: 8px; align-items: end; }
+@media (max-width: 1000px) { .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .filters { grid-template-columns: minmax(0, 1fr); } }

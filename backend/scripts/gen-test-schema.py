@@ -74,6 +74,10 @@ def _h2_type(col: str) -> str:
     **修在生成器而不是产物**：手改 schema-test.sql 会在下一次重新生成时被冲掉，
     这一条已经被覆盖过三次。生产库仍是 JSON，那边没有这个问题。
     """
+    # H2 has no JSON_VALID function. Preserve checks using its equivalent JSON predicate.
+    if re.match(r"\s*(?:CONSTRAINT\s+\w+\s+)?CHECK\b", col, re.I):
+        col = re.sub(r"\bJSON_VALID\(\s*(`?\w+`?)\s*\)", r"(\1 IS JSON)", col, flags=re.I)
+        return col
     return _h2_generated_column(re.sub(r"(?<![\w])JSON(?![\w])", "TEXT", col, flags=re.I))
 
 
@@ -232,7 +236,55 @@ def _pin_columns(stmt, tables, altered):
     return f"{head} ({', '.join(cols)}) VALUES{rest}"
 
 
+# Known platform migrations replace unnamed checks by looking up generated names.
+# Match their complete five-statement blocks; unknown or modified dynamic SQL still fails.
+_KNOWN_DYNAMIC_CHECKS = [
+    ('SET @sv_offline_constraint', """SET @sv_offline_constraint = (
+    SELECT tc.CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS tc
+    JOIN information_schema.CHECK_CONSTRAINTS cc
+      ON cc.CONSTRAINT_SCHEMA=tc.CONSTRAINT_SCHEMA AND cc.CONSTRAINT_NAME=tc.CONSTRAINT_NAME
+    WHERE tc.CONSTRAINT_SCHEMA=DATABASE() AND tc.TABLE_NAME='sv_recharge'
+      AND cc.CHECK_CLAUSE LIKE '%collection_method%' LIMIT 1
+);
+SET @sv_offline_drop = IF(@sv_offline_constraint IS NULL,'SELECT 1',
+    CONCAT('ALTER TABLE sv_recharge DROP ',IF(LOCATE('MariaDB',VERSION())>0,'CONSTRAINT','CHECK'),' `',REPLACE(@sv_offline_constraint,'`','``'),'`'));
+PREPARE sv_offline_stmt FROM @sv_offline_drop;
+EXECUTE sv_offline_stmt;
+DEALLOCATE PREPARE sv_offline_stmt;""", 'sv_recharge', ('collection_method',)),
+    ('SET @sv_selection_constraint', """SET @sv_selection_constraint = (
+ SELECT tc.CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS tc
+ JOIN information_schema.CHECK_CONSTRAINTS cc ON cc.CONSTRAINT_SCHEMA=tc.CONSTRAINT_SCHEMA AND cc.CONSTRAINT_NAME=tc.CONSTRAINT_NAME
+ WHERE tc.CONSTRAINT_SCHEMA=DATABASE() AND tc.TABLE_NAME='mbr_identity_ticket'
+ AND cc.CHECK_CLAUSE LIKE '%purpose%' AND cc.CHECK_CLAUSE LIKE '%source_ticket_hash%' LIMIT 1
+);
+SET @sv_selection_drop=IF(@sv_selection_constraint IS NULL,'SELECT 1',CONCAT('ALTER TABLE mbr_identity_ticket DROP ',IF(LOCATE('MariaDB',VERSION())>0,'CONSTRAINT','CHECK'),' `',REPLACE(@sv_selection_constraint,'`','``'),'`'));
+PREPARE sv_selection_stmt FROM @sv_selection_drop;
+EXECUTE sv_selection_stmt;
+DEALLOCATE PREPARE sv_selection_stmt;""", 'mbr_identity_ticket', ('purpose', 'source_ticket_hash')),
+ ]
+
+
+def offline_receipt_drop(sql, tables):
+    clean = strip_comments(sql).strip()
+    for trigger, expected, table, fields in _KNOWN_DYNAMIC_CHECKS:
+        offset = clean.find(trigger)
+        if offset < 0:
+            continue
+        parts = clean[offset:].split(";", 5)
+        if len(parts) != 6 or " ".join((";".join(parts[:5]) + ";").split()) != " ".join(expected.split()):
+            raise SystemExit("Unknown dynamic constraint migration; refusing to discard SQL")
+        columns = tables.get(table)
+        if columns is None:
+            raise SystemExit("Dynamic constraint migration requires " + table)
+        columns[:] = [column for column in columns if not (
+            re.search(r"\bCHECK\s*\(", column, re.I)
+            and all(re.search(rf"\b{field}\b", column, re.I) for field in fields))]
+        clean = clean[:offset] + parts[5]
+    return clean
+
+
 def replay(sql, tables, order, seeds, renames, altered):
+    sql = offline_receipt_drop(sql, tables)
     # 逐语句切分（本项目的迁移脚本里没有存储过程，分号切分是安全的）
     for stmt in [s.strip() for s in strip_comments(sql).split(";") if s.strip()]:
         if not stmt:
@@ -502,7 +554,7 @@ def _apply_action(table, action, cols):
     # V46 把 user_no 从 NOT NULL 改成可空，而测试库仍是 NOT NULL，
     # 于是「员工不必有 C 端账号」这条在真库成立、在测试里插不进去。
     # 两边结构分叉是最难查的一类差异：代码没错，只有测试环境炸。
-    mod = re.match(r"MODIFY COLUMN\s+(\w+)\s+(.+)", action, re.I | re.S)
+    mod = re.match(r"MODIFY\s+(?:COLUMN\s+)?(\w+)\s+(.+)", action, re.I | re.S)
     if mod:
         col, rest = mod.group(1), mod.group(2).strip()
         # 只取类型与 NULL/NOT NULL / DEFAULT，丢掉 COMMENT（H2 不需要）
@@ -534,7 +586,8 @@ def _apply_action(table, action, cols):
             raise SystemExit(f"✗ DROP CHECK {table}.{name}：约束不存在")
         return
 
-    add = re.match(r"ADD COLUMN\s+(?:IF NOT EXISTS\s+)?(.*)", action, re.I | re.S)
+    add = re.match(r"ADD\s+(?:COLUMN\s+)?(?:IF NOT EXISTS\s+)?"
+                   r"(?!(?:CONSTRAINT|UNIQUE|PRIMARY|KEY|INDEX|CHECK|COLUMN)\b)(\w+\s+.*)", action, re.I | re.S)
     if add:
         # ↑ `IF NOT EXISTS` 要在这里吃掉。不吃的话它会当成**列名**落进建表语句
         #   （`IF NOT EXISTS archived_at DATETIME ...`），H2 建表即语法错。
@@ -588,7 +641,7 @@ def _apply_action(table, action, cols):
     if add_check:
         name, expression = add_check.groups()
         prefix = f"CONSTRAINT {name} " if name else ""
-        cols.append(f"    {prefix}CHECK {expression}")
+        cols.append(_h2_type(f"    {prefix}CHECK {expression}"))
         return
 
     if re.match(r"ADD\s+(?:INDEX|KEY)\s+(?:IF\s+NOT\s+EXISTS\s+)?\w*\s*\(", action, re.I):

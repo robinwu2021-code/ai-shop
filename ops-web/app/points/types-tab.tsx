@@ -44,7 +44,10 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
     },
     onSuccess: async (_result, command) => {
       intent.current = undefined;
-      await qc.invalidateQueries({ queryKey: ["points-types"] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["points-types"] }),
+        qc.invalidateQueries({ queryKey: ["points-earning-context"] }),
+      ]);
       setSavedField(command.kind === "RENAME" ? "name" : command.kind === "STATE" ? (command.value.action === "SET_DEFAULT" ? "default" : "state") : null);
       setEditing(null);
       if (command.kind === "CREATE") {

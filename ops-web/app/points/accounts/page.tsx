@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { PointsAccountView, PointsHolder, PointsBucket } from "@/lib/types";
@@ -8,45 +8,84 @@ import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { DataTable } from "@/components/ui/data-table";
 import { Drawer } from "@/components/ui/drawer";
+import { Badge } from "@/components/ui/badge";
 import { Notice } from "@/components/ui/notice";
 import { SectionHeader } from "@/components/ui/section-header";
-import { TabHeader } from "@/components/ui/tab-header";
+import styles from "./page.module.css";
 
-const buckets: PointsBucket[] = ["PENDING", "AVAILABLE", "HELD", "REFUND_RESERVED", "RECIRCULATABLE"];
+const buckets: PointsBucket[] = ["AVAILABLE", "HELD", "PENDING", "REFUND_RESERVED", "RECIRCULATABLE"];
+const bucketNames: Record<PointsBucket, [string, string]> = {
+  AVAILABLE: ["可用积分", "Available points"], HELD: ["抵扣冻结", "Held for redemption"], PENDING: ["待入账积分", "Pending points"],
+  REFUND_RESERVED: ["退款预留", "Reserved for refunds"], RECIRCULATABLE: ["可再流通积分", "Recirculatable points"],
+  ISSUED: ["已发行积分", "Issued points"], ISSUABLE: ["可发行积分", "Issuable points"],
+};
+const accountKey = (r: PointsAccountView) => `${r.snapshot.typeCode}:${r.snapshot.holderType}:${r.snapshot.holderNo}`;
 export default function PointsAccountsPage() {
-  const { t } = usePointsText(); const types = useQuery({ queryKey: ["points-types"], queryFn: () => api.pointsTypes() });
-  const [chosenType, setChosenType] = useState(""); const typeCode = chosenType || types.data?.[0]?.typeCode || "";
-  const [holderType, setHolderType] = useState<PointsHolder>("USER"); const [holderNo, setHolderNo] = useState(""); const [search, setSearch] = useState(""); const [after, setAfter] = useState(0);
-  const [selected, setSelected] = useState<PointsAccountView | null>(null); const [entryAfter, setEntryAfter] = useState(0);
+  const { t, locale } = usePointsText();
+  const types = useQuery({ queryKey: ["points-types"], queryFn: () => api.pointsTypes() });
+  const [chosenType, setChosenType] = useState("");
+  const typeCode = chosenType || types.data?.[0]?.typeCode || "";
+  const type = types.data?.find(x => x.typeCode === typeCode);
+  const [holderType, setHolderType] = useState<PointsHolder>("USER");
+  const [holderNo, setHolderNo] = useState(""); const [search, setSearch] = useState("");
+  const [after, setAfter] = useState(0); const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [entryAfter, setEntryAfter] = useState(0); const [showHelp, setShowHelp] = useState(false);
   const query = useQuery({ queryKey: ["points-accounts", typeCode, holderType, search, after], queryFn: () => api.pointsAccounts({ typeCode, holderType, ...(search ? { holderNo: search } : {}), after, limit: 50 }), enabled: !!typeCode });
+  const selected = query.data?.rows.find(r => accountKey(r) === selectedKey);
   const account = selected?.snapshot;
-  const entries = useQuery({ queryKey: ["points-account-entries", typeCode, account?.holderType, account?.holderNo, entryAfter], queryFn: () => api.pointsEntries({ typeCode, holderType: account!.holderType, holderNo: account!.holderNo, after: entryAfter, limit: 50 }), enabled: !!account });
+  const entries = useQuery({ queryKey: ["points-account-entries", typeCode, account?.holderType, account?.holderNo, entryAfter], queryFn: () => api.pointsEntries({ typeCode, holderType: account!.holderType, holderNo: account!.holderNo, after: entryAfter, limit: 50 }), enabled: !!account && !!selected?.exists });
+  const number = (n: number) => n.toLocaleString(locale === "zh" ? "zh-CN" : locale);
+  const bucketLabel = (b: PointsBucket) => bucketNames[b] ? t(...bucketNames[b]) : b;
+  const holderLabel = (h: PointsHolder) => h === "USER" ? t("会员", "Member") : h === "STORE" ? t("门店", "Store") : h;
+  const status = (r: PointsAccountView) => <Badge tone={!r.exists ? "muted" : r.snapshot.frozen ? "warning" : "success"}>{!r.exists ? t("未建账", "No account") : r.snapshot.frozen ? t("冻结", "Frozen") : t("正常", "Active")}</Badge>;
+  function resetSelection() { setSelectedKey(null); setEntryAfter(0); setAfter(0); }
+  function openAccount(row: PointsAccountView) { setSelectedKey(accountKey(row)); setEntryAfter(0); }
+  function searchAccounts() { setSearch(holderNo.trim()); resetSelection(); }
   const columns = [
-    { header: t("积分名称", "Points name"), cell: (_r: PointsAccountView) => types.data?.find(x => x.typeCode === typeCode)?.name ?? "—" },
-    { header: t("积分代码", "Points code"), cell: (_r: PointsAccountView) => typeCode },
-    { header: t("账户编号", "Account"), cell: (r: PointsAccountView) => <b>{r.snapshot.holderNo}</b> },
-    { header: t("账户类型", "Holder"), cell: (r: PointsAccountView) => r.snapshot.holderType },
-    ...buckets.map((bucket) => ({ header: t(bucket, bucket), numeric: true, cell: (r: PointsAccountView) => (r.snapshot.buckets[bucket] ?? 0).toLocaleString() })),
-    { header: t("状态", "State"), cell: (r: PointsAccountView) => !r.exists ? t("未建账", "No account") : r.snapshot.frozen ? t("冻结", "Frozen") : t("正常", "Active") },
+    { header: t("积分名称", "Points name"), cell: () => type?.name ?? "—" },
+    { header: t("积分代码", "Points code"), cell: () => <span dir="ltr">{typeCode}</span> },
+    { header: t("持有人编号", "Holder number"), cell: (r: PointsAccountView) => <span dir="ltr">{r.snapshot.holderNo}</span> },
+    { header: t("账户类型", "Holder type"), cell: (r: PointsAccountView) => holderLabel(r.snapshot.holderType) },
+    ...buckets.map(bucket => ({ header: bucketLabel(bucket), numeric: true, cell: (r: PointsAccountView) => r.exists ? number(r.snapshot.buckets[bucket] ?? 0) : "—" })),
+    { header: t("状态", "Status"), cell: status },
   ];
-  return <main className="space-y-4">
-    <TabHeader tabs={[{ key: "accounts", label: t("积分账户", "Points accounts") }]} value="accounts" onChange={() => {}} desc={t("按门店或会员查看积分余额与账务分录", "Review points balances and ledger entries by store or member")} />
-    <div className="flex flex-wrap items-end justify-between gap-3"><SectionHeader title={t("账户清单", "Account directory")} summary={query.data?.rows.length ?? 0} className="mb-0" /><div className="flex flex-wrap items-end gap-3"><label>{t("积分类型", "Points type")}<Select value={typeCode} onChange={(e) => { setChosenType(e.target.value); setAfter(0); setSelected(null); }}>{types.data?.map((x) => <option key={x.typeCode} value={x.typeCode}>{x.name} · {x.typeCode} · {x.currency}</option>)}</Select></label><label>{t("账户对象", "Account holder")}<Select value={holderType} onChange={(e) => { setHolderType(e.target.value as PointsHolder); setAfter(0); setSearch(""); }}><option value="USER">{t("会员", "Member")}</option><option value="STORE">{t("门店", "Store")}</option></Select></label><label>{t("编号", "Number")}<Input value={holderNo} onChange={(e) => setHolderNo(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { setSearch(holderNo.trim()); setAfter(0); } }} /></label><Button variant="outline" onClick={() => { setSearch(holderNo.trim()); setAfter(0); }}>{t("查询", "Search")}</Button></div></div>
-    <Notice>{t("余额来自不可变积分账本。未建账与余额为零是两种状态；本页只读，不提供人工改余额。", "Balances come from the immutable points ledger. A missing account differs from a zero balance; this page is read-only.")}</Notice>
+  return <main className={`space-y-3 ${styles.page}`}>
+    <SectionHeader title={t("积分账户", "Points accounts")} summary={query.data?.rows.length ?? 0} className="mb-0" />
+    <form className={styles.filters} onSubmit={e => { e.preventDefault(); searchAccounts(); }}>
+      <label>{t("积分名称", "Points name")}<Select value={typeCode} onChange={e => { setChosenType(e.target.value); setHolderNo(""); setSearch(""); resetSelection(); }}>{types.data?.map(x => <option key={x.typeCode} value={x.typeCode}>{x.name} · {x.typeCode}</option>)}</Select></label>
+      <label>{t("账户对象", "Account holder")}<Select value={holderType} onChange={e => { setHolderType(e.target.value as PointsHolder); setHolderNo(""); setSearch(""); resetSelection(); }}><option value="USER">{t("会员", "Member")}</option><option value="STORE">{t("门店", "Store")}</option></Select></label>
+      <label>{holderType === "STORE" ? t("门店编号", "Store number") : t("会员编号", "Member number")}<Input type="text" dir="ltr" value={holderNo} onChange={e => setHolderNo(e.target.value)} placeholder={t("输入完整编号", "Enter exact number")} /></label>
+      <Button variant="outline" type="submit" disabled={!typeCode}>{t("查询", "Search")}</Button>
+      <Button variant="ghost" type="button" onClick={() => { setHolderNo(""); setSearch(""); resetSelection(); }}>{t("重置", "Reset")}</Button>
+      <Button variant="ghost" type="button" className={styles.help} aria-expanded={showHelp} aria-controls="points-account-help" onClick={() => setShowHelp(!showHelp)}>{t("使用说明", "Help")}</Button>
+    </form>
+    {showHelp && <div id="points-account-help"><Notice>{t("余额单位为积分。未建账与余额为零是两种状态；本页只读，不提供人工改余额。编号支持精确查询。", "Balances are in points. A missing account differs from a zero balance. This page is read-only; numbers use exact matching.")}</Notice></div>}
     {types.error && <Notice tone="warning">{types.error.message}<Button onClick={() => void types.refetch()}>{t("重试", "Retry")}</Button></Notice>}
-    <DataTable columns={columns} rows={query.data?.rows} loading={query.isPending} error={query.error} onRetry={() => void query.refetch()} rowKey={(r) => `${r.snapshot.holderType}:${r.snapshot.holderNo}`} empty={t("没有匹配的积分账户。", "No matching points accounts.")} rowProps={(r) => ({ role: "button", tabIndex: 0, className: "cursor-pointer hover:bg-accent/50", onClick: () => { setSelected(r); setEntryAfter(0); }, onKeyDown: (e) => { if (e.key === "Enter") setSelected(r); } })} />
-    <div className="flex justify-end gap-2"><Button variant="outline" disabled={!after} onClick={() => setAfter(0)}>{t("首页", "First page")}</Button><Button variant="outline" disabled={!query.data?.hasMore || query.isFetching} onClick={() => setAfter(query.data?.next ?? 0)}>{t("下一页", "Next page")}</Button></div>
-    <Drawer open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }} title={account?.holderNo ?? ""} desc={t("账户余额与最近账务分录", "Account balances and ledger entries")} width="w-[720px]">
-      {account && <div className="space-y-5"><div className="grid grid-cols-2 gap-3 rounded-card border border-border p-4 sm:grid-cols-3"><div><p className="txt-caption">{t("持有人", "Holder")}</p><b>{account.holderType}</b></div><div><p className="txt-caption">{t("账户存在", "Exists")}</p><b>{selected?.exists ? t("是", "Yes") : t("否", "No")}</b></div><div><p className="txt-caption">{t("账户状态", "Status")}</p><b>{account.frozen ? t("冻结", "Frozen") : t("正常", "Active")}</b></div>{buckets.map((b) => <div key={b}><p className="txt-caption">{t(b, b)}</p><b className="tabular-nums">{(account.buckets[b] ?? 0).toLocaleString()}</b></div>)}</div>
-      <p className="txt-title">{types.data?.find(x => x.typeCode === typeCode)?.name ?? t("积分名称未加载", "Points name unavailable")}</p><p>{t("积分代码", "Points code")}: {typeCode}</p><h3 className="txt-heading">{t("账务分录", "Ledger entries")}</h3>{entries.error && <Notice tone="warning">{entries.error.message}<Button onClick={() => void entries.refetch()}>{t("重试", "Retry")}</Button></Notice>}
-      <DataTable columns={[
-        { header: t("时间", "Time"), cell: (e) => e.at ? new Date(e.at).toLocaleString() : "—" },
-        { header: t("凭证 / 业务", "Voucher / business"), cell: (e) => <div><b>{e.voucherDocumentNo ?? "—"}</b><p className="txt-caption">{e.entryNo}</p></div> },
-        { header: t("分桶", "Bucket"), cell: (e) => e.bucket },
-        { header: t("变化", "Delta"), numeric: true, cell: (e) => e.deltaPoints.toLocaleString() },
-        { header: t("余额", "After"), numeric: true, cell: (e) => e.afterPoints.toLocaleString() },
-      ]} rows={entries.data?.rows} loading={entries.isPending} error={entries.error} onRetry={() => void entries.refetch()} rowKey={(e) => e.entryNo} empty={t("暂无分录。", "No entries.")} />
-      <div className="flex justify-end gap-2"><Button variant="outline" disabled={!entryAfter} onClick={() => setEntryAfter(0)}>{t("首页", "First page")}</Button><Button variant="outline" disabled={!entries.data?.hasMore || entries.isFetching} onClick={() => setEntryAfter(entries.data?.next ?? 0)}>{t("下一页", "Next page")}</Button></div></div>}
+    <DataTable columns={columns} rows={query.data?.rows} loading={types.isPending || (!!typeCode && query.isPending)} error={query.error} onRetry={() => void query.refetch()} rowKey={accountKey} empty={t("没有匹配的积分账户。", "No matching points accounts.")} rowProps={r => ({ role: "button", tabIndex: 0, className: "cursor-pointer hover:bg-accent/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary", onClick: () => openAccount(r), onKeyDown: e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openAccount(r); } } })} />
+    <div className="flex justify-end gap-2"><Button variant="outline" disabled={!after} onClick={() => { setAfter(0); setSelectedKey(null); }}>{t("首页", "First page")}</Button><Button variant="outline" disabled={!query.data?.hasMore || query.isFetching} onClick={() => { setAfter(query.data?.next ?? 0); setSelectedKey(null); }}>{t("下一页", "Next page")}</Button></div>
+    <Drawer open={!!selected} onOpenChange={open => { if (!open) setSelectedKey(null); }} title={t("账户详情", "Account details")} desc={t("余额与流水均以积分为单位。", "Balances and entries are in points.")} width="w-[680px]" headerClassName={styles.drawerHead} bodyClassName={styles.drawerBody}>
+      {account && selected && <div className="space-y-3">
+        <section className={styles.surface}><h3>{t("账户信息", "Account information")}</h3><dl className={styles.fields}>
+          <DetailField label={t("积分名称", "Points name")}>{type?.name ?? "—"}</DetailField><DetailField label={t("积分代码", "Points code")}><span dir="ltr">{typeCode}</span></DetailField>
+          <DetailField label={t("账户类型", "Holder type")}>{holderLabel(account.holderType)}</DetailField><DetailField label={t("持有人编号", "Holder number")}><span dir="ltr">{account.holderNo}</span></DetailField>
+          <DetailField label={t("账户存在", "Exists")}>{selected.exists ? t("是", "Yes") : t("否", "No")}</DetailField><DetailField label={t("状态", "Status")}>{status(selected)}</DetailField>
+        </dl></section>
+        <section className={styles.surface}><h3>{t("积分余额", "Points balances")}</h3><dl className={styles.fields}>{buckets.map(b => <DetailField key={b} label={bucketLabel(b)}>{selected.exists ? number(account.buckets[b] ?? 0) : "—"}</DetailField>)}</dl></section>
+        <section className={styles.surface}><h3>{t("账户流水", "Account entries")}</h3><div className={styles.entries}>
+          {!selected.exists ? <Notice>{t("账户尚未建账，暂无账务流水。", "This account has not been created and has no ledger entries.")}</Notice> : <>
+            <DataTable columns={[
+              { header: t("时间", "Time"), cell: e => e.at ? new Date(e.at).toLocaleString(locale === "zh" ? "zh-CN" : locale) : "—" },
+              { header: t("凭证编号", "Voucher number"), cell: e => <span dir="ltr">{e.voucherDocumentNo ?? "—"}</span> },
+              { header: t("分录编号", "Entry number"), cell: e => <span dir="ltr">{e.entryNo}</span> },
+              { header: t("余额类型", "Balance type"), cell: e => bucketLabel(e.bucket) },
+              { header: t("变动积分", "Points change"), numeric: true, cell: e => `${e.deltaPoints > 0 ? "+" : ""}${number(e.deltaPoints)}` },
+              { header: t("变动后余额", "Balance after"), numeric: true, cell: e => number(e.afterPoints) },
+            ]} rows={entries.data?.rows} loading={entries.isPending} error={entries.error} onRetry={() => void entries.refetch()} rowKey={e => e.entryNo} empty={t("暂无流水。", "No entries.")} />
+            <div className="mt-3 flex justify-end gap-2"><Button variant="outline" disabled={!entryAfter} onClick={() => setEntryAfter(0)}>{t("首页", "First page")}</Button><Button variant="outline" disabled={!entries.data?.hasMore || entries.isFetching} onClick={() => setEntryAfter(entries.data?.next ?? 0)}>{t("下一页", "Next page")}</Button></div>
+          </>}
+        </div></section>
+      </div>}
     </Drawer>
   </main>;
 }
+function DetailField({ label, children }: { label: string; children: ReactNode }) { return <div><dt>{label}</dt><dd>{children}</dd></div>; }

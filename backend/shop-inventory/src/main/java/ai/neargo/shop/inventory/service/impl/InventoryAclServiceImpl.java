@@ -35,9 +35,12 @@ import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.support.InvEnums;
 import ai.neargo.shop.inventory.support.InvKeys;
+import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
+import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -569,6 +572,28 @@ public class InventoryAclServiceImpl implements InventoryAclService {
                     b.getSafetyStock() == null ? safety : b.getSafetyStock(), b.getVersion() == null ? 0 : b.getVersion()));
         }
         return result;
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager", readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public List<MaterialIdentity> findMaterials(String entityNo, List<String> itemIds) {
+        MaterialCatalogQueryPort.validateLookup(entityNo, itemIds);
+        InvOwner owner = findOwner(entityNo);
+        if (owner == null || !entityNo.equals(owner.getExternalRef())
+                || !"ACTIVE".equals(owner.getStatus())) return List.of();
+        String ownerId = owner.getOwnerId();
+        return itemMapper.selectList(Wrappers.<InvItem>lambdaQuery()
+                        .select(InvItem::getItemId, InvItem::getOwnerId, InvItem::getName, InvItem::getBaseUom,
+                                InvItem::getWeighed, InvItem::getDataSource, InvItem::getStatus, InvItem::getRetiredAt)
+                        .eq(InvItem::getOwnerId, ownerId).in(InvItem::getItemId, itemIds)
+                        .eq(InvItem::getStatus, "ACTIVE").isNull(InvItem::getRetiredAt)
+                        .orderByAsc(InvItem::getItemId)).stream()
+                .filter(item -> ownerId.equals(item.getOwnerId()) && itemIds.contains(item.getItemId())
+                        && "ACTIVE".equals(item.getStatus()) && item.getRetiredAt() == null
+                        && MaterialCatalogFacts.validDefinition(item.getItemId(), entityNo, item.getName(),
+                                item.getBaseUom(), item.getWeighed(), item.getDataSource()))
+                .map(item -> new MaterialIdentity(item.getItemId(), item.getName(), item.getBaseUom(),
+                        item.getWeighed(), item.getDataSource())).toList();
     }
 
     /** 只读地找业主。{@link #ownerIdOf} 找不到会建一个 —— 查询路径上不能有这种副作用 */
