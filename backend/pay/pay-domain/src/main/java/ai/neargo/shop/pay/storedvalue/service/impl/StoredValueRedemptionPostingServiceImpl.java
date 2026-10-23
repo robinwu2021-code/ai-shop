@@ -54,9 +54,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
-/** Fixed lock order: fence -> intent -> account -> lots. Every source/authorization lookup precedes this boundary. */
+/** Fixed lock order: fence -> intent -> issuer quota -> account -> lots. Every source/authorization lookup precedes this boundary. */
 @Service
 public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedemptionPostingService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerLedgerBridge issuerLedger;
     @org.springframework.beans.factory.annotation.Autowired
     private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     private final EntitlementSourceFence fences;
@@ -98,6 +100,7 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
         var original = intents.lock(ctx.tenantNo(), c.operationNo());
         if (original == null || !claim.getPayloadHash().equals(original.getPayloadHash())) conflict();
         if (!"PREPARING".equals(original.getStatus())) return view(original);
+        issuerLedger.beforeAccount(ctx,c.entityNo(),c.storeNo(),c.currency(),c.accountNo());
         var account = account(ctx, c);
         if (!"ACTIVE".equals(account.getStatus()) || account.getVersion() != c.expectedAssetRevision()) conflict();
         var ownedLots = lots.lockLive(ctx.tenantNo(), account.getAccountNo());
@@ -117,6 +120,7 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
             allocation.setPrincipalMinor(part.principalMinor()); allocation.setBonusMinor(part.bonusMinor());
             allocation.setItemsAllocation(json.writeValueAsString(part.items())); changed(allocations.insert(allocation));
         }
+        issuerLedger.held(ctx,account.getAccountNo(),c.operationNo());
         account.setHeldPrincipalMinor(Math.addExact(account.getHeldPrincipalMinor(), principal));
         account.setHeldBonusMinor(Math.addExact(account.getHeldBonusMinor(), bonus)); save(account, ctx);
         original.setStatus("HELD"); original.setUpdatedAt(now()); original.setUpdatedBy(ctx.actorNo());
@@ -137,6 +141,7 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
                     || !decision.decisionNo().equals(row.getSourceDecisionNo())) conflict();
             return view(row);
         }
+        issuerLedger.beforeAccount(ctx,c.entityNo(),c.storeNo(),c.currency(),c.accountNo());
         var account = account(ctx, c);
         var ownedLots = lots.lockLive(ctx.tenantNo(), account.getAccountNo());
         StoredValueUseFacts.conserve(account, ownedLots);
@@ -183,6 +188,7 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
             changed(usages.insert(usage));
             documentNumbers.bind(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_USAGE, ctx.tenantNo(), usage.getUsageNo());
             statements.redemption(ctx, account, usage, voucher);
+            issuerLedger.consumed(ctx,c.entityNo(),account.getAccountNo(),voucher.getVoucherNo());
             stores.consume(ctx, c.userNo(), c.entityNo(), c.storeNo(), frozen.source().storeName(), at);
             events.publish(new EntitlementUsed(no("UE", List.of(ctx.tenantNo(), operation), json), row.getUsageNo(),
                     c.userNo(), c.entityNo(), c.storeNo(), "STORED_VALUE", c.accountNo(), c.amountMinor(), null,

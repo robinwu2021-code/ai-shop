@@ -22,6 +22,7 @@ class IssuerRechargeRecoveryTest {
             part=part.replace(" ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci", "").replace(" JSON", " VARCHAR(10000)").replace("KEY uk_","KEY "+table+"_uk_");j.execute(part);
         }
         j.execute("CREATE TABLE sv_recharge(tenant_no varchar,recharge_no varchar,issuer_no varchar,store_no varchar,currency varchar,principal_minor bigint,bonus_minor bigint,status varchar,received_at timestamp,quota_reservation_no varchar,deleted int default 0,version bigint default 0,updated_at timestamp,updated_by varchar)");
+        j.execute("CREATE TABLE sv_account(tenant_no varchar,account_no varchar,store_no varchar,currency varchar,deleted int default 0)");
         var db=new IssuerRepository(new DataSourceTransactionManager(ds),new ObjectMapper());
         return new Fixture(j,db,new StoredValueIssueQuotaService(db));
     }

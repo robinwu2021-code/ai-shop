@@ -19,6 +19,8 @@ class StoredValueOfflineCreditResultTest {
         var recharges=mock(SvRechargeMapper.class);var credits=mock(StoredValueCreditService.class);
         var json=mock(ObjectMapper.class);
         var service=spy(new StoredValuePlanRechargeServiceImpl(null,recharges,null,null,null,credits,null,null,json,null));
+        org.springframework.test.util.ReflectionTestUtils.setField(service,"issuerLedger",
+                new ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerLedgerBridge(null,null,null,false));
         var ctx=new EntitlementContext("MAIN","OWNER","retry","0".repeat(64));
         var command=mock(Create.class);var old=mock(RechargeView.class);var credited=mock(RechargeView.class);
         when(old.status()).thenReturn(RechargeState.RECEIVED);when(old.rechargeNo()).thenReturn("R1");

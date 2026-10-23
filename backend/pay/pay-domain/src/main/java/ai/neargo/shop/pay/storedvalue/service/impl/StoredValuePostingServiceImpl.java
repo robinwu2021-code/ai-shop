@@ -40,9 +40,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
-/** Account -> receipt lock order. No core/network call enters the owned posting transaction. */
+/** Issuer quota -> account -> receipt lock order. No Core/network calls under money locks. */
 @Service
 public class StoredValuePostingServiceImpl implements StoredValuePostingService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerLedgerBridge issuerLedger;
     @org.springframework.beans.factory.annotation.Autowired
     private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     private final ai.neargo.shop.pay.mapper.storedvalue.SvCustomerIdentityMapper identities;
@@ -66,6 +68,7 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
     public RechargeView creditReceived(EntitlementContext ctx, CreditRecharge c) {
         var original = recharges.find(ctx.tenantNo(), c.rechargeNo());
         requireReceived(original, c, json);
+        issuerLedger.beforeOriginal(ctx,original.getEntityNo(),c.rechargeNo());
         var at = LocalDateTime.ofInstant(Instant.ofEpochMilli(System.currentTimeMillis()), ZoneOffset.UTC);
         var claim = new SvAccount(); audit(claim, ctx, at);
         claim.setAccountNo(no("SA", List.of(ctx.tenantNo(), original.customerIdentity(), original.getEntityNo(),
@@ -137,6 +140,7 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
         recharge.setUpdatedBy(ctx.actorNo());
         if (recharges.updateById(recharge) != 1) conflict();
         stores.credit(ctx, recharge, at);
+        issuerLedger.credited(ctx,recharge.getEntityNo(),recharge.getRechargeNo(),account.getAccountNo(),lot.getLotNo(),voucher.getVoucherNo());
         events.publish(new StoredValueCredited(no("SC", List.of(ctx.tenantNo(), c.rechargeNo()), json), c.rechargeNo(),
                 account.getAccountNo(), recharge.getUserNo(), recharge.getEntityNo(), recharge.getStoreNo(),
                 principal, total, recharge.getCurrency(), instant(at).toEpochMilli(),recharge.customerIdentity()));

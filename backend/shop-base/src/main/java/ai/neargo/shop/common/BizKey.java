@@ -44,6 +44,8 @@ public final class BizKey {
     public static final String STORED_VALUE_QUOTA = "SVQ";
     public static final String STORED_VALUE_QUOTA_RESERVATION = "SVQR";
     public static final String STORED_VALUE_HOLD_ALLOCATION = "SVHA";
+    public static final String STORED_VALUE_RELEASE = "SVRL";
+    public static final String STORED_VALUE_RELEASE_TIER = "SVRT";
     public static final String SCOPE_MEMBER = "MSM";
     public static final String STORE_MEMBER_PROFILE = "MSP";
     public static final String MEMBER_SCOPE_LINK = "MSL";
