@@ -5,6 +5,9 @@ import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.event.outbox.OutboxPublisher;
+import ai.neargo.shop.event.outbox.PublishOptions;
+import ai.neargo.shop.spi.food.DiningOrderAccepted;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.food.dto.CartAccess;
 import ai.neargo.shop.food.dto.CreateDiningOrderReq;
@@ -52,6 +55,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
+import ai.neargo.shop.food.service.KitchenTaskService;
+import ai.neargo.shop.food.dto.KitchenContracts.FrozenRoutes;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -61,6 +66,8 @@ import tools.jackson.databind.ObjectMapper;
 /** Durable FOOD intent -> original core order -> immutable source allocation. No financial state is invented. */
 public class DiningOrderServiceImpl implements DiningOrderService {
     private final CheckCartService carts;
+    private final KitchenTaskService kitchen;
+    private final OutboxPublisher publisher;
     private final DiningPricingFactsService facts;
     private final StoreOperationService policies;
     private final SalesQuotaClaimService quotas;
@@ -81,13 +88,35 @@ public class DiningOrderServiceImpl implements DiningOrderService {
             StorePolicyMapper policyRows, OrderBatchMapper batches, CoreOrderBindingMapper bindings,
             OrderLineMapper lines, CoreLineAllocationMapper allocations, Supplier<IndustryOrderPort> orders,
             Supplier<PricingCheckoutPort> pricing, ObjectMapper json, Clock clock, PlatformTransactionManager manager) {
+        this(carts,facts,policies,quotas,cartRows,policyRows,batches,bindings,lines,allocations,
+                orders,pricing,json,clock,manager,null);
+    }
+
+    public DiningOrderServiceImpl(CheckCartService carts, DiningPricingFactsService facts,
+            StoreOperationService policies, SalesQuotaClaimService quotas, CheckCartMapper cartRows,
+            StorePolicyMapper policyRows, OrderBatchMapper batches, CoreOrderBindingMapper bindings,
+            OrderLineMapper lines, CoreLineAllocationMapper allocations, Supplier<IndustryOrderPort> orders,
+            Supplier<PricingCheckoutPort> pricing, ObjectMapper json, Clock clock, PlatformTransactionManager manager,
+            KitchenTaskService kitchen) {
+        this(carts,facts,policies,quotas,cartRows,policyRows,batches,bindings,lines,allocations,
+                orders,pricing,json,clock,manager,kitchen,null);
+    }
+
+    public DiningOrderServiceImpl(CheckCartService carts,DiningPricingFactsService facts,
+            StoreOperationService policies,SalesQuotaClaimService quotas,CheckCartMapper cartRows,
+            StorePolicyMapper policyRows,OrderBatchMapper batches,CoreOrderBindingMapper bindings,
+            OrderLineMapper lines,CoreLineAllocationMapper allocations,Supplier<IndustryOrderPort> orders,
+            Supplier<PricingCheckoutPort> pricing,ObjectMapper json,Clock clock,PlatformTransactionManager manager,
+            KitchenTaskService kitchen,OutboxPublisher publisher) {
+        this.kitchen = kitchen; this.publisher=publisher;
         this.carts = carts; this.facts = facts; this.policies = policies; this.quotas = quotas;
         this.cartRows = cartRows; this.policyRows = policyRows; this.batches = batches; this.bindings = bindings;
         this.lines = lines; this.allocations = allocations; this.orders = orders; this.pricing = pricing;
         this.json = json; this.clock = clock; this.write = new TransactionTemplate(manager);
         this.write.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
-    private record Frozen(int schema, DiningPriceFacts facts, QuoteVO quote, StoreOperationPolicyResultVO policy) { }
+    private record Frozen(int schema, DiningPriceFacts facts, QuoteVO quote, StoreOperationPolicyResultVO policy,
+            FrozenRoutes kitchenRoutes) { }
 
     @Override public DiningOrderBatchVO customerPlace(String store, CartAccess access, CreateDiningOrderReq req,
             String key) {
@@ -96,7 +125,8 @@ public class DiningOrderServiceImpl implements DiningOrderService {
         if (!store.equals(authorized.storeNo())) throw BizException.of(ErrorCode.FORBIDDEN);
         var cart = sql(() -> cart(store, req.cartNo(), false));
         if (!access.buyerNo().equals(cart.getBuyerNo()) || !"H5".equals(cart.getOrderSource())
-                || !"PICKUP".equals(cart.getFulfillment()) || !"PREPAY".equals(req.payMode())) throw unsupported();
+                || !"PICKUP".equals(cart.getFulfillment())) throw unsupported();
+        if("POSTPAY".equals(req.payMode()) && (publisher==null || kitchen==null)) throw unsupported();
         String requestKey = PricingSnapshotHash.of(List.of("FOOD_PLACEMENT_KEY_V1", access.buyerNo(), key));
         String hash = PricingSnapshotHash.of(List.of("FOOD_PLACEMENT_REQUEST_V1", store, access.buyerNo(), req));
         var existing = sql(() -> byKey(cart.getEntityNo(), store, requestKey));
@@ -118,21 +148,25 @@ public class DiningOrderServiceImpl implements DiningOrderService {
                             : sourceFacts.payload().cart().sessionNo());
             if (!quote.sourceHash().equals(projection.prices().sourceSnapshotHash())) throw conflict();
             var policy = policies.getPolicy(cart.getEntityNo(), store, new GetPolicyQuery(clock.instant()));
-            if (!"PREPAY".equals(policy.payPolicy())) throw conflict();
+            if (!req.payMode().equals(policy.payPolicy())) throw conflict();
+            var routes = kitchen == null ? null : kitchen.freezeRoutes(cart.getEntityNo(),store,
+                    sourceFacts.payload().units().stream().map(u -> u.skuNo()).distinct().toList());
             batch = sql(() -> write.execute(tx -> prepare(cart, req, requestKey, hash, access.buyerNo(),
-                    new Frozen(1, sourceFacts, quote, policy))));
+                    new Frozen(2, sourceFacts, quote, policy, routes))));
         }
         if (List.of("CANCELLED", "FAILED").contains(batch.getStatus())) return view(batch, null);
         if (binding(batch) != null) return current(batch, access.buyerNo());
         var command = new Command(identity(batch, access.buyerNo()), source(batch.getCartNo(), batch.getCartVersion()),
-                credentials(access), batch.getQuoteRef(), batch.getQuoteHash(), IndustryOrderPort.Mode.PREPAY, "H5");
+                credentials(access), batch.getQuoteRef(), batch.getQuoteHash(), IndustryOrderPort.Mode.valueOf(batch.getPayMode()), "H5");
         final Result result;
         try { result = orders().place(command, batch.getBatchNo()); }
         catch (RuntimeException failure) {
             // A transport error does not prove the core intent absent. Keep the source and quota frozen for recovery.
             unknown(batch); throw failure;
         }
-        if (!committed(result)) { unknown(batch); return view(reload(batch), result); }
+        if (!committed(result) || "POSTPAY".equals(batch.getPayMode()) && !unpaidReady(result)) {
+            unknown(batch); return view(reload(batch), result);
+        }
         bind(batch, result);
         return view(reload(batch), result);
     }
@@ -190,7 +224,9 @@ public class DiningOrderServiceImpl implements DiningOrderService {
             }));
             return view(cancelled, result);
         }
-        if (binding(original) == null && committed(result)) bind(original, result);
+        if (committed(result) && (!"POSTPAY".equals(original.getPayMode()) || unpaidReady(result))) {
+            bind(original,result);
+        }
         return view(reload(original), result);
     }
 
@@ -230,8 +266,14 @@ public class DiningOrderServiceImpl implements DiningOrderService {
             lockStore(original.getEntityNo(), original.getStoreNo());
             var cart = cart(original.getStoreNo(), original.getCartNo(), true);
             var batch = reload(original);
-            if (binding(batch) != null) return null;
+            if (binding(batch) != null) {
+                if("POSTPAY".equals(batch.getPayMode())) acceptUnpaid(batch,result);
+                return null;
+            }
             if (!List.of("PREPARED", "PLACING", "UNKNOWN").contains(batch.getStatus())) throw conflict();
+            CartInputPolicy.key(result.orderNo()); CartInputPolicy.key(result.subOrderNo());
+            if("POSTPAY".equals(batch.getPayMode()) && !unpaidReady(result)
+                    || "PREPAY".equals(batch.getPayMode()) && result.inventoryLifecycleVersion()!=2) throw conflict();
             var frozen = json.readValue(batch.getFrozenRequest(), Frozen.class);
             if (!result.quoteNo().equals(batch.getQuoteRef()) || result.sourceVersion() != batch.getCartVersion()
                     || result.payAmountMinor() != frozen.quote().totals().receivableMinor()
@@ -280,7 +322,9 @@ public class DiningOrderServiceImpl implements DiningOrderService {
             binding.setBindingNo(BizKey.next("FCOB")); binding.setBatchNo(batch.getBatchNo());
             binding.setPaymentRootNo(result.orderNo()); binding.setStoreOrderNo(result.subOrderNo());
             binding.setStatus("BOUND"); bindings.insert(binding);
-            batch.setStatus("BOUND"); batch.setUpdatedBy(batch.getOperatorNo()); batches.updateById(batch);
+            batch.setStatus("BOUND"); batch.setUpdatedBy(batch.getOperatorNo());
+            if(batches.updateById(batch)!=1) throw conflict();
+            if("POSTPAY".equals(batch.getPayMode())) acceptUnpaid(batch,result);
             if (!Objects.equals(cart.getVersion(), batch.getCartVersion()) || !"OPEN".equals(cart.getStatus())) {
                 throw conflict();
             }
@@ -294,11 +338,35 @@ public class DiningOrderServiceImpl implements DiningOrderService {
             if (closed != 1) throw conflict(); return null;
         }));
     }
+    /** Joins the same local transaction as immutable source allocations, quota consumption and dispatch outbox. */
+    private void acceptUnpaid(FnbOrderBatch batch,Result result) {
+        if("ACCEPTED".equals(batch.getStatus())) return;
+        if(publisher==null || !"BOUND".equals(batch.getStatus()) || !unpaidReady(result)) throw conflict();
+        var bound=binding(batch);
+        if(bound==null || !bound.getPaymentRootNo().equals(result.orderNo())
+                || !bound.getStoreOrderNo().equals(result.subOrderNo()) || !batch.getQuoteRef().equals(result.quoteNo())
+                || batch.getCartVersion()!=result.sourceVersion()) throw conflict();
+        quotas.consume(batch.getEntityNo(),batch.getStoreNo(),batch.getBatchNo());
+        batch.setStatus("ACCEPTED"); batch.setAcceptedAt(LocalDateTime.ofInstant(clock.instant(),ZoneOffset.UTC));
+        batch.setUpdatedBy(batch.getOperatorNo());
+        if(batches.updateById(batch)!=1) throw conflict();
+        publisher.publish(new DiningOrderAccepted(batch.getBatchNo(),batch.getEntityNo(),batch.getStoreNo(),
+                batch.getCheckNo(),result.orderNo(),result.subOrderNo(),batch.getBusinessDate(),batch.getFulfillment(),
+                batch.getAcceptedAt().toInstant(ZoneOffset.UTC)),new PublishOptions("FOOD:BATCH:"+batch.getBatchNo(),1));
+    }
+    private static boolean unpaidReady(Result result) {
+        return result!=null && "POSTPAY".equals(result.orderMode()) && result.inventoryLifecycleVersion()==3
+                && result.acceptedUnpaid() && "WAIT_PAY".equals(result.status()) && result.fulfillmentStatus()!=null
+                && List.of("WAIT_FULFILL","FULFILLING","COMPLETED").contains(result.fulfillmentStatus());
+    }
     private DiningOrderBatchVO current(FnbOrderBatch batch, String actor) {
         var bound = binding(batch);
         Result core = bound == null ? orders().query(identity(batch, actor), batch.getBatchNo())
                 : orders().get(identity(batch, actor), bound.getPaymentRootNo());
-        if (bound == null && committed(core)) { bind(batch, core); batch = reload(batch); }
+        if (committed(core) && (!"POSTPAY".equals(batch.getPayMode()) || unpaidReady(core))
+                && (bound==null || "POSTPAY".equals(batch.getPayMode()) && !"ACCEPTED".equals(batch.getStatus()))) {
+            bind(batch,core); batch=reload(batch);
+        }
         return view(batch, core);
     }
     private DiningOrderBatchVO view(FnbOrderBatch batch, Result core) {
@@ -377,7 +445,8 @@ public class DiningOrderServiceImpl implements DiningOrderService {
         if (req == null) throw BizException.of(ErrorCode.BAD_REQUEST);
         CartInputPolicy.key(req.cartNo()); CartInputPolicy.key(req.quoteNo());
         if (req.version() < 0 || req.confirmationDigest() == null
-                || !req.confirmationDigest().matches("[0-9a-f]{64}") || req.payMode() == null) {
+                || !req.confirmationDigest().matches("[0-9a-f]{64}") || req.payMode() == null
+                || !List.of("PREPAY","POSTPAY").contains(req.payMode())) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
     }

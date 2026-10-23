@@ -7,8 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.dto.ConfigRevisionContentVO;
 import ai.neargo.shop.food.dto.CreateRecipeReq;
 import ai.neargo.shop.food.dto.ListRecipesQuery;
@@ -83,8 +81,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -92,7 +88,6 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.web.FilterChainProxy;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.transaction.PlatformTransactionManager;
 import tools.jackson.databind.ObjectMapper;
 
 /** Actual frozen migration, primary JSON, service-token ingress and original typed HTTP response shapes. */
@@ -167,8 +162,10 @@ class FoodRecipePrimaryDatabaseTest {
             Flyway.configure().dataSource(source).locations("classpath:db/industry/food").table("fnb_flyway_history")
                     .baselineOnMigrate(true).baselineVersion("0").load().migrate();
             new WebApplicationContextRunner().withInitializer(new ConfigDataApplicationContextInitializer())
-                    .withUserConfiguration(FoodApplication.class, Route.class)
-                    .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
+                    .withUserConfiguration(FoodApplication.class)
+                    .withPropertyValues("shop.outbox.sources.platform.mode=unified",
+                            "shop.outbox.sources.inventory.mode=legacy", "shop.outbox.enabled=false",
+                            "spring.datasource.url=" + url, "spring.datasource.username=root",
                             "spring.datasource.password=", "shop.services.internal-token=wire",
                             "shop.food.recipe-publication-enabled=true",
                             "shop.food.menu-publication-enabled=true",
@@ -178,6 +175,7 @@ class FoodRecipePrimaryDatabaseTest {
                                     + "DataRedisAutoConfiguration,org.springframework.boot.data.redis.autoconfigure."
                                     + "DataRedisRepositoriesAutoConfiguration")
                     .run(c -> {
+                        FoodServerProducerAssertions.verify(c);
                         assertThat(c).hasNotFailed().hasSingleBean(RecipeService.class);
                         var mvc = MockMvcBuilders.webAppContextSetup(c)
                                 .addFilters(c.getBean(FilterChainProxy.class)).build();
@@ -320,13 +318,16 @@ class FoodRecipePrimaryDatabaseTest {
                         }
                     });
             new WebApplicationContextRunner().withInitializer(new ConfigDataApplicationContextInitializer())
-                    .withUserConfiguration(FoodApplication.class, Route.class)
-                    .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
+                    .withUserConfiguration(FoodApplication.class)
+                    .withPropertyValues("shop.outbox.sources.platform.mode=unified",
+                            "shop.outbox.sources.inventory.mode=legacy", "shop.outbox.enabled=false",
+                            "spring.datasource.url=" + url, "spring.datasource.username=root",
                             "spring.datasource.password=", "shop.services.internal-token=wire",
                             "spring.autoconfigure.exclude=org.springframework.boot.data.redis.autoconfigure."
                                     + "DataRedisAutoConfiguration,org.springframework.boot.data.redis.autoconfigure."
                                     + "DataRedisRepositoriesAutoConfiguration")
                     .run(c -> {
+                        FoodServerProducerAssertions.verify(c);
                         assertThat(c).hasNotFailed();
                         var service = c.getBean(ConfigRevisionService.class);
                         var before = frozen.get();
@@ -566,15 +567,4 @@ class FoodRecipePrimaryDatabaseTest {
                 .isInstanceOfSatisfying(ServiceCallException.class, e -> assertThat(e.statusCode()).isEqualTo(404));
     }
 
-    @Configuration(proxyBeanMethods=false)
-    static class Route {
-        @Bean UnifiedOutboxFacade facade(DataSource source, PlatformTransactionManager manager, ObjectMapper json) {
-            var facade = new UnifiedOutboxFacade(json);
-            facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
-            facade.setArchiveOnly(Set.of("PLATFORM:FOOD_RECIPE_CHANGED", "PLATFORM:FOOD_CONFIG_PUBLISHED",
-                    "PLATFORM:FOOD_MENU_CHANGED", "PLATFORM:FOOD_DISH_CHANGED", "PLATFORM:FOOD_STATION_CHANGED",
-                    "PLATFORM:FOOD_MENU_CHANNEL_BINDING_CHANGED"));
-            return facade;
-        }
-    }
 }

@@ -18,6 +18,12 @@ shop:
   food:
     enabled: ${SHOP_FOOD_ENABLED:true}
     deployment: standalone
+  outbox:
+    # Producer only. The existing PLATFORM host owns the sole delivery runtime over this shared queue.
+    enabled: false
+    sources:
+      platform:
+        mode: unified
   services:
     internal-token: ${SHOP_INTERNAL_TOKEN:}
 

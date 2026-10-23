@@ -1,6 +1,7 @@
 package ai.neargo.shop.food.config;
 
 import ai.neargo.shop.event.outbox.OutboxPublisher;
+import ai.neargo.shop.food.service.KitchenTaskService;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.BundleChoiceMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.BundleGroupMapper;
@@ -137,7 +138,7 @@ import tools.jackson.databind.ObjectMapper;
 /** 餐饮模块装配入口。 */
 @AutoConfiguration(afterName = {"org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration",
         "com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration"})
-@Import({FoodPersistenceConfiguration.class, FoodWriteGuardConfiguration.class})
+@Import({FoodPersistenceConfiguration.class, FoodWriteGuardConfiguration.class, FoodOperationsConfiguration.class})
 @ConditionalOnFoodEnabled
 @EnableConfigurationProperties(FoodProperties.class)
 public class FoodAutoConfiguration {
@@ -483,9 +484,10 @@ public class FoodAutoConfiguration {
             StoreOperationService policies, SalesQuotaClaimService quotas, CheckCartMapper cartRows,
             StorePolicyMapper policyRows, OrderBatchMapper batches, CoreOrderBindingMapper bindings,
             OrderLineMapper lines, CoreLineAllocationMapper allocations, ObjectProvider<IndustryOrderPort> orders,
-            ObjectProvider<PricingCheckoutPort> pricing, ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            ObjectProvider<PricingCheckoutPort> pricing, ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager,
+            KitchenTaskService kitchen, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher) {
         return new DiningOrderServiceImpl(carts, facts, policies, quotas, cartRows, policyRows, batches,
-                bindings, lines, allocations, orders::getIfUnique, pricing::getIfUnique, json, Clock.systemUTC(), manager);
+                bindings, lines, allocations, orders::getIfUnique, pricing::getIfUnique, json, Clock.systemUTC(), manager, kitchen, publisher);
     }
 
     @Bean

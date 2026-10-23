@@ -7,9 +7,9 @@ const source=()=>JSON.parse(fs.readFileSync(new URL('../../docs/technical/design
 const added=['fnb_menu_channel_binding','fnb_menu_item_option_group','fnb_recipe','fnb_recipe_line','fnb_recipe_adjustment','fnb_production_consumption','fnb_production_consumption_line','fnb_catalog_sync_job','fnb_catalog_sync_item'];
 test('enhancement schema traces nine target objects without pretending to have migrated them',()=>{
  const s=source();assert.equal(s.catalogEnhancement?.version,1);
- assert.equal(s.tables.filter(t=>t.name.startsWith('fnb_')).length,82);
- for(const name of added)assert.equal(s.tables.find(t=>t.name===name)?.deployment,['fnb_recipe','fnb_recipe_line'].includes(name)?'MIGRATION_V4':name==='fnb_recipe_adjustment'?'MIGRATION_V5':name==='fnb_menu_item_option_group'?'MIGRATION_V6':name==='fnb_menu_channel_binding'?'MIGRATION_V7':'PLANNED',name);
- assert.equal(s.databaseInitialization.targetSchemaVersion,8);
+ assert.equal(s.tables.filter(t=>t.name.startsWith('fnb_')).length,83);
+ for(const name of added)assert.equal(s.tables.find(t=>t.name===name)?.deployment,['fnb_recipe','fnb_recipe_line'].includes(name)?'MIGRATION_V4':name==='fnb_recipe_adjustment'?'MIGRATION_V5':name==='fnb_menu_item_option_group'?'MIGRATION_V6':name==='fnb_menu_channel_binding'?'MIGRATION_V7':['fnb_production_consumption','fnb_production_consumption_line'].includes(name)?'MIGRATION_V9':'PLANNED',name);
+ assert.equal(s.databaseInitialization.targetSchemaVersion,10);
  assert.equal(s.catalogEnhancement.runtimeEnabled,false);
  assertFrozenFoodV1(renderFoodV1(s));
 });
@@ -45,7 +45,12 @@ test('no recipe or channel management endpoint is accidentally exposed as a cons
  const draftIds=new Set(['FOOD-API-152','FOOD-API-148','FOOD-API-149','FOOD-API-150','FOOD-API-151']);
  const managed=new Set(['FOOD-API-142','FOOD-API-143','FOOD-API-144','FOOD-API-145','FOOD-API-155']);
  assert(apis.filter(a=>managed.has(a.id)).every(a=>a.implementation==='IMPLEMENTED_BACKEND_MANAGEMENT'));
- assert(apis.filter(a=>!draftIds.has(a.id)&&!managed.has(a.id)).every(a=>a.needs.includes('未实现')));
+ const productionList=apis.find(a=>a.id==='FOOD-API-153');
+ assert(productionList.needs.includes('CODED_PENDING_VERIFICATION'));
+ const actual=s.nonPaymentImplementation.implementedApis.find(a=>a.targetApiId===productionList.id);
+ assert.equal(actual.method,'GET');assert.equal(actual.path,productionList.path);
+ assert.equal(actual.status,'CODED_PENDING_VERIFICATION');
+ assert(apis.filter(a=>a.id!=='FOOD-API-153'&&!draftIds.has(a.id)&&!managed.has(a.id)).every(a=>a.needs.includes('未实现')));
  assert(apis.filter(a=>draftIds.has(a.id)).every(a=>a.needs.startsWith('RECIPE-01A')||a.needs.startsWith('RECIPE-01C')));
  assert.equal(s.requirementAlignment.length,109);assert.equal(validateFoodDesign(s),true);
 });

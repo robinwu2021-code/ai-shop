@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.ArgumentMatchers.eq;
 import ai.neargo.shop.common.Fulfillments;
@@ -22,6 +23,7 @@ import ai.neargo.shop.spi.trade.PricingSourceFactsPort;
 import ai.neargo.shop.trade.dto.PricingPreparation.Prepared;
 import ai.neargo.shop.trade.dto.PricingQuoteCommands;
 import ai.neargo.shop.trade.entity.OrdOrder;
+import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.entity.OrdItem;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -43,7 +45,10 @@ import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
 import ai.neargo.shop.spi.inventory.InventoryReservationPort;
 import ai.neargo.shop.spi.marketing.AttributionPort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
+import ai.neargo.shop.spi.product.StockPort;
+import tools.jackson.databind.json.JsonMapper;
 import ai.neargo.shop.spi.trade.IndustryOrderPort.Command;
+import ai.neargo.shop.spi.trade.IndustryOrderPort.Allocation;
 import ai.neargo.shop.spi.trade.IndustryOrderPort.Identity;
 import ai.neargo.shop.spi.trade.IndustryOrderPort.Mode;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Credentials;
@@ -122,11 +127,9 @@ class IndustryOrderServiceTest {
         assertThatThrownBy(() -> service.cancel(command, "K")).isInstanceOf(BizException.class);
         verifyNoInteractions(intents, preparations, sources, inventoryProviders, payments, quotes);
     }
-    @Test void sessionAndPostpaidRequireTheirRealContractsBeforeAnyIntentOrStockMutation() {
+    @Test void sessionPlacementRequiresItsRealContractsBeforeAnyIntentOrStockMutation() {
         var session = command(identity, new Credentials("SESSION", "secret", "U"), Mode.PREPAY);
         assertThatThrownBy(() -> service.place(session, "K")).isInstanceOf(BizException.class);
-        var postpaid = command(identity, new Credentials(null, null, "U"), Mode.POSTPAY);
-        assertThatThrownBy(() -> service.place(postpaid, "K")).isInstanceOf(BizException.class);
         verifyNoInteractions(intents, preparations, sources, inventoryProviders, payments, quotes);
     }
     @Test void unprovenStockAuthorityCannotPublishAnOriginalOrder() {
@@ -169,10 +172,10 @@ class IndustryOrderServiceTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.ValueSource(longs = {100, 0})
-    void frozenMenuPriceWritesOriginalOrderItemsAndRealTaxSharesThenRetainsQuote(long price) {
+    @org.junit.jupiter.params.provider.CsvSource({"100,PREPAY","0,PREPAY","100,POSTPAY","0,POSTPAY"})
+    void frozenMenuPriceWritesOriginalOrderItemsAndRealTaxSharesThenRetainsQuote(long price,Mode mode) {
         long goodsAmount = price * 2; long tax = price == 0 ? 0 : 10; long due = goodsAmount + tax;
-        var command = command(identity, new Credentials(null, null, "U"), Mode.PREPAY);
+        var command = command(identity, new Credentials(null, null, "U"), mode);
         var unit = new PricingUnit("LINE", "f".repeat(64), "G", "SKU", "PRICE_V1", "INVOICE", BigDecimal.ZERO,
                 new BigDecimal("2"), new MoneyMinor("CNY", price), new MoneyMinor("CNY", goodsAmount));
         var snapshot = PricingSourceFacts.freeze(new PricingSourceFactsPort.Scope("MAIN", "E", "S"), "H5_SESSION", source,
@@ -197,7 +200,7 @@ class IndustryOrderServiceTest {
         var sku = new GoodsQueryPort.SkuSnapshot("SKU", "G", "E", "Dish", null, "regular", "STANDARD", "CATEGORY",
                 99999, 50, true, List.of(Fulfillments.STORE_PICKUP), null, null, "NORMAL", 10, null, "S");
         when(goods.snapshot(List.of("SKU"), Map.of("E", "S"))).thenReturn(Map.of("SKU", sku));
-        when(merchants.payCapabilityOf("E", "S")).thenReturn(new MerchantQueryPort.PayCapability(Set.of("WECHAT"), false, 100000, 0));
+        if(mode==Mode.PREPAY) when(merchants.payCapabilityOf("E", "S")).thenReturn(new MerchantQueryPort.PayCapability(Set.of("WECHAT"), false, 100000, 0));
         when(closeRules.unpaidMinutes()).thenReturn(15);
         when(attribution.resolveTrafficSource("U", "E")).thenReturn(AttributionPort.MERCHANT_OWNED);
         when(userDetails.communityOf("U")).thenReturn(Optional.of("COMM"));
@@ -211,13 +214,15 @@ class IndustryOrderServiceTest {
         var intent = new AtomicReference<OrdCreateIntent>(); var binding = new AtomicReference<OrdIndustryOrderSource>();
         when(intents.insert(any(OrdCreateIntent.class))).thenAnswer(invocation -> { intent.set(invocation.getArgument(0)); return 1; });
         when(intents.lock(orderNo)).thenAnswer(invocation -> intent.get());
+        when(intents.selectOne(any())).thenAnswer(invocation -> intent.get());
         when(bindings.insert(any(OrdIndustryOrderSource.class))).thenAnswer(invocation -> { binding.set(invocation.getArgument(0)); return 1; });
         when(bindings.selectOne(any())).thenAnswer(invocation -> binding.get());
         var inventory = mock(InventoryReservationPort.class);
         when(inventoryProviders.orderedStream()).thenAnswer(invocation -> Stream.of(inventory));
         var stockScope = new InventoryReservationPort.Scope("MAIN", "E", orderNo);
-        when(inventory.reserve(eq(stockScope), any(), eq(900L), eq(2))).thenReturn(new InventoryReservationPort.Snapshot(
-                stockScope, "RESERVATION", InventoryReservationPort.State.HELD, 2, false,
+        int lifecycle=mode==Mode.POSTPAY?3:2;
+        when(inventory.reserve(eq(stockScope), any(), eq(900L), eq(lifecycle))).thenReturn(new InventoryReservationPort.Snapshot(
+                stockScope, "RESERVATION", InventoryReservationPort.State.HELD, lifecycle, false,
                 List.of(new InventoryReservationPort.ReservedLine("SKU", 2, subNo))));
         var writtenItem = new AtomicReference<OrdItem>(); var writtenOrder = new AtomicReference<OrdOrder>();
         when(items.insert(any(OrdItem.class))).thenAnswer(invocation -> { var item = (OrdItem) invocation.getArgument(0); item.setId(10L); writtenItem.set(item); return 1; });
@@ -225,6 +230,16 @@ class IndustryOrderServiceTest {
         when(quotes.retain(any(), eq("PQ"), eq(orderNo))).thenReturn(new PricingQuoteCommands.QuoteVO(
                 "PQ", "READY", quote.expiresAt(), "a".repeat(64), "b".repeat(64), "c".repeat(64),
                 "{}", "{}", "{}", "{}", orderNo));
+        var writtenSub=new AtomicReference<OrdSubOrder>();
+        when(subOrders.insert(any(OrdSubOrder.class))).thenAnswer(call -> { writtenSub.set(call.getArgument(0)); return 1; });
+        if(mode==Mode.POSTPAY) {
+            when(inventory.acceptUnpaid(stockScope)).thenReturn(new InventoryReservationPort.Snapshot(stockScope,
+                    "RESERVATION",InventoryReservationPort.State.ACCEPTED_UNPAID,3,false,
+                    List.of(new InventoryReservationPort.ReservedLine("SKU",2,subNo))));
+            when(payments.selectOne(any())).thenAnswer(call -> writtenOrder.get());
+            when(subOrders.selectOne(any())).thenAnswer(call -> writtenSub.get());
+            when(subOrders.updateById(any(OrdSubOrder.class))).thenReturn(1);
+        }
         var result = service.place(command, "KEY");
         assertThat(result.status()).isEqualTo("WAIT_PAY"); assertThat(result.payAmountMinor()).isEqualTo(due);
         assertThat(writtenOrder.get().getGoodsAmount()).isEqualTo(goodsAmount);
@@ -235,13 +250,99 @@ class IndustryOrderServiceTest {
             assertThat(allocation.componentRef()).isEqualTo("f".repeat(64));
             assertThat(allocation.amountMinor()).isEqualTo(due); assertThat(allocation.hash()).hasSize(64);
         });
-        assertThat(binding.get().getStatus()).isEqualTo("BOUND");
+        assertThat(binding.get().getStatus()).isEqualTo(mode==Mode.POSTPAY?"ACCEPTED":"BOUND");
+        assertThat(result.orderMode()).isEqualTo(mode.name());
+        assertThat(result.inventoryLifecycleVersion()).isEqualTo(lifecycle);
+        assertThat(result.acceptedUnpaid()).isEqualTo(mode==Mode.POSTPAY);
+        assertThat(writtenOrder.get().getStatus()).isEqualTo("WAIT_PAY");
+        assertThat(writtenOrder.get().getPaidAt()).isNull();
+        if(mode==Mode.POSTPAY) {
+            assertThat(writtenOrder.get().getPayDeadlineAt()).isNull();
+            assertThat(writtenSub.get().getStatus()).isEqualTo("WAIT_FULFILL");
+            assertThat(service.query(identity,"KEY").orderNo()).isEqualTo(orderNo);
+            verify(inventory,times(1)).acceptUnpaid(stockScope);
+            verify(inventory,never()).allocatePaid(any());
+            verify(inventory,never()).issue(any(),any());
+        }
         assertThat(binding.get().getSourceSubjectNo()).isEqualTo("H5_SESSION");
         assertThat(binding.get().getAllocationsJson()).contains("INVOICE", "taxMinor", "orderItemId");
         assertThat(intent.get().getStatus()).isEqualTo(OrdCreateIntent.COMMITTED);
         verify(quotes).retain(any(), eq("PQ"), eq(orderNo));
         verify(limits).require("U", Map.of("G", 2), Map.of("G", 10));
         verify(events).publish(any());
+    }
+
+    private record AcceptedFixture(OrdIndustryOrderSource binding,OrdOrder parent,OrdSubOrder child,
+            InventoryReservationPort inventory,InventoryReservationPort.Scope scope) { }
+    private AcceptedFixture boundPostpaid() {
+        var command=command(identity,new Credentials(null,null,"U"),Mode.POSTPAY);
+        String hash=PricingSnapshotHash.of(command);
+        var bound=new OrdIndustryOrderSource(); bound.setTenantNo("MAIN"); bound.setEntityNo("E");
+        bound.setStoreNo("S"); bound.setBuyerNo("U"); bound.setActorNo("U"); bound.setOrderNo("O");
+        bound.setSubOrderNo("OS"); bound.setQuoteNo("PQ"); bound.setSourceVersion(1L);
+        bound.setOrderMode("POSTPAY"); bound.setStatus("BOUND"); bound.setRequestHash(hash);
+        bound.setAllocationsJson(JsonMapper.builder().build().writeValueAsString(Map.of("allocations",List.of(
+                new Allocation("LINE","f".repeat(64),10,2,210,"CNY",
+                "a".repeat(64))),"evidence",List.of())));
+        var intent=new OrdCreateIntent(); intent.setPayNo("O"); intent.setUserNo("U"); intent.setRequestHash(hash);
+        intent.setStockAuthority("INDUSTRY_INVENTORY_V2"); intent.setStatus(OrdCreateIntent.COMMITTED);
+        intent.setStockNeedsJson(JsonMapper.builder().build().writeValueAsString(
+                List.of(new StockPort.SkuQty("SKU",2,"S","OS",3))));
+        var parent=new OrdOrder(); parent.setOrderNo("O"); parent.setUserNo("U"); parent.setStatus("WAIT_PAY");
+        parent.setCurrency("CNY"); parent.setPayAmount(210L);
+        var child=new OrdSubOrder(); child.setOrderNo("O"); child.setSubOrderNo("OS");
+        child.setInventoryLifecycleVersion(3); child.setStatus("WAIT_PAY");
+        var inventory=mock(InventoryReservationPort.class);
+        when(bindings.selectOne(any())).thenReturn(bound); when(intents.selectOne(any())).thenReturn(intent);
+        when(inventoryProviders.orderedStream()).thenAnswer(call -> Stream.of(inventory));
+        lenient().when(manager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+        lenient().when(payments.selectOne(any())).thenReturn(parent);
+        lenient().when(subOrders.selectOne(any())).thenReturn(child);
+        lenient().when(subOrders.updateById(any(OrdSubOrder.class))).thenReturn(1);
+        return new AcceptedFixture(bound,parent,child,inventory,new InventoryReservationPort.Scope("MAIN","E","O"));
+    }
+    @Test void recoveryOfBoundPostpayUsesOriginalReservationAndAssignsOriginalOwnerPickupCodeWithoutMoney() {
+        var fixture=boundPostpaid();
+        when(fixture.inventory.acceptUnpaid(fixture.scope)).thenReturn(new InventoryReservationPort.Snapshot(
+                fixture.scope,"RES",InventoryReservationPort.State.ACCEPTED_UNPAID,3,false,
+                List.of(new InventoryReservationPort.ReservedLine("SKU",2,"OS"))));
+        var result=service.query(identity,"ORIGINAL-KEY");
+        assertThat(result.acceptedUnpaid()).isTrue(); assertThat(result.status()).isEqualTo("WAIT_PAY");
+        assertThat(fixture.parent.getPaidAt()).isNull(); assertThat(fixture.parent.getPayChannel()).isNull();
+        assertThat(fixture.child.getVerifyCode()).matches("[0-9]{6}");
+        assertThat(service.query(identity,"ORIGINAL-KEY").orderNo()).isEqualTo("O");
+        verify(fixture.inventory,times(1)).acceptUnpaid(fixture.scope);
+        verify(fixture.inventory,never()).allocatePaid(any()); verify(fixture.inventory,never()).issue(any(),any());
+        verifyNoInteractions(preparations,checkout,quotes,numbers);
+        assertThatThrownBy(() -> service.cancel(command(identity,new Credentials(null,null,"U"),Mode.POSTPAY),"K"))
+                .isInstanceOf(BizException.class);
+        verify(fixture.inventory,never()).cancelAll(any());
+    }
+    @Test void acceptanceRejectsHeldWrongQuantityAndInventedPaymentAcknowledgmentBeforeAnyCoreTransition() {
+        var fixture=boundPostpaid();
+        for(var receipt:List.of(
+                new InventoryReservationPort.Snapshot(fixture.scope,"RES",InventoryReservationPort.State.HELD,3,false,
+                        List.of(new InventoryReservationPort.ReservedLine("SKU",2,"OS"))),
+                new InventoryReservationPort.Snapshot(fixture.scope,"RES",InventoryReservationPort.State.ACCEPTED_UNPAID,3,true,
+                        List.of(new InventoryReservationPort.ReservedLine("SKU",2,"OS"))),
+                new InventoryReservationPort.Snapshot(fixture.scope,"RES",InventoryReservationPort.State.ACCEPTED_UNPAID,3,false,
+                        List.of(new InventoryReservationPort.ReservedLine("SKU",1,"OS"))))) {
+            when(fixture.inventory.acceptUnpaid(fixture.scope)).thenReturn(receipt);
+            assertThatThrownBy(() -> service.acceptUnpaid(identity,"O")).isInstanceOf(BizException.class);
+            assertThat(fixture.binding.getStatus()).isEqualTo("BOUND");
+            assertThat(fixture.child.getStatus()).isEqualTo("WAIT_PAY");
+        }
+        verifyNoInteractions(payments,subOrders,events,logs);
+    }
+    @Test void lateUnpaidAcceptancePreservesAnAlreadyCompletedFulfillment() {
+        var fixture=boundPostpaid(); fixture.child.setStatus("COMPLETED"); fixture.child.setVerifyCode("123456");
+        when(fixture.inventory.acceptUnpaid(fixture.scope)).thenReturn(new InventoryReservationPort.Snapshot(
+                fixture.scope,"RES",InventoryReservationPort.State.ISSUED_UNPAID,3,false,
+                List.of(new InventoryReservationPort.ReservedLine("SKU",2,"OS"))));
+        var result=service.acceptUnpaid(identity,"O");
+        assertThat(result.fulfillmentStatus()).isEqualTo("COMPLETED");
+        assertThat(fixture.child.getVerifyCode()).isEqualTo("123456");
+        assertThat(result.status()).isEqualTo("WAIT_PAY"); verify(subOrders,never()).updateById(any(OrdSubOrder.class));
     }
 
     @Test void uncertainCancellationRetainsOriginalIntentAndResumesSameOwnerReference() {

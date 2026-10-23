@@ -1,5 +1,29 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.food.api.biz.BizKitchenTaskController;
+import ai.neargo.shop.food.api.biz.BizDiningHandoverController;
+import ai.neargo.shop.food.api.biz.BizCourseController;
+import ai.neargo.shop.food.api.biz.BizBusinessCloseController;
+import ai.neargo.shop.food.api.biz.BizPrintJobController;
+import ai.neargo.shop.food.api.biz.BizPrintDeviceController;
+import ai.neargo.shop.food.api.biz.BizPrintConfigurationController;
+import ai.neargo.shop.food.event.DiningKitchenAcceptedConsumer;
+import ai.neargo.shop.food.service.KitchenTaskService;
+import ai.neargo.shop.food.service.QueueService;
+import ai.neargo.shop.food.service.DiningPickupVerificationService;
+import ai.neargo.shop.food.api.biz.BizQueueController;
+import ai.neargo.shop.food.api.biz.BizDiningPickupVerificationController;
+import ai.neargo.shop.food.service.ProductionConsumptionService;
+import ai.neargo.shop.food.service.KitchenReturnService;
+import ai.neargo.shop.food.api.biz.BizProductionConsumptionController;
+import ai.neargo.shop.food.api.biz.BizKitchenReturnController;
+import ai.neargo.shop.food.event.DiningProductionConsumer;
+import ai.neargo.shop.food.service.BusinessCloseService;
+import ai.neargo.shop.food.service.FoodPrintService;
+import ai.neargo.shop.spi.printing.PrintPort;
+import tools.jackson.databind.ObjectMapper;
+
+
 import ai.neargo.shop.food.api.FoodBizDataScopeInterceptor;
 import ai.neargo.shop.food.api.FoodRequestScopeValidator;
 import ai.neargo.shop.food.api.biz.BizCheckActionController;
@@ -65,6 +89,7 @@ import ai.neargo.shop.spi.user.StoreDirectoryPort;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Condition;
 import org.springframework.context.annotation.ConditionContext;
@@ -81,6 +106,80 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @ConditionalOnFoodWebEnabled
 @Profile({"api", "ops"})
 public class FoodWebAutoConfiguration {
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({QueueService.class,StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizQueueController.class)
+    BizQueueController bizQueueController(QueueService service,StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizQueueController(service,stores,scope); }
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({DiningPickupVerificationService.class,StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizDiningPickupVerificationController.class)
+    BizDiningPickupVerificationController bizDiningPickupVerificationController(DiningPickupVerificationService service,StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizDiningPickupVerificationController(service,stores,scope); }
+
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({KitchenTaskService.class,StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizDiningHandoverController.class)
+    BizDiningHandoverController bizDiningHandoverController(KitchenTaskService service,StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizDiningHandoverController(service,stores,scope); }
+
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({ProductionConsumptionService.class,StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizProductionConsumptionController.class)
+    BizProductionConsumptionController bizProductionConsumptionController(ProductionConsumptionService service,StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizProductionConsumptionController(service,stores,scope); }
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({KitchenReturnService.class,StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizKitchenReturnController.class)
+    BizKitchenReturnController bizKitchenReturnController(KitchenReturnService service,StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizKitchenReturnController(service,stores,scope); }
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean(ProductionConsumptionService.class)
+    @ConditionalOnMissingBean(DiningProductionConsumer.class)
+    DiningProductionConsumer diningProductionConsumer(ProductionConsumptionService service,ObjectMapper json) {
+        return new DiningProductionConsumer(service,json);
+    }
+
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({KitchenTaskService.class,StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizKitchenTaskController.class)
+    BizKitchenTaskController bizKitchenTaskController(KitchenTaskService service,StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizKitchenTaskController(service,stores,scope); }
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({KitchenTaskService.class,StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizCourseController.class)
+    BizCourseController bizCourseController(KitchenTaskService service,StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizCourseController(service,stores,scope); }
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({BusinessCloseService.class,StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizBusinessCloseController.class)
+    BizBusinessCloseController bizBusinessCloseController(BusinessCloseService service,StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizBusinessCloseController(service,stores,scope); }
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({PrintPort.class,StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizPrintDeviceController.class)
+    BizPrintDeviceController bizPrintDeviceController(PrintPort service,StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizPrintDeviceController(service,stores,scope); }
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({PrintPort.class,StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizPrintConfigurationController.class)
+    BizPrintConfigurationController bizPrintConfigurationController(PrintPort service,StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizPrintConfigurationController(service,stores,scope); }
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({FoodPrintService.class,PrintPort.class,StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizPrintJobController.class)
+    BizPrintJobController bizPrintJobController(FoodPrintService service,PrintPort print,
+            StoreDirectoryPort stores,FoodRequestScopeValidator scope) {
+        return new BizPrintJobController(service,print,stores,scope);
+    }
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean(KitchenTaskService.class)
+    @ConditionalOnMissingBean(DiningKitchenAcceptedConsumer.class)
+    DiningKitchenAcceptedConsumer diningKitchenAcceptedConsumer(KitchenTaskService kitchen,ObjectMapper json,
+            ObjectProvider<PrintPort> printing,ObjectProvider<FoodPrintService> documents) {
+        return new DiningKitchenAcceptedConsumer(kitchen,json,printing::getIfAvailable,documents::getIfAvailable);
+    }
+
     @Bean
     @Profile("api")
     @Conditional(PolicyEnabled.class)

@@ -29,6 +29,7 @@ import tools.jackson.databind.ObjectMapper;
 import javax.sql.DataSource;
 import java.time.Clock;
 import java.util.List;
+import java.util.ArrayList;
 
 /** Delayed registration avoids the event-bus / consumer / publisher bean cycle. */
 @Configuration
@@ -39,7 +40,8 @@ public class OutboxConfiguration {
 
     @Bean
     SmartInitializingSingleton outboxRegistration(UnifiedOutboxFacade facade, OutboxProperties props,
-            ObjectProvider<OutboxConsumer> consumers, ObjectMapper json, Environment env,
+            ObjectProvider<OutboxConsumer> consumers, ObjectProvider<OutboxHandler> workflows,
+            ObjectMapper json, Environment env,
             @Qualifier("dataSource") DataSource platform,
             @Qualifier("transactionManager") PlatformTransactionManager platformTx,
             @Qualifier("invDataSource") ObjectProvider<DataSource> inventory,
@@ -59,7 +61,7 @@ public class OutboxConfiguration {
                 throw new IllegalStateException("Unified outbox cannot enable legacy-scan");
             }
             allTransactionManagers.orderedStream().forEach(OutboxTransactions::register);
-            List<OutboxHandler> handlers = consumers.orderedStream().map(consumer -> {
+            List<OutboxHandler> legacyHandlers = consumers.orderedStream().map(consumer -> {
                 if (!List.of("PLATFORM", "INVENTORY").contains(consumer.targetSource())) {
                     throw new IllegalStateException("Unknown outbox target source");
                 }
@@ -69,6 +71,13 @@ public class OutboxConfiguration {
                 return (OutboxHandler) new TransactionalOutboxHandler(consumer, ds, tx,
                         inv ? "inv_event_consumed" : "sys_event_consumed");
             }).toList();
+            List<OutboxHandler> handlers = new ArrayList<>(legacyHandlers);
+            workflows.orderedStream().forEach(handler -> {
+                if (!handler.externalWorkflow()) {
+                    throw new IllegalStateException("Direct outbox handlers require a durable external workflow");
+                }
+                handlers.add(handler);
+            });
             if (props.unified("PLATFORM")) {
                 facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, platform, platformTx, json), handlers);
             }

@@ -5,8 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.dto.DishPresentation;
 import ai.neargo.shop.food.dto.DishCatalogItemVO;
 import ai.neargo.shop.food.dto.DishDetailResultVO;
@@ -41,8 +39,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -50,7 +46,6 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.web.FilterChainProxy;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.transaction.PlatformTransactionManager;
 import tools.jackson.databind.ObjectMapper;
 
 /** Exercises the actual V1 JSON columns, standalone assembly and both original typed HTTP boundaries. */
@@ -120,14 +115,17 @@ class FoodDishPrimaryDatabaseTest {
             Flyway.configure().dataSource(source).locations("classpath:db/industry/food").table("fnb_flyway_history")
                     .baselineOnMigrate(true).baselineVersion("0").load().migrate();
             new WebApplicationContextRunner().withInitializer(new ConfigDataApplicationContextInitializer())
-                    .withUserConfiguration(FoodApplication.class, Route.class)
-                    .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
+                    .withUserConfiguration(FoodApplication.class)
+                    .withPropertyValues("shop.outbox.sources.platform.mode=unified",
+                            "shop.outbox.sources.inventory.mode=legacy", "shop.outbox.enabled=false",
+                            "spring.datasource.url=" + url, "spring.datasource.username=root",
                             "spring.datasource.password=", "shop.services.internal-token=wire",
                             "shop.services.targets.PLATFORM=http://127.0.0.1:" + server.getAddress().getPort(),
                             "spring.autoconfigure.exclude=org.springframework.boot.data.redis.autoconfigure."
                                     + "DataRedisAutoConfiguration,org.springframework.boot.data.redis.autoconfigure."
                                     + "DataRedisRepositoriesAutoConfiguration")
                     .run(c -> {
+                        FoodServerProducerAssertions.verify(c);
                         assertThat(c).hasNotFailed().hasSingleBean(DishService.class)
                                 .hasSingleBean(SpecValueCatalogQueryPort.class);
                         assertThat(c.getBean(SpecValueCatalogQueryPort.class).getValues("E", List.of("V")))
@@ -220,13 +218,4 @@ class FoodDishPrimaryDatabaseTest {
         }
     }
 
-    @Configuration(proxyBeanMethods=false)
-    static class Route {
-        @Bean UnifiedOutboxFacade facade(DataSource source, PlatformTransactionManager manager, ObjectMapper json) {
-            var facade = new UnifiedOutboxFacade(json);
-            facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
-            facade.setArchiveOnly(Set.of("PLATFORM:FOOD_DISH_CHANGED"));
-            return facade;
-        }
-    }
 }

@@ -54,7 +54,7 @@ public final class FoodSchemaValidator {
             require(state.equals("SUCCESS") || state.equals("BASELINE"), "food migration state: " + state);
         }
         var current = flyway.info().current();
-        require(current != null && "8".equals(current.getVersion().getVersion()), "food migration version must be 8");
+        require(current != null && "10".equals(current.getVersion().getVersion()), "food migration version must be 10");
         try (var connection = source.getConnection();
                 var column = connection.getMetaData().getColumns(connection.getCatalog(), connection.getSchema(),
                         "fnb_option_group_item", "spec_value_no")) {
@@ -71,7 +71,7 @@ public final class FoodSchemaValidator {
         missing.addAll(missingCoreCapabilities(actual));
         missing.addAll(missingCoreUniqueKeys(source, actual));
         Collections.sort(missing);
-        return new FoodSchemaReady(true, "8", missing);
+        return new FoodSchemaReady(true, current.getVersion().getVersion(), missing);
     }
 
     private static List<String> missingCoreCapabilities(Map<String, Set<String>> actual) {
@@ -92,6 +92,9 @@ public final class FoodSchemaValidator {
 
     private static List<String> missingCoreUniqueKeys(DataSource source, Map<String, Set<String>> actual) {
         Map<String, List<String>> required = Map.ofEntries(
+                Map.entry("fnb_queue_ticket",List.of("ticket_no","entity_no,store_no,request_key")),
+                Map.entry("fnb_production_consumption", List.of("consumption_no", "source_event_no,purpose")),
+                Map.entry("fnb_production_consumption_line", List.of("consumption_no,line_no")),
                 Map.entry("fnb_return", List.of("entity_no,store_no,request_key")),
                 Map.entry("fnb_settlement", List.of("entity_no,store_no,request_key")),
                 Map.entry("fnb_menu_item_option_group", List.of("menu_item_no,group_no")),
@@ -217,6 +220,19 @@ public final class FoodSchemaValidator {
             expected.get("fnb_return").addAll(List.of("batch_no", "buyer_no", "request_key", "request_hash",
                     "request_snapshot"));
             expected.get("fnb_settlement").addAll(List.of("request_key", "request_hash", "request_snapshot", "buyer_no"));
+            var consumption = new TreeSet<>(common);
+            consumption.addAll(List.of("consumption_no","store_no","source_event_no","purpose","request_hash",
+                    "status","inventory_operation_ref","original_consumption_no","business_date","occurred_at",
+                    "request_snapshot","receipt_snapshot"));
+            expected.put("fnb_production_consumption",consumption);
+            var consumptionLine = new TreeSet<>(common);
+            consumptionLine.addAll(List.of("consumption_no","line_no","component_path","item_ref","theory_qty",
+                    "unit","recipe_revision_no","inventory_receipt_ref","actual_qty","cost_minor","currency","status"));
+            expected.put("fnb_production_consumption_line",consumptionLine);
+            var queue = new TreeSet<>(common);
+            queue.addAll(List.of("ticket_no","store_no","business_date","party_size","contact_ref","status",
+                    "called_at","check_no","request_key","request_hash","seat_request","seat_actor_no","seat_request_hash"));
+            expected.put("fnb_queue_ticket",queue);
             return expected;
         } catch (IllegalStateException ex) { throw ex; }
         catch (Exception ex) { throw new IllegalStateException("Cannot read immutable food V1 manifest"); }

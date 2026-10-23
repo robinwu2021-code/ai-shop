@@ -9,6 +9,9 @@ import org.springframework.stereotype.Component;
 public class IndustryOrderPortImpl implements IndustryOrderPort {
     private final IndustryOrderService service;
     public IndustryOrderPortImpl(IndustryOrderService service) { this.service = service; }
+    @Override public Result acceptUnpaid(Identity identity,String orderNo) {
+        return service.acceptUnpaid(identity,orderNo);
+    }
     @Override public Result place(Command command, String key) { return service.place(command, key); }
     @Override public Result cancel(Command command, String key) { return service.cancel(command, key); }
     @Override public Result getForStore(Scope scope, String actor, String orderNo) { return service.getForStore(scope, actor, orderNo); }

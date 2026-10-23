@@ -10,6 +10,7 @@ import org.springframework.web.service.annotation.PostExchange;
 /** Internal source-bound commands, never a public API accepting a caller-supplied buyer. */
 public interface IndustryOrderInternalApi {
     String ROOT = "/internal/trade/industry-orders";
+    @PostExchange(ROOT + "/accept-unpaid") Result acceptUnpaid(@RequestBody Get request);
     @PostExchange(ROOT + "/place") Result place(@RequestBody Place request);
     @PostExchange(ROOT + "/query") Result query(@RequestBody Query request);
     @PostExchange(ROOT + "/get") Result get(@RequestBody Get request);

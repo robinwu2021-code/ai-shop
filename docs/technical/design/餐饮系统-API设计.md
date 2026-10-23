@@ -1,6 +1,6 @@
 # 餐饮系统API设计
 
-> 状态：待评审 · 2026-10-21 · V1含73张fnb_业务表；增强目标82张，V4新增2张配方草稿表、V5新增1张调整表、V6新增1张餐牌选配表、V7新增1张渠道草稿表、另4张PLANNED；可用迁移版本8（新增结账/售后来源元数据），历史经营库执行证据仍V1/73；目标API不代表全部交付，prn/rpt保持共享候选。
+> 状态：待评审 · 2026-10-21 · V1含73张fnb_业务表；当前目标83张，后续迁移可用至V10（含V9耗用及V10排队），另2张PLANNED；历史经营库执行证据仍V1/73；目标API不代表全部交付；共享打印V556可用，报表保持原共享owner，不声明生产已应用。
 > 由 `node scripts/gen-food-system-design.mjs` 生成，勿手改；真源：[领域数据库API设计源](./schema/food-system-design.json)。生成依赖沿用 @viz-js/viz，可用 FOOD_ER_VIZ_MODULE 指定模块路径。
 > 业务入口：[后端业务模块功能清单](../../requirements/餐饮系统-后端业务模块功能清单.md) · [数据库与API评审对齐](../TDD-餐饮系统-数据库与API评审对齐.md)。按桌台→菜品→订单查阅，A–L仍保留为持久化分域编号。
 > 项目约束：[底座兼容对齐](./餐饮系统-项目底座兼容对齐.md)，账号、门店、营业时间、公共实体及协议冲突时优先按该对齐说明修订。
@@ -8,11 +8,11 @@
 
 ## 零、按业务模块阅读
 
-先查主责模块，再查表字段或接口编号。13个业务模块与A–L持久化域不是一一对应；模块可协作调用相同服务，不能据此复制实体。109项追踪结果：目标已定义32项，依赖共享/核心合同59项，尚缺专项设计18项。以上均为设计状态，非实现验收。
+先查主责模块，再查表字段或接口编号。13个业务模块与A–L持久化域不是一一对应；模块可协作调用相同服务，不能据此复制实体。109项追踪结果：目标已定义32项，依赖共享/核心合同60项，尚缺专项设计17项。以上均为设计状态，非实现验收。
 
 | 模块 | 名称 | 需求数 | 关联表数 | 关联API数 |
 |---|---|---|---|---|
-| MOD-01 | 桌台与就餐管理 | 8 | 11 | 31 |
+| MOD-01 | 桌台与就餐管理 | 8 | 12 | 40 |
 | MOD-02 | 菜品与餐牌管理 | 12 | 27 | 41 |
 | MOD-03 | 点餐与订单管理 | 9 | 14 | 30 |
 | MOD-04 | 厨房与履约管理 | 10 | 10 | 17 |
@@ -30,7 +30,7 @@
 
 ## 一、协议与能力边界
 
-156个目标端点，统一JSON语义；路径为建议合同，未全部注册在当前Controller。本地适配器和远程适配器遵守相同DTO、权限和幂等。
+165个目标端点，统一JSON语义；路径为建议合同，未全部注册在当前Controller。本地适配器和远程适配器遵守相同DTO、权限和幂等。
 
 - /biz为商家作业，/mp为顾客，/ops为平台，/internal仅服务身份。老板App/收银/厨房复用biz服务，按角色门店工位鉴权，不把平台管理员当商家收银员。
 - Authorization为获准身份；X-Request-Id用于追踪。所有有副作用操作必需Idempotency-Key；作用域含entity/store/operation/key，规范payload哈希同键异参返回409。operator/entity从身份获取，不接受客户端冒充。
@@ -200,6 +200,15 @@
 | E | FOOD-API-154 | GET `/biz/x/food/production-consumptions/{consumptionNo}` | 制作耗用详情 |
 | B | FOOD-API-155 | GET `/biz/x/food/stores/{storeNo}/sku-routes/{skuNo}` | 读取SKU工位路由 |
 | D | FOOD-API-156 | POST `/biz/x/food/checks/{checkNo}/cart-sessions` | 授权扫码会话加入共享购物车 |
+| C | FOOD-API-157 | POST `/biz/x/food/queue-tickets` | 排队取号 |
+| C | FOOD-API-158 | GET `/biz/x/food/queue-tickets` | 排队列表 |
+| C | FOOD-API-159 | GET `/biz/x/food/queue-tickets/{ticketNo}` | 原排队票 |
+| C | FOOD-API-160 | POST `/biz/x/food/queue-tickets:call-next` | 叫下一位 |
+| C | FOOD-API-161 | POST `/biz/x/food/queue-tickets/{ticketNo}:call` | 指定叫号 |
+| C | FOOD-API-162 | POST `/biz/x/food/queue-tickets/{ticketNo}:cancel` | 取消排队 |
+| C | FOOD-API-163 | POST `/biz/x/food/queue-tickets/{ticketNo}:no-show` | 排队过号 |
+| C | FOOD-API-164 | POST `/biz/x/food/queue-tickets/{ticketNo}:seat` | 排队转原开台 |
+| C | FOOD-API-165 | POST `/biz/x/food/queue-tickets/{ticketNo}:recover-seating` | 原排队就座恢复 |
 
 ## 三、公共DTO输入输出字段
 
@@ -1423,6 +1432,28 @@
 |---|---|---|---|
 | choiceNo | string | 是 | 冻结套餐选项 |
 | qty | decimal | 是 | 每份套餐选择数量 |
+
+### QueueTicketView
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| ticketNo | string | 是 | 原排队号 |
+| businessDate | date | 是 | 营业日 |
+| partySize | int32 | 是 | 人数 |
+| status | string | 是 | 真实排队状态 |
+| calledAt | datetime | 否 | 叫号时间 |
+| checkNo | string | 否 | 原开台回执 |
+| version | int64 | 是 | CAS |
+| notificationStatus | string | 是 | 真实通知状态 |
+
+### QueueTicketPage
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| records | QueueTicketView[] | 是 | 当前门店排队票 |
+| total | int64 | 是 | 同条件总数 |
+| page | int32 | 是 | 页 |
+| size | int32 | 是 | 页长 |
 
 ## 四、逐接口输入输出
 
@@ -5918,9 +5949,9 @@
 
 `GET /biz/x/food/stores/{storeNo}/production-consumptions`
 
-权限与守卫：原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；当前为目标合同不注册空实现。只读不补扣库存；未知成本与实际量保持为空。。
+权限与守卫：原主体门店及权限；可信actor；写必需幂等/CAS；不能客户端自造业务号；本批真实只读route与DTO见nonPaymentImplementation；保留目标合同差异与待验收状态。只读不补扣库存；未知成本与实际量保持为空。。
 
-能力依赖：餐饮新增，未实现；按P1/P2/P4/P5所属切片验收。
+能力依赖：餐饮目标合同保留；本批真实SQL分页/COUNT与DTO已编码，CODED_PENDING_VERIFICATION；共享PageData字段类型差异见nonPaymentImplementation，不代表目标模型与全部业务已验收。。
 
 路径输入：
 
@@ -6029,6 +6060,226 @@
 | checkNo | string | 是 | 当前OPEN台账 |
 | version | int64 | 是 | 会话新版本 |
 
+### FOOD-API-157 · 排队取号
+
+`POST /biz/x/food/queue-tickets`
+
+权限与守卫：原VERIFY门店权限、可信主体/门店/actor；写请求原键/CAS；不接受客户端主体归属。
+
+能力依赖：非支付排队V10；新就座同food primary事务调用内部CheckService.openQueuedCheck，冲突全回滚CALLED；旧SEATING仅兼容原键恢复，无虚构资源占用或短信成功。。
+
+请求Body：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| partySize | int32 | 是 | 正整数至1000 |
+| contactRef | string | 否 | 已有联系引用 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| ticket | QueueTicketView | 是 | 原键创建结果 |
+
+### FOOD-API-158 · 排队列表
+
+`GET /biz/x/food/queue-tickets`
+
+权限与守卫：原VERIFY门店权限、可信主体/门店/actor；写请求原键/CAS；不接受客户端主体归属。
+
+能力依赖：非支付排队V10；新就座同food primary事务调用内部CheckService.openQueuedCheck，冲突全回滚CALLED；旧SEATING仅兼容原键恢复，无虚构资源占用或短信成功。。
+
+请求Query：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| businessDate | date | 是 | 营业日 |
+| status | string | 否 | 状态 |
+| page | int32 | 否 | 页 |
+| size | int32 | 否 | 页长 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| page | QueueTicketPage | 是 | 门店FIFO列表 |
+
+### FOOD-API-159 · 原排队票
+
+`GET /biz/x/food/queue-tickets/{ticketNo}`
+
+权限与守卫：原VERIFY门店权限、可信主体/门店/actor；写请求原键/CAS；不接受客户端主体归属。
+
+能力依赖：非支付排队V10；新就座同food primary事务调用内部CheckService.openQueuedCheck，冲突全回滚CALLED；旧SEATING仅兼容原键恢复，无虚构资源占用或短信成功。。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| ticketNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Query：
+
+无额外参数。
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| ticket | QueueTicketView | 是 | 当前票 |
+
+### FOOD-API-160 · 叫下一位
+
+`POST /biz/x/food/queue-tickets:call-next`
+
+权限与守卫：原VERIFY门店权限、可信主体/门店/actor；写请求原键/CAS；不接受客户端主体归属。
+
+能力依赖：非支付排队V10；新就座同food primary事务调用内部CheckService.openQueuedCheck，冲突全回滚CALLED；旧SEATING仅兼容原键恢复，无虚构资源占用或短信成功。。
+
+请求Body：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| businessDate | date | 是 | 营业日 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| ticket | QueueTicketView | 是 | 实际最早WAITING票 |
+
+### FOOD-API-161 · 指定叫号
+
+`POST /biz/x/food/queue-tickets/{ticketNo}:call`
+
+权限与守卫：原VERIFY门店权限、可信主体/门店/actor；写请求原键/CAS；不接受客户端主体归属。
+
+能力依赖：非支付排队V10；新就座同food primary事务调用内部CheckService.openQueuedCheck，冲突全回滚CALLED；旧SEATING仅兼容原键恢复，无虚构资源占用或短信成功。。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| ticketNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Body：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| version | int64 | 是 | 原CAS |
+| reason | string | 否 | 依据 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| ticket | QueueTicketView | 是 | 已叫号 |
+
+### FOOD-API-162 · 取消排队
+
+`POST /biz/x/food/queue-tickets/{ticketNo}:cancel`
+
+权限与守卫：原VERIFY门店权限、可信主体/门店/actor；写请求原键/CAS；不接受客户端主体归属。
+
+能力依赖：非支付排队V10；新就座同food primary事务调用内部CheckService.openQueuedCheck，冲突全回滚CALLED；旧SEATING仅兼容原键恢复，无虚构资源占用或短信成功。。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| ticketNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Body：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| version | int64 | 是 | 原CAS |
+| reason | string | 否 | 原因 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| ticket | QueueTicketView | 是 | 已取消 |
+
+### FOOD-API-163 · 排队过号
+
+`POST /biz/x/food/queue-tickets/{ticketNo}:no-show`
+
+权限与守卫：原VERIFY门店权限、可信主体/门店/actor；写请求原键/CAS；不接受客户端主体归属。
+
+能力依赖：非支付排队V10；新就座同food primary事务调用内部CheckService.openQueuedCheck，冲突全回滚CALLED；旧SEATING仅兼容原键恢复，无虚构资源占用或短信成功。。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| ticketNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Body：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| version | int64 | 是 | 原CAS |
+| reason | string | 否 | 原因 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| ticket | QueueTicketView | 是 | 真实过号 |
+
+### FOOD-API-164 · 排队转原开台
+
+`POST /biz/x/food/queue-tickets/{ticketNo}:seat`
+
+权限与守卫：原VERIFY门店权限、可信主体/门店/actor；写请求原键/CAS；不接受客户端主体归属。
+
+能力依赖：非支付排队V10；新就座同food primary事务调用内部CheckService.openQueuedCheck，冲突全回滚CALLED；旧SEATING仅兼容原键恢复，无虚构资源占用或短信成功。。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| ticketNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Body：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| version | int64 | 是 | 原CAS |
+| check | object | 是 | 原OpenCheckReq完整受控开台参数，见QueueContracts |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| ticket | QueueTicketView | 是 | 原子开台成功SEATED；旧SEATING仅兼容查原回执 |
+
+### FOOD-API-165 · 原排队就座恢复
+
+`POST /biz/x/food/queue-tickets/{ticketNo}:recover-seating`
+
+权限与守卫：原VERIFY门店权限、可信主体/门店/actor；写请求原键/CAS；不接受客户端主体归属。
+
+能力依赖：非支付排队V10；新就座同food primary事务调用内部CheckService.openQueuedCheck，冲突全回滚CALLED；旧SEATING仅兼容原键恢复，无虚构资源占用或短信成功。。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| ticketNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Body：
+
+无额外参数。
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| ticket | QueueTicketView | 是 | 旧SEATING只恢复原冻结开台回执，未知仍保留 |
+
 ## 五、顾客与设备端复用
 
 顾客catalog/session与购物车、报价、批次、进度、结账、退餐申请/查询、主动结束会话均已逐项登记API编号。只有目录中的 /mp/x/food 白名单可实现，不能将整个biz控制器自动暴露到mp。顾客作用域绑定本人或明确授权的台账/源行，桌码仅授权桌级会话，不自动共享同桌其他独立台账。顾客禁止代客buyerNo、现金确认、审批、签核、任务操作和自造corePaymentToken；点餐机使用已验证设备凭据与短会话。
@@ -6096,7 +6347,7 @@ Catalog.goodsMetadata已实现为GoodsCatalogQueryPort及typed内部查询；其
 | FNB-A04 | 目标已定义 | `fnb_table_area`、`fnb_table`、`fnb_table_token` | FOOD-API-024、FOOD-API-025、FOOD-API-092、FOOD-API-093、FOOD-API-094、FOOD-API-095、FOOD-API-096、FOOD-API-097、FOOD-API-098、FOOD-API-099、FOOD-API-100、FOOD-API-101 | 结构与目标接口已定义；仍需实现与业务验收 |
 | FNB-C01 | 尚缺专项设计 | `fnb_reservation` | FOOD-API-027、FOOD-API-030、FOOD-API-107 | 预约资源已设计；预点菜草稿到预约的引用与预点命令未定义，实施预约预点前补齐，不能提前生成交易单 |
 | FNB-C02 | 依赖共享/核心合同 | `fnb_reservation` | FOOD-API-027、FOOD-API-028、FOOD-API-029 | 订金/预付款核销、没收审批与退款状态取权威资金合同；deposit_ref只存引用，不表示已覆盖全部资金动作 |
-| FNB-C03 | 尚缺专项设计 | 共享服务/运行合同 | 待专项合同，不假造端点 | 复用共享排队/通知，但当前餐饮设计没有正式取号/叫号/过号合同；不得把自取取餐号当排队号 |
+| FNB-C03 | 依赖共享/核心合同 | `fnb_queue_ticket`、`fnb_check`、`fnb_action_log` | FOOD-API-157、FOOD-API-158、FOOD-API-159、FOOD-API-160、FOOD-API-161、FOOD-API-162、FOOD-API-163、FOOD-API-164、FOOD-API-165 | 已有正式排队创建/叫号/过号/取消/原开台就座恢复合同；共享开台仲裁及真实通知分别验收，不把排队号当取餐号或伪造短信成功。 |
 | FNB-C04 | 目标已定义 | `fnb_reservation`、`fnb_table_operation`、`fnb_table_occupancy` | FOOD-API-027、FOOD-API-030、FOOD-API-031 | 结构与目标接口已定义；仍需实现与业务验收 |
 | FNB-C05 | 目标已定义 | `fnb_check`、`fnb_guest_session`、`fnb_seat`、`fnb_table_occupancy` | FOOD-API-026、FOOD-API-031、FOOD-API-102、FOOD-API-103、FOOD-API-105、FOOD-API-138、FOOD-API-139 | 结构与目标接口已定义；仍需实现与业务验收 |
 | FNB-C06 | 目标已定义 | `fnb_table_operation`、`fnb_table_occupancy`、`fnb_check_relation`、`fnb_check_batch_membership` | FOOD-API-033、FOOD-API-034、FOOD-API-035、FOOD-API-104、FOOD-API-105、FOOD-API-106 | 结构与目标接口已定义；仍需实现与业务验收 |
@@ -6275,9 +6526,9 @@ Catalog.goodsMetadata已实现为GoodsCatalogQueryPort及typed内部查询；其
 
 Keeta：首批规划渠道，按用户决定暂不接入；不注册真实适配器或同步任务。真实报价和库存合同未验收前，增强交易保持关闭。
 
-## 十、当前结账与售后实际合同（目标API清单的受控子集）
+## 十、历史结账与售后切片（保留原验收范围）
 
-完整目标保留在前文。以下按实际Controller/DTO登记，编译与测试证据见原开发计划§2.4和§6；列出端点不表示全部餐饮场景已完成。
+完整目标保留在前文。以下保留既有切片记录，原证据见开发计划§2.4和§6；本批明确排除支付执行。POSTPAY及当前非支付实际路由见第十一节，历史切片不改标为本批全部完成。
 
 | 接口 | 输入 | 输出 | 授权及剩余边界 |
 |---|---|---|---|
@@ -6302,3 +6553,1734 @@ Keeta：首批规划渠道，按用户决定暂不接入；不注册真实适配
 | `GET /biz/x/food/returns/{returnNo}` | 无body/query | DiningReturnVO{returnNo,batchNo,storeNo,status,financialStatus,kitchenStatus,coreCaseRef,reason,lines,financialCase}；没有version | biz:order:view；认证主体/当前门店由FoodBizStoreScope解析；actor来自登录；不授予资金写权限；仅本地授权读取，financialCase可空；062/063未实现，不返回目标version |
 
 未实现目标：FOOD-API-042、FOOD-API-056、FOOD-API-058、FOOD-API-059、FOOD-API-060、FOOD-API-061、FOOD-API-062、FOOD-API-063、FOOD-API-140。台账范围结账FOOD-API-140仍未开放；当前按单一原批次冻结，不能代表AA或跨根结账。
+
+## 十一、本批非支付实际API与目标对账
+
+50条实际公开biz路由，均为 **CODED_PENDING_VERIFICATION**。该标记是逐接口完整目标/营业验收状态，后端批次编译及测试结果独立记录在verification和原TDD收据。此处逐项记录现有Controller/DTO/权限，与前文目标API并列；目标路径相同不表示DTO或完整业务验收一致。原始接口编号、表及历史V1迁移哈希保留。
+
+当前差异：POSTPAY仅沿真实已登录H5/PICKUP身份和门店POSTPAY策略，采用原库存lifecycle3接受未付款履约；父单WAIT_PAY、paidAt为空。额度消费、FOOD ACCEPTED及厨房出站事实同本域事务，不代表收款。
+
+- No actual printer hardware implementation
+- No KDS/SSE/push subscription or notification delivery proof from polling APIs
+- Generic report exports API078/079 and close exception carry API074 have no matching new public route
+- Printing and business close target paths differ and require explicit target reconciliation, rather than silently assigning exact implementation status
+- POSTPAY仅已登录H5/PICKUP现有身份：真实lifecycle3 reserve/acceptUnpaid，原父单保持WAIT_PAY/paidAt为空，原子单履约可推进；不能称已收款。
+- FOOD ACCEPTED、额度consume及DINING_ORDER_ACCEPTED出站事实同本域事务；物理出纸、通知推送与财务验收必须由各owner真回执另证。
+- 原料执行只接受真实冻结叶子计划；缺少既有配方权威计划时保留BLOCKED，不能通过成品/原料双扣或虚构成本完成。
+- 日结/报表仅输出已核实源事实与完整性状态，财务未闭合不补造SIGNED/资金成功；异步导出和异常结转目标仍未交付。
+- 新就座锁定原票后，在同一food primary事务内调用CheckService.openQueuedCheck，仅限内部Java调用，不能经HTTP/remote；原开台、SEATED、queue动作与outbox同提交。冲突整体回滚，原CALLED票可重选；不把永久SEATING作为新流程。
+- 旧SEATING仅兼容原冻结命令/OPEN_CHECK原键回执恢复；未知保持未知，不创建替代开台。新seat走同primary原子事务。
+- 首次打印身份不包含客户端Idempotency-Key；ORDER/KITCHEN/RETURN按原单据+scene/station固定，PREBILL按原文档snapshot版本；换key同内容不新增首次任务。额外纸张必须走关联原任务+原因+操作人的审计reprint；UNKNOWN禁止普通retry。
+- 制作耗用列表API153已编码真实scope-bound SQL分页/COUNT；共享PageData<long page/size>及ConsumptionVO与目标模型差异仍显式登记；查询不触发原料出库、恢复或补造成本。
+- DINING_ORDER_ACCEPTED出站处理先幂等持久化原MAKE票，再按已配置ORDER/KITCHEN纸张route入队；无route不造任务。claim/ACK才提供设备领取与回执，自动入队不代表已出纸。
+- KDS默认未指定batchNo时仅返回ACCEPTED批次的未CLOSED票和非SERVED/VOIDED任务；显式batchNo可查历史，保留原MAKE/REMAKE及原票关系；轮询不等于实时推送。
+
+### 11.1 实际路由、权限与目标映射
+
+| 实际编号 | 实际方法与路径 | 目标编号/对齐状态 | 请求DTO或参数 | data返回类型 | 实际权限 |
+|---|---|---|---|---|---|
+| FOOD-NONPAY-IMPL-001 | `POST /biz/x/food/queue-tickets` | FOOD-API-157 / EXACT_PATH | ai.neargo.shop.food.dto.QueueContracts.IssueReq | `ai.neargo.shop.food.dto.QueueContracts.QueueVO` | `biz:verify` |
+| FOOD-NONPAY-IMPL-002 | `GET /biz/x/food/queue-tickets` | FOOD-API-158 / EXACT_PATH | query:businessDate LocalDate; query:status String; query:page Integer; query:size Integer | `ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.QueueContracts.QueueVO>` | `biz:order:view` |
+| FOOD-NONPAY-IMPL-003 | `GET /biz/x/food/queue-tickets/{ticketNo}` | FOOD-API-159 / EXACT_PATH | path:ticketNo String | `ai.neargo.shop.food.dto.QueueContracts.QueueVO` | `biz:order:view` |
+| FOOD-NONPAY-IMPL-004 | `POST /biz/x/food/queue-tickets:call-next` | FOOD-API-160 / EXACT_PATH | query:businessDate LocalDate | `ai.neargo.shop.food.dto.QueueContracts.QueueVO` | `biz:verify` |
+| FOOD-NONPAY-IMPL-005 | `POST /biz/x/food/queue-tickets/{ticketNo}:call` | FOOD-API-161 / EXACT_PATH | ai.neargo.shop.food.dto.QueueContracts.ChangeReq | `ai.neargo.shop.food.dto.QueueContracts.QueueVO` | `biz:verify` |
+| FOOD-NONPAY-IMPL-006 | `POST /biz/x/food/queue-tickets/{ticketNo}:cancel` | FOOD-API-162 / EXACT_PATH | ai.neargo.shop.food.dto.QueueContracts.ChangeReq | `ai.neargo.shop.food.dto.QueueContracts.QueueVO` | `biz:verify` |
+| FOOD-NONPAY-IMPL-007 | `POST /biz/x/food/queue-tickets/{ticketNo}:no-show` | FOOD-API-163 / EXACT_PATH | ai.neargo.shop.food.dto.QueueContracts.ChangeReq | `ai.neargo.shop.food.dto.QueueContracts.QueueVO` | `biz:verify` |
+| FOOD-NONPAY-IMPL-008 | `POST /biz/x/food/queue-tickets/{ticketNo}:seat` | FOOD-API-164 / EXACT_PATH | ai.neargo.shop.food.dto.QueueContracts.SeatQueueReq | `ai.neargo.shop.food.dto.QueueContracts.QueueVO` | `biz:verify` |
+| FOOD-NONPAY-IMPL-009 | `POST /biz/x/food/queue-tickets/{ticketNo}:recover-seating` | FOOD-API-165 / EXACT_PATH | path:ticketNo String | `ai.neargo.shop.food.dto.QueueContracts.QueueVO` | `biz:verify` |
+| FOOD-NONPAY-IMPL-010 | `GET /biz/x/food/stores/{storeNo}/kitchen/tasks` | FOOD-API-044 / EXACT_PATH | path:storeNo String; query:stationNo String; query:status String; query:page int; query:size int | `ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.KitchenContracts.TaskVO>` | `biz:receive` |
+| FOOD-NONPAY-IMPL-011 | `POST /biz/x/food/tasks/{taskNo}:start` | FOOD-API-045 / EXACT_PATH | ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq | `ai.neargo.shop.food.dto.KitchenContracts.EventVO` | `biz:receive` |
+| FOOD-NONPAY-IMPL-012 | `POST /biz/x/food/tasks/{taskNo}:ready` | FOOD-API-046 / EXACT_PATH | ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq | `ai.neargo.shop.food.dto.KitchenContracts.EventVO` | `biz:receive` |
+| FOOD-NONPAY-IMPL-013 | `POST /biz/x/food/tasks/{taskNo}:serve` | FOOD-API-047 / EXACT_PATH | ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq | `ai.neargo.shop.food.dto.KitchenContracts.EventVO` | `biz:receive` |
+| FOOD-NONPAY-IMPL-014 | `POST /biz/x/food/tasks/{taskNo}:hold` | FOOD-API-048 / EXACT_PATH | ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq | `ai.neargo.shop.food.dto.KitchenContracts.EventVO` | `biz:receive` |
+| FOOD-NONPAY-IMPL-015 | `POST /biz/x/food/tasks/{taskNo}:fire` | FOOD-API-049 / EXACT_PATH | ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq | `ai.neargo.shop.food.dto.KitchenContracts.EventVO` | `biz:receive` |
+| FOOD-NONPAY-IMPL-016 | `POST /biz/x/food/tasks/{taskNo}:urge` | FOOD-API-050 / EXACT_PATH | ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq | `ai.neargo.shop.food.dto.KitchenContracts.EventVO` | `biz:receive` |
+| FOOD-NONPAY-IMPL-017 | `POST /biz/x/food/tasks/{taskNo}:void` | FOOD-API-051 / EXACT_PATH | ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq | `ai.neargo.shop.food.dto.KitchenContracts.EventVO` | `biz:aftersale` |
+| FOOD-NONPAY-IMPL-018 | `POST /biz/x/food/tasks/{taskNo}:loss` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq | `ai.neargo.shop.food.dto.KitchenContracts.EventVO` | `biz:stock` |
+| FOOD-NONPAY-IMPL-019 | `POST /biz/x/food/tasks/{taskNo}:remake` | FOOD-API-052 / EXACT_PATH | ai.neargo.shop.food.dto.KitchenContracts.RemakeReq | `ai.neargo.shop.food.dto.KitchenContracts.TicketVO` | `biz:aftersale` |
+| FOOD-NONPAY-IMPL-020 | `GET /biz/x/food/tasks/{taskNo}/events` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | path:taskNo String | `java.util.List<ai.neargo.shop.food.dto.KitchenContracts.EventVO>` | `biz:receive` |
+| FOOD-NONPAY-IMPL-021 | `POST /biz/x/food/checks/{checkNo}/courses` | FOOD-API-053 / EXACT_PATH | ai.neargo.shop.food.dto.KitchenContracts.CourseReq | `ai.neargo.shop.food.dto.KitchenContracts.CourseVO` | `biz:receive` |
+| FOOD-NONPAY-IMPL-022 | `GET /biz/x/food/checks/{checkNo}/courses` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | path:checkNo String | `java.util.List<ai.neargo.shop.food.dto.KitchenContracts.CourseVO>` | `biz:receive` |
+| FOOD-NONPAY-IMPL-023 | `POST /biz/x/food/courses/{courseNo}:act` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | ai.neargo.shop.food.dto.KitchenContracts.CourseActionReq | `ai.neargo.shop.food.dto.KitchenContracts.CourseVO` | `biz:receive` |
+| FOOD-NONPAY-IMPL-024 | `POST /biz/x/food/courses/{courseNo}:fire` | FOOD-API-054 / EXACT_PATH | ai.neargo.shop.food.dto.KitchenContracts.CourseFireReq | `ai.neargo.shop.food.dto.KitchenContracts.CourseVO` | `biz:receive` |
+| FOOD-NONPAY-IMPL-025 | `POST /biz/x/food/batches/{batchNo}:handover` | FOOD-API-055 / EXACT_PATH | ai.neargo.shop.food.dto.KitchenContracts.HandoverReq | `ai.neargo.shop.food.dto.KitchenContracts.HandoverVO` | `biz:verify` |
+| FOOD-NONPAY-IMPL-026 | `GET /biz/x/food/batches/{batchNo}/pickup-verification` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | path:batchNo String | `ai.neargo.shop.food.dto.DiningPickupContracts.PickupVerificationVO` | `biz:verify` |
+| FOOD-NONPAY-IMPL-027 | `POST /biz/x/food/batches/{batchNo}:verify-pickup` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | ai.neargo.shop.food.dto.DiningPickupContracts.VerifyPickupReq | `ai.neargo.shop.food.dto.DiningPickupContracts.PickupVerificationVO` | `biz:verify` |
+| FOOD-NONPAY-IMPL-028 | `POST /biz/x/food/print-jobs` | FOOD-API-065 / PATH_CHANGED | ai.neargo.shop.food.dto.PrintDocumentReq | `java.util.List<ai.neargo.shop.spi.printing.PrintPort.JobVO>` | `biz:verify` |
+| FOOD-NONPAY-IMPL-029 | `GET /biz/x/food/print-jobs` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | query:afterJobNo String; query:limit int | `java.util.List<ai.neargo.shop.spi.printing.PrintPort.JobVO>` | `biz:order:view` |
+| FOOD-NONPAY-IMPL-030 | `GET /biz/x/food/print-jobs/{jobNo}` | FOOD-API-066 / PATH_CHANGED | path:jobNo String | `ai.neargo.shop.spi.printing.PrintPort.JobVO` | `biz:order:view` |
+| FOOD-NONPAY-IMPL-031 | `POST /biz/x/food/print-jobs/{jobNo}:retry` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | path:jobNo String | `ai.neargo.shop.spi.printing.PrintPort.JobVO` | `biz:verify` |
+| FOOD-NONPAY-IMPL-032 | `POST /biz/x/food/print-jobs/{jobNo}:reprint` | FOOD-API-067 / PATH_CHANGED | ai.neargo.shop.food.api.biz.BizPrintJobController.ReprintReq | `ai.neargo.shop.spi.printing.PrintPort.JobVO` | `biz:verify` |
+| FOOD-NONPAY-IMPL-033 | `POST /biz/x/food/print-devices` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | ai.neargo.shop.spi.printing.PrintPort.DeviceReq | `ai.neargo.shop.spi.printing.PrintPort.DeviceVO` | `biz:store:admin` |
+| FOOD-NONPAY-IMPL-034 | `POST /biz/x/food/print-devices/{deviceNo}:heartbeat` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | ai.neargo.shop.food.api.biz.BizPrintDeviceController.HeartbeatReq | `ai.neargo.shop.spi.printing.PrintPort.DeviceVO` | `biz:verify` |
+| FOOD-NONPAY-IMPL-035 | `POST /biz/x/food/print-devices/{deviceNo}:claim` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | path:deviceNo String | `ai.neargo.shop.spi.printing.PrintPort.Claim` | `biz:verify` |
+| FOOD-NONPAY-IMPL-036 | `POST /biz/x/food/print-devices/{deviceNo}:acknowledge` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | ai.neargo.shop.spi.printing.PrintPort.Acknowledge | `ai.neargo.shop.spi.printing.PrintPort.JobVO` | `biz:verify` |
+| FOOD-NONPAY-IMPL-037 | `GET /biz/x/food/print-configuration` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | 无Body | `ai.neargo.shop.spi.printing.PrintPort.Configuration` | `biz:store:admin` |
+| FOOD-NONPAY-IMPL-038 | `POST /biz/x/food/print-configuration/templates` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | ai.neargo.shop.spi.printing.PrintPort.TemplateReq | `ai.neargo.shop.spi.printing.PrintPort.TemplateReq` | `biz:store:admin` |
+| FOOD-NONPAY-IMPL-039 | `POST /biz/x/food/print-configuration/routes` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | ai.neargo.shop.spi.printing.PrintPort.RouteReq | `ai.neargo.shop.spi.printing.PrintPort.RouteReq` | `biz:store:admin` |
+| FOOD-NONPAY-IMPL-040 | `POST /biz/x/food/business-days/{date}:open` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | path:date LocalDate | `ai.neargo.shop.food.dto.BusinessCloseContracts.DayVO` | `biz:finance` |
+| FOOD-NONPAY-IMPL-041 | `GET /biz/x/food/reports/business-day` | FOOD-API-077 / PARTIAL_TARGET_SUBSET | query:businessDate LocalDate; query:currency String | `ai.neargo.shop.food.dto.BusinessCloseContracts.ReportVO` | `biz:order:view` |
+| FOOD-NONPAY-IMPL-042 | `POST /biz/x/food/closes:preview` | FOOD-API-072 / PATH_AND_INPUT_CHANGED | ai.neargo.shop.food.dto.BusinessCloseContracts.PreviewReq | `ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO` | `biz:finance` |
+| FOOD-NONPAY-IMPL-043 | `GET /biz/x/food/closes/{closeNo}` | FOOD-API-073 / EXACT_PATH | path:closeNo String | `ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO` | `biz:order:view` |
+| FOOD-NONPAY-IMPL-044 | `POST /biz/x/food/closes:sign` | FOOD-API-075 / PATH_AND_INPUT_CHANGED | ai.neargo.shop.food.dto.BusinessCloseContracts.SignReq | `ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO` | `biz:finance` |
+| FOOD-NONPAY-IMPL-045 | `POST /biz/x/food/closes:adjust` | FOOD-API-076 / PATH_AND_INPUT_CHANGED | ai.neargo.shop.food.dto.BusinessCloseContracts.AdjustmentReq | `ai.neargo.shop.food.dto.OperationVO` | `biz:finance` |
+| FOOD-NONPAY-IMPL-046 | `POST /biz/x/food/production-events/{eventNo}:consume` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | path:eventNo String | `ai.neargo.shop.food.dto.ProductionContracts.ConsumptionVO` | `biz:stock` |
+| FOOD-NONPAY-IMPL-047 | `GET /biz/x/food/production-events/{eventNo}` | FOOD-API-154 / DIFFERENT_RESOURCE_KEY | path:eventNo String | `ai.neargo.shop.food.dto.ProductionContracts.ConsumptionVO` | `biz:order:view` |
+| FOOD-NONPAY-IMPL-048 | `GET /biz/x/food/returns/{returnNo}/kitchen` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | path:returnNo String | `ai.neargo.shop.food.dto.KitchenReturnContracts.ReturnKitchenVO` | `biz:aftersale` |
+| FOOD-NONPAY-IMPL-049 | `POST /biz/x/food/returns/{returnNo}/kitchen` | 新增，目标未编号 / ADDED_IMPLEMENTATION_NO_TARGET_API | ai.neargo.shop.food.dto.KitchenReturnContracts.HandleReq | `ai.neargo.shop.food.dto.KitchenReturnContracts.HandledVO` | `biz:aftersale` |
+| FOOD-NONPAY-IMPL-050 | `GET /biz/x/food/stores/{storeNo}/production-consumptions` | FOOD-API-153 / EXACT_PATH | path:storeNo String; query:from LocalDate; query:to LocalDate; query:page Integer; query:size Integer; query:skuNo String; query:itemRef String; query:status String | `ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.ProductionContracts.ConsumptionVO>` | `biz:order:view` |
+
+### 11.2 实际参数与合同差异
+
+#### FOOD-NONPAY-IMPL-001 · BizQueueController.issue
+
+`POST /biz/x/food/queue-tickets` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java:46`。权限：`biz:verify`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:verify。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| body | body | `ai.neargo.shop.food.dto.QueueContracts.IssueReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.QueueContracts.QueueVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-157 `POST /biz/x/food/queue-tickets`；EXACT_PATH。
+
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`ticket`。
+
+边界：排队号不等于取餐号；notificationStatus是事实状态，不表示已发送通知。
+
+#### FOOD-NONPAY-IMPL-002 · BizQueueController.list
+
+`GET /biz/x/food/queue-tickets` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java:53`。权限：`biz:order:view`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:order:view。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| query | businessDate | `java.time.LocalDate` | 是 | — | @RequestParam |
+| query | status | `String` | 否 | — | @RequestParam(required=false) |
+| query | page | `Integer` | 否 | — | @RequestParam(required=false) |
+| query | size | `Integer` | 否 | — | @RequestParam(required=false) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.QueueContracts.QueueVO>`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-158 `GET /biz/x/food/queue-tickets`；EXACT_PATH。
+
+
+边界：排队号不等于取餐号；notificationStatus是事实状态，不表示已发送通知。
+
+#### FOOD-NONPAY-IMPL-003 · BizQueueController.get
+
+`GET /biz/x/food/queue-tickets/{ticketNo}` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java:60`。权限：`biz:order:view`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:order:view。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | ticketNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.QueueContracts.QueueVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-159 `GET /biz/x/food/queue-tickets/{ticketNo}`；EXACT_PATH。
+
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`ticket`。
+
+边界：排队号不等于取餐号；notificationStatus是事实状态，不表示已发送通知。
+
+#### FOOD-NONPAY-IMPL-004 · BizQueueController.callNext
+
+`POST /biz/x/food/queue-tickets:call-next` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java:66`。权限：`biz:verify`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:verify。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| query | businessDate | `java.time.LocalDate` | 是 | — | @RequestParam |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.QueueContracts.QueueVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-160 `POST /biz/x/food/queue-tickets:call-next`；EXACT_PATH。
+
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`ticket`。
+
+边界：排队号不等于取餐号；notificationStatus是事实状态，不表示已发送通知。
+
+#### FOOD-NONPAY-IMPL-005 · BizQueueController.call
+
+`POST /biz/x/food/queue-tickets/{ticketNo}:call` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java:73`。权限：`biz:verify`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:verify。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | ticketNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | body | `ai.neargo.shop.food.dto.QueueContracts.ChangeReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.QueueContracts.QueueVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-161 `POST /biz/x/food/queue-tickets/{ticketNo}:call`；EXACT_PATH。
+
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`ticket`。
+
+边界：排队号不等于取餐号；notificationStatus是事实状态，不表示已发送通知。
+
+#### FOOD-NONPAY-IMPL-006 · BizQueueController.cancel
+
+`POST /biz/x/food/queue-tickets/{ticketNo}:cancel` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java:80`。权限：`biz:verify`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:verify。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | ticketNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | body | `ai.neargo.shop.food.dto.QueueContracts.ChangeReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.QueueContracts.QueueVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-162 `POST /biz/x/food/queue-tickets/{ticketNo}:cancel`；EXACT_PATH。
+
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`ticket`。
+
+边界：排队号不等于取餐号；notificationStatus是事实状态，不表示已发送通知。
+
+#### FOOD-NONPAY-IMPL-007 · BizQueueController.noShow
+
+`POST /biz/x/food/queue-tickets/{ticketNo}:no-show` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java:87`。权限：`biz:verify`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:verify。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | ticketNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | body | `ai.neargo.shop.food.dto.QueueContracts.ChangeReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.QueueContracts.QueueVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-163 `POST /biz/x/food/queue-tickets/{ticketNo}:no-show`；EXACT_PATH。
+
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`ticket`。
+
+边界：排队号不等于取餐号；notificationStatus是事实状态，不表示已发送通知。
+
+#### FOOD-NONPAY-IMPL-008 · BizQueueController.seat
+
+`POST /biz/x/food/queue-tickets/{ticketNo}:seat` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java:95`。权限：`biz:verify`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:verify。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | ticketNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | body | `ai.neargo.shop.food.dto.QueueContracts.SeatQueueReq` | 是 | — | @Valid @RequestBody |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.QueueContracts.QueueVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-164 `POST /biz/x/food/queue-tickets/{ticketNo}:seat`；EXACT_PATH。
+
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`ticket`。
+
+边界：新就座锁定原票后，在同一food primary事务内调用CheckService.openQueuedCheck，仅限内部Java调用，不能经HTTP/remote；原开台、SEATED、queue动作与outbox同提交。冲突整体回滚，原CALLED票可重选；不把永久SEATING作为新流程。
+
+#### FOOD-NONPAY-IMPL-009 · BizQueueController.recover
+
+`POST /biz/x/food/queue-tickets/{ticketNo}:recover-seating` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java:102`。权限：`biz:verify`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:verify。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | ticketNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.QueueContracts.QueueVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-165 `POST /biz/x/food/queue-tickets/{ticketNo}:recover-seating`；EXACT_PATH。
+
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`ticket`。
+
+边界：旧SEATING仅兼容原冻结命令/OPEN_CHECK原键回执恢复；未知保持未知，不创建替代开台。新seat走同primary原子事务。
+
+#### FOOD-NONPAY-IMPL-010 · BizKitchenTaskController.queue
+
+`GET /biz/x/food/stores/{storeNo}/kitchen/tasks` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java:52`。权限：`biz:receive`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:receive。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | storeNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| query | stationNo | `String` | 是 | — | @RequestParam @NotBlank @Size(max=32) |
+| query | status | `String` | 否 | — | @RequestParam(required=false) |
+| query | page | `int` | 否 | 1 | @RequestParam(defaultValue="1") |
+| query | size | `int` | 否 | 20 | @RequestParam(defaultValue="20") |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.KitchenContracts.TaskVO>`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-044 `GET /biz/x/food/stores/{storeNo}/kitchen/tasks`；EXACT_PATH。
+
+
+边界：任务动作带CAS version及原始数量增量；队列为当前持久任务的分页投影，非推送订阅。
+
+#### FOOD-NONPAY-IMPL-011 · BizKitchenTaskController.start
+
+`POST /biz/x/food/tasks/{taskNo}:start` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java:67`。权限：`biz:receive`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:receive。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | taskNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.KitchenContracts.EventVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-045 `POST /biz/x/food/tasks/{taskNo}:start`；EXACT_PATH。
+
+- ACTUAL_INPUT_FIELDS_ADDED：`reason`。
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`task`。
+
+边界：任务动作带CAS version及原始数量增量；队列为当前持久任务的分页投影，非推送订阅。
+
+#### FOOD-NONPAY-IMPL-012 · BizKitchenTaskController.ready
+
+`POST /biz/x/food/tasks/{taskNo}:ready` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java:76`。权限：`biz:receive`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:receive。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | taskNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.KitchenContracts.EventVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-046 `POST /biz/x/food/tasks/{taskNo}:ready`；EXACT_PATH。
+
+- ACTUAL_INPUT_FIELDS_ADDED：`reason`。
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`task`。
+
+边界：任务动作带CAS version及原始数量增量；队列为当前持久任务的分页投影，非推送订阅。
+
+#### FOOD-NONPAY-IMPL-013 · BizKitchenTaskController.serve
+
+`POST /biz/x/food/tasks/{taskNo}:serve` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java:85`。权限：`biz:receive`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:receive。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | taskNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.KitchenContracts.EventVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-047 `POST /biz/x/food/tasks/{taskNo}:serve`；EXACT_PATH。
+
+- ACTUAL_INPUT_FIELDS_ADDED：`reason`。
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`task`。
+
+边界：任务动作带CAS version及原始数量增量；队列为当前持久任务的分页投影，非推送订阅。
+
+#### FOOD-NONPAY-IMPL-014 · BizKitchenTaskController.hold
+
+`POST /biz/x/food/tasks/{taskNo}:hold` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java:94`。权限：`biz:receive`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:receive。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | taskNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.KitchenContracts.EventVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-048 `POST /biz/x/food/tasks/{taskNo}:hold`；EXACT_PATH。
+
+- ACTUAL_INPUT_FIELDS_ADDED：`qty`。
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`task`。
+
+边界：任务动作带CAS version及原始数量增量；队列为当前持久任务的分页投影，非推送订阅。
+
+#### FOOD-NONPAY-IMPL-015 · BizKitchenTaskController.fire
+
+`POST /biz/x/food/tasks/{taskNo}:fire` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java:103`。权限：`biz:receive`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:receive。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | taskNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.KitchenContracts.EventVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-049 `POST /biz/x/food/tasks/{taskNo}:fire`；EXACT_PATH。
+
+- ACTUAL_INPUT_FIELDS_ADDED：`qty`。
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`task`。
+
+边界：任务动作带CAS version及原始数量增量；队列为当前持久任务的分页投影，非推送订阅。
+
+#### FOOD-NONPAY-IMPL-016 · BizKitchenTaskController.urge
+
+`POST /biz/x/food/tasks/{taskNo}:urge` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java:112`。权限：`biz:receive`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:receive。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | taskNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.KitchenContracts.EventVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-050 `POST /biz/x/food/tasks/{taskNo}:urge`；EXACT_PATH。
+
+- ACTUAL_INPUT_FIELDS_ADDED：`qty`。
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`task`。
+
+边界：任务动作带CAS version及原始数量增量；队列为当前持久任务的分页投影，非推送订阅。
+
+#### FOOD-NONPAY-IMPL-017 · BizKitchenTaskController.voidTask
+
+`POST /biz/x/food/tasks/{taskNo}:void` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java:121`。权限：`biz:aftersale`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:aftersale。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | taskNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.KitchenContracts.EventVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-051 `POST /biz/x/food/tasks/{taskNo}:void`；EXACT_PATH。
+
+- TARGET_INPUT_FIELD_NOT_PRESENT_IN_ACTUAL_PUBLIC_CONTRACT：`returnNo`。
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`task`。
+
+边界：任务动作带CAS version及原始数量增量；队列为当前持久任务的分页投影，非推送订阅。
+
+#### FOOD-NONPAY-IMPL-018 · BizKitchenTaskController.loss
+
+`POST /biz/x/food/tasks/{taskNo}:loss` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java:130`。权限：`biz:stock`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:stock。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | taskNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.KitchenContracts.EventVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：任务动作带CAS version及原始数量增量；队列为当前持久任务的分页投影，非推送订阅。
+
+#### FOOD-NONPAY-IMPL-019 · BizKitchenTaskController.remake
+
+`POST /biz/x/food/tasks/{taskNo}:remake` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java:139`。权限：`biz:aftersale`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:aftersale。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | taskNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.dto.KitchenContracts.RemakeReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.KitchenContracts.TicketVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-052 `POST /biz/x/food/tasks/{taskNo}:remake`；EXACT_PATH。
+
+- TARGET_INPUT_FIELD_NOT_PRESENT_IN_ACTUAL_PUBLIC_CONTRACT：`approvalRef`。
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`eventNo`、`newTaskNo`、`task`。
+
+边界：任务动作带CAS version及原始数量增量；队列为当前持久任务的分页投影，非推送订阅。
+
+#### FOOD-NONPAY-IMPL-020 · BizKitchenTaskController.events
+
+`GET /biz/x/food/tasks/{taskNo}/events` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java:147`。权限：`biz:receive`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:receive。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | taskNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+
+成功输出为ApiResult&lt;T&gt;的data：`java.util.List<ai.neargo.shop.food.dto.KitchenContracts.EventVO>`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：任务动作带CAS version及原始数量增量；队列为当前持久任务的分页投影，非推送订阅。
+
+#### FOOD-NONPAY-IMPL-021 · BizCourseController.create
+
+`POST /biz/x/food/checks/{checkNo}/courses` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCourseController.java:48`。权限：`biz:receive`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:receive。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | checkNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.dto.KitchenContracts.CourseReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.KitchenContracts.CourseVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-053 `POST /biz/x/food/checks/{checkNo}/courses`；EXACT_PATH。
+
+
+边界：源事实权限与版本守卫；本次为只读代码对账。
+
+#### FOOD-NONPAY-IMPL-022 · BizCourseController.courses
+
+`GET /biz/x/food/checks/{checkNo}/courses` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCourseController.java:55`。权限：`biz:receive`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:receive。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | checkNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+
+成功输出为ApiResult&lt;T&gt;的data：`java.util.List<ai.neargo.shop.food.dto.KitchenContracts.CourseVO>`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：源事实权限与版本守卫；本次为只读代码对账。
+
+#### FOOD-NONPAY-IMPL-023 · BizCourseController.act
+
+`POST /biz/x/food/courses/{courseNo}:act` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCourseController.java:60`。权限：`biz:receive`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:receive。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | courseNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.dto.KitchenContracts.CourseActionReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.KitchenContracts.CourseVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：源事实权限与版本守卫；本次为只读代码对账。
+
+#### FOOD-NONPAY-IMPL-024 · BizCourseController.fire
+
+`POST /biz/x/food/courses/{courseNo}:fire` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCourseController.java:67`。权限：`biz:receive`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:receive。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | courseNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.dto.KitchenContracts.CourseFireReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.KitchenContracts.CourseVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-054 `POST /biz/x/food/courses/{courseNo}:fire`；EXACT_PATH。
+
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`operationNo`、`resultRef`。
+
+边界：源事实权限与版本守卫；本次为只读代码对账。
+
+#### FOOD-NONPAY-IMPL-025 · BizDiningHandoverController.handover
+
+`POST /biz/x/food/batches/{batchNo}:handover` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningHandoverController.java:45`。权限：`biz:verify`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:verify。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | batchNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.dto.KitchenContracts.HandoverReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.KitchenContracts.HandoverVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-055 `POST /biz/x/food/batches/{batchNo}:handover`；EXACT_PATH。
+
+- TARGET_INPUT_FIELD_NOT_PRESENT_IN_ACTUAL_PUBLIC_CONTRACT：`coreFulfillmentRef`。
+- ACTUAL_INPUT_FIELDS_ADDED：`reason`。
+
+边界：本地交接不自动等于核心交付；deliveryPending/coreDeliveryRef必须按实际返回值解释。
+
+#### FOOD-NONPAY-IMPL-026 · BizDiningPickupVerificationController.get
+
+`GET /biz/x/food/batches/{batchNo}/pickup-verification` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningPickupVerificationController.java:46`。权限：`biz:verify`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:verify。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | batchNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.DiningPickupContracts.PickupVerificationVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：读取/核销原核心履约收据；当前GET也要求Idempotency-Key，可能进行原证据对账，不可省略该头。
+
+#### FOOD-NONPAY-IMPL-027 · BizDiningPickupVerificationController.verify
+
+`POST /biz/x/food/batches/{batchNo}:verify-pickup` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningPickupVerificationController.java:53`。权限：`biz:verify`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:verify。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | batchNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.dto.DiningPickupContracts.VerifyPickupReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.DiningPickupContracts.PickupVerificationVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：读取/核销原核心履约收据；当前GET也要求Idempotency-Key，可能进行原证据对账，不可省略该头。
+
+#### FOOD-NONPAY-IMPL-028 · BizPrintJobController.enqueue
+
+`POST /biz/x/food/print-jobs` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintJobController.java:46`。权限：`biz:verify`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:verify。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| body | req | `ai.neargo.shop.food.dto.PrintDocumentReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`java.util.List<ai.neargo.shop.spi.printing.PrintPort.JobVO>`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-065 `POST /biz/print/jobs`；PATH_CHANGED。共享打印目标以餐饮适配入口实现；仅ORDER/KITCHEN/PREBILL/RETURN，非通用共享biz入口。
+
+- TARGET_INPUT_FIELD_NOT_PRESENT_IN_ACTUAL_PUBLIC_CONTRACT：`deviceNos`、`sourceEventNo`、`sourceRef`、`templateVersion`。
+- ACTUAL_INPUT_FIELDS_ADDED：`sourceNo`、`stationNo`。
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`jobNos`、`status`。
+
+边界：首次打印身份不包含客户端Idempotency-Key；ORDER/KITCHEN/RETURN按原单据+scene/station固定，PREBILL按原文档snapshot版本；换key同内容不新增首次任务。额外纸张必须走关联原任务+原因+操作人的审计reprint；UNKNOWN禁止普通retry。
+
+#### FOOD-NONPAY-IMPL-029 · BizPrintJobController.list
+
+`GET /biz/x/food/print-jobs` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintJobController.java:52`。权限：`biz:order:view`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:order:view。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| query | afterJobNo | `String` | 否 | — | @RequestParam(value="afterJobNo",required=false) |
+| query | limit | `int` | 否 | 20 | @RequestParam(value="limit",defaultValue="20") |
+
+成功输出为ApiResult&lt;T&gt;的data：`java.util.List<ai.neargo.shop.spi.printing.PrintPort.JobVO>`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：首次打印身份不包含客户端Idempotency-Key；ORDER/KITCHEN/RETURN按原单据+scene/station固定，PREBILL按原文档snapshot版本；换key同内容不新增首次任务。额外纸张必须走关联原任务+原因+操作人的审计reprint；UNKNOWN禁止普通retry。
+
+#### FOOD-NONPAY-IMPL-030 · BizPrintJobController.get
+
+`GET /biz/x/food/print-jobs/{jobNo}` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintJobController.java:58`。权限：`biz:order:view`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:order:view。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | jobNo | `String` | 是 | — | @PathVariable("jobNo") @NotBlank @Size(max=32) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.spi.printing.PrintPort.JobVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-066 `GET /biz/print/jobs/{jobNo}`；PATH_CHANGED。共享目标查询经餐饮网关暴露，实际路径不同。
+
+
+边界：首次打印身份不包含客户端Idempotency-Key；ORDER/KITCHEN/RETURN按原单据+scene/station固定，PREBILL按原文档snapshot版本；换key同内容不新增首次任务。额外纸张必须走关联原任务+原因+操作人的审计reprint；UNKNOWN禁止普通retry。
+
+#### FOOD-NONPAY-IMPL-031 · BizPrintJobController.retry
+
+`POST /biz/x/food/print-jobs/{jobNo}:retry` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintJobController.java:63`。权限：`biz:verify`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:verify。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | jobNo | `String` | 是 | — | @PathVariable("jobNo") @NotBlank @Size(max=32) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.spi.printing.PrintPort.JobVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：首次打印身份不包含客户端Idempotency-Key；ORDER/KITCHEN/RETURN按原单据+scene/station固定，PREBILL按原文档snapshot版本；换key同内容不新增首次任务。额外纸张必须走关联原任务+原因+操作人的审计reprint；UNKNOWN禁止普通retry。
+
+#### FOOD-NONPAY-IMPL-032 · BizPrintJobController.reprint
+
+`POST /biz/x/food/print-jobs/{jobNo}:reprint` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintJobController.java:69`。权限：`biz:verify`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:verify。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | jobNo | `String` | 是 | — | @PathVariable("jobNo") @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.api.biz.BizPrintJobController.ReprintReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.spi.printing.PrintPort.JobVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-067 `POST /biz/print/jobs/{jobNo}:reprint`；PATH_CHANGED。实际路径不同；保留原任务、原因、操作人、幂等键。
+
+- TARGET_INPUT_FIELD_NOT_PRESENT_IN_ACTUAL_PUBLIC_CONTRACT：`deviceNo`。
+
+边界：首次打印身份不包含客户端Idempotency-Key；ORDER/KITCHEN/RETURN按原单据+scene/station固定，PREBILL按原文档snapshot版本；换key同内容不新增首次任务。额外纸张必须走关联原任务+原因+操作人的审计reprint；UNKNOWN禁止普通retry。
+
+#### FOOD-NONPAY-IMPL-033 · BizPrintDeviceController.bind
+
+`POST /biz/x/food/print-devices` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintDeviceController.java:45`。权限：`biz:store:admin`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:store:admin。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| body | req | `ai.neargo.shop.spi.printing.PrintPort.DeviceReq` | 是 | — | @Valid @RequestBody |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.spi.printing.PrintPort.DeviceVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：bridge actor必须与设备绑定一致；claim空闲为null，SENT不代表已出纸，超时为UNKNOWN。
+
+#### FOOD-NONPAY-IMPL-034 · BizPrintDeviceController.heartbeat
+
+`POST /biz/x/food/print-devices/{deviceNo}:heartbeat` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintDeviceController.java:51`。权限：`biz:verify`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:verify。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | deviceNo | `String` | 是 | — | @PathVariable("deviceNo") @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.api.biz.BizPrintDeviceController.HeartbeatReq` | 是 | — | @Valid @RequestBody |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.spi.printing.PrintPort.DeviceVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：bridge actor必须与设备绑定一致；claim空闲为null，SENT不代表已出纸，超时为UNKNOWN。
+
+#### FOOD-NONPAY-IMPL-035 · BizPrintDeviceController.claim
+
+`POST /biz/x/food/print-devices/{deviceNo}:claim` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintDeviceController.java:57`。权限：`biz:verify`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:verify。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | deviceNo | `String` | 是 | — | @PathVariable("deviceNo") @NotBlank @Size(max=32) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.spi.printing.PrintPort.Claim`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：bridge actor必须与设备绑定一致；claim空闲为null，SENT不代表已出纸，超时为UNKNOWN。
+
+#### FOOD-NONPAY-IMPL-036 · BizPrintDeviceController.acknowledge
+
+`POST /biz/x/food/print-devices/{deviceNo}:acknowledge` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintDeviceController.java:62`。权限：`biz:verify`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:verify。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | deviceNo | `String` | 是 | — | @PathVariable("deviceNo") @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.spi.printing.PrintPort.Acknowledge` | 是 | — | @Valid @RequestBody |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.spi.printing.PrintPort.JobVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：bridge actor必须与设备绑定一致；claim空闲为null，SENT不代表已出纸，超时为UNKNOWN。
+
+#### FOOD-NONPAY-IMPL-037 · BizPrintConfigurationController.configuration
+
+`GET /biz/x/food/print-configuration` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintConfigurationController.java:44`。权限：`biz:store:admin`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:store:admin。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.spi.printing.PrintPort.Configuration`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：设备路由、模板归共享打印owner；模板发布后不可覆盖。
+
+#### FOOD-NONPAY-IMPL-038 · BizPrintConfigurationController.publish
+
+`POST /biz/x/food/print-configuration/templates` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintConfigurationController.java:47`。权限：`biz:store:admin`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:store:admin。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| body | req | `ai.neargo.shop.spi.printing.PrintPort.TemplateReq` | 是 | — | @Valid @RequestBody |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.spi.printing.PrintPort.TemplateReq`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：设备路由、模板归共享打印owner；模板发布后不可覆盖。
+
+#### FOOD-NONPAY-IMPL-039 · BizPrintConfigurationController.route
+
+`POST /biz/x/food/print-configuration/routes` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintConfigurationController.java:52`。权限：`biz:store:admin`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:store:admin。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| body | req | `ai.neargo.shop.spi.printing.PrintPort.RouteReq` | 是 | — | @Valid @RequestBody |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.spi.printing.PrintPort.RouteReq`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：设备路由、模板归共享打印owner；模板发布后不可覆盖。
+
+#### FOOD-NONPAY-IMPL-040 · BizBusinessCloseController.open
+
+`POST /biz/x/food/business-days/{date}:open` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java:46`。权限：`biz:finance`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:finance。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | date | `java.time.LocalDate` | 是 | — | @PathVariable |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.BusinessCloseContracts.DayVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：仅按实际源事实提供报表/关账证据；资金完整性缺口和异常不可由本地状态伪造消除。
+
+#### FOOD-NONPAY-IMPL-041 · BizBusinessCloseController.report
+
+`GET /biz/x/food/reports/business-day` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java:53`。权限：`biz:order:view`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:order:view。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| query | businessDate | `java.time.LocalDate` | 是 | — | @RequestParam |
+| query | currency | `String` | 是 | — | @RequestParam |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.BusinessCloseContracts.ReportVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-077 `GET /biz/x/food/reports/{reportCode}`；PARTIAL_TARGET_SUBSET。只实现营业日固定报表+businessDate/currency，未实现任意reportCode报表。
+
+- TARGET_INPUT_FIELD_NOT_PRESENT_IN_ACTUAL_PUBLIC_CONTRACT：`from`、`metricVersion`、`page`、`size`、`stationNo`、`storeNos`、`timeBasis`、`to`。
+- ACTUAL_INPUT_FIELDS_ADDED：`businessDate`。
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`report`。
+
+边界：仅按实际源事实提供报表/关账证据；资金完整性缺口和异常不可由本地状态伪造消除。
+
+#### FOOD-NONPAY-IMPL-042 · BizBusinessCloseController.preview
+
+`POST /biz/x/food/closes:preview` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java:61`。权限：`biz:finance`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:finance。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| body | body | `ai.neargo.shop.food.dto.BusinessCloseContracts.PreviewReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-072 `POST /biz/x/food/stores/{storeNo}/closes`；PATH_AND_INPUT_CHANGED。storeNo来自可信当前门店，营业日与currency来自PreviewReq；不是目标stores/{storeNo}/closes路径。
+
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`close`。
+
+边界：仅按实际源事实提供报表/关账证据；资金完整性缺口和异常不可由本地状态伪造消除。
+
+#### FOOD-NONPAY-IMPL-043 · BizBusinessCloseController.get
+
+`GET /biz/x/food/closes/{closeNo}` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java:68`。权限：`biz:order:view`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:order:view。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | closeNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-073 `GET /biz/x/food/closes/{closeNo}`；EXACT_PATH。
+
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`close`。
+
+边界：仅按实际源事实提供报表/关账证据；资金完整性缺口和异常不可由本地状态伪造消除。
+
+#### FOOD-NONPAY-IMPL-044 · BizBusinessCloseController.sign
+
+`POST /biz/x/food/closes:sign` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java:74`。权限：`biz:finance`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:finance。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| body | body | `ai.neargo.shop.food.dto.BusinessCloseContracts.SignReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-075 `POST /biz/x/food/closes/{closeNo}:sign`；PATH_AND_INPUT_CHANGED。closeNo由SignReq提供；真实资金与异常守卫仍生效，存在端点不等于当前具备完整财务签核能力。
+
+- TARGET_INPUT_FIELD_NOT_PRESENT_IN_ACTUAL_PUBLIC_CONTRACT：`approvalRef`、`version`、`watermark`。
+- ACTUAL_INPUT_FIELDS_ADDED：`closeNo`。
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`close`。
+
+边界：仅按实际源事实提供报表/关账证据；资金完整性缺口和异常不可由本地状态伪造消除。
+
+#### FOOD-NONPAY-IMPL-045 · BizBusinessCloseController.adjust
+
+`POST /biz/x/food/closes:adjust` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java:81`。权限：`biz:finance`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:finance。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| body | body | `ai.neargo.shop.food.dto.BusinessCloseContracts.AdjustmentReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.OperationVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-076 `POST /biz/x/food/closes/{closeNo}/adjustments`；PATH_AND_INPUT_CHANGED。originalCloseNo/currentDayNo/coreReference/approvalRef均在请求体；不得修改原已签快照。
+
+- TARGET_INPUT_FIELD_NOT_PRESENT_IN_ACTUAL_PUBLIC_CONTRACT：`currentBusinessDate`。
+- ACTUAL_INPUT_FIELDS_ADDED：`currentDayNo`、`originalCloseNo`。
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`adjustmentNo`、`newCloseNo`。
+
+边界：仅按实际源事实提供报表/关账证据；资金完整性缺口和异常不可由本地状态伪造消除。
+
+#### FOOD-NONPAY-IMPL-046 · BizProductionConsumptionController.consume
+
+`POST /biz/x/food/production-events/{eventNo}:consume` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizProductionConsumptionController.java:50`。权限：`biz:stock`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:stock。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | eventNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.ProductionContracts.ConsumptionVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：只允许引用既存source event；BLOCKED、UNKNOWN和原库存回执均保真；不接受客户端数量/金额。
+
+#### FOOD-NONPAY-IMPL-047 · BizProductionConsumptionController.get
+
+`GET /biz/x/food/production-events/{eventNo}` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizProductionConsumptionController.java:56`。权限：`biz:order:view`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:order:view。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | eventNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.ProductionContracts.ConsumptionVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-154 `GET /biz/x/food/production-consumptions/{consumptionNo}`；DIFFERENT_RESOURCE_KEY。实际按source eventNo读耗用；目标按consumptionNo读取，不可宣称路径或资源键对齐。
+
+- TARGET_OUTPUT_FIELD_OR_WRAPPER_NOT_PRESENT_IN_ACTUAL_RESPONSE：`consumption`。
+
+边界：只允许引用既存source event；BLOCKED、UNKNOWN和原库存回执均保真；不接受客户端数量/金额。
+
+#### FOOD-NONPAY-IMPL-048 · BizKitchenReturnController.get
+
+`GET /biz/x/food/returns/{returnNo}/kitchen` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenReturnController.java:47`。权限：`biz:aftersale`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:aftersale。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | returnNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.KitchenReturnContracts.ReturnKitchenVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：只处理厨房处置，不触发退款成功或资金执行。
+
+#### FOOD-NONPAY-IMPL-049 · BizKitchenReturnController.handle
+
+`POST /biz/x/food/returns/{returnNo}/kitchen` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenReturnController.java:53`。权限：`biz:aftersale`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:aftersale。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | returnNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| body | req | `ai.neargo.shop.food.dto.KitchenReturnContracts.HandleReq` | 是 | — | @Valid @RequestBody |
+| header | Idempotency-Key | `String` | 是 | — | @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.food.dto.KitchenReturnContracts.HandledVO`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。
+
+
+边界：只处理厨房处置，不触发退款成功或资金执行。
+
+#### FOOD-NONPAY-IMPL-050 · BizProductionConsumptionController.list
+
+`GET /biz/x/food/stores/{storeNo}/production-consumptions` · **CODED_PENDING_VERIFICATION**
+
+源码：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizProductionConsumptionController.java:39`。权限：`biz:order:view`；可信BizContext主体/当前门店 + StoreDirectoryPort真实归属 + X-Store-No范围校验 + biz:order:view。
+
+| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |
+|---|---|---|---|---|---|
+| path | storeNo | `String` | 是 | — | @PathVariable @NotBlank @Size(max=32) |
+| query | from | `java.time.LocalDate` | 是 | — | @RequestParam |
+| query | to | `java.time.LocalDate` | 是 | — | @RequestParam |
+| query | page | `Integer` | 否 | 1 | @RequestParam(required=false) |
+| query | size | `Integer` | 否 | 20 | @RequestParam(required=false) |
+| query | skuNo | `String` | 否 | — | @RequestParam(required=false) |
+| query | itemRef | `String` | 否 | — | @RequestParam(required=false) |
+| query | status | `String` | 否 | — | @RequestParam(required=false) |
+
+成功输出为ApiResult&lt;T&gt;的data：`ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.ProductionContracts.ConsumptionVO>`。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。
+
+目标映射：FOOD-API-153 `GET /biz/x/food/stores/{storeNo}/production-consumptions`；EXACT_PATH。
+
+- PAGINATION_SCALAR_TYPE_DIFFERS_FROM_TARGET：`page`、`size`。
+
+边界：原storeNo路径+可信actor/门店归属；from/to为营业日且to不含，范围最多93日；page默认1、size默认20且最大100；SKU/物料/status均与同过滤COUNT分页。只读已持久耗用事实，不补扣库存；ConsumptionVO/LineVO递归返回原回执，BLOCKED/UNKNOWN、实际物耗未测量与未知成本保持原值。
+
+### 11.3 实际DTO字段声明
+
+以下来自真实Java record；声明约束为空不推断运行时字段必定非空。来源对象、权限及owner真回执仍由Service验证。
+
+#### `ai.neargo.shop.common.PageData`
+
+来源：`backend/shop-base/src/main/java/ai/neargo/shop/common/PageData.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| records | `List<T>` |  |
+| total | `long` |  |
+| page | `long` |  |
+| size | `long` |  |
+
+#### `ai.neargo.shop.food.api.biz.BizPrintDeviceController.HeartbeatReq`
+
+来源：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintDeviceController.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| online | `boolean` |  |
+
+#### `ai.neargo.shop.food.api.biz.BizPrintJobController.ReprintReq`
+
+来源：`backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintJobController.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| reason | `String` | @NotBlank @Size(max=256) |
+
+#### `ai.neargo.shop.food.dto.BusinessCloseContracts.AdjustmentReq`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/BusinessCloseContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| originalCloseNo | `String` | @NotBlank @Size(max=32) |
+| currentDayNo | `String` | @NotBlank @Size(max=32) |
+| coreReference | `String` | @NotBlank @Size(max=64) |
+| reason | `String` | @NotBlank @Size(max=255) |
+| approvalRef | `String` | @NotBlank @Size(max=64) |
+
+#### `ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/BusinessCloseContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| closeNo | `String` |  |
+| dayNo | `String` |  |
+| currency | `String` |  |
+| revision | `int` |  |
+| status | `String` |  |
+| snapshotHash | `String` |  |
+| previousCloseNo | `String` |  |
+| signedBy | `String` |  |
+| signedAt | `LocalDateTime` |  |
+| report | `ReportVO` |  |
+| version | `long` |  |
+
+#### `ai.neargo.shop.food.dto.BusinessCloseContracts.DayVO`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/BusinessCloseContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| dayNo | `String` |  |
+| businessDate | `LocalDate` |  |
+| policyNo | `String` |  |
+| startsAt | `LocalDateTime` |  |
+| endsAt | `LocalDateTime` |  |
+| status | `String` |  |
+| currentCloseRefs | `String` |  |
+| version | `long` |  |
+
+#### `ai.neargo.shop.food.dto.BusinessCloseContracts.Issue`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/BusinessCloseContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| kind | `String` |  |
+| sourceRef | `String` |  |
+
+#### `ai.neargo.shop.food.dto.BusinessCloseContracts.PreviewReq`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/BusinessCloseContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| businessDate | `LocalDate` | @NotNull |
+| currency | `String` | @NotBlank @Pattern(regexp="[A-Z]{3}") |
+
+#### `ai.neargo.shop.food.dto.BusinessCloseContracts.ReportVO`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/BusinessCloseContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| businessDate | `LocalDate` |  |
+| currency | `String` |  |
+| batchCount | `long` |  |
+| quantitiesByUnit | `Map<String, BigDecimal>` |  |
+| originalOrderServiceQuantitiesByActionUnit | `Map<String, BigDecimal>` |  |
+| returnAndServiceScope | `String` |  |
+| settlementAttemptCount | `long` |  |
+| requestedDueMinor | `long` |  |
+| returnCount | `long` |  |
+| salesCompleteness | `String` |  |
+| settlementCompleteness | `String` |  |
+| refundCompleteness | `String` |  |
+| issues | `List<Issue>` |  |
+| sourceHash | `String` |  |
+
+#### `ai.neargo.shop.food.dto.BusinessCloseContracts.SignReq`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/BusinessCloseContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| closeNo | `String` | @NotBlank @Size(max=32) |
+| snapshotHash | `String` | @NotBlank @Pattern(regexp="[a-f0-9]{64}") |
+
+#### `ai.neargo.shop.food.dto.DiningPickupContracts.PickupVerificationVO`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/DiningPickupContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| batchNo | `String` |  |
+| localHandoverRecorded | `boolean` |  |
+| originalFulfillment | `Receipt` |  |
+
+#### `ai.neargo.shop.food.dto.DiningPickupContracts.VerifyPickupReq`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/DiningPickupContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| expectedVersion | `Long` | @JsonDeserialize(using=CatalogRevisionDeserializer.class) @NotNull |
+| verifyCode | `String` | @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) @NotBlank @Pattern(regexp="[0-9]{6}") |
+
+#### `ai.neargo.shop.food.dto.KitchenContracts.CourseActionReq`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| version | `Long` | @JsonDeserialize(using=CatalogRevisionDeserializer.class) @NotNull |
+| action | `String` | @NotBlank |
+| reason | `String` | @Size(max=255) |
+| seatNos | `List<String>` |  |
+
+#### `ai.neargo.shop.food.dto.KitchenContracts.CourseFireReq`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| version | `Long` | @JsonDeserialize(using=CatalogRevisionDeserializer.class) @NotNull |
+| seatNos | `List< String>` | @NotNull @Size(max=100) @NotBlank |
+
+#### `ai.neargo.shop.food.dto.KitchenContracts.CourseReq`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| name | `String` | @NotBlank @Size(max=64) |
+| sequenceNo | `Integer` | @NotNull |
+
+#### `ai.neargo.shop.food.dto.KitchenContracts.CourseVO`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| courseNo | `String` |  |
+| checkNo | `String` |  |
+| name | `String` |  |
+| sequenceNo | `int` |  |
+| status | `String` |  |
+| version | `long` |  |
+
+#### `ai.neargo.shop.food.dto.KitchenContracts.EventVO`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| eventNo | `String` |  |
+| taskNo | `String` |  |
+| action | `String` |  |
+| qty | `BigDecimal` |  |
+| reason | `String` |  |
+| inventoryDocNo | `String` |  |
+
+#### `ai.neargo.shop.food.dto.KitchenContracts.HandoverLine`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| foodLineNo | `String` | @NotBlank |
+| qty | `BigDecimal` | @JsonDeserialize(using=SalesRestrictionPolicy.DecimalDeserializer.class) @NotNull |
+
+#### `ai.neargo.shop.food.dto.KitchenContracts.HandoverReq`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| kind | `String` | @NotBlank |
+| lines | `List<HandoverLine>` | @NotNull |
+| reason | `String` | @NotBlank @Size(max=255) |
+
+#### `ai.neargo.shop.food.dto.KitchenContracts.HandoverVO`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| operationNo | `String` |  |
+| batchNo | `String` |  |
+| status | `String` |  |
+| deliveryPending | `boolean` |  |
+| coreDeliveryRef | `String` |  |
+
+#### `ai.neargo.shop.food.dto.KitchenContracts.RemakeReq`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| version | `Long` | @JsonDeserialize(using=CatalogRevisionDeserializer.class) @NotNull |
+| qty | `BigDecimal` | @JsonDeserialize(using=SalesRestrictionPolicy.DecimalDeserializer.class) @NotNull |
+| reason | `String` | @NotBlank @Size(max=255) |
+
+#### `ai.neargo.shop.food.dto.KitchenContracts.TaskDeltaReq`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| version | `Long` | @JsonDeserialize(using=CatalogRevisionDeserializer.class) @NotNull |
+| qty | `BigDecimal` | @JsonDeserialize(using=SalesRestrictionPolicy.DecimalDeserializer.class) @NotNull |
+| reason | `String` | @Size(max=255) |
+
+#### `ai.neargo.shop.food.dto.KitchenContracts.TaskVO`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| taskNo | `String` |  |
+| ticketNo | `String` |  |
+| batchNo | `String` |  |
+| foodLineNo | `String` |  |
+| componentNo | `String` |  |
+| stationNo | `String` |  |
+| taskRole | `String` |  |
+| routeVersion | `long` |  |
+| qty | `BigDecimal` |  |
+| makingQty | `BigDecimal` |  |
+| readyQty | `BigDecimal` |  |
+| servedQty | `BigDecimal` |  |
+| voidQty | `BigDecimal` |  |
+| status | `String` |  |
+| seatNo | `String` |  |
+| courseNo | `String` |  |
+| version | `long` |  |
+| ticketKind | `String` |  |
+| originalTicketNo | `String` |  |
+
+#### `ai.neargo.shop.food.dto.KitchenContracts.TicketVO`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| ticketNo | `String` |  |
+| batchNo | `String` |  |
+| kind | `String` |  |
+| originalTicketNo | `String` |  |
+| status | `String` |  |
+| tasks | `List<TaskVO>` |  |
+
+#### `ai.neargo.shop.food.dto.KitchenReturnContracts.HandleReq`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenReturnContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| version | `Long` | @JsonDeserialize(using=CatalogRevisionDeserializer.class) @NotNull |
+| decisions | `List< ItemDecision>` | @NotNull @Size(min=1,max=1000) @Valid |
+| reason | `String` | @NotBlank @Size(max=255) |
+
+#### `ai.neargo.shop.food.dto.KitchenReturnContracts.HandledVO`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenReturnContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| operationNo | `String` |  |
+| returnNo | `String` |  |
+| kitchenStatus | `String` |  |
+
+#### `ai.neargo.shop.food.dto.KitchenReturnContracts.ItemDecision`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenReturnContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| returnItemNo | `String` | @NotBlank |
+| disposition | `String` | @NotBlank |
+
+#### `ai.neargo.shop.food.dto.KitchenReturnContracts.ItemVO`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenReturnContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| returnItemNo | `String` |  |
+| foodLineNo | `String` |  |
+| componentNo | `String` |  |
+| qty | `BigDecimal` |  |
+| disposition | `String` |  |
+
+#### `ai.neargo.shop.food.dto.KitchenReturnContracts.ReturnKitchenVO`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/KitchenReturnContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| returnNo | `String` |  |
+| batchNo | `String` |  |
+| kitchenStatus | `String` |  |
+| version | `long` |  |
+| items | `List<ItemVO>` |  |
+
+#### `ai.neargo.shop.food.dto.OperationVO`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/OperationVO.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| operationNo | `String` |  |
+| status | `String` |  |
+| version | `long` |  |
+| resultRef | `String` |  |
+
+#### `ai.neargo.shop.food.dto.PrintDocumentReq`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/PrintDocumentReq.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| scene | `String` | @NotBlank @Size(max=16) @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) |
+| sourceNo | `String` | @NotBlank @Size(max=32) @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) |
+| stationNo | `String` | @Size(max=32) @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) |
+
+#### `ai.neargo.shop.food.dto.ProductionContracts.ConsumptionVO`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/ProductionContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| consumptionNo | `String` |  |
+| sourceEventNo | `String` |  |
+| purpose | `String` |  |
+| status | `String` |  |
+| requestHash | `String` |  |
+| inventoryOperationRef | `String` |  |
+| businessDate | `LocalDate` |  |
+| occurredAt | `LocalDateTime` |  |
+| lines | `List<LineVO>` |  |
+| quantityEvidence | `String` |  |
+| consumptionPending | `boolean` |  |
+| totalCostMinor | `Long` |  |
+| costCurrency | `String` |  |
+| version | `long` |  |
+
+#### `ai.neargo.shop.food.dto.ProductionContracts.LineVO`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/ProductionContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| lineNo | `int` |  |
+| componentPath | `String` |  |
+| itemRef | `String` |  |
+| theoryQty | `BigDecimal` |  |
+| unit | `String` |  |
+| recipeRevisionNo | `String` |  |
+| inventoryReceiptRef | `String` |  |
+| inventoryIssuedQty | `BigDecimal` |  |
+| costMinor | `Long` |  |
+| currency | `String` |  |
+| status | `String` |  |
+
+#### `ai.neargo.shop.food.dto.ProductionContracts.ListQuery`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/ProductionContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| page | `Integer` |  |
+| size | `Integer` |  |
+| from | `LocalDate` |  |
+| to | `LocalDate` |  |
+| skuNo | `String` |  |
+| itemRef | `String` |  |
+| status | `String` |  |
+
+#### `ai.neargo.shop.food.dto.QueueContracts.ChangeReq`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/QueueContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| version | `Long` | @NotNull @Min(0) |
+| reason | `String` | @Size(max=255) |
+
+#### `ai.neargo.shop.food.dto.QueueContracts.IssueReq`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/QueueContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| partySize | `Integer` | @NotNull @Min(1) @Max(1000) |
+| contactRef | `String` | @Size(max=64) |
+
+#### `ai.neargo.shop.food.dto.QueueContracts.QueueVO`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/QueueContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| ticketNo | `String` |  |
+| businessDate | `LocalDate` |  |
+| partySize | `int` |  |
+| status | `String` |  |
+| calledAt | `LocalDateTime` |  |
+| checkNo | `String` |  |
+| version | `long` |  |
+| notificationStatus | `String` |  |
+
+#### `ai.neargo.shop.food.dto.QueueContracts.SeatQueueReq`
+
+来源：`backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/QueueContracts.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| version | `Long` | @NotNull @Min(0) |
+| check | `OpenCheckReq` | @NotNull @Valid |
+
+#### `ai.neargo.shop.spi.printing.PrintPort.Acknowledge`
+
+来源：`backend/shop-base/src/main/java/ai/neargo/shop/spi/printing/PrintPort.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| attemptNo | `String` |  |
+| leaseToken | `String` |  |
+| status | `String` |  |
+| channelJobNo | `String` |  |
+| responseCode | `String` |  |
+
+#### `ai.neargo.shop.spi.printing.PrintPort.AttemptVO`
+
+来源：`backend/shop-base/src/main/java/ai/neargo/shop/spi/printing/PrintPort.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| attemptNo | `String` |  |
+| sequenceNo | `int` |  |
+| status | `String` |  |
+| responseCode | `String` |  |
+| startedAt | `LocalDateTime` |  |
+| finishedAt | `LocalDateTime` |  |
+
+#### `ai.neargo.shop.spi.printing.PrintPort.Claim`
+
+来源：`backend/shop-base/src/main/java/ai/neargo/shop/spi/printing/PrintPort.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| jobNo | `String` |  |
+| deviceNo | `String` |  |
+| attemptNo | `String` |  |
+| leaseToken | `String` |  |
+| leaseUntil | `LocalDateTime` |  |
+| renderedContent | `String` |  |
+
+#### `ai.neargo.shop.spi.printing.PrintPort.Configuration`
+
+来源：`backend/shop-base/src/main/java/ai/neargo/shop/spi/printing/PrintPort.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| devices | `List<DeviceVO>` |  |
+| templates | `List<TemplateReq>` |  |
+| routes | `List<RouteReq>` |  |
+
+#### `ai.neargo.shop.spi.printing.PrintPort.DeviceReq`
+
+来源：`backend/shop-base/src/main/java/ai/neargo/shop/spi/printing/PrintPort.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| deviceNo | `String` |  |
+| vendor | `String` |  |
+| connectionType | `String` |  |
+| credentialRef | `String` |  |
+| bridgeActorNo | `String` |  |
+| capabilities | `String` |  |
+| active | `boolean` |  |
+
+#### `ai.neargo.shop.spi.printing.PrintPort.DeviceVO`
+
+来源：`backend/shop-base/src/main/java/ai/neargo/shop/spi/printing/PrintPort.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| deviceNo | `String` |  |
+| vendor | `String` |  |
+| connectionType | `String` |  |
+| bridgeActorNo | `String` |  |
+| status | `String` |  |
+| capabilities | `String` |  |
+| lastSeenAt | `LocalDateTime` |  |
+| online | `boolean` |  |
+
+#### `ai.neargo.shop.spi.printing.PrintPort.Document`
+
+来源：`backend/shop-base/src/main/java/ai/neargo/shop/spi/printing/PrintPort.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| schemaVersion | `int` |  |
+| scene | `String` |  |
+| sourceRef | `String` |  |
+| title | `String` |  |
+| currency | `String` |  |
+| lines | `List<Line>` |  |
+| notice | `String` |  |
+
+#### `ai.neargo.shop.spi.printing.PrintPort.JobVO`
+
+来源：`backend/shop-base/src/main/java/ai/neargo/shop/spi/printing/PrintPort.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| jobNo | `String` |  |
+| storeNo | `String` |  |
+| sourceEventNo | `String` |  |
+| scene | `String` |  |
+| deviceNo | `String` |  |
+| partNo | `String` |  |
+| copyIndex | `int` |  |
+| templateNo | `String` |  |
+| status | `String` |  |
+| originalJobNo | `String` |  |
+| reprintReason | `String` |  |
+| requestedBy | `String` |  |
+| document | `Document` |  |
+| renderedContent | `String` |  |
+| attempts | `List<AttemptVO>` |  |
+
+#### `ai.neargo.shop.spi.printing.PrintPort.Line`
+
+来源：`backend/shop-base/src/main/java/ai/neargo/shop/spi/printing/PrintPort.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| label | `String` |  |
+| quantity | `String` |  |
+| amountMinor | `Long` |  |
+| note | `String` |  |
+
+#### `ai.neargo.shop.spi.printing.PrintPort.RouteReq`
+
+来源：`backend/shop-base/src/main/java/ai/neargo/shop/spi/printing/PrintPort.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| routeNo | `String` |  |
+| scene | `String` |  |
+| stationNo | `String` |  |
+| deviceNo | `String` |  |
+| templateNo | `String` |  |
+| copies | `int` |  |
+
+#### `ai.neargo.shop.spi.printing.PrintPort.TemplateReq`
+
+来源：`backend/shop-base/src/main/java/ai/neargo/shop/spi/printing/PrintPort.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| templateNo | `String` |  |
+| templateCode | `String` |  |
+| revision | `int` |  |
+| scene | `String` |  |
+| content | `String` |  |
+
+#### `ai.neargo.shop.spi.trade.IndustryFulfillmentPort.Receipt`
+
+来源：`backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/IndustryFulfillmentPort.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| fulfillmentNo | `String` |  |
+| reference | `Reference` |  |
+| status | `String` |  |
+| subOrderStatus | `String` |  |
+| requireBuyerConfirm | `boolean` |  |
+| pending | `boolean` |  |
+| inventoryReservationNo | `String` |  |
+| inventoryState | `String` |  |
+| inventoryLifecycleVersion | `int` |  |
+| subOrderVersion | `long` |  |
+
+#### `ai.neargo.shop.spi.trade.IndustryFulfillmentPort.Reference`
+
+来源：`backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/IndustryFulfillmentPort.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| scope | `Scope` |  |
+| source | `PricingSourceRef` |  |
+| orderNo | `String` |  |
+| subOrderNo | `String` |  |
+
+#### `ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope`
+
+来源：`backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/PricingSourceFactsPort.java`。
+
+| 字段 | Java类型 | 声明约束 |
+|---|---|---|
+| tenantNo | `String` |  |
+| entityNo | `String` |  |
+| storeNo | `String` |  |
+
+### 11.4 未对齐目标与设备未知回执
+
+| 目标 | 目标路径 | 本批对齐状态 | 实际路径 |
+|---|---|---|---|
+| FOOD-API-044 | `GET /biz/x/food/stores/{storeNo}/kitchen/tasks` | EXACT_PATH / PATH_AND_TOP_LEVEL_FIELD_NAMES_ALIGNED | `/biz/x/food/stores/{storeNo}/kitchen/tasks` |
+| FOOD-API-045 | `POST /biz/x/food/tasks/{taskNo}:start` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/tasks/{taskNo}:start` |
+| FOOD-API-046 | `POST /biz/x/food/tasks/{taskNo}:ready` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/tasks/{taskNo}:ready` |
+| FOOD-API-047 | `POST /biz/x/food/tasks/{taskNo}:serve` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/tasks/{taskNo}:serve` |
+| FOOD-API-048 | `POST /biz/x/food/tasks/{taskNo}:hold` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/tasks/{taskNo}:hold` |
+| FOOD-API-049 | `POST /biz/x/food/tasks/{taskNo}:fire` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/tasks/{taskNo}:fire` |
+| FOOD-API-050 | `POST /biz/x/food/tasks/{taskNo}:urge` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/tasks/{taskNo}:urge` |
+| FOOD-API-051 | `POST /biz/x/food/tasks/{taskNo}:void` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/tasks/{taskNo}:void` |
+| FOOD-API-052 | `POST /biz/x/food/tasks/{taskNo}:remake` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/tasks/{taskNo}:remake` |
+| FOOD-API-053 | `POST /biz/x/food/checks/{checkNo}/courses` | EXACT_PATH / PATH_AND_TOP_LEVEL_FIELD_NAMES_ALIGNED | `/biz/x/food/checks/{checkNo}/courses` |
+| FOOD-API-054 | `POST /biz/x/food/courses/{courseNo}:fire` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/courses/{courseNo}:fire` |
+| FOOD-API-055 | `POST /biz/x/food/batches/{batchNo}:handover` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/batches/{batchNo}:handover` |
+| FOOD-API-065 | `POST /biz/print/jobs` | PATH_CHANGED / TARGET_RECONCILIATION_REQUIRED | `/biz/x/food/print-jobs` |
+| FOOD-API-066 | `GET /biz/print/jobs/{jobNo}` | PATH_CHANGED / TARGET_RECONCILIATION_REQUIRED | `/biz/x/food/print-jobs/{jobNo}` |
+| FOOD-API-067 | `POST /biz/print/jobs/{jobNo}:reprint` | PATH_CHANGED / TARGET_RECONCILIATION_REQUIRED | `/biz/x/food/print-jobs/{jobNo}:reprint` |
+| FOOD-API-072 | `POST /biz/x/food/stores/{storeNo}/closes` | PATH_AND_INPUT_CHANGED / TARGET_RECONCILIATION_REQUIRED | `/biz/x/food/closes:preview` |
+| FOOD-API-073 | `GET /biz/x/food/closes/{closeNo}` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/closes/{closeNo}` |
+| FOOD-API-074 | `POST /biz/x/food/closes/{closeNo}/exceptions/{exceptionNo}:carry` | NO_IMPLEMENTED_PUBLIC_ROUTE_IN_THIS_BATCH / TARGET_NOT_IMPLEMENTED_IN_THIS_BATCH | 未注册对应实际路由 |
+| FOOD-API-075 | `POST /biz/x/food/closes/{closeNo}:sign` | PATH_AND_INPUT_CHANGED / TARGET_RECONCILIATION_REQUIRED | `/biz/x/food/closes:sign` |
+| FOOD-API-076 | `POST /biz/x/food/closes/{closeNo}/adjustments` | PATH_AND_INPUT_CHANGED / TARGET_RECONCILIATION_REQUIRED | `/biz/x/food/closes:adjust` |
+| FOOD-API-077 | `GET /biz/x/food/reports/{reportCode}` | PARTIAL_TARGET_SUBSET / TARGET_RECONCILIATION_REQUIRED | `/biz/x/food/reports/business-day` |
+| FOOD-API-078 | `POST /biz/x/food/report-exports` | NO_IMPLEMENTED_PUBLIC_ROUTE_IN_THIS_BATCH / TARGET_NOT_IMPLEMENTED_IN_THIS_BATCH | 未注册对应实际路由 |
+| FOOD-API-079 | `GET /biz/x/food/report-exports/{exportNo}` | NO_IMPLEMENTED_PUBLIC_ROUTE_IN_THIS_BATCH / TARGET_NOT_IMPLEMENTED_IN_THIS_BATCH | 未注册对应实际路由 |
+| FOOD-API-153 | `GET /biz/x/food/stores/{storeNo}/production-consumptions` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/stores/{storeNo}/production-consumptions` |
+| FOOD-API-154 | `GET /biz/x/food/production-consumptions/{consumptionNo}` | DIFFERENT_RESOURCE_KEY / TARGET_RECONCILIATION_REQUIRED | `/biz/x/food/production-events/{eventNo}` |
+| FOOD-API-157 | `POST /biz/x/food/queue-tickets` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/queue-tickets` |
+| FOOD-API-158 | `GET /biz/x/food/queue-tickets` | EXACT_PATH / PATH_AND_TOP_LEVEL_FIELD_NAMES_ALIGNED | `/biz/x/food/queue-tickets` |
+| FOOD-API-159 | `GET /biz/x/food/queue-tickets/{ticketNo}` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/queue-tickets/{ticketNo}` |
+| FOOD-API-160 | `POST /biz/x/food/queue-tickets:call-next` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/queue-tickets:call-next` |
+| FOOD-API-161 | `POST /biz/x/food/queue-tickets/{ticketNo}:call` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/queue-tickets/{ticketNo}:call` |
+| FOOD-API-162 | `POST /biz/x/food/queue-tickets/{ticketNo}:cancel` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/queue-tickets/{ticketNo}:cancel` |
+| FOOD-API-163 | `POST /biz/x/food/queue-tickets/{ticketNo}:no-show` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/queue-tickets/{ticketNo}:no-show` |
+| FOOD-API-164 | `POST /biz/x/food/queue-tickets/{ticketNo}:seat` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/queue-tickets/{ticketNo}:seat` |
+| FOOD-API-165 | `POST /biz/x/food/queue-tickets/{ticketNo}:recover-seating` | EXACT_PATH / EXACT_PATH_WITH_DTO_DIFFERENCES | `/biz/x/food/queue-tickets/{ticketNo}:recover-seating` |
+
+内部打印claim采用ClaimResult信封：显式claim=null表示成功空闲，信封缺失仍报错。历史P2已编码修复：claim必需字段、非空有界key及规范UUID校验；ACK只认最新连续唯一尝试、规范状态及responseCode一致。保留owner允许的FAILED→retry/PENDING重放，远程适配器不以本地时钟拒绝过去租约。失去claim响应可能已留下SENT租约；超时为UNKNOWN，不自动补投。普通retry仅限真实NOT_PRINTED失败，未知回执需原尝试对账或带原单原因的人工补打。
+
+### 11.5 自动打印、默认KDS与本批已编码修复
+
+打印归属：实际公开BizPrintJobController位于food-web的ai.neargo.shop.food.api.biz。enqueue先调用FoodPrintService冻结文档，再调用shop-base的ai.neargo.shop.spi.printing.PrintPort；list/get/retry/reprint直接调用该PrintPort。共享PrintService/PrintServiceImpl、prn Entity与PrintMappers唯一归shop-core的ai.neargo.shop.printing。原/biz/print/jobs仍为PLANNED_SHARED_B_ENTRY_NOT_REGISTERED，目标Req/VO仅PLANNED_TRANSPORT_CONTRACT；实际DTO以本节真实Java声明为准。
+
+DINING_ORDER_ACCEPTED先持久化/重放原MAKE票，再读取共享打印配置，对已配置ORDER及原工位KITCHEN route自动入队；与手动首次打印共用原逻辑文档身份。无配置route不造打印任务，入队不代表物理出纸。
+
+默认KDS只读真实ACCEPTED批次、未CLOSED票及非SERVED/VOIDED任务；显式batchNo可查原历史。MAKE/REMAKE及原票引用保持，轮询不提供SSE/推送送达证明。
+
+CorePrint回执历史审查保留为历史证据；当前修复登记为CODED_PENDING_VERIFICATION，覆盖显式空闲/缺失信封、最新attempt与规范状态/responseCode、key与UUID及晚到/重复原回执。测试源码：`backend-plugins/shop-industry-food/food-channel/src/test/java/ai/neargo/shop/food/channel/CorePrintPortTest.java`。这不替代硬件真回执或将全目标判定完成。

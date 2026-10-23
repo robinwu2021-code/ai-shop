@@ -60,6 +60,9 @@
       ],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -156,6 +159,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -277,6 +283,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -379,6 +388,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -502,6 +514,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -672,6 +687,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "由所属资源Service校验，调用ConfigRevisionService发布；冻结子定义和依赖版本，短事务CAS头。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -765,6 +783,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -848,6 +869,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -978,6 +1002,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "由所属资源Service校验，调用ConfigRevisionService发布；冻结子定义和依赖版本，短事务CAS头。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -1071,6 +1098,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -1154,6 +1184,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -1284,6 +1317,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "由所属资源Service校验，调用ConfigRevisionService发布；冻结子定义和依赖版本，短事务CAS头。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -1377,6 +1413,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -1444,6 +1483,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -1566,6 +1608,9 @@
       ],
       "transaction": "LOCAL_ATOMIC",
       "note": "由所属资源Service校验，调用ConfigRevisionService发布；冻结子定义和依赖版本，短事务CAS头。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -1681,6 +1726,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -1980,6 +2028,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "ALL显式SCHEDULE/COMPOSITION/CONTEXT分支；原身份在事务外，CAS锁内重捕获；只替换本分段，不改发布历史",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -2132,6 +2183,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -2284,6 +2338,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -2410,6 +2467,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -2533,6 +2593,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -2635,6 +2698,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "CLEAR只解除指定限制；并发覆盖规则串行化，不更新实物库存。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -2807,6 +2873,9 @@
       ],
       "transaction": "READ_ONLY",
       "note": "已发布冻结定义及服务器当前时点，读取当前原价格及PLATFORM物理可售；UNKNOWN/null不伪造值；复杂配置需报价且公开输出不含渠道账号/价格策略",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -2919,6 +2988,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -3059,6 +3131,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -3146,6 +3221,9 @@
       "portCalls": [],
       "transaction": "ORCHESTRATED",
       "note": "桌码只授予桌级短会话，不自动授予同桌所有台账。 启动会话尚无BizContext，先以不可逆桌码哈希作唯一令牌查验，再从有效记录解析主体/门店；不接受Body自报entityNo。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -3242,6 +3320,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "资源hold与订金/预付款分别恢复；不伪造资源或资金成功。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -3344,6 +3425,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -3446,6 +3530,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -3598,6 +3685,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "到店只生成一个台账，新占用失败保留原预约。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -3743,6 +3833,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -3810,6 +3903,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -4002,6 +4098,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "仅调整桌台占用与服务状态，不移动批次归属、不改结清事实；清台不删除未结应收。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -4236,6 +4335,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "锁定批次/台账及资源仲裁者；先占后放；服务归属协作不改核心资金归属。具体动作只写对应变化行。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -4470,6 +4572,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "锁定批次/台账及资源仲裁者；先占后放；服务归属协作不改核心资金归属。具体动作只写对应变化行。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -4644,6 +4749,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "仅调整桌台占用与服务状态，不移动批次归属、不改结清事实；清台不删除未结应收。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -4710,6 +4818,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
@@ -4816,6 +4927,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
@@ -4979,6 +5093,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。事务外读取原已发布CatalogService；QR与原车来源目录交集校验。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
@@ -5125,6 +5242,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
@@ -5227,6 +5347,9 @@
       ],
       "transaction": "NO_LOCAL_WRITE",
       "note": "报价由核心返回，绑定车版本、源行与规则指纹；不能餐饮重算价格。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -5496,6 +5619,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "意图与冻结源行本地提交后调用核心；UNKNOWN查同键；结果绑定再清理此次草稿，后付合同未齐禁用。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -5592,6 +5718,9 @@
       ],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -5667,6 +5796,21 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "GET",
+          "path": "/biz/x/food/stores/{storeNo}/kitchen/tasks",
+          "controller": "BizKitchenTaskController",
+          "responseType": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.KitchenContracts.TaskVO>",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -5780,6 +5924,21 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "start/ready/serve推进数量；hold/fire/urge不增加销量；void必须退餐授权。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/tasks/{taskNo}:start",
+          "controller": "BizKitchenTaskController",
+          "responseType": "ai.neargo.shop.food.dto.KitchenContracts.EventVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -5893,6 +6052,21 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "start/ready/serve推进数量；hold/fire/urge不增加销量；void必须退餐授权。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/tasks/{taskNo}:ready",
+          "controller": "BizKitchenTaskController",
+          "responseType": "ai.neargo.shop.food.dto.KitchenContracts.EventVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -6006,6 +6180,21 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "start/ready/serve推进数量；hold/fire/urge不增加销量；void必须退餐授权。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/tasks/{taskNo}:serve",
+          "controller": "BizKitchenTaskController",
+          "responseType": "ai.neargo.shop.food.dto.KitchenContracts.EventVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -6119,6 +6308,21 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "start/ready/serve推进数量；hold/fire/urge不增加销量；void必须退餐授权。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/tasks/{taskNo}:hold",
+          "controller": "BizKitchenTaskController",
+          "responseType": "ai.neargo.shop.food.dto.KitchenContracts.EventVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -6232,6 +6436,21 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "start/ready/serve推进数量；hold/fire/urge不增加销量；void必须退餐授权。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/tasks/{taskNo}:fire",
+          "controller": "BizKitchenTaskController",
+          "responseType": "ai.neargo.shop.food.dto.KitchenContracts.EventVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -6337,6 +6556,21 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "仅追加催菜事实/审计；不推进任务数量，不重复派工或计销量。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/tasks/{taskNo}:urge",
+          "controller": "BizKitchenTaskController",
+          "responseType": "ai.neargo.shop.food.dto.KitchenContracts.EventVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -6466,6 +6700,21 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "start/ready/serve推进数量；hold/fire/urge不增加销量；void必须退餐授权。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/tasks/{taskNo}:void",
+          "controller": "BizKitchenTaskController",
+          "responseType": "ai.neargo.shop.food.dto.KitchenContracts.EventVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -6590,6 +6839,21 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/tasks/{taskNo}:remake",
+          "controller": "BizKitchenTaskController",
+          "responseType": "ai.neargo.shop.food.dto.KitchenContracts.TicketVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizKitchenTaskController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizKitchenTaskController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -6687,6 +6951,21 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/checks/{checkNo}/courses",
+          "controller": "BizCourseController",
+          "responseType": "ai.neargo.shop.food.dto.KitchenContracts.CourseVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCourseController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizCourseController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -6801,6 +7080,21 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/courses/{courseNo}:fire",
+          "controller": "BizCourseController",
+          "responseType": "ai.neargo.shop.food.dto.KitchenContracts.CourseVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizCourseController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizCourseController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -6926,6 +7220,21 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "核心核销/配送交接为权威，部分交付与制作状态不能混写。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/batches/{batchNo}:handover",
+          "controller": "BizDiningHandoverController",
+          "responseType": "ai.neargo.shop.food.dto.KitchenContracts.HandoverVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningHandoverController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningHandoverController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -7053,6 +7362,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "跨结账/跨根应收独占由核心持有；本地唯一键不等于防双收。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -7125,6 +7437,9 @@
       ],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -7266,6 +7581,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -7384,6 +7702,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "仅核心确认无成功/未知不可撤销资金才能解冻。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -7508,6 +7829,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -7618,6 +7942,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -7762,6 +8089,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "锁来源行后核对有效申请退量再插入；Mapper不按现菜单价算退款。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -7922,6 +8252,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "核心财务与厨房两条轨道，部分退款能力未齐禁用。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -7985,6 +8318,9 @@
       ],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -7993,13 +8329,13 @@
       "moduleId": "MOD-07",
       "httpMethod": "POST",
       "path": "/biz/print/jobs",
-      "controllerClass": "ai.neargo.shop.print.api.biz.BizPrintJobController",
-      "serviceClass": "ai.neargo.shop.print.service.PrintService",
-      "implClass": "ai.neargo.shop.print.service.impl.PrintServiceImpl",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizPrintJobController",
+      "serviceClass": "ai.neargo.shop.printing.service.PrintService",
+      "implClass": "ai.neargo.shop.printing.service.impl.PrintServiceImpl",
       "serviceMethod": "createJob",
       "controllerParameters": [
         {
-          "type": "ai.neargo.shop.print.dto.CreateJobReq",
+          "type": "ai.neargo.shop.food.dto.CreateJobReq",
           "name": "req",
           "source": "PUBLIC_DTO",
           "annotation": "@Valid @RequestBody"
@@ -8011,7 +8347,7 @@
           "annotation": "@RequestHeader(\"Idempotency-Key\")"
         }
       ],
-      "controllerSignature": "ai.neargo.shop.print.dto.PrintJobResultVO createJob(@Valid @RequestBody ai.neargo.shop.print.dto.CreateJobReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+      "controllerSignature": "ai.neargo.shop.food.dto.PrintJobResultVO createJob(@Valid @RequestBody ai.neargo.shop.food.dto.CreateJobReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
       "serviceParameters": [
         {
           "type": "String",
@@ -8029,7 +8365,7 @@
           "source": "AUTHENTICATED_ACTOR"
         },
         {
-          "type": "ai.neargo.shop.print.dto.CreateJobReq",
+          "type": "ai.neargo.shop.food.dto.CreateJobReq",
           "name": "req",
           "source": "VALIDATED_PUBLIC_DTO"
         },
@@ -8039,46 +8375,61 @@
           "source": "VALIDATED_HEADER"
         }
       ],
-      "serviceSignature": "ai.neargo.shop.print.dto.PrintJobResultVO createJob(String entityNo, String currentStoreNo, String actorNo, ai.neargo.shop.print.dto.CreateJobReq req, String idempotencyKey)",
-      "returnType": "ai.neargo.shop.print.dto.PrintJobResultVO",
+      "serviceSignature": "ai.neargo.shop.food.dto.PrintJobResultVO createJob(String entityNo, String currentStoreNo, String actorNo, ai.neargo.shop.food.dto.CreateJobReq req, String idempotencyKey)",
+      "returnType": "ai.neargo.shop.food.dto.PrintJobResultVO",
       "mapperCalls": [
         {
           "table": "prn_device",
-          "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.DeviceMapper",
+          "mapperClass": "ai.neargo.shop.printing.mapper.PrintMappers.DeviceMapper",
           "method": "selectList",
           "access": "READ",
-          "signature": "java.util.List<ai.neargo.shop.print.entity.PrnDevice> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnDevice> queryWrapper)",
+          "signature": "java.util.List<ai.neargo.shop.printing.entity.PrnDevice> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnDevice> queryWrapper)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
           "table": "prn_route",
-          "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.RouteMapper",
+          "mapperClass": "ai.neargo.shop.printing.mapper.PrintMappers.RouteMapper",
           "method": "selectList",
           "access": "READ",
-          "signature": "java.util.List<ai.neargo.shop.print.entity.PrnRoute> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnRoute> queryWrapper)",
+          "signature": "java.util.List<ai.neargo.shop.printing.entity.PrnRoute> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnRoute> queryWrapper)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
           "table": "prn_template",
-          "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.TemplateMapper",
+          "mapperClass": "ai.neargo.shop.printing.mapper.PrintMappers.TemplateMapper",
           "method": "selectList",
           "access": "READ",
-          "signature": "java.util.List<ai.neargo.shop.print.entity.PrnTemplate> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnTemplate> queryWrapper)",
+          "signature": "java.util.List<ai.neargo.shop.printing.entity.PrnTemplate> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnTemplate> queryWrapper)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
           "table": "prn_job",
-          "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.JobMapper",
+          "mapperClass": "ai.neargo.shop.printing.mapper.PrintMappers.JobMapper",
           "method": "insert",
           "access": "WRITE",
-          "signature": "int insert(ai.neargo.shop.print.entity.PrnJob row)",
+          "signature": "int insert(ai.neargo.shop.printing.entity.PrnJob row)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
           "branch": "INSERT_NEW_OR_IDEMPOTENT_REUSE"
         }
       ],
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
-      "note": "共享打印持有队列，food只冻结票面；此段是共享模块目标方法，不在food-core实现其Mapper。 共享PrintService经受控票面提供者取得冻结内容，再本地写队列/outbox；不回调自己实现的PrintPort。",
+      "note": "共享打印持有队列，food只冻结票面；此段是共享模块目标方法，不在food-core实现其Mapper。 共享PrintService经受控票面提供者取得冻结内容，再本地写队列/outbox；不回调自己实现的PrintPort。 共享B端目标路径NOT_REGISTERED；以下目标方法/Req/VO为PLANNED_TRANSPORT_CONTRACT，不声称存在对应Java；实际FOOD打印Controller/DTO及delegate见actualImplementations。",
+      "targetPublicRouteStatus": "PLANNED_SHARED_B_ENTRY_NOT_REGISTERED",
+      "targetDtoStatus": "PLANNED_TRANSPORT_CONTRACT",
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/print-jobs",
+          "controller": "BizPrintJobController",
+          "responseType": "java.util.List<ai.neargo.shop.spi.printing.PrintPort.JobVO>",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintJobController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizPrintJobController",
+          "delegate": "ai.neargo.shop.food.service.FoodPrintService.enqueue -> ai.neargo.shop.spi.printing.PrintPort.enqueue",
+          "mappingStatus": "PATH_CHANGED",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -8087,9 +8438,9 @@
       "moduleId": "MOD-07",
       "httpMethod": "GET",
       "path": "/biz/print/jobs/{jobNo}",
-      "controllerClass": "ai.neargo.shop.print.api.biz.BizPrintJobController",
-      "serviceClass": "ai.neargo.shop.print.service.PrintService",
-      "implClass": "ai.neargo.shop.print.service.impl.PrintServiceImpl",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizPrintJobController",
+      "serviceClass": "ai.neargo.shop.printing.service.PrintService",
+      "implClass": "ai.neargo.shop.printing.service.impl.PrintServiceImpl",
       "serviceMethod": "getJob",
       "controllerParameters": [
         {
@@ -8099,7 +8450,7 @@
           "annotation": "@PathVariable(\"jobNo\")"
         }
       ],
-      "controllerSignature": "ai.neargo.shop.print.dto.GetJobPrintJobResultVO getJob(@PathVariable(\"jobNo\") String jobNo)",
+      "controllerSignature": "ai.neargo.shop.food.dto.GetJobPrintJobResultVO getJob(@PathVariable(\"jobNo\") String jobNo)",
       "serviceParameters": [
         {
           "type": "String",
@@ -8117,29 +8468,44 @@
           "source": "VALIDATED_PATH"
         }
       ],
-      "serviceSignature": "ai.neargo.shop.print.dto.GetJobPrintJobResultVO getJob(String entityNo, String currentStoreNo, String jobNo)",
-      "returnType": "ai.neargo.shop.print.dto.GetJobPrintJobResultVO",
+      "serviceSignature": "ai.neargo.shop.food.dto.GetJobPrintJobResultVO getJob(String entityNo, String currentStoreNo, String jobNo)",
+      "returnType": "ai.neargo.shop.food.dto.GetJobPrintJobResultVO",
       "mapperCalls": [
         {
           "table": "prn_job",
-          "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.JobMapper",
+          "mapperClass": "ai.neargo.shop.printing.mapper.PrintMappers.JobMapper",
           "method": "selectOne",
           "access": "READ",
-          "signature": "ai.neargo.shop.print.entity.PrnJob selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnJob> queryWrapper)",
+          "signature": "ai.neargo.shop.printing.entity.PrnJob selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnJob> queryWrapper)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
           "table": "prn_attempt",
-          "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.AttemptMapper",
+          "mapperClass": "ai.neargo.shop.printing.mapper.PrintMappers.AttemptMapper",
           "method": "selectList",
           "access": "READ",
-          "signature": "java.util.List<ai.neargo.shop.print.entity.PrnAttempt> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnAttempt> queryWrapper)",
+          "signature": "java.util.List<ai.neargo.shop.printing.entity.PrnAttempt> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnAttempt> queryWrapper)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         }
       ],
       "portCalls": [],
       "transaction": "READ_ONLY",
-      "note": "",
+      "note": "共享B端目标路径NOT_REGISTERED；以下目标方法/Req/VO为PLANNED_TRANSPORT_CONTRACT，不声称存在对应Java；实际FOOD打印Controller/DTO及delegate见actualImplementations。",
+      "targetPublicRouteStatus": "PLANNED_SHARED_B_ENTRY_NOT_REGISTERED",
+      "targetDtoStatus": "PLANNED_TRANSPORT_CONTRACT",
+      "actualImplementations": [
+        {
+          "method": "GET",
+          "path": "/biz/x/food/print-jobs/{jobNo}",
+          "controller": "BizPrintJobController",
+          "responseType": "ai.neargo.shop.spi.printing.PrintPort.JobVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintJobController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizPrintJobController",
+          "delegate": "ai.neargo.shop.spi.printing.PrintPort.get",
+          "mappingStatus": "PATH_CHANGED",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -8148,9 +8514,9 @@
       "moduleId": "MOD-07",
       "httpMethod": "POST",
       "path": "/biz/print/jobs/{jobNo}:reprint",
-      "controllerClass": "ai.neargo.shop.print.api.biz.BizPrintJobController",
-      "serviceClass": "ai.neargo.shop.print.service.PrintService",
-      "implClass": "ai.neargo.shop.print.service.impl.PrintServiceImpl",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizPrintJobController",
+      "serviceClass": "ai.neargo.shop.printing.service.PrintService",
+      "implClass": "ai.neargo.shop.printing.service.impl.PrintServiceImpl",
       "serviceMethod": "reprintJob",
       "controllerParameters": [
         {
@@ -8160,7 +8526,7 @@
           "annotation": "@PathVariable(\"jobNo\")"
         },
         {
-          "type": "ai.neargo.shop.print.dto.ReprintJobReq",
+          "type": "ai.neargo.shop.food.dto.ReprintJobReq",
           "name": "req",
           "source": "PUBLIC_DTO",
           "annotation": "@Valid @RequestBody"
@@ -8172,7 +8538,7 @@
           "annotation": "@RequestHeader(\"Idempotency-Key\")"
         }
       ],
-      "controllerSignature": "ai.neargo.shop.print.dto.ReprintJobResultVO reprintJob(@PathVariable(\"jobNo\") String jobNo, @Valid @RequestBody ai.neargo.shop.print.dto.ReprintJobReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+      "controllerSignature": "ai.neargo.shop.food.dto.ReprintJobResultVO reprintJob(@PathVariable(\"jobNo\") String jobNo, @Valid @RequestBody ai.neargo.shop.food.dto.ReprintJobReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
       "serviceParameters": [
         {
           "type": "String",
@@ -8195,7 +8561,7 @@
           "source": "AUTHENTICATED_ACTOR"
         },
         {
-          "type": "ai.neargo.shop.print.dto.ReprintJobReq",
+          "type": "ai.neargo.shop.food.dto.ReprintJobReq",
           "name": "req",
           "source": "VALIDATED_PUBLIC_DTO"
         },
@@ -8205,38 +8571,53 @@
           "source": "VALIDATED_HEADER"
         }
       ],
-      "serviceSignature": "ai.neargo.shop.print.dto.ReprintJobResultVO reprintJob(String entityNo, String currentStoreNo, String jobNo, String actorNo, ai.neargo.shop.print.dto.ReprintJobReq req, String idempotencyKey)",
-      "returnType": "ai.neargo.shop.print.dto.ReprintJobResultVO",
+      "serviceSignature": "ai.neargo.shop.food.dto.ReprintJobResultVO reprintJob(String entityNo, String currentStoreNo, String jobNo, String actorNo, ai.neargo.shop.food.dto.ReprintJobReq req, String idempotencyKey)",
+      "returnType": "ai.neargo.shop.food.dto.ReprintJobResultVO",
       "mapperCalls": [
         {
           "table": "prn_job",
-          "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.JobMapper",
+          "mapperClass": "ai.neargo.shop.printing.mapper.PrintMappers.JobMapper",
           "method": "selectOne",
           "access": "READ",
-          "signature": "ai.neargo.shop.print.entity.PrnJob selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnJob> queryWrapper)",
+          "signature": "ai.neargo.shop.printing.entity.PrnJob selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnJob> queryWrapper)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
           "table": "prn_device",
-          "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.DeviceMapper",
+          "mapperClass": "ai.neargo.shop.printing.mapper.PrintMappers.DeviceMapper",
           "method": "selectList",
           "access": "READ",
-          "signature": "java.util.List<ai.neargo.shop.print.entity.PrnDevice> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnDevice> queryWrapper)",
+          "signature": "java.util.List<ai.neargo.shop.printing.entity.PrnDevice> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnDevice> queryWrapper)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
           "table": "prn_job",
-          "mapperClass": "ai.neargo.shop.print.mapper.PrintMappers.JobMapper",
+          "mapperClass": "ai.neargo.shop.printing.mapper.PrintMappers.JobMapper",
           "method": "update",
           "access": "WRITE",
-          "signature": "int update(ai.neargo.shop.print.entity.PrnJob changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnJob> updateWrapper)",
+          "signature": "int update(ai.neargo.shop.printing.entity.PrnJob changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnJob> updateWrapper)",
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
           "branch": "UPDATE_EXISTING"
         }
       ],
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
-      "note": "创建新补打任务并引用原任务，不再次派工。 共享PrintService经受控票面提供者取得冻结内容，再本地写队列/outbox；不回调自己实现的PrintPort。",
+      "note": "创建新补打任务并引用原任务，不再次派工。 共享PrintService经受控票面提供者取得冻结内容，再本地写队列/outbox；不回调自己实现的PrintPort。 共享B端目标路径NOT_REGISTERED；以下目标方法/Req/VO为PLANNED_TRANSPORT_CONTRACT，不声称存在对应Java；实际FOOD打印Controller/DTO及delegate见actualImplementations。",
+      "targetPublicRouteStatus": "PLANNED_SHARED_B_ENTRY_NOT_REGISTERED",
+      "targetDtoStatus": "PLANNED_TRANSPORT_CONTRACT",
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/print-jobs/{jobNo}:reprint",
+          "controller": "BizPrintJobController",
+          "responseType": "ai.neargo.shop.spi.printing.PrintPort.JobVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizPrintJobController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizPrintJobController",
+          "delegate": "ai.neargo.shop.spi.printing.PrintPort.reprint",
+          "mappingStatus": "PATH_CHANGED",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -8340,6 +8721,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "钱箱无活动行时不能靠SELECT FOR UPDATE锁空结果；须共享资源/稳定钱箱仲裁者，否则禁用并发开班。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -8440,6 +8824,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -8556,6 +8943,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "先冻结权威收款水位核对后短事务记录实盘；盲盘前不泄露应有现金。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -8672,6 +9062,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -8826,6 +9219,21 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "事实冻结水位，未决资金/离线同步列明；不把报表结果当收款。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/closes:preview",
+          "controller": "BizBusinessCloseController",
+          "responseType": "ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+          "delegate": null,
+          "mappingStatus": "PATH_AND_INPUT_CHANGED",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -8895,6 +9303,21 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "GET",
+          "path": "/biz/x/food/closes/{closeNo}",
+          "controller": "BizBusinessCloseController",
+          "responseType": "ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -9022,6 +9445,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -9154,6 +9580,21 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/closes:sign",
+          "controller": "BizBusinessCloseController",
+          "responseType": "ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+          "delegate": null,
+          "mappingStatus": "PATH_AND_INPUT_CHANGED",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -9263,6 +9704,21 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/closes:adjust",
+          "controller": "BizBusinessCloseController",
+          "responseType": "ai.neargo.shop.food.dto.OperationVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+          "delegate": null,
+          "mappingStatus": "PATH_AND_INPUT_CHANGED",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -9342,6 +9798,21 @@
       ],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "GET",
+          "path": "/biz/x/food/reports/business-day",
+          "controller": "BizBusinessCloseController",
+          "responseType": "ai.neargo.shop.food.dto.BusinessCloseContracts.ReportVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+          "delegate": null,
+          "mappingStatus": "PARTIAL_TARGET_SUBSET",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -9418,6 +9889,9 @@
       ],
       "transaction": "SHARED_JOB",
       "note": "导出任务由共享任务/报表服务创建，餐饮没有导出任务表，不得用fnb_report_run冒充导出任务。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "共享任务持有导出/投影写入，本域只调用合同和保存明确的运行引用。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -9474,6 +9948,9 @@
       ],
       "transaction": "READ_ONLY",
       "note": "查询共享导出任务，验证本人/授权范围。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -9576,6 +10053,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "报表投影写入在shop-report由DAO执行，food只跟踪运行引用；不重开营业日。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -9669,6 +10149,9 @@
       "portCalls": [],
       "transaction": "ORCHESTRATED",
       "note": "平台授权工单与CAS，能力变更发布新策略版本，不覆盖旧营业快照。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -9776,6 +10259,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -9829,6 +10315,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -9954,6 +10443,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "同步入口仅验签/认领/排入恢复；消费合法事件须走业务Service，不能直接批写ord/prd/pay。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -10053,6 +10545,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -10153,6 +10648,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -10239,6 +10737,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -10339,6 +10840,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -10441,6 +10945,9 @@
       "portCalls": [],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -10549,6 +11056,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -10667,6 +11177,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -10726,6 +11239,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -10819,6 +11335,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -10917,6 +11436,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -11039,6 +11561,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -11114,6 +11639,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -11183,6 +11711,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -11312,6 +11843,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -11426,6 +11960,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -11540,6 +12077,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -11671,6 +12211,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -11740,6 +12283,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -11881,6 +12427,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -12013,6 +12562,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -12163,6 +12715,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -12216,6 +12771,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -12275,6 +12833,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -12339,6 +12900,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -12414,6 +12978,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -12512,6 +13079,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -12610,6 +13180,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -12695,6 +13268,9 @@
       ],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -12780,6 +13356,9 @@
       ],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -12963,6 +13542,9 @@
       ],
       "transaction": "READ_ONLY",
       "note": "已发布冻结定义及服务器当前时点，读取当前原价格及PLATFORM物理可售；UNKNOWN/null不伪造值；复杂配置需报价且公开输出不含渠道账号/价格策略",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -13016,6 +13598,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -13201,6 +13786,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "按被冻结configKind的固定白名单分派，仅更新对应一种头；Mapper禁止动态SQL表名。以旧内容生成新发布，不覆盖旧快照、不形成Service互相注入循环。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -13317,6 +13905,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -13376,6 +13967,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -13435,6 +14029,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -13502,6 +14099,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -13561,6 +14161,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -13620,6 +14223,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -13695,6 +14301,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -13827,6 +14436,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -13893,6 +14505,9 @@
       ],
       "transaction": "READ_ONLY",
       "note": "查询原意图/操作状态；除显式恢复任务外GET不补写业务状态。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -14020,6 +14635,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
@@ -14117,6 +14735,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
@@ -14241,6 +14862,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
@@ -14414,6 +15038,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。事务外读取原已发布CatalogService；QR与原车来源目录交集校验。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
@@ -14570,6 +15197,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "实现以owner行锁→会话→车锁串行化；同check唯一OPEN车，保留sourceLineRef墓碑。C凭证在幂等重放前重新验证，草稿不触碰正式订单。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
     },
@@ -14677,6 +15307,9 @@
       ],
       "transaction": "NO_LOCAL_WRITE",
       "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。报价由核心返回，绑定车版本、源行与规则指纹；不能餐饮重算价格。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -14951,6 +15584,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。意图与冻结源行本地提交后调用核心；UNKNOWN查同键；结果绑定再清理此次草稿，后付合同未齐禁用。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -15052,6 +15688,9 @@
       ],
       "transaction": "READ_ONLY",
       "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -15129,6 +15768,9 @@
       ],
       "transaction": "READ_ONLY",
       "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -15259,6 +15901,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -15400,6 +16045,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。锁来源行后核对有效申请退量再插入；Mapper不按现菜单价算退款。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -15468,6 +16116,9 @@
       ],
       "transaction": "READ_ONLY",
       "note": "本人/明确授权台账范围；禁止现金/审批/店长权限。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -15560,6 +16211,9 @@
       ],
       "transaction": "READ_ONLY",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -15643,6 +16297,9 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "结束本次会话，不取消正式订单。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -15780,6 +16437,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "顾客仅获准源行/应收范围；不接受任意核心单号。跨结账/跨根应收独占由核心持有；本地唯一键不等于防双收。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -15892,6 +16552,9 @@
       ],
       "transaction": "ORCHESTRATED",
       "note": "",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -15993,6 +16656,9 @@
       "portCalls": [],
       "transaction": "LOCAL_WRITE",
       "note": "已实现草稿和授权启停；Keeta仅规划，缺真实提供方ACTIVE拒绝；公开目录禁止泄漏账号引用",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "共享任务持有导出/投影写入，本域只调用合同和保存明确的运行引用。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -16060,6 +16726,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "已实现草稿和授权启停；Keeta仅规划，缺真实提供方ACTIVE拒绝；公开目录禁止泄漏账号引用",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -16121,6 +16790,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "已实现草稿和授权启停；Keeta仅规划，缺真实提供方ACTIVE拒绝；公开目录禁止泄漏账号引用",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -16227,6 +16899,9 @@
       "portCalls": [],
       "transaction": "LOCAL_WRITE",
       "note": "已实现草稿和授权启停；Keeta仅规划，缺真实提供方ACTIVE拒绝；公开目录禁止泄漏账号引用",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "共享任务持有导出/投影写入，本域只调用合同和保存明确的运行引用。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -16358,6 +17033,9 @@
       "portCalls": [],
       "transaction": "LOCAL_WRITE",
       "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "共享任务持有导出/投影写入，本域只调用合同和保存明确的运行引用。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -16435,6 +17113,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -16562,6 +17243,9 @@
       "portCalls": [],
       "transaction": "LOCAL_WRITE",
       "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "共享任务持有导出/投影写入，本域只调用合同和保存明确的运行引用。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -16637,6 +17321,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -16706,6 +17393,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -16838,6 +17528,9 @@
       "portCalls": [],
       "transaction": "LOCAL_WRITE",
       "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "共享任务持有导出/投影写入，本域只调用合同和保存明确的运行引用。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -16979,6 +17672,9 @@
       "portCalls": [],
       "transaction": "LOCAL_WRITE",
       "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "共享任务持有导出/投影写入，本域只调用合同和保存明确的运行引用。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -16990,7 +17686,7 @@
       "controllerClass": "ai.neargo.shop.food.api.biz.BizProductionConsumptionController",
       "serviceClass": "ai.neargo.shop.food.service.ProductionConsumptionService",
       "implClass": "ai.neargo.shop.food.service.impl.ProductionConsumptionServiceImpl",
-      "serviceMethod": "listProductionConsumptions",
+      "serviceMethod": "list",
       "controllerParameters": [
         {
           "name": "storeNo",
@@ -16999,13 +17695,13 @@
           "annotation": "@PathVariable(\"storeNo\")"
         },
         {
-          "type": "ai.neargo.shop.food.dto.ListProductionConsumptionsQuery",
+          "type": "ai.neargo.shop.food.dto.ListQuery",
           "name": "query",
           "source": "PUBLIC_DTO",
           "annotation": "@Valid @ModelAttribute"
         }
       ],
-      "controllerSignature": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.ProductionConsumptionVO> listProductionConsumptions(@PathVariable(\"storeNo\") String storeNo, @Valid @ModelAttribute ai.neargo.shop.food.dto.ListProductionConsumptionsQuery query)",
+      "controllerSignature": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.ProductionConsumptionVO> list(@PathVariable(\"storeNo\") String storeNo, @Valid @ModelAttribute ai.neargo.shop.food.dto.ListQuery query)",
       "serviceParameters": [
         {
           "type": "String",
@@ -17018,12 +17714,12 @@
           "source": "VALIDATED_PATH"
         },
         {
-          "type": "ai.neargo.shop.food.dto.ListProductionConsumptionsQuery",
+          "type": "ai.neargo.shop.food.dto.ListQuery",
           "name": "query",
           "source": "VALIDATED_PUBLIC_DTO"
         }
       ],
-      "serviceSignature": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.ProductionConsumptionVO> listProductionConsumptions(String entityNo, String storeNo, ai.neargo.shop.food.dto.ListProductionConsumptionsQuery query)",
+      "serviceSignature": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.ProductionConsumptionVO> list(String entityNo, String storeNo, ai.neargo.shop.food.dto.ListQuery query)",
       "returnType": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.ProductionConsumptionVO>",
       "mapperCalls": [
         {
@@ -17045,7 +17741,22 @@
       ],
       "portCalls": [],
       "transaction": "READ_ONLY",
-      "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "note": "CODED_PENDING_VERIFICATION；可信主体/门店/actor；from/to营业日区间最多93日，SQL同过滤COUNT与分页；共享PageData<ConsumptionVO>真实回执递归，BLOCKED/UNKNOWN/未知成本保真；只读不补扣库存。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "GET",
+          "path": "/biz/x/food/stores/{storeNo}/production-consumptions",
+          "controller": "BizProductionConsumptionController",
+          "responseType": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.ProductionContracts.ConsumptionVO>",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizProductionConsumptionController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizProductionConsumptionController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -17107,6 +17818,21 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "GET",
+          "path": "/biz/x/food/production-events/{eventNo}",
+          "controller": "BizProductionConsumptionController",
+          "responseType": "ai.neargo.shop.food.dto.ProductionContracts.ConsumptionVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizProductionConsumptionController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizProductionConsumptionController",
+          "delegate": null,
+          "mappingStatus": "DIFFERENT_RESOURCE_KEY",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -17166,6 +17892,9 @@
       "portCalls": [],
       "transaction": "READ_ONLY",
       "note": "ALL-04实际只读当前关系；空路由保留整体关系计数，主体门店隔离",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "IMPLEMENTED_BACKEND_MANAGEMENT"
     },
@@ -17301,8 +18030,898 @@
       "portCalls": [],
       "transaction": "LOCAL_ATOMIC",
       "note": "复用原哈希会话；店员授权不会泄露凭证，不赋予支付或退款权限。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [],
       "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
       "implementationStatus": "IMPLEMENTED_BACKEND_DRAFT"
+    },
+    {
+      "apiId": "FOOD-API-157",
+      "moduleId": "MOD-01",
+      "httpMethod": "POST",
+      "path": "/biz/x/food/queue-tickets",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+      "serviceClass": "ai.neargo.shop.food.service.QueueService",
+      "implClass": "ai.neargo.shop.food.service.impl.QueueServiceImpl",
+      "serviceMethod": "issue",
+      "controllerParameters": [
+        {
+          "type": "ai.neargo.shop.food.dto.IssueReq",
+          "name": "req",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        }
+      ],
+      "controllerSignature": "ai.neargo.shop.food.dto.QueueResultVO issue(@Valid @RequestBody ai.neargo.shop.food.dto.IssueReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo",
+          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+        },
+        {
+          "type": "String",
+          "name": "currentStoreNo",
+          "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "actorNo",
+          "source": "AUTHENTICATED_ACTOR"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.IssueReq",
+          "name": "req",
+          "source": "VALIDATED_PUBLIC_DTO"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "serviceSignature": "ai.neargo.shop.food.dto.QueueResultVO issue(String entityNo, String currentStoreNo, String actorNo, ai.neargo.shop.food.dto.IssueReq req, String idempotencyKey)",
+      "returnType": "ai.neargo.shop.food.dto.QueueResultVO",
+      "mapperCalls": [
+        {
+          "table": "fnb_queue_ticket",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbQueueTicket> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_store_policy",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbStorePolicy> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbStorePolicy> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_queue_ticket",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+          "method": "insert",
+          "access": "WRITE",
+          "signature": "int insert(ai.neargo.shop.food.entity.FnbQueueTicket row)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
+          "branch": "INSERT_NEW_OR_IDEMPOTENT_REUSE"
+        }
+      ],
+      "portCalls": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "原排队票与可信当前门店范围。锁定原门店策略及排队票，CAS/持久幂等操作与票状态同事务；排队号不作取餐号，未送通知不宣称成功。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/queue-tickets",
+          "controller": "BizQueueController",
+          "responseType": "ai.neargo.shop.food.dto.QueueContracts.QueueVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
+      "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION"
+    },
+    {
+      "apiId": "FOOD-API-158",
+      "moduleId": "MOD-01",
+      "httpMethod": "GET",
+      "path": "/biz/x/food/queue-tickets",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+      "serviceClass": "ai.neargo.shop.food.service.QueueService",
+      "implClass": "ai.neargo.shop.food.service.impl.QueueServiceImpl",
+      "serviceMethod": "list",
+      "controllerParameters": [
+        {
+          "type": "ai.neargo.shop.food.dto.QueueListQuery",
+          "name": "query",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @ModelAttribute"
+        }
+      ],
+      "controllerSignature": "ai.neargo.shop.food.dto.ListQueueResultVO list(@Valid @ModelAttribute ai.neargo.shop.food.dto.QueueListQuery query)",
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo",
+          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+        },
+        {
+          "type": "String",
+          "name": "currentStoreNo",
+          "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.QueueListQuery",
+          "name": "query",
+          "source": "VALIDATED_PUBLIC_DTO"
+        }
+      ],
+      "serviceSignature": "ai.neargo.shop.food.dto.ListQueueResultVO list(String entityNo, String currentStoreNo, ai.neargo.shop.food.dto.QueueListQuery query)",
+      "returnType": "ai.neargo.shop.food.dto.ListQueueResultVO",
+      "mapperCalls": [
+        {
+          "table": "fnb_queue_ticket",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbQueueTicket> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        }
+      ],
+      "portCalls": [],
+      "transaction": "READ_ONLY",
+      "note": "原排队票与可信当前门店范围。仅查持久票据，不补发通知/开台。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "GET",
+          "path": "/biz/x/food/queue-tickets",
+          "controller": "BizQueueController",
+          "responseType": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.QueueContracts.QueueVO>",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
+      "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION"
+    },
+    {
+      "apiId": "FOOD-API-159",
+      "moduleId": "MOD-01",
+      "httpMethod": "GET",
+      "path": "/biz/x/food/queue-tickets/{ticketNo}",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+      "serviceClass": "ai.neargo.shop.food.service.QueueService",
+      "implClass": "ai.neargo.shop.food.service.impl.QueueServiceImpl",
+      "serviceMethod": "get",
+      "controllerParameters": [
+        {
+          "name": "ticketNo",
+          "type": "String",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"ticketNo\")"
+        }
+      ],
+      "controllerSignature": "ai.neargo.shop.food.dto.QueueResultVO get(@PathVariable(\"ticketNo\") String ticketNo)",
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo",
+          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+        },
+        {
+          "type": "String",
+          "name": "currentStoreNo",
+          "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+        },
+        {
+          "name": "ticketNo",
+          "type": "String",
+          "source": "VALIDATED_PATH"
+        }
+      ],
+      "serviceSignature": "ai.neargo.shop.food.dto.QueueResultVO get(String entityNo, String currentStoreNo, String ticketNo)",
+      "returnType": "ai.neargo.shop.food.dto.QueueResultVO",
+      "mapperCalls": [
+        {
+          "table": "fnb_queue_ticket",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+          "method": "selectOne",
+          "access": "READ",
+          "signature": "ai.neargo.shop.food.entity.FnbQueueTicket selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        }
+      ],
+      "portCalls": [],
+      "transaction": "READ_ONLY",
+      "note": "原排队票与可信当前门店范围。仅查持久票据，不补发通知/开台。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "GET",
+          "path": "/biz/x/food/queue-tickets/{ticketNo}",
+          "controller": "BizQueueController",
+          "responseType": "ai.neargo.shop.food.dto.QueueContracts.QueueVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
+      "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION"
+    },
+    {
+      "apiId": "FOOD-API-160",
+      "moduleId": "MOD-01",
+      "httpMethod": "POST",
+      "path": "/biz/x/food/queue-tickets:call-next",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+      "serviceClass": "ai.neargo.shop.food.service.QueueService",
+      "implClass": "ai.neargo.shop.food.service.impl.QueueServiceImpl",
+      "serviceMethod": "callNext",
+      "controllerParameters": [
+        {
+          "type": "ai.neargo.shop.food.dto.CallNextReq",
+          "name": "req",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        }
+      ],
+      "controllerSignature": "ai.neargo.shop.food.dto.QueueResultVO callNext(@Valid @RequestBody ai.neargo.shop.food.dto.CallNextReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo",
+          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+        },
+        {
+          "type": "String",
+          "name": "currentStoreNo",
+          "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+        },
+        {
+          "type": "String",
+          "name": "actorNo",
+          "source": "AUTHENTICATED_ACTOR"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CallNextReq",
+          "name": "req",
+          "source": "VALIDATED_PUBLIC_DTO"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "serviceSignature": "ai.neargo.shop.food.dto.QueueResultVO callNext(String entityNo, String currentStoreNo, String actorNo, ai.neargo.shop.food.dto.CallNextReq req, String idempotencyKey)",
+      "returnType": "ai.neargo.shop.food.dto.QueueResultVO",
+      "mapperCalls": [
+        {
+          "table": "fnb_queue_ticket",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbQueueTicket> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_store_policy",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbStorePolicy> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbStorePolicy> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_queue_ticket",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+          "method": "update",
+          "access": "WRITE",
+          "signature": "int update(ai.neargo.shop.food.entity.FnbQueueTicket changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> updateWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
+          "branch": "UPDATE_EXISTING"
+        }
+      ],
+      "portCalls": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "原排队票与可信当前门店范围。锁定原门店策略及排队票，CAS/持久幂等操作与票状态同事务；排队号不作取餐号，未送通知不宣称成功。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/queue-tickets:call-next",
+          "controller": "BizQueueController",
+          "responseType": "ai.neargo.shop.food.dto.QueueContracts.QueueVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
+      "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION"
+    },
+    {
+      "apiId": "FOOD-API-161",
+      "moduleId": "MOD-01",
+      "httpMethod": "POST",
+      "path": "/biz/x/food/queue-tickets/{ticketNo}:call",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+      "serviceClass": "ai.neargo.shop.food.service.QueueService",
+      "implClass": "ai.neargo.shop.food.service.impl.QueueServiceImpl",
+      "serviceMethod": "change",
+      "controllerParameters": [
+        {
+          "name": "ticketNo",
+          "type": "String",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"ticketNo\")"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CallReq",
+          "name": "req",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        }
+      ],
+      "controllerSignature": "ai.neargo.shop.food.dto.QueueResultVO call(@PathVariable(\"ticketNo\") String ticketNo, @Valid @RequestBody ai.neargo.shop.food.dto.CallReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo",
+          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+        },
+        {
+          "type": "String",
+          "name": "currentStoreNo",
+          "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+        },
+        {
+          "name": "ticketNo",
+          "type": "String",
+          "source": "VALIDATED_PATH"
+        },
+        {
+          "type": "String",
+          "name": "actorNo",
+          "source": "AUTHENTICATED_ACTOR"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CallReq",
+          "name": "req",
+          "source": "VALIDATED_PUBLIC_DTO"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "serviceSignature": "ai.neargo.shop.food.dto.QueueResultVO change(String entityNo, String currentStoreNo, String ticketNo, String actorNo, ai.neargo.shop.food.dto.CallReq req, String idempotencyKey)",
+      "returnType": "ai.neargo.shop.food.dto.QueueResultVO",
+      "mapperCalls": [
+        {
+          "table": "fnb_queue_ticket",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+          "method": "selectOne",
+          "access": "READ",
+          "signature": "ai.neargo.shop.food.entity.FnbQueueTicket selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_store_policy",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbStorePolicy> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbStorePolicy> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_queue_ticket",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+          "method": "update",
+          "access": "WRITE",
+          "signature": "int update(ai.neargo.shop.food.entity.FnbQueueTicket changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> updateWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
+          "branch": "UPDATE_EXISTING"
+        }
+      ],
+      "portCalls": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "原排队票与可信当前门店范围。锁定原门店策略及排队票，CAS/持久幂等操作与票状态同事务；排队号不作取餐号，未送通知不宣称成功。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/queue-tickets/{ticketNo}:call",
+          "controller": "BizQueueController",
+          "responseType": "ai.neargo.shop.food.dto.QueueContracts.QueueVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
+      "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION"
+    },
+    {
+      "apiId": "FOOD-API-162",
+      "moduleId": "MOD-01",
+      "httpMethod": "POST",
+      "path": "/biz/x/food/queue-tickets/{ticketNo}:cancel",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+      "serviceClass": "ai.neargo.shop.food.service.QueueService",
+      "implClass": "ai.neargo.shop.food.service.impl.QueueServiceImpl",
+      "serviceMethod": "change",
+      "controllerParameters": [
+        {
+          "name": "ticketNo",
+          "type": "String",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"ticketNo\")"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CancelReq",
+          "name": "req",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        }
+      ],
+      "controllerSignature": "ai.neargo.shop.food.dto.QueueResultVO cancel(@PathVariable(\"ticketNo\") String ticketNo, @Valid @RequestBody ai.neargo.shop.food.dto.CancelReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo",
+          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+        },
+        {
+          "type": "String",
+          "name": "currentStoreNo",
+          "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+        },
+        {
+          "name": "ticketNo",
+          "type": "String",
+          "source": "VALIDATED_PATH"
+        },
+        {
+          "type": "String",
+          "name": "actorNo",
+          "source": "AUTHENTICATED_ACTOR"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.CancelReq",
+          "name": "req",
+          "source": "VALIDATED_PUBLIC_DTO"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "serviceSignature": "ai.neargo.shop.food.dto.QueueResultVO change(String entityNo, String currentStoreNo, String ticketNo, String actorNo, ai.neargo.shop.food.dto.CancelReq req, String idempotencyKey)",
+      "returnType": "ai.neargo.shop.food.dto.QueueResultVO",
+      "mapperCalls": [
+        {
+          "table": "fnb_queue_ticket",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+          "method": "selectOne",
+          "access": "READ",
+          "signature": "ai.neargo.shop.food.entity.FnbQueueTicket selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_store_policy",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbStorePolicy> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbStorePolicy> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_queue_ticket",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+          "method": "update",
+          "access": "WRITE",
+          "signature": "int update(ai.neargo.shop.food.entity.FnbQueueTicket changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> updateWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
+          "branch": "UPDATE_EXISTING"
+        }
+      ],
+      "portCalls": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "原排队票与可信当前门店范围。锁定原门店策略及排队票，CAS/持久幂等操作与票状态同事务；排队号不作取餐号，未送通知不宣称成功。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/queue-tickets/{ticketNo}:cancel",
+          "controller": "BizQueueController",
+          "responseType": "ai.neargo.shop.food.dto.QueueContracts.QueueVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
+      "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION"
+    },
+    {
+      "apiId": "FOOD-API-163",
+      "moduleId": "MOD-01",
+      "httpMethod": "POST",
+      "path": "/biz/x/food/queue-tickets/{ticketNo}:no-show",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+      "serviceClass": "ai.neargo.shop.food.service.QueueService",
+      "implClass": "ai.neargo.shop.food.service.impl.QueueServiceImpl",
+      "serviceMethod": "change",
+      "controllerParameters": [
+        {
+          "name": "ticketNo",
+          "type": "String",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"ticketNo\")"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.NoShowReq",
+          "name": "req",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        }
+      ],
+      "controllerSignature": "ai.neargo.shop.food.dto.QueueResultVO noShow(@PathVariable(\"ticketNo\") String ticketNo, @Valid @RequestBody ai.neargo.shop.food.dto.NoShowReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo",
+          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+        },
+        {
+          "type": "String",
+          "name": "currentStoreNo",
+          "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+        },
+        {
+          "name": "ticketNo",
+          "type": "String",
+          "source": "VALIDATED_PATH"
+        },
+        {
+          "type": "String",
+          "name": "actorNo",
+          "source": "AUTHENTICATED_ACTOR"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.NoShowReq",
+          "name": "req",
+          "source": "VALIDATED_PUBLIC_DTO"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "serviceSignature": "ai.neargo.shop.food.dto.QueueResultVO change(String entityNo, String currentStoreNo, String ticketNo, String actorNo, ai.neargo.shop.food.dto.NoShowReq req, String idempotencyKey)",
+      "returnType": "ai.neargo.shop.food.dto.QueueResultVO",
+      "mapperCalls": [
+        {
+          "table": "fnb_queue_ticket",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+          "method": "selectOne",
+          "access": "READ",
+          "signature": "ai.neargo.shop.food.entity.FnbQueueTicket selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_store_policy",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbStorePolicy> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbStorePolicy> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_queue_ticket",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+          "method": "update",
+          "access": "WRITE",
+          "signature": "int update(ai.neargo.shop.food.entity.FnbQueueTicket changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> updateWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
+          "branch": "UPDATE_EXISTING"
+        }
+      ],
+      "portCalls": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "原排队票与可信当前门店范围。锁定原门店策略及排队票，CAS/持久幂等操作与票状态同事务；排队号不作取餐号，未送通知不宣称成功。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/queue-tickets/{ticketNo}:no-show",
+          "controller": "BizQueueController",
+          "responseType": "ai.neargo.shop.food.dto.QueueContracts.QueueVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
+      "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION"
+    },
+    {
+      "apiId": "FOOD-API-164",
+      "moduleId": "MOD-01",
+      "httpMethod": "POST",
+      "path": "/biz/x/food/queue-tickets/{ticketNo}:seat",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+      "serviceClass": "ai.neargo.shop.food.service.QueueService",
+      "implClass": "ai.neargo.shop.food.service.impl.QueueServiceImpl",
+      "serviceMethod": "seat",
+      "controllerParameters": [
+        {
+          "name": "ticketNo",
+          "type": "String",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"ticketNo\")"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.QueueSeatReq",
+          "name": "req",
+          "source": "PUBLIC_DTO",
+          "annotation": "@Valid @RequestBody"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        }
+      ],
+      "controllerSignature": "ai.neargo.shop.food.dto.QueueResultVO seat(@PathVariable(\"ticketNo\") String ticketNo, @Valid @RequestBody ai.neargo.shop.food.dto.QueueSeatReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo",
+          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+        },
+        {
+          "type": "String",
+          "name": "currentStoreNo",
+          "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+        },
+        {
+          "name": "ticketNo",
+          "type": "String",
+          "source": "VALIDATED_PATH"
+        },
+        {
+          "type": "String",
+          "name": "actorNo",
+          "source": "AUTHENTICATED_ACTOR"
+        },
+        {
+          "type": "ai.neargo.shop.food.dto.QueueSeatReq",
+          "name": "req",
+          "source": "VALIDATED_PUBLIC_DTO"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "serviceSignature": "ai.neargo.shop.food.dto.QueueResultVO seat(String entityNo, String currentStoreNo, String ticketNo, String actorNo, ai.neargo.shop.food.dto.QueueSeatReq req, String idempotencyKey)",
+      "returnType": "ai.neargo.shop.food.dto.QueueResultVO",
+      "mapperCalls": [
+        {
+          "table": "fnb_queue_ticket",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+          "method": "selectOne",
+          "access": "READ",
+          "signature": "ai.neargo.shop.food.entity.FnbQueueTicket selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_store_policy",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbStorePolicy> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbStorePolicy> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_queue_ticket",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+          "method": "update",
+          "access": "WRITE",
+          "signature": "int update(ai.neargo.shop.food.entity.FnbQueueTicket changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> updateWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
+          "branch": "UPDATE_EXISTING"
+        }
+      ],
+      "portCalls": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "新就座锁定原票后，在同一food primary事务内调用CheckService.openQueuedCheck，仅限内部Java调用，不能经HTTP/remote；原开台、SEATED、queue动作与outbox同提交。冲突整体回滚，原CALLED票可重选；不把永久SEATING作为新流程。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/queue-tickets/{ticketNo}:seat",
+          "controller": "BizQueueController",
+          "responseType": "ai.neargo.shop.food.dto.QueueContracts.QueueVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
+      "transactionRule": "本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION"
+    },
+    {
+      "apiId": "FOOD-API-165",
+      "moduleId": "MOD-01",
+      "httpMethod": "POST",
+      "path": "/biz/x/food/queue-tickets/{ticketNo}:recover-seating",
+      "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+      "serviceClass": "ai.neargo.shop.food.service.QueueService",
+      "implClass": "ai.neargo.shop.food.service.impl.QueueServiceImpl",
+      "serviceMethod": "recoverSeating",
+      "controllerParameters": [
+        {
+          "name": "ticketNo",
+          "type": "String",
+          "source": "VALIDATED_PATH",
+          "annotation": "@PathVariable(\"ticketNo\")"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "HEADER",
+          "annotation": "@RequestHeader(\"Idempotency-Key\")"
+        }
+      ],
+      "controllerSignature": "ai.neargo.shop.food.dto.QueueResultVO recover(@PathVariable(\"ticketNo\") String ticketNo, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+      "serviceParameters": [
+        {
+          "type": "String",
+          "name": "entityNo",
+          "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+        },
+        {
+          "type": "String",
+          "name": "currentStoreNo",
+          "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+        },
+        {
+          "name": "ticketNo",
+          "type": "String",
+          "source": "VALIDATED_PATH"
+        },
+        {
+          "type": "String",
+          "name": "actorNo",
+          "source": "AUTHENTICATED_ACTOR"
+        },
+        {
+          "type": "String",
+          "name": "idempotencyKey",
+          "source": "VALIDATED_HEADER"
+        }
+      ],
+      "serviceSignature": "ai.neargo.shop.food.dto.QueueResultVO recoverSeating(String entityNo, String currentStoreNo, String ticketNo, String actorNo, String idempotencyKey)",
+      "returnType": "ai.neargo.shop.food.dto.QueueResultVO",
+      "mapperCalls": [
+        {
+          "table": "fnb_queue_ticket",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+          "method": "selectOne",
+          "access": "READ",
+          "signature": "ai.neargo.shop.food.entity.FnbQueueTicket selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_store_policy",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper",
+          "method": "selectList",
+          "access": "READ",
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbStorePolicy> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbStorePolicy> queryWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "table": "fnb_queue_ticket",
+          "mapperClass": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+          "method": "update",
+          "access": "WRITE",
+          "signature": "int update(ai.neargo.shop.food.entity.FnbQueueTicket changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> updateWrapper)",
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。",
+          "branch": "UPDATE_EXISTING"
+        }
+      ],
+      "portCalls": [],
+      "transaction": "ORCHESTRATED",
+      "note": "旧SEATING仅兼容原冻结命令/OPEN_CHECK原键回执恢复；未知保持未知，不创建替代开台。新seat走同primary原子事务。",
+      "targetPublicRouteStatus": null,
+      "targetDtoStatus": null,
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/queue-tickets/{ticketNo}:recover-seating",
+          "controller": "BizQueueController",
+          "responseType": "ai.neargo.shop.food.dto.QueueContracts.QueueVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizQueueController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizQueueController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
+      "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION"
     }
   ],
   "controllers": [
@@ -17892,22 +19511,22 @@
       ]
     },
     {
-      "className": "ai.neargo.shop.print.api.biz.BizPrintJobController",
+      "className": "ai.neargo.shop.food.api.biz.BizPrintJobController",
       "methods": [
         {
           "apiId": "FOOD-API-065",
-          "signature": "ai.neargo.shop.print.dto.PrintJobResultVO createJob(@Valid @RequestBody ai.neargo.shop.print.dto.CreateJobReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
-          "delegate": "ai.neargo.shop.print.service.PrintService.createJob"
+          "signature": "ai.neargo.shop.food.dto.PrintJobResultVO createJob(@Valid @RequestBody ai.neargo.shop.food.dto.CreateJobReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+          "delegate": "ai.neargo.shop.printing.service.PrintService.createJob"
         },
         {
           "apiId": "FOOD-API-066",
-          "signature": "ai.neargo.shop.print.dto.GetJobPrintJobResultVO getJob(@PathVariable(\"jobNo\") String jobNo)",
-          "delegate": "ai.neargo.shop.print.service.PrintService.getJob"
+          "signature": "ai.neargo.shop.food.dto.GetJobPrintJobResultVO getJob(@PathVariable(\"jobNo\") String jobNo)",
+          "delegate": "ai.neargo.shop.printing.service.PrintService.getJob"
         },
         {
           "apiId": "FOOD-API-067",
-          "signature": "ai.neargo.shop.print.dto.ReprintJobResultVO reprintJob(@PathVariable(\"jobNo\") String jobNo, @Valid @RequestBody ai.neargo.shop.print.dto.ReprintJobReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
-          "delegate": "ai.neargo.shop.print.service.PrintService.reprintJob"
+          "signature": "ai.neargo.shop.food.dto.ReprintJobResultVO reprintJob(@PathVariable(\"jobNo\") String jobNo, @Valid @RequestBody ai.neargo.shop.food.dto.ReprintJobReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+          "delegate": "ai.neargo.shop.printing.service.PrintService.reprintJob"
         }
       ]
     },
@@ -18351,13 +19970,63 @@
       "methods": [
         {
           "apiId": "FOOD-API-153",
-          "signature": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.ProductionConsumptionVO> listProductionConsumptions(@PathVariable(\"storeNo\") String storeNo, @Valid @ModelAttribute ai.neargo.shop.food.dto.ListProductionConsumptionsQuery query)",
-          "delegate": "ai.neargo.shop.food.service.ProductionConsumptionService.listProductionConsumptions"
+          "signature": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.ProductionConsumptionVO> list(@PathVariable(\"storeNo\") String storeNo, @Valid @ModelAttribute ai.neargo.shop.food.dto.ListQuery query)",
+          "delegate": "ai.neargo.shop.food.service.ProductionConsumptionService.list"
         },
         {
           "apiId": "FOOD-API-154",
           "signature": "ai.neargo.shop.food.dto.ProductionConsumptionResultVO getProductionConsumption(@PathVariable(\"consumptionNo\") String consumptionNo)",
           "delegate": "ai.neargo.shop.food.service.ProductionConsumptionService.getProductionConsumption"
+        }
+      ]
+    },
+    {
+      "className": "ai.neargo.shop.food.api.biz.BizQueueController",
+      "methods": [
+        {
+          "apiId": "FOOD-API-157",
+          "signature": "ai.neargo.shop.food.dto.QueueResultVO issue(@Valid @RequestBody ai.neargo.shop.food.dto.IssueReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+          "delegate": "ai.neargo.shop.food.service.QueueService.issue"
+        },
+        {
+          "apiId": "FOOD-API-158",
+          "signature": "ai.neargo.shop.food.dto.ListQueueResultVO list(@Valid @ModelAttribute ai.neargo.shop.food.dto.QueueListQuery query)",
+          "delegate": "ai.neargo.shop.food.service.QueueService.list"
+        },
+        {
+          "apiId": "FOOD-API-159",
+          "signature": "ai.neargo.shop.food.dto.QueueResultVO get(@PathVariable(\"ticketNo\") String ticketNo)",
+          "delegate": "ai.neargo.shop.food.service.QueueService.get"
+        },
+        {
+          "apiId": "FOOD-API-160",
+          "signature": "ai.neargo.shop.food.dto.QueueResultVO callNext(@Valid @RequestBody ai.neargo.shop.food.dto.CallNextReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+          "delegate": "ai.neargo.shop.food.service.QueueService.callNext"
+        },
+        {
+          "apiId": "FOOD-API-161",
+          "signature": "ai.neargo.shop.food.dto.QueueResultVO call(@PathVariable(\"ticketNo\") String ticketNo, @Valid @RequestBody ai.neargo.shop.food.dto.CallReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+          "delegate": "ai.neargo.shop.food.service.QueueService.change"
+        },
+        {
+          "apiId": "FOOD-API-162",
+          "signature": "ai.neargo.shop.food.dto.QueueResultVO cancel(@PathVariable(\"ticketNo\") String ticketNo, @Valid @RequestBody ai.neargo.shop.food.dto.CancelReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+          "delegate": "ai.neargo.shop.food.service.QueueService.change"
+        },
+        {
+          "apiId": "FOOD-API-163",
+          "signature": "ai.neargo.shop.food.dto.QueueResultVO noShow(@PathVariable(\"ticketNo\") String ticketNo, @Valid @RequestBody ai.neargo.shop.food.dto.NoShowReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+          "delegate": "ai.neargo.shop.food.service.QueueService.change"
+        },
+        {
+          "apiId": "FOOD-API-164",
+          "signature": "ai.neargo.shop.food.dto.QueueResultVO seat(@PathVariable(\"ticketNo\") String ticketNo, @Valid @RequestBody ai.neargo.shop.food.dto.QueueSeatReq req, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+          "delegate": "ai.neargo.shop.food.service.QueueService.seat"
+        },
+        {
+          "apiId": "FOOD-API-165",
+          "signature": "ai.neargo.shop.food.dto.QueueResultVO recover(@PathVariable(\"ticketNo\") String ticketNo, @RequestHeader(\"Idempotency-Key\") String idempotencyKey)",
+          "delegate": "ai.neargo.shop.food.service.QueueService.recoverSeating"
         }
       ]
     }
@@ -22459,15 +24128,15 @@
       ]
     },
     {
-      "className": "ai.neargo.shop.print.service.PrintService",
-      "implClass": "ai.neargo.shop.print.service.impl.PrintServiceImpl",
+      "className": "ai.neargo.shop.printing.service.PrintService",
+      "implClass": "ai.neargo.shop.printing.service.impl.PrintServiceImpl",
       "methods": [
         {
           "name": "createJob",
           "apiIds": [
             "FOOD-API-065"
           ],
-          "signature": "ai.neargo.shop.print.dto.PrintJobResultVO createJob(String entityNo, String currentStoreNo, String actorNo, ai.neargo.shop.print.dto.CreateJobReq req, String idempotencyKey)",
+          "signature": "ai.neargo.shop.food.dto.PrintJobResultVO createJob(String entityNo, String currentStoreNo, String actorNo, ai.neargo.shop.food.dto.CreateJobReq req, String idempotencyKey)",
           "parameters": [
             {
               "type": "String",
@@ -22485,7 +24154,7 @@
               "source": "AUTHENTICATED_ACTOR"
             },
             {
-              "type": "ai.neargo.shop.print.dto.CreateJobReq",
+              "type": "ai.neargo.shop.food.dto.CreateJobReq",
               "name": "req",
               "source": "VALIDATED_PUBLIC_DTO"
             },
@@ -22495,14 +24164,14 @@
               "source": "VALIDATED_HEADER"
             }
           ],
-          "returnType": "ai.neargo.shop.print.dto.PrintJobResultVO"
+          "returnType": "ai.neargo.shop.food.dto.PrintJobResultVO"
         },
         {
           "name": "getJob",
           "apiIds": [
             "FOOD-API-066"
           ],
-          "signature": "ai.neargo.shop.print.dto.GetJobPrintJobResultVO getJob(String entityNo, String currentStoreNo, String jobNo)",
+          "signature": "ai.neargo.shop.food.dto.GetJobPrintJobResultVO getJob(String entityNo, String currentStoreNo, String jobNo)",
           "parameters": [
             {
               "type": "String",
@@ -22520,14 +24189,14 @@
               "source": "VALIDATED_PATH"
             }
           ],
-          "returnType": "ai.neargo.shop.print.dto.GetJobPrintJobResultVO"
+          "returnType": "ai.neargo.shop.food.dto.GetJobPrintJobResultVO"
         },
         {
           "name": "reprintJob",
           "apiIds": [
             "FOOD-API-067"
           ],
-          "signature": "ai.neargo.shop.print.dto.ReprintJobResultVO reprintJob(String entityNo, String currentStoreNo, String jobNo, String actorNo, ai.neargo.shop.print.dto.ReprintJobReq req, String idempotencyKey)",
+          "signature": "ai.neargo.shop.food.dto.ReprintJobResultVO reprintJob(String entityNo, String currentStoreNo, String jobNo, String actorNo, ai.neargo.shop.food.dto.ReprintJobReq req, String idempotencyKey)",
           "parameters": [
             {
               "type": "String",
@@ -22550,7 +24219,7 @@
               "source": "AUTHENTICATED_ACTOR"
             },
             {
-              "type": "ai.neargo.shop.print.dto.ReprintJobReq",
+              "type": "ai.neargo.shop.food.dto.ReprintJobReq",
               "name": "req",
               "source": "VALIDATED_PUBLIC_DTO"
             },
@@ -22560,7 +24229,7 @@
               "source": "VALIDATED_HEADER"
             }
           ],
-          "returnType": "ai.neargo.shop.print.dto.ReprintJobResultVO"
+          "returnType": "ai.neargo.shop.food.dto.ReprintJobResultVO"
         }
       ]
     },
@@ -23944,11 +25613,11 @@
       "implClass": "ai.neargo.shop.food.service.impl.ProductionConsumptionServiceImpl",
       "methods": [
         {
-          "name": "listProductionConsumptions",
+          "name": "list",
           "apiIds": [
             "FOOD-API-153"
           ],
-          "signature": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.ProductionConsumptionVO> listProductionConsumptions(String entityNo, String storeNo, ai.neargo.shop.food.dto.ListProductionConsumptionsQuery query)",
+          "signature": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.ProductionConsumptionVO> list(String entityNo, String storeNo, ai.neargo.shop.food.dto.ListQuery query)",
           "parameters": [
             {
               "type": "String",
@@ -23961,7 +25630,7 @@
               "source": "VALIDATED_PATH"
             },
             {
-              "type": "ai.neargo.shop.food.dto.ListProductionConsumptionsQuery",
+              "type": "ai.neargo.shop.food.dto.ListQuery",
               "name": "query",
               "source": "VALIDATED_PUBLIC_DTO"
             }
@@ -23992,6 +25661,327 @@
             }
           ],
           "returnType": "ai.neargo.shop.food.dto.ProductionConsumptionResultVO"
+        }
+      ]
+    },
+    {
+      "className": "ai.neargo.shop.food.service.QueueService",
+      "implClass": "ai.neargo.shop.food.service.impl.QueueServiceImpl",
+      "methods": [
+        {
+          "name": "issue",
+          "apiIds": [
+            "FOOD-API-157"
+          ],
+          "signature": "ai.neargo.shop.food.dto.QueueResultVO issue(String entityNo, String currentStoreNo, String actorNo, ai.neargo.shop.food.dto.IssueReq req, String idempotencyKey)",
+          "parameters": [
+            {
+              "type": "String",
+              "name": "entityNo",
+              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+            },
+            {
+              "type": "String",
+              "name": "currentStoreNo",
+              "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+            },
+            {
+              "type": "String",
+              "name": "actorNo",
+              "source": "AUTHENTICATED_ACTOR"
+            },
+            {
+              "type": "ai.neargo.shop.food.dto.IssueReq",
+              "name": "req",
+              "source": "VALIDATED_PUBLIC_DTO"
+            },
+            {
+              "type": "String",
+              "name": "idempotencyKey",
+              "source": "VALIDATED_HEADER"
+            }
+          ],
+          "returnType": "ai.neargo.shop.food.dto.QueueResultVO"
+        },
+        {
+          "name": "list",
+          "apiIds": [
+            "FOOD-API-158"
+          ],
+          "signature": "ai.neargo.shop.food.dto.ListQueueResultVO list(String entityNo, String currentStoreNo, ai.neargo.shop.food.dto.QueueListQuery query)",
+          "parameters": [
+            {
+              "type": "String",
+              "name": "entityNo",
+              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+            },
+            {
+              "type": "String",
+              "name": "currentStoreNo",
+              "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+            },
+            {
+              "type": "ai.neargo.shop.food.dto.QueueListQuery",
+              "name": "query",
+              "source": "VALIDATED_PUBLIC_DTO"
+            }
+          ],
+          "returnType": "ai.neargo.shop.food.dto.ListQueueResultVO"
+        },
+        {
+          "name": "get",
+          "apiIds": [
+            "FOOD-API-159"
+          ],
+          "signature": "ai.neargo.shop.food.dto.QueueResultVO get(String entityNo, String currentStoreNo, String ticketNo)",
+          "parameters": [
+            {
+              "type": "String",
+              "name": "entityNo",
+              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+            },
+            {
+              "type": "String",
+              "name": "currentStoreNo",
+              "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+            },
+            {
+              "name": "ticketNo",
+              "type": "String",
+              "source": "VALIDATED_PATH"
+            }
+          ],
+          "returnType": "ai.neargo.shop.food.dto.QueueResultVO"
+        },
+        {
+          "name": "callNext",
+          "apiIds": [
+            "FOOD-API-160"
+          ],
+          "signature": "ai.neargo.shop.food.dto.QueueResultVO callNext(String entityNo, String currentStoreNo, String actorNo, ai.neargo.shop.food.dto.CallNextReq req, String idempotencyKey)",
+          "parameters": [
+            {
+              "type": "String",
+              "name": "entityNo",
+              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+            },
+            {
+              "type": "String",
+              "name": "currentStoreNo",
+              "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+            },
+            {
+              "type": "String",
+              "name": "actorNo",
+              "source": "AUTHENTICATED_ACTOR"
+            },
+            {
+              "type": "ai.neargo.shop.food.dto.CallNextReq",
+              "name": "req",
+              "source": "VALIDATED_PUBLIC_DTO"
+            },
+            {
+              "type": "String",
+              "name": "idempotencyKey",
+              "source": "VALIDATED_HEADER"
+            }
+          ],
+          "returnType": "ai.neargo.shop.food.dto.QueueResultVO"
+        },
+        {
+          "name": "change",
+          "apiIds": [
+            "FOOD-API-161"
+          ],
+          "signature": "ai.neargo.shop.food.dto.QueueResultVO change(String entityNo, String currentStoreNo, String ticketNo, String actorNo, ai.neargo.shop.food.dto.CallReq req, String idempotencyKey)",
+          "parameters": [
+            {
+              "type": "String",
+              "name": "entityNo",
+              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+            },
+            {
+              "type": "String",
+              "name": "currentStoreNo",
+              "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+            },
+            {
+              "name": "ticketNo",
+              "type": "String",
+              "source": "VALIDATED_PATH"
+            },
+            {
+              "type": "String",
+              "name": "actorNo",
+              "source": "AUTHENTICATED_ACTOR"
+            },
+            {
+              "type": "ai.neargo.shop.food.dto.CallReq",
+              "name": "req",
+              "source": "VALIDATED_PUBLIC_DTO"
+            },
+            {
+              "type": "String",
+              "name": "idempotencyKey",
+              "source": "VALIDATED_HEADER"
+            }
+          ],
+          "returnType": "ai.neargo.shop.food.dto.QueueResultVO"
+        },
+        {
+          "name": "change",
+          "apiIds": [
+            "FOOD-API-162"
+          ],
+          "signature": "ai.neargo.shop.food.dto.QueueResultVO change(String entityNo, String currentStoreNo, String ticketNo, String actorNo, ai.neargo.shop.food.dto.CancelReq req, String idempotencyKey)",
+          "parameters": [
+            {
+              "type": "String",
+              "name": "entityNo",
+              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+            },
+            {
+              "type": "String",
+              "name": "currentStoreNo",
+              "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+            },
+            {
+              "name": "ticketNo",
+              "type": "String",
+              "source": "VALIDATED_PATH"
+            },
+            {
+              "type": "String",
+              "name": "actorNo",
+              "source": "AUTHENTICATED_ACTOR"
+            },
+            {
+              "type": "ai.neargo.shop.food.dto.CancelReq",
+              "name": "req",
+              "source": "VALIDATED_PUBLIC_DTO"
+            },
+            {
+              "type": "String",
+              "name": "idempotencyKey",
+              "source": "VALIDATED_HEADER"
+            }
+          ],
+          "returnType": "ai.neargo.shop.food.dto.QueueResultVO"
+        },
+        {
+          "name": "change",
+          "apiIds": [
+            "FOOD-API-163"
+          ],
+          "signature": "ai.neargo.shop.food.dto.QueueResultVO change(String entityNo, String currentStoreNo, String ticketNo, String actorNo, ai.neargo.shop.food.dto.NoShowReq req, String idempotencyKey)",
+          "parameters": [
+            {
+              "type": "String",
+              "name": "entityNo",
+              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+            },
+            {
+              "type": "String",
+              "name": "currentStoreNo",
+              "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+            },
+            {
+              "name": "ticketNo",
+              "type": "String",
+              "source": "VALIDATED_PATH"
+            },
+            {
+              "type": "String",
+              "name": "actorNo",
+              "source": "AUTHENTICATED_ACTOR"
+            },
+            {
+              "type": "ai.neargo.shop.food.dto.NoShowReq",
+              "name": "req",
+              "source": "VALIDATED_PUBLIC_DTO"
+            },
+            {
+              "type": "String",
+              "name": "idempotencyKey",
+              "source": "VALIDATED_HEADER"
+            }
+          ],
+          "returnType": "ai.neargo.shop.food.dto.QueueResultVO"
+        },
+        {
+          "name": "seat",
+          "apiIds": [
+            "FOOD-API-164"
+          ],
+          "signature": "ai.neargo.shop.food.dto.QueueResultVO seat(String entityNo, String currentStoreNo, String ticketNo, String actorNo, ai.neargo.shop.food.dto.QueueSeatReq req, String idempotencyKey)",
+          "parameters": [
+            {
+              "type": "String",
+              "name": "entityNo",
+              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+            },
+            {
+              "type": "String",
+              "name": "currentStoreNo",
+              "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+            },
+            {
+              "name": "ticketNo",
+              "type": "String",
+              "source": "VALIDATED_PATH"
+            },
+            {
+              "type": "String",
+              "name": "actorNo",
+              "source": "AUTHENTICATED_ACTOR"
+            },
+            {
+              "type": "ai.neargo.shop.food.dto.QueueSeatReq",
+              "name": "req",
+              "source": "VALIDATED_PUBLIC_DTO"
+            },
+            {
+              "type": "String",
+              "name": "idempotencyKey",
+              "source": "VALIDATED_HEADER"
+            }
+          ],
+          "returnType": "ai.neargo.shop.food.dto.QueueResultVO"
+        },
+        {
+          "name": "recoverSeating",
+          "apiIds": [
+            "FOOD-API-165"
+          ],
+          "signature": "ai.neargo.shop.food.dto.QueueResultVO recoverSeating(String entityNo, String currentStoreNo, String ticketNo, String actorNo, String idempotencyKey)",
+          "parameters": [
+            {
+              "type": "String",
+              "name": "entityNo",
+              "source": "TRUSTED_AUTH_OR_STORE_DIRECTORY"
+            },
+            {
+              "type": "String",
+              "name": "currentStoreNo",
+              "source": "TRUSTED_CURRENT_STORE_OR_DIAGNOSTIC_SCOPE"
+            },
+            {
+              "name": "ticketNo",
+              "type": "String",
+              "source": "VALIDATED_PATH"
+            },
+            {
+              "type": "String",
+              "name": "actorNo",
+              "source": "AUTHENTICATED_ACTOR"
+            },
+            {
+              "type": "String",
+              "name": "idempotencyKey",
+              "source": "VALIDATED_HEADER"
+            }
+          ],
+          "returnType": "ai.neargo.shop.food.dto.QueueResultVO"
         }
       ]
     }
@@ -32630,9 +34620,9 @@
     },
     {
       "table": "prn_device",
-      "className": "ai.neargo.shop.print.mapper.PrintMappers.DeviceMapper",
-      "sourceFile": "共享打印模块（位置待共享能力落地）/ai/neargo/shop/print/mapper/PrintMappers.java",
-      "entityClass": "ai.neargo.shop.print.entity.PrnDevice",
+      "className": "ai.neargo.shop.printing.mapper.PrintMappers.DeviceMapper",
+      "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/mapper/PrintMappers.java",
+      "entityClass": "ai.neargo.shop.printing.entity.PrnDevice",
       "moduleId": "MOD-07",
       "scopeColumns": [
         "entity_no",
@@ -32641,50 +34631,50 @@
       "methods": [
         {
           "name": "selectOne",
-          "returnType": "ai.neargo.shop.print.entity.PrnDevice",
+          "returnType": "ai.neargo.shop.printing.entity.PrnDevice",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnDevice>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnDevice>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "ai.neargo.shop.print.entity.PrnDevice selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnDevice> queryWrapper)",
+          "signature": "ai.neargo.shop.printing.entity.PrnDevice selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnDevice> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
           "name": "selectList",
-          "returnType": "java.util.List<ai.neargo.shop.print.entity.PrnDevice>",
+          "returnType": "java.util.List<ai.neargo.shop.printing.entity.PrnDevice>",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnDevice>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnDevice>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "java.util.List<ai.neargo.shop.print.entity.PrnDevice> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnDevice> queryWrapper)",
+          "signature": "java.util.List<ai.neargo.shop.printing.entity.PrnDevice> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnDevice> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
           "name": "selectPage",
-          "returnType": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnDevice>",
+          "returnType": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnDevice>",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnDevice>",
+              "type": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnDevice>",
               "name": "page",
               "source": "VALIDATED_PAGINATION"
             },
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnDevice>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnDevice>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnDevice> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnDevice> page, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnDevice> queryWrapper)",
+          "signature": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnDevice> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnDevice> page, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnDevice> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -32694,12 +34684,12 @@
           "returnType": "Long",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnDevice>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnDevice>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnDevice> queryWrapper)",
+          "signature": "Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnDevice> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -32709,12 +34699,12 @@
           "returnType": "int",
           "parameters": [
             {
-              "type": "ai.neargo.shop.print.entity.PrnDevice",
+              "type": "ai.neargo.shop.printing.entity.PrnDevice",
               "name": "row",
               "source": "SERVER_BUILT_ENTITY"
             }
           ],
-          "signature": "int insert(ai.neargo.shop.print.entity.PrnDevice row)",
+          "signature": "int insert(ai.neargo.shop.printing.entity.PrnDevice row)",
           "access": "WRITE",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -32724,17 +34714,17 @@
           "returnType": "int",
           "parameters": [
             {
-              "type": "ai.neargo.shop.print.entity.PrnDevice",
+              "type": "ai.neargo.shop.printing.entity.PrnDevice",
               "name": "changes",
               "source": "SERVER_BUILT_ENTITY"
             },
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnDevice>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnDevice>",
               "name": "updateWrapper",
               "source": "SERVER_BUILT_SCOPE_VERSION_STATUS_WRAPPER"
             }
           ],
-          "signature": "int update(ai.neargo.shop.print.entity.PrnDevice changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnDevice> updateWrapper)",
+          "signature": "int update(ai.neargo.shop.printing.entity.PrnDevice changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnDevice> updateWrapper)",
           "access": "WRITE",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -32743,9 +34733,9 @@
     },
     {
       "table": "prn_template",
-      "className": "ai.neargo.shop.print.mapper.PrintMappers.TemplateMapper",
-      "sourceFile": "共享打印模块（位置待共享能力落地）/ai/neargo/shop/print/mapper/PrintMappers.java",
-      "entityClass": "ai.neargo.shop.print.entity.PrnTemplate",
+      "className": "ai.neargo.shop.printing.mapper.PrintMappers.TemplateMapper",
+      "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/mapper/PrintMappers.java",
+      "entityClass": "ai.neargo.shop.printing.entity.PrnTemplate",
       "moduleId": "MOD-07",
       "scopeColumns": [
         "entity_no"
@@ -32753,50 +34743,50 @@
       "methods": [
         {
           "name": "selectOne",
-          "returnType": "ai.neargo.shop.print.entity.PrnTemplate",
+          "returnType": "ai.neargo.shop.printing.entity.PrnTemplate",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnTemplate>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnTemplate>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "ai.neargo.shop.print.entity.PrnTemplate selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnTemplate> queryWrapper)",
+          "signature": "ai.neargo.shop.printing.entity.PrnTemplate selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnTemplate> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
           "name": "selectList",
-          "returnType": "java.util.List<ai.neargo.shop.print.entity.PrnTemplate>",
+          "returnType": "java.util.List<ai.neargo.shop.printing.entity.PrnTemplate>",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnTemplate>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnTemplate>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "java.util.List<ai.neargo.shop.print.entity.PrnTemplate> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnTemplate> queryWrapper)",
+          "signature": "java.util.List<ai.neargo.shop.printing.entity.PrnTemplate> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnTemplate> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
           "name": "selectPage",
-          "returnType": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnTemplate>",
+          "returnType": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnTemplate>",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnTemplate>",
+              "type": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnTemplate>",
               "name": "page",
               "source": "VALIDATED_PAGINATION"
             },
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnTemplate>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnTemplate>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnTemplate> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnTemplate> page, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnTemplate> queryWrapper)",
+          "signature": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnTemplate> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnTemplate> page, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnTemplate> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -32806,12 +34796,12 @@
           "returnType": "Long",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnTemplate>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnTemplate>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnTemplate> queryWrapper)",
+          "signature": "Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnTemplate> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -32821,12 +34811,12 @@
           "returnType": "int",
           "parameters": [
             {
-              "type": "ai.neargo.shop.print.entity.PrnTemplate",
+              "type": "ai.neargo.shop.printing.entity.PrnTemplate",
               "name": "row",
               "source": "SERVER_BUILT_ENTITY"
             }
           ],
-          "signature": "int insert(ai.neargo.shop.print.entity.PrnTemplate row)",
+          "signature": "int insert(ai.neargo.shop.printing.entity.PrnTemplate row)",
           "access": "WRITE",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -32836,17 +34826,17 @@
           "returnType": "int",
           "parameters": [
             {
-              "type": "ai.neargo.shop.print.entity.PrnTemplate",
+              "type": "ai.neargo.shop.printing.entity.PrnTemplate",
               "name": "changes",
               "source": "SERVER_BUILT_ENTITY"
             },
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnTemplate>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnTemplate>",
               "name": "updateWrapper",
               "source": "SERVER_BUILT_SCOPE_VERSION_STATUS_WRAPPER"
             }
           ],
-          "signature": "int update(ai.neargo.shop.print.entity.PrnTemplate changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnTemplate> updateWrapper)",
+          "signature": "int update(ai.neargo.shop.printing.entity.PrnTemplate changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnTemplate> updateWrapper)",
           "access": "WRITE",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -32855,9 +34845,9 @@
     },
     {
       "table": "prn_route",
-      "className": "ai.neargo.shop.print.mapper.PrintMappers.RouteMapper",
-      "sourceFile": "共享打印模块（位置待共享能力落地）/ai/neargo/shop/print/mapper/PrintMappers.java",
-      "entityClass": "ai.neargo.shop.print.entity.PrnRoute",
+      "className": "ai.neargo.shop.printing.mapper.PrintMappers.RouteMapper",
+      "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/mapper/PrintMappers.java",
+      "entityClass": "ai.neargo.shop.printing.entity.PrnRoute",
       "moduleId": "MOD-07",
       "scopeColumns": [
         "entity_no",
@@ -32866,50 +34856,50 @@
       "methods": [
         {
           "name": "selectOne",
-          "returnType": "ai.neargo.shop.print.entity.PrnRoute",
+          "returnType": "ai.neargo.shop.printing.entity.PrnRoute",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnRoute>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnRoute>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "ai.neargo.shop.print.entity.PrnRoute selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnRoute> queryWrapper)",
+          "signature": "ai.neargo.shop.printing.entity.PrnRoute selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnRoute> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
           "name": "selectList",
-          "returnType": "java.util.List<ai.neargo.shop.print.entity.PrnRoute>",
+          "returnType": "java.util.List<ai.neargo.shop.printing.entity.PrnRoute>",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnRoute>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnRoute>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "java.util.List<ai.neargo.shop.print.entity.PrnRoute> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnRoute> queryWrapper)",
+          "signature": "java.util.List<ai.neargo.shop.printing.entity.PrnRoute> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnRoute> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
           "name": "selectPage",
-          "returnType": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnRoute>",
+          "returnType": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnRoute>",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnRoute>",
+              "type": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnRoute>",
               "name": "page",
               "source": "VALIDATED_PAGINATION"
             },
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnRoute>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnRoute>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnRoute> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnRoute> page, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnRoute> queryWrapper)",
+          "signature": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnRoute> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnRoute> page, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnRoute> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -32919,12 +34909,12 @@
           "returnType": "Long",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnRoute>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnRoute>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnRoute> queryWrapper)",
+          "signature": "Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnRoute> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -32934,12 +34924,12 @@
           "returnType": "int",
           "parameters": [
             {
-              "type": "ai.neargo.shop.print.entity.PrnRoute",
+              "type": "ai.neargo.shop.printing.entity.PrnRoute",
               "name": "row",
               "source": "SERVER_BUILT_ENTITY"
             }
           ],
-          "signature": "int insert(ai.neargo.shop.print.entity.PrnRoute row)",
+          "signature": "int insert(ai.neargo.shop.printing.entity.PrnRoute row)",
           "access": "WRITE",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -32949,17 +34939,17 @@
           "returnType": "int",
           "parameters": [
             {
-              "type": "ai.neargo.shop.print.entity.PrnRoute",
+              "type": "ai.neargo.shop.printing.entity.PrnRoute",
               "name": "changes",
               "source": "SERVER_BUILT_ENTITY"
             },
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnRoute>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnRoute>",
               "name": "updateWrapper",
               "source": "SERVER_BUILT_SCOPE_VERSION_STATUS_WRAPPER"
             }
           ],
-          "signature": "int update(ai.neargo.shop.print.entity.PrnRoute changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnRoute> updateWrapper)",
+          "signature": "int update(ai.neargo.shop.printing.entity.PrnRoute changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnRoute> updateWrapper)",
           "access": "WRITE",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -32968,9 +34958,9 @@
     },
     {
       "table": "prn_job",
-      "className": "ai.neargo.shop.print.mapper.PrintMappers.JobMapper",
-      "sourceFile": "共享打印模块（位置待共享能力落地）/ai/neargo/shop/print/mapper/PrintMappers.java",
-      "entityClass": "ai.neargo.shop.print.entity.PrnJob",
+      "className": "ai.neargo.shop.printing.mapper.PrintMappers.JobMapper",
+      "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/mapper/PrintMappers.java",
+      "entityClass": "ai.neargo.shop.printing.entity.PrnJob",
       "moduleId": "MOD-07",
       "scopeColumns": [
         "entity_no",
@@ -32979,50 +34969,50 @@
       "methods": [
         {
           "name": "selectOne",
-          "returnType": "ai.neargo.shop.print.entity.PrnJob",
+          "returnType": "ai.neargo.shop.printing.entity.PrnJob",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnJob>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnJob>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "ai.neargo.shop.print.entity.PrnJob selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnJob> queryWrapper)",
+          "signature": "ai.neargo.shop.printing.entity.PrnJob selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnJob> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
           "name": "selectList",
-          "returnType": "java.util.List<ai.neargo.shop.print.entity.PrnJob>",
+          "returnType": "java.util.List<ai.neargo.shop.printing.entity.PrnJob>",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnJob>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnJob>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "java.util.List<ai.neargo.shop.print.entity.PrnJob> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnJob> queryWrapper)",
+          "signature": "java.util.List<ai.neargo.shop.printing.entity.PrnJob> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnJob> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
           "name": "selectPage",
-          "returnType": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnJob>",
+          "returnType": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnJob>",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnJob>",
+              "type": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnJob>",
               "name": "page",
               "source": "VALIDATED_PAGINATION"
             },
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnJob>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnJob>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnJob> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnJob> page, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnJob> queryWrapper)",
+          "signature": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnJob> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnJob> page, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnJob> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -33032,12 +35022,12 @@
           "returnType": "Long",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnJob>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnJob>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnJob> queryWrapper)",
+          "signature": "Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnJob> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -33047,12 +35037,12 @@
           "returnType": "int",
           "parameters": [
             {
-              "type": "ai.neargo.shop.print.entity.PrnJob",
+              "type": "ai.neargo.shop.printing.entity.PrnJob",
               "name": "row",
               "source": "SERVER_BUILT_ENTITY"
             }
           ],
-          "signature": "int insert(ai.neargo.shop.print.entity.PrnJob row)",
+          "signature": "int insert(ai.neargo.shop.printing.entity.PrnJob row)",
           "access": "WRITE",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -33062,17 +35052,17 @@
           "returnType": "int",
           "parameters": [
             {
-              "type": "ai.neargo.shop.print.entity.PrnJob",
+              "type": "ai.neargo.shop.printing.entity.PrnJob",
               "name": "changes",
               "source": "SERVER_BUILT_ENTITY"
             },
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnJob>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnJob>",
               "name": "updateWrapper",
               "source": "SERVER_BUILT_SCOPE_VERSION_STATUS_WRAPPER"
             }
           ],
-          "signature": "int update(ai.neargo.shop.print.entity.PrnJob changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnJob> updateWrapper)",
+          "signature": "int update(ai.neargo.shop.printing.entity.PrnJob changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnJob> updateWrapper)",
           "access": "WRITE",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -33081,9 +35071,9 @@
     },
     {
       "table": "prn_attempt",
-      "className": "ai.neargo.shop.print.mapper.PrintMappers.AttemptMapper",
-      "sourceFile": "共享打印模块（位置待共享能力落地）/ai/neargo/shop/print/mapper/PrintMappers.java",
-      "entityClass": "ai.neargo.shop.print.entity.PrnAttempt",
+      "className": "ai.neargo.shop.printing.mapper.PrintMappers.AttemptMapper",
+      "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/mapper/PrintMappers.java",
+      "entityClass": "ai.neargo.shop.printing.entity.PrnAttempt",
       "moduleId": "MOD-07",
       "scopeColumns": [
         "entity_no"
@@ -33091,50 +35081,50 @@
       "methods": [
         {
           "name": "selectOne",
-          "returnType": "ai.neargo.shop.print.entity.PrnAttempt",
+          "returnType": "ai.neargo.shop.printing.entity.PrnAttempt",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnAttempt>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnAttempt>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "ai.neargo.shop.print.entity.PrnAttempt selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnAttempt> queryWrapper)",
+          "signature": "ai.neargo.shop.printing.entity.PrnAttempt selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnAttempt> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
           "name": "selectList",
-          "returnType": "java.util.List<ai.neargo.shop.print.entity.PrnAttempt>",
+          "returnType": "java.util.List<ai.neargo.shop.printing.entity.PrnAttempt>",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnAttempt>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnAttempt>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "java.util.List<ai.neargo.shop.print.entity.PrnAttempt> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnAttempt> queryWrapper)",
+          "signature": "java.util.List<ai.neargo.shop.printing.entity.PrnAttempt> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnAttempt> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
         },
         {
           "name": "selectPage",
-          "returnType": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnAttempt>",
+          "returnType": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnAttempt>",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnAttempt>",
+              "type": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnAttempt>",
               "name": "page",
               "source": "VALIDATED_PAGINATION"
             },
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnAttempt>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnAttempt>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnAttempt> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.print.entity.PrnAttempt> page, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnAttempt> queryWrapper)",
+          "signature": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnAttempt> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.printing.entity.PrnAttempt> page, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnAttempt> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -33144,12 +35134,12 @@
           "returnType": "Long",
           "parameters": [
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnAttempt>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnAttempt>",
               "name": "queryWrapper",
               "source": "SERVER_BUILT_SCOPED_WRAPPER"
             }
           ],
-          "signature": "Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnAttempt> queryWrapper)",
+          "signature": "Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnAttempt> queryWrapper)",
           "access": "READ",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -33159,12 +35149,12 @@
           "returnType": "int",
           "parameters": [
             {
-              "type": "ai.neargo.shop.print.entity.PrnAttempt",
+              "type": "ai.neargo.shop.printing.entity.PrnAttempt",
               "name": "row",
               "source": "SERVER_BUILT_ENTITY"
             }
           ],
-          "signature": "int insert(ai.neargo.shop.print.entity.PrnAttempt row)",
+          "signature": "int insert(ai.neargo.shop.printing.entity.PrnAttempt row)",
           "access": "WRITE",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -33174,17 +35164,17 @@
           "returnType": "int",
           "parameters": [
             {
-              "type": "ai.neargo.shop.print.entity.PrnAttempt",
+              "type": "ai.neargo.shop.printing.entity.PrnAttempt",
               "name": "changes",
               "source": "SERVER_BUILT_ENTITY"
             },
             {
-              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnAttempt>",
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnAttempt>",
               "name": "updateWrapper",
               "source": "SERVER_BUILT_SCOPE_VERSION_STATUS_WRAPPER"
             }
           ],
-          "signature": "int update(ai.neargo.shop.print.entity.PrnAttempt changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.print.entity.PrnAttempt> updateWrapper)",
+          "signature": "int update(ai.neargo.shop.printing.entity.PrnAttempt changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.printing.entity.PrnAttempt> updateWrapper)",
           "access": "WRITE",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
@@ -35264,6 +37254,119 @@
             }
           ],
           "signature": "int update(ai.neargo.shop.food.entity.FnbCatalogSyncItem changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbCatalogSyncItem> updateWrapper)",
+          "access": "WRITE",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        }
+      ]
+    },
+    {
+      "table": "fnb_queue_ticket",
+      "className": "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper",
+      "sourceFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodMappers.java",
+      "entityClass": "ai.neargo.shop.food.entity.FnbQueueTicket",
+      "moduleId": "MOD-01",
+      "scopeColumns": [
+        "entity_no",
+        "store_no"
+      ],
+      "methods": [
+        {
+          "name": "selectOne",
+          "returnType": "ai.neargo.shop.food.entity.FnbQueueTicket",
+          "parameters": [
+            {
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket>",
+              "name": "queryWrapper",
+              "source": "SERVER_BUILT_SCOPED_WRAPPER"
+            }
+          ],
+          "signature": "ai.neargo.shop.food.entity.FnbQueueTicket selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> queryWrapper)",
+          "access": "READ",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "name": "selectList",
+          "returnType": "java.util.List<ai.neargo.shop.food.entity.FnbQueueTicket>",
+          "parameters": [
+            {
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket>",
+              "name": "queryWrapper",
+              "source": "SERVER_BUILT_SCOPED_WRAPPER"
+            }
+          ],
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbQueueTicket> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> queryWrapper)",
+          "access": "READ",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "name": "selectPage",
+          "returnType": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.food.entity.FnbQueueTicket>",
+          "parameters": [
+            {
+              "type": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.food.entity.FnbQueueTicket>",
+              "name": "page",
+              "source": "VALIDATED_PAGINATION"
+            },
+            {
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket>",
+              "name": "queryWrapper",
+              "source": "SERVER_BUILT_SCOPED_WRAPPER"
+            }
+          ],
+          "signature": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.food.entity.FnbQueueTicket> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.food.entity.FnbQueueTicket> page, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> queryWrapper)",
+          "access": "READ",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "name": "selectCount",
+          "returnType": "Long",
+          "parameters": [
+            {
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket>",
+              "name": "queryWrapper",
+              "source": "SERVER_BUILT_SCOPED_WRAPPER"
+            }
+          ],
+          "signature": "Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> queryWrapper)",
+          "access": "READ",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "name": "insert",
+          "returnType": "int",
+          "parameters": [
+            {
+              "type": "ai.neargo.shop.food.entity.FnbQueueTicket",
+              "name": "row",
+              "source": "SERVER_BUILT_ENTITY"
+            }
+          ],
+          "signature": "int insert(ai.neargo.shop.food.entity.FnbQueueTicket row)",
+          "access": "WRITE",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "name": "update",
+          "returnType": "int",
+          "parameters": [
+            {
+              "type": "ai.neargo.shop.food.entity.FnbQueueTicket",
+              "name": "changes",
+              "source": "SERVER_BUILT_ENTITY"
+            },
+            {
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket>",
+              "name": "updateWrapper",
+              "source": "SERVER_BUILT_SCOPE_VERSION_STATUS_WRAPPER"
+            }
+          ],
+          "signature": "int update(ai.neargo.shop.food.entity.FnbQueueTicket changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> updateWrapper)",
           "access": "WRITE",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"

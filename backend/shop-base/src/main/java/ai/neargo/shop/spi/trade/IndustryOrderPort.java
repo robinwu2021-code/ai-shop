@@ -14,9 +14,17 @@ public interface IndustryOrderPort {
             long amountMinor, String currency, String hash) { }
     /** PREPARED has original document identities, null money/currency and no committed item allocations. */
     record Result(String orderNo, String subOrderNo, String quoteNo, String status, String currency,
-            Long payAmountMinor, long sourceVersion, int inventoryLifecycleVersion, List<Allocation> allocations) {
+            Long payAmountMinor, long sourceVersion, int inventoryLifecycleVersion, List<Allocation> allocations,
+            String orderMode, String fulfillmentStatus, boolean acceptedUnpaid) {
         public Result { allocations = List.copyOf(allocations); }
+        /** Compatibility for existing PREPAY adapters; absence of proof never authorizes unpaid acceptance. */
+        public Result(String orderNo,String subOrderNo,String quoteNo,String status,String currency,
+                Long amount,long version,int lifecycle,List<Allocation> allocations) {
+            this(orderNo,subOrderNo,quoteNo,status,currency,amount,version,lifecycle,allocations,null,null,false);
+        }
     }
+    /** Advances original lifecycle-3 fulfillment only after the independent inventory owner confirms unpaid acceptance. */
+    Result acceptUnpaid(Identity identity, String orderNo);
     Result place(Command command, String key);
     Result cancel(Command command, String key);
     Result query(Identity identity, String key);

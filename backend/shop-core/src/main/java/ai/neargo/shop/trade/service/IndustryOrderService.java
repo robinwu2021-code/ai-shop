@@ -6,6 +6,7 @@ import ai.neargo.shop.spi.trade.IndustryOrderPort.Result;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope;
 
 public interface IndustryOrderService {
+    Result acceptUnpaid(Identity identity, String orderNo);
     Result place(Command command, String key);
     Result cancel(Command command, String key);
     Result query(Identity identity, String key);

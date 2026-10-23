@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 
 class RemoteReservationServiceTest {
@@ -29,7 +30,9 @@ class RemoteReservationServiceTest {
         });server.start();
         try {
             var http=new InternalHttp(name -> Optional.of("http://127.0.0.1:"+server.getAddress().getPort()),"wire");
-            new WebApplicationContextRunner().withConfiguration(AutoConfigurations.of(FoodWebAutoConfiguration.class))
+            new WebApplicationContextRunner()
+                    .withConfiguration(AutoConfigurations.of(
+                            JacksonAutoConfiguration.class,FoodWebAutoConfiguration.class))
                     .withBean(InternalHttp.class,() -> http).withPropertyValues("shop.food.enabled=true","shop.food.deployment=standalone",
                             "spring.profiles.active=api").run(c -> assertThat(c.getBean(ReservationService.class).listReservations("E","A",
                                     new ListReservationsQuery(null,null,Instant.parse("2026-10-21T12:00:00Z"),Instant.parse("2026-10-21T14:00:00Z"),null)).total()).isZero());

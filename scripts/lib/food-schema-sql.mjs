@@ -27,7 +27,7 @@ export function renderFoodSchema(s){
  validateFoodDesign(s);
  const tables=s.tables.filter(t=>t.name.startsWith('fnb_'));
  const spec=tables.find(t=>t.name==='fnb_option_group_item')?.fields.find(f=>f.name==='spec_value_no');
- const version=tables.some(t=>t.fields.some(f=>f.introducedIn==='V8'))?8:tables.some(t=>t.deployment==='MIGRATION_V7')?7:tables.some(t=>t.deployment==='MIGRATION_V6')?6:tables.some(t=>t.deployment==='MIGRATION_V5')?5:tables.some(t=>t.deployment==='MIGRATION_V4')?4:spec?.type==='varchar(64)'?3:tables.some(t=>t.name==='fnb_table_occupancy'&&t.fields.some(f=>f.name==='sharing_mode'))?2:1;
+ const version=tables.some(t=>t.deployment==='MIGRATION_V10')?10:tables.some(t=>t.deployment==='MIGRATION_V9')?9:tables.some(t=>t.fields.some(f=>f.introducedIn==='V8'))?8:tables.some(t=>t.deployment==='MIGRATION_V7')?7:tables.some(t=>t.deployment==='MIGRATION_V6')?6:tables.some(t=>t.deployment==='MIGRATION_V5')?5:tables.some(t=>t.deployment==='MIGRATION_V4')?4:spec?.type==='varchar(64)'?3:tables.some(t=>t.name==='fnb_table_occupancy'&&t.fields.some(f=>f.name==='sharing_mode'))?2:1;
  let sql='-- Food-owned tables only; use the existing product/order database.\n-- Flyway location: db/industry/food; history: fnb_flyway_history; version: '+version+'.\n-- Frozen after application. Add a new migration for any subsequent change.\n-- No cross-domain physical foreign keys; services must enforce ownership and concurrency.\n\n';
  if(s.catalogEnhancement)sql='-- TARGET DESIGN ONLY; planned objects are not applied migrations.\n'+sql;
  for(const t of tables){
@@ -68,7 +68,7 @@ export function renderFoodV1(s){
  const v1=structuredClone(s);
  if(v1.catalogEnhancement){
   validateFoodDesign(s);
-  const planned=new Set(v1.catalogEnhancement.plannedTables);
+  const planned=new Set([...v1.catalogEnhancement.plannedTables,'fnb_queue_ticket']);
   v1.tables=v1.tables.filter(t=>!planned.has(t.name));
   const fields={
    fnb_sales_restriction:['order_source','fulfillment'],

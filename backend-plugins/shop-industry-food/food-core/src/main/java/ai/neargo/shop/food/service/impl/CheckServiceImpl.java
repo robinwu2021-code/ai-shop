@@ -111,7 +111,13 @@ public class CheckServiceImpl implements CheckService {
     @Override public CheckResultVO openCheck(String entity,String store,String actor,OpenCheckReq req,String key) {
         return open(entity,store,actor,req,key,"OPEN_CHECK");
     }
+    @Override public CheckResultVO openQueuedCheck(String entity,String store,String actor,OpenCheckReq req,String key) {
+        return open(entity,store,actor,req,key,"OPEN_CHECK",true);
+    }
     private CheckResultVO open(String entity,String store,String actor,OpenCheckReq req,String key,String action) {
+        return open(entity,store,actor,req,key,action,false);
+    }
+    private CheckResultVO open(String entity,String store,String actor,OpenCheckReq req,String key,String action,boolean queued) {
         if(req==null || req.partySize()==null || req.partySize()<1) bad();
         prepay(req.payMode());unverified(req.reservationNo());unverified(req.serviceEmployeeNo());
         if(!Set.of("EXCLUSIVE","SHARED").contains(req.sharingMode()==null ? "":req.sharingMode())) bad();
@@ -121,7 +127,7 @@ public class CheckServiceImpl implements CheckService {
         if(desired.stream().anyMatch(s -> s.seatNo()!=null)) bad();
         String hash=FoodCommandFingerprint.hash(json.writeValueAsString(targets),req.partySize().toString(),
                 req.payMode(),req.sharingMode(),json.writeValueAsString(versions),json.writeValueAsString(desired));
-        return write(action,entity,store,actor,key,hash,CheckResultVO.class,() -> {
+        return write(action,entity,store,actor,key,hash,CheckResultVO.class,queued,() -> {
             var locked=locks.lock(entity,store,targets,versions,true);
             var allocation=allocation(entity,locked,req.partySize(),req.sharingMode(),null);
             var at=Instant.now().truncatedTo(ChronoUnit.MILLIS);
@@ -274,10 +280,22 @@ public class CheckServiceImpl implements CheckService {
                 a.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant(),a.getReason())).toList(),result.getTotal(),page,size);
     }
     private <T> T write(String action,String entity,String store,String actor,String key,String hash,Class<T> type,Supplier<T> work) {
+        return write(action,entity,store,actor,key,hash,type,false,work);
+    }
+    private <T> T write(String action,String entity,String store,String actor,String key,String hash,Class<T> type,
+            boolean queued,Supplier<T> work) {
         scope(entity,store);if(actor==null || actor.isBlank() || actor.length()>32) throw BizException.of(ErrorCode.FORBIDDEN);
-        text(key,128);if(TransactionSynchronizationManager.isActualTransactionActive())
-            throw new IllegalStateException("Check command cannot join an existing transaction");
-        try { return tx.execute(status -> idem.execute(key,FoodCommandFingerprint.scope(action,entity,store),actor,hash,type,work)); }
+        text(key,128);
+        boolean active=TransactionSynchronizationManager.isActualTransactionActive();
+        if(queued ? !active : active)
+            throw new IllegalStateException(queued ? "Queued check requires its queue transaction"
+                    : "Check command cannot join an existing transaction");
+        try { return tx.execute(status -> {
+            // REQUIRED must participate in this manager, not start a second database transaction.
+            if(queued && status.isNewTransaction())
+                throw new IllegalStateException("Queued check requires the primary queue transaction");
+            return idem.execute(key,FoodCommandFingerprint.scope(action,entity,store),actor,hash,type,work);
+        }); }
         catch(ConcurrencyFailureException | DuplicateKeyException conflict) { throw BizException.of(ErrorCode.CONFLICT); }
     }
     private FnbCheck find(String entity,String store,String number,boolean lock) {

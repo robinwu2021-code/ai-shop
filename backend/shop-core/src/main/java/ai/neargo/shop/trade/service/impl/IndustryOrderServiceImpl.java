@@ -155,7 +155,9 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         if (prior != null) {
             exact(prior, command.identity(), hash);
             var binding = binding(command.identity(), prior.getPayNo(), false);
-            if ("BOUND".equals(binding.getStatus())) return result(binding);
+            if ("ACCEPTED".equals(binding.getStatus())) return result(binding);
+            if ("BOUND".equals(binding.getStatus())) return "POSTPAY".equals(binding.getOrderMode())
+                    ? acceptUnpaid(command.identity(),binding.getOrderNo()) : result(binding);
             if (!OrdCreateIntent.PREPARED.equals(prior.getStatus())) throw conflict();
         }
         if (!"INVENTORY".equals(stockAuthority)) throw unsupported();
@@ -164,7 +166,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         authorizedSource(command, prepared);
         var quote = checkout.revalidateCustomer(command.source(), command.credentials(), command.quoteNo(),
                 command.confirmationDigest());
-        var guard = guards(command.identity(), prepared, quote);
+        var guard = guards(command.identity(), prepared, quote, command.mode());
         var current = preparations.confirmCustomer(command.source(), command.credentials(), prepared.preparationHash());
         authorizedSource(command, current);
         if (prior == null) prior = prepare(command, key, hash, prepared.source(), false);
@@ -182,8 +184,9 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         var stockLines = needs.stream().map(n -> new InventoryReservationPort.Line(n.skuNo(), n.storeNo(), n.qty(),
                 n.fulfillmentRef())).toList();
         var scope = inventoryScope(binding);
-        var reservation = inventory.reserve(scope, stockLines, guard.minutes() * 60L, 2);
-        if (reservation == null || !scope.equals(reservation.scope()) || reservation.lifecycleVersion() != 2
+        int lifecycle=command.mode()==Mode.POSTPAY?3:2;
+        var reservation = inventory.reserve(scope, stockLines, guard.minutes() * 60L, lifecycle);
+        if (reservation == null || !scope.equals(reservation.scope()) || reservation.lifecycleVersion() != lifecycle
                 || reservation.state() != InventoryReservationPort.State.HELD
                 || reservation.paymentAcknowledged()) throw conflict();
         var expected = stockLines.stream().map(n -> new InventoryReservationPort.ReservedLine(n.skuNo(), n.qty(),
@@ -195,7 +198,66 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         // Source is frozen by the industry placement intent; verify again after stock's independent transaction.
         checkout.revalidateCustomer(command.source(), command.credentials(), command.quoteNo(), command.confirmationDigest());
         preparations.confirmCustomer(command.source(), command.credentials(), prepared.preparationHash());
-        return transaction(() -> persist(command, hash, claim.getPayNo(), prepared, quote, guard));
+        Result created=transaction(() -> persist(command, hash, claim.getPayNo(), prepared, quote, guard));
+        return command.mode()==Mode.POSTPAY?acceptUnpaid(command.identity(),created.orderNo()):created;
+    }
+    @Override public Result acceptUnpaid(Identity identity,String orderNo) {
+        outside(); identity(identity); PricingSourceFacts.key(orderNo);
+        var source=binding(identity,orderNo,false);
+        if(!"POSTPAY".equals(source.getOrderMode())) throw unsupported();
+        if("ACCEPTED".equals(source.getStatus())) return result(source);
+        if(!"BOUND".equals(source.getStatus())) throw conflict();
+        var intent=DataScopeContext.executeWithoutScope(() -> intents.selectOne(Wrappers.<OrdCreateIntent>query()
+                .eq("tenant_no",identity.tenantNo()).eq("pay_no",orderNo).eq("user_no",identity.buyerNo())
+                .eq("stock_authority",AUTHORITY)));
+        if(intent==null || !OrdCreateIntent.COMMITTED.equals(intent.getStatus())
+                || !source.getRequestHash().equals(intent.getRequestHash())) throw conflict();
+        var scope=inventoryScope(source);
+        var actual=inventory().acceptUnpaid(scope);
+        if(actual==null || !scope.equals(actual.scope()) || actual.lifecycleVersion()!=3
+                || actual.paymentAcknowledged() || !Set.of(InventoryReservationPort.State.ACCEPTED_UNPAID,
+                InventoryReservationPort.State.PARTIAL_UNPAID,InventoryReservationPort.State.ISSUED_UNPAID)
+                .contains(actual.state())) throw conflict();
+        var originalNeeds=needs(intent);
+        if(originalNeeds.stream().anyMatch(n -> n.lifecycleVersion()!=3 || !identity.storeNo().equals(n.storeNo())
+                || !source.getSubOrderNo().equals(n.fulfillmentRef()))) throw conflict();
+        var expected=originalNeeds.stream().map(n -> new InventoryReservationPort.ReservedLine(n.skuNo(),n.qty(),
+                n.fulfillmentRef())).sorted(Comparator.comparing(InventoryReservationPort.ReservedLine::skuNo)
+                .thenComparing(InventoryReservationPort.ReservedLine::fulfillmentRef)).toList();
+        var received=actual.originalLines().stream().sorted(Comparator.comparing(
+                InventoryReservationPort.ReservedLine::skuNo)
+                .thenComparing(InventoryReservationPort.ReservedLine::fulfillmentRef)).toList();
+        if(expected.isEmpty() || !expected.equals(received)) throw conflict();
+        return transaction(() -> {
+            var order=payments.selectOne(Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getTenantNo,identity.tenantNo())
+                    .eq(OrdOrder::getOrderNo,orderNo).eq(OrdOrder::getUserNo,identity.buyerNo()).last("FOR UPDATE"));
+            var locked=binding(identity,orderNo,true);
+            if("ACCEPTED".equals(locked.getStatus())) return result(locked);
+            if(!"BOUND".equals(locked.getStatus()) || !"POSTPAY".equals(locked.getOrderMode())
+                    || !locked.getRequestHash().equals(intent.getRequestHash()) || order==null
+                    || !OrdOrder.WAIT_PAY.equals(order.getStatus()) || order.getPaidAt()!=null) throw conflict();
+            var sub=subOrders.selectOne(Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getTenantNo,identity.tenantNo())
+                    .eq(OrdSubOrder::getEntityNo,identity.entityNo()).eq(OrdSubOrder::getStoreNo,identity.storeNo())
+                    .eq(OrdSubOrder::getOrderNo,orderNo).eq(OrdSubOrder::getSubOrderNo,locked.getSubOrderNo())
+                    .last("FOR UPDATE"));
+            if(sub==null || !Integer.valueOf(3).equals(sub.getInventoryLifecycleVersion())
+                    || !Set.of(OrdSubOrder.WAIT_PAY,OrdSubOrder.WAIT_FULFILL,OrdSubOrder.FULFILLING,
+                    OrdSubOrder.COMPLETED).contains(sub.getStatus())) throw conflict();
+            if(OrdSubOrder.WAIT_PAY.equals(sub.getStatus())) {
+                sub.setStatus(OrdSubOrder.WAIT_FULFILL); sub.setUpdatedBy(identity.actorNo());
+                if(sub.getVerifyCode()==null) sub.setVerifyCode(OrderServiceImpl.originalOwnerUnusedVerifyCode(subOrders));
+                if(subOrders.updateById(sub)!=1) throw conflict();
+                var log=new OrdStatusLog(); log.setTenantNo(identity.tenantNo());
+                log.setSubOrderNo(sub.getSubOrderNo()); log.setAggregateType("ORDER");
+                log.setAggregateNo(sub.getSubOrderNo()); log.setEvent("ACCEPT_UNPAID");
+                log.setFromStatus(OrdSubOrder.WAIT_PAY); log.setStatus(OrdSubOrder.WAIT_FULFILL);
+                log.setLabel("已接单，待履约（未收款）"); log.setOperatorType(OrdStatusLog.BY_USER);
+                log.setOperatorNo(identity.actorNo()); log.setAt(System.currentTimeMillis());
+                log.setCreatedAt(LocalDateTime.now()); statusLogs.insert(log);
+            }
+            locked.setStatus("ACCEPTED"); locked.setUpdatedAt(LocalDateTime.now()); update(locked);
+            return result(locked);
+        });
     }
     @Override public Result cancel(Command command, String key) {
         outside(); validate(command, key);
@@ -215,7 +277,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         exact(intent, command.identity(), hash);
         var binding = binding(command.identity(), intent.getPayNo(), false);
         if ("RELEASED".equals(binding.getStatus())) return result(binding);
-        if ("BOUND".equals(binding.getStatus())) throw conflict();
+        if (Set.of("BOUND","ACCEPTED").contains(binding.getStatus())) throw conflict();
         String orderNo = intent.getPayNo();
         transaction(() -> {
             var locked = intents.lock(orderNo);
@@ -245,14 +307,18 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         var intent = intent(identity, key);
         if (intent == null) throw BizException.of(ErrorCode.NOT_FOUND);
         var binding = binding(identity, intent.getPayNo(), false);
-        if ("BOUND".equals(binding.getStatus())) return result(binding);
+        if ("ACCEPTED".equals(binding.getStatus())) return result(binding);
+        if ("BOUND".equals(binding.getStatus())) return "POSTPAY".equals(binding.getOrderMode())
+                ? acceptUnpaid(identity,binding.getOrderNo()):result(binding);
         if (Set.of(OrdCreateIntent.PREPARED, OrdCreateIntent.RECOVERING).contains(intent.getStatus())
                 && intent.getNextAttemptAt() <= System.currentTimeMillis()) recover(identity, intent.getPayNo());
         return result(binding(identity, intent.getPayNo(), false));
     }
     @Override public Result get(Identity identity, String orderNo) {
         outside(); identity(identity); PricingSourceFacts.key(orderNo);
-        return result(binding(identity, orderNo, false));
+        var bound=binding(identity,orderNo,false);
+        return "POSTPAY".equals(bound.getOrderMode()) && "BOUND".equals(bound.getStatus())
+                ?acceptUnpaid(identity,orderNo):result(bound);
     }
     private OrdCreateIntent prepare(Command command, String key, String hash, Snapshot snapshot, boolean tombstone) {
         try {
@@ -263,7 +329,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
                 var quantities = new LinkedHashMap<String, Integer>();
                 if (!tombstone) snapshot.prices().units().forEach(u -> quantities.merge(u.skuNo(), quantity(u.quantity()), Math::addExact));
                 var needs = quantities.entrySet().stream().map(e -> new StockPort.SkuQty(e.getKey(), e.getValue(),
-                        identity.storeNo(), sub.value(), 2)).toList();
+                        identity.storeNo(), sub.value(), command.mode()==Mode.POSTPAY?3:2)).toList();
                 var intent = new OrdCreateIntent(); audit(intent, identity);
                 intent.setPayNo(order.value()); intent.setUserNo(identity.buyerNo()); intent.setEndpoint(endpoint(identity));
                 intent.setIdemKey(key); intent.setRequestHash(hash); intent.setStockAuthority(AUTHORITY);
@@ -303,13 +369,15 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         order.setGoodsAmount(quote.totals().goodsMinor()); order.setFreightAmount(0L); order.setDiscountAmount(0L);
         order.setPayAmount(quote.totals().receivableMinor()); order.setCurrency(quote.currency());
         order.setStatus(OrdOrder.WAIT_PAY); order.setPayScene(PayScenes.normalize(command.payScene()));
-        order.setPointsIntegrated(false); order.setPayDeadlineAt(System.currentTimeMillis() + guard.minutes() * 60_000L);
+        order.setPointsIntegrated(false);
+        // A postpaid service debt has no prepayment timeout; accepting it does not acknowledge money.
+        order.setPayDeadlineAt(command.mode()==Mode.POSTPAY?null:System.currentTimeMillis()+guard.minutes()*60_000L);
         payments.insert(order);
         var sub = new OrdSubOrder(); audit(sub, identity);
         sub.setOrderNo(orderNo); sub.setSubOrderNo(binding.getSubOrderNo()); sub.setUserNo(identity.buyerNo());
         sub.setEntityNo(identity.entityNo()); sub.setStoreNo(identity.storeNo()); sub.setEntityName(guard.entityName());
         sub.setCommunityNo(guard.communityNo()); sub.setFulfillment(Fulfillments.STORE_PICKUP);
-        sub.setInventoryLifecycleVersion(2); sub.setTrafficSource(guard.trafficSource());
+        sub.setInventoryLifecycleVersion(command.mode()==Mode.POSTPAY?3:2); sub.setTrafficSource(guard.trafficSource());
         sub.setGoodsAmount(order.getGoodsAmount()); sub.setFreightAmount(0L); sub.setDiscountAmount(0L);
         sub.setDiscountPlatform(0L); sub.setDiscountMerchant(0L); sub.setPointsDeduct(0); sub.setPointsDeductMinor(0L);
         sub.setPayAmount(order.getPayAmount()); sub.setStatus(OrdSubOrder.WAIT_PAY);
@@ -347,15 +415,16 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         log.setAt(System.currentTimeMillis()); log.setCreatedAt(LocalDateTime.now()); statusLogs.insert(log);
         events.publish(new OrderEvents.OrderCreated(orderNo, identity.buyerNo(), List.of(sub.getSubOrderNo()), order.getPayAmount()));
         return new Result(orderNo, sub.getSubOrderNo(), command.quoteNo(), order.getStatus(), order.getCurrency(),
-                order.getPayAmount(), command.source().sourceVersion(), 2, allocations);
+                order.getPayAmount(), command.source().sourceVersion(), command.mode()==Mode.POSTPAY?3:2, allocations,
+                command.mode().name(),sub.getStatus(),false);
     }
-    private Guard guards(Identity identity, Prepared prepared, PricingCheckoutPort.QuoteVO quote) {
+    private Guard guards(Identity identity, Prepared prepared, PricingCheckoutPort.QuoteVO quote,Mode mode) {
         if (!ownerScopes.entityActive(identity.tenantNo(), identity.entityNo())
                 || !ownerScopes.storesOwned(identity.tenantNo(), identity.entityNo(), Set.of(identity.storeNo()))) throw unsupported();
         var card = stores.cards(List.of(identity.storeNo())).get(identity.storeNo());
         if (card == null || !card.active() || !identity.entityNo().equals(card.entityNo())) throw unsupported();
         var buyer = users.findActive(identity.tenantNo(), identity.buyerNo()).orElseThrow(IndustryOrderServiceImpl::unsupported);
-        var merchant = merchants.find(identity.entityNo()).filter(m -> m.canSell() && m.canReceive())
+        var merchant = merchants.find(identity.entityNo()).filter(m -> m.canSell() && (mode==Mode.POSTPAY || m.canReceive()))
                 .orElseThrow(IndustryOrderServiceImpl::unsupported);
         var units = prepared.source().prices().units();
         var snapshots = goods.snapshot(units.stream().map(u -> u.skuNo()).distinct().toList(),
@@ -374,9 +443,11 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         purchaseLimits.require(identity.buyerNo(), quantities, limits);
         admission.requireOrderAllowed(identity.entityNo(), quote.totals().receivableMinor(), () -> paidToday(identity));
         boolean buyerConfirm = admission.requireFulfillmentAllowed(identity.entityNo(), Fulfillments.STORE_PICKUP, null);
-        var pay = merchants.payCapabilityOf(identity.entityNo(), identity.storeNo());
-        if (pay == null || pay.payMethods() == null || pay.payMethods().isEmpty()) throw unsupported();
-        if (pay.wouldExceed(quote.totals().receivableMinor())) throw BizException.of(ErrorCode.MERCHANT_QUOTA_EXHAUSTED);
+        if(mode==Mode.PREPAY) {
+            var pay = merchants.payCapabilityOf(identity.entityNo(), identity.storeNo());
+            if (pay == null || pay.payMethods() == null || pay.payMethods().isEmpty()) throw unsupported();
+            if (pay.wouldExceed(quote.totals().receivableMinor())) throw BizException.of(ErrorCode.MERCHANT_QUOTA_EXHAUSTED);
+        }
         int minutes = closeRules.unpaidMinutes();
         if (minutes < CloseRuleService.MIN_UNPAID_MINUTES || minutes > CloseRuleService.MAX_UNPAID_MINUTES) throw unsupported();
         String traffic = attribution.resolveTrafficSource(identity.buyerNo(), identity.entityNo());
@@ -391,7 +462,8 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
                 .eq(OrdSubOrder::getTenantNo, identity.tenantNo()).eq(OrdSubOrder::getEntityNo, identity.entityNo())
                 .ge(OrdSubOrder::getCreatedAt, LocalDate.now().atStartOfDay())
                 .notIn(OrdSubOrder::getStatus, OrdSubOrder.WAIT_PAY, OrdSubOrder.CANCELLED, OrdSubOrder.REFUNDED)))
-                .stream().mapToLong(s -> s.getPayAmount() == null ? 0 : s.getPayAmount()).reduce(0, Math::addExact);
+                .stream().filter(s -> !Integer.valueOf(3).equals(s.getInventoryLifecycleVersion()))
+                .mapToLong(s -> s.getPayAmount() == null ? 0 : s.getPayAmount()).reduce(0, Math::addExact);
     }
     private void authorizedSource(Command command, Prepared prepared) {
         var identity = command.identity(); var source = prepared.source();
@@ -424,15 +496,26 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         });
     }
     private Result result(OrdIndustryOrderSource binding) {
-        if (!"BOUND".equals(binding.getStatus())) return new Result(binding.getOrderNo(), binding.getSubOrderNo(),
-                binding.getQuoteNo(), binding.getStatus(), null, null, binding.getSourceVersion(), 2, List.of());
+        int lifecycle="POSTPAY".equals(binding.getOrderMode())?3:2;
+        if (!Set.of("BOUND","ACCEPTED").contains(binding.getStatus())) return new Result(binding.getOrderNo(),
+                binding.getSubOrderNo(),binding.getQuoteNo(),binding.getStatus(),null,null,binding.getSourceVersion(),
+                lifecycle,List.of(),binding.getOrderMode(),null,false);
         var order = DataScopeContext.executeWithoutScope(() -> payments.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getTenantNo, binding.getTenantNo()).eq(OrdOrder::getOrderNo, binding.getOrderNo())
                 .eq(OrdOrder::getUserNo, binding.getBuyerNo()).eq(OrdOrder::getDeleted, 0)));
         if (order == null) throw conflict();
         var allocations = json.readValue(binding.getAllocationsJson(), BoundAllocations.class).allocations();
-        return new Result(order.getOrderNo(), binding.getSubOrderNo(), binding.getQuoteNo(), order.getStatus(),
-                order.getCurrency(), order.getPayAmount(), binding.getSourceVersion(), 2, allocations);
+        var sub=DataScopeContext.executeWithoutScope(() -> subOrders.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                .eq(OrdSubOrder::getTenantNo,binding.getTenantNo()).eq(OrdSubOrder::getEntityNo,binding.getEntityNo())
+                .eq(OrdSubOrder::getStoreNo,binding.getStoreNo()).eq(OrdSubOrder::getOrderNo,binding.getOrderNo())
+                .eq(OrdSubOrder::getSubOrderNo,binding.getSubOrderNo())));
+        boolean accepted=lifecycle==3 && "ACCEPTED".equals(binding.getStatus());
+        if(accepted && (sub==null || !Integer.valueOf(3).equals(sub.getInventoryLifecycleVersion())
+                || !Set.of(OrdSubOrder.WAIT_FULFILL,OrdSubOrder.FULFILLING,OrdSubOrder.COMPLETED).contains(sub.getStatus())
+                || !OrdOrder.WAIT_PAY.equals(order.getStatus()) || order.getPaidAt()!=null)) throw conflict();
+        return new Result(order.getOrderNo(),binding.getSubOrderNo(),binding.getQuoteNo(),order.getStatus(),
+                order.getCurrency(),order.getPayAmount(),binding.getSourceVersion(),lifecycle,allocations,
+                binding.getOrderMode(),sub==null?null:sub.getStatus(),accepted);
     }
     private OrdCreateIntent intent(Identity identity, String key) {
         return DataScopeContext.executeWithoutScope(() -> intents.selectOne(new QueryWrapper<OrdCreateIntent>()
@@ -464,7 +547,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
     private void update(OrdIndustryOrderSource source) { if (bindings.updateById(source) != 1) throw conflict(); }
     private static void validate(Command command, String key) {
         if (command == null) throw bad(); identity(command.identity()); key(key);
-        if (command.mode() != Mode.PREPAY || command.credentials() == null || command.source() == null
+        if (command.mode() == null || command.credentials() == null || command.source() == null
                 || !"FOOD".equals(command.source().sourceSystem()) || !"CART".equals(command.source().sourceType())
                 || command.source().scopeNo() != null || command.credentials().sessionNo() != null
                 || command.credentials().accessToken() != null

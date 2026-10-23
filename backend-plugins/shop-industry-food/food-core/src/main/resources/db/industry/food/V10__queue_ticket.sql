@@ -1,0 +1,33 @@
+-- Reception queue delegates seating to the original check resource owner.
+
+CREATE TABLE `fnb_queue_ticket` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT 'BaseEntity自增物理主键，不对外不进URL',
+    `tenant_no` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT '沿用BaseEntity，一期MAIN；不是entity_no，不另启租户体系',
+    `entity_no` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '当前主体或业务发生时主体快照，不等于账号和支付商户号',
+    `created_at` DATETIME(3) NOT NULL COMMENT '沿用MetaObjectHandler及现有LocalDateTime持久化约定',
+    `created_by` VARCHAR(32) NOT NULL COMMENT '当前认证业务键；按现有填充规则，作业SYSTEM',
+    `updated_at` DATETIME(3) NOT NULL COMMENT '沿用公共填充',
+    `updated_by` VARCHAR(32) NOT NULL COMMENT '沿用公共填充',
+    `version` BIGINT NOT NULL DEFAULT 0 COMMENT 'BaseEntity乐观锁',
+    `deleted` INT NOT NULL DEFAULT 0 COMMENT 'BaseEntity逻辑删除；签核和事实表禁止业务归档覆盖历史',
+    `ticket_no` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '排队票号 Queue ticket',
+    `store_no` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '门店 Store',
+    `business_date` DATE NOT NULL COMMENT '原营业日 Business date',
+    `party_size` INT NOT NULL COMMENT '就餐人数 Party size',
+    `contact_ref` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL COMMENT '已有联系引用，不存明文秘密 Contact reference',
+    `status` VARCHAR(16) NOT NULL COMMENT 'WAITING / CALLED / SEATING / SEATED / CANCELLED / NO_SHOW',
+    `called_at` DATETIME(3) NULL COMMENT '真实叫号时间 Called at',
+    `check_no` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL COMMENT '原开台成功回执 Check',
+    `request_key` CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '持久创建键 Create key',
+    `request_hash` CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '原请求摘要 Request hash',
+    `seat_request` JSON NULL COMMENT '冻结原开台命令 Original check request',
+    `seat_actor_no` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL COMMENT '原认证开台人 Actor',
+    `seat_request_hash` CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL COMMENT '冻结开台摘要 Seating hash',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_food_1` (`ticket_no`),
+    UNIQUE KEY `uk_food_2` (`entity_no`, `store_no`, `request_key`),
+    KEY `ix_food_audit` (`entity_no`, `created_at`, `id`),
+    KEY `ix_food_store` (`entity_no`, `store_no`, `updated_at`, `id`),
+    KEY `ix_food_ref_1` (`entity_no`, `check_no`, `id`),
+    CHECK (`party_size` > 0)
+) ENGINE=InnoDB COMMENT='排队叫号 Reception queue';

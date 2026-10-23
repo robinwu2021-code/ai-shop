@@ -264,6 +264,41 @@ DEALLOCATE PREPARE sv_selection_stmt;""", 'mbr_identity_ticket', ('purpose', 'so
  ]
 
 
+# V550 has no IF-NULL fallback: the metadata lookup must resolve exactly one
+# existing check. Keep its reviewed dynamic SQL and variable cleanup together;
+# other SET/PREPARE statements must still reach the fail-closed replay branch.
+_RELEASE_SOURCE_DROP = """SET @sv_release_check = (SELECT tc.CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS tc JOIN information_schema.CHECK_CONSTRAINTS cc ON cc.CONSTRAINT_SCHEMA=tc.CONSTRAINT_SCHEMA AND cc.CONSTRAINT_NAME=tc.CONSTRAINT_NAME WHERE tc.CONSTRAINT_SCHEMA=DATABASE() AND tc.TABLE_NAME='sv_release' AND tc.CONSTRAINT_TYPE='CHECK' AND cc.CHECK_CLAUSE LIKE '%source_kind%' LIMIT 1);
+SET @sv_release_sql = CONCAT('ALTER TABLE sv_release DROP CHECK `',REPLACE(@sv_release_check,'`','``'),'`');
+PREPARE sv_release_statement FROM @sv_release_sql;
+EXECUTE sv_release_statement;
+DEALLOCATE PREPARE sv_release_statement;"""
+
+
+def release_source_drop(sql, tables):
+    trigger = 'SET @sv_release_check'
+    offset = sql.find(trigger)
+    if offset < 0:
+        return sql
+    parts = sql[offset:].split(';', 5)
+    cleanup = re.search(
+        r"\s*SET @sv_release_check = NULL;\s*SET @sv_release_sql = NULL;\s*$",
+        parts[5] if len(parts) == 6 else '')
+    if (len(parts) != 6
+            or ' '.join((';'.join(parts[:5]) + ';').split()) != ' '.join(_RELEASE_SOURCE_DROP.split())
+            or cleanup is None):
+        raise SystemExit('Unknown release source constraint migration; refusing to discard SQL')
+    columns = tables.get('sv_release', [])
+    matches = [column for column in columns if (
+        re.search(r"\bCHECK\s*\(", column, re.I)
+        and re.search(r"\bsource_kind\b", column, re.I))]
+    if len(matches) != 1:
+        raise SystemExit('Release source constraint migration requires exactly one sv_release source_kind CHECK')
+    columns.remove(matches[0])
+    # The replacement ALTER and all preceding additive DDL are replayed normally.
+    # Only the validated dynamic block and its two session-variable resets vanish.
+    return sql[:offset] + parts[5][:cleanup.start()]
+
+
 def offline_receipt_drop(sql, tables):
     clean = strip_comments(sql).strip()
     for trigger, expected, table, fields in _KNOWN_DYNAMIC_CHECKS:
@@ -280,7 +315,7 @@ def offline_receipt_drop(sql, tables):
             re.search(r"\bCHECK\s*\(", column, re.I)
             and all(re.search(rf"\b{field}\b", column, re.I) for field in fields))]
         clean = clean[:offset] + parts[5]
-    return clean
+    return release_source_drop(clean, tables)
 
 
 def replay(sql, tables, order, seeds, renames, altered):

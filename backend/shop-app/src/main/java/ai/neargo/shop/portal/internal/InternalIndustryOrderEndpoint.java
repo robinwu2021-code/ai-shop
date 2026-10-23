@@ -20,6 +20,11 @@ public class InternalIndustryOrderEndpoint {
             @Value("${shop.services.internal-token:}") String token) {
         this.orders = orders; this.token = token;
     }
+    @PostMapping(IndustryOrderInternalApi.ROOT + "/accept-unpaid")
+    public ResponseEntity<?> acceptUnpaid(@RequestBody IndustryOrderInternalApi.Get request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token,given,() -> orders.acceptUnpaid(request.identity(),request.orderNo()));
+    }
     @PostMapping(IndustryOrderInternalApi.ROOT + "/cancel")
     public ResponseEntity<?> cancel(@RequestBody IndustryOrderInternalApi.Place request,
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {

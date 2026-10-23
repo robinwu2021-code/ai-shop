@@ -143,6 +143,12 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
         if (sub == null || OrdSubOrder.COMPLETED.equals(sub.getStatus())) {
             return false;
         }
+        // Source-owned orders must use their handover/code/receipt-aware owner, including degraded pickup.
+        long owned = DataScopeContext.executeWithoutScope(() -> subOrderMapper.countIndustrySources(
+                sub.getTenantNo(), sub.getEntityNo(), sub.getStoreNo(), sub.getOrderNo(), sub.getSubOrderNo()));
+        if (owned > 0) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
         // 经状态机：核销一个已退款的单必须被拦下
         if (!OrderStateMachine.canTransit(OrderStateMachine.subOrderGraph(),
                 sub.getStatus(), OrdSubOrder.COMPLETED)) {

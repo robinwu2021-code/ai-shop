@@ -2798,6 +2798,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     /** 取消一次支付（未付款 / 待当面收款）：支付单 CANCELLED + 其下订单 CANCELLED + 释放占用 */
     /** 不返回详情：详情按买家身份取，平台调用会 NOT_FOUND 并把整个取消回滚掉 */
     private void cancelPayment(OrdOrder order, String reason, Actor actor, String operatorNo, String label) {
+        if(subOrders(order.getOrderNo()).stream().anyMatch(sub -> Integer.valueOf(3)
+                .equals(sub.getInventoryLifecycleVersion()))) throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         boolean pointsIntegrated = Boolean.TRUE.equals(order.getPointsIntegrated());
         statusWriter.payment(order, PaymentEvent.CANCEL, actor, operatorNo, label,
                 new PaymentContext(OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus()), true, true, false));
@@ -2892,6 +2894,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
      * 各写一遍的话，漏掉的那一项会让库存或券一直占着，而没有任何报错。
      */
     boolean closeOne(OrdOrder order, String reason) {
+        if(subOrders(order.getOrderNo()).stream().anyMatch(sub -> Integer.valueOf(3)
+                .equals(sub.getInventoryLifecycleVersion()))) return false;
         boolean pointsIntegrated = Boolean.TRUE.equals(order.getPointsIntegrated());
         /*
          * 状态先改再释放：**改失败（并发下已被支付）就不该释放**。
@@ -4239,10 +4243,13 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
      */
     private static final int VERIFY_CODE_TRIES = 8;
 
-    private String newUnusedVerifyCode() {
+    private String newUnusedVerifyCode() { return originalOwnerUnusedVerifyCode(subOrderMapper); }
+
+    /** Same original namespace for paid pickup and authorized lifecycle-3 unpaid acceptance. */
+    static String originalOwnerUnusedVerifyCode(StoreOrderMapper mapper) {
         for (int i = 0; i < VERIFY_CODE_TRIES; i++) {
             String code = newVerifyCode();
-            Long used = subOrderMapper.selectCount(Wrappers.<OrdSubOrder>lambdaQuery()
+            Long used = mapper.selectCount(Wrappers.<OrdSubOrder>lambdaQuery()
                     .eq(OrdSubOrder::getVerifyCode, code));
             if (used == null || used == 0L) {
                 return code;
@@ -4255,7 +4262,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     /** 6 位核销码。人要在核销台上念出来，所以不加长；唯一性由 {@link #newUnusedVerifyCode} 负责。 */
-    private String newVerifyCode() {
+    private static String newVerifyCode() {
         return "%06d".formatted(RANDOM.nextInt(1_000_000));
     }
 

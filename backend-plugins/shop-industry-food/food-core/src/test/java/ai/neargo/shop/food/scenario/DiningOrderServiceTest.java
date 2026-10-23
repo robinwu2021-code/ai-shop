@@ -13,6 +13,10 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.common.data.scope.DataScopeSpec;
 import ai.neargo.shop.auth.ScopeDim;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.event.outbox.OutboxPublisher;
+import ai.neargo.shop.spi.food.DiningOrderAccepted;
+import ai.neargo.shop.food.service.KitchenTaskService;
+import ai.neargo.shop.food.dto.KitchenContracts.FrozenRoutes;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.food.dto.CartAccess;
@@ -99,7 +103,8 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
             DiningPricingFactsService facts, PricingCheckoutPort pricing, AtomicBoolean failBind,
             AtomicBoolean timeout, AtomicInteger coreCalls, AtomicReference<IndustryOrderPort.Result> receipt) { }
 
-    private void run(Consumer<Context> test) {
+    private void run(Consumer<Context> test) { run(false,test); }
+    private void run(boolean postpay,Consumer<Context> test) {
         runner().run(context -> {
             Fixture f = prepare(context);
             SqlSessionTemplate sql = context.getBean(SqlSessionTemplate.class);
@@ -122,10 +127,12 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
             f.sql().execute("CREATE UNIQUE INDEX ux_source_line ON fnb_order_line(batch_no,source_line_ref)");
             f.sql().execute("CREATE TABLE core_owner_document_fixture (source_batch VARCHAR(32) PRIMARY KEY,"
                     + "order_no VARCHAR(32) UNIQUE,receipt TEXT)");
+            f.sql().execute("CREATE TABLE food_acceptance_outbox_fixture (batch_no VARCHAR(32) PRIMARY KEY,document TEXT)");
             f.sql().update("INSERT INTO fnb_check_cart(entity_no,cart_no,store_no,buyer_no,status,order_source,"
                     + "fulfillment,session_no) VALUES('E','C','A','BUYER','OPEN','H5','PICKUP','SESSION')");
             f.sql().update("INSERT INTO fnb_store_policy(entity_no,policy_no,store_no,timezone,cutover_minute,"
                     + "effective_from,pay_policy) VALUES('E','P','A','UTC',240,'2026-01-01 00:00:00','PREPAY')");
+            if(postpay) f.sql().update("UPDATE fnb_store_policy SET pay_policy='POSTPAY'");
             f.sql().update("INSERT INTO fnb_sales_restriction(entity_no,restriction_no,store_no,sku_no,mode,quota_qty,"
                     + "reserved_qty,consumed_qty,starts_at,status,reason) "
                     + "VALUES('E','R','A','SKU','QUOTA',10,0,0,'2026-01-01 00:00:00','ACTIVE','test')");
@@ -152,13 +159,13 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
             });
             StoreOperationService policies = mock(StoreOperationService.class);
             when(policies.getPolicy(anyString(), anyString(), any())).thenAnswer(call -> {
-                outside(); return new StoreOperationPolicyResultVO("P", "UTC", 240, "PREPAY", List.of(), 0);
+                outside(); return new StoreOperationPolicyResultVO("P", "UTC", 240, postpay?"POSTPAY":"PREPAY", List.of(), 0);
             });
             var quotas = new SalesQuotaClaimServiceImpl(sql.getMapper(SalesRestrictionMapper.class),
                     sql.getMapper(StorePolicyMapper.class), sql.getMapper(SalesQuotaClaimMapper.class), CLOCK);
             AtomicBoolean failBind = new AtomicBoolean(); AtomicBoolean timeout = new AtomicBoolean();
             AtomicInteger calls = new AtomicInteger();
-            AtomicReference<IndustryOrderPort.Result> receipt = new AtomicReference<>(receipt(2, 1010));
+            AtomicReference<IndustryOrderPort.Result> receipt = new AtomicReference<>(postpay?postpayReceipt(true):receipt(2, 1010));
             IndustryOrderPort core = mock(IndustryOrderPort.class);
             when(core.place(any(), anyString())).thenAnswer(call -> {
                 outside(); calls.incrementAndGet();
@@ -200,11 +207,21 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
                         try { return method.invoke(original, args); }
                         catch (InvocationTargetException failure) { throw failure.getCause(); }
                     });
+            var kitchen=mock(KitchenTaskService.class);
+            when(kitchen.freezeRoutes(anyString(),anyString(),any())).thenReturn(new FrozenRoutes(List.of()));
+            var publisher=mock(OutboxPublisher.class);
+            when(publisher.publish(any(),any())).thenAnswer(call -> {
+                assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+                var event=(DiningOrderAccepted)call.getArgument(0);
+                f.sql().update("INSERT INTO food_acceptance_outbox_fixture VALUES(?,?)",event.batchNo(),
+                        json.writeValueAsString(event));
+                return null;
+            });
             Supplier<DiningOrderService> restart = () -> new DiningOrderServiceImpl(carts, facts, policies, quotas,
                     sql.getMapper(CheckCartMapper.class), sql.getMapper(StorePolicyMapper.class),
                     sql.getMapper(OrderBatchMapper.class), sql.getMapper(CoreOrderBindingMapper.class),
                     sql.getMapper(OrderLineMapper.class), allocationRows, () -> core, () -> pricing, json, CLOCK,
-                    context.getBean(PlatformTransactionManager.class));
+                    context.getBean(PlatformTransactionManager.class),postpay?kitchen:null,postpay?publisher:null);
             test.accept(new Context(f, restart.get(), restart, facts, pricing, failBind, timeout, calls, receipt));
         });
     }
@@ -253,6 +270,78 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
         f.sql().execute("CREATE TABLE " + info.getTableName() + " (id BIGINT AUTO_INCREMENT PRIMARY KEY," + columns + ")");
     }
 
+    private static CreateDiningOrderReq postpayRequest() {
+        var original=request();
+        return new CreateDiningOrderReq(original.cartNo(),original.version(),original.quoteNo(),
+                original.confirmationDigest(),"POSTPAY");
+    }
+    private static IndustryOrderPort.Result postpayReceipt(boolean accepted) {
+        var original=receipt(2,1010);
+        return new IndustryOrderPort.Result(original.orderNo(),original.subOrderNo(),original.quoteNo(),"WAIT_PAY",
+                original.currency(),original.payAmountMinor(),original.sourceVersion(),3,original.allocations(),
+                "POSTPAY",accepted?"WAIT_FULFILL":"WAIT_PAY",accepted);
+    }
+    @Test void postpayAcceptsRealUnpaidOwnerProofAndPublishesQuotaAndDispatchInOneTransaction() {
+        run(true,c -> {
+            var result=c.service.customerPlace("A",BUYER,postpayRequest(),"POSTPAY-1");
+            assertThat(result.status()).isEqualTo("ACCEPTED");
+            assertThat(result.coreStatus()).isEqualTo("WAIT_PAY");
+            assertThat(c.fixture.sql().queryForObject("SELECT consumed_qty FROM fnb_sales_restriction",BigDecimal.class))
+                    .isEqualByComparingTo("2");
+            assertThat(c.fixture.sql().queryForObject("SELECT reserved_qty FROM fnb_sales_restriction",BigDecimal.class))
+                    .isEqualByComparingTo("0");
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM food_acceptance_outbox_fixture",Integer.class))
+                    .isEqualTo(1);
+            assertThat(c.restart.get().customerPlace("A",BUYER,postpayRequest(),"POSTPAY-1").batchNo())
+                    .isEqualTo(result.batchNo());
+            assertThat(c.coreCalls.get()).isEqualTo(1);
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM food_acceptance_outbox_fixture",Integer.class))
+                    .isEqualTo(1);
+        });
+    }
+    @Test void postpayUnknownOriginalRecoversWithoutReplacingOwnerOrDoubleConsumingQuota() {
+        run(true,c -> {
+            c.timeout.set(true);
+            assertThatThrownBy(() -> c.service.customerPlace("A",BUYER,postpayRequest(),"POSTPAY-1"))
+                    .isInstanceOf(IllegalStateException.class);
+            String batch=c.fixture.sql().queryForObject("SELECT batch_no FROM fnb_order_batch",String.class);
+            assertThat(c.fixture.sql().queryForObject("SELECT status FROM fnb_order_batch",String.class)).isEqualTo("UNKNOWN");
+            c.timeout.set(false);
+            var recovered=c.restart.get().recoverOriginal("E","A",batch);
+            assertThat(recovered.status()).isEqualTo("ACCEPTED");
+            assertThat(recovered.coreStatus()).isEqualTo("WAIT_PAY"); assertThat(c.coreCalls.get()).isEqualTo(1);
+            assertThat(c.fixture.sql().queryForObject("SELECT consumed_qty FROM fnb_sales_restriction",BigDecimal.class))
+                    .isEqualByComparingTo("2");
+        });
+    }
+    @Test void postpayBoundWithoutUnpaidAcceptanceProofNeverConsumesQuotaOrDispatches() {
+        run(true,c -> {
+            c.receipt.set(postpayReceipt(false));
+            var result=c.service.customerPlace("A",BUYER,postpayRequest(),"POSTPAY-1");
+            assertThat(result.status()).isEqualTo("UNKNOWN");
+            assertThat(c.fixture.sql().queryForObject("SELECT consumed_qty FROM fnb_sales_restriction",BigDecimal.class))
+                    .isEqualByComparingTo("0");
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM fnb_core_order_binding",Integer.class)).isZero();
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM food_acceptance_outbox_fixture",Integer.class))
+                    .isZero();
+        });
+    }
+    @Test void postpayBindRollbackCannotLeakAcceptedEventOrConsumeQuota() {
+        run(true,c -> {
+            c.failBind.set(true);
+            assertThatThrownBy(() -> c.service.customerPlace("A",BUYER,postpayRequest(),"POSTPAY-1"))
+                    .isInstanceOf(IllegalStateException.class);
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM food_acceptance_outbox_fixture",Integer.class))
+                    .isZero();
+            assertThat(c.fixture.sql().queryForObject("SELECT consumed_qty FROM fnb_sales_restriction",BigDecimal.class))
+                    .isEqualByComparingTo("0");
+            assertThat(c.restart.get().customerPlace("A",BUYER,postpayRequest(),"POSTPAY-1").status())
+                    .isEqualTo("ACCEPTED");
+            assertThat(c.coreCalls.get()).isEqualTo(2);
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM core_owner_document_fixture",Integer.class))
+                    .isEqualTo(1);
+        });
+    }
     @Test void stagesDurablyBeforeRpcAndBindsOriginalWholeQuantityTaxInclusiveAmountAndComponent() {
         run(c -> {
             var scope = DataScopeSpec.of(ScopeDim.MERCHANT, Set.of("E")); DataScopeContext.set(scope);

@@ -14,6 +14,8 @@ import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
 import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.order.mapper.ShipmentMapper;
 import ai.neargo.shop.trade.order.mapper.StatusCasMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
@@ -31,9 +33,18 @@ public class MybatisReceiptReadStore implements ReceiptReadStore {
     private final PaymentMapper payments;
     private final OrderStatusLogMapper logs;
     private final AfterSaleMapper afterSales;
+    private final StoreOrderMapper sourceOwnership;
 
     public MybatisReceiptReadStore(StatusCasMapper locks, ShipmentMapper shipments, OrderItemMapper items,
                                   PaymentMapper payments, OrderStatusLogMapper logs, AfterSaleMapper afterSales) {
+        this(locks, shipments, items, payments, logs, afterSales, null);
+    }
+
+    @Autowired
+    public MybatisReceiptReadStore(StatusCasMapper locks, ShipmentMapper shipments, OrderItemMapper items,
+                                  PaymentMapper payments, OrderStatusLogMapper logs, AfterSaleMapper afterSales,
+                                  StoreOrderMapper sourceOwnership) {
+        this.sourceOwnership = sourceOwnership;
         this.locks = locks;
         this.shipments = shipments;
         this.items = items;
@@ -79,7 +90,17 @@ public class MybatisReceiptReadStore implements ReceiptReadStore {
     public boolean parentPaid(OrdSubOrder order) {
         OrdOrder parent = DataScopeContext.executeWithoutScope(() -> payments.selectOne(
                 Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getOrderNo, order.getOrderNo()).last("LIMIT 1")));
-        return parent != null && OrdOrder.PAID.equals(parent.getStatus());
+        if (parent == null || !OrdOrder.PAID.equals(parent.getStatus())) {
+            return false;
+        }
+        if (sourceOwnership == null) {
+            throw new IllegalStateException("INDUSTRY_SOURCE_OWNERSHIP_NOT_CONFIGURED");
+        }
+        return DataScopeContext.executeWithoutScope(() -> sourceOwnership.countIndustrySources(
+                order.getTenantNo(), order.getEntityNo(), order.getStoreNo(), order.getOrderNo(),
+                order.getSubOrderNo()) == 0 || sourceOwnership.countIndustryFulfillmentReceipts(
+                order.getTenantNo(), order.getEntityNo(), order.getStoreNo(), order.getOrderNo(),
+                order.getSubOrderNo()) > 0);
     }
 
     @Override

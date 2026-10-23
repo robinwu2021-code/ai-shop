@@ -36,6 +36,7 @@ public final class UnifiedOutboxFacade {
     public void setRetryPolicy(RetryPolicy policy) { retryPolicy = policy; }
     private final Map<String, JdbcOutboxStore> stores = new ConcurrentHashMap<>();
     private final Map<String, Map<String, OutboxHandler>> handlers = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, Map<String, Boolean>>> producerTargets = new ConcurrentHashMap<>();
     private BiFunction<String, DomainEvent, PublishOptions> routes =
             (source, event) -> new PublishOptions(event.aggregateType() + ":" + event.aggregateId(), 1);
     public record Publication(DomainEvent event, PublishOptions options) { }
@@ -67,6 +68,31 @@ public final class UnifiedOutboxFacade {
         handlers.put(store.source(), Map.copyOf(map));
     }
 
+    /**
+     * Registers a genuine shared source writer in a process which does not execute delivery handlers.
+     * Exact event/handler IDs are a producer contract: the source's existing dispatcher resolves and
+     * executes those same handler IDs in its own runtime. This method starts no worker or scheduler.
+     */
+    public void registerProducer(JdbcOutboxStore store, Map<String, Map<String, Boolean>> routing) {
+        if (routing == null) throw new IllegalArgumentException("Producer routing is required");
+        var frozen = new LinkedHashMap<String, Map<String, Boolean>>();
+        routing.forEach((type, targets) -> {
+            if (type == null || type.isBlank() || type.length() > 64 || targets == null || targets.isEmpty()) {
+                throw new IllegalArgumentException("Invalid producer event routing");
+            }
+            var entries = new LinkedHashMap<String, Boolean>();
+            targets.forEach((id, external) -> {
+                if (id == null || id.isBlank() || id.length() > 128 || external == null) {
+                    throw new IllegalArgumentException("Invalid producer delivery target");
+                }
+                entries.put(id, external);
+            });
+            frozen.put(type, Map.copyOf(entries));
+        });
+        register(store, List.of());
+        producerTargets.put(store.source(), Map.copyOf(frozen));
+    }
+
     public Collection<JdbcOutboxStore> stores() { return List.copyOf(stores.values()); }
     public JdbcOutboxStore store(String source) {
         JdbcOutboxStore store = stores.get(source);
@@ -79,6 +105,10 @@ public final class UnifiedOutboxFacade {
     public boolean enabled(String source) { return stores.containsKey(source); }
     public OutboxHandler handler(String source, String id) {
         return handlers.getOrDefault(source, Map.of()).get(id);
+    }
+    /** Executable handlers only: producer delivery metadata never grants a host claim ownership. */
+    public Set<String> localHandlerIds(String source) {
+        return handlers.getOrDefault(source, Map.of()).keySet();
     }
     public void setRoutes(BiFunction<String, DomainEvent, PublishOptions> routes) {
         this.routes = routes;
@@ -142,7 +172,8 @@ public final class UnifiedOutboxFacade {
     }
 
     private Map<String, Boolean> targets(String source, String type) {
-        Map<String, Boolean> targets = new LinkedHashMap<>();
+        Map<String, Boolean> targets = new LinkedHashMap<>(producerTargets.getOrDefault(source, Map.of())
+                .getOrDefault(type, Map.of()));
         handlers.getOrDefault(source, Map.of()).values().stream().filter(h -> h.supports(type))
                 .forEach(h -> targets.put(h.handlerId(), h.externalWorkflow()));
         return targets;
