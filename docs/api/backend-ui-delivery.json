@@ -191,11 +191,6 @@
     },
     {
       "app": "c-app",
-      "method": "GET",
-      "path": "/mp/stored-value/stores"
-    },
-    {
-      "app": "c-app",
       "method": "POST",
       "path": "/mp/entitlement-claims"
     },
