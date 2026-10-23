@@ -26,4 +26,22 @@ class StoredValueMigrationReadinessServiceTest {
         assertThat(result.nodes().getFirst().errorCode()).isEqualTo("PROBE_UNAVAILABLE");
         assertThat(result.toString()).doesNotContain("private URL/token detail");
     }
+    @org.junit.jupiter.api.io.TempDir java.nio.file.Path directory;
+    @Test void serverInventoryCanBeSealedAndReplacedWithoutRestartingTheObservedProcess() throws Exception {
+        var file=directory.resolve("inventory.json");var json=new tools.jackson.databind.ObjectMapper();var calls=new AtomicInteger();
+        var service=new StoredValueMigrationReadinessService(()->StoredValueMigrationReadinessService.load(json,"",file.toString()),(n,q)->{calls.incrementAndGet();return new Capability(q.challenge(),n.application(),"boot-pay",sha,1,true,true,ledger,true,Instant.now());});
+        assertThat(service.check().ready()).isFalse();assertThat(calls.get()).isZero();
+        java.nio.file.Files.writeString(file,json.writeValueAsString(inventory(true)));
+        assertThat(service.check().ready()).isTrue();
+        var changed=new Inventory("deploy-2",ledger,true,List.of(new Node("pay-1","PAY_1","pay-svc",sha,"replacement-boot")));
+        java.nio.file.Files.writeString(file,json.writeValueAsString(changed));
+        assertThat(service.check().ready()).isFalse();
+    }
+    @Test void brokenConfiguredFileNeverFallsBackToAnOldSealedInlineInventory() throws Exception {
+        var file=directory.resolve("inventory.json");java.nio.file.Files.writeString(file,"invalid-json");
+        var json=new tools.jackson.databind.ObjectMapper();
+        var loaded=StoredValueMigrationReadinessService.load(json,json.writeValueAsString(inventory(true)),file.toString());
+        assertThat(loaded.sealed()).isFalse();assertThat(loaded.nodes()).isEmpty();
+    }
+
 }

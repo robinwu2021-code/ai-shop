@@ -48,6 +48,8 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
     @org.springframework.beans.factory.annotation.Autowired
     private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     private final ai.neargo.shop.pay.mapper.storedvalue.SvCustomerIdentityMapper identities;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerAccountService issuerAccounts;
     private final SvAccountMapper accounts;
     private final SvRechargeMapper recharges;
     private final SvLotMapper lots;
@@ -76,13 +78,17 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
         claim.setStoreNo(original.getStoreNo());
         claim.setUserNo(original.getUserNo()==null?identities.boundUser(ctx.tenantNo(),original.customerIdentity()):original.getUserNo());claim.setCustomerNo(original.customerIdentity()); claim.setEntityNo(original.getEntityNo());
         claim.setCurrency(original.getCurrency());
-        StoredValueAccountScope.requireMigrated(accounts, ctx.tenantNo(), original.customerIdentity(), original.getEntityNo(), original.getCurrency());
-        if (!"CREDITED".equals(original.getStatus())) accounts.ensure(claim);
-        var account = accounts.lockOwner(ctx.tenantNo(), original.customerIdentity(), original.getEntityNo(),
-                original.getCurrency(), original.getStoreNo());
+        var selected=issuerAccounts.credit(ctx,c.rechargeNo());
+        SvAccount account;
+        if(selected.issuerScoped())account=accounts.lockAccount(ctx.tenantNo(),selected.accountNo());
+        else {
+            StoredValueAccountScope.requireMigrated(accounts, ctx.tenantNo(), original.customerIdentity(), original.getEntityNo(), original.getCurrency());
+            if (!"CREDITED".equals(original.getStatus())) accounts.ensure(claim);
+            account=accounts.lockOwner(ctx.tenantNo(),original.customerIdentity(),original.getEntityNo(),original.getCurrency(),original.getStoreNo());
+        }
         var recharge = recharges.lock(ctx.tenantNo(), c.rechargeNo());
         var permit = requireReceived(recharge, c, json);
-        if (account == null || (!recharge.customerIdentity().equals(account.customerIdentity()) && !(recharge.getUserNo()!=null && recharge.getUserNo().equals(account.getUserNo())))
+        if (account == null || (!selected.issuerScoped() && !recharge.customerIdentity().equals(account.customerIdentity()) && !(recharge.getUserNo()!=null && recharge.getUserNo().equals(account.getUserNo())))
                 || !recharge.getEntityNo().equals(account.getEntityNo())
                 || !recharge.getCurrency().equals(account.getCurrency())) conflict();
         String payload = digest(List.of(c, recharge.getPayloadHash(), recharge.getReceiptDigest(),

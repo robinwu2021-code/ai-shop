@@ -334,12 +334,13 @@
           "Durable audited manifest and strictly fenced metadata apply (internal Java contract, not enabled online)",
           "Trusted Core owner/person evidence preparation with typed embedded/standalone audit contracts (disabled by default)",
           "Durable internal local-writer fence with original audit recheck and replay (no execution HTTP)",
-          "Read-only per-process capability and sealed-inventory readiness checks (fresh challenge/build/process/ledger/flags; not deployed or financial authorization)"
+          "Read-only per-process capability and sealed-inventory readiness checks (fresh challenge/build/process/ledger/flags; not deployed or financial authorization)",
+          "Issuer wallet selection wired to posting/balance/quote/debit, verified canonical aliases and shadow/version conflict rejection; live inventory-file reload (not deployed)"
         ],
         "verification": "Core/Pay compile and focused tests passed; no full suite or online financial writes",
         "remaining": [
           "Safe operator orchestration using fresh readiness; actual deployment inventory sealing and maintenance/cutover acceptance",
-          "Explicit cutover, conditional keys and issuer account selection",
+          "Explicit cutover and conditional keys; issuer account selection now wired",
           "Complete IS/RC/RD and B app UI",
           "MySQL concurrency acceptance and complete stage release"
         ]

@@ -873,3 +873,15 @@ LegacyCouponIdentityPort新增core本地模板主体/已提交模板目录读取
 | shop-app API | `portal.mp.MpEntitlementController`、`MpEntitlementServiceOrderController` | 本人权益/领取/消费记录与独立服务单资源；后者原URL及鉴权保持 |
 
 公开契约以实际Handler/Jackson导出为准；当前64操作、107DTO。前端入口实际接入单独见[前端任务表](./任务表-活动权益-前端接入.md)，不能把Java后端交付解释为页面已上线。
+
+### 品牌/门店双线储值 P3 实际新增与对接（2026-10-23）
+
+| 模块 | 类/方法 | 实际职责 |
+| --- | --- | --- |
+| pay-domain/storedvalue/issuer | StoredValueIssuerAccountService.credit / lookup | 发行方/顾客/币种选账、已有身份别名证明、冻结版本校验、影子钱包冲突阻断、同事务首建零余额账户；不开跨品牌权限 |
+| pay-domain/mapper/storedvalue | SvAccountMapper.findAccount / lockAccount | 已验证账户号的实际余额实体读取与锁定；保留原legacy owner方法 |
+| pay-domain/storedvalue/service/impl | StoredValuePostingServiceImpl | 接入发行方选账；原accountNo继续被lot/voucher/账序使用；兼容关闭开关的旧路径 |
+| pay-domain/storedvalue/service/impl | StoredValueQueryServiceImpl / StoredValueRedemptionServiceImpl / StoredValueRedemptionPostingServiceImpl | 余额、报价、最终核销统一选账；最终accountNo授权校验保留 |
+| shop-app/paybridge | StoredValueMigrationReadinessService.load / check | 每轮读取服务端封存文件快照，无需重启即可更新本进程标识；坏文件不回退旧清单 |
+
+发行方数据库唯一键切换、完整运维执行编排、其余IS/RC/RD和B端页面仍属后续交付，不在此表标记已完成。

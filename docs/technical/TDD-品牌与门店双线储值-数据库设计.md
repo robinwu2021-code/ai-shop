@@ -722,3 +722,11 @@ sv_issuer_version.collection_config保存经核验的版本化route引用数组�
 ## P2迁移实施
 
 V545只新增mbr_scope_member/mbr_store_profile/mbr_scope_legacy_link及mbr_identity_ticket的operator_scope_type、issuer_no、brand_scope_revision、scope_member_no兼容列；与P1同用utf8mb4_unicode_520_ci。历史主体备注不具备撰写门店证据，留原表，不推测复制；新profile只接受明确当前店写入，导入查询不更新last_seen。范围身份不改钱包客户键或余额。
+
+### P3 账户读写适配落地补充（2026-10-23）
+
+本轮没有新表、DDL或已执行迁移修改，旧索引全部保留。已存在的sv_account.issuer_no、issuer_version_no、customer_no等V549维度在新建发行账户时直接写入。发行账户技术标识按tenant/issuer/canonicalCustomer/currency确定；选中存量账户时复用其原accountNo，不重新编号、复制余额或重置账序。
+
+选账在tenant/issuer/customer/currency精确匹配后，关联不可变sv_issuer_version验证账户冻结版本、币种和主体，并校验原门店。额外检查同主体/门店（含来源缺失）下的既有person/user别名账户，有第二个候选即阻断。新建不使用INSERT IGNORE吞掉约束冲突，依靠同Pay事务及发行方行锁与现有账务提交顺序执行；来源不明或不一致时回滚，保留原已收款业务的正常恢复机制。
+
+账务锁顺序保持issuer→quota→account，核销仍先持原source/intent栅栏。新SQL与MyBatis使用同一payTxManager数据源；按accountNo读取/锁定的Mapper方法禁用缓存并刷新本地缓存。尚未切换新唯一键或移除旧唯一键；全写入节点就绪、冻结审计及条件式DDL仍是正式切换前置条件，不能将当前代码视为已完成切换。

@@ -23,6 +23,13 @@ public interface SvAccountMapper extends BaseMapper<SvAccount> {
     SvAccount findOwner(@Param("tenant") String tenant, @Param("user") String user, @Param("entity") String entity,
                          @Param("currency") String currency, @Param("store") String store);
 
+    @Select("SELECT * FROM sv_account WHERE tenant_no=#{tenant} AND account_no=#{account} AND deleted=0")
+    @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+    SvAccount findAccount(@Param("tenant") String tenant,@Param("account") String account);
+    @Select("SELECT * FROM sv_account WHERE tenant_no=#{tenant} AND account_no=#{account} AND deleted=0 FOR UPDATE")
+    @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+    SvAccount lockAccount(@Param("tenant") String tenant,@Param("account") String account);
+
     @Select("SELECT COUNT(*)>0 FROM sv_account WHERE tenant_no=#{tenant} AND user_no=#{user} "
             + "AND entity_no=#{entity} AND currency=#{currency} AND store_no IS NULL AND deleted=0")
     boolean hasLegacyAccount(@Param("tenant") String tenant, @Param("user") String user,

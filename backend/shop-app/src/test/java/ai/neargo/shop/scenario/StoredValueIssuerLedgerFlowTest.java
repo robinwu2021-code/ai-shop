@@ -29,6 +29,7 @@ class StoredValueIssuerLedgerFlowTest {
     @Autowired StoredValueRechargeService receipts;
     @Autowired StoredValueRechargeWriter writer;
     @Autowired StoredValueRedemptionPostingService redemption;
+    @Autowired StoredValueQueryService queries;
     static boolean installed;
     @BeforeEach void schema() throws Exception {
         if(installed)return;
@@ -174,4 +175,58 @@ class StoredValueIssuerLedgerFlowTest {
     }
     static String id(){return UUID.randomUUID().toString();}
     static EntitlementContext ctx(){return new EntitlementContext("MAIN","OWNER",id(),"0".repeat(64));}
+    record CanonicalWallet(String account,String customer) { }
+    CanonicalWallet oldCanonicalWallet(Fixture f) {
+        direct.create(f.actor(),f.entity(),f.command()); // Reserves the original before a verified legacy wallet is mapped.
+        String account="historic-"+id(),customer="person-"+id();
+        jdbc.update("INSERT INTO sv_customer_identity(tenant_no,customer_no,user_no) VALUES('MAIN',?,?)",customer,f.command().userNo());
+        jdbc.update("INSERT INTO sv_account(tenant_no,account_no,customer_no,user_no,entity_no,store_no,currency,status,issuer_no,issuer_version_no,created_at,updated_at,created_by,updated_by) SELECT 'MAIN',?,?,NULL,?,?,'CNY','ACTIVE',issuer_no,current_issuer_version_no,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'LEGACY','LEGACY' FROM sv_issuer WHERE issuer_no=?",account,customer,f.entity(),f.store(),f.issuer());
+        return new CanonicalWallet(account,customer);
+    }
+    @Test void canonicalAliasCreditsAndRedeemsTheOriginalWalletWithoutCreatingOrBindingAnother() {
+        var f=fixture();var wallet=oldCanonicalWallet(f);
+        var credited=direct.confirmOffline(f.actor(),f.entity(),f.command());
+        assertThat(credited.status().name()).isEqualTo("CREDITED");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_account WHERE issuer_no=?",Long.class,f.issuer())).isEqualTo(1);
+        var balance=queries.balance(ctx(),new StoredValuePort.BalanceQuery(f.command().userNo(),f.entity(),"CNY",f.store()));
+        assertThat(balance.accountNo()).isEqualTo(wallet.account());assertThat(balance.availableMinor()).isEqualTo(6000);
+        var use=prepared(f,1000);redemption.prepare(ctx(),use);finish(f,use,true,id());
+        assertThat(jdbc.queryForObject("SELECT principal_minor+bonus_minor FROM sv_account WHERE account_no=?",Long.class,wallet.account())).isEqualTo(5000);
+        assertThat(jdbc.queryForObject("SELECT user_no FROM sv_account WHERE account_no=?",String.class,wallet.account())).isNull();
+        assertThat(jdbc.queryForObject("SELECT outstanding_minor FROM sv_issue_quota WHERE store_no=?",Long.class,f.store())).isEqualTo(5000);
+    }
+    @Test void issuerBalanceFindsTheVerifiedCanonicalWalletBeforeAnyNewCredit() {
+        var f=fixture();var wallet=oldCanonicalWallet(f);
+        var balance=queries.balance(ctx(),new StoredValuePort.BalanceQuery(f.command().userNo(),f.entity(),"CNY",f.store()));
+        assertThat(balance.accountNo()).isEqualTo(wallet.account());assertThat(balance.balanceMinor()).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_account WHERE issuer_no=?",Long.class,f.issuer())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT user_no FROM sv_account WHERE account_no=?",String.class,wallet.account())).isNull();
+    }
+
+    @Test void mappedWalletAndLegacyAliasCollisionBlockCreditInsteadOfChoosingOne() {
+        var f=fixture();oldCanonicalWallet(f);
+        jdbc.update("INSERT INTO sv_account(tenant_no,account_no,customer_no,user_no,entity_no,store_no,currency,status,created_at,updated_at,created_by,updated_by) VALUES('MAIN',?,?,?,?,?,'CNY','ACTIVE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'LEGACY','LEGACY')","shadow-"+id(),f.command().userNo(),f.command().userNo(),f.entity(),f.store());
+        assertThatThrownBy(()->direct.confirmOffline(f.actor(),f.entity(),f.command())).isInstanceOf(BizException.class);
+        assertThat(jdbc.queryForObject("SELECT SUM(principal_minor+bonus_minor) FROM sv_account WHERE store_no=?",Long.class,f.store())).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_account WHERE store_no=?",Long.class,f.store())).isEqualTo(2);
+    }
+
+    @Test void walletWithMissingFrozenIssuerVersionCannotBeReadOrCreditedAsValid() {
+        var f=fixture();var wallet=oldCanonicalWallet(f);
+        jdbc.update("UPDATE sv_account SET issuer_version_no='MISSING' WHERE account_no=?",wallet.account());
+        assertThatThrownBy(()->queries.balance(ctx(),new StoredValuePort.BalanceQuery(f.command().userNo(),f.entity(),"CNY",f.store()))).isInstanceOf(BizException.class);
+        assertThatThrownBy(()->direct.confirmOffline(f.actor(),f.entity(),f.command())).isInstanceOf(BizException.class);
+        assertThat(jdbc.queryForObject("SELECT principal_minor+bonus_minor FROM sv_account WHERE account_no=?",Long.class,wallet.account())).isZero();
+    }
+
+    @Test void unregisteredCustomerReusesOneIssuerWalletWithoutCreatingAnIdentityBinding() {
+        var f=fixture();String customer="person-"+id();
+        var c=new StoredValuePlanRecharges.Create(null,f.store(),"本店",f.command().planNo(),f.command().versionNo(),f.command().referenceHash(),customer);
+        direct.confirmOffline(f.actor(),f.entity(),c);direct.confirmOffline(ctx(),f.entity(),c);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_account WHERE issuer_no=? AND customer_no=?",Long.class,f.issuer(),customer)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT principal_minor+bonus_minor FROM sv_account WHERE issuer_no=? AND customer_no=?",Long.class,f.issuer(),customer)).isEqualTo(12000);
+        assertThat(jdbc.queryForObject("SELECT user_no FROM sv_account WHERE issuer_no=? AND customer_no=?",String.class,f.issuer(),customer)).isNull();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_customer_identity WHERE customer_no=?",Long.class,customer)).isZero();
+    }
+
 }

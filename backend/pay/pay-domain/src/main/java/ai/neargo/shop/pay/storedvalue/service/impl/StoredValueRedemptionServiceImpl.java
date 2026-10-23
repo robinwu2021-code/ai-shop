@@ -45,6 +45,8 @@ import tools.jackson.databind.ObjectMapper;
 public class StoredValueRedemptionServiceImpl implements StoredValueRedemptionService {
     private final ObjectProvider<EntitlementUseSourcePort> sources;
     private final ObjectProvider<SourceDecisionPort> decisions;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerAccountService issuerAccounts;
     private final SvAccountMapper accounts;
     private final SvLotMapper lots;
     private final EntUseIntentMapper intents;
@@ -64,7 +66,8 @@ public class StoredValueRedemptionServiceImpl implements StoredValueRedemptionSe
     @Override public Quote quote(EntitlementContext ctx, SourceRef ref) {
         enabled(ctx); var source = source(ctx, ref); long amount = StoredValueUseFacts.amount(source);
         StoredValueAccountScope.requireMigrated(accounts, ctx.tenantNo(), source.userNo(), source.entityNo(), source.currency());
-        var account = accounts.findOwner(ctx.tenantNo(), source.userNo(), source.entityNo(), source.currency(), source.storeNo());
+        var selected=issuerAccounts.lookup(ctx.tenantNo(),source.entityNo(),source.storeNo(),source.currency(),source.userNo(),false);
+        var account=selected.issuerScoped()?accounts.findAccount(ctx.tenantNo(),selected.accountNo()):accounts.findOwner(ctx.tenantNo(),source.userNo(),source.entityNo(),source.currency(),source.storeNo());
         String accountNo = account == null ? null : account.getAccountNo();
         long revision = account == null ? 0 : account.getVersion();
         long applicable = 0; Reason reason = Reason.NO_ACCOUNT;

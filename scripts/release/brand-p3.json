@@ -61,5 +61,12 @@
   "backend/shop-app/src/main/java/ai/neargo/shop/portal/internal/InternalStoredValueWriterCapabilityEndpoint.java",
   "backend/shop-app/src/test/java/ai/neargo/shop/paybridge/StoredValueMigrationReadinessServiceTest.java",
   "backend/shop-app/src/test/java/ai/neargo/shop/paybridge/StoredValueWriterCapabilityEndpointTest.java",
-  "backend/shop-base/src/main/java/ai/neargo/shop/spi/storedvalue/StoredValueMigrationReadiness.java"
+  "backend/shop-base/src/main/java/ai/neargo/shop/spi/storedvalue/StoredValueMigrationReadiness.java",
+  "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/StoredValueIssuerAccountService.java",
+  "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/mapper/storedvalue/SvAccountMapper.java",
+  "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/service/impl/StoredValueQueryServiceImpl.java",
+  "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/service/impl/StoredValueRedemptionServiceImpl.java",
+  "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/storedvalue/StoredValueStoreAccountIsolationTest.java",
+  "docs/technical/TDD-品牌与门店双线储值-数据库设计.md",
+  "docs/technical/TDD-活动卡券储值-代码结构与类清单.md"
 ]

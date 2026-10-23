@@ -63,6 +63,8 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
     private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     private final EntitlementSourceFence fences;
     private final EntUseIntentMapper intents;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerAccountService issuerAccounts;
     private final SvAccountMapper accounts;
     private final SvLotMapper lots;
     private final SvHoldAllocationMapper allocations;
@@ -230,7 +232,8 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
     }
     private SvAccount account(EntitlementContext ctx, UseCommand c) {
         StoredValueAccountScope.requireMigrated(accounts, ctx.tenantNo(), c.userNo(), c.entityNo(), c.currency());
-        var account = accounts.lockOwner(ctx.tenantNo(), c.userNo(), c.entityNo(), c.currency(), c.storeNo());
+        var selected=issuerAccounts.lookup(ctx.tenantNo(),c.entityNo(),c.storeNo(),c.currency(),c.userNo(),true);
+        var account=selected.issuerScoped()?accounts.lockAccount(ctx.tenantNo(),selected.accountNo()):accounts.lockOwner(ctx.tenantNo(),c.userNo(),c.entityNo(),c.currency(),c.storeNo());
         if (account == null || !account.getAccountNo().equals(c.accountNo())) conflict();
         return account;
     }
