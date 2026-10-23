@@ -10,11 +10,11 @@ import ai.neargo.shop.pay.entity.StlPayment;
 import ai.neargo.shop.pay.mapper.SettleMappers;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.settle.OrdinaryPaymentPort.Attempt;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import java.util.Objects;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
@@ -397,15 +397,43 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
 
     @Override
     @Transactional("payTxManager")
+    public void freezePayer(String outTradeNo, String userNo, String payerId, String appId) {
+        if (!nonblank(userNo) || !nonblank(payerId) || !nonblank(appId)) {
+            throw new IllegalArgumentException("PAY_PAYER_IDENTITY_REQUIRED");
+        }
+        StlPayment payment = lockPayment(outTradeNo);
+        if (payment == null || !Objects.equals(payment.getUserNo(), userNo)) {
+            throw new IllegalArgumentException("PAY_PAYER_OWNER_CONFLICT");
+        }
+        if (nonblank(payment.getPayerOpenid()) || nonblank(payment.getWxAppid())) {
+            if (!Objects.equals(payment.getPayerOpenid(), payerId)
+                    || !Objects.equals(payment.getWxAppid(), appId)) {
+                throw new IllegalArgumentException("PAY_PAYER_IDENTITY_CONFLICT");
+            }
+            return;
+        }
+        StlPayment patch = new StlPayment();
+        patch.setId(payment.getId());
+        patch.setPayerOpenid(payerId);
+        patch.setWxAppid(appId);
+        DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
+    }
+
+    @Override
+    @Transactional("payTxManager")
     public void recordPayer(String outTradeNo, String payerId, String appId) {
         if (payerId == null || payerId.isBlank()) {
             // 没有就不写。写一行空的等于把「没取到」和「没这个概念」混成一件事
             return;
         }
-        StlPayment p = byOutTradeNo(outTradeNo);
+        StlPayment p = lockPayment(outTradeNo);
         if (p == null) {
             log.warn("[payment-ledger] 记付款人时找不到流水 {}", outTradeNo);
             return;
+        }
+        if ((nonblank(p.getPayerOpenid()) && !Objects.equals(p.getPayerOpenid(), payerId))
+                || (nonblank(p.getWxAppid()) && nonblank(appId) && !Objects.equals(p.getWxAppid(), appId))) {
+            throw new IllegalArgumentException("PAY_PAYER_IDENTITY_CONFLICT");
         }
         StlPayment patch = new StlPayment();
         patch.setId(p.getId());
@@ -522,6 +550,27 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Override
     public SettlePort.PaymentReceipt paymentByOutTradeNo(String outTradeNo) {
         return receipt(byOutTradeNo(outTradeNo));
+    }
+
+    @Override
+    public Attempt ordinaryPayment(String outTradeNo) {
+        return ordinaryReceipt(byOutTradeNo(outTradeNo));
+    }
+
+    @Override
+    public Attempt successfulOrdinaryPayment(String orderNo) {
+        StlPayment payment = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getDirection, StlPayment.PAY)
+                        .eq(StlPayment::getOrderNo, orderNo).eq(StlPayment::getStatus, StlPayment.SUCCESS)
+                        .orderByDesc(StlPayment::getId).last("LIMIT 1")));
+        return ordinaryReceipt(payment);
+    }
+
+    private Attempt ordinaryReceipt(StlPayment payment) {
+        return payment == null ? null : new Attempt(payment.getPaymentNo(), payment.getOutTradeNo(),
+                payment.getOrderNo(), payment.getUserNo(), payment.getEntityNo(), payment.getPayChannel(),
+                payment.getTradeNo(), payment.getAmountMinor(), payment.getCurrency(), payment.getStatus(),
+                documents.find(DocumentType.PAYMENT_ATTEMPT, "MAIN", payment.getPaymentNo()));
     }
 
     private SettlePort.PaymentReceipt receipt(StlPayment p) {

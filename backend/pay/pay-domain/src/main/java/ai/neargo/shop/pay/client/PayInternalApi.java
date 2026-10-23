@@ -1,6 +1,9 @@
 package ai.neargo.shop.pay.client;
 
 import ai.neargo.shop.spi.trade.PricingFundingCapabilities;
+import ai.neargo.shop.spi.settle.OrdinaryPaymentPort;
+import ai.neargo.shop.spi.settle.OrdinaryRefundPort;
+import ai.neargo.shop.spi.settle.SettlePort;
 
 import ai.neargo.shop.spi.entitlement.EntitlementCapabilityPort;
 import ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews;
@@ -74,6 +77,30 @@ import org.springframework.web.service.annotation.PostExchange;
  * 在有幂等键之前，超时之后「成没成」只能由人去查。{@code @Retryable} 只允许加在 GET 方法上。
  */
 public interface PayInternalApi {
+    @PostExchange(PayInternalPaths.ORDINARY_REFUND_REQUEST)
+    OrdinaryRefundPort.Receipt ordinaryRefundRequest(@RequestBody OrdinaryRefundPort.Execution request);
+
+    @PostExchange(PayInternalPaths.ORDINARY_REFUND_QUERY)
+    OrdinaryRefundPort.Receipt ordinaryRefundQuery(@RequestBody OrdinaryRefundPort.Execution request);
+
+    @PostExchange(PayInternalPaths.ORDINARY_PAYMENT_INITIATE)
+    SettlePort.PayInitResult ordinaryPaymentInitiate(@RequestBody PayOrdinaryPaymentRequests.Initiate request);
+
+    @PostExchange(PayInternalPaths.ORDINARY_PAYMENT_OPEN)
+    OrdinaryPaymentPort.Attempt ordinaryPaymentOpen(@RequestBody SettlePort.PaymentOpen request);
+
+    @PostExchange(PayInternalPaths.ORDINARY_PAYMENT_QUERY)
+    OrdinaryPaymentPort.Lookup ordinaryPaymentQuery(@RequestBody OrdinaryPaymentPort.Reference request);
+
+    @PostExchange(PayInternalPaths.ORDINARY_PAYMENT_REFRESH)
+    OrdinaryPaymentPort.Lookup ordinaryPaymentRefresh(@RequestBody OrdinaryPaymentPort.Reference request);
+
+    @PostExchange(PayInternalPaths.ORDINARY_PAYMENT_SUCCESS)
+    OrdinaryPaymentPort.Lookup ordinaryPaymentSuccess(@RequestBody OrdinaryPaymentPort.OrderReference request);
+
+    @PostExchange(PayInternalPaths.ORDINARY_PAYMENT_CHANNEL_QUERY)
+    OrdinaryPaymentPort.ChannelEvidence ordinaryPaymentChannelQuery(@RequestBody OrdinaryPaymentPort.Reference request);
+
     @PostExchange(PayInternalPaths.LEGACY_TEMPLATE_ARCHIVE)
     ai.neargo.shop.pay.migration.dto.LegacyCouponTemplateViews.Snapshot legacyTemplateArchive(@RequestBody PayLegacyTemplateRequests.Archive request);
     @PostExchange(PayInternalPaths.LEGACY_ISSUE_CREATE)

@@ -11,6 +11,9 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingCapabilities;
+import ai.neargo.shop.common.pricing.PricingSnapshotHash;
+import ai.neargo.shop.common.pricing.PricingRuleCatalog;
+import ai.neargo.shop.common.pricing.SystemConstraints;
 import ai.neargo.shop.spi.trade.PricingConfigEvidencePort;
 import ai.neargo.shop.spi.trade.PricingConfigEvidencePort.Scope;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
@@ -61,6 +64,16 @@ public class PricingAccessPolicy {
             PricingConfigCommands.identity(resourceNo);
         } catch (IllegalArgumentException invalid) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (template) {
+            // Global defaults are definitions, not an execution grant for any merchant or financial owner.
+            var catalog = PricingSnapshotHash.of(List.of("PRICING_TEMPLATE_DEFINITION_V1",
+                    PricingRuleCatalog.registryVersion(2), SystemConstraints.standard().rules(2),
+                    PricingRuleCatalog.registryVersion(3), SystemConstraints.standard().rules(3)));
+            long bucket = Math.floorDiv(Instant.now().getEpochSecond(), 300);
+            return new Context(identity.tenantNo(), identity.actorNo(), true, null, null,
+                    new PricingCapabilities(0, 0, false, false, false), "DEF" + catalog.substring(0, 29),
+                    Instant.ofEpochSecond((bucket + 1) * 300), Set.of());
         }
         var provider = providers.getIfUnique();
         if (provider == null) throw blocked();

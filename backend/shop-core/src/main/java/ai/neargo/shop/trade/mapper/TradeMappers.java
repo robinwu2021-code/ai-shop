@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.mapper;
 
 import ai.neargo.shop.trade.entity.OrdPricingTemplate;
+import ai.neargo.shop.trade.entity.OrdIndustryOrderSource;
 import ai.neargo.shop.trade.entity.OrdPricingFundingSource;
 import ai.neargo.shop.trade.entity.OrdPriceQuote;
 import ai.neargo.shop.trade.entity.OrdPriceQuoteLine;
@@ -31,6 +32,8 @@ public final class TradeMappers {
 
     private TradeMappers() {
     }
+
+    public interface IndustryOrderSourceMapper extends BaseMapper<OrdIndustryOrderSource> { }
 
     public interface PricingFundingSourceMapper extends BaseMapper<OrdPricingFundingSource> { }
 

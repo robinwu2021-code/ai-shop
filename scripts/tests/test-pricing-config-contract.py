@@ -64,6 +64,16 @@ class PricingConfigContractTest(unittest.TestCase):
         self.assertIn('entity owner only', operation['description'])
         self.assertEqual(operation['security'], [{'BizToken': []}])
 
+    def test_initialize_explicit_override_preserves_closed_bounded_wire_contract(self):
+        validator = Draft202012Validator(SPEC['components']['schemas']['Initialize'])
+        original = {'templateRevisionNo': 'REV', 'reason': 'Verified store settings'}
+        self.assertTrue(validator.is_valid(original))
+        self.assertTrue(validator.is_valid(dict(original, initialOverride=None)))
+        self.assertTrue(validator.is_valid(dict(original, initialOverride='{"couponLimits":{"total":0}}')))
+        for invalid in [dict(original, initialOverride={}), dict(original, initialOverride='x' * 65537),
+                        dict(original, capabilityOverride=64)]:
+            self.assertFalse(validator.is_valid(invalid))
+
     def test_requests_are_closed_and_modifying_operations_require_idempotency(self):
         for name in ['Create', 'Save', 'Preview', 'Publish', 'Initialize', 'Reset', 'Upgrade', 'Seed', 'TaxSave', 'TaxReset']:
             schema = SPEC['components']['schemas'][name]

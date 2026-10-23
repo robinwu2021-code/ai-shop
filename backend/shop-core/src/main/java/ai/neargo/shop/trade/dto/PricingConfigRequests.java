@@ -49,7 +49,8 @@ public final class PricingConfigRequests {
     }
 
     public record Initialize(@NotBlank @Size(max = 32) String templateRevisionNo,
-            @NotBlank @Size(max = 256) String reason) {
+            @NotBlank @Size(max = 256) String reason, @Size(max = 65536) String initialOverride) {
+        public Initialize(String templateRevisionNo, String reason) { this(templateRevisionNo, reason, null); }
         @JsonAnySetter
         public void unknown(String field, Object value) { rejectUnknown(); }
     }

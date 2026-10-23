@@ -11,14 +11,16 @@
 <!-- fnb_settlement -->
 <g id="node1" class="node">
 <title>fnb_settlement</title>
-<polygon fill="none" stroke="black" points="266.86,-165 266.86,-291 384.43,-291 384.43,-165 266.86,-165"/>
-<polygon fill="#dcfce7" stroke="none" points="267.86,-246 267.86,-290 383.43,-290 383.43,-246 267.86,-246"/>
-<text xml:space="preserve" text-anchor="start" x="275.86" y="-270.4" font-family="Arial" font-weight="bold" font-size="14.00">fnb_settlement</text>
-<text xml:space="preserve" text-anchor="start" x="302.31" y="-256.4" font-family="Arial" font-size="14.00">结账编排</text>
-<text xml:space="preserve" text-anchor="start" x="275.86" y="-226.4" font-family="Arial" font-size="14.00">settlement_no</text>
-<text xml:space="preserve" text-anchor="start" x="307.33" y="-216" font-family="Arial" font-size="10.00">结账号</text>
-<text xml:space="preserve" text-anchor="start" x="275.86" y="-186.4" font-family="Arial" font-size="14.00">store_no</text>
-<text xml:space="preserve" text-anchor="start" x="294.76" y="-176" font-family="Arial" font-size="10.00">门店</text>
+<polygon fill="none" stroke="black" points="266.86,-145 266.86,-311 384.43,-311 384.43,-145 266.86,-145"/>
+<polygon fill="#dcfce7" stroke="none" points="267.86,-266 267.86,-310 383.43,-310 383.43,-266 267.86,-266"/>
+<text xml:space="preserve" text-anchor="start" x="275.86" y="-290.4" font-family="Arial" font-weight="bold" font-size="14.00">fnb_settlement</text>
+<text xml:space="preserve" text-anchor="start" x="302.31" y="-276.4" font-family="Arial" font-size="14.00">结账编排</text>
+<text xml:space="preserve" text-anchor="start" x="275.86" y="-246.4" font-family="Arial" font-size="14.00">settlement_no</text>
+<text xml:space="preserve" text-anchor="start" x="307.33" y="-236" font-family="Arial" font-size="10.00">结账号</text>
+<text xml:space="preserve" text-anchor="start" x="275.86" y="-206.4" font-family="Arial" font-size="14.00">store_no</text>
+<text xml:space="preserve" text-anchor="start" x="294.76" y="-196" font-family="Arial" font-size="10.00">门店</text>
+<text xml:space="preserve" text-anchor="start" x="275.86" y="-166.4" font-family="Arial" font-size="14.00">request_key</text>
+<text xml:space="preserve" text-anchor="start" x="284.82" y="-156" font-family="Arial" font-size="10.00">稳定结账请求键</text>
 </g>
 <!-- fnb_settlement_item -->
 <g id="node2" class="node">

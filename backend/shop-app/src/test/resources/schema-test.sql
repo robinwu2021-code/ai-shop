@@ -534,8 +534,16 @@ CREATE TABLE IF NOT EXISTS ord_after_sale
     fulfill_stage  VARCHAR(16) NULL,
     restock_approved BOOLEAN NOT NULL DEFAULT FALSE,
     return_received_at BIGINT NULL,
+    source_system VARCHAR(32) NULL,
+    source_request_key CHAR(64) NULL,
+    source_request_hash CHAR(64) NULL,
+    CONSTRAINT uk_after_sale_source_request UNIQUE (source_system, source_request_key),
     PRIMARY KEY (id),
-    CONSTRAINT uk_after_sale_no UNIQUE (after_sale_no)
+    CONSTRAINT uk_after_sale_no UNIQUE (after_sale_no),
+    CONSTRAINT ck_after_sale_source_request CHECK (
+    (source_system IS NULL AND source_request_key IS NULL AND source_request_hash IS NULL)
+    OR (source_system IS NOT NULL AND source_request_key IS NOT NULL AND source_request_hash IS NOT NULL)
+)
 );
 
 CREATE TABLE IF NOT EXISTS ord_item
@@ -8942,6 +8950,47 @@ CREATE TABLE IF NOT EXISTS ord_pricing_funding_source
     CONSTRAINT ck_pricing_funding_source_amount CHECK (amount_minor >= 0),
     CONSTRAINT ck_pricing_funding_source_state CHECK ( (status = 'PENDING' AND cancel_reason IS NULL) OR (status = 'CANCELLED' AND cancel_reason IS NOT NULL)),
     CONSTRAINT ck_pricing_funding_basis_json CHECK (basis_snapshot IS NULL OR (basis_snapshot IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS ord_industry_order_source
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    buyer_no VARCHAR(32) NOT NULL,
+    actor_no VARCHAR(32) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_type VARCHAR(32) NOT NULL,
+    source_no VARCHAR(32) NOT NULL,
+    source_version BIGINT NOT NULL,
+    source_hash CHAR(64) NOT NULL,
+    source_subject_no VARCHAR(32) NULL,
+    quote_no VARCHAR(32) NOT NULL,
+    confirmation_digest CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    order_mode VARCHAR(16) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    allocations_json LONGTEXT NULL,
+    economics_hash CHAR(64) NULL,
+    payment_out_trade_no VARCHAR(64) NULL,
+    payment_channel VARCHAR(32) NULL,
+    payment_state VARCHAR(32) NULL,
+    payment_request_json LONGTEXT NULL,
+    pay_params_json LONGTEXT NULL,
+    params_expires_at BIGINT NULL,
+    next_recovery_at BIGINT NULL,
+    last_recovery_code VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NULL,
+    updated_by VARCHAR(32) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_industry_order_no UNIQUE (tenant_no, order_no),
+    CONSTRAINT uk_industry_source_version UNIQUE (tenant_no, entity_no, store_no, source_system, source_type, source_no, source_version)
 );
 
 -- 种子数据

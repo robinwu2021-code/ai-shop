@@ -1,10 +1,22 @@
 package ai.neargo.shop.food.mapper;
 
+import ai.neargo.shop.food.entity.FnbOrderBatch;
+import ai.neargo.shop.food.entity.FnbSettlement;
+import ai.neargo.shop.food.entity.FnbSettlementItem;
+import ai.neargo.shop.food.entity.FnbChargeIntent;
+import ai.neargo.shop.food.entity.FnbCoreOrderBinding;
+import ai.neargo.shop.food.entity.FnbOrderLine;
+import ai.neargo.shop.food.entity.FnbCoreLineAllocation;
+import ai.neargo.shop.food.entity.FnbOrderComponent;
+import ai.neargo.shop.food.entity.FnbOrderModifier;
 import ai.neargo.shop.food.entity.FnbStation;
 import ai.neargo.shop.food.entity.FnbCheckCart;
 import ai.neargo.shop.food.entity.FnbCheckCartItem;
 import ai.neargo.shop.food.entity.FnbSkuStation;
 import ai.neargo.shop.food.entity.FnbSalesRestriction;
+import ai.neargo.shop.food.entity.FnbSalesQuotaClaim;
+import ai.neargo.shop.food.entity.FnbReturn;
+import ai.neargo.shop.food.entity.FnbReturnItem;
 import ai.neargo.shop.food.entity.FnbActionLog;
 import ai.neargo.shop.food.entity.FnbMenu;
 import ai.neargo.shop.food.entity.FnbMenuItemOptionGroup;
@@ -55,7 +67,44 @@ public final class FoodMappers {
     private FoodMappers() {
     }
 
-    public interface CheckCartMapper extends BaseMapper<FnbCheckCart> { }
+    public interface CheckCartMapper extends BaseMapper<FnbCheckCart> {
+        @Select("SELECT COUNT(*) FROM fnb_order_batch WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND cart_no=#{cart} AND deleted=0 AND status IN "
+                + "('PREPARED','PLACING','UNKNOWN','BOUND','ACCEPTED','CANCEL_PENDING')")
+        long activePlacementCount(@Param("entity") String entity, @Param("cart") String cart);
+        @Select("SELECT COUNT(*) FROM fnb_order_batch b JOIN fnb_core_order_binding o "
+                + "ON o.tenant_no=b.tenant_no AND o.entity_no=b.entity_no AND o.batch_no=b.batch_no "
+                + "WHERE b.tenant_no='MAIN' AND b.entity_no=#{entity} AND b.store_no=#{store} "
+                + "AND b.cart_no=#{cart} AND b.buyer_no=#{buyer} AND b.deleted=0 AND o.deleted=0 "
+                + "AND b.status IN ('BOUND','ACCEPTED') AND o.status='BOUND'")
+        long submittedBuyerBindingCount(@Param("entity") String entity, @Param("store") String store,
+                @Param("cart") String cart, @Param("buyer") String buyer);
+    }
+
+    public interface SettlementMapper extends BaseMapper<FnbSettlement> {
+        @Select("SELECT COUNT(*) FROM fnb_return WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND batch_no=#{batch} AND deleted=0 AND status NOT IN ('REJECTED','CANCELLED') "
+                + "AND (status<>'CLOSED' OR financial_status IS NULL OR financial_status<>'NONE')")
+        long localReturnCount(@Param("entity") String entity, @Param("batch") String batch);
+    }
+    public interface SettlementItemMapper extends BaseMapper<FnbSettlementItem> {
+        @Select("SELECT COUNT(*) FROM fnb_settlement_item i JOIN fnb_settlement s ON s.tenant_no=i.tenant_no "
+                + "AND s.entity_no=i.entity_no AND s.settlement_no=i.settlement_no WHERE i.tenant_no='MAIN' "
+                + "AND i.entity_no=#{entity} AND s.store_no=#{store} AND i.payment_root_no=#{root} "
+                + "AND i.scope_key=#{scope} AND i.deleted=0 AND s.deleted=0 "
+                + "AND s.status IN ('FROZEN','COLLECTING','SETTLED')")
+        long activeFullScopeCount(@Param("entity") String entity, @Param("store") String store,
+                @Param("root") String root, @Param("scope") String scope);
+    }
+    public interface ChargeIntentMapper extends BaseMapper<FnbChargeIntent> { }
+
+    public interface OrderBatchMapper extends BaseMapper<FnbOrderBatch> { }
+    public interface CoreOrderBindingMapper extends BaseMapper<FnbCoreOrderBinding> { }
+    public interface OrderLineMapper extends BaseMapper<FnbOrderLine> { }
+    public interface CoreLineAllocationMapper extends BaseMapper<FnbCoreLineAllocation> { }
+    public interface OrderComponentMapper extends BaseMapper<FnbOrderComponent> { }
+    public interface OrderModifierMapper extends BaseMapper<FnbOrderModifier> { }
+
     public interface CheckCartItemMapper extends BaseMapper<FnbCheckCartItem> {
         @Select("SELECT * FROM fnb_check_cart_item WHERE entity_no=#{entity} AND cart_no=#{cart} "
                 + "AND source_line_ref=#{source} FOR UPDATE")
@@ -292,4 +341,7 @@ public final class FoodMappers {
     }
 
     public interface SalesRestrictionMapper extends BaseMapper<FnbSalesRestriction> { }
+    public interface SalesQuotaClaimMapper extends BaseMapper<FnbSalesQuotaClaim> { }
+    public interface ReturnMapper extends BaseMapper<FnbReturn> { }
+    public interface ReturnItemMapper extends BaseMapper<FnbReturnItem> { }
 }

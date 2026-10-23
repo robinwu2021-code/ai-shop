@@ -11,6 +11,8 @@ import ai.neargo.shop.inventory.service.InboundService;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.ReservationService;
+import ai.neargo.shop.inventory.service.OriginalReservationRestoreService;
+import ai.neargo.shop.inventory.service.ReturnReceiptService;
 import ai.neargo.shop.inventory.support.InvEnums;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.support.DatabaseThreadBarrier;
@@ -46,6 +48,8 @@ class InventoryOriginalRestoreFlowTest {
     @Autowired private ReservationService reservations;
     @Autowired private BalanceMapper balances;
     @Autowired private StockPort stock;
+    @Autowired private OriginalReservationRestoreService restores;
+    @Autowired private ReturnReceiptService receipts;
     @Autowired @Qualifier("invDataSource") private DataSource inventory;
 
     @Test
@@ -68,6 +72,69 @@ class InventoryOriginalRestoreFlowTest {
         assertThat(new JdbcTemplate(inventory).queryForObject(
                 "select sum(qty) from inv_refund_restore where purpose_no in (?,?)", Long.class,
                 "A-" + f.ref(), "B-" + f.ref())).isEqualTo(2L);
+    }
+
+    @Test
+    void concurrentReceiptAndRefundRestoreCannotBothConsumeOriginalCapacity() throws Exception {
+        Fixture f = fixture(3, 2);
+        AtomicReference<Thread> receiptThread = new AtomicReference<>();
+        AtomicReference<Thread> restoreThread = new AtomicReference<>();
+        CompletableFuture<Boolean> receipt;
+        CompletableFuture<Boolean> restore;
+        try (var connection = inventory.getConnection()) {
+            connection.setAutoCommit(false);
+            try (var statement = connection.prepareStatement("select id from inv_stock_balance"
+                    + " where owner_id=? and item_id=? and location_id=? for update")) {
+                statement.setString(1, f.owner());
+                statement.setString(2, f.item());
+                statement.setString(3, f.location());
+                try (var rows = statement.executeQuery()) {
+                    assertThat(rows.next()).isTrue();
+                }
+            }
+            receipt = CompletableFuture.supplyAsync(() -> {
+                receiptThread.set(Thread.currentThread());
+                try {
+                    receipts.receive("RR-" + f.ref(), "AS-" + f.ref(), f.ref(), "SUB-" + f.ref(),
+                            List.of(new ReturnReceiptService.Line(f.item(), 2,
+                                    ReturnReceiptService.Quality.SALEABLE)), "TEST");
+                    return true;
+                } catch (IllegalStateException conflict) {
+                    assertThat(conflict).hasMessage("RETURN_RECEIPT_QUANTITY_OR_IDEMPOTENCY_CONFLICT");
+                    return false;
+                }
+            });
+            restore = CompletableFuture.supplyAsync(() -> {
+                restoreThread.set(Thread.currentThread());
+                try {
+                    restores.restore("RF-" + f.ref(), f.ref(),
+                            List.of(new OriginalReservationRestoreService.ItemQty(f.item(), 2)));
+                    return true;
+                } catch (IllegalStateException conflict) {
+                    assertThat(conflict).hasMessage("STOCK_RESTORE_PURPOSE_OR_QUANTITY_CONFLICT");
+                    return false;
+                }
+            });
+            try {
+                await().during(Duration.ofMillis(200)).atMost(Duration.ofSeconds(10)).until(() ->
+                        DatabaseThreadBarrier.originalRestore(receiptThread.get())
+                                && DatabaseThreadBarrier.originalRestore(restoreThread.get())
+                                && (DatabaseThreadBarrier.posting(receiptThread.get())
+                                || DatabaseThreadBarrier.posting(restoreThread.get())));
+                connection.commit();
+            } finally {
+                connection.rollback();
+            }
+        }
+        assertThat(List.of(receipt.get(15, TimeUnit.SECONDS), restore.get(15, TimeUnit.SECONDS)))
+                .containsExactlyInAnyOrder(true, false);
+        assertThat(onHand(f, f.location())).isEqualTo(9);
+        JdbcTemplate jdbc = new JdbcTemplate(inventory);
+        Long restored = jdbc.queryForObject("select coalesce(sum(qty), 0) from inv_refund_restore"
+                + " where purpose_no=?", Long.class, "RF-" + f.ref());
+        Long received = jdbc.queryForObject("select coalesce(sum(qty), 0) from inv_return_receipt"
+                + " where receipt_no=?", Long.class, "RR-" + f.ref());
+        assertThat(restored + received).isEqualTo(2L);
     }
 
     private List<Boolean> concurrent(Fixture f, String first, String second) throws Exception {
@@ -150,6 +217,10 @@ class InventoryOriginalRestoreFlowTest {
     }
 
     private Fixture fixture(int committed) {
+        return fixture(committed, 1);
+    }
+
+    private Fixture fixture(int committed, int lifecycleVersion) {
         String ref = UUID.randomUUID().toString();
         String entity = "E-" + ref;
         String sku = "SKU-" + ref;
@@ -159,8 +230,14 @@ class InventoryOriginalRestoreFlowTest {
         inbound.postDirectly(new InboundService.Draft(owner, location, InvEnums.InboundSource.PURCHASE,
                 null, null, "supplier", LocalDateTime.now(), null,
                 List.of(new InboundService.Line(item, 10, "BAG", 4200L))), "TEST");
-        reservations.reserve(owner, ref, List.of(new ReservationService.Line(item, location, committed)), 900);
-        reservations.commit(owner, ref, "TEST");
+        reservations.reserve(owner, ref,
+                List.of(new ReservationService.Line(item, location, committed, "SUB-" + ref)), 900, lifecycleVersion);
+        if (lifecycleVersion == 2) {
+            reservations.allocatePaidByRef(ref);
+            reservations.issueByFulfillmentRef("SUB-" + ref, "TEST");
+        } else {
+            reservations.commit(owner, ref, "TEST");
+        }
         Fixture f = new Fixture(ref, sku, owner, item, location);
         assertThat(onHand(f, location)).isEqualTo(10 - committed);
         return f;

@@ -24,6 +24,8 @@ public class RefundableQuery {
         return factory.build(sub, items(sub), source.payChannel(sub.getOrderNo()));
     }
 
+    public List<OrdItem> lockItems(OrdSubOrder sub) { return source.lockItems(sub.getSubOrderNo()); }
+
     public List<OrdItem> items(OrdSubOrder sub) {
         return source.items(sub.getSubOrderNo());
     }

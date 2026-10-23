@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Shared pricing configuration API",
-    "version": "1.1.0",
-    "description": "Shared pricing configuration and merchant-managed tax APIs. Platform defaults and merchant overrides take effect without approval. Publication still requires real funding capability evidence. Calculation ports are backend-only; no client tax-rate override."
+    "version": "1.2.0",
+    "description": "Shared pricing configuration and merchant-managed tax APIs. Global template publication validates definitions and the deployed rule registry; merchant initialization/publication/runtime still require actual owner capability and tax evidence. Platform defaults and merchant overrides take effect without approval. Calculation ports are backend-only; no client tax-rate override."
   },
   "paths": {
     "/ops/pricing-templates": {
@@ -2068,6 +2068,14 @@
             "type": "string",
             "maxLength": 256,
             "minLength": 1
+          },
+          "initialOverride": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 65536,
+            "description": "Optional JSON override string applied explicitly during first store initialization. Fully compiled against actual owner capabilities and tax; no automatic lowering of template defaults."
           }
         },
         "required": [

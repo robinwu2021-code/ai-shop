@@ -20,7 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Objects;
 
 /** 预留协议实现。 */
 @ConditionalOnInventory
@@ -72,19 +76,29 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public String reserve(String ownerId, String externalRef, List<Line> lines, long ttlSeconds, int lifecycleVersion) {
-        if (lifecycleVersion != 1 && lifecycleVersion != 2) throw BizException.of(ErrorCode.BAD_REQUEST);
+        if (lifecycleVersion != 1 && lifecycleVersion != 2 && lifecycleVersion != 3) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (ownerId == null || ownerId.isBlank() || externalRef == null || externalRef.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         InvReservation exists = find(ownerId, externalRef);
         if (exists != null) {
             if (InvEnums.ReservationStatus.RELEASED.equals(exists.getStatus())
                     || InvEnums.ReservationStatus.EXPIRED.equals(exists.getStatus())) {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
-            // 幂等：重试拿回原结果。**不再占一份** —— 占了的话第二份没人释放
+            Map<LineKey, Integer> original = normalize(linesOf(exists.getReservationId()).stream()
+                    .map(row -> new Line(row.getItemId(), row.getLocationId(), row.getQty(),
+                            row.getFulfillmentRef())).toList(), ErrorCode.CONFLICT);
+            if (lifecycle(exists) != lifecycleVersion || !original.equals(normalize(lines, ErrorCode.CONFLICT))) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
             return exists.getReservationId();
         }
-        if (lines == null || lines.isEmpty()) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
+        Map<LineKey, Integer> normalized = normalize(lines, ErrorCode.BAD_REQUEST);
+        lines = normalized.entrySet().stream().map(entry -> new Line(entry.getKey().itemId(),
+                entry.getKey().locationId(), entry.getValue(), entry.getKey().fulfillmentRef())).toList();
         /*
          * 超过上限**直接拒**，不是悄悄改成上限值。
          *
@@ -143,9 +157,102 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
+    @Transactional(transactionManager = "invTransactionManager", readOnly = true)
+    public Optional<Snapshot> query(String ownerId, String externalRef) {
+        InvReservation head = resMapper.selectOne(Wrappers.<InvReservation>lambdaQuery()
+                .eq(InvReservation::getOwnerId, ownerId).eq(InvReservation::getExternalRef, externalRef));
+        if (head == null) return Optional.empty();
+        Status status = InvEnums.ReservationStatus.PARTIALLY_COMMITTED.equals(head.getStatus())
+                ? Status.PARTIALLY_COMMITTED : Status.valueOf(head.getStatus());
+        List<Line> original = linesOf(head.getReservationId()).stream()
+                .map(row -> new Line(row.getItemId(), row.getLocationId(), row.getQty(), row.getFulfillmentRef()))
+                .toList();
+        return Optional.of(new Snapshot(head.getReservationId(), status, lifecycle(head),
+                head.getCommittedAt() != null, original));
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public void acceptUnpaid(String ownerId, String externalRef) {
+        InvReservation head = find(ownerId, externalRef);
+        if (head == null || lifecycle(head) != 3 || InvEnums.ReservationStatus.RELEASED.equals(head.getStatus())
+                || InvEnums.ReservationStatus.EXPIRED.equals(head.getStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        if (InvEnums.ReservationStatus.HELD.equals(head.getStatus())) {
+            head.setStatus(InvEnums.ReservationStatus.ACCEPTED_UNPAID);
+            head.setUpdatedBy("ACCEPT_UNPAID");
+            resMapper.updateById(head);
+        }
+    }
+
+    private void acknowledgePostpaidPayment(InvReservation head) {
+        if (InvEnums.ReservationStatus.RELEASED.equals(head.getStatus())
+                || InvEnums.ReservationStatus.EXPIRED.equals(head.getStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        if (head.getCommittedAt() == null) {
+            // For credit orders this existing timestamp records payment, never physical issue or acceptance.
+            head.setCommittedAt(LocalDateTime.now());
+            setPostpaidProgress(head, linesOf(head.getReservationId()));
+            head.setUpdatedBy("PAYMENT");
+            resMapper.updateById(head);
+        }
+    }
+
+    private void setPostpaidProgress(InvReservation head, List<InvReservationLine> all) {
+        boolean settled = all.stream().allMatch(row -> nz(row.getIssuedQty()) + nz(row.getReleasedQty())
+                >= row.getQty());
+        boolean issued = all.stream().anyMatch(row -> nz(row.getIssuedQty()) > 0);
+        boolean released = all.stream().anyMatch(row -> nz(row.getReleasedQty()) > 0);
+        boolean paid = head.getCommittedAt() != null;
+        if (settled) {
+            head.setStatus(issued && released ? "PARTIAL_RELEASED" : issued
+                    ? paid ? InvEnums.ReservationStatus.COMMITTED : InvEnums.ReservationStatus.ISSUED_UNPAID
+                    : InvEnums.ReservationStatus.RELEASED);
+        } else if (issued) {
+            head.setStatus(paid ? InvEnums.ReservationStatus.PARTIALLY_COMMITTED
+                    : InvEnums.ReservationStatus.PARTIAL_UNPAID);
+        } else if (paid) {
+            head.setStatus(InvEnums.ReservationStatus.ALLOCATED);
+        } else if (!InvEnums.ReservationStatus.HELD.equals(head.getStatus())) {
+            head.setStatus(InvEnums.ReservationStatus.ACCEPTED_UNPAID);
+        }
+    }
+
+    private static int lifecycle(InvReservation head) {
+        // Rows created before lifecycle versioning are the original payment-deduct protocol.
+        return head.getLifecycleVersion() == null ? 1 : head.getLifecycleVersion();
+    }
+
+    private static Map<LineKey, Integer> normalize(List<Line> lines, ErrorCode error) {
+        if (lines == null || lines.isEmpty()) throw BizException.of(error);
+        Map<LineKey, Integer> result = new LinkedHashMap<>();
+        for (Line line : lines) {
+            if (line == null || line.itemId() == null || line.itemId().isBlank()
+                    || line.locationId() == null || line.locationId().isBlank() || line.qty() <= 0) {
+                throw BizException.of(error);
+            }
+            try {
+                result.merge(new LineKey(line.itemId(), line.locationId(), line.fulfillmentRef()),
+                        line.qty(), Math::addExact);
+            } catch (ArithmeticException overflow) {
+                throw BizException.of(error);
+            }
+        }
+        return result;
+    }
+
+    private record LineKey(String itemId, String locationId, String fulfillmentRef) { }
+
+    @Override
     @Transactional(transactionManager = "invTransactionManager")
     public String commit(String ownerId, String externalRef, String operator) {
         InvReservation head = require(ownerId, externalRef);
+        if (lifecycle(head) == 3) {
+            acknowledgePostpaidPayment(head);
+            return head.getOutboundNo();
+        }
         if (InvEnums.ReservationStatus.COMMITTED.equals(head.getStatus())) {
             return head.getOutboundNo();   // 幂等：重复 commit 返回原出库单
         }
@@ -181,6 +288,10 @@ public class ReservationServiceImpl implements ReservationService {
     @Transactional(transactionManager = "invTransactionManager")
     public void allocatePaidByRef(String externalRef) {
         for (InvReservation head : allByRef(externalRef)) {
+            if (lifecycle(head) == 3) {
+                acknowledgePostpaidPayment(head);
+                continue;
+            }
             if (Integer.valueOf(2).equals(head.getLifecycleVersion())
                     && InvEnums.ReservationStatus.HELD.equals(head.getStatus())) {
                 head.setStatus(InvEnums.ReservationStatus.ALLOCATED);
@@ -195,11 +306,51 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional(transactionManager = "invTransactionManager")
+    public void allocatePaid(String ownerId, String externalRef) {
+        InvReservation head = require(ownerId, externalRef);
+        if (lifecycle(head) == 3) {
+            acknowledgePostpaidPayment(head);
+        } else if (lifecycle(head) == 2) {
+            if (InvEnums.ReservationStatus.HELD.equals(head.getStatus())) {
+                head.setStatus(InvEnums.ReservationStatus.ALLOCATED);
+                head.setCommittedAt(LocalDateTime.now());
+                head.setExpiresAt(LocalDateTime.now());
+                head.setUpdatedBy("PAYMENT");
+                resMapper.updateById(head);
+            } else if (!List.of(InvEnums.ReservationStatus.ALLOCATED,
+                    InvEnums.ReservationStatus.PARTIALLY_COMMITTED, InvEnums.ReservationStatus.COMMITTED,
+                    "PARTIAL_RELEASED").contains(head.getStatus())) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+        } else {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String issue(String ownerId, String externalRef, String fulfillmentRef, String operator) {
+        if (fulfillmentRef == null || fulfillmentRef.isBlank()) throw BizException.of(ErrorCode.BAD_REQUEST);
+        InvReservation head = require(ownerId, externalRef);
+        List<InvReservationLine> matching = lineMapper.selectList(Wrappers.<InvReservationLine>lambdaQuery()
+                .eq(InvReservationLine::getReservationId, head.getReservationId())
+                .eq(InvReservationLine::getOwnerId, ownerId)
+                .eq(InvReservationLine::getFulfillmentRef, fulfillmentRef)
+                .orderByAsc(InvReservationLine::getLineNo).last("FOR UPDATE"));
+        return issueMatching(matching, operator);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
     public String issueByFulfillmentRef(String fulfillmentRef, String operator) {
         if (fulfillmentRef == null || fulfillmentRef.isBlank()) throw BizException.of(ErrorCode.BAD_REQUEST);
         List<InvReservationLine> matching = lineMapper.selectList(Wrappers.<InvReservationLine>lambdaQuery()
                 .eq(InvReservationLine::getFulfillmentRef, fulfillmentRef).orderByAsc(InvReservationLine::getReservationId)
                 .orderByAsc(InvReservationLine::getLineNo).last("FOR UPDATE"));
+        return issueMatching(matching, operator);
+    }
+
+    private String issueMatching(List<InvReservationLine> matching, String operator) {
         String firstOutbound = matching.stream().map(InvReservationLine::getOutboundNo).filter(java.util.Objects::nonNull)
                 .findFirst().orElse(null);
         for (InvReservationLine line : matching) {
@@ -209,13 +360,15 @@ public class ReservationServiceImpl implements ReservationService {
             InvReservation head = resMapper.selectOne(Wrappers.<InvReservation>lambdaQuery()
                     .eq(InvReservation::getReservationId, line.getReservationId()).last("FOR UPDATE"));
             if (head == null || !(InvEnums.ReservationStatus.ALLOCATED.equals(head.getStatus())
-                    || InvEnums.ReservationStatus.PARTIALLY_COMMITTED.equals(head.getStatus()))) continue;
+                    || InvEnums.ReservationStatus.PARTIALLY_COMMITTED.equals(head.getStatus())
+                    || lifecycle(head) == 3 && (InvEnums.ReservationStatus.ACCEPTED_UNPAID.equals(head.getStatus())
+                    || InvEnums.ReservationStatus.PARTIAL_UNPAID.equals(head.getStatus())))) continue;
             int remaining = line.getQty() - issuedQty - releasedQty;
             balanceMapper.unhold(head.getOwnerId(), line.getItemId(), line.getLocationId(), remaining);
             String outboundNo = outbound.postDirectly(new OutboundService.Draft(head.getOwnerId(), line.getLocationId(),
                     InvEnums.OutboundPurpose.SALE, head.getExternalRef(), head.getReservationId(), null,
                     LocalDateTime.now(), null, List.of(new OutboundService.Line(line.getItemId(), remaining, null))), operator);
-            line.setIssuedQty(line.getQty());
+            line.setIssuedQty(issuedQty + remaining);
             line.setOutboundNo(outboundNo);
             line.setIssuedAt(LocalDateTime.now());
             line.setUpdatedBy(operator);
@@ -228,6 +381,7 @@ public class ReservationServiceImpl implements ReservationService {
             head.setStatus(done ? hasReleased && hasIssued ? "PARTIAL_RELEASED"
                     : hasIssued ? InvEnums.ReservationStatus.COMMITTED : InvEnums.ReservationStatus.RELEASED
                     : hasIssued ? InvEnums.ReservationStatus.PARTIALLY_COMMITTED : InvEnums.ReservationStatus.ALLOCATED);
+            if (lifecycle(head) == 3) setPostpaidProgress(head, all);
             if (head.getOutboundNo() == null) head.setOutboundNo(outboundNo);
             resMapper.updateById(head);
         }
@@ -257,9 +411,68 @@ public class ReservationServiceImpl implements ReservationService {
         }
     }
 
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public void releaseAllocatedTo(String ownerId, String externalRef, String fulfillmentRef, List<ReleaseTarget> targets) {
+        if (ownerId == null || externalRef == null || fulfillmentRef == null || targets == null || targets.isEmpty())
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        InvReservation head = require(ownerId, externalRef);
+        if (lifecycle(head) < 2 || !Objects.equals(ownerId, head.getOwnerId())
+                || !Objects.equals(externalRef, head.getExternalRef())) throw BizException.of(ErrorCode.CONFLICT);
+        List<InvReservationLine> original = lineMapper.selectList(Wrappers.<InvReservationLine>lambdaQuery()
+                .eq(InvReservationLine::getReservationId, head.getReservationId())
+                .eq(InvReservationLine::getFulfillmentRef, fulfillmentRef)
+                .orderByAsc(InvReservationLine::getLineNo).last("FOR UPDATE"));
+        if (original.stream().anyMatch(line -> !Objects.equals(line.getReservationId(), head.getReservationId())
+                || !Objects.equals(line.getOwnerId(), ownerId)
+                || !Objects.equals(line.getFulfillmentRef(), fulfillmentRef))) throw BizException.of(ErrorCode.CONFLICT);
+        Map<String, Integer> wanted = new LinkedHashMap<>();
+        for (ReleaseTarget target : targets) {
+            if (target.itemId() == null || target.itemId().isBlank() || target.cumulativeQty() <= 0)
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            wanted.merge(target.itemId(), target.cumulativeQty(), Math::addExact);
+        }
+        for (var target : wanted.entrySet()) {
+            var rows = original.stream().filter(line -> target.getKey().equals(line.getItemId())).toList();
+            int cap = rows.stream().mapToInt(line -> line.getQty() - nz(line.getIssuedQty())).sum();
+            int released = rows.stream().mapToInt(line -> nz(line.getReleasedQty())).sum();
+            if (rows.isEmpty() || target.getValue() > cap || released > cap) throw BizException.of(ErrorCode.CONFLICT);
+            int delta = Math.max(0, target.getValue() - released);
+            if (delta > 0 && !(InvEnums.ReservationStatus.ALLOCATED.equals(head.getStatus())
+                    || InvEnums.ReservationStatus.PARTIALLY_COMMITTED.equals(head.getStatus())
+                    || lifecycle(head) == 3 && (InvEnums.ReservationStatus.ACCEPTED_UNPAID.equals(head.getStatus())
+                            || InvEnums.ReservationStatus.PARTIAL_UNPAID.equals(head.getStatus()))))
+                throw BizException.of(ErrorCode.CONFLICT);
+            for (var line : rows) {
+                int quantity = Math.min(delta, line.getQty() - nz(line.getIssuedQty()) - nz(line.getReleasedQty()));
+                if (quantity > 0) {
+                    if (balanceMapper.unhold(head.getOwnerId(), line.getItemId(), line.getLocationId(), quantity) != 1)
+                        throw BizException.of(ErrorCode.CONFLICT);
+                    line.setReleasedQty(nz(line.getReleasedQty()) + quantity);
+                    line.setUpdatedBy("REFUND");
+                    if (lineMapper.updateById(line) != 1) throw BizException.of(ErrorCode.CONFLICT);
+                    delta -= quantity;
+                }
+            }
+            if (delta != 0) throw BizException.of(ErrorCode.CONFLICT);
+        }
+        var all = linesOf(head.getReservationId());
+        boolean settled = all.stream().allMatch(line -> nz(line.getIssuedQty()) + nz(line.getReleasedQty()) == line.getQty());
+        boolean issued = all.stream().anyMatch(line -> nz(line.getIssuedQty()) > 0);
+        boolean released = all.stream().anyMatch(line -> nz(line.getReleasedQty()) > 0);
+        if (lifecycle(head) == 3) setPostpaidProgress(head, all);
+        else head.setStatus(settled ? issued && released ? "PARTIAL_RELEASED" : issued ? InvEnums.ReservationStatus.COMMITTED
+                : InvEnums.ReservationStatus.RELEASED : issued ? InvEnums.ReservationStatus.PARTIALLY_COMMITTED : InvEnums.ReservationStatus.ALLOCATED);
+        head.setReleasedAt(LocalDateTime.now()); head.setUpdatedBy("REFUND");
+        if (resMapper.updateById(head) != 1) throw BizException.of(ErrorCode.CONFLICT);
+    }
+
     private void releaseAllocatedLines(InvReservation head, List<InvReservationLine> requested) {
         if (!(InvEnums.ReservationStatus.ALLOCATED.equals(head.getStatus())
-                || InvEnums.ReservationStatus.PARTIALLY_COMMITTED.equals(head.getStatus()))) return;
+                || InvEnums.ReservationStatus.PARTIALLY_COMMITTED.equals(head.getStatus())
+                || lifecycle(head) == 3 && (InvEnums.ReservationStatus.HELD.equals(head.getStatus())
+                || InvEnums.ReservationStatus.ACCEPTED_UNPAID.equals(head.getStatus())
+                || InvEnums.ReservationStatus.PARTIAL_UNPAID.equals(head.getStatus())))) return;
         for (InvReservationLine line : requested) {
             int issued = nz(line.getIssuedQty());
             int released = nz(line.getReleasedQty());
@@ -275,9 +488,13 @@ public class ReservationServiceImpl implements ReservationService {
         boolean settled = all.stream().allMatch(row -> nz(row.getIssuedQty()) + nz(row.getReleasedQty()) >= row.getQty());
         boolean hasIssued = all.stream().anyMatch(row -> nz(row.getIssuedQty()) > 0);
         boolean hasReleased = all.stream().anyMatch(row -> nz(row.getReleasedQty()) > 0);
-        head.setStatus(settled ? hasIssued && hasReleased ? "PARTIAL_RELEASED"
-                : hasIssued ? InvEnums.ReservationStatus.COMMITTED : InvEnums.ReservationStatus.RELEASED
-                : hasIssued ? InvEnums.ReservationStatus.PARTIALLY_COMMITTED : InvEnums.ReservationStatus.ALLOCATED);
+        if (lifecycle(head) == 3) {
+            setPostpaidProgress(head, all);
+        } else {
+            head.setStatus(settled ? hasIssued && hasReleased ? "PARTIAL_RELEASED"
+                    : hasIssued ? InvEnums.ReservationStatus.COMMITTED : InvEnums.ReservationStatus.RELEASED
+                    : hasIssued ? InvEnums.ReservationStatus.PARTIALLY_COMMITTED : InvEnums.ReservationStatus.ALLOCATED);
+        }
         head.setReleasedAt(LocalDateTime.now());
         head.setUpdatedBy("REFUND");
         resMapper.updateById(head);
@@ -289,6 +506,10 @@ public class ReservationServiceImpl implements ReservationService {
     @Transactional(transactionManager = "invTransactionManager")
     public void release(String ownerId, String externalRef) {
         InvReservation head = find(ownerId, externalRef);
+        if (head != null && lifecycle(head) == 3) {
+            releaseAllocatedLines(head, linesOf(head.getReservationId()));
+            return;
+        }
         // 只作用于 HELD：重复释放不会把预留减两次（超时任务与用户取消会撞车）
         if (head == null || !InvEnums.ReservationStatus.HELD.equals(head.getStatus())) {
             return;
@@ -309,7 +530,7 @@ public class ReservationServiceImpl implements ReservationService {
     public void cancelByRef(String ownerId, String externalRef) {
         InvReservation head = find(ownerId, externalRef);
         if (head != null) {
-            if (InvEnums.ReservationStatus.COMMITTED.equals(head.getStatus())) {
+            if (lifecycle(head) != 3 && InvEnums.ReservationStatus.COMMITTED.equals(head.getStatus())) {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
             release(ownerId, externalRef);
@@ -389,7 +610,16 @@ public class ReservationServiceImpl implements ReservationService {
     private void unholdAll(InvReservation head, String toStatus) {
         if (!InvEnums.ReservationStatus.HELD.equals(head.getStatus())) return;
         for (InvReservationLine r : linesOf(head.getReservationId())) {
-            balanceMapper.unhold(head.getOwnerId(), r.getItemId(), r.getLocationId(), r.getQty());
+            int remaining = lifecycle(head) == 3 ? r.getQty() - nz(r.getIssuedQty()) - nz(r.getReleasedQty())
+                    : r.getQty();
+            if (remaining > 0) {
+                balanceMapper.unhold(head.getOwnerId(), r.getItemId(), r.getLocationId(), remaining);
+                if (lifecycle(head) == 3) {
+                    r.setReleasedQty(nz(r.getReleasedQty()) + remaining);
+                    r.setUpdatedBy(toStatus);
+                    lineMapper.updateById(r);
+                }
+            }
         }
         head.setStatus(toStatus);
         head.setReleasedAt(LocalDateTime.now());

@@ -1,6 +1,7 @@
 package ai.neargo.shop.pay.service;
 
 import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.settle.OrdinaryPaymentPort.Attempt;
 
 /**
  * 收款流水（{@code stl_payment}）—— <b>「这笔钱进没进来」的权威记录</b>。
@@ -43,6 +44,11 @@ public interface PaymentLedgerService {
      *         <b>调用方要拿它去向通道下单</b>，而不是用自己传进来的那个
      */
     String open(SettlePort.PaymentOpen cmd);
+
+    /** Full ordinary PAY coordinates, without synthesizing historical money or ownership. */
+    Attempt ordinaryPayment(String outTradeNo);
+
+    Attempt successfulOrdinaryPayment(String orderNo);
 
     /** 原支付指令快照；缺失时不从当前商家配置合成。 */
     default java.util.Optional<SettlePort.PaymentOpen> paymentRequest(String outTradeNo) {
@@ -230,6 +236,9 @@ public interface PaymentLedgerService {
      *                非微信通道没有这个概念，传 null，那时只记 payerId
      */
     void recordPayer(String outTradeNo, String payerId, String appId);
+
+    /** Freeze the exact payer before sending; conflicting retries cannot change or close the intent. */
+    void freezePayer(String outTradeNo, String userNo, String payerId, String appId);
 
     /**
      * 按<b>退款商户单号</b>确认到账。{@link #markRefundSettled} 的另一个入口 ——

@@ -20,6 +20,19 @@ import ai.neargo.shop.food.foodclient.FoodClientConfiguration;
 import ai.neargo.shop.food.service.DiningPricingFactsService;
 import ai.neargo.shop.food.port.FoodPricingSourceFactsPortImpl;
 import ai.neargo.shop.food.service.CheckCartService;
+import ai.neargo.shop.food.service.DiningPricingService;
+import ai.neargo.shop.food.service.DiningOrderService;
+import ai.neargo.shop.food.service.DiningReturnService;
+import ai.neargo.shop.food.service.DiningCheckoutService;
+import ai.neargo.shop.food.job.DiningTransactionRecoveryJob;
+import ai.neargo.shop.food.api.biz.BizSettlementController;
+import ai.neargo.shop.food.api.mp.MpSettlementController;
+import ai.neargo.shop.food.api.biz.BizDiningReturnController;
+import ai.neargo.shop.food.api.mp.MpDiningReturnController;
+import ai.neargo.shop.food.api.biz.BizOrderBatchController;
+import ai.neargo.shop.food.api.mp.MpOrderBatchController;
+import ai.neargo.shop.food.api.biz.BizDiningPricingController;
+import ai.neargo.shop.food.api.mp.MpDiningPricingController;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.OptionGroupService;
@@ -64,10 +77,80 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /** 餐饮模块装配入口。 */
 @AutoConfiguration(afterName = "ai.neargo.shop.food.config.FoodAutoConfiguration")
-@Import(FoodClientConfiguration.class)
+@Import({FoodClientConfiguration.class, DiningTransactionRecoveryJob.class})
 @ConditionalOnFoodWebEnabled
 @Profile({"api", "ops"})
 public class FoodWebAutoConfiguration {
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({DiningCheckoutService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizSettlementController.class)
+    BizSettlementController diningCheckoutController(DiningCheckoutService service, StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizSettlementController(service, stores, scope); }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean(DiningCheckoutService.class)
+    @ConditionalOnMissingBean(MpSettlementController.class)
+    MpSettlementController mpDiningCheckoutController(DiningCheckoutService service) {
+        return new MpSettlementController(service);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({DiningReturnService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizDiningReturnController.class)
+    BizDiningReturnController diningReturnController(DiningReturnService service, StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizDiningReturnController(service, stores, scope); }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean(DiningReturnService.class)
+    @ConditionalOnMissingBean(MpDiningReturnController.class)
+    MpDiningReturnController mpDiningReturnController(DiningReturnService service) {
+        return new MpDiningReturnController(service);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({DiningOrderService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizOrderBatchController.class)
+    BizOrderBatchController orderBatchController(DiningOrderService service, StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizOrderBatchController(service, stores, scope); }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean(DiningOrderService.class)
+    @ConditionalOnMissingBean(MpOrderBatchController.class)
+    MpOrderBatchController mpOrderBatchController(DiningOrderService service) {
+        return new MpOrderBatchController(service);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({DiningPricingService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizDiningPricingController.class)
+    BizDiningPricingController diningPricingController(DiningPricingService service, StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) {
+        return new BizDiningPricingController(service, stores, scope);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean(DiningPricingService.class)
+    @ConditionalOnMissingBean(MpDiningPricingController.class)
+    MpDiningPricingController mpDiningPricingController(DiningPricingService service) {
+        return new MpDiningPricingController(service);
+    }
+
     @Bean
     @Conditional(PolicyEnabled.class)
     @ConditionalOnBean(DiningPricingFactsService.class)

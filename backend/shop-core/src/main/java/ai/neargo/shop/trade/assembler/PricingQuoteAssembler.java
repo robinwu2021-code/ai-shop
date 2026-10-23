@@ -154,8 +154,16 @@ public class PricingQuoteAssembler {
             change = funding.cashTenderMinor() - funding.cashDueMinor();
             nonnegative(change);
         } else require(funding.cashDueMinor() == 0);
-        String facts = canonical(Map.of("schemaVersion", 1, "source", request.source(), "facts", request.facts(),
-                "eligibility", request.lines().stream().map(line -> line.eligibility()).toList()));
+        var factEvidence = new TreeMap<String, Object>();
+        factEvidence.put("schemaVersion", 1);
+        factEvidence.put("source", request.source());
+        factEvidence.put("facts", request.facts());
+        factEvidence.put("eligibility", request.lines().stream().map(line -> line.eligibility()).toList());
+        if (request.orchestrationHash() != null) {
+            require(request.orchestrationHash().matches("[0-9a-f]{64}"));
+            factEvidence.put("orchestrationHash", request.orchestrationHash());
+        }
+        String facts = canonical(factEvidence);
         String config = canonical(json.readTree(configSnapshot));
         String plan = canonical(Map.of("schemaVersion", 1, "intent", request.intent(),
                 "allocations", request.allocations()));
@@ -261,7 +269,22 @@ public class PricingQuoteAssembler {
                 context.storeNo(), context.subjectNo())));
     }
 
-    public String commandHash(SaveReq request) { bounds(request); return hash(canonical(request)); }
+    public String commandHash(SaveReq request) {
+        bounds(request);
+        if (request.orchestrationHash() == null) return hash(canonical(request));
+        // Server-derived remaining lifetime decreases on retry; all immutable economic inputs still bind the key.
+        var command = new TreeMap<String, Object>();
+        command.put("source", request.source()); command.put("industry", request.industry());
+        command.put("channel", request.channel()); command.put("phase", request.phase());
+        command.put("storeRevisionNo", request.storeRevisionNo());
+        command.put("templateRevisionNo", request.templateRevisionNo());
+        command.put("engineSpecVersion", request.engineSpecVersion());
+        command.put("facts", request.facts()); command.put("tax", request.tax());
+        command.put("intent", request.intent()); command.put("lines", request.lines());
+        command.put("allocations", request.allocations());
+        command.put("orchestrationHash", request.orchestrationHash());
+        return hash(canonical(command));
+    }
     public String unitRef(PricingPortion portion) { return hash(canonical(portion)); }
 
     public String canonical(Object value) { return canonicalNode(json.valueToTree(value)); }

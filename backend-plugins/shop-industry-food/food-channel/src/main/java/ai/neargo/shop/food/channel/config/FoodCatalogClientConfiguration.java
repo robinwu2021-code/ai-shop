@@ -26,7 +26,7 @@ import org.springframework.context.annotation.Lazy;
 @ConditionalOnProperty(prefix = "shop.food", name = "enabled", havingValue = "true")
 @EnableConfigurationProperties(ConfigServiceLocator.class)
 @Import({InternalHttp.class, FoodMediaClientConfiguration.class, FoodOfferClientConfiguration.class,
-        FoodStoreCardClientConfiguration.class})
+        FoodStoreCardClientConfiguration.class, FoodPricingClientConfiguration.class, FoodInventoryClientConfiguration.class, FoodAfterSaleClientConfiguration.class})
 public class FoodCatalogClientConfiguration {
     @Bean
     @Lazy

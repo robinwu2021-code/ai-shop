@@ -116,6 +116,10 @@ public final class InvEnums {
     /** 预留状态。 */
     public static final class ReservationStatus {
         public static final String HELD = "HELD";
+        /** Accepted credit order; no payment has been acknowledged. */
+        public static final String ACCEPTED_UNPAID = "ACCEPTED_UNPAID";
+        public static final String PARTIAL_UNPAID = "PARTIAL_UNPAID";
+        public static final String ISSUED_UNPAID = "ISSUED_UNPAID";
         /** Paid allocation; excluded from unpaid expiry and issued only on fulfillment handoff. */
         public static final String ALLOCATED = "ALLOCATED";
         // Reservation status is VARCHAR(16) in the deployed schema.

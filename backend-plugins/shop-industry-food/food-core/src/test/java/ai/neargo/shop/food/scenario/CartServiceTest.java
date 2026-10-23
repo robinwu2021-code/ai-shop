@@ -97,6 +97,12 @@ class CartServiceTest extends FoodWriteGuardFixture {
                     FnbSeat.class, FnbTableOccupancy.class, FnbTableArea.class, FnbTable.class)) create(f.sql(), type);
             f.sql().execute("CREATE UNIQUE INDEX ux_cart_no ON fnb_check_cart(cart_no)");
             f.sql().execute("CREATE UNIQUE INDEX ux_cart_line ON fnb_check_cart_item(cart_no,source_line_ref)");
+            // Original placement guards and historical buyer reads use these durable source/binding facts.
+            f.sql().execute("CREATE TABLE fnb_order_batch (tenant_no VARCHAR(32) DEFAULT 'MAIN',"
+                    + "entity_no VARCHAR(32),store_no VARCHAR(32),cart_no VARCHAR(32),batch_no VARCHAR(32),"
+                    + "buyer_no VARCHAR(32),status VARCHAR(24),deleted INT DEFAULT 0)");
+            f.sql().execute("CREATE TABLE fnb_core_order_binding (tenant_no VARCHAR(32) DEFAULT 'MAIN',"
+                    + "entity_no VARCHAR(32),batch_no VARCHAR(32),status VARCHAR(24),deleted INT DEFAULT 0)");
             f.sql().update("INSERT INTO fnb_check(entity_no,store_no,check_no,status,version,deleted) "
                     + "VALUES('E','A','CHECK','OPEN',0,0)");
             f.sql().update("INSERT INTO fnb_table_area(entity_no,store_no,area_no,status,version,deleted) "

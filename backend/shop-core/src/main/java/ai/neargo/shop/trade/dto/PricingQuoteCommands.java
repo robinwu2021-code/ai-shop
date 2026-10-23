@@ -39,7 +39,14 @@ public final class PricingQuoteCommands {
     public record SaveReq(PricingSourceRef source, Industry industry, String channel, Phase phase,
             String storeRevisionNo, String templateRevisionNo, String engineSpecVersion, PricingFacts facts,
             MerchantTaxSnapshot tax, Intent intent, List<Line> lines, List<Allocation> allocations,
-            int lifetimeSeconds) {
+            int lifetimeSeconds, String orchestrationHash) {
+        public SaveReq(PricingSourceRef source, Industry industry, String channel, Phase phase,
+                String storeRevisionNo, String templateRevisionNo, String engineSpecVersion, PricingFacts facts,
+                MerchantTaxSnapshot tax, Intent intent, List<Line> lines, List<Allocation> allocations,
+                int lifetimeSeconds) {
+            this(source, industry, channel, phase, storeRevisionNo, templateRevisionNo, engineSpecVersion,
+                    facts, tax, intent, lines, allocations, lifetimeSeconds, null);
+        }
         public SaveReq {
             lines = lines == null ? null : List.copyOf(lines);
             allocations = allocations == null ? null : List.copyOf(allocations);

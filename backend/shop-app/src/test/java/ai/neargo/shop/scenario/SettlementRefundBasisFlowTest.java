@@ -1,6 +1,8 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.pay.SettleService;
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.mapper.MapperFactoryBean;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,10 +40,14 @@ class SettlementRefundBasisFlowTest {
         String no = fixture().payment();
         fixture().generate(no, "OLD-ACCOUNT");
         jdbc.update("delete from stl_bill_refund_basis where sub_order_no=?", no);
-        assertThatThrownBy(() -> new TransactionTemplate(payTx).executeWithoutResult(tx -> {
-            fixture().generate(no, "NEW-ACCOUNT");
-            throw new IllegalStateException("abort");
-        })).isInstanceOf(IllegalStateException.class);
+        var numbers = context.getBean("payDocumentNumberCoordinator", DocumentNumberCoordinator.class);
+        assertThatThrownBy(() -> numbers.withReservation(Map.of(DocumentType.SETTLEMENT_BILL, 1), () -> {
+            new TransactionTemplate(payTx).executeWithoutResult(tx -> {
+                fixture().generate(no, "NEW-ACCOUNT");
+                throw new IllegalStateException("abort");
+            });
+            return null;
+        })).isInstanceOf(IllegalStateException.class).hasMessage("abort");
         assertThat(fixture().count("stl_bill_refund_basis", no)).isEqualTo(1L);
     }
 

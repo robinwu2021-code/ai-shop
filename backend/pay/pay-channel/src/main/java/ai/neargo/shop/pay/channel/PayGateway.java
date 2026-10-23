@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.channel;
 
+import java.util.Map;
+
 /**
  * 支付通道网关：一个通道一个实现（微信收付通 / 支付宝直付通）。
  *
@@ -114,14 +116,22 @@ public interface PayGateway {
      * @param message  失败原因，给人看
      */
     record PrepayResult(boolean success, java.util.Map<String, String> params,
-                        String tradeNo, String message) {
+                        String tradeNo, String message, boolean definitiveRejection) {
+        public PrepayResult(boolean success, Map<String, String> params, String tradeNo, String message) {
+            this(success, params, tradeNo, message, false);
+        }
+
+        /** Unknown acceptance after transport or malformed response; retain the original intent. */
+        public static PrepayResult unknown(String message) {
+            return new PrepayResult(false, Map.of(), null, message, false);
+        }
 
         public static PrepayResult ok(java.util.Map<String, String> params, String tradeNo) {
             return new PrepayResult(true, params, tradeNo, null);
         }
 
         public static PrepayResult fail(String message) {
-            return new PrepayResult(false, java.util.Map.of(), null, message);
+            return new PrepayResult(false, Map.of(), null, message, true);
         }
     }
 

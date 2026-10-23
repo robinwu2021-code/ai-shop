@@ -3,6 +3,16 @@ package ai.neargo.shop.food.foodclient;
 import ai.neargo.shop.food.config.ConditionalOnFoodWebEnabled;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration.PolicyEnabled;
 import ai.neargo.shop.food.service.CheckCartService;
+import ai.neargo.shop.food.service.DiningPricingService;
+import ai.neargo.shop.food.service.DiningOrderService;
+import ai.neargo.shop.food.service.DiningReturnService;
+import ai.neargo.shop.food.service.DiningCheckoutService;
+import ai.neargo.shop.food.service.DiningTransactionRecoveryService;
+import ai.neargo.shop.food.spi.DiningTransactionRecoveryInternalApi;
+import ai.neargo.shop.food.spi.DiningCheckoutInternalApi;
+import ai.neargo.shop.food.spi.DiningReturnInternalApi;
+import ai.neargo.shop.food.spi.DiningOrderInternalApi;
+import ai.neargo.shop.food.spi.DiningPricingInternalApi;
 import ai.neargo.shop.food.service.DiningPricingFactsService;
 import ai.neargo.shop.food.spi.PricingSourceInternalApi;
 import ai.neargo.shop.food.service.CheckService;
@@ -59,6 +69,37 @@ import org.springframework.context.annotation.Profile;
 @Conditional(PolicyEnabled.class)
 @Profile({"api", "ops"})
 public class FoodClientConfiguration {
+    @Bean
+    @ConditionalOnMissingBean(DiningTransactionRecoveryService.class)
+    DiningTransactionRecoveryService remoteDiningTransactionRecoveryService(InternalHttp http) {
+        return new RemoteDiningTransactionRecoveryService(http.client(ServiceName.FOOD,
+                DiningTransactionRecoveryInternalApi.class, Duration.ofSeconds(5)));
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(DiningCheckoutService.class)
+    DiningCheckoutService remoteDiningCheckoutService(InternalHttp http) {
+        return new RemoteDiningCheckoutService(http.client(ServiceName.FOOD, DiningCheckoutInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
+    @Bean
+    @ConditionalOnMissingBean(DiningReturnService.class)
+    DiningReturnService remoteDiningReturnService(InternalHttp http) {
+        return new RemoteDiningReturnService(http.client(ServiceName.FOOD, DiningReturnInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
+    @Bean
+    @ConditionalOnMissingBean(DiningOrderService.class)
+    DiningOrderService remoteDiningOrderService(InternalHttp http) {
+        return new RemoteDiningOrderService(http.client(ServiceName.FOOD, DiningOrderInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
+    @Bean
+    @ConditionalOnMissingBean(DiningPricingService.class)
+    DiningPricingService remoteDiningPricingService(InternalHttp http) {
+        return new RemoteDiningPricingService(http.client(ServiceName.FOOD, DiningPricingInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
     @Bean
     @ConditionalOnMissingBean(DiningPricingFactsService.class)
     DiningPricingFactsService remoteDiningPricingFactsService(InternalHttp http) {

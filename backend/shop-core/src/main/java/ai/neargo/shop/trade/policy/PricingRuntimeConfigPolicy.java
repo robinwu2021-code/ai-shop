@@ -35,6 +35,11 @@ public final class PricingRuntimeConfigPolicy {
         JSON.readTree(row.getOverrideSnapshot());
         var effectiveNode = JSON.readTree(row.getEffectiveSnapshot());
         require(sha256(canonical(templateNode)).equals(template.getDefinitionHash()));
+        var definition = new PricingConfigCompiler().compileDefinition(
+                template.getDefinitionSnapshot(), SystemConstraints.standard());
+        require(definition.valid() && definition.config().canonicalJson().equals(canonical(templateNode))
+                && catalogHash(definition.config()).equals(template.getRuleCatalogVersion()));
+        // A valid platform definition is not executable authority; the store override is always recompiled.
         var compilation = new PricingConfigCompiler().compile(
                 template.getDefinitionSnapshot(), row.getOverrideSnapshot(),
                 SystemConstraints.standard(), capabilities);

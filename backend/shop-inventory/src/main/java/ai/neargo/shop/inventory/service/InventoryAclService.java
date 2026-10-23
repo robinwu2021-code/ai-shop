@@ -23,6 +23,16 @@ public interface InventoryAclService {
     /** 平台主体 → 业主。**1:1**（已定）：多执照商家仍是一个业主 —— 货是同一批货。 */
     String ownerIdOf(String entityNo);
 
+    /** Existing source ownership only; never creates an owner during a command authorization or read. */
+    String findOwnerId(String entityNo);
+
+    /** Original AISHOP SKU reference for an owner's reserved material; never invents an external SKU. */
+    String skuOfItem(String ownerId, String itemId);
+
+    /** Existing named store only, with its actual stock source; unlike legacy lookup there is no default fallback. */
+    String stockLocationOfExistingStore(String entityNo, String storeNo);
+
+
     /**
      * 平台门店 → 库位。
      *

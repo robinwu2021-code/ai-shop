@@ -621,6 +621,35 @@ mvn -o -f backend-plugins/shop-industry-food/pom.xml -pl food-core -am test -Dte
 
 每个任务关闭条件：输入输出/数据库/权限与文档对齐；业务测试和必要真实数据库/远程合同有实际执行证据；失败路径/幂等与恢复通过；生成物同步；独立范围提交。涉及支付、库存、设备的Mock成功不等于营业验收。工期在实际提供方合同及人员环境明确后估算，不为完整清单虚构日期。
 
+### 2.4 结账与售后整批实施（2026-10-23，进行中）
+
+按最新指令，将结账与售后作为连续开发批次；开发期间串行分阶段编译，整批实现后统一测试。复用本TDD与既有餐饮V1表、核心ord订单、PAY资金账和进销存原单，不另建订单或资金总账。
+
+| 阶段 | 具体实施 | 开发产物与门禁 |
+|---|---|---|
+| 1 提供方合同 | PAY原支付尝试开立/精确查询/渠道查证与独立部署调用；库存原键需求比对、原预留状态查询、返库与收货累计上限 | 用户/订单/尝试/币种/金额逐项绑定；渠道没有关单合同不能用本地关闭冒充；两条返库路径共用原单锁 |
+| 2 统一报价 | 权威来源、商品参与性、当前规则、商家税、原发票行计算与不可变报价；B/C调用同一内核 | 前端只传来源和选择标识，不传价格；不支持的权益明确拒绝，报价不扣库存或资产 |
+| 3 餐饮结账接线 | 餐饮模块内报价、确认以及后续批次/收银/退餐服务；嵌入与独立部署同合同 | 原购物车版本、门店/主体/会话授权；服务端确认摘要，内部证据不暴露给顾客 |
+| 4 正式交易与售后 | 原核心订单绑定、先付/后付生命周期、实际支付结果、原行退款及恢复 | 小数数量、匿名付款、营业受理、结算责任及退款容量必须有实际owner合同；不得把骨架、计算或账本查询标成营业闭环 |
+| 5 统一验证 | 所有生产代码编译后再运行单元、原生数据库、远程契约及旧零售回归；汇总提交测试 | 未验证与缺实际合同项保留未完成状态，不部署、不迁移业务库、不推送远端 |
+
+本批技术档位2：沿既有架构与表规范扩充实现。PAY和库存提供方独立开发，所有Maven构建严格串行；复用§2.3任务状态，不因纳入本批就提前关闭任务。渠道关单、分数库存、匿名核心付款及后付发货是已识别的实际合同缺口，必须在阶段4补真实实现或维持明确关闭。
+
+
+#### 2.4.1 实际公开合同与目标差异（源码对账，待统一验证）
+
+本批实际19条公开路由、Controller、DTO输入输出、授权及剩余能力登记在[原机器设计的checkoutImplementation.implementedApis](./design/schema/food-system-design.json)。原`apis`保留完整目标合同；相同路由的受控子集不等于全部目标完成。本节只记录源码，不声明编译或测试通过，不改变§2.3任务完成状态。
+
+- 报价：B/C原门店quotes使用`DiningQuoteReq(cartNo,version,selection)`，直接返回`PricingCheckoutPort.QuoteVO`；新增双方quote GET及`:confirm`。确认仅重验原车版本/展示摘要，不扣款或核销权益。B端沿`biz:order:view`和认证门店，C端复用原CartAccess逐次鉴权。
+- 下单：C端132使用`CreateDiningOrderReq(cartNo,version,quoteNo,confirmationDigest,payMode)`；B/C批次查询已接线。正式提交仅登录本人H5、自营取餐、MAIN整数完整车、PREPAY；DTO接受POSTPAY不代表开放后付。B端042、选行提交与按人预分单仍未实现。
+- 收银：新增`POST /mp/x/food/batches/{batchNo}/settlements`仅冻结本人完整原批次/单支付根，输入confirmationDigest。**140的`POST /mp/x/food/checks/{checkNo}/settlements`仍未实现**，不得用batch接口替代台账版本、获准行范围或整桌授权目标。原134与135的`:pay`已接线；pay输入version、confirmationDigest、payChannel，不接受客户端金额。新增C端`:finalize`、`:cancel`不是B端060/059。B端只有057，056、058～061写入口仍未实现。C收银不接匿名session付款、现金、AA、跨根或混合结账。
+- 售后：C端136、137及新增`:cancel`，B端064已接线；输入为batchNo、type、原因/图片、sourceLineRef及正整数量，输出`DiningReturnVO`含原核心financialCase与独立厨房轨道，**没有version**。选中原MAIN整数行退量走原核心售后/退款容量，无客户端金额、任意核心itemId或厨房命令；B端062/063及厨房实际处理仍未实现。
+- 读取语义：B端settlement/return为授权本地读取；C端settlement GET调用customerQuery、return GET调用refresh，会查询原owner并合并持久状态，不能沿用“全部读取无副作用”的目标描述。UNKNOWN不等于成功，厨房状态不由资金完成推断。
+
+内部传输沿原food-server令牌与typed `DiningPricingInternalApi`、`DiningOrderInternalApi`、`DiningCheckoutInternalApi`、`DiningReturnInternalApi`；嵌入/独立部署使用同一服务合同，令牌不替代资源归属验证。恢复只重放已持久化原意图，不授予新的付款身份或资金命令。POSTPAY、匿名/堂食、小数交易、B端资金写授权、完整权益/活动、厨房及营业验收保持未完成；迁移文件不表示已应用经营库。
+
+部分退款履约边界：本批新增的部分/余量退款须在原子单与商品锁内确认`WAIT_FULFILL`且所有原行`shippedQty=0`；混合履约、已发货部分/余量退款关闭。原完整首次已发货退货仍沿已有真实收货/处置合同，不借退款成功推断库存已归还。该门禁在申请与执行冻结复用同一策略校验，防止资金已退但未发货预留遗留。
+
 ## §3 任务边界及排期方式
 
 共享内核、配置发布、报价持久化、资金/库存合同、餐饮结账、经营凭证各自为可单独评审的工作包，但依上述合同连成一条主线。不要按Controller→Service→Mapper分批开发一堆不可验收空壳。
@@ -660,6 +689,55 @@ mvn -o -f backend-plugins/shop-industry-food/pom.xml -pl food-core -am test -Dte
 每阶段需保存：实际测试类/方法与Tests run计数、必要的目标数据库IT、架构/i18n检查、关键消融结果、沙箱trace、公开API契约版本。计划检查、Mock测试、数据库已存在不能替代资金/库存/打印营业证据。
 
 ## §6 执行记录及设计 → 实现对账
+
+### 2026-10-23：受控先付结账与原单售后集中交付
+
+**本批后端开发、编译与集中验证完成；完整餐饮结账方案仍在进行。** 当前范围是登录顾客H5、自营取餐PICKUP、先付PREPAY、整数MAIN菜品、单一原支付根。B端提供报价/复核与批次、收银、退餐读取；B端资金写入、台账AA/跨根、现金/混合/订金、后付/堂食/匿名付款、复杂组件/小数交易、完整权益、厨房处理、打印、日结报表不据此宣告完成。原FOOD-API-140及其余未实现目标继续保留。
+
+设计→实现预提交统计：`246 files changed, 13923 insertions(+), 319 deletions(-)`。沿用本计划§2.4和原表族，改动如下；所有资金事实继续来自PAY，餐饮未另造资金总账。
+
+| 方案落点 | 实际代码清单与作用 |
+|---|---|
+| 共用报价/规则 | `shop-base/common/pricing/PricingConfigCompiler`分离模板定义校验与真实能力执行校验；`shop-core/trade/service/impl/PricingCheckoutServiceImpl`统一权威来源、商品策略、商家税与不可变报价；初始化可显式传`initialOverride`，不静默修改默认配置 |
+| 核心原单 | `IndustryOrderServiceImpl`复用原ord主/子/商品行与创建意图；`OrdIndustryOrderSource`仅存来源/请求/冻结证据；保留H5会话主体并审计真实买家；CORE编号及事务使用显式限定注入 |
+| 原支付/退款 | `IndustryCheckoutServiceImpl`及PAY普通支付/发起/退款typed接口；`RefundFinancialOwnerServiceImpl`按原资金owner查证；`RefundPreparationServiceImpl`事务外取真实原回执、锁内复验；旧FREE通过原outTradeNo取真实tradeNo推进订单 |
+| 餐饮本域 | `DiningPricingServiceImpl`、`DiningOrderServiceImpl`、`DiningCheckoutServiceImpl`、`DiningReturnServiceImpl`、`SalesQuotaClaimServiceImpl`；原fnb批次/映射/结算/charge意图/退餐/限售表，Controller均在food-web，内部接口/remote支持两种部署 |
+| 原行/原税退款 | `BasicRefundPolicy`、`OriginalRefundEvidenceServiceImpl`与原refund执行器；按原数量前缀分摊，保留原净额/税额/含税额；新部分/余量仅允许原完整未发货事实，首次完整已发货退货保留原收货合同 |
+| 库存与恢复 | 原预留重放逐项比对、原预留查询/取消墓碑、退款与收货共享累计上限；未发货全退不因子单已REFUNDED而漏释放；CORE/FOOD原键恢复任务在短事务claim后调用owner，保留UNKNOWN，禁止新扣款 |
+| 数据/文档 | 核心`V554`来源元数据与`V555`原售后请求身份；餐饮`V8`补请求身份、MAIN组件引用、恢复时间；V1字节不改。原设计JSON额外登记19条实际公开合同，目标清单未覆盖替换；OpenAPI 1.2登记初始化可选覆盖 |
+
+需求→验证（真实执行，类中其他回归也保留）：
+
+| 验收点 | 对应测试 |
+|---|---|
+| 来源、税及确认摘要不能由终端伪造 | `PricingCheckoutServiceTest#sharedInvoiceTaxRoundsOnceAndPreservesExactComponentQuantities`、`wrongConfirmationDigestAndExpiredQuoteNeverValidate`；`PricingConfigServiceTest`实际24项原生发布/初始化场景 |
+| 原单绑定、原键重试及未知结果不伪造成功 | `DiningOrderServiceTest#stagesDurablyBeforeRpcAndBindsOriginalWholeQuantityTaxInclusiveAmountAndComponent`、`coreDocumentSurvivesFoodBindRollbackAndRestartReusesSameBatchAndOriginalOrder`、`timeoutKeepsUnknownOriginalIntentAndQuotaUntilOriginalDocumentRecovery` |
+| 支付/库存/厨房状态分开；接单原子性 | `DiningCheckoutServiceTest#cashSuccessSettlesOnceButStockHeldCannotConsumeQuotaOrAdmitKitchen`、`outboxFailureRollsBackAcceptanceAndCanRetryWithoutAnotherPayment`、`lostPayResponseSurvivesRestartAndOriginalUnknownNeverCreatesAnotherLeg` |
+| 原量、原金额与未发货边界 | `BasicPartialRefundPolicyTest#sequentialThirdsConsumeExactOriginalGrossWithoutLosingTail`、`partialRejectsAnyShippedOriginalEvenWhenSelectedLineIsUnshipped`、`frozenPartialVerificationRechecksFulfillmentButFirstFullShippedRemainsSupported`；`DiningReturnServiceTest#selectedMainQuantityUsesOriginalCoreAllocationAndCoreComputedMoney` |
+| 超时恢复、取消及授权 | `DiningReturnServiceTest#unknownCancellationWaitsForOriginalStableCaseAndNeverTreatsAbsentLookupAsCancellationProof`；`DiningTransactionRecoveryServiceTest#poisonBackoffAllowsOtherQueuesAndQueriesOwnersAfterClaimCommit`；`SourceRefundMissingPreparationRecoveryFlowTest#merchantDecisionDefersSourcePreparationAndRealScanResumesMissingExecutionOutsideTransaction`明确注入提交后准备超时并由实际扫描恢复同一原单 |
+| 零售FREE、原库存/收货兼容 | `BasicZeroRefundFlowTest`两项实际下单/退款，订单tradeNo必须等于原账本`FREE:<outTradeNo>`；`InventoryFlowTest`35项、`InventoryOriginalRestoreFlowTest`6项、`InventoryReservationTransportTest`3项，以及原零售退款/路由回归 |
+
+集中运行证据（不把条件跳过当通过，不把重复执行简单累计为新用例）：
+
+| 运行范围 | 实际结果 |
+|---|---|
+| 共享基础 | 289项通过，0失败/0跳过 |
+| 核心完整回归 | 673项，583实际通过、90条件数据库跳过；另一次性MariaDB实际90项通过、0跳过（发布24/种子8/税18/报价31/商品9） |
+| 独立PAY完整回归 | domain231、channel62、svc61，合计354项通过，0失败/0跳过；含真实本机HTTP契约 |
+| 餐饮五模块完整回归 | 587项，537实际通过、50数据库条件跳过；原生MySQL另368项实际通过、0跳过，覆盖这些条件项；原规格权威另4项通过 |
+| 宿主选定兼容范围 | 155项实际通过，0失败/0跳过；以各真实Surefire类报告最终版本汇总，前轮fail-fast跳过已逐一补跑 |
+| 独立部署包 | package通过，`FoodMigrationPackagingIT`3项通过；实际嵌套core仅一份V8与原冻结迁移 |
+| 设计与前端合同静态检查 | Node63、OpenAPI6通过；C/B498条中496匹配、2条旧缺失；Ops404中396匹配、8条旧缺失；界面清单292项最新；V1冻结检查通过 |
+| 金额消融 | 只在临时验证产物将原前缀floor改为ceil，101/3退款断言按预期RED（33→34）；源码未改、原class精确恢复，再跑原5项策略测试GREEN |
+
+守卫边界：`ArchitectureTest`16项仍7项旧失败，`SchemaDriftTest`2项仍1项旧失败。架构6条失败消息与原基线完全一致；剩余跨域规则仅3处既有`AfterSaleServiceImpl → CoreMarketingDocumentNumbers`调用者方法签名因显式买家/来源参数改变，被调类/方法及调用数量不变，没有新增跨域依赖。Schema差异列名token与原基线一致。未放宽守卫或扩大known清单；**不能声称全项目所有检查通过，也不据此合并/推送。**
+
+验证位置与隔离：最初在原餐饮worktree完成生产/测试编译。全量test升级曾两次自动审批超时，随后在`/private/tmp/checkout-verification`创建无Git的纯验证副本；所有5296个Java/SQL/POM/配置源码逐文件SHA校验一致。回环HTTP与一次性数据库执行另获准，未使用经营库或真实支付凭据；临时MySQL/MariaDB已删除。主要日志为`/private/tmp/checkout-core-delivery-tests.log`、`checkout-unified-core-pay-final-tests.log`、`checkout-unified-food-final-tests.log`、`checkout-unified-food-native.log`、`checkout-unified-pricing-native.log`、`checkout-unified-host-remaining4-tests.log`、`checkout-delivery-guards.log`。真实渠道、厨房/打印硬件及营业验收仍未执行。
+
+旧测试夹具修正说明：物流退款测试原来发布不存在的售后编号，现补真实同身份零额售后；两项结算测试原在业务事务内临时取号，现先通过真实PAY coordinator预留再进入原事务，保留原幂等/回滚断言。新增恢复测试现在明确注入首次提交后准备超时，既验证正常clean边界又验证实际原键扫描，未通过清理交互或禁用消费者制造绿色结果。
+
+经营库、部署与范围：本批只新增迁移文件，**未执行经营库迁移、部署或远端推送**。Keeta保持规划，不注册真实渠道。原§2.3未完成项和C05/C06/C07/C09等完整场景仍未完成；下一批按原任务补真实收银/权益/履约合同，不把普通支付、配置计算或本次受控链路改名为全场景营业闭环。
+
 
 本轮计划及共享归属确认已记录；后续已执行CKO-01源码合同核验、CKO-02共享值对象、CKO-03类型化配置编译、CKO-04业务规则校验、CKO-05多券候选编排、CKO-06公式与守恒、CKO-07纯地区税内核及CKO-08配置发布事务，09 A/B/C1及C2.1/2/3/5、10、11A/11B1/11B2A～E已执行；09-C2.4、11完整报价及12～31仍待完成。已增加4配置表迁移并在隔离数据库验证；未在既有业务库建表、导入种子、开放报价/支付或部署。后续逐任务回填：任务编号、起止基线、实际文件/迁移/API、测试证据、提交、偏差与仍关闭的能力。原后端计划与本清单一对多映射；本清单细化结账主线，不推翻桌台、菜品和厨房的原实现记录。
 

@@ -31,6 +31,32 @@ import ai.neargo.shop.food.policy.RecipePublicationSource;
 import ai.neargo.shop.food.service.BundleService;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.CheckCartService;
+import ai.neargo.shop.food.service.DiningPricingService;
+import ai.neargo.shop.food.service.impl.DiningPricingServiceImpl;
+import ai.neargo.shop.spi.trade.PricingCheckoutPort;
+import ai.neargo.shop.spi.trade.IndustryOrderPort;
+import ai.neargo.shop.spi.trade.IndustryAfterSalePort;
+import ai.neargo.shop.spi.trade.IndustryCheckoutPort;
+import ai.neargo.shop.food.service.DiningCheckoutService;
+import ai.neargo.shop.food.service.DiningTransactionRecoveryService;
+import ai.neargo.shop.food.service.impl.DiningTransactionRecoveryServiceImpl;
+import ai.neargo.shop.food.service.impl.DiningCheckoutServiceImpl;
+import ai.neargo.shop.food.mapper.FoodMappers.SettlementMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.SettlementItemMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ChargeIntentMapper;
+import ai.neargo.shop.food.service.DiningReturnService;
+import ai.neargo.shop.food.service.impl.DiningReturnServiceImpl;
+import ai.neargo.shop.food.mapper.FoodMappers.ReturnMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ReturnItemMapper;
+import ai.neargo.shop.food.service.DiningOrderService;
+import ai.neargo.shop.food.service.SalesQuotaClaimService;
+import ai.neargo.shop.food.service.impl.DiningOrderServiceImpl;
+import ai.neargo.shop.food.service.impl.SalesQuotaClaimServiceImpl;
+import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.CoreOrderBindingMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.CoreLineAllocationMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.SalesQuotaClaimMapper;
 import ai.neargo.shop.food.service.DiningPricingFactsService;
 import ai.neargo.shop.food.service.impl.DiningPricingFactsServiceImpl;
 import ai.neargo.shop.food.service.impl.CheckCartServiceImpl;
@@ -406,6 +432,67 @@ public class FoodAutoConfiguration {
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new DiningSessionServiceImpl(
                 areas,tables,tokens,sessions,actions,idem,publisher,manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(DiningTransactionRecoveryService.class)
+    DiningTransactionRecoveryService diningTransactionRecoveryService(OrderBatchMapper batches,
+            SettlementMapper settlements, ReturnMapper returns, DiningOrderService orders,
+            DiningCheckoutService checkout, DiningReturnService afterSales,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new DiningTransactionRecoveryServiceImpl(batches, settlements, returns, orders, checkout,
+                afterSales, Clock.systemUTC(), manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(DiningCheckoutService.class)
+    DiningCheckoutService diningCheckoutService(CheckCartService carts, OrderBatchMapper batches,
+            CoreOrderBindingMapper bindings, SettlementMapper settlements, SettlementItemMapper items,
+            ChargeIntentMapper intents, SalesQuotaClaimService quotas, ObjectProvider<IndustryCheckoutPort> core,
+            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new DiningCheckoutServiceImpl(carts, batches, bindings, settlements, items, intents, quotas,
+                core::getIfUnique, publisher, json, Clock.systemUTC(), manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(DiningReturnService.class)
+    DiningReturnService diningReturnService(CheckCartService carts, OrderBatchMapper batches,
+            CoreOrderBindingMapper bindings, OrderLineMapper lines, CoreLineAllocationMapper allocations,
+            ReturnMapper returns, ReturnItemMapper items, ObjectProvider<IndustryAfterSalePort> core,
+            ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new DiningReturnServiceImpl(carts, batches, bindings, lines, allocations, returns, items,
+                core::getIfUnique, json, Clock.systemUTC(), manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(SalesQuotaClaimService.class)
+    SalesQuotaClaimService salesQuotaClaimService(SalesRestrictionMapper restrictions, StorePolicyMapper policies,
+            SalesQuotaClaimMapper claims) {
+        return new SalesQuotaClaimServiceImpl(restrictions, policies, claims, Clock.systemUTC());
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(DiningOrderService.class)
+    DiningOrderService diningOrderService(CheckCartService carts, DiningPricingFactsService facts,
+            StoreOperationService policies, SalesQuotaClaimService quotas, CheckCartMapper cartRows,
+            StorePolicyMapper policyRows, OrderBatchMapper batches, CoreOrderBindingMapper bindings,
+            OrderLineMapper lines, CoreLineAllocationMapper allocations, ObjectProvider<IndustryOrderPort> orders,
+            ObjectProvider<PricingCheckoutPort> pricing, ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new DiningOrderServiceImpl(carts, facts, policies, quotas, cartRows, policyRows, batches,
+                bindings, lines, allocations, orders::getIfUnique, pricing::getIfUnique, json, Clock.systemUTC(), manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(DiningPricingService.class)
+    DiningPricingService diningPricingService(CheckCartService carts, ObjectProvider<PricingCheckoutPort> pricing) {
+        return new DiningPricingServiceImpl(carts, pricing::getIfUnique);
     }
 
     @Bean

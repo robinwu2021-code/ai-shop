@@ -42,7 +42,7 @@ public class BizPricingConfigController {
     public RevisionVO initialize(@Valid @RequestBody PricingConfigRequests.Initialize req,
             @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 128) String key) {
         return service.initialize(access.draft(false),
-                new PricingConfigCommands.InitializeReq(req.templateRevisionNo(), req.reason()), key,
+                new PricingConfigCommands.InitializeReq(req.templateRevisionNo(), req.reason(), req.initialOverride()), key,
                 () -> access.publication(false, req.templateRevisionNo()));
     }
 

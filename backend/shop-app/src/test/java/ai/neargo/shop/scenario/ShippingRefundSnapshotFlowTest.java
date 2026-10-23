@@ -60,8 +60,20 @@ class ShippingRefundSnapshotFlowTest {
             jdbc.update("UPDATE trd_shipping_upload SET status='FAILED',err_code=10060002,attempts=8 WHERE id=?",
                     before.getId());
         }
-        jdbc.update("UPDATE ord_sub_order SET status='REFUNDED' WHERE sub_order_no=?", sibling);
-        events.publish(new OrderEvents.AfterSaleRefunded("RF-" + sibling, sibling, "LG-BUYER", 0L));
+        // This sibling has no merchandise or cash: persist its actual zero-value refund closure.
+        // Both coupon consumers validate the original case/child/buyer before deciding no entitlement is due.
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_item WHERE sub_order_no=?", Long.class, sibling))
+                .isZero();
+        String afterSaleNo = "RF-" + sibling;
+        assertThat(jdbc.update("INSERT INTO ord_after_sale (after_sale_no,sub_order_no,order_no,user_no,entity_no,"
+                + "type,status,reason,refund_minor,approved_minor,refund_mode,refunded_at,tenant_no,created_at,updated_at) "
+                + "SELECT ?,sub_order_no,order_no,user_no,entity_no,'REFUND_ONLY','REFUNDED','NOT_WANTED',"
+                + "0,0,'CASH',?,tenant_no,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM ord_sub_order "
+                + "WHERE sub_order_no=? AND pay_amount=0", afterSaleNo, System.currentTimeMillis(), sibling))
+                .isEqualTo(1);
+        jdbc.update("UPDATE ord_sub_order SET status='REFUNDED',refunded_minor=0,refund_progress='FULL' "
+                + "WHERE sub_order_no=?", sibling);
+        events.publish(new OrderEvents.AfterSaleRefunded(afterSaleNo, sibling, "LG-BUYER", 0L));
         drain();
         TrdShippingUpload refreshed = row(pay);
         assertThat(refreshed.getId()).isEqualTo(before.getId());

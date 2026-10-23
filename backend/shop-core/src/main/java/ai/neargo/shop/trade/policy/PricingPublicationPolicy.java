@@ -115,18 +115,19 @@ public class PricingPublicationPolicy {
         });
     }
 
-    /** Initialization atomically publishes the empty override pinned to one immutable template revision. */
+    /** Initialization atomically publishes the explicit initial override pinned to one immutable template revision. */
     public RevisionVO initialize(Context c, InitializeReq req, String key) {
+        var normalized = normalize(req);
         return authorized(c, false, () -> {
-            reason(req.reason());
-            String endpoint = endpoint(c, "INIT", req.templateRevisionNo(), false);
-            String bodyHash = digest(canonical(req));
+            reason(normalized.reason());
+            String endpoint = endpoint(c, "INIT", normalized.templateRevisionNo(), false);
+            String bodyHash = digest(canonical(normalized));
             var completed = idempotency.findCompleted(key(key), endpoint, c.actorNo(), bodyHash, RevisionVO.class);
             if (completed.isPresent()) return completed.get();
-            var template = templateRevision(c, req.templateRevisionNo());
-            var compilation = compile(c, template.getDefinitionSnapshot(), "{}");
+            var template = templateRevision(c, normalized.templateRevisionNo());
+            var compilation = compile(c, template.getDefinitionSnapshot(), normalized.initialOverride());
             requireValid(compilation);
-            return write(c, "INIT", req.templateRevisionNo(), false, req, key, RevisionVO.class, () -> {
+            return write(c, "INIT", normalized.templateRevisionNo(), false, normalized, key, RevisionVO.class, () -> {
                 fresh(c);
                 var row = new OrdStorePricingConfig();
                 audit(row, c);
@@ -138,11 +139,11 @@ public class PricingPublicationPolicy {
                 row.setStatus("ACTIVE");
                 row.setDraftVersion(0L);
                 row.setDraftSchemaVersion(compilation.config().definition().schemaVersion());
-                row.setDraftOverride("{}");
+                row.setDraftOverride(normalized.initialOverride());
                 row.setDraftTemplateRevisionNo(template.getRevisionNo());
                 stores.insert(row);
                 var current = head(c, row.getConfigNo(), false, true);
-                return append(c, current, compilation, template.getRevisionNo(), "{}", req.reason(), null, false);
+                return append(c, current, compilation, template.getRevisionNo(), normalized.initialOverride(), normalized.reason(), null, false);
             });
         });
     }
@@ -215,8 +216,9 @@ public class PricingPublicationPolicy {
     }
 
     public RevisionVO initialize(Context identity, InitializeReq req, String key, Supplier<Context> evidence) {
-        return resolveForCommand(identity, "INIT", req.templateRevisionNo(), req, key, false, evidence,
-                live -> initialize(live, req, key));
+        var normalized = normalize(req);
+        return resolveForCommand(identity, "INIT", normalized.templateRevisionNo(), normalized, key, false, evidence,
+                live -> initialize(live, normalized, key));
     }
 
     private RevisionVO resolveForCommand(Context identity, String op, String no, Object req, String key,
@@ -312,8 +314,10 @@ public class PricingPublicationPolicy {
 
     private CompilationResult compile(Context c, String definition, String patch) {
         fresh(c);
-        var result = compiler.compile(definition, patch, SystemConstraints.standard(), c.capabilities());
-        if (result.valid()) {
+        var result = c.platformOperator()
+                ? compiler.compileDefinition(definition, SystemConstraints.standard())
+                : compiler.compile(definition, patch, SystemConstraints.standard(), c.capabilities());
+        if (result.valid() && !c.platformOperator()) {
             String profile = result.config().definition().taxBinding().taxProfileNo();
             if (profile != null && !c.verifiedTaxProfiles().contains(profile)) throw bad();
         }
@@ -440,6 +444,11 @@ public class PricingPublicationPolicy {
         var row = templateRevisions.selectOne(new QueryWrapper<OrdPricingTemplateRevision>()
                 .eq("tenant_no", c.tenantNo()).eq("revision_no", no));
         if (row == null) throw missing();
+        var definition = compiler.compileDefinition(row.getDefinitionSnapshot(), SystemConstraints.standard());
+        if (!definition.valid() || !digest(definition.config().canonicalJson()).equals(row.getDefinitionHash())
+                || !PricingRuleCatalog.registryVersion(definition.config().definition().schemaVersion())
+                        .equals(row.getEngineSpecVersion())
+                || !digest(canonical(definition.config().rules())).equals(row.getRuleCatalogVersion())) throw bad();
         return row;
     }
 
@@ -475,6 +484,11 @@ public class PricingPublicationPolicy {
     private String endpoint(Context c, String op, String no, boolean template) {
         return "PRICING:" + digest(canonical(Arrays.asList(op, no, template,
                 c.tenantNo(), c.entityNo(), c.storeNo())));
+    }
+
+    private InitializeReq normalize(InitializeReq request) {
+        if (request == null) throw bad();
+        return new InitializeReq(request.templateRevisionNo(), request.reason(), content(request.initialOverride()));
     }
 
     private String content(String value) {

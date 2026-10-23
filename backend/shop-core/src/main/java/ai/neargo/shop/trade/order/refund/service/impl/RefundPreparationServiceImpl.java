@@ -16,8 +16,17 @@ import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
 import ai.neargo.shop.trade.order.mapper.CreateIntentMapper;
 import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.order.mapper.StatusCasMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
 import ai.neargo.shop.trade.order.refund.service.BasicRefundPolicy;
+import ai.neargo.shop.trade.order.refund.service.RefundFinancialOwnerService;
+import ai.neargo.shop.trade.order.refund.service.OriginalRefundEvidenceService;
+import ai.neargo.shop.trade.order.refund.port.AfterSaleLineStore;
 import ai.neargo.shop.trade.order.refund.service.RefundExecutionStore;
 import ai.neargo.shop.trade.order.refund.service.RefundPreparationService;
 import ai.neargo.shop.trade.order.refund.service.RefundableQuery;
@@ -25,8 +34,6 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 /** Current child facts are read after serialization, including the original successful financial receipt. */
@@ -35,6 +42,9 @@ public class RefundPreparationServiceImpl implements RefundPreparationService {
     private final AfterSaleMapper afterSales;
     private final StatusCasMapper locks;
     private final PaymentMapper payments;
+    private final AfterSaleLineStore afterSaleLines;
+    private final RefundFinancialOwnerService financialOwner;
+    private final OriginalRefundEvidenceService originalEvidence;
     private final CreateIntentMapper intents;
     private final RefundableQuery query;
     private final RefundExecutionStore store;
@@ -43,10 +53,13 @@ public class RefundPreparationServiceImpl implements RefundPreparationService {
     private final ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations;
     private final ai.neargo.shop.spi.platform.PlatformSwitchPort flags;
     private final boolean closureEnabled;
+    private final StoreOrderMapper children;
+    private final TransactionTemplate transactions;
 
     public RefundPreparationServiceImpl(AfterSaleMapper afterSales, StatusCasMapper locks, PaymentMapper payments,
-            CreateIntentMapper intents, RefundableQuery query, RefundExecutionStore store,
-            SettlePort settle, ObjectMapper json,
+            CreateIntentMapper intents, RefundableQuery query, RefundExecutionStore store, AfterSaleLineStore afterSaleLines, RefundFinancialOwnerService financialOwner, OriginalRefundEvidenceService originalEvidence,
+            SettlePort settle, ObjectMapper json, StoreOrderMapper children,
+            @Qualifier("transactionManager") PlatformTransactionManager manager,
             ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations,
             ai.neargo.shop.spi.platform.PlatformSwitchPort flags,
             @org.springframework.beans.factory.annotation.Value("${shop.refund.closure.enabled:false}") boolean closureEnabled) {
@@ -55,19 +68,45 @@ public class RefundPreparationServiceImpl implements RefundPreparationService {
         this.locks = locks;
         this.payments = payments;
         this.intents = intents;
+        this.afterSaleLines = afterSaleLines;
+        this.financialOwner = financialOwner;
+        this.originalEvidence = originalEvidence;
         this.query = query;
         this.store = store;
         this.settle = settle;
         this.json = json;
+        this.children=children;
+        this.transactions=new TransactionTemplate(manager);
+        this.transactions.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
     public String prepare(String no, OrderActor actor) {
-        return DataScopeContext.executeWithoutScope(() -> prepareCurrent(no, actor));
+        return DataScopeContext.executeWithoutScope(() -> {
+            OrdAfterSale as=afterSale(no);
+            OrdSubOrder child=children.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                    .eq(OrdSubOrder::getSubOrderNo,as.getSubOrderNo()));
+            if(child==null || actor==null || !actor.owns(child)) throw BizException.of(ErrorCode.NOT_FOUND);
+            OrdRefundExecution existing=store.byAfterSale(no);
+            if(existing!=null) return existing.getExecutionNo();
+            if(!OrdAfterSale.REFUNDING.equals(as.getStatus())
+                    || !Objects.equals(locks.openAfterSaleNo(child.getSubOrderNo()),no))
+                throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+            OrdOrder parent=payments.selectOne(Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getOrderNo,child.getOrderNo()));
+            String fingerprint=financialOwner.originFingerprint(as,child,parent);
+            Prefetched proof=null;
+            if(fingerprint!=null) {
+                if(TransactionSynchronizationManager.isActualTransactionActive())
+                    throw new IllegalStateException("SOURCE_REFUND_PREPARATION_REQUIRES_NO_TRANSACTION");
+                proof=new Prefetched(fingerprint,financialOwner.origin(as,child,parent));
+            }
+            Prefetched captured=proof;
+            return transactions.execute(tx -> prepareCurrent(no,actor,captured));
+        });
     }
+    private record Prefetched(String fingerprint,SettlePort.PaymentReceipt receipt) { }
 
-    private String prepareCurrent(String no, OrderActor actor) {
+    private String prepareCurrent(String no, OrderActor actor, Prefetched proof) {
         OrdAfterSale hint = afterSale(no);
         OrdSubOrder child = locks.lockOrder(hint.getSubOrderNo());
         if (child == null || actor == null || !actor.owns(child)) {
@@ -82,8 +121,10 @@ public class RefundPreparationServiceImpl implements RefundPreparationService {
                 || !Objects.equals(locks.openAfterSaleNo(child.getSubOrderNo()), no)) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
-        List<OrdItem> items = query.items(child);
-        RefundPlan plan = BasicRefundPolicy.full(child, items);
+        List<OrdItem> items = query.lockItems(child);
+        var saved = afterSaleLines.lines(as.getAfterSaleNo());
+        RefundPlan plan = BasicRefundPolicy.select(child, items, saved.isEmpty() ? null : saved, null);
+        if (!saved.isEmpty() && !plan.lines().equals(saved)) throw BizException.of(ErrorCode.AFTERSALE_AMOUNT_INVALID);
         long approved = as.getApprovedMinor() == null ? as.getRefundMinor() : as.getApprovedMinor();
         if (approved != plan.totalMinor() || OrdAfterSale.EXCHANGE.equals(as.getType())
                 || (OrdAfterSale.RETURN_REFUND.equals(as.getType()) && as.getReturnReceivedAt() == null)) {
@@ -91,9 +132,13 @@ public class RefundPreparationServiceImpl implements RefundPreparationService {
         }
         OrdOrder parent = payments.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getOrderNo, child.getOrderNo()));
+        plan = originalEvidence.freeze(child, items, plan);
         OrdRefundExecution row = frozen(as, child, items, plan);
+        String currentFingerprint=financialOwner.originFingerprint(as,child,parent);
+        if(!Objects.equals(currentFingerprint,proof==null?null:proof.fingerprint()))
+            throw BizException.of(ErrorCode.CONFLICT);
         SettlePort.PaymentReceipt source = parent == null ? null
-                : settle.refundOrigin(parent.getOrderNo(), parent.getPayTradeNo(), parent.getPayChannel());
+                : proof == null ? financialOwner.origin(as,child,parent) : proof.receipt();
         if (parent != null && parent.getCurrency() != null) {
             row.setCurrency(parent.getCurrency());
         }
@@ -125,8 +170,11 @@ public class RefundPreparationServiceImpl implements RefundPreparationService {
         row.setZeroLiability(BasicRefundPolicy.zeroLiability(child));
         row.setCurrency("CNY");
         row.setPlanJson(json.writeValueAsString(plan));
-        row.setStockNeedsJson(json.writeValueAsString(items.stream().map(i -> new StockPort.SkuQty(i.getSkuNo(),
-                i.getQty(), i.getSupplyStoreNo() == null ? child.getStoreNo() : i.getSupplyStoreNo())).toList()));
+        row.setStockNeedsJson(json.writeValueAsString(plan.lines().stream().map(line -> {
+            var item = items.stream().filter(i -> i.getId() == line.itemId()).findFirst().orElseThrow();
+            return new StockPort.SkuQty(item.getSkuNo(), line.qty(),
+                    item.getSupplyStoreNo() == null ? child.getStoreNo() : item.getSupplyStoreNo());
+        }).toList()));
         OrdCreateIntent intent = intents.selectOne(Wrappers.<OrdCreateIntent>lambdaQuery()
                 .eq(OrdCreateIntent::getPayNo, child.getOrderNo()));
         row.setStockAuthority(intent == null ? null : intent.getStockAuthority());

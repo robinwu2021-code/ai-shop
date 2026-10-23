@@ -80,12 +80,25 @@ class PricingAccessPolicyTest {
     }
 
     @Test
-    void missingOrAmbiguousProvidersCannotPublishAnyConfiguration() {
-        login(LoginUser.operator("OPS", "Ops", List.of(), List.of()));
-        assertBlocked(() -> policy.publication(true, "PT1"));
+    void missingOrAmbiguousProvidersCannotPublishMerchantConfiguration() {
+        merchant();
+        assertBlocked(() -> policy.publication(false, "PC1"));
         beans.registerSingleton("one", mock(PricingConfigEvidencePort.class));
         beans.registerSingleton("two", mock(PricingConfigEvidencePort.class));
-        assertBlocked(() -> policy.publication(true, "PT1"));
+        assertBlocked(() -> policy.publication(false, "PC1"));
+    }
+
+    @Test
+    void globalTemplateDefinitionNeedsNoFinancialOwnerAndGrantsNoCapabilities() {
+        login(LoginUser.operator("OPS", "Ops", List.of(), List.of()));
+        var owner = mock(PricingConfigEvidencePort.class);
+        beans.registerSingleton("unavailable", owner);
+        var context = policy.publication(true, "PT1");
+        assertThat(context.platformOperator()).isTrue();
+        assertThat(context.capabilities()).isEqualTo(new PricingCapabilities(0, 0, false, false, false));
+        assertThat(context.capabilityRef()).startsWith("DEF").hasSize(32);
+        assertThat(context.expiresAt()).isAfter(Instant.now()).isBeforeOrEqualTo(Instant.now().plusSeconds(300));
+        verifyNoInteractions(owner);
     }
 
     @Test

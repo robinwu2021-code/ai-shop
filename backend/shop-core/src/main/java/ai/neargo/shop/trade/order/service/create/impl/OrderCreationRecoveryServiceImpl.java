@@ -103,6 +103,7 @@ public class OrderCreationRecoveryServiceImpl implements OrderCreationRecoverySe
     @Override
     public int recoverAbandoned(long now) {
         List<OrdCreateIntent> pending = intents.selectList(Wrappers.<OrdCreateIntent>lambdaQuery()
+                .in(OrdCreateIntent::getStockAuthority, "PLATFORM", "INVENTORY")
                 .in(OrdCreateIntent::getStatus, OrdCreateIntent.PREPARED, OrdCreateIntent.RECOVERING,
                         OrdCreateIntent.RECOVERY_REQUIRED)
                 .le(OrdCreateIntent::getNextAttemptAt, now).orderByAsc(OrdCreateIntent::getId).last("LIMIT 100"));
@@ -163,6 +164,7 @@ public class OrderCreationRecoveryServiceImpl implements OrderCreationRecoverySe
 
     private void finish(String no, String state, String error, long next) {
         intents.update(null, Wrappers.<OrdCreateIntent>lambdaUpdate().eq(OrdCreateIntent::getPayNo, no)
+                .in(OrdCreateIntent::getStockAuthority, "PLATFORM", "INVENTORY")
                 .in(OrdCreateIntent::getStatus, OrdCreateIntent.PREPARED, OrdCreateIntent.RECOVERING,
                         OrdCreateIntent.RECOVERY_REQUIRED)
                 .set(OrdCreateIntent::getUpdatedAt, LocalDateTime.now()).setSql("version = version + 1")

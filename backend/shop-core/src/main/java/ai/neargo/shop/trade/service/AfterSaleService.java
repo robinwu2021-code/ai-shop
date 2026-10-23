@@ -12,6 +12,16 @@ public interface AfterSaleService {
 
     AfterSaleVO apply(String subOrderNo, ApplyCommand cmd);
 
+    /** Internal source-owned adapter seam; preserves the original buyer predicate and policy. */
+    AfterSaleVO applyForBuyer(String subOrderNo, String buyerNo, ApplyCommand cmd);
+
+    record SourceRequest(String sourceSystem, String requestKey, String requestHash) { }
+    AfterSaleVO applyForBuyer(String subOrderNo, String buyerNo, ApplyCommand cmd, SourceRequest source);
+
+    AfterSaleVO detailForBuyer(String afterSaleNo, String buyerNo);
+
+    AfterSaleVO cancelForBuyer(String afterSaleNo, String buyerNo);
+
     List<AfterSaleVO> myList();
 
     AfterSaleVO detail(String afterSaleNo);

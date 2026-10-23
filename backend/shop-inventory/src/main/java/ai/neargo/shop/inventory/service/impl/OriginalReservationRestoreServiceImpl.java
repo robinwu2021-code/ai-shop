@@ -2,7 +2,9 @@ package ai.neargo.shop.inventory.service.impl;
 
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.inventory.entity.InvRefundRestore;
+import ai.neargo.shop.inventory.entity.InvReturnReceipt;
 import ai.neargo.shop.inventory.mapper.RefundRestoreMapper;
+import ai.neargo.shop.inventory.mapper.ReturnReceiptMapper;
 import ai.neargo.shop.inventory.service.InboundService;
 import ai.neargo.shop.inventory.service.OriginalReservationRestoreService;
 import ai.neargo.shop.inventory.service.impl.OriginalReservationSource.Source;
@@ -24,12 +26,14 @@ public class OriginalReservationRestoreServiceImpl implements OriginalReservatio
     private final OriginalReservationSource source;
     private final RefundRestoreMapper claims;
     private final InboundService inbound;
+    private final ReturnReceiptMapper receipts;
 
     public OriginalReservationRestoreServiceImpl(OriginalReservationSource source, RefundRestoreMapper claims,
-                                                 InboundService inbound) {
+                                                 InboundService inbound, ReturnReceiptMapper receipts) {
         this.source = source;
         this.claims = claims;
         this.inbound = inbound;
+        this.receipts = receipts;
     }
 
     @Override
@@ -44,6 +48,10 @@ public class OriginalReservationRestoreServiceImpl implements OriginalReservatio
         Map<Long, Integer> used = new HashMap<>();
         claims.selectList(Wrappers.<InvRefundRestore>lambdaQuery().in(InvRefundRestore::getOriginalLineId, ids))
                 .forEach(claim -> used.merge(claim.getOriginalLineId(), claim.getQty(), Math::addExact));
+        // Both receipt and refund restoration hold the same original reservation row locks.
+        // Count physical receipts too, so the second path cannot return the same issued unit again.
+        receipts.selectList(Wrappers.<InvReturnReceipt>lambdaQuery().in(InvReturnReceipt::getOriginalLineId, ids))
+                .forEach(receipt -> used.merge(receipt.getOriginalLineId(), receipt.getQty(), Math::addExact));
         for (Source row : rows) {
             int wanted = needed.getOrDefault(row.line().getItemId(), 0);
             int available = row.restorableQty() - used.getOrDefault(row.line().getId(), 0);

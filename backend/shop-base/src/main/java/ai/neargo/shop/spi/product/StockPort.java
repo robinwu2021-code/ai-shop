@@ -71,6 +71,10 @@ public interface StockPort {
     /** Release paid but unissued stock for one merchant sub-order after a successful pre-handoff refund. */
     default void releaseAllocated(String fulfillmentRef) { }
     default void releaseAllocated(String fulfillmentRef, String orderNo) { releaseAllocated(fulfillmentRef); }
+    /** Monotone cumulative original quantities; implementations must never release unrelated child units. */
+    default void releaseAllocatedTo(String fulfillmentRef, String orderNo, List<SkuQty> cumulativeTargets) {
+        throw new UnsupportedOperationException("partial original allocation release unavailable");
+    }
 
     /**
      * 退货入库：把货加回来。

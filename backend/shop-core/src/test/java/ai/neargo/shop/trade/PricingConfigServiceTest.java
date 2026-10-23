@@ -164,6 +164,52 @@ class PricingConfigServiceTest {
     }
 
     @Test
+    void explicitInitialOverridePublishesActualZeroCapabilityAndBindsReceipt() throws Exception {
+        String merchantTax = JSON.readTree(Files.readString(Path.of("../../docs/technical/design/schema/"
+                + "pricing-merchant-tax-initial-data.example.json"))).path("industryTemplates").get(0)
+                .path("definition").toString();
+        var definitionOnly = new Context("MAIN", "OPS", true, null, null,
+                new PricingCapabilities(0, 0, false, false, false), "DEF_DEPLOYED_REGISTRY", CAP_EXPIRY, Set.of());
+        var draft = templates.create(definitionOnly, new CreateTemplateReq("FOOD", "ZERO_INIT", "Food", merchantTax),
+                "ZERO_CREATE");
+        var preview = templates.preview(definitionOnly, draft.no(), 0, null);
+        var template = templates.publish(definitionOnly, draft.no(),
+                new PublishReq(0, null, preview.previewHash(), "template", null), "ZERO_TEMPLATE");
+        var actualZero = new Context("MAIN", "ACTOR", false, "E1", "S1",
+                new PricingCapabilities(0, 0, false, false, false), "OWNER_ZERO", CAP_EXPIRY, Set.of());
+        assertThatThrownBy(() -> stores.initialize(actualZero,
+                new InitializeReq(template.revisionNo(), "default"), "ZERO_DEFAULT"))
+                .isInstanceOf(BizException.class);
+        assertThat(count("ord_store_pricing_config")).isZero();
+        String patch = """
+                {"couponLimits":{"total":0,"percent":0,"amountTotal":0,"cash":0,"deduction":0},
+                 "discountCouponPolicy":{"maxUsedPerOrder":0},"allowedCouponCombinations":[],
+                 "storedValueEnabled":false,"pointsEnabled":false,"manualOperations":{"enabled":false}}
+                """;
+        var command = new InitializeReq(template.revisionNo(), "explicit no benefits", patch);
+        var initialized = stores.initialize(actualZero, command, "ZERO_INIT");
+        assertThat(JSON.readTree(initialized.effectiveSnapshot()).path("couponLimits").path("total").asInt())
+                .isZero();
+        assertThat(JSON.readTree(initialized.overrideSnapshot())).isEqualTo(JSON.readTree(patch));
+        assertThat(JSON.readTree(stores.getDraft(actualZero, initialized.parentNo()).content()))
+                .isEqualTo(JSON.readTree(patch));
+        // Whitespace/order normalization is applied before both receipt recovery and initial writes.
+        assertThat(stores.initialize(actualZero, new InitializeReq(template.revisionNo(), "explicit no benefits",
+                JSON.readTree(patch).toString()), "ZERO_INIT")).isEqualTo(initialized);
+        assertThatThrownBy(() -> stores.initialize(actualZero, new InitializeReq(template.revisionNo(),
+                "explicit no benefits", patch.replace("\"enabled\":false", "\"enabled\":true")), "ZERO_INIT"))
+                .isInstanceOf(BizException.class);
+        assertThat(count("ord_store_pricing_config")).isEqualTo(1);
+        // Native publish -> explicit initialize -> runtime resolve verifies the global defaults separately
+        // and admits only the actual zero-benefit store override under negative owner proof.
+        var runtime = runtimeConfig(scope -> { }, actualZero.capabilities());
+        assertThat(runtime.resolve(new Scope("MAIN", "E1", "S1"), "FOOD").config()
+                .definition().couponLimits().total()).isZero();
+        assertThat(JSON.readTree(template.effectiveSnapshot()).path("couponLimits").path("total").asInt())
+                .isEqualTo(2);
+    }
+
+    @Test
     void apiReceiptReplayDoesNotReloadUnavailablePublicationOwners() {
         var draft = create();
         var preview = templates.preview(platform(), draft.no(), 0, null);
@@ -497,11 +543,16 @@ class PricingConfigServiceTest {
 
     private PricingRuntimeConfigServiceImpl runtimeConfig(
             Consumer<PricingConfigEvidencePort.Scope> duringRead) {
+        return runtimeConfig(duringRead, capabilities());
+    }
+
+    private PricingRuntimeConfigServiceImpl runtimeConfig(
+            Consumer<PricingConfigEvidencePort.Scope> duringRead, PricingCapabilities actualCapabilities) {
         var beans = new DefaultListableBeanFactory();
         var expires = Instant.now().plusSeconds(180);
         beans.registerSingleton("runtimeOwner", (PricingConfigEvidencePort) scope -> {
             duringRead.accept(scope);
-            return new PricingConfigEvidencePort.Evidence(scope, capabilities(), "CAP_RUNTIME", expires, Set.of(),
+            return new PricingConfigEvidencePort.Evidence(scope, actualCapabilities, "CAP_RUNTIME", expires, Set.of(),
                     List.of(new PricingSourceRef("OWNER", "CAPABILITY", "CAP_RUNTIME", 1, "S1", 1L)));
         });
         return new PricingRuntimeConfigServiceImpl(session.getMapper(TradeMappers.StorePricingConfigMapper.class),
