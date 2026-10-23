@@ -1,11 +1,13 @@
 # Task58 Source submission, observed binding, and per-source bill design
 
-Status: DESIGN_READY for root technical review only. No implementation, test, build, SQL execution, staging or commit.
+Status: approved design with accepted implementation refinements. Final verification and actual results are in task-58-report.md.
+Sections 1-13 retain the original design-phase audit/proposals; their NOT RUN and pending-release text is historical.
 DESIGN_BASE: eb9ec7734334214fe04d5b7d4e6f2593cc2cafd2.
 Accepted Task57 product: 741b38178f01a6f4159fc618d57a45d75a3601e0.
 Worktree: /Users/robin/.codex/worktrees/beauty-data/ai-shop-codex; branch codex/beauty-foundation.
 Spec: .superpowers/sdd/beauty-backend/task-58-brief.md, the sole Task58 requirement source.
-This document and task-58-report.md are the only first-phase owned files. IMPLEMENTATION_BASE is not issued.
+The first phase owned only this document and task-58-report.md. Implementation was subsequently released at
+8cc2482adaa8e3f3df469307e92e78fadd5b58b3, with actual V8 bytes independently pinned before execution.
 
 > Execution after root technical release uses superpowers:executing-plans, one implementer, no subagents.
 > The user already authorized the task. This design gate is root technical review, not a new generic permission request.
@@ -192,7 +194,7 @@ Before quote/source IO create the durable submission under root/task locks, plus
 - payloadHash covers workOrder, expected revisions, normalized exact selections, PREPARE fields with only
   customerRef digest, or EXISTING original op/sub/pair/line selections. Same namespace changed payload => CONFLICT.
 - frozen_command schemaVersion2 includes original actor namespace, endpoint, raw-key digest (not raw key), initial
-  OPEN submissionNo, original context scope/hash/identity, effective USER and receiptNo if used, old/target root scope
+  OPEN submissionNo, original context scope/hash/identity, effective USER and claimReceiptHash/claimRevision if used, old/target root scope
   revisions, selected stored task snapshots/revisions, additions and their allocated business IDs, unique SKU group
   mapping, source mode/original expected source pair, original checkout OperationRef, derived prepareKey, request hash.
   Derived prepareKey=hash(namespaceHash,"PREPARE",submissionNo); stored value is owner instruction key, never public.
@@ -669,7 +671,7 @@ Use current-C helper/real HOST HTTP for confirmation/order/payment; B never invo
 | ServiceSourceObservationIT#refundBelowHeldQuantityBlocksLateOldObservation | R1 Q2/N2/A1 then R2 N0, persisted highestR2 despite guardA1; delayed R1/new-epoch regression cannot allocate another1. Critical root counterexample. |
 | ServiceSourceObservationIT#supersededHigherRevisionBlocksDelayedCurrentLowerFacts | ep2 reads R1 but delays delivery; ep1 reads refund R2 and returns first. Under real observation-row locks ep1 raises highestR2/BLOCKED without READY/lastVerified changes; ep2 R1 cannot clear it or allocate. Also test ep2 READY first, then ep1 R2 blocks, and invalid/foreign-op cannot poison highest. |
 | ServiceSourceObservationIT#supersededTrustedUnknownWithHigherPairInvalidatesCurrentRead | ep1 genuine owner UNKNOWN carries canonical lastR2; ep2 has delayed completeR1. ep1 retains lastVerified, raises highestR2 and atomically epoch++; ep2 cannot restore READY/allocate. Only subsequent fresh matchingR2 read may restore eligible state. |
-| ServiceSourceObservationIT#supersededTrustedUnknownWithoutPairRequiresFreshRead | ep1 genuine canonical UNKNOWN has revision0/null hash; ep2 delayed same-highestR1 is invalidated despite matching pair. Preserve highest/verified, epoch++, stateUNKNOWN. New post-invalidation read may restore; malformed/foreign UNKNOWN and transport exception do not modify highest/epoch. |
+| ServiceSourceObservationIT#supersededTrustedUnknownWithoutPairRequiresFreshRead | ep1 genuine canonical UNKNOWN has revision0/null hash; ep2 delayed same-highestR1 is invalidated despite matching pair. Preserve highest/verified, epoch++, stateUNKNOWN. New post-invalidation read may restore; malformed/foreign UNKNOWN does not modify highest/epoch; known canonical transport failure invalidates epoch without lowering highest. |
 | ServiceSourceObservationIT#unknownWatermarkCannotBeClearedByOlderEpoch | Owner UNKNOWN after prior completeR1, old sameR1 response arrives; highest/lastVerified retained, currentUNKNOWN, no allocation. Fresh current-epoch equalR1 may restore if genuinely owner verified. |
 | ServiceSourceObservationIT#sameRevisionDifferentHashAndForeignOperationBlock | No clock-only revisions; sameR differentH => BLOCKED; op/sub mapping collision rejects without comparing revision integers. |
 | ServiceSourceObservationIT#slowOrFailedReadLeavesRecoverableUnknown | Claim commits UNKNOWN, lock-free source stalls/fails; old ticket no bind; next explicit current observer restores through new epoch. |
@@ -828,3 +830,53 @@ Each has a named selector above. All runtime results remain NOT RUN.
 - [x] Candidate SQL literal includes explicit NULL combinations and exact candidate bytes/hash.
 - [x] Real HOST vs beauty-core fixture limits and genuine business RED/ablation specified.
 - [x] No implementation/test/native/SQL execution or product files written in design stage.
+
+Implementation evidence correction (root accepted): BtyGuestClaimReceipt has no business receiptNo. Freeze its
+actual scoped ownerReceiptHash plus claimRevision; keep both internal and recheck current guest CLAIMED USER
+and same-store immutable row. Financial PaymentFact.receiptNo remains the real shared receipt ID, unchanged.
+
+Implementation refinement: ServiceSourceBinding is a beauty-core bean (AppointmentPersistence,
+ServiceSubmissionQuery, observation/guard/root/task/submission/binding Mappers, Clock). It owns the
+pure local allocation TX and is called by ServiceSubmissionServiceImpl after all lock-free owner IO.
+Owned path: beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSourceBinding.java.
+No new Repository, owner port, service cycle, or schema change.
+
+### Accepted implementation refinement: permanent BAPI-056 endpoint receipt
+
+SOURCE_SUBMITTED action_log is the unique endpoint acceptance record, with actionNo BTSK+first28(namespace).
+The full 256-bit namespace (MAIN/entity/store/realm/kind/actor/BAPI-056/rawKeyHash), full payload hash including
+workOrder and all DTO fields, workOrder and submissionNo are immutable in safe_snapshot. The truncated public
+record key is never sufficient equality. SUBMIT_SOURCE/ADD_SOURCE remains a submission fact but is excluded from
+namespace. Read receipt before preconditions and after locking root; scope/task changes and submission+receipt
+insert are one TX. Cross-root/action races collide at the same unique actionNo and roll back the whole losing TX;
+only after rollback read/compare the winner. Exact replay bypasses already-progressed expected versions, whereas
+changed payload/target/full namespace collision raises CONFLICT. No new table, mapper, provider, or owner write.
+ServiceSubmissionServiceImpl additionally consumes existing TradeBindingMapper for actual bound sourceLineNo.
+
+### Error contract refinement
+Only BEAUTY_SOURCE_CUSTOMER_REQUIRED (80106) is an actual new exception, with Chinese/English/Arabic messages.
+The other five proposed exceptions are not registered as unused placeholders: quantity/revision/scope/dependency
+results retain their durable pending phase and original recovery identity. Current authorization errors propagate.
+Only owner CHECKOUT_DEPENDENCY_UNAVAILABLE and transport response loss become explicit pending availability;
+NOT_FOUND recovery still requires original actor/request before preparing. Caller-active TX remains the existing
+IllegalStateException contract, rejected before owner IO.
+
+### Known canonical availability failure before source()
+Once an authorized original checkout operation has a canonical observation, readQuote/findOperation transport,
+known dependency failure, original absence, or loss of created-phase evidence must invalidate that row even before
+source() is reached. ServiceSourceObservation.invalidateKnown resolves the full scoped buyer+caller+operation,
+locks its canonical row, verifies all frozen identity, increments epoch and persists UNKNOWN with unchanged
+highest/verified evidence. Both submission and bill use this path. The new epoch fences all prior source tickets;
+recovery needs a fresh complete owner read. Authentication and SQL/programming errors are never availability.
+Historical source/suborder/binding/lastVerified pair stay visible, current money stays null and canStart=false.
+
+
+### Actual implementation reconciliation
+The executable DTO/service contract is also generated from beauty-java-method-design.json sourceFoundation;
+its actual method declarations are checked against source. Actual tests/renamed planned selectors and provider
+limits are mapped in task-58-report.md. The dedicated native mode is --service-source (not the design placeholder
+--source-submission). BeautySourceConfiguration uses only optional CheckoutPort for this read/prepare kernel;
+OfflineReceiptPort writes remain in the existing shared HOST cashier API. ServiceSourceBinding is the explicit
+local-TX helper added during implementation. Known-canonical pre-source failures use invalidateKnown as above.
+Only BEAUTY_SOURCE_CUSTOMER_REQUIRED is registered as a new exception; other safe pending reasons are state.
+No public HTTP/remote59 or deployment60 surface, scheduler, start/consume permission, or second funds ledger exists.

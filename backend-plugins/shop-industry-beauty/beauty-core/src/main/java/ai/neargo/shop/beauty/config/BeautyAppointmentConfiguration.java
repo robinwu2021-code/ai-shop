@@ -7,8 +7,10 @@ import ai.neargo.shop.beauty.policy.AppointmentAccess;
 import ai.neargo.shop.beauty.policy.CustomerOwnership;
 import ai.neargo.shop.beauty.policy.ReceptionAccess;
 import ai.neargo.shop.beauty.policy.ReceptionIdentity;
+import ai.neargo.shop.beauty.policy.ServiceSubmissionAccess;
 import ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl;
 import ai.neargo.shop.beauty.service.ServiceCatalogQueryService;
+import ai.neargo.shop.beauty.service.ServiceSubmissionService;
 import ai.neargo.shop.beauty.service.impl.AppointmentAvailabilityServiceImpl;
 import ai.neargo.shop.beauty.service.impl.AppointmentCoordinator;
 import ai.neargo.shop.beauty.service.impl.AppointmentMatching;
@@ -21,6 +23,7 @@ import ai.neargo.shop.beauty.service.impl.GuestRegistrationServiceImpl;
 import ai.neargo.shop.beauty.service.impl.ReceptionCoordinator;
 import ai.neargo.shop.beauty.service.impl.ServiceOperationQueryServiceImpl;
 import ai.neargo.shop.beauty.service.impl.ServiceOperationRecoveryServiceImpl;
+import ai.neargo.shop.beauty.service.impl.ServiceSubmissionQuery;
 import ai.neargo.shop.beauty.service.impl.WorkOrderCoordinator;
 import ai.neargo.shop.beauty.service.impl.WorkOrderPreparation;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
@@ -31,7 +34,7 @@ import ai.neargo.shop.spi.resource.ResourceBookingPort;
 import ai.neargo.shop.spi.resource.ResourceCandidatesPort;
 import ai.neargo.shop.spi.schedule.ScheduleWindowsPort;
 import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
-import java.time.Clock;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -39,7 +42,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.PlatformTransactionManager;
+
 import tools.jackson.databind.ObjectMapper;
+
+import java.time.Clock;
 
 /** Source authority has no eager executor dependency; external provider capabilities resolve per call. */
 @Configuration(proxyBeanMethods = false)
@@ -78,10 +84,14 @@ public class BeautyAppointmentConfiguration {
         return new AppointmentPreparationService(db, access, customers, products, identity, receptions, workOrders,
                 clock);
     }
+
     @Bean
-    AppointmentCoordinator appointmentCoordinator(AppointmentPersistence db, AppointmentAccess access,
+    AppointmentCoordinator appointmentCoordinator(
+            AppointmentPersistence db,
+            AppointmentAccess access,
             ObjectProvider<ResourceBookingPort> owner,
-            @Qualifier("beautyOutboxPublisher") OutboxPublisher publisher, ReceptionAccess receptionAccess) {
+            @Qualifier("beautyOutboxPublisher") OutboxPublisher publisher,
+            ReceptionAccess receptionAccess) {
         return new AppointmentCoordinator(db, access, owner, publisher, receptionAccess);
     }
     @Bean
@@ -104,10 +114,17 @@ public class BeautyAppointmentConfiguration {
             AppointmentAccess access) {
         return new AppointmentAvailabilityServiceImpl(matching, access);
     }
+
     @Bean
-    ServiceOperationQueryServiceImpl serviceOperationQueryServiceImpl(AppointmentPersistence db, AppointmentAccess
-            access, BeautyMappers.ReceptionOperationMapper receptions) {
-        return new ServiceOperationQueryServiceImpl(db, access, receptions);
+    ServiceOperationQueryServiceImpl serviceOperationQueryServiceImpl(
+            AppointmentPersistence db,
+            AppointmentAccess access,
+            BeautyMappers.ReceptionOperationMapper receptions,
+            BeautyMappers.ServiceSubmissionMapper submissions,
+            ServiceSubmissionQuery query,
+            ServiceSubmissionAccess sourceAccess) {
+        return new ServiceOperationQueryServiceImpl(
+                db, access, receptions, submissions, query, sourceAccess);
     }
     @Bean
     AppointmentRecovery appointmentRecovery(AppointmentPersistence db, AppointmentCoordinator coordinator) {
@@ -126,13 +143,29 @@ public class BeautyAppointmentConfiguration {
                 "仅核验已绑定的原终态；需要用户授权的步骤保持待处理", "beauty-core",
                 "0 * * * * *", true, 60, 120, true, true);
     }
+
     @Bean
-    ServiceOperationRecoveryServiceImpl serviceOperationRecoveryServiceImpl(AppointmentPersistence db,
-            AppointmentAccess access, AppointmentCoordinator coordinator,
+    ServiceOperationRecoveryServiceImpl serviceOperationRecoveryServiceImpl(
+            AppointmentPersistence db,
+            AppointmentAccess access,
+            AppointmentCoordinator coordinator,
             BeautyMappers.ReceptionOperationMapper receptions,
-            ReceptionAccess receptionAccess, ReceptionCoordinator reception, WorkOrderCoordinator orders,
-            GuestRegistrationServiceImpl guests) {
-        return new ServiceOperationRecoveryServiceImpl(db, access, coordinator, receptions, receptionAccess,
-                reception, orders, guests);
+            ReceptionAccess receptionAccess,
+            ReceptionCoordinator reception,
+            WorkOrderCoordinator orders,
+            GuestRegistrationServiceImpl guests,
+            BeautyMappers.ServiceSubmissionMapper submissions,
+            ServiceSubmissionService sources) {
+        return new ServiceOperationRecoveryServiceImpl(
+                db,
+                access,
+                coordinator,
+                receptions,
+                receptionAccess,
+                reception,
+                orders,
+                guests,
+                submissions,
+                sources);
     }
 }

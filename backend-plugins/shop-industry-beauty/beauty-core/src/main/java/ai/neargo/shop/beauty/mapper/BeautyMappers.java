@@ -22,6 +22,7 @@ import ai.neargo.shop.beauty.entity.BtyServiceStep;
 import ai.neargo.shop.beauty.entity.BtyServiceSubmission;
 import ai.neargo.shop.beauty.entity.BtyServiceTask;
 import ai.neargo.shop.beauty.entity.BtySourceAllocationGuard;
+import ai.neargo.shop.beauty.entity.BtySourceObservation;
 import ai.neargo.shop.beauty.entity.BtyStorePolicy;
 import ai.neargo.shop.beauty.entity.BtyStorePolicyVersion;
 import ai.neargo.shop.beauty.entity.BtyTradeBinding;
@@ -388,6 +389,19 @@ public final class BeautyMappers {
 
     /** 服务工单；调用者在本域短事务按根→任务→子行锁序操作。 */
     public interface WorkOrderMapper extends BaseMapper<BtyWorkOrder> {
+        /** Binding changes the aggregate revision but never silently changes its service scope. */
+        @Update("""
+                UPDATE bty_work_order SET version=version+1,updated_by=#{actorNo},updated_at=#{updatedAt}
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND work_order_no=#{workOrderNo} AND deleted=0 AND version=#{expectedVersion}
+                  AND scope_revision=#{expectedScopeRevision} AND scope_frozen=0 AND status IN ('OPEN','IN_SERVICE')
+                """)
+        int touchSourceBinding(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo, @Param("expectedVersion") long expectedVersion,
+                @Param("expectedScopeRevision") long expectedScopeRevision, @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
+
+
         /** Current scope is part of SQL authorization, including canonical root/context encoding. */
         @Select("""
                 SELECT w.* FROM bty_work_order w WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo}
@@ -713,6 +727,106 @@ public final class BeautyMappers {
 
     /** 提交与恢复意图；外部权威结果由业务Service验证，不持锁调用外部。 */
     public interface ServiceSubmissionMapper extends BaseMapper<BtyServiceSubmission> {
+        /** Keyset traversal stays inside one read-only RR manifest up to its captured maximum. */
+        @Select("""
+                SELECT COALESCE(MAX(s.id),0) FROM bty_service_submission s JOIN bty_work_order w
+                  ON w.tenant_no=s.tenant_no AND w.entity_no=s.entity_no AND w.store_no=s.store_no
+                  AND w.work_order_no=s.work_order_no AND w.deleted=0
+                WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
+                  AND s.work_order_no=#{workOrderNo} AND s.deleted=0 AND s.action IN ('SUBMIT_SOURCE','ADD_SOURCE')
+                """)
+        long sourceMaximum(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo);
+
+        @Select("""
+                <script>
+                SELECT s.* FROM bty_service_submission s JOIN bty_work_order w
+                  ON w.tenant_no=s.tenant_no AND w.entity_no=s.entity_no AND w.store_no=s.store_no
+                  AND w.work_order_no=s.work_order_no AND w.deleted=0
+                WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
+                  AND s.work_order_no=#{workOrderNo} AND s.deleted=0 AND s.action IN ('SUBMIT_SOURCE','ADD_SOURCE')
+                  AND s.id &gt; #{afterId} AND s.id &lt;= #{maxId}
+                ORDER BY s.id LIMIT 100
+                </script>
+                """)
+        List<BtyServiceSubmission> selectWorkOrderPage(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo, @Param("workOrderNo") String workOrderNo,
+                @Param("afterId") long afterId, @Param("maxId") long maxId);
+
+
+        /** The root lock serializes pending selection overlap checks before any owner write. */
+        @Select("""
+                SELECT * FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                  AND store_no=#{storeNo} AND work_order_no=#{workOrderNo} AND deleted=0
+                  AND action IN ('SUBMIT_SOURCE','ADD_SOURCE') AND status IN ('RECEIVED','SOURCE_PENDING','RECOVERING')
+                ORDER BY id
+                """)
+        List<BtyServiceSubmission> selectActiveForWorkOrder(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo, @Param("workOrderNo") String workOrderNo);
+
+        /** A short lease fences local completion; it never grants an owner or consumer permission. */
+        @Update("""
+                UPDATE bty_service_submission s SET status='RECOVERING',next_retry_at=#{leaseUntil},
+                  version=version+1,updated_by=#{actorNo},updated_at=#{now}
+                WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
+                  AND s.submission_no=#{submissionNo} AND s.deleted=0 AND s.version=#{expectedVersion}
+                  AND s.action IN ('SUBMIT_SOURCE','ADD_SOURCE')
+                  AND JSON_EXTRACT(s.frozen_command,'$.schemaVersion')=2
+                  AND (s.status IN ('RECEIVED','SOURCE_PENDING') OR
+                    (s.status='RECOVERING' AND s.next_retry_at<=#{now}))
+                  AND #{leaseUntil}>#{now}
+                  AND EXISTS (SELECT 1 FROM bty_work_order w WHERE w.tenant_no=s.tenant_no
+                    AND w.entity_no=s.entity_no AND w.store_no=s.store_no AND w.work_order_no=s.work_order_no
+                    AND w.deleted=0)
+                """)
+        int claimSourceRecovery(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("submissionNo") String submissionNo, @Param("expectedVersion") long expectedVersion,
+                @Param("now") LocalDateTime now, @Param("leaseUntil") LocalDateTime leaseUntil,
+                @Param("actorNo") String actorNo);
+
+        /** Explicit null assignments clear retry/failure fields on one exact leased completion. */
+        @Update("""
+                UPDATE bty_service_submission s SET status=#{targetStatus},failure_code=#{failureCode},
+                  next_retry_at=#{nextRetryAt},version=version+1,updated_by=#{actorNo},updated_at=#{now}
+                WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
+                  AND s.submission_no=#{submissionNo} AND s.deleted=0 AND s.version=#{leaseVersion}
+                  AND s.status='RECOVERING' AND s.action IN ('SUBMIT_SOURCE','ADD_SOURCE')
+                  AND JSON_EXTRACT(s.frozen_command,'$.schemaVersion')=2
+                  AND ((#{targetStatus}='SOURCE_PENDING' AND #{nextRetryAt}>#{now} AND #{failureCode} IS NOT NULL)
+                    OR (#{targetStatus}='BOUND' AND #{nextRetryAt} IS NULL AND #{failureCode} IS NULL)
+                    OR (#{targetStatus}='REJECTED' AND #{nextRetryAt} IS NULL AND #{failureCode} IS NOT NULL))
+                  AND EXISTS (SELECT 1 FROM bty_work_order w WHERE w.tenant_no=s.tenant_no
+                    AND w.entity_no=s.entity_no AND w.store_no=s.store_no AND w.work_order_no=s.work_order_no
+                    AND w.deleted=0)
+                """)
+        int finishSourceRecovery(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("submissionNo") String submissionNo, @Param("leaseVersion") long leaseVersion,
+                @Param("targetStatus") String targetStatus, @Param("failureCode") String failureCode,
+                @Param("nextRetryAt") LocalDateTime nextRetryAt, @Param("now") LocalDateTime now,
+                @Param("actorNo") String actorNo);
+
+
+        @Select("""
+                SELECT s.* FROM bty_service_submission s JOIN bty_work_order w
+                  ON w.tenant_no=s.tenant_no AND w.entity_no=s.entity_no AND w.store_no=s.store_no
+                  AND w.work_order_no=s.work_order_no AND w.deleted=0
+                WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
+                  AND s.submission_no=#{submissionNo} AND s.deleted=0
+                """)
+        BtyServiceSubmission selectSubmission(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("submissionNo") String submissionNo);
+
+        @Select("""
+                SELECT s.* FROM bty_service_submission s JOIN bty_work_order w
+                  ON w.tenant_no=s.tenant_no AND w.entity_no=s.entity_no AND w.store_no=s.store_no
+                  AND w.work_order_no=s.work_order_no AND w.deleted=0
+                WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
+                  AND s.action=#{action} AND s.request_key_hash=#{requestKeyHash} AND s.deleted=0
+                """)
+        BtyServiceSubmission selectActionKey(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("action") String action, @Param("requestKeyHash") String requestKeyHash);
+
+
         /** Only a real OPEN draft belonging to this authorized live root is projected. */
         @Select("""
                 SELECT s.* FROM bty_service_submission s JOIN bty_work_order w
@@ -797,6 +911,24 @@ public final class BeautyMappers {
 
     /** 不可变来源绑定历史；从双父链确认范围，按版本批读。 */
     public interface TradeBindingMapper extends BaseMapper<BtyTradeBinding> {
+        /** Only the task's current pointer and both exact live parents authorize a binding projection. */
+        @Select("""
+                SELECT b.* FROM bty_trade_binding b JOIN bty_service_task t
+                  ON t.tenant_no=b.tenant_no AND t.entity_no=b.entity_no AND t.task_no=b.task_no
+                  AND t.binding_revision=b.binding_revision AND t.deleted=0
+                JOIN bty_work_order w ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no
+                  AND w.work_order_no=t.work_order_no AND w.deleted=0
+                JOIN bty_service_submission s ON s.tenant_no=b.tenant_no AND s.entity_no=b.entity_no
+                  AND s.submission_no=b.submission_no AND s.work_order_no=w.work_order_no
+                  AND s.store_no=w.store_no AND s.deleted=0
+                WHERE b.tenant_no='MAIN' AND b.entity_no=#{entityNo} AND w.store_no=#{storeNo}
+                  AND w.work_order_no=#{workOrderNo} AND b.deleted=0
+                ORDER BY b.source_no,b.source_line_ref,b.task_no,b.binding_no
+                """)
+        List<BtyTradeBinding> selectCurrentForWorkOrder(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo, @Param("workOrderNo") String workOrderNo);
+
+
         /** 只读取已授权本地事实；不存在的行不提供创建互斥。 */
         @Select("""
                 <script>
@@ -827,6 +959,31 @@ public final class BeautyMappers {
 
     /** 主体内规范来源行仲裁；涉及来源先锁guard，再锁工单与任务。 */
     public interface SourceAllocationGuardMapper extends BaseMapper<BtySourceAllocationGuard> {
+        /** The already locked observation fences the net quantity ceiling without erasing held history. */
+        @Update("""
+                UPDATE bty_source_allocation_guard g SET allocated_qty=allocated_qty+#{incrementQty},
+                  version=version+1,updated_by=#{actorNo},updated_at=#{updatedAt}
+                WHERE g.tenant_no='MAIN' AND g.entity_no=#{entityNo} AND g.guard_no=#{guardNo} AND g.deleted=0
+                  AND g.version=#{expectedVersion} AND g.source_revision=#{sourceRevision}
+                  AND g.source_hash=#{sourceHash} AND g.source_kind='STORE_ORDER' AND g.uom='COUNT'
+                  AND #{incrementQty}>0 AND #{incrementQty}=ROUND(#{incrementQty},0)
+                  AND g.allocated_qty+#{incrementQty}<=g.source_qty
+                  AND g.allocated_qty+#{incrementQty}<=#{netQuantity}
+                  AND EXISTS (SELECT 1 FROM bty_source_observation o WHERE o.tenant_no=g.tenant_no
+                    AND o.entity_no=g.entity_no AND o.store_no=#{storeNo} AND o.source_kind=g.source_kind
+                    AND o.source_no=g.source_no AND o.deleted=0 AND o.state='READY'
+                    AND o.observation_epoch=#{epoch} AND o.source_revision=#{sourceRevision}
+                    AND o.source_hash=#{sourceHash} AND o.verified_revision=o.source_revision
+                    AND o.verified_hash=o.source_hash)
+                """)
+        int allocateObservedQuantity(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("guardNo") String guardNo, @Param("expectedVersion") long expectedVersion,
+                @Param("sourceRevision") long sourceRevision, @Param("sourceHash") String sourceHash,
+                @Param("epoch") long epoch, @Param("incrementQty") BigDecimal incrementQty,
+                @Param("netQuantity") BigDecimal netQuantity, @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
+
+
         /** 只读取已授权本地事实；不存在的行不提供创建互斥。 */
         @Select("""
                 SELECT * FROM bty_source_allocation_guard WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
@@ -1050,4 +1207,38 @@ public final class BeautyMappers {
     /** Scoped reception persistence; authorization remains in services. */
     public interface ArrivalChallengeMapper extends BaseMapper<BtyArrivalChallenge> {
     }
+    /** Canonical observation identity is shared across every local work order. */
+    public interface SourceObservationMapper extends BaseMapper<BtySourceObservation> {
+        @Select("""
+                SELECT * FROM bty_source_observation WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                  AND store_no=#{storeNo} AND source_kind='STORE_ORDER' AND source_no=#{sourceNo} AND deleted=0
+                """)
+        BtySourceObservation selectCanonical(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("sourceNo") String sourceNo);
+
+        @Select("""
+                SELECT * FROM bty_source_observation WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                  AND source_kind='STORE_ORDER' AND source_no=#{sourceNo} AND deleted=0 FOR UPDATE
+                """)
+        BtySourceObservation selectCanonicalForUpdate(@Param("entityNo") String entityNo,
+                @Param("sourceNo") String sourceNo);
+
+        /** Called only while holding the canonical row lock; explicitly clears nullable fields. */
+        @Update("""
+                UPDATE bty_source_observation SET observation_epoch=#{row.observationEpoch},state=#{row.state},
+                  source_revision=#{row.sourceRevision},source_hash=#{row.sourceHash},
+                  verified_revision=#{row.verifiedRevision},verified_hash=#{row.verifiedHash},
+                  verified_lines=#{row.verifiedLines},verified_at=#{row.verifiedAt},observed_at=#{row.observedAt},
+                  failure_code=#{row.failureCode},version=version+1,
+                  updated_at=#{row.updatedAt},updated_by=#{row.updatedBy}
+                WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
+                  AND source_kind='STORE_ORDER' AND source_no=#{row.sourceNo}
+                  AND checkout_caller='BEAUTY' AND checkout_operation_no=#{row.checkoutOperationNo}
+                  AND order_no=#{row.orderNo} AND buyer_no=#{row.buyerNo}
+                  AND version=#{expectedVersion} AND deleted=0
+                """)
+        int completeObservation(@Param("row") BtySourceObservation row,
+                @Param("expectedVersion") long expectedVersion);
+    }
+
 }

@@ -1307,7 +1307,8 @@ public enum ErrorCode {
 
     /** Bounded appointment search cannot prove that capacity is unavailable. */
     BEAUTY_SEARCH_INCOMPLETE(80104, "err.beauty.search_incomplete"),
-    BEAUTY_ARRIVAL_REQUIRES_RESCHEDULE(80105, "err.beauty.arrival_requires_reschedule");
+    BEAUTY_ARRIVAL_REQUIRES_RESCHEDULE(80105, "err.beauty.arrival_requires_reschedule"),
+    BEAUTY_SOURCE_CUSTOMER_REQUIRED(80106, "err.beauty.source_customer_required");
 
     // ---- 9xxxx 保留给电子元器件，**本仓库不要再用** ----
     // 2026-09-30 元器件独立成项目 ai-hxkey，9xxxx 整段搬到 ai-hxkey 的 ElecErrorCode（码值不变，端上按码分流）。

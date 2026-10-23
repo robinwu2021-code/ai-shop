@@ -45,6 +45,9 @@ public final class BeautySchemaValidator {
     private static final String V7 = "db/industry/beauty/V7__beauty_appointment_assignment_units.sql";
     private static final String V7_SHA256 = "8894786048bf04ca45eff129a83fa7776da867994d72dff2343a91b215d6d3f2";
 
+    private static final String V8 = "db/industry/beauty/V8__beauty_source_observation.sql";
+    private static final String V8_SHA256 = "c5b54d574624a5265366cf4bf7897ec949d107bd302f171539c461a89a9d8343";
+
     /** Migration must be explicitly requested by a single deployment executor; validation is read only. */
     public void initialize(DataSource dataSource, String mode) {
         require("validate".equals(mode) || "migrate".equals(mode), "Beauty schema mode must be validate or migrate");
@@ -68,7 +71,7 @@ public final class BeautySchemaValidator {
         }
         flyway.validate();
         var current = flyway.info().current();
-        require(current != null && "7".equals(current.getVersion().getVersion()), "Beauty schema version must be 7");
+        require(current != null && "8".equals(current.getVersion().getVersion()), "Beauty schema version must be 8");
         for (var migration : flyway.info().all()) {
             String state = migration.getState().name();
             require("SUCCESS".equals(state) || "BASELINE".equals(state), "Unexpected beauty migration state: " + state);
@@ -92,6 +95,9 @@ public final class BeautySchemaValidator {
         });
         addIdentityGuard(result);
         allowAssignmentUnits(result);
+        manifest(V8, V8_SHA256, 1).forEach((table, contract) -> {
+            require(result.putIfAbsent(table, contract) == null, "Duplicate beauty migration table");
+        });
         return result;
     }
 

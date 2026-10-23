@@ -5,21 +5,23 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import javax.sql.DataSource;
 import org.apache.ibatis.mapping.Environment;
 import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
-import org.junit.jupiter.api.Test;
 import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.Test;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
+import javax.sql.DataSource;
+
 /** Factory identity checks are separate from the real SQL/transaction acceptance suite. */
 class BeautyPersistenceWiringTest {
     private Class<?> configuration() {
-        return assertDoesNotThrow(() -> Class.forName("ai.neargo.shop.beauty.config.BeautyPersistenceConfiguration"));
+        return assertDoesNotThrow(
+                () -> Class.forName("ai.neargo.shop.beauty.config.BeautyPersistenceConfiguration"));
     }
 
     private ApplicationContextRunner runner(boolean wrongFactory, boolean wrongTransaction) {
@@ -29,8 +31,11 @@ class BeautyPersistenceWiringTest {
         mybatis.setEnvironment(new Environment("primary", new JdbcTransactionFactory(),
                 wrongFactory ? mock(DataSource.class) : primary));
         when(factory.getConfiguration()).thenReturn(mybatis);
-        Class<?> ready = assertDoesNotThrow(() -> Class.forName("ai.neargo.shop.beauty.config.BeautySchemaReady"));
-        Object token = assertDoesNotThrow(() -> ready.getConstructor(String.class).newInstance("7"));
+        Class<?> ready =
+                assertDoesNotThrow(
+                        () -> Class.forName("ai.neargo.shop.beauty.config.BeautySchemaReady"));
+        Object token =
+                assertDoesNotThrow(() -> ready.getConstructor(String.class).newInstance("8"));
         return new ApplicationContextRunner().withUserConfiguration(configuration())
                 .withBean("dataSource", DataSource.class, () -> primary)
                 .withBean("sqlSessionFactory", SqlSessionFactory.class, () -> factory)
@@ -54,12 +59,19 @@ class BeautyPersistenceWiringTest {
 
     @Test
     void reusesPrimaryFactoryAndDoesNotCreateGlobalFlyway() {
-        runner(false, false).withPropertyValues("shop.beauty.enabled=true").run(context -> {
-            assertThat(context).hasNotFailed();
-            assertThat(context.getBean("beautySqlSessionTemplate", SqlSessionTemplate.class).getSqlSessionFactory())
-                    .isSameAs(context.getBean("sqlSessionFactory"));
-            assertThat(context.getBeansOfType(Flyway.class)).isEmpty();
-        });
+        runner(false, false)
+                .withPropertyValues("shop.beauty.enabled=true")
+                .run(
+                        context -> {
+                            assertThat(context).hasNotFailed();
+                            assertThat(
+                                            context.getBean(
+                                                            "beautySqlSessionTemplate",
+                                                            SqlSessionTemplate.class)
+                                                    .getSqlSessionFactory())
+                                    .isSameAs(context.getBean("sqlSessionFactory"));
+                            assertThat(context.getBeansOfType(Flyway.class)).isEmpty();
+                        });
     }
 
     @Test

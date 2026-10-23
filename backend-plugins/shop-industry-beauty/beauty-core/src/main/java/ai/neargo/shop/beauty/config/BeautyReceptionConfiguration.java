@@ -7,6 +7,8 @@ import ai.neargo.shop.beauty.policy.AppointmentAccess;
 import ai.neargo.shop.beauty.policy.CustomerOwnership;
 import ai.neargo.shop.beauty.policy.ReceptionAccess;
 import ai.neargo.shop.beauty.policy.ReceptionIdentity;
+import ai.neargo.shop.beauty.service.ServiceSubmissionService;
+import ai.neargo.shop.beauty.service.WorkOrderBillService;
 import ai.neargo.shop.beauty.service.impl.AppointmentCoordinator;
 import ai.neargo.shop.beauty.service.impl.AppointmentMatching;
 import ai.neargo.shop.beauty.service.impl.AppointmentPersistence;
@@ -26,16 +28,23 @@ import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.member.GuestRegistrationPort;
 import ai.neargo.shop.spi.product.ServiceCatalogFactsPort;
 import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
-import java.time.Clock;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Profile;
 
-/** Local reception capabilities use lazy real owner ports, retaining disabled and remote-only deployment shapes. */
+import java.time.Clock;
+
+/**
+ * Local reception capabilities use lazy real owner ports, retaining disabled and remote-only
+ * deployment shapes.
+ */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnBeautyEnabled
+@Import(BeautySourceConfiguration.class)
 public class BeautyReceptionConfiguration {
     @Bean ReceptionRecovery receptionRecovery(AppointmentPersistence db, AppointmentCoordinator appointments,
             AppointmentPreparationService preparation, BeautyMappers.ReceptionOperationMapper rows,
@@ -49,9 +58,17 @@ public class BeautyReceptionConfiguration {
     @Bean
     @Profile("api")
     JobDeclaration beautyReceptionRecoveryDeclaration() {
-        return new JobDeclaration("beauty-reception-recovery", "Beauty reception original operation recovery",
-                "Reconcile original resources only; never accept commands, arrive or open orders", "beauty-core",
-                "0 * * * * *", true, 60, 120, true, true);
+        return new JobDeclaration(
+                "beauty-reception-recovery",
+                "Beauty reception original operation recovery",
+                "Reconcile original resources only; never accept commands, arrive or open orders",
+                "beauty-core",
+                "0 * * * * *",
+                true,
+                60,
+                120,
+                true,
+                true);
     }
     @Bean CustomerOwnership customerOwnership(BeautyMappers.GuestClaimReceiptMapper receipts) {
         return new CustomerOwnership(receipts);
@@ -95,15 +112,42 @@ public class BeautyReceptionConfiguration {
         return new WorkOrderCoordinator(db, access, receptionAccess, identities, ownership, operations, preparation,
                 reassignment, appointments, receptionRows, orders, contexts, tasks, submissions, publisher, clock);
     }
-    @Bean WorkOrderQuery workOrderQuery(AppointmentPersistence db, BeautyMappers.WorkOrderContextMapper contexts,
-            BeautyMappers.ServiceTaskMapper tasks, BeautyMappers.ServiceStepMapper steps,
+
+    @Bean
+    WorkOrderQuery workOrderQuery(
+            AppointmentPersistence db,
+            BeautyMappers.WorkOrderContextMapper contexts,
+            BeautyMappers.ServiceTaskMapper tasks,
+            BeautyMappers.ServiceStepMapper steps,
             BeautyMappers.ServiceParticipationMapper participations,
-            BeautyMappers.ServiceSubmissionMapper submissions, BeautyMappers.ReceptionOperationMapper operations) {
-        return new WorkOrderQuery(db, contexts, tasks, steps, participations, submissions, operations);
+            BeautyMappers.ServiceSubmissionMapper submissions,
+            BeautyMappers.ReceptionOperationMapper operations,
+            BeautyMappers.TradeBindingMapper bindings,
+            BeautyMappers.SourceObservationMapper observations,
+            BeautyMappers.SourceAllocationGuardMapper guards) {
+        return new WorkOrderQuery(
+                db,
+                contexts,
+                tasks,
+                steps,
+                participations,
+                submissions,
+                operations,
+                bindings,
+                observations,
+                guards);
     }
-    @Bean WorkOrderServiceImpl workOrderServiceImpl(WorkOrderCoordinator coordinator, WorkOrderQuery query,
-            AppointmentPersistence db, AppointmentAccess access, BeautyMappers.WorkOrderMapper orders) {
-        return new WorkOrderServiceImpl(coordinator, query, db, access, orders);
+
+    @Bean
+    WorkOrderServiceImpl workOrderServiceImpl(
+            WorkOrderCoordinator coordinator,
+            WorkOrderQuery query,
+            AppointmentPersistence db,
+            AppointmentAccess access,
+            BeautyMappers.WorkOrderMapper orders,
+            ServiceSubmissionService submissions,
+            WorkOrderBillService bills) {
+        return new WorkOrderServiceImpl(coordinator, query, db, access, orders, submissions, bills);
     }
     @Bean ReceptionCoordinator receptionCoordinator(AppointmentPersistence db, AppointmentAccess access,
             ReceptionAccess receptionAccess, ReceptionIdentity identities, CustomerOwnership ownership,
@@ -117,9 +161,14 @@ public class BeautyReceptionConfiguration {
                 appointments, operations, challenges, publisher, clock, reassignment,
                 matching, appointmentPreparation, workOrders);
     }
-    @Bean ReceptionServiceImpl receptionServiceImpl(AppointmentPersistence db, AppointmentAccess access,
-            BeautyMappers.ArrivalChallengeMapper challenges, @Qualifier("beautyReceptionClock") Clock clock,
-                    ReceptionCoordinator coordinator) {
+
+    @Bean
+    ReceptionServiceImpl receptionServiceImpl(
+            AppointmentPersistence db,
+            AppointmentAccess access,
+            BeautyMappers.ArrivalChallengeMapper challenges,
+            @Qualifier("beautyReceptionClock") Clock clock,
+            ReceptionCoordinator coordinator) {
         return new ReceptionServiceImpl(db, access, challenges, clock, coordinator);
     }
 }

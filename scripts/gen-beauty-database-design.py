@@ -26,7 +26,7 @@ def generate():
         for f in t['fields']:
             assert f.get('references', '') in names | EXTERNAL | {''}, (t['name'], f)
     lines = ['# 美业与共用人员资源数据库字段字典', '',
-             '> 状态：原41项目标基线保留；Task55B正式V1–V7共27项私表，增量另列 · 2026-10-23',
+             '> 状态：原41项目标基线保留；Task58正式V1–V8共28项私表，增量另列 · 2026-10-24',
              '> 由 `python3 scripts/gen-beauty-database-design.py` 生成，勿手改；真源：[数据库设计源](./schema/beauty-database-design.json)。',
              '> 业务约束及复用边界：[数据库结构设计](./美业系统-数据库结构设计.md)。本册不是Flyway迁移，不输出可执行建表SQL。', '',
              '## 一、公共字段与约束', '',
@@ -123,6 +123,19 @@ def generate():
               'V1–V6字节冻结；同一项目需求可按容量使用同资源多份，每份保留独立planned_assignment_no。只将冲突的资源组合唯一索引改为同列普通索引；不合并、不回写既有行，无新列或新表。', '',
               '真源：[beauty-appointment-assignment-units-schema.json](./schema/beauty-appointment-assignment-units-schema.json)。', '',
               '`' + units['table'] + '`：移除唯一索引 `' + units['dropUniqueIndex'] + '`；新增普通索引 `' + units['addIndex'] + '`（' + ', '.join(units['columns']) + '）；保留业务号唯一索引 `' + units['retainedUniqueIndex'] + '`。', '']
+    source = json.loads((SOURCE.parent / 'beauty-source-observation-schema.json').read_text())
+    table = source['table']
+    lines += ['## Task58 source observation watermark (private V8)', '',
+              'V1-V7 and platform539/540 remain frozen. V8 adds one private table; 28 private tables plus industry history. '
+              'No money, receipt amount, raw customer proof or consumer token is stored here. '
+              'Canonical caller/operation and source identities are both permanent unique domains.', '',
+              'Source: [beauty-source-observation-schema.json](./schema/beauty-source-observation-schema.json). '
+              'Generator: gen-beauty-source-observation-schema.mjs. Runtime design and exact pin are in Task58 report.', '',
+              '### ' + table['name'], '', '| Field | Type | Nullable | Meaning |', '|---|---|---|---|']
+    for field in table['fields']:
+        lines.append(f"| {field['name']} | {field['type']} | {field['nullable']} | {field['description']} |")
+    lines += ['', 'Highest owner pair never decreases; verified pair/quantity lines preserve historical evidence. '
+              'Current UNKNOWN/BLOCKED does not erase that history. No automatic allocation release; canStart=false.', '']
     outputs[OUTPUT] = '\n'.join(lines)
     return outputs, tables
 

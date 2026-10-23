@@ -867,7 +867,7 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.AuthorizeCareMediaReq` | REQ | taskNo,action,mediaNo?,purpose | BAPI-036 |
 | `ai.neargo.shop.beauty.dto.AvailabilityQuery` | QUERY | storeNo,items,from,to,requestedPersonnelNo | BAPI-010 |
 | `ai.neargo.shop.beauty.dto.AvailabilityVO` | VO | AvailabilityVO含候选组合与过期时间 | BAPI-010 |
-| `ai.neargo.shop.beauty.dto.BusinessTraceVO` | VO | BusinessTraceVO按字段脱敏 | BAPI-137 |
+| `ai.neargo.shop.beauty.dto.BusinessTraceVO` | VO | Task58 actual local record: String businessNo, String workOrderNo, String appointmentNo, long scopeRevision, List<ServiceSubmissionVO> submissions, WorkOrderBillVO bill, boolean complete, List<String> blockingReasons | BAPI-137 |
 | `ai.neargo.shop.beauty.dto.CalendarPageQuery` | QUERY | snapshotToken,resourceCursor | BAPI-026 |
 | `ai.neargo.shop.beauty.dto.CalendarPageVO` | VO | CalendarPageVO过期要求重载 | BAPI-026 |
 | `ai.neargo.shop.beauty.dto.CalendarQuery` | QUERY | storeNo,from,to,view,resourceTypes,resourceCursor | BAPI-025 |
@@ -960,8 +960,8 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.ReceptionIdentityProof` | REQ | customerRef,guestNo,claimToken；USER cr1与GUEST guestNo+token互斥；toString脱敏 | 内部产出分配 |
 | `ai.neargo.shop.beauty.dto.RecordCommissionSettlementReq` | REQ | entryNos,approvalRef,paymentEvidence | BAPI-110 |
 | `ai.neargo.shop.beauty.dto.RecordNoShowReq` | REQ | expectedRevision,reason,evidenceRef? | BAPI-045 |
-| `ai.neargo.shop.beauty.dto.RecoverSubmissionReq` | REQ | expectedRevision,reason | BAPI-073 |
-| `ai.neargo.shop.beauty.dto.RecoveryRequestVO` | VO | RecoveryRequestVO不能新号重复支付；RecoveryRequestVO不能代完工代授权 | BAPI-073、BAPI-139 |
+| `ai.neargo.shop.beauty.dto.RecoverSubmissionReq` | REQ | Task58 actual local record: long expectedRevision, String reason | BAPI-073 |
+| `ai.neargo.shop.beauty.dto.RecoveryRequestVO` | VO | Task58 actual local record: String recoveryNo, String submissionNo, String operationNo, long acceptedRevision, String state, String recoveryAction | BAPI-073、BAPI-139 |
 | `ai.neargo.shop.beauty.dto.RecoveryWorkitemQuery` | QUERY | entityNo,storeNo,kind,page,size | BAPI-138 |
 | `ai.neargo.shop.beauty.dto.RecoveryWorkitemVO` | VO | PageData<RecoveryWorkitemVO> | BAPI-138 |
 | `ai.neargo.shop.beauty.dto.RegisterAssetDisputeReq` | REQ | sourceRef,assetUseNo,reason,evidence | BAPI-103 |
@@ -987,7 +987,7 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.ServiceReportVO` | VO | ServiceReportVO各事实水位 | BAPI-120 |
 | `ai.neargo.shop.beauty.dto.ServiceSalesVO` | VO | catalogVersionNo,groupKey,position,timezone,salesMode,windows,saleableNow；引用共用SalesMode/Window | BAPI-145 |
 | `ai.neargo.shop.beauty.dto.ServiceStepVO` | VO | ServiceStepVO | BAPI-060 |
-| `ai.neargo.shop.beauty.dto.ServiceSubmissionVO` | VO | ServiceSubmissionVO含恢复号；ServiceSubmissionVO含UNKNOWN阻断项 | BAPI-056、BAPI-072 |
+| `ai.neargo.shop.beauty.dto.ServiceSubmissionVO` | VO | Task58 actual local record: String submissionNo, String workOrderNo, String action, long revision, long originalScopeRevision, long targetScopeRevision, String status, String phase, String checkoutOperationNo, CheckoutPort.CheckoutQuote quote, String orderNo, String subOrderNo, SourceObservationVO source, List<SubmissionTaskVO> tasks, String recoveryAction, List<String> blockingReasons | BAPI-056、BAPI-072 |
 | `ai.neargo.shop.beauty.dto.ServiceTaskDetailVO` | VO | ServiceTaskDetailVO含来源状态及允许动作 | BAPI-159 |
 | `ai.neargo.shop.beauty.dto.ServiceTaskQuery` | QUERY | storeNo,from,to,status,personnelNo,page,size,assignmentState | BAPI-057 |
 | `ai.neargo.shop.beauty.dto.ServiceTaskVO` | VO | PageData<ServiceTaskVO> | BAPI-057 |
@@ -996,7 +996,7 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.StartTaskReq` | REQ | expectedRevision,expectedBindingRevision | BAPI-059 |
 | `ai.neargo.shop.beauty.dto.StorePolicyQuery` | QUERY | storeNo,at | BAPI-001 |
 | `ai.neargo.shop.beauty.dto.StorePolicyVO` | VO | policyNo,storeNo,revision,policyVersionNo,effectiveRevision,validFrom,policy | BAPI-001 |
-| `ai.neargo.shop.beauty.dto.SubmitServicesReq` | REQ | items,quoteNo,customerConsent,expectedRevision | BAPI-056 |
+| `ai.neargo.shop.beauty.dto.SubmitServicesReq` | REQ | Task58 actual local record: long expectedRevision, long expectedScopeRevision, List<TaskSelection> tasks, List<AddedItem> additions, SourceSelection source | BAPI-056 |
 | `ai.neargo.shop.beauty.dto.TaskActionResultVO` | VO | TaskActionResultVO；TaskActionResultVO含实际开始时间；TaskActionResultVO暂停不默认释放资源 | BAPI-058、BAPI-059、BAPI-063 |
 | `ai.neargo.shop.beauty.dto.TaskCancellationVO` | VO | TaskCancellationVO源取消另查进度 | BAPI-100 |
 | `ai.neargo.shop.beauty.dto.TaskCompletionVO` | VO | TaskCompletionVO分开服务和履约状态 | BAPI-064 |
@@ -1008,7 +1008,7 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.WaitingTicketQuery` | QUERY | storeNo,status,page,size | BAPI-049 |
 | `ai.neargo.shop.beauty.dto.WaitingTicketVO` | VO | PageData<WaitingTicketVO>；WaitingTicketVO | BAPI-049、BAPI-050、BAPI-051 |
 | `ai.neargo.shop.beauty.dto.WalkInVO` | VO | operationNo,operationState,appointmentNo,workOrder,startAt,recoveryAction | BAPI-048 |
-| `ai.neargo.shop.beauty.dto.WorkOrderBillVO` | VO | WorkOrderBillVO不生成混合收款单 | BAPI-071 |
+| `ai.neargo.shop.beauty.dto.WorkOrderBillVO` | VO | Task58 actual local record: String workOrderNo, long scopeRevision, String localWatermark, Instant observedAt, List<SourceBillVO> sources, List<CurrencyBillVO> currencies, boolean complete, List<String> blockingReasons | BAPI-071 |
 | `ai.neargo.shop.beauty.dto.WorkOrderClosureVO` | VO | WorkOrderClosureVO | BAPI-066 |
 | `ai.neargo.shop.beauty.dto.WorkOrderDetailVO` | VO | workOrder,customer,originalScopeRevision,tasks,availableActions；SQL同店root/context授权，legacy只读UNKNOWN动作空 | BAPI-055 |
 | `ai.neargo.shop.beauty.dto.WorkOrderParticipationVO` | VO | participationNo,personnelNo,roleCode,startedAt,endedAt；SQL完整父链真实参与 | BAPI-055、BAPI-155 |
@@ -1295,3 +1295,62 @@ Only proven original RESERVE rejection without hold, or confirmed explicit CANCE
 Background qualification before LIMIT50 requires receipt + complete original scope/source/plan/command intent binding. Only existing coordinator.recover; no new accept, guest get, staff identity, check-in or opening. Lease30s, retry30s/failure60s, ORDER BY next_retry_at,id.
 D fix R1: final 048 writer rechecks every original interval after lock acquisition, persisting reschedule-PENDING without scope on expiry; ordinary 052 retains its before-end rule. New CREATE locks active local heads and checks original selected versions without rematching; after all preparation writes, immediately before commit it rechecks every frozen interval against the existing reception Clock, rolling preparation back on expiry and preserving original reschedule-PENDING. Explicit authorization/capability and all nonzero remote HTTP errors propagate; unavailable or unproven release evidence stays PENDING.
 D adds no migration: V1-V7 unchanged, ready7 and 27 private tables. HTTP and remote acceptance remain Task59; deployment debt Task60.
+
+
+## Task58 actual local source submission, binding and bill
+
+Task58 local kernel implemented; independent review pending. No Task59 beauty HTTP/remote protocol or Task60 deployment acceptance. BM05 remains closed.
+
+| Module / owner | Actual signature |
+|---|---|
+| beauty-api / ai.neargo.shop.beauty.service.ServiceSubmissionService | `ServiceSubmissionVO submitForWorkOrder(String entityNo, String currentStoreNo, String actorNo, String workOrderNo, SubmitServicesReq req, String idempotencyKey);` |
+| beauty-api / ai.neargo.shop.beauty.service.ServiceSubmissionService | `ServiceSubmissionVO getSubmission(String entityNo, String currentStoreNo, String actorNo, String submissionNo);` |
+| beauty-api / ai.neargo.shop.beauty.service.ServiceSubmissionService | `RecoveryRequestVO requestSubmissionRecovery(String entityNo, String currentStoreNo, String actorNo, String submissionNo, RecoverSubmissionReq req, String idempotencyKey);` |
+| beauty-api / ai.neargo.shop.beauty.service.ServiceSubmissionService | `ServiceSubmissionVO recoverPending(String entityNo, String currentStoreNo, String actorNo, String submissionNo);` |
+| beauty-api / ai.neargo.shop.beauty.service.WorkOrderBillService | `WorkOrderBillVO getBill(String entityNo, String currentStoreNo, String actorNo, String workOrderNo);` |
+| beauty-api / ai.neargo.shop.beauty.service.WorkOrderBillService | `BusinessTraceVO getTrace(String entityNo, String currentStoreNo, String actorNo, String businessNo);` |
+| beauty-api / ai.neargo.shop.beauty.service.WorkOrderService | `ServiceSubmissionVO submitServices(String entityNo, String currentStoreNo, String actorNo, String workOrderNo, SubmitServicesReq req, String idempotencyKey);` |
+| beauty-api / ai.neargo.shop.beauty.service.WorkOrderService | `WorkOrderBillVO getBill(String entityNo, String currentStoreNo, String actorNo, String workOrderNo);` |
+
+| DTO record | Actual fields |
+|---|---|
+| `SubmitServicesReq` | `long expectedRevision, long expectedScopeRevision, List<TaskSelection> tasks, List<AddedItem> additions, SourceSelection source` |
+| `RecoverSubmissionReq` | `long expectedRevision, String reason` |
+| `ServiceSubmissionVO` | `String submissionNo, String workOrderNo, String action, long revision, long originalScopeRevision, long targetScopeRevision, String status, String phase, String checkoutOperationNo, CheckoutPort.CheckoutQuote quote, String orderNo, String subOrderNo, SourceObservationVO source, List<SubmissionTaskVO> tasks, String recoveryAction, List<String> blockingReasons` |
+| `SubmissionTaskVO` | `String taskNo, String skuNo, String definitionVersionNo, BigDecimal qty, String uom, long taskRevision, long bindingRevision, String sourceLineNo, String sourceState` |
+| `SourceObservationVO` | `String state, long observationEpoch, Long sourceRevision, String sourceHash, Long lastVerifiedRevision, String lastVerifiedHash, Instant observedAt, String reasonCode, boolean canStart` |
+| `RecoveryRequestVO` | `String recoveryNo, String submissionNo, String operationNo, long acceptedRevision, String state, String recoveryAction` |
+| `WorkOrderBillVO` | `String workOrderNo, long scopeRevision, String localWatermark, Instant observedAt, List<SourceBillVO> sources, List<CurrencyBillVO> currencies, boolean complete, List<String> blockingReasons` |
+| `SourceBillVO` | `String checkoutOperationNo, String orderNo, String sourceNo, String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, String amountScope, List<ReceiptSummaryVO> receipts, List<SubmissionTaskVO> tasks, SourceObservationVO observation, boolean complete, List<String> blockingReasons` |
+| `CurrencyBillVO` | `String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, boolean complete` |
+| `ReceiptSummaryVO` | `String paymentOperationNo, String paymentNo, String outTradeNo, String receiptNo, String channel, String status, long amountMinor, String currency` |
+| `BusinessTraceVO` | `String businessNo, String workOrderNo, String appointmentNo, long scopeRevision, List<ServiceSubmissionVO> submissions, WorkOrderBillVO bill, boolean complete, List<String> blockingReasons` |
+
+| Concrete helper / Bean | Contract |
+|---|---|
+| beauty-core / ServiceSubmissionServiceImpl | Durable endpoint SOURCE_SUBMITTED receipt + immutable intent; original actor/request recovery, leased original operation, no confirm/place/pay. |
+| beauty-core / ServiceSubmissionAccess + ServiceSubmissionQuery | Current MERCHANT MCH/USR grants, original complete parent chain, USER or same-store immutable guest claim receipt; proof never persisted. |
+| beauty-core / ServiceSourceObservation | V8 canonical caller/operation/suborder domain; claim epoch UNKNOWN before unlocked source IO; monotonic highest/verified pairs including superseded higher and trusted UNKNOWN invalidation. |
+| beauty-core / ServiceSourceBinding | Local TX only: observation -> sorted guards -> workOrder -> sorted tasks -> submission; net refundable ceiling vs held local quantity; first binding only, no release. |
+| beauty-core / WorkOrderBillServiceImpl + ServiceSourceFacts | RR keyset manifest then unlocked owner reads, bounded one retry, per-currency exact arithmetic and canonical receipt dedup; no private money ledger. |
+| beauty-core / BeautySourceConfiguration | ConditionalOnBeautyEnabled concrete one-way Bean graph; ObjectProvider CheckoutPort is optional/fail closed, no production owner stub; disabled installs no source beans. |
+
+BAPI-056 namespace: MAIN/entity/store/realm/kind/actor/endpoint/rawKeyHash, excludes derived action/target. Payload includes workOrder and all request fields. BTSK truncated actionNo is compared with full256 namespace/payload. Same TX stores scope/tasks/submission/receipt; duplicate transaction rolls back before original receipt read.
+
+BAPI-073 immutable acceptance and original ServiceOperationRecoveryService dispatch preserve the same submission/checkout number. Another actor cannot claim definitive prepare absence or replay the original short proof.
+
+GET submission/bill may update observation projection and temporarily make READY UNKNOWN; it never binds, confirms, creates an order or initiates payment. Current auth errors propagate; known dependency failure remains incomplete/pending.
+
+Highest revision belongs to one canonical checkout operation, not a cross-operation integer order. Unknown never lowers highest. Superseded trusted UNKNOWN invalidates in-flight tickets even without pair. Complete same highest pair or higher is required for READY.
+
+verified_lines persists only identity/quantity (sourceLine/clientRef/goods/sku/ordered/refundable/uom); dueMinor and receipt amounts remain ephemeral owner facts.
+
+READY is observed local bind eligibility only. Shared owner quantity is historical/net-refund observation, not shared atomic consumption. Binding preserves all historical held quantities. canStart=false; no BM05 execution.
+
+Whole-source money remains visible for trustworthy complete BLOCKED/closed historical owner facts, but partial allocation never becomes work-order attributable money. UNKNOWN due0 projects null. Currency overflow/receipt conflicts/owner partial failure force affected totals incomplete.
+
+Actual embedded HOST CheckoutPort and member owners are exercised by true C HTTP read/confirmation/order/payment and current B cash receipt HTTP. Refund bill test changes controlled owner ledger facts, not a complete reverse API.
+
+Standalone missing checkout provider returns explicit SOURCE_UNAVAILABLE; Task59 must supply real transport wiring. No new Remote or Controller is claimed.
+
+Only actual BEAUTY_SOURCE_CUSTOMER_REQUIRED exception80106 is registered with three languages. Proposed quantity/revision/scope/dependency exception placeholders remain durable safe phases instead.

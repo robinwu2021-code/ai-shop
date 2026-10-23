@@ -6,7 +6,11 @@ import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
 import ai.neargo.shop.beauty.policy.ReceptionAccess;
 import ai.neargo.shop.beauty.service.ServiceOperationRecoveryService;
+import ai.neargo.shop.beauty.service.ServiceSubmissionService;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
+import java.util.List;
 
 /** Continues only the durable original operation; no source key, actor namespace or prepared bytes are replaced. */
 public final class ServiceOperationRecoveryServiceImpl implements ServiceOperationRecoveryService {
@@ -18,23 +22,42 @@ public final class ServiceOperationRecoveryServiceImpl implements ServiceOperati
     private final ReceptionCoordinator reception;
     private final WorkOrderCoordinator orders;
     private final GuestRegistrationServiceImpl guests;
-    public ServiceOperationRecoveryServiceImpl(AppointmentPersistence db, AppointmentAccess access,
-            AppointmentCoordinator coordinator, BeautyMappers.ReceptionOperationMapper receptions,
-            ReceptionAccess receptionAccess, ReceptionCoordinator reception, WorkOrderCoordinator orders,
-            GuestRegistrationServiceImpl guests) {
+    private final BeautyMappers.ServiceSubmissionMapper submissions;
+    private final ServiceSubmissionService sources;
+
+    public ServiceOperationRecoveryServiceImpl(
+            AppointmentPersistence db,
+            AppointmentAccess access,
+            AppointmentCoordinator coordinator,
+            BeautyMappers.ReceptionOperationMapper receptions,
+            ReceptionAccess receptionAccess,
+            ReceptionCoordinator reception,
+            WorkOrderCoordinator orders,
+            GuestRegistrationServiceImpl guests,
+            BeautyMappers.ServiceSubmissionMapper submissions,
+            ServiceSubmissionService sources) {
         this.db = db; this.access = access; this.coordinator = coordinator; this.receptions = receptions;
         this.receptionAccess = receptionAccess; this.reception = reception; this.orders = orders; this.guests = guests;
+        this.submissions = submissions;
+        this.sources = sources;
     }
     @Override
     public OperationVO recoverOperation(String entity, String store, String actor, String operationNo) {
         access.merchant(entity, store, actor, true);
+        var source = db.read(() -> submissions.selectSubmission(entity, store, operationNo));
+        if (source != null && List.of("SUBMIT_SOURCE", "ADD_SOURCE").contains(source.getAction())) {
+            sources.recoverPending(entity, store, actor, operationNo);
+            return ServiceOperationQueryServiceImpl.sourceView(
+                    db.read(() -> submissions.selectSubmission(entity, store, operationNo)));
+        }
         var outer = db.read(() -> receptions.selectScoped(entity, store, operationNo));
         if (outer != null) {
             receptionAccess.customer(entity, store, actor);
             var current = ServiceOperationQueryServiceImpl.receptionView(outer);
             if (!"PENDING".equals(current.state())) { return current; }
             switch (outer.getAction()) {
-                case "RECEIVE_WALK_IN" -> reception.recoverWalkIn(entity, store, actor, operationNo);
+                case "RECEIVE_WALK_IN" ->
+                        reception.recoverWalkIn(entity, store, actor, operationNo);
                 case "OPEN_WORK_ORDER" -> orders.recover(entity, store, actor, operationNo);
                 case "CLAIM_GUEST" -> {
                     var result = guests.recoverClaim(entity, store, actor, operationNo);
@@ -48,21 +71,39 @@ public final class ServiceOperationRecoveryServiceImpl implements ServiceOperati
             return ServiceOperationQueryServiceImpl.receptionView(
                     db.read(() -> receptions.selectScoped(entity, store, operationNo)));
         }
-        var linkedOuter = db.read(() -> receptions.selectOne(Wrappers.<BtyReceptionOperation>lambdaQuery()
-                .eq(BtyReceptionOperation::getTenantNo, "MAIN").eq(BtyReceptionOperation::getEntityNo, entity)
-                .eq(BtyReceptionOperation::getStoreNo, store)
-                .eq(BtyReceptionOperation::getAppointmentOperationNo, operationNo)
-                .eq(BtyReceptionOperation::getAction, "RECEIVE_WALK_IN")
-                .eq(BtyReceptionOperation::getEndpoint, "BAPI-048")));
+        var linkedOuter =
+                db.read(
+                        () ->
+                                receptions.selectOne(
+                                        Wrappers.<BtyReceptionOperation>lambdaQuery()
+                                                .eq(BtyReceptionOperation::getTenantNo, "MAIN")
+                                                .eq(BtyReceptionOperation::getEntityNo, entity)
+                                                .eq(BtyReceptionOperation::getStoreNo, store)
+                                                .eq(
+                                                        BtyReceptionOperation
+                                                                ::getAppointmentOperationNo,
+                                                        operationNo)
+                                                .eq(
+                                                        BtyReceptionOperation::getAction,
+                                                        "RECEIVE_WALK_IN")
+                                                .eq(
+                                                        BtyReceptionOperation::getEndpoint,
+                                                        "BAPI-048")));
         if (linkedOuter != null) {
             return recoverOperation(entity, store, actor, linkedOuter.getOperationNo());
         }
         var operation = db.operation(operationNo);
         AppointmentPersistence.require(entity.equals(operation.getEntityNo()) && store.equals(operation.getStoreNo()));
         var result = coordinator.advance(operationNo);
-        return new OperationVO(result.getOperationNo(), result.getAppointmentNo(), result.getState(),
+        return new OperationVO(
+                result.getOperationNo(),
+                result.getAppointmentNo(),
+                result.getState(),
                 result.getAction(),
-                "PENDING".equals(result.getState()) ? "AUTHENTICATED_OPERATION_RECOVERY"
-                        : "RELEASE_REQUIRED".equals(result.getState()) ? "AUTHENTICATED_CANCEL" : null);
+                "PENDING".equals(result.getState())
+                        ? "AUTHENTICATED_OPERATION_RECOVERY"
+                        : "RELEASE_REQUIRED".equals(result.getState())
+                                ? "AUTHENTICATED_CANCEL"
+                                : null);
     }
 }

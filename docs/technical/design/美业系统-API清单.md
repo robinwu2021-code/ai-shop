@@ -182,7 +182,7 @@
 |---|---|---|---|
 | BAPI-054<br>BTY-H01<br>P1 | `POST /biz/x/beauty/work-orders` | 建立工单项目行及来源提交意图<br>customerRef?,storeNo,items,appointmentNo?,guestNo?,expectedRevision?,assignments,startAt? | WorkOrderVO<br>Task55C本地Service已实现；公开HTTP与remote接线待Task59 |
 | BAPI-055<br>BTY-H01<br>P1 | `GET /biz/x/beauty/work-orders/{workOrderNo}` | 查工单任务来源与进度<br>workOrderNo | WorkOrderDetailVO<br>Task55C本地Service已实现；公开HTTP与remote接线待Task59 |
-| BAPI-056<br>BTY-H01、BTY-H03<br>P1 | `POST /biz/x/beauty/work-orders/{workOrderNo}/service-submissions` | 提交新项目/加项及可信来源绑定流程<br>items,quoteNo,customerConsent,expectedRevision | ServiceSubmissionVO含恢复号<br>美业候选新接口 |
+| BAPI-056<br>BTY-H01、BTY-H03<br>P1 | `POST /biz/x/beauty/work-orders/{workOrderNo}/service-submissions` | 提交新项目/加项及可信来源绑定流程<br>expectedRevision,expectedScopeRevision,tasks(taskNo,expectedRevision,expectedBindingRevision),additions(clientItemRef,skuNo,definitionVersionNo,quantity),source(PREPARE or EXISTING); no buyer/amount/customerConsent | ServiceSubmissionVO含恢复号<br>Task58 local service kernel implemented; independent review pending; HTTP/remote remains Task59; canStart=false |
 | BAPI-057<br>BTY-H02<br>P1 | `GET /biz/x/beauty/tasks` | 查询我的或受权任务<br>storeNo,from,to,status,personnelNo,page,size,assignmentState | PageData<ServiceTaskVO><br>美业候选新接口 |
 | BAPI-058<br>BTY-H02<br>P1 | `POST /biz/x/beauty/tasks/{taskNo}/acceptances` | 接单<br>expectedRevision | TaskActionResultVO<br>美业候选新接口 |
 | BAPI-059<br>BTY-H02<br>P1 | `POST /biz/x/beauty/tasks/{taskNo}/starts` | 复核来源资格资源后开始服务<br>expectedRevision,expectedBindingRevision | TaskActionResultVO含实际开始时间<br>美业候选新接口 |
@@ -206,9 +206,9 @@
 | BAPI-068<br>BTY-I01<br>P1 | `CONTRACT trade.quote-and-create` | 核心报价建单及买家接管<br>storeNo,buyerRef,skuLines,quoteVersion | OrderVO美业仅记来源引用<br>共用合同接入，路径待核对 |
 | BAPI-069<br>BTY-I02<br>P1 | `CONTRACT payment.initiate-and-query` | 顾客付款和原支付号查结果<br>orderNo,payMethod,customerConsent | PaymentVO由资金域判定结果<br>共用合同接入，路径待核对 |
 | BAPI-070<br>BTY-I03<br>P1 | `CONTRACT payment.offline-receipt` | 正式合同允许的线下实收确认<br>orderNo,method,amount,evidence,operator | ReceiptVO禁止代消费者线上确认<br>共用合同接入，路径待核对 |
-| BAPI-071<br>BTY-I04<br>P1 | `GET /biz/x/beauty/work-orders/{workOrderNo}/bill` | 汇总逐来源应收实收与未结<br>workOrderNo | WorkOrderBillVO不生成混合收款单<br>美业候选新接口 |
-| BAPI-072<br>BTY-I05<br>P1 | `GET /biz/x/beauty/service-submissions/{submissionNo}` | 查提交意图与来源绑定进度<br>submissionNo | ServiceSubmissionVO含UNKNOWN阻断项<br>美业候选新接口 |
-| BAPI-073<br>BTY-I05<br>P1 | `POST /biz/x/beauty/service-submissions/{submissionNo}/recovery-requests` | 申请原号恢复查单及绑定<br>expectedRevision,reason | RecoveryRequestVO不能新号重复支付<br>美业候选新接口 |
+| BAPI-071<br>BTY-I04<br>P1 | `GET /biz/x/beauty/work-orders/{workOrderNo}/bill` | 汇总逐来源应收实收与未结<br>workOrderNo | WorkOrderBillVO: nullable per-source/per-currency due/gross received/refunded/net/outstanding, completeness/blockers; partial allocation WHOLE_SOURCE is not attributable aggregate<br>Task58 local service kernel implemented; independent review pending; HTTP/remote remains Task59; canStart=false |
+| BAPI-072<br>BTY-I05<br>P1 | `GET /biz/x/beauty/service-submissions/{submissionNo}` | 查提交意图与来源绑定进度<br>submissionNo | ServiceSubmissionVO: original operation, immutable selected tasks and actual bindings, highest/last verified pair; GET observes only, never binds or pays<br>Task58 local service kernel implemented; independent review pending; HTTP/remote remains Task59; canStart=false |
+| BAPI-073<br>BTY-I05<br>P1 | `POST /biz/x/beauty/service-submissions/{submissionNo}/recovery-requests` | 申请原号恢复查单及绑定<br>expectedRevision,reason | RecoveryRequestVO: immutable accepted request receipt; authenticated original recovery dispatch does not generate new purchase/payment identity<br>Task58 local service kernel implemented; independent review pending; HTTP/remote remains Task59; canStart=false |
 | BAPI-074<br>BTY-I06、BTY-I07<br>P4 | `CONTRACT cashier.advanced-contracts` | 混合/跨单/后付/定金/免单/改价<br>已批准政策及原来源,本人授权 | 待正式合同不设执行路由<br>共用合同接入，路径待核对 |
 
 ### J 储值
@@ -352,7 +352,7 @@
 |---|---|---|---|
 | BAPI-135<br>BTY-T01<br>P1 | `GET /biz/x/beauty/capability-status` | 查询门店接线兼容和验收能力<br>storeNo,clientVersion | CapabilityStatusVO缺省关闭<br>美业候选新接口 |
 | BAPI-136<br>BTY-T02<br>P1 | `CONTRACT audit.scoped-events` | 受控操作审计及代客身份追踪<br>subjectRef,storeScope,from,to,page,size | PageData<AuditEventVO>不含护理正文<br>共用合同接入，路径待核对 |
-| BAPI-137<br>BTY-T03<br>P1 | `GET /biz/x/beauty/traces/{businessNo}` | 关联预约工单任务来源资金状态<br>businessNo | BusinessTraceVO按字段脱敏<br>美业候选新接口 |
+| BAPI-137<br>BTY-T03<br>P1 | `GET /biz/x/beauty/traces/{businessNo}` | 关联预约工单任务来源资金状态<br>businessNo | BusinessTraceVO via actual WorkOrderBillService.getTrace local method; target HTTP class remains unimplemented<br>Task58 local service kernel implemented; independent review pending; HTTP/remote remains Task59; canStart=false |
 | BAPI-138<br>BTY-T04<br>P1 | `GET /ops/x/beauty/recovery-workitems` | 平台查已付未绑定资源事件积压<br>entityNo,storeNo,kind,page,size | PageData<RecoveryWorkitemVO><br>美业候选新接口 |
 | BAPI-139<br>BTY-T04<br>P1 | `POST /ops/x/beauty/recovery-requests` | 申请原号技术恢复<br>workitemNo,expectedRevision,reason,approvalRef? | RecoveryRequestVO不能代完工代授权<br>美业候选新接口 |
 | BAPI-140<br>BTY-T05<br>P1 | `CONTRACT observability.health-and-alerts` | 健康慢请求错误率设备存活与告警<br>serviceScope,timeRange,traceNo | HealthVO/AlertVO接已有观测设施<br>共用合同接入，路径待核对 |

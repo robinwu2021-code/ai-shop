@@ -6,14 +6,9 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
+
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import java.lang.reflect.InvocationTargetException;
-import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.function.Supplier;
+
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -23,6 +18,14 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import java.lang.reflect.InvocationTargetException;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.function.Supplier;
 
 /** Every suite owns a disposable database; fixture seeds do not masquerade as a business or resource service. */
 abstract class BeautyExecutionFixture {
@@ -45,10 +48,17 @@ abstract class BeautyExecutionFixture {
                 LoginUser.merchant("ACTOR", "operator"), null, List.of()));
     }
     ApplicationContextRunner runner() {
-        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
-                required("config.BeautyPersistenceConfiguration")).withBean(AuditMetaObjectHandler.class)
-                .withPropertyValues("shop.beauty.enabled=true", "spring.datasource.url=" + database.source.getUrl(),
-                        "spring.datasource.username=root", "spring.datasource.password=");
+        return new ApplicationContextRunner()
+                .withUserConfiguration(
+                        PrimaryPersistenceConfiguration.class,
+                        required("config.BeautyPersistenceConfiguration"))
+                .withBean(AuditMetaObjectHandler.class)
+                .withPropertyValues(
+                        "shop.beauty.enabled=true",
+                        "spring.datasource.url=" + database.source.getUrl(),
+                        "spring.datasource.username=root",
+                        "spring.datasource.password="
+                                + System.getenv().getOrDefault("BEAUTY_NATIVE_MYSQL_PASSWORD", ""));
     }
     @SuppressWarnings("unchecked")
     BaseMapper<Object> mapper(ApplicationContext context, String name) {
@@ -95,8 +105,15 @@ abstract class BeautyExecutionFixture {
         for (int i = 0; i < fields.length; i += 2) {
             values.put((String) fields[i], fields[i + 1]);
         }
-        sql.update("INSERT INTO " + table + " (" + String.join(",", values.keySet()) + ") VALUES ("
-                + String.join(",", Collections.nCopies(values.size(), "?")) + ")", values.values().toArray());
+        sql.update(
+                "INSERT INTO "
+                        + table
+                        + " ("
+                        + String.join(",", values.keySet())
+                        + ") VALUES ("
+                        + String.join(",", Collections.nCopies(values.size(), "?"))
+                        + ")",
+                values.values().toArray());
     }
     void appointment(String number, String store) {
         seed("bty_appointment", "appointment_no", number, "store_no", store, "source", "PHONE",

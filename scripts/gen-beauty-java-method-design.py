@@ -268,6 +268,21 @@ def generate():
     increment += ['', '## Task55A身份/认领/到店码增量', '', foundation['status'], '', '```java']
     increment += foundation['methods']
     increment += ['```', ''] + foundation['contracts'] + ['']
+    source = d.get('sourceFoundation')
+    if source:
+        increment += ['', '## Task58 actual local source submission, binding and bill', '', source['status'], '',
+                      '| Module / owner | Actual signature |', '|---|---|']
+        for row in source['methods']:
+            actual = (ROOT / row['path']).read_text()
+            assert re.sub(r'\s+', '', row['signature']) in re.sub(r'\s+', '', actual), row['owner']
+            increment.append(f"| {row['owner']} | `{row['signature']}` |")
+        increment += ['', '| DTO record | Actual fields |', '|---|---|']
+        for name, fields in source['dtoRecords'].items():
+            increment.append(f'| `{name}` | `{fields}` |')
+        increment += ['', '| Concrete helper / Bean | Contract |', '|---|---|']
+        for row in source['helpers']:
+            increment.append(f"| {row['owner']} | {row['role']} |")
+        increment += [''] + [rule + '\n' for rule in source['contracts']]
     classes += increment
     methods += increment
     stats={'controllers':len(controllers),'services':len(services),'serviceMethods':method_count,'dtos':len(dtos),'mappers':len(mappers),'customMapperMethods':sum(len(m['customMethods']) for m in mappers),'ownedHttp':len(eps),'sharedHttp':len(d['sharedHttpMethods'])}

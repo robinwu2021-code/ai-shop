@@ -5,6 +5,17 @@ import {createHash, randomBytes, randomUUID} from 'node:crypto';
 import assert from 'node:assert/strict';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+const beautySource = process.argv.includes('--beauty-source');
+const selected = process.env.CHECKOUT_PAYMENT_TESTS || (beautySource ? 'BeautySourceCheckoutIT' : 'PaymentOperationNativeMysqlTest');
+if (beautySource) {
+  assert.match(selected, /^BeautySourceCheckoutIT(?:#[A-Za-z][A-Za-z0-9]*(?:\+[A-Za-z][A-Za-z0-9]*)*)?$/,
+    'Task58 host mode requires one explicit known class and nonempty selectors');
+  const observation = readFileSync(root + 'backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/'
+    + 'db/industry/beauty/V8__beauty_source_observation.sql');
+  assert.equal(observation.length,4582,'V8 size differs from actual-file pin');
+  assert.equal(createHash('sha256').update(observation).digest('hex'),
+    'c5b54d574624a5265366cf4bf7897ec949d107bd302f171539c461a89a9d8343','V8 differs from actual-file pin');
+}
 const name = 'codex-checkout-payment-' + randomUUID();
 const temporary = '/tmp/' + name;
 const database = 'checkout_pay_' + randomBytes(8).toString('hex');
@@ -73,9 +84,8 @@ try {
     CHECKOUT_NATIVE_MYSQL_URL:url, CHECKOUT_NATIVE_MYSQL_USER:'root', CHECKOUT_NATIVE_MYSQL_PASSWORD:password,
     SPRING_DATASOURCE_URL:url, SPRING_DATASOURCE_USERNAME:'root', SPRING_DATASOURCE_PASSWORD:password,
     SPRING_DATASOURCE_DRIVER_CLASS_NAME:'com.mysql.cj.jdbc.Driver', SPRING_SQL_INIT_MODE:'never'};
-  const selected = process.env.CHECKOUT_PAYMENT_TESTS || 'PaymentOperationNativeMysqlTest';
   // Native conditions must never turn a selected native test into a skipped or stale success.
-  const nativeClasses = ['PaymentOperationNativeMysqlTest', 'PaymentOperationProcessRestartNativeTest',
+  const nativeClasses = beautySource ? ['BeautySourceCheckoutIT'] : ['PaymentOperationNativeMysqlTest', 'PaymentOperationProcessRestartNativeTest',
     'OfflineReceiptFlowTest', 'CheckoutPaymentAuthenticationFlowTest', 'CheckoutCashPermissionFlowTest',
     'ReceiptEvidenceFlowTest', 'CheckoutNativeMysqlTest', 'CheckoutRestartNativeTest',
     'CheckoutPermissionFlowTest', 'CheckoutPricingFlowTest', 'CheckoutHttpFlowTest',
@@ -87,22 +97,26 @@ try {
   const args = ['-o','-Dmaven.repo.local=/tmp/codex-beauty-bm01-m2','-f',root + 'backend/pom.xml',
     '-pl','shop-app','-am','test','-Dtest=' + selected,'-Dsurefire.failIfNoSpecifiedTests=false',
     '-Dcheckout.test.native=true'];
+  if (beautySource) args.push('-Pbeauty-embedded','-Dbeauty.source.test.native=true');
   const result = spawnSync('mvn',args,{cwd:root,env,stdio:'inherit',timeout:600000});
-  assert.equal(result.status,0,'Checkout payment native tests failed');
+  if (!beautySource) assert.equal(result.status,0,'Checkout payment native tests failed');
   for (const test of nativeClasses) {
     const suite = readFileSync(nativeReport(test), 'utf8').match(/<testsuite\b[^>]*>/)?.[0];
     assert(suite, test + ' must produce a fresh Surefire suite');
     const counts = Object.fromEntries([...suite.matchAll(/(tests|failures|errors|skipped)="(\d+)"/g)]
       .map(([, key, value]) => [key, Number(value)]));
     assert(counts.tests > 0, test + ' must execute at least one test');
+    if (beautySource) console.log('Task58 fresh host ' + test + ': ' + JSON.stringify(counts));
     for (const field of ['failures', 'errors', 'skipped']) {
+      if (beautySource && result.status !== 0 && field !== 'skipped') continue;
       assert.equal(counts[field], 0, test + ' must have zero ' + field);
     }
-    console.log('Native execution verified: ' + test + '; tests=' + counts.tests + '; skips=0.');
+    if (result.status === 0) console.log('Native execution verified: ' + test + '; tests=' + counts.tests + '; skips=0.');
   }
+  assert.equal(result.status,0,'Checkout payment native tests failed');
 } finally {
   if (owned) {
-    try { docker(['rm','--force','--volumes',name]); }
+    try { docker(['rm','--force','--volumes',name]); console.log('Own UUID cleanup complete: ' + name); }
     catch (error) {
       console.error('Owned container cleanup failed: ' + name + '; ' + error.message);
       process.exitCode = 1;

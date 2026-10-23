@@ -5,12 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.lang.reflect.InvocationTargetException;
 import org.junit.jupiter.api.Test;
+
+import java.lang.reflect.InvocationTargetException;
 
 class BeautyCheckExpressionTest {
     private String canonical(String expression) {
-        var type = assertDoesNotThrow(() -> Class.forName("ai.neargo.shop.beauty.config.BeautyCheckExpression"));
+        var type =
+                assertDoesNotThrow(
+                        () -> Class.forName("ai.neargo.shop.beauty.config.BeautyCheckExpression"));
         try {
             var method = type.getDeclaredMethod("canonical", String.class);
             method.setAccessible(true);
@@ -27,12 +30,16 @@ class BeautyCheckExpressionTest {
 
     @Test
     void ignoresOnlyRedundantGrouping() {
-        assertEquals(canonical("done_qty + voided_qty <= qty"), canonical("((`done_qty` + `voided_qty`) <= `qty`)"));
+        assertEquals(
+                canonical("done_qty + voided_qty <= qty"),
+                canonical("((`done_qty` + `voided_qty`) <= `qty`)"));
     }
 
     @Test
     void preservesArithmeticAndComparisonPrecedence() {
-        assertNotEquals(canonical("done_qty + voided_qty <= qty"), canonical("done_qty + (voided_qty <= qty)"));
+        assertNotEquals(
+                canonical("done_qty + voided_qty <= qty"),
+                canonical("done_qty + (voided_qty <= qty)"));
     }
 
     @Test
@@ -49,8 +56,10 @@ class BeautyCheckExpressionTest {
 
     @Test
     void recognizesOnlyApprovedPayloadFunctions() {
-        assertEquals(canonical("JSON_VALID(frozen_plan) AND OCTET_LENGTH(frozen_plan) <= 65536"),
-                canonical("(json_valid(`frozen_plan`) and (octet_length(`frozen_plan`) <= 65536))"));
+        assertEquals(
+                canonical("JSON_VALID(frozen_plan) AND OCTET_LENGTH(frozen_plan) <= 65536"),
+                canonical(
+                        "(json_valid(`frozen_plan`) and (octet_length(`frozen_plan`) <= 65536))"));
         assertEquals(canonical("OCTET_LENGTH(frozen_plan) <= 65536"),
                 canonical("length(`frozen_plan`) <= 65536"));
         assertNotEquals(canonical("OCTET_LENGTH(frozen_plan) <= 65536"),
@@ -78,7 +87,29 @@ class BeautyCheckExpressionTest {
     @Test void quotedIdentifierNeverErasesLiteralContent() {
         assertEquals(canonical("phase = 'RECEIVED'"), canonical("`phase` = 'RECEIVED'"));
         assertNotEquals(canonical("phase = 'RECEIVED'"), canonical("phase = 'RECE`IVED'"));
-        assertThrows(IllegalStateException.class, () -> canonical("phase = _utf8mb4\\'RECE`IVED\\'"));
+        assertThrows(
+                IllegalStateException.class, () -> canonical("phase = _utf8mb4\\'RECE`IVED\\'"));
     }
 
+    @Test
+    void sourceArrayChecksRetainTypeLengthAndRejectOtherFunctions() {
+        assertEquals(
+                "and(=(json_type(verified_lines),literal('ARRAY')),<=(json_length(verified_lines),20))",
+                assertDoesNotThrow(
+                        () ->
+                                canonical(
+                                        "JSON_TYPE(verified_lines) = 'ARRAY' AND"
+                                            + " JSON_LENGTH(verified_lines) <= 20")));
+        assertNotEquals(
+                canonical("JSON_TYPE(verified_lines) = 'ARRAY'"),
+                canonical("JSON_TYPE(verified_lines) = 'OBJECT'"));
+        assertNotEquals(
+                canonical("JSON_LENGTH(verified_lines) <= 20"),
+                canonical("JSON_LENGTH(verified_lines) <= 21"));
+        assertNotEquals(
+                canonical("JSON_LENGTH(verified_lines) <= 20"),
+                canonical("LENGTH(verified_lines) <= 20"));
+        assertThrows(IllegalStateException.class, () -> canonical("JSON_LENGTH(a,b) > 0"));
+        assertThrows(IllegalStateException.class, () -> canonical("JSON_EXTRACT(a) = 1"));
+    }
 }

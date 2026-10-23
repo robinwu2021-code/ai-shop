@@ -1415,14 +1415,14 @@
           "method": "POST",
           "path": "/biz/x/beauty/work-orders/{workOrderNo}/service-submissions",
           "purpose": "提交新项目/加项及可信来源绑定流程",
-          "request": "items,quoteNo,customerConsent,expectedRevision",
+          "request": "expectedRevision,expectedScopeRevision,tasks(taskNo,expectedRevision,expectedBindingRevision),additions(clientItemRef,skuNo,definitionVersionNo,quantity),source(PREPARE or EXISTING); no buyer/amount/customerConsent",
           "response": "ServiceSubmissionVO含恢复号",
           "functions": [
             "BTY-H01",
             "BTY-H03"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "Task58 local service kernel implemented; independent review pending; HTTP/remote remains Task59; canStart=false"
         },
         {
           "id": "BAPI-057",
@@ -1649,12 +1649,12 @@
           "path": "/biz/x/beauty/work-orders/{workOrderNo}/bill",
           "purpose": "汇总逐来源应收实收与未结",
           "request": "workOrderNo",
-          "response": "WorkOrderBillVO不生成混合收款单",
+          "response": "WorkOrderBillVO: nullable per-source/per-currency due/gross received/refunded/net/outstanding, completeness/blockers; partial allocation WHOLE_SOURCE is not attributable aggregate",
           "functions": [
             "BTY-I04"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "Task58 local service kernel implemented; independent review pending; HTTP/remote remains Task59; canStart=false"
         },
         {
           "id": "BAPI-072",
@@ -1662,12 +1662,12 @@
           "path": "/biz/x/beauty/service-submissions/{submissionNo}",
           "purpose": "查提交意图与来源绑定进度",
           "request": "submissionNo",
-          "response": "ServiceSubmissionVO含UNKNOWN阻断项",
+          "response": "ServiceSubmissionVO: original operation, immutable selected tasks and actual bindings, highest/last verified pair; GET observes only, never binds or pays",
           "functions": [
             "BTY-I05"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "Task58 local service kernel implemented; independent review pending; HTTP/remote remains Task59; canStart=false"
         },
         {
           "id": "BAPI-073",
@@ -1675,12 +1675,12 @@
           "path": "/biz/x/beauty/service-submissions/{submissionNo}/recovery-requests",
           "purpose": "申请原号恢复查单及绑定",
           "request": "expectedRevision,reason",
-          "response": "RecoveryRequestVO不能新号重复支付",
+          "response": "RecoveryRequestVO: immutable accepted request receipt; authenticated original recovery dispatch does not generate new purchase/payment identity",
           "functions": [
             "BTY-I05"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "Task58 local service kernel implemented; independent review pending; HTTP/remote remains Task59; canStart=false"
         },
         {
           "id": "BAPI-074",
@@ -2640,12 +2640,12 @@
           "path": "/biz/x/beauty/traces/{businessNo}",
           "purpose": "关联预约工单任务来源资金状态",
           "request": "businessNo",
-          "response": "BusinessTraceVO按字段脱敏",
+          "response": "BusinessTraceVO via actual WorkOrderBillService.getTrace local method; target HTTP class remains unimplemented",
           "functions": [
             "BTY-T03"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "Task58 local service kernel implemented; independent review pending; HTTP/remote remains Task59; canStart=false"
         },
         {
           "id": "BAPI-138",

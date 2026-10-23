@@ -107,7 +107,8 @@ final class BeautyCheckExpression {
         if (token.startsWith("'")) { return "literal(" + token + ")"; }
         require(token.matches("[a-z_][a-z0-9_]*|[0-9]+"));
         if (take("(")) {
-            require(Set.of("json_valid", "octet_length", "length", "char_length").contains(token));
+            require(Set.of("json_valid", "octet_length", "length", "char_length",
+                    "json_type", "json_length").contains(token));
             String argument = primary();
             expect(")");
             // MySQL stores OCTET_LENGTH as its byte-length synonym LENGTH in CHECK_CLAUSE.

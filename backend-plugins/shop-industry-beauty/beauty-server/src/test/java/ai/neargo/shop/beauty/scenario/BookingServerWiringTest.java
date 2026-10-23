@@ -33,7 +33,8 @@ class BookingServerWiringTest {
                     throw new AssertionError("target lookup while constructing source/executor graph");
                 }, "key"))
                 .withBean(ObjectMapper.class, ObjectMapper::new)
-                .withBean(PlatformTransactionManager.class, () -> mock(PlatformTransactionManager.class))
+                .withBean("transactionManager", PlatformTransactionManager.class,
+                        () -> mock(PlatformTransactionManager.class))
                 .withBean(ServiceCatalogQueryService.class, () -> mock(ServiceCatalogQueryService.class))
                 .withBean("beautyOutboxPublisher", OutboxPublisher.class, () -> mock(OutboxPublisher.class));
         for (Class type : new Class[] {BeautyMappers.AppointmentMapper.class,
@@ -48,7 +49,9 @@ class BookingServerWiringTest {
                 BeautyMappers.GuestClaimReceiptMapper.class, BeautyMappers.ArrivalChallengeMapper.class,
                 BeautyMappers.WorkOrderMapper.class, BeautyMappers.WorkOrderContextMapper.class,
                 BeautyMappers.ServiceTaskMapper.class, BeautyMappers.ServiceStepMapper.class,
-                BeautyMappers.ServiceParticipationMapper.class, BeautyMappers.ServiceSubmissionMapper.class}) {
+                BeautyMappers.ServiceParticipationMapper.class, BeautyMappers.ServiceSubmissionMapper.class,
+                BeautyMappers.SourceObservationMapper.class, BeautyMappers.SourceAllocationGuardMapper.class,
+                BeautyMappers.TradeBindingMapper.class}) {
             runner = runner.withBean(type, () -> mock(type));
         }
         return runner;

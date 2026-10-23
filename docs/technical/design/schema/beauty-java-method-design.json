@@ -6903,7 +6903,7 @@
       "class": "ai.neargo.shop.beauty.dto.SubmitServicesReq",
       "kind": "REQ",
       "fieldsContract": [
-        "items,quoteNo,customerConsent,expectedRevision"
+        "Task58 actual local record: long expectedRevision, long expectedScopeRevision, List<TaskSelection> tasks, List<AddedItem> additions, SourceSelection source"
       ],
       "apiIds": [
         "BAPI-056"
@@ -6913,8 +6913,7 @@
       "class": "ai.neargo.shop.beauty.dto.ServiceSubmissionVO",
       "kind": "VO",
       "fieldsContract": [
-        "ServiceSubmissionVO含恢复号",
-        "ServiceSubmissionVO含UNKNOWN阻断项"
+        "Task58 actual local record: String submissionNo, String workOrderNo, String action, long revision, long originalScopeRevision, long targetScopeRevision, String status, String phase, String checkoutOperationNo, CheckoutPort.CheckoutQuote quote, String orderNo, String subOrderNo, SourceObservationVO source, List<SubmissionTaskVO> tasks, String recoveryAction, List<String> blockingReasons"
       ],
       "apiIds": [
         "BAPI-056",
@@ -7149,7 +7148,7 @@
       "class": "ai.neargo.shop.beauty.dto.WorkOrderBillVO",
       "kind": "VO",
       "fieldsContract": [
-        "WorkOrderBillVO不生成混合收款单"
+        "Task58 actual local record: String workOrderNo, long scopeRevision, String localWatermark, Instant observedAt, List<SourceBillVO> sources, List<CurrencyBillVO> currencies, boolean complete, List<String> blockingReasons"
       ],
       "apiIds": [
         "BAPI-071"
@@ -7159,7 +7158,7 @@
       "class": "ai.neargo.shop.beauty.dto.RecoverSubmissionReq",
       "kind": "REQ",
       "fieldsContract": [
-        "expectedRevision,reason"
+        "Task58 actual local record: long expectedRevision, String reason"
       ],
       "apiIds": [
         "BAPI-073"
@@ -7169,8 +7168,7 @@
       "class": "ai.neargo.shop.beauty.dto.RecoveryRequestVO",
       "kind": "VO",
       "fieldsContract": [
-        "RecoveryRequestVO不能新号重复支付",
-        "RecoveryRequestVO不能代完工代授权"
+        "Task58 actual local record: String recoveryNo, String submissionNo, String operationNo, long acceptedRevision, String state, String recoveryAction"
       ],
       "apiIds": [
         "BAPI-073",
@@ -7697,7 +7695,7 @@
       "class": "ai.neargo.shop.beauty.dto.BusinessTraceVO",
       "kind": "VO",
       "fieldsContract": [
-        "BusinessTraceVO按字段脱敏"
+        "Task58 actual local record: String businessNo, String workOrderNo, String appointmentNo, long scopeRevision, List<ServiceSubmissionVO> submissions, WorkOrderBillVO bill, boolean complete, List<String> blockingReasons"
       ],
       "apiIds": [
         "BAPI-137"
@@ -11526,6 +11524,102 @@
       "Background qualification before LIMIT50 requires receipt + complete original scope/source/plan/command intent binding. Only existing coordinator.recover; no new accept, guest get, staff identity, check-in or opening. Lease30s, retry30s/failure60s, ORDER BY next_retry_at,id.",
       "D fix R1: final 048 writer rechecks every original interval after lock acquisition, persisting reschedule-PENDING without scope on expiry; ordinary 052 retains its before-end rule. New CREATE locks active local heads and checks original selected versions without rematching; after all preparation writes, immediately before commit it rechecks every frozen interval against the existing reception Clock, rolling preparation back on expiry and preserving original reschedule-PENDING. Explicit authorization/capability and all nonzero remote HTTP errors propagate; unavailable or unproven release evidence stays PENDING.",
       "D adds no migration: V1-V7 unchanged, ready7 and 27 private tables. HTTP and remote acceptance remain Task59; deployment debt Task60."
+    ]
+  },
+  "sourceFoundation": {
+    "status": "Task58 local kernel implemented; independent review pending. No Task59 beauty HTTP/remote protocol or Task60 deployment acceptance. BM05 remains closed.",
+    "methods": [
+      {
+        "owner": "beauty-api / ai.neargo.shop.beauty.service.ServiceSubmissionService",
+        "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/ServiceSubmissionService.java",
+        "signature": "ServiceSubmissionVO submitForWorkOrder(String entityNo, String currentStoreNo, String actorNo, String workOrderNo, SubmitServicesReq req, String idempotencyKey);"
+      },
+      {
+        "owner": "beauty-api / ai.neargo.shop.beauty.service.ServiceSubmissionService",
+        "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/ServiceSubmissionService.java",
+        "signature": "ServiceSubmissionVO getSubmission(String entityNo, String currentStoreNo, String actorNo, String submissionNo);"
+      },
+      {
+        "owner": "beauty-api / ai.neargo.shop.beauty.service.ServiceSubmissionService",
+        "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/ServiceSubmissionService.java",
+        "signature": "RecoveryRequestVO requestSubmissionRecovery(String entityNo, String currentStoreNo, String actorNo, String submissionNo, RecoverSubmissionReq req, String idempotencyKey);"
+      },
+      {
+        "owner": "beauty-api / ai.neargo.shop.beauty.service.ServiceSubmissionService",
+        "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/ServiceSubmissionService.java",
+        "signature": "ServiceSubmissionVO recoverPending(String entityNo, String currentStoreNo, String actorNo, String submissionNo);"
+      },
+      {
+        "owner": "beauty-api / ai.neargo.shop.beauty.service.WorkOrderBillService",
+        "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/WorkOrderBillService.java",
+        "signature": "WorkOrderBillVO getBill(String entityNo, String currentStoreNo, String actorNo, String workOrderNo);"
+      },
+      {
+        "owner": "beauty-api / ai.neargo.shop.beauty.service.WorkOrderBillService",
+        "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/WorkOrderBillService.java",
+        "signature": "BusinessTraceVO getTrace(String entityNo, String currentStoreNo, String actorNo, String businessNo);"
+      },
+      {
+        "owner": "beauty-api / ai.neargo.shop.beauty.service.WorkOrderService",
+        "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/WorkOrderService.java",
+        "signature": "ServiceSubmissionVO submitServices(String entityNo, String currentStoreNo, String actorNo, String workOrderNo, SubmitServicesReq req, String idempotencyKey);"
+      },
+      {
+        "owner": "beauty-api / ai.neargo.shop.beauty.service.WorkOrderService",
+        "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/WorkOrderService.java",
+        "signature": "WorkOrderBillVO getBill(String entityNo, String currentStoreNo, String actorNo, String workOrderNo);"
+      }
+    ],
+    "dtoRecords": {
+      "SubmitServicesReq": "long expectedRevision, long expectedScopeRevision, List<TaskSelection> tasks, List<AddedItem> additions, SourceSelection source",
+      "RecoverSubmissionReq": "long expectedRevision, String reason",
+      "ServiceSubmissionVO": "String submissionNo, String workOrderNo, String action, long revision, long originalScopeRevision, long targetScopeRevision, String status, String phase, String checkoutOperationNo, CheckoutPort.CheckoutQuote quote, String orderNo, String subOrderNo, SourceObservationVO source, List<SubmissionTaskVO> tasks, String recoveryAction, List<String> blockingReasons",
+      "SubmissionTaskVO": "String taskNo, String skuNo, String definitionVersionNo, BigDecimal qty, String uom, long taskRevision, long bindingRevision, String sourceLineNo, String sourceState",
+      "SourceObservationVO": "String state, long observationEpoch, Long sourceRevision, String sourceHash, Long lastVerifiedRevision, String lastVerifiedHash, Instant observedAt, String reasonCode, boolean canStart",
+      "RecoveryRequestVO": "String recoveryNo, String submissionNo, String operationNo, long acceptedRevision, String state, String recoveryAction",
+      "WorkOrderBillVO": "String workOrderNo, long scopeRevision, String localWatermark, Instant observedAt, List<SourceBillVO> sources, List<CurrencyBillVO> currencies, boolean complete, List<String> blockingReasons",
+      "SourceBillVO": "String checkoutOperationNo, String orderNo, String sourceNo, String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, String amountScope, List<ReceiptSummaryVO> receipts, List<SubmissionTaskVO> tasks, SourceObservationVO observation, boolean complete, List<String> blockingReasons",
+      "CurrencyBillVO": "String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, boolean complete",
+      "ReceiptSummaryVO": "String paymentOperationNo, String paymentNo, String outTradeNo, String receiptNo, String channel, String status, long amountMinor, String currency",
+      "BusinessTraceVO": "String businessNo, String workOrderNo, String appointmentNo, long scopeRevision, List<ServiceSubmissionVO> submissions, WorkOrderBillVO bill, boolean complete, List<String> blockingReasons"
+    },
+    "helpers": [
+      {
+        "owner": "beauty-core / ServiceSubmissionServiceImpl",
+        "role": "Durable endpoint SOURCE_SUBMITTED receipt + immutable intent; original actor/request recovery, leased original operation, no confirm/place/pay."
+      },
+      {
+        "owner": "beauty-core / ServiceSubmissionAccess + ServiceSubmissionQuery",
+        "role": "Current MERCHANT MCH/USR grants, original complete parent chain, USER or same-store immutable guest claim receipt; proof never persisted."
+      },
+      {
+        "owner": "beauty-core / ServiceSourceObservation",
+        "role": "V8 canonical caller/operation/suborder domain; claim epoch UNKNOWN before unlocked source IO; monotonic highest/verified pairs including superseded higher and trusted UNKNOWN invalidation."
+      },
+      {
+        "owner": "beauty-core / ServiceSourceBinding",
+        "role": "Local TX only: observation -> sorted guards -> workOrder -> sorted tasks -> submission; net refundable ceiling vs held local quantity; first binding only, no release."
+      },
+      {
+        "owner": "beauty-core / WorkOrderBillServiceImpl + ServiceSourceFacts",
+        "role": "RR keyset manifest then unlocked owner reads, bounded one retry, per-currency exact arithmetic and canonical receipt dedup; no private money ledger."
+      },
+      {
+        "owner": "beauty-core / BeautySourceConfiguration",
+        "role": "ConditionalOnBeautyEnabled concrete one-way Bean graph; ObjectProvider CheckoutPort is optional/fail closed, no production owner stub; disabled installs no source beans."
+      }
+    ],
+    "contracts": [
+      "BAPI-056 namespace: MAIN/entity/store/realm/kind/actor/endpoint/rawKeyHash, excludes derived action/target. Payload includes workOrder and all request fields. BTSK truncated actionNo is compared with full256 namespace/payload. Same TX stores scope/tasks/submission/receipt; duplicate transaction rolls back before original receipt read.",
+      "BAPI-073 immutable acceptance and original ServiceOperationRecoveryService dispatch preserve the same submission/checkout number. Another actor cannot claim definitive prepare absence or replay the original short proof.",
+      "GET submission/bill may update observation projection and temporarily make READY UNKNOWN; it never binds, confirms, creates an order or initiates payment. Current auth errors propagate; known dependency failure remains incomplete/pending.",
+      "Highest revision belongs to one canonical checkout operation, not a cross-operation integer order. Unknown never lowers highest. Superseded trusted UNKNOWN invalidates in-flight tickets even without pair. Complete same highest pair or higher is required for READY.",
+      "verified_lines persists only identity/quantity (sourceLine/clientRef/goods/sku/ordered/refundable/uom); dueMinor and receipt amounts remain ephemeral owner facts.",
+      "READY is observed local bind eligibility only. Shared owner quantity is historical/net-refund observation, not shared atomic consumption. Binding preserves all historical held quantities. canStart=false; no BM05 execution.",
+      "Whole-source money remains visible for trustworthy complete BLOCKED/closed historical owner facts, but partial allocation never becomes work-order attributable money. UNKNOWN due0 projects null. Currency overflow/receipt conflicts/owner partial failure force affected totals incomplete.",
+      "Actual embedded HOST CheckoutPort and member owners are exercised by true C HTTP read/confirmation/order/payment and current B cash receipt HTTP. Refund bill test changes controlled owner ledger facts, not a complete reverse API.",
+      "Standalone missing checkout provider returns explicit SOURCE_UNAVAILABLE; Task59 must supply real transport wiring. No new Remote or Controller is claimed.",
+      "Only actual BEAUTY_SOURCE_CUSTOMER_REQUIRED exception80106 is registered with three languages. Proposed quantity/revision/scope/dependency exception placeholders remain durable safe phases instead."
     ]
   }
 }

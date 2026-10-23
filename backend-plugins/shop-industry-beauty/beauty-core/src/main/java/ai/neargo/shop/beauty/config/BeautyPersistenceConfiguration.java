@@ -1,7 +1,7 @@
 package ai.neargo.shop.beauty.config;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import javax.sql.DataSource;
+
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.annotation.MapperScan;
@@ -12,6 +12,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
+
+import javax.sql.DataSource;
 
 /** Beauty owns mapper activation, while the platform retains the primary factory and transaction manager. */
 @Configuration(proxyBeanMethods = false)
@@ -29,16 +31,21 @@ public class BeautyPersistenceConfiguration {
     BeautySchemaReady beautySchemaReady(@Qualifier("dataSource") DataSource source,
             @Value("${shop.beauty.migration.mode:validate}") String mode) {
         new BeautySchemaValidator().initialize(source, mode);
-        return new BeautySchemaReady("7");
+        return new BeautySchemaReady("8");
     }
 
     @Bean
-    SqlSessionTemplate beautySqlSessionTemplate(@Qualifier("sqlSessionFactory") SqlSessionFactory factory,
+    SqlSessionTemplate beautySqlSessionTemplate(
+            @Qualifier("sqlSessionFactory") SqlSessionFactory factory,
             @Qualifier("dataSource") DataSource source,
-            @Qualifier("transactionManager") PlatformTransactionManager manager, BeautySchemaReady schema) {
-        if (!"7".equals(schema.version()) || factory.getConfiguration().getEnvironment().getDataSource() != source
-                || !(manager instanceof DataSourceTransactionManager primary) || primary.getDataSource() != source) {
-            throw new IllegalStateException("Beauty requires the platform primary factory and transaction manager");
+            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            BeautySchemaReady schema) {
+        if (!"8".equals(schema.version())
+                || factory.getConfiguration().getEnvironment().getDataSource() != source
+                || !(manager instanceof DataSourceTransactionManager primary)
+                || primary.getDataSource() != source) {
+            throw new IllegalStateException(
+                    "Beauty requires the platform primary factory and transaction manager");
         }
         return new SqlSessionTemplate(factory);
     }
