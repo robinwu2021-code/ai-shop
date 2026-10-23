@@ -1,0 +1,9 @@
+.page :global(th), .page :global(td) { padding-block: 10px; }
+.context { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; margin-bottom: 18px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--muted); font-size: 13px; }
+.context dt { color: var(--muted-foreground); }
+.context dd { margin: 0; overflow-wrap: anywhere; }
+.form { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.form fieldset { padding: 0; border: 0; margin: 0; }
+.form label { display: flex; flex-direction: column; align-items: start; gap: 6px; font-size: 13px; }
+.form label input, .form label select { width: min(320px, 100%); }
+.form input[type="number"] { width: min(180px, 100%); }

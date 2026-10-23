@@ -150,6 +150,7 @@ it("offers resume and explicit default selection for a paused independent type",
 
 it("edits an active points name in its drawer and refreshes the list", async () => {
   const original = { typeCode: "HX_TOKEN", name: "平台积分", market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "ACTIVE", orderDefault: true };
+  query.setQueryData(["points-earning-context"], { types: [original] });
   mock.types.mockResolvedValue([original]);
   mock.rename.mockImplementation(async () => { mock.types.mockResolvedValue([{ ...original, name: "虹选积分" }]); return { requestId: "RENAME1" }; });
   await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
@@ -167,6 +168,7 @@ it("edits an active points name in its drawer and refreshes the list", async () 
   expect(mock.rename).toHaveBeenCalledWith(expect.objectContaining({ typeCode: "HX_TOKEN", expectedName: "平台积分", name: "虹选积分" }));
   expect(mock.rename.mock.calls[0][0]).not.toHaveProperty("reason");
   expect(host.querySelector('[data-testid="points-type-list"]')!.textContent).toContain("虹选积分");
+  expect(query.getQueryState(["points-earning-context"])?.isInvalidated).toBe(true);
 });
 
 it("blocks duplicate names in the drawer before submitting", async () => {
