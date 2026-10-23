@@ -144,6 +144,16 @@
               }
             ]
           },
+          "documentNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "exceptionNo": {
             "anyOf": [
               {
@@ -296,6 +306,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/UnifiedActivityDefinition_d13b99bbf6"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "documentNo": {
+            "anyOf": [
+              {
+                "type": "string"
               },
               {
                 "type": "null"
@@ -538,6 +558,16 @@
       "BatchView_622771cd8a": {
         "properties": {
           "batchNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "documentNo": {
             "anyOf": [
               {
                 "type": "string"
@@ -890,6 +920,45 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.paybridge.dto.StoredValueCustomerViews$Candidate"
+      },
+      "Capability_b04b79f443": {
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "channel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "templateId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.message.notify.StoredValueNotificationService$Capability"
       },
       "CardProductBindingView_7e26a87ef7": {
         "properties": {
@@ -1364,6 +1433,38 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValuePlans$Create"
       },
+      "CursorPage_17f0e48d34": {
+        "properties": {
+          "hasMore": {
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "records": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Store_c046f1b128"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews$Store>"
+      },
       "CursorPage_18a4b8942c": {
         "properties": {
           "hasMore": {
@@ -1523,38 +1624,6 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.entitlement.EntitlementQueryPort$UsageItem>"
-      },
-      "CursorPage_938d18590d": {
-        "properties": {
-          "hasMore": {
-            "type": "boolean"
-          },
-          "nextCursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "records": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/StoreItem_443598882d"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "x-java-type": "ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValuePort$StoreItem>"
       },
       "CustomerReference_0a9cd90168": {
         "properties": {
@@ -1741,6 +1810,16 @@
             ]
           },
           "diffNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "documentNo": {
             "anyOf": [
               {
                 "type": "string"
@@ -2459,6 +2538,16 @@
               }
             ]
           },
+          "documentNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "entityNo": {
             "anyOf": [
               {
@@ -2526,6 +2615,44 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.pay.entitlement.dto.ExceptionViews$ExceptionView"
+      },
+      "Filter_9bcdb949eb": {
+        "properties": {
+          "endDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "startDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews$Filter"
       },
       "FreezeCommand_ce62c49cc0": {
         "properties": {
@@ -2771,6 +2898,76 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.trade.dto.ServiceOrderCreate$Line"
       },
+      "Lookup_a07b55a2c3": {
+        "properties": {
+          "issuer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/View_ffb58b55b6"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueIssuers$Lookup"
+      },
+      "MaintenanceResult_15d8775d82": {
+        "properties": {
+          "accountCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "inventoryHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "issuerCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "manifestNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "receiptNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueMigrationPlans$MaintenanceResult"
+      },
       "ManagedTemplateView_8b7b3c18f2": {
         "properties": {
           "currentVersionNo": {
@@ -2830,6 +3027,46 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.pay.entitlement.dto.ManagedTemplateView"
+      },
+      "Manifest_cfcba47797": {
+        "properties": {
+          "accountCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "authorityHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fingerprint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "manifestNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueMigrationPlans$Manifest"
       },
       "MarketBrief_2df960aa68": {
         "properties": {
@@ -4257,6 +4494,16 @@
               }
             ]
           },
+          "documentNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "maskedName": {
             "anyOf": [
               {
@@ -4372,10 +4619,133 @@
                 "type": "null"
               }
             ]
+          },
+          "voucherDocumentNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueMerchantQueryController$RecordView"
+      },
+      "Record_c1eab0800c": {
+        "properties": {
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "documentNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "occurredAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "signedAmountMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews$Record"
+      },
+      "Records_7fae5113cf": {
+        "properties": {
+          "filter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Filter_9bcdb949eb"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "records": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Record_c1eab0800c"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "store": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoreHeader_90b0bbcc79"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews$Records"
       },
       "RecoveryCommand_b181030e56": {
         "properties": {
@@ -4455,6 +4825,35 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.entitlement.EntitlementDefinition$RedemptionScope"
       },
+      "Request_cb21faa468": {
+        "properties": {
+          "pauseReceiptNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "storeNos": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueMigrationController$Request"
+      },
       "ResolveView_e64f88b202": {
         "properties": {
           "found": {
@@ -4473,6 +4872,62 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValuePlanRechargeController$ResolveView"
+      },
+      "Route_2dd9a77067": {
+        "properties": {
+          "channel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entityNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "paymentMerchantNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scene": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "storeNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueIssuers$Route"
       },
       "Rule_51f3b19c0f": {
         "properties": {
@@ -4606,6 +5061,16 @@
           "diffCount": {
             "format": "int64",
             "type": "integer"
+          },
+          "documentNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "entityNo": {
             "anyOf": [
@@ -5300,7 +5765,43 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValuePlans$Status"
       },
-      "StoreItem_443598882d": {
+      "StoreHeader_90b0bbcc79": {
+        "properties": {
+          "businessTimeZone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "storeName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "storeNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews$StoreHeader"
+      },
+      "Store_c046f1b128": {
         "properties": {
           "entityNo": {
             "anyOf": [
@@ -5326,10 +5827,28 @@
           "lastActivityType": {
             "anyOf": [
               {
-                "enum": [
-                  "RECHARGE",
-                  "CONSUMPTION"
-                ]
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastOccurredAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastType": {
+            "anyOf": [
+              {
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5368,7 +5887,7 @@
           }
         },
         "type": "object",
-        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValuePort$StoreItem"
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews$Store"
       },
       "StoredValueBalanceView_a38761fe32": {
         "properties": {
@@ -5551,6 +6070,16 @@
             ]
           },
           "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "documentNo": {
             "anyOf": [
               {
                 "type": "string"
@@ -6313,6 +6842,16 @@
               }
             ]
           },
+          "documentNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "occurredAt": {
             "anyOf": [
               {
@@ -6755,6 +7294,149 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValuePlans$View"
+      },
+      "View_ffb58b55b6": {
+        "properties": {
+          "clearingMode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "collectionMode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "debitAllocationMode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "issuerNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "issuerVersionNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "marketZone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "routes": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Route_2dd9a77067"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scopeNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scopeType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "settlementEntityNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueIssuers$View"
       }
     },
     "securitySchemes": {
@@ -8556,6 +9238,316 @@
           "biz"
         ],
         "x-permission-expression": "@perm.canBiz('pay:ent:read')"
+      }
+    },
+    "/biz/management/stored-value/issuers/{issuerNo}": {
+      "get": {
+        "operationId": "BizStoredValueIssuerController_issuer",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "issuerNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "managementNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Lookup_a07b55a2c3"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/migration-manifests": {
+      "post": {
+        "operationId": "BizStoredValueMigrationController_prepare",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Request_cb21faa468"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Manifest_cfcba47797"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/migration-manifests/{manifestNo}/map": {
+      "post": {
+        "operationId": "BizStoredValueMigrationController_map",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "manifestNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Request_cb21faa468"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/MaintenanceResult_15d8775d82"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/migration-manifests/{manifestNo}/pause": {
+      "post": {
+        "operationId": "BizStoredValueMigrationController_pause",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "manifestNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Request_cb21faa468"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/MaintenanceResult_15d8775d82"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
       }
     },
     "/biz/marketing-summary": {
@@ -12004,6 +12996,175 @@
         ]
       }
     },
+    "/mp/stored-value/notification-capability": {
+      "get": {
+        "operationId": "MpStoredValueNotificationController_capability",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Capability_b04b79f443"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "mp"
+        ]
+      }
+    },
+    "/mp/stored-value/store/{storeNo}/records": {
+      "get": {
+        "operationId": "MpStoredValueController_records",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "default": "ALL",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "startDate",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "focusDocumentNo",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Records_7fae5113cf"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "mp"
+        ]
+      }
+    },
     "/mp/stored-value/stores": {
       "get": {
         "operationId": "MpStoredValueController_stores",
@@ -12039,7 +13200,7 @@
                     "data": {
                       "anyOf": [
                         {
-                          "$ref": "#/components/schemas/CursorPage_938d18590d"
+                          "$ref": "#/components/schemas/CursorPage_17f0e48d34"
                         },
                         {
                           "type": "null"

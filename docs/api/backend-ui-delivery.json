@@ -213,6 +213,51 @@
       "app": "c-app",
       "method": "POST",
       "path": "/mp/orders/*/entitlement-authorizations"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/stored-value/issuers/*"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stored-value/records"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stored-value/records/*"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/management/stored-value/migration-manifests"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/management/stored-value/migration-manifests/*/map"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/management/stored-value/migration-manifests/*/pause"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stored-value/plan-recharges/cancel-create"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stored-value/plan-recharges/confirm-offline"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stored-value/plan-recharges/resolve"
     }
   ]
 }

@@ -1086,3 +1086,18 @@ Command包含精确模板Reference、TARGETED/CENTER及人群/标签选择条件
 | P82 | POST | /biz/stored-value/plan-recharges/confirm-offline | CreateRequest + Idempotency-Key | StoredValueRechargeProgress | pay:sv:recharge:create pay:sv:recharge:receive | Pay本地确认、原单重放、MERCHANT_OFFLINE；顾客标识与登录账号分离 |
 
 账户目录补充（2026-10-20）：默认以lastRechargeAt（最后成功储值时间）及账户号倒序分页；新增同名可空时间字段，lastOccurredAt仍表示最近收支。SV_CUSTOMERS_RECHARGE游标与旧排序游标不通用，账户引用不变。搜索会员仍复用P80/P81，不因查询自动开户。
+
+## 发行主体维护增量（2026-10-23，真实Java合同补录）
+
+以下为合并远端后已存在的Java接口，补录公开合同及前端待办；不代表新开发或前端已接入。由ManagementAccess与实际主体授权服务验证，不以登录态替代资源权限。
+
+| ID | 方法 | 路径 | query或body | 业务响应 | 权限 | 说明 |
+|---|---|---|---|---|---|---|
+| P90 | GET | /biz/management/stored-value/issuers/{issuerNo} | managementNo | Lookup | 管理空间认证及资源读授权 | 先定位真实发行主体再验证scope |
+| P91 | POST | /biz/management/stored-value/migration-manifests | Request(storeNos,pauseReceiptNo) + Idempotency-Key | Manifest | 管理空间认证及实际主体维护授权 | 生成真实迁移清单，不直接改余额 |
+| P92 | POST | /biz/management/stored-value/migration-manifests/{manifestNo}/pause | Request + Idempotency-Key | MaintenanceResult | 管理空间认证及实际主体维护授权 | 原清单暂停证明 |
+| P93 | POST | /biz/management/stored-value/migration-manifests/{manifestNo}/map | Request + Idempotency-Key | MaintenanceResult | 管理空间认证及实际主体维护授权 | 使用原清单及暂停回执，禁止无证映射 |
+
+| C12 | GET | /mp/stored-value/store/{storeNo}/records | type?,startDate?,endDate?,focusDocumentNo?,cursor?,size | StoredValueConsumerViews.Records | 消费者登录本人及实际门店记录归属 | 日期沿门店市场时区，展示真实消费/充值记录 |
+
+| C13 | GET | /mp/stored-value/notification-capability | 无 | Capability | 消费者登录 | 仅真实模板就绪才允许客户端发起通知授权 |
