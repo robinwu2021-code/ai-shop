@@ -18,6 +18,13 @@ import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.user.service.PersonService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.jdbc.core.JdbcTemplate;
+import ai.neargo.shop.spi.member.MemberQueryPort;
+import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -37,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * <p>还有一条同样重要但反直觉的：<b>3 秒内重复提交要返回上一次的结果，不能报错</b>。
  * 报错会让店员以为刚才那下没成功，于是再按一次 —— 真正的重复核销往往这么来。
  */
-@SpringBootTest
+@SpringBootTest(properties="shop.core.entitlement.migration-watermark-key=coupon-issue-fence-test-key-at-least-thirty-two-characters")
 @ActiveProfiles("test")
 class StoreCodeRedeemTest {
 
@@ -64,6 +71,17 @@ class StoreCodeRedeemTest {
 
     @Autowired
     private ApplyMapper applyMapper;
+
+    @MockitoSpyBean MemberQueryPort memberQueries;
+    @Autowired JdbcTemplate jdbc;
+    @Autowired ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService fences;
+
+    @BeforeEach void audienceResolutionDoesNotHoldTheCoreTransaction() {
+        doAnswer(call -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            return call.callRealMethod();
+        }).when(memberQueries).resolveSegment(anyString(), nullable(String.class));
+    }
 
     private static int seq = 6100;
 
@@ -94,6 +112,65 @@ class StoreCodeRedeemTest {
         assertThat(uc.getRedeemCode()).as("到店核销的券必须有码 —— 没码买家出示不了任何东西")
                 .isNotBlank();
         return new String[]{e, uc.getRedeemCode(), uc.getUserCouponNo(), uc.getUserNo()};
+    }
+
+    private CouponVO issuanceTemplate(String entity) {
+        return couponService.save(entity, new CouponSaveCmd(null, "迁移围栏发放测试" + (++seq),
+                PmtCoupon.CASH, 300L, null, null, 0L, null, PmtCoupon.SCOPE_ALL, List.of(), null,
+                PmtCoupon.RELATIVE, null, null, 30, PmtCoupon.ISSUE_TARGETED,
+                PmtCoupon.REDEEM_ORDER, 1, 50, 1, null), "OP");
+    }
+
+    @Test void frozenTemplateRejectsIssueBeforeResolvingItsAudience() {
+        String entity = "M-FROZEN-" + (++seq);
+        var coupon = issuanceTemplate(entity);
+        freezeTemplate(coupon.couponNo());
+        clearInvocations(memberQueries);
+        assertThatThrownBy(() -> couponService.issue(entity, coupon.couponNo(), "@ALL", "OP"))
+                .isInstanceOf(BizException.class).hasMessage(ErrorCode.CONFLICT.name());
+        verifyNoInteractions(memberQueries);
+        assertNoIssuance(coupon.couponNo());
+    }
+
+    @Test void fenceIsRecheckedAfterTheRemoteAudienceWasResolved() {
+        String entity = "M-FENCE-RACE-" + (++seq);
+        var coupon = issuanceTemplate(entity);
+        doAnswer(call -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            var audience = call.callRealMethod();
+            // A completed source command freezes the template between preflight and write.
+            freezeTemplate(coupon.couponNo());
+            return audience;
+        }).when(memberQueries).resolveSegment(entity, "@ALL");
+        assertThatThrownBy(() -> couponService.issue(entity, coupon.couponNo(), "@ALL", "OP"))
+                .isInstanceOf(BizException.class).hasMessage(ErrorCode.CONFLICT.name());
+        verify(memberQueries).resolveSegment(entity, "@ALL");
+        assertNoIssuance(coupon.couponNo());
+    }
+
+    private void freezeTemplate(String couponNo) {
+        var context = new ai.neargo.shop.spi.entitlement.EntitlementContext(
+                "MAIN", "OP", "ISSUE-TEST", "a".repeat(64));
+        var source = new ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceIdentity(
+                ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem.PMT,
+                ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceKind.TEMPLATE, couponNo);
+        String batch = java.util.UUID.randomUUID().toString().replace("-", "");
+        var current = fences.state(context, source);
+        var draining = fences.transition(context, source,
+                new ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService.Command(
+                        ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService.Action.BEGIN_DRAIN,
+                        batch, current.revision(), "Issuance fence rehearsal", batch + "D"));
+        fences.transition(context, source,
+                new ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService.Command(
+                        ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService.Action.FREEZE,
+                        batch, draining.revision(), "Issuance fence rehearsal", batch + "F"));
+    }
+
+    private void assertNoIssuance(String couponNo) {
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_coupon_issue WHERE coupon_no=?",
+                Integer.class, couponNo)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_user_coupon WHERE coupon_no=?",
+                Integer.class, couponNo)).isZero();
     }
 
     @Test

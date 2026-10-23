@@ -42,14 +42,32 @@ class PointsOrderPlacementFlowTest {
     final Map<String, PointsRedeemPort.HoldCommand> holds = new ConcurrentHashMap<>();
 
     @BeforeAll
-    void schema() {
+    void schema() throws java.sql.SQLException {
         new ResourceDatabasePopulator(
                         new ClassPathResource("db/migration/V452__order_points_integration.sql"),
                         new ClassPathResource("db/migration/V453__order_points_binding.sql"),
                         new ClassPathResource("db/migration/V454__order_points_source_facts.sql"),
-                        new ClassPathResource("db/migration/V455__order_points_placement.sql"),
-                        new ClassPathResource("db/migration/V540__online_points_earning_rules.sql"))
+                        new ClassPathResource("db/migration/V455__order_points_placement.sql"))
                 .execute(data);
+        // Placement and hold recovery share this raw source database. V540 is a migration,
+        // not a repeatable bootstrap script; install it once and reject a partial schema.
+        Set<String> earningTables = Set.of("ord_points_earn_rule", "ord_points_earn_rule_revision");
+        Set<String> installed = new HashSet<>();
+        try (var connection = data.getConnection();
+                var tables = connection.getMetaData().getTables(
+                        connection.getCatalog(), connection.getSchema(), "%", null)) {
+            while (tables.next()) {
+                String name = tables.getString("TABLE_NAME").toLowerCase(Locale.ROOT);
+                if (earningTables.contains(name)) installed.add(name);
+            }
+        }
+        assertThat(installed.size()).as("V540 fixture schema must be absent or completely installed")
+                .isIn(0, earningTables.size());
+        if (installed.isEmpty()) {
+            new ResourceDatabasePopulator(
+                    new ClassPathResource("db/migration/V540__online_points_earning_rules.sql"))
+                    .execute(data);
+        }
     }
 
     @BeforeEach

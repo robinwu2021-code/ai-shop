@@ -546,7 +546,7 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [餐饮系统 餐牌选配套餐与耗用增强方案](./TDD-餐饮系统-餐牌选配套餐与耗用增强方案.md) | 已确认执行，P0设计真源与合同定义已落地；业务实现分片验收 · 2026-10-21。 |
 | [餐饮订单结账完整开发计划](./TDD-餐饮订单结账-完整开发计划.md) | 共享能力归属已确认，CKO-01～08已执行，其余按计划待开发 · 2026-10-22 · 档位2 · 代码基线`217f4182a`，设计包含本工作区尚未提 |
 | [小票紧凑排版 V2 验收记录](./acceptance/print-center/compact-v2.md) | — |
-| [打印模块合入集成线核对](./acceptance/print-center/integration-2026-10-23.md) | 集成修复已集中验证；等待提交后的干净副本全量后端闸门与正常推送。 |
+| [打印模块合入集成线核对](./acceptance/print-center/integration-2026-10-23.md) | 按用户最新要求先保存独立分支 `codex/order-printing`；暂不合入集成线。全量验收尚未完成。 |
 | [P1 经营组织与品牌管理交付记录](./delivery/P1-经营组织与品牌管理-交付记录.md) | 已上线并完成阶段验收（2026-10-22）。目标分支 codex/ai-shop-codex；功能分支 codex/store-stored-value。 |
 | [P2 品牌会员共享交付记录](./delivery/P2-品牌会员共享-交付记录.md) | 已上线（2026-10-22）。基线4b3ea44fa，功能分支codex/store-stored-value，交付目标codex/ai-shop-codex |
 | [P3 发行方与旧账升级开发记录](./delivery/P3-发行方与旧账升级-开发记录.md) | 开发中，未部署。基线e9ae7bd2d；目标codex/ai-shop-codex；2026-10-23。 |

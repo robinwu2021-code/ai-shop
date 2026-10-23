@@ -542,12 +542,16 @@ public class PmtCouponServiceImpl implements CouponService {
     @Override
     public CouponIssueVO issue(String entityNo, String couponNo, String segmentNo,
                                List<MemberQueryPort.AudienceItem> audiences, String operatorNo) {
-        // Authorize the original template before resolving its remote audience.
-        PmtCoupon candidate = require(entityNo, couponNo);
-        sourceFence.requireWritable(candidate.getTenantNo(), SourceSystem.PMT, candidate.getCouponNo(), false);
-        if (!PmtCoupon.ACTIVE.equals(candidate.getStatus())) {
-            throw BizException.of(ErrorCode.COUPON_NOT_ACTIVE);
-        }
+        // Finish this short fence transaction before resolving the remote audience.
+        // The numbered write rechecks and holds the source fence until its own commit.
+        documentNumbers.transaction(java.util.Map.of(), () -> {
+            PmtCoupon candidate = require(entityNo, couponNo);
+            sourceFence.requireWritable(candidate.getTenantNo(), SourceSystem.PMT, candidate.getCouponNo(), false);
+            if (!PmtCoupon.ACTIVE.equals(candidate.getStatus())) {
+                throw BizException.of(ErrorCode.COUPON_NOT_ACTIVE);
+            }
+            return null;
+        });
         boolean byItems = audiences != null && !audiences.isEmpty();
         MemberQueryPort.SegmentAudience audience = byItems
                 ? toSegmentAudience(memberPort.resolve(entityNo, audiences, null))

@@ -16,15 +16,20 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Instant;
 
 @SpringJUnitConfig(PointsOrderPlacementFlowTest.Config.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PointsOrderHoldRecoveryTest {
     @Autowired ApplicationContext context;
     PointsOrderPlacementFlowTest f;
 
-    @BeforeEach
-    void setup() {
+    @BeforeAll
+    void schema() throws java.sql.SQLException {
         f = new PointsOrderPlacementFlowTest();
         context.getAutowireCapableBeanFactory().autowireBean(f);
         f.schema();
+    }
+
+    @BeforeEach
+    void setup() {
         f.ports();
     }
 

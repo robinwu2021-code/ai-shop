@@ -388,7 +388,7 @@ function at(iso?: string): string {
         </view>
         <text class="txt-caption">{{ $t("stockCheck.lockedAt", { at: at(doc.startedAt) }) }}</text>
         <text class="sh-hint sh-mt-sm">{{ $t("stockCheck.cutoffHint") }}</text>
-        <text v-if="overdue" class="sh-hint overdue sh-mt-sm">{{ $t("stockCheck.overdueHint") }}</text>
+        <text v-if="overdue" class="sh-hint overdue is-danger sh-mt-sm">{{ $t("stockCheck.overdueHint") }}</text>
         <text class="txt-caption sh-mt-sm">{{ $t("stockCheck.unfilled", { n: unfilledCount }) }}</text>
 
         <!--
@@ -526,8 +526,5 @@ function at(iso?: string): string {
 }
 .hint {
   padding: 0 4rpx;
-}
-.overdue {
-  color: var(--sh-danger);
 }
 </style>

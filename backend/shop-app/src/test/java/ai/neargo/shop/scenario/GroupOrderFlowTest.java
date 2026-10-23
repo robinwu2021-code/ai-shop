@@ -65,15 +65,27 @@ class GroupOrderFlowTest {
 
     private void finishRefund(String orderNo) {
         String group=(String)subOf(orderNo).get("group_no");
-        groupOrders.refundAll(group,"TEST_GROUP_REFUND_RETRY");
-        String as = jdbc.queryForObject("SELECT after_sale_no FROM ord_after_sale WHERE order_no=?", String.class, orderNo);
+        int retried = groupOrders.refundAll(group,"TEST_GROUP_REFUND_RETRY");
+        var refunds = jdbc.queryForList("SELECT after_sale_no FROM ord_after_sale WHERE order_no=?", String.class, orderNo);
+        assertThat(refunds).as("Automatic after-sale missing: order=%s sub=%s payments=%s retryStarted=%s",
+                jdbc.queryForList("SELECT order_no,status,pay_channel,pay_trade_no FROM ord_order WHERE order_no=?", orderNo),
+                jdbc.queryForList("SELECT sub_order_no,status,group_no,open_after_sale_no FROM ord_sub_order WHERE order_no=?", orderNo),
+                jdbc.queryForList("SELECT out_trade_no,direction,status,pay_channel FROM stl_payment WHERE order_no=?", orderNo),
+                retried).hasSize(1);
+        String as = refunds.getFirst();
         assertThat(jdbc.queryForObject("SELECT status FROM ord_after_sale WHERE after_sale_no=?", String.class, as))
                 .isEqualTo("REFUNDING");
         ai.neargo.shop.support.RefundScenarioPayments.received(jdbc,ledger,bank,as);
         afterSales.resumeRefund(as,"SYSTEM");
         afterSales.resumeRefund(as,"SYSTEM");
-        assertThat(jdbc.queryForObject("SELECT status FROM stl_payment WHERE after_sale_no=?", String.class, as))
-                .isEqualTo("SUCCESS");
+        var payments = jdbc.queryForList("SELECT status FROM stl_payment WHERE after_sale_no=?", String.class, as);
+        assertThat(payments).as("Refund receipt missing: afterSale=%s execution=%s parent=%s child=%s bills=%s",
+                jdbc.queryForList("SELECT after_sale_no,status,refund_minor FROM ord_after_sale WHERE after_sale_no=?", as),
+                jdbc.queryForList("SELECT execution_no,status,phase,error_code,origin_payment_no,amount_minor FROM ord_refund_execution WHERE after_sale_no=?", as),
+                jdbc.queryForList("SELECT order_no,status,pay_channel,pay_trade_no FROM ord_order WHERE order_no=?", orderNo),
+                jdbc.queryForList("SELECT sub_order_no,status,group_no,open_after_sale_no FROM ord_sub_order WHERE order_no=?", orderNo),
+                jdbc.queryForList("SELECT settle_no,status FROM stl_bill WHERE order_no=?", orderNo))
+                .containsExactly("SUCCESS");
     }
 
     private String activityNo;
@@ -208,6 +220,23 @@ class GroupOrderFlowTest {
 
         pay(orderNo, "TX-G6-" + seq);
         assertThat(joined(groupNo)).as("散了的团不该再加人").isZero();
+        // The callback automatically opens the refund before its queued settlement generation.
+        // The initial reversal therefore waits for the bill and retains a 120-second retry lease.
+        // Make that exact pending execution due, as the recovery scheduler would after the lease;
+        // do not change its phase/status, create another refund, or manufacture a bank result.
+        String automaticAfterSale = jdbc.queryForObject(
+                "SELECT after_sale_no FROM ord_after_sale WHERE order_no=? AND status='REFUNDING'", String.class, orderNo);
+        var pending = jdbc.queryForMap("SELECT status,phase,error_code,next_attempt_at FROM ord_refund_execution WHERE after_sale_no=?",
+                automaticAfterSale);
+        assertThat(pending).containsEntry("status", "PROCESSING").containsEntry("phase", "REVERSAL")
+                .containsEntry("error_code", "REVERSE_UNCONFIRMED");
+        assertThat(((Number) pending.get("next_attempt_at")).longValue())
+                .as("The initial attempt owns a future retry lease").isGreaterThan(System.currentTimeMillis());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM stl_payment WHERE after_sale_no=?", Integer.class, automaticAfterSale))
+                .as("Reversal must be confirmed before a cash refund is sent").isZero();
+        assertThat(jdbc.update("UPDATE ord_refund_execution SET next_attempt_at=0 WHERE after_sale_no=?"
+                        + " AND status='PROCESSING' AND phase='REVERSAL' AND error_code='REVERSE_UNCONFIRMED'",
+                automaticAfterSale)).as("The original automatic refund is awaiting its scheduled reversal retry").isEqualTo(1);
         finishRefund(orderNo);
         assertThat(subOf(orderNo).get("status"))
                 .as("★ 付款时团已散却没退 —— 钱付进来了，没有团可参").isEqualTo("REFUNDED");

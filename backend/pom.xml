@@ -163,16 +163,18 @@
     <build>
         <plugins>
             <!-- Bound integration-test contexts and install the managed Mockito agent at
-                 startup; Java 21 environments need not permit dynamic self-attachment. -->
+                 startup; Java 21 environments need not permit dynamic self-attachment.
+                 Eight cached contexts keep shared scenarios reusable without retaining
+                 the default 32 heavyweight application contexts for the whole suite. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>-Xmx1536m -javaagent:"${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar"</argLine>
+                    <argLine>-Xmx3072m -javaagent:"${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar"</argLine>
                     <forkCount>1</forkCount>
                     <reuseForks>true</reuseForks>
                     <systemPropertyVariables>
-                        <spring.test.context.cache.maxSize>2</spring.test.context.cache.maxSize>
+                        <spring.test.context.cache.maxSize>8</spring.test.context.cache.maxSize>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
