@@ -42,7 +42,7 @@ class StoredValueMigrationInternalApiTest {
     }
     @Test void capabilityIsTokenProtectedAndReturnsTheFreshProcessObservation() {
         var query=new ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Query("nonce-current");
-        var capability=new ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Capability("nonce-current","pay-svc","boot-pay","a".repeat(40),1,true,true,"b".repeat(64),true,java.time.Instant.now());
+        var capability=new ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Capability("nonce-current","pay-svc","boot-pay","a".repeat(40),2,true,true,"b".repeat(64),true,java.time.Instant.now());
         when(writer.capability(query)).thenReturn(capability);
         assertThatThrownBy(()->api("wrong").svMigrationCapability(query)).isInstanceOf(RuntimeException.class);
         verifyNoInteractions(writer);
@@ -54,7 +54,7 @@ class StoredValueMigrationInternalApiTest {
         var input=new Preparation(List.of(new Scope(scope,"I1")),List.of(new Identity("P1",null)));
         var now=java.time.Instant.now();
         var inventory=new ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Inventory("R1","b".repeat(64),true,List.of(new ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Node("pay1","PAY1","pay-svc","a".repeat(40),"boot-pay")));
-        var cap=new ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Capability("nonce","pay-svc","boot-pay","a".repeat(40),1,true,true,"b".repeat(64),true,now);
+        var cap=new ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Capability("nonce","pay-svc","boot-pay","a".repeat(40),2,true,true,"b".repeat(64),true,now);
         var report=ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.check(inventory,List.of(new ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.NodeResult("pay1",cap,null)),"nonce",now);
         var proof=new ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Proof(inventory,report);
         var paused=new MaintenanceResult("R1","M1","WRITE_FENCED",report.inventoryHash(),1,0);
@@ -66,4 +66,19 @@ class StoredValueMigrationInternalApiTest {
         assertThat(api("migration-test-token").svMigrationApply(new PayStoredValueMigrationRequests.Apply(input,"M1","R1","K2",proof))).isEqualTo(mapped);
     }
 
+
+    @MockitoBean ai.neargo.shop.pay.storedvalue.migration.StoredValueMigrationOperator operator;
+    @Test void operatorCommandsAndOriginalStatusUseAuthenticatedTypedTransport(){
+        var result=new ExecutionCommand("CMD1","APPROVAL1","RESUME","ISSUER_WRITERS_RESUMED",1,1);
+        when(operator.execute("resume","OPERATOR","APPROVAL1",null,"a".repeat(64))).thenReturn(result);
+        when(operator.command("OPERATOR","APPROVAL1","CMD1",null)).thenReturn(result);
+        var request=new PayStoredValueMigrationRequests.Operator("resume","OPERATOR","APPROVAL1",null,null,"a".repeat(64));
+        var evidence=new ai.neargo.shop.spi.storedvalue.StoredValueMigrationPlans.OperatorEvidence("a".repeat(64),List.of(new StoreAuthority("MAIN","OWNER","E1","S1","Store",1)));
+        when(operator.sources("OPERATOR","APPROVAL1",null)).thenReturn(evidence);
+        assertThatThrownBy(()->api("wrong").svMigrationOperator(request)).isInstanceOf(RuntimeException.class);
+        verifyNoInteractions(operator);
+        assertThat(api("migration-test-token").svMigrationSources(request)).isEqualTo(evidence);
+        assertThat(api("migration-test-token").svMigrationOperator(request)).isEqualTo(result);
+        assertThat(api("migration-test-token").svMigrationCommand(new PayStoredValueMigrationRequests.Operator(null,"OPERATOR","APPROVAL1","CMD1",null))).isEqualTo(result);
+    }
 }

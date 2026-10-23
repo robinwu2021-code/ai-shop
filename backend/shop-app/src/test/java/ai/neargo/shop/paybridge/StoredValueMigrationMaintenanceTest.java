@@ -21,7 +21,7 @@ class StoredValueMigrationMaintenanceTest {
     final Preparation evidence=new Preparation(List.of(new Scope(new StoreAuthority("MAIN","MCH:OWNER","E1","S1","本店",7),"I1")),List.of(new Identity("P1","U1")));
     Proof proof(boolean sealed){
         var inventory=new Inventory("release1","b".repeat(64),sealed,List.of(new Node("pay1","PAY1","pay-svc","a".repeat(40),"boot-pay")));
-        var cap=new Capability("nonce","pay-svc","boot-pay","a".repeat(40),1,true,true,"b".repeat(64),true,Instant.now());
+        var cap=new Capability("nonce","pay-svc","boot-pay","a".repeat(40),2,true,true,"b".repeat(64),true,Instant.now());
         return new Proof(inventory,StoredValueMigrationReadiness.check(inventory,List.of(new NodeResult("pay1",cap,null)),"nonce",Instant.now()));
     }
     @Test void pauseAndMapUseFreshServerEvidenceAndExplicitOriginalPauseReceipt(){

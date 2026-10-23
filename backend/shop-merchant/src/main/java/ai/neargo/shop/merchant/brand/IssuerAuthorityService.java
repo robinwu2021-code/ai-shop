@@ -53,6 +53,43 @@ public class IssuerAuthorityService {
         return new AuthorizedScope(base.tenantNo(),base.actorNo(),base.managementNo(),base.scopeType(),base.scopeNo(),
                 base.authorityRevision(),base.operatingEntityNo(),Set.of(entity),config.routes());
     }
+
+
+    /** Server-to-server maintenance evidence only; never expose this as a public scope query. */
+    public void verifyMigrationSources(List<StoreAuthority> sources){
+        if(sources==null||sources.isEmpty()||sources.size()>1000)throw BizException.of(ErrorCode.CONFLICT);
+        var seen=new HashSet<List<String>>();
+        for(var source:sources){
+            if(!seen.add(List.of(source.tenantNo(),source.storeNo())))throw BizException.of(ErrorCode.CONFLICT);
+            var row=db.one("SELECT s.entity_no,s.version FROM mch_store s JOIN mch_entity e ON e.tenant_no=s.tenant_no AND e.entity_no=s.entity_no WHERE s.tenant_no=? AND s.store_no=? AND s.status='ACTIVE' AND s.deleted=0 AND e.status='ACTIVE' AND e.deleted=0",source.tenantNo(),source.storeNo());
+            if(row==null||!source.entityNo().equals(str(row,"entity_no"))||source.storeRevision()!=num(row,"version"))throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    public StoreAuthority prepareSettings(Actor actor,String management,String store){
+        scopes.resolve(actor,management);scopes.require(actor,management,"SPACE",management,"management.grant.manage");scopes.require(actor,management,"STORE",store,"store.read");
+        var source=storePreparationScope(actor,store);
+        for(String permission:List.of("sv.issuer.read","sv.issuer.configure")){
+            if(scopes.can(actor,management,"STORE",store,permission))continue;
+            var prior=db.one("SELECT version,status FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND resource_type='STORE' AND resource_no=? AND permission_code=?",actor.tenantNo(),management,actor.actorKey(),store,permission);
+            scopes.grant(actor,management,new ai.neargo.shop.merchant.brand.ManagementModels.GrantCommand(actor.actorKey(),"STORE",store,permission,null,null,false,prior==null?null:num(prior,"version"),prior!=null));
+        }
+        return source;
+    }
+    public List<Map<String,Object>> settlementCandidates(Actor actor,String management,String type,String no){
+        var base=scope(actor,management,type,no,"sv.issuer.configure",Set.of(),List.of());
+        var rows=db.rows("SELECT entity_no,name FROM mch_entity WHERE tenant_no=? AND status='ACTIVE' AND deleted=0 ORDER BY entity_no LIMIT 1001",actor.tenantNo());
+        if(rows.size()>1000)throw BizException.of(ErrorCode.CONFLICT);
+
+        boolean admin=scopes.can(actor,management,"SPACE",management,"management.grant.manage");
+        var owned=scopes.ownerAccounts(actor).stream().map(row->str(row,"entity_no")).collect(java.util.stream.Collectors.toSet());
+        return rows.stream().filter(row->!"STORE".equals(type)||base.operatingEntityNo().equals(str(row,"entity_no")))
+            .filter(row->scopes.can(actor,management,"ENTITY",str(row,"entity_no"),"sv.issuer.settlement.authorize")
+                ||admin&&owned.contains(str(row,"entity_no"))&&scopes.can(actor,management,"ENTITY",str(row,"entity_no"),"entity.read"))
+            .map(row->{String entity=str(row,"entity_no");boolean accepted=scopes.can(actor,management,"ENTITY",entity,"sv.issuer.settlement.authorize");
+                return Map.<String,Object>of("entityNo",entity,"name",str(row,"name"),"accepted",accepted,"canAccept",!accepted&&admin&&owned.contains(entity));}).toList();
+
+    }
     private AuthorizedScope scope(Actor actor,String management,String type,String no,String permission,Set<String> entities,List<Route> routes) {
         if(!Set.of("STORE","BRAND").contains(type)) throw BizException.of(ErrorCode.BAD_REQUEST);
         scopes.resolve(actor,management); scopes.require(actor,management,type,no,permission);

@@ -36,13 +36,15 @@ class StoredValueIssuerLedgerFlowTest {
         for(String file:List.of("V548__stored_value_issuer_foundation.sql","V549__stored_value_issuer_ledger_dimensions.sql")) {
             String ddl=Files.readString(Path.of("src/main/resources/db/migration/"+file))
                 .replaceAll("(?m)^--.*$", "").replace(" ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci", "")
-                .replace(" JSON", " VARCHAR(10000)").replace("CHECK (scope_type IN ('BRAND','STORE'))", "CHECK (CASE scope_type WHEN 'BRAND' THEN TRUE WHEN 'STORE' THEN TRUE ELSE FALSE END)");
+                .replace(" JSON", " VARCHAR(10000)").replace("CHECK ((source_kind='V2_ACTIVITY' AND activity_no IS NOT NULL AND draft_revision_no IS NOT NULL) OR (source_kind='LEGACY_PLAN' AND legacy_plan_version_no IS NOT NULL))", "CHECK (CASE source_kind WHEN 'V2_ACTIVITY' THEN TRUE WHEN 'LEGACY_PLAN' THEN TRUE WHEN 'LEGACY_ACTIVITY' THEN TRUE ELSE FALSE END)").replace("CHECK (scope_type IN ('BRAND','STORE'))", "CHECK (CASE scope_type WHEN 'BRAND' THEN TRUE WHEN 'STORE' THEN TRUE ELSE FALSE END)");
             for(String part:ddl.split(";"))if(!part.isBlank()) {
                 var m=java.util.regex.Pattern.compile("CREATE TABLE ([a-z_]+)").matcher(part);
                 if(m.find())part=part.replace("KEY uk_","KEY "+m.group(1)+"_uk_").replace("KEY ix_","KEY "+m.group(1)+"_ix_");
                 jdbc.execute(part);
             }
         }
+        jdbc.execute("ALTER TABLE sv_release ADD COLUMN legacy_activity_version_no VARCHAR(64)");
+        jdbc.execute("ALTER TABLE sv_release_tier ADD COLUMN legacy_tier_key VARCHAR(128)");
         installed=true;
     }
     record Fixture(String entity,String store,String issuer,EntitlementContext actor,StoredValuePlanRecharges.Create command) { }
@@ -229,4 +231,42 @@ class StoredValueIssuerLedgerFlowTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_customer_identity WHERE customer_no=?",Long.class,customer)).isZero();
     }
 
+
+    @Test void adaptedSingleStoreActivityFreezesOneReleaseAndTierAcrossOriginalReplay() {
+        var f=fixture();var at=java.time.Instant.now();String customer=id();
+        var source=new ai.neargo.shop.spi.entitlement.SourceRef("CORE","RECHARGE",id(),null,null,null,0);
+        var scope=new ai.neargo.shop.spi.entitlement.EntitlementDefinition.RedemptionScope("STORES",List.of(f.store()));
+        String activity=id(),version=id(),tier=id();
+        var permit=new ai.neargo.shop.spi.promotion.ActivityParticipationPort.ParticipationPermit(id(),source,activity,version,tier,f.command().userNo(),f.entity(),f.store(),"CNY",5000L,1000L,List.of(),scope,"b".repeat(64),at);
+        var participation=new ai.neargo.shop.spi.promotion.ActivityParticipationPort.ReserveActivity(source,activity,version,tier,f.command().userNo(),f.entity(),f.store(),"CNY",1);
+        String rechargeNo="RC"+source.grantKey().substring(0,60);
+        var fact=new RechargeSourcePort.SourceFact(f.actor(),source,rechargeNo,participation,permit,"Store",at,at.plusSeconds(600),customer);
+        var created=writer.create(f.actor(),f.entity(),new StoredValuePort.CreateRecharge(source,permit),fact);
+        var replay=writer.create(f.actor(),f.entity(),new StoredValuePort.CreateRecharge(source,permit),fact);
+        assertThat(replay.rechargeNo()).isEqualTo(created.rechargeNo());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_release WHERE legacy_activity_version_no=?",Long.class,version)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_release_tier t JOIN sv_release r ON r.release_no=t.release_no WHERE r.legacy_activity_version_no=?",Long.class,version)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT customer_no FROM sv_recharge WHERE recharge_no=?",String.class,rechargeNo)).isEqualTo(customer);
+        assertThat(jdbc.queryForObject("SELECT reserved_minor FROM sv_issue_quota WHERE store_no=?",Long.class,f.store())).isEqualTo(6000);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_account WHERE store_no=?",Long.class,f.store())).isZero();
+        var submitted=writer.submit(new EntitlementContext("MAIN","OPERATOR",id(),"0".repeat(64)),f.entity(),new StoredValuePort.SubmitRecharge(rechargeNo,created.revision(),5000,StoredValuePort.CollectionMethod.CASH,id(),"a".repeat(64)));
+        assertThat(submitted.status().name()).isEqualTo("SUBMITTED");
+        var cancelled=writer.cancel(new EntitlementContext("MAIN","OPERATOR",id(),"0".repeat(64)),f.entity(),new StoredValuePort.CancelRecharge(rechargeNo,submitted.revision(),"test"),fact);
+        assertThat(cancelled.status().name()).isEqualTo("CANCELLED");
+        assertThat(jdbc.queryForObject("SELECT reserved_minor FROM sv_issue_quota WHERE store_no=?",Long.class,f.store())).isZero();
+    }
+
+    @Test void simultaneousSameOriginalCreditsOneWalletAndOneQuotaCommit() throws Exception {
+        var f=fixture();var pool=java.util.concurrent.Executors.newFixedThreadPool(2);var start=new java.util.concurrent.CountDownLatch(1);
+        try{
+            var first=pool.submit(()->{start.await();return direct.confirmOffline(f.actor(),f.entity(),f.command());});
+            var second=pool.submit(()->{start.await();return direct.confirmOffline(f.actor(),f.entity(),f.command());});
+            start.countDown();var a=first.get(20,java.util.concurrent.TimeUnit.SECONDS);var b=second.get(20,java.util.concurrent.TimeUnit.SECONDS);
+            assertThat(a.rechargeNo()).isEqualTo(b.rechargeNo());assertThat(a.status().name()).isEqualTo("CREDITED");assertThat(b.status().name()).isEqualTo("CREDITED");
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_account WHERE store_no=?",Long.class,f.store())).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_voucher WHERE biz_no=?",Long.class,a.rechargeNo())).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT outstanding_minor FROM sv_issue_quota WHERE store_no=?",Long.class,f.store())).isEqualTo(6000);
+            assertThat(jdbc.queryForObject("SELECT reserved_minor FROM sv_issue_quota WHERE store_no=?",Long.class,f.store())).isZero();
+        }finally{pool.shutdownNow();}
+    }
 }

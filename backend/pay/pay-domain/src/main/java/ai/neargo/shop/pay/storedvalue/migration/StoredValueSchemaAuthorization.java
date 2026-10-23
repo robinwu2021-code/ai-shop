@@ -49,7 +49,7 @@ public class StoredValueSchemaAuthorization {
         }catch(java.io.IOException|RuntimeException invalid){ /* Never expose a server path or parser contents. */ }
         return null;
     }
-    public Authorized authorize(String operator,String approvalNo,Proof proof){
+    public Authorized authorizeApproval(String operator,String approvalNo,Proof proof){
         if(!enabled)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         ContractChecks.id(operator);ContractChecks.id(approvalNo);
         var approval=approvals.get();
@@ -57,7 +57,11 @@ public class StoredValueSchemaAuthorization {
                 ||approval.expiresAt()==null||!approval.expiresAt().isAfter(clock.instant())||approval.receipts().isEmpty()||approval.receipts().size()>1000)conflict();
         String inventory=execution.guard(proof,true);
         if(!inventory.equals(approval.inventoryHash())||!proof.inventory().ledgerFingerprint().equals(approval.ledgerFingerprint()))conflict();
-        return db.write(()->coverage(approval));
+        return new Authorized(approval,hash(db.encode(List.of(approval.approvalNo(),approval.operatorNo(),approval.ledgerFingerprint(),approval.inventoryHash(),approval.receipts()))),0,0);
+    }
+    public Authorized authorize(String operator,String approvalNo,Proof proof){
+        var allowed=authorizeApproval(operator,approvalNo,proof);
+        return db.write(()->coverage(allowed.approval()));
     }
     private Authorized coverage(Approval approval){
         var issuers=new HashSet<List<String>>();var accounts=new HashMap<List<String>,StoredValueIssuerMigrationService.AccountMapping>();
@@ -86,10 +90,17 @@ public class StoredValueSchemaAuthorization {
             }
             if(accounts.size()>10000||issuers.size()>1000)conflict();
         }
-        var actualIssuers=db.rows("SELECT tenant_no,issuer_no,write_mode FROM sv_issuer WHERE deleted=0 LIMIT 1001");
+        var actualIssuers=db.rows("SELECT tenant_no,issuer_no,write_mode FROM sv_issuer WHERE deleted=0 AND scope_type='STORE' LIMIT 1001");
         if(actualIssuers.size()!=issuers.size())conflict();
         var foundIssuers=new HashSet<List<String>>();
         for(var row:actualIssuers)if(!"FENCED".equals(text(row,"write_mode"))||!foundIssuers.add(List.of(text(row,"tenant_no"),text(row,"issuer_no")))||!issuers.contains(List.of(text(row,"tenant_no"),text(row,"issuer_no"))))conflict();
+        var drafts=db.rows("SELECT tenant_no,issuer_no,scope_type,status FROM sv_issuer WHERE deleted=0 AND scope_type<>'STORE' LIMIT 1001");
+        if(drafts.size()>1000)conflict();
+        for(var draft:drafts){
+            if(!"BRAND".equals(text(draft,"scope_type"))||!"DRAFT".equals(text(draft,"status")))conflict();
+            if(number(db.one("SELECT COUNT(*) AS n FROM sv_release WHERE tenant_no=? AND issuer_no=? AND deleted=0",text(draft,"tenant_no"),text(draft,"issuer_no")),"n")!=0)conflict();
+            if(number(db.one("SELECT COUNT(*) AS n FROM sv_issuer_store_access WHERE tenant_no=? AND issuer_no=? AND deleted=0 AND (can_issue=1 OR can_redeem=1 OR status='ACTIVE')",text(draft,"tenant_no"),text(draft,"issuer_no")),"n")!=0)conflict();
+        }
         var actualAccounts=db.rows("SELECT * FROM sv_account LIMIT 10001");
         if(actualAccounts.size()!=accounts.size())conflict();
         var foundAccounts=new HashSet<List<String>>();

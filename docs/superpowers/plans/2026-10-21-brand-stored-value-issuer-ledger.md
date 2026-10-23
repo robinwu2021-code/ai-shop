@@ -17,7 +17,7 @@
 - 活动Core，权益账务Pay；金额规则仅一份真源；规范化JSON摘要，不依赖MySQL保存原文字节。
 - 账号所有人不等于所有主体财务管理员；明确运营、发行、付款及收款确认的资源权限。
 - 不改已执行迁移；开发前重新查目标分支和环境版本，不预占V544等版本号；原单与余额不得复制或清零。
-- 阶段内每轮编译及本次基本定向单测，阶段末统一测试本阶段新增业务及受影响接缝；不跑全项目全量、不重复已通过且未受影响的回归。
+- 按用户最新要求，阶段内先一次性完成所有编码和编译，再统一执行本阶段测试链条；阶段末统一测试本阶段新增业务及受影响接缝；不跑全项目全量、不重复已通过且未受影响的回归。
 - 每阶段通过后使用现有标准部署流程上线；包含B端页面，涉及C端则同步发布；版本及health必须核对。真实微信发送仍待模板及授权，不假称成功。
 - 已授权历史一分钱测试不等于以后可任意造账；自动化金融验证优先独立测试库。服务器实账验证只使用后续明确授权的测试范围和金额。
 - 只在隔离工作区开发，阶段提交整合到codex/ai-shop-codex；保留远端并发改动，不覆盖共享工作区。
@@ -139,3 +139,8 @@ npm run test -w ai-shop-b-app -- tests/stored-value-issuer-context.test.ts
 - [ ] 使用标准部署脚本发布适用服务与前端，检查health、进程版本、H5 VERSION及资源；涉及App/小程序时构建并上传对应包，正式提审/发布另按用户授权。
 - [ ] 上线后只做版本、权限和本阶段代表性读写/原单恢复冒烟，登记阶段交付报告；出现新缺陷只测修复点及受影响接缝。
 - [ ] 将状态标记为“已上线”，记录提交、服务/前端包版本、迁移号、测试结果、兼容限制和回滚说明后再进入下一阶段。
+
+
+## Batch acceptance record (2026-10-23)
+
+P3 all remaining coding and compilation completed as one batch; backend24/UI15 distinct focused tests, native MySQL8.4 and H5 build passed. One whole-stage review completed; four important issues fixed with 8 affected tests, no full suite. Current independent task table: docs/technical/任务表-品牌与门店双线储值-P3批量交付.md. Publication and live maintenance remain separate; status stays IN_PROGRESS until deployment/rollout evidence.

@@ -22,9 +22,11 @@ public class StoredValueAccountKeyCutover {
     public StoredValueAccountKeyCutover(IssuerRepository db,StoredValueSchemaAuthorization authorization,StoredValueAccountKeyInspector inspector,StoredValueSchemaDdl ddl){
         this.db=db;this.authorization=authorization;this.inspector=inspector;this.ddl=ddl;
     }
-    public Result step(String operator,String approvalNo,Proof proof){
+    public Result step(String operator,String approvalNo,Proof proof){return step(operator,approvalNo,proof,null);}
+    public Result step(String operator,String approvalNo,Proof proof,String expectedApprovalHash){
         if(TransactionSynchronizationManager.isActualTransactionActive())conflict();
         var approval=authorization.authorize(operator,approvalNo,proof);
+        if(expectedApprovalHash!=null&&!expectedApprovalHash.equals(approval.approvalHash()))conflict();
         return ddl.locked(execute->{
             reauthorize(operator,approvalNo,proof,approval.approvalHash());
             var plan=inspector.inspect();if(!plan.ready())conflict();

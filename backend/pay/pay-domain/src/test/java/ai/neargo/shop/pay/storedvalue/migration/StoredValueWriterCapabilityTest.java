@@ -19,10 +19,10 @@ class StoredValueWriterCapabilityTest {
     }
     @Test void nodeReportsItsActualBuildSwitchesAndDatabaseIdentityWithoutConnectionDetails(){
         when(db.one(StoredValueWriterCapabilityService.LEDGER_ID_SQL)).thenReturn(Map.of("ledger_fingerprint","b".repeat(64)));
-        when(db.one(StoredValueWriterCapabilityService.SCHEMA_SQL)).thenReturn(Map.of("applied",2L));
+        when(db.one(StoredValueWriterCapabilityService.SCHEMA_SQL)).thenReturn(Map.of("applied",3L));
         var service=service("a".repeat(40),true);var first=service.capability(new Query("nonce1"));
         assertThat(first.buildSha()).isEqualTo("a".repeat(40));assertThat(first.ledgerFingerprint()).isEqualTo("b".repeat(64));
-        assertThat(first.schemaReady()).isTrue();assertThat(first.writerGuardEnabled()).isTrue();assertThat(first.challenge()).isEqualTo("nonce1");
+        assertThat(first.schemaReady()).isTrue();assertThat(first.protocol()).isEqualTo(2);assertThat(first.writerGuardEnabled()).isTrue();assertThat(first.challenge()).isEqualTo("nonce1");
         assertThat(service.capability(new Query("nonce2")).processNo()).isEqualTo(first.processNo());
         assertThat(service("a".repeat(40),false).capability(new Query("nonce1")).writerGuardEnabled()).isFalse();
     }
@@ -34,4 +34,5 @@ class StoredValueWriterCapabilityTest {
         assertThat(unavailable.schemaReady()).isFalse();assertThat(unavailable.ledgerFingerprint()).isNull();
         assertThat(unavailable.toString()).doesNotContain("private connection detail");
     }
+
 }

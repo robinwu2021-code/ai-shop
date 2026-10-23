@@ -13,17 +13,17 @@ import static org.assertj.core.api.Assertions.*;
 class IssuerCollectionRouteTest {
     private final Route wx = new Route("PM_WX", "E1", "S1", "WECHAT", "JSAPI");
     private final Route ali = new Route("PM_ALI", "E1", "S1", "ALIPAY", "APP");
-    private AuthorizedScope scope(String type) {
+    AuthorizedScope scope(String type) {
         return new AuthorizedScope("MAIN", "U1", "MGS1", type, type.equals("STORE") ? "S1" : "B1",
                 1, "E1", Set.of("E1"), List.of(wx, ali));
     }
-    private Config command(String entity) {
+    Config command(String entity) {
         return new Config("测试发行", entity, "CENTRALIZED", "INTERNAL_RECON", "PRO_RATA", "CNY",
                 "Asia/Shanghai", List.of(wx, ali), 0);
     }
-    private record Fixture(StoredValueIssuerService service, JdbcTemplate jdbc) { }
+    record Fixture(StoredValueIssuerService service, JdbcTemplate jdbc) { }
     private StoredValueIssuerService service() throws Exception { return fixture().service(); }
-    private Fixture fixture() throws Exception {
+    Fixture fixture() throws Exception {
         var ds = new DriverManagerDataSource("jdbc:h2:mem:"+UUID.randomUUID()+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1", "sa", "");
         var jdbc = new JdbcTemplate(ds);
         var ddl = Files.readString(Path.of("../../shop-app/src/main/resources/db/migration/V548__stored_value_issuer_foundation.sql"));
@@ -34,6 +34,10 @@ class IssuerCollectionRouteTest {
             if(table.find()) part=part.replace("KEY uk_", "KEY "+table.group(1)+"_uk_");
             jdbc.execute(part);
         }
+
+        jdbc.execute("ALTER TABLE sv_issuer ADD COLUMN write_mode VARCHAR DEFAULT 'LEGACY'");
+        jdbc.execute("CREATE TABLE sv_account(tenant_no VARCHAR,issuer_no VARCHAR,principal_minor BIGINT,bonus_minor BIGINT,held_principal_minor BIGINT,held_bonus_minor BIGINT,deleted INT DEFAULT 0)");
+        jdbc.execute("CREATE TABLE sv_recharge(tenant_no VARCHAR,issuer_no VARCHAR,status VARCHAR,deleted INT DEFAULT 0)");
         return new Fixture(new StoredValueIssuerService(new IssuerRepository(new DataSourceTransactionManager(ds), new ObjectMapper())),jdbc);
     }
     @Test void channelDoesNotSplitIssuerAndConfigurationReplayDoesNotCreateAnotherVersion() throws Exception {

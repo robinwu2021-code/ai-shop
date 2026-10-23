@@ -1,4 +1,5 @@
 export default {
+ issuer: {"prepareSettings":"إعداد جهة إصدار الرصيد","accepted":"مفوّض","acceptAndChoose":"تفويض واختيار","title": "إعدادات جهة الإصدار", "storeScope": "رصيد المتجر", "brandScope": "رصيد العلامة التجارية", "brandDraftOnly": "إصدار العلامة التجارية متاح كمسودة فقط", "name": "اسم جهة الإصدار", "settlementEntity": "جهة التسوية", "chooseEntity": "اختيار جهة التسوية", "routes": "طرق التحصيل", "addRoute": "إضافة طريقة تحصيل", "remove": "إزالة", "noRoutes": "لا توجد طرق تحصيل متاحة", "pendingSave": "نتيجة الحفظ غير معروفة. أعد المحاولة الأصلية.", "retrySave": "إعادة الحفظ", "states": {"DRAFT": "مسودة", "ACTIVE": "مفعّل", "ISSUE_STOPPED": "الإصدار متوقف"}, "channels": {"MERCHANT_OFFLINE": "تحصيل دون اتصال", "WECHAT": "وي تشات باي", "ALIPAY": "علي باي"}, "blockers": {"STALE_CONFIGURATION": "تم تحديث الإعدادات. يرجى التحديث.", "CURRENCY_IMMUTABLE": "لا يمكن تغيير العملة", "MAINTENANCE_IN_PROGRESS": "صيانة الرصيد", "LIABILITY_RULES_LOCKED": "الرصيد أو العمليات المعلقة تمنع هذا التغيير", "ISSUANCE_NOT_ENABLED": "الإصدار غير مفعّل"}},
  management: {
  "managePayment": "إعدادات التحصيل",
  "createEntity": "إضافة كيان مشغل",
@@ -72,7 +73,7 @@ export default {
     "IMPACT_UNKNOWN": "لم يتأكد الأثر بعد، أعد المحاولة لاحقاً",
     "DEPENDENCY_NOT_READY": "المزايا المشتركة غير جاهزة"
   },
-  "permission": {
+  "permission": {"sv_issuer_read":"عرض إعدادات الإصدار","sv_issuer_configure":"إعداد جهة الإصدار","sv_issuer_settlement_authorize":"تفويض جهة التسوية",
     "management_enter": "دخول مساحة الإدارة",
     "management_resource_read": "عرض الموارد",
     "management_grant_manage": "إدارة الصلاحيات",

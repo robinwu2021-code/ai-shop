@@ -76,10 +76,46 @@ public class StoredValueIssuerLedgerBridge {
         if(!enabled)return;
         transaction();
         var issuer=db.one("SELECT i.write_mode,v.settlement_entity_no FROM sv_issuer i JOIN sv_issuer_version v ON v.tenant_no=i.tenant_no AND v.issuer_no=i.issuer_no AND v.issuer_version_no=i.current_issuer_version_no WHERE i.tenant_no=? AND i.scope_type='STORE' AND i.scope_no=? AND i.deleted=0 AND v.deleted=0 FOR UPDATE",ctx.tenantNo(),store);
-        if(issuer!=null&&(!entity.equals(text(issuer,"settlement_entity_no"))||!Set.of("LEGACY","LEGACY_MAPPED").contains(text(issuer,"write_mode"))))
+        if(issuer!=null&&(!entity.equals(text(issuer,"settlement_entity_no"))||!("ISSUER".equals(text(issuer,"write_mode"))||Set.of("LEGACY","LEGACY_MAPPED").contains(text(issuer,"write_mode")))))
             throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
     }
 
+
+    /** Freeze a Core-authorized single-store activity version and tier; never infer a current activity or merge identities. */
+    public void freezeActivity(EntitlementContext ctx,String entity,ai.neargo.shop.spi.storedvalue.RechargeSourcePort.SourceFact source,SvRecharge original) {
+        if(!enabled)return;
+        transaction();var permit=source.permit();
+        var issuer=db.one("SELECT * FROM sv_issuer WHERE tenant_no=? AND scope_type='STORE' AND scope_no=? AND deleted=0 FOR UPDATE",ctx.tenantNo(),permit.storeNo());
+        if(issuer==null||Set.of("LEGACY","LEGACY_MAPPED").contains(text(issuer,"write_mode")))return;
+        if(!"ISSUER".equals(text(issuer,"write_mode"))||!"ACTIVE".equals(text(issuer,"status")))throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        if(source.customerNo()==null||!entity.equals(permit.entityNo())||!ctx.tenantNo().equals(source.context().tenantNo())
+                ||!"STORES".equals(permit.redemptionScope().mode())||!List.of(permit.storeNo()).equals(permit.redemptionScope().refs()))throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        var current=db.one("SELECT * FROM sv_issuer_version WHERE tenant_no=? AND issuer_no=? AND issuer_version_no=? AND deleted=0",ctx.tenantNo(),text(issuer,"issuer_no"),text(issuer,"current_issuer_version_no"));
+        if(current==null||!entity.equals(text(current,"settlement_entity_no"))||!permit.currency().equals(text(current,"currency")))throw BizException.of(ErrorCode.CONFLICT);
+        var at=Timestamp.from(Instant.now());
+        var release=db.one("SELECT * FROM sv_release WHERE tenant_no=? AND legacy_activity_version_no=? AND deleted=0",ctx.tenantNo(),permit.versionNo());
+        if(release==null){
+            long next=Math.addExact(number(db.one("SELECT COALESCE(MAX(release_index),0) AS n FROM sv_release WHERE tenant_no=? AND issuer_no=? AND activity_no=?",ctx.tenantNo(),text(issuer,"issuer_no"),permit.activityNo()),"n"),1);
+            release=base(ctx,at);release.put("release_no",BizKey.next(BizKey.STORED_VALUE_RELEASE));release.put("issuer_no",text(issuer,"issuer_no"));release.put("issuer_version_no",text(current,"issuer_version_no"));
+            release.put("source_kind","LEGACY_ACTIVITY");release.put("activity_no",permit.activityNo());release.put("activity_version_no",permit.versionNo());release.put("legacy_activity_version_no",permit.versionNo());release.put("release_index",next);
+            release.put("currency",permit.currency());release.put("starts_at",Timestamp.from(source.createdAt()));release.put("state","ACTIVE");release.put("redemption_scope_mode","STORE_ONLY");release.put("scope_snapshot",db.encode(permit.redemptionScope()));release.put("policy_versions","[]");release.put("content_hash",permit.snapshotHash());db.insert("sv_release",release);
+        }
+        if(!text(issuer,"issuer_no").equals(text(release,"issuer_no"))||!permit.activityNo().equals(text(release,"activity_no"))
+                ||!permit.snapshotHash().equals(text(release,"content_hash"))||!"ACTIVE".equals(text(release,"state"))
+                ||!permit.currency().equals(text(release,"currency"))||!permit.redemptionScope().equals(db.decode(text(release,"scope_snapshot"),RedemptionScope.class)))throw BizException.of(ErrorCode.CONFLICT);
+        String sourceTier=permit.tierNo()==null?"0":"1:"+permit.tierNo();
+        var tier=db.one("SELECT * FROM sv_release_tier WHERE tenant_no=? AND release_no=? AND legacy_tier_key=? AND deleted=0",ctx.tenantNo(),text(release,"release_no"),sourceTier);
+        if(tier==null){
+            long ordinal=Math.addExact(number(db.one("SELECT COALESCE(MAX(ordinal),0) AS n FROM sv_release_tier WHERE tenant_no=? AND release_no=?",ctx.tenantNo(),text(release,"release_no")),"n"),1);
+            tier=base(ctx,at);tier.put("tier_no",BizKey.next(BizKey.STORED_VALUE_RELEASE_TIER));tier.put("release_no",text(release,"release_no"));tier.put("ordinal",ordinal);tier.put("legacy_tier_key",sourceTier);tier.put("paid_amount_minor",permit.payAmountMinor());tier.put("bonus_amount_minor",permit.bonusAmountMinor());db.insert("sv_release_tier",tier);
+        }
+        if(number(tier,"paid_amount_minor")!=original.getPrincipalMinor()||number(tier,"bonus_amount_minor")!=original.getBonusMinor())throw BizException.of(ErrorCode.CONFLICT);
+        var frozen=db.one("SELECT * FROM sv_issuer_version WHERE tenant_no=? AND issuer_no=? AND issuer_version_no=? AND deleted=0",ctx.tenantNo(),text(issuer,"issuer_no"),text(release,"issuer_version_no"));
+        if(frozen==null||!entity.equals(text(frozen,"settlement_entity_no")))throw BizException.of(ErrorCode.CONFLICT);
+        changed(db.update("UPDATE sv_recharge SET customer_no=?,issuer_no=?,issuer_version_no=?,release_no=?,tier_no=?,collection_entity_no=?,settlement_entity_no=? WHERE tenant_no=? AND recharge_no=? AND issuer_no IS NULL",
+                source.customerNo(),text(issuer,"issuer_no"),text(release,"issuer_version_no"),text(release,"release_no"),text(tier,"tier_no"),entity,text(frozen,"settlement_entity_no"),ctx.tenantNo(),original.getRechargeNo()));
+        quotas.reserve(ctx,original.getRechargeNo());
+    }
     /** Always precedes receipt/account row locks, including a replay whose creation closure did not run. */
     public void beforeOriginal(EntitlementContext ctx,String entity,String rechargeNo) {
         if(!enabled)return;

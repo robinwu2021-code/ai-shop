@@ -89,4 +89,12 @@ class StoredValueSchemaAuthorizationTest {
         j.update("UPDATE sv_recharge SET status='RECEIVED'");
         assertThatThrownBy(()->s.authorize("OPERATOR","GLOBAL1",f.proof())).isInstanceOf(BizException.class);
     }
+
+    @Test void unfundedBrandDraftIsNotAStoreMigrationTargetButActiveBrandIsRejected()throws Exception{
+        var f=fixture();var j=f.f().data().jdbc();
+        j.update("INSERT INTO sv_issuer(tenant_no,issuer_no,scope_type,scope_no,current_issuer_version_no,status,deleted,write_mode) VALUES('MAIN','BRAND1','BRAND','B1','BV1','DRAFT',0,'LEGACY')");
+        assertThat(service(f,f.approval(),true).authorize("OPERATOR","GLOBAL1",f.proof()).issuerCount()).isEqualTo(1);
+        j.update("UPDATE sv_issuer SET status='ACTIVE' WHERE issuer_no='BRAND1'");
+        assertThatThrownBy(()->service(f,f.approval(),true).authorize("OPERATOR","GLOBAL1",f.proof())).isInstanceOf(BizException.class);
+    }
 }

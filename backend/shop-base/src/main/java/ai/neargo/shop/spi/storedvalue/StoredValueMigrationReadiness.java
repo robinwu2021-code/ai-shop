@@ -41,7 +41,7 @@ public final class StoredValueMigrationReadiness {
             if(!Objects.equals(challenge,cap.challenge()))issues.add(new Issue(node.nodeId(),"CHALLENGE_MISMATCH"));
             if(!Objects.equals(node.application(),cap.application())||!Objects.equals(node.expectedSha(),cap.buildSha()))issues.add(new Issue(node.nodeId(),"BUILD_MISMATCH"));
             if(!id(cap.processNo())||!Objects.equals(node.expectedProcessNo(),cap.processNo())||!processes.add(cap.processNo()))issues.add(new Issue(node.nodeId(),"DUPLICATE_OR_UNKNOWN_PROCESS"));
-            if(cap.protocol()!=1||!cap.writerGuardEnabled()||!cap.maintenanceEnabled())issues.add(new Issue(node.nodeId(),"WRITER_NOT_READY"));
+            if(cap.protocol()!=2||!cap.writerGuardEnabled()||!cap.maintenanceEnabled())issues.add(new Issue(node.nodeId(),"WRITER_NOT_READY"));
             if(!Objects.equals(inventory.ledgerFingerprint(),cap.ledgerFingerprint())||!cap.schemaReady())issues.add(new Issue(node.nodeId(),"LEDGER_NOT_READY"));
             if(cap.checkedAt()==null||!cap.checkedAt().isAfter(now.minusSeconds(30))||cap.checkedAt().isAfter(now.plusSeconds(5)))issues.add(new Issue(node.nodeId(),"STALE_OBSERVATION"));
             else if(cap.checkedAt().plusSeconds(30).isBefore(expires))expires=cap.checkedAt().plusSeconds(30);

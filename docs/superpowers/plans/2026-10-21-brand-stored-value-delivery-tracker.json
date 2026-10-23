@@ -793,5 +793,15 @@
     "sv_hold_allocation": "P3",
     "ord_ent_service_order": "P5",
     "mbr_identity_ticket": "P2"
+  },
+  "currentBatch": {
+    "stage": "P3",
+    "status": "VERIFIED_PENDING_PUBLICATION",
+    "baseline": "96c94cd18efab05b613faff1111238e88f141b54",
+    "execution": "Complete all phase coding and compilation, then one focused test chain; retest failures and affected seams only",
+    "backendDistinctTests": 24,
+    "frontendDistinctTests": 15,
+    "review": "One whole-stage reviewer; four important findings fixed with scoped verification",
+    "onlineCutover": "NOT_EXECUTED; issuer, execution and key-cutover switches remain closed"
   }
 }

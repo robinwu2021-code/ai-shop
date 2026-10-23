@@ -16,6 +16,14 @@ public class InternalStoredValueIssuerEndpoint {
     public InternalStoredValueIssuerEndpoint(StoredValueIssuerService issuers,ai.neargo.shop.pay.storedvalue.issuer.StoredValueStoreIssuerService stores,@Value("${shop.services.internal-token:}") String token) {
         this.issuers=issuers;this.stores=stores;this.token=token;
     }
+    @PostMapping(PayInternalPaths.SV_ISSUER_LOCATE)
+    public ResponseEntity<?> locate(@RequestBody PayStoredValueIssuerRequests.Locate request,@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false)String given){return InternalServiceResponses.invoke(token,given,()->issuers.locate(request.tenant(),request.issuer()));}
+    @PostMapping(PayInternalPaths.SV_ISSUER_CHECK)
+    public ResponseEntity<?> check(@RequestBody PayStoredValueIssuerRequests.Check request,@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false)String given){return InternalServiceResponses.invoke(token,given,()->issuers.check(request.scope(),request.issuer(),request.config()));}
+    @PostMapping(PayInternalPaths.SV_ISSUER_OPTIONS)
+    public ResponseEntity<?> options(@RequestBody PayStoredValueIssuerRequests.Options request,@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false)String given){return InternalServiceResponses.invoke(token,given,()->issuers.storeOptions(request.query()));}
+    @PostMapping(PayInternalPaths.SV_ISSUER_REFRESH)
+    public ResponseEntity<?> refresh(@RequestBody PayStoredValueIssuerRequests.PrepareStore request,@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false)String given){return InternalServiceResponses.invoke(token,given,()->stores.refreshAck(request.scope()));}
     @PostMapping(PayInternalPaths.SV_ISSUER_PREPARE_STORE)
     public ResponseEntity<?> prepareStore(@RequestBody PayStoredValueIssuerRequests.PrepareStore request,
             @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given) {

@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class StoredValueWriterCapabilityService {
     static final String LEDGER_ID_SQL="SELECT SHA2(CONCAT(@@server_uuid,':',DATABASE()),256) AS ledger_fingerprint";
-    static final String SCHEMA_SQL="SELECT COUNT(*) AS applied FROM flyway_schema_history WHERE version IN ('548','549') AND success=1";
+    static final String SCHEMA_SQL="SELECT COUNT(*) AS applied FROM flyway_schema_history WHERE version IN ('548','549','550') AND success=1";
     private final IssuerRepository db;
     private final String application,buildSha,processNo=UUID.randomUUID().toString();
     private final boolean writerGuardEnabled,maintenanceEnabled;
@@ -37,12 +37,14 @@ public class StoredValueWriterCapabilityService {
                 if(value!=null&&value.matches("[a-f0-9]{64}"))ledger=value;
                 db.rows("SELECT issuer_no,issuer_version_no FROM sv_account WHERE 1=0");
                 db.rows("SELECT write_mode FROM sv_issuer WHERE 1=0");
-                schema=ledger!=null&&migrations!=null&&IssuerRepository.number(migrations,"applied")==2;
+                db.rows("SELECT legacy_activity_version_no FROM sv_release WHERE 1=0");
+                db.rows("SELECT legacy_tier_key FROM sv_release_tier WHERE 1=0");
+                schema=ledger!=null&&migrations!=null&&IssuerRepository.number(migrations,"applied")==3;
             } catch(DataAccessException unavailable) {
                 // Do not return a JDBC URL, raw exception message or server identity in diagnostics.
                 ledger=null;schema=false;
             }
         }
-        return new Capability(query.challenge(),application,processNo,buildSha,1,writerGuardEnabled,maintenanceEnabled,ledger,schema,Instant.now());
+        return new Capability(query.challenge(),application,processNo,buildSha,2,writerGuardEnabled,maintenanceEnabled,ledger,schema,Instant.now());
     }
 }

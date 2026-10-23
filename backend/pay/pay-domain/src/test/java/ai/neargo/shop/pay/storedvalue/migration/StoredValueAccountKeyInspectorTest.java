@@ -16,9 +16,9 @@ class StoredValueAccountKeyInspectorTest {
         var ds=new DriverManagerDataSource("jdbc:h2:mem:key-"+UUID.randomUUID()+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1","sa","");
         var j=new JdbcTemplate(ds);
         j.execute("CREATE TABLE sv_account(tenant_no varchar,account_no varchar,issuer_no varchar,issuer_version_no varchar,customer_no varchar,currency varchar,store_no varchar,entity_no varchar,deleted int)");
-        j.execute("CREATE TABLE sv_issuer(tenant_no varchar,issuer_no varchar,scope_type varchar,scope_no varchar,write_mode varchar,deleted int)");
+        j.execute("CREATE TABLE sv_issuer(tenant_no varchar,issuer_no varchar,scope_type varchar,scope_no varchar,write_mode varchar,deleted int,status varchar DEFAULT 'DRAFT')");
         j.execute("CREATE TABLE sv_issuer_version(tenant_no varchar,issuer_no varchar,issuer_version_no varchar,currency varchar,deleted int)");
-        j.update("INSERT INTO sv_issuer VALUES('MAIN','I1','STORE','S1','FENCED',0)");
+        j.update("INSERT INTO sv_issuer(tenant_no,issuer_no,scope_type,scope_no,write_mode,deleted) VALUES('MAIN','I1','STORE','S1','FENCED',0)");
         j.update("INSERT INTO sv_issuer_version VALUES('MAIN','I1','IV1','CNY',0)");
         j.update("INSERT INTO sv_account VALUES('MAIN','A1','I1','IV1','P1','CNY','S1','E1',0)");
         var db=spy(new IssuerRepository(new DataSourceTransactionManager(ds),new ObjectMapper()));
@@ -46,7 +46,7 @@ class StoredValueAccountKeyInspectorTest {
         f.jdbc().update("INSERT INTO sv_account SELECT tenant_no,'A2',issuer_no,issuer_version_no,customer_no,currency,store_no,entity_no,1 FROM sv_account");
         assertThat(f.inspector().inspect().issues()).contains("ISSUER_CUSTOMER_DUPLICATE");
         f.jdbc().update("DELETE FROM sv_account WHERE account_no='A2'");
-        f.jdbc().update("INSERT INTO sv_issuer VALUES('OTHER','I2','STORE','S2','LEGACY',0)");
+        f.jdbc().update("INSERT INTO sv_issuer(tenant_no,issuer_no,scope_type,scope_no,write_mode,deleted) VALUES('OTHER','I2','STORE','S2','LEGACY',0)");
         assertThat(f.inspector().inspect().issues()).contains("LEDGER_WRITERS_NOT_FENCED");
     }
     @Test void wrongFrozenVersionCurrencyOrStoreBlocksThePlan(){

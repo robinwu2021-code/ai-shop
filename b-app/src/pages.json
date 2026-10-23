@@ -1215,6 +1215,18 @@
           "navigationStyle": "custom"
         }
       }
+    },
+    {
+      "path": "pages/stored-value-issuer/index",
+      "style": {
+        "navigationBarTitleText": "储值发行设置",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
     }
   ],
   "globalStyle": {

@@ -72,6 +72,26 @@ import org.springframework.web.service.annotation.PostExchange;
  * 在有幂等键之前，超时之后「成没成」只能由人去查。{@code @Retryable} 只允许加在 GET 方法上。
  */
 public interface PayInternalApi {
+    @org.springframework.web.service.annotation.PostExchange(PayInternalPaths.SV_MIGRATION_SOURCES)
+    ai.neargo.shop.spi.storedvalue.StoredValueMigrationPlans.OperatorEvidence svMigrationSources(@org.springframework.web.bind.annotation.RequestBody PayStoredValueMigrationRequests.Operator request);
+
+    @org.springframework.web.service.annotation.PostExchange(PayInternalPaths.SV_ISSUER_LOCATE)
+    ai.neargo.shop.spi.storedvalue.StoredValueIssuers.ScopeRef svIssuerLocate(@org.springframework.web.bind.annotation.RequestBody PayStoredValueIssuerRequests.Locate request);
+
+    @org.springframework.web.service.annotation.PostExchange(PayInternalPaths.SV_ISSUER_CHECK)
+    ai.neargo.shop.spi.storedvalue.StoredValueIssuers.ConfigurationImpact svIssuerCheck(@org.springframework.web.bind.annotation.RequestBody PayStoredValueIssuerRequests.Check request);
+
+    @org.springframework.web.service.annotation.PostExchange(PayInternalPaths.SV_ISSUER_OPTIONS)
+    ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreOptions svIssuerOptions(@org.springframework.web.bind.annotation.RequestBody PayStoredValueIssuerRequests.Options request);
+
+    @org.springframework.web.service.annotation.PostExchange(PayInternalPaths.SV_ISSUER_REFRESH)
+    ai.neargo.shop.spi.storedvalue.StoredValueIssuers.AccessAck svIssuerRefresh(@org.springframework.web.bind.annotation.RequestBody PayStoredValueIssuerRequests.PrepareStore request);
+
+    @org.springframework.web.service.annotation.PostExchange(PayInternalPaths.SV_MIGRATION_OPERATOR)
+    ai.neargo.shop.spi.storedvalue.StoredValueMigrationPlans.ExecutionCommand svMigrationOperator(@org.springframework.web.bind.annotation.RequestBody PayStoredValueMigrationRequests.Operator request);
+    @org.springframework.web.service.annotation.PostExchange(PayInternalPaths.SV_MIGRATION_COMMAND)
+    ai.neargo.shop.spi.storedvalue.StoredValueMigrationPlans.ExecutionCommand svMigrationCommand(@org.springframework.web.bind.annotation.RequestBody PayStoredValueMigrationRequests.Operator request);
+
     @PostExchange(PayInternalPaths.LEGACY_TEMPLATE_ARCHIVE)
     ai.neargo.shop.pay.migration.dto.LegacyCouponTemplateViews.Snapshot legacyTemplateArchive(@RequestBody PayLegacyTemplateRequests.Archive request);
     @PostExchange(PayInternalPaths.LEGACY_ISSUE_CREATE)

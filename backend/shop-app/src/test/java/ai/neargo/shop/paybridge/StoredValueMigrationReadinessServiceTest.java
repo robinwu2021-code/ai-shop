@@ -13,7 +13,7 @@ class StoredValueMigrationReadinessServiceTest {
     Inventory inventory(boolean sealed){return new Inventory("deploy-1",ledger,sealed,List.of(node));}
     @Test void unsealedInventoryDoesNotProbeWhileSealedInventoryUsesFreshChallenge(){
         var calls=new AtomicInteger();
-        java.util.function.BiFunction<Node,Query,Capability> probe=(n,q)->{calls.incrementAndGet();return new Capability(q.challenge(),n.application(),"boot-pay",sha,1,true,true,ledger,true,Instant.now());};
+        java.util.function.BiFunction<Node,Query,Capability> probe=(n,q)->{calls.incrementAndGet();return new Capability(q.challenge(),n.application(),"boot-pay",sha,2,true,true,ledger,true,Instant.now());};
         assertThat(new StoredValueMigrationReadinessService(inventory(false),probe).check().ready()).isFalse();assertThat(calls.get()).isZero();
         var service=new StoredValueMigrationReadinessService(inventory(true),probe);
         var first=service.check();var next=service.check();
@@ -29,7 +29,7 @@ class StoredValueMigrationReadinessServiceTest {
     @org.junit.jupiter.api.io.TempDir java.nio.file.Path directory;
     @Test void serverInventoryCanBeSealedAndReplacedWithoutRestartingTheObservedProcess() throws Exception {
         var file=directory.resolve("inventory.json");var json=new tools.jackson.databind.ObjectMapper();var calls=new AtomicInteger();
-        var service=new StoredValueMigrationReadinessService(()->StoredValueMigrationReadinessService.load(json,"",file.toString()),(n,q)->{calls.incrementAndGet();return new Capability(q.challenge(),n.application(),"boot-pay",sha,1,true,true,ledger,true,Instant.now());});
+        var service=new StoredValueMigrationReadinessService(()->StoredValueMigrationReadinessService.load(json,"",file.toString()),(n,q)->{calls.incrementAndGet();return new Capability(q.challenge(),n.application(),"boot-pay",sha,2,true,true,ledger,true,Instant.now());});
         assertThat(service.check().ready()).isFalse();assertThat(calls.get()).isZero();
         java.nio.file.Files.writeString(file,json.writeValueAsString(inventory(true)));
         assertThat(service.check().ready()).isTrue();
@@ -46,7 +46,7 @@ class StoredValueMigrationReadinessServiceTest {
 
     @Test void proofCarriesTheSingleInventorySnapshotActuallyUsedForProbes(){
         var reads=new AtomicInteger();
-        var service=new StoredValueMigrationReadinessService(()->{reads.incrementAndGet();return inventory(true);},(n,q)->new Capability(q.challenge(),n.application(),"boot-pay",sha,1,true,true,ledger,true,Instant.now()));
+        var service=new StoredValueMigrationReadinessService(()->{reads.incrementAndGet();return inventory(true);},(n,q)->new Capability(q.challenge(),n.application(),"boot-pay",sha,2,true,true,ledger,true,Instant.now()));
         var proof=service.proof();assertThat(proof.report().ready()).isTrue();assertThat(reads.get()).isEqualTo(1);
         assertThat(proof.inventory()).isEqualTo(inventory(true));
         var cap=proof.report().nodes().getFirst().capability();

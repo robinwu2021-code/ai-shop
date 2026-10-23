@@ -40,7 +40,7 @@ public class StoredValueAccountKeyInspector {
                 LEFT JOIN sv_issuer_version v ON CAST(v.tenant_no AS BINARY(256))=CAST(a.tenant_no AS BINARY(256)) AND CAST(v.issuer_version_no AS BINARY(256))=CAST(a.issuer_version_no AS BINARY(256))
                 """);
             long duplicateGroups=number(db.one("SELECT COUNT(*) AS n FROM (SELECT tenant_no,issuer_no,customer_no,currency FROM sv_account GROUP BY tenant_no,issuer_no,customer_no,currency HAVING COUNT(*)>1) duplicate_keys"),"n");
-            long unfenced=number(db.one("SELECT COUNT(*) AS n FROM sv_issuer WHERE deleted=0 AND (write_mode IS NULL OR write_mode<>'FENCED')"),"n");
+            long unfenced=number(db.one("SELECT COUNT(*) AS n FROM sv_issuer i WHERE i.deleted=0 AND (i.write_mode IS NULL OR i.write_mode<>'FENCED') AND NOT (i.scope_type='BRAND' AND i.status='DRAFT' AND NOT EXISTS (SELECT 1 FROM sv_account a WHERE CAST(a.tenant_no AS BINARY(256))=CAST(i.tenant_no AS BINARY(256)) AND CAST(a.issuer_no AS BINARY(256))=CAST(i.issuer_no AS BINARY(256))))"),"n");
             return StoredValueAccountKeyPlan.evaluate(new StoredValueAccountKeyPlan.Snapshot(indexes,number(counts,"accounts"),number(counts,"invalid_dimensions"),number(counts,"broken_references"),duplicateGroups,unfenced));
         });
     }

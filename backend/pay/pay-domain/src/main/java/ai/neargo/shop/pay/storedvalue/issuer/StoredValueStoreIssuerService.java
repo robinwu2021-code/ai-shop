@@ -40,10 +40,31 @@ public class StoredValueStoreIssuerService {
             return current(scope,issuer);
         });
     }
+
+    public View refresh(StoreAuthority scope) {
+        return db.write(()->{
+            var issuer=db.one("SELECT * FROM sv_issuer WHERE tenant_no=? AND scope_type='STORE' AND scope_no=? AND deleted=0 FOR UPDATE",scope.tenantNo(),scope.storeNo());
+            if(issuer==null)throw BizException.of(ErrorCode.NOT_FOUND);
+            if("FENCED".equals(text(issuer,"write_mode")))throw BizException.of(ErrorCode.CONFLICT);
+            var view=current(scope,issuer);
+            var access=db.one("SELECT * FROM sv_issuer_store_access WHERE tenant_no=? AND issuer_no=? AND store_no=? AND deleted=0 FOR UPDATE",scope.tenantNo(),view.issuerNo(),scope.storeNo());
+            if(access==null||!scope.entityNo().equals(text(access,"operating_entity_no"))||!scope.storeNo().equals(text(access,"source_binding_no"))||number(access,"source_revision")>scope.storeRevision())throw BizException.of(ErrorCode.CONFLICT);
+            if(number(access,"source_revision")!=scope.storeRevision())db.update("UPDATE sv_issuer_store_access SET source_revision=?,updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND issuer_no=? AND store_no=? AND deleted=0",scope.storeRevision(),Timestamp.from(Instant.now()),scope.actorNo(),scope.tenantNo(),view.issuerNo(),scope.storeNo());
+            return view;
+        });
+    }
+
+    public AccessAck refreshAck(StoreAuthority scope){
+        return db.write(()->{
+            var issuer=refresh(scope);
+            var access=db.one("SELECT source_revision,status FROM sv_issuer_store_access WHERE tenant_no=? AND issuer_no=? AND store_no=? AND deleted=0",scope.tenantNo(),issuer.issuerNo(),scope.storeNo());
+            return new AccessAck(issuer.issuerNo(),scope.storeNo(),number(access,"source_revision"),text(access,"status"));
+        });
+    }
     private View current(StoreAuthority scope,Map<String,Object> issuer) {
         var version=db.one("SELECT * FROM sv_issuer_version WHERE tenant_no=? AND issuer_no=? AND issuer_version_no=? AND deleted=0",scope.tenantNo(),text(issuer,"issuer_no"),text(issuer,"current_issuer_version_no"));
         if(version==null||!scope.entityNo().equals(text(version,"settlement_entity_no"))||!"CNY".equals(text(version,"currency")))throw BizException.of(ErrorCode.CONFLICT);
-        return new View(text(issuer,"issuer_no"),"STORE",scope.storeNo(),text(version,"name"),text(issuer,"status"),text(version,"issuer_version_no"),number(version,"version_index")-1,scope.entityNo(),"CNY",db.routes(text(version,"collection_config")));
+        return new View(text(issuer,"issuer_no"),"STORE",scope.storeNo(),text(version,"name"),text(issuer,"status"),text(version,"issuer_version_no"),number(version,"version_index")-1,scope.entityNo(),"CNY",db.routes(text(version,"collection_config")),text(version,"collection_mode"),text(version,"clearing_mode"),text(version,"debit_allocation_mode"),text(version,"market_zone"));
     }
     private Map<String,Object> base(StoreAuthority scope,Timestamp at) {
         var row=new LinkedHashMap<String,Object>();row.put("tenant_no",scope.tenantNo());row.put("version",0);row.put("deleted",0);

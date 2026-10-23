@@ -18,6 +18,7 @@ public class StoredValueSchemaDdl {
     private final DataSource source;
     private static final String LOCK="CONCAT('sv-key-',SHA2(DATABASE(),224))";
     private static final Set<String> ALLOWED=Set.of(
+        StoredValueAccountDimensionGuard.SQL,
         "ALTER TABLE sv_account ADD UNIQUE KEY uk_sv_issuer_customer (tenant_no,issuer_no,customer_no,currency)",
         "ALTER TABLE sv_account DROP INDEX uk_sv_owner, DROP INDEX uk_sv_customer_owner",
         "ALTER TABLE sv_account DROP INDEX uk_sv_owner",

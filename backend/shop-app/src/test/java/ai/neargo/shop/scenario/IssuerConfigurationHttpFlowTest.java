@@ -25,13 +25,15 @@ class IssuerConfigurationHttpFlowTest {
     @Autowired TokenStores tokens;
 
     @Test void brandIssuerRequiresSettlementGrantAndNeverCreatesAnAccount() throws Exception {
-        String ddl=Files.readString(Path.of("src/main/resources/db/migration/V548__stored_value_issuer_foundation.sql"))
+        for(String file:List.of("V548__stored_value_issuer_foundation.sql","V549__stored_value_issuer_ledger_dimensions.sql")){
+        String ddl=Files.readString(Path.of("src/main/resources/db/migration/"+file))
                 .replaceAll("(?m)^--.*$", "").replace(" ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci", "")
                 .replace(" JSON", " VARCHAR(10000)").replace("CHECK (scope_type IN ('BRAND','STORE'))", "CHECK (CASE scope_type WHEN 'BRAND' THEN TRUE WHEN 'STORE' THEN TRUE ELSE FALSE END)");
         for(String part:ddl.split(";")) if(!part.isBlank()) {
             var m=java.util.regex.Pattern.compile("CREATE TABLE ([a-z_]+)").matcher(part);
             if(m.find()) part=part.replace("KEY uk_","KEY "+m.group(1)+"_uk_").replace("KEY ix_","KEY "+m.group(1)+"_ix_");
             jdbc.execute(part);
+        }
         }
         var mvc=MockMvcBuilders.webAppContextSetup(web).apply(SecurityMockMvcConfigurers.springSecurity()).build();
         String entity="E1",account="MA1";
@@ -56,5 +58,39 @@ class IssuerConfigurationHttpFlowTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_issuer_version",Long.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_account",Long.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_recharge",Long.class)).isZero();
+
+        String issuerNo=jdbc.queryForObject("SELECT issuer_no FROM sv_issuer",String.class);
+        var edit=new LinkedHashMap<String,Object>(config);edit.put("name","Updated issuer");
+        String changed=json.writeValueAsString(Map.of("managementNo",m,"configuration",edit));
+        var preview=mvc.perform(post("/biz/management/stored-value/issuers/"+issuerNo+"/configuration-checks").header("Authorization","Bearer "+token).contentType(MediaType.APPLICATION_JSON).content(changed)).andReturn().getResponse();
+        assertThat(json.readTree(preview.getContentAsString()).path("data").path("allowed").asBoolean()).as(preview.getContentAsString()).isTrue();
+        for(int n=0;n<2;n++){
+            var saved=mvc.perform(post("/biz/management/stored-value/issuers/"+issuerNo+"/configuration-versions").header("Authorization","Bearer "+token).header("Idempotency-Key","I2").contentType(MediaType.APPLICATION_JSON).content(changed)).andReturn().getResponse();
+            assertThat(json.readTree(saved.getContentAsString()).path("data").path("revision").asLong()).as(saved.getContentAsString()).isEqualTo(1);
+        }
+        var collection=mvc.perform(get("/biz/management/stored-value/issuers/"+issuerNo+"/collection-routes").param("managementNo",m).header("Authorization","Bearer "+token)).andReturn().getResponse();
+        assertThat(json.readTree(collection.getContentAsString()).path("data").size()).as(collection.getContentAsString()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_issuer_version",Long.class)).isEqualTo(2);
+        jdbc.update("INSERT INTO mch_payment_merchant(entity_no,pay_merchant_no,pay_channel,apply_status,pay_methods,store_no,tenant_no,created_at,updated_at) VALUES('E1','PM_TEST','WECHAT','ACTIVE',?, '', 'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)","[\"JSAPI\"]");
+        for(var permission:List.of(Map.of("resourceType","ENTITY","resourceNo","E1","permissionCode","entity.read"),Map.of("resourceType","ENTITY","resourceNo","E1","permissionCode","payment.merchant.read"),Map.of("resourceType","PAYMENT_MERCHANT","resourceNo","PM_TEST","permissionCode","payment.merchant.read"))){
+            var command=new LinkedHashMap<String,Object>(permission);command.put("actorNo","MCH:"+account);
+            var response=mvc.perform(post("/biz/management/spaces/"+m+"/grants").header("Authorization","Bearer "+token).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(command))).andReturn().getResponse();assertThat(json.readTree(response.getContentAsString()).path("code").asInt()).as(response.getContentAsString()).isZero();
+        }
+        var online=new LinkedHashMap<String,Object>(route);online.put("paymentMerchantNo","PM_TEST");online.put("channel","WECHAT");online.put("scene","JSAPI");
+        var withOnline=new LinkedHashMap<String,Object>(edit);withOnline.put("expectedRevision",1);withOnline.put("routes",List.of(route,online));
+        var configured=mvc.perform(post("/biz/management/stored-value/issuers/"+issuerNo+"/configuration-versions").header("Authorization","Bearer "+token).header("Idempotency-Key","I_ROUTE").contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("managementNo",m,"configuration",withOnline)))).andReturn().getResponse();assertThat(json.readTree(configured.getContentAsString()).path("code").asInt()).as(configured.getContentAsString()).isZero();
+        var live=mvc.perform(get("/biz/management/stored-value/issuers/"+issuerNo+"/collection-routes").param("managementNo",m).header("Authorization","Bearer "+token)).andReturn().getResponse();assertThat(json.readTree(live.getContentAsString()).path("data").size()).isEqualTo(2);
+        jdbc.update("UPDATE mch_management_grant SET status='REVOKED' WHERE management_no=? AND resource_type='PAYMENT_MERCHANT'",m);
+        var revokedRoute=mvc.perform(get("/biz/management/stored-value/issuers/"+issuerNo+"/collection-routes").param("managementNo",m).header("Authorization","Bearer "+token)).andReturn().getResponse();assertThat(json.readTree(revokedRoute.getContentAsString()).path("code").asInt()).as("revoked merchant must not remain authorized").isNotZero();
+        jdbc.update("UPDATE mch_management_grant SET status='ACTIVE' WHERE management_no=? AND resource_type='PAYMENT_MERCHANT'",m);
+        jdbc.update("UPDATE mch_payment_merchant SET apply_status='FROZEN' WHERE pay_merchant_no='PM_TEST'");
+        var frozenRoute=mvc.perform(get("/biz/management/stored-value/issuers/"+issuerNo+"/collection-routes").param("managementNo",m).header("Authorization","Bearer "+token)).andReturn().getResponse();assertThat(json.readTree(frozenRoute.getContentAsString()).path("code").asInt()).as("disabled merchant must not remain authorized").isNotZero();
+        jdbc.update("UPDATE mch_payment_merchant SET apply_status='ACTIVE',pay_methods='[]' WHERE pay_merchant_no='PM_TEST'");
+        var removedMethod=mvc.perform(get("/biz/management/stored-value/issuers/"+issuerNo+"/collection-routes").param("managementNo",m).header("Authorization","Bearer "+token)).andReturn().getResponse();assertThat(json.readTree(removedMethod.getContentAsString()).path("code").asInt()).as("removed method must not remain authorized").isNotZero();
+        jdbc.update("UPDATE mch_management_grant SET status='REVOKED' WHERE management_no=? AND resource_type='ENTITY' AND permission_code='sv.issuer.settlement.authorize'",m);
+        edit.put("expectedRevision",1);edit.put("name","Unauthorized edit");
+        var revoked=mvc.perform(post("/biz/management/stored-value/issuers/"+issuerNo+"/configuration-versions").header("Authorization","Bearer "+token).header("Idempotency-Key","I3").contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("managementNo",m,"configuration",edit)))).andReturn().getResponse();
+        assertThat(json.readTree(revoked.getContentAsString()).path("code").asInt()).isNotZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_issuer_version",Long.class)).isEqualTo(3);
     }
 }

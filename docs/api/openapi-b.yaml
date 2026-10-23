@@ -13519,6 +13519,127 @@ components:
       required:
         - "phone"
       additionalProperties: false
+    IssuerConfigureRequest:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        configuration:
+          "$ref": "#/components/schemas/IssuerConfiguration"
+      required:
+        - "managementNo"
+        - "configuration"
+      additionalProperties: false
+    IssuerConfiguration:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        settlementEntityNo:
+          type: "string"
+        collectionMode:
+          type: "string"
+        clearingMode:
+          type: "string"
+        debitAllocationMode:
+          type: "string"
+        currency:
+          type: "string"
+        marketZone:
+          type: "string"
+        routes:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/IssuerRoute"
+        expectedRevision:
+          type: "number"
+      required:
+        - "name"
+        - "settlementEntityNo"
+        - "collectionMode"
+        - "clearingMode"
+        - "debitAllocationMode"
+        - "currency"
+        - "marketZone"
+        - "routes"
+        - "expectedRevision"
+      additionalProperties: false
+    IssuerRoute:
+      type: "object"
+      properties:
+        paymentMerchantNo:
+          type:
+            - "string"
+            - "null"
+        entityNo:
+          type: "string"
+        storeNo:
+          type:
+            - "string"
+            - "null"
+        channel:
+          type: "string"
+        scene:
+          type: "string"
+      required:
+        - "paymentMerchantNo"
+        - "entityNo"
+        - "storeNo"
+        - "channel"
+        - "scene"
+      additionalProperties: false
+    SvIssuerManagementQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+      required:
+        - "managementNo"
+      additionalProperties: false
+    SvIssuerEntitiesQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        scopeType:
+          type: "string"
+          enum:
+            - "STORE"
+            - "BRAND"
+        scopeNo:
+          type: "string"
+      required:
+        - "managementNo"
+        - "scopeType"
+        - "scopeNo"
+      additionalProperties: false
+    SvIssuerRouteQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        payChannel:
+          type: "string"
+        payScene:
+          type: "string"
+      required:
+        - "managementNo"
+      additionalProperties: false
+    SvIssuerRechargeOptionsQuery:
+      type: "object"
+      properties:
+        customerRef:
+          type: "string"
+        scopeType:
+          type: "string"
+          const: "STORE"
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+      required:
+        - "customerRef"
+      additionalProperties: false
     MerchantOrderActionKind:
       type: "string"
       enum:
@@ -14713,6 +14834,186 @@ components:
         - "sourceStoreName"
         - "remark"
       additionalProperties: false
+    IssuerView:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        settlementEntityNo:
+          type: "string"
+        collectionMode:
+          type: "string"
+        clearingMode:
+          type: "string"
+        debitAllocationMode:
+          type: "string"
+        currency:
+          type: "string"
+        marketZone:
+          type: "string"
+        routes:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/IssuerRoute"
+        issuerNo:
+          type: "string"
+        issuerVersionNo:
+          type: "string"
+        scopeType:
+          type: "string"
+          enum:
+            - "STORE"
+            - "BRAND"
+        scopeNo:
+          type: "string"
+        status:
+          type: "string"
+        revision:
+          type: "number"
+      required:
+        - "clearingMode"
+        - "collectionMode"
+        - "currency"
+        - "debitAllocationMode"
+        - "issuerNo"
+        - "issuerVersionNo"
+        - "marketZone"
+        - "name"
+        - "revision"
+        - "routes"
+        - "scopeNo"
+        - "scopeType"
+        - "settlementEntityNo"
+        - "status"
+      additionalProperties: false
+    IssuerImpact:
+      type: "object"
+      properties:
+        allowed:
+          type: "boolean"
+        affectedAccountCount:
+          type: "number"
+        hasPending:
+          type: "boolean"
+        blockers:
+          type: "array"
+          items:
+            type: "string"
+      required:
+        - "allowed"
+        - "affectedAccountCount"
+        - "hasPending"
+        - "blockers"
+      additionalProperties: false
+    StoreIssuerOptions:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+        legacyMode:
+          type: "boolean"
+        issuers:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/StoreIssuerOption"
+      required:
+        - "storeNo"
+        - "legacyMode"
+        - "issuers"
+      additionalProperties: false
+    StoreIssuerOption:
+      type: "object"
+      properties:
+        issuerNo:
+          type: "string"
+        scopeType:
+          type: "string"
+          const: "STORE"
+        scopeNo:
+          type: "string"
+        name:
+          type: "string"
+        currency:
+          type: "string"
+        status:
+          type: "string"
+        writeMode:
+          type: "string"
+        canRecharge:
+          type: "boolean"
+        canRedeem:
+          type: "boolean"
+        unavailableReason:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "issuerNo"
+        - "scopeType"
+        - "scopeNo"
+        - "name"
+        - "currency"
+        - "status"
+        - "writeMode"
+        - "canRecharge"
+        - "canRedeem"
+        - "unavailableReason"
+      additionalProperties: false
+    SvIssuerLookup:
+      type: "object"
+      properties:
+        issuer:
+          anyOf:
+            - "$ref": "#/components/schemas/IssuerView"
+            - type: "null"
+      required:
+        - "issuer"
+      additionalProperties: false
+    SvIssuerEntity:
+      type: "object"
+      properties:
+        entityNo:
+          type: "string"
+        name:
+          type: "string"
+        accepted:
+          type: "boolean"
+        canAccept:
+          type: "boolean"
+      required:
+        - "entityNo"
+        - "name"
+        - "accepted"
+        - "canAccept"
+      additionalProperties: false
+    SvIssuerRechargeOptions:
+      type: "object"
+      properties:
+        issuerOptions:
+          "$ref": "#/components/schemas/StoreIssuerOptions"
+        plans:
+          "$ref": "#/components/schemas/SvPlanPage"
+      required:
+        - "issuerOptions"
+        - "plans"
+      additionalProperties: false
+    IssuerAccessAck:
+      type: "object"
+      properties:
+        issuerNo:
+          type: "string"
+        storeNo:
+          type: "string"
+        sourceRevision:
+          type: "number"
+        status:
+          type: "string"
+      required:
+        - "issuerNo"
+        - "storeNo"
+        - "sourceRevision"
+        - "status"
+      additionalProperties: false
     Record_Lang_string:
       type: "object"
       properties:
@@ -14879,6 +15180,581 @@ components:
         - "nextCursor"
       additionalProperties: false
 paths:
+  "/biz/management/stores/{no}/stored-value/issuer":
+    get:
+      operationId: "mSvStoreIssuerConfiguration"
+      summary: "门店发行设置"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvIssuerLookup"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    post:
+      operationId: "mSvConfigureStoreIssuer"
+      summary: "保存门店发行配置"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/IssuerView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/IssuerConfigureRequest"
+  "/biz/management/brands/{no}/stored-value/issuer":
+    get:
+      operationId: "mSvIssuer"
+      summary: "品牌储值发行设置"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvIssuerLookup"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    post:
+      operationId: "mSvConfigureIssuer"
+      summary: "保存品牌发行草稿"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/IssuerView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/IssuerConfigureRequest"
+  "/biz/management/stored-value/issuers/{no}/configuration-checks":
+    post:
+      operationId: "mSvIssuerImpact"
+      summary: "检查发行配置影响"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/IssuerImpact"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/IssuerConfigureRequest"
+  "/biz/management/stored-value/issuers/{no}/configuration-versions":
+    post:
+      operationId: "mSvIssuerVersion"
+      summary: "保存发行配置版本"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/IssuerView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/IssuerConfigureRequest"
+  "/biz/management/stored-value/settlement-entity-candidates":
+    get:
+      operationId: "mSvIssuerEntities"
+      summary: "有授权的结算主体"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "scopeType"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            enum:
+              - "STORE"
+              - "BRAND"
+        - name: "scopeNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/SvIssuerEntity"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stores/{storeNo}/stored-value/issuers":
+    get:
+      operationId: "mSvStoreIssuers"
+      summary: "门店可用发行方"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoreIssuerOptions"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stores/{storeNo}/stored-value/recharge-options":
+    get:
+      operationId: "mSvRechargeOptions"
+      summary: "会员可用储值方案"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "customerRef"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "scopeType"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            const: "STORE"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvIssuerRechargeOptions"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stored-value/issuers/{no}/collection-routes":
+    get:
+      operationId: "mSvIssuerRoutes"
+      summary: "已配置收款路由"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "payChannel"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "payScene"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/IssuerRoute"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stores/{no}/stored-value/issuer/prepare":
+    post:
+      operationId: "mSvPrepareIssuer"
+      summary: "准备门店发行元数据"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/IssuerView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvIssuerManagementQuery"
+  "/biz/management/stores/{no}/stored-value/issuer/access-refresh":
+    post:
+      operationId: "mSvRefreshIssuer"
+      summary: "同步原门店准入修订"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/IssuerAccessAck"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvIssuerManagementQuery"
+  "/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}":
+    get:
+      operationId: "mSvIssuerRecharge"
+      summary: "查询本店原储值进度"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "rechargeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvProgress"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}/cancel":
+    post:
+      operationId: "mSvIssuerCancel"
+      summary: "取消本店未收款储值"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "rechargeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvProgress"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvCancelReq"
   "/biz/stores/{store}/stored-value/customer-candidates":
     get:
       operationId: "mScopeCandidates"
@@ -15980,15 +16856,20 @@ paths:
           "application/json":
             schema:
               "$ref": "#/components/schemas/SvSelectCustomerReq"
-  "/biz/stored-value/plan-recharges/confirm-offline":
+  "/biz/stores/{storeNo}/stored-value/issuer-recharges/confirm-offline":
     post:
       operationId: "mSvConfirmOffline"
       summary: "确认商家线下储值"
       tags:
-        - "stored-value"
+        - "stores"
       security:
         - bearerAuth: []
-      parameters: []
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
       responses:
         "200":
           description: "OK"
@@ -16276,15 +17157,20 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/biz/stored-value/records":
+  "/biz/stores/{storeNo}/stored-value/issuer-records":
     get:
       operationId: "mSvRecords"
       summary: "门店储值收支"
       tags:
-        - "stored-value"
+        - "stores"
       security:
         - bearerAuth: []
       parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
         - name: "storeNo"
           in: "query"
           required: true
@@ -16343,15 +17229,20 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/biz/stored-value/records/{recordNo}":
+  "/biz/stores/{storeNo}/stored-value/issuer-records/{recordNo}":
     get:
       operationId: "mSvRecord"
       summary: "储值收支详情"
       tags:
-        - "stored-value"
+        - "stores"
       security:
         - bearerAuth: []
       parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
         - name: "storeNo"
           in: "query"
           required: true
@@ -16376,15 +17267,20 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/biz/stored-value/plan-recharges/resolve":
+  "/biz/stores/{storeNo}/stored-value/issuer-recharges/resolve":
     post:
       operationId: "mSvResolveRecharge"
       summary: "查询原充值创建结果"
       tags:
-        - "stored-value"
+        - "stores"
       security:
         - bearerAuth: []
-      parameters: []
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
       responses:
         "200":
           description: "OK"
@@ -16410,15 +17306,20 @@ paths:
           "application/json":
             schema:
               "$ref": "#/components/schemas/SvRechargeCreate"
-  "/biz/stored-value/plan-recharges/cancel-create":
+  "/biz/stores/{storeNo}/stored-value/issuer-recharges/cancel-create":
     post:
       operationId: "mSvCancelCreate"
       summary: "取消未明确创建的原充值命令"
       tags:
-        - "stored-value"
+        - "stores"
       security:
         - bearerAuth: []
-      parameters: []
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
       responses:
         "200":
           description: "OK"

@@ -4,7 +4,7 @@ import {mount,flushPromises} from '@vue/test-utils';
 import './component-setup';
 const m=vi.hoisted(()=>({scoped:vi.fn(),select:vi.fn(),plans:vi.fn(),confirm:vi.fn(),query:vi.fn(),resolve:vi.fn(),cancel:vi.fn(),hide:()=>{},show:()=>{}}));
 vi.mock('@dcloudio/uni-app',()=>({onHide:(f:()=>void)=>{m.hide=f;},onShow:(f:()=>void)=>{m.show=f;}}));
-vi.mock('@/api',()=>({api:{mScopeSelectCustomer:m.scoped,mSvSelectCustomer:m.select,mSvPlans:m.plans,mSvConfirmOffline:m.confirm,mSvRecharge:m.query,mSvResolveRecharge:m.resolve,mSvCancelCreate:m.cancel}}));
+vi.mock('@/api',()=>({api:{mScopeSelectCustomer:m.scoped,mSvSelectCustomer:m.select,mSvPlans:m.plans,mSvRechargeOptions:async(q:unknown)=>({issuerOptions:{legacyMode:true,issuers:[]},plans:await m.plans(q)}),mSvIssuerRecharge:m.query,mSvConfirmOffline:m.confirm,mSvRecharge:m.query,mSvResolveRecharge:m.resolve,mSvCancelCreate:m.cancel}}));
 vi.mock('@/stores/merchant',()=>({useMerchantStore:()=>({storeNo:'S1',profile:{merchantNo:'M1'},can:()=>true})}));
 vi.mock('vue-i18n',()=>({useI18n:()=>({t:(s:string)=>s})}));
 Object.assign(uni,{removeStorageSync:vi.fn()});

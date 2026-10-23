@@ -12,11 +12,20 @@ import org.springframework.web.bind.annotation.*;
 public class InternalStoredValueMigrationEndpoint {
     private final StoredValueMigrationManifestService migration;
     private final String token;
+    private final ai.neargo.shop.pay.storedvalue.migration.StoredValueMigrationOperator operator;
     private final ai.neargo.shop.pay.storedvalue.migration.StoredValueMigrationExecutionService execution;
     private final ai.neargo.shop.pay.storedvalue.migration.StoredValueWriterCapabilityService writer;
-    public InternalStoredValueMigrationEndpoint(StoredValueMigrationManifestService migration,ai.neargo.shop.pay.storedvalue.migration.StoredValueWriterCapabilityService writer,ai.neargo.shop.pay.storedvalue.migration.StoredValueMigrationExecutionService execution,@Value("${shop.services.internal-token:}") String token) {
-        this.migration=migration;this.token=token;this.writer=writer;this.execution=execution;
+    public InternalStoredValueMigrationEndpoint(StoredValueMigrationManifestService migration,ai.neargo.shop.pay.storedvalue.migration.StoredValueWriterCapabilityService writer,ai.neargo.shop.pay.storedvalue.migration.StoredValueMigrationExecutionService execution,ai.neargo.shop.pay.storedvalue.migration.StoredValueMigrationOperator operator,@Value("${shop.services.internal-token:}") String token) {
+        this.operator=operator;this.migration=migration;this.token=token;this.writer=writer;this.execution=execution;
     }
+
+
+    @PostMapping(PayInternalPaths.SV_MIGRATION_SOURCES)
+    public ResponseEntity<?> sources(@RequestBody PayStoredValueMigrationRequests.Operator request,@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false)String given){return InternalServiceResponses.invoke(token,given,()->operator.sources(request.operator(),request.approval(),request.proof()));}
+    @PostMapping(PayInternalPaths.SV_MIGRATION_OPERATOR)
+    public ResponseEntity<?> operator(@RequestBody PayStoredValueMigrationRequests.Operator request,@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false)String given){return InternalServiceResponses.invoke(token,given,()->operator.execute(request.action(),request.operator(),request.approval(),request.proof(),request.expectedApprovalHash()));}
+    @PostMapping(PayInternalPaths.SV_MIGRATION_COMMAND)
+    public ResponseEntity<?> command(@RequestBody PayStoredValueMigrationRequests.Operator request,@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false)String given){return InternalServiceResponses.invoke(token,given,()->operator.command(request.operator(),request.approval(),request.commandNo(),request.proof()));}
     @PostMapping(PayInternalPaths.SV_MIGRATION_CAPABILITY)
     public ResponseEntity<?> capability(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Query query,
             @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given) {

@@ -69,7 +69,7 @@ public class StoredValueRechargeWriterImpl implements StoredValueRechargeWriter 
                     issuerLedger.beforeLegacyActivityCreate(ctx,entity,source.permit().storeNo());
                     var prior = recharges.lock(ctx.tenantNo(), source.rechargeNo());
                     if (prior != null) { requireCreate(prior, ctx, entity, c); return view(prior); }
-                    var r = frozen(source); recharges.insert(r); return view(r);
+                    var r = frozen(source); recharges.insert(r); issuerLedger.freezeActivity(ctx,entity,source,r); return view(r);
                 });
         // Creation replay reflects a durable cancellation, never a stale instruction to collect cash.
         var actual = recharges.lock(ctx.tenantNo(), source.rechargeNo()); requireCreate(actual, ctx, entity, c);

@@ -11,8 +11,8 @@ class StoredValueMigrationManifestTest {
             StoredValueMigrationManifestService.Evidence evidence) { }
     Fixture fixture(boolean maintenance,boolean writers) throws Exception {
         var old=new IssuerAccountMigrationTest();var f=old.fixture();old.zeroBalanceHistory(f.jdbc());old.migrationSchema(f.jdbc());
-        f.jdbc().execute("CREATE TABLE sv_issuer_store_access(tenant_no varchar,issuer_no varchar,store_no varchar,operating_entity_no varchar,source_binding_no varchar,source_revision bigint,status varchar,deleted int default 0)");
-        f.jdbc().update("INSERT INTO sv_issuer_store_access VALUES('MAIN','I1','S1','E1','S1',7,'PREPARING',0)");
+        f.jdbc().execute("CREATE TABLE sv_issuer_store_access(tenant_no varchar,issuer_no varchar,store_no varchar,operating_entity_no varchar,source_binding_no varchar,source_revision bigint,status varchar,can_issue int default 0,can_redeem int default 0,deleted int default 0)");
+        f.jdbc().update("INSERT INTO sv_issuer_store_access(tenant_no,issuer_no,store_no,operating_entity_no,source_binding_no,source_revision,status,deleted) VALUES('MAIN','I1','S1','E1','S1',7,'PREPARING',0)");
         var evidence=new StoredValueMigrationManifestService.Evidence(old.batch(),List.of(new StoreAuthority("MAIN","AUDITOR","E1","S1","本店",7)));
         return new Fixture(f,new StoredValueMigrationManifestService(f.db(),f.service(),maintenance,writers),evidence);
     }

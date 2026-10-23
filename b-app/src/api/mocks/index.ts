@@ -21,6 +21,21 @@ import { inventoryMock } from "./inventory";
 
 export const mockApi: MerchantApi = {
   ...managementMock,
+  mSvStoreIssuerConfiguration:async()=>{throw Error('Issuer operations require the real backend')},
+  mSvConfigureStoreIssuer:async()=>{throw Error('Issuer operations require the real backend')},
+  mSvIssuer:async()=>{throw Error('Issuer operations require the real backend')},
+  mSvConfigureIssuer:async()=>{throw Error('Issuer operations require the real backend')},
+  mSvIssuerImpact:async()=>{throw Error('Issuer operations require the real backend')},
+  mSvIssuerVersion:async()=>{throw Error('Issuer operations require the real backend')},
+  mSvIssuerEntities:async()=>{throw Error('Issuer operations require the real backend')},
+  mSvStoreIssuers:async()=>{throw Error('Issuer operations require the real backend')},
+  mSvRechargeOptions:async()=>{throw Error('Issuer operations require the real backend')},
+  mSvIssuerRoutes:async()=>{throw Error('Issuer operations require the real backend')},
+  mSvPrepareIssuer:async()=>{throw Error('Issuer operations require the real backend')},
+  mSvRefreshIssuer:async()=>{throw Error('Issuer operations require the real backend')},
+  mSvIssuerRecharge:async()=>{throw Error('Issuer operations require the real backend')},
+  mSvIssuerCancel:async()=>{throw Error('Issuer operations require the real backend')},
+
   mScopeCandidates:async()=>{throw Error('Member scopes require real backend')},
   mScopeSelectCustomer:async()=>{throw Error('Member scopes require real backend')},
   mScopeEnrollMember:async()=>{throw Error('Member scopes require real backend')},

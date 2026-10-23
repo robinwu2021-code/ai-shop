@@ -18,7 +18,7 @@ class StoredValueWriterCapabilityEndpointTest {
         var service=mock(StoredValueWriterCapabilityService.class);
         var mvc=MockMvcBuilders.standaloneSetup(new InternalStoredValueWriterCapabilityEndpoint(service,"test-token")).build();
         var query=new Query("core-nonce");
-        var cap=new Capability("core-nonce","shop-app","boot-core","a".repeat(40),1,false,false,"b".repeat(64),true,Instant.parse("2026-10-23T08:00:00Z"));
+        var cap=new Capability("core-nonce","shop-app","boot-core","a".repeat(40),2,false,false,"b".repeat(64),true,Instant.parse("2026-10-23T08:00:00Z"));
         when(service.capability(query)).thenReturn(cap);
         var request=post(PayInternalPaths.SV_MIGRATION_CAPABILITY).contentType(MediaType.APPLICATION_JSON).content("{\"challenge\":\"core-nonce\"}");
         assertThat(mvc.perform(request).andReturn().getResponse().getStatus()).isEqualTo(401);verifyNoInteractions(service);

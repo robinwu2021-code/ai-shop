@@ -37,4 +37,22 @@ class IssuerAuthorityTest {
         var wrong=new Config("本店发行","E2","STORE_LOCAL","INTERNAL_RECON","PRO_RATA","CNY","Asia/Shanghai",List.of(offline),0);
         assertThatThrownBy(()->service.configureScope(f.owner,m,"STORE","S1",wrong)).isInstanceOf(BizException.class);
     }
+
+    @Test void explicitOwnerPreparationGrantsSettingsButNeverSettlementOrAnotherOwnersStore() throws Exception {
+        var f=new BrandFixture();String m=f.no(f.space(),"managementNo");
+        var service=new IssuerAuthorityService(f.repo,f.scopes,new PaymentMerchantScopeService(f.repo,f.scopes));
+        f.scopes.grant(f.owner,m,new GrantCommand(f.owner.actorKey(),"STORE","S1","store.read",null,null,false,null,false));
+        f.scopes.grant(f.owner,m,new GrantCommand(f.owner.actorKey(),"ENTITY","E1","entity.read",null,null,false,null,false));
+        assertThat(f.scopes.can(f.owner,m,"STORE","S1","sv.issuer.configure")).isFalse();
+        assertThatThrownBy(()->service.prepareSettings(f.other,m,"S1")).isInstanceOf(BizException.class);
+        service.prepareSettings(f.owner,m,"S1");service.prepareSettings(f.owner,m,"S1");
+        assertThat(f.scopes.can(f.owner,m,"STORE","S1","sv.issuer.read")).isTrue();
+        assertThat(f.scopes.can(f.owner,m,"STORE","S1","sv.issuer.configure")).isTrue();
+        assertThat(f.scopes.can(f.owner,m,"ENTITY","E1","sv.issuer.settlement.authorize")).isFalse();
+        var candidates=service.settlementCandidates(f.owner,m,"STORE","S1");
+        assertThat(candidates).hasSize(1);assertThat(candidates.getFirst()).containsEntry("entityNo","E1").containsEntry("accepted",false).containsEntry("canAccept",true);
+        f.scopes.grant(f.owner,m,new GrantCommand(f.owner.actorKey(),"ENTITY","E1","sv.issuer.settlement.authorize",null,null,false,null,false));
+        assertThat(service.settlementCandidates(f.owner,m,"STORE","S1").getFirst()).containsEntry("accepted",true).containsEntry("canAccept",false);
+        assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM mch_management_grant WHERE resource_type='STORE' AND permission_code LIKE 'sv.issuer.%'",Long.class)).isEqualTo(2);
+    }
 }

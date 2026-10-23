@@ -1,3 +1,4 @@
+import {issuerHttpApi} from "./stored-value-issuer-http";
 import {managementHttpApi} from "./management-http";
 import { requirePointsNames } from "@shared/utils/points-name";
 import type { OrderPointsEarning } from "@shared/types";
@@ -204,12 +205,13 @@ import type {
 
 export const httpApi: MerchantApi = {
   ...managementHttpApi,
+  ...issuerHttpApi,
   mScopeCandidates:(store,q)=>http.get(buildPath(E.mScopeCandidates.path,{store}),q),
   mScopeSelectCustomer:(store,body)=>http.post(buildPath(E.mScopeSelectCustomer.path,{store}),body),
   mScopeEnrollMember:(store,body)=>http.post(buildPath(E.mScopeEnrollMember.path,{store}),body),
   mSvCandidates:(q)=>http.get<PageResult<SV.SvCandidate>>(E.mSvCandidates.path,q),
   mSvSelectCustomer:(body)=>http.post<SV.SvSelectedCustomer>(E.mSvSelectCustomer.path,body),
-  mSvConfirmOffline:(body,key)=>http.post<SV.SvProgress>(E.mSvConfirmOffline.path,body,{'Idempotency-Key':key}),
+  mSvConfirmOffline:(body,key)=>http.post<SV.SvProgress>(buildPath(E.mSvConfirmOffline.path,{storeNo:body.storeNo}),body,{'Idempotency-Key':key}),
   mSvContext:(storeNo)=>http.get<SV.SvContext>(E.mSvContext.path,{storeNo}),
   mSvPlans:(q)=>http.get<SV.SvPage<SV.SvPlan>>(E.mSvPlans.path,q),
   mSvPlan:(planNo,storeNo)=>http.get<SV.SvPlan>(buildPath(E.mSvPlan.path,{planNo}),{storeNo}),
@@ -217,10 +219,10 @@ export const httpApi: MerchantApi = {
   mSvPlanStatus:(planNo,body,key)=>http.put<SV.SvPlan>(buildPath(E.mSvPlanStatus.path,{planNo}),body,{'Idempotency-Key':key}),
   mSvAccounts:(q)=>http.get<SV.SvPage<SV.SvAccount>>(E.mSvAccounts.path,q),
   mSvAccount:(accountRef,storeNo)=>http.get<SV.SvAccount>(buildPath(E.mSvAccount.path,{accountRef}),{storeNo}),
-  mSvRecords:(q)=>http.get<SV.SvPage<SV.SvRecord>>(E.mSvRecords.path,q),
-  mSvRecord:(recordNo,storeNo)=>http.get<SV.SvRecord>(buildPath(E.mSvRecord.path,{recordNo}),{storeNo}),
-  mSvResolveRecharge:(body,key)=>http.post<{found:boolean;recharge:SV.SvProgress|null}>(E.mSvResolveRecharge.path,body,{"Idempotency-Key":key}),
-  mSvCancelCreate:(body,key)=>http.post<SV.SvProgress>(E.mSvCancelCreate.path,body,{"Idempotency-Key":key}),
+  mSvRecords:(q)=>http.get<SV.SvPage<SV.SvRecord>>(buildPath(E.mSvRecords.path,{storeNo:q.storeNo}),q),
+  mSvRecord:(recordNo,storeNo)=>http.get<SV.SvRecord>(buildPath(E.mSvRecord.path,{recordNo,storeNo}),{storeNo}),
+  mSvResolveRecharge:(body,key)=>http.post<{found:boolean;recharge:SV.SvProgress|null}>(buildPath(E.mSvResolveRecharge.path,{storeNo:body.storeNo}),body,{"Idempotency-Key":key}),
+  mSvCancelCreate:(body,key)=>http.post<SV.SvProgress>(buildPath(E.mSvCancelCreate.path,{storeNo:body.storeNo}),body,{"Idempotency-Key":key}),
   mSvCreateRecharge:(body,key)=>http.post<SV.SvProgress>(E.mSvCreateRecharge.path,body,{'Idempotency-Key':key}),
   mSvRecharge:(rechargeNo)=>http.get<SV.SvProgress>(buildPath(E.mSvRecharge.path,{rechargeNo})),
   mSvSubmit:(rechargeNo,body,key)=>http.post<SV.SvProgress>(buildPath(E.mSvSubmit.path,{rechargeNo}),body,{'Idempotency-Key':key}),

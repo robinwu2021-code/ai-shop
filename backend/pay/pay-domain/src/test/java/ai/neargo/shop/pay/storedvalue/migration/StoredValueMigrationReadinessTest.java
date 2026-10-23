@@ -12,7 +12,7 @@ class StoredValueMigrationReadinessTest {
     final String sha="a".repeat(40),ledger="b".repeat(64),challenge="check-123";
     final Node core=new Node("core-1","CORE_1","shop-app",sha,"boot-core"),pay=new Node("pay-1","PAY_1","pay-svc",sha,"boot-pay");
     Inventory inventory(boolean sealed){return new Inventory("deploy-1",ledger,sealed,List.of(core,pay));}
-    Capability cap(String app,String boot){return new Capability(challenge,app,boot,sha,1,true,true,ledger,true,now);}
+    Capability cap(String app,String boot){return new Capability(challenge,app,boot,sha,2,true,true,ledger,true,now);}
     List<NodeResult> healthy(){return List.of(new NodeResult("core-1",cap("shop-app","boot-core"),null),new NodeResult("pay-1",cap("pay-svc","boot-pay"),null));}
     @Test void onlyTheSealedExactFreshInventoryCanBeReady(){
         var report=StoredValueMigrationReadiness.check(inventory(true),healthy(),challenge,now);
@@ -24,12 +24,12 @@ class StoredValueMigrationReadinessTest {
     }
     @Test void oldBuildWrongLedgerDisabledGuardAndStaleRepliesCannotAuthorizeCutover(){
         var bad=List.of(
-            new Capability(challenge,"pay-svc","boot-pay","c".repeat(40),1,true,true,ledger,true,now),
-            new Capability(challenge,"pay-svc","boot-pay",sha,1,true,true,"d".repeat(64),true,now),
-            new Capability(challenge,"pay-svc","boot-pay",sha,1,false,true,ledger,true,now),
-            new Capability(challenge,"pay-svc","boot-pay",sha,1,true,false,ledger,true,now),
-            new Capability(challenge,"pay-svc","boot-pay",sha,1,true,true,ledger,false,now),
-            new Capability(challenge,"pay-svc","boot-pay",sha,1,true,true,ledger,true,now.minusSeconds(31)),
+            new Capability(challenge,"pay-svc","boot-pay","c".repeat(40),2,true,true,ledger,true,now),
+            new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,"d".repeat(64),true,now),
+            new Capability(challenge,"pay-svc","boot-pay",sha,2,false,true,ledger,true,now),
+            new Capability(challenge,"pay-svc","boot-pay",sha,2,true,false,ledger,true,now),
+            new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,ledger,false,now),
+            new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,ledger,true,now.minusSeconds(31)),
             new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,ledger,true,now));
         for(var capability:bad)assertThat(StoredValueMigrationReadiness.check(inventory(true),List.of(healthy().getFirst(),new NodeResult("pay-1",capability,null)),challenge,now).ready()).isFalse();
         assertThat(StoredValueMigrationReadiness.check(inventory(true),List.of(healthy().getFirst(),new NodeResult("pay-1",null,"PROBE_UNAVAILABLE")),challenge,now).ready()).isFalse();
@@ -45,4 +45,13 @@ class StoredValueMigrationReadinessTest {
         assertThat(StoredValueMigrationReadiness.check(inventory(true),List.of(healthy().getFirst(),replacement),challenge,now).ready()).isFalse();
     }
 
+
+    @Test void legacyWriterProtocolCannotAuthorizeTheCompletedCutoverContract(){
+        var good=healthy();
+        assertThat(StoredValueMigrationReadiness.check(inventory(true),good,challenge,now).ready()).isTrue();
+        var nodes=new java.util.ArrayList<>(good);var first=nodes.getFirst();var c=first.capability();
+        nodes.set(0,new NodeResult(first.nodeId(),new Capability(c.challenge(),c.application(),c.processNo(),c.buildSha(),1,c.writerGuardEnabled(),c.maintenanceEnabled(),c.ledgerFingerprint(),c.schemaReady(),c.checkedAt()),null));
+        var report=StoredValueMigrationReadiness.check(inventory(true),nodes,challenge,now);
+        assertThat(report.ready()).isFalse();assertThat(report.issues()).extracting(Issue::code).contains("WRITER_NOT_READY");
+    }
 }

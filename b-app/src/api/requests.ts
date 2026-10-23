@@ -836,3 +836,10 @@ export interface ScopeCandidateQuery {keyword?:string;cursor?:string;size?:numbe
 import type {ScopeSelectionSource} from './stored-value-types';
 export interface ScopeSelectCustomerReq {source:ScopeSelectionSource}
 export interface ScopeMemberCreateReq {phone:string;remark?:string;tagNos?:string[]}
+
+// P3 issuer configuration and store-scoped recharge contracts.
+export type {IssuerConfigureRequest} from './stored-value-issuers';
+export interface SvIssuerManagementQuery {managementNo:string}
+export interface SvIssuerEntitiesQuery {managementNo:string;scopeType:'STORE'|'BRAND';scopeNo:string}
+export interface SvIssuerRouteQuery {managementNo:string;payChannel?:string;payScene?:string}
+export interface SvIssuerRechargeOptionsQuery {customerRef:string;scopeType?:'STORE';cursor?:string;size?:number}

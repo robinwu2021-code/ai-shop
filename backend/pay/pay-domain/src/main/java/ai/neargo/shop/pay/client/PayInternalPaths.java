@@ -8,6 +8,13 @@ package ai.neargo.shop.pay.client;
  * 而测试默认装配的是进程内实现，那个 404 在本地根本碰不到。
  */
 public final class PayInternalPaths {
+    public static final String SV_MIGRATION_SOURCES="/internal/pay/stored-value/migrations/sources";
+    public static final String SV_ISSUER_LOCATE="/internal/pay/stored-value/issuers/locate";
+    public static final String SV_ISSUER_CHECK="/internal/pay/stored-value/issuers/check";
+    public static final String SV_ISSUER_OPTIONS="/internal/pay/stored-value/issuers/options";
+    public static final String SV_ISSUER_REFRESH="/internal/stored-value/issuers/access-revisions";
+    public static final String SV_MIGRATION_OPERATOR="/internal/pay/stored-value/migrations/operator";
+    public static final String SV_MIGRATION_COMMAND="/internal/pay/stored-value/migrations/command";
     public static final String SV_MIGRATION_CAPABILITY="/internal/pay/stored-value/migrations/capability";
     public static final String SV_MIGRATION_PAUSE="/internal/pay/stored-value/migrations/pause";
     public static final String SV_MIGRATION_APPLY="/internal/pay/stored-value/migrations/apply";

@@ -16,6 +16,8 @@ public final class StoredValueMigrationPlans {
     public record Preparation(List<Scope> scopes,List<Identity> identities) {
         public Preparation { scopes=List.copyOf(scopes);identities=List.copyOf(identities); }
     }
+    public record OperatorEvidence(String approvalHash,List<StoreAuthority> sources){public OperatorEvidence{sources=List.copyOf(sources);}}
+    public record ExecutionCommand(String commandNo,String approvalNo,String action,String state,long issuerCount,long accountCount) {}
     public record MaintenanceResult(String receiptNo,String manifestNo,String state,String inventoryHash,long issuerCount,long accountCount) { }
     public record Manifest(String manifestNo,String fingerprint,String authorityHash,long accountCount) { }
 }

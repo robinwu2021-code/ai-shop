@@ -69,7 +69,9 @@ public class ManagementQueryService {
   var binding=db.one("SELECT b.brand_no,b.scope_revision,r.name,r.status FROM mch_brand_store_binding b JOIN mch_brand r ON r.tenant_no=b.tenant_no AND r.brand_no=b.brand_no WHERE b.tenant_no=? AND b.store_no=? AND b.status='ACTIVE' AND b.deleted=0",a.tenantNo(),store);
   var result=db.view(row);result.put("managementNo",m);
   var pending=db.one("SELECT change_no,status,version FROM mch_brand_change WHERE tenant_no=? AND store_no=? AND status IN ('CHECKED','PREPARING') AND deleted=0",a.tenantNo(),store);
-  result.put("pendingChange",pending==null?null:db.view(pending));result.put("brand",binding==null?null:db.view(binding));result.put("storedValue",Map.of("store",Map.of("availability","LEGACY_STORE"),"brand",Map.of("availability","NOT_ENABLED")));result.put("actions",List.of("store.read","store.brand.change").stream().filter(p->scopes.can(a,m,"STORE",store,p)).toList());return result;
+  var issuerActions=new java.util.ArrayList<>(List.of("store.read","store.brand.change","sv.issuer.read","sv.issuer.configure").stream().filter(p->scopes.can(a,m,"STORE",store,p)).toList());
+  if(scopes.can(a,m,"SPACE",m,"management.grant.manage")&&scopes.ownerAccounts(a).stream().anyMatch(account->str(row,"entity_no").equals(str(account,"entity_no"))))issuerActions.add("sv.issuer.prepare");
+  result.put("pendingChange",pending==null?null:db.view(pending));result.put("brand",binding==null?null:db.view(binding));result.put("storedValue",Map.of("store",Map.of("availability","LEGACY_STORE"),"brand",Map.of("availability","NOT_ENABLED")));result.put("actions",issuerActions);return result;
  }
  public Page audit(Actor a,String brand,String cursor,int size){
   var row=db.one("SELECT management_no FROM mch_brand WHERE tenant_no=? AND brand_no=? AND deleted=0",a.tenantNo(),brand);if(row==null)throw BizException.of(ErrorCode.NOT_FOUND);String m=str(row,"management_no");scopes.resolve(a,m);scopes.require(a,m,"BRAND",brand,"brand.audit.read");

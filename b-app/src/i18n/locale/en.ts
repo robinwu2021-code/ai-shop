@@ -1,4 +1,5 @@
 export default {
+ issuer: {"prepareSettings":"Set up stored-value issuer","accepted":"Authorized","acceptAndChoose":"Authorize and select","title": "Stored-value issuer", "storeScope": "Store balance", "brandScope": "Brand balance", "brandDraftOnly": "Brand issuance is available as a draft only", "name": "Issuer name", "settlementEntity": "Settlement entity", "chooseEntity": "Select settlement entity", "routes": "Collection methods", "addRoute": "Add collection method", "remove": "Remove", "noRoutes": "No available collection methods", "pendingSave": "Save result is unknown. Retry the original request.", "retrySave": "Retry save", "states": {"DRAFT": "Draft", "ACTIVE": "Active", "ISSUE_STOPPED": "Issuance stopped"}, "channels": {"MERCHANT_OFFLINE": "Offline collection", "WECHAT": "WeChat Pay", "ALIPAY": "Alipay"}, "blockers": {"STALE_CONFIGURATION": "Configuration changed. Refresh.", "CURRENCY_IMMUTABLE": "Currency cannot be changed", "MAINTENANCE_IN_PROGRESS": "Stored-value maintenance", "LIABILITY_RULES_LOCKED": "Outstanding balance or recharge prevents this change", "ISSUANCE_NOT_ENABLED": "Issuance is not enabled"}},
  management: {
  "managePayment": "Payment configuration",
  "createEntity": "Add operating entity",
@@ -72,7 +73,7 @@ export default {
     "IMPACT_UNKNOWN": "Impact is not confirmed. Retry later",
     "DEPENDENCY_NOT_READY": "Shared capabilities are not ready"
   },
-  "permission": {
+  "permission": {"sv_issuer_read":"View issuer settings","sv_issuer_configure":"Configure stored-value issuer","sv_issuer_settlement_authorize":"Authorize settlement entity",
     "management_enter": "Enter workspace",
     "management_resource_read": "View resources",
     "management_grant_manage": "Manage access",

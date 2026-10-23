@@ -13,8 +13,47 @@ import org.springframework.stereotype.Service;
 /** Issuer identity is independent of its collection merchants and immutable configuration versions. */
 @Service
 public class StoredValueIssuerService {
+    @org.springframework.beans.factory.annotation.Value("${shop.pay.stored-value.issuer-mode:false}")
+    private boolean issuerMode;
     private final IssuerRepository db;
     public StoredValueIssuerService(IssuerRepository db) { this.db = db; }
+
+
+    public ScopeRef locate(String tenant,String no) {
+        var row=db.one("SELECT scope_type,scope_no FROM sv_issuer WHERE tenant_no=? AND issuer_no=? AND deleted=0",tenant,no);
+        if(row==null)throw BizException.of(ErrorCode.NOT_FOUND);
+        return new ScopeRef(text(row,"scope_type"),text(row,"scope_no"));
+    }
+    public ConfigurationImpact check(AuthorizedScope scope,String issuerNo,Config command) {
+        validate(scope);validateConfig(scope,command);
+        var row=issuer(scope,false);
+        if(row==null||!issuerNo.equals(text(row,"issuer_no")))throw BizException.of(ErrorCode.NOT_FOUND);
+        var previous=version(scope.tenantNo(),text(row,"current_issuer_version_no"));
+        var blockers=new ArrayList<String>();
+        if(command.expectedRevision()!=number(previous,"version_index")-1)blockers.add("STALE_CONFIGURATION");
+        if(!command.currency().equals(text(previous,"currency")))blockers.add("CURRENCY_IMMUTABLE");
+        if("FENCED".equals(text(row,"write_mode")))blockers.add("MAINTENANCE_IN_PROGRESS");
+        long accounts=number(db.one("SELECT COUNT(*) AS n FROM sv_account WHERE tenant_no=? AND issuer_no=? AND deleted=0",scope.tenantNo(),issuerNo),"n");
+        long liability=number(db.one("SELECT COUNT(*) AS n FROM sv_account WHERE tenant_no=? AND issuer_no=? AND deleted=0 AND (principal_minor>0 OR bonus_minor>0 OR held_principal_minor>0 OR held_bonus_minor>0)",scope.tenantNo(),issuerNo),"n");
+        long pending=number(db.one("SELECT COUNT(*) AS n FROM sv_recharge WHERE tenant_no=? AND issuer_no=? AND deleted=0 AND status IN ('WAIT_COLLECTION','SUBMITTED','RECEIVED')",scope.tenantNo(),issuerNo),"n");
+        if((liability>0||pending>0)&&(!command.settlementEntityNo().equals(text(previous,"settlement_entity_no"))||!command.clearingMode().equals(text(previous,"clearing_mode"))||!command.debitAllocationMode().equals(text(previous,"debit_allocation_mode"))))blockers.add("LIABILITY_RULES_LOCKED");
+        return new ConfigurationImpact(blockers.isEmpty(),accounts,pending>0,blockers);
+    }
+    public StoreOptions storeOptions(StoreQuery query) {
+        var rows=db.rows("SELECT i.*,v.currency,v.settlement_entity_no,a.can_issue,a.can_redeem,a.status AS access_status,a.operating_entity_no FROM sv_issuer i JOIN sv_issuer_version v ON v.tenant_no=i.tenant_no AND v.issuer_version_no=i.current_issuer_version_no AND v.issuer_no=i.issuer_no LEFT JOIN sv_issuer_store_access a ON a.tenant_no=i.tenant_no AND a.issuer_no=i.issuer_no AND a.store_no=i.scope_no AND a.deleted=0 WHERE i.tenant_no=? AND i.scope_type='STORE' AND i.scope_no=? AND i.deleted=0 AND v.deleted=0",query.tenantNo(),query.storeNo());
+        if(rows.size()>1)throw BizException.of(ErrorCode.CONFLICT);
+        boolean legacy=!issuerMode;
+        var options=new ArrayList<StoreOption>();
+        for(var row:rows) {
+            if(!query.entityNo().equals(text(row,"settlement_entity_no"))||!query.entityNo().equals(text(row,"operating_entity_no")))throw BizException.of(ErrorCode.NOT_FOUND);
+            boolean fenced="FENCED".equals(text(row,"write_mode"));
+            boolean ready="ISSUER".equals(text(row,"write_mode"))&&"ACTIVE".equals(text(row,"access_status"));
+            boolean issue=!fenced&&(legacy||ready&&"ACTIVE".equals(text(row,"status"))&&number(row,"can_issue")==1);
+            boolean redeem=!fenced&&(legacy||ready&&Set.of("ACTIVE","ISSUE_STOPPED").contains(text(row,"status"))&&number(row,"can_redeem")==1);
+            options.add(new StoreOption(text(row,"issuer_no"),"STORE",query.storeNo(),text(row,"name"),text(row,"currency"),text(row,"status"),text(row,"write_mode"),issue,redeem,issue?null:fenced?"MAINTENANCE_IN_PROGRESS":"ISSUANCE_NOT_ENABLED"));
+        }
+        return new StoreOptions(query.storeNo(),legacy,options);
+    }
 
     public Optional<View> find(AuthorizedScope scope) {
         validate(scope);
@@ -38,6 +77,8 @@ public class StoredValueIssuerService {
                     if (!contentHash.equals(text(prior,"content_hash"))) throw BizException.of(ErrorCode.CONFLICT);
                     return view(row, prior);
                 }
+                var impact=check(scope,text(row,"issuer_no"),command);
+                if(!impact.allowed())throw BizException.of(ErrorCode.CONFLICT);
                 var previous = version(scope.tenantNo(), text(row,"current_issuer_version_no"));
                 // The public revision identifies immutable configuration, not maintenance/status row writes.
                 if (number(previous,"version_index") - 1 != command.expectedRevision()) throw BizException.of(ErrorCode.CONFLICT);
@@ -109,7 +150,7 @@ public class StoredValueIssuerService {
     private View view(Map<String,Object> issuer, Map<String,Object> version) {
         return new View(text(issuer,"issuer_no"),text(issuer,"scope_type"),text(issuer,"scope_no"),text(version,"name"),text(issuer,"status"),
                 text(version,"issuer_version_no"),number(version,"version_index")-1,text(version,"settlement_entity_no"),text(version,"currency"),
-                db.routes(text(version,"collection_config")));
+                db.routes(text(version,"collection_config")),text(version,"collection_mode"),text(version,"clearing_mode"),text(version,"debit_allocation_mode"),text(version,"market_zone"));
     }
     private Map<String,Object> base(AuthorizedScope scope) {
         var row = new LinkedHashMap<String,Object>();
