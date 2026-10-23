@@ -919,3 +919,7 @@ LegacyCouponIdentityPort新增core本地模板主体/已提交模板目录读取
 | pay-domain/storedvalue/migration | StoredValueMigrationManifestService.verifyMappedFacts | 复用原完整审计检查映射后的批次、分录、冻结、原单与预期账户事实 |
 
 授权与DDL仍是内部Java能力，未新增公开操作接口。NULL约束、正式切写/恢复、剩余IS/RC/RD和B端页面继续待开发。
+
+### P3 MySQL增量验收适配（2026-10-23）
+
+新增StoredValueAccountKeyMysqlTest，显式环境变量启用、仅接受隔离本机测试库，默认跳过；覆盖实际元数据、DDL提交后响应丢失恢复、JSON回执、软删除/大小写唯一性和跨连接维护锁。StoredValueAccountKeyInspector的跨表标识比较改为BINARY(256)，兼容新旧表排序规则不同；账户唯一分组仍沿用实际列排序规则。

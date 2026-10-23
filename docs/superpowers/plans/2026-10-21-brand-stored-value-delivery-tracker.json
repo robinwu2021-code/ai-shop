@@ -338,12 +338,13 @@
           "Issuer wallet selection wired to posting/balance/quote/debit, verified canonical aliases and shadow/version conflict rejection; live inventory-file reload (not deployed)",
           "Core实时证据与新鲜证明驱动的暂停/元数据映射；Pay实际进程复核、链接暂停回执、提交前过期回滚；默认execution-enabled=false，未部署",
           "Ledger-wide index/data preflight and schema-step recovery planning; preserves account identity keys, scans all tenants/deleted rows; no DDL execution or authorization",
-          "Default-closed server-file ledger-wide approval and original mapping-receipt/full-ledger coverage checks; durable schema INTENT, fixed DDL session lock/cleanup and exact before/target recovery (internal Java only, not deployed or real-MySQL accepted)"
+          "Default-closed server-file ledger-wide approval and original mapping-receipt/full-ledger coverage checks; durable schema INTENT, fixed DDL session lock/cleanup and exact before/target recovery (internal Java only, not deployed or real-MySQL accepted)",
+          "Isolated real MySQL8.4 index/JSON/advisory-lock/DDL-lost-response recovery acceptance; cross-collation identifier comparison fixed, original funds/IDs/fence preserved; no online operations"
         ],
         "verification": "Core/Pay compile and focused tests passed; no full suite or online financial writes",
         "remaining": [
           "Complete operator cutover/resume beyond delivered pause+metadata mapping; actual deployment inventory sealing and maintenance/cutover acceptance",
-          "True isolated MySQL DDL/lock acceptance, mandatory dimensions and formal writer cutover/resume/operator entry; controlled unique-key executor and durable recovery now implemented",
+          "Mandatory dimensions and formal writer cutover/resume/operator entry; real MySQL8.4 index/lock incremental acceptance passed, full stage/release acceptance pending",
           "Complete IS/RC/RD and B app UI",
           "MySQL concurrency acceptance and complete stage release"
         ]

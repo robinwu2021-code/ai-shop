@@ -82,5 +82,6 @@
   "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueSchemaDdl.java",
   "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueSchemaDdlTest.java",
   "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueAccountKeyCutover.java",
-  "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueAccountKeyCutoverTest.java"
+  "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueAccountKeyCutoverTest.java",
+  "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueAccountKeyMysqlTest.java"
 ]
