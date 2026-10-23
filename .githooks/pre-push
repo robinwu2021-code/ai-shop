@@ -64,6 +64,11 @@ cleanup() { git worktree remove --force "$GATE_WT" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 git worktree add -q --detach "$GATE_WT" HEAD
 
+# Static navigation/i18n guards also use the TypeScript parser.
+if [ -d "$ROOT/node_modules" ]; then
+  ln -sfn "$ROOT/node_modules" "$GATE_WT/node_modules"
+fi
+
 # 判据脚本一律经这个入口跑。
 #
 # **为什么需要它**：这个 hook 文件是从**工作区**读的（git 就是这么执行 hook 的），
@@ -242,7 +247,6 @@ fi
 # 而这道闸本身只有几百毫秒 —— 为一道闸让每次推送多等半分钟不划算。
 # 主仓没装依赖时跳过并说明，**不静默放行**：说不清自己有没有跑，比没跑更糟。
 if [ -d "$ROOT/node_modules" ]; then
-  ln -sfn "$ROOT/node_modules" "$GATE_WT/node_modules"
   if ! gate_run node scripts/check-generated-docs.mjs --check; then
     exit 1
   fi
