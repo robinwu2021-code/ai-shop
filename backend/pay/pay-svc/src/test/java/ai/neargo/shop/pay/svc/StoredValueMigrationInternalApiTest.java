@@ -21,6 +21,7 @@ import static org.mockito.Mockito.*;
 class StoredValueMigrationInternalApiTest {
     @LocalServerPort int port;
     @MockitoBean StoredValueMigrationManifestService migration;
+    @MockitoBean ai.neargo.shop.pay.storedvalue.migration.StoredValueWriterCapabilityService writer;
     PayInternalApi api(String token) {
         var locator=new ConfigServiceLocator();locator.getTargets().put(ServiceName.PAY,"http://127.0.0.1:"+port);
         return new InternalHttp(locator,token).client(ServiceName.PAY,PayInternalApi.class,Duration.ofSeconds(5));
@@ -38,4 +39,13 @@ class StoredValueMigrationInternalApiTest {
         assertThat(api("migration-test-token").svMigrationPrepare(new PayStoredValueMigrationRequests.Prepare(preparation,"K1"))).isEqualTo(manifest);
         verify(migration).probe(scopes);verify(migration).prepareTrusted(preparation,"K1");
     }
+    @Test void capabilityIsTokenProtectedAndReturnsTheFreshProcessObservation() {
+        var query=new ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Query("nonce-current");
+        var capability=new ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Capability("nonce-current","pay-svc","boot-pay","a".repeat(40),1,true,true,"b".repeat(64),true,java.time.Instant.now());
+        when(writer.capability(query)).thenReturn(capability);
+        assertThatThrownBy(()->api("wrong").svMigrationCapability(query)).isInstanceOf(RuntimeException.class);
+        verifyNoInteractions(writer);
+        assertThat(api("migration-test-token").svMigrationCapability(query)).isEqualTo(capability);
+    }
+
 }

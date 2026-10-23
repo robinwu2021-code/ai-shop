@@ -333,11 +333,12 @@
           "Fenced final metadata mapping preserves maintenance fence (post-deploy development)",
           "Durable audited manifest and strictly fenced metadata apply (internal Java contract, not enabled online)",
           "Trusted Core owner/person evidence preparation with typed embedded/standalone audit contracts (disabled by default)",
-          "Durable internal local-writer fence with original audit recheck and replay (no execution HTTP)"
+          "Durable internal local-writer fence with original audit recheck and replay (no execution HTTP)",
+          "Read-only per-process capability and sealed-inventory readiness checks (fresh challenge/build/process/ledger/flags; not deployed or financial authorization)"
         ],
         "verification": "Core/Pay compile and focused tests passed; no full suite or online financial writes",
         "remaining": [
-          "All-writer readiness and safe operator orchestration; trusted preparation and local fence implemented",
+          "Safe operator orchestration using fresh readiness; actual deployment inventory sealing and maintenance/cutover acceptance",
           "Explicit cutover, conditional keys and issuer account selection",
           "Complete IS/RC/RD and B app UI",
           "MySQL concurrency acceptance and complete stage release"

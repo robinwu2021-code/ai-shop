@@ -52,5 +52,14 @@
   "backend/shop-app/src/test/java/ai/neargo/shop/paybridge/StoredValueMigrationCoordinatorTest.java",
   "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/client/PayStoredValueMigrationRequests.java",
   "backend/pay/pay-svc/src/main/java/ai/neargo/shop/pay/svc/InternalStoredValueMigrationEndpoint.java",
-  "backend/pay/pay-svc/src/test/java/ai/neargo/shop/pay/svc/StoredValueMigrationInternalApiTest.java"
+  "backend/pay/pay-svc/src/test/java/ai/neargo/shop/pay/svc/StoredValueMigrationInternalApiTest.java",
+  "backend/pay/pay-svc/pom.xml",
+  "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueWriterCapabilityService.java",
+  "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueMigrationReadinessTest.java",
+  "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueWriterCapabilityTest.java",
+  "backend/shop-app/src/main/java/ai/neargo/shop/paybridge/StoredValueMigrationReadinessService.java",
+  "backend/shop-app/src/main/java/ai/neargo/shop/portal/internal/InternalStoredValueWriterCapabilityEndpoint.java",
+  "backend/shop-app/src/test/java/ai/neargo/shop/paybridge/StoredValueMigrationReadinessServiceTest.java",
+  "backend/shop-app/src/test/java/ai/neargo/shop/paybridge/StoredValueWriterCapabilityEndpointTest.java",
+  "backend/shop-base/src/main/java/ai/neargo/shop/spi/storedvalue/StoredValueMigrationReadiness.java"
 ]

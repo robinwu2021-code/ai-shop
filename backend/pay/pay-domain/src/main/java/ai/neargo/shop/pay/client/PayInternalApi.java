@@ -370,6 +370,9 @@ public interface PayInternalApi {
     ai.neargo.shop.spi.entitlement.LegacyCouponUsePort.Operation legacyCouponQuery(
             @RequestBody PayLegacyCouponRequests.Query request);
 
+    @PostExchange(PayInternalPaths.SV_MIGRATION_CAPABILITY)
+    ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Capability svMigrationCapability(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Query query);
+
     @PostExchange(PayInternalPaths.SV_MIGRATION_PROBE)
     ai.neargo.shop.spi.storedvalue.StoredValueMigrationPlans.Probe svMigrationProbe(@RequestBody PayStoredValueMigrationRequests.Probe request);
     @PostExchange(PayInternalPaths.SV_MIGRATION_PREPARE)

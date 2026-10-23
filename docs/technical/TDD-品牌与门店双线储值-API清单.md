@@ -408,3 +408,24 @@ Core 内部 StoredValueMigrationCoordinator.prepare(actor, storeNos, key) 仅接
 StoredValueMigrationManifestService.fence(evidence, manifestNo, key) 复用服务端原清单与独立 SV_MIGRATION_FENCE 幂等记录。需要 migration-enabled 和当前进程 issuer-mode；按发行方顺序取得 issuer→account 锁，再检查来源版本及完整账本指纹。事实变化或已进入 ISSUER 模式时拒绝，事务回滚不留成功回执；成功仅把 write_mode 设为 FENCED，返回 WRITE_FENCED，不改账户余额、配置、业务状态或索引。同请求返回原回执，不重做审计或解除暂停。
 
 本命令没有 HTTP 端点。它使已升级且启用守卫的写入节点使用同一数据库栅栏，不能证明其他旧节点也已升级。全部写入节点就绪证明、正式切换和受控恢复仍未交付；不能凭本地开关或此回执宣布可以切换。
+
+### P3 写入节点能力与汇总就绪检查（2026-10-23，未部署）
+
+Core 和 Pay 分别提供 POST /internal/pay/stored-value/migrations/capability，使用内部 token，接收 Query(challenge)，返回当前进程 Capability。Core 必须报告本进程，不能代理 Pay；Core 即使使用远程路由，仍可能保留本地 Pay 写入/任务，因此不能凭路由模式将其排除。
+
+| 字段 | 真源及用途 |
+| --- | --- |
+| application/processNo | 当前应用名称、进程启动后稳定的随机标识；别名指向同一进程会被发现，重启要求重新确认清单 |
+| buildSha/protocol | 本产物 META-INF/build-info.properties 的完整40位gitSha、当前协议1；来源未知的普通构建为unknown并阻断 |
+| writerGuardEnabled/maintenanceEnabled | 当前进程实际 issuer-mode/migration-enabled；不使用调用方声明的开关 |
+| ledgerFingerprint | MySQL SHA2(server_uuid + ':' + DATABASE(),256)，只输出摘要，不输出连接地址、库名、凭据或原始数据库标识 |
+| schemaReady | Pay 数据源的 V548/V549 已执行且必需维度列可查询；查询失败返回不可用 |
+| challenge/checkedAt | 原随机挑战和本次探测时间，拒绝跨轮复用与陈旧响应 |
+
+Core 内部 StoredValueMigrationReadinessService.check() 没有公开接口或请求参数；从服务端配置 shop.pay.stored-value.migration.inventory 读取封存清单，经 InternalHttp/PayInternalApi 逐实例直连，超时/异常统一为PROBE_UNAVAILABLE，不返回原始错误。配置缺失、未封存或格式无效不开始探测。最多16个实例。
+
+清单 Inventory(revision, ledgerFingerprint, sealed, nodes[])；Node(nodeId, serviceKey, application, expectedSha, expectedProcessNo)。serviceKey 映射 shop.services.targets 中专用的实例直连地址，不能填负载均衡入口。expectedProcessNo 来自先前已认证能力查询，部署/重启后重新确认。sealed 是运维对“全部账本写入实例（含任务、回调、Core本地写入）均在清单内”的明确声明，程序不能自行发现或证明清单外没有旧进程。
+
+汇总要求：清单封存；实例与进程唯一；恰好覆盖所有清单节点；完整SHA、应用名、进程标识、协议、两个开关、实际账本摘要及迁移状态一致；挑战相同；观测不超过30秒，未来时差不超过5秒。结果包含 inventoryHash、检查/失效时间、脱敏阻断项和节点快照；失效时间取最早观测的30秒到期点。新随机挑战每轮重新生成。
+
+本能力仅用于后续运维预检，不是财务执行授权。fence/apply 尚未对外开放或接入完整切换编排；清单封存、部署冻结、维护窗口、正式恢复仍需完成。当前未配置或自动启用任何线上清单/开关。启用 issuer-mode 会改变全部相关写入路径，不能只为得到就绪结果而擅自开启。
