@@ -34,6 +34,8 @@ public final class PdfReceiptRenderer implements PrintPdfPort {
             var metadata = new PDDocumentInformation();
             metadata.setTitle("Receipt " + input.exportNo());
             metadata.setProducer("ai-shop-print/" + input.rendererVersion());
+            if (input.layouts().stream().anyMatch(l -> l.profileVersion().endsWith("_COMPACT_V2")))
+                metadata.setCustomMetadataValue("PrintArtifactKind", input.artifactKind().name());
             var date = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
             date.setTimeInMillis(input.exportCreatedAt().toEpochMilli());
             metadata.setCreationDate(date);
@@ -61,7 +63,15 @@ public final class PdfReceiptRenderer implements PrintPdfPort {
                                     ? PDRectangle.A4
                                     : new PDRectangle(
                                             pt(page.widthMm()),
-                                            pt(page.heightMm().add(BigDecimal.valueOf(10))));
+                                            pt(
+                                                    page.heightMm()
+                                                            .add(
+                                                                    BigDecimal.valueOf(
+                                                                            layout.profileVersion()
+                                                                                            .endsWith(
+                                                                                                    "_COMPACT_V2")
+                                                                                    ? 6
+                                                                                    : 10))));
                     var target = new PDPage(rect);
                     doc.addPage(target);
                     widths.add(a4 ? BigDecimal.valueOf(210) : page.widthMm());
@@ -96,7 +106,12 @@ public final class PdfReceiptRenderer implements PrintPdfPort {
                                 left + pt(BigDecimal.valueOf(4)),
                                 rect.getHeight() - top - pt(page.heightMm()) - 8);
                         stream.showText(
-                                input.artifactKind() + " / " + input.exportNo() + " / PDF副本");
+                                layout.profileVersion().endsWith("_COMPACT_V2")
+                                        ? "PDF副本"
+                                        : input.artifactKind()
+                                                + " / "
+                                                + input.exportNo()
+                                                + " / PDF副本");
                         stream.endText();
                     }
                 }

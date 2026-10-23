@@ -66,6 +66,9 @@ public final class FeiePrintAdapter implements PrintDispatchPort, PrintDevicePro
                     null,
                     evidence(Map.of("queueTerminated", true, "partialOutput", false)),
                     "print.vendorNativeProfileUnverified");
+        // V1 native verification cannot authorize V2 coordinate-based columns.
+        if (dispatch.layout().profileVersion().endsWith("_COMPACT_V2"))
+            return rejected("print.vendorCompactLayoutUnverified");
         var text = new StringBuilder();
         for (var page : dispatch.layout().pages()) {
             for (var d : page.drawings()) {

@@ -32,6 +32,8 @@ public class PrintSystemSlotPolicy {
     }
 
     public PrintLayout instantiateCopy(PrintLayout source, SystemPrintSlots marks) {
+        if (source.profileVersion().endsWith("_COMPACT_V2"))
+            return new CompactPrintLayout(metrics, json).instantiateCopy(source, marks);
         var out = new ArrayList<PrintPage>();
         for (var p : source.pages()) {
             require(p.systemSlots().size() == 8, "print.copySlotsUnavailable");

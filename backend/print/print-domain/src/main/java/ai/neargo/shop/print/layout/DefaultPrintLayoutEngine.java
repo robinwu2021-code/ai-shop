@@ -21,6 +21,8 @@ public final class DefaultPrintLayoutEngine implements PrintLayoutEngine {
     private static final BigDecimal MM_PER_PT = new BigDecimal("0.3527777778");
 
     public PrintLayout layout(PrintDocument d, LayoutProfile p) {
+        if (json.tree(d.businessData()).path("layoutStyle").asText().equals("COMPACT_V2"))
+            return new CompactPrintLayout(metrics, json).layout(d, p);
         var pages = new ArrayList<PrintPage>();
         var drawings = new ArrayList<PrintDrawing>();
         var rows = json.tree(d.businessData()).path("rows");

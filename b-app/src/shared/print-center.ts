@@ -4,3 +4,11 @@ export function printJobActions(job:PrintJob,can:(permission:string)=>boolean):J
 export function isActualPrintCompleted(status:string):boolean{return status==='COMPLETED';}
 export function isPdfDownloadable(status:string):boolean{return status==='READY';}
 export function simulationOutcomeLabel(status:string):string{return status==='PASSED'?'printCenter.simulationPassed':status==='FAILED'?'printCenter.simulationFailed':'printCenter.status.'+status;}
+
+export interface ReceiptPreviewData { mandatoryNotice?: string; rows: { text?: string; right?: string; type?: string }[] }
+/** Text preview retains both cells; production geometry remains the PDF renderer's responsibility. */
+export function receiptPreviewLines(data:ReceiptPreviewData,warnings:readonly string[]=[]):string[]{
+ const rows=data.rows.map(row=>row.type==='rule'?'────────────────': [row.text,row.right].filter(Boolean).join('  '));
+ const notice=data.mandatoryNotice;
+ return [...(notice&&rows[0]!==notice?[notice]:[]),...warnings,...rows];
+}

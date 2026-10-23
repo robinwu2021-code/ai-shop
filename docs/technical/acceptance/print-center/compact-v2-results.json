@@ -1,0 +1,121 @@
+{
+  "date": "2026-10-23",
+  "status": "SCOPED_SOFTWARE_PASS_HARDWARE_PENDING",
+  "baselineCommit": "7cc4fd002",
+  "printTests": {
+    "status": "PASS",
+    "tests": 63,
+    "classes": [
+      {
+        "name": "ai.neargo.shop.print.PrintFontInitializationTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0
+      },
+      {
+        "name": "ai.neargo.shop.print.PrintStatePolicyTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0
+      },
+      {
+        "name": "ai.neargo.shop.print.agent.AgentDurabilityTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0
+      },
+      {
+        "name": "ai.neargo.shop.print.channel.CompactReceiptAcceptanceTest",
+        "tests": 9,
+        "failures": 0,
+        "errors": 0
+      },
+      {
+        "name": "ai.neargo.shop.print.channel.PrintDatabaseAcceptanceTest",
+        "tests": 8,
+        "failures": 0,
+        "errors": 0
+      },
+      {
+        "name": "ai.neargo.shop.print.channel.ReceiptSoftwareAcceptanceTest",
+        "tests": 26,
+        "failures": 0,
+        "errors": 0
+      },
+      {
+        "name": "ai.neargo.shop.scenario.PrintEnabledAssemblyTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0
+      },
+      {
+        "name": "ai.neargo.shop.trade.order.printing.OrderPrintFactRecorderTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0
+      }
+    ]
+  },
+  "frontend": {
+    "status": "PASS",
+    "testFiles": 49,
+    "tests": 271,
+    "typeCheck": "PASS",
+    "h5Build": "PASS"
+  },
+  "samples": 42,
+  "pdfManifest": "compact-v2-pdf-manifest.json",
+  "comparison": {
+    "sample": "ORDER_PAID-58",
+    "beforeHeightMm": 204.22,
+    "afterHeightMm": 118.94,
+    "reductionPercent": 41.8,
+    "meaning": "PDF page geometry for this fixed sample only; not a guaranteed paper reduction for all orders"
+  },
+  "review": {
+    "critical": 0,
+    "important": 2,
+    "fixed": [
+      "V2 footer contains only Chinese PDF mark; export identity retained in metadata",
+      "V2 Feie dispatch is NOT_ACCEPTED before any IO even when V1 native verification is enabled"
+    ],
+    "minor": "Real duplicate-risk warning also maps to explicit top UNKNOWN notice",
+    "regressionEvidence": [
+      "/tmp/print-compact-pdf-red.log",
+      "/tmp/print-compact-cloud-red.log",
+      "/tmp/print-compact-numeric-red.log"
+    ]
+  },
+  "activation": "New builtin fallback and new versions created from builtin base; existing published overrides and historical frozen jobs unchanged",
+  "limitations": [
+    "Feie COMPACT_V2 native serialization remains unavailable; gate returns print.vendorCompactLayoutUnverified. V1 dispatch preserved.",
+    "Physical printer/Windows driver/COS not run; no claim of physical output.",
+    "Only ORDER_PAID has an authoritative production source; other 19 scenes remain preview/simulation only.",
+    "Full repository regression was not rerun this round. Previous business failures and OOM remain recorded in README.md."
+  ],
+  "logs": [
+    "/tmp/print-compact-tests.log",
+    "/tmp/print-compact-app-tests.log",
+    "/tmp/print-compact-frontend-tests.log",
+    "/tmp/print-compact-typecheck.log",
+    "/tmp/print-compact-h5.log"
+  ],
+  "integration": "Uncommitted; no publish, push or production deployment",
+  "backendPackage": {
+    "status": "PASS",
+    "modules": 30,
+    "log": "/tmp/print-compact-delivery-build.log"
+  },
+  "artifacts": [
+    {
+      "file": "backend/shop-app/target/shop-app-0.1.0-SNAPSHOT.jar",
+      "size": 112189845,
+      "sha256": "2129aea610c543c12c82cfc46dd07fcddeb307d5abf2d3a793b465c36fe80de5"
+    },
+    {
+      "file": "backend/print/print-agent/target/print-agent-0.1.0-SNAPSHOT.jar",
+      "size": 6373330,
+      "sha256": "c4b5e43d332baa074af24651af3804c69ce47f5d69ef94354c21517d049c3bd4"
+    }
+  ]
+}

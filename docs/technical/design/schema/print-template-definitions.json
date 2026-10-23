@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "status": "DESIGN_ONLY",
-  "note": "语义布局定义，不是已发布模板版本或设备字节；需正式渲染器和设备档案适配",
+  "status": "BUILTIN_V2",
+  "note": "COMPACT_V2 新票紧凑语义布局；门店已发布版本与历史冻结布局不自动替换",
   "templates": [
     {
       "definitionKey": "ORDER_PAID.STANDARD_58",
@@ -11,7 +11,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -24,11 +24,6 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "订单支付凭证",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "订单号",
             "binding": "fields.orderNo",
@@ -36,13 +31,7 @@
           },
           {
             "type": "keyValue",
-            "label": "下单时间",
-            "binding": "fields.orderCreatedAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "支付时间",
+            "label": "时间",
             "binding": "fields.paidAt",
             "format": "dateTimeAtStore"
           },
@@ -57,7 +46,11 @@
             "label": "取货码",
             "binding": "fields.pickupCode",
             "format": "plain",
-            "omitIfEmpty": true
+            "omitIfEmpty": true,
+            "emphasis": true
+          },
+          {
+            "type": "separator"
           },
           {
             "type": "lineItems",
@@ -71,6 +64,9 @@
               "lineAmount"
             ],
             "maxItems": 500
+          },
+          {
+            "type": "separator"
           },
           {
             "type": "keyValue",
@@ -94,25 +90,20 @@
             "type": "keyValue",
             "label": "配送费",
             "binding": "fields.freightAmount",
-            "format": "money"
+            "format": "money",
+            "omitIfZero": true
           },
           {
             "type": "keyValue",
             "label": "实付金额",
             "binding": "fields.paidAmount",
-            "format": "money"
+            "format": "money",
+            "emphasis": true
           },
           {
             "type": "payments",
             "binding": "payments",
             "maxItems": 20
-          },
-          {
-            "type": "keyValue",
-            "label": "支付流水",
-            "binding": "fields.paymentNo",
-            "format": "plain",
-            "omitIfEmpty": true
           },
           {
             "type": "keyValue",
@@ -139,49 +130,14 @@
             "type": "text",
             "literal": "感谢惠顾，欢迎再来",
             "align": "center"
-          },
-          {
-            "type": "keyValue",
-            "label": "来源子单",
-            "binding": "source.no",
-            "format": "plain"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo",
-            "format": "plain"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务版本",
-            "binding": "source.revision",
-            "format": "plain"
-          },
-          {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo",
-            "format": "plain"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务时间",
-            "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
-            "format": "dateTimeAtStore"
           }
         ],
         "layout": {
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "ORDER_PAID"
@@ -194,7 +150,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -207,11 +163,6 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "订单支付凭证",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "订单号",
             "binding": "fields.orderNo",
@@ -219,13 +170,7 @@
           },
           {
             "type": "keyValue",
-            "label": "下单时间",
-            "binding": "fields.orderCreatedAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "支付时间",
+            "label": "时间",
             "binding": "fields.paidAt",
             "format": "dateTimeAtStore"
           },
@@ -240,7 +185,11 @@
             "label": "取货码",
             "binding": "fields.pickupCode",
             "format": "plain",
-            "omitIfEmpty": true
+            "omitIfEmpty": true,
+            "emphasis": true
+          },
+          {
+            "type": "separator"
           },
           {
             "type": "lineItems",
@@ -254,6 +203,9 @@
               "lineAmount"
             ],
             "maxItems": 500
+          },
+          {
+            "type": "separator"
           },
           {
             "type": "keyValue",
@@ -277,25 +229,20 @@
             "type": "keyValue",
             "label": "配送费",
             "binding": "fields.freightAmount",
-            "format": "money"
+            "format": "money",
+            "omitIfZero": true
           },
           {
             "type": "keyValue",
             "label": "实付金额",
             "binding": "fields.paidAmount",
-            "format": "money"
+            "format": "money",
+            "emphasis": true
           },
           {
             "type": "payments",
             "binding": "payments",
             "maxItems": 20
-          },
-          {
-            "type": "keyValue",
-            "label": "支付流水",
-            "binding": "fields.paymentNo",
-            "format": "plain",
-            "omitIfEmpty": true
           },
           {
             "type": "keyValue",
@@ -322,49 +269,14 @@
             "type": "text",
             "literal": "感谢惠顾，欢迎再来",
             "align": "center"
-          },
-          {
-            "type": "keyValue",
-            "label": "来源子单",
-            "binding": "source.no",
-            "format": "plain"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo",
-            "format": "plain"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务版本",
-            "binding": "source.revision",
-            "format": "plain"
-          },
-          {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo",
-            "format": "plain"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务时间",
-            "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
-            "format": "dateTimeAtStore"
           }
         ],
         "layout": {
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "ORDER_PAID"
@@ -377,7 +289,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -390,24 +302,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "收银结账凭证",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -419,7 +316,8 @@
             "type": "keyValue",
             "label": "已收",
             "binding": "fields.paidAmount",
-            "format": "money"
+            "format": "money",
+            "emphasis": true
           },
           {
             "type": "keyValue",
@@ -432,6 +330,9 @@
             "label": "找零",
             "binding": "fields.changeAmount",
             "format": "money"
+          },
+          {
+            "type": "separator"
           },
           {
             "type": "lineItems",
@@ -447,25 +348,17 @@
             "maxItems": 500
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "payments",
             "binding": "payments",
             "maxItems": 20
           },
           {
             "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
-          },
-          {
-            "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -473,7 +366,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "CASHIER_RECEIPT"
@@ -486,7 +380,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -499,24 +393,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "收银结账凭证",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -528,7 +407,8 @@
             "type": "keyValue",
             "label": "已收",
             "binding": "fields.paidAmount",
-            "format": "money"
+            "format": "money",
+            "emphasis": true
           },
           {
             "type": "keyValue",
@@ -543,6 +423,9 @@
             "format": "money"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -556,25 +439,17 @@
             "maxItems": 500
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "payments",
             "binding": "payments",
             "maxItems": 20
           },
           {
             "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
-          },
-          {
-            "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -582,7 +457,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "CASHIER_RECEIPT"
@@ -595,7 +471,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -608,24 +484,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "拣货单 · 非收款凭证",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -646,6 +507,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -659,20 +523,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -680,7 +536,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "PICKING"
@@ -693,7 +550,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -706,24 +563,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "拣货单 · 非收款凭证",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -744,6 +586,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -757,20 +602,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -778,7 +615,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "PICKING"
@@ -791,7 +629,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -804,24 +642,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "配送交接单 · 非签收凭证",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -854,6 +677,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -867,20 +693,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -888,7 +706,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "DELIVERY_HANDOVER"
@@ -901,7 +720,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -914,24 +733,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "配送交接单 · 非签收凭证",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -964,6 +768,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -977,20 +784,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -998,7 +797,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "DELIVERY_HANDOVER"
@@ -1011,7 +811,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -1024,24 +824,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "退款凭证 · 已确认退款",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -1074,6 +859,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -1086,20 +874,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -1107,7 +887,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "REFUND_RECEIPT"
@@ -1120,7 +901,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -1133,24 +914,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "退款凭证 · 已确认退款",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -1183,6 +949,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -1195,20 +964,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -1216,7 +977,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "REFUND_RECEIPT"
@@ -1229,7 +991,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -1242,24 +1004,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "储值充值凭证",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -1287,19 +1034,8 @@
           },
           {
             "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
-          },
-          {
-            "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -1307,7 +1043,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "RECHARGE_RECEIPT"
@@ -1320,7 +1057,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -1333,24 +1070,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "储值充值凭证",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -1378,19 +1100,8 @@
           },
           {
             "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
-          },
-          {
-            "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -1398,7 +1109,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "RECHARGE_RECEIPT"
@@ -1411,7 +1123,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -1424,24 +1136,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "交班汇总 · 非单笔收据",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -1481,19 +1178,8 @@
           },
           {
             "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
-          },
-          {
-            "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -1501,7 +1187,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "HANDOVER"
@@ -1514,7 +1201,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -1527,24 +1214,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "交班汇总 · 非单笔收据",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -1584,19 +1256,8 @@
           },
           {
             "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
-          },
-          {
-            "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -1604,7 +1265,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "HANDOVER"
@@ -1617,7 +1279,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -1630,24 +1292,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "日结汇总 · 非单笔收据",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -1687,19 +1334,8 @@
           },
           {
             "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
-          },
-          {
-            "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -1707,7 +1343,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "DAY_END"
@@ -1720,7 +1357,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -1733,24 +1370,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "日结汇总 · 非单笔收据",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -1790,19 +1412,8 @@
           },
           {
             "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
-          },
-          {
-            "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -1810,7 +1421,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "DAY_END"
@@ -1823,7 +1435,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -1836,24 +1448,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "设备测试 · 非业务单据",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -1875,19 +1472,8 @@
           },
           {
             "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
-          },
-          {
-            "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -1895,7 +1481,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "PRINTER_TEST"
@@ -1908,7 +1495,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -1921,24 +1508,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "设备测试 · 非业务单据",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -1960,19 +1532,8 @@
           },
           {
             "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
-          },
-          {
-            "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -1980,7 +1541,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "PRINTER_TEST"
@@ -1993,7 +1555,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -2006,24 +1568,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "制作单 · 请制作",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -2050,6 +1597,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -2063,20 +1613,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -2084,7 +1626,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "KITCHEN"
@@ -2097,7 +1640,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -2110,24 +1653,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "制作单 · 请制作",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -2154,6 +1682,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -2167,20 +1698,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -2188,7 +1711,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "KITCHEN"
@@ -2201,7 +1725,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -2214,24 +1738,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "加菜单 · 仅新增项目",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -2258,6 +1767,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -2271,20 +1783,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -2292,7 +1796,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "KITCHEN_ADD"
@@ -2305,7 +1810,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -2318,24 +1823,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "加菜单 · 仅新增项目",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -2362,6 +1852,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -2375,20 +1868,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -2396,7 +1881,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "KITCHEN_ADD"
@@ -2409,7 +1895,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -2422,24 +1908,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "退菜单 · 停止对应制作",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -2478,6 +1949,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -2491,20 +1965,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -2512,7 +1978,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "KITCHEN_VOID"
@@ -2525,7 +1992,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -2538,24 +2005,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "退菜单 · 停止对应制作",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -2594,6 +2046,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -2607,20 +2062,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -2628,7 +2075,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "KITCHEN_VOID"
@@ -2641,7 +2089,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -2654,24 +2102,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "催菜单 · 勿重复制作",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -2704,6 +2137,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -2717,20 +2153,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -2738,7 +2166,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "URGE"
@@ -2751,7 +2180,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -2764,24 +2193,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "催菜单 · 勿重复制作",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -2814,6 +2228,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -2827,20 +2244,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -2848,7 +2257,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "URGE"
@@ -2861,7 +2271,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -2874,24 +2284,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "预结单 · 未结账 · 非支付凭证",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -2912,6 +2307,9 @@
             "format": "money"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -2925,20 +2323,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -2946,7 +2336,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "PRE_BILL"
@@ -2959,7 +2350,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -2972,24 +2363,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "预结单 · 未结账 · 非支付凭证",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -3010,6 +2386,9 @@
             "format": "money"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -3023,20 +2402,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -3044,7 +2415,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "PRE_BILL"
@@ -3057,7 +2429,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -3070,24 +2442,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "餐饮结账凭证 · 已结清",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -3111,7 +2468,11 @@
             "type": "keyValue",
             "label": "实收",
             "binding": "fields.paidAmount",
-            "format": "money"
+            "format": "money",
+            "emphasis": true
+          },
+          {
+            "type": "separator"
           },
           {
             "type": "lineItems",
@@ -3127,25 +2488,17 @@
             "maxItems": 500
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "payments",
             "binding": "payments",
             "maxItems": 20
           },
           {
             "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
-          },
-          {
-            "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -3153,7 +2506,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "CHECKOUT"
@@ -3166,7 +2520,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -3179,24 +2533,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "餐饮结账凭证 · 已结清",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -3220,7 +2559,11 @@
             "type": "keyValue",
             "label": "实收",
             "binding": "fields.paidAmount",
-            "format": "money"
+            "format": "money",
+            "emphasis": true
+          },
+          {
+            "type": "separator"
           },
           {
             "type": "lineItems",
@@ -3236,25 +2579,17 @@
             "maxItems": 500
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "payments",
             "binding": "payments",
             "maxItems": 20
           },
           {
             "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
-          },
-          {
-            "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -3262,7 +2597,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "CHECKOUT"
@@ -3275,7 +2611,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -3288,30 +2624,16 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "外卖打包单 · 非制作单",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
           },
           {
             "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
-          },
-          {
-            "type": "keyValue",
             "label": "取餐号",
             "binding": "fields.pickupCode",
-            "format": "plain"
+            "format": "plain",
+            "emphasis": true
           },
           {
             "type": "keyValue",
@@ -3332,6 +2654,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -3345,20 +2670,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -3366,7 +2683,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "TAKEOUT_PACKING"
@@ -3379,7 +2697,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -3392,30 +2710,16 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "外卖打包单 · 非制作单",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
           },
           {
             "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
-          },
-          {
-            "type": "keyValue",
             "label": "取餐号",
             "binding": "fields.pickupCode",
-            "format": "plain"
+            "format": "plain",
+            "emphasis": true
           },
           {
             "type": "keyValue",
@@ -3436,6 +2740,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -3449,20 +2756,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -3470,7 +2769,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "TAKEOUT_PACKING"
@@ -3483,7 +2783,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -3496,24 +2796,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "预约确认单 · 非消费凭证",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -3540,6 +2825,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -3551,20 +2839,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -3572,7 +2852,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "APPT_CONFIRM"
@@ -3585,7 +2866,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -3598,24 +2879,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "预约确认单 · 非消费凭证",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -3642,6 +2908,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -3653,20 +2922,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -3674,7 +2935,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "APPT_CONFIRM"
@@ -3687,7 +2949,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -3700,24 +2962,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "服务执行单 · 请核对注意事项",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -3750,6 +2997,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -3761,20 +3011,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -3782,7 +3024,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "SERVICE_START"
@@ -3795,7 +3038,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -3808,24 +3051,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "服务执行单 · 请核对注意事项",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -3858,6 +3086,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -3869,20 +3100,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -3890,7 +3113,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "SERVICE_START"
@@ -3903,7 +3127,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -3916,24 +3140,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "服务完成单 · 非付款凭证",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -3960,6 +3169,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -3971,20 +3183,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -3992,7 +3196,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "SERVICE_COMPLETE"
@@ -4005,7 +3210,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -4018,24 +3223,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "服务完成单 · 非付款凭证",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -4062,6 +3252,9 @@
             "format": "plain"
           },
           {
+            "type": "separator"
+          },
+          {
             "type": "lineItems",
             "binding": "lines",
             "fields": [
@@ -4073,20 +3266,12 @@
             "maxItems": 500
           },
           {
-            "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
+            "type": "separator"
           },
           {
             "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -4094,7 +3279,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "SERVICE_COMPLETE"
@@ -4107,7 +3293,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -4120,24 +3306,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "权益使用凭证 · 本次交易后余次",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -4171,19 +3342,8 @@
           },
           {
             "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
-          },
-          {
-            "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -4191,7 +3351,8 @@
           "paperWidthMm": 58,
           "lineItemLayout": "STACKED",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "CARD_BALANCE"
@@ -4204,7 +3365,7 @@
       "payloadSchemaVersion": 1,
       "format": "PRINT_DOC_V1",
       "schemaVersion": 1,
-      "semanticLayoutVersion": 1,
+      "semanticLayoutVersion": 2,
       "scope": "PLATFORM",
       "content": {
         "blocks": [
@@ -4217,24 +3378,9 @@
             "align": "center"
           },
           {
-            "type": "text",
-            "literal": "权益使用凭证 · 本次交易后余次",
-            "emphasis": true
-          },
-          {
             "type": "keyValue",
             "label": "来源单号",
             "binding": "source.no"
-          },
-          {
-            "type": "keyValue",
-            "label": "业务事实号",
-            "binding": "source.factNo"
-          },
-          {
-            "type": "keyValue",
-            "label": "事实版本",
-            "binding": "source.revision"
           },
           {
             "type": "keyValue",
@@ -4268,19 +3414,8 @@
           },
           {
             "type": "keyValue",
-            "label": "小票号",
-            "binding": "system.ticketNo"
-          },
-          {
-            "type": "keyValue",
             "label": "业务时间",
             "binding": "source.occurredAt",
-            "format": "dateTimeAtStore"
-          },
-          {
-            "type": "keyValue",
-            "label": "生成时间",
-            "binding": "system.generatedAt",
             "format": "dateTimeAtStore"
           }
         ],
@@ -4288,7 +3423,8 @@
           "paperWidthMm": 80,
           "lineItemLayout": "COLUMNS",
           "wrap": "DEVICE_PROFILE",
-          "cutPolicy": "WHEN_SUPPORTED"
+          "cutPolicy": "WHEN_SUPPORTED",
+          "style": "COMPACT_V2"
         }
       },
       "exampleRef": "CARD_BALANCE"

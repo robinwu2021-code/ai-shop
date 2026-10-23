@@ -307,7 +307,6 @@ public class DefaultPrintFacade
                     job.setRequired(match.required() ? 1 : 0);
                     job.setPrinterNo(printer.getPrinterNo());
                     job.setTemplateVersionNo(template.templateVersionNo());
-                    job.setRendererVersion("PRINT_DOC_V1");
                     var slots =
                             new SystemPrintSlots(
                                     job.getJobNo(),
@@ -321,6 +320,10 @@ public class DefaultPrintFacade
                     var document = compiler.compile(fact, template, slots);
                     access(scope, actor, automatic ? Set.of() : document.requiredDataScopes());
                     var frozenLayout = layout.layout(document, profile);
+                    job.setRendererVersion(
+                            frozenLayout.profileVersion().endsWith("_COMPACT_V2")
+                                    ? "PRINT_DOC_V2"
+                                    : "PRINT_DOC_V1");
                     job.setLayoutProfileSnapshot(json.write(profile));
                     job.setLayoutSnapshot(json.write(frozenLayout));
                     job.setTemplateResolutionSnapshot(json.write(template));

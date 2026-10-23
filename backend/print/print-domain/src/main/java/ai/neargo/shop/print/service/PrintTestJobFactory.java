@@ -181,7 +181,8 @@ public class PrintTestJobFactory {
         job.setCopyIndex(1);
         job.setRequired(1);
         job.setPrinterNo(printerNo);
-        job.setRendererVersion("PRINT_DOC_V1");
+        job.setRendererVersion(
+                frozen.profileVersion().endsWith("_COMPACT_V2") ? "PRINT_DOC_V2" : "PRINT_DOC_V1");
         job.setLayoutProfileSnapshot(json.write(profile));
         job.setLayoutSnapshot(json.write(frozen));
         job.setTemplateResolutionSnapshot(json.write(template));

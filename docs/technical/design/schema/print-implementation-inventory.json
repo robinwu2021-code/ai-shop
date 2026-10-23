@@ -17,6 +17,7 @@
     "b-app/src/pages/print-center/index.vue",
     "b-app/src/pages/print-devices/index.vue",
     "b-app/src/pages/print-templates/index.vue",
+    "b-app/tests/print-center.test.ts",
     "backend/print/pom.xml",
     "backend/print/print-agent/packaging/README.md",
     "backend/print/print-agent/packaging/agent.properties.example",
@@ -183,6 +184,7 @@
     "backend/print/print-channel/src/main/resources/print/fonts/LICENSE",
     "backend/print/print-channel/src/main/resources/print/fonts/NotoSansSC-Regular.ttf",
     "backend/print/print-channel/src/main/resources/print/fonts/manifest.json",
+    "backend/print/print-channel/src/test/java/ai/neargo/shop/print/channel/CompactReceiptAcceptanceTest.java",
     "backend/print/print-channel/src/test/java/ai/neargo/shop/print/channel/PrintDatabaseAcceptanceTest.java",
     "backend/print/print-channel/src/test/java/ai/neargo/shop/print/channel/ReceiptSoftwareAcceptanceTest.java",
     "backend/print/print-channel/src/test/resources/print-acceptance-schema.sql",
@@ -202,6 +204,7 @@
     "backend/print/print-domain/src/main/java/ai/neargo/shop/print/export/PrintExportRecoveryJob.java",
     "backend/print/print-domain/src/main/java/ai/neargo/shop/print/export/PrintExportWorker.java",
     "backend/print/print-domain/src/main/java/ai/neargo/shop/print/export/impl/DefaultPrintExportFacade.java",
+    "backend/print/print-domain/src/main/java/ai/neargo/shop/print/layout/CompactPrintLayout.java",
     "backend/print/print-domain/src/main/java/ai/neargo/shop/print/layout/DefaultPrintLayoutEngine.java",
     "backend/print/print-domain/src/main/java/ai/neargo/shop/print/layout/LayoutProfileRegistry.java",
     "backend/print/print-domain/src/main/java/ai/neargo/shop/print/layout/PrintSystemSlotPolicy.java",
@@ -265,6 +268,7 @@
     "backend/print/print-domain/src/main/java/ai/neargo/shop/print/support/PrintJsonCodec.java",
     "backend/print/print-domain/src/main/java/ai/neargo/shop/print/support/PrintSupport.java",
     "backend/print/print-domain/src/main/java/ai/neargo/shop/print/support/PrintViews.java",
+    "backend/print/print-domain/src/main/java/ai/neargo/shop/print/template/CompactReceiptRows.java",
     "backend/print/print-domain/src/main/java/ai/neargo/shop/print/template/DefaultPrintDocumentCompiler.java",
     "backend/print/print-domain/src/main/java/ai/neargo/shop/print/template/DefaultPrintTemplateResolver.java",
     "backend/print/print-domain/src/main/java/ai/neargo/shop/print/template/PrintPreviewFacts.java",
@@ -344,5 +348,14 @@
     "total": 85
   },
   "softwareAcceptance": "SCOPED_PASS_FULL_REPOSITORY_FAIL",
-  "acceptanceEvidence": "docs/technical/acceptance/print-center/verification-results.json"
+  "acceptanceEvidence": "docs/technical/acceptance/print-center/verification-results.json",
+  "compactLayout": {
+    "style": "COMPACT_V2",
+    "templateVariants": 40,
+    "pdf": "SCOPED_SOFTWARE_PASS",
+    "localAgent": "PROTOCOL_SUPPORTED_PHYSICAL_NOT_RUN",
+    "feie": "BLOCKED_UNTIL_COORDINATE_SERIALIZER_VERIFIED",
+    "legacy": "V1_FROZEN_LAYOUT_PRESERVED",
+    "evidence": "docs/technical/acceptance/print-center/compact-v2-results.json"
+  }
 }

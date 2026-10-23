@@ -85,6 +85,8 @@ public final class DefaultPrintDocumentCompiler implements PrintDocumentCompiler
                         "source.revision",
                         "source.occurredAt"))
             if (empty(at(data, path))) throw new PrintFailure("print.requiredFieldMissing");
+        var content = json.tree(template.content());
+        boolean compact = CompactReceiptRows.enabled(content);
         var rows = new ArrayList<Map<String, Object>>();
         String notice = scene.definition().path("mandatoryNotice").asText();
         rows.add(Map.of("text", notice, "size", 12));
@@ -139,6 +141,7 @@ public final class DefaultPrintDocumentCompiler implements PrintDocumentCompiler
                         Map.of("text", text, "size", block.path("emphasis").asBoolean() ? 12 : 10));
             }
         }
+        if (compact) rows = new ArrayList<>(CompactReceiptRows.build(data, content, notice));
         var scopes = new HashSet<String>();
         if (!Set.of("SAMPLE", "DEVICE_TEST").contains(fact.triggerType()))
             scopes.add("SOURCE_ORDER_READ");
@@ -147,7 +150,20 @@ public final class DefaultPrintDocumentCompiler implements PrintDocumentCompiler
                 fact.ref().factNo() + ":" + fact.ref().scene(),
                 fact.ref().scene(),
                 fact.payloadSchemaVersion(),
-                json.freeze(Map.of("rows", rows, "mandatoryNotice", notice)),
+                json.freeze(
+                        compact
+                                ? Map.of(
+                                        "rows",
+                                        rows,
+                                        "mandatoryNotice",
+                                        notice,
+                                        "layoutStyle",
+                                        "COMPACT_V2",
+                                        "sourceSnapshot",
+                                        data,
+                                        "timezone",
+                                        data.path("store").path("timezone").asText())
+                                : Map.of("rows", rows, "mandatoryNotice", notice)),
                 slots,
                 scopes);
     }
@@ -168,6 +184,9 @@ public final class DefaultPrintDocumentCompiler implements PrintDocumentCompiler
                     binding = b.path("binding").asText(),
                     format = b.path("format").asText("plain");
             boolean bound = !binding.isBlank();
+            if (b.path("omitIfZero").asBoolean()
+                    && !(CompactReceiptRows.enabled(n) && binding.equals("fields.freightAmount")))
+                throw new PrintFailure("print.unsafeZeroSuppression");
             if (!BLOCKS.contains(type) || (bound && !allowedBinding(def, binding)))
                 throw new PrintFailure("print.bindingRejected");
             if (!Set.of("plain", "money", "dateTimeAtStore").contains(format))
@@ -214,6 +233,8 @@ public final class DefaultPrintDocumentCompiler implements PrintDocumentCompiler
                             "system.originalTicketState",
                             "currency")
                     .contains(path)) continue;
+            if (CompactReceiptRows.enabled(n) && CompactReceiptRows.snapshotOnly(scene, path))
+                continue;
             if (!displayed.contains(path))
                 throw new PrintFailure("print.mandatoryPrintFieldMissing");
         }

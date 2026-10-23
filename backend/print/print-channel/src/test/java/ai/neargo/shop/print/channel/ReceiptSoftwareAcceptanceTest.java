@@ -153,7 +153,7 @@ class ReceiptSoftwareAcceptanceTest {
                         .flatMap(p -> p.drawings().stream())
                         .filter(d -> d instanceof PrintDrawing.TextRun)
                         .map(d -> ((PrintDrawing.TextRun) d).text())
-                        .anyMatch(t -> t.contains("64.00 CNY")),
+                        .anyMatch(t -> t.equals("64.00")),
                 "A money value must not split digits across lines");
     }
 
@@ -233,5 +233,45 @@ class ReceiptSoftwareAcceptanceTest {
                     replacement);
         }
     }
- @Test void longTicketsPaginateWithoutLosingRowsOrExceedingRollProfile(){var rows=new ArrayList<Map<String,Object>>();for(int i=0;i<500;i++)rows.add(Map.of("text",String.format("ITEM_%04d 长单测试",i),"size",12));var doc=new PrintDocument("LONG","ORDER_PAID",1,json.freeze(Map.of("rows",rows,"mandatoryNotice","长单模拟")),new SystemPrintSlots("LONG1",PrintJobKind.INITIAL,1,Instant.parse("2026-10-23T02:30:00Z"),null,null,Set.of("模拟"),null),Set.of());var layout=layoutEngine.layout(doc,profiles.require("ROLL58","1"));assertTrue(layout.pages().size()>1);assertTrue(layout.pages().stream().allMatch(p->p.heightMm().compareTo(java.math.BigDecimal.valueOf(270))<=0),"Each page including its footer must fit the profile");String text=layout.pages().stream().flatMap(p->p.drawings().stream()).filter(d->d instanceof PrintDrawing.TextRun).map(d->((PrintDrawing.TextRun)d).text()).collect(java.util.stream.Collectors.joining("\n"));for(int i=0;i<500;i++)assertTrue(text.contains(String.format("ITEM_%04d",i)));assertEquals(layout.pages().size(),render(layout,PdfOutputProfile.ORIGINAL_ROLL).pageCount());}
+
+    @Test
+    void longTicketsPaginateWithoutLosingRowsOrExceedingRollProfile() {
+        var rows = new ArrayList<Map<String, Object>>();
+        for (int i = 0; i < 500; i++)
+            rows.add(Map.of("text", String.format("ITEM_%04d 长单测试", i), "size", 12));
+        var doc =
+                new PrintDocument(
+                        "LONG",
+                        "ORDER_PAID",
+                        1,
+                        json.freeze(Map.of("rows", rows, "mandatoryNotice", "长单模拟")),
+                        new SystemPrintSlots(
+                                "LONG1",
+                                PrintJobKind.INITIAL,
+                                1,
+                                Instant.parse("2026-10-23T02:30:00Z"),
+                                null,
+                                null,
+                                Set.of("模拟"),
+                                null),
+                        Set.of());
+        var layout = layoutEngine.layout(doc, profiles.require("ROLL58", "1"));
+        assertTrue(layout.pages().size() > 1);
+        assertTrue(
+                layout.pages().stream()
+                        .allMatch(
+                                p ->
+                                        p.heightMm().compareTo(java.math.BigDecimal.valueOf(270))
+                                                <= 0),
+                "Each page including its footer must fit the profile");
+        String text =
+                layout.pages().stream()
+                        .flatMap(p -> p.drawings().stream())
+                        .filter(d -> d instanceof PrintDrawing.TextRun)
+                        .map(d -> ((PrintDrawing.TextRun) d).text())
+                        .collect(java.util.stream.Collectors.joining("\n"));
+        for (int i = 0; i < 500; i++) assertTrue(text.contains(String.format("ITEM_%04d", i)));
+        assertEquals(
+                layout.pages().size(), render(layout, PdfOutputProfile.ORIGINAL_ROLL).pageCount());
+    }
 }

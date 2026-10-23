@@ -449,16 +449,21 @@ class PrintDatabaseAcceptanceTest {
         assertEquals("COMPLETED", jobs.selectById(job.getId()).getStatus());
         assertEquals(originalHash, jobs.selectById(job.getId()).getDocumentHash());
         assertEquals(
-                originalLayout
-                        .pages()
-                        .getFirst()
-                        .drawings()
-                        .subList(8, originalLayout.pages().getFirst().drawings().size()),
-                codec.read(child.getLayoutSnapshot(), PrintLayout.class)
-                        .pages()
-                        .getFirst()
-                        .drawings()
-                        .subList(8, originalLayout.pages().getFirst().drawings().size()));
+                businessDrawings(originalLayout),
+                businessDrawings(codec.read(child.getLayoutSnapshot(), PrintLayout.class)));
+    }
+
+    private List<PrintDrawing> businessDrawings(PrintLayout layout) {
+        var page = layout.pages().getFirst();
+        if (layout.profileVersion().endsWith("_COMPACT_V2")) {
+            var codec = context.getBean(PrintJsonCodec.class);
+            int start =
+                    codec.tree(page.systemSlots().getFirst().geometry()).path("lineCount").asInt()
+                            + 1;
+            int end = codec.tree(page.systemSlots().get(1).geometry()).path("startIndex").asInt();
+            return page.drawings().subList(start, end);
+        }
+        return page.drawings().subList(8, page.drawings().size());
     }
 
     @Test
@@ -802,5 +807,21 @@ class PrintDatabaseAcceptanceTest {
                                 new OpaqueAgentCredential(token),
                                 AgentRequestPurpose.REPORT_EVIDENCE));
     }
- @Test void negativePaginationCannotDisableQueryBounds(){var devices=context.getBean(PrintDeviceService.class);assertThrows(PrintFailure.class,()->devices.listPrinters(new ListPrintersQuery("S2",null,null,null,1,-1),flowActor("read")));assertThrows(PrintFailure.class,()->devices.listPrinters(new ListPrintersQuery("S2",null,null,null,0,20),flowActor("read")));}
+
+    @Test
+    void negativePaginationCannotDisableQueryBounds() {
+        var devices = context.getBean(PrintDeviceService.class);
+        assertThrows(
+                PrintFailure.class,
+                () ->
+                        devices.listPrinters(
+                                new ListPrintersQuery("S2", null, null, null, 1, -1),
+                                flowActor("read")));
+        assertThrows(
+                PrintFailure.class,
+                () ->
+                        devices.listPrinters(
+                                new ListPrintersQuery("S2", null, null, null, 0, 20),
+                                flowActor("read")));
+    }
 }
