@@ -21,7 +21,9 @@ class IssuerCollectionRouteTest {
         return new Config("测试发行", entity, "CENTRALIZED", "INTERNAL_RECON", "PRO_RATA", "CNY",
                 "Asia/Shanghai", List.of(wx, ali), 0);
     }
-    private StoredValueIssuerService service() throws Exception {
+    private record Fixture(StoredValueIssuerService service, JdbcTemplate jdbc) { }
+    private StoredValueIssuerService service() throws Exception { return fixture().service(); }
+    private Fixture fixture() throws Exception {
         var ds = new DriverManagerDataSource("jdbc:h2:mem:"+UUID.randomUUID()+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1", "sa", "");
         var jdbc = new JdbcTemplate(ds);
         var ddl = Files.readString(Path.of("../../shop-app/src/main/resources/db/migration/V548__stored_value_issuer_foundation.sql"));
@@ -32,7 +34,7 @@ class IssuerCollectionRouteTest {
             if(table.find()) part=part.replace("KEY uk_", "KEY "+table.group(1)+"_uk_");
             jdbc.execute(part);
         }
-        return new StoredValueIssuerService(new IssuerRepository(new DataSourceTransactionManager(ds), new ObjectMapper()));
+        return new Fixture(new StoredValueIssuerService(new IssuerRepository(new DataSourceTransactionManager(ds), new ObjectMapper())),jdbc);
     }
     @Test void channelDoesNotSplitIssuerAndConfigurationReplayDoesNotCreateAnotherVersion() throws Exception {
         var service=service();var scope=scope("STORE");
@@ -66,4 +68,19 @@ class IssuerCollectionRouteTest {
         assertThat(service.find(scope).orElseThrow()).isEqualTo(second);
         assertThatThrownBy(()->service.configure(scope,changed,"C1")).isInstanceOf(BizException.class);
     }
+    @Test void maintenanceMetadataChangesDoNotInvalidateCurrentConfigurationRevision() throws Exception {
+        var f=fixture();var scope=scope("STORE");var first=f.service().configure(scope,command("E1"),"C1");
+        // Metadata mapping/fencing advances the physical row, without publishing a configuration version.
+        f.jdbc().update("UPDATE sv_issuer SET version=version+3 WHERE issuer_no=?",first.issuerNo());
+        var current=f.service().find(scope).orElseThrow();
+        var edit=new Config("迁移后的发行","E1","CENTRALIZED","INTERNAL_RECON","PRO_RATA","CNY","Asia/Shanghai",List.of(wx,ali),current.revision());
+        var second=f.service().configure(scope,edit,"C2");
+        assertThat(second.revision()).isEqualTo(first.revision()+1);
+        assertThat(f.service().find(scope)).contains(second);
+        assertThat(f.service().configure(scope,command("E1"),"C1")).isEqualTo(first);
+        assertThatThrownBy(()->f.service().configure(scope,edit,"STALE")).isInstanceOf(BizException.class);
+        assertThat(f.jdbc().queryForObject("SELECT COUNT(*) FROM sv_issuer_version",Long.class)).isEqualTo(2);
+        assertThat(f.jdbc().queryForObject("SELECT version FROM sv_issuer",Long.class)).isEqualTo(4);
+    }
+
 }

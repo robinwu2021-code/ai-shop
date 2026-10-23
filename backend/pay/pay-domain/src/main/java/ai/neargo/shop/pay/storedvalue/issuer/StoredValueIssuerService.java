@@ -38,8 +38,9 @@ public class StoredValueIssuerService {
                     if (!contentHash.equals(text(prior,"content_hash"))) throw BizException.of(ErrorCode.CONFLICT);
                     return view(row, prior);
                 }
-                if (number(row,"version") != command.expectedRevision()) throw BizException.of(ErrorCode.CONFLICT);
                 var previous = version(scope.tenantNo(), text(row,"current_issuer_version_no"));
+                // The public revision identifies immutable configuration, not maintenance/status row writes.
+                if (number(previous,"version_index") - 1 != command.expectedRevision()) throw BizException.of(ErrorCode.CONFLICT);
                 if (!command.currency().equals(text(previous,"currency"))) throw BizException.of(ErrorCode.CONFLICT);
             } else if (command.expectedRevision() != 0) throw BizException.of(ErrorCode.CONFLICT);
 

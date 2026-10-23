@@ -385,3 +385,7 @@ MB01/02/03已实现，权限映射到既有门店CUSTOMER/SV_RECHARGE_CREATE及�
 | apply | 同范围Evidence、manifestNo、原执行key | METADATA_MAPPED；需维护及新写路径开关、目标FENCED和原事实/来源修订一致；成功不释放栅栏 |
 
 Evidence是服务端合同，不作为公开用户DTO。执行只使用服务器保存的摘要；清单包含完整原账户映射和授权/事实快照。持久记录复用pay_ent_command_dedup，独立命令空间避免历史普通映射回执绕过最终维护要求。Core实时证据解析、全进程就绪与维护入口尚待对接；不以这些Java方法代替完整迁移或切写API。
+
+### 发行配置版本并发口径（P3，2026-10-23）
+
+发行配置 `View.revision` 与配置写入的 `Config.expectedRevision` 均表示不可变配置的 `version_index - 1`，首次配置为 0。保存时在发行方行锁内核对当前配置版本，过期配置提交仍返回冲突。同幂等键、相同内容返回原配置版本，不返回后续版本。`sv_issuer.version` 仅用于数据库行级变更，旧账映射、写入栅栏或状态维护增加该值，不应让未变化的配置变成过期。此修复不等于 IS03/IS04 的受控变更检查、权限及完整 HTTP 流程已交付。
