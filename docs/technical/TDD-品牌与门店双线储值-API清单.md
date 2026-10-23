@@ -462,3 +462,24 @@ apply 必须引用同租户、原清单、当前证据及同 inventoryHash 的�
 仅新增内部 Java StoredValueAccountKeyInspector.inspect()，没有新增 B/C/运营/内部HTTP接口。返回 Plan(ready,nextStep,schemaHash,accounts,issues,statements)。ready 只表示当前索引步骤的预检通过；KEYS_READY也不是资金写入准入。不得把现有门店所有人的维护权限扩展成整库DDL权限，不接受公开请求上传扫描结果或直接执行返回的SQL。
 
 此预检尚未连接pause/apply的DDL执行阶段，不自动运行任何语句。原暂停、元数据映射回执与开关行为不变。
+
+### P3 全库授权与逐步索引执行（2026-10-23，未部署）
+
+新增内部Java合同 StoredValueSchemaAuthorization.authorize(operatorNo,approvalNo,proof)、StoredValueAccountKeyCutover.step(operatorNo,approvalNo,proof)。没有新增B/C/运营或内部HTTP入口，operatorNo必须由将来的可信运维入口提供，不能直接接收普通商家请求并据此授权。
+
+服务端开关 shop.pay.stored-value.migration.key-cutover-enabled 默认false；服务端文件 shop.pay.stored-value.migration.key-cutover-approval-file 默认空。只从该文件读取封存批准，不接受请求上传。普通文件、不跟随最终符号链接、64KiB上限；缺失/坏文件默认拒绝，不回退。批准结构：
+
+| 字段 | 含义 |
+| --- | --- |
+| approvalNo / operatorNo | 本次全库维护批准及指定运维操作人；不从门店权限推导 |
+| ledgerFingerprint / inventoryHash | 精确绑定实际Pay账本及封存写节点清单 |
+| expiresAt / sealed | UTC批准有效期及明确封存；每次执行前后重新读取校验 |
+| receipts[] | tenantNo、manifestNo、pauseReceiptNo、mappingReceiptNo；显式链接整库已完成映射 |
+
+批准最多1000回执/1000发行方/10000账户，超限拒绝而非截断。文件上限可能更早限制回执数。核对原清单、暂停和映射的内容摘要/快照/数量/来源版本，复用完整账本审计检查批次、凭证、分录、冻结和未完成充值；当前发行方集合和账户集合必须被完整覆盖，原金额和账序保持一致。全部有效发行方必须FENCED。
+
+step每次有意推进一个索引步骤：先授权，再取得MySQL数据库级互斥，锁后再授权及预检。返回Result(receiptNo,approvalNo,action,state,beforeSchemaHash,afterSchemaHash)。state为APPLIED、RECOVERED或KEYS_READY。有PENDING时必须先恢复该步，本次不再推进下一步；无PENDING的后续调用会有意推进下一步骤，不应被包装成同一公开请求的无条件重试。每次调用应重新取得新鲜proof。
+
+DDL提交前已持久化INTENT，提交后按目标schema摘要复核并完成回执。若连接断开、证明/批准过期或后续核验失败，保留PENDING及全部FENCED，不宣称DDL已回滚。实际schema等于目标则恢复回执，等于执行前且计划仍完全一致才可重试；其他状态拒绝。可明确续期同一批准（只更新expiresAt），但不能改变操作人、账本、清单或回执范围来接管未完成步骤。
+
+KEYS_READY只表示索引步骤完成，不代表发行账户已经满足全部必填约束，也不恢复写入。NULL约束、切写/恢复入口与真实MySQL隔离验收仍待交付；本轮没有自动激活品牌或解除暂停。

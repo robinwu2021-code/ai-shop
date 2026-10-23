@@ -52,7 +52,7 @@ public class StoredValueMigrationExecutionService {
             return new MaintenanceResult(receipt,manifestNo,"METADATA_MAPPED",inventory,evidence.batch().stores().size(),mapped.mapping().accountCount());
         });
     }
-    private String guard(Proof proof,boolean verifyLocal) {
+    String guard(Proof proof,boolean verifyLocal) {
         if(proof==null||proof.inventory()==null||proof.report()==null)conflict();
         var report=proof.report();var now=clock.instant();
         if(!report.ready()||!report.issues().isEmpty()||report.nodes().isEmpty()||report.checkedAt()==null||report.expiresAt()==null

@@ -162,6 +162,10 @@ public class StoredValueMigrationManifestService {
         if(!saved.manifest().authorityHash().equals(authorityHash))throw BizException.of(ErrorCode.FORBIDDEN);
         return saved;
     }
+    void verifyMappedFacts(Evidence evidence,List<StoredValueIssuerMigrationService.AccountMapping> expected) {
+        var current=migration.audit(evidence.batch());
+        if(!current.ready()||!current.accounts().equals(expected))throw BizException.of(ErrorCode.CONFLICT);
+    }
     <T>T command(Evidence evidence,String operation,String key,String payload,String resource,Class<T> type,Supplier<T> work) {
         return db.write(()->{
             var batch=evidence.batch();

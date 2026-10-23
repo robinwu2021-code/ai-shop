@@ -14,7 +14,7 @@ public final class StoredValueAccountKeyPlan {
     public record Snapshot(List<Index> indexes,long accounts,long invalidDimensions,long brokenReferences,long duplicateGroups,long unfencedIssuers) {
         public Snapshot { indexes=List.copyOf(indexes); }
     }
-    public record Plan(boolean ready,String nextStep,String schemaHash,long accounts,List<String> issues,List<String> statements) {
+    public record Plan(boolean ready,String nextStep,String schemaHash,String targetSchemaHash,long accounts,List<String> issues,List<String> statements) {
         public Plan { issues=List.copyOf(issues);statements=List.copyOf(statements); }
     }
     private static final String NEW="uk_sv_issuer_customer",OWNER="uk_sv_owner",CUSTOMER="uk_sv_customer_owner";
@@ -38,15 +38,20 @@ public final class StoredValueAccountKeyPlan {
         if(snapshot.brokenReferences()>0)issues.add("ACCOUNT_ISSUER_REFERENCE_INVALID");
         if(snapshot.duplicateGroups()>0)issues.add("ISSUER_CUSTOMER_DUPLICATE");
         if(snapshot.unfencedIssuers()>0)issues.add("LEDGER_WRITERS_NOT_FENCED");
-        String hash=hash(indexes.values().stream().map(i->i.name().length()+":"+i.name()+":"+i.unique()+":"+i.partialOrExpression()+":"+String.join(",",i.columns())+";").reduce("",String::concat));
-        if(!issues.isEmpty())return new Plan(false,"BLOCKED",hash,snapshot.accounts(),issues,List.of());
-        if(!indexes.containsKey(NEW))return new Plan(true,"ADD_ISSUER_KEY",hash,snapshot.accounts(),List.of(),
-            List.of("ALTER TABLE sv_account ADD UNIQUE KEY uk_sv_issuer_customer (tenant_no,issuer_no,customer_no,currency)"));
+        String hash=schemaHash(indexes.values());
+        if(!issues.isEmpty())return new Plan(false,"BLOCKED",hash,hash,snapshot.accounts(),issues,List.of());
+        if(!indexes.containsKey(NEW)){
+            var target=new TreeMap<>(indexes);target.put(NEW,new Index(NEW,true,EXPECTED.get(NEW),false));
+            return new Plan(true,"ADD_ISSUER_KEY",hash,schemaHash(target.values()),snapshot.accounts(),List.of(),
+                List.of("ALTER TABLE sv_account ADD UNIQUE KEY uk_sv_issuer_customer (tenant_no,issuer_no,customer_no,currency)"));
+        }
         var drops=new ArrayList<String>();
         if(indexes.containsKey(OWNER))drops.add("DROP INDEX "+OWNER);
         if(indexes.containsKey(CUSTOMER))drops.add("DROP INDEX "+CUSTOMER);
-        return new Plan(true,drops.isEmpty()?"KEYS_READY":"DROP_LEGACY_KEYS",hash,snapshot.accounts(),List.of(),
+        var target=new TreeMap<>(indexes);target.remove(OWNER);target.remove(CUSTOMER);
+        return new Plan(true,drops.isEmpty()?"KEYS_READY":"DROP_LEGACY_KEYS",hash,schemaHash(target.values()),snapshot.accounts(),List.of(),
             drops.isEmpty()?List.of():List.of("ALTER TABLE sv_account "+String.join(", ",drops)));
     }
+    private static String schemaHash(Collection<Index> indexes){return hash(indexes.stream().sorted(Comparator.comparing(Index::name)).map(i->i.name().length()+":"+i.name()+":"+i.unique()+":"+i.partialOrExpression()+":"+String.join(",",i.columns())+";").reduce("",String::concat));}
     private static String hash(String s){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(s.getBytes(StandardCharsets.UTF_8)));}catch(NoSuchAlgorithmException impossible){throw new IllegalStateException(impossible);}}
 }

@@ -753,3 +753,16 @@ StoredValueAccountKeyInspector 从 Pay 数据源读取 MySQL information_schema.
 数据阻断包括：关键维度为空、冻结发行版本/发行方/币种/STORE来源不匹配、同发行方顾客币种重复，以及任一有效发行方未FENCED（即使该发行方暂无账户）。重复分组由数据库按实际列排序规则完成，不在Java中按字符串去重。已删除账户同样参与数据核验，不能用软删除绕过唯一键。
 
 本轮不执行 ALTER。正式执行器仍须有全库运维授权、全范围已完成映射回执、新鲜节点证明、部署冻结与每步重检；MySQL DDL隐式提交，必须逐步记录并从实际schema恢复，不能声称事务回滚可撤销DDL。issuer/customer等必填约束、切写和恢复也尚未完成。H2定向验证数据扫描和计划逻辑；真实MySQL元数据及DDL行为留本阶段隔离演练验收。
+
+### P3 索引执行意图与失败恢复（2026-10-23）
+
+不修改已执行迁移，不新增表。复用pay_ent_command_dedup，保留原PENDING/COMPLETED状态：
+- tenant_no固定保留命名空间__LEDGER__，operation_kind=SV_SCHEMA_KEY_STEP。
+- request_key为approvalNo与action的SHA256；payload_hash绑定批准号、操作人、账本、节点清单及完整映射回执。expiresAt不入稳定摘要，因每次都会从服务器重查有效期，允许运维明确续期原范围。
+- resource_no为SVM维护回执，response_snapshot先存INTENT，含执行前和精确目标schema摘要；成功或恢复后写APPLIED/RECOVERED并标记COMPLETED。
+
+INTENT在独立Pay事务中提交后，才在专用自动提交MySQL连接执行固定白名单DDL。拒绝外层业务事务。GET_LOCK使用数据库名摘要作为锁名，在同一物理会话维持到操作完成；journal/审计事务使用独立Pay连接。锁等待0秒、metadata lock wait 5秒、JDBC语句超时20秒。结束时恢复原session timeout并释放锁；加锁结果不确定或清理失败时abort连接，避免将可能持锁的会话返还池。错误不返回原始SQL连接信息。
+
+计划增加targetSchemaHash。恢复只认可原摘要或精确目标摘要，非预期schema变更继续阻断。新唯一键必须先成功并经实际元数据复核，才进入移除旧键步骤。单次调用最多一个固定ALTER；不允许传任意SQL。DDL发生后即使事务回执未完成也不能回滚DDL，持久PENDING正是恢复依据。
+
+执行器每步复核全范围已映射财务事实与来源、所有发行方FENCED、新鲜实际写进程证明和当前服务器批准；不改账户号、金额、账序或身份。仍未执行issuer/customer必填约束及恢复发行，不允许只见新键就开放财务写入。真实MySQL的metadata/advisory lock/DDL隐式提交语义须在本阶段隔离演练验收；当前未操作线上。

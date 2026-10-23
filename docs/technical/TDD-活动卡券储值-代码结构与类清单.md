@@ -907,3 +907,15 @@ LegacyCouponIdentityPort新增core本地模板主体/已提交模板目录读取
 | pay-domain测试 | StoredValueAccountKeyPlanTest / StoredValueAccountKeyInspectorTest | 结构、顺序、断点、全库数据、前缀伪装与读取失败；不作为MySQL真实DDL验收替代 |
 
 正式DDL执行器、持久步骤回执、全库操作授权与恢复发行仍待实现。
+
+### P3 受控索引执行与恢复（2026-10-23）
+
+| 模块 | 类/合同 | 职责 |
+| --- | --- | --- |
+| pay-domain/storedvalue/migration | StoredValueSchemaAuthorization | 默认关闭的服务端文件全库批准、指定操作人/账本/清单/时效、原回执链校验、全量覆盖与完整账本复核 |
+| pay-domain/storedvalue/migration | StoredValueAccountKeyCutover.step | 每次推进一个索引步骤、先提交INTENT、执行前后复核、按精确schema恢复、保留FENCED |
+| pay-domain/storedvalue/migration | StoredValueSchemaDdl.locked | Pay专用自动提交连接、数据库级GET_LOCK、固定DDL白名单、超时及连接清理；不复用业务事务 |
+| pay-domain/storedvalue/migration | StoredValueAccountKeyPlan.Plan | 增加targetSchemaHash，供执行后及中断恢复精确核验 |
+| pay-domain/storedvalue/migration | StoredValueMigrationManifestService.verifyMappedFacts | 复用原完整审计检查映射后的批次、分录、冻结、原单与预期账户事实 |
+
+授权与DDL仍是内部Java能力，未新增公开操作接口。NULL约束、正式切写/恢复、剩余IS/RC/RD和B端页面继续待开发。
