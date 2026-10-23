@@ -7297,6 +7297,8 @@ CREATE TABLE IF NOT EXISTS sv_account
     updated_by VARCHAR(64) NOT NULL,
     store_no VARCHAR(64) NULL,
     customer_no VARCHAR(64) NULL,
+    issuer_no VARCHAR(64) NULL,
+    issuer_version_no VARCHAR(64) NULL,
     CONSTRAINT uk_sv_customer_owner UNIQUE (tenant_no,customer_no,entity_no,store_no,currency),
     CONSTRAINT uk_sv_owner UNIQUE (tenant_no,user_no,entity_no,store_no,currency),
     PRIMARY KEY (id),
@@ -7350,6 +7352,13 @@ CREATE TABLE IF NOT EXISTS sv_recharge
     plan_no VARCHAR(64) NULL,
     plan_version_no VARCHAR(64) NULL,
     customer_no VARCHAR(64) NULL,
+    issuer_no VARCHAR(64) NULL,
+    issuer_version_no VARCHAR(64) NULL,
+    release_no VARCHAR(64) NULL,
+    tier_no VARCHAR(64) NULL,
+    collection_entity_no VARCHAR(64) NULL,
+    settlement_entity_no VARCHAR(64) NULL,
+    quota_reservation_no VARCHAR(64) NULL,
     CONSTRAINT uk_sv_received_receipt UNIQUE (tenant_no,entity_no,received_receipt_key),
     PRIMARY KEY (id),
     CONSTRAINT uk_recharge UNIQUE (tenant_no,recharge_no),
@@ -7394,6 +7403,12 @@ CREATE TABLE IF NOT EXISTS sv_lot
     updated_by VARCHAR(64) NOT NULL,
     plan_version_no VARCHAR(64) NULL,
     recharge_store_no VARCHAR(64) NULL,
+    issuer_no VARCHAR(64) NULL,
+    issuer_version_no VARCHAR(64) NULL,
+    release_no VARCHAR(64) NULL,
+    tier_no VARCHAR(64) NULL,
+    collection_entity_no VARCHAR(64) NULL,
+    settlement_entity_no VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sv_lot UNIQUE (tenant_no,lot_no),
     CONSTRAINT uk_lot_recharge UNIQUE (tenant_no,recharge_no),
@@ -7421,6 +7436,7 @@ CREATE TABLE IF NOT EXISTS sv_voucher
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_voucher UNIQUE (tenant_no,voucher_no),
     CONSTRAINT uk_sv_biz UNIQUE (tenant_no,biz_type,biz_no),
@@ -7536,6 +7552,9 @@ CREATE TABLE IF NOT EXISTS sv_hold_allocation
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NULL,
+    allocation_no VARCHAR(64) NULL,
+    release_no VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sv_alloc UNIQUE (tenant_no,operation_no,lot_no),
     CHECK (principal_minor>=0 AND bonus_minor>=0)
@@ -8217,6 +8236,8 @@ CREATE TABLE IF NOT EXISTS sv_recharge_plan
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NULL,
+    migrated_release_no VARCHAR(64) NULL,
     CONSTRAINT uk_sv_plan UNIQUE (tenant_no,plan_no),
     CONSTRAINT uk_sv_plan_name UNIQUE (tenant_no,entity_no,store_no,name),
     CHECK (status IN ('ACTIVE','INACTIVE'))
@@ -8276,6 +8297,12 @@ CREATE TABLE IF NOT EXISTS sv_statement
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
     customer_no VARCHAR(64) NULL,
+    issuer_no VARCHAR(64) NULL,
+    scope_no VARCHAR(64) NULL,
+    release_no VARCHAR(64) NULL,
+    operating_entity_no VARCHAR(64) NULL,
+    settlement_entity_no VARCHAR(64) NULL,
+    scope_type VARCHAR(24) NULL,
     CONSTRAINT uk_sv_statement UNIQUE (tenant_no,record_no),
     CONSTRAINT uk_sv_statement_voucher UNIQUE (tenant_no,voucher_no),
     CHECK (balance_after_minor>=0),
@@ -8702,6 +8729,851 @@ CREATE TABLE IF NOT EXISTS ord_store_pricing_revision
     CHECK (revision >= 1),
     CHECK ((override_snapshot IS JSON)),
     CHECK ((effective_snapshot IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS sv_issuer
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    scope_type VARCHAR(24) NOT NULL,
+    scope_no VARCHAR(64) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    current_issuer_version_no VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    write_mode VARCHAR(24) NOT NULL DEFAULT 'LEGACY',
+    CONSTRAINT sv_issuer_uk_1 UNIQUE (tenant_no,issuer_no),
+    CONSTRAINT sv_issuer_uk_2 UNIQUE (tenant_no,scope_type,scope_no),
+    CHECK (scope_type IN ('BRAND','STORE'))
+);
+
+CREATE TABLE IF NOT EXISTS sv_issuer_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    issuer_version_no VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    configuration_key VARCHAR(64) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    version_index BIGINT NOT NULL,
+    settlement_entity_no VARCHAR(64) NOT NULL,
+    collection_mode VARCHAR(24) NOT NULL,
+    clearing_mode VARCHAR(24) NOT NULL,
+    debit_allocation_mode VARCHAR(24) NOT NULL,
+    bonus_bearer VARCHAR(24) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    market_zone VARCHAR(64) NOT NULL,
+    collection_config TEXT NOT NULL,
+    clearing_rule TEXT NOT NULL,
+    entity_acceptance TEXT NOT NULL,
+    content_hash CHAR(64) NOT NULL,
+    effective_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT sv_issuer_version_uk_1 UNIQUE (tenant_no,issuer_version_no),
+    CONSTRAINT sv_issuer_version_uk_2 UNIQUE (tenant_no,issuer_no,version_index),
+    CONSTRAINT uk_configuration_key UNIQUE (tenant_no,issuer_no,configuration_key)
+);
+
+CREATE TABLE IF NOT EXISTS sv_issuer_store_access
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    access_no VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    operating_entity_no VARCHAR(64) NOT NULL,
+    source_binding_no VARCHAR(64) NOT NULL,
+    source_revision BIGINT NOT NULL,
+    can_issue TINYINT NOT NULL,
+    can_redeem TINYINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    effective_from DATETIME(3) NOT NULL,
+    effective_to DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT sv_issuer_store_access_uk_1 UNIQUE (tenant_no,access_no),
+    CONSTRAINT sv_issuer_store_access_uk_2 UNIQUE (tenant_no,issuer_no,store_no)
+);
+
+CREATE TABLE IF NOT EXISTS sv_release
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    release_no VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    issuer_version_no VARCHAR(64) NOT NULL,
+    activity_no VARCHAR(64) NULL,
+    activity_version_no VARCHAR(64) NULL,
+    draft_revision_no VARCHAR(64) NULL,
+    release_index BIGINT NOT NULL,
+    source_kind VARCHAR(24) NOT NULL,
+    legacy_plan_version_no VARCHAR(64) NULL,
+    currency VARCHAR(8) NOT NULL,
+    starts_at DATETIME(3) NOT NULL,
+    ends_at DATETIME(3) NULL,
+    state VARCHAR(24) NOT NULL,
+    redemption_scope_mode VARCHAR(24) NOT NULL,
+    scope_snapshot TEXT NOT NULL,
+    policy_versions TEXT NOT NULL,
+    content_hash CHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    legacy_activity_version_no VARCHAR(64) NULL,
+    CONSTRAINT uk_legacy_activity_version UNIQUE (tenant_no,legacy_activity_version_no),
+    CONSTRAINT sv_release_uk_1 UNIQUE (tenant_no,release_no),
+    CONSTRAINT sv_release_uk_2 UNIQUE (tenant_no,activity_version_no),
+    CONSTRAINT sv_release_uk_3 UNIQUE (tenant_no,activity_no,draft_revision_no),
+    CONSTRAINT uk_4 UNIQUE (tenant_no,issuer_no,activity_no,release_index),
+    CONSTRAINT uk_5 UNIQUE (tenant_no,legacy_plan_version_no),
+    CONSTRAINT ck_sv_release_source CHECK (
+ (source_kind='V2_ACTIVITY' AND activity_no IS NOT NULL AND draft_revision_no IS NOT NULL)
+ OR (source_kind='LEGACY_PLAN' AND legacy_plan_version_no IS NOT NULL)
+ OR (source_kind='LEGACY_ACTIVITY' AND activity_no IS NOT NULL AND legacy_activity_version_no IS NOT NULL AND activity_version_no IS NOT NULL AND activity_version_no=legacy_activity_version_no)
+)
+);
+
+CREATE TABLE IF NOT EXISTS sv_release_tier
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    tier_no VARCHAR(64) NOT NULL,
+    release_no VARCHAR(64) NOT NULL,
+    ordinal INT NOT NULL,
+    paid_amount_minor BIGINT NOT NULL,
+    bonus_amount_minor BIGINT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    legacy_tier_key VARCHAR(128) NULL,
+    CONSTRAINT uk_legacy_activity_tier UNIQUE (tenant_no,release_no,legacy_tier_key),
+    CONSTRAINT sv_release_tier_uk_1 UNIQUE (tenant_no,tier_no),
+    CONSTRAINT sv_release_tier_uk_2 UNIQUE (tenant_no,release_no,paid_amount_minor),
+    CONSTRAINT sv_release_tier_uk_3 UNIQUE (tenant_no,release_no,ordinal),
+    CHECK (paid_amount_minor>0 AND bonus_amount_minor>=0),
+    CHECK (paid_amount_minor<=9223372036854775807-bonus_amount_minor)
+);
+
+CREATE TABLE IF NOT EXISTS sv_issue_quota
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    quota_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    outstanding_minor BIGINT NOT NULL,
+    reserved_minor BIGINT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT sv_issue_quota_uk_1 UNIQUE (tenant_no,quota_no),
+    CONSTRAINT sv_issue_quota_uk_2 UNIQUE (tenant_no,store_no,currency),
+    CHECK (outstanding_minor>=0 AND reserved_minor>=0),
+    CHECK (outstanding_minor<=9223372036854775807-reserved_minor)
+);
+
+CREATE TABLE IF NOT EXISTS sv_issue_quota_reservation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    reservation_no VARCHAR(64) NOT NULL,
+    quota_no VARCHAR(64) NOT NULL,
+    recharge_no VARCHAR(64) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    policy_versions TEXT NOT NULL,
+    expires_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT sv_issue_quota_reservation_uk_1 UNIQUE (tenant_no,reservation_no),
+    CONSTRAINT sv_issue_quota_reservation_uk_2 UNIQUE (tenant_no,recharge_no),
+    CHECK (amount_minor>0)
+);
+
+CREATE TABLE IF NOT EXISTS sv_customer_issuer_index
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    customer_no VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    account_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    has_recharge TINYINT NOT NULL,
+    last_recharge_at DATETIME(3) NULL,
+    last_activity_at DATETIME(3) NULL,
+    last_occurrence_store_no VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT sv_customer_issuer_index_uk_1 UNIQUE (tenant_no,customer_no,issuer_no,currency),
+    CONSTRAINT sv_customer_issuer_index_uk_2 UNIQUE (tenant_no,account_no)
+);
+
+CREATE TABLE IF NOT EXISTS prn_agent
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    agent_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    platform VARCHAR(24) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    enrollment_hash VARCHAR(64) NULL,
+    enrollment_expires_at DATETIME(3) NULL,
+    credential_hash VARCHAR(64) NULL,
+    credential_version INT NOT NULL DEFAULT 0,
+    session_epoch BIGINT NOT NULL DEFAULT 0,
+    software_version VARCHAR(32) NULL,
+    capabilities TEXT NULL,
+    last_seen_at DATETIME(3) NULL,
+    revoked_at DATETIME(3) NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_agent_no UNIQUE (tenant_no, agent_no)
+);
+
+CREATE TABLE IF NOT EXISTS prn_printer
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    printer_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    physical_key VARCHAR(128) NOT NULL,
+    connection_type VARCHAR(16) NOT NULL,
+    adapter_code VARCHAR(32) NOT NULL,
+    vendor_account_ref VARCHAR(64) NULL,
+    device_sn VARCHAR(128) NULL,
+    agent_no VARCHAR(32) NULL,
+    connection_config TEXT NULL,
+    credential_ref VARCHAR(32) NULL,
+    paper_width_mm SMALLINT NOT NULL,
+    capabilities TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    health_status VARCHAR(24) NOT NULL DEFAULT 'UNKNOWN',
+    health_reason VARCHAR(64) NULL,
+    health_observed_at DATETIME(3) NULL,
+    connection_revision BIGINT NOT NULL DEFAULT 1,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_printer_no UNIQUE (tenant_no, printer_no),
+    CONSTRAINT uk_prn_physical UNIQUE (tenant_no, physical_key)
+);
+
+CREATE TABLE IF NOT EXISTS prn_credential_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    credential_ref VARCHAR(32) NOT NULL,
+    printer_no VARCHAR(32) NOT NULL,
+    version_number INT NOT NULL,
+    credential_ciphertext TEXT NOT NULL,
+    encryption_key_version VARCHAR(32) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    retired_at DATETIME(3) NULL,
+    created_by VARCHAR(64) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_credential_ref UNIQUE (tenant_no, credential_ref),
+    CONSTRAINT uk_prn_credential_version UNIQUE (tenant_no, printer_no, version_number)
+);
+
+CREATE TABLE IF NOT EXISTS prn_printer_runtime
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    printer_no VARCHAR(32) NOT NULL,
+    active_job_no VARCHAR(32) NULL,
+    active_attempt_no VARCHAR(32) NULL,
+    lease_owner VARCHAR(64) NULL,
+    lease_token_hash VARCHAR(64) NULL,
+    lease_until DATETIME(3) NULL,
+    fence_epoch BIGINT NOT NULL DEFAULT 0,
+    blocked_reason VARCHAR(64) NULL,
+    last_dispatch_at DATETIME(3) NULL,
+    last_sequence BIGINT NOT NULL DEFAULT 0,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_runtime UNIQUE (tenant_no, printer_no)
+);
+
+CREATE TABLE IF NOT EXISTS prn_template
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    template_no VARCHAR(32) NOT NULL,
+    scope_key VARCHAR(64) NOT NULL,
+    store_no VARCHAR(32) NULL,
+    scene VARCHAR(32) NOT NULL,
+    variant_code VARCHAR(32) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    current_version_no VARCHAR(32) NULL,
+    status VARCHAR(16) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_template_no UNIQUE (tenant_no, template_no),
+    CONSTRAINT uk_prn_template_scope UNIQUE (tenant_no, entity_no, scope_key, scene, variant_code)
+);
+
+CREATE TABLE IF NOT EXISTS prn_template_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    template_version_no VARCHAR(32) NOT NULL,
+    template_no VARCHAR(32) NOT NULL,
+    version_number INT NOT NULL,
+    format VARCHAR(24) NOT NULL,
+    schema_version INT NOT NULL,
+    payload_schema_version INT NOT NULL,
+    paper_width_mm SMALLINT NOT NULL,
+    content MEDIUMTEXT NOT NULL,
+    content_hash VARCHAR(64) NOT NULL,
+    compatible_capabilities TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    published_at DATETIME(3) NULL,
+    created_by VARCHAR(64) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_tpl_version_no UNIQUE (tenant_no, template_version_no),
+    CONSTRAINT uk_prn_tpl_version UNIQUE (tenant_no, template_no, version_number)
+);
+
+CREATE TABLE IF NOT EXISTS prn_route
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    route_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    scene VARCHAR(32) NOT NULL,
+    current_version_no VARCHAR(32) NULL,
+    status VARCHAR(16) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_route_no UNIQUE (tenant_no, route_no),
+    CONSTRAINT uk_prn_route_scene UNIQUE (tenant_no, entity_no, store_no, scene)
+);
+
+CREATE TABLE IF NOT EXISTS prn_route_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    route_version_no VARCHAR(32) NOT NULL,
+    route_no VARCHAR(32) NOT NULL,
+    version_number INT NOT NULL,
+    rules TEXT NOT NULL,
+    content_hash VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    published_at DATETIME(3) NULL,
+    created_by VARCHAR(64) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_route_version_no UNIQUE (tenant_no, route_version_no),
+    CONSTRAINT uk_prn_route_version UNIQUE (tenant_no, route_no, version_number)
+);
+
+CREATE TABLE IF NOT EXISTS prn_scene_policy
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    policy_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    scene VARCHAR(32) NOT NULL,
+    current_version_no VARCHAR(32) NULL,
+    enabled TINYINT NOT NULL DEFAULT 0,
+    critical TINYINT NOT NULL DEFAULT 0,
+    trigger_types TEXT NOT NULL,
+    fallback_printer_no VARCHAR(32) NULL,
+    submit_timeout_seconds INT NOT NULL DEFAULT 15,
+    result_timeout_seconds INT NOT NULL DEFAULT 120,
+    max_retry_count INT NOT NULL DEFAULT 5,
+    backlog_alert_seconds INT NOT NULL DEFAULT 60,
+    stale_after_seconds INT NOT NULL DEFAULT 600,
+    notification_policy TEXT NOT NULL,
+    output_options TEXT NOT NULL,
+    policy_snapshot_hash VARCHAR(64) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_policy_no UNIQUE (tenant_no, policy_no),
+    CONSTRAINT uk_prn_policy_scene UNIQUE (tenant_no, entity_no, store_no, scene)
+);
+
+CREATE TABLE IF NOT EXISTS prn_policy_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    policy_version_no VARCHAR(32) NOT NULL,
+    policy_no VARCHAR(32) NOT NULL,
+    version_number INT NOT NULL,
+    effective_from DATETIME(3) NOT NULL,
+    policy_snapshot TEXT NOT NULL,
+    content_hash VARCHAR(64) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_policy_version_no UNIQUE (tenant_no, policy_version_no),
+    CONSTRAINT uk_prn_policy_version UNIQUE (tenant_no, policy_no, version_number),
+    CONSTRAINT uk_prn_policy_effective UNIQUE (tenant_no, policy_no, effective_from)
+);
+
+CREATE TABLE IF NOT EXISTS prn_request
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    request_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(32) NULL,
+    sub_order_no VARCHAR(32) NULL,
+    biz_type VARCHAR(32) NOT NULL,
+    biz_no VARCHAR(64) NOT NULL,
+    biz_revision VARCHAR(64) NOT NULL,
+    scene VARCHAR(32) NOT NULL,
+    trigger_type VARCHAR(32) NOT NULL,
+    source_event_no VARCHAR(64) NULL,
+    source_ref TEXT NOT NULL,
+    trigger_key VARCHAR(64) NOT NULL,
+    source_occurred_at DATETIME(3) NOT NULL,
+    policy_version_no VARCHAR(32) NOT NULL,
+    policy_snapshot TEXT NOT NULL,
+    output_options TEXT NOT NULL,
+    source_snapshot TEXT NULL,
+    source_snapshot_hash VARCHAR(64) NULL,
+    status VARCHAR(24) NOT NULL,
+    block_code VARCHAR(64) NULL,
+    next_check_at DATETIME(3) NULL,
+    deadline_at DATETIME(3) NULL,
+    cancelled_at DATETIME(3) NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_request_no UNIQUE (tenant_no, request_no),
+    CONSTRAINT uk_prn_request_trigger UNIQUE (tenant_no, entity_no, store_no, trigger_key)
+);
+
+CREATE TABLE IF NOT EXISTS prn_batch
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    batch_no VARCHAR(32) NOT NULL,
+    request_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    batch_kind VARCHAR(16) NOT NULL,
+    generation_key VARCHAR(64) NOT NULL,
+    parent_batch_no VARCHAR(32) NULL,
+    route_version_no VARCHAR(32) NULL,
+    status VARCHAR(24) NOT NULL,
+    expected_count INT NOT NULL,
+    confirmed_count INT NOT NULL DEFAULT 0,
+    failed_count INT NOT NULL DEFAULT 0,
+    unknown_count INT NOT NULL DEFAULT 0,
+    cancelled_count INT NOT NULL DEFAULT 0,
+    resolved_count INT NOT NULL DEFAULT 0,
+    resolved_status VARCHAR(24) NOT NULL DEFAULT 'OPEN',
+    completed_at DATETIME(3) NULL,
+    resolved_at DATETIME(3) NULL,
+    created_by VARCHAR(64) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_batch_no UNIQUE (tenant_no, batch_no),
+    CONSTRAINT uk_prn_batch_generation UNIQUE (tenant_no, request_no, generation_key)
+);
+
+CREATE TABLE IF NOT EXISTS prn_job
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    job_no VARCHAR(32) NOT NULL,
+    request_no VARCHAR(32) NOT NULL,
+    batch_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    scene VARCHAR(32) NOT NULL,
+    document_key VARCHAR(64) NOT NULL,
+    route_rule_key VARCHAR(64) NOT NULL,
+    target_key VARCHAR(32) NOT NULL,
+    copy_index INT NOT NULL,
+    required TINYINT NOT NULL DEFAULT 1,
+    printer_no VARCHAR(32) NOT NULL,
+    template_version_no VARCHAR(32) NULL,
+    renderer_version VARCHAR(32) NOT NULL,
+    layout_profile_snapshot TEXT NOT NULL,
+    layout_snapshot TEXT NOT NULL,
+    template_resolution_snapshot TEXT NOT NULL,
+    payload_snapshot TEXT NOT NULL,
+    document_snapshot MEDIUMTEXT NOT NULL,
+    document_hash VARCHAR(64) NOT NULL,
+    route_snapshot TEXT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    priority INT NOT NULL DEFAULT 0,
+    printer_sequence BIGINT NOT NULL,
+    retry_count INT NOT NULL DEFAULT 0,
+    max_retry_count INT NOT NULL,
+    next_retry_at DATETIME(3) NULL,
+    deadline_at DATETIME(3) NULL,
+    current_attempt_no VARCHAR(32) NULL,
+    result_evidence VARCHAR(24) NULL,
+    confirmed_at DATETIME(3) NULL,
+    last_error_code VARCHAR(64) NULL,
+    last_error_summary VARCHAR(255) NULL,
+    parent_job_no VARCHAR(32) NULL,
+    root_job_no VARCHAR(32) NOT NULL,
+    job_kind VARCHAR(16) NOT NULL,
+    resolution_status VARCHAR(24) NOT NULL DEFAULT 'OPEN',
+    replacement_job_no VARCHAR(32) NULL,
+    cancel_requested_at DATETIME(3) NULL,
+    finished_at DATETIME(3) NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_job_no UNIQUE (tenant_no, job_no),
+    CONSTRAINT uk_prn_job_copy UNIQUE (tenant_no, batch_no, document_key, route_rule_key, target_key, copy_index),
+    CONSTRAINT uk_prn_printer_sequence UNIQUE (tenant_no, printer_no, printer_sequence)
+);
+
+CREATE TABLE IF NOT EXISTS prn_attempt
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    attempt_no VARCHAR(32) NOT NULL,
+    job_no VARCHAR(32) NOT NULL,
+    printer_no VARCHAR(32) NOT NULL,
+    attempt_index INT NOT NULL,
+    dispatch_key VARCHAR(64) NOT NULL,
+    agent_no VARCHAR(32) NULL,
+    agent_session_epoch BIGINT NULL,
+    fence_epoch BIGINT NOT NULL,
+    connection_revision BIGINT NOT NULL,
+    credential_ref VARCHAR(32) NULL,
+    connection_snapshot TEXT NOT NULL,
+    adapter_version VARCHAR(32) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    provider_scope VARCHAR(64) NOT NULL,
+    provider_job_id VARCHAR(128) NULL,
+    provider_reference_hash VARCHAR(64) NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    transport_hash VARCHAR(64) NULL,
+    submitted_at DATETIME(3) NULL,
+    accepted_at DATETIME(3) NULL,
+    result_observed_at DATETIME(3) NULL,
+    next_query_at DATETIME(3) NULL,
+    last_error_code VARCHAR(64) NULL,
+    result_summary TEXT NULL,
+    finished_at DATETIME(3) NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_attempt_no UNIQUE (tenant_no, attempt_no),
+    CONSTRAINT uk_prn_attempt_index UNIQUE (tenant_no, job_no, attempt_index),
+    CONSTRAINT uk_prn_attempt_dispatch UNIQUE (tenant_no, dispatch_key),
+    CONSTRAINT uk_prn_attempt_provider UNIQUE (tenant_no, provider_reference_hash)
+);
+
+CREATE TABLE IF NOT EXISTS prn_receipt
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    receipt_no VARCHAR(32) NOT NULL,
+    attempt_no VARCHAR(32) NULL,
+    source_type VARCHAR(16) NOT NULL,
+    source_scope VARCHAR(64) NOT NULL,
+    source_receipt_key VARCHAR(64) NOT NULL,
+    reported_status VARCHAR(32) NOT NULL,
+    evidence_level VARCHAR(24) NOT NULL,
+    source_sequence BIGINT NULL,
+    source_occurred_at DATETIME(3) NULL,
+    received_at DATETIME(3) NOT NULL,
+    payload_hash VARCHAR(64) NOT NULL,
+    sanitized_payload TEXT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    process_error VARCHAR(64) NULL,
+    processed_at DATETIME(3) NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_receipt_no UNIQUE (tenant_no, receipt_no),
+    CONSTRAINT uk_prn_receipt_source UNIQUE (tenant_no, source_scope, source_receipt_key)
+);
+
+CREATE TABLE IF NOT EXISTS prn_operation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    operation_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    operation_type VARCHAR(32) NOT NULL,
+    actor_type VARCHAR(16) NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    idempotency_key VARCHAR(64) NOT NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    target_type VARCHAR(32) NOT NULL,
+    target_no VARCHAR(64) NOT NULL,
+    command_payload TEXT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    result_ref TEXT NULL,
+    error_code VARCHAR(64) NULL,
+    reason VARCHAR(255) NULL,
+    next_check_at DATETIME(3) NULL,
+    finished_at DATETIME(3) NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_operation_no UNIQUE (tenant_no, operation_no),
+    CONSTRAINT uk_prn_operation_key UNIQUE (tenant_no, entity_no, actor_type, actor_no, idempotency_key)
+);
+
+CREATE TABLE IF NOT EXISTS prn_incident
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    incident_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    incident_type VARCHAR(32) NOT NULL,
+    target_type VARCHAR(16) NOT NULL,
+    target_no VARCHAR(64) NOT NULL,
+    incident_key VARCHAR(64) NOT NULL,
+    severity VARCHAR(16) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    occurrence_count INT NOT NULL DEFAULT 1,
+    first_seen_at DATETIME(3) NOT NULL,
+    last_seen_at DATETIME(3) NOT NULL,
+    acknowledged_by VARCHAR(64) NULL,
+    acknowledged_at DATETIME(3) NULL,
+    resolved_at DATETIME(3) NULL,
+    resolution_code VARCHAR(64) NULL,
+    details TEXT NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_incident_no UNIQUE (tenant_no, incident_no),
+    CONSTRAINT uk_prn_incident_key UNIQUE (tenant_no, incident_key)
+);
+
+CREATE TABLE IF NOT EXISTS prn_store_stream
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    last_sequence BIGINT NOT NULL DEFAULT 0,
+    retained_from_sequence BIGINT NOT NULL DEFAULT 1,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_store_stream UNIQUE (tenant_no, entity_no, store_no)
+);
+
+CREATE TABLE IF NOT EXISTS prn_action_log
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    log_no VARCHAR(32) NOT NULL,
+    store_sequence BIGINT NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    operation_no VARCHAR(32) NULL,
+    target_type VARCHAR(32) NOT NULL,
+    target_no VARCHAR(64) NOT NULL,
+    action VARCHAR(32) NOT NULL,
+    actor_type VARCHAR(16) NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    before_revision BIGINT NULL,
+    after_revision BIGINT NULL,
+    before_status VARCHAR(32) NULL,
+    after_status VARCHAR(32) NULL,
+    reason VARCHAR(255) NULL,
+    safe_details TEXT NULL,
+    trace_no VARCHAR(64) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_log_no UNIQUE (tenant_no, log_no),
+    CONSTRAINT uk_prn_log_sequence UNIQUE (tenant_no, entity_no, store_no, store_sequence)
+);
+
+CREATE TABLE IF NOT EXISTS prn_reconcile_cursor
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    cursor_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    source_kind VARCHAR(32) NOT NULL,
+    watermark_at DATETIME(3) NOT NULL,
+    watermark_no VARCHAR(64) NOT NULL,
+    overlap_seconds INT NOT NULL DEFAULT 300,
+    last_full_scan_at DATETIME(3) NULL,
+    lease_owner VARCHAR(64) NULL,
+    lease_until DATETIME(3) NULL,
+    last_success_at DATETIME(3) NULL,
+    last_error_code VARCHAR(64) NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_cursor_no UNIQUE (tenant_no, cursor_no),
+    CONSTRAINT uk_prn_cursor_source UNIQUE (tenant_no, entity_no, store_no, source_kind)
+);
+
+CREATE TABLE IF NOT EXISTS prn_simulation_run
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    simulation_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    operation_no VARCHAR(32) NOT NULL,
+    scene VARCHAR(32) NOT NULL,
+    source_type VARCHAR(16) NOT NULL,
+    source_ref TEXT NOT NULL,
+    fixture_code VARCHAR(32) NOT NULL,
+    fixture_version VARCHAR(32) NOT NULL,
+    input_snapshot TEXT NOT NULL,
+    template_resolution_snapshot TEXT NOT NULL,
+    document_snapshots TEXT NOT NULL,
+    input_hash VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    expected_results TEXT NOT NULL,
+    actual_results TEXT NULL,
+    event_journal TEXT NULL,
+    claim_token_hash VARCHAR(64) NULL,
+    lease_until DATETIME(3) NULL,
+    next_run_at DATETIME(3) NULL,
+    last_error_code VARCHAR(64) NULL,
+    finished_at DATETIME(3) NULL,
+    created_by VARCHAR(64) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_simulation_no UNIQUE (tenant_no, simulation_no),
+    CONSTRAINT uk_prn_simulation_operation UNIQUE (tenant_no, operation_no)
+);
+
+CREATE TABLE IF NOT EXISTS prn_export_task
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    export_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    operation_no VARCHAR(32) NOT NULL,
+    export_key VARCHAR(64) NOT NULL,
+    source_type VARCHAR(16) NOT NULL,
+    source_no VARCHAR(32) NOT NULL,
+    source_revision BIGINT NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    output_profile VARCHAR(24) NOT NULL,
+    artifact_kind VARCHAR(24) NOT NULL,
+    document_hash VARCHAR(64) NOT NULL,
+    renderer_version VARCHAR(32) NOT NULL,
+    font_bundle_version VARCHAR(32) NOT NULL,
+    required_data_scopes TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    object_key VARCHAR(512) NOT NULL,
+    content_hash VARCHAR(64) NULL,
+    content_type VARCHAR(64) NOT NULL DEFAULT 'application/pdf',
+    file_size BIGINT NULL,
+    page_count INT NULL,
+    claim_token_hash VARCHAR(64) NULL,
+    lease_until DATETIME(3) NULL,
+    next_retry_at DATETIME(3) NULL,
+    retry_count INT NOT NULL DEFAULT 0,
+    generation_epoch BIGINT NOT NULL DEFAULT 0,
+    last_error_code VARCHAR(64) NULL,
+    ready_at DATETIME(3) NULL,
+    expires_at DATETIME(3) NOT NULL,
+    object_deleted_at DATETIME(3) NULL,
+    created_by VARCHAR(64) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_prn_export_no UNIQUE (tenant_no, export_no),
+    CONSTRAINT uk_prn_export_operation UNIQUE (tenant_no, operation_no),
+    CONSTRAINT uk_prn_export_key UNIQUE (tenant_no, export_key)
+);
+
+CREATE TABLE IF NOT EXISTS ord_print_fact
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    print_fact_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    source_fact_key VARCHAR(64) NOT NULL,
+    receipt_intent_key VARCHAR(64) NULL,
+    biz_revision VARCHAR(64) NOT NULL,
+    scene VARCHAR(32) NOT NULL,
+    trigger_type VARCHAR(32) NOT NULL,
+    payload_schema_version INT NOT NULL,
+    source_occurred_at DATETIME(3) NOT NULL,
+    snapshot TEXT NOT NULL,
+    snapshot_hash VARCHAR(64) NOT NULL,
+    printability VARCHAR(16) NOT NULL,
+    block_code VARCHAR(64) NULL,
+    diagnostics TEXT NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ord_print_fact_no UNIQUE (tenant_no, print_fact_no),
+    CONSTRAINT uk_ord_print_fact_source UNIQUE (tenant_no, entity_no, store_no, source_fact_key),
+    CONSTRAINT uk_ord_print_receipt_intent UNIQUE (tenant_no, entity_no, store_no, receipt_intent_key)
 );
 
 -- 种子数据
@@ -14207,3 +15079,21 @@ INSERT IGNORE INTO notify_scene_channel
 VALUES
     ('MAIN','STORED_VALUE_REDEEMED','C_USER','WXSUB',0,'NORMAL',0,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'SYSTEM','SYSTEM'),
     ('MAIN','STORED_VALUE_REDEEMED','C_USER','INAPP',1,'NORMAL',0,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'SYSTEM','SYSTEM');
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:read"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:print:read"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:submit"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:print:submit"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:reprint"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:print:reprint"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:extra"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:print:extra"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:device"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:print:device"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:config"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:print:config"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:resolve"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:print:resolve"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:simulate"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:print:simulate"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:export"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:print:export"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:read"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"biz:print:read"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:submit"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"biz:print:submit"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:reprint"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"biz:print:reprint"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:simulate"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"biz:print:simulate"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:export"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"biz:print:export"',perms)=0;
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PRINT_READ','OPS_SYSTEM','打印诊断只读','打印管理',NULL,'ops:print:read','ops:print:read','IMPLEMENTED',0,NULL,'ACTION',990,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PRINT_READ','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PRINT_READ' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PRINT_RESOLVE','OPS_SYSTEM','打印对账处理','打印管理',NULL,'ops:print:resolve','ops:print:resolve','IMPLEMENTED',0,NULL,'ACTION',990,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PRINT_RESOLVE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PRINT_RESOLVE' AND end_code='OPS');

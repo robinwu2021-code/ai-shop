@@ -1,0 +1,1960 @@
+{
+  "schemaVersion": 1,
+  "status": "DESIGN_ONLY",
+  "commonRequiredFields": [
+    "scene",
+    "payloadSchemaVersion",
+    "store.name",
+    "store.timezone",
+    "source.type",
+    "source.no",
+    "source.factNo",
+    "source.revision",
+    "source.occurredAt",
+    "system.ticketNo",
+    "system.jobKind",
+    "system.copyIndex",
+    "system.generatedAt",
+    "system.warnings"
+  ],
+  "scenes": [
+    {
+      "scene": "ORDER_PAID",
+      "group": "COMMON",
+      "name": "线上订单支付小票",
+      "title": "订单支付凭证",
+      "purpose": "给顾客核对已支付订单",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "SUB_ORDER"
+      ],
+      "sourceContract": "order.paid-snapshot",
+      "triggers": [
+        "ORDER_PAYMENT_CONFIRMED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": true,
+      "mandatoryNotice": "订单支付凭证",
+      "lineMode": "SALE",
+      "lineFields": [
+        "lineRef",
+        "title",
+        "variant",
+        "quantity",
+        "unit",
+        "lineAmount"
+      ],
+      "requiredFields": [
+        {
+          "path": "fields.paidAmount",
+          "label": "实付",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "currency",
+          "type": "CurrencyCode",
+          "required": true
+        },
+        {
+          "path": "lines",
+          "type": "Lines<SALE>",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 500
+        },
+        {
+          "path": "payments",
+          "type": "Payments",
+          "required": true,
+          "minItems": 1
+        },
+        {
+          "path": "fields.orderNo",
+          "label": "订单号",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.orderCreatedAt",
+          "label": "下单时间",
+          "type": "DateTime",
+          "required": true
+        },
+        {
+          "path": "fields.paidAt",
+          "label": "支付时间",
+          "type": "DateTime",
+          "required": true
+        },
+        {
+          "path": "fields.fulfillmentLabel",
+          "label": "履约方式",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.goodsQuantity",
+          "label": "数量合计",
+          "type": "Decimal",
+          "required": true
+        },
+        {
+          "path": "fields.goodsAmount",
+          "label": "商品合计",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "fields.discountAmount",
+          "label": "优惠合计",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "fields.freightAmount",
+          "label": "配送费",
+          "type": "Money",
+          "required": true
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit",
+        "lineAmount"
+      ],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.paidAmount",
+        "currency",
+        "lines",
+        "payments",
+        "fields.orderNo",
+        "fields.orderCreatedAt",
+        "fields.paidAt",
+        "fields.fulfillmentLabel",
+        "fields.goodsQuantity",
+        "fields.goodsAmount",
+        "fields.discountAmount",
+        "fields.freightAmount"
+      ],
+      "optionalFields": [
+        {
+          "path": "fields.pickupCode",
+          "type": "String"
+        },
+        {
+          "path": "fields.orderRemark",
+          "type": "String"
+        },
+        {
+          "path": "store.address",
+          "type": "String"
+        },
+        {
+          "path": "store.phone",
+          "type": "String"
+        },
+        {
+          "path": "fields.paymentNo",
+          "type": "String"
+        }
+      ]
+    },
+    {
+      "scene": "CASHIER_RECEIPT",
+      "group": "COMMON",
+      "name": "门店收银小票",
+      "title": "收银结账凭证",
+      "purpose": "柜台收银结清凭证",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "POS_SETTLEMENT"
+      ],
+      "sourceContract": "cashier.settlement-snapshot",
+      "triggers": [
+        "POS_SETTLEMENT_CONFIRMED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": true,
+      "mandatoryNotice": "收银结账凭证",
+      "lineMode": "SALE",
+      "lineFields": [
+        "lineRef",
+        "title",
+        "variant",
+        "quantity",
+        "unit",
+        "lineAmount"
+      ],
+      "requiredFields": [
+        {
+          "path": "fields.receivableAmount",
+          "label": "应收",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "fields.paidAmount",
+          "label": "已收",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "fields.tenderedAmount",
+          "label": "顾客交付",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "fields.changeAmount",
+          "label": "找零",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "currency",
+          "type": "CurrencyCode",
+          "required": true
+        },
+        {
+          "path": "lines",
+          "type": "Lines<SALE>",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 500
+        },
+        {
+          "path": "payments",
+          "type": "Payments",
+          "required": true,
+          "minItems": 1
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit",
+        "lineAmount"
+      ],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.receivableAmount",
+        "fields.paidAmount",
+        "fields.tenderedAmount",
+        "fields.changeAmount",
+        "currency",
+        "lines",
+        "payments"
+      ]
+    },
+    {
+      "scene": "PICKING",
+      "group": "COMMON",
+      "name": "拣货单",
+      "title": "拣货单 · 非收款凭证",
+      "purpose": "仓库按任务拣货",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "PICKING_TASK"
+      ],
+      "sourceContract": "fulfillment.picking-snapshot",
+      "triggers": [
+        "PICKING_RELEASED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": false,
+      "mandatoryNotice": "拣货单 · 非收款凭证",
+      "lineMode": "PICK",
+      "lineFields": [
+        "lineRef",
+        "title",
+        "variant",
+        "quantity",
+        "unit",
+        "location"
+      ],
+      "requiredFields": [
+        {
+          "path": "fields.pickingNo",
+          "label": "拣货单",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.zoneName",
+          "label": "拣货分区",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.fulfillmentLabel",
+          "label": "履约方式",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "lines",
+          "type": "Lines<PICK>",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 500
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit"
+      ],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.pickingNo",
+        "fields.zoneName",
+        "fields.fulfillmentLabel",
+        "lines"
+      ]
+    },
+    {
+      "scene": "DELIVERY_HANDOVER",
+      "group": "COMMON",
+      "name": "配送交接单",
+      "title": "配送交接单 · 非签收凭证",
+      "purpose": "门店配送员交接",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "DELIVERY_TASK"
+      ],
+      "sourceContract": "fulfillment.handover-snapshot",
+      "triggers": [
+        "DELIVERY_HANDOVER_RELEASED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": false,
+      "mandatoryNotice": "配送交接单 · 非签收凭证",
+      "lineMode": "PICK",
+      "lineFields": [
+        "lineRef",
+        "title",
+        "variant",
+        "quantity",
+        "unit",
+        "location"
+      ],
+      "requiredFields": [
+        {
+          "path": "fields.deliveryNo",
+          "label": "配送单",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.packageCount",
+          "label": "包裹数",
+          "type": "Integer",
+          "required": true
+        },
+        {
+          "path": "fields.recipientDisplay",
+          "label": "收件人",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.maskedPhone",
+          "label": "联系电话",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.addressSummary",
+          "label": "配送区域",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "lines",
+          "type": "Lines<PICK>",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 500
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit"
+      ],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.deliveryNo",
+        "fields.packageCount",
+        "fields.recipientDisplay",
+        "fields.maskedPhone",
+        "fields.addressSummary",
+        "lines"
+      ]
+    },
+    {
+      "scene": "REFUND_RECEIPT",
+      "group": "COMMON",
+      "name": "退款结果小票",
+      "title": "退款凭证 · 已确认退款",
+      "purpose": "仅明确退款成功后出凭证",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "REFUND"
+      ],
+      "sourceContract": "pay.refund-snapshot",
+      "triggers": [
+        "REFUND_CONFIRMED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": true,
+      "mandatoryNotice": "退款凭证 · 已确认退款",
+      "lineMode": "REFUND",
+      "lineFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit",
+        "refundAmount"
+      ],
+      "requiredFields": [
+        {
+          "path": "fields.refundNo",
+          "label": "退款单",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.originalPaymentNo",
+          "label": "原支付单",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.refundedAmount",
+          "label": "本次退款",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "fields.refundChannel",
+          "label": "退款渠道",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.refundReason",
+          "label": "退款原因",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "currency",
+          "type": "CurrencyCode",
+          "required": true
+        },
+        {
+          "path": "lines",
+          "type": "Lines<REFUND>",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 500
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit",
+        "refundAmount"
+      ],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.refundNo",
+        "fields.originalPaymentNo",
+        "fields.refundedAmount",
+        "fields.refundChannel",
+        "fields.refundReason",
+        "currency",
+        "lines"
+      ]
+    },
+    {
+      "scene": "RECHARGE_RECEIPT",
+      "group": "COMMON",
+      "name": "储值充值凭证",
+      "title": "储值充值凭证",
+      "purpose": "展示充值事实及该笔交易后的余额",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "RECHARGE"
+      ],
+      "sourceContract": "pay.recharge-snapshot",
+      "triggers": [
+        "RECHARGE_CONFIRMED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": true,
+      "mandatoryNotice": "储值充值凭证",
+      "lineMode": "NONE",
+      "lineFields": [],
+      "requiredFields": [
+        {
+          "path": "fields.rechargeNo",
+          "label": "充值单",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.principalAmount",
+          "label": "实付本金",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "fields.giftAmount",
+          "label": "赠送金额",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "fields.balanceAfter",
+          "label": "本笔完成后余额",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "currency",
+          "type": "CurrencyCode",
+          "required": true
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.rechargeNo",
+        "fields.principalAmount",
+        "fields.giftAmount",
+        "fields.balanceAfter",
+        "currency"
+      ]
+    },
+    {
+      "scene": "HANDOVER",
+      "group": "COMMON",
+      "name": "交班小票",
+      "title": "交班汇总 · 非单笔收据",
+      "purpose": "按已确认班次报告交接",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "SHIFT_REPORT"
+      ],
+      "sourceContract": "report.shift-snapshot",
+      "triggers": [
+        "SHIFT_HANDOVER_CONFIRMED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": false,
+      "mandatoryNotice": "交班汇总 · 非单笔收据",
+      "lineMode": "NONE",
+      "lineFields": [],
+      "requiredFields": [
+        {
+          "path": "fields.shiftNo",
+          "label": "班次",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.periodLabel",
+          "label": "统计区间",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.transactionCount",
+          "label": "交易笔数",
+          "type": "Integer",
+          "required": true
+        },
+        {
+          "path": "fields.netReceivedAmount",
+          "label": "净收款",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "fields.cashShouldAmount",
+          "label": "应交现金",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "fields.cashActualAmount",
+          "label": "实交现金",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "currency",
+          "type": "CurrencyCode",
+          "required": true
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.shiftNo",
+        "fields.periodLabel",
+        "fields.transactionCount",
+        "fields.netReceivedAmount",
+        "fields.cashShouldAmount",
+        "fields.cashActualAmount",
+        "currency"
+      ]
+    },
+    {
+      "scene": "DAY_END",
+      "group": "COMMON",
+      "name": "日结小票",
+      "title": "日结汇总 · 非单笔收据",
+      "purpose": "按营业日封存报告出日结",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "DAY_REPORT"
+      ],
+      "sourceContract": "report.day-snapshot",
+      "triggers": [
+        "DAY_END_CONFIRMED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": false,
+      "mandatoryNotice": "日结汇总 · 非单笔收据",
+      "lineMode": "NONE",
+      "lineFields": [],
+      "requiredFields": [
+        {
+          "path": "fields.reportNo",
+          "label": "日结报告",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.businessDate",
+          "label": "营业日",
+          "type": "Date",
+          "required": true
+        },
+        {
+          "path": "fields.transactionCount",
+          "label": "交易笔数",
+          "type": "Integer",
+          "required": true
+        },
+        {
+          "path": "fields.grossReceivedAmount",
+          "label": "收款合计",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "fields.refundTotalAmount",
+          "label": "退款合计",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "fields.netReceivedAmount",
+          "label": "净收款",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "currency",
+          "type": "CurrencyCode",
+          "required": true
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.reportNo",
+        "fields.businessDate",
+        "fields.transactionCount",
+        "fields.grossReceivedAmount",
+        "fields.refundTotalAmount",
+        "fields.netReceivedAmount",
+        "currency"
+      ]
+    },
+    {
+      "scene": "PRINTER_TEST",
+      "group": "COMMON",
+      "name": "设备测试小票",
+      "title": "设备测试 · 非业务单据",
+      "purpose": "验证中文、纸宽、切纸和编号",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "PRINTER_TEST"
+      ],
+      "sourceContract": "print.test-pattern",
+      "triggers": [
+        "MANUAL_TEST"
+      ],
+      "autoTrigger": false,
+      "manualMode": "FIXED_TEST",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": false,
+      "mandatoryNotice": "设备测试 · 非业务单据",
+      "lineMode": "NONE",
+      "lineFields": [],
+      "requiredFields": [
+        {
+          "path": "fields.printerName",
+          "label": "打印机",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.paperWidthMm",
+          "label": "纸宽mm",
+          "type": "Integer",
+          "required": true
+        },
+        {
+          "path": "fields.testText",
+          "label": "测试文字",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.printerName",
+        "fields.paperWidthMm",
+        "fields.testText"
+      ]
+    },
+    {
+      "scene": "KITCHEN",
+      "group": "FOOD",
+      "name": "后厨制作单",
+      "title": "制作单 · 请制作",
+      "purpose": "按下达批次及档口制作",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "KITCHEN_RELEASE"
+      ],
+      "sourceContract": "food.kitchen-release-snapshot",
+      "triggers": [
+        "KITCHEN_RELEASED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": true,
+      "executionDocument": true,
+      "paymentEvidence": false,
+      "mandatoryNotice": "制作单 · 请制作",
+      "lineMode": "KITCHEN",
+      "lineFields": [
+        "lineRef",
+        "title",
+        "variant",
+        "quantity",
+        "unit",
+        "preparationNote"
+      ],
+      "requiredFields": [
+        {
+          "path": "fields.tableLabel",
+          "label": "桌号/取餐号",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.releaseNo",
+          "label": "下达批次",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.stationName",
+          "label": "制作档口",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.diningMode",
+          "label": "用餐方式",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "lines",
+          "type": "Lines<KITCHEN>",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 500
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit"
+      ],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.tableLabel",
+        "fields.releaseNo",
+        "fields.stationName",
+        "fields.diningMode",
+        "lines"
+      ]
+    },
+    {
+      "scene": "KITCHEN_ADD",
+      "group": "FOOD",
+      "name": "后厨加菜单",
+      "title": "加菜单 · 仅新增项目",
+      "purpose": "仅打印本次增加数量",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "KITCHEN_ADDITION"
+      ],
+      "sourceContract": "food.kitchen-addition-snapshot",
+      "triggers": [
+        "KITCHEN_ADDITION_RELEASED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": true,
+      "executionDocument": true,
+      "paymentEvidence": false,
+      "mandatoryNotice": "加菜单 · 仅新增项目",
+      "lineMode": "KITCHEN",
+      "lineFields": [
+        "lineRef",
+        "title",
+        "variant",
+        "quantity",
+        "unit",
+        "preparationNote"
+      ],
+      "requiredFields": [
+        {
+          "path": "fields.tableLabel",
+          "label": "桌号/取餐号",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.additionNo",
+          "label": "加菜批次",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.originalReleaseNo",
+          "label": "原下达批次",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.stationName",
+          "label": "制作档口",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "lines",
+          "type": "Lines<KITCHEN>",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 500
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit"
+      ],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.tableLabel",
+        "fields.additionNo",
+        "fields.originalReleaseNo",
+        "fields.stationName",
+        "lines"
+      ]
+    },
+    {
+      "scene": "KITCHEN_VOID",
+      "group": "FOOD",
+      "name": "后厨退菜单",
+      "title": "退菜单 · 停止对应制作",
+      "purpose": "精确撤销对应原票和数量",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "KITCHEN_VOID"
+      ],
+      "sourceContract": "food.kitchen-void-snapshot",
+      "triggers": [
+        "KITCHEN_VOID_CONFIRMED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": true,
+      "executionDocument": true,
+      "paymentEvidence": false,
+      "mandatoryNotice": "退菜单 · 停止对应制作",
+      "lineMode": "KITCHEN",
+      "lineFields": [
+        "lineRef",
+        "title",
+        "variant",
+        "quantity",
+        "unit",
+        "preparationNote"
+      ],
+      "requiredFields": [
+        {
+          "path": "fields.tableLabel",
+          "label": "桌号/取餐号",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.voidNo",
+          "label": "退菜批次",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.originalReleaseNo",
+          "label": "原下达批次",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.originalTicketNo",
+          "label": "原制作票",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.stationName",
+          "label": "制作档口",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.voidReason",
+          "label": "退菜原因",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "lines",
+          "type": "Lines<KITCHEN>",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 500
+        },
+        {
+          "path": "system.originalTicketState",
+          "type": "OriginalTicketState",
+          "required": true,
+          "generatedBy": "SERVER"
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 90,
+      "lineRequiredFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit"
+      ],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.tableLabel",
+        "fields.voidNo",
+        "fields.originalReleaseNo",
+        "fields.originalTicketNo",
+        "fields.stationName",
+        "fields.voidReason",
+        "lines",
+        "system.originalTicketState"
+      ],
+      "systemWarningRules": [
+        {
+          "when": {
+            "path": "system.originalTicketState.status",
+            "op": "EQ",
+            "value": "UNKNOWN"
+          },
+          "warningCode": "ORIGINAL_TICKET_RESULT_UNKNOWN",
+          "text": "原票结果待核实，请核对原制作情况",
+          "mandatory": true
+        }
+      ]
+    },
+    {
+      "scene": "URGE",
+      "group": "FOOD",
+      "name": "后厨催菜单",
+      "title": "催菜单 · 勿重复制作",
+      "purpose": "提醒原制作任务进度",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "KITCHEN_URGE"
+      ],
+      "sourceContract": "food.kitchen-urge-snapshot",
+      "triggers": [
+        "KITCHEN_URGED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": true,
+      "executionDocument": true,
+      "paymentEvidence": false,
+      "mandatoryNotice": "催菜单 · 勿重复制作",
+      "lineMode": "KITCHEN",
+      "lineFields": [
+        "lineRef",
+        "title",
+        "variant",
+        "quantity",
+        "unit",
+        "preparationNote"
+      ],
+      "requiredFields": [
+        {
+          "path": "fields.tableLabel",
+          "label": "桌号/取餐号",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.urgeNo",
+          "label": "催菜批次",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.originalReleaseNo",
+          "label": "原下达批次",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.originalTicketNo",
+          "label": "原制作票",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.stationName",
+          "label": "制作档口",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "lines",
+          "type": "Lines<KITCHEN>",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 500
+        },
+        {
+          "path": "system.originalTicketState",
+          "type": "OriginalTicketState",
+          "required": true,
+          "generatedBy": "SERVER"
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 100,
+      "lineRequiredFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit"
+      ],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.tableLabel",
+        "fields.urgeNo",
+        "fields.originalReleaseNo",
+        "fields.originalTicketNo",
+        "fields.stationName",
+        "lines",
+        "system.originalTicketState"
+      ],
+      "systemWarningRules": [
+        {
+          "when": {
+            "path": "system.originalTicketState.status",
+            "op": "EQ",
+            "value": "UNKNOWN"
+          },
+          "warningCode": "ORIGINAL_TICKET_RESULT_UNKNOWN",
+          "text": "原票结果待核实，请核对原制作情况",
+          "mandatory": true
+        }
+      ]
+    },
+    {
+      "scene": "PRE_BILL",
+      "group": "FOOD",
+      "name": "预结单",
+      "title": "预结单 · 未结账 · 非支付凭证",
+      "purpose": "只供核对当前账单",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "FOOD_BILL"
+      ],
+      "sourceContract": "food.pre-bill-snapshot",
+      "triggers": [
+        "MANUAL_PRE_BILL"
+      ],
+      "autoTrigger": false,
+      "manualMode": "CURRENT_VERSION",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": false,
+      "mandatoryNotice": "预结单 · 未结账 · 非支付凭证",
+      "lineMode": "SALE",
+      "lineFields": [
+        "lineRef",
+        "title",
+        "variant",
+        "quantity",
+        "unit",
+        "lineAmount"
+      ],
+      "requiredFields": [
+        {
+          "path": "fields.tableLabel",
+          "label": "桌号",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.billRevision",
+          "label": "账单版本",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.receivableAmount",
+          "label": "待结金额",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "currency",
+          "type": "CurrencyCode",
+          "required": true
+        },
+        {
+          "path": "lines",
+          "type": "Lines<SALE>",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 500
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit",
+        "lineAmount"
+      ],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.tableLabel",
+        "fields.billRevision",
+        "fields.receivableAmount",
+        "currency",
+        "lines"
+      ]
+    },
+    {
+      "scene": "CHECKOUT",
+      "group": "FOOD",
+      "name": "餐饮结账小票",
+      "title": "餐饮结账凭证 · 已结清",
+      "purpose": "结台结账后的支付明细",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "FOOD_SETTLEMENT"
+      ],
+      "sourceContract": "food.settlement-snapshot",
+      "triggers": [
+        "FOOD_SETTLEMENT_CONFIRMED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": true,
+      "mandatoryNotice": "餐饮结账凭证 · 已结清",
+      "lineMode": "SALE",
+      "lineFields": [
+        "lineRef",
+        "title",
+        "variant",
+        "quantity",
+        "unit",
+        "lineAmount"
+      ],
+      "requiredFields": [
+        {
+          "path": "fields.tableLabel",
+          "label": "桌号/取餐号",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.settlementNo",
+          "label": "结账单",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.receivableAmount",
+          "label": "应收",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "fields.paidAmount",
+          "label": "实收",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "currency",
+          "type": "CurrencyCode",
+          "required": true
+        },
+        {
+          "path": "lines",
+          "type": "Lines<SALE>",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 500
+        },
+        {
+          "path": "payments",
+          "type": "Payments",
+          "required": true,
+          "minItems": 1
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit",
+        "lineAmount"
+      ],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.tableLabel",
+        "fields.settlementNo",
+        "fields.receivableAmount",
+        "fields.paidAmount",
+        "currency",
+        "lines",
+        "payments"
+      ]
+    },
+    {
+      "scene": "TAKEOUT_PACKING",
+      "group": "FOOD",
+      "name": "外卖打包单",
+      "title": "外卖打包单 · 非制作单",
+      "purpose": "按最终打包任务核对",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "PACKING_TASK"
+      ],
+      "sourceContract": "food.packing-snapshot",
+      "triggers": [
+        "PACKING_RELEASED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": false,
+      "mandatoryNotice": "外卖打包单 · 非制作单",
+      "lineMode": "PACK",
+      "lineFields": [
+        "lineRef",
+        "title",
+        "variant",
+        "quantity",
+        "unit",
+        "packingNote"
+      ],
+      "requiredFields": [
+        {
+          "path": "fields.pickupCode",
+          "label": "取餐号",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.packingNo",
+          "label": "打包任务",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.packageCount",
+          "label": "包数",
+          "type": "Integer",
+          "required": true
+        },
+        {
+          "path": "fields.utensilCount",
+          "label": "餐具份数",
+          "type": "Integer",
+          "required": true
+        },
+        {
+          "path": "lines",
+          "type": "Lines<PACK>",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 500
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit"
+      ],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.pickupCode",
+        "fields.packingNo",
+        "fields.packageCount",
+        "fields.utensilCount",
+        "lines"
+      ]
+    },
+    {
+      "scene": "APPT_CONFIRM",
+      "group": "BEAUTY",
+      "name": "预约确认单",
+      "title": "预约确认单 · 非消费凭证",
+      "purpose": "确认预约项目及时间",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "APPOINTMENT"
+      ],
+      "sourceContract": "beauty.appointment-snapshot",
+      "triggers": [
+        "APPOINTMENT_CONFIRMED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": false,
+      "mandatoryNotice": "预约确认单 · 非消费凭证",
+      "lineMode": "SERVICE",
+      "lineFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit"
+      ],
+      "requiredFields": [
+        {
+          "path": "fields.appointmentNo",
+          "label": "预约号",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.customerDisplay",
+          "label": "顾客",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.appointmentAt",
+          "label": "预约时间",
+          "type": "DateTime",
+          "required": true
+        },
+        {
+          "path": "fields.personnelDisplay",
+          "label": "预约服务人员",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "lines",
+          "type": "Lines<SERVICE>",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 500
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit"
+      ],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.appointmentNo",
+        "fields.customerDisplay",
+        "fields.appointmentAt",
+        "fields.personnelDisplay",
+        "lines"
+      ]
+    },
+    {
+      "scene": "SERVICE_START",
+      "group": "BEAUTY",
+      "name": "服务执行单",
+      "title": "服务执行单 · 请核对注意事项",
+      "purpose": "开工任务及必要安全提醒",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "SERVICE_TASK"
+      ],
+      "sourceContract": "beauty.service-start-snapshot",
+      "triggers": [
+        "SERVICE_TASK_RELEASED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": true,
+      "executionDocument": true,
+      "paymentEvidence": false,
+      "mandatoryNotice": "服务执行单 · 请核对注意事项",
+      "lineMode": "SERVICE",
+      "lineFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit"
+      ],
+      "requiredFields": [
+        {
+          "path": "fields.workOrderNo",
+          "label": "工单",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.serviceTaskNo",
+          "label": "任务",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.customerDisplay",
+          "label": "顾客",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.personnelDisplay",
+          "label": "执行人员",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.safetyNotice",
+          "label": "必要注意事项",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "lines",
+          "type": "Lines<SERVICE>",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 500
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit"
+      ],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.workOrderNo",
+        "fields.serviceTaskNo",
+        "fields.customerDisplay",
+        "fields.personnelDisplay",
+        "fields.safetyNotice",
+        "lines"
+      ]
+    },
+    {
+      "scene": "SERVICE_COMPLETE",
+      "group": "BEAUTY",
+      "name": "服务完成单",
+      "title": "服务完成单 · 非付款凭证",
+      "purpose": "记录完成项目及实际人员",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "SERVICE_COMPLETION"
+      ],
+      "sourceContract": "beauty.service-completion-snapshot",
+      "triggers": [
+        "SERVICE_COMPLETED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": false,
+      "mandatoryNotice": "服务完成单 · 非付款凭证",
+      "lineMode": "SERVICE",
+      "lineFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit"
+      ],
+      "requiredFields": [
+        {
+          "path": "fields.workOrderNo",
+          "label": "工单",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.completionNo",
+          "label": "完成记录",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.completedAt",
+          "label": "完成时间",
+          "type": "DateTime",
+          "required": true
+        },
+        {
+          "path": "fields.personnelDisplay",
+          "label": "实际服务人员",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "lines",
+          "type": "Lines<SERVICE>",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 500
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [
+        "lineRef",
+        "title",
+        "quantity",
+        "unit"
+      ],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.workOrderNo",
+        "fields.completionNo",
+        "fields.completedAt",
+        "fields.personnelDisplay",
+        "lines"
+      ]
+    },
+    {
+      "scene": "CARD_BALANCE",
+      "group": "BEAUTY",
+      "name": "权益耗次凭证",
+      "title": "权益使用凭证 · 本次交易后余次",
+      "purpose": "按已确认耗次账展示本次变化",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "ENTITLEMENT_CONSUMPTION"
+      ],
+      "sourceContract": "pay.entitlement-consumption-snapshot",
+      "triggers": [
+        "ENTITLEMENT_CONSUMPTION_CONFIRMED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": false,
+      "mandatoryNotice": "权益使用凭证 · 本次交易后余次",
+      "lineMode": "NONE",
+      "lineFields": [],
+      "requiredFields": [
+        {
+          "path": "fields.consumptionNo",
+          "label": "耗次流水",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.maskedCardNo",
+          "label": "权益卡",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.entitlementName",
+          "label": "权益项目",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.usedQuantity",
+          "label": "本次使用",
+          "type": "Decimal",
+          "required": true
+        },
+        {
+          "path": "fields.remainingAfter",
+          "label": "本笔完成后剩余",
+          "type": "Decimal",
+          "required": true
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "source.no",
+        "source.factNo",
+        "source.revision",
+        "source.occurredAt",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "system.generatedAt",
+        "fields.consumptionNo",
+        "fields.maskedCardNo",
+        "fields.entitlementName",
+        "fields.usedQuantity",
+        "fields.remainingAfter"
+      ]
+    }
+  ]
+}

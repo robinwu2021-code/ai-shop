@@ -261,6 +261,11 @@ SET @sv_selection_drop=IF(@sv_selection_constraint IS NULL,'SELECT 1',CONCAT('AL
 PREPARE sv_selection_stmt FROM @sv_selection_drop;
 EXECUTE sv_selection_stmt;
 DEALLOCATE PREPARE sv_selection_stmt;""", 'mbr_identity_ticket', ('purpose', 'source_ticket_hash')),
+    ('SET @sv_release_check', """SET @sv_release_check = (SELECT tc.CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS tc JOIN information_schema.CHECK_CONSTRAINTS cc ON cc.CONSTRAINT_SCHEMA=tc.CONSTRAINT_SCHEMA AND cc.CONSTRAINT_NAME=tc.CONSTRAINT_NAME WHERE tc.CONSTRAINT_SCHEMA=DATABASE() AND tc.TABLE_NAME='sv_release' AND tc.CONSTRAINT_TYPE='CHECK' AND cc.CHECK_CLAUSE LIKE '%source_kind%' LIMIT 1);
+SET @sv_release_sql = CONCAT('ALTER TABLE sv_release DROP CHECK `',REPLACE(@sv_release_check,'`','``'),'`');
+PREPARE sv_release_statement FROM @sv_release_sql;
+EXECUTE sv_release_statement;
+DEALLOCATE PREPARE sv_release_statement;""", 'sv_release', ('source_kind',)),
  ]
 
 
@@ -280,7 +285,23 @@ def offline_receipt_drop(sql, tables):
             re.search(r"\bCHECK\s*\(", column, re.I)
             and all(re.search(rf"\b{field}\b", column, re.I) for field in fields))]
         clean = clean[:offset] + parts[5]
+        if trigger == "SET @sv_release_check":
+            clean = re.sub(r"SET @sv_release_(?:check|sql)\s*=\s*NULL\s*;", "", clean)
     return clean
+def _h2_constant_json_append(stmt: str) -> str:
+    """Replay constant permission-array appends using H2 string operations.
+
+    Exact quoted-token membership preserves migration idempotency. Only the
+    restricted permission-code alphabet is translated; arbitrary JSON is not.
+    """
+    append = re.compile(r"JSON_ARRAY_APPEND\(\s*(\w+)\s*,\s*'\$'\s*,\s*'([a-z:]+)'\s*\)", re.I)
+    def replace(match):
+        column, permission = match.groups()
+        return (f"CONCAT(LEFT(TRIM({column}),CHAR_LENGTH(TRIM({column}))-1),"
+                f"CASE WHEN TRIM({column})='[]' THEN '' ELSE ',' END,'\"{permission}\"]')")
+    stmt = append.sub(replace, stmt)
+    membership = re.compile(r"JSON_CONTAINS\(\s*(\w+)\s*,\s*JSON_QUOTE\(\s*'([a-z:]+)'\s*\)\s*\)\s*=\s*0", re.I)
+    return membership.sub(lambda m: f"LOCATE('\"{m.group(2)}\"',{m.group(1)})=0", stmt)
 
 
 def replay(sql, tables, order, seeds, renames, altered):
@@ -289,6 +310,7 @@ def replay(sql, tables, order, seeds, renames, altered):
     for stmt in [s.strip() for s in strip_comments(sql).split(";") if s.strip()]:
         if not stmt:
             continue
+        stmt = _h2_constant_json_append(stmt)
         low = stmt.lower()
         if low.startswith("create table"):
             create_table(stmt, tables, order)

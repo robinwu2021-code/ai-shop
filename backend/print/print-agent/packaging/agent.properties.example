@@ -1,0 +1,7 @@
+server=https://your-api.example.com
+agentNo=AG_REPLACE_AFTER_REGISTRATION
+stateDirectory=C:/Users/REPLACE/AppData/Local/ai-shop-print
+# Fill after selecting discovered queues in printer management.
+printerNos=
+# Use a verified physical device serial/registration identity, not a random per-install ID.
+physical.SERIAL_REPLACE=Your Windows printer queue name

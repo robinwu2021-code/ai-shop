@@ -40,6 +40,9 @@ import tools.jackson.databind.ObjectMapper;
 /** Child-first locking makes replay and concurrent shipment decisions observe current refund facts. */
 @Service
 public class RefundResultServiceImpl implements RefundResultService {
+    private ai.neargo.shop.trade.order.printing.service.OrderPrintFactService printFacts;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setPrintFacts(ai.neargo.shop.trade.order.printing.service.OrderPrintFactService facts) {this.printFacts=facts;}
     private final RefundExecutionStore store;
     private final StatusCasMapper locks;
     private final AfterSaleMapper afterSales;
@@ -177,6 +180,8 @@ public class RefundResultServiceImpl implements RefundResultService {
         slots.releaseIfDone(as);
         statuses.order(child, OrderEvent.FULLY_REFUNDED, Actor.SYSTEM, null,
                 "子单现金已全额退回", OrderContext.authorizedOnly().withFullyRefunded(fullyRefunded));
+        if (printFacts != null) printFacts.recordControl(child.getOrderNo(),child.getSubOrderNo(),
+                "REFUND_CONFIRMED","REFUND:"+current.getExecutionNo(),java.time.Instant.ofEpochMilli(current.getSucceededAt()));
         events.publish(new OrderEvents.AfterSaleRefunded(as.getAfterSaleNo(), as.getSubOrderNo(),
                 as.getUserNo(), current.getAmountMinor()));
     }

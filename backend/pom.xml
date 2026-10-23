@@ -42,6 +42,7 @@
         <module>shop-base-auth</module>
         <!-- 领域服务实现（jar，不可独立启动） -->
         <!-- 核心域合并为一个工程：模块数 = 未来可能的部署单元数，域数 = 包数 -->
+        <module>print</module>
         <module>shop-core</module>
         <!-- 独立成工程的两个域：变更节奏与外部依赖都与核心域不同，最可能先拆微服务 -->
         <module>shop-merchant</module>
@@ -102,6 +103,8 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency><groupId>org.apache.pdfbox</groupId><artifactId>pdfbox</artifactId><version>3.0.8</version></dependency>
+            <dependency><groupId>org.xerial</groupId><artifactId>sqlite-jdbc</artifactId><version>3.51.1.0</version></dependency>
             <dependency>
                 <groupId>com.tngtech.archunit</groupId>
                 <artifactId>archunit-junit5</artifactId>
