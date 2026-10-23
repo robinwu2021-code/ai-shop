@@ -1,6 +1,11 @@
 package ai.neargo.shop.spi.marketing;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * trade → marketing：下单时的**店铺活动**优惠计算。
@@ -16,6 +21,31 @@ import java.util.List;
  * 四层测试全绿，因为测的是「活动能不能建」，没有一条测「建了之后金额有没有变」。
  */
 public interface CampaignPort {
+    /** Recheck the actual selected owner rules and lock local activity roots in a checkout transaction. */
+    default void requireOrdinarySelection(String buyerNo, Discount selected) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    /** Evaluate the explicit buyer audience without borrowing the merchant preparer identity. */
+    default List<AppliedActivity> candidatesFor(String buyerNo, List<MerchantAmount> groups) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    /** Apply existing discount selection with explicit buyer facts; unsupported adapters fail closed. */
+    default Discount autoDiscountFor(
+            String buyerNo, List<MerchantAmount> groups, Map<String, String> choices) {
+        return pick(candidatesFor(buyerNo, groups), choices == null ? Map.of() : choices);
+    }
+
+    /** Use the ordinary price engine with explicit buyer eligibility and reject complex winning triggers. */
+    default Map<String, Long> flashPricesFor(String buyerNo, Collection<String> goodsNos) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    /** Expose explicit buyer gifts so ordinary checkout can reject unsupported benefits without dropping them. */
+    default Map<String, GiftRule> giftRulesFor(String buyerNo, Collection<String> goodsNos) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
 
     /**
      * 按商家算自动优惠（当前只有满减 {@code FULL_CUT}）。

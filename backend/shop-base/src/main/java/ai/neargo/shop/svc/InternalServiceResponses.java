@@ -1,10 +1,11 @@
 package ai.neargo.shop.svc;
 
 import ai.neargo.shop.common.BizException;
+
+import org.springframework.http.ResponseEntity;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.function.Supplier;
-import org.springframework.http.ResponseEntity;
 
 /** Shared service-token and status semantics. Never copy private owner request/response bodies into error output. */
 public final class InternalServiceResponses {
@@ -24,7 +25,14 @@ public final class InternalServiceResponses {
                 case BAD_REQUEST -> 400;
                 case FORBIDDEN -> 403;
                 case NOT_FOUND -> 404;
-                case CONFLICT -> 409;
+                case CONFLICT,
+                                CHECKOUT_QUOTE_STALE,
+                                CHECKOUT_CONFIRMATION_REQUIRED,
+                                MANAGED_SERVICE_COMPLETION_BLOCKED,
+                                CHECKOUT_OPERATION_REJECTED ->
+                                409;
+                        case CHECKOUT_UNSUPPORTED_SELECTION -> 422;
+                        case CHECKOUT_DEPENDENCY_UNAVAILABLE -> 503;
                 case ENTITLEMENT_FEATURE_UNAVAILABLE, MEMBER_GUEST_UNAVAILABLE -> 503;
                 case MEMBER_CODE_INVALID -> 400;
                 case BEAUTY_SEARCH_INCOMPLETE -> 422;

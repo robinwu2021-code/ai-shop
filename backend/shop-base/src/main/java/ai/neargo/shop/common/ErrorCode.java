@@ -352,6 +352,12 @@ public enum ErrorCode {
 
     /** Do not report cash-order cleanup complete when an older order still contains points liabilities. */
     ORDER_POINTS_MANUAL_REQUIRED(20014, "err.trade.order_points_manual_required"),
+    CHECKOUT_QUOTE_STALE(20015, "err.trade.checkout_quote_stale"),
+    CHECKOUT_UNSUPPORTED_SELECTION(20016, "err.trade.checkout_unsupported_selection"),
+    CHECKOUT_CONFIRMATION_REQUIRED(20017, "err.trade.checkout_confirmation_required"),
+    CHECKOUT_DEPENDENCY_UNAVAILABLE(20019, "err.trade.checkout_dependency_unavailable"),
+    CHECKOUT_OPERATION_REJECTED(20020, "err.trade.checkout_operation_rejected"),
+    MANAGED_SERVICE_COMPLETION_BLOCKED(20018, "err.trade.managed_service_completion_blocked"),
 
     // ---- 3xxxx 履约 ----
     ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),

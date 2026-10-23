@@ -15,6 +15,13 @@ import java.util.List;
 public interface StoreSalesCatalogPort {
     Snapshot read(String entityNo, String storeNo, Instant at);
 
+    /**
+     * Local HOST capability: an actual platform transaction and the current consumer are mandatory.
+     */
+    default Snapshot lockForCheckout(String buyerNo, String entityNo, String storeNo, Instant at) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
     enum SalesMode { UNRESTRICTED, WINDOWED }
 
     record Group(String key, String title, int position, Boolean visible) {

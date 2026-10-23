@@ -44,11 +44,18 @@ public interface StatusCasMapper {
     int casPayment(@Param("no") String no, @Param("from") String from, @Param("to") String to,
                    @Param("now") LocalDateTime now);
 
+    @Select(
+            "SELECT fulfillment_authority FROM ord_sub_order WHERE sub_order_no = #{no} "
+                    + "AND deleted = 0 FOR UPDATE")
+    String fulfillmentAuthority(@Param("no") String no);
+
     @Select("SELECT status FROM ord_sub_order WHERE sub_order_no = #{no} LIMIT 1")
     String orderStatus(@Param("no") String no);
 
     @Update("UPDATE ord_sub_order SET status = #{to}, updated_at = #{now}, version = version + 1 "
-            + "WHERE sub_order_no = #{no} AND status = #{from}")
+            + "WHERE sub_order_no = #{no} AND status = #{from} AND deleted = 0 "
+                    + "AND (#{to} <> 'COMPLETED' OR fulfillment_authority IS NULL "
+                    + "OR fulfillment_authority <> 'SERVICE_EXECUTION')")
     int casOrder(@Param("no") String no, @Param("from") String from, @Param("to") String to,
                  @Param("now") LocalDateTime now);
 

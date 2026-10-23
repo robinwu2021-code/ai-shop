@@ -1,16 +1,26 @@
 package ai.neargo.shop.marketing.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.marketing.campaign.CampaignJson;
 import ai.neargo.shop.marketing.campaign.entity.MktCampaign;
 import ai.neargo.shop.marketing.campaign.mapper.CampaignMappers.CampaignMapper;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+
+import javax.sql.DataSource;
 
 /**
  * trade → marketing：店铺活动的自动优惠（{@link CampaignPort}）。
@@ -35,6 +45,52 @@ public class CampaignPortImpl implements CampaignPort {
     public CampaignPortImpl(CampaignMapper campaignMapper, ObjectMapper json) {
         this.campaignMapper = campaignMapper;
         this.json = json;
+    }
+
+    @Autowired
+    @Qualifier("dataSource")
+    private DataSource checkoutSource;
+
+    @Override
+    public List<AppliedActivity> candidatesFor(String buyerNo, List<MerchantAmount> groups) {
+        return candidates(groups);
+    }
+
+    @Override
+    public Map<String, Long> flashPricesFor(String buyerNo, Collection<String> goodsNos) {
+        return flashPrices(goodsNos);
+    }
+
+    @Override
+    public Map<String, GiftRule> giftRulesFor(String buyerNo, Collection<String> goodsNos) {
+        return giftRules(goodsNos);
+    }
+
+    @Override
+    public void requireOrdinarySelection(String buyerNo, Discount selected) {
+        boolean locked = TransactionSynchronizationManager.isActualTransactionActive();
+        if (locked && !TransactionSynchronizationManager.hasResource(checkoutSource)) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        DataScopeContext.executeWithoutScope(
+                () -> {
+                    for (var selectedRow :
+                            selected.applied().stream()
+                                    .sorted(Comparator.comparing(AppliedActivity::activityNo))
+                                    .toList()) {
+                        var row =
+                                campaignMapper.selectOne(
+                                        Wrappers.<MktCampaign>lambdaQuery()
+                                                .eq(MktCampaign::getTenantNo, "MAIN")
+                                                .eq(
+                                                        MktCampaign::getCampaignNo,
+                                                        selectedRow.activityNo())
+                                                .last(locked ? "FOR UPDATE" : ""));
+                        if (row == null || !"FULL_CUT".equals(row.getType())) {
+                            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                        }
+                    }
+                });
     }
 
     @Override

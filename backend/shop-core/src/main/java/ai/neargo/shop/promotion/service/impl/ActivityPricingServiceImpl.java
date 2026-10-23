@@ -1,11 +1,13 @@
 package ai.neargo.shop.promotion.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.promotion.entity.PmtActivity;
-import ai.neargo.shop.promotion.entity.PmtApply;
 import ai.neargo.shop.promotion.entity.PmtActivityAudience;
 import ai.neargo.shop.promotion.entity.PmtActivityGoods;
+import ai.neargo.shop.promotion.entity.PmtApply;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityAudienceMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityGoodsMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityMapper;
@@ -15,18 +17,66 @@ import ai.neargo.shop.promotion.service.UnifiedOrderActivityPricingService;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.member.MemberQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import javax.sql.DataSource;
+
 @Service
 public class ActivityPricingServiceImpl implements ActivityPricingService {
+
+    @Autowired
+    @Qualifier("dataSource")
+    private DataSource checkoutSource;
+
+    @Override
+    public void requireOrdinarySelection(String buyerNo, CampaignPort.Discount selected) {
+        boolean locked = TransactionSynchronizationManager.isActualTransactionActive();
+        if (locked && !TransactionSynchronizationManager.hasResource(checkoutSource)) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        DataScopeContext.executeWithoutScope(
+                () -> {
+                    for (var selectedRow :
+                            selected.applied().stream()
+                                    .sorted(
+                                            Comparator.comparing(
+                                                    CampaignPort.AppliedActivity::activityNo))
+                                    .toList()) {
+                        var row =
+                                activityMapper.selectOne(
+                                        Wrappers.<PmtActivity>lambdaQuery()
+                                                .eq(PmtActivity::getTenantNo, "MAIN")
+                                                .eq(
+                                                        PmtActivity::getActivityNo,
+                                                        selectedRow.activityNo())
+                                                .last(locked ? "FOR UPDATE" : ""));
+                        boolean ordinary =
+                                row != null
+                                        && (row.getCurrentVersionNo() == null
+                                                ? PmtActivity.BENEFIT_CUT.equals(
+                                                        row.getBenefitType())
+                                                : unifiedOrders != null
+                                                        && unifiedOrders.supportsOrdinarySelection(
+                                                                row.getActivityNo()));
+                        if (!ordinary) {
+                            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                        }
+                    }
+                });
+    }
 
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(ActivityPricingServiceImpl.class);
@@ -491,10 +541,25 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
 
     @Override
     public Map<String, Long> flashPrices(String userNo, Collection<String> goodsNos) {
+        return flashPrices(userNo, goodsNos, Map.of(), false);
+    }
+
+    @Override
+    public Map<String, Long> ordinaryFlashPrices(
+            String userNo, Collection<String> goodsNos, Map<String, Long> competingPrices) {
+        return flashPrices(userNo, goodsNos, competingPrices, true);
+    }
+
+    private Map<String, Long> flashPrices(
+            String userNo,
+            Collection<String> goodsNos,
+            Map<String, Long> competingPrices,
+            boolean ordinary) {
         if (goodsNos == null || goodsNos.isEmpty()) {
             return Map.of();
         }
-        Map<String, Long> out = new HashMap<>();
+        Map<String, Long> out = new HashMap<>(competingPrices);
+        var unsupportedWinners = new HashSet<String>();
         for (PmtActivity a : liveByGoods(goodsNos, PmtActivity.BENEFIT_PRICE)) {
             /*
              * ★ **团购的成团价不是限时特价**（2026-09-18）。
@@ -522,8 +587,22 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 }
                 long price = nz(a.getBenefitAmountMinor());
                 // **取最低价**：与满减「取最优」同一侧 —— 都往对用户有利的方向走
+                long previous = out.getOrDefault(goodsNo, Long.MAX_VALUE);
+                if (ordinary && price <= previous) {
+                    boolean supported =
+                            PmtActivity.TRIGGER_NONE.equals(a.getTriggerType())
+                                    || PmtActivity.TRIGGER_GOODS.equals(a.getTriggerType());
+                    if (!supported) {
+                        unsupportedWinners.add(goodsNo);
+                    } else if (price < previous) {
+                        unsupportedWinners.remove(goodsNo);
+                    }
+                }
                 out.merge(goodsNo, price, Math::min);
             }
+        }
+        if (!unsupportedWinners.isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
         }
         return out;
     }

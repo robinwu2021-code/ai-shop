@@ -17,6 +17,12 @@ import java.util.Map;
  * 所以路由那边按<b>同类取最优</b>合并（既有口径），而不是相加。
  */
 public interface ActivityPricingService {
+    /** The same minimum-price algorithm checks only winning ordinary checkout price sources. */
+    Map<String, Long> ordinaryFlashPrices(
+            String buyerNo, Collection<String> goodsNos, Map<String, Long> competingPrices);
+
+    /** Validate selected local activity rules and hold their roots when called by checkout. */
+    void requireOrdinarySelection(String buyerNo, CampaignPort.Discount selected);
 
     /**
      * 按商家算自动优惠。

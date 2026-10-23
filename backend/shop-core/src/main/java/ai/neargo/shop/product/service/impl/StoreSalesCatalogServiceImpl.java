@@ -1,6 +1,9 @@
 package ai.neargo.shop.product.service.impl;
 
+import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.auth.Realm;
+import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -17,22 +20,15 @@ import ai.neargo.shop.product.entity.PrdStoreCatalogVersion;
 import ai.neargo.shop.product.mapper.ProductMappers;
 import ai.neargo.shop.product.service.StoreSalesCatalogService;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
+import ai.neargo.shop.spi.product.StoreCatalogVersionPublished;
 import ai.neargo.shop.spi.product.StoreSalesCatalogPort.Definition;
 import ai.neargo.shop.spi.product.StoreSalesCatalogPort.Entry;
 import ai.neargo.shop.spi.product.StoreSalesCatalogPort.PublishReq;
 import ai.neargo.shop.spi.product.StoreSalesCatalogPort.Snapshot;
-import ai.neargo.shop.spi.product.StoreCatalogVersionPublished;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import javax.sql.DataSource;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.ConcurrencyFailureException;
@@ -43,6 +39,17 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
+
+import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.sql.DataSource;
 
 /** Owner facts precede a short local transaction; head CAS, immutable version, idempotency and evidence are atomic. */
 @Service
@@ -79,6 +86,60 @@ public class StoreSalesCatalogServiceImpl implements StoreSalesCatalogService {
         reads.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
         publisher = PlatformPublicationPublisher.create(facades::getIfAvailable, manager, () -> source, json,
                 consumers::orderedStream, Set.of("PRODUCT_STORE_CATALOG_VERSION_PUBLISHED"), archiveOnly, maintenance);
+    }
+
+    @Autowired
+    @Qualifier("checkoutClock")
+    private ObjectProvider<Clock> checkoutClocks;
+
+    @Override
+    public Snapshot lockForCheckout(String buyerNo, String entityNo, String storeNo, Instant at) {
+        var current = SecurityUtils.requireUser();
+        if (current.realm() != Realm.CONSUMER
+                || current.subjectKind() != SubjectKind.USR
+                || !"MAIN".equals(current.tenantNo())
+                || !current.userNo().equals(buyerNo)
+                || SecurityUtils.currentToken().filter(t -> !t.isBlank()).isEmpty()) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.hasResource(source)) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        if (at == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return DataScopeContext.executeWithoutScope(
+                () -> {
+                    stores.checkoutCardInCurrentTransaction("MAIN", entityNo, storeNo);
+                    var locked = heads.lockHead(entityNo, storeNo);
+                    if (locked == null) {
+                        throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                    }
+                    // Acquiring the lock may have crossed a scheduled version boundary.
+                    var currentTime = checkoutClocks.getIfAvailable(Clock::systemUTC).instant();
+                    var version =
+                            versions.selectOne(
+                                    Wrappers.<PrdStoreCatalogVersion>lambdaQuery()
+                                            .eq(PrdStoreCatalogVersion::getTenantNo, "MAIN")
+                                            .eq(PrdStoreCatalogVersion::getEntityNo, entityNo)
+                                            .eq(PrdStoreCatalogVersion::getStoreNo, storeNo)
+                                            .eq(
+                                                    PrdStoreCatalogVersion::getCatalogNo,
+                                                    locked.getCatalogNo())
+                                            .le(
+                                                    PrdStoreCatalogVersion::getEffectiveAt,
+                                                    LocalDateTime.ofInstant(
+                                                            currentTime, ZoneOffset.UTC))
+                                            .orderByDesc(
+                                                    PrdStoreCatalogVersion::getEffectiveAt,
+                                                    PrdStoreCatalogVersion::getRevisionIndex)
+                                            .last("LIMIT 1"));
+                    if (version == null) {
+                        throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                    }
+                    return snapshot(locked, version);
+                });
     }
 
     @Override

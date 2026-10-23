@@ -47,6 +47,9 @@ public final class BizPerms {
 
     /** 订单列表与详情、工作台待办。<b>含金额</b> */
     public static final String ORDER_VIEW = "biz:order:view";
+
+    /** 准备报价不授权购买，必须单独显式授予。 */
+    public static final String CHECKOUT_PREPARE = "trade:checkout:prepare";
     /** 改库存（含门店库存）。高频日常动作，且<b>不出钱</b> —— 与改价是两件事 */
     public static final String STOCK = "biz:stock";
     /** 建/改商品、上下架、规格模板、识图。<b>含价格</b> */
@@ -149,6 +152,7 @@ public final class BizPerms {
             Map.entry(VERIFY, "核销取货"),
             Map.entry(SHIP, "发货与标记送达"),
             Map.entry(ORDER_VIEW, "看订单与金额"),
+            Map.entry(CHECKOUT_PREPARE, "准备服务购买报价"),
             Map.entry(STOCK, "看商品、改库存"),
             Map.entry(GOODS, "建商品、改价、上下架"),
             Map.entry(CAMPAIGN, "营销活动与报价"),

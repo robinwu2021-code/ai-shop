@@ -686,9 +686,15 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     open_after_sale_no VARCHAR(40) DEFAULT NULL,
     receiver_salutation VARCHAR(16) DEFAULT NULL,
     inventory_lifecycle_version INT NOT NULL DEFAULT 1,
+    fulfillment_authority VARCHAR(32) NULL,
+    source_operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    CONSTRAINT uk_sub_checkout_operation UNIQUE (tenant_no,source_operation_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_sub_order_no UNIQUE (sub_order_no),
-    CONSTRAINT uk_verify_code UNIQUE (verify_code)
+    CONSTRAINT uk_verify_code UNIQUE (verify_code),
+    CONSTRAINT ck_sub_checkout_authority CHECK (
+        (fulfillment_authority IS NULL AND source_operation_no IS NULL)
+        OR (fulfillment_authority IS NOT NULL AND fulfillment_authority='SERVICE_EXECUTION' AND source_operation_no IS NOT NULL AND fulfillment IS NOT NULL AND fulfillment='STORE_VERIFY'))
 );
 
 CREATE TABLE IF NOT EXISTS prd_category
@@ -8686,6 +8692,150 @@ CREATE TABLE IF NOT EXISTS mbr_guest_registration
     CONSTRAINT ck_mbr_guest_actor CHECK (actor_realm='MERCHANT' AND actor_kind IN ('MCH','USR')),
     CONSTRAINT ck_mbr_guest_state CHECK ( (state='REGISTERED' AND version=1 AND claimed_user_no IS NULL AND claimed_at IS NULL AND claim_key_hash IS NULL AND claim_request_hash IS NULL AND claim_actor_no IS NULL AND claim_actor_realm IS NULL AND claim_actor_kind IS NULL) OR (state='CLAIMED' AND version=2 AND claimed_user_no IS NOT NULL AND claimed_at IS NOT NULL AND claim_key_hash IS NOT NULL AND claim_request_hash IS NOT NULL AND claim_actor_no IS NOT NULL AND claim_actor_realm='MERCHANT' AND claim_actor_kind IN ('MCH','USR'))),
     CONSTRAINT ck_mbr_guest_deleted CHECK (deleted IN (0,1))
+);
+
+CREATE TABLE IF NOT EXISTS ord_checkout_operation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    buyer_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_realm VARCHAR(16) NOT NULL,
+    actor_kind VARCHAR(8) NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    scope_revision BIGINT NOT NULL,
+    scope_hash CHAR(64) NOT NULL,
+    command_json LONGTEXT NOT NULL,
+    phase VARCHAR(24) NOT NULL,
+    current_quote_no VARCHAR(40) COLLATE utf8mb4_bin NOT NULL,
+    confirmation_no VARCHAR(40) COLLATE utf8mb4_bin NULL,
+    place_key_hash CHAR(64) NULL,
+    place_payload_hash CHAR(64) NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    sub_order_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    source_revision BIGINT NOT NULL DEFAULT 0,
+    source_observation_hash CHAR(64) NULL,
+    last_error_code VARCHAR(64) NULL,
+    next_retry_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_checkout_operation UNIQUE (tenant_no,caller,operation_no),
+    CONSTRAINT uk_checkout_prepare_key UNIQUE (tenant_no,caller,entity_no,store_no,request_key_hash),
+    CONSTRAINT uk_checkout_place_key UNIQUE (tenant_no,buyer_no,place_key_hash),
+    CONSTRAINT uk_checkout_order UNIQUE (tenant_no,order_no),
+    CONSTRAINT uk_checkout_sub_order UNIQUE (tenant_no,sub_order_no),
+    CONSTRAINT ck_checkout_operation_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY' AND scope_revision>0),
+    CONSTRAINT ck_checkout_operation_actor CHECK (actor_realm='MERCHANT' AND actor_kind IN ('MCH','USR')),
+    CONSTRAINT ck_checkout_operation_phase CHECK (phase IN ('QUOTED','CONFIRMED','CREATED','REQUOTE_REQUIRED','REJECTED')),
+    CONSTRAINT ck_checkout_operation_created CHECK ((phase='CREATED' AND order_no IS NOT NULL AND sub_order_no IS NOT NULL AND confirmation_no IS NOT NULL AND place_key_hash IS NOT NULL) OR (phase<>'CREATED' AND order_no IS NULL AND sub_order_no IS NULL)),
+    CONSTRAINT ck_checkout_operation_confirmation CHECK ((phase='QUOTED' AND confirmation_no IS NULL AND place_key_hash IS NULL) OR (phase IN ('CONFIRMED','CREATED') AND confirmation_no IS NOT NULL) OR phase IN ('REQUOTE_REQUIRED','REJECTED')),
+    CONSTRAINT ck_checkout_operation_place CHECK ((place_key_hash IS NULL AND place_payload_hash IS NULL) OR (place_key_hash IS NOT NULL AND place_payload_hash IS NOT NULL)),
+    CONSTRAINT ck_checkout_operation_source CHECK (source_revision>=0 AND ((source_revision=0 AND source_observation_hash IS NULL) OR (source_revision>0 AND source_observation_hash IS NOT NULL))),
+    CONSTRAINT ck_checkout_operation_json CHECK ((command_json IS JSON)),
+    CONSTRAINT ck_checkout_operation_deleted CHECK (deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_checkout_quote
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    quote_no VARCHAR(40) COLLATE utf8mb4_bin NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    revision BIGINT NOT NULL,
+    quote_hash CHAR(64) NOT NULL,
+    pricing_json LONGTEXT NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_checkout_quote UNIQUE (tenant_no,quote_no),
+    CONSTRAINT uk_checkout_quote_revision UNIQUE (tenant_no,caller,operation_no,revision),
+    CONSTRAINT ck_checkout_quote_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY' AND revision=1),
+    CONSTRAINT ck_checkout_quote_status CHECK (status IN ('OPEN','CONFIRMED','CONSUMED','EXPIRED','REVOKED')),
+    CONSTRAINT ck_checkout_quote_json CHECK ((pricing_json IS JSON)),
+    CONSTRAINT ck_checkout_quote_deleted CHECK (deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_checkout_confirmation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    confirmation_no VARCHAR(40) COLLATE utf8mb4_bin NOT NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    quote_no VARCHAR(40) COLLATE utf8mb4_bin NOT NULL,
+    quote_revision BIGINT NOT NULL,
+    quote_hash CHAR(64) NOT NULL,
+    buyer_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    purpose VARCHAR(40) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    confirmed_at DATETIME(3) NOT NULL,
+    consumed_at DATETIME(3) NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_checkout_confirmation UNIQUE (tenant_no,confirmation_no),
+    CONSTRAINT uk_checkout_confirm_key UNIQUE (tenant_no,buyer_no,request_key_hash),
+    CONSTRAINT uk_checkout_confirm_quote UNIQUE (tenant_no,caller,operation_no,quote_no),
+    CONSTRAINT ck_checkout_confirm_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY' AND quote_revision=1),
+    CONSTRAINT ck_checkout_confirm_money CHECK (amount_minor>=0 AND currency='CNY' AND purpose='ORDINARY_SERVICE_PURCHASE'),
+    CONSTRAINT ck_checkout_confirm_state CHECK ((status='CONSUMED' AND consumed_at IS NOT NULL AND order_no IS NOT NULL) OR (status IN ('AUTHORIZED','REVOKED','EXPIRED') AND consumed_at IS NULL AND order_no IS NULL)),
+    CONSTRAINT ck_checkout_confirm_deleted CHECK (deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_checkout_line
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    source_line_no VARCHAR(40) COLLATE utf8mb4_bin NOT NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    client_line_ref VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    sub_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    order_item_id BIGINT NOT NULL,
+    goods_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    sku_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    quantity INT NOT NULL,
+    uom VARCHAR(8) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_checkout_source_line UNIQUE (tenant_no,source_line_no),
+    CONSTRAINT uk_checkout_client_line UNIQUE (tenant_no,caller,operation_no,client_line_ref),
+    CONSTRAINT uk_checkout_item UNIQUE (tenant_no,order_item_id),
+    CONSTRAINT ck_checkout_line_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY'),
+    CONSTRAINT ck_checkout_line_count CHECK (quantity BETWEEN 1 AND 999 AND uom='COUNT'),
+    CONSTRAINT ck_checkout_line_deleted CHECK (deleted=0)
 );
 
 -- 种子数据

@@ -10,6 +10,7 @@ import ai.neargo.shop.product.entity.PrdStockLock;
 import ai.neargo.shop.product.entity.PrdStoreStock;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
@@ -22,6 +23,11 @@ public final class ProductMappers {
     }
 
     public interface StoreCatalogMapper extends BaseMapper<PrdStoreCatalog> {
+        /** Serialize checkout with publication on the same platform catalog head. */
+        @Select("SELECT * FROM prd_store_catalog WHERE tenant_no='MAIN' "
+                + "AND entity_no=#{entity} AND store_no=#{store} AND deleted=0 FOR UPDATE")
+        PrdStoreCatalog lockHead(@Param("entity") String entity, @Param("store") String store);
+
         @Update("UPDATE prd_store_catalog SET current_version_no=#{next}, version=version+1, "
                 + "updated_at=#{at}, updated_by=#{actor} WHERE tenant_no='MAIN' AND entity_no=#{entity} "
                 + "AND store_no=#{store} AND catalog_no=#{catalog} AND version=#{expected} AND deleted=0")

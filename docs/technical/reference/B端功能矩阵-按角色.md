@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 25 个权限点 × 282 个受控端点**。
+统计：**6 个角色 × 27 个权限点 × 282 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -41,8 +41,10 @@
 | `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
+| `BOOKING_VIEW` | Cross-industry appointment reading; gran | 0 | ✅ | — | — | — | — | — |
+| `BOOKING_MANAGE` | Explicit appointment management, indepen | 0 | ✅ | — | — | — | — | — |
 
-**只有 OWNER 能碰的 14 项**：`FINANCE`、`STORE_ADMIN`、`ENT_READ`、`SV_RECHARGE_CREATE`、`ENT_USE`、`SV_CONSUME_CREATE`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`SV_ACCOUNT_READ`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`ENT_TEMPLATE_READ`
+**只有 OWNER 能碰的 16 项**：`FINANCE`、`STORE_ADMIN`、`ENT_READ`、`SV_RECHARGE_CREATE`、`ENT_USE`、`SV_CONSUME_CREATE`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`SV_ACCOUNT_READ`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`ENT_TEMPLATE_READ`、`BOOKING_VIEW`、`BOOKING_MANAGE`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点

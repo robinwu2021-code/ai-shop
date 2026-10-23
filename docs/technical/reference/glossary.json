@@ -16562,6 +16562,12 @@
           "ar": "تسليم الطلبات بالرمز"
         },
         {
+          "key": "perm.trade:checkout:prepare",
+          "zh-CN": "准备服务购买报价",
+          "en": "Prepare service purchase quotes",
+          "ar": "إعداد عروض أسعار شراء الخدمات"
+        },
+        {
           "key": "picking.arrivedDoneBody",
           "zh-CN": "接下来可以去核销台等他们来取",
           "en": "Next: wait for them at the redemption desk",
@@ -26109,6 +26115,12 @@
           "ar": "طلب غير صالح"
         },
         {
+          "key": "err.beauty.arrival_requires_reschedule",
+          "zh-CN": "预约时段已结束，请明确重新安排后签到",
+          "en": "The appointment has ended. Reschedule explicitly before checking in.",
+          "ar": "انتهى موعد الخدمة. أعد جدولته صراحة قبل تسجيل الوصول."
+        },
+        {
           "key": "err.beauty.search_incomplete",
           "zh-CN": "预约搜索未完成，请缩小条件后重试",
           "en": "Appointment search is incomplete. Narrow the search and try again.",
@@ -27441,6 +27453,36 @@
           "ar": "انتهت فترة ما بعد البيع"
         },
         {
+          "key": "err.trade.checkout_confirmation_required",
+          "zh-CN": "请由当前购买人确认有效报价",
+          "en": "The current buyer must confirm a valid quote.",
+          "ar": "يجب على المشتري الحالي تأكيد عرض سعر صالح."
+        },
+        {
+          "key": "err.trade.checkout_dependency_unavailable",
+          "zh-CN": "购买服务暂时不可用，请稍后重试",
+          "en": "Checkout is temporarily unavailable. Please try again later.",
+          "ar": "خدمة الشراء غير متاحة مؤقتًا. يرجى المحاولة لاحقًا."
+        },
+        {
+          "key": "err.trade.checkout_operation_rejected",
+          "zh-CN": "本次购买已终止，请重新发起",
+          "en": "This purchase has ended. Please start a new purchase.",
+          "ar": "انتهت عملية الشراء هذه. يرجى بدء عملية جديدة."
+        },
+        {
+          "key": "err.trade.checkout_quote_stale",
+          "zh-CN": "报价已变化或过期，请重新确认购买",
+          "en": "The quote has changed or expired. Please confirm a new quote.",
+          "ar": "تغير عرض السعر أو انتهت صلاحيته. يرجى تأكيد عرض جديد."
+        },
+        {
+          "key": "err.trade.checkout_unsupported_selection",
+          "zh-CN": "当前购买方式不支持所选商品或优惠",
+          "en": "This checkout does not support the selected goods or promotions.",
+          "ar": "لا تدعم عملية الشراء هذه المنتجات أو العروض المحددة."
+        },
+        {
           "key": "err.trade.count_already_open",
           "zh-CN": "已经有一张盘点单开着（{0}），先把它盘完或作废",
           "en": "A stocktake is already open ({0}); finish or void it first",
@@ -27457,6 +27499,12 @@
           "zh-CN": "该商家的主体类型暂不支持此配送方式，请改用自提或快递",
           "en": "This merchant’s entity type cannot use that delivery method. Please choose pickup or courier.",
           "ar": "نوع كيان هذا التاجر لا يسمح بطريقة التوصيل هذه. يرجى اختيار الاستلام أو الشحن."
+        },
+        {
+          "key": "err.trade.managed_service_completion_blocked",
+          "zh-CN": "受管理的服务订单须由服务执行流程完成",
+          "en": "Managed service orders require completion by the service execution flow.",
+          "ar": "يجب إكمال طلبات الخدمات المُدارة من خلال مسار تنفيذ الخدمة."
         },
         {
           "key": "err.trade.merchant_quota_exhausted",
@@ -28708,6 +28756,34 @@
       "zh": "",
       "module": "shop-core",
       "package": "ai.neargo.shop.trade.entitlement.entity"
+    },
+    {
+      "table": "ord_checkout_confirmation",
+      "class": "OrdCheckoutConfirmation",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_checkout_line",
+      "class": "OrdCheckoutLine",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_checkout_operation",
+      "class": "OrdCheckoutOperation",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_checkout_quote",
+      "class": "OrdCheckoutQuote",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
     },
     {
       "table": "ord_create_intent",
@@ -35434,6 +35510,13 @@
       },
       {
         "host": "OrdSubOrder",
+        "name": "SERVICE_EXECUTION",
+        "value": "SERVICE_EXECUTION",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdSubOrder",
         "name": "TRAFFIC_MERCHANT_OWNED",
         "value": "MERCHANT_OWNED",
         "zh": "自带客流：费率 0%。",
@@ -37509,6 +37592,12 @@
           "AFTERSALE_WINDOW_CLOSED",
           "AFTERSALE_CHANNEL_PARTIAL_UNSUPPORTED",
           "ORDER_POINTS_MANUAL_REQUIRED",
+          "CHECKOUT_QUOTE_STALE",
+          "CHECKOUT_UNSUPPORTED_SELECTION",
+          "CHECKOUT_CONFIRMATION_REQUIRED",
+          "CHECKOUT_DEPENDENCY_UNAVAILABLE",
+          "CHECKOUT_OPERATION_REJECTED",
+          "MANAGED_SERVICE_COMPLETION_BLOCKED",
           "ALREADY_VERIFIED",
           "NOT_THIS_PICKUP_POINT",
           "ORDER_REFUNDED",
@@ -37694,7 +37783,8 @@
           "NOTIFY_WX_QUOTA_EMPTY",
           "NOTIFY_NO_DEVICE",
           "TRACK_NOT_RECIPIENT",
-          "BEAUTY_SEARCH_INCOMPLETE"
+          "BEAUTY_SEARCH_INCOMPLETE",
+          "BEAUTY_ARRIVAL_REQUIRES_RESCHEDULE"
         ],
         "zh": "错误码（分段见 docs/api/响应格式规范.md §3，与本枚举的同步有守卫测试锁住）。",
         "module": "shop-base"
@@ -43158,6 +43248,14 @@
     },
     {
       "host": "BizPerms",
+      "name": "CHECKOUT_PREPARE",
+      "type": "String",
+      "value": "\"trade:checkout:prepare\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
       "name": "STOCK",
       "type": "String",
       "value": "\"biz:stock\"",
@@ -43344,7 +43442,7 @@
       "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(BOOKING_VIEW, \"查看预约\"), Map.entry(BOOKING_MANAGE, \"创建、调整及取消预约\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(BOOKING_VIEW, \"查看预约\"), Map.entry(BOOKING_MANAGE, \"创建、调整及取消预约\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(CHECKOUT_PREPARE, \"准备服务购买报价\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },

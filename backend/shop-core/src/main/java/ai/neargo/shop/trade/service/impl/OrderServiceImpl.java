@@ -1,116 +1,125 @@
 package ai.neargo.shop.trade.service.impl;
-
-import ai.neargo.shop.trade.order.service.create.OrderCreateRequestHasher;
-import ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService;
-import ai.neargo.shop.trade.order.service.create.OrderStockAllocator;
-import ai.neargo.shop.trade.order.service.StoreOrderQueryService;
-import ai.neargo.shop.trade.order.service.query.StoreOrderMaterial;
-import ai.neargo.shop.trade.order.contract.StoreOrderQuery;
-import ai.neargo.shop.trade.order.service.lifecycle.PaymentLifecycleService;
-import ai.neargo.shop.trade.order.service.lifecycle.PaymentResolutionService;
-
-import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
-
-import ai.neargo.shop.spi.fulfillment.FreightPort;
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.spi.user.PickupQueryPort;
-import ai.neargo.shop.trade.service.AfterSaleService;
-import ai.neargo.shop.trade.service.CloseRuleService;
-import ai.neargo.shop.trade.service.OrderService;
-import ai.neargo.shop.trade.service.LegacyCouponOrderPricingService;
-import ai.neargo.shop.trade.service.LegacyCouponBoundOrderService;
-import ai.neargo.shop.trade.service.LegacyCouponCheckoutJournal;
-import ai.neargo.shop.trade.service.LegacyCouponOrderCreationCoordinator;
+import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.Fulfillments;
+import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.common.PayModes;
+import ai.neargo.shop.event.AfterCommit;
+import ai.neargo.shop.event.OutboxEventBus;
+import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.entitlement.CardSaleEvents;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
-import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.Outcome;
 import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.MerchantGroup;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.SerializationFeature;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.HexFormat;
-import ai.neargo.shop.trade.service.EntitlementOrderUseService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.ObjectProvider;
-import ai.neargo.shop.trade.service.OrderStateMachine;
-import ai.neargo.shop.trade.order.projection.OrderStatusProjector;
-import ai.neargo.shop.trade.order.service.receipt.OrderReceiptCompleter;
-import ai.neargo.shop.trade.order.service.OrderReceiptService;
-import ai.neargo.shop.trade.order.command.OrderActor;
-import ai.neargo.shop.trade.order.contract.CancellationImpact;
-import ai.neargo.shop.trade.order.policy.PaymentImpactPolicy;
-import org.springframework.beans.factory.annotation.Autowired;
-import ai.neargo.shop.trade.service.OrderStatusView;
-import ai.neargo.shop.trade.order.machine.order.OrderContext;
-import ai.neargo.shop.trade.order.machine.order.OrderEvent;
-import ai.neargo.shop.trade.order.machine.payment.PaymentContext;
-import ai.neargo.shop.trade.order.machine.payment.PaymentEvent;
-import ai.neargo.shop.trade.order.statemachine.Actor;
-
+import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.Outcome;
+import ai.neargo.shop.spi.entitlement.PaidCardPaymentGatePort;
+import ai.neargo.shop.spi.fulfillment.FreightPort;
 import ai.neargo.shop.spi.marketing.AttributionPort;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.marketing.CouponPort;
-import ai.neargo.shop.spi.product.GoodsQueryPort;
+import ai.neargo.shop.spi.marketing.GroupJoinPort.GroupQuote;
 import ai.neargo.shop.spi.product.CardProductSalePort;
-import ai.neargo.shop.spi.entitlement.CardSaleEvents;
-import ai.neargo.shop.spi.entitlement.PaidCardPaymentGatePort;
-import ai.neargo.shop.trade.entitlement.CardSaleSnapshotPlan;
+import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.trade.CheckoutPort.QuoteLine;
 import ai.neargo.shop.spi.trade.OrderEvents;
-import ai.neargo.shop.spi.user.MerchantQueryPort;
-import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.event.AfterCommit;
-import ai.neargo.shop.common.BizKey;
-import ai.neargo.shop.trade.support.OrderNoGenerator;
-import ai.neargo.shop.common.Fulfillments;
-import ai.neargo.shop.common.PayModes;
-import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.event.OutboxEventBus;
-import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
+import ai.neargo.shop.spi.user.PickupQueryPort;
 import ai.neargo.shop.trade.dto.OrderVO;
-import ai.neargo.shop.trade.entity.OrdItem;
+import ai.neargo.shop.trade.entitlement.CardSaleSnapshotPlan;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
+import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.entity.TrdCartItem;
 import ai.neargo.shop.trade.mapper.TradeMappers.CartItemMapper;
+import ai.neargo.shop.trade.order.command.OrderActor;
+import ai.neargo.shop.trade.order.contract.CancellationImpact;
+import ai.neargo.shop.trade.order.contract.StoreOrderQuery;
+import ai.neargo.shop.trade.order.machine.order.OrderContext;
+import ai.neargo.shop.trade.order.machine.order.OrderEvent;
+import ai.neargo.shop.trade.order.machine.payment.PaymentContext;
+import ai.neargo.shop.trade.order.machine.payment.PaymentEvent;
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
 import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
-import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.annotation.Isolation;
+import ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Decision;
+import ai.neargo.shop.trade.order.policy.PaymentImpactPolicy;
+import ai.neargo.shop.trade.order.projection.OrderStatusProjector;
+import ai.neargo.shop.trade.order.refund.policy.LineShares;
+import ai.neargo.shop.trade.order.service.OrderReceiptService;
+import ai.neargo.shop.trade.order.service.StoreOrderQueryService;
+import ai.neargo.shop.trade.order.service.create.CheckoutClock;
+import ai.neargo.shop.trade.order.service.create.CheckoutDigests;
+import ai.neargo.shop.trade.order.service.create.CheckoutEconomicSnapshot;
+import ai.neargo.shop.trade.order.service.create.CheckoutPricingScope;
+import ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard;
+import ai.neargo.shop.trade.order.service.create.ExpectedCheckoutQuote;
+import ai.neargo.shop.trade.order.service.create.OrderCreateRequestHasher;
+import ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService;
+import ai.neargo.shop.trade.order.service.create.OrderStockAllocator;
+import ai.neargo.shop.trade.order.service.lifecycle.PaymentLifecycleService;
+import ai.neargo.shop.trade.order.service.lifecycle.PaymentResolutionService;
+import ai.neargo.shop.trade.order.service.query.StoreOrderMaterial;
+import ai.neargo.shop.trade.order.service.receipt.OrderReceiptCompleter;
+import ai.neargo.shop.trade.order.statemachine.Actor;
+import ai.neargo.shop.trade.service.AfterSaleService;
+import ai.neargo.shop.trade.service.CheckoutOrderWriter;
+import ai.neargo.shop.trade.service.CloseRuleService;
+import ai.neargo.shop.trade.service.EntitlementOrderUseService;
+import ai.neargo.shop.trade.service.LegacyCouponBoundOrderService;
+import ai.neargo.shop.trade.service.LegacyCouponCheckoutJournal;
+import ai.neargo.shop.trade.service.LegacyCouponOrderCreationCoordinator;
+import ai.neargo.shop.trade.service.LegacyCouponOrderPricingService;
+import ai.neargo.shop.trade.service.OrderService;
+import ai.neargo.shop.trade.service.OrderStatusView;
+import ai.neargo.shop.trade.support.OrderNoGenerator;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
+
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
-import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
  * 交易主干实现。下单链路严格按 TDD-backend §7.1 的八步走。
  *
  * <p><b>拆单是这里最重要的一件事</b>（E3/ADR-002）：购物车跨商家时按 {@code merchantNo} 分组，
- * 每组一个子订单，各自算钱、各自履约、各自分账。预览与下单**共用同一个拆分方法**，
- * 否则「预览 2 个包裹、下单变 3 个」这类问题会一直复发。
+ * 每组一个子订单，各自算钱、各自履约、各自分账。预览与下单**共用同一个拆分方法**， 否则「预览 2 个包裹、下单变 3 个」这类问题会一直复发。
  */
 @Service
-public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingService, LegacyCouponBoundOrderService {
+public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingService, LegacyCouponBoundOrderService,
+                CheckoutOrderWriter {
     @Autowired private LegacyCouponCheckoutJournal legacyCheckoutJournal;
     @Autowired private ObjectProvider<LegacyCouponOrderCreationCoordinator> legacyCreationCoordinators;
     @Autowired private ObjectProvider<LegacyCouponBoundOrderService> coreCreationWriters;
     @Autowired private ObjectMapper legacyCheckoutJson;
+    @Autowired private CheckoutClock checkoutClock;
+    @Autowired private CheckoutQuoteGuard checkoutGuard;
 
     @Override
     public LegacyCouponOrderPricingService.Snapshot snapshot(String userNo,CreateOrderCommand cmd) {
@@ -930,11 +939,18 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
      * 而商家的「买 2 送 1」说的是同一规格。
      */
     private Map<String, Integer> giftQtyOf(Split split) {
+        return giftQtyOf(split, null);
+    }
+
+    private Map<String, Integer> giftQtyOf(Split split, String buyerNo) {
         if (split.items.isEmpty()) {
             return new HashMap<>();
         }
-        Map<String, CampaignPort.GiftRule> rules = campaignPort.giftRules(
-                split.items.stream().map(i -> i.snapshot.goodsNo()).distinct().toList());
+        var goods = split.items.stream().map(i -> i.snapshot.goodsNo()).distinct().toList();
+        Map<String, CampaignPort.GiftRule> rules =
+                buyerNo == null
+                        ? campaignPort.giftRules(goods)
+                        : campaignPort.giftRulesFor(buyerNo, goods);
         Map<String, Integer> out = new HashMap<>();
         for (Line line : split.items) {
             CampaignPort.GiftRule rule = rules.get(line.snapshot.goodsNo());
@@ -1235,6 +1251,15 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         return discountsOf(cmd,split,userNo,null);
     }
     private Discounts discountsOf(CreateOrderCommand cmd,Split split,String userNo,LegacyCouponBoundOrderService.Binding binding) {
+        return discountsOf(cmd, split, userNo, binding, false);
+    }
+
+    private Discounts discountsOf(
+            CreateOrderCommand cmd,
+            Split split,
+            String userNo,
+            LegacyCouponBoundOrderService.Binding binding,
+            boolean checkout) {
         if (split.groups.isEmpty()) {
             return Discounts.none();
         }
@@ -1247,8 +1272,15 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          * 所以这里是「不参与」而不是像平台券那样「拒单」—— 拒了的话活动期间线下单一律下不了。
          */
         // 顾客对活动的选择（批 2）：没选的店按最优；选的那个不成立就拒（ACTIVITY_CHOICE_UNAVAILABLE）
-        CampaignPort.Discount auto = campaignPort.autoDiscount(merchantAmounts(cmd, split, stores),
+        CampaignPort.Discount auto =
+                checkout
+                        ? campaignPort.autoDiscountFor(
+                                userNo, merchantAmounts(cmd, split, stores), cmd.activityChoices())
+                        : campaignPort.autoDiscount(merchantAmounts(cmd, split, stores),
                 cmd.activityChoices());
+        if (checkout) {
+            campaignPort.requireOrdinarySelection(userNo, auto);
+        }
         if(binding!=null) {
             var pricing=legacyPricing(userNo,cmd,split,auto);
             if(!pricing.commandHash().equals(binding.commandHash())) throw BizException.of(ErrorCode.CONFLICT);
@@ -1260,11 +1292,15 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         if (cmd.couponNo() == null || cmd.couponNo().isBlank()) {
             return new Discounts(auto, CouponPort.Allocation.none());
         }
-        CouponPort.Allocation coupon = couponPort.allocate(userNo, cmd.couponNo(),
+        var amounts =
                 split.groups.stream()
                         .map(g -> new CouponPort.MerchantAmount(
                                 g.merchantNo, g.goodsAmount() - auto.of(g.merchantNo, g.storeNo()), g.storeNo()))
-                        .toList());
+                        .toList();
+        CouponPort.Allocation coupon =
+                checkout
+                        ? couponPort.quoteOrdinary(userNo, cmd.couponNo(), amounts)
+                        : couponPort.allocate(userNo, cmd.couponNo(), amounts);
         return new Discounts(auto, coupon);
     }
 
@@ -1560,13 +1596,28 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     /**
-     * 事务位于createCoreFor/createBound代理入口；本方法由同类lambda调用，
-     * 自调用不走代理，写在这里的 {@code @Transactional} 完全不生效 ——
-     * 那样「锁了库存但订单没落库」会变成常态，且测试很难发现。
+     * 事务位于createCoreFor/createBound代理入口；本方法由同类lambda调用， 自调用不走代理，写在这里的 {@code @Transactional} 完全不生效
+     * —— 那样「锁了库存但订单没落库」会变成常态，且测试很难发现。
      */
-    private OrderVO doCreate(CreateOrderCommand cmd, String userNo, Integer payMinutes,
-                             String idempotencyKey, String inputHash, LegacyCouponBoundOrderService.Binding binding) {
-        Split raw = split(cmd);
+    private record CreatePricing(
+            Split split,
+            GroupQuote group,
+            Map<String, String> stores,
+            String payMode,
+            String clientScene,
+            Map<String, Decision> pointDecisions,
+            boolean pointsStaged,
+            Map<String, String> pickups,
+            Map<String, Integer> gifts,
+            Discounts discounts,
+            CheckoutEconomicSnapshot economic) {}
+
+    private CreatePricing checkoutPricing(
+            String userNo,
+            CreateOrderCommand cmd,
+            LegacyCouponBoundOrderService.Binding binding,
+            CheckoutPricingScope scope) {
+        Split raw = scope == null ? split(cmd) : split(cmd, userNo);
         if (raw.items.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -1659,13 +1710,6 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         requirePickupServed(cmd, split);
         requireAppointmentWhenNeeded(cmd, split, storeOfMerchant);
 
-        long now = System.currentTimeMillis();
-        // 订单号序列化（ADR-035）：O + yyMMddHH + 4位序列（号段），撞 uk 兜底续号
-        String orderNo = orderNoGenerator.mainOrderNo(now,
-                no -> orderMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
-                        .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, no)) > 0);
-
         /*
          * 买赠：算出每行该送几件。
          *
@@ -1673,21 +1717,19 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          * 为了一件免费的赠品把一笔真实成交挡掉，代价与收益完全不成比例。
          * 少送几件在订单里看得见（赠品行的 qty），商家侧也能对上。
          */
-        Map<String, Integer> gifts = giftQtyOf(split);
+        Map<String, Integer> gifts = scope == null ? giftQtyOf(split) : giftQtyOf(split, userNo);
 
         // 优惠与预览同规则；迁移券使用预先锁定并核对的分摊。
-        Discounts discounts = binding == null ? discountsOf(cmd, split, userNo) : discountsOf(cmd, split, userNo, binding);
+        Discounts discounts =
+                scope == null
+                        ? (binding == null ? discountsOf(cmd, split, userNo) : discountsOf(cmd, split, userNo, binding))
+                        : discountsOf(cmd, split, userNo, null, true);
 
         /*
          * 子单号**提前生成**：积分抵扣要落到各个子单上（三家里退了一家时才退得准），
          * 而扣减必须在落库之前完成 —— 余额不足要能降级成不抵扣，不能让订单先落库再回滚。
          */
-        Map<String, String> subOrderNoOf = new LinkedHashMap<>();
-        int subIdx = 0;
-        for (Group g : split.groups) {
-            // 子单号 = 主单号 + 后缀（ADR-035），一眼看出属于哪一单；不消耗序列
-            subOrderNoOf.put(g.key(), orderNoGenerator.subOrderNo(orderNo, ++subIdx));
-        }
+
 
         // 积分占用在普通源订单写入后通过门店策略和持久化 placement 阶段处理。
 
@@ -1703,6 +1745,313 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         if (PayModes.OFFLINE.equals(payMode) && discounts.total() > 0
                 && split.groups().stream().anyMatch(g -> discounts.platformFunded(g.merchantNo(), g.storeNo()) > 0)) {
             throw BizException.of(ErrorCode.PLATFORM_COUPON_OFFLINE_FORBIDDEN);
+        }
+
+        if (scope != null) {
+            if (cardProductSales == null || periodPort == null) {
+                throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+            }
+            for (Line line : split.items()) {
+                if (cardProductSales
+                        .saleDefinition(
+                                line.snapshot().merchantNo(),
+                                line.snapshot().goodsNo(),
+                                line.skuNo())
+                        .isPresent()) {
+                    throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                }
+            }
+            for (Group current : split.groups()) {
+                if (periodPort
+                        .ticketFor(
+                                current.merchantNo(),
+                                current.lines().stream()
+                                        .map(line -> line.snapshot().goodsNo())
+                                        .distinct()
+                                        .toList(),
+                                current.goodsQty(),
+                                checkoutClock.now().toEpochMilli())
+                        .isPresent()) {
+                    throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                }
+            }
+        }
+        CheckoutEconomicSnapshot economic =
+                scope == null
+                        ? null
+                        : checkoutEconomics(
+                                userNo, cmd, scope, split, payMode, pointsStaged, gifts, discounts);
+        return new CreatePricing(
+                split,
+                group,
+                storeOfMerchant,
+                payMode,
+                clientScene,
+                pointDecisions,
+                pointsStaged,
+                pickupByMerchant,
+                gifts,
+                discounts,
+                economic);
+    }
+
+    private CheckoutEconomicSnapshot checkoutEconomics(
+            String buyer,
+            CreateOrderCommand command,
+            CheckoutPricingScope scope,
+            Split split,
+            String payMode,
+            boolean points,
+            Map<String, Integer> gifts,
+            Discounts discounts) {
+        var catalog = scope.catalog();
+        var at = checkoutClock.now();
+        if (!"MAIN".equals(scope.tenantNo())
+                || split.groups().size() != 1
+                || !Fulfillments.STORE_VERIFY.equals(command.fulfillment())
+                || command.grouped()
+                || command.appointmentAt() != null
+                || command.appointmentSlotNo() != null
+                || command.usePoints() != null && command.usePoints() != 0
+                || points
+                || !gifts.isEmpty()
+                || catalog == null
+                || !catalog.configured()
+                || catalog.definition() == null
+                || !scope.entityNo().equals(catalog.entityNo())
+                || !scope.storeNo().equals(catalog.storeNo())) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+        Group group = split.groups().get(0);
+        if (!scope.entityNo().equals(group.merchantNo())
+                || !scope.storeNo().equals(group.storeNo())
+                || group.freight() != 0
+                || group.lines().size() != scope.lines().size()) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+        long[] paid =
+                LineShares.allocate(
+                        Math.max(0, group.goodsAmount() - discounts.total()),
+                        group.lines().stream().mapToLong(Line::amount).toArray());
+        var lines = new ArrayList<QuoteLine>();
+        for (int index = 0; index < group.lines().size(); index++) {
+            var line = group.lines().get(index);
+            var requested = scope.lines().get(index);
+            var product = line.snapshot();
+            var entry = catalog.definition().visibleEntry(line.skuNo());
+            if (!requested.skuNo().equals(line.skuNo())
+                    || requested.quantity() != line.qty()
+                    || entry == null
+                    || !entry.saleableAt(at, catalog.definition().timezone())
+                    || !"SERVICE".equals(product.categoryType())
+                    || product.fulfillments() == null
+                    || !product.fulfillments().contains(Fulfillments.STORE_VERIFY)) {
+                throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+            }
+            String productHash =
+                    CheckoutDigests.hash(
+                            legacyCheckoutJson,
+                            Arrays.asList(
+                                    product.skuNo(),
+                                    product.goodsNo(),
+                                    product.merchantNo(),
+                                    product.storeNo(),
+                                    product.categoryType(),
+                                    product.categoryNo(),
+                                    product.price(),
+                                    product.onSale(),
+                                    product.fulfillments(),
+                                    product.groupPriceMinor(),
+                                    product.groupMinCount(),
+                                    product.saleMode(),
+                                    product.limitPerUser(),
+                                    product.nominalGram()));
+            lines.add(
+                    new QuoteLine(
+                            requested.clientLineRef(),
+                            line.skuNo(),
+                            product.goodsNo(),
+                            line.qty(),
+                            "COUNT",
+                            product.price(),
+                            line.amount(),
+                            line.amount() - paid[index],
+                            paid[index],
+                            productHash));
+        }
+        // Display names and timestamps cannot alter the economic seal; source identities and
+        // funding do.
+        var applied =
+                discounts.auto().applied().stream()
+                        .map(
+                                a ->
+                                        new CampaignPort.AppliedActivity(
+                                                a.activityNo(),
+                                                a.merchantNo(),
+                                                a.amountMinor(),
+                                                a.qty(),
+                                                a.platformMinor(),
+                                                a.enrollmentNo(),
+                                                null,
+                                                a.storeNo()))
+                        .toList();
+        var activity =
+                new CampaignPort.Discount(
+                        discounts.auto().total(), discounts.auto().shares(), applied);
+        var coupon =
+                new CouponPort.Allocation(
+                        discounts.coupon().totalDiscount(),
+                        discounts.coupon().byMerchant(),
+                        discounts.coupon().shares(),
+                        null);
+        var evidence =
+                new CheckoutEconomicSnapshot.Evidence(
+                        scope.tenantNo(),
+                        scope.scopeRevision(),
+                        scope.scopeHash(),
+                        CheckoutDigests.hash(
+                                legacyCheckoutJson,
+                                Arrays.asList(
+                                        scope.lines(),
+                                        command.couponNo(),
+                                        new TreeMap<>(command.activityChoices()),
+                                        payMode)),
+                        catalog.versionNo(),
+                        catalog.effectiveRevision(),
+                        catalog.snapshotHash());
+        var money =
+                new CheckoutEconomicSnapshot(
+                        null,
+                        evidence,
+                        buyer,
+                        scope.entityNo(),
+                        scope.storeNo(),
+                        CURRENCY_CNY,
+                        payMode,
+                        Fulfillments.STORE_VERIFY,
+                        OrdSubOrder.SERVICE_EXECUTION,
+                        lines,
+                        split.goodsAmount(),
+                        split.freightAmount(),
+                        discounts.total(),
+                        split.payAmount() - discounts.total(),
+                        discounts.platformFunded(group.merchantNo(), group.storeNo()),
+                        discounts.merchantFunded(group.merchantNo(), group.storeNo()),
+                        activity,
+                        coupon);
+        String hash =
+                CheckoutDigests.hash(
+                        legacyCheckoutJson,
+                        Arrays.asList(
+                                "CHECKOUT_V1",
+                                scope.tenantNo(),
+                                scope.scopeRevision(),
+                                scope.scopeHash(),
+                                catalog.versionNo(),
+                                catalog.effectiveRevision(),
+                                catalog.snapshotHash(),
+                                scope.lines(),
+                                command.couponNo(),
+                                command.activityChoices(),
+                                money));
+        return new CheckoutEconomicSnapshot(
+                hash,
+                evidence,
+                buyer,
+                scope.entityNo(),
+                scope.storeNo(),
+                CURRENCY_CNY,
+                payMode,
+                Fulfillments.STORE_VERIFY,
+                OrdSubOrder.SERVICE_EXECUTION,
+                lines,
+                money.goodsMinor(),
+                money.freightMinor(),
+                money.discountMinor(),
+                money.dueMinor(),
+                money.platformMinor(),
+                money.merchantMinor(),
+                discounts.auto(),
+                discounts.coupon());
+    }
+
+    @Override
+    public CheckoutEconomicSnapshot quoteFor(
+            String buyerNo, CreateOrderCommand command, CheckoutPricingScope scope) {
+        if (buyerNo == null || buyerNo.isBlank() || scope == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return checkoutPricing(buyerNo, command, null, scope).economic();
+    }
+
+    @Override
+    @Transactional
+    public OrderVO createConfirmedFor(
+            String buyerNo,
+            CreateOrderCommand command,
+            String idempotencyKey,
+            ExpectedCheckoutQuote expected) {
+        if (expected == null || buyerNo == null || !buyerNo.equals(SecurityUtils.currentUserNo())) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        String hash = createRequestHasher.hash(command);
+        return idempotency.execute(
+                idempotencyKey,
+                "POST /mp/order",
+                buyerNo,
+                hash,
+                OrderVO.class,
+                () -> doCreate(command, buyerNo, null, idempotencyKey, hash, null, expected));
+    }
+
+    private OrderVO doCreate(
+            CreateOrderCommand cmd,
+            String userNo,
+            Integer payMinutes,
+            String idempotencyKey,
+            String inputHash,
+            LegacyCouponBoundOrderService.Binding binding) {
+        return doCreate(cmd, userNo, payMinutes, idempotencyKey, inputHash, binding, null);
+    }
+
+    private OrderVO doCreate(
+            CreateOrderCommand cmd,
+            String userNo,
+            Integer payMinutes,
+            String idempotencyKey,
+            String inputHash,
+            LegacyCouponBoundOrderService.Binding binding,
+            ExpectedCheckoutQuote expected) {
+        if (expected != null && binding != null) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        var checkoutScope = expected == null ? null : checkoutGuard.context(expected);
+        CreatePricing pricing = checkoutPricing(userNo, cmd, binding, checkoutScope);
+        Split split = pricing.split();
+        var group = pricing.group();
+        var storeOfMerchant = pricing.stores();
+        String payMode = pricing.payMode();
+        String clientScene = pricing.clientScene();
+        var pointDecisions = pricing.pointDecisions();
+        boolean pointsStaged = pricing.pointsStaged();
+        var pickupByMerchant = pricing.pickups();
+        var gifts = pricing.gifts();
+        var discounts = pricing.discounts();
+        long now = System.currentTimeMillis();
+        // 订单号序列化（ADR-035）：O + yyMMddHH + 4位序列（号段），撞 uk 兜底续号
+        String orderNo =
+                orderNoGenerator.mainOrderNo(
+                        now,
+                        no ->
+                                orderMapper.selectCount(
+                                                Wrappers.<OrdOrder>lambdaQuery()
+                                                        .eq(OrdOrder::getOrderNo, no))
+                                        > 0);
+        Map<String, String> subOrderNoOf = new LinkedHashMap<>();
+        int subIdx = 0;
+        for (Group g : split.groups) {
+            // 子单号 = 主单号 + 后缀（ADR-035），一眼看出属于哪一单；不消耗序列
+            subOrderNoOf.put(g.key(), orderNoGenerator.subOrderNo(orderNo, ++subIdx));
         }
 
         // ⑥ 落库：主单 + 子单 + 行，同一事务
@@ -1813,13 +2162,21 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                         line.qty() + gifts.getOrDefault(line.skuNo(), 0), storeNo, fulfillmentRef, lifecycleVersion));
             }
         }
+        if (expected != null) {
+            if (!ticketOf.isEmpty()) {
+                throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+            }
+            checkoutGuard.requireMatches(expected, pricing.economic());
+        }
         String registered = creationRecovery.register(orderNo, userNo, idempotencyKey, inputHash, withGifts);
         if (!orderNo.equals(registered)) {
             if (orderMapper.selectCount(Wrappers.<OrdOrder>lambdaQuery()
                     .eq(OrdOrder::getOrderNo, registered).eq(OrdOrder::getUserNo, userNo)) == 0) {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
-            return detailOf(registered, userNo, "MP");
+            return expected == null
+                    ? detailOf(registered, userNo, "MP")
+                    : checkoutCreatedView(registered, userNo);
         }
         creationRecovery.enlist(orderNo);
         // Only a new durable intent can book a slot; replay must never reserve another resource.
@@ -1934,14 +2291,27 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 sub.setPeriodNo(ticket.periodNo());
                 sub.setArriveDate(ticket.pickupDate());
             }
+            if (expected != null) {
+                sub.setFulfillmentAuthority(OrdSubOrder.SERVICE_EXECUTION);
+                sub.setSourceOperationNo(expected.operationNo());
+                var money = pricing.economic();
+                if (!Long.valueOf(money.dueMinor()).equals(sub.getPayAmount())
+                        || !Long.valueOf(money.platformMinor()).equals(sub.getDiscountPlatform())
+                        || !Long.valueOf(money.merchantMinor()).equals(sub.getDiscountMerchant())) {
+                    throw BizException.of(ErrorCode.CONFLICT);
+                }
+            }
             subOrderMapper.insert(sub);
             appendStatusLog(subOrderNo, OrdSubOrder.WAIT_PAY, "已下单，待付款",
                     OrdStatusLog.BY_USER, userNo);
 
             // 行实付快照（TDD-订单状态机 AC19）：子单商品实付按行金额比例分摊，最大余数法，Σ 恰等于商品实付
-            long[] shares = ai.neargo.shop.trade.order.refund.policy.LineShares.allocate(
-                    ai.neargo.shop.trade.order.refund.policy.LineShares.goodsPaid(sub),
-                    g.lines.stream().mapToLong(Line::amount).toArray());
+            long[] shares =
+                    expected == null
+                            ? LineShares.allocate(
+                                    LineShares.goodsPaid(sub),
+                    g.lines.stream().mapToLong(Line::amount).toArray())
+                            : pricing.economic().paidShares();
             int lineIdx = 0;
             for (Line line : g.lines) {
                 OrdItem item = new OrdItem();
@@ -1961,6 +2331,10 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 item.setCategoryNo(line.snapshot.categoryNo());
                 item.setSupplyStoreNo(line.snapshot.storeNo());
                 itemMapper.insert(item);
+                if (expected != null) {
+                    checkoutGuard.recordLine(
+                            expected, item, pricing.economic().lines().get(lineIdx - 1));
+                }
                 if (pointDecisions.containsKey(g.key())) {
                     pointLines.computeIfAbsent(g.key(), k -> new ArrayList<>()).add(
                             new ai.neargo.shop.trade.order.points.OrderPointsTargetFactory.PricedLine(
@@ -1969,7 +2343,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                             new ai.neargo.shop.spi.points.PointsEarnPort.EarnLine(
                                     String.valueOf(item.getId()), item.getGoodsNo(), item.getCategoryNo(), item.getQty(), 0, 0, null));
                 }
-                if (cardProductSales != null && cardSaleSnapshotService != null) {
+                if (expected == null
+                        && cardProductSales != null && cardSaleSnapshotService != null) {
                     var definition=cardProductSales.saleDefinition(g.merchantNo,line.snapshot.goodsNo(),line.skuNo());
                     if (definition != null && definition.isPresent()) {
                         var d=definition.get();
@@ -2047,7 +2422,27 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         // 下单返回支付视角：端上下一步就是去收银台。**按下单归属的那个人查**，
         // 代客下单时下单的是客服、属主是顾客。此刻还没有运单，traceOf 必然为 null，
         // 展示渠道传什么都不影响 —— 给 MP 占位
-        return detailOf(orderNo, userNo, "MP");
+        return expected == null
+                ? detailOf(orderNo, userNo, "MP")
+                : checkoutCreatedView(orderNo, userNo);
+    }
+
+    private OrderVO checkoutCreatedView(String orderNo, String buyerNo) {
+        var order =
+                orderMapper.selectOne(
+                        Wrappers.<OrdOrder>lambdaQuery()
+                                .eq(OrdOrder::getTenantNo, "MAIN")
+                                .eq(OrdOrder::getOrderNo, orderNo)
+                                .eq(OrdOrder::getUserNo, buyerNo));
+        if (order == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        var subs =
+                subOrderMapper.selectList(
+                        Wrappers.<OrdSubOrder>lambdaQuery()
+                                .eq(OrdSubOrder::getTenantNo, "MAIN")
+                                .eq(OrdSubOrder::getOrderNo, orderNo));
+        return payView(order, subs);
     }
 
     private ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator.Draft pointsPlacementDraft(
@@ -2381,17 +2776,22 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             if (!OrdSubOrder.WAIT_PAY.equals(sub.getStatus())) {
                 continue;
             }
+            boolean managed = OrdSubOrder.SERVICE_EXECUTION.equals(sub.getFulfillmentAuthority());
             boolean serviceLike = Fulfillments.SERVICE_LIKE.contains(sub.getFulfillment());
             statusWriter.order(sub, OrderEvent.PAY_CONFIRMED, Actor.SYSTEM, null,
-                    serviceLike ? "支付成功，凭码到店使用" : "支付成功，待备货",
+                    managed ? "支付成功，待服务" : serviceLike ? "支付成功，凭码到店使用" : "支付成功，待备货",
                     OrderContext.authorizedOnly().withServiceClass(serviceLike));
             // 核销码在支付成功后生成：未付款的订单不该有能核销的码。
             // 全局唯一由 uk_verify_code 兜底 —— 撞码时插入失败总比核销台扫出两单强
-            sub.setVerifyCode(newUnusedVerifyCode());
+            if (!managed) {
+                sub.setVerifyCode(newUnusedVerifyCode());
             subOrderMapper.updateById(sub);
+            }
 
             // 服务类在这一刻就要向微信报发货（实物类走各自的发货/到货迁移点）
-            notifyShippingOnPaid(sub);
+            if (!managed) {
+                notifyShippingOnPaid(sub);
+            }
 
             /*
              * 参团单：**付款成功才算成员**（设计 D1）。团在付款之前已经散了 / 过期了的，
@@ -3034,6 +3434,10 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
 
     /** 预览与下单共用。**唯一的拆单实现**。 */
     private Split split(CreateOrderCommand cmd) {
+        return split(cmd, null);
+    }
+
+    private Split split(CreateOrderCommand cmd, String buyerNo) {
         List<CreateOrderCommand.Item> requested = cmd.items() == null || cmd.items().isEmpty()
                 ? selectedCartItems() : cmd.items();
         if (requested.isEmpty()) {
@@ -3041,7 +3445,10 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         }
 
         List<String> skuNos = requested.stream().map(CreateOrderCommand.Item::skuNo).toList();
-        Map<String, GoodsQueryPort.SkuSnapshot> snapshots = goodsPort.snapshot(skuNos);
+        Map<String, GoodsQueryPort.SkuSnapshot> snapshots =
+                buyerNo == null
+                        ? goodsPort.snapshot(skuNos)
+                        : goodsPort.snapshotFor(buyerNo, skuNos, cmd.storeChoices());
 
         /*
          * **门店价：预览与下单在这里一起拿到，不在别处各算一次**（批 C）。
@@ -3081,7 +3488,10 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          * 于是「A 店把货下架了」对没配门店价的商家<b>完全无效</b>，
          * 分享链接照样下单成功。省下的那次查询，代价是卖出店主已经下掉的货。
          */
-        snapshots = goodsPort.snapshot(skuNos, storeByEntity);
+        snapshots =
+                buyerNo == null
+                        ? goodsPort.snapshot(skuNos, storeByEntity)
+                        : goodsPort.snapshotFor(buyerNo, skuNos, cmd.storeChoices());
 
         List<Line> lines = new ArrayList<>();
         for (CreateOrderCommand.Item item : requested) {
@@ -3096,10 +3506,34 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             if (s == null) {
                 throw BizException.of(ErrorCode.NOT_FOUND);
             }
+            if (buyerNo != null
+                    && (!"SERVICE".equals(s.categoryType())
+                            || s.fulfillments() == null
+                            || !s.fulfillments().contains(Fulfillments.STORE_VERIFY)
+                            || cmd.storeChoices() == null
+                            || !Objects.equals(
+                                    cmd.storeChoices().get(s.merchantNo()), s.storeNo()))) {
+                throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+            }
             if (!s.onSale()) {
                 throw BizException.of(ErrorCode.GOODS_OFF_SALE);
             }
             lines.add(new Line(s, item.qty()));
+        }
+        if (buyerNo != null) {
+            try {
+                long total = 0;
+                for (Line line : lines) {
+                    if (line.qty() < 1 || line.qty() > 999 || line.snapshot().price() < 0) {
+                        throw new ArithmeticException("Invalid checkout money");
+                    }
+                    total =
+                            Math.addExact(
+                                    total, Math.multiplyExact(line.snapshot().price(), line.qty()));
+                }
+            } catch (ArithmeticException invalid) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
         }
         for (Line line : lines) {
             if ("CARD".equals(line.snapshot.categoryType())) {

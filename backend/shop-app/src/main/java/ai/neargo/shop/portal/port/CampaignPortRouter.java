@@ -64,8 +64,31 @@ public class CampaignPortRouter implements CampaignPort {
      */
     @Override
     public List<AppliedActivity> candidates(List<MerchantAmount> groups) {
-        List<AppliedActivity> all = new ArrayList<>(legacy.candidates(groups));
-        all.addAll(promo.candidates(SecurityUtils.currentUserNoOrNull(), groups));
+        return candidatesOf(SecurityUtils.currentUserNoOrNull(), groups);
+    }
+
+    @Override
+    public List<AppliedActivity> candidatesFor(String buyerNo, List<MerchantAmount> groups) {
+        // Preserve promised effects long enough for the owner to reject unsupported rewards.
+        // The ordinary retail API above retains its original capability filtering.
+        var complete =
+                groups.stream()
+                        .map(
+                                g ->
+                                        new MerchantAmount(
+                                                g.merchantNo(),
+                                                g.goodsAmount(),
+                                                g.goodsQty(),
+                                                g.storeNo(),
+                                                g.lines(),
+                                                true))
+                        .toList();
+        return candidatesOf(buyerNo, complete);
+    }
+
+    private List<AppliedActivity> candidatesOf(String buyerNo, List<MerchantAmount> groups) {
+        List<AppliedActivity> all = new ArrayList<>(legacy.candidatesFor(buyerNo, groups));
+        all.addAll(promo.candidates(buyerNo, groups));
         return all;
     }
 
@@ -80,6 +103,23 @@ public class CampaignPortRouter implements CampaignPort {
     @Override
     public Discount autoDiscount(List<MerchantAmount> groups, Map<String, String> choices) {
         return CampaignPort.pick(candidates(groups), choices == null ? Map.of() : choices);
+    }
+
+    @Override
+    public void requireOrdinarySelection(String buyerNo, Discount selected) {
+        var old = new ArrayList<AppliedActivity>();
+        var current = new ArrayList<AppliedActivity>();
+        for (var row : selected.applied()) {
+            if (promo.ownsActivity(row.activityNo())) {
+                current.add(row);
+            } else {
+                old.add(row);
+            }
+        }
+        legacy.requireOrdinarySelection(
+                buyerNo, new Discount(selected.total(), selected.shares(), old));
+        promo.requireOrdinarySelection(
+                buyerNo, new Discount(selected.total(), selected.shares(), current));
     }
 
     @Override
@@ -102,16 +142,25 @@ public class CampaignPortRouter implements CampaignPort {
     @Override
     public Map<String, Long> flashPrices(Collection<String> goodsNos) {
         Map<String, Long> out = new HashMap<>(legacy.flashPrices(goodsNos));
-        // 取更低的那个价 —— 与满减取最优同一侧
         promo.flashPrices(SecurityUtils.currentUserNoOrNull(), goodsNos)
                 .forEach((k, v) -> out.merge(k, v, Math::min));
         return out;
     }
 
     @Override
+    public Map<String, Long> flashPricesFor(String buyerNo, Collection<String> goodsNos) {
+        return promo.ordinaryFlashPrices(buyerNo, goodsNos, legacy.flashPrices(goodsNos));
+    }
+
+    @Override
     public Map<String, GiftRule> giftRules(Collection<String> goodsNos) {
+        return giftRulesFor(SecurityUtils.currentUserNoOrNull(), goodsNos);
+    }
+
+    @Override
+    public Map<String, GiftRule> giftRulesFor(String buyerNo, Collection<String> goodsNos) {
         Map<String, GiftRule> out = new HashMap<>(legacy.giftRules(goodsNos));
-        promo.giftRules(SecurityUtils.currentUserNoOrNull(), goodsNos)
+        promo.giftRules(buyerNo, goodsNos)
                 .forEach((k, v) -> out.merge(k, v, (x, y) -> y.giftM() > x.giftM() ? y : x));
         return out;
     }

@@ -1,7 +1,6 @@
 package ai.neargo.shop.trade.entity;
 
 import ai.neargo.shop.common.BaseEntity;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
@@ -79,6 +78,13 @@ public class OrdSubOrder extends BaseEntity {
     public static final String EXPRESS = ai.neargo.shop.common.Fulfillments.EXPRESS;
     /** 到店核销（服务品类）。付款即出码，支付成功直接落 {@link #FULFILLING} */
     public static final String STORE_VERIFY = ai.neargo.shop.common.Fulfillments.STORE_VERIFY;
+
+    public static final String SERVICE_EXECUTION = "SERVICE_EXECUTION";
+
+    /** NULL preserves the historical ordinary fulfillment owner. */
+    private String fulfillmentAuthority;
+
+    private String sourceOperationNo;
 
     private String subOrderNo;
     private String orderNo;

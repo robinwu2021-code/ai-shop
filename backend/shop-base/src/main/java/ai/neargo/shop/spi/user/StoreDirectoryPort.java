@@ -1,5 +1,8 @@
 package ai.neargo.shop.spi.user;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +19,11 @@ import java.util.Optional;
  * 且几乎都是「按主体问」。把门店目录塞进去，下一个人找「按门店问」的能力时要翻完整个接口。
  */
 public interface StoreDirectoryPort {
+    /** No remote fallback is permitted while the checkout transaction holds locks. */
+    default StoreCard checkoutCardInCurrentTransaction(
+            String tenantNo, String entityNo, String storeNo) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
 
     /** 门店状态：营业中 */
     String STORE_ACTIVE = "ACTIVE";
