@@ -1,6 +1,6 @@
 # Task60 module gate preparation
 
-Status: PREPARATION_ONLY. Task58 I1-I5 remain open; Task59 is not dispatched. This checklist neither releases Task60 implementation nor replaces its design gate. Owner: root; original scope: main TDD Task60 and recorded progress ledger. Fill accepted Task58/59 commits and current artifact SHA before execution.
+Status: PREPARATION_ONLY. Task58 accepted ea2ead5c6 after all Important fixes; Task59 design is technically approved and implementation is being released. This checklist neither releases Task60 implementation nor replaces its design gate. Owner: root; original scope: main TDD Task60 and recorded progress ledger. Fill accepted Task58/59 commits and current artifact SHA before execution.
 
 ## Mandatory carried findings
 
