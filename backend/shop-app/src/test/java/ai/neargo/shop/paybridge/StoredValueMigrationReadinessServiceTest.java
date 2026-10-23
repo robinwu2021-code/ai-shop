@@ -44,4 +44,13 @@ class StoredValueMigrationReadinessServiceTest {
         assertThat(loaded.sealed()).isFalse();assertThat(loaded.nodes()).isEmpty();
     }
 
+    @Test void proofCarriesTheSingleInventorySnapshotActuallyUsedForProbes(){
+        var reads=new AtomicInteger();
+        var service=new StoredValueMigrationReadinessService(()->{reads.incrementAndGet();return inventory(true);},(n,q)->new Capability(q.challenge(),n.application(),"boot-pay",sha,1,true,true,ledger,true,Instant.now()));
+        var proof=service.proof();assertThat(proof.report().ready()).isTrue();assertThat(reads.get()).isEqualTo(1);
+        assertThat(proof.inventory()).isEqualTo(inventory(true));
+        var cap=proof.report().nodes().getFirst().capability();
+        assertThat(proof.report().inventoryHash()).isEqualTo(ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.check(proof.inventory(),proof.report().nodes(),cap.challenge(),proof.report().checkedAt()).inventoryHash());
+    }
+
 }

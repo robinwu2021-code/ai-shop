@@ -9,6 +9,8 @@ package ai.neargo.shop.pay.client;
  */
 public final class PayInternalPaths {
     public static final String SV_MIGRATION_CAPABILITY="/internal/pay/stored-value/migrations/capability";
+    public static final String SV_MIGRATION_PAUSE="/internal/pay/stored-value/migrations/pause";
+    public static final String SV_MIGRATION_APPLY="/internal/pay/stored-value/migrations/apply";
     public static final String SV_MIGRATION_PROBE="/internal/pay/stored-value/migrations/probe";
     public static final String SV_MIGRATION_PREPARE="/internal/pay/stored-value/migrations/prepare";
     public static final String SV_ISSUER_PREPARE_STORE="/internal/pay/stored-value/issuers/prepare-store";

@@ -730,3 +730,9 @@ V545只新增mbr_scope_member/mbr_store_profile/mbr_scope_legacy_link及mbr_iden
 选账在tenant/issuer/customer/currency精确匹配后，关联不可变sv_issuer_version验证账户冻结版本、币种和主体，并校验原门店。额外检查同主体/门店（含来源缺失）下的既有person/user别名账户，有第二个候选即阻断。新建不使用INSERT IGNORE吞掉约束冲突，依靠同Pay事务及发行方行锁与现有账务提交顺序执行；来源不明或不一致时回滚，保留原已收款业务的正常恢复机制。
 
 账务锁顺序保持issuer→quota→account，核销仍先持原source/intent栅栏。新SQL与MyBatis使用同一payTxManager数据源；按accountNo读取/锁定的Mapper方法禁用缓存并刷新本地缓存。尚未切换新唯一键或移除旧唯一键；全写入节点就绪、冻结审计及条件式DDL仍是正式切换前置条件，不能将当前代码视为已完成切换。
+
+### P3 维护执行回执（2026-10-23）
+
+复用 pay_ent_command_dedup，不新增表，不修改 V548/V549 或旧唯一键。外层 operation_kind 为 SV_MAINTENANCE_PAUSE、SV_MAINTENANCE_APPLY，resource_no 使用 SVM 维护回执编号；response_snapshot 保存 MaintenanceResult。pause 的 payload_hash 绑定原 manifest、规范化服务器证据、inventoryHash；apply 额外绑定 pauseReceiptNo。内层 fence/map 使用从操作、外层键、清单和 manifest 派生的独立幂等键，不能用旧基础命令冒充完整维护批准。
+
+暂停与映射分别提交。映射及提交前证明时效检查处于同一 Pay 事务；失败时原账户维度与本次内外层回执共同回滚，已提交暂停不回滚。保持 accountNo、金额、账序和原身份不变。MySQL 唯一键的条件切换、DDL 失败恢复与正式恢复发行仍待实现，不能将事务内映射视为已完成 DDL。

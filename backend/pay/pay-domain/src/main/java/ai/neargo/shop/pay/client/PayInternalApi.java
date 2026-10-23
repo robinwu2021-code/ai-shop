@@ -373,6 +373,11 @@ public interface PayInternalApi {
     @PostExchange(PayInternalPaths.SV_MIGRATION_CAPABILITY)
     ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Capability svMigrationCapability(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Query query);
 
+    @PostExchange(PayInternalPaths.SV_MIGRATION_PAUSE)
+    ai.neargo.shop.spi.storedvalue.StoredValueMigrationPlans.MaintenanceResult svMigrationPause(@RequestBody PayStoredValueMigrationRequests.Pause request);
+    @PostExchange(PayInternalPaths.SV_MIGRATION_APPLY)
+    ai.neargo.shop.spi.storedvalue.StoredValueMigrationPlans.MaintenanceResult svMigrationApply(@RequestBody PayStoredValueMigrationRequests.Apply request);
+
     @PostExchange(PayInternalPaths.SV_MIGRATION_PROBE)
     ai.neargo.shop.spi.storedvalue.StoredValueMigrationPlans.Probe svMigrationProbe(@RequestBody PayStoredValueMigrationRequests.Probe request);
     @PostExchange(PayInternalPaths.SV_MIGRATION_PREPARE)

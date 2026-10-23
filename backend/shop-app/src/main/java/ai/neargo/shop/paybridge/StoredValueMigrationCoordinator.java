@@ -24,7 +24,9 @@ public class StoredValueMigrationCoordinator {
         this.authority=authority;this.pay=pay;this.identities=identities;this.people=people;
     }
     public Manifest prepare(Actor actor,List<String> stores,String key) {
-        ContractChecks.id(key);
+        ContractChecks.id(key);return pay.prepare(evidence(actor,stores),key);
+    }
+    Preparation evidence(Actor actor,List<String> stores) {
         if(actor==null||!"MAIN".equals(actor.tenantNo())||stores==null||stores.isEmpty()||stores.size()>100
                 ||stores.stream().distinct().count()!=stores.size())throw BizException.of(ErrorCode.BAD_REQUEST);
         var scopes=stores.stream().map(ContractChecks::id).sorted().map(s->authority.storePreparationScope(actor,s)).toList();
@@ -60,6 +62,10 @@ public class StoredValueMigrationCoordinator {
         // No remote calls under Pay's issuer/account locks. Detect authority changes during identity discovery.
         for(StoreAuthority scope:scopes)
             if(!scope.equals(authority.storePreparationScope(actor,scope.storeNo())))throw BizException.of(ErrorCode.CONFLICT);
-        return pay.prepare(new Preparation(probe.scopes(),List.copyOf(proof.values())),key);
+        return new Preparation(probe.scopes(),List.copyOf(proof.values()));
     }
+    void assertCurrent(Actor actor,Preparation evidence) {
+        for(var scope:evidence.scopes())if(!scope.authority().equals(authority.storePreparationScope(actor,scope.authority().storeNo())))throw BizException.of(ErrorCode.CONFLICT);
+    }
+
 }

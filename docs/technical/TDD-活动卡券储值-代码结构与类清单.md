@@ -885,3 +885,15 @@ LegacyCouponIdentityPort新增core本地模板主体/已提交模板目录读取
 | shop-app/paybridge | StoredValueMigrationReadinessService.load / check | 每轮读取服务端封存文件快照，无需重启即可更新本进程标识；坏文件不回退旧清单 |
 
 发行方数据库唯一键切换、完整运维执行编排、其余IS/RC/RD和B端页面仍属后续交付，不在此表标记已完成。
+
+### P3 维护编排新增类（2026-10-23）
+
+| 模块 | 类/合同 | 职责 |
+| --- | --- | --- |
+| shop-app/paybridge | StoredValueMigrationMaintenanceService | 内部所有人授权入口，实时证据→新鲜证明→权限复核→暂停/映射；默认关闭 |
+| pay-domain/storedvalue/migration | StoredValueMigrationExecutionService | 验证实际执行节点与证明，绑定暂停回执，分事务暂停/映射及提交前过期回滚 |
+| shop-base/spi/storedvalue | StoredValueMigrationReadiness.Proof | 同次封存清单和观测报告，不接受普通公开请求提供 |
+| shop-base/spi/storedvalue | StoredValueMigrationPlans.MaintenanceResult | 原清单、维护回执、状态、清单摘要及实际数量 |
+| Core/Pay transport | StoredValueMigrationAppService、PayInternalApi、PayStoredValueMigrationRequests、InternalStoredValueMigrationEndpoint | 嵌入/独立 Pay typed pause/apply，沿用内部 token；不新增公开 API |
+
+本轮没有唯一键 DDL、恢复发行或品牌资金激活类；全阶段仍在开发。

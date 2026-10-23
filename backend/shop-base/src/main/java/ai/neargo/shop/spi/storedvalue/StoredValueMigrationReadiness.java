@@ -17,6 +17,7 @@ public final class StoredValueMigrationReadiness {
     public record Capability(String challenge,String application,String processNo,String buildSha,int protocol,
             boolean writerGuardEnabled,boolean maintenanceEnabled,String ledgerFingerprint,boolean schemaReady,Instant checkedAt) { }
     public record NodeResult(String nodeId,Capability capability,String errorCode) { }
+    public record Proof(Inventory inventory,Report report) { }
     public record Issue(String nodeId,String code) { }
     public record Report(boolean ready,String inventoryHash,Instant checkedAt,Instant expiresAt,List<Issue> issues,List<NodeResult> nodes) {
         public Report { issues=List.copyOf(issues);nodes=List.copyOf(nodes); }

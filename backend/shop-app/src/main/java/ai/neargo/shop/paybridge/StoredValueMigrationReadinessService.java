@@ -42,16 +42,17 @@ public class StoredValueMigrationReadinessService {
         }catch(IOException|RuntimeException invalid){ /* Only unready evidence; never expose a path or raw parse error. */ }
         return new Inventory("UNCONFIGURED",null,false,List.of());
     }
-    public Report check() {
+    public Report check() {return proof().report();}
+    public Proof proof() {
         var inventory=inventories.get();
         String challenge=UUID.randomUUID().toString();Instant now=Instant.now();
         var preflight=StoredValueMigrationReadiness.check(inventory,List.of(),challenge,now);
-        if(preflight.issues().stream().anyMatch(i->!"NODE_MISSING".equals(i.code())))return preflight;
+        if(preflight.issues().stream().anyMatch(i->!"NODE_MISSING".equals(i.code())))return new Proof(inventory,preflight);
         var observations=new ArrayList<NodeResult>();var query=new Query(challenge);
         for(var node:inventory.nodes()) {
             try {observations.add(new NodeResult(node.nodeId(),probe.apply(node,query),null));}
             catch(RuntimeException unavailable) {observations.add(new NodeResult(node.nodeId(),null,"PROBE_UNAVAILABLE"));}
         }
-        return StoredValueMigrationReadiness.check(inventory,observations,challenge,Instant.now());
+        return new Proof(inventory,StoredValueMigrationReadiness.check(inventory,observations,challenge,Instant.now()));
     }
 }

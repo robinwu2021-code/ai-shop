@@ -92,7 +92,7 @@ public class StoredValueMigrationManifestService {
         var result=prepare(trusted(input),key);
         return new StoredValueMigrationPlans.Manifest(result.manifestNo(),result.fingerprint(),result.authorityHash(),result.accountCount());
     }
-    private Evidence trusted(StoredValueMigrationPlans.Preparation input) {
+    Evidence trusted(StoredValueMigrationPlans.Preparation input) {
         if(input==null||input.scopes().isEmpty()||input.scopes().size()>100||input.identities().size()>1000)throw BizException.of(ErrorCode.BAD_REQUEST);
         var first=input.scopes().getFirst().authority();
         return new Evidence(new StoredValueIssuerMigrationService.Batch(first.tenantNo(),first.actorNo(),
@@ -162,7 +162,7 @@ public class StoredValueMigrationManifestService {
         if(!saved.manifest().authorityHash().equals(authorityHash))throw BizException.of(ErrorCode.FORBIDDEN);
         return saved;
     }
-    private <T>T command(Evidence evidence,String operation,String key,String payload,String resource,Class<T> type,Supplier<T> work) {
+    <T>T command(Evidence evidence,String operation,String key,String payload,String resource,Class<T> type,Supplier<T> work) {
         return db.write(()->{
             var batch=evidence.batch();
             var row=db.one("SELECT * FROM pay_ent_command_dedup WHERE tenant_no=? AND operation_kind=? AND request_key=? AND deleted=0 FOR UPDATE",batch.tenantNo(),operation,key);

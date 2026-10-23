@@ -7,19 +7,30 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-/** Internal token plus migration-enabled guard. No financial mutation or cutover endpoint. */
+/** Internal token plus explicit maintenance execution gate. No balance mutation, DDL or activation endpoint. */
 @RestController
 public class InternalStoredValueMigrationEndpoint {
     private final StoredValueMigrationManifestService migration;
     private final String token;
+    private final ai.neargo.shop.pay.storedvalue.migration.StoredValueMigrationExecutionService execution;
     private final ai.neargo.shop.pay.storedvalue.migration.StoredValueWriterCapabilityService writer;
-    public InternalStoredValueMigrationEndpoint(StoredValueMigrationManifestService migration,ai.neargo.shop.pay.storedvalue.migration.StoredValueWriterCapabilityService writer,@Value("${shop.services.internal-token:}") String token) {
-        this.migration=migration;this.token=token;this.writer=writer;
+    public InternalStoredValueMigrationEndpoint(StoredValueMigrationManifestService migration,ai.neargo.shop.pay.storedvalue.migration.StoredValueWriterCapabilityService writer,ai.neargo.shop.pay.storedvalue.migration.StoredValueMigrationExecutionService execution,@Value("${shop.services.internal-token:}") String token) {
+        this.migration=migration;this.token=token;this.writer=writer;this.execution=execution;
     }
     @PostMapping(PayInternalPaths.SV_MIGRATION_CAPABILITY)
     public ResponseEntity<?> capability(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Query query,
             @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given) {
         return InternalServiceResponses.invoke(token,given,()->writer.capability(query));
+    }
+    @PostMapping(PayInternalPaths.SV_MIGRATION_PAUSE)
+    public ResponseEntity<?> pause(@RequestBody PayStoredValueMigrationRequests.Pause request,
+            @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given) {
+        return InternalServiceResponses.invoke(token,given,()->execution.pause(request.input(),request.manifestNo(),request.key(),request.proof()));
+    }
+    @PostMapping(PayInternalPaths.SV_MIGRATION_APPLY)
+    public ResponseEntity<?> apply(@RequestBody PayStoredValueMigrationRequests.Apply request,
+            @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given) {
+        return InternalServiceResponses.invoke(token,given,()->execution.apply(request.input(),request.manifestNo(),request.pauseReceiptNo(),request.key(),request.proof()));
     }
     @PostMapping(PayInternalPaths.SV_MIGRATION_PROBE)
     public ResponseEntity<?> probe(@RequestBody PayStoredValueMigrationRequests.Probe request,

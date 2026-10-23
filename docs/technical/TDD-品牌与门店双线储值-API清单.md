@@ -443,3 +443,16 @@ B/C 端原余额、储值和核销接口的入参/返回不变。启用 issuer-m
 新增服务端配置 shop.pay.stored-value.migration.inventory-file，可预先指定文件位置，在节点启动并取得processNo后，原子替换写入封存清单，不重启被观察的进程。每次check开始只读取一次完整快照，最长64KiB，要求普通文件且不跟随文件符号链接。配置文件路径来自服务端，不接受HTTP入参。
 
 指定文件后，文件缺失/不可读/损坏/超限一律返回未就绪，不回退到旧inline清单；未指定文件时继续兼容原inventory配置。原子替换建议由部署运维执行并限制写权限。默认未配置，未在服务器创建文件或开启开关。切换流程未来仍需复核最新清单摘要与时效、冻结部署并消费就绪结果；目前没有对外执行接口。
+
+### P3 暂停与元数据回填维护合同（2026-10-23，源码交付）
+
+Core 内部 StoredValueMigrationMaintenanceService.pause/apply 先取得当前所有人、来源版本和既有会员身份事实，再生成新鲜节点证明，网络探测后再次复核所有人权限。没有新增 B/C/运营公开入口，请求方不能自行提供权限事实或节点清单。
+
+| 内部 Pay 接口 | 请求 | 返回 |
+| --- | --- | --- |
+| POST /internal/pay/stored-value/migrations/pause | input、manifestNo、key、proof | MaintenanceResult：receiptNo、manifestNo、WRITE_FENCED、inventoryHash、issuerCount、accountCount=0 |
+| POST /internal/pay/stored-value/migrations/apply | input、manifestNo、pauseReceiptNo、key、proof | MaintenanceResult：receiptNo、manifestNo、METADATA_MAPPED、inventoryHash、issuerCount、accountCount |
+
+接口经原内部 token 鉴权；Core 和 Pay 均要求 shop.pay.stored-value.migration.execution-enabled=true，默认 false。原 migration-enabled、issuer-mode 及冻结预审约束继续生效。proof 包含同次读取的封存 Inventory 与 Report。Pay 重新计算证明，核对实际执行进程、数据库摘要、开关、构建和时效；事务提交前再次检查时效，包含等待锁和映射耗时。
+
+apply 必须引用同租户、原清单、当前证据及同 inventoryHash 的已完成 pause 回执；基础 fence 回执不能替代。暂停、映射分别提交，映射失败或证明过期回滚本次元数据及回执，保留此前已提交的 FENCED。相同幂等键可用同清单的新鲜证明重试；清单摘要变化须重新取得暂停回执。本链路不执行唯一键 DDL、不解除暂停、不启用发行。前述“未接入编排”仅剩完整切换部分，暂停及元数据回填已接通；线上尚未部署或启用。
