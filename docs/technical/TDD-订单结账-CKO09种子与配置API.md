@@ -221,3 +221,52 @@ round沿现有货币最小单位和逐发票行HALF_UP策略，汇总行结果�
 
 
 消融：移除schema3禁止taxProfileNo的条件后，新版禁止审核税档回退用例产生1项断言失败/0错误；随后逐字节恢复源码并再次执行完整核心回归。宿主守卫34项中26通过/8失败，ArchitectureTest7项错误与原统一基线完全一致，SchemaDriftTest仍是同一mbr_identity_ticket.customer_no列差异（列输出顺序不同但集合相同）；H2加载/Parity、角色种子及三语通过。不声称全应用守卫通过。
+
+
+### C2.2 默认与商家税配置存储（2026-10-23，内部服务已实现）
+
+复用现有sys_setting，当前DDL已有version和setting_key唯一键。trade只经spi.platform.SettingPort调用，不引用platform实体/Mapper。新增版本读取及CAS合同，原get/put语义保持；新税键独占pricing.tax.default与pricing.tax.merchant.{entityNo}。MAIN租户沿当前系统约束，不给客户端任意键权限。无新表、无新迁移、无默认税率种子。
+
+参数值闭合JSON：schemaVersion=1、custom(boolean)、rateBp(integer|null)、priceTaxMode(INCLUSIVE|EXCLUSIVE|null)。custom=true要求rateBp在0～10000且模式明确；custom=false要求另两字段均null，仅用于商家恢复继承，不删除行或重置版本。平台只允许custom=true。显式0表示零税率，缺记录表示未配置；坏配置不可降级为0或绕过为默认。Settings存储版本与配置schema版本分开。
+
+| AC | 计划落点与验证 |
+|---|---|
+| ST01 | SettingPort/SettingService增versioned读取和compareAndSet，更新条件同时比较tenant/key/version/原JSON；创建靠现有唯一键；原get/put兼容 |
+| ST02 | TaxSettingDefinition纯解析/校验及不可变快照含来源/主体/版本/税率/模式/摘要；严格拒绝类型强转、重复字段和额外字段 |
+| ST03 | PricingTaxSettingService/Impl：getPlatform/getMerchant/savePlatform/saveMerchant/resetMerchant；Context取既有可信身份，不接HTTP |
+| ST04 | 平台默认→商家覆盖解析；平台更新不覆盖自定义；恢复默认后返回平台当前版本，商家自己的版本仍增加；缺默认查询可表示未配置，requireEffective必须阻断 |
+| ST05 | 变更使用现有TransactionTemplate+IdempotencyService短事务，稳定作用域/actor/请求摘要；并发CAS只有一胜，重放旧成功结果不重复写或覆盖新配置 |
+| ST06 | sys_setting更新人/时间及版本保留；审计沿原AuditLogPort结构化前后记录，其best-effort语义沿原基础设施，不冒充强制资金审计 |
+
+新增文件：common.pricing/TaxSettingDefinition.java及测试、trade/dto/PricingTaxSettingCommands.java、trade/service/PricingTaxSettingService.java及impl、trade/PricingTaxSettingServiceTest.java。修改SettingPort、SettingService/Impl、SettingPortImpl与隔离MariaDB验证脚本；不新增平行SettingMapper。旧提供方对版本方法显式不支持，不返回假版本。每阶段先观察失败断言再实现，并运行纯解析/真实并发/幂等回滚测试及完整核心回归。
+
+此步仅内部服务与数据来源，分端权限/HTTP入口留C2.3；发布来源、报价及订单快照消费留C2.4/5和CKO10/11，不声称税设置已能影响正式收款。
+
+
+C2.2补充裁决：versioned CAS更新前锁定已有行，用Java精确比较原JSON及版本，再带原version更新；首建直接依赖唯一键竞争，不锁空集合。原put的写入值/接口/最后写入生效语义不变，但明确维护version递增（不依赖可选MyBatis拦截器）；否则旧写入者会让新CAS看不到变更。创建version=1，现有version=0行仍可读取；不删除继承标记。数值版本上限采用JSON安全整数，超限阻断。新增来源快照hash同时冻结作用域、版本和规范值。
+
+
+C2.2评审裁决：审计仍为best-effort，但改为主配置/收据提交后再执行独立REQUIRES_NEW事务；外层业务回滚不记成功变更，审计事务即使被数据库整体回滚也不能吞掉主事务失败或删除已提交配置。真实数据库故障注入先复现“返回成功但配置和收据不存在”，而不是只模拟普通日志异常。旧put首建显式version=1及审计时间，避免缺记录0与未见的新记录0混淆；历史已有version=0仍可读。CAS输入按TEXT实际UTF-8 65535字节容量校验，超限返回BAD_REQUEST。
+
+
+### C2.2代码与验收对账
+
+| 设计AC | 实际实现 | 验证落点 |
+|---|---|---|
+| ST01 | 原SettingPort/SettingService新增VersionedValue、getVersioned、compareAndSet，原SettingMapper复用；原put首建1/更新递增，已有0可读 | versionedStorageChecksOriginalJsonAndLegacyPutAlwaysAdvancesTheVersion、legacyCreationUsesAVisibleVersionAndCannotOverwriteAnUnseenNewSetting |
+| ST02 | TaxSettingDefinition及严格JSON/继承/基点/来源摘要 | TaxSettingDefinitionTest 4项 |
+| ST03 | PricingTaxSettingCommands、PricingTaxSettingService/Impl，可信Context及商家级键；同商家不同门店共用 | defaultsAndMerchantOverridesRemainIndependentAcrossUpdatesAndStores、realmScopeAndInvalidVersionsAreRejectedBeforeWriting |
+| ST04 | 默认/覆盖/恢复及缺源阻断，SettingVO含管理版本、custom与有效Snapshot | missingDefaultIsVisibleButCannotBeAssumedToBeZeroTax、resetPersistsAnIncreasingVersionAndUsesTheCurrentDefault、malformedMerchantOrPlatformSettingsCannotFallBackToZeroOrAnotherSource |
+| ST05 | 主配置/幂等收据同事务，最多3次独立锁重试，外层事务不重试 | firstCreateAndExistingUpdatesHaveOnlyOneCasWinner、concurrentSameKeyReturnsOneSuccessfulReceiptWithoutDoubleWriting、aFailedMutationRollsBackBothSettingAndReceipt、lockRetriesAreBoundedAndNeverRetryInsideAnAmbientTransaction |
+| ST05重放 | 成功收据先恢复；异actor或异请求不可重用；历史结果不覆盖最新配置 | oldSuccessfulReceiptCannotOverwriteANewerSetting、completedReceiptReplaysWithoutAnAvailableSettingsProviderAndStillChecksTheActor |
+| ST06 | source updatedBy/version，提交后REQUIRES_NEW审计；失败仅影响审计 | bestEffortAuditFailureDoesNotTurnACommittedSettingIntoAFailedCommand、auditTransactionRollbackCannotEraseAReportedSuccessfulSettingOrReceipt、auditWaitsForTheOuterCommitAndNeverRecordsRolledBackChanges |
+| 快照 | record保存来源/主体/来源版本/税率/模式/摘要；已返回快照不受当前参数变更影响 | snapshotsAreStableAndDoNotChangeWhenNewDefaultsAreSaved |
+
+内部请求为SaveReq(expectedVersion,rateBp,priceTaxMode)、ResetReq(expectedVersion)，变更需稳定幂等键。输出SettingVO(version,custom,effective)，其中version为管理对象自己的版本，effective为Snapshot(source,ownerNo,version,rateBp,priceTaxMode,contentHash)或未配置时null。requireEffective不允许null继续试算。继承情况下管理版本与有效平台来源版本是两个不同维度；后续报价须同时冻结SettingVO.version与effective来源版本/摘要，而非只存税率。
+
+本次失败/通过证据：值对象初始4断言失败/0错误后4通过；内部服务初始11断言失败/0错误后11通过，再扩展为17项原生事务测试。评审1项Important（审计数据库回滚被吞掉导致假成功）与兼容首建版本/字节上界共4项失败断言/0错误，修复后全部17项原生测试通过；审计故障用实际JDBC ROLLBACK模拟数据库死锁受害事务，不仅抛日志异常。移除CAS原JSON比较的消融产生1项失败断言/0错误，代码逐字节恢复。
+
+完整原生回归：20配置发布+8种子+17税设置=45项实际通过，无跳过。核心reactor：shop-base256、shop-base-auth28全通过，shop-core514项中469执行通过/45条件跳过（对应45已在前述MariaDB实跑）；消融源码逐字节恢复后，完整核心与45项原生测试再次全部通过。公共端点/库表/权限码不变，无业务库迁移、无默认税率激活或部署。C2.3管理API、C2.4证据及报价订单消费仍待执行。
+
+
+最终守卫：宿主34项中26通过/8失败，ArchitectureTest 7项错误与原统一分支e9基线逐条相同，SchemaDriftTest仍是mbr_identity_ticket.customer_no同一列集合差异（仅忽略输出列顺序）；SchemaGeneratorTest、SchemaParityTest、BizRoleSeedTest 3项、BizKeyConventionTest 3项、BackendI18nParityTest 6项及OutboxRoutingTest 2项通过。不声称全应用守卫通过。Node9项、JSONschema契约3项及Ops后端先行出口/SQL方言守卫通过，无新增欠账；角色授权、公共API及数据库schema均未变。已重新生成分层、词表及索引，新增Service按现有零售/core包规范，未生成空Controller或平行Mapper。

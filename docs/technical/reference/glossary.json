@@ -40590,6 +40590,15 @@
       {
         "name": "Source",
         "values": [
+          "PLATFORM_DEFAULT",
+          "MERCHANT_CUSTOM"
+        ],
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "name": "Source",
+        "values": [
           "PLATFORM",
           "INVENTORY"
         ],
