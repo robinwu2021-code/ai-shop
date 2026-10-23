@@ -31,6 +31,15 @@ import ai.neargo.shop.trade.service.impl.PricingFundingSourceServiceImpl;
 import ai.neargo.shop.trade.service.impl.EntitlementSourceDecisionServiceImpl;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import java.math.BigDecimal;
+import java.util.concurrent.atomic.AtomicReference;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
+import ai.neargo.shop.common.pricing.PricingBenefitBasis;
+import ai.neargo.shop.trade.policy.PricingFundingBasisPolicy;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.transaction.support.TransactionTemplate;
 import java.nio.file.Files;
@@ -115,7 +124,7 @@ class PricingQuotePersistenceTest {
         jdbc = new JdbcTemplate(data);
         assertThat(jdbc.queryForObject("SELECT VERSION()", String.class)).contains("MariaDB");
         for (String file : List.of("V546__pricing_configuration_publication.sql", "V550__pricing_quote_snapshots.sql",
-                "V552__pricing_funding_source.sql")) {
+                "V552__pricing_funding_source.sql", "V553__pricing_funding_basis.sql")) {
             for (String sql : Files.readString(Path.of("../shop-app/src/main/resources/db/migration/" + file))
                     .replaceAll("(?m)^--[^\\r\\n]*", "").split(";")) {
                 if (!sql.isBlank()) jdbc.execute(sql);
@@ -542,6 +551,166 @@ class PricingQuotePersistenceTest {
         // A terminal journal without its same-transaction durable decision is still rejected, never fabricated.
         jdbc.update("DELETE FROM ord_ent_source_decision");
         assertThatThrownBy(() -> reader(journal).query(internal, staged.source())).isInstanceOf(BizException.class);
+    }
+
+    private PricingFundingSourceServiceImpl basisJournal(Instant time, PricingPreparationService preparations) {
+        return new PricingFundingSourceServiceImpl(session.getMapper(PriceQuoteMapper.class),
+                session.getMapper(PricingFundingSourceMapper.class), service, preparations,
+                new EntitlementSourceDecisionServiceImpl(session.getMapper(EntitlementSourceDecisionMapper.class),
+                JsonMapper.builder().build()), manager, Clock.fixed(time, ZoneOffset.UTC));
+    }
+    private OrdPricingFundingSource fundingRow(String sourceNo) {
+        return session.getMapper(PricingFundingSourceMapper.class).selectOne(new QueryWrapper<OrdPricingFundingSource>()
+                .eq("tenant_no", "MAIN").eq("funding_source_no", sourceNo).eq("deleted", 0));
+    }
+    private String legacyJournalHash(OrdPricingFundingSource row, SourceRef ref) throws Exception {
+        String value = ASSEMBLER.canonical(List.of("PRICING_FUNDING_JOURNAL_V1", ref, row.getTenantNo(),
+                row.getEntityNo(), row.getStoreNo(), row.getUserNo(), row.getQuoteNo(), row.getCurrency(),
+                row.getAmountMinor(), row.getEconomicsHash(), row.getPreparationHash(),
+                row.getExpiresAt().toInstant(ZoneOffset.UTC).toString()));
+        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                .digest(value.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    @Test void frozenBenefitBasisIsPersistedAndEveryReadAndConfirmReauthorizes() throws Exception {
+        var draft = fundingDraft(); var prepared = fundingPreparation(draft);
+        var quote = service.save(context, draft, "FUNDING");
+        var preparations = mock(PricingPreparationService.class);
+        when(preparations.confirmCustomer(any(), any(), any())).thenReturn(prepared);
+        var journal = basisJournal(NOW, preparations);
+        var staged = journal.stage(context, BUYER, quote.quoteNo(), PREPARATION_HASH);
+        var row = fundingRow(staged.source().sourceNo());
+        var decoded = PricingFundingBasisPolicy.read(row);
+        assertThat(decoded.benefits().eligibleMinor()).isEqualTo(10000);
+        assertThat(decoded.benefits().excludedMinor()).isZero();
+        assertThat(decoded.quoteNetMinor()).isEqualTo(10000);
+        assertThat(decoded.quoteTaxMinor()).isEqualTo(500);
+        assertThat(decoded.quoteReceivableMinor()).isEqualTo(10500);
+        assertThat(decoded.quoteEconomicsHash()).isEqualTo(quote.economicsHash());
+        var read = journal.readBasis(context, BUYER, staged.source().sourceNo());
+        assertThat(read.basis()).isEqualTo(decoded);
+        assertThat(journal.confirmBasis(context, BUYER, staged.source().sourceNo(), staged.snapshotHash()))
+                .isEqualTo(read);
+        verify(preparations, times(3)).confirmCustomer(draft.source(), BUYER, PREPARATION_HASH);
+        assertThat(journal.stage(context, BUYER, quote.quoteNo(), PREPARATION_HASH)).isEqualTo(staged);
+        assertThat(fundingRow(staged.source().sourceNo()).getBasisSnapshot()).isEqualTo(row.getBasisSnapshot());
+    }
+    @Test void excludedGoodsStayPayableAndDoNotEnterCouponPortions() throws Exception {
+        var old = fundingDraft(); var line = old.lines().getFirst();
+        var excluded = new UnitPolicy(PricingPortion.from(line.source()), false, PricingRuleFacts.ScopeStatus.OPEN,
+                null, PricingRuleFacts.PricingRole.NONE);
+        var draft = copy(old, List.of(new Line(line.source(), null, line.kind(), line.taxClass(), line.amounts(),
+                line.invoiceBaseMinor(), excluded)), List.of(), old.intent(), old.tax());
+        var initial = fundingPreparation(draft);
+        var policies = GoodsPricingPolicyFacts.freeze(initial.goodsPolicies().scope(),
+                List.of(new GoodsPricingPolicyPort.Policy("POLICY", "G1", "SKU1", 1, false, TaxClass.STANDARD)));
+        var prepared = new Prepared(initial.source(), initial.rules(), initial.tax(), policies,
+                initial.expiresAt(), initial.preparationHash());
+        var quote = service.save(context, draft, "FUNDING"); var journal = journal(NOW, prepared);
+        var staged = journal.stage(context, BUYER, quote.quoteNo(), PREPARATION_HASH);
+        var basis = journal.readBasis(context, BUYER, staged.source().sourceNo()).basis();
+        assertThat(basis.benefits().eligibleMinor()).isZero();
+        assertThat(basis.benefits().excludedMinor()).isEqualTo(10000);
+        assertThat(basis.quoteReceivableMinor()).isEqualTo(10500);
+        assertThat(PricingBenefitBasis.eligiblePortions(basis.benefits())).isEmpty();
+    }
+    @Test void inclusiveBasisUsesOriginalGrossPricesAndVatIsNotAddedTwice() throws Exception {
+        var old = fundingDraft(); var line = old.lines().getFirst();
+        var tax = new MerchantTaxSnapshot("MAIN", "M1", "S1", 1, Source.MERCHANT_CUSTOM, "M1", 1,
+                500, PriceTaxMode.INCLUSIVE, new TaxSettingDefinition(true, 500, PriceTaxMode.INCLUSIVE)
+                .snapshotHash("MERCHANT_CUSTOM:M1", 1));
+        var amounts = new Amounts(10000, 0, 0, 0, 0, 0, 0, 0, 9524, 476, 10000, 0);
+        var draft = copy(old, List.of(new Line(line.source(), null, line.kind(), line.taxClass(), amounts,
+                10000, line.eligibility())), List.of(), old.intent(), tax);
+        var quote = service.save(context, draft, "FUNDING"); var journal = journal(NOW, fundingPreparation(draft));
+        var staged = journal.stage(context, BUYER, quote.quoteNo(), PREPARATION_HASH);
+        var basis = journal.readBasis(context, BUYER, staged.source().sourceNo()).basis();
+        assertThat(basis.benefits().eligibleMinor()).isEqualTo(10000);
+        assertThat(basis.quoteNetMinor()).isEqualTo(9524);
+        assertThat(basis.quoteTaxMinor()).isEqualTo(476);
+        assertThat(basis.quoteReceivableMinor()).isEqualTo(10000);
+    }
+    @Test void preparationChangesCannotRefreshOrSilentlyUpgradeTheFrozenBasis() throws Exception {
+        var draft = fundingDraft(); var original = fundingPreparation(draft);
+        var quote = service.save(context, draft, "FUNDING");
+        var preparations = mock(PricingPreparationService.class);
+        var changed = new Prepared(original.source(), original.rules(), original.tax(), original.goodsPolicies(),
+                original.expiresAt(), "f".repeat(64));
+        when(preparations.confirmCustomer(any(), any(), any())).thenReturn(original, changed);
+        var journal = basisJournal(NOW, preparations);
+        var staged = journal.stage(context, BUYER, quote.quoteNo(), PREPARATION_HASH);
+        String frozen = fundingRow(staged.source().sourceNo()).getBasisSnapshot();
+        assertThatThrownBy(() -> journal.readBasis(context, BUYER, staged.source().sourceNo()))
+                .isInstanceOfSatisfying(BizException.class,
+                        e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+        assertThat(fundingRow(staged.source().sourceNo()).getBasisSnapshot()).isEqualTo(frozen);
+        assertThat(journal.get(context, staged.source().sourceNo()).snapshotHash()).isEqualTo(staged.snapshotHash());
+    }
+    @Test void cancellationDuringPreparationPreventsReturningAnOldPendingBasis() throws Exception {
+        var draft = fundingDraft(); var prepared = fundingPreparation(draft);
+        var quote = service.save(context, draft, "FUNDING");
+        var preparations = mock(PricingPreparationService.class);
+        var journalRef = new AtomicReference<PricingFundingSourceServiceImpl>();
+        var sourceNo = new AtomicReference<String>(); var calls = new AtomicInteger();
+        when(preparations.confirmCustomer(any(), any(), any())).thenAnswer(call -> {
+            if (calls.incrementAndGet() == 2) journalRef.get().cancel(context, sourceNo.get(), "CANCEL_DURING_READ");
+            return prepared;
+        });
+        var journal = basisJournal(NOW, preparations); journalRef.set(journal);
+        var staged = journal.stage(context, BUYER, quote.quoteNo(), PREPARATION_HASH);
+        sourceNo.set(staged.source().sourceNo());
+        assertThatThrownBy(() -> journal.readBasis(context, BUYER, sourceNo.get())).isInstanceOf(BizException.class);
+        assertThat(reader(journal).query(internal, staged.source()).status()).isEqualTo(State.CANCELLED);
+    }
+    @Test void legacyV1JournalStillCancelsButNeverBackfillsABenefitBasis() throws Exception {
+        var draft = fundingDraft(); var prepared = fundingPreparation(draft);
+        var quote = service.save(context, draft, "FUNDING"); var journal = journal(NOW, prepared);
+        var staged = journal.stage(context, BUYER, quote.quoteNo(), PREPARATION_HASH);
+        var row = fundingRow(staged.source().sourceNo());
+        String legacyHash = legacyJournalHash(row, staged.source());
+        jdbc.update("UPDATE ord_pricing_funding_source SET basis_snapshot=NULL,snapshot_hash=?", legacyHash);
+        assertThat(journal.get(context, staged.source().sourceNo()).snapshotHash()).isEqualTo(legacyHash);
+        assertThatThrownBy(() -> journal.readBasis(context, BUYER, staged.source().sourceNo()))
+                .isInstanceOfSatisfying(BizException.class,
+                        e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.PRICING_OWNER_UNSUPPORTED));
+        assertThat(fundingRow(staged.source().sourceNo()).getBasisSnapshot()).isNull();
+        journal.cancel(context, staged.source().sourceNo(), "LEGACY_CANCEL");
+        assertThat(reader(journal).query(internal, staged.source()).snapshotHash()).isEqualTo(legacyHash);
+    }
+    @Test void malformedJsonAndTamperedV2BasisAreRejectedWithoutChangingDecisions() throws Exception {
+        var draft = fundingDraft(); var quote = service.save(context, draft, "FUNDING");
+        var journal = journal(NOW, fundingPreparation(draft));
+        var staged = journal.stage(context, BUYER, quote.quoteNo(), PREPARATION_HASH);
+        assertThatThrownBy(() -> jdbc.update("UPDATE ord_pricing_funding_source SET basis_snapshot='{'"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        jdbc.update("UPDATE ord_pricing_funding_source SET basis_snapshot=JSON_SET(basis_snapshot,"
+                + "'$.benefits.eligibleMinor',1)");
+        assertThatThrownBy(() -> journal.readBasis(context, BUYER, staged.source().sourceNo()))
+                .isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> journal.cancel(context, staged.source().sourceNo(), "TAMPERED"))
+                .isInstanceOf(BizException.class);
+        assertThat(count("ord_ent_source_decision")).isZero();
+    }
+    @Test void basisReadRejectsExpiredCancelledUnauthorizedAndTransactionalRequests() throws Exception {
+        var draft = fundingDraft(); var prepared = fundingPreparation(draft);
+        var quote = service.save(context, draft, "FUNDING"); var journal = journal(NOW, prepared);
+        var staged = journal.stage(context, BUYER, quote.quoteNo(), PREPARATION_HASH);
+        assertThatThrownBy(() -> journal.readBasis(context, new Credentials(null, null, "U2"),
+                staged.source().sourceNo()))
+                .isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> journal.readBasis(new Context("MAIN", "M2", "S1", "U1", "ACT"),
+                BUYER, staged.source().sourceNo())).isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> journal.confirmBasis(context, BUYER, staged.source().sourceNo(), "f".repeat(64)))
+                .isInstanceOfSatisfying(BizException.class,
+                        e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+        assertThatThrownBy(() -> new TransactionTemplate(manager).execute(tx ->
+                journal.readBasis(context, BUYER, staged.source().sourceNo()))).isInstanceOf(BizException.class);
+        var expired = journal(NOW.plusSeconds(101), prepared);
+        assertThatThrownBy(() -> expired.readBasis(context, BUYER, staged.source().sourceNo()))
+                .isInstanceOf(BizException.class);
+        journal.cancel(context, staged.source().sourceNo(), "CANCEL");
+        assertThatThrownBy(() -> journal.readBasis(context, BUYER, staged.source().sourceNo()))
+                .isInstanceOf(BizException.class);
     }
 
     private PricingQuoteServiceImpl build(Instant time, PriceQuoteAllocationMapper mapper) {

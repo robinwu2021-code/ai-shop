@@ -1,6 +1,8 @@
 package ai.neargo.shop.trade.policy;
 
 import ai.neargo.shop.common.pricing.BenefitSelection;
+import ai.neargo.shop.common.pricing.PricingBenefitBasis;
+import ai.neargo.shop.trade.dto.PricingFundingBasis;
 import ai.neargo.shop.common.pricing.PricingPortion;
 import ai.neargo.shop.common.pricing.PricingRuleFacts.PricingRole;
 import ai.neargo.shop.common.pricing.PricingRuleFacts.ScopeStatus;
@@ -38,7 +40,7 @@ public final class PricingFundingSourcePolicy {
         return source;
     }
 
-    public static void verify(Context context, OrdPriceQuote quote, Prepared prepared) {
+    public static PricingFundingBasis verify(Context context, OrdPriceQuote quote, Prepared prepared) {
         require(prepared.source().scope().tenantNo().equals(context.tenantNo())
                 && prepared.source().scope().entityNo().equals(context.entityNo())
                 && prepared.source().scope().storeNo().equals(context.storeNo())
@@ -91,6 +93,9 @@ public final class PricingFundingSourcePolicy {
                 && quote.getEconomicsHash().equals(rebuilt.economicsHash())
                 && quote.getReceivableMinor() == rebuilt.amounts().receivableMinor()
                 && quote.getCurrency().equals(prepared.source().prices().currency()));
+        return new PricingFundingBasis(1, PricingBenefitBasis.freeze(prepared.source().prices(),
+                lines.stream().map(Line::eligibility).toList()), prepared.tax(), rebuilt.amounts().netMinor(),
+                rebuilt.amounts().taxMinor(), rebuilt.amounts().receivableMinor(), quote.getEconomicsHash());
     }
 
     private static void require(boolean value) {

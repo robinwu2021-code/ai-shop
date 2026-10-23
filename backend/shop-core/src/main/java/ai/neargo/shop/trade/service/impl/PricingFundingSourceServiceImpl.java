@@ -17,6 +17,7 @@ import ai.neargo.shop.trade.entity.OrdPricingFundingSource;
 import ai.neargo.shop.trade.mapper.TradeMappers.PriceQuoteMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.PricingFundingSourceMapper;
 import ai.neargo.shop.trade.policy.PricingFundingSourcePolicy;
+import ai.neargo.shop.trade.policy.PricingFundingBasisPolicy;
 import ai.neargo.shop.trade.service.EntitlementSourceDecisionService;
 import ai.neargo.shop.trade.service.PricingFundingSourceService;
 import ai.neargo.shop.trade.service.PricingPreparationService;
@@ -32,6 +33,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.NoSuchElementException;
@@ -78,16 +80,15 @@ public class PricingFundingSourceServiceImpl implements PricingFundingSourceServ
     @Override
     public View stage(Context context, Credentials credentials, String quoteNo, String expectedPreparationHash) {
         validateContext(context);
-        if (TransactionSynchronizationManager.isActualTransactionActive()) throw conflict();
-        if (credentials == null || credentials.sessionNo() != null
-                || !context.subjectNo().equals(credentials.buyerNo())
-                || expectedPreparationHash == null || !expectedPreparationHash.matches("[0-9a-f]{64}")) throw bad();
+        outsideTransaction();
+        credentials(context, credentials);
+        if (expectedPreparationHash == null || !expectedPreparationHash.matches("[0-9a-f]{64}")) throw bad();
         var quote = withoutScope(() -> quote(context, quoteNo, false));
         var prepared = preparations.confirmCustomer(validated(() -> PricingFundingSourcePolicy.source(quote)),
                 credentials, expectedPreparationHash);
         if (!expectedPreparationHash.equals(prepared.preparationHash())
                 || !now().toInstant(ZoneOffset.UTC).isBefore(prepared.expiresAt())) throw conflict();
-        validated(() -> { PricingFundingSourcePolicy.verify(context, quote, prepared); return true; });
+        var basis = validated(() -> PricingFundingSourcePolicy.verify(context, quote, prepared));
         return withoutScope(() -> transactions.execute(tx -> {
             // Serialize duplicate stage requests on the actual retained quote, not an absent journal row.
             var locked = quote(context, quoteNo, true);
@@ -108,6 +109,7 @@ public class PricingFundingSourceServiceImpl implements PricingFundingSourceServ
             row.setEconomicsHash(locked.getEconomicsHash()); row.setPreparationHash(expectedPreparationHash);
             var expiry = LocalDateTime.ofInstant(prepared.expiresAt().truncatedTo(ChronoUnit.MILLIS), ZoneOffset.UTC);
             row.setExpiresAt(expiry.isBefore(locked.getExpiresAt()) ? expiry : locked.getExpiresAt());
+            row.setBasisSnapshot(assembler.canonical(basis));
             row.setSnapshotHash(digest(row)); row.setStatus("PENDING");
             row.setVersion(0L); row.setDeleted(0); row.setCreatedAt(at); row.setUpdatedAt(at);
             row.setCreatedBy(context.actorNo()); row.setUpdatedBy(context.actorNo());
@@ -115,6 +117,50 @@ public class PricingFundingSourceServiceImpl implements PricingFundingSourceServ
             sources.insert(row);
             return view(row);
         }));
+    }
+
+    @Override
+    public BasisView readBasis(Context context, Credentials credentials, String sourceNo) {
+        validateContext(context);
+        outsideTransaction();
+        credentials(context, credentials);
+        var row = withoutScope(() -> head(context, sourceNo, false));
+        usable(row);
+        if (row.getBasisSnapshot() == null) throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+        var frozen = validated(() -> PricingFundingBasisPolicy.read(row));
+        var quote = withoutScope(() -> quote(context, row.getQuoteNo(), false));
+        if (!"READY".equals(quote.getStatus()) || !now().isBefore(quote.getExpiresAt())
+                || !row.getFundingSourceNo().equals(quote.getRetainedRef())) throw conflict();
+        var prepared = preparations.confirmCustomer(validated(() -> PricingFundingSourcePolicy.source(quote)),
+                credentials, row.getPreparationHash());
+        if (!row.getPreparationHash().equals(prepared.preparationHash())
+                || !now().toInstant(ZoneOffset.UTC).isBefore(prepared.expiresAt())) throw conflict();
+        var current = validated(() -> PricingFundingSourcePolicy.verify(context, quote, prepared));
+        if (!assembler.canonical(frozen).equals(assembler.canonical(current))) throw conflict();
+        var after = withoutScope(() -> head(context, sourceNo, false));
+        usable(after);
+        if (!row.getSnapshotHash().equals(after.getSnapshotHash())) throw conflict();
+        return new BasisView(view(after), frozen);
+    }
+
+    @Override
+    public BasisView confirmBasis(Context context, Credentials credentials, String sourceNo,
+            String expectedSnapshotHash) {
+        if (expectedSnapshotHash == null || !expectedSnapshotHash.matches("[0-9a-f]{64}")) throw bad();
+        var current = readBasis(context, credentials, sourceNo);
+        if (!expectedSnapshotHash.equals(current.source().snapshotHash())) throw conflict();
+        return current;
+    }
+
+    private void usable(OrdPricingFundingSource row) {
+        if (!"PENDING".equals(row.getStatus()) || !now().isBefore(row.getExpiresAt())) throw conflict();
+    }
+    private void credentials(Context context, Credentials credentials) {
+        if (credentials == null || credentials.sessionNo() != null
+                || !context.subjectNo().equals(credentials.buyerNo())) throw bad();
+    }
+    private void outsideTransaction() {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) throw conflict();
     }
 
     @Override
@@ -201,10 +247,15 @@ public class PricingFundingSourceServiceImpl implements PricingFundingSourceServ
         if (!Objects.equals(row.getSnapshotHash(), digest(row))) throw conflict();
     }
     private String digest(OrdPricingFundingSource row) {
-        String value = assembler.canonical(List.of("PRICING_FUNDING_JOURNAL_V1", ref(row), row.getTenantNo(),
+        var terms = new ArrayList<Object>(List.of("PRICING_FUNDING_JOURNAL_V1", ref(row), row.getTenantNo(),
                 row.getEntityNo(), row.getStoreNo(), row.getUserNo(), row.getQuoteNo(), row.getCurrency(),
                 row.getAmountMinor(), row.getEconomicsHash(), row.getPreparationHash(),
                 row.getExpiresAt().toInstant(ZoneOffset.UTC).toString()));
+        if (row.getBasisSnapshot() != null) {
+            terms.set(0, "PRICING_FUNDING_JOURNAL_V2");
+            terms.add(row.getBasisSnapshot());
+        }
+        String value = assembler.canonical(terms);
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                     .digest(value.getBytes(StandardCharsets.UTF_8)));

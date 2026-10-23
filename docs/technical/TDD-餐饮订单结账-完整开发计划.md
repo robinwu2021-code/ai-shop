@@ -948,3 +948,54 @@ stage参数非法或不支持的组合400，非本人/非门店报价与来源40
 验证结果：先编译业务/接线，再统一测试。最终shop-base 280项实际通过；shop-core 605项中524实际通过、81原生数据库条件跳过，无失败。一次性MariaDB全部81项实际通过、零跳过（发布23、种子8、税18、报价及日志23、商品9），数据库容器已确认清理。宿主选择50项：41通过、1条件跳过、8原有失败；7项架构消息逐字一致、1项SchemaDrift缺列token集合一致，无新增失败。真实PAY HTTP3、远程2、双部署接线5均实际通过，包含在宿主选择中。Node9、Python定价合同5/交付4、SQL可移植性、Ops双向与B/C正向契约通过；Ops孤儿10和正向缺8、B/C正向缺2均原基线。
 
 一次最终独立审查0Critical/1Important/0Minor，Important为取消穿插查询的正常竞争；新增原生测试先稳定复现CONFLICT，再经有界持久决策重读修复，最终全套原生及核心绿色。没有第二次审查，也没有将跳过算通过。仍缺正式餐饮权益基数、付款人资金授权/提交、活动命中事实及完整公开试算/确认入口；CKO11与09-C2.4继续未完成，不能因日志已落库扩大PAY来源支持或开放生产发布证据。本批只本地提交，V552尚未对业务库执行。
+
+
+### CKO-11B2E 优惠基数冻结与重新核验（2026-10-23）
+
+§0 依据CKO11、11B2D及用户“先排除不参与活动商品”“税可外加或倒推”“共用核心能力”的要求，补齐资金来源前的优惠基数。此前日志amount_minor只证明原报价应收，不等于券可计算金额。本批闭合基数的份额、排除、冻结、完整性及重新授权；不据此扩大PAY资金执行。首版来源准入继续沿11B2D无优惠、无资金计划、H5本人、完整MAIN整数基线；共享纯基数类型保留组件和小数份额，供后续行业适配，不将这些份额强转旧UseItem整数或合计组件数量。
+
+§1 规则：E01每个source-priced portion必须有唯一明确OPEN UnitPolicy，未知/缺失/重复拒绝；E02 priceTotal=eligible+excluded，非参与商品原价完整进入excluded，不从原订单应收扣除；E03所有金额使用最小单位及JSON安全整数，保留组件标识、原始数量区间、源版本；不通过单价×数量重新四舍五入原金额；E04纯基数不含税推算，随原报价tax.priceTaxMode存储，EXCLUSIVE基数为原税前标价，INCLUSIVE为原含税标价；实际应收/净额/税沿原报价与原税引擎校验结果；E05纯基数拒绝同套餐正金额父级与叶子同时计价；E06冻结基数与日志、报价retain同事务，摘要V2绑定完整basis_snapshot；E07旧行basis_snapshot=NULL维持V1摘要、查询与取消，新的基数读取40190，禁止按当前策略补写或默认全参与；E08readBasis每次凭原顾客凭证重读准备，与原准备摘要、完整报价及冻结基数比对，并在返回前重读来源状态，过期/取消/变化拒绝；E09confirmBasis在重新授权读取后比原日志摘要，旧摘要不延长授权，不产生资产操作；E10同优惠/券/储值资格、数量门槛、组合能力仍需实际owner，基数不是资格或扣款授权。
+
+共享shop-base.common.pricing新增PricingBenefitBasis（Snapshot/Entry、freeze/validate/eligiblePortions）；输入PricingFacts与显式UnitPolicy，输出原价、参与/排除金额及按源序完整份额；摘要无读取时钟。core.dto新增PricingFundingBasis（schemaVersion、benefits、原MerchantTaxSnapshot、quoteNetMinor/quoteTaxMinor/quoteReceivableMinor、quoteEconomicsHash），校验金额守恒及含税/外加税口径。PricingFundingSourcePolicy.verify重建核验原报价后返回该类型；原Service.stage冻结canonical JSON，实体增加basisSnapshot；V553仅新增可空JSON约束列，不改V552。digest按是否有基数选择V1/V2，V2覆盖canonical基数内容。原get/cancel/决策读取边界不变。
+
+§2 执行计划：
+1. 纯基数模型、严格校验与测试；core基数DTO及原报价策略接入，新增V553与字段，先编译。
+2. 原PricingFundingSourceService增加readBasis(Context,Credentials,sourceNo)、confirmBasis(Context,Credentials,sourceNo,expectedSnapshotHash)，返回BasisView(View,PricingFundingBasis)。重新读取在事务外，状态/摘要复核在返回前进行；完整性/并发不符409，参数400，错作用域404，旧行无基数40190。同数据库短事务不调用owner，原取消日志V1/V2均可恢复。
+3. 统一纯模型和原生InnoDB回归：参与/排除、部分组件与小数份额、JSON安全/溢出、完整策略集合、父叶防重计、摘要篡改；持久冻结与幂等、VAT两口径、非参与应收守恒、过期/取消拒绝、每次fresh准备/变更冲突、旧行不可升级、事务拒绝、freeze回滚、V2取消兼容及读取穿插取消。一次消融和一次独立审查，运行全基础/core/原生与宿主既有守卫，再本地提交。无公开API、部署、业务库迁移或远端推送。
+
+§5 验收映射及实际结果见下文；CKO11、C2.4与资金授权/提交继续未完成。
+
+
+本批方法与字段：
+
+| 方法 | 输入 | 输出 / 约束 |
+|---|---|---|
+| PricingBenefitBasis.freeze | 已准入PricingFacts、逐份额显式UnitPolicy | Snapshot(schemaVersion/currency/sourceSnapshotHash/sourceVersion/priceTotalMinor/eligibleMinor/excludedMinor/entries/snapshotHash)；Entry包含原PricingUnit与UnitPolicy，输入策略顺序不影响源序输出 |
+| validate / eligiblePortions | 完整Snapshot | 独立重建并核对摘要、金额和条目；eligiblePortions仅返回正金额参与份额，不推断券资格或数量门槛 |
+| 原stage | 原后端Context、Credentials、quoteNo、expectedPreparationHash | 原View；新行增加冻结basis_snapshot，V2摘要覆盖该JSON；重复冻结不改写 |
+| readBasis | 同一后端Context、本人Credentials、sourceNo | BasisView(source=原View,basis=PricingFundingBasis)；每次重新授权，读取期间取消或到期拒绝；不延长原有效期 |
+| confirmBasis | 同上＋expectedSnapshotHash | 调用同一fresh读取，再比日志摘要；不能只靠历史hash直接确认 |
+
+basis_snapshot为V553新增可空LONGTEXT，CHECK为NULL或JSON_VALID，不回填历史行。PricingFundingBasis携带schemaVersion、benefits、原MerchantTaxSnapshot、quoteNetMinor/quoteTaxMinor/quoteReceivableMinor及quoteEconomicsHash，解码还要与日志租户/主体/门店、币种、金额及经济摘要一致。日志原amount_minor依然是应收，不改字段含义。
+
+示例（金额均为最小单位，不代表地区法定税档）：原价10000，参与7000，排除3000，税率500bp。外加税时基数7000、排除3000、净额10000、税500、应收10500；含税时基数7000、排除3000、净额9524、税476、应收10000。排除的3000仍需收取；税后应收不能作为折扣券默认基数。最终优惠后的税与资产适用性仍需原税引擎和实际owner重新确认。
+
+| AC | 对应测试方法 |
+|---|---|
+| E01/E02 | PricingBenefitBasisTest.completePolicySetIsRequiredWithNoUnknownOrPermissiveDefault / partitionsEligibleAndExcludedPricesWithoutRemovingExcludedGoodsFromOriginalTotal；PricingQuotePersistenceTest.excludedGoodsStayPayableAndDoNotEnterCouponPortions |
+| E03/E05 | preservesComponentAndFractionalScopesAndNeverRepricesRoundedSourceAmounts / sourceAmountsRemainJsonSafeAndUnmodifiable / bundlePositiveParentAndLeafCannotBothContributeToTheBasis |
+| E04 | PricingQuotePersistenceTest.inclusiveBasisUsesOriginalGrossPricesAndVatIsNotAddedTwice / frozenBenefitBasisIsPersistedAndEveryReadAndConfirmReauthorizes |
+| E06/E07 | 原failedJournalInsertRollsBackQuoteRetention；新增malformedJsonAndTamperedV2BasisAreRejectedWithoutChangingDecisions / legacyV1JournalStillCancelsButNeverBackfillsABenefitBasis |
+| E08/E09 | preparationChangesCannotRefreshOrSilentlyUpgradeTheFrozenBasis / cancellationDuringPreparationPreventsReturningAnOldPendingBasis / basisReadRejectsExpiredCancelledUnauthorizedAndTransactionalRequests |
+| 摘要完整性 | PricingBenefitBasisTest.tamperedTotalsEligibilityAndDigestCannotPassValidation / policyInputOrderDoesNotChangeTheSourceOrderedDigestButSourceVersionDoes；消融结果见下文 |
+
+§6 实现清单：shop-base.common.pricing.PricingBenefitBasis及单测；core.trade.dto.PricingFundingBasis、policy.PricingFundingBasisPolicy；原PricingFundingSourcePolicy/Service/Impl/OrdPricingFundingSource；V553与生成H2模式；原PricingQuotePersistenceTest扩充8项（23→31），原生runner计数同步。既有生成清单重新生成无内容变化。一次独立审查无Critical/Important/Minor问题；验证结果如下。
+
+
+最终验证：阶段业务编译、共享8项及测试编译通过。全部原生MariaDB 89项实际通过、零跳过（发布23/种子8/税18/报价及来源基数31/商品9），一次性数据库已清理。完整shop-base 288项实际通过；shop-core 613项中524实际通过、89原生条件跳过，无失败，条件跳过未计作通过。宿主选择40项中31通过/1条件跳过/8既有失败，Architecture7项失败消息与原始基线逐字一致，SchemaDrift1项缺列token集合一致，无新增失败。
+
+基数校验消融：只在临时目录编译去掉expected.equals(snapshot)检查的PricingBenefitBasis，用它替换该类及两个嵌套record编译产物；tamperedTotalsEligibilityAndDigestCannotPassValidation按预期发生assertion失败。finally恢复全部三个原始class文件的精确字节及mtime，生产源码未改，再执行完整基础/core回归通过。该方式避免重复编译1093个核心类，未跳过最终正常代码的测试。一次独立审查0Critical/0Important/0Minor，无第二轮审查。
+
+Node9、Python定价合同5/交付4、SQL可移植性、Ops正反向及B/C正向契约通过；Ops欠账8/孤儿10、B/C正向欠账2均原基线。H2模式重生成逐字一致。代码清单与本批实际13个路径一致（V553、生成模式、共享模型/测试、core DTO/两策略/来源实体/Service与Impl/原生测试、runner与本TDD），生成分层/词典/索引无额外变化。
+
+交付边界：新增8项纯模型与8项原生测试；保留原31项报价测试内原有23项。新来源V2可读/复核基数，旧V1查询和取消保持兼容，无法读基数时需重新报价，禁止自动补全。下一步仍须实际权益owner对这些明确份额核验资产适用性及资金授权/提交，才能开放完整报价/结账。没有新增EntitlementUseSourcePort适配、PAY资金能力、生产发布证据、公开Controller或前端资金入口；没有执行业务库V553迁移、部署或远端推送。

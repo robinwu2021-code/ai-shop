@@ -21,6 +21,7 @@ public class OrdPricingFundingSource extends BaseEntity {
     private String economicsHash;
     private String preparationHash;
     private String snapshotHash;
+    private String basisSnapshot;
     private String status;
     private LocalDateTime expiresAt;
     private String cancelReason;

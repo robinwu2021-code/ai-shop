@@ -8936,10 +8936,12 @@ CREATE TABLE IF NOT EXISTS ord_pricing_funding_source
     updated_by VARCHAR(32) NOT NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    basis_snapshot LONGTEXT NULL,
     CONSTRAINT uk_pricing_funding_source_no UNIQUE (funding_source_no),
     CONSTRAINT uk_pricing_funding_source_quote UNIQUE (tenant_no, quote_no),
     CONSTRAINT ck_pricing_funding_source_amount CHECK (amount_minor >= 0),
-    CONSTRAINT ck_pricing_funding_source_state CHECK ( (status = 'PENDING' AND cancel_reason IS NULL) OR (status = 'CANCELLED' AND cancel_reason IS NOT NULL))
+    CONSTRAINT ck_pricing_funding_source_state CHECK ( (status = 'PENDING' AND cancel_reason IS NULL) OR (status = 'CANCELLED' AND cancel_reason IS NOT NULL)),
+    CONSTRAINT ck_pricing_funding_basis_json CHECK (basis_snapshot IS NULL OR (basis_snapshot IS JSON))
 );
 
 -- 种子数据
