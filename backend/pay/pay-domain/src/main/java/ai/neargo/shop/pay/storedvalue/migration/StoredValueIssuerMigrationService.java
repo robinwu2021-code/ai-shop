@@ -9,7 +9,7 @@ import java.security.*;
 import java.util.*;
 import org.springframework.stereotype.Service;
 
-/** Read-only audit. Identity and store authority must be resolved by Core before entering this Pay snapshot. */
+/** Audit and metadata-only mapping. Core resolves identity/store authority before Pay locks; mapping never activates writing. */
 @Service
 public class StoredValueIssuerMigrationService {
     public record StoreMapping(String storeNo,String entityNo,String issuerNo) { }
@@ -48,7 +48,7 @@ public class StoredValueIssuerMigrationService {
                     batch.tenantNo(),commandKey,payloadHash,BizKey.next(BizKey.STORED_VALUE_MIGRATION),now,now,batch.actorNo(),batch.actorNo());
             for(var store:batch.stores().stream().sorted(Comparator.comparing(StoreMapping::issuerNo)).toList()) {
                 var issuer=db.one("SELECT issuer_no,write_mode FROM sv_issuer WHERE tenant_no=? AND issuer_no=? AND scope_type='STORE' AND scope_no=? AND deleted=0 FOR UPDATE",batch.tenantNo(),store.issuerNo(),store.storeNo());
-                if(issuer==null||!Set.of("LEGACY","LEGACY_MAPPED").contains(text(issuer,"write_mode"))) throw BizException.of(ErrorCode.CONFLICT);
+                if(issuer==null||!Set.of("LEGACY","LEGACY_MAPPED","FENCED").contains(text(issuer,"write_mode"))) throw BizException.of(ErrorCode.CONFLICT);
                 db.rows("SELECT account_no FROM sv_account WHERE tenant_no=? AND (store_no=? OR (store_no IS NULL AND entity_no=?)) AND deleted=0 ORDER BY account_no FOR UPDATE",batch.tenantNo(),store.storeNo(),store.entityNo());
             }
             var report=inspect(batch);
@@ -80,7 +80,7 @@ public class StoredValueIssuerMigrationService {
                     if(number(quota,"reserved_minor")!=0) throw BizException.of(ErrorCode.CONFLICT);
                     db.update("UPDATE sv_issue_quota SET outstanding_minor=?,updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND quota_no=?",outstanding.longValueExact(),now,batch.actorNo(),batch.tenantNo(),text(quota,"quota_no"));
                 }
-                db.update("UPDATE sv_issuer SET write_mode='LEGACY_MAPPED',updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND issuer_no=?",now,batch.actorNo(),batch.tenantNo(),store.issuerNo());
+                db.update("UPDATE sv_issuer SET write_mode=CASE WHEN write_mode='FENCED' THEN 'FENCED' ELSE 'LEGACY_MAPPED' END,updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND issuer_no=?",now,batch.actorNo(),batch.tenantNo(),store.issuerNo());
             }
             var result=new MappingResult("MAPPED",report.accounts().size(),expectedFingerprint);
             db.update("UPDATE pay_ent_command_dedup SET result_status='COMPLETED',response_snapshot=?,updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND operation_kind='SV_ISSUER_MAP' AND request_key=?",db.encode(result),now,batch.actorNo(),batch.tenantNo(),commandKey);

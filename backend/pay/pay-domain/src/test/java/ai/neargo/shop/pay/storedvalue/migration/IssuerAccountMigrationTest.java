@@ -141,4 +141,24 @@ class IssuerAccountMigrationTest {
         for(String table:List.of("sv_account","sv_lot","sv_recharge"))
             assertThat(f.jdbc().queryForObject("SELECT issuer_version_no FROM "+table,String.class)).isEqualTo("IV1");
     }
+    @Test void finalMetadataMappingKeepsPersistentFenceAcrossFailureSuccessAndReplay() throws Exception {
+        var f=fixture();zeroBalanceHistory(f.jdbc());migrationSchema(f.jdbc());
+        f.jdbc().update("UPDATE sv_issuer SET write_mode='FENCED'");
+        var stale=f.service().audit(batch());
+        f.jdbc().update("UPDATE sv_account SET version=version+1");
+        assertThatThrownBy(()->f.service().map(batch(),stale.fingerprint(),"MF")).isInstanceOf(ai.neargo.shop.common.BizException.class);
+        assertThat(f.jdbc().queryForObject("SELECT write_mode FROM sv_issuer",String.class)).isEqualTo("FENCED");
+        assertThat(f.jdbc().queryForObject("SELECT issuer_no FROM sv_account",String.class)).isNull();
+        assertThat(f.jdbc().queryForObject("SELECT COUNT(*) FROM pay_ent_command_dedup",Long.class)).isZero();
+        var fresh=f.service().audit(batch());var result=f.service().map(batch(),fresh.fingerprint(),"MF");
+        assertThat(f.service().map(batch(),fresh.fingerprint(),"MF")).isEqualTo(result);
+        assertThat(f.jdbc().queryForObject("SELECT write_mode FROM sv_issuer",String.class)).isEqualTo("FENCED");
+        assertThat(f.jdbc().queryForObject("SELECT status FROM sv_issuer",String.class)).isEqualTo("DRAFT");
+        assertThat(f.jdbc().queryForObject("SELECT issuer_no FROM sv_account",String.class)).isEqualTo("I1");
+        assertThat(f.jdbc().queryForObject("SELECT account_no FROM sv_account",String.class)).isEqualTo("A1");
+        assertThat(f.jdbc().queryForObject("SELECT account_seq FROM sv_account",Long.class)).isEqualTo(2);
+        assertThat(f.jdbc().queryForObject("SELECT COUNT(*) FROM sv_voucher",Long.class)).isEqualTo(2);
+        assertThat(f.jdbc().queryForObject("SELECT principal_minor+bonus_minor FROM sv_account",Long.class)).isZero();
+    }
+
 }

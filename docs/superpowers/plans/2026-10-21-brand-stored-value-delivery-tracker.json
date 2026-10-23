@@ -322,14 +322,15 @@
       "status": "IN_PROGRESS",
       "checkpoint": {
         "date": "2026-10-23",
-        "state": "LOCAL_DEVELOPMENT_NOT_DEPLOYED",
+        "state": "FOUNDATION_DEPLOYED_NEXT_WORK_IN_PROGRESS",
         "completed": [
           "Issuer configuration and explicit settlement authority",
           "Legacy audit and metadata mapping",
           "Receipt/posting/redemption quota integration",
           "Default store draft preparation and live owner authority",
           "Typed internal preparation endpoint",
-          "Legacy creation guard and persistent write-fence guards"
+          "Legacy creation guard and persistent write-fence guards",
+          "Fenced final metadata mapping preserves maintenance fence (post-deploy development)"
         ],
         "verification": "Core/Pay compile and focused tests passed; no full suite or online financial writes",
         "remaining": [
@@ -338,6 +339,27 @@
           "Complete IS/RC/RD and B app UI",
           "MySQL concurrency acceptance and stage release"
         ]
+      },
+      "foundationRelease": {
+        "status": "DEPLOYED",
+        "commit": "55aa6cc0e09db3c86bd4dd121eb6b2e5cfabe276",
+        "date": "2026-10-23",
+        "coreHealth": 200,
+        "payProtectedEndpoint": 401,
+        "migrationVersions": [
+          546,
+          547,
+          548,
+          549
+        ],
+        "issuerMode": "LEGACY_DISABLED",
+        "scope": "Merged canonical backend with embedded food sources and pricing; no automatic food or issuer activation",
+        "financialTotals": {
+          "accounts": 2,
+          "balanceMinor": 36000,
+          "recharges": 5,
+          "issuers": 0
+        }
       }
     },
     {
