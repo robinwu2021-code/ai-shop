@@ -7,6 +7,7 @@ import ai.neargo.shop.beauty.dto.AppointmentItemReq;
 import ai.neargo.shop.beauty.dto.OpenAppointmentWorkOrderReq;
 import ai.neargo.shop.beauty.dto.OpenWorkOrderReq;
 import ai.neargo.shop.beauty.dto.PublishStorePolicyVersionReq;
+import ai.neargo.shop.beauty.dto.WalkInVO;
 import ai.neargo.shop.beauty.dto.WorkOrderTaskSnapshotVO;
 import ai.neargo.shop.beauty.dto.WorkOrderVO;
 import ai.neargo.shop.beauty.entity.BtyActionLog;
@@ -19,10 +20,11 @@ import ai.neargo.shop.beauty.entity.BtyWorkOrder;
 import ai.neargo.shop.beauty.entity.BtyWorkOrderContext;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
+import ai.neargo.shop.beauty.policy.CustomerOwnership;
 import ai.neargo.shop.beauty.policy.ReceptionAccess;
 import ai.neargo.shop.beauty.policy.ReceptionIdentity.VerifiedIdentity;
 import ai.neargo.shop.beauty.policy.ReceptionIdentity;
-import ai.neargo.shop.beauty.policy.CustomerOwnership;
+import ai.neargo.shop.beauty.service.impl.ReceptionPreparation.WalkInPayload;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -184,7 +186,13 @@ public final class WorkOrderCoordinator {
                 var binding = receipt.binding();
                 AppointmentPersistence.require("RECEPTION_CHANGE".equals(changed.getAction())
                         && number.equals(changed.getAppointmentNo()) && entity.equals(changed.getEntityNo())
-                        && store.equals(changed.getStoreNo()) && actor.equals(changed.getActorNo())
+                        && store.equals(changed.getStoreNo())
+                        && IdempotencyScope.requestHash(IdempotencyScope.requestHash("BEAUTY_OPEN_REPLACE_V1",
+                                op.getDerivedKeyHash())).equals(changed.getKeyHash())
+                        && IdempotencyScope.requestHash("RECEPTION_CHANGE_V1", number,
+                                Long.toString(original.expectedRevision()),
+                                db.json.writeValueAsString(original.assignments()),
+                                db.json.writeValueAsString(original.startAt())).equals(changed.getRequestHash())
                         && "SUCCEEDED".equals(receipt.status()) && "REPLACE".equals(binding.action())
                         && "MAIN".equals(binding.tenantNo()) && entity.equals(binding.entityNo())
                         && store.equals(binding.storeNo()) && number.equals(binding.sourceNo())
@@ -227,6 +235,43 @@ public final class WorkOrderCoordinator {
         }
         return openPrepared(observed, actor, op, prepared, original.openingRevision());
     }
+    /** Continue the original opening namespace using current authority and frozen canonical identity. */
+    public WorkOrderVO recover(String entity, String store, String actor, String number) {
+        authorize(entity, store, actor);
+        var op = db.read(() -> receptionRows.selectScoped(entity, store, number));
+        if (op == null) { throw BizException.of(ErrorCode.NOT_FOUND); }
+        AppointmentPersistence.require("OPEN_WORK_ORDER".equals(op.getAction())
+                && List.of("BAPI-052", "BAPI-054").contains(op.getEndpoint()));
+        if (succeeded(op)) { return result(op); }
+        AppointmentPersistence.require(!"REJECTED".equals(op.getPhase()));
+        try {
+            if (op.getAppointmentNo() != null) {
+                return resumeAppointment(entity, store, actor, op.getAppointmentNo(), op);
+            }
+            var prepared = preparation.unassigned(entity, store, canonical(op), payload(op).items());
+            AppointmentPersistence.require(payload(op).scopeHash().equals(scopeHash(prepared)));
+            return openPrepared(null, actor, op, prepared, 0);
+        } catch (BizException stale) {
+            var winner = db.read(() -> receptionRows.selectScoped(entity, store, number));
+            if (stale.errorCode() == ErrorCode.CONFLICT && succeeded(winner) && sameOperation(op, winner)) {
+                return result(winner);
+            }
+            throw stale;
+        }
+    }
+    /** The original 048 operation owns the same atomic writer as appointment opening. */
+    public WorkOrderVO openReception(String entity, String store, String actor, String number) {
+        authorize(entity, store, actor);
+        var op = db.read(() -> receptionRows.selectScoped(entity, store, number));
+        if (op == null) { throw BizException.of(ErrorCode.NOT_FOUND); }
+        AppointmentPersistence.require("RECEIVE_WALK_IN".equals(op.getAction()) && "BAPI-048".equals(op.getEndpoint()));
+        if (succeeded(op)) { return result(op); }
+        var original = db.json.readValue(op.getFrozenPayload(), WalkInPayload.class);
+        AppointmentPersistence.require("OPEN_PENDING".equals(op.getPhase()) && original.openingRevision() != null);
+        var observed = scoped(entity, store, op.getAppointmentNo());
+        var prepared = preparedForIdentity(observed, preparation.fromAppointment(observed), canonical(op));
+        return openPrepared(observed, actor, op, prepared, original.openingRevision());
+    }
     private WorkOrderVO openPrepared(BtyAppointment observed, String actor, BtyReceptionOperation op,
             PreparedWorkOrderScope prepared, long revision) {
         return db.tx(() -> {
@@ -241,9 +286,33 @@ public final class WorkOrderCoordinator {
                     op.getOperationNo());
             AppointmentPersistence.require(sameOperation(op, locked));
             if (succeeded(locked)) { return result(locked); }
-            if (observed != null) { verifyAppointmentLocked(observed, prepared, revision); }
+            if ("RECEIVE_WALK_IN".equals(locked.getAction())) {
+                var original = db.json.readValue(locked.getFrozenPayload(), WalkInPayload.class);
+                AppointmentPersistence.require("BAPI-048".equals(locked.getEndpoint())
+                        && "OPEN_PENDING".equals(locked.getPhase()) && original.openingRevision() == revision
+                        && original.appointmentNo().equals(locked.getAppointmentNo())
+                        && original.appointmentOperationNo().equals(locked.getAppointmentOperationNo()));
+            }
+            boolean walkIn = "RECEIVE_WALK_IN".equals(locked.getAction());
+            if (observed != null) { verifyAppointmentLocked(observed, prepared, revision, walkIn); }
             AppointmentPersistence.require(!"REJECTED".equals(locked.getPhase()));
             preparation.verifyLocked(prepared);
+            // This check follows all lock acquisition: owner reads or lock waits may cross the frozen start.
+            if ("RECEIVE_WALK_IN".equals(locked.getAction())) {
+                var original = db.json.readValue(locked.getFrozenPayload(), WalkInPayload.class);
+                var at = clock.instant();
+                boolean future = ResourcePlanContract.decode(original.matched().plan()).demands().stream()
+                        .flatMap(d -> d.intervals().stream()).allMatch(i -> i.startAt().isAfter(at));
+                if (!future) {
+                    locked.setFailureCode("ARRIVAL_REQUIRES_RESCHEDULE");
+                    AppointmentPersistence.require(receptionRows.updateById(locked) == 1);
+                    receptionRows.update(null, Wrappers.<BtyReceptionOperation>lambdaUpdate()
+                            .eq(BtyReceptionOperation::getId, locked.getId())
+                            .set(BtyReceptionOperation::getNextRetryAt, null)
+                            .set(BtyReceptionOperation::getLeaseUntil, null));
+                    return pending(locked);
+                }
+            }
             if (observed != null) {
                 AppointmentPersistence.require(db.roots.markWorkOrderOpened(observed.getEntityNo(),
                         observed.getStoreNo(), observed.getAppointmentNo(), revision, actor, now()) == 1);
@@ -251,7 +320,8 @@ public final class WorkOrderCoordinator {
             return persist(locked, prepared);
         });
     }
-    private void verifyAppointmentLocked(BtyAppointment observed, PreparedWorkOrderScope prepared, long revision) {
+    private void verifyAppointmentLocked(BtyAppointment observed, PreparedWorkOrderScope prepared, long revision,
+            boolean walkIn) {
         var root = db.lock(observed);
         var fence = db.fences.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
                 observed.getAppointmentNo());
@@ -261,7 +331,7 @@ public final class WorkOrderCoordinator {
         AppointmentPersistence.require(root != null && fence != null && current != null
                 && fence.getActiveIntentNo() == null && current.getOperationNo() == null
                 && root.getVersion() == revision && "CHECKED_IN".equals(root.getStatus())
-                && root.getCheckedInAt() != null && now().isBefore(root.getEndAt())
+                && root.getCheckedInAt() != null && (walkIn || now().isBefore(root.getEndAt()))
                 && Objects.equals(root.getHoldNo(), observed.getHoldNo())
                 && Objects.equals(root.getStartAt(), observed.getStartAt())
                 && Objects.equals(root.getEndAt(), observed.getEndAt())
@@ -335,7 +405,10 @@ public final class WorkOrderCoordinator {
         publisher.publish(new BeautyReceptionStateChanged(root.getWorkOrderNo(), scope.entityNo(), scope.storeNo(),
                 1, "OPEN"), new PublishOptions("BEAUTY:RECEPTION:" + op.getOperationNo(), 1));
         op.setPhase("SUCCEEDED"); op.setWorkOrderNo(root.getWorkOrderNo());
-        op.setResult(db.json.writeValueAsString(result));
+        op.setResult(db.json.writeValueAsString("RECEIVE_WALK_IN".equals(op.getAction())
+                ? new WalkInVO(op.getOperationNo(), "SUCCEEDED", op.getAppointmentNo(), result,
+                        db.json.readValue(op.getFrozenPayload(), WalkInPayload.class).selectedStartAt(), null)
+                : result));
         AppointmentPersistence.require(receptionRows.updateById(op) == 1);
         return result;
     }
@@ -402,8 +475,13 @@ public final class WorkOrderCoordinator {
     private OpenPayload payload(BtyReceptionOperation op) { return db.json.readValue(op.getFrozenPayload(),
             OpenPayload.class); }
     private boolean succeeded(BtyReceptionOperation op) { return op != null && "SUCCEEDED".equals(op.getPhase()); }
-    private WorkOrderVO result(BtyReceptionOperation op) { return db.json.readValue(op.getResult(),
-            WorkOrderVO.class); }
+    private WorkOrderVO result(BtyReceptionOperation op) {
+        if ("RECEIVE_WALK_IN".equals(op.getAction())) {
+            return db.json.readValue(op.getResult(), WalkInVO.class).workOrder();
+        }
+        AppointmentPersistence.require("OPEN_WORK_ORDER".equals(op.getAction()));
+        return db.json.readValue(op.getResult(), WorkOrderVO.class);
+    }
     private WorkOrderVO pending(BtyReceptionOperation op) {
         return new WorkOrderVO(null, op.getAppointmentNo(), 0, "PENDING", null, "UNBOUND", op.getOperationNo(),
                 "PENDING", List.of(), null);

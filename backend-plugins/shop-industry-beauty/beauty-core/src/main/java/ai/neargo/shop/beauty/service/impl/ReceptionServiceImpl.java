@@ -3,11 +3,13 @@ package ai.neargo.shop.beauty.service.impl;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.beauty.dto.ArrivalChallengeVO;
 import ai.neargo.shop.beauty.dto.ArrivalVO;
-import ai.neargo.shop.beauty.dto.MyArrivalVO;
-import ai.neargo.shop.beauty.dto.ReceptionExceptionVO;
 import ai.neargo.shop.beauty.dto.CheckInReq;
+import ai.neargo.shop.beauty.dto.MyArrivalVO;
 import ai.neargo.shop.beauty.dto.MyCheckInReq;
+import ai.neargo.shop.beauty.dto.ReceiveWalkInReq;
 import ai.neargo.shop.beauty.dto.ReceptionExceptionReq;
+import ai.neargo.shop.beauty.dto.ReceptionExceptionVO;
+import ai.neargo.shop.beauty.dto.WalkInVO;
 import ai.neargo.shop.beauty.entity.BtyArrivalChallenge;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
@@ -35,6 +37,10 @@ public final class ReceptionServiceImpl implements ReceptionService {
             BeautyMappers.ArrivalChallengeMapper challenges, Clock clock, ReceptionCoordinator coordinator) {
         this.db = db; this.access = access; this.challenges = challenges; this.clock = clock;
                 this.coordinator = coordinator;
+    }
+    @Override public WalkInVO receiveWalkIn(String entity, String store, String actor, ReceiveWalkInReq req,
+            String key) {
+        return coordinator.receiveWalkIn(entity, store, actor, req, key);
     }
     @Override public ArrivalVO checkIn(String entity, String store, String actor, CheckInReq req, String key) {
         return coordinator.checkIn(entity, store, actor, req, key);

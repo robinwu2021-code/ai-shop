@@ -1,5 +1,7 @@
 package ai.neargo.shop.beauty.config;
 
+import ai.neargo.job.api.JobDeclaration;
+import ai.neargo.shop.beauty.job.ReceptionRecoveryJob;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
 import ai.neargo.shop.beauty.policy.CustomerOwnership;
@@ -13,6 +15,7 @@ import ai.neargo.shop.beauty.service.impl.GuestRegistrationServiceImpl;
 import ai.neargo.shop.beauty.service.impl.ReceptionCoordinator;
 import ai.neargo.shop.beauty.service.impl.ReceptionPreparation;
 import ai.neargo.shop.beauty.service.impl.ReceptionReassignment;
+import ai.neargo.shop.beauty.service.impl.ReceptionRecovery;
 import ai.neargo.shop.beauty.service.impl.ReceptionServiceImpl;
 import ai.neargo.shop.beauty.service.impl.WorkOrderCoordinator;
 import ai.neargo.shop.beauty.service.impl.WorkOrderPreparation;
@@ -28,11 +31,28 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 /** Local reception capabilities use lazy real owner ports, retaining disabled and remote-only deployment shapes. */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnBeautyEnabled
 public class BeautyReceptionConfiguration {
+    @Bean ReceptionRecovery receptionRecovery(AppointmentPersistence db, AppointmentCoordinator appointments,
+            AppointmentPreparationService preparation, BeautyMappers.ReceptionOperationMapper rows,
+            @Qualifier("beautyReceptionClock") Clock clock) {
+        return new ReceptionRecovery(db, appointments, preparation, rows, clock);
+    }
+    @Bean
+    @Profile("api")
+    ReceptionRecoveryJob receptionRecoveryJob(ReceptionRecovery recovery) { return new ReceptionRecoveryJob(recovery); }
+    /** Registers metadata only; no local timer or synthetic staff authority is installed. */
+    @Bean
+    @Profile("api")
+    JobDeclaration beautyReceptionRecoveryDeclaration() {
+        return new JobDeclaration("beauty-reception-recovery", "Beauty reception original operation recovery",
+                "Reconcile original resources only; never accept commands, arrive or open orders", "beauty-core",
+                "0 * * * * *", true, 60, 120, true, true);
+    }
     @Bean CustomerOwnership customerOwnership(BeautyMappers.GuestClaimReceiptMapper receipts) {
         return new CustomerOwnership(receipts);
     }
@@ -90,9 +110,12 @@ public class BeautyReceptionConfiguration {
             ReceptionPreparation preparations, AppointmentCoordinator appointments,
             BeautyMappers.ReceptionOperationMapper operations, BeautyMappers.ArrivalChallengeMapper challenges,
             @Qualifier("beautyOutboxPublisher") OutboxPublisher publisher,
-            @Qualifier("beautyReceptionClock") Clock clock, ReceptionReassignment reassignment) {
+            @Qualifier("beautyReceptionClock") Clock clock, ReceptionReassignment reassignment,
+            AppointmentMatching matching, AppointmentPreparationService appointmentPreparation,
+            WorkOrderCoordinator workOrders) {
         return new ReceptionCoordinator(db, access, receptionAccess, identities, ownership, preparations,
-                appointments, operations, challenges, publisher, clock, reassignment);
+                appointments, operations, challenges, publisher, clock, reassignment,
+                matching, appointmentPreparation, workOrders);
     }
     @Bean ReceptionServiceImpl receptionServiceImpl(AppointmentPersistence db, AppointmentAccess access,
             BeautyMappers.ArrivalChallengeMapper challenges, @Qualifier("beautyReceptionClock") Clock clock,

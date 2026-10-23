@@ -1,12 +1,16 @@
 package ai.neargo.shop.beauty.service.impl;
 
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.beauty.dto.AppointmentAssignmentReq;
+import ai.neargo.shop.beauty.dto.AppointmentItemReq;
 import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.ReceptionIdentity.VerifiedIdentity;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.idem.IdempotencyScope;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import java.time.OffsetDateTime;
+import java.util.List;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -75,10 +79,11 @@ public final class ReceptionPreparation {
         op.setEntityNo(entity); op.setStoreNo(store);
         op.setOperationNo(BizKey.next("BTRO")); op.setActorNo(actor); op.setActorRealm(user.realm().name());
         op.setActorKind(user.subjectKind().name()); op.setEndpoint(endpoint);
-        op.setAction(payload instanceof ArrivalPayload ? "CHECK_IN"
+        op.setAction(payload instanceof WalkInPayload ? "RECEIVE_WALK_IN"
+                : payload instanceof ArrivalPayload ? "CHECK_IN"
                 : payload instanceof WorkOrderCoordinator.OpenPayload ? "OPEN_WORK_ORDER" : "RECEPTION_EXCEPTION");
         op.setKeyHash(IdempotencyScope.requestHash(IdempotencyScope.requireKey(key))); op.setRequestHash(hash);
-        op.setAppointmentNo(payload.appointmentNo());
+        op.setAppointmentNo(payload instanceof WalkInPayload ? null : payload.appointmentNo());
         op.setPhase(payload instanceof WorkOrderCoordinator.OpenPayload ? "OPEN_PENDING" : "RECEIVED");
         if (identity != null) { op.setIdentityKind(identity.kind()); op.setIdentityRef(identity.reference()); }
         op.setDerivedKeyHash(derived(entity, store, endpoint, key));
@@ -95,8 +100,43 @@ public final class ReceptionPreparation {
         return op;
     }
     public sealed interface ReceptionPayload permits ArrivalPayload, ExceptionPayload,
-            WorkOrderCoordinator.OpenPayload {
+            WorkOrderCoordinator.OpenPayload, WalkInPayload {
         String appointmentNo();
+    }
+    /** Freeze once outside the root lock chain; a concurrent winner always keeps its original complete plan. */
+    public BtyReceptionOperation freezeWalkIn(BtyReceptionOperation observed, AppointmentMatching.Matched match) {
+        return db.tx(() -> {
+            var row = operations.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
+                    observed.getOperationNo());
+            AppointmentPersistence.require(row != null && row.getRequestHash().equals(observed.getRequestHash())
+                    && row.getDerivedKeyHash().equals(observed.getDerivedKeyHash()));
+            var payload = db.json.readValue(row.getFrozenPayload(), WalkInPayload.class);
+            if (!"RECEIVED".equals(row.getPhase()) || payload.matched() != null) { return row; }
+            AppointmentPersistence.require(match.scope().entityNo().equals(row.getEntityNo())
+                    && match.scope().storeNo().equals(row.getStoreNo()));
+            row.setFrozenPayload(db.json.writeValueAsString(payload.withMatch(match, IdempotencyScope.requestHash(
+                    "BEAUTY_WALK_IN_CREATE_V1", row.getOperationNo(), row.getRequestHash(), payload.previewNo(),
+                    match.plan()))));
+            AppointmentPersistence.require(operations.updateById(row) == 1);
+            return row;
+        });
+    }
+    public record WalkInPayload(int schemaVersion, String appointmentNo, String previewNo,
+            String appointmentOperationNo, List<AppointmentItemReq> items,
+            List<AppointmentAssignmentReq> assignments, OffsetDateTime requestedStartAt,
+            OffsetDateTime selectedStartAt, AppointmentMatching.Matched matched,
+            String appointmentKey, String appointmentRequestHash, Long arrivalRevision, Long openingRevision)
+            implements ReceptionPayload {
+        public WalkInPayload { items = List.copyOf(items); assignments = List.copyOf(assignments); }
+        WalkInPayload withMatch(AppointmentMatching.Matched value, String hash) {
+            return new WalkInPayload(schemaVersion, appointmentNo, previewNo, appointmentOperationNo, items,
+                    assignments, requestedStartAt, value.startAt(), value, appointmentKey, hash, null, null);
+        }
+        WalkInPayload withRevisions(Long arrival, Long opening) {
+            return new WalkInPayload(schemaVersion, appointmentNo, previewNo, appointmentOperationNo, items,
+                    assignments, requestedStartAt, selectedStartAt, matched, appointmentKey,
+                    appointmentRequestHash, arrival, opening);
+        }
     }
     public record ArrivalPayload(int schemaVersion, String appointmentNo, long expectedRevision)
             implements ReceptionPayload { }

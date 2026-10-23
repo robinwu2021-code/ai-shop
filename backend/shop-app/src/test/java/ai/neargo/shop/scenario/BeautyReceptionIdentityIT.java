@@ -2,6 +2,7 @@ package ai.neargo.shop.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import ai.neargo.shop.auth.DelegatedIdentityContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -15,16 +16,23 @@ import ai.neargo.shop.member.service.impl.MemberGuestRegistrationServiceImpl;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.member.GuestRegistrationPort;
+import ai.neargo.shop.spi.personnel.PersonnelFactsPort;
+import ai.neargo.shop.spi.product.ServiceCatalogFactsPort;
+import ai.neargo.shop.spi.product.StoreSalesCatalogPort;
 import ai.neargo.shop.spi.resource.ResourceBookingPort;
+import ai.neargo.shop.spi.resource.ResourceCandidatesPort;
+import ai.neargo.shop.spi.resource.ResourceFactsPort;
 import ai.neargo.shop.spi.resource.ResourcePlanContract;
 import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
+import ai.neargo.shop.spi.schedule.ScheduleWindowsPort;
 import ai.neargo.shop.spi.security.DelegatedIdentity;
 import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 import ai.neargo.shop.spi.user.MerchantScopeFactsPort;
 import ai.neargo.shop.spi.user.UserScopeFactsPort;
 import java.lang.reflect.InvocationTargetException;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -40,6 +48,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -97,7 +106,7 @@ class BeautyReceptionIdentityIT {
                 + "VALUES (?,'reception customer','NORMAL',NOW(),NOW())", user);
         service = context.getBean(type("service.GuestRegistrationService"));
         faults.delegate = owner; faults.dropRegister = false; faults.dropClaim = false;
-        faults.claimCalls = 0; faults.getCalls = 0;
+        faults.claimCalls = 0; faults.getCalls = 0; holds.walkIn = false; holds.dropAccept = false;
     }
     @Test void registrationUnknownHasNoLocalOracleAndOnlyOriginalActorReplaysOwnerKey() {
         faults.dropRegister = true;
@@ -258,6 +267,49 @@ class BeautyReceptionIdentityIT {
         assertThat(value(arrived, "timing")).isEqualTo("EARLY");
         assertThat(count("bty_reception_operation")).isOne();
         assertThat(count("bty_work_order")).isZero(); assertThat(count("bty_service_task")).isZero();
+    }
+    @Test void walkInConsumesRealCustomerGuestAndScopedClaimReceipt() {
+        workOrderFacts(null); holds.walkIn = true;
+        Object reception = context.getBean(type("service.ReceptionService"));
+        Object orders = context.getBean(type("service.WorkOrderService"));
+        var items = List.of(dto("AppointmentItemReq", "SKU", 1));
+        Object customerReq = dto("ReceiveWalkInReq", store, reference(actor), null, items, List.of(), null);
+        Object customer = as(actor, () -> call(reception, "receiveWalkIn", entity, store, actor,
+                customerReq, "WALK-U"));
+        assertThat(value(customer, "operationState")).isEqualTo("SUCCEEDED");
+        String userOrder = (String) value(value(customer, "workOrder"), "workOrderNo");
+        assertThat(sql.queryForObject("SELECT customer_ref FROM bty_work_order WHERE work_order_no=?", String.class,
+                userOrder)).isEqualTo("USER:" + user);
+        Object registration = as(actor, () -> register("walk-in-contact", "walk-in-guest"));
+        String guest = (String) value(registration, "guestNo");
+        Object guestReq = dto("ReceiveWalkInReq", store, null, guest, items, List.of(), null);
+        holds.dropAccept = true;
+        Object pending = as(actor, () -> call(reception, "receiveWalkIn", entity, store, actor, guestReq, "WALK-G"));
+        assertThat(value(pending, "operationState")).isEqualTo("PENDING");
+        String reference = reference(manager);
+        faults.dropClaim = true;
+        Object claim = as(manager, () -> call(service, "claimGuest", entity, store, manager, guest,
+                dto("ClaimGuestReq", reference, value(registration, "claimToken")), "WALK-CLAIM"));
+        assertThat(value(claim, "operationState")).isEqualTo("PENDING");
+        Object recoveredClaim = as(manager, () -> call(context.getBean(type("service.ServiceOperationRecoveryService")),
+                "recoverOperation", entity, store, manager, value(claim, "operationNo")));
+        assertThat(value(recoveredClaim, "state")).isEqualTo("SUCCEEDED");
+        int guestReads = faults.getCalls;
+        sql.update("UPDATE mch_account SET status='SUSPENDED' WHERE mch_account_no=?", actor);
+        Object result = as(manager, () -> call(context.getBean(type("service.ServiceOperationRecoveryService")),
+                "recoverOperation", entity, store, manager, value(pending, "operationNo")));
+        assertThat(value(result, "state")).isEqualTo("SUCCEEDED");
+        assertThat(holds.lastActor).isEqualTo(manager); assertThat(faults.getCalls).isEqualTo(guestReads);
+        String appointment = (String) value(pending, "appointmentNo");
+        assertThat(sql.queryForObject("SELECT guest_ref FROM bty_appointment WHERE appointment_no=?", String.class,
+                appointment)).isEqualTo(guest);
+        String guestOrder = (String) value(result, "workOrderNo");
+        assertThat(sql.queryForObject("SELECT customer_ref FROM bty_work_order WHERE work_order_no=?", String.class,
+                guestOrder)).isEqualTo("GUEST:" + guest);
+        var consumer = new DelegatedIdentity("MAIN", "CONSUMER", "USR", user);
+        assertThat(DelegatedIdentityContext.call(consumer, () -> call(orders, "getMyWorkOrder", user, guestOrder)))
+                .isNotNull();
+        assertThat(count("bty_work_order")).isEqualTo(2);
     }
     @Test void workOrderOpeningUsesRealCustomerAndGuestFacts() {
         Object reception = context.getBean(type("service.ReceptionService"));
@@ -424,7 +476,7 @@ class BeautyReceptionIdentityIT {
         row("bty_service_requirement", "requirement_no", "REQ", "definition_version_no", "DV", "role_code", "MAIN",
                 "resource_type", "STAFF", "skill_goods_no", "G", "qty", 1, "sequence_no", 0, "offset_min", 0,
                 "duration_min", 20, "selection_rule", "ANY_QUALIFIED");
-        workOrderItem(appointment);
+        if (appointment != null) { workOrderItem(appointment); }
     }
     private void workOrderItem(String appointment) {
         row("bty_appointment_item", "appointment_item_no", "BL-" + appointment, "appointment_no", appointment,
@@ -521,24 +573,101 @@ class BeautyReceptionIdentityIT {
     }
     @TestConfiguration(proxyBeanMethods = false)
     static class FaultConfiguration {
-        @Bean @Primary ArrivalHoldFixture arrivalHoldFixture() { return new ArrivalHoldFixture(); }
+        @Bean @Primary ArrivalHoldFixture arrivalHoldFixture(ObjectProvider<ResourceSourceAuthorityPort> authority,
+                ObjectMapper json) { return new ArrivalHoldFixture(authority, json); }
+        // Explicit directory/admission fixture: identity tickets, owner claims, grants and all beauty writes stay real.
+        @Bean @Primary ServiceCatalogFactsPort walkInCatalog(JdbcTemplate sql) {
+            return new ServiceCatalogFactsPort() {
+                @Override public Store store(String number) {
+                    assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+                    String entity = sql.queryForObject("SELECT entity_no FROM mch_store WHERE store_no=?", String.class,
+                            number);
+                    return new Store(entity, number, "Store", null, "ACTIVE", "always", "address",
+                            new StoreSalesCatalogPort.Snapshot(entity, number, null, 0, null, 0, null,
+                                    false, null, null));
+                }
+                @Override public Service service(String store, String sku) {
+                    return new Service(store(store), sku, "G", "Service", null, 1000, 20, 1L, 1L);
+                }
+            };
+        }
+        @Bean @Primary ResourceCandidatesPort walkInCandidates() {
+            return new ResourceCandidatesPort() {
+                @Override public List<ResourceFactsPort.ResourceFact> candidates(Query query) {
+                    assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+                    return List.of(new ResourceFactsPort.ResourceFact("R", ResourceFactsPort.Type.STAFF,
+                            null, "P", "Technician", 1, false));
+                }
+                @Override public List<Capacity> capacity(CapacityQuery query) { return List.of(); }
+            };
+        }
+        @Bean @Primary PersonnelFactsPort walkInPersonnel() {
+            return q -> List.of(new PersonnelFactsPort.PersonnelFact("P", "PA", q.storeNo(), "Technician", "L",
+                    true, Instant.EPOCH, null, List.of("TECH"), List.of(new PersonnelFactsPort.Qualification("Q",
+                            q.storeNo(), "G", "SKU", "L", Instant.EPOCH, null))));
+        }
+        @Bean @Primary ScheduleWindowsPort walkInSchedule() {
+            return q -> q.resourceNos().stream().map(no -> new ScheduleWindowsPort.Window(no, q.storeNo(), "A",
+                    q.startAt(), q.endAt(), List.of("RULE"))).toList();
+        }
         @Bean @Primary FaultPort faultPort(MemberGuestRegistrationService owner) { return new FaultPort(owner); }
     }
     static class ArrivalHoldFixture implements ResourceBookingPort {
         final Map<String, Hold> holds = new LinkedHashMap<>();
+        final Map<String, Receipt> commands = new LinkedHashMap<>();
+        final ObjectProvider<ResourceSourceAuthorityPort> authority;
+        final ObjectMapper json;
+        boolean walkIn, dropAccept;
+        String lastActor;
+        ArrivalHoldFixture(ObjectProvider<ResourceSourceAuthorityPort> authority, ObjectMapper json) {
+            this.authority = authority; this.json = json;
+        }
         @Override public Hold queryHold(Actor actor, ResourceSourceAuthorityPort.Binding binding, String number) {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             var hold = holds.get(number); assertThat(hold.planHash()).isEqualTo(binding.planHash()); return hold;
         }
-        @Override public Receipt accept(Actor actor, Accept req) { throw new AssertionError("Arrival cannot accept"); }
-        @Override public Optional<Receipt> query(Actor actor, Scope scope,
-                String command) { throw new AssertionError(); }
-        @Override public Receipt execute(Actor actor, Scope scope, String command) { throw new AssertionError(); }
+        @Override public Receipt accept(Actor actor, Accept req) {
+            assertThat(walkIn).isTrue();
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            lastActor = actor.operatorNo();
+            var result = commands.computeIfAbsent(req.key(), key -> new Receipt(new ResourceSourceAuthorityPort.Binding(
+                    req.scope().tenantNo(), req.scope().entityNo(), req.scope().storeNo(),
+                    "HC-" + UUID.randomUUID().toString().substring(0, 8), req.sourceType(), req.sourceNo(),
+                    req.sourceRevision(), req.action(), IdempotencyScope.requestHash(json.writeValueAsString(req)),
+                    ResourcePlanContract.hash(req.frozenPayload())), "OWNER", "ACCEPTED", 0,
+                    req.expectedOwnerVersion(), req.target(), req.frozenPayload(), null, null));
+            if (dropAccept) { dropAccept = false; throw new IllegalStateException("lost accept response"); }
+            return result;
+        }
+        @Override public Optional<Receipt> query(Actor actor, Scope scope, String command) {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            lastActor = actor.operatorNo();
+            return commands.values().stream().filter(r -> r.binding().commandNo().equals(command)).findFirst();
+        }
+        @Override public Receipt execute(Actor actor, Scope scope, String command) {
+            var receipt = query(actor, scope, command).orElseThrow();
+            if (!"ACCEPTED".equals(receipt.status())) { return receipt; }
+            var b = receipt.binding();
+            var decision = authority.getObject().freeze(new ResourceSourceAuthorityPort.Request(b, actor.operatorNo(),
+                    actor.realm(), actor.subjectKind()));
+            assertThat(decision.state()).isEqualTo(ResourceSourceAuthorityPort.State.AUTHORIZED);
+            String number = receipt.target() == null ? "HH-" + UUID.randomUUID().toString().substring(0, 8)
+                    : receipt.target().holdNo();
+            String state = "RESERVE".equals(b.action()) ? "HELD" : "CONFIRMED";
+            var hold = new Hold(number, state, receipt.target() == null ? 1 : receipt.target().holdVersion() + 1,
+                    1, b.sourceRevision(), receipt.expectedOwnerVersion() + 1, b.planHash());
+            holds.put(number, hold);
+            var terminal = new Receipt(b, "OWNER", "SUCCEEDED", 1, receipt.expectedOwnerVersion(), receipt.target(),
+                    receipt.frozenPayload(), json.writeValueAsString(Map.of("holdNo", number, "status", state,
+                            "ownerRevision", hold.ownerVersion())), null);
+            commands.replaceAll((key, prior) -> prior.binding().equals(b) ? terminal : prior);
+            return terminal;
+        }
         @Override public Optional<Receipt> reconcile(ResourceSourceAuthorityPort.Binding binding) {
-            throw new AssertionError();
+            return commands.values().stream().filter(r -> r.binding().equals(binding)).findFirst();
         }
         @Override public Hold reconcileHold(ResourceSourceAuthorityPort.Binding binding, String number) {
-            throw new AssertionError();
+            return holds.get(number);
         }
     }
     static class FaultPort implements GuestRegistrationPort {

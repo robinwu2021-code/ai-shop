@@ -1,6 +1,7 @@
 package ai.neargo.shop.beauty.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.beauty.config.BeautyAppointmentConfiguration;
 import ai.neargo.shop.beauty.config.BeautyCatalogConfiguration;
@@ -44,6 +45,7 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.config.BeanPostProcessor;
@@ -67,7 +69,7 @@ abstract class ReceptionFixture extends BeautyExecutionFixture {
     final ControlledOwner owner = new ControlledOwner();
     boolean allowed = true;
     String proofUser = "USR1";
-    Instant clockAt;
+    volatile Instant clockAt;
     final Clock receptionClock = new Clock() {
         @Override public ZoneId getZone() { return ZoneOffset.UTC; }
         @Override public Clock withZone(ZoneId zone) { return this; }
@@ -245,15 +247,19 @@ abstract class ReceptionFixture extends BeautyExecutionFixture {
         final Map<String, Receipt> receipts = new LinkedHashMap<>();
         final Map<String, ResourceSourceAuthorityPort.Decision> decisions = new LinkedHashMap<>();
         final List<Accept> replayed = new ArrayList<>();
+        final List<String> actors = new ArrayList<>();
+        final List<String> reconciled = new ArrayList<>();
         final AtomicInteger sequence = new AtomicInteger();
         boolean loseAccept; boolean loseExecute; boolean loseQuery; boolean freezeOnly; String reject;
         CountDownLatch entered; CountDownLatch proceed;
-        Hold hold;
+        Hold hold; Hold queryHoldOverride;
+        Runnable onQueryHold = () -> { };
+        Consumer<ResourceSourceAuthorityPort.Binding> onReconcile = binding -> { };
         String brokenSource;
         String loseExecuteAction;
         final Map<String, Hold> allHolds = new LinkedHashMap<>();
         @Override public Receipt accept(Actor actor, Accept req) {
-            outside();
+            outside(); actors.add(actor.operatorNo());
             if (entered != null) {
                 entered.countDown();
                 try { if (!proceed.await(5, TimeUnit.SECONDS)) { throw new IllegalStateException("fixture timeout"); } }
@@ -312,10 +318,11 @@ abstract class ReceptionFixture extends BeautyExecutionFixture {
             return terminal;
         }
         @Override public Hold queryHold(Actor actor, ResourceSourceAuthorityPort.Binding binding, String no) {
-            outside(); assertThat(hold.holdNo()).isEqualTo(no); return hold;
+            outside(); onQueryHold.run(); if (queryHoldOverride != null) { return queryHoldOverride; }
+            assertThat(hold.holdNo()).isEqualTo(no); return hold;
         }
         @Override public Optional<Receipt> reconcile(ResourceSourceAuthorityPort.Binding binding) {
-            outside();
+            outside(); reconciled.add(binding.sourceNo()); onReconcile.accept(binding);
             if (binding.sourceNo().equals(brokenSource)) { throw new IllegalStateException("unavailable original"); }
             return receipts.values().stream().filter(r -> r.binding().equals(binding)).findFirst();
         }

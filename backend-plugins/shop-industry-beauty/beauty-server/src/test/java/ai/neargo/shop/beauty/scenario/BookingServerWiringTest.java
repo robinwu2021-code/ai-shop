@@ -7,6 +7,7 @@ import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.shop.beauty.config.BeautyAppointmentConfiguration;
 import ai.neargo.shop.beauty.config.BeautyMerchantClientConfiguration;
 import ai.neargo.shop.beauty.job.AppointmentRecoveryJob;
+import ai.neargo.shop.beauty.job.ReceptionRecoveryJob;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl;
 import ai.neargo.shop.beauty.port.RemoteResourceBookingPort;
@@ -56,10 +57,10 @@ class BookingServerWiringTest {
         runner().withPropertyValues("spring.profiles.active=api").run(ctx -> {
             assertThat(ctx).hasNotFailed().hasSingleBean(ResourceSourceAuthorityPort.class)
                     .hasSingleBean(ResourceBookingPort.class).hasSingleBean(WorkOrderService.class)
-                    .hasSingleBean(AppointmentRecoveryJob.class)
-                    .hasSingleBean(JobDeclaration.class);
-            assertThat(ctx.getBean(JobDeclaration.class).handlerName())
-                    .isEqualTo(ctx.getBean(AppointmentRecoveryJob.class).name());
+                    .hasSingleBean(AppointmentRecoveryJob.class).hasSingleBean(ReceptionRecoveryJob.class);
+            assertThat(ctx.getBeansOfType(JobDeclaration.class).values()).extracting(JobDeclaration::handlerName)
+                    .containsExactlyInAnyOrder(ctx.getBean(AppointmentRecoveryJob.class).name(),
+                            ctx.getBean(ReceptionRecoveryJob.class).name());
             assertThat(ctx.getBean(ResourceSourceAuthorityPort.class)).isInstanceOf(AppointmentSourceAuthorityPortImpl.class);
             assertThat(ctx.getBean(ResourceBookingPort.class)).isInstanceOf(RemoteResourceBookingPort.class);
         });
@@ -67,7 +68,8 @@ class BookingServerWiringTest {
     @Test void opsAndNoApiShapeDoNotRegisterRecoveryJob() {
         for (String profiles : new String[] {"ops", ""}) {
             runner().withPropertyValues("spring.profiles.active=" + profiles).run(ctx -> assertThat(ctx)
-                    .hasNotFailed().doesNotHaveBean(AppointmentRecoveryJob.class).doesNotHaveBean(JobDeclaration.class));
+                    .hasNotFailed().doesNotHaveBean(AppointmentRecoveryJob.class)
+                    .doesNotHaveBean(ReceptionRecoveryJob.class).doesNotHaveBean(JobDeclaration.class));
         }
     }
 }

@@ -88,6 +88,44 @@ public final class AppointmentCoordinator {
         AppointmentPersistence.require(bound.binding().equals(result.binding()));
         finish(op, result, terminalHold(result, true));
     }
+    /** Proves a user-coordinated release of the original hold without creating another command. */
+    public ResourceBookingPort.Hold releasedHold(BtyAppointmentOperation release, String expectedHoldNo) {
+        access.root(db.root(release.getAppointmentNo()), true);
+        var receipt = verifiedReceipt(release, true);
+        var request = db.json.readValue(release.getAcceptPayload(), ResourceBookingPort.Accept.class);
+        AppointmentPersistence.require("CANCEL".equals(release.getAction()) && "SUCCEEDED".equals(release.getState())
+                && "RELEASE".equals(request.action()) && "SUCCEEDED".equals(receipt.status())
+                && request.target() != null && expectedHoldNo.equals(request.target().holdNo()));
+        var hold = terminalHold(receipt, false);
+        AppointmentPersistence.require(expectedHoldNo.equals(hold.holdNo()) && "RELEASED".equals(hold.status()));
+        return hold;
+    }
+    /** Reuses the resource protocol verifier before a reception may project its linked operation. */
+    ResourceBookingPort.Receipt verifiedReceipt(BtyAppointmentOperation op, boolean terminal) {
+        AppointmentPersistence.require(op.getReceipt() != null);
+        var receipt = db.json.readValue(op.getReceipt(), ResourceBookingPort.Receipt.class);
+        verify(db.json.readValue(op.getAcceptPayload(), ResourceBookingPort.Accept.class), receipt);
+        var binding = receipt.binding();
+        var intent = db.read(() -> db.intents.selectOne(Wrappers.<BtyAppointmentResourceIntent>lambdaQuery()
+                .eq(BtyAppointmentResourceIntent::getTenantNo, op.getTenantNo())
+                .eq(BtyAppointmentResourceIntent::getEntityNo, op.getEntityNo())
+                .eq(BtyAppointmentResourceIntent::getStoreNo, op.getStoreNo())
+                .eq(BtyAppointmentResourceIntent::getAppointmentNo, op.getAppointmentNo())
+                .eq(BtyAppointmentResourceIntent::getCommandNo, binding.commandNo())));
+        AppointmentPersistence.require(intent != null && intent.getAction().equals(binding.action())
+                && intent.getSourceRevision() == binding.sourceRevision()
+                && intent.getCommandHash().equals(binding.commandHash())
+                && intent.getPlanHash().equals(binding.planHash())
+                && intent.getFrozenPlan().equals(receipt.frozenPayload()));
+        if (terminal) {
+            AppointmentPersistence.require(List.of("SUCCEEDED", "REJECTED").contains(receipt.status())
+                    && intent.getPhaseCode() == 3
+                    && intent.getTerminalHash().equals(ResourceCommandFactsPort.fingerprint(binding,
+                            ResourceCommandFactsPort.Status.valueOf(receipt.status()), receipt.revision(),
+                            receipt.resultPayload(), receipt.rejectionCode())));
+        }
+        return receipt;
+    }
     /** Ownership and the exact successful arrangement select the only hold capacity may exclude. */
     public ResourceCandidatesPort.Replacement replacement(BtyAppointment root) {
         access.root(root, true);

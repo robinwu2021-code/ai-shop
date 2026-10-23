@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -259,6 +260,36 @@ public final class WorkOrderPreparation {
                 cancel.allowCustomerCancel().toString(), String.join(",", modes));
         AppointmentPersistence.require(hash.equals(policy.getSnapshotHash()));
         return cancel;
+    }
+    /** A new CREATE cannot acquire resources under a definition or policy that is no longer selected locally. */
+    public void verifyCreateLocked(AppointmentMatching.Matched match) {
+        var scope = match.scope();
+        var selected = new TreeMap<String, AppointmentPlanItemVO>();
+        for (var item : match.snapshot().items()) {
+            var version = versions.selectOne(Wrappers.<BtyServiceDefinitionVersion>lambdaQuery()
+                    .eq(BtyServiceDefinitionVersion::getTenantNo, scope.tenantNo())
+                    .eq(BtyServiceDefinitionVersion::getEntityNo, scope.entityNo())
+                    .eq(BtyServiceDefinitionVersion::getDefinitionVersionNo, item.definitionVersionNo()));
+            AppointmentPersistence.require(version != null);
+            var previous = selected.putIfAbsent(version.getDefinitionNo(), item);
+            AppointmentPersistence.require(previous == null
+                    || previous.definitionVersionNo().equals(item.definitionVersionNo()));
+        }
+        for (var entry : selected.entrySet()) {
+            var head = definitions.selectScopedForUpdate(scope.entityNo(), scope.storeNo(), entry.getKey());
+            var item = entry.getValue();
+            AppointmentPersistence.require(head != null && "ACTIVE".equals(head.getStatus())
+                    && item.skuNo().equals(head.getSkuNo())
+                    && item.definitionVersionNo().equals(head.getCurrentDefinitionVersionNo()));
+        }
+        var version = policyVersions.selectOne(Wrappers.<BtyStorePolicyVersion>lambdaQuery()
+                .eq(BtyStorePolicyVersion::getTenantNo, scope.tenantNo())
+                .eq(BtyStorePolicyVersion::getEntityNo, scope.entityNo())
+                .eq(BtyStorePolicyVersion::getPolicyVersionNo, match.policyVersionNo()));
+        AppointmentPersistence.require(version != null);
+        var head = policies.selectScopedForUpdate(scope.entityNo(), scope.storeNo(), version.getPolicyNo());
+        AppointmentPersistence.require(head != null && "ACTIVE".equals(head.getStatus())
+                && match.policyVersionNo().equals(head.getCurrentPolicyVersionNo()));
     }
     public void verifyLocked(PreparedWorkOrderScope scope) {
         var binding = scope.scope();

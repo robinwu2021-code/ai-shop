@@ -17,9 +17,12 @@ import ai.neargo.shop.beauty.service.impl.AppointmentPreparationService;
 import ai.neargo.shop.beauty.service.impl.AppointmentRecovery;
 import ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl;
 import ai.neargo.shop.beauty.service.impl.AppointmentSourceAuthority;
+import ai.neargo.shop.beauty.service.impl.GuestRegistrationServiceImpl;
+import ai.neargo.shop.beauty.service.impl.ReceptionCoordinator;
 import ai.neargo.shop.beauty.service.impl.ServiceOperationQueryServiceImpl;
 import ai.neargo.shop.beauty.service.impl.ServiceOperationRecoveryServiceImpl;
 import ai.neargo.shop.beauty.service.impl.WorkOrderCoordinator;
+import ai.neargo.shop.beauty.service.impl.WorkOrderPreparation;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.personnel.PersonnelFactsPort;
@@ -28,6 +31,7 @@ import ai.neargo.shop.spi.resource.ResourceBookingPort;
 import ai.neargo.shop.spi.resource.ResourceCandidatesPort;
 import ai.neargo.shop.spi.schedule.ScheduleWindowsPort;
 import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
+import java.time.Clock;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -69,8 +73,10 @@ public class BeautyAppointmentConfiguration {
     @Bean
     AppointmentPreparationService appointmentPreparationService(AppointmentPersistence db, AppointmentAccess access,
             ObjectProvider<CustomerIdentityPort> customers, ObjectProvider<ServiceCatalogFactsPort> products,
-            ReceptionIdentity identity, BeautyMappers.ReceptionOperationMapper receptions) {
-        return new AppointmentPreparationService(db, access, customers, products, identity, receptions);
+            ReceptionIdentity identity, BeautyMappers.ReceptionOperationMapper receptions,
+            WorkOrderPreparation workOrders, @Qualifier("beautyReceptionClock") Clock clock) {
+        return new AppointmentPreparationService(db, access, customers, products, identity, receptions, workOrders,
+                clock);
     }
     @Bean
     AppointmentCoordinator appointmentCoordinator(AppointmentPersistence db, AppointmentAccess access,
@@ -100,8 +106,8 @@ public class BeautyAppointmentConfiguration {
     }
     @Bean
     ServiceOperationQueryServiceImpl serviceOperationQueryServiceImpl(AppointmentPersistence db, AppointmentAccess
-            access) {
-        return new ServiceOperationQueryServiceImpl(db, access);
+            access, BeautyMappers.ReceptionOperationMapper receptions) {
+        return new ServiceOperationQueryServiceImpl(db, access, receptions);
     }
     @Bean
     AppointmentRecovery appointmentRecovery(AppointmentPersistence db, AppointmentCoordinator coordinator) {
@@ -122,7 +128,11 @@ public class BeautyAppointmentConfiguration {
     }
     @Bean
     ServiceOperationRecoveryServiceImpl serviceOperationRecoveryServiceImpl(AppointmentPersistence db,
-            AppointmentAccess access, AppointmentCoordinator coordinator) {
-        return new ServiceOperationRecoveryServiceImpl(db, access, coordinator);
+            AppointmentAccess access, AppointmentCoordinator coordinator,
+            BeautyMappers.ReceptionOperationMapper receptions,
+            ReceptionAccess receptionAccess, ReceptionCoordinator reception, WorkOrderCoordinator orders,
+            GuestRegistrationServiceImpl guests) {
+        return new ServiceOperationRecoveryServiceImpl(db, access, coordinator, receptions, receptionAccess,
+                reception, orders, guests);
     }
 }

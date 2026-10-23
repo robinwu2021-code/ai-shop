@@ -166,7 +166,7 @@
 | 编号 / 功能 / 阶段 | 方法与路径或合同 | 操作与关键入参 | 返回 / 状态 |
 |---|---|---|---|
 | BAPI-047<br>BTY-G01<br>P1 | `POST /biz/x/beauty/arrivals` | 核对身份并到店签到<br>appointmentNo,identityProof | ArrivalVO不履约核销<br>美业候选新接口 |
-| BAPI-048<br>BTY-G02<br>P1 | `POST /biz/x/beauty/walk-ins` | 直客接待并安排即时资源<br>customerRef,items,assignments,startAt | WalkInVO含预约/工单引用<br>美业候选新接口 |
+| BAPI-048<br>BTY-G02<br>P1 | `POST /biz/x/beauty/walk-ins` | 直客接待并安排即时资源<br>ReceiveWalkInReq(storeNo,customerRef,guestNo,items,assignments,startAt); exactly one customerRef/guestNo | WalkInVO(operationNo,operationState,appointmentNo,workOrder,startAt,recoveryAction); PENDING workOrder=null; frozen selectedStartAt UTC<br>Local Service Task55D review pending; HTTP/remote wire Task59 |
 | BAPI-049<br>BTY-G03<br>P3 | `GET /biz/x/beauty/waiting-tickets` | 查询等候队列<br>storeNo,status,page,size | PageData<WaitingTicketVO><br>美业候选新接口 |
 | BAPI-050<br>BTY-G03<br>P3 | `POST /biz/x/beauty/waiting-tickets` | 取号加入等候<br>customerRef,items | WaitingTicketVO<br>美业候选新接口 |
 | BAPI-051<br>BTY-G03<br>P3 | `POST /biz/x/beauty/waiting-tickets/{ticketNo}/actions` | 叫号过号取消等候<br>action,expectedRevision | WaitingTicketVO<br>美业候选新接口 |
@@ -359,7 +359,7 @@
 | BAPI-141<br>BTY-T06<br>P3 | `CONTRACT governance.privacy-config-backup` | 隐私配置发布备份恢复受控流程<br>scope,changeNo,purpose,approvalRef | GovernanceJobVO不提供任意表写入<br>共用合同接入，路径待核对 |
 | BAPI-142<br>BTY-T07<br>P4 | `CONTRACT integration.external-booking` | 第三方预约来源映射签名去重冲突<br>provider,externalNo,revision,signedPayload | ExternalBindingVO需独立合同<br>共用合同接入，路径待核对 |
 | BAPI-143<br>BTY-T08<br>P4 | `CONTRACT offline.claim-and-sync` | 断网事实认领去重同步<br>deviceNo,localIntentNo,evidence | SyncClaimVO未验收不开放营业<br>共用合同接入，路径待核对 |
-| BAPI-160<br>BTY-T03、BTY-T04<br>P1 | `GET /biz/x/beauty/operations/{operationNo}` | 查询异步命令的原号进度和阻断原因<br>operationNo | OperationVO含目标引用和恢复入口<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
+| BAPI-160<br>BTY-T03、BTY-T04<br>P1 | `GET /biz/x/beauty/operations/{operationNo}` | 查询异步命令的原号进度和阻断原因<br>operationNo | OperationVO(operationNo,appointmentNo,state,action,recoveryAction,workOrderNo,failureCode); original appointment semantics retained<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
 
 ## 五、既有路由证据与兼容边界
 

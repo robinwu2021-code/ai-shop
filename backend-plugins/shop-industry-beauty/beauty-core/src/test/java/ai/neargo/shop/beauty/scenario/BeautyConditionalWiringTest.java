@@ -28,7 +28,8 @@ class BeautyConditionalWiringTest {
         new ApplicationContextRunner().withUserConfiguration(Class.forName(
                 "ai.neargo.shop.beauty.config.BeautyAppointmentConfiguration"))
                 .withPropertyValues("shop.beauty.enabled=false").run(context -> assertThat(context).hasNotFailed()
-                        .doesNotHaveBean("workOrderCoordinator").doesNotHaveBean("workOrderServiceImpl"));
+                        .doesNotHaveBean("workOrderCoordinator").doesNotHaveBean("workOrderServiceImpl")
+                        .doesNotHaveBean("receptionRecovery").doesNotHaveBean("receptionRecoveryJob"));
         // Native WorkOrderScopeIT starts these actual strong constructor beans and exercises both services.
     }
 

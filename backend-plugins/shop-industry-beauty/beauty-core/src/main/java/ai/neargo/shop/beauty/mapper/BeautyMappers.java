@@ -935,6 +935,77 @@ public final class BeautyMappers {
     public interface AppointmentResourceDecisionMapper extends BaseMapper<BtyAppointmentResourceDecision> { }
     /** Scoped reception persistence; authorization remains in services. */
     public interface ReceptionOperationMapper extends BaseMapper<BtyReceptionOperation> {
+        @Select("""
+                SELECT * FROM bty_reception_operation WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                AND store_no=#{storeNo} AND operation_no=#{operationNo} AND deleted=0
+                """)
+        BtyReceptionOperation selectScoped(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("operationNo") String operationNo);
+        /** Eligibility is filtered before LIMIT; Java still verifies the authoritative binding and intent. */
+        @Select("""
+                SELECT r.* FROM bty_reception_operation r
+                JOIN bty_appointment_operation a ON a.tenant_no=r.tenant_no AND a.entity_no=r.entity_no
+                  AND a.store_no=r.store_no AND a.appointment_no=r.appointment_no
+                  AND a.operation_no=r.appointment_operation_no AND a.deleted=0 AND a.action='CREATE'
+                JOIN bty_appointment_preparation p ON p.tenant_no=a.tenant_no AND p.entity_no=a.entity_no
+                  AND p.store_no=a.store_no AND p.preview_no=a.preview_no AND p.deleted=0
+                JOIN bty_appointment root ON root.tenant_no=r.tenant_no AND root.entity_no=r.entity_no
+                  AND root.store_no=r.store_no AND root.appointment_no=r.appointment_no AND root.deleted=0
+                JOIN bty_appointment_resource_intent i ON i.tenant_no=a.tenant_no AND i.entity_no=a.entity_no
+                  AND i.store_no=a.store_no AND i.appointment_no=a.appointment_no AND i.deleted=0
+                  AND i.command_no=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.commandNo'))
+                  AND i.command_hash=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.commandHash'))
+                  AND i.plan_hash=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.planHash'))
+                  AND i.action=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.action'))
+                  AND i.source_revision=JSON_EXTRACT(a.receipt,'$.binding.sourceRevision')
+                  AND i.frozen_plan=p.frozen_plan
+                WHERE r.tenant_no='MAIN' AND r.deleted=0 AND r.action='RECEIVE_WALK_IN' AND r.endpoint='BAPI-048'
+                  AND r.phase='RESOURCE_PENDING' AND r.next_retry_at<=#{now}
+                  AND (r.lease_until IS NULL OR r.lease_until<#{now})
+                  AND (r.failure_code IS NULL OR r.failure_code NOT IN
+                    ('RESOURCE_RELEASE_REQUIRED','ARRIVAL_REQUIRES_RESCHEDULE'))
+                  AND a.state IN ('PENDING','SUCCEEDED','REJECTED') AND a.receipt IS NOT NULL
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.status')) IN ('ACCEPTED','SUCCEEDED','REJECTED')
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.action')) IN ('RESERVE','CONFIRM')
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.action'))=
+                    JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.action'))
+                  AND JSON_EXTRACT(a.receipt,'$.binding.sourceRevision')=
+                    JSON_EXTRACT(a.accept_payload,'$.sourceRevision')
+                  AND JSON_TYPE(JSON_EXTRACT(a.receipt,'$.binding.sourceRevision'))='INTEGER'
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.planHash'))=p.plan_hash
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.frozenPayload'))=p.frozen_plan
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.frozenPayload'))=p.frozen_plan
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.tenantNo'))=r.tenant_no
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.scope.tenantNo'))=r.tenant_no
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.entityNo'))=r.entity_no
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.scope.entityNo'))=r.entity_no
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.storeNo'))=r.store_no
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.scope.storeNo'))=r.store_no
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.sourceNo'))=r.appointment_no
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.sourceNo'))=r.appointment_no
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.sourceType'))='BEAUTY_APPOINTMENT'
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.sourceType'))='BEAUTY_APPOINTMENT'
+                  AND JSON_TYPE(JSON_EXTRACT(a.receipt,'$.binding.commandNo'))='STRING'
+                  AND LENGTH(JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.commandNo')))>0
+                  AND JSON_TYPE(JSON_EXTRACT(a.receipt,'$.binding.commandHash'))='STRING'
+                  AND LENGTH(JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.commandHash')))>0
+                  AND JSON_TYPE(JSON_EXTRACT(a.receipt,'$.binding.planHash'))='STRING'
+                  AND LENGTH(JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.planHash')))>0
+                  AND (a.state<>'REJECTED' OR (root.hold_no IS NULL
+                    AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.action'))='RESERVE'))
+                ORDER BY r.next_retry_at ASC,r.id ASC LIMIT 50
+                """)
+        List<BtyReceptionOperation> selectResourceRecoverable(@Param("now") LocalDateTime now);
+        @Update("""
+                UPDATE bty_reception_operation SET lease_until=#{until},version=version+1
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND operation_no=#{operationNo} AND deleted=0 AND version=#{version}
+                  AND action='RECEIVE_WALK_IN' AND endpoint='BAPI-048' AND phase='RESOURCE_PENDING'
+                  AND next_retry_at<=#{now} AND (lease_until IS NULL OR lease_until<#{now})
+                """)
+        int claimResource(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("operationNo") String operationNo, @Param("version") long version,
+                @Param("now") LocalDateTime now, @Param("until") LocalDateTime until);
         /** A successful opening is read only through its exact original context and live order parent. */
         @Select("""
                 SELECT o.* FROM bty_reception_operation o JOIN bty_work_order_context c
@@ -946,7 +1017,8 @@ public final class BeautyMappers {
                   AND w.customer_ref=CONCAT(c.identity_kind,':',c.identity_ref)
                 WHERE o.tenant_no='MAIN' AND o.entity_no=#{entityNo} AND o.store_no=#{storeNo}
                   AND o.work_order_no=#{workOrderNo} AND o.operation_no=#{operationNo} AND o.deleted=0
-                  AND o.action='OPEN_WORK_ORDER' AND o.phase='SUCCEEDED'
+                  AND ((o.action='OPEN_WORK_ORDER' AND o.endpoint IN ('BAPI-052','BAPI-054'))
+                    OR (o.action='RECEIVE_WALK_IN' AND o.endpoint='BAPI-048')) AND o.phase='SUCCEEDED'
                 """)
         BtyReceptionOperation selectOpenedForWorkOrder(@Param("entityNo") String entityNo,
                 @Param("storeNo") String storeNo, @Param("workOrderNo") String workOrderNo,

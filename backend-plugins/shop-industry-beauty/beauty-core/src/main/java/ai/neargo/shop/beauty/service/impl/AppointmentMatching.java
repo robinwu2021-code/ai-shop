@@ -5,10 +5,10 @@ import ai.neargo.shop.beauty.dto.AppointmentAssignmentReq;
 import ai.neargo.shop.beauty.dto.AppointmentAssignmentVO;
 import ai.neargo.shop.beauty.dto.AppointmentItemReq;
 import ai.neargo.shop.beauty.dto.AppointmentPlanItemVO;
-import ai.neargo.shop.beauty.dto.PublishStorePolicyVersionReq;
 import ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq;
-import ai.neargo.shop.beauty.dto.WorkOrderRequirementVO;
+import ai.neargo.shop.beauty.dto.PublishStorePolicyVersionReq;
 import ai.neargo.shop.beauty.dto.ServiceDetailQuery;
+import ai.neargo.shop.beauty.dto.WorkOrderRequirementVO;
 import ai.neargo.shop.beauty.entity.BtyServiceRequirement;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.service.ServiceCatalogQueryService;
@@ -92,6 +92,11 @@ public final class AppointmentMatching {
         if (startAt.toInstant().isAfter(Instant.now().plus(store.policy().bookingAheadDays(), ChronoUnit.DAYS))) {
             bad();
         }
+        var inputs = loadInputs(scope, requested);
+        return allocatePlan(scope, publicOnly, inputs, specified, requestedPerson, startAt, replacement,
+                store.policyVersionNo(), store.policy().cancelRule(), false, false);
+    }
+    private List<MatchItem> loadInputs(Scope scope, List<AppointmentItemReq> requested) {
         List<MatchItem> inputs = new ArrayList<>();
         int count = 0;
         for (var item : requested) {
@@ -118,8 +123,39 @@ public final class AppointmentMatching {
                     observed.goodsRevision(), observed.skuRevision(), rules.stream()
                             .map(WorkOrderPreparation::requirement).toList()));
         }
-        return allocatePlan(scope, publicOnly, inputs, specified, requestedPerson, startAt, replacement,
-                store.policyVersionNo(), store.policy().cancelRule(), false);
+        return inputs;
+    }
+    /** Uses every raw resource offset before choosing a service grid; allocation stays in the existing engine. */
+    public Matched matchWalkIn(Scope scope, List<AppointmentItemReq> requested,
+            List<AppointmentAssignmentReq> specified, OffsetDateTime requestedStart, Instant at) {
+        var store = catalog.getPublicStore(scope.storeNo());
+        var inputs = loadInputs(scope, requested);
+        long cursor = 0;
+        long earliest = 0;
+        boolean first = true;
+        for (var input : inputs) {
+            for (int i = 0; i < input.request().qty(); i++) {
+                long service = first ? 0 : Math.floorDiv(cursor + input.duration().bufferBeforeMin() + 4, 5) * 5;
+                first = false;
+                for (var rule : input.rules()) {
+                    earliest = Math.min(earliest, service + rule.offsetMin() - input.duration().bufferBeforeMin());
+                }
+                cursor = Math.floorDiv(service + input.duration().minutes()
+                        + input.duration().bufferAfterMin() + 4, 5) * 5;
+            }
+        }
+        var selected = requestedStart == null ? Instant.ofEpochSecond(Math.floorDiv(
+                at.minus(earliest, ChronoUnit.MINUTES).getEpochSecond(), 300) * 300 + 300).atOffset(ZoneOffset.UTC)
+                : requestedStart.withOffsetSameInstant(ZoneOffset.UTC);
+        if (!selected.toInstant().isAfter(at) || selected.getNano() != 0
+                || Math.floorMod(selected.toEpochSecond(), 300) != 0
+                || selected.toInstant().isAfter(at.plus(store.policy().bookingAheadDays(), ChronoUnit.DAYS))) { bad(); }
+        specified = specified == null ? List.of() : List.copyOf(specified);
+        if (specified.size() > 30 || new HashSet<>(specified).size() != specified.size()) { bad(); }
+        try {
+            return allocatePlan(scope, false, inputs, specified, null, selected, null,
+                    store.policyVersionNo(), store.policy().cancelRule(), false, true);
+        } catch (IncompleteSearch incomplete) { throw BizException.of(ErrorCode.BEAUTY_SEARCH_INCOMPLETE); }
     }
     /** Frozen service rules and price references share the same Slot search as ordinary appointment matching. */
     public Matched matchFrozen(Scope scope, FrozenAppointmentScope frozen, List<AppointmentAssignmentReq> specified,
@@ -148,13 +184,13 @@ public final class AppointmentMatching {
                     observed.goodsRevision(), observed.skuRevision(), definition.requirements()));
         }
         try { return allocatePlan(scope, false, inputs, List.copyOf(specified), null, startAt, replacement,
-                frozen.policyVersionNo(), frozen.cancelRule(), true); }
+                frozen.policyVersionNo(), frozen.cancelRule(), true, true); }
         catch (IncompleteSearch incomplete) { throw BizException.of(ErrorCode.BEAUTY_SEARCH_INCOMPLETE); }
     }
     private Matched allocatePlan(Scope scope, boolean publicOnly, List<MatchItem> inputs,
             List<AppointmentAssignmentReq> specified, String requestedPerson, OffsetDateTime startAt,
             ResourceCandidatesPort.Replacement replacement, String policyVersion,
-            PublishStorePolicyVersionReq.CancellationRule cancelRule, boolean frozen) {
+            PublishStorePolicyVersionReq.CancellationRule cancelRule, boolean frozen, boolean strictFuture) {
         var pool = candidates.getObject().candidates(new ResourceCandidatesPort.Query(scope, publicOnly,
                 startAt.toInstant(), 50)).stream()
                 .sorted(Comparator.comparing(ResourceFactsPort.ResourceFact::resourceNo)).toList();
@@ -210,7 +246,7 @@ public final class AppointmentMatching {
                         }
                     }
                     if (wanted.size() > rule.qty() || frozen && wanted.size() != rule.qty()) { bad(); }
-                    if (frozen && !a.isAfter(Instant.now())) { bad(); }
+                    if (strictFuture && !a.isAfter(Instant.now())) { bad(); }
                     for (int n = 0; n < rule.qty(); n++) {
                         if (slots.size() >= SEARCH_BUDGET) { throw new IncompleteSearch(); }
                         var explicit = n < wanted.size() ? specified.get(wanted.get(n)) : null;

@@ -19,6 +19,8 @@ public final class ReceptionIdentity {
             ObjectProvider<CustomerIdentityPort> customers) {
         this.access = access; this.guests = guests; this.customers = customers;
     }
+    /** Keeps internal continuation on the current real employee's customer permission. */
+    public void authorize(String entity, String store, String actor) { access.customer(entity, store, actor); }
     public VerifiedIdentity guest(String entity, String store, String guestNo) {
         var scope = access.customer(entity, store, SecurityUtils.requireUser().userNo());
         var fact = guests.getObject().get(scope, guestNo);

@@ -1290,13 +1290,13 @@
           "method": "POST",
           "path": "/biz/x/beauty/walk-ins",
           "purpose": "直客接待并安排即时资源",
-          "request": "customerRef,items,assignments,startAt",
-          "response": "WalkInVO含预约/工单引用",
+          "request": "ReceiveWalkInReq(storeNo,customerRef,guestNo,items,assignments,startAt); exactly one customerRef/guestNo",
+          "response": "WalkInVO(operationNo,operationState,appointmentNo,workOrder,startAt,recoveryAction); PENDING workOrder=null; frozen selectedStartAt UTC",
           "functions": [
             "BTY-G02"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "Local Service Task55D review pending; HTTP/remote wire Task59"
         },
         {
           "id": "BAPI-049",
@@ -2731,7 +2731,7 @@
           "path": "/biz/x/beauty/operations/{operationNo}",
           "purpose": "查询异步命令的原号进度和阻断原因",
           "request": "operationNo",
-          "response": "OperationVO含目标引用和恢复入口",
+          "response": "OperationVO(operationNo,appointmentNo,state,action,recoveryAction,workOrderNo,failureCode); original appointment semantics retained",
           "functions": [
             "BTY-T03",
             "BTY-T04"

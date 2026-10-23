@@ -3534,7 +3534,7 @@ BOOKING VIEW或MANAGE可读、MANAGE写；C私有入口显式CONSUMER/USR；公�
 
 ## Task55A身份/认领/到店码增量
 
-Task55A+B+C local services only; original 160 identifiers unchanged; 052/054/055/155 local scope implemented; reception HTTP/remote/walk-in/execution/source submission remain Task55D/56–60
+Task55A+B+C+D local services; D independent review pending. Original 160 identifiers unchanged. HTTP/remote wiring, execution, trade/payment/source submission and deployment remain Tasks56-60.
 
 ```java
 GuestRegistrationVO GuestRegistrationService.registerGuest(String entityNo, String storeNo, String actorNo, RegisterGuestReq req, String idempotencyKey)
@@ -3558,10 +3558,21 @@ BtyAppointmentOperation ReceptionReassignment.reassign(String entity,String stor
 BtyAppointmentOperation AppointmentPreparationService.prepareReception(BtyAppointmentPreparation preview,BtyAppointment target,long expected,String key,String hash,PreparedWorkOrderScope scope,WorkOrderPreparation frozen,String requestEvidence,String receptionOperationNo) [links original outer operation in existing root/fence/current short TX]
 BtyWorkOrderContext WorkOrderContextMapper.selectScoped(String entityNo,String storeNo,String workOrderNo) [MAIN+active+complete scope]
 BtyReceptionOperation ReceptionOperationMapper.selectScopedForUpdate(String entityNo,String storeNo,String operationNo) [permanent original reception row lock]
-BtyReceptionOperation ReceptionOperationMapper.selectOpenedForWorkOrder(String entityNo,String storeNo,String workOrderNo,String operationNo) [SQL exact original context/root/canonical identity + OPEN_WORK_ORDER/SUCCEEDED; no guessed success]
+BtyReceptionOperation ReceptionOperationMapper.selectOpenedForWorkOrder(String entityNo,String storeNo,String workOrderNo,String operationNo) [SQL exact original context/root/canonical identity + OPEN_WORK_ORDER+BAPI-052/054 or RECEIVE_WALK_IN+BAPI-048, SUCCEEDED; no guessed success]
 WorkOrderVO WorkOrderCoordinator.completedOrThrow(String entity,String store,String actor,String endpoint,String key,String hash,BtyReceptionOperation original,BizException stale) [private; CONFLICT only, exact original namespace/hash/operation SUCCEEDED]
 boolean WorkOrderCoordinator.sameOperation(BtyReceptionOperation expected,BtyReceptionOperation actual) [private; full tenant/entity/store/actor realm-kind/endpoint/key/hash/operation binding]
 PreparedWorkOrderScope WorkOrderCoordinator.preparedForIdentity(BtyAppointment root,PreparedWorkOrderScope prepared,VerifiedIdentity canonical) [private; no historical appointment rewrite, USER bridge only same-scope immutable receipt]
+WalkInVO ReceptionService.receiveWalkIn(String entityNo,String currentStoreNo,String actorNo,ReceiveWalkInReq req,String idempotencyKey)
+WalkInVO ReceptionCoordinator.recoverWalkIn(String entity,String store,String actor,String operationNo) [original verified identity and namespace; current employee]
+Matched AppointmentMatching.matchWalkIn(Scope scope,List<AppointmentItemReq> items,List<AppointmentAssignmentReq> assignments,OffsetDateTime requestedStartAt,Instant observedNow)
+BtyAppointmentOperation AppointmentPreparationService.prepareReception(String entity,String store,String actor,String receptionOperationNo) [atomic CREATE preview/root/fence/current/operation/outer link]
+WorkOrderVO WorkOrderCoordinator.openReception(String entity,String store,String actor,String receptionOperationNo) [single C writer, typed WalkInVO result in same transaction]
+WorkOrderVO WorkOrderCoordinator.recover(String entity,String store,String actor,String receptionOperationNo)
+ResourceBookingPort.Hold AppointmentCoordinator.releasedHold(BtyAppointmentOperation release,String expectedHoldNo) [original release receipt/intent/current hold evidence]
+void WorkOrderPreparation.verifyCreateLocked(AppointmentMatching.Matched match) [active local heads must still select original frozen versions before CREATE command commits]
+int ReceptionRecovery.scan() [due qualified RESOURCE_PENDING only, LIMIT50; fresh per-item lease30s and completion retry30s/failure60s; reconcile only]
+List<BtyReceptionOperation> ReceptionOperationMapper.selectResourceRecoverable(LocalDateTime now); int claimResource(String entityNo,String storeNo,String operationNo,long version,LocalDateTime now,LocalDateTime until)
+JobResult ReceptionRecoveryJob.run(JobInvocation invocation) [existing JobHandler, api profile only]
 ```
 
 ArrivalChallengeVO(challengeNo,storeNo,code,issuedAt,expiresAt)：SecureRandom32字节43字符；UTC毫秒；固定90秒原键不续期，禁止进入日志/operation/outbox。
@@ -3584,3 +3595,11 @@ CscopeHash显式schema/scope/规范身份/scopeRev/原item或展开index/SKU/原
 C读取ServiceImpl先当前权限/consumer本人并直接SQL授权root/context编码，再WorkOrderQuery.detail投影真实子行；C guest仅同scope不可变receipt可见。无context仅B legacy UNKNOWN只读，C拒；子行完整活跃父链。
 C修复I1/I2：begin返回SUCCEEDED立即回原result；stale scope CONFLICT只同完整namespace/key/hash及同outer成功重读，当前权限/身份owner错误不吞。新建intent显式tenantNo与DB一致，不放宽namespace比较。REPLACE短TX锁内先SUCCEEDED不改payload/phase/result；完整原绑定RESOURCE_PENDING→OPEN_PENDING，已OPEN_PENDING同binding/openingRevision幂等恢复。
 C修复I3/I4：新052/省略身份054锁外真实guest.get，REGISTERED/revision1/user空；CLAIMED/revision2/user非空须同scope不可变receipt。只规范新prepared，原预约GUEST保留；已有pending取原outer canonical/hash不重生成。最终根/fence/current/outer锁内复用countWorkOrders阻断已有工单或实际task，保留软删历史CAS/唯一键。
+D048 persists RECEIVED canonical identity and stable derived key before matching; atomically links original CREATE preparation before resource RPC; no identity tickets or contact in frozen payload.
+Default start is earliest strictly future five-minute service grid accounting for every raw offset/before-buffer. Selected start, complete plan and command bytes never change during recovery. Expired commands may reconcile, but no new acceptance/arrival/opening; PENDING ARRIVAL_REQUIRES_RESCHEDULE.
+RESOURCE_PENDING -> ARRIVAL_PENDING -> OPEN_PENDING -> SUCCEEDED; sole C writer stores complete WalkInVO plus OPEN/UNBOUND order, PENDING tasks and local OPEN draft in one TX. Unknown resources create no order/task.
+Original-number SQL reads reception first in trusted tenant/entity/store; GET is pure read; action/endpoint pairs determine projection. Current BOOKING_MANAGE+CUSTOMER authorizes recovery by another employee without changing original namespace/canonical bytes.
+Only proven original RESERVE rejection without hold, or confirmed explicit CANCEL/RELEASE of the original hold, closes REJECTED. CONFIRM rejection stays PENDING RESOURCE_RELEASE_REQUIRED until that proof.
+Background qualification before LIMIT50 requires receipt + complete original scope/source/plan/command intent binding. Only existing coordinator.recover; no new accept, guest get, staff identity, check-in or opening. Lease30s, retry30s/failure60s, ORDER BY next_retry_at,id.
+D fix R1: final 048 writer rechecks every original interval after lock acquisition, persisting reschedule-PENDING without scope on expiry; ordinary 052 retains its before-end rule. New CREATE locks active local heads and checks original selected versions without rematching; after all preparation writes, immediately before commit it rechecks every frozen interval against the existing reception Clock, rolling preparation back on expiry and preserving original reschedule-PENDING. Explicit authorization/capability and all nonzero remote HTTP errors propagate; unavailable or unproven release evidence stays PENDING.
+D adds no migration: V1-V7 unchanged, ready7 and 27 private tables. HTTP and remote acceptance remain Task59; deployment debt Task60.

@@ -111,6 +111,8 @@ def generate():
             lines.append(f'| {field["name"]} | {field["type"]} | {field["nullable"]} | {field["description"]} |')
         lines += ['', '唯一键：' + '；'.join(', '.join(key) for key in table['unique']) + '。',
                   'CHECK：' + '；'.join(table['checks']) + '。', '']
+    lines += ['## Task55D walk-in and recovery persistence', '']
+    lines += [rule + '\n' for rule in reception.get('walkInRecoveryContract', [])]
     guard = json.loads((SOURCE.parent / 'beauty-reception-identity-guard-schema.json').read_text())
     lines += ['## Task55A修复增量（私有V6）', '',
               'V5保持原字节；其nullable identity CHECK允许UNKNOWN。本版本追加明确kind非空分支，四种NULL组合按同空或合法非空处理。无新表，无数据修复/伪baseline；非法V5存量阻断升级。', '',
