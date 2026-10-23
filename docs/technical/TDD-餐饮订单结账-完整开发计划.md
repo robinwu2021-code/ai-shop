@@ -4,7 +4,7 @@
 
 > 执行者：使用superpowers:executing-plans按任务顺序实施；每个任务完成失败测试、最小实现、验证、独立评审及范围明确的提交。不得仅因本计划存在就启动编码或声称能力已交付。
 >
-> 状态：CKO-01～08、09 A/B及C1已实现；09 C2.1/2/3及C2.5共享税合同已实现；C2.4真实发布能力证据及10～31待开发。2026-10-23，档位2；本次任务核对基线`4aae843c1`，统一分支`codex/ai-shop-codex`。历史执行记录保留，当前任务总览以§2.3为准。
+> 状态：CKO-01～08、09 A/B及C1已实现；09 C2.1/2/3及C2.5共享税合同已实现；CKO-10报价内部存储已实现；C2.4真实发布能力证据及11～31待开发。2026-10-23，档位2；本次任务核对基线`4aae843c1`，统一分支`codex/ai-shop-codex`。历史执行记录保留，当前任务总览以§2.3为准。
 
 **目标：** 基于原商品、订单、支付、库存及账号门店能力，实现从规则配置、报价到先付/后付、收退款、打印、日结及恢复的餐饮结账闭环，并保留零售、美业共享内核的接入路径。
 
@@ -264,9 +264,9 @@ mvn -o -f backend-plugins/shop-industry-food/pom.xml -pl food-core -am test -Dte
 
 接口：保存quote头/行/分摊同一短事务；factsHash、economicsHash、requestHash分别规范化；确认引用原不可变quote。
 
-- [ ] 写quoteIsAtomicImmutableAndScoped：写分摊失败整份回滚；别店/别用户quote不可读；金额不可UPDATE；时间/UUID不影响经济hash。
-- [ ] 实现3表及税/对价字段；quote过期、被替换与支付状态分离；有订单/意图引用不得过期物理清除。
-- [ ] 验证同一发票行的份额税合计、积分降价/对价字段互斥及金额脱敏；真实DB测试通过并提交。
+- [x] 写quoteIsAtomicImmutableAndScoped：写分摊失败整份回滚；别店/别用户quote不可读；金额不可UPDATE；时间/UUID不影响经济hash。
+- [x] 实现3表及税/对价字段；quote过期、被替换与支付状态分离；有订单/意图引用不得过期物理清除。
+- [x] 验证同一发票行的份额税合计、积分降价/对价字段互斥及金额脱敏；真实DB测试通过并提交。2026-10-23内部存储批次完成，见存储实施TDD收据；消费者VO脱敏和真实owner准入继续在CKO11验收，未提供公开报价API。
 
 ### CKO-11 餐饮真实事实与B/C报价
 
@@ -532,7 +532,7 @@ mvn -o -f backend-plugins/shop-industry-food/pom.xml -pl food-core -am test -Dte
 
 | 待办 | 交付内容 | 依赖及完成标志 |
 |---|---|---|
-| ☐ CKO-10 报价持久化 | 3张报价表、行/优惠/税/资金分摊、有效期、不可变来源与经济摘要 | 06～08；原子回滚、隔离、冻结/保留规则真实DB通过 |
+| ☑ CKO-10 报价持久化 | 3张报价表、行/优惠/税/资金分摊、有效期、不可变来源与经济摘要 | 06～08；原子回滚、隔离、冻结/保留规则真实DB通过 |
 | ☐ CKO-11 真实报价API | 时段/渠道价格、套餐补差、小料、优惠券及税配置接线；B/C共用Java报价服务 | 09 C2+10；禁止客户端定价、试算不扣资产、不扣库存 |
 | ☐ CKO-12 支付合同 | 独立PAY支付/关单/退款/原键查询及本地远程同合同 | 可先做合同核验；真实提供方超时查回与沙箱通过 |
 | ☐ CKO-13 库存合同 | SKU/物料数量单位精度、需求预留/提交/释放/查询、历史估值回执 | 不另建库存账；小料/套餐/配方唯一需求树及取消不复活 |
@@ -665,3 +665,18 @@ mvn -o -f backend-plugins/shop-industry-food/pom.xml -pl food-core -am test -Dte
 执行进度（2026-10-22，CKO-07）：纯地区税预估/最终定税、逐行分类/精确减免、固定付款上限及原税AA分配已实现；26项新增测试、8个JSON向量及3项消融通过，独立评审修复并复查。全套shop-base228、shop-core414通过。下一步CKO-08；税档发布/报价持久化及正式资金接线仍待实施，架构基线失败详见收据。
 
 执行进度（2026-10-22，CKO-08）：4表及模板/门店内部Service、原子发布/幂等/outbox、锁版初始化、恢复继承、升级草稿和新版本回滚已完成。17项一次性MariaDB实际全绿，事务消融有效，core完整回归通过；架构与schema合计24项有2项已复现历史基线失败。下一步09，正式权限/真实来源与API仍未开放。
+
+
+### CKO-10执行细化（2026-10-23，批次开发）
+
+顺序裁决：C2.4需要真实结账owner协议，旧CouponPort单次allocate和PAY就绪布尔值不能证明prepare/commit/query/退款及新版组合能力；不新增伪造生产证据provider。CKO10原依赖06～08，可独立实施，不等待未接资金服务。采用executing-plans；遵从用户多阶段开发编译、统一测试要求。
+
+§0 AC：Q01三表同事务、幂等及失败全回滚；Q02按MAIN/主体/门店/消费者范围读取；Q03金额/源/税/分摊不可变，变更创建新报价；Q04逐原发票行税总额/分摊守恒，积分降价和对价互斥；Q05来源事实、意图、经济摘要独立规范化，随机No和时间不进经济摘要；Q06过期/替代与支付分离，被原意图/订单引用的报价保留，无物理删除入口。
+
+§1复用：ord_同库、BaseEntity、TradeMappers嵌套Mapper、IdempotencyService、TransactionTemplate、BizKey及TaxEngine。增量V550三表，不回写旧迁移。无新Controller/权限、无资产/支付/库存写调用。
+
+§2阶段：A先实现三表/实体和闭合typed报价输入及纯快照装配器，编译；B实现保存/读取/替代/引用服务及明确租户/门店/消费者SQL谓词，编译；C添加一次性MariaDB原子性、隔离、不可变、并发幂等及行税守恒测试，统一核心/原生/宿主及生成物验证，最终批次评审。内部合同不得直接作为C端VO，提供方证据留后端；CKO11负责真实source owner、税点、优惠资格、敏感字段裁剪及HTTP鉴权。
+
+代码：trade.dto.PricingQuoteCommands、trade.assembler.PricingQuoteAssembler、trade.entity.OrdPriceQuote/Line/Allocation、trade.service.PricingQuoteService及impl、TradeMappers三个嵌套Mapper、PricingQuotePersistenceTest。快照仅来源typed records，不接受任意JSON；当前冻结商家税模式与原发票行金额，使用TaxEngine校验逐发票行税合计；基础金额有符号调价之外均非负且JSON安全，资金计划不等于扣款。现金找零仅保存意图，不启用现金营业。
+
+生命周期：保存READY，有效期1～300秒、服务器UTC毫秒；过期读取EXPIRED，替代需同主体/门店/消费者及源根，引用仅READY未过期时允许且按原reference幂等。已引用不可替代，无清理/物理删除入口。hash按字段名递归排序、数量去多余零；经济hash排除报价No/创建/过期时间但包含源身份/配置版本/税源/业务金额和计划，不能因同金额不同优惠/资方而相同。

@@ -30683,6 +30683,27 @@
       "package": "ai.neargo.shop.trade.order.entity"
     },
     {
+      "table": "ord_price_quote",
+      "class": "OrdPriceQuote",
+      "zh": "Insert-only economic fields; only the head lifecycle may be transitioned by PricingQuoteService.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_price_quote_allocation",
+      "class": "OrdPriceQuoteAllocation",
+      "zh": "Insert-only economic fields; only the head lifecycle may be transitioned by PricingQuoteService.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_price_quote_line",
+      "class": "OrdPriceQuoteLine",
+      "zh": "Insert-only economic fields; only the head lifecycle may be transitioned by PricingQuoteService.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
       "table": "ord_pricing_template",
       "class": "OrdPricingTemplate",
       "zh": "Pricing publication evidence uses business numbers; immutable revisions are insert/query only.",
@@ -39944,6 +39965,16 @@
         "module": "shop-core"
       },
       {
+        "name": "Industry",
+        "values": [
+          "FOOD",
+          "RETAIL",
+          "BEAUTY_SERVICE"
+        ],
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "name": "IndustryRestriction",
         "values": [
           "PUBLISHED_MENU_CHANNEL_PRICE_ONLY",
@@ -40076,6 +40107,22 @@
       {
         "name": "Kind",
         "values": [
+          "ACTIVITY_DISCOUNT",
+          "COUPON_DISCOUNT",
+          "MANUAL_DISCOUNT",
+          "POINTS_DISCOUNT",
+          "WAIVER",
+          "POINTS_CONSIDERATION",
+          "STORED_PLAN",
+          "OTHER_PLAN",
+          "CASH_PLAN"
+        ],
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "name": "Kind",
+        "values": [
           "COUPON",
           "MERCHANT",
           "PICKUP",
@@ -40097,6 +40144,17 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "LineKind",
+        "values": [
+          "GOODS",
+          "ADDON",
+          "BUNDLE_COMPONENT",
+          "FEE"
+        ],
+        "zh": "",
+        "module": "shop-core"
       },
       {
         "name": "LoginEvent",
@@ -40328,6 +40386,15 @@
           "CLOSED"
         ],
         "zh": "支付单（ord_order）状态。",
+        "module": "shop-core"
+      },
+      {
+        "name": "Phase",
+        "values": [
+          "LIVE",
+          "FROZEN_UNPAID"
+        ],
+        "zh": "",
         "module": "shop-core"
       },
       {
