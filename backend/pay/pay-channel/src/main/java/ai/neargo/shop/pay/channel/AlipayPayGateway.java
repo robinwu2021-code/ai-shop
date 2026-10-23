@@ -1,16 +1,17 @@
 package ai.neargo.shop.pay.channel;
 
-import ai.neargo.shop.pay.channel.ChannelClient.ChannelException;
 import ai.neargo.shop.pay.channel.base.AbstractPayGateway;
+import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
 
 /**
  * 支付宝直付通网关。接口坐标见 {@link AlipayApis}。
@@ -183,12 +184,16 @@ public class AlipayPayGateway extends AbstractPayGateway {
             if (!"TRADE_SUCCESS".equals(status) && !"TRADE_FINISHED".equals(status)) {
                 return QueryResult.unpaid();
             }
-            // 支付宝金额是元（字符串），我方一律最小单位
-            Object amount = resp.get("total_amount");
-            long minor = amount == null ? 0L
-                    : new java.math.BigDecimal(String.valueOf(amount))
-                            .movePointRight(2).longValueExact();
-            return QueryResult.paid(minor, String.valueOf(resp.get("trade_no")));
+            if (!outTradeNo.equals(resp.get("out_trade_no"))
+                    || !(resp.get("trade_no") instanceof String trade)
+                    || trade.isBlank()
+                    || !(resp.get("total_amount") instanceof String amount)
+                    || amount.isBlank()) {
+                return QueryResult.failed();
+            }
+            // 支付宝金额是元（字符串）；缺失或非精确最小单位不得变成零元回执。
+            long minor = new BigDecimal(amount).movePointRight(2).longValueExact();
+            return minor < 0 ? QueryResult.failed() : QueryResult.paid(minor, trade, "CNY");
         } catch (ChannelClient.ChannelException e) {
             return QueryResult.failed();
         } catch (ArithmeticException | NumberFormatException e) {

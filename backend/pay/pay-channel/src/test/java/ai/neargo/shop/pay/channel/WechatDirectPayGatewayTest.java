@@ -1,18 +1,19 @@
 package ai.neargo.shop.pay.channel;
 
-import tools.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.neargo.shop.pay.channel.entity.SysPayChannel;
 import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 微信<b>直连商户号</b>网关（小程序 JSAPI）。
@@ -140,8 +141,16 @@ class WechatDirectPayGatewayTest {
     @Test
     void queryPreservesActualReceiptCurrency() throws Exception {
         RecordingClient client = new RecordingClient();
-        client.reply = Map.of("trade_state", "SUCCESS", "transaction_id", "420-CURRENCY",
-                "amount", Map.of("total", 1, "currency", "USD"));
+        client.reply =
+                Map.of(
+                        "out_trade_no",
+                        "P1",
+                        "trade_state",
+                        "SUCCESS",
+                        "transaction_id",
+                        "420-CURRENCY",
+                        "amount",
+                        Map.of("total", 1, "currency", "USD"));
         var serialized = new ObjectMapper().valueToTree(gateway(client).query("P1"));
         assertThat(serialized.path("currency").asString()).isEqualTo("USD");
     }
@@ -152,8 +161,16 @@ class WechatDirectPayGatewayTest {
     @DisplayName("查单走 GET，且 ?mchid= 在路径里（它要参与签名）")
     void 查单走GET带mchid() throws Exception {
         RecordingClient client = new RecordingClient();
-        client.reply = Map.of("trade_state", "SUCCESS", "transaction_id", "4200001",
-                "amount", Map.of("total", 1));
+        client.reply =
+                Map.of(
+                        "out_trade_no",
+                        "P1",
+                        "trade_state",
+                        "SUCCESS",
+                        "transaction_id",
+                        "4200001",
+                        "amount",
+                        Map.of("total", 1, "currency", "CNY"));
 
         var r = gateway(client).query("P1");
 
@@ -277,7 +294,9 @@ class WechatDirectPayGatewayTest {
     void acceptedResponseWithoutProviderIsUnknownNotARejectionProof() throws Exception {
         RecordingClient client = new RecordingClient();
         client.reply = Map.of("status", "PROCESSING");
-        var result = gateway(client).refund(new PayGateway.TxContext(null,"T","O",100),30,"R","refund");
+        var result =
+                gateway(client)
+                        .refund(new PayGateway.TxContext(null, "T", "O", 100), 30, "R", "refund");
         assertThat(client.calls).isGreaterThan(0);
         assertThat(result.success()).isFalse();
         assertThat(result.retryable()).isTrue();

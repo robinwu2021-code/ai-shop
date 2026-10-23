@@ -1,7 +1,6 @@
 package ai.neargo.shop.trade.order.service.lifecycle.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
-
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PayModes;
@@ -12,8 +11,11 @@ import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
 import ai.neargo.shop.trade.order.entity.OrdPaymentResolution;
 import ai.neargo.shop.trade.order.service.lifecycle.PaymentLifecycleService;
 import ai.neargo.shop.trade.order.service.lifecycle.PaymentResolutionService;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Objects;
 
@@ -28,6 +30,16 @@ public class PaymentLifecycleServiceImpl implements PaymentLifecycleService {
         this.settlement = settlement;
         this.resolutions = resolutions;
         this.subOrders = subOrders;
+    }
+
+    @Override
+    public SettlePort.PaymentReceipt readConfirmed(String orderNo, String channel, String tradeNo) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("Payment receipt reads require no caller transaction");
+        }
+        return tradeNo == null
+                ? settlement.successPayment(orderNo)
+                : settlement.successPayment(orderNo, channel, tradeNo);
     }
 
     @Override
@@ -50,8 +62,12 @@ public class PaymentLifecycleServiceImpl implements PaymentLifecycleService {
             }
             return new ConfirmedPayment(channel, tradeNo);
         }
-        var receipt = tradeNo == null ? settlement.successPayment(order.getOrderNo())
-                : settlement.successPayment(order.getOrderNo(), channel, tradeNo);
+        throw BizException.of(ErrorCode.CONFLICT);
+    }
+
+    @Override
+    public ConfirmedPayment requireConfirmed(
+            OrdOrder order, String channel, String tradeNo, SettlePort.PaymentReceipt receipt) {
         if (receipt == null || !"SUCCESS".equals(receipt.status())
                 || !Objects.equals(order.getOrderNo(), receipt.orderNo())
                 || !Objects.equals(order.getUserNo(), receipt.userNo())

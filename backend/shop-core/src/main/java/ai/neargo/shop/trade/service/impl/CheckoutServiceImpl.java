@@ -11,6 +11,8 @@ import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.spi.marketing.CouponPort.MerchantAmount;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.product.StoreSalesCatalogPort;
+import ai.neargo.shop.spi.settle.PaymentOperationPort;
+import ai.neargo.shop.spi.settle.PaymentOperationPort.PaymentOperationView;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.settle.SettlePort.PaymentReceipt;
 import ai.neargo.shop.spi.trade.CheckoutPort.BuyerConfirmation;
@@ -20,8 +22,11 @@ import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutScope;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutSourceFacts;
 import ai.neargo.shop.spi.trade.CheckoutPort.ConfirmCheckoutReq;
 import ai.neargo.shop.spi.trade.CheckoutPort.DiscountFact;
+import ai.neargo.shop.spi.trade.CheckoutPort.InitiatePaymentReq;
 import ai.neargo.shop.spi.trade.CheckoutPort.OperationRef;
+import ai.neargo.shop.spi.trade.CheckoutPort.PaymentAttemptView;
 import ai.neargo.shop.spi.trade.CheckoutPort.PaymentFact;
+import ai.neargo.shop.spi.trade.CheckoutPort.PaymentLookup;
 import ai.neargo.shop.spi.trade.CheckoutPort.PlaceCheckoutReq;
 import ai.neargo.shop.spi.trade.CheckoutPort.PrepareCheckoutReq;
 import ai.neargo.shop.spi.trade.CheckoutPort.PromotionOption;
@@ -31,6 +36,7 @@ import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdCheckoutConfirmation;
 import ai.neargo.shop.trade.entity.OrdCheckoutLine;
 import ai.neargo.shop.trade.entity.OrdCheckoutOperation;
+import ai.neargo.shop.trade.entity.OrdCheckoutPaymentRequest;
 import ai.neargo.shop.trade.entity.OrdCheckoutQuote;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdOrder;
@@ -51,6 +57,7 @@ import ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard;
 import ai.neargo.shop.trade.order.service.create.ExpectedCheckoutQuote;
 import ai.neargo.shop.trade.policy.CheckoutAccessPolicy;
 import ai.neargo.shop.trade.service.CheckoutOrderWriter;
+import ai.neargo.shop.trade.service.CheckoutPaymentService;
 import ai.neargo.shop.trade.service.CheckoutService;
 import ai.neargo.shop.trade.service.OrderService;
 
@@ -106,9 +113,14 @@ public class CheckoutServiceImpl implements CheckoutService {
     private final AfterSaleMapper sourceAfterSales;
     private final CheckoutMappers.LineMapper sourceLines;
     private final SettlePort settlement;
+    private final PaymentOperationPort financialOperations;
+    private final CheckoutMappers.PaymentRequestMapper paymentRequests;
     private final TransactionTemplate sourceReads;
+    private final CheckoutPaymentService payments;
 
-    /** Bind durable checkout writes and serialized source reads to the platform transaction manager. */
+    /**
+     * Bind durable checkout writes and serialized source reads to the platform transaction manager.
+     */
     public CheckoutServiceImpl(
             CheckoutMappers.OperationMapper operations,
             CheckoutMappers.QuoteMapper quotes,
@@ -129,6 +141,9 @@ public class CheckoutServiceImpl implements CheckoutService {
             AfterSaleMapper sourceAfterSales,
             CheckoutMappers.LineMapper sourceLines,
             SettlePort settlement,
+            PaymentOperationPort financialOperations,
+            CheckoutMappers.PaymentRequestMapper paymentRequests,
+            CheckoutPaymentService payments,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         this.operations = operations;
         this.quotes = quotes;
@@ -149,11 +164,29 @@ public class CheckoutServiceImpl implements CheckoutService {
         this.sourceAfterSales = sourceAfterSales;
         this.sourceLines = sourceLines;
         this.settlement = settlement;
+        this.financialOperations = financialOperations;
+        this.paymentRequests = paymentRequests;
+        this.payments = payments;
         sourceReads = new TransactionTemplate(manager);
         sourceReads.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         sourceReads.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
         writes = new TransactionTemplate(manager);
         writes.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+    }
+
+    @Override
+    public PaymentAttemptView initiatePayment(InitiatePaymentReq request) {
+        return payments.initiatePayment(request);
+    }
+
+    @Override
+    public PaymentAttemptView findPayment(CheckoutScope scope, PaymentLookup request) {
+        return payments.findPayment(scope, request);
+    }
+
+    @Override
+    public PaymentAttemptView findPaymentForCurrentBuyer(PaymentLookup request) {
+        return payments.findPaymentForCurrentBuyer(request);
     }
 
     @Override
@@ -760,24 +793,12 @@ public class CheckoutServiceImpl implements CheckoutService {
                         var observed = requireOperation(request.operation());
                         requireSourceReference(observed, scope, request);
                         var order = sourceOrder(observed.getOrderNo());
-                        PaymentReceipt receipt = null;
-                        if (order != null
-                                && present(order.getPayChannel())
-                                && present(order.getPayTradeNo())) {
-                            try {
-                                receipt =
-                                        settlement.successPayment(
-                                                order.getOrderNo(),
-                                                order.getPayChannel(),
-                                                order.getPayTradeNo());
-                            } catch (RuntimeException unavailable) {
-                                /* An unavailable funds owner cannot prove zero receipt. */
-                            }
-                        }
-                        var payment = receipt;
+                        // All financial calls and possible receipt projection finish before the RR
+                        // source lock.
+                        var funding = sourceFunding(observed, order);
                         var read =
                                 sourceReads.execute(
-                                        status -> sourceSnapshot(scope, request, order, payment));
+                                        status -> sourceSnapshot(scope, request, order, funding));
                         last = read.facts();
                         if (!read.retry()) {
                             return last;
@@ -788,7 +809,8 @@ public class CheckoutServiceImpl implements CheckoutService {
     }
 
     private SourceRead sourceSnapshot(
-            CheckoutScope scope, SourceLookup request, OrdOrder observed, PaymentReceipt receipt) {
+            CheckoutScope scope, SourceLookup request, OrdOrder observed, SourceFunding funding) {
+        PaymentReceipt receipt = funding.receipt();
         // This must be the first SQL in the new RR transaction. All business facts below are
         // ordinary consistent reads; no sub/item current read may be mixed into this snapshot.
         var op = operations.lock(request.operation().caller(), request.operation().operationNo());
@@ -822,13 +844,18 @@ public class CheckoutServiceImpl implements CheckoutService {
                                 .eq(OrdAfterSale::getSubOrderNo, op.getSubOrderNo())
                                 .orderByAsc(OrdAfterSale::getAfterSaleNo));
         var refundWork = sourceLines.refundWork(op.getSubOrderNo());
+        var currentRequests = paymentRequests.forOperation(op.getCaller(), op.getOperationNo());
+        boolean changedMapping = !requestStamp(currentRequests).equals(funding.requestStamp());
         boolean changedAttempt =
-                order != null
-                        && (observed == null
-                                || !Objects.equals(order.getPayChannel(), observed.getPayChannel())
-                                || !Objects.equals(
-                                        order.getPayTradeNo(), observed.getPayTradeNo()));
-        if (order == null
+                changedMapping
+                        || order != null
+                                && (observed == null
+                                        || !Objects.equals(
+                                                order.getPayChannel(), observed.getPayChannel())
+                                        || !Objects.equals(
+                                                order.getPayTradeNo(), observed.getPayTradeNo()));
+        if (changedMapping
+                || order == null
                 || sub == null
                 || !op.getOrderNo().equals(sub.getOrderNo())
                 || !op.getBuyerNo().equals(order.getUserNo())
@@ -849,8 +876,10 @@ public class CheckoutServiceImpl implements CheckoutService {
                 || !"SUCCESS".equals(receipt.status())
                 || !op.getOrderNo().equals(receipt.orderNo())
                 || !op.getBuyerNo().equals(receipt.userNo())
-                || !Objects.equals(order.getPayChannel(), receipt.payChannel())
-                || !Objects.equals(order.getPayTradeNo(), receipt.tradeNo())
+                || (!funding.mapped() || present(order.getPayChannel()))
+                        && !Objects.equals(order.getPayChannel(), receipt.payChannel())
+                || (!funding.mapped() || present(order.getPayTradeNo()))
+                        && !Objects.equals(order.getPayTradeNo(), receipt.tradeNo())
                 || !"CNY".equals(receipt.currency())
                 || receipt.amountMinor() != order.getPayAmount()) {
             return new SourceRead(unknownSource(op, order), changedAttempt);
@@ -964,7 +993,13 @@ public class CheckoutServiceImpl implements CheckoutService {
                                 sub.getRefundProgress(),
                                 itemFacts,
                                 lines,
-                                receipt,
+                                funding.mapped()
+                                        ? Arrays.asList(
+                                                receipt,
+                                                funding.operationNo(),
+                                                funding.outTradeNo(),
+                                                funding.receiptNo())
+                                        : receipt,
                                 afterSales.stream()
                                         .map(
                                                 a ->
@@ -986,15 +1021,15 @@ public class CheckoutServiceImpl implements CheckoutService {
         }
         var payment =
                 new PaymentFact(
-                        null,
+                        funding.operationNo(),
                         receipt.paymentNo(),
-                        null,
+                        funding.outTradeNo(),
                         receipt.payChannel(),
                         receipt.tradeNo(),
                         receipt.status(),
                         receipt.amountMinor(),
                         receipt.currency(),
-                        null,
+                        funding.receiptNo(),
                         clock.now());
         return new SourceRead(
                 new CheckoutSourceFacts(
@@ -1018,6 +1053,106 @@ public class CheckoutServiceImpl implements CheckoutService {
                         clock.now()),
                 false);
     }
+
+    private SourceFunding sourceFunding(OrdCheckoutOperation op, OrdOrder order) {
+        var rows = paymentRequests.forOperation(op.getCaller(), op.getOperationNo());
+        var stamp = requestStamp(rows);
+        if (rows.isEmpty()) {
+            PaymentReceipt legacy = null;
+            if (order != null && present(order.getPayChannel()) && present(order.getPayTradeNo())) {
+                try {
+                    legacy =
+                            settlement.successPayment(
+                                    order.getOrderNo(),
+                                    order.getPayChannel(),
+                                    order.getPayTradeNo());
+                } catch (RuntimeException unavailable) {
+                    // Missing financial evidence is UNKNOWN, never zero received money.
+                }
+            }
+            return new SourceFunding(legacy, null, null, null, stamp, false);
+        }
+        PaymentOperationView actual = null;
+        try {
+            for (var row : rows) {
+                if (!op.getOrderNo().equals(row.getOrderNo())
+                        || !op.getSubOrderNo().equals(row.getSubOrderNo())
+                        || !op.getBuyerNo().equals(row.getBuyerNo())
+                        || !op.getEntityNo().equals(row.getEntityNo())
+                        || !op.getStoreNo().equals(row.getStoreNo())) {
+                    return unknownFunding(stamp);
+                }
+                var observed = financialOperations.query(row.getPaymentOperationNo());
+                if (!row.getPaymentOperationNo().equals(observed.operationNo())
+                        || !row.getRequestHash().equals(observed.requestHash())) {
+                    return unknownFunding(stamp);
+                }
+                if ("REJECTED".equals(observed.phase())
+                        && (observed.receipt() == null
+                                || "CLOSED".equals(observed.receipt().status())
+                                        && observed.receiptNo() == null
+                                        && present(observed.canonicalOperationNo())
+                                        && present(observed.outTradeNo())
+                                        && Objects.equals(
+                                                observed.paymentNo(),
+                                                observed.receipt().paymentNo())
+                                        && row.getOrderNo().equals(observed.receipt().orderNo())
+                                        && row.getBuyerNo().equals(observed.receipt().userNo()))) {
+                    // Only a proved unsent terminal attempt can be skipped; real SUCCESS remains
+                    // money.
+                    continue;
+                }
+                if (observed.receipt() == null
+                        || !"SUCCESS".equals(observed.receipt().status())
+                        || !present(observed.receiptNo())
+                        || !present(observed.canonicalOperationNo())
+                        || !present(observed.outTradeNo())
+                        || !Objects.equals(observed.paymentNo(), observed.receipt().paymentNo())) {
+                    return unknownFunding(stamp);
+                }
+                if (actual != null
+                        && (!Objects.equals(
+                                        actual.canonicalOperationNo(),
+                                        observed.canonicalOperationNo())
+                                || !Objects.equals(actual.paymentNo(), observed.paymentNo())
+                                || !Objects.equals(actual.outTradeNo(), observed.outTradeNo())
+                                || !Objects.equals(actual.receiptNo(), observed.receiptNo())
+                                || !Objects.equals(actual.receipt(), observed.receipt()))) {
+                    return unknownFunding(stamp);
+                }
+                actual = observed;
+            }
+        } catch (RuntimeException unavailable) {
+            return unknownFunding(stamp);
+        }
+        return actual == null
+                ? unknownFunding(stamp)
+                : new SourceFunding(
+                        actual.receipt(),
+                        actual.canonicalOperationNo(),
+                        actual.outTradeNo(),
+                        actual.receiptNo(),
+                        stamp,
+                        true);
+    }
+
+    private static List<String> requestStamp(List<OrdCheckoutPaymentRequest> rows) {
+        return rows.stream()
+                .map(row -> row.getPaymentOperationNo() + ":" + row.getRequestHash())
+                .toList();
+    }
+
+    private static SourceFunding unknownFunding(List<String> stamp) {
+        return new SourceFunding(null, null, null, null, stamp, true);
+    }
+
+    private record SourceFunding(
+            PaymentReceipt receipt,
+            String operationNo,
+            String outTradeNo,
+            String receiptNo,
+            List<String> requestStamp,
+            boolean mapped) {}
 
     private OrdOrder sourceOrder(String no) {
         return sourceOrders.selectOne(

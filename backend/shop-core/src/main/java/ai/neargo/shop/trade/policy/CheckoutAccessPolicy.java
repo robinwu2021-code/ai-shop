@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.policy;
 import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.BizIdentityResolver;
+import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.auth.SecurityUtils;
@@ -116,6 +117,71 @@ public class CheckoutAccessPolicy {
                 user.realm().name(),
                 user.subjectKind().name());
     }
+
+    /**
+     * Require a real current HOST merchant session and independently resolve actual cash-account
+     * authority.
+     */
+    public CashierActor requireCurrentCashier(CheckoutScope scope) {
+        outside();
+        var current = SecurityUtils.requireUser();
+        if (current.realm() != Realm.MERCHANT
+                || !"MAIN".equals(current.tenantNo())
+                || !(current.subjectKind() == SubjectKind.MCH
+                        || current.subjectKind() == SubjectKind.USR)) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        String token =
+                SecurityUtils.currentToken()
+                        .filter(value -> !value.isBlank())
+                        .orElseThrow(() -> BizException.of(ErrorCode.UNAUTHORIZED));
+        var session =
+                tokens.of(Realm.MERCHANT)
+                        .get(token)
+                        .orElseThrow(() -> BizException.of(ErrorCode.UNAUTHORIZED))
+                        .user();
+        if (session == null
+                || session.realm() != Realm.MERCHANT
+                || !"MAIN".equals(session.tenantNo())
+                || session.subjectKind() != current.subjectKind()
+                || !Objects.equals(session.userNo(), current.userNo())) {
+            throw BizException.of(ErrorCode.UNAUTHORIZED);
+        }
+        var actor = requireMerchant(scope, BizPerms.CASH_RECEIVE);
+        var account =
+                merchants
+                        .resolveAuthorizedOperator(
+                                new MerchantOperatorAccessPort.Query(
+                                        scope.tenantNo(),
+                                        scope.entityNo(),
+                                        scope.storeNo(),
+                                        current.userNo(),
+                                        current.realm().name(),
+                                        current.subjectKind().name(),
+                                        BizPerms.CASH_RECEIVE))
+                        .orElseThrow(() -> BizException.of(ErrorCode.FORBIDDEN));
+        return new CashierActor(
+                actor.tenantNo(),
+                actor.entityNo(),
+                actor.storeNo(),
+                actor.actorNo(),
+                actor.realm(),
+                actor.subjectKind(),
+                account.accountNo());
+    }
+
+    /**
+     * Actual account and authenticated namespace are both retained on the immutable offline
+     * receipt.
+     */
+    public record CashierActor(
+            String tenantNo,
+            String entityNo,
+            String storeNo,
+            String actorNo,
+            String realm,
+            String subjectKind,
+            String accountNo) {}
 
     private static void outside() {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {

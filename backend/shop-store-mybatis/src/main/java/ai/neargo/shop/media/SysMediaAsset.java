@@ -3,6 +3,7 @@ package ai.neargo.shop.media;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -47,6 +48,10 @@ public class SysMediaAsset {
     public static final String QUAL = "QUAL";
     /** 售后凭证，私有读。 */
     public static final String AFTERSALE = "AFTERSALE";
+
+    /** Private merchant-receipt evidence; permanently retained, including unbound uploads. */
+    public static final String OFFLINE_RECEIPT = "OFFLINE_RECEIPT";
+
     /**
      * C 端用户头像，<b>公开读</b>（C-AC-08）。
      *

@@ -3,8 +3,10 @@ package ai.neargo.shop.media;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.platform.AuditLogPort;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -129,6 +131,12 @@ public class MediaPurgeService {
         int purged = 0;
         int failed = 0;
         for (SysMediaAsset a : targets) {
+            // Recheck the actual target, including jobs queued before this retention policy
+            // existed.
+            if (SysMediaAsset.OFFLINE_RECEIPT.equals(a.getBizType())) {
+                failed++;
+                continue;
+            }
             try {
                 mediaStore.delete(List.of(a.getAssetKey()));
                 SysMediaAsset upd = new SysMediaAsset();
@@ -206,9 +214,11 @@ public class MediaPurgeService {
      * 界面上看得见，而不是假装它不存在。
      */
     public LambdaQueryWrapper<SysMediaAsset> reclaimableQuery(Filter filter) {
-        LambdaQueryWrapper<SysMediaAsset> q = Wrappers.<SysMediaAsset>lambdaQuery()
-                .eq(SysMediaAsset::getStatus, SysMediaAsset.RECLAIMABLE)
-                .isNull(SysMediaAsset::getPurgeBatchNo);
+        LambdaQueryWrapper<SysMediaAsset> q =
+                Wrappers.<SysMediaAsset>lambdaQuery()
+                        .eq(SysMediaAsset::getStatus, SysMediaAsset.RECLAIMABLE)
+                        .ne(SysMediaAsset::getBizType, SysMediaAsset.OFFLINE_RECEIPT)
+                        .isNull(SysMediaAsset::getPurgeBatchNo);
         if (filter == null) {
             return q.ne(SysMediaAsset::getBizType, SysMediaAsset.QUAL);
         }

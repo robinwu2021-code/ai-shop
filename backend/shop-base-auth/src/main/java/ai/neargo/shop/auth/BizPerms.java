@@ -48,6 +48,9 @@ public final class BizPerms {
     /** 订单列表与详情、工作台待办。<b>含金额</b> */
     public static final String ORDER_VIEW = "biz:order:view";
 
+    /** 确认整笔线下实收；独立收款授权，旧到货登记与订单查看权限不能代替。 */
+    public static final String CASH_RECEIVE = "pay:cash:receive";
+
     /** 准备报价不授权购买，必须单独显式授予。 */
     public static final String CHECKOUT_PREPARE = "trade:checkout:prepare";
     /** 改库存（含门店库存）。高频日常动作，且<b>不出钱</b> —— 与改价是两件事 */
@@ -152,6 +155,7 @@ public final class BizPerms {
             Map.entry(VERIFY, "核销取货"),
             Map.entry(SHIP, "发货与标记送达"),
             Map.entry(ORDER_VIEW, "看订单与金额"),
+            Map.entry(CASH_RECEIVE, "确认线下实收"),
             Map.entry(CHECKOUT_PREPARE, "准备服务购买报价"),
             Map.entry(STOCK, "看商品、改库存"),
             Map.entry(GOODS, "建商品、改价、上下架"),

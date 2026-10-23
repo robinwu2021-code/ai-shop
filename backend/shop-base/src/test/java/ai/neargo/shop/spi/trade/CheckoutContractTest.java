@@ -85,18 +85,26 @@ class CheckoutContractTest {
     }
 
     @Test
-    void sixOwnerMethodsExposeNoPaymentOrDelegatedConsumerWrite() {
+    void eightOwnerMethodsKeepConsumerPaymentOutOfDelegatedInternalApi() {
         assertThat(
                         Arrays.stream(CheckoutPort.class.getDeclaredMethods())
                                 .filter(method -> Modifier.isAbstract(method.getModifiers()))
                                 .map(Method::getName)
                                 .toList())
                 .containsExactlyInAnyOrder(
-                        "prepare", "readQuote", "confirm", "place", "findOperation", "source");
+                        "prepare",
+                        "readQuote",
+                        "confirm",
+                        "place",
+                        "findOperation",
+                        "source",
+                        "initiatePayment",
+                        "findPayment");
         assertThat(
                         Arrays.stream(CheckoutInternalApi.class.getDeclaredMethods())
                                 .map(Method::getName)
                                 .toList())
-                .containsExactlyInAnyOrder("prepare", "readQuote", "findOperation", "source");
+                .containsExactlyInAnyOrder(
+                        "prepare", "readQuote", "findOperation", "source", "findPayment");
     }
 }

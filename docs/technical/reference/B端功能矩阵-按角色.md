@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 27 个权限点 × 282 个受控端点**。
+统计：**6 个角色 × 28 个权限点 × 285 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -24,9 +24,9 @@
 | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 24 | ✅ | — | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
 | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
+| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 8 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `AFTERSALE` | 售后同意/驳回/收货 | 8 | ✅ | ✅ | — | — | — | ✅ |
 | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
-| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 6 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
@@ -35,6 +35,7 @@
 | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 2 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
+| `CASH_RECEIVE` | 确认整笔线下实收；独立收款授权，旧到货登记与订单查看权限不能代替 | 1 | ✅ | — | — | — | — | — |
 | `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
@@ -44,7 +45,7 @@
 | `BOOKING_VIEW` | Cross-industry appointment reading; gran | 0 | ✅ | — | — | — | — | — |
 | `BOOKING_MANAGE` | Explicit appointment management, indepen | 0 | ✅ | — | — | — | — | — |
 
-**只有 OWNER 能碰的 16 项**：`FINANCE`、`STORE_ADMIN`、`ENT_READ`、`SV_RECHARGE_CREATE`、`ENT_USE`、`SV_CONSUME_CREATE`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`SV_ACCOUNT_READ`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`ENT_TEMPLATE_READ`、`BOOKING_VIEW`、`BOOKING_MANAGE`
+**只有 OWNER 能碰的 17 项**：`FINANCE`、`STORE_ADMIN`、`ENT_READ`、`SV_RECHARGE_CREATE`、`ENT_USE`、`SV_CONSUME_CREATE`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`CASH_RECEIVE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`SV_ACCOUNT_READ`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`ENT_TEMPLATE_READ`、`BOOKING_VIEW`、`BOOKING_MANAGE`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点
@@ -306,6 +307,17 @@
 - `/biz/order/{subOrderNo}/ship/precheck`
 - `/biz/order/{subOrderNo}/waybill`
 
+### `ORDER_VIEW`　（OWNER、MANAGER、CLERK、COURIER、CS）
+
+- `/biz/checkout/{operationNo}/offline-receipts/lookup`
+- `/biz/checkout/{operationNo}/offline-receipts/{paymentOperationNo}`
+- `/biz/order`
+- `/biz/order/worklist`
+- `/biz/order/{subOrderNo}`
+- `/biz/order/{subOrderNo}/inventory-trace`
+- `/biz/order/{subOrderNo}/logistics-updates`
+- `/biz/order/{subOrderNo}/trace`
+
 ### `AFTERSALE`　（OWNER、MANAGER、CS）
 
 - `/biz/after-sale`
@@ -326,15 +338,6 @@
 - `/biz/pickup/verify`
 - `/biz/pickup/verify/batch`
 - `/biz/pickup/verify/search`
-
-### `ORDER_VIEW`　（OWNER、MANAGER、CLERK、COURIER、CS）
-
-- `/biz/order`
-- `/biz/order/worklist`
-- `/biz/order/{subOrderNo}`
-- `/biz/order/{subOrderNo}/inventory-trace`
-- `/biz/order/{subOrderNo}/logistics-updates`
-- `/biz/order/{subOrderNo}/trace`
 
 ### `RECEIVE`　（OWNER、MANAGER、CLERK、PICKER）
 
@@ -382,6 +385,10 @@
 
 - `/biz/entitlement-templates/{templateNo}/publish`
 - `/biz/entitlement-templates/{templateNo}/status`
+
+### `CASH_RECEIVE`　（OWNER）
+
+- `/biz/checkout/{operationNo}/offline-receipts`
 
 ### `SV_RECHARGE_RECEIVE`　（OWNER）
 

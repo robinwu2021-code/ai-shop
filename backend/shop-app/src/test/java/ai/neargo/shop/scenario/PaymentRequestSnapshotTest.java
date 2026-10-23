@@ -1,5 +1,10 @@
 package ai.neargo.shop.scenario;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import ai.neargo.shop.pay.channel.PayGateway.PrepayCommand;
 import ai.neargo.shop.pay.channel.TestPayGateway;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
@@ -7,6 +12,7 @@ import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.settle.SettlePort.PaymentOpen;
 import ai.neargo.shop.spi.settle.SettlePort.PaymentStore;
 import ai.neargo.shop.spi.user.MerchantQueryPort.PaymentRoute;
+
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,11 +23,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.util.List;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 /** Persist requests before sending; configuration changes cannot rewrite an existing payment attempt. */
 @SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:payment-request-snapshot;"
@@ -60,7 +61,9 @@ class PaymentRequestSnapshotTest {
         var second = settle.initPayment(changed);
         assertThat(second.outTradeNo()).isEqualTo(first.outTradeNo());
         var sent = ArgumentCaptor.forClass(PrepayCommand.class);
-        verify(bank, times(2)).prepay(sent.capture());
+        verify(bank, times(1)).prepay(sent.capture());
+        assertThat(second.success()).isTrue();
+        assertThat(second.payParams()).isEqualTo(first.payParams());
         assertThat(sent.getAllValues()).allSatisfy(request -> {
             assertThat(request.subMchId()).isEqualTo("synthetic-channel-account");
             assertThat(request.subject()).isEqualTo("synthetic goods");
@@ -73,11 +76,44 @@ class PaymentRequestSnapshotTest {
     void changed_user_amount_currency_or_channel_cannot_reuse_a_pending_attempt() {
         var cmd = command();
         ledger.open(cmd);
-        for (var changed : List.of(
-                new PaymentOpen(cmd.orderNo(), "foreign-user", null, "TEST", 1234, "x", "KWD", cmd.stores()),
-                new PaymentOpen(cmd.orderNo(), cmd.userNo(), null, "TEST", 1235, "x", "KWD", cmd.stores()),
-                new PaymentOpen(cmd.orderNo(), cmd.userNo(), null, "TEST", 1234, "x", "CNY", cmd.stores()),
-                new PaymentOpen(cmd.orderNo(), cmd.userNo(), null, "WECHAT", 1234, "x", "KWD", List.of()))) {
+        for (var changed :
+                List.of(
+                        new PaymentOpen(
+                                cmd.orderNo(),
+                                "foreign-user",
+                                null,
+                                "TEST",
+                                1234,
+                                "x",
+                                "KWD",
+                                cmd.stores()),
+                        new PaymentOpen(
+                                cmd.orderNo(),
+                                cmd.userNo(),
+                                null,
+                                "TEST",
+                                1235,
+                                "x",
+                                "KWD",
+                                cmd.stores()),
+                        new PaymentOpen(
+                                cmd.orderNo(),
+                                cmd.userNo(),
+                                null,
+                                "TEST",
+                                1234,
+                                "x",
+                                "CNY",
+                                cmd.stores()),
+                        new PaymentOpen(
+                                cmd.orderNo(),
+                                cmd.userNo(),
+                                null,
+                                "WECHAT",
+                                1234,
+                                "x",
+                                "KWD",
+                                List.of()))) {
             assertThatThrownBy(() -> ledger.open(changed)).isInstanceOf(IllegalArgumentException.class);
         }
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE order_no=?",
@@ -87,8 +123,17 @@ class PaymentRequestSnapshotTest {
     @Test
     void mixed_direct_accounts_and_foreign_channels_cannot_create_an_unrouteable_payment() {
         var cmd = command();
-        var other = new PaymentStore("other-sub", new PaymentRoute("other-owner", "other-store", "other-pay",
-                "TEST", "other-sub-mch", "other-pay:8", "DIRECT"));
+        var other =
+                new PaymentStore(
+                        "other-sub",
+                        new PaymentRoute(
+                                "other-owner",
+                                "other-store",
+                                "other-pay",
+                                "TEST",
+                                "other-sub-mch",
+                                "other-pay:8",
+                                "DIRECT"));
         assertThatThrownBy(() -> settle.initPayment(new PaymentOpen(cmd.orderNo(), cmd.userNo(), null,
                 "TEST", 1234, "x", "KWD", List.of(cmd.stores().getFirst(), other))))
                 .isInstanceOf(IllegalArgumentException.class);

@@ -357,6 +357,9 @@ public enum ErrorCode {
     CHECKOUT_CONFIRMATION_REQUIRED(20017, "err.trade.checkout_confirmation_required"),
     CHECKOUT_DEPENDENCY_UNAVAILABLE(20019, "err.trade.checkout_dependency_unavailable"),
     CHECKOUT_OPERATION_REJECTED(20020, "err.trade.checkout_operation_rejected"),
+    CHECKOUT_PAYMENT_CONFLICT(20021, "err.trade.checkout_payment_conflict"),
+    CHECKOUT_RECEIPT_EVIDENCE_INVALID(20022, "err.trade.checkout_receipt_evidence_invalid"),
+    CHECKOUT_PAYMENT_PARAMS_UNAVAILABLE(20023, "err.trade.checkout_payment_params_unavailable"),
     MANAGED_SERVICE_COMPLETION_BLOCKED(20018, "err.trade.managed_service_completion_blocked"),
 
     // ---- 3xxxx 履约 ----

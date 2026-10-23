@@ -1,9 +1,11 @@
 package ai.neargo.shop.media;
 
 import ai.neargo.shop.common.PageData;
+
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -40,9 +42,12 @@ public class MediaUsageService {
      */
     private final double abnormalRatio;
 
-    public MediaUsageService(SysMediaAssetMapper assetMapper, SysMediaPurgeBatchMapper batchMapper,
-                             MediaPurgeService purgeService, MediaStore mediaStore,
-                             @Value("${shop.media.scan.abnormal-ratio-alert:0.5}") double abnormalRatio) {
+    public MediaUsageService(
+            SysMediaAssetMapper assetMapper,
+            SysMediaPurgeBatchMapper batchMapper,
+            MediaPurgeService purgeService,
+            MediaStore mediaStore,
+            @Value("${shop.media.scan.abnormal-ratio-alert:0.5}") double abnormalRatio) {
         this.assetMapper = assetMapper;
         this.batchMapper = batchMapper;
         this.purgeService = purgeService;
@@ -123,7 +128,13 @@ public class MediaUsageService {
     private static final int THUMB_WIDTH = 200;
 
     private ReclaimableVO toVO(SysMediaAsset a) {
-        String thumb = mediaStore.thumbUrl(a.getAssetKey(), SysMediaAsset.GOODS.equals(a.getBizType()), THUMB_WIDTH);
+        String thumb =
+                SysMediaAsset.OFFLINE_RECEIPT.equals(a.getBizType())
+                        ? null
+                        : mediaStore.thumbUrl(
+                                a.getAssetKey(),
+                                SysMediaAsset.GOODS.equals(a.getBizType()),
+                                THUMB_WIDTH);
         return ReclaimableVO.of(a, thumb);
     }
 

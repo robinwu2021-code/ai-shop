@@ -1,10 +1,12 @@
 package ai.neargo.shop.trade.service.impl;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.common.PayChannels;
 import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.event.AfterCommit;
 import ai.neargo.shop.event.OutboxEventBus;
@@ -19,6 +21,7 @@ import ai.neargo.shop.spi.marketing.AttributionPort;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.spi.marketing.GroupJoinPort.GroupQuote;
+import ai.neargo.shop.spi.points.PointsPaymentSnapshotPort;
 import ai.neargo.shop.spi.product.CardProductSalePort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.spi.product.StockPort;
@@ -31,15 +34,19 @@ import ai.neargo.shop.spi.user.PickupQueryPort;
 import ai.neargo.shop.trade.dto.OrderVO;
 import ai.neargo.shop.trade.entitlement.CardSaleSnapshotPlan;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
+import ai.neargo.shop.trade.entity.OrdCheckoutConfirmation;
+import ai.neargo.shop.trade.entity.OrdCheckoutOperation;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.entity.TrdCartItem;
+import ai.neargo.shop.trade.mapper.CheckoutMappers;
 import ai.neargo.shop.trade.mapper.TradeMappers.CartItemMapper;
 import ai.neargo.shop.trade.order.command.OrderActor;
 import ai.neargo.shop.trade.order.contract.CancellationImpact;
 import ai.neargo.shop.trade.order.contract.StoreOrderQuery;
+import ai.neargo.shop.trade.order.entity.OrdPaymentResolution;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
 import ai.neargo.shop.trade.order.machine.order.OrderEvent;
 import ai.neargo.shop.trade.order.machine.payment.PaymentContext;
@@ -82,11 +89,13 @@ import ai.neargo.shop.trade.service.OrderStatusView;
 import ai.neargo.shop.trade.support.OrderNoGenerator;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.SerializationFeature;
@@ -102,6 +111,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -120,6 +130,9 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     @Autowired private ObjectMapper legacyCheckoutJson;
     @Autowired private CheckoutClock checkoutClock;
     @Autowired private CheckoutQuoteGuard checkoutGuard;
+    @Autowired private CheckoutMappers.OperationMapper checkoutOperations;
+    @Autowired private CheckoutMappers.ConfirmationMapper checkoutConfirmations;
+    @Autowired private CheckoutMappers.QuoteMapper checkoutQuotes;
 
     @Override
     public LegacyCouponOrderPricingService.Snapshot snapshot(String userNo,CreateOrderCommand cmd) {
@@ -139,9 +152,15 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         String payload=legacyCheckoutJson.writer().with(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
                 .writeValueAsString(new LegacyPricingSeal(userNo,cmd,lines,groups));
         try {
-            String digest=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(payload.getBytes(StandardCharsets.UTF_8)));
+            String digest =
+                    HexFormat.of()
+                            .formatHex(
+                                    MessageDigest.getInstance("SHA-256")
+                                            .digest(payload.getBytes(StandardCharsets.UTF_8)));
             return new LegacyCouponOrderPricingService.Snapshot(CURRENCY_CNY,groups,digest);
-        } catch(java.security.NoSuchAlgorithmException failure) {throw new IllegalStateException("SHA-256 unavailable");}
+        } catch (java.security.NoSuchAlgorithmException failure) {
+            throw new IllegalStateException("SHA-256 unavailable");
+        }
     }
     private record LegacyPricingLine(String groupKey,String merchantNo,String storeNo,String goodsNo,String skuNo,
                                      int quantity,long priceMinor) { }
@@ -861,7 +880,9 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     public PointsState pointsState(String orderNo) {
         var order=requireOwnOrder(orderNo);
         if (!Boolean.TRUE.equals(order.getPointsIntegrated())) return new PointsState("NONE",null);
-        if (pointsPlacement==null) throw new IllegalStateException("POINTS_IMPLEMENTATION_REQUIRED");
+        if (pointsPlacement == null) {
+            throw new IllegalStateException("POINTS_IMPLEMENTATION_REQUIRED");
+        }
         var placement=pointsPlacement.inspect(order.getOrderNo());
         if (placement==null) throw new IllegalStateException("POINTS_PLACEMENT_MISSING");
         return new PointsState(placement.phase().name(),placement.reason());
@@ -1563,8 +1584,13 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         if (staged == null || !staged.draft().requestHash().equals(pointsRequestHash(userNo, cmd)))
             throw new IllegalArgumentException("POINTS_PLACEMENT_REPLAY_CONFLICT");
         if (callerTransaction) return initial;
-        try { pointsPlacement.resume(root); }
-        catch (RuntimeException pending) { log.warn("[points] placement awaiting recovery order={} cause={}", root, pending.getClass().getSimpleName()); }
+        try { pointsPlacement.resume(root);
+        } catch (RuntimeException pending) {
+            log.warn(
+                    "[points] placement awaiting recovery order={} cause={}",
+                    root,
+                    pending.getClass().getSimpleName());
+        }
         return detailOf(root, userNo, "MP");
     }
 
@@ -2349,7 +2375,9 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                     if (definition != null && definition.isPresent()) {
                         var d=definition.get();
                         if (!java.util.Objects.equals(order.getCurrency(),d.currency())) throw BizException.of(ErrorCode.CONFLICT);
-                        var rule=new CardSaleSnapshotPlan.EntitlementRule(d.templateVersionNo(),"PAID_CARD",d.ruleSnapshot());
+                        var rule =
+                                new CardSaleSnapshotPlan.EntitlementRule(
+                                        d.templateVersionNo(), "PAID_CARD", d.ruleSnapshot());
                         cardSaleSnapshotService.capture(new CardSaleSnapshotPlan.OrderFacts(orderNo,userNo,order.getCurrency()),
                                 List.of(new CardSaleSnapshotPlan.SaleLine(CardSaleSnapshotPlan.orderLineIdentity(item.getId()),
                                         subOrderNo,g.merchantNo,sub.getStoreNo(),line.snapshot.goodsNo(),line.skuNo(),item.getPrice(),line.qty,
@@ -2474,8 +2502,13 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         for (Group g : split.groups) {
             var decision = decisions.get(g.key());
             if (decision == null) {
-                var route = merchantPort.paymentRouteOf(g.merchantNo(), g.storeNo(), channel)
-                        .orElseThrow(() -> new IllegalArgumentException("POINTS_PAYMENT_ROUTE_REQUIRED"));
+                var route =
+                        merchantPort
+                                .paymentRouteOf(g.merchantNo(), g.storeNo(), channel)
+                                .orElseThrow(
+                                        () ->
+                                                new IllegalArgumentException(
+                                                        "POINTS_PAYMENT_ROUTE_REQUIRED"));
                 paymentStores.add(new SettlePort.PaymentStore(subOrderNoOf.get(g.key()), route));
                 continue;
             }
@@ -2485,13 +2518,26 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             paymentStores.add(new SettlePort.PaymentStore(subOrderNoOf.get(g.key()), target.acceptedRoute()));
             Map<String, ai.neargo.shop.spi.points.PointsEarnPort.EarnLine> raw = new HashMap<>();
             for (var rule : rules.getOrDefault(g.key(), List.of())) raw.put(rule.itemId(), rule);
-            var frozen = target.target().items().stream().map(item -> {
-                var rule = raw.get(item.itemId());
-                if (rule == null) throw new IllegalArgumentException("POINTS_PLACEMENT_LINES_INVALID");
-                return new ai.neargo.shop.spi.points.PointsEarnPort.EarnLine(
-                        rule.itemId(), rule.goodsNo(), rule.categoryNo(), rule.quantity(),
-                        item.goodsMinor(), 0, rule.rule());
-            }).toList();
+            var frozen =
+                    target.target().items().stream()
+                            .map(
+                                    item -> {
+                                        var rule = raw.get(item.itemId());
+                                        if (rule == null) {
+                                            throw new IllegalArgumentException(
+                                                    "POINTS_PLACEMENT_LINES_INVALID");
+                                        }
+                                        return new ai.neargo.shop.spi.points.PointsEarnPort
+                                                .EarnLine(
+                                                rule.itemId(),
+                                                rule.goodsNo(),
+                                                rule.categoryNo(),
+                                                rule.quantity(),
+                                                item.goodsMinor(),
+                                                0,
+                                                rule.rule());
+                                    })
+                            .toList();
             candidates.add(new ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator.Candidate(
                     target, decision.policyVersion(), decision.earning(), decision.redemption(), frozen));
         }
@@ -2581,10 +2627,225 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     @Override
+    public SettlePort.PaymentOpen paymentInstructionForCheckout(
+            String orderNo, String buyerNo, String requestedChannel) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException(
+                    "Checkout payment instruction requires no caller transaction");
+        }
+        var facts = checkoutPaymentFacts(orderNo, buyerNo);
+        var order = facts.order();
+        if (!"ONLINE".equals(facts.economic().payMode())
+                || !OrdOrder.WAIT_PAY.equals(order.getStatus())
+                || order.getPayDeadlineAt() != null
+                        && order.getPayDeadlineAt() < checkoutClock.now().toEpochMilli()) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+        String channel = resolvePayChannel(order, requestedChannel);
+        if (PayModes.OFFLINE.equals(channel)) {
+            throw BizException.of(ErrorCode.PAY_MODE_NOT_SUPPORTED);
+        }
+        List<SettlePort.PaymentStore> stores = List.of();
+        if (!PayChannels.FREE.equals(channel)) {
+            var route =
+                    merchantPort
+                            .paymentRouteOf(
+                                    facts.sub().getEntityNo(), facts.sub().getStoreNo(), channel)
+                            .orElseThrow(() -> BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE));
+            stores = List.of(new SettlePort.PaymentStore(facts.sub().getSubOrderNo(), route));
+        }
+        return new SettlePort.PaymentOpen(
+                orderNo,
+                buyerNo,
+                facts.sub().getEntityNo(),
+                channel,
+                facts.economic().dueMinor(),
+                payDescription(orderNo),
+                facts.economic().currency(),
+                stores);
+    }
+
+    @Override
+    public void requireCheckoutPaymentSendAllowed(String orderNo, String buyerNo) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException(
+                    "Checkout send authorization requires no caller transaction");
+        }
+        var facts = checkoutPaymentFacts(orderNo, buyerNo);
+        var order = facts.order();
+        if (!"ONLINE".equals(facts.economic().payMode())) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+        if (OrdOrder.PAID.equals(order.getStatus())) {
+            // A previously accepted alias may bind existing real money, never initiate another
+            // collection.
+            if (order.getPayChannel() == null
+                    || order.getPayChannel().isBlank()
+                    || order.getPayTradeNo() == null
+                    || order.getPayTradeNo().isBlank()) {
+                throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
+            }
+            var receipt =
+                    paymentLifecycle.readConfirmed(
+                            orderNo, order.getPayChannel(), order.getPayTradeNo());
+            if (receipt == null
+                    || !"SUCCESS".equals(receipt.status())
+                    || !orderNo.equals(receipt.orderNo())
+                    || !buyerNo.equals(receipt.userNo())
+                    || order.getPayAmount() == null
+                    || order.getPayAmount() != receipt.amountMinor()
+                    || !Objects.equals(order.getCurrency(), receipt.currency())
+                    || !order.getPayChannel().equals(receipt.payChannel())
+                    || !order.getPayTradeNo().equals(receipt.tradeNo())) {
+                throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
+            }
+            return;
+        }
+        if (!OrdOrder.WAIT_PAY.equals(order.getStatus())
+                || order.getPayDeadlineAt() != null
+                        && order.getPayDeadlineAt() < checkoutClock.now().toEpochMilli()) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+    }
+
+    @Override
+    public SettlePort.PaymentOpen offlineReceiptInstructionForCheckout(
+            String orderNo, String buyerNo) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException(
+                    "Offline receipt instruction requires no caller transaction");
+        }
+        var facts = checkoutPaymentFacts(orderNo, buyerNo);
+        if (!PayModes.OFFLINE.equals(facts.economic().payMode())
+                || !Set.of(
+                                OrdOrder.WAIT_OFFLINE_PAY,
+                                OrdOrder.PAID,
+                                OrdOrder.CLOSED,
+                                OrdOrder.CANCELLED)
+                        .contains(facts.order().getStatus())) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+        return new SettlePort.PaymentOpen(
+                orderNo,
+                buyerNo,
+                facts.sub().getEntityNo(),
+                PayModes.OFFLINE,
+                facts.economic().dueMinor(),
+                payDescription(orderNo),
+                facts.economic().currency(),
+                List.of());
+    }
+
+    private CheckoutPaymentFacts checkoutPaymentFacts(String orderNo, String buyerNo) {
+        return DataScopeContext.executeWithoutScope(
+                () -> {
+                    var op =
+                            checkoutOperations.selectOne(
+                                    Wrappers.<OrdCheckoutOperation>lambdaQuery()
+                                            .eq(OrdCheckoutOperation::getTenantNo, "MAIN")
+                                            .eq(OrdCheckoutOperation::getOrderNo, orderNo));
+                    var order =
+                            orderMapper.selectOne(
+                                    Wrappers.<OrdOrder>lambdaQuery()
+                                            .eq(OrdOrder::getTenantNo, "MAIN")
+                                            .eq(OrdOrder::getOrderNo, orderNo));
+                    if (op == null
+                            || order == null
+                            || !buyerNo.equals(op.getBuyerNo())
+                            || !buyerNo.equals(order.getUserNo())
+                            || !"CREATED".equals(op.getPhase())) {
+                        throw BizException.of(ErrorCode.NOT_FOUND);
+                    }
+                    var confirmation =
+                            checkoutConfirmations.selectOne(
+                                    Wrappers.<OrdCheckoutConfirmation>lambdaQuery()
+                                            .eq(OrdCheckoutConfirmation::getTenantNo, "MAIN")
+                                            .eq(
+                                                    OrdCheckoutConfirmation::getConfirmationNo,
+                                                    op.getConfirmationNo()));
+                    var quote = checkoutQuotes.find(op.getCurrentQuoteNo());
+                    if (confirmation == null
+                            || quote == null
+                            || !"CONSUMED".equals(confirmation.getStatus())
+                            || !"ORDINARY_SERVICE_PURCHASE".equals(confirmation.getPurpose())
+                            || !buyerNo.equals(confirmation.getBuyerNo())
+                            || !orderNo.equals(confirmation.getOrderNo())
+                            || !op.getOperationNo().equals(confirmation.getOperationNo())
+                            || !op.getCaller().equals(confirmation.getCaller())
+                            || !quote.getQuoteNo().equals(confirmation.getQuoteNo())
+                            || !quote.getQuoteHash().equals(confirmation.getQuoteHash())
+                            || !quote.getRevision().equals(confirmation.getQuoteRevision())) {
+                        throw BizException.of(ErrorCode.CHECKOUT_CONFIRMATION_REQUIRED);
+                    }
+                    var economic =
+                            legacyCheckoutJson.readValue(
+                                    quote.getPricingJson(), CheckoutEconomicSnapshot.class);
+                    var subs = subOrders(orderNo);
+                    if (subs.size() != 1) {
+                        throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
+                    }
+                    var sub = subs.getFirst();
+                    if (!op.getSubOrderNo().equals(sub.getSubOrderNo())
+                            || !buyerNo.equals(sub.getUserNo())
+                            || !op.getEntityNo().equals(sub.getEntityNo())
+                            || !op.getStoreNo().equals(sub.getStoreNo())
+                            || !OrdSubOrder.SERVICE_EXECUTION.equals(sub.getFulfillmentAuthority())
+                            || !op.getOperationNo().equals(sub.getSourceOperationNo())
+                            || !op.getEntityNo().equals(economic.entityNo())
+                            || !op.getStoreNo().equals(economic.storeNo())
+                            || !buyerNo.equals(economic.buyerNo())
+                            || !"CNY".equals(economic.currency())
+                            || !economic.currency().equals(order.getCurrency())
+                            || !economic.currency().equals(confirmation.getCurrency())
+                            || order.getPayAmount() == null
+                            || order.getPayAmount() != economic.dueMinor()
+                            || confirmation.getAmountMinor() == null
+                            || confirmation.getAmountMinor() != economic.dueMinor()
+                            || sub.getPayAmount() == null
+                            || sub.getPayAmount() != economic.dueMinor()) {
+                        throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
+                    }
+                    var items =
+                            itemMapper.selectList(
+                                    Wrappers.<OrdItem>lambdaQuery()
+                                            .eq(OrdItem::getOrderNo, orderNo)
+                                            .orderByAsc(OrdItem::getId));
+                    if (items.size() != economic.lines().size()) {
+                        throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
+                    }
+                    // The ordinary writer inserts the frozen quote lines in this same order.
+                    for (int index = 0; index < items.size(); index++) {
+                        var item = items.get(index);
+                        var line = economic.lines().get(index);
+                        if (!Objects.equals(sub.getSubOrderNo(), item.getSubOrderNo())
+                                || !Objects.equals(line.goodsNo(), item.getGoodsNo())
+                                || !Objects.equals(line.skuNo(), item.getSkuNo())
+                                || !Objects.equals(line.quantity(), item.getQty())
+                                || !Objects.equals(line.unitPriceMinor(), item.getPrice())
+                                || !Objects.equals(line.grossMinor(), item.getAmount())
+                                || !Objects.equals(line.dueMinor(), item.getPaidShareMinor())) {
+                            throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
+                        }
+                    }
+                    return new CheckoutPaymentFacts(order, sub, economic);
+                });
+    }
+
+    private record CheckoutPaymentFacts(
+            OrdOrder order, OrdSubOrder sub, CheckoutEconomicSnapshot economic) {}
+
+    @Override
     public PayResult pay(String orderNo, String payChannel) {
         // 同 payMethods：子单号也要能进收银台；下游（记账、商户单号）只认主单号
         OrdOrder order = resolveOrder(orderNo);
         orderNo = order.getOrderNo();
+        if (subOrders(orderNo).stream()
+                .anyMatch(
+                        sub ->
+                                OrdSubOrder.SERVICE_EXECUTION.equals(
+                                        sub.getFulfillmentAuthority()))) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
         if (!OrdOrder.WAIT_PAY.equals(order.getStatus())) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
@@ -2663,7 +2924,11 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
              */
             // 网关原文进日志不进响应：它可能带外部厂商的措辞，且这条码的文案没有占位符，
             // 原来那个参数被 MessageFormat 静默丢掉 —— 排查时两头都没有
-            log.warn("[pay] 下单失败 order={} channel={}：{}", orderNo, init.payChannel(), init.message());
+            log.warn(
+                    "[pay] 下单失败 order={} channel={}：{}",
+                    orderNo,
+                    init.payChannel(),
+                    init.message());
             throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
         }
         /*
@@ -2677,7 +2942,13 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          */
         boolean settled = ai.neargo.shop.common.PayChannels.FREE.equals(init.payChannel());
         if (settled) {
-            orderServiceProvider.getObject().markPaid(orderNo, init.payChannel(), init.outTradeNo());
+            var receipt = paymentLifecycle.readConfirmed(orderNo, init.payChannel(), null);
+            if (receipt == null) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            orderServiceProvider
+                    .getObject()
+                    .markPaid(orderNo, receipt.payChannel(), receipt.tradeNo());
         }
         return new PayResult(orderNo, init.payChannel(), init.payParams(), settled);
     }
@@ -2711,24 +2982,71 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 throw new IllegalArgumentException("POINTS_PAYMENT_PROOF_MISMATCH");
             }
         }
+        boolean callerTransaction = TransactionSynchronizationManager.isActualTransactionActive();
+        if (callerTransaction
+                && !(OrdOrder.WAIT_OFFLINE_PAY.equals(source.getStatus())
+                        && PayModes.OFFLINE.equals(payChannel))) {
+            throw new IllegalStateException(
+                    "Payment projection requires receipt read before caller transaction");
+        }
+        // The old merchant offline writer holds a local source transaction and uses only its local
+        // shortcut.
+        // All financial receipt paths read immutable owner facts before entering the source
+        // transaction.
+        var receipt =
+                callerTransaction
+                        ? null
+                        : paymentLifecycle.readConfirmed(orderNo, payChannel, payTradeNo);
+        if (!callerTransaction && receipt == null) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
         var verified = proof;
         String settledChannel = proof == null ? payChannel : proof.channel();
         String settledTrade = proof == null ? payTradeNo : proof.tradeNo();
         if (sourceTransactions != null) {
-            sourceTransactions.execute(s -> { markPaidSource(orderNo, settledChannel, settledTrade, verified); return null; });
+            sourceTransactions.execute(
+                    s -> {
+                        markPaidSource(orderNo, settledChannel, settledTrade, verified, receipt);
+                        return null;
+                    });
         } else {
-            markPaidSource(orderNo, settledChannel, settledTrade, verified);
+            markPaidSource(orderNo, settledChannel, settledTrade, verified, receipt);
         }
     }
 
-    private void markPaidSource(String orderNo, String payChannel, String payTradeNo,
-                                ai.neargo.shop.spi.points.PointsPaymentSnapshotPort.VerifiedPayment proof) {
+    private void markPaidSource(
+            String orderNo,
+            String payChannel,
+            String payTradeNo,
+            PointsPaymentSnapshotPort.VerifiedPayment proof,
+            SettlePort.PaymentReceipt receipt) {
         OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getOrderNo, orderNo).last("limit 1 FOR UPDATE"));
         if (order == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        var confirmed = paymentLifecycle.requireConfirmed(order, payChannel, payTradeNo);
+        var confirmed =
+                receipt == null
+                        ? paymentLifecycle.requireConfirmed(order, payChannel, payTradeNo)
+                        : paymentLifecycle.requireConfirmed(order, payChannel, payTradeNo, receipt);
+        if (subOrders(orderNo).stream()
+                .anyMatch(
+                        sub ->
+                                OrdSubOrder.SERVICE_EXECUTION.equals(
+                                        sub.getFulfillmentAuthority()))) {
+            try {
+                // These are immutable local owner rows; no port/RPC runs under the order lock.
+                var original = checkoutPaymentFacts(orderNo, order.getUserNo());
+                if (receipt == null
+                        || PayModes.OFFLINE.equals(original.economic().payMode())
+                                != PayModes.OFFLINE.equals(receipt.payChannel())) {
+                    throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
+                }
+            } catch (RuntimeException mismatch) {
+                paymentResolutions.record(order, receipt, OrdPaymentResolution.RECEIPT_MISMATCH);
+                throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
+            }
+        }
         if (OrdOrder.PAID.equals(order.getStatus())) {
             if (entitlementOrderUses != null) {
                 entitlementOrderUses.decideForTerminalOrder(order.getTenantNo(), orderNo);
@@ -3693,9 +4011,12 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         Map<String, Boolean> activeTemplate = new HashMap<>();
         for (Group g : split.groups) {
             String addr = cmd.addressFor(g.storeNo(), g.merchantNo());
-            String address = addr == null || addr.isBlank() || userNo == null ? ""
-                    : userPort.receiverOf(userNo, addr)
-                            .map(ai.neargo.shop.spi.user.UserQueryPort.Receiver::address).orElse("");
+            String address =
+                    addr == null || addr.isBlank() || userNo == null
+                            ? ""
+                            : userPort.receiverOf(userNo, addr)
+                                    .map(ai.neargo.shop.spi.user.UserQueryPort.Receiver::address)
+                                    .orElse("");
             /*
              * ★ 模板逐行解析（ADR-031 §2.4，实时读、不缓存）：商品指定的 ＞ 所属门店快递通道的 ＞ 平台默认。
              * 商品指定的被运营归档了就跳过它（AC8）—— 回落门店，不回落成平台默认，更不是 0 元。

@@ -116,6 +116,9 @@ class BizEndpointPermTest {
      * {@code docs/requirements/三端角色权限功能对齐清单.md} §4。
      */
     private static final Map<String, String> REQUIRED = new LinkedHashMap<>() {{
+        put("/biz/checkout/{operationNo}/offline-receipts", BizPerms.CASH_RECEIVE);
+        put("/biz/checkout/{operationNo}/offline-receipts/{paymentOperationNo}", BizPerms.ORDER_VIEW);
+        put("/biz/checkout/{operationNo}/offline-receipts/lookup", BizPerms.ORDER_VIEW);
         // ---- 进销存（inv_*，独立库）----
         // 三档权限，判据是「这个动作能改什么」而不是「它在哪一屏」：
         //   · biz:stock          改库存与开单 —— 店员与理货员每天的活
@@ -685,7 +688,9 @@ class BizEndpointPermTest {
             if (f.getType() == String.class && java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
                 try {
                     Object v = f.get(null);
-                    if (v instanceof String s && (s.startsWith("biz:") || s.startsWith("pay:ent:") || s.startsWith("pay:sv:"))) {
+                    if (v instanceof String s
+                            && (s.startsWith("biz:") || s.startsWith("pay:ent:")
+                                || s.startsWith("pay:sv:") || s.equals(BizPerms.CASH_RECEIVE))) {
                         out.add(s);
                     }
                 } catch (IllegalAccessException ignored) {

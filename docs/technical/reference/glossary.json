@@ -16562,6 +16562,12 @@
           "ar": "تسليم الطلبات بالرمز"
         },
         {
+          "key": "perm.pay:cash:receive",
+          "zh-CN": "确认线下实收",
+          "en": "Confirm offline receipt",
+          "ar": "تأكيد استلام الدفع دون اتصال"
+        },
+        {
           "key": "perm.trade:checkout:prepare",
           "zh-CN": "准备服务购买报价",
           "en": "Prepare service purchase quotes",
@@ -27471,10 +27477,28 @@
           "ar": "انتهت عملية الشراء هذه. يرجى بدء عملية جديدة."
         },
         {
+          "key": "err.trade.checkout_payment_conflict",
+          "zh-CN": "原支付请求不能变更",
+          "en": "The original payment request cannot be changed",
+          "ar": "لا يمكن تغيير طلب الدفع الأصلي"
+        },
+        {
+          "key": "err.trade.checkout_payment_params_unavailable",
+          "zh-CN": "原支付参数暂不可用，请查询原支付结果",
+          "en": "The original payment parameters are unavailable; query the original payment result",
+          "ar": "معلمات الدفع الأصلية غير متاحة؛ يرجى الاستعلام عن نتيجة الدفع الأصلية"
+        },
+        {
           "key": "err.trade.checkout_quote_stale",
           "zh-CN": "报价已变化或过期，请重新确认购买",
           "en": "The quote has changed or expired. Please confirm a new quote.",
           "ar": "تغير عرض السعر أو انتهت صلاحيته. يرجى تأكيد عرض جديد."
+        },
+        {
+          "key": "err.trade.checkout_receipt_evidence_invalid",
+          "zh-CN": "线下实收凭证无效或不属于当前收款范围",
+          "en": "The offline receipt evidence is invalid or outside the current collection scope",
+          "ar": "إثبات التحصيل غير المتصل غير صالح أو خارج نطاق التحصيل الحالي"
         },
         {
           "key": "err.trade.checkout_unsupported_selection",
@@ -28779,6 +28803,13 @@
       "package": "ai.neargo.shop.trade.entity"
     },
     {
+      "table": "ord_checkout_payment_request",
+      "class": "OrdCheckoutPaymentRequest",
+      "zh": "Permanent original request identity and frozen owner instruction; amounts remain financial-owner facts.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
       "table": "ord_checkout_quote",
       "class": "OrdCheckoutQuote",
       "zh": "",
@@ -29482,6 +29513,20 @@
       "table": "stl_payment",
       "class": "StlPayment",
       "zh": "资金流水：收款 / 退款 / 补差 / 补差回退 / 打款（V31、V38）。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entity"
+    },
+    {
+      "table": "stl_payment_operation",
+      "class": "StlPaymentOperation",
+      "zh": "Durable process evidence; amounts remain in the original payment ledger.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entity"
+    },
+    {
+      "table": "stl_payment_order_guard",
+      "class": "StlPaymentOrderGuard",
+      "zh": "Durable process evidence; amounts remain in the original payment ledger.",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.entity"
     },
@@ -37134,6 +37179,13 @@
       },
       {
         "host": "SysMediaAsset",
+        "name": "OFFLINE_RECEIPT",
+        "value": "OFFLINE_RECEIPT",
+        "zh": "Private merchant-receipt evidence; permanently retained, including unbound uploads.",
+        "module": "shop-store-mybatis"
+      },
+      {
+        "host": "SysMediaAsset",
         "name": "AVATAR",
         "value": "AVATAR",
         "zh": "C 端用户头像，公开读（C-AC-08）。",
@@ -37597,6 +37649,9 @@
           "CHECKOUT_CONFIRMATION_REQUIRED",
           "CHECKOUT_DEPENDENCY_UNAVAILABLE",
           "CHECKOUT_OPERATION_REJECTED",
+          "CHECKOUT_PAYMENT_CONFLICT",
+          "CHECKOUT_RECEIPT_EVIDENCE_INVALID",
+          "CHECKOUT_PAYMENT_PARAMS_UNAVAILABLE",
           "MANAGED_SERVICE_COMPLETION_BLOCKED",
           "ALREADY_VERIFIED",
           "NOT_THIS_PICKUP_POINT",
@@ -38085,6 +38140,15 @@
         "module": "shop-core"
       },
       {
+        "name": "NotSentReason",
+        "values": [
+          "NO_GATEWAY",
+          "LOCAL_PRECONDITION"
+        ],
+        "zh": "These causes are known before any channel client call, never inferred from a failed response.",
+        "module": "pay/pay-domain"
+      },
+      {
         "name": "Op",
         "values": [
           "SUBSIDY",
@@ -38280,6 +38344,16 @@
         ],
         "zh": "",
         "module": "shop-core"
+      },
+      {
+        "name": "PrepayDisposition",
+        "values": [
+          "PAYABLE",
+          "NOT_SENT",
+          "UNKNOWN"
+        ],
+        "zh": "A false response is uncertain unless the adapter proves no client call occurred.",
+        "module": "pay/pay-channel"
       },
       {
         "name": "PreviewReason",
@@ -43248,10 +43322,18 @@
     },
     {
       "host": "BizPerms",
+      "name": "CASH_RECEIVE",
+      "type": "String",
+      "value": "\"pay:cash:receive\"",
+      "zh": "确认整笔线下实收。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
       "name": "CHECKOUT_PREPARE",
       "type": "String",
       "value": "\"trade:checkout:prepare\"",
-      "zh": "",
+      "zh": "准备报价不授权购买，必须单独显式授予。",
       "module": "shop-base-auth"
     },
     {
@@ -43442,7 +43524,7 @@
       "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(BOOKING_VIEW, \"查看预约\"), Map.entry(BOOKING_MANAGE, \"创建、调整及取消预约\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(CHECKOUT_PREPARE, \"准备服务购买报价\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(BOOKING_VIEW, \"查看预约\"), Map.entry(BOOKING_MANAGE, \"创建、调整及取消预约\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(CASH_RECEIVE, \"确认线下实收\"), Map.entry(CHECKOUT_PREPARE, \"准备服务购买报价\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },

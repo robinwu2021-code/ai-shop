@@ -46,6 +46,104 @@ public interface CheckoutPort {
      */
     CheckoutSourceFacts source(CheckoutScope scope, SourceLookup request);
 
+    /** Initiate or recover the permanent original payment request for the real current buyer. */
+    PaymentAttemptView initiatePayment(InitiatePaymentReq request);
+
+    /**
+     * Read original payment facts under current merchant scope without exposing payment parameters.
+     */
+    PaymentAttemptView findPayment(CheckoutScope scope, PaymentLookup request);
+
+    /**
+     * A real current consumer chooses a channel; amounts and owner scope come from the placed
+     * order.
+     */
+    record InitiatePaymentReq(OperationRef operation, String requestKey, String channel) {
+        /** Require a bounded original key without accepting client-supplied money or owner scope. */
+        public InitiatePaymentReq {
+            if (operation == null) {
+                throw invalid();
+            }
+            reference(requestKey, 128);
+            if (channel != null) {
+                reference(channel, 32);
+            }
+        }
+
+        /** Reject caller-supplied authority fields at the new payment boundary. */
+        @JsonAnySetter
+        public void unknown(String field, Object value) {
+            throw invalid();
+        }
+
+        @Override
+        public String toString() {
+            return "InitiatePaymentReq[operation=" + operation + ", requestKey=REDACTED]";
+        }
+    }
+
+    /**
+     * Locate one original request by business operation number or by the current actor's original
+     * key.
+     */
+    record PaymentLookup(OperationRef operation, String paymentOperationNo, String requestKey) {
+        /** Use exactly one lookup identity to preserve the current actor namespace. */
+        public PaymentLookup {
+            if (operation == null || (paymentOperationNo == null) == (requestKey == null)) {
+                throw invalid();
+            }
+            if (paymentOperationNo != null) {
+                reference(paymentOperationNo, 64);
+            }
+            if (requestKey != null) {
+                reference(requestKey, 128);
+            }
+        }
+
+        /** Reject caller-supplied authority fields at the new payment boundary. */
+        @JsonAnySetter
+        public void unknown(String field, Object value) {
+            throw invalid();
+        }
+
+        @Override
+        public String toString() {
+            return "PaymentLookup[operation=" + operation + ", requestKey=REDACTED]";
+        }
+    }
+
+    /**
+     * A payment observation, with current-buyer-only parameters and the real financial receipt
+     * identity.
+     */
+    record PaymentAttemptView(
+            OperationRef operation,
+            String paymentOperationNo,
+            String phase,
+            String paymentNo,
+            String outTradeNo,
+            String channel,
+            String currency,
+            long amountMinor,
+            Map<String, String> payParams,
+            String receiptNo,
+            String reasonCode,
+            Instant observedAt) {
+        /** Copy returned parameters so callers cannot mutate another observation. */
+        public PaymentAttemptView {
+            payParams = Map.copyOf(payParams);
+        }
+
+        @Override
+        public String toString() {
+            return "PaymentAttemptView[operation="
+                    + operation
+                    + ", phase="
+                    + phase
+                    + ", payParams=REDACTED]";
+        }
+    }
+
     /**
      * Explicit merchant scope is verified against the current actor; it does not grant permission.
      */

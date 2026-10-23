@@ -39,6 +39,13 @@ public interface CheckoutInternalApi {
             @RequestBody Scoped<CheckoutPort.SourceLookup> request);
 
     /**
+     * Read original payment facts through the current merchant scope without consumer parameters.
+     */
+    @PostExchange(BASE + "findPayment")
+    Result<CheckoutPort.PaymentAttemptView> findPayment(
+            @RequestBody Scoped<CheckoutPort.PaymentLookup> request);
+
+    /**
      * Bind the versioned transport envelope to the real delegated merchant namespace before owner
      * checks.
      */

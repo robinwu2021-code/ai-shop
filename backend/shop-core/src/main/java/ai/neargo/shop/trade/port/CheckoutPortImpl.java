@@ -15,6 +15,16 @@ public class CheckoutPortImpl implements CheckoutPort {
     }
 
     @Override
+    public PaymentAttemptView initiatePayment(InitiatePaymentReq request) {
+        return service.initiatePayment(request);
+    }
+
+    @Override
+    public PaymentAttemptView findPayment(CheckoutScope scope, PaymentLookup request) {
+        return service.findPayment(scope, request);
+    }
+
+    @Override
     public CheckoutQuote prepare(CheckoutScope scope, PrepareCheckoutReq request) {
         return service.prepare(scope, request);
     }

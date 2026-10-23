@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**27 个权限码 × 6 个角色 × 282 个受控功能点**
+统计：**28 个权限码 × 6 个角色 × 285 个受控功能点**
 （另有 39 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -29,9 +29,9 @@
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 24 | ✅ | — | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
 | `biz:ship` | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
+| `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 8 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 8 | ✅ | ✅ | — | — | — | ✅ |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
-| `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 6 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `pay:ent:read` | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `biz:review` | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
@@ -40,6 +40,7 @@
 | `pay:sv:consume:create` | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `pay:ent:template:write` | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 2 | ✅ | — | — | — | — | — |
 | `pay:ent:template:publish` | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
+| `pay:cash:receive` | `CASH_RECEIVE` | 确认整笔线下实收；独立收款授权，旧到货登记与订单查看权限不能代替 | 1 | ✅ | — | — | — | — | — |
 | `pay:sv:recharge:receive` | `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `pay:sv:recharge:read` | `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `pay:sv:account:read` | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
@@ -374,6 +375,21 @@
 | 运单预检 | POST | `/biz/order/:orderNo/ship/precheck` | `mShipPrecheck` | order |
 | 更正运单 | POST | `/biz/order/:orderNo/waybill` | `mCorrectWaybill` | order |
 
+### `biz:order:view`　订单列表与详情、工作台待办
+
+**可用角色**：老板、店长、店员、配送员、客服
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 订单列表 | GET | `/biz/order` | `mOrderList` | delivery、orders |
+| 订单详情 | GET | `/biz/order/:orderNo` | `mOrderDetail` | order |
+| 订单库存追溯 | GET | `/biz/order/:orderNo/inventory-trace` | `mOrderInventoryTrace` | order |
+| 物流更新记录 | GET | `/biz/order/:orderNo/logistics-updates` | `mOrderUpdates` | order |
+| 物流轨迹 | GET | `/biz/order/:orderNo/trace` | `mOrderTrace` | order |
+| 按优先级分页的订单待办 | GET | `/biz/order/worklist` | `mOrderWorklist` | orders |
+| —（b-app 未接） | — | `/biz/checkout/{}/offline-receipts/{}` | — | — |
+| —（b-app 未接） | — | `/biz/checkout/{}/offline-receipts/lookup` | — | — |
+
 ### `biz:aftersale`　售后同意/驳回/收货
 
 **可用角色**：老板、店长、客服
@@ -402,19 +418,6 @@
 | 核销自提码 | POST | `/biz/pickup/verify` | `mVerify` | verify |
 | 批量核销 | POST | `/biz/pickup/verify/batch` | `mVerifyBatch` | verify |
 | 按取货码片段搜单 | GET | `/biz/pickup/verify/search` | `mVerifySearch` | verify |
-
-### `biz:order:view`　订单列表与详情、工作台待办
-
-**可用角色**：老板、店长、店员、配送员、客服
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 订单列表 | GET | `/biz/order` | `mOrderList` | delivery、orders |
-| 订单详情 | GET | `/biz/order/:orderNo` | `mOrderDetail` | order |
-| 订单库存追溯 | GET | `/biz/order/:orderNo/inventory-trace` | `mOrderInventoryTrace` | order |
-| 物流更新记录 | GET | `/biz/order/:orderNo/logistics-updates` | `mOrderUpdates` | order |
-| 物流轨迹 | GET | `/biz/order/:orderNo/trace` | `mOrderTrace` | order |
-| 按优先级分页的订单待办 | GET | `/biz/order/worklist` | `mOrderWorklist` | orders |
 
 ### `biz:receive`　到货登记、分拣单、短少上报
 
@@ -494,6 +497,14 @@
 |---|---|---|---|---|
 | —（b-app 未接） | — | `/biz/entitlement-templates/{}/publish` | — | — |
 | —（b-app 未接） | — | `/biz/entitlement-templates/{}/status` | — | — |
+
+### `pay:cash:receive`　确认整笔线下实收；独立收款授权，旧到货登记与订单查看权限不能代替
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/checkout/{}/offline-receipts` | — | — |
 
 ### `pay:sv:recharge:receive`　查看主体级权益目录，不授予变更能力
 
@@ -642,6 +653,9 @@
 | `/biz/activity-presets` | `biz:campaign` | 老板、店长 |
 | `/biz/card-product-bindings` | `biz:goods` | 老板、店长 |
 | `/biz/card-product-presets` | `biz:goods` | 老板、店长 |
+| `/biz/checkout/{}/offline-receipts` | `pay:cash:receive` | 老板 |
+| `/biz/checkout/{}/offline-receipts/lookup` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
+| `/biz/checkout/{}/offline-receipts/{}` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
 | `/biz/entitlement-issue-batches` | `pay:ent:issue` | 老板 |
 | `/biz/entitlement-issue-batches/{}` | `pay:ent:read` | 老板 |
 | `/biz/entitlement-templates` | `pay:ent:template:write` | 老板 |

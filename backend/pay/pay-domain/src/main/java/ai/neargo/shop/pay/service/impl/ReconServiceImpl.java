@@ -103,6 +103,7 @@ public class ReconServiceImpl implements ReconService {
         long cutoff = now - staleMinutes * 60_000L;
         List<StlPayment> stale = DataScopeContext.executeWithoutScope(() ->
                 paymentMapper.selectList(Wrappers.<StlPayment>lambdaQuery()
+                    .ne(StlPayment::getPayChannel, "OFFLINE")
                     .and(q -> q.eq(StlPayment::getDirection,StlPayment.PAY)
                             .in(StlPayment::getStatus,StlPayment.INIT,StlPayment.PENDING)
                         .or(r -> r.eq(StlPayment::getDirection,StlPayment.REFUND)

@@ -6,7 +6,10 @@ import ai.neargo.shop.spi.trade.CheckoutPort.BuyerConfirmation;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutQuote;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutResult;
 import ai.neargo.shop.spi.trade.CheckoutPort.ConfirmCheckoutReq;
+import ai.neargo.shop.spi.trade.CheckoutPort.InitiatePaymentReq;
 import ai.neargo.shop.spi.trade.CheckoutPort.OperationRef;
+import ai.neargo.shop.spi.trade.CheckoutPort.PaymentAttemptView;
+import ai.neargo.shop.spi.trade.CheckoutPort.PaymentLookup;
 import ai.neargo.shop.spi.trade.CheckoutPort.PlaceCheckoutReq;
 import ai.neargo.shop.trade.service.CheckoutService;
 
@@ -66,6 +69,47 @@ public class MpCheckoutController {
         return checkout.place(
                 new PlaceCheckoutReq(
                         new OperationRef("BEAUTY", operationNo), body.confirmationNo(), key));
+    }
+
+    /** Start only the current buyer's original payment; no amount or owner fields are accepted. */
+    @PostMapping("/mp/checkout/{operationNo}/payments")
+    public PaymentAttemptView initiatePayment(
+            @PathVariable String operationNo,
+            @RequestBody @Valid PaymentBody body,
+            @RequestHeader("Idempotency-Key") @NotBlank String key) {
+        return checkout.initiatePayment(
+                new InitiatePaymentReq(
+                        new OperationRef("BEAUTY", operationNo), key, body.channel()));
+    }
+
+    /** Read by public business identity; never put the reusable raw key in an access-log URL. */
+    @GetMapping("/mp/checkout/{operationNo}/payments/{paymentOperationNo}")
+    public PaymentAttemptView payment(
+            @PathVariable String operationNo, @PathVariable String paymentOperationNo) {
+        return checkout.findPaymentForCurrentBuyer(
+                new PaymentLookup(
+                        new OperationRef("BEAUTY", operationNo), paymentOperationNo, null));
+    }
+
+    /**
+     * Recover a lost response through the current buyer's namespace without initiating another
+     * send.
+     */
+    @PostMapping("/mp/checkout/{operationNo}/payments/lookup")
+    public PaymentAttemptView lookupPayment(
+            @PathVariable String operationNo,
+            @RequestHeader("Idempotency-Key") @NotBlank String key) {
+        return checkout.findPaymentForCurrentBuyer(
+                new PaymentLookup(new OperationRef("BEAUTY", operationNo), null, key));
+    }
+
+    /** The only payment selection the consumer supplies is the requested channel. */
+    public record PaymentBody(String channel) {
+        /** Reject caller-supplied amounts, identities and internal owner instructions. */
+        @JsonAnySetter
+        public void unknown(String field, Object value) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
     }
 
     /** Buyers name immutable quote evidence; they cannot supply price, buyer or actor fields. */

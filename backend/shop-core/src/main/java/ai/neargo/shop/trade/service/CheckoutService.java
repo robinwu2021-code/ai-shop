@@ -6,13 +6,27 @@ import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutResult;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutScope;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutSourceFacts;
 import ai.neargo.shop.spi.trade.CheckoutPort.ConfirmCheckoutReq;
+import ai.neargo.shop.spi.trade.CheckoutPort.InitiatePaymentReq;
 import ai.neargo.shop.spi.trade.CheckoutPort.OperationRef;
+import ai.neargo.shop.spi.trade.CheckoutPort.PaymentAttemptView;
+import ai.neargo.shop.spi.trade.CheckoutPort.PaymentLookup;
 import ai.neargo.shop.spi.trade.CheckoutPort.PlaceCheckoutReq;
 import ai.neargo.shop.spi.trade.CheckoutPort.PrepareCheckoutReq;
 import ai.neargo.shop.spi.trade.CheckoutPort.SourceLookup;
 
 /** Local owner API; consumer reads never accept merchant scope. */
 public interface CheckoutService {
+    /** Initiate or recover the permanent original payment request for the real current buyer. */
+    PaymentAttemptView initiatePayment(InitiatePaymentReq request);
+
+    /**
+     * Read original payment facts under current merchant scope without exposing payment parameters.
+     */
+    PaymentAttemptView findPayment(CheckoutScope scope, PaymentLookup request);
+
+    /** Read the current buyer's original payment and parameters without initiating another send. */
+    PaymentAttemptView findPaymentForCurrentBuyer(PaymentLookup request);
+
     /**
      * Resolve a strict reference and freeze the existing writer price after current merchant
      * authorization.

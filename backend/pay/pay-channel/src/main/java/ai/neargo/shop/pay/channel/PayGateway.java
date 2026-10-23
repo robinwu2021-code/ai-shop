@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.channel;
 
+import java.util.Map;
+
 /**
  * 支付通道网关：一个通道一个实现（微信收付通 / 支付宝直付通）。
  *
@@ -27,19 +29,15 @@ public interface PayGateway {
     /**
      * 查单：拿我方流水号问通道「这笔到底付了没有」。
      *
-     * <p><b>这是掉单唯一能自动止血的手段。</b> 回调会丢（网络、我方 502、通道重试耗尽），
-     * 丢了之后我方那笔停在 PENDING，而用户的钱**已经扣了** ——
-     * 他看到的是「订单不见了」，我方看到的是一笔没下文的待支付。
-     * 没有查单的话，这种单只能等对账日、或者等用户投诉。
+     * <p><b>这是掉单唯一能自动止血的手段。</b> 回调会丢（网络、我方 502、通道重试耗尽）， 丢了之后我方那笔停在 PENDING，而用户的钱**已经扣了** ——
+     * 他看到的是「订单不见了」，我方看到的是一笔没下文的待支付。 没有查单的话，这种单只能等对账日、或者等用户投诉。
      *
-     * <p>与回调是同一个真相的两个来源，所以处理必须<b>同一套</b>：
-     * 查到已支付就走原本的支付成功链路（幂等键 {@code paymentNo} 保证不会重复入账），
+     * <p>与回调是同一个真相的两个来源，所以处理必须<b>同一套</b>： 查到已支付就走原本的支付成功链路（幂等键 {@code paymentNo} 保证不会重复入账），
      * 而不是另写一段「补一下状态」—— 那段会漏掉发券、积分、通知里的某一个。
      *
      * @param outTradeNo 我方流水号（{@code stl_payment.out_trade_no}）
-     * @return 通道侧的真实状态；<b>查不到这笔返回 {@link QueryResult#notFound()}</b> ——
-     *         「通道没有这笔」与「查询失败」必须分开：前者可以安全关单，
-     *         后者关单就可能把一笔已付的单关掉
+     * @return 通道侧的真实状态；<b>查不到这笔返回 {@link QueryResult#notFound()}</b> —— 「通道没有这笔」与「查询失败」必须分开；两者均不能证明
+     *     正在发送或结果未知的原号从未受理，不可据此关闭这类资金操作
      */
     QueryResult query(String outTradeNo);
 
@@ -89,39 +87,77 @@ public interface PayGateway {
      * @return 成功时带端上要用的参数；失败时带原因
      */
     default PrepayResult prepay(PrepayCommand cmd) {
-        return PrepayResult.fail(payChannel() + " 尚未实现向通道下单");
+        return PrepayResult.notSent(payChannel() + " 尚未实现向通道下单");
     }
 
     /**
-     * @param outTradeNo  我方商户单号。**通道侧按它去重**，重试时会带后缀
+     * @param outTradeNo 原始商户单号；通道侧按它去重，未定终态期间不得换号
      * @param amountMinor 金额（分）
-     * @param currency    币种。多市场后不能省 —— 通道按它决定用哪个商户号结算
-     * @param subject     商品标题，展示在通道的收银台上
-     * @param payMethod   支付方式（JSAPI / H5 / APP…）。同一通道下不同方式的下单参数不同
-     * @param subMchId    子商户号（进件产出）。为空表示走平台商户号
-     * @param payerId     付款人在该通道的标识（微信 openid 等）。JSAPI 必需
+     * @param currency 币种。多市场后不能省 —— 通道按它决定用哪个商户号结算
+     * @param subject 商品标题，展示在通道的收银台上
+     * @param payMethod 支付方式（JSAPI / H5 / APP…）。同一通道下不同方式的下单参数不同
+     * @param subMchId 子商户号（进件产出）。为空表示走平台商户号
+     * @param payerId 付款人在该通道的标识（微信 openid 等）。JSAPI 必需
      */
-    record PrepayCommand(String outTradeNo, long amountMinor, String currency, String subject,
-                         String payMethod, String subMchId, String payerId) {
-    }
+    record PrepayCommand(
+            String outTradeNo,
+            long amountMinor,
+            String currency,
+            String subject,
+            String payMethod,
+            String subMchId,
+            String payerId) {}
 
     /**
-     * @param success  下单成不成功
-     * @param params   端上唤起收银台要用的参数。<b>原样透传给端</b> ——
-     *                 不同通道字段完全不同，服务端不该翻译成一套「统一格式」，
-     *                 那样每接一个通道都要改两处
-     * @param tradeNo  通道侧交易号。<b>对账按它去通道后台核</b>
-     * @param message  失败原因，给人看
+     * @param success 下单成不成功
+     * @param params 端上唤起收银台要用的参数。<b>原样透传给端</b> —— 不同通道字段完全不同，服务端不该翻译成一套「统一格式」， 那样每接一个通道都要改两处
+     * @param tradeNo 通道侧交易号。<b>对账按它去通道后台核</b>
+     * @param message 失败原因，给人看
      */
-    record PrepayResult(boolean success, java.util.Map<String, String> params,
-                        String tradeNo, String message) {
+    /** A false response is uncertain unless the adapter proves no client call occurred. */
+    enum PrepayDisposition {
+        PAYABLE,
+        NOT_SENT,
+        UNKNOWN
+    }
+
+    record PrepayResult(
+            boolean success,
+            Map<String, String> params,
+            String tradeNo,
+            String message,
+            PrepayDisposition disposition) {
+        public PrepayResult(
+                boolean success, Map<String, String> params, String tradeNo, String message) {
+            this(
+                    success,
+                    params,
+                    tradeNo,
+                    message,
+                    success ? PrepayDisposition.PAYABLE : PrepayDisposition.UNKNOWN);
+        }
+
+        public PrepayResult {
+            params = params == null ? Map.of() : Map.copyOf(params);
+            if (disposition == null || success != (disposition == PrepayDisposition.PAYABLE)) {
+                throw new IllegalArgumentException("consistent prepay disposition required");
+            }
+        }
 
         public static PrepayResult ok(java.util.Map<String, String> params, String tradeNo) {
             return new PrepayResult(true, params, tradeNo, null);
         }
-
         public static PrepayResult fail(String message) {
             return new PrepayResult(false, java.util.Map.of(), null, message);
+        }
+
+        public static PrepayResult notSent(String message) {
+            return new PrepayResult(false, Map.of(), null, message, PrepayDisposition.NOT_SENT);
+        }
+
+        @Override
+        public String toString() {
+            return "PrepayResult[" + disposition + "]";
         }
     }
 
@@ -151,7 +187,7 @@ public interface PayGateway {
             return new QueryResult(true, false, true, 0, null);
         }
 
-        /** 通道根本没有这笔 —— 我方发起失败，可以安全关单 */
+        /** 通道当前未找到这笔；不能据此证明不确定的原始发送从未受理 */
         public static QueryResult notFound() {
             return new QueryResult(true, false, false, 0, null);
         }

@@ -2,6 +2,7 @@ package ai.neargo.shop.pay.channel;
 
 import ai.neargo.shop.pay.channel.base.AbstractPayGateway;
 import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,7 +91,7 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
              * 订单在、流水在（已关闭）、日志里只有一行 warn。
              */
             log.warn("[wechat-direct] 下单前置不满足，不发通道：{}（单号 {}）", missing, cmd.outTradeNo());
-            return PrepayResult.fail(missing);
+            return PrepayResult.notSent(missing);
         }
 
         Map<String, Object> body = new LinkedHashMap<>();
@@ -169,24 +170,12 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
         String nonceStr = WechatApiV3Signer.nonce();
         String pkg = "prepay_id=" + prepayId;
         String paySign = signer.jsapiPaySign(appId, timeStamp, nonceStr, pkg);
-        /*
-         * **把端上要用的六件套记一行，并当场自验一次签名。**
-         *
-         * 端上报「支付验证签名失败」时，第一个要回答的是「是我们签错了，还是对方不认」——
-         * 这两件事的下一步完全不同。打印 paySign 回答不了它（一串 base64 看上去永远是对的），
-         * 所以这里打的是**自验结果**：用从私钥推出的公钥验回自己刚签的名。
-         *
-         * 自验通过 ⇒ 签名与待签串是自洽的，问题在内容或对方那边；
-         * 自验失败 ⇒ 私钥/算法这一层就错了，与微信无关。
-         *
-         * paySign 本身**不打**：它没有长期价值，而日志会被采集、转发、贴进工单。
-         * 其余五项都不是机密（本来就要原样发给端上），而它们正是排查要对的东西。
-         */
-        log.info("[wechat-direct] 端上六件套 appId={} timeStamp={} nonceStr={} package={} signType={} paySign自验={}",
-                appId, timeStamp, nonceStr, pkg, WechatApiV3Signer.SIGN_TYPE,
+        // 只记录自验结果；可复用的端上支付参数不进入日志。
+        log.info(
+                "[wechat-direct] 端上签名自验={}",
                 signer.verifyOwnSignature(
-                        WechatApiV3Signer.paySignContent(appId, timeStamp, nonceStr, pkg), paySign)
-                        ? "通过" : "**失败**");
+                        WechatApiV3Signer.paySignContent(appId, timeStamp, nonceStr, pkg),
+                        paySign));
         return Map.of(
                 "appId", appId,
                 "timeStamp", timeStamp,
@@ -201,8 +190,7 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
     /**
      * 查单。<b>GET，且 {@code ?mchid=} 要参与签名</b>。
      *
-     * <p>只有 {@code trade_state=SUCCESS} 算已支付；
-     * 查询失败与「通道没有这笔」是两件事 —— 前者不能关单，后者可以。
+     * <p>只有 {@code trade_state=SUCCESS} 算已支付； 查询失败与「通道没有这笔」是两件事；两者均不能关闭不确定的原始发送。
      */
     @Override
     public QueryResult query(String outTradeNo) {
@@ -216,10 +204,7 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
             if (!"SUCCESS".equals(state)) {
                 return QueryResult.unpaid();
             }
-            return new QueryResult(true, true, true, totalOf(resp),
-                    resp.get("transaction_id") instanceof String trade ? trade : null,
-                    resp.get("amount") instanceof Map<?, ?> details && details.get("currency") instanceof String currency
-                            ? currency : null);
+            return PaymentQueryReceipt.wechat(outTradeNo, resp);
         } catch (ChannelClient.ChannelException e) {
             /*
              * **只有 ORDER_NOT_EXIST 才是「通道没有这笔」**，其余失败一律 failed()。
@@ -271,7 +256,10 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
                             ? refundAmountOf(resp) : 0,
                     provider, currency, System.currentTimeMillis());
         } catch (RuntimeException uncertain) {
-            log.warn("[wechat-direct] 退款查询未知 no={} exception={}", no, uncertain.getClass().getSimpleName());
+            log.warn(
+                    "[wechat-direct] 退款查询未知 no={} exception={}",
+                    no,
+                    uncertain.getClass().getSimpleName());
             return ai.neargo.shop.spi.pay.RefundQueryResult.unknown(no);
         }
     }
@@ -298,11 +286,6 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
 
     private static String norm(String s) {
         return String.valueOf(s).replace("_", "");
-    }
-
-    private static long totalOf(Map<String, Object> resp) {
-        return resp.get("amount") instanceof Map<?, ?> m && m.get("total") instanceof Number n
-                ? n.longValue() : 0L;
     }
 
     private static long refundAmountOf(Map<String, Object> resp) {

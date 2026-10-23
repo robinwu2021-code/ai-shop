@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.mapper;
 import ai.neargo.shop.trade.entity.OrdCheckoutConfirmation;
 import ai.neargo.shop.trade.entity.OrdCheckoutLine;
 import ai.neargo.shop.trade.entity.OrdCheckoutOperation;
+import ai.neargo.shop.trade.entity.OrdCheckoutPaymentRequest;
 import ai.neargo.shop.trade.entity.OrdCheckoutQuote;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -16,12 +17,40 @@ import java.util.List;
 public final class CheckoutMappers {
     private CheckoutMappers() {}
 
+    /**
+     * Durable payment requests are looked up only through their full actor namespace or business
+     * identity.
+     */
+    public interface PaymentRequestMapper extends BaseMapper<OrdCheckoutPaymentRequest> {
+        @Select(
+                "SELECT * FROM ord_checkout_payment_request WHERE tenant_no='MAIN' AND"
+                        + " actor_realm=#{realm} AND actor_kind=#{kind} AND actor_no=#{actor} AND"
+                        + " action=#{action} AND request_key_hash=#{key} AND deleted=0")
+        OrdCheckoutPaymentRequest findKey(
+                @Param("realm") String realm,
+                @Param("kind") String kind,
+                @Param("actor") String actor,
+                @Param("action") String action,
+                @Param("key") String key);
+
+        @Select(
+                "SELECT * FROM ord_checkout_payment_request WHERE tenant_no='MAIN'"
+                        + " AND payment_operation_no=#{no} AND deleted=0")
+        OrdCheckoutPaymentRequest find(@Param("no") String no);
+
+        @Select(
+                "SELECT * FROM ord_checkout_payment_request WHERE tenant_no='MAIN' AND"
+                        + " caller=#{caller} AND operation_no=#{no} AND deleted=0 ORDER BY id")
+        List<OrdCheckoutPaymentRequest> forOperation(
+                @Param("caller") String caller, @Param("no") String no);
+    }
+
     /** Serialize each stable caller operation before any lifecycle or source observation change. */
     public interface OperationMapper extends BaseMapper<OrdCheckoutOperation> {
         @Select(
                 "SELECT * FROM ord_checkout_operation WHERE tenant_no='MAIN' AND caller=#{caller}"
-                        + " AND entity_no=#{entity} AND store_no=#{store} AND request_key_hash=#{key}"
-                        + " AND deleted=0")
+                    + " AND entity_no=#{entity} AND store_no=#{store} AND request_key_hash=#{key}"
+                    + " AND deleted=0")
         OrdCheckoutOperation findPrepareKey(
                 @Param("caller") String caller,
                 @Param("entity") String entity,
@@ -80,11 +109,11 @@ public final class CheckoutMappers {
     public interface LineMapper extends BaseMapper<OrdCheckoutLine> {
         @Select(
                 "SELECT 'CASH' AS kind,execution_no AS referenceNo,status,resource_status AS"
-                        + " resourceStatus FROM ord_refund_execution WHERE tenant_no='MAIN' AND"
-                        + " sub_order_no=#{no} AND deleted=0 UNION ALL SELECT"
-                        + " 'POINTS',after_sale_no,state,NULL FROM ord_points_refund_execution WHERE"
-                        + " tenant_no='MAIN' AND sub_order_no=#{no} AND deleted=0 ORDER BY"
-                        + " kind,referenceNo")
+                    + " resourceStatus FROM ord_refund_execution WHERE tenant_no='MAIN' AND"
+                    + " sub_order_no=#{no} AND deleted=0 UNION ALL SELECT"
+                    + " 'POINTS',after_sale_no,state,NULL FROM ord_points_refund_execution WHERE"
+                    + " tenant_no='MAIN' AND sub_order_no=#{no} AND deleted=0 ORDER BY"
+                    + " kind,referenceNo")
         List<RefundWork> refundWork(@Param("no") String subOrderNo);
     }
 }

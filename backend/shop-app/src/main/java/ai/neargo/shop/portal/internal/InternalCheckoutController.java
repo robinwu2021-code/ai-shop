@@ -65,6 +65,18 @@ public class InternalCheckoutController {
         return invoke(request, given, () -> checkout.source(request.scope(), request.request()));
     }
 
+    /**
+     * The delegated merchant may read owner facts but cannot initiate or obtain consumer
+     * parameters.
+     */
+    @PostMapping(CheckoutInternalApi.BASE + "findPayment")
+    public ResponseEntity<?> findPayment(
+            @RequestBody Scoped<CheckoutPort.PaymentLookup> request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return invoke(
+                request, given, () -> checkout.findPayment(request.scope(), request.request()));
+    }
+
     private ResponseEntity<?> invoke(Scoped<?> request, String given, Supplier<?> work) {
         return InternalServiceResponses.invoke(
                 token,
