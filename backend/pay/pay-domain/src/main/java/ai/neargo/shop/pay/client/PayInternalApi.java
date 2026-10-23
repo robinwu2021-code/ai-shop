@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.client;
 
+import ai.neargo.shop.spi.trade.PricingFundingCapabilities;
+
 import ai.neargo.shop.spi.entitlement.EntitlementCapabilityPort;
 import ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews;
 import ai.neargo.shop.pay.entitlement.dto.LifecycleViews.ReminderPage;
@@ -310,6 +312,10 @@ public interface PayInternalApi {
     UsageEffects marketingUsage(@RequestBody PayMarketingRequests.Usage request);
     @PostExchange(PayInternalPaths.OWNER_RESOLVE)
     OwnerRef entitlementOwnerResolve(@RequestBody PayOwnerRequests.Resolve request);
+    @PostExchange(PayInternalPaths.ENT_PRICING_CAPABILITIES)
+    PricingFundingCapabilities.Snapshot couponPricingCapabilities(@RequestBody PayCapabilityRequests.Pricing request);
+    @PostExchange(PayInternalPaths.SV_PRICING_CAPABILITIES)
+    PricingFundingCapabilities.Snapshot storedPricingCapabilities(@RequestBody PayCapabilityRequests.Pricing request);
     @PostExchange(PayInternalPaths.ENT_CAPABILITIES)
     EntitlementCapabilityPort.Status entitlementCapabilities(@RequestBody PayCapabilityRequests.Status request);
     @PostExchange(PayInternalPaths.LIFECYCLE_REMINDERS)

@@ -103,6 +103,8 @@ public final class PayInternalPaths {
     public static final String LIFECYCLE_EXPIRE="/internal/pay/entitlement/lifecycle/expire";
     public static final String MARKETING_USAGE="/internal/pay/entitlement/marketing/usage-effects";
     public static final String OWNER_RESOLVE="/internal/pay/entitlement/owners/resolve";
+    public static final String ENT_PRICING_CAPABILITIES = "/internal/pay/entitlement/capabilities/pricing";
+    public static final String SV_PRICING_CAPABILITIES = "/internal/pay/stored-value/capabilities/pricing";
     public static final String ENT_CAPABILITIES = "/internal/pay/entitlement/capabilities";
     public static final String LIFECYCLE_REMINDERS = "/internal/pay/entitlement/lifecycle/expiring-soon";
     public static final String EXCEPTIONS_LIST_ACROSS = "/internal/pay/entitlement/exceptions/list-scoped";

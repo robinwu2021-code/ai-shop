@@ -39840,6 +39840,15 @@
         "module": "shop-base"
       },
       {
+        "name": "Family",
+        "values": [
+          "ORDER_COUPON",
+          "STORED_VALUE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "FixedPolicy",
         "values": [
           "B03",
@@ -40927,6 +40936,19 @@
           "RETRYABLE",
           "MANUAL",
           "REJECTED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Status",
+        "values": [
+          "SUPPORTED",
+          "TENANT_UNSUPPORTED",
+          "SOURCE_UNSUPPORTED",
+          "CURRENCY_UNSUPPORTED",
+          "DISABLED",
+          "OWNER_UNAVAILABLE"
         ],
         "zh": "",
         "module": "shop-base"
@@ -44879,6 +44901,22 @@
       "name": "OWNER_RESOLVE",
       "type": "String",
       "value": "\"/internal/pay/entitlement/owners/resolve\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_PRICING_CAPABILITIES",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/capabilities/pricing\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_PRICING_CAPABILITIES",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/capabilities/pricing\"",
       "zh": "",
       "module": "pay/pay-domain"
     },

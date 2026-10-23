@@ -852,3 +852,64 @@ GoodsPricingPolicyPort.resolve(Scope,List<SkuRef(goodsNo,skuNo)>)只读，限制
 | 文档 / 守卫 | 既有OpenAPI/B端后端先行清单、完整需求§5.1与本TDD、生成分层/词典/常量清单、原生runner扩充product及全量选择 | 三处对账 |
 
 完整需求§5.1原平台审核口径与已确认的商家管理要求冲突，已同步修正。本表是SKU业务元数据扩展，未放入平台动态参数，也不修改原商品价格。策略只定义商品可参与性，实际活动命中、多券和资金owner合同仍按原计划实现，不以本表推断。V551需按正常迁移部署后使用；本批无部署或远端推送。
+
+
+### CKO-11B2C PAY定价资金能力合同（2026-10-23）
+
+§0 09-C2.4/CKO11仍缺真实资金能力，现有Status就绪位不能证明来源、币种、数量及组合限制。核验EntitlementUseServiceImpl.quote明确至多1张券，Core EntitlementUseSourcePort支持既有ORDER_USE来源；StoredValueRedemptionServiceImpl明确CORE/SERVICE_USE、CNY、全额适用，无部分储值+其他资金组合。此批将已核验的保守子集做成只读合同，不能凭开关把FOOD/CART转换成CORE/ORDER_USE。
+
+F01复用EntitlementCapabilityPort/StoredValueCapabilityPort新增默认失败的pricing方法，旧Status不变；F02PAY声明显式family/源system-type/币种/协议及精确PricingCapabilities，非SUPPORTED时capabilities必须null，不把能力缺失编码成零值；F03当前仅单券CORE/ORDER_USE/CNY与全额储值CORE/SERVICE_USE/CNY；无跨券叠加或券储值组合，无余额/资格/预占保证；F04运行开关与唯一实际执行Port均须就绪，缺失/多实例/仅Primary均不能放行；F05本地与独立PAY沿原typed客户端/令牌/错误映射，严格验证原scope、family、协议和hash；F06core检查/确认每次重新调用唯一owner，拒绝事务内跨owner读取；旧摘要不续能力；F07不得生成生产PricingConfigEvidencePort，也不据此宣称餐饮资金路径或全CKO11完成。
+
+§1 shop-base新增spi.trade.PricingFundingCapabilities（闭合Scope/Family/Status/Snapshot及规范化严格校验）；scope=(tenantNo,entityNo,storeNo,sourceSystem,sourceType,currency)，family=ORDER_COUPON/STORED_VALUE。schemaVersion=1，协议ORDER_COUPON_SINGLE_V1、SERVICE_STORED_FULL_V1。Snapshot包含family/scope/status/protocol/capabilities/snapshotHash；语义摘要无读取时钟，同请求及运行能力不变时稳定。快照不是授权、余额、税/活动资格或可直接用于发布的限时证据。
+
+PAY原两个Capability实现新增pricing，复用原EntitlementUsePort/StoredValueUseQuotePort实际装配验证；policy.FundingCapabilityPolicy只描述现有边界，不扩充资金执行。既有embedded/standalone组成根显式传ObjectProvider，旧单参数构造只保持原status用途，不能凭它获取SUPPORTED新回执。
+
+新增内部POST /internal/pay/entitlement/capabilities/pricing、/internal/pay/stored-value/capabilities/pricing，原PayInternalApi/Paths及两个Endpoint/Remote适配扩充；请求仅Scope，无客户端金额/能力。原内部令牌校验。core新增trade.service.PricingFundingCapabilityService/Impl.inspect/require/confirm，按family唯一owner路由，缺/歧义/非法回执40190；require只接受SUPPORTED；confirm重新加载后比摘要，变化409；unsupported保留明确状态而非伪造零能力。
+
+§2 A共享合同、PAY纯策略/真实owner装配及core检查服务后编译；B typed HTTP/remote双部署接线后编译；C统一验证开关/实际Port/来源币种/数量组合、严格回执、真实HTTP及令牌、核心重新读取、部署路由、消融和既有守卫，一次独立审查后本地提交。不接业务数据库，不改资金表/金额操作或公开B/C接口。
+
+§3 方法与结果：
+
+| 方法 | 输入 | 输出与约束 |
+|---|---|---|
+| EntitlementCapabilityPort.pricing | 服务端Scope | ORDER_COUPON Snapshot；不调用余额、用券或预占 |
+| StoredValueCapabilityPort.pricing | 同上 | STORED_VALUE Snapshot；full-service协议只声明全额适用，不证明余额充足 |
+| 内部两个POST | PayCapabilityRequests.Pricing(scope)、原内部令牌头 | 同一个Snapshot，保持原内部裸响应及HTTP错误映射 |
+| PricingFundingCapabilityService.inspect | Family、服务端Scope | 唯一owner的严格Snapshot；SUPPORTED之外仍保留状态且capabilities=null |
+| require | 同上 | 只接受SUPPORTED，否则40190 |
+| confirm | Family、Scope、expectedSnapshotHash(64位小写hex) | 重新读取owner后检查，变化409；相同但未支持仍40190；不是资金确认 |
+
+状态为SUPPORTED、TENANT_UNSUPPORTED、SOURCE_UNSUPPORTED、CURRENCY_UNSUPPORTED、DISABLED、OWNER_UNAVAILABLE。supported严格绑定schema1、已登记协议/来源/CNY及原精确限制；不能从旧Status合成此回执。snapshotHash仅防错配/变化，不是签名或执行授权，也没有可直接替代原发布证据的有效期。主体/门店在此是能力查询范围，实际身份、来源归属、账户与资产适用性仍须各自owner重新验证。
+
+§5 验收：
+
+| AC | 测试 / 验证 |
+|---|---|
+| F01/F02 | PricingFundingCapabilitiesTest四项（稳定摘要、拒绝携带零/最大能力的非支持回执、拒绝扩大来源/币种/叠加、拒绝错配/篡改）；PricingFundingCapabilityServiceTest.missingAmbiguousAndOldBooleanOnlyOwnersFailClosed |
+| F03/F04 | FundingCapabilityTest五项，真实执行Port存在且唯一才支持，旧构造/旧就绪位不能放行，禁用后不保留能力，未知来源/币种拒绝；部署路由测试真实组成根同时验证两类回执 |
+| F05 | PricingFundingCapabilityHttpTest三项真实Tomcat/typed客户端，比较本地策略与HTTP回执、FOOD/CART双端明确拒绝、错误令牌先于owner调用被拒绝；PricingFundingRemoteTest两项错scope/family/hash拒绝 |
+| F06 | PricingFundingCapabilityServiceTest其余四项，确认重新读取及撤销冲突、错配回执、拒绝把非支持转成零值、事务内不调用owner |
+| F07 | 一次最终只读审查；未新增生产PricingConfigEvidencePort、资金写入/表/迁移或B/C公开接口 |
+
+两阶段编译成功；共享基础280项全部通过，核心592项中524实际通过/68原生数据库条件跳过，无失败；PAY域212项全部通过。最终真实HTTP3、远程回执2、双部署路由5项实际通过。无数据库行为变更，本批不重复原生数据库批次，也不将条件跳过算作通过。
+
+路由旧夹具首次失败在HEAD已有的Autowired依赖：EntitlementUseWriter的PayRightsDocumentNumbers及其payDocumentNumbers查询、StoredValueRechargeAppServiceImpl的StoredValueCustomerBindingPort；一次补齐这些测试mock依赖后5项路由验证通过，没有修改这些服务的业务逻辑。摘要消融移除validate中的hash比较，篡改回执测试按预期失败；字节恢复后完整基础/核心/PAY域通过。
+
+宿主47项（原40＋路由5＋远程2）38通过/1跳过/8原有失败：Architecture7项消息与原基线逐字一致，SchemaDrift1项缺列集合一致。Node9、Python定价合同5及交付合同4、SQL/Ops守卫通过；B/C正向契约无新增缺口。生成分层/词典/索引清单同步。
+
+最终独立审查无Critical/Important；保留1项非阻塞测试建议：显式@Primary多实现及重复StoredValueUseQuotePort专项回归。当前orderedStream().limit(2)正确按数量拒绝，普通重复实现已有覆盖，本批按执行流程登记后续补充，不宣称专项已测。
+
+§6 实现清单与边界：
+
+| 模块 / 包 | 类 / 产物 |
+|---|---|
+| shop-base / ai.neargo.shop.spi.trade | PricingFundingCapabilities及其Scope/Family/Status/Snapshot |
+| shop-base / ai.neargo.shop.spi.entitlement、spi.storedvalue | 原EntitlementCapabilityPort、StoredValueCapabilityPort新增默认失败方法 |
+| pay-domain / ai.neargo.shop.pay.entitlement.policy、port / storedvalue.port | FundingCapabilityPolicy及原两个CapabilityPortImpl |
+| pay-domain / ai.neargo.shop.pay.client | 原PayCapabilityRequests、PayInternalApi、PayInternalPaths |
+| pay-svc / ai.neargo.shop.pay.svc | 原两个CapabilityEndpoint及EntitlementPayBootstrap，新增两个内部POST |
+| shop-app / ai.neargo.shop.payclient、port | 原EntitlementRuntimeRouting及两个RemoteCapabilityPort |
+| shop-core / ai.neargo.shop.trade.service、service.impl | PricingFundingCapabilityService及Impl |
+| 测试与生成物 | 四个模块内新增协议/owner/核心/HTTP/remote测试与旧部署夹具；生成分层/词典/常量清单 |
+
+此批补足“owner能准确说明什么”，没有扩大实际资金执行范围。C2.4、FOOD资金执行、多券、活动命中事实和完整11B报价保持未完成；下一步需补餐饮真实结账来源与决策协议，随后才能按已证明的能力开放报价/执行。不得将餐饮购物车改写为旧CORE来源绕过限制。本批无业务库迁移、部署或远端推送。
