@@ -23,15 +23,21 @@ class StoredValueMigrationReadinessTest {
         assertThat(StoredValueMigrationReadiness.check(inventory(true),healthy(),"different",now).ready()).isFalse();
     }
     @Test void oldBuildWrongLedgerDisabledGuardAndStaleRepliesCannotAuthorizeCutover(){
+        record Rejected(Capability capability,String issue) { }
         var bad=List.of(
-            new Capability(challenge,"pay-svc","boot-pay","c".repeat(40),2,true,true,ledger,true,now),
-            new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,"d".repeat(64),true,now),
-            new Capability(challenge,"pay-svc","boot-pay",sha,2,false,true,ledger,true,now),
-            new Capability(challenge,"pay-svc","boot-pay",sha,2,true,false,ledger,true,now),
-            new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,ledger,false,now),
-            new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,ledger,true,now.minusSeconds(31)),
-            new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,ledger,true,now));
-        for(var capability:bad)assertThat(StoredValueMigrationReadiness.check(inventory(true),List.of(healthy().getFirst(),new NodeResult("pay-1",capability,null)),challenge,now).ready()).isFalse();
+            new Rejected(new Capability(challenge,"pay-svc","boot-pay","c".repeat(40),2,true,true,ledger,true,now),"BUILD_MISMATCH"),
+            new Rejected(new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,"d".repeat(64),true,now),"LEDGER_NOT_READY"),
+            new Rejected(new Capability(challenge,"pay-svc","boot-pay",sha,2,false,true,ledger,true,now),"WRITER_NOT_READY"),
+            new Rejected(new Capability(challenge,"pay-svc","boot-pay",sha,2,true,false,ledger,true,now),"WRITER_NOT_READY"),
+            new Rejected(new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,ledger,false,now),"LEDGER_NOT_READY"),
+            new Rejected(new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,ledger,true,now.minusSeconds(31)),"STALE_OBSERVATION"),
+            new Rejected(new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,ledger,true,now.minusSeconds(30)),"STALE_OBSERVATION"),
+            new Rejected(new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,ledger,true,now.plusSeconds(6)),"STALE_OBSERVATION"));
+        for(var rejected:bad) {
+            var report=StoredValueMigrationReadiness.check(inventory(true),List.of(healthy().getFirst(),new NodeResult("pay-1",rejected.capability(),null)),challenge,now);
+            assertThat(report.ready()).as("%s: %s",rejected.issue(),rejected.capability()).isFalse();
+            assertThat(report.issues()).extracting(Issue::code).contains(rejected.issue());
+        }
         assertThat(StoredValueMigrationReadiness.check(inventory(true),List.of(healthy().getFirst(),new NodeResult("pay-1",null,"PROBE_UNAVAILABLE")),challenge,now).ready()).isFalse();
     }
     @Test void duplicateProcessAliasesAndUnexpectedOrDuplicateNodesAreRejected(){

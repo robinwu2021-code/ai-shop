@@ -91,7 +91,9 @@ export interface VerifyBatchResult {
   /** 成功核销的单数 */
   successCount: number;
   /** 失败明细。code 是那张码，reason 是为什么不行 */
-  failed: { code: string; reason: string }[];
+  failed: { code: string;
+  /** 业务原因或阻断说明 */
+  reason: string }[];
 }
 /**
  * 自提点履约总览（后端 `GET /biz/pickup/overview`）。
@@ -185,7 +187,9 @@ export interface PickingRow {
   /** 该 SKU 在本自提点的总件数（含赠品） */
   totalQty: number;
   /** 谁要几件 */
-  buyers: { nickname: string; qty: number; orderNo: string }[];
+  buyers: { nickname: string; qty: number;
+  /** 订单内部业务编号 */
+  orderNo: string }[];
 }
 /**
  * 自提点履约台上的一单（`/biz/pickup/orders`）。
@@ -211,7 +215,9 @@ export interface PickupOrder {
   /** 这单该在哪个自提点取。核销时后端会比对，不是本点直接拒 */
   pickupNo?: string;
   /** 这单要交付的东西。分拣与交货时按它点数 */
-  items: { goodsNo: string; title: string; spec?: string; qty: number }[];
+  items: { goodsNo: string;
+  /** 面向用户的业务标题 */
+  title: string; spec?: string; qty: number }[];
 }
 /**
  * 核销结果。
@@ -260,7 +266,9 @@ export interface GroupPickupOrder {
   /** 状态 */
   status: OrderStatus;
   /** 明细行 */
-  items: { goodsNo: string; title: string; spec: string; qty: number }[];
+  items: { goodsNo: string;
+  /** 面向用户的业务标题 */
+  title: string; spec: string; qty: number }[];
 }
 // ================================================================ 自提点（ADR-005）
 

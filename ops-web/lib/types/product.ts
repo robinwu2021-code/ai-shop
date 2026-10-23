@@ -385,7 +385,9 @@ export interface GoodsAudit {
    * 归属商家（后端下发的是一个 brief 对象，不是裸的 merchantNo）——
    * 审核时要看得到是谁上的架：同一个商家反复交同类违规品是有信号的。
    */
-  merchant?: { merchantNo: string; name: string };
+  merchant?: { merchantNo: string;
+  /** 业务对象显示名称 */
+  name: string };
   /**
    * 商品状态。**字段名是 `status` 不是 `auditStatus`** ——
    * 后端 `GoodsVO` 里它同时承载审核态与上下架态：AUDITING / ON_SALE / OFF_SALE / REJECTED。
@@ -440,7 +442,9 @@ export interface GoodsDetail {
   /** 平台类目 */
   categoryNo?: string;
   /** 归属商家 brief —— 审核要看得到是谁上的架 */
-  merchant?: { merchantNo: string; name: string };
+  merchant?: { merchantNo: string;
+  /** 业务对象显示名称 */
+  name: string };
   /**
    * 三语标题原文（`prd_goods.title_i18n`）。
    * 运营审文案看的是它，而不是拍平后的 `title` —— 拍平那份看不出缺译。
@@ -449,7 +453,9 @@ export interface GoodsDetail {
   /** 三语副标题原文，同 {@link titleI18n} */
   subtitleI18n?: Partial<Record<"zh" | "en" | "ar", string>>;
   /** 规格组（如「重量」→「500g / 1kg」）。后端必发 */
-  specGroups: { name: string; options: string[] }[];
+  specGroups: {
+  /** 业务对象显示名称 */
+  name: string; options: string[] }[];
   /** SKU 矩阵。后端必发 */
   skus: GoodsDetailSku[];
   /** 支持的履约方式（自提 / 配送 …）。后端必发 */
@@ -536,7 +542,9 @@ export interface SpuStd extends Archivable {
   /** 图集 */
   images?: string[];
   /** 每个选项都必须带 `optionCode` —— 这是标准品存在的唯一理由 */
-  specGroups: { name: string; options: string[]; optionCodes?: string[]; templateNo?: string }[];
+  specGroups: {
+  /** 业务对象显示名称 */
+  name: string; options: string[]; optionCodes?: string[]; templateNo?: string }[];
   /** 别名/品牌/俗称，空格分隔。商家搜「洋芋」也要能命中标题是「土豆」的那条 */
   keywords?: string;
   /** 状态 */

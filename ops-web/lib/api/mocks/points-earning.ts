@@ -1,6 +1,7 @@
 import type { FinanceApi } from "../contracts/finance";
 import type { EarningRule, EarningChange } from "@/lib/points-earning";
 import { pointsConfigurationMock } from "./points-configuration";
+import { fail } from "@/lib/biz-error";
 import { wait } from "./_wait";
 const rows:EarningRule[]=[];const history:EarningRule[]=[];
 const receipts=new Map<string,{body:string;rule:EarningRule}>();
@@ -8,15 +9,15 @@ async function context(){const types=await pointsConfigurationMock.pointsTypes()
 async function ensure(){const c=await context();for(const type of c.types.filter(t=>t.status==="ACTIVE")){if(rows.some(r=>r.typeCode===type.typeCode&&r.scope==="DEFAULT"))continue;const legacy=type.typeCode===c.type?.typeCode?await pointsConfigurationMock.pointsFallback(type.typeCode):{mode:"RATIO" as const,value:0};const rule:EarningRule={typeCode:type.typeCode,scope:"DEFAULT",revision:1,activeRevision:1,mode:legacy.mode,value:legacy.value,activeMode:legacy.mode,activeValue:legacy.value,actor:"SYSTEM",remark:"默认规则初始化",at:Date.now()};rows.push(rule);history.push(structuredClone(rule));}return c;}
 
 async function change(c:EarningChange){
- const ctx=await ensure();if(!ctx.types.some(t=>t.typeCode===c.typeCode&&t.status==="ACTIVE"))throw new Error("请选择已生效积分");
- const replay=receipts.get(c.requestId);if(replay){if(replay.body!==JSON.stringify(c))throw new Error("请求号已被其他操作使用");return wait(structuredClone(replay.rule));}
- const prior=rows.find(r=>r.typeCode===c.typeCode&&r.scope===c.scope);if((prior?.revision??0)!==c.expectedRevision)throw new Error("规则已变更，请刷新后重试");
- if(c.action!=="SAVE"&&!prior)throw new Error("规则不存在");
- if(c.action==="DISABLE"&&c.scope==="DEFAULT")throw new Error("默认规则不能停用，请设为不赠送");
- if(c.action==="SAVE"&&(!Number.isInteger(c.ratioBp)||c.ratioBp!<0||c.ratioBp!>10000))throw new Error("比例无效");
+ const ctx=await ensure();if(!ctx.types.some(t=>t.typeCode===c.typeCode&&t.status==="ACTIVE"))fail("请选择已生效积分", "Select an active points type");
+ const replay=receipts.get(c.requestId);if(replay){if(replay.body!==JSON.stringify(c))fail("请求号已被其他操作使用", "This request ID was used for another operation");return wait(structuredClone(replay.rule));}
+ const prior=rows.find(r=>r.typeCode===c.typeCode&&r.scope===c.scope);if((prior?.revision??0)!==c.expectedRevision)fail("规则已变更，请刷新后重试", "This rule has changed. Refresh and try again");
+ if(c.action!=="SAVE"&&!prior)fail("规则不存在", "This rule does not exist");
+ if(c.action==="DISABLE"&&c.scope==="DEFAULT")fail("默认规则不能停用，请设为不赠送", "The default rule cannot be disabled. Set it to no reward instead");
+ if(c.action==="SAVE"&&(!Number.isInteger(c.ratioBp)||c.ratioBp!<0||c.ratioBp!>10000))fail("比例无效", "Invalid reward rate");
  const next:EarningRule={...(prior??{typeCode:c.typeCode,scope:c.scope,activeRevision:null,activeMode:null,activeValue:null,mode:"RATIO",value:0}),revision:c.expectedRevision+1,action:c.action,actor:"OPERATOR",remark:c.remark,at:Date.now()};
  if(c.action==="SAVE"){next.mode="RATIO";next.value=c.ratioBp!;}
- if(c.action==="PUBLISH"){if(next.mode!=="RATIO")throw new Error("请先调整为比例赠送");next.activeRevision=next.revision;next.activeMode=next.mode;next.activeValue=next.value;}
+ if(c.action==="PUBLISH"){if(next.mode!=="RATIO")fail("请先调整为比例赠送", "Change the rule to a percentage reward first");next.activeRevision=next.revision;next.activeMode=next.mode;next.activeValue=next.value;}
  if(c.action==="DISABLE"){next.activeRevision=null;next.activeMode=null;next.activeValue=null;}
  if(prior)rows.splice(rows.indexOf(prior),1,next);else rows.push(next);history.unshift(structuredClone(next));receipts.set(c.requestId,{body:JSON.stringify(c),rule:structuredClone(next)});return wait(structuredClone(next));
 }
@@ -28,16 +29,16 @@ export const pointsEarningMock:Pick<FinanceApi,"pointsOrderEarning"|"pointsEarni
  changePointsEarningRule:change,
  previewPointsEarning:async q=>{
   const c=await ensure();const type=c.types.find(t=>t.typeCode===(q.typeCode??c.type?.typeCode));
-  if(!type||type.status!=="ACTIVE")throw new Error("请选择已生效积分");
-  if(q.currency&&q.currency!==type.currency)throw new Error("币种与积分配置不一致");
-  if(q.categoryNo&&!c.categories.some(category=>category.categoryNo===q.categoryNo))throw new Error("品类不存在");
-  if(!Number.isSafeInteger(q.cashMinor)||q.cashMinor<0)throw new Error("金额无效");
+  if(!type||type.status!=="ACTIVE")fail("请选择已生效积分", "Select an active points type");
+  if(q.currency&&q.currency!==type.currency)fail("币种与积分配置不一致", "The currency does not match the points configuration");
+  if(q.categoryNo&&!c.categories.some(category=>category.categoryNo===q.categoryNo))fail("品类不存在", "This category does not exist");
+  if(!Number.isSafeInteger(q.cashMinor)||q.cashMinor<0)fail("金额无效", "Invalid amount");
   const selected=rows.filter(r=>r.typeCode===type.typeCode);
   const r=selected.find(r=>r.scope===q.categoryNo&&r.activeRevision!=null)??selected.find(r=>r.scope==="DEFAULT")!;
-  if(r.activeMode!=="RATIO")throw new Error("请先调整原固定赠送规则");
+  if(r.activeMode!=="RATIO")fail("请先调整原固定赠送规则", "Update the legacy fixed reward rule first");
   const money=BigInt(q.cashMinor)*BigInt(r.activeValue!)/10000n;
   let p=BigInt(type.rate.pointsUnit),m=BigInt(type.rate.minorUnit);let a=p,b=m;while(b){const n=a%b;a=b;b=n;}p/=a;m/=a;
-  const points=Number(money/m*p);if(!Number.isSafeInteger(points))throw new Error("积分数量超限");
+  const points=Number(money/m*p);if(!Number.isSafeInteger(points))fail("积分数量超限", "The points amount exceeds the supported limit");
   return wait({type:{typeCode:type.typeCode,name:type.name,market:type.market,currency:type.currency,scale:type.scale,ratePoints:type.rate.pointsUnit,rateMinor:type.rate.minorUnit},matched:{scope:r.scope,revision:r.activeRevision!,rule:{mode:"RATIO",value:r.activeValue!}},cashMinor:q.cashMinor,points});
  },
 };

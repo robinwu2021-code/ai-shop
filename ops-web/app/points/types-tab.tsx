@@ -16,11 +16,11 @@ import styles from "./types-tab.module.css";
 import { Badge } from "@/components/ui/badge";
 import { Drawer } from "@/components/ui/drawer";
 import { Notice } from "@/components/ui/notice";
-import { SectionHeader } from "@/components/ui/section-header";
+
 
 type Command = { kind: "RENAME"; value: PointsTypeRename } | { kind: "CREATE"; value: PointsCreate } | { kind: "STATE"; value: PointsTypeChange };
 
-export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
+export function PointsTypesTab({ canEdit, header }: { canEdit: boolean; header: ReactNode }) {
   const { t } = usePointsText();
   const qc = useQueryClient();
   const types = useQuery({ queryKey: ["points-types"], queryFn: () => api.pointsTypes() });
@@ -103,7 +103,7 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
 
   return <div className={`space-y-3 ${styles.page}`}>
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <SectionHeader title={t("积分设置", "Points settings")} summary={types.data?.length ?? 0} className="mb-0" />
+      {header}
       {canEdit && <Button onClick={() => { save.reset(); setCreateOpen(true); }}>{t("新建积分类型", "New points type")}</Button>}
     </div>
     <div className="flex flex-wrap items-center justify-between gap-2">

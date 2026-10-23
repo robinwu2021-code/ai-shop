@@ -12,7 +12,7 @@ import { Input, Select } from "@/components/ui/input";
 import { DataTable } from "@/components/ui/data-table";
 import { Drawer } from "@/components/ui/drawer";
 import { Notice } from "@/components/ui/notice";
-import { SectionHeader } from "@/components/ui/section-header";
+import { TabHeader } from "@/components/ui/tab-header";
 import styles from "./page.module.css";
 
 function today() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
@@ -47,7 +47,7 @@ export default function PointsTransactionsPage() {
     { header: t("会员净变化", "Member net change"), numeric: true, cell: (r: PointsTransactionView) => number(r.pointsDelta) },
   ];
   return <main className={`space-y-3 ${styles.page}`}>
-    <div className="flex flex-wrap items-center justify-between gap-2"><SectionHeader title={t("发放与核销", "Issuance & redemption")} summary={query.data?.rows.length ?? 0} className="mb-0" /><div className="flex gap-2"><Button variant="ghost" aria-expanded={showStats} aria-controls="points-period-summary" onClick={() => setShowStats(!showStats)}>{t("统计概览", "Period summary")}</Button><Button variant="outline" disabled={!typeCode} onClick={() => setEventsOpen(true)}>{t("处理记录", "Processing records")}</Button></div></div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><TabHeader tabs={[{ key: "transactions", label: t("发放与核销", "Issuance & redemption") }]} value="transactions" onChange={() => {}} desc={t("查询积分发放与核销记录", "Inspect points issuance and redemption")} /><div className="flex gap-2"><Button variant="ghost" aria-expanded={showStats} aria-controls="points-period-summary" onClick={() => setShowStats(!showStats)}>{t("统计概览", "Period summary")}</Button><Button variant="outline" disabled={!typeCode} onClick={() => setEventsOpen(true)}>{t("处理记录", "Processing records")}</Button></div></div>
     <form className={styles.filters} onSubmit={e => { e.preventDefault(); if (validDates) searchRecords(); }}>
       <label>{t("积分名称", "Points name")}<Select value={typeCode} onChange={e => { setChosenType(e.target.value); resetSelection(); setEventsOpen(false); }}>{types.data?.map(x => <option key={x.typeCode} value={x.typeCode}>{x.name} · {x.typeCode}</option>)}</Select></label>
       <label>{t("业务方向", "Direction")}<Select value={direction} onChange={e => { setDirection(e.target.value as PointsTransactionDirection); resetSelection(); }}><option value="EARN">{t("发放", "Issuance")}</option><option value="REDEEM">{t("核销", "Redemption")}</option><option value="REVERSAL">{t("冲正 / 退回", "Reversal / refund")}</option></Select></label>

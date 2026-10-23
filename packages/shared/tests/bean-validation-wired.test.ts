@@ -97,6 +97,12 @@ describe("Bean Validation：注解要真的会触发", () => {
     expect(total, "一个带约束的 DTO 都没找到，说明解析器坏了而不是代码干净").toBeGreaterThan(0);
     const bad: string[] = [];
     for (const { path, src } of FILES) {
+      // @HttpExchange interfaces describe outbound clients, not MVC request handlers.
+      // Their server endpoints remain subject to this scan; internal endpoints explicitly
+      // validate after service-token authentication to preserve their HTTP error contract.
+      if (/\binterface\s+\w+/.test(src)
+          && /@(?:Get|Post|Put|Patch|Delete|Http)Exchange\b/.test(src)
+          && !/@(?:Get|Post|Put|Patch|Delete|Request)Mapping\b/.test(src)) continue;
       for (const m of src.matchAll(/(?:@[\w.]*Valid(?:ated)?\s+)?@RequestBody\s+(?:@[\w.]*Valid(?:ated)?\s+)?(?:final\s+)?([\w.]+)/g)) {
         const type = m[1].split(".").pop()!;
         if (!isConstrained(path, type)) continue;

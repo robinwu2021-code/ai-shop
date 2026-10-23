@@ -21,4 +21,6 @@ public class SvVoucher extends BaseEntity {
     private Long afterPrincipalMinor;
     private Long afterBonusMinor;
     private LocalDateTime occurredAt;
+    // Issuer attribution persisted by the issuer ledger; nullable for legacy records.
+    private String issuerNo;
 }

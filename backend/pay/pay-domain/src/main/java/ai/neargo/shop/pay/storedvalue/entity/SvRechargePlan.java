@@ -16,4 +16,7 @@ public class SvRechargePlan extends BaseEntity {
     private String currency;
     private String status;
     private String currentVersionNo;
+    // Issuer attribution persisted by the issuer ledger; nullable for legacy records.
+    private String issuerNo;
+    private String migratedReleaseNo;
 }

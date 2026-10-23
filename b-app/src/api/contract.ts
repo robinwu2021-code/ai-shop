@@ -1,3 +1,9 @@
+/** Delivery rule behavior for a matched region. */
+export type FreightRegionAction = "REJECT" | "SURCHARGE";
+
+/** Batch membership tag mutation. */
+export type MemberTagBatchAction = "ADD" | "REMOVE";
+
 import type { IssuerApi } from "./stored-value-issuers";
 import type { ManagementApi } from "./management-types";
 import type { OrderPointsEarning } from "@shared/types";
@@ -192,6 +198,7 @@ export type { LogisticsUpdateRecord } from "@shared/types";
 
 /** 门店收款方式。与后端 StorePaySettingService.PaySettingVO 同形 */
 export interface StorePaySetting {
+  /** 门店编号 */
   storeNo: string;
   /** 买家可选「到店付款」，钱当面付给商家、平台不代收 */
   offlinePayEnabled: boolean;
@@ -221,6 +228,7 @@ export type NotifyChannelCode = "WXSUB" | "WEBHOOK" | "SMS" | "MAIL" | "PUSH";
 
 /** 一个场景的一组开关。`switches` 的键序即页面顺序 */
 export interface NotifySceneSwitches {
+  /** 支付或业务场景编码 */
   scene: string;
   switches: Record<string, boolean>;
 }
@@ -270,6 +278,7 @@ export interface ExpressQuote {
  * （门店名 / 店主登录手机 / 门店地址）。`default*` 给端上当 placeholder，让商家看到「不填会用什么」。
  */
 export interface ShipSetting {
+  /** 门店编号 */
   storeNo: string;
   /** 寄件人。空 = 门店名 */
   senderName: string | null;
@@ -308,7 +317,9 @@ export interface StoreFreightTemplate {
   /** 满多少分包邮；0 = 不包邮 */
   freeThreshold: number;
   /** 地区规则：SURCHARGE 加收 surcharge 分；REJECT 不配送。按收货地址开头匹配省份 */
-  rules: { region: string; action: "REJECT" | "SURCHARGE"; surcharge: number }[];
+  rules: { region: string;
+  /** 本次执行的业务动作 */
+  action: FreightRegionAction; surcharge: number }[];
 }
 
 /** 取件单状态：已下单 / 已接单 / 已取件 / 已签收 / 已取消 / 失败 */
@@ -319,6 +330,7 @@ export interface ExpressPickup {
   pickupNo: string;
   carrier: string;
   carrierName: string;
+  /** 服务端业务状态编码 */
   status: ExpressPickupStatus;
   trackingNo: string | null;
   weightG: number;
@@ -327,6 +339,7 @@ export interface ExpressPickup {
   courierName: string | null;
   courierMobile: string | null;
   failReason: string | null;
+  /** 创建时间 */
   createdAt: number;
   /** 快递测试模式下的单：走快递100 测试环境，不真派快递员、运费不记欠款 */
   sandbox: boolean;
@@ -356,9 +369,12 @@ export interface Statement {
 
 /** 一行 = 一张结算单 */
 export interface StatementLine {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   settleNo: string;
+  /** 订单内部业务编号 */
   orderNo: string;
+  /** 子订单内部业务编号 */
   subOrderNo: string;
   grossMinor: number;
   commissionMinor: number;
@@ -370,6 +386,7 @@ export interface StatementLine {
   netMinor: number;
   /** 万分比。**逐行给** —— 只给合计的话商家每次都要来问客服 */
   commissionRate: number;
+  /** 服务端业务状态编码 */
   status: string;
   invoiceStatus: string;
   settledAt?: number | null;
@@ -404,6 +421,7 @@ export interface PlatformInvoiceTitle {
   companyName?: string;
   taxNo?: string;
   address?: string;
+  /** 会员手机号查询条件 */
   phone?: string;
   bankAccount?: string;
 }
@@ -456,8 +474,10 @@ export interface DepositTxn {
   amountMinor: number;
   /** 这笔之后的余额（分） */
   balanceAfterMinor: number;
+  /** 业务原因或阻断说明 */
   reason: string;
   operator: string;
+  /** 创建时间 */
   createdAt: string;
 }
 
@@ -475,6 +495,7 @@ export type PayoutAccountType = "PERSONAL_BANK_CARD" | "CORPORATE";
  */
 export interface PayoutAccount {
   accountNo: string;
+  /** 经营主体编号 */
   entityNo: string;
   accountType: PayoutAccountType;
   /** 户名。必须与营业执照主体名一致，否则这笔支出税上站不住 */
@@ -483,6 +504,7 @@ export interface PayoutAccount {
   accountMasked: string;
   bankName: string | null;
   bankBranch: string | null;
+  /** 服务端业务状态编码 */
   status: PayoutAccountStatus;
   /** 驳回原因，原样展示给店主 */
   auditRemark: string | null;
@@ -490,9 +512,11 @@ export interface PayoutAccount {
 }
 
 export interface GoodsGuess {
+  /** 面向用户的业务标题 */
   title: string;
   /** 一句话卖点。模型从包装上的广告语里提取，店主可改可弃 */
   subtitle: string;
+  /** 业务类型编码或类型摘要，按当前接口定义解释 */
   type: Goods["type"];
   /**
    * 类目编号。**后端已按候选表校验过** —— 模型给出的编号不在类目树里时是空串，
@@ -751,6 +775,7 @@ export type GoodsEntrySource = "MANUAL" | "QUICK_TEXT" | "ZIP" | "IMAGE";
 
 export interface GoodsRevision {
   revisionNo: number;
+  /** 服务端业务状态编码 */
   status: GoodsRevisionStatus;
   entrySource: GoodsEntrySource;
   /** 「改了哪几项」的摘要，给人看，不是结构化 diff。首版为 null */
@@ -829,6 +854,7 @@ import type {
 
 /** 缓存里的一条小区。坐标必有 —— 没坐标的在服务端就被滤掉了（买家定位落不进去） */
 export interface EstateItem {
+  /** 业务对象显示名称 */
   name: string;
   address?: string;
   latE6?: number | null;
@@ -838,6 +864,7 @@ export interface EstateItem {
 
 export interface EstateList {
   scopeCode: string;
+  /** 当前页业务记录 */
   items: EstateItem[];
   /** 这一片抓过没有。false = 从没抓过（不是「抓过但是空的」） */
   cached: boolean;
@@ -846,29 +873,85 @@ export interface EstateList {
 }
 
 export interface MerchantApi extends ManagementApi,IssuerApi {
-  mScopeCandidates(store:string,q:{keyword?:string;cursor?:string;size?:number}):Promise<SV.ScopeCandidatePage>;
-  mScopeSelectCustomer(store:string,body:{source:SV.ScopeSelectionSource}):Promise<SV.ScopeSelectedCustomer>;
-  mScopeEnrollMember(store:string,body:{phone:string;remark?:string;tagNos?:string[]}):Promise<SV.ScopeMemberSummary>;
-  mSvCandidates(q:{storeNo:string;phone?:string;keyword?:string}):Promise<PageResult<SV.SvCandidate>>;
-  mSvSelectCustomer(body:{storeNo:string;source:SV.SvSelectionSource}):Promise<SV.SvSelectedCustomer>;
+  mScopeCandidates(store:string,q:{
+  /** 关键词筛选条件 */
+  keyword?:string;
+  /** 上一页返回的分页游标，首屏可省略 */
+  cursor?:string;
+  /** 请求的每页记录数量 */
+  size?:number}):Promise<SV.ScopeCandidatePage>;
+  mScopeSelectCustomer(store:string,body:{
+  /** 顾客选择来源信息 */
+  source:SV.ScopeSelectionSource}):Promise<SV.ScopeSelectedCustomer>;
+  mScopeEnrollMember(store:string,body:{
+  /** 会员手机号查询条件 */
+  phone:string;
+  /** 操作备注 */
+  remark?:string;
+  /** 会员标签编号列表 */
+  tagNos?:string[]}):Promise<SV.ScopeMemberSummary>;
+  mSvCandidates(q:{
+  /** 门店编号 */
+  storeNo:string;
+  /** 会员手机号查询条件 */
+  phone?:string;
+  /** 关键词筛选条件 */
+  keyword?:string}):Promise<PageResult<SV.SvCandidate>>;
+  mSvSelectCustomer(body:{
+  /** 门店编号 */
+  storeNo:string;
+  /** 顾客选择来源信息 */
+  source:SV.SvSelectionSource}):Promise<SV.SvSelectedCustomer>;
   mSvConfirmOffline(body:SV.SvRechargeCreate,key:string):Promise<SV.SvProgress>;
   mSvContext(storeNo:string):Promise<SV.SvContext>;
-  mSvPlans(q:{storeNo:string;status?:string;cursor?:string;size?:number}):Promise<SV.SvPage<SV.SvPlan>>;
+  mSvPlans(q:{
+  /** 门店编号 */
+  storeNo:string;
+  /** 服务端业务状态编码 */
+  status?:string;
+  /** 上一页返回的分页游标，首屏可省略 */
+  cursor?:string;
+  /** 请求的每页记录数量 */
+  size?:number}):Promise<SV.SvPage<SV.SvPlan>>;
   mSvPlan(planNo:string,storeNo:string):Promise<SV.SvPlan>;
   mSvCreatePlan(body:SV.SvPlanCreate,key:string):Promise<SV.SvPlan>;
-  mSvPlanStatus(planNo:string,body:{storeNo:string;status:string;expectedRevision:number},key:string):Promise<SV.SvPlan>;
-  mSvAccounts(q:{storeNo:string;keyword?:string;cursor?:string;size?:number}):Promise<SV.SvPage<SV.SvAccount>>;
+  mSvPlanStatus(planNo:string,body:{
+  /** 门店编号 */
+  storeNo:string;
+  /** 服务端业务状态编码 */
+  status:string;
+  /** 调用方读取到的版本号，用于乐观锁校验 */
+  expectedRevision:number},key:string):Promise<SV.SvPlan>;
+  mSvAccounts(q:{
+  /** 门店编号 */
+  storeNo:string;
+  /** 关键词筛选条件 */
+  keyword?:string;
+  /** 上一页返回的分页游标，首屏可省略 */
+  cursor?:string;
+  /** 请求的每页记录数量 */
+  size?:number}):Promise<SV.SvPage<SV.SvAccount>>;
   mSvAccount(accountRef:string,storeNo:string):Promise<SV.SvAccount>;
   mSvRecords(q:SV.SvRecordsQuery):Promise<SV.SvPage<SV.SvRecord>>;
   mSvRecord(recordNo:string,storeNo:string):Promise<SV.SvRecord>;
-  mSvResolveRecharge(body:SV.SvRechargeCreate,key:string):Promise<{found:boolean;recharge:SV.SvProgress|null}>;
+  mSvResolveRecharge(body:SV.SvRechargeCreate,key:string):Promise<{
+  /** 是否找到原幂等命令的业务结果 */
+  found:boolean;
+  /** 充值处理结果 */
+  recharge:SV.SvProgress|null}>;
   mSvCancelCreate(body:SV.SvRechargeCreate,key:string):Promise<SV.SvProgress>;
   mSvCreateRecharge(body:SV.SvRechargeCreate,key:string):Promise<SV.SvProgress>;
   mSvRecharge(rechargeNo:string):Promise<SV.SvProgress>;
   mSvSubmit(rechargeNo:string,body:SV.SvReceipt,key:string):Promise<SV.SvProgress>;
   mSvReceive(rechargeNo:string,body:SV.SvReceive,key:string):Promise<SV.SvProgress>;
-  mSvCancel(rechargeNo:string,body:{expectedRevision:number;reason:string},key:string):Promise<SV.SvProgress>;
-  mResolveMemberCode(body:{memberCode:string;storeNo:string}):Promise<SV.SvCustomer>;
+  mSvCancel(rechargeNo:string,body:{
+  /** 调用方读取到的版本号，用于乐观锁校验 */
+  expectedRevision:number;
+  /** 业务原因或阻断说明 */
+  reason:string},key:string):Promise<SV.SvProgress>;
+  mResolveMemberCode(body:{memberCode:string;
+  /** 门店编号 */
+  storeNo:string}):Promise<SV.SvCustomer>;
 
   // ---- 账号与入驻（B-11.1）
   mLogin(req: LoginReq): Promise<MerchantLoginResp>;
@@ -916,7 +999,9 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
    * 做完（录商品、配范围、加员工），**补齐证照之前买家看不到、也下不了单**。
    * 之后补证照走的还是 `mApply`，服务端会认领这家店，店与货原样留着。
    */
-  mQuickStart(payload: { storeName: string; address?: string }): Promise<MerchantProfile>;
+  mQuickStart(payload: {
+  /** 门店显示名称 */
+  storeName: string; address?: string }): Promise<MerchantProfile>;
   /**
    * 密钥票据换会话（ADR-027）。只给自动化测试用：票据由本机私钥签发、60 秒一次性，
    * 线上默认关（接口 404）。拿到的 token 与正常登录同一种（btk_）。
@@ -1139,7 +1224,11 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
    */
   mSaveStoreCategories(
     storeNo: string,
-    items: { categoryNo: string; displayName?: string; sort?: number }[],
+    items: {
+  /** 商品分类编号 */
+  categoryNo: string;
+  /** 脱敏显示名称 */
+  displayName?: string; sort?: number }[],
   ): Promise<StoreCategory[]>;
 
   // ---- 员工与授权（B-11.10）
@@ -1194,9 +1283,13 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
    * ⚠️ **`biz:store:admin` 不在可勾列表里**，传了后端也会拒（70006）——
    * 那是「管人」的码，授出去等于让被授权的人能改所有人的授权。
    */
-  mCreateRole(payload: { name: string; perms: string[] }): Promise<MerchantRole>;
+  mCreateRole(payload: {
+  /** 业务对象显示名称 */
+  name: string; perms: string[] }): Promise<MerchantRole>;
   /** 改名 / 改权限。**预置角色会被拒**（10400），要改先复制一份 */
-  mUpdateRole(roleCode: string, payload: { name: string; perms: string[] }): Promise<MerchantRole>;
+  mUpdateRole(roleCode: string, payload: {
+  /** 业务对象显示名称 */
+  name: string; perms: string[] }): Promise<MerchantRole>;
   /** 删除。**还有人在用时拒**（10409）—— 删了那些人的权限凭空消失 */
   mDeleteRole(roleCode: string): Promise<void>;
 
@@ -1293,11 +1386,18 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
    * <p>**搜不到不是错误**：标准库对「张姐家的酱菜」永远无效，而那类货是这个平台的
    * 一部分主力。端上必须让「搜不到 → 直接自建」这条路一样顺。
    */
-  mSpuStdSearch(q: { keyword?: string; categoryNo?: string; limit?: number }): Promise<SpuStd[]>;
+  mSpuStdSearch(q: {
+  /** 关键词筛选条件 */
+  keyword?: string;
+  /** 商品分类编号 */
+  categoryNo?: string; limit?: number }): Promise<SpuStd[]>;
   mGoodsList(q: PageQuery & {
-    status?: GoodsStatus | "OUT_OF_STOCK";
-    keyword?: string;
-    categoryNo?: string;
+    /** 服务端业务状态编码 */
+  status?: GoodsStatus | "OUT_OF_STOCK";
+    /** 关键词筛选条件 */
+  keyword?: string;
+    /** 商品分类编号 */
+  categoryNo?: string;
   }): Promise<PageResult<Goods>>;
   mGoodsDetail(goodsNo: string): Promise<Goods>;
   mSaveGoods(payload: GoodsDraft): Promise<Goods>;
@@ -1553,7 +1653,9 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
    */
   mArchiveSpecDim(dimNo: string, archived: boolean): Promise<void>;
   /** 把当前编辑的规格组存为「我的常用」，下次建品直接套 */
-  mSaveSpecTemplate(payload: { name: string; options: string[] }): Promise<SpecTemplate>;
+  mSaveSpecTemplate(payload: {
+  /** 业务对象显示名称 */
+  name: string; options: string[] }): Promise<SpecTemplate>;
 
   // ---- 订单与配送（B-11.4）
   /** `status` 用 `OrderStatus` 而不是 `string` —— 松成 string 后，前端传个 "toShip"
@@ -1576,7 +1678,8 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
   mOrderWorklist(q: PageQuery): Promise<PageResult<MerchantOrderWorkItem>>;
   mOrderList(
     q: PageQuery & {
-      status?: OrderStatus;
+      /** 服务端业务状态编码 */
+  status?: OrderStatus;
       fulfillments?: string[];
       allStores?: boolean;
       from?: string;
@@ -1588,7 +1691,9 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
   mOrderInventoryTrace(orderNo: string): Promise<MerchantInventoryTrace>;
   mFulfillmentOptions(orderNo: string): Promise<MerchantFulfillmentOptions>;
   mChangeFulfillment(orderNo: string, req: {
-    targetFulfillment: string; reason: string; expectedVersion: number;
+    targetFulfillment: string;
+  /** 业务原因或阻断说明 */
+  reason: string; expectedVersion: number;
   }): Promise<MerchantFulfillmentChange>;
   /**
    * 物流轨迹（TDD-物流模块 B2）：比详情里的多承运商、单号、签收时间、到柜。不是快递 / 还没发货 → null。
@@ -1717,7 +1822,11 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
 
   mAfterSaleList(): Promise<AfterSale[]>;
   /** 服务端按当前门店分页，订单摘要与售后同页返回，避免只关联前 50 笔订单。 */
-  mAfterSaleWorklist(q?: { pending?: boolean; page?: number; size?: number }):
+  mAfterSaleWorklist(q?: { pending?: boolean;
+  /** 当前页码，从1开始 */
+  page?: number;
+  /** 请求的每页记录数量 */
+  size?: number }):
     Promise<PageResult<MerchantAfterSaleWorkItem>>;
   mAfterSaleDetail(afterSaleNo: string): Promise<MerchantAfterSaleWorkItem>;
   mActiveAfterSaleForOrder(orderNo: string): Promise<AfterSale | null>;
@@ -1796,11 +1905,21 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
    * @param q.storeNo 主体开了「按门店经营会员」时必填；按主体经营时留空
    */
   mMembers(q?: {
-    storeNo?: string; level?: string; source?: string; status?: string; phone?: string;
+    /** 门店编号 */
+  storeNo?: string; level?: string;
+  /** 顾客选择来源信息 */
+  source?: string;
+  /** 服务端业务状态编码 */
+  status?: string;
+  /** 会员手机号查询条件 */
+  phone?: string;
     /** 逗号分隔的标签号。**取交集**：选两个是「都要满足」 */
     tagNos?: string;
     lastOrderBefore?: number; lastOrderAfter?: number; spentMin?: number; spentMax?: number;
-    page?: number; size?: number;
+    /** 当前页码，从1开始 */
+  page?: number;
+  /** 请求的每页记录数量 */
+  size?: number;
   }): Promise<PageResult<Member>>;
 
   /** 四层人数 + 可触达 + 本月新增 + **未绑手机号因此未计入的买家数** */
@@ -1818,11 +1937,22 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
    * 已存在就返回那一条并把备注并进去，不报错：店员重复录入是常态。
    */
   mEnrollMember(payload: {
-    phone: string; remark?: string; tagNos?: string[]; storeNo?: string;
+    /** 会员手机号查询条件 */
+  phone: string;
+  /** 操作备注 */
+  remark?: string;
+  /** 会员标签编号列表 */
+  tagNos?: string[];
+  /** 门店编号 */
+  storeNo?: string;
   }): Promise<Member>;
 
   /** 改备注 / 拉黑与恢复。**线索不能被商家点成正式会员** —— 那只能由本人绑号触发 */
-  mPatchMember(memberNo: string, payload: { remark?: string; status?: string }): Promise<Member>;
+  mPatchMember(memberNo: string, payload: {
+  /** 操作备注 */
+  remark?: string;
+  /** 服务端业务状态编码 */
+  status?: string }): Promise<Member>;
 
   /** 批量打标 / 去标。先筛出人再一次性打 —— 一个个点是这一页最没必要的重复劳动 */
   mTagMembers(payload: { memberNos: string[]; add?: string[]; remove?: string[] }): Promise<void>;
@@ -1834,7 +1964,9 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
    */
   mBatchTagMembers(payload: {
     memberNos?: string[]; rule?: MemberSegmentRule; scopeStoreNo?: string;
-    tagNo: string; action?: "ADD" | "REMOVE"; confirm?: boolean;
+    tagNo: string;
+  /** 本次执行的业务动作 */
+  action?: MemberTagBatchAction; confirm?: boolean;
   }): Promise<BatchTagResult>;
 
   /**
@@ -1842,7 +1974,9 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
    * `forActivity` 只给命中数；`scene` 给了才判频次闸（发消息用）。
    */
   mAudiencePreview(payload: {
-    audiences: AudienceItem[]; scene?: string; forActivity?: boolean;
+    audiences: AudienceItem[];
+  /** 支付或业务场景编码 */
+  scene?: string; forActivity?: boolean;
   }): Promise<AudiencePreview>;
 
   /** 标签用在哪：引用它的活动与人群。停用 / 合并前先看 */
@@ -1857,7 +1991,9 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
   mCreateMemberTag(name: string): Promise<MemberTag>;
 
   /** `enabled` 非空 = 停用/恢复；否则按 `name` 改名。**系统标签两样都不许** */
-  mEditMemberTag(tagNo: string, payload: { name?: string; enabled?: boolean }): Promise<MemberTag>;
+  mEditMemberTag(tagNo: string, payload: {
+  /** 业务对象显示名称 */
+  name?: string; enabled?: boolean }): Promise<MemberTag>;
 
   /**
    * 合并两个标签。
@@ -1893,7 +2029,9 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
    * 传 `segmentNo` 是改；不传且同名视为改同一个（不报重名错）。
    */
   mSaveMemberSegment(payload: {
-    segmentNo?: string; name: string; scopeStoreNo?: string; rule: MemberSegmentRule;
+    segmentNo?: string;
+  /** 业务对象显示名称 */
+  name: string; scopeStoreNo?: string; rule: MemberSegmentRule;
   }): Promise<MemberSegment>;
 
   mRemoveMemberSegment(segmentNo: string): Promise<void>;
@@ -1993,11 +2131,17 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
    * 群发试算。**先算后发** —— 这是唯一会打扰真实用户的动作。
    * `scene` 决定频次闸的档位：`NOTICE` 公告 / `WAKEUP` 唤回 / `COUPON` 发券通知。
    */
-  mPlanReach(payload: { segmentNo?: string; audiences?: AudienceItem[]; scene: string }): Promise<ReachPlan>;
+  mPlanReach(payload: { segmentNo?: string; audiences?: AudienceItem[];
+  /** 支付或业务场景编码 */
+  scene: string }): Promise<ReachPlan>;
 
   /** 真发。跳过分布要显示在结果里，不能只报一句「发送成功」 */
   mSendReach(payload: {
-    segmentNo?: string; audiences?: AudienceItem[]; scene: string; title: string; body: string;
+    segmentNo?: string; audiences?: AudienceItem[];
+  /** 支付或业务场景编码 */
+  scene: string;
+  /** 面向用户的业务标题 */
+  title: string; body: string;
     /** 选人面板上那句受众描述，原样记进批次头 —— 「发出去的」列表直接显示它 */
     audienceDesc?: string;
   }): Promise<ReachResult>;
@@ -2130,7 +2274,11 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
    *               调出方可以是另一个库位，不传的话拿到的是当前门店的数，
    *               商家看到「可用 30」，点下去 `INV_INSUFFICIENT`
    */
-  mStockBalances(q?: { filter?: string; locationId?: string; size?: number }): Promise<StockBalance[]>;
+  mStockBalances(q?: {
+  /** 服务端实际采用的查询条件 */
+  filter?: string; locationId?: string;
+  /** 请求的每页记录数量 */
+  size?: number }): Promise<StockBalance[]>;
   /**
    * 跨店总览：一件货一行，把它在**全部库位**的分布收在一起。
    *
@@ -2139,7 +2287,11 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
    *
    * @param filter `shortage`（默认，只给至少一个库位缺货的）· `all`
    */
-  mStockCrossStore(q?: { filter?: string; size?: number }): Promise<StockCrossStoreRow[]>;
+  mStockCrossStore(q?: {
+  /** 服务端实际采用的查询条件 */
+  filter?: string;
+  /** 请求的每页记录数量 */
+  size?: number }): Promise<StockCrossStoreRow[]>;
   /**
    * 开单时挑货用。**与 `mStockBalances` 问的不是一件事**：
    * 那一条问「我有多少」（读余额），这一条问「哪件货」（读物料）。
@@ -2147,24 +2299,42 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
    * 余额行是按需建的，一件从没进过货的物料没有那一行 —— 读余额的话它不存在，
    * 于是**商家没法给它记第一笔进货**。进货、盘点两处必须走这一条。
    */
-  mStockPickable(q?: { q?: string; size?: number }): Promise<StockBalance[]>;
+  mStockPickable(q?: { q?: string;
+  /** 请求的每页记录数量 */
+  size?: number }): Promise<StockBalance[]>;
 
   /** 供应商档案。**挑供应商传 activeOnly=true** —— 停用的不该出现在新单据里 */
-  mSuppliers(q?: { keyword?: string; activeOnly?: boolean }): Promise<Supplier[]>;
-  mSupplierCreate(body: { name: string; shortName?: string; contactName?: string; contactPhone?: string; remark?: string }): Promise<{ supplierNo: string }>;
-  mSupplierUpdate(no: string, body: { name?: string; shortName?: string; contactName?: string; contactPhone?: string; remark?: string }): Promise<void>;
+  mSuppliers(q?: {
+  /** 关键词筛选条件 */
+  keyword?: string; activeOnly?: boolean }): Promise<Supplier[]>;
+  mSupplierCreate(body: {
+  /** 业务对象显示名称 */
+  name: string; shortName?: string; contactName?: string; contactPhone?: string;
+  /** 操作备注 */
+  remark?: string }): Promise<{ supplierNo: string }>;
+  mSupplierUpdate(no: string, body: {
+  /** 业务对象显示名称 */
+  name?: string; shortName?: string; contactName?: string; contactPhone?: string;
+  /** 操作备注 */
+  remark?: string }): Promise<void>;
   mSupplierActive(no: string, body: { active: boolean }): Promise<void>;
   /** 单件明细：各库位分布 + 条码货号 */
   mStockItem(itemId: string): Promise<StockItemDetail>;
   /** 变动明细。每一行都带操作人、单据号、变动前后 —— 「昨天还有 20 袋今天剩 3 袋」从这里回答 */
-  mStockLedger(q?: { itemId?: string; docNo?: string; cursor?: number; size?: number }): Promise<StockLedgerPage>;
+  mStockLedger(q?: { itemId?: string; docNo?: string;
+  /** 上一页返回的分页游标，首屏可省略 */
+  cursor?: number;
+  /** 请求的每页记录数量 */
+  size?: number }): Promise<StockLedgerPage>;
   /**
    * 直接改数（把实存改成点出来的数）。
    *
    * **它不是「设置库存」** —— 后端按盘点走：生成一张单、落一行流水。
    * 差异不为 0 时 `reasonCode` 必填，否则这个月报损了多少永远汇总不出来。
    */
-  mStockAdjust(req: { itemId: string; countedQty: number; reasonCode?: string }): Promise<void>;
+  mStockAdjust(req: { itemId: string; countedQty: number;
+  /** 不可用原因编码 */
+  reasonCode?: string }): Promise<void>;
   /**
    * 设安全库存 —— 缺货预警的那条线。低于它，这件货在库存页标红、进「缺货」那一档。
    *
@@ -2244,11 +2414,17 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
   mTransferVoid(no: string): Promise<void>;
 
   /** 单据中心。`kind` 空=全部，否则 IN / OUT / COUNT / TRANSFER */
-  mStockDocuments(q?: { kind?: string; no?: string; size?: number }): Promise<StockDocument[]>;
+  mStockDocuments(q?: { kind?: string; no?: string;
+  /** 请求的每页记录数量 */
+  size?: number }): Promise<StockDocument[]>;
   /** 月报。`month` 形如 2026-08 */
   mStockMonthly(month: string): Promise<StockMonthly>;
   /** 榜单。`type` fast 动销 / slow 滞销 */
-  mStockRanking(q?: { type?: string; size?: number }): Promise<StockRank[]>;
+  mStockRanking(q?: {
+  /** 业务类型编码或类型摘要，按当前接口定义解释 */
+  type?: string;
+  /** 请求的每页记录数量 */
+  size?: number }): Promise<StockRank[]>;
 
   /** 库位与仓。**在途是一个真实的库位**，不是「暂时没有」 */
   mStockLocations(): Promise<StockLocation[]>;
@@ -2265,11 +2441,17 @@ export interface MerchantApi extends ManagementApi,IssuerApi {
   mInvSetCategory(categoryNo: string, body: { managed: boolean; confirm?: boolean }): Promise<InvModeChange>;
   mGoodsInvModes(goodsNos: string[]): Promise<GoodsInvMode[]>;
   /** 单件优先于品类。判据与品类开关同一套 */
-  mGoodsSetInvMode(goodsNo: string, body: { mode: InvMode; confirm?: boolean }): Promise<InvModeChange>;
+  mGoodsSetInvMode(goodsNo: string, body: {
+  /** 规则模式编码 */
+  mode: InvMode; confirm?: boolean }): Promise<InvModeChange>;
 
   /** 本店库存同步状态 */
   mStockSync(storeNo: string): Promise<StockSyncState>;
-  mStockSyncRecords(storeNo: string, q?: { skuNo?: string; page?: number; size?: number }): Promise<StockSyncOperationRecord[]>;
+  mStockSyncRecords(storeNo: string, q?: { skuNo?: string;
+  /** 当前页码，从1开始 */
+  page?: number;
+  /** 请求的每页记录数量 */
+  size?: number }): Promise<StockSyncOperationRecord[]>;
   /** 开 / 关同步。没做期初对齐时打开返回 70069 */
   mSetStockSync(storeNo: string, enabled: boolean): Promise<StockSyncState>;
 

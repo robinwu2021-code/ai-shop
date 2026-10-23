@@ -392,12 +392,15 @@ export type RegionMatchSource = "ADDRESS" | "COORDS";
 export interface CoverageHealth {
   /** 门店统计摘要 */
   stores: {
-    total: number;
+    /** 匹配条件的总记录数量 */
+  total: number;
     withCoords: number;
     /** 没标点的那些。**给明细不只给数字** —— 只给一个数，运营下一步无从做起 */
     missing: {
-      storeNo: string;
-      storeName: string;
+      /** 门店编号 */
+  storeNo: string;
+      /** 门店显示名称 */
+  storeName: string;
       /** 从这里跳到商家去催他标点。**刻意不带商家名**（取名字要绕数据域） */
       merchantNo: string;
       /** 他以为自己限了多少米，而实际一米都没限 —— 后果有多大就看这个数 */
@@ -406,17 +409,20 @@ export interface CoverageHealth {
   };
   /** 地址**只给聚合数**：那是个人信息，看总数就够判断分母有多脏 */
   addresses: {
-    total: number;
+    /** 匹配条件的总记录数量 */
+  total: number;
     withCoords: number;
   };
   /** 社区统计摘要 */
   communities: {
-    total: number;
+    /** 匹配条件的总记录数量 */
+  total: number;
     withCoords: number;
     /** 没坐标的聚落**谁也匹配不到** —— 而它看起来一切正常：建档成功、列表里有 */
     missing: {
       communityNo: string;
-      name: string;
+      /** 业务对象显示名称 */
+  name: string;
     }[];
   };
 }

@@ -23,4 +23,7 @@ public class SvAccount extends BaseEntity {
     private Long heldPrincipalMinor;
     private Long heldBonusMinor;
     private Long accountSeq;
+    // Issuer attribution persisted by the issuer ledger; nullable for legacy records.
+    private String issuerNo;
+    private String issuerVersionNo;
 }

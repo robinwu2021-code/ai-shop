@@ -18,6 +18,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { NAV } from "./nav";
+import { readDeferredDelivery } from "../../scripts/lib/backend-ui-delivery.mjs";
 
 const BACKEND = join(process.cwd(), "..", "backend");
 
@@ -34,10 +35,30 @@ function walk(dir: string, out: string[] = []): string[] {
 /** `@ConditionalOnInventory` 是 `shop.inventory.enabled` 的别名（见那个注解本身） */
 const ALIAS: Record<string, string> = { ConditionalOnInventory: "shop.inventory.enabled" };
 
-function gatesOfOpsControllers(): Map<string, string[]> {
+const norm = (path: string) => path.replace(/\$\{[^}]*\}/g, "*")
+  .replace(/\{[^}]*\}/g, "*").replace(/\/+$/, "");
+function endpoints(src: string) {
+  return [...src.matchAll(/@(Get|Post|Put|Delete|Patch)Mapping\(\s*(?:value\s*=\s*)?"(\/ops[^"]*)"/g)]
+    .map(m => ({ method: m[1].toUpperCase(), path: m[2] }));
+}
+const controllers = walk(BACKEND).map(file => ({file, src: readFileSync(file, "utf8")}));
+const handlers = controllers.flatMap(c => endpoints(c.src));
+const http = join(process.cwd(), "lib/api/https");
+const called = new Set([...readdirSync(http).map(file => join(http, file)), join(process.cwd(), "lib/stream.ts")]
+  .flatMap(file => [...readFileSync(file, "utf8").matchAll(/["`](\/ops\/[^"`\n]*)/g)].map(m => norm(m[1]))));
+// The same strict stage validator as the orphan gate: real contracts, live handlers,
+// a frontend plan and no existing client connection are all required.
+const deferred = readDeferredDelivery(join(process.cwd(), ".."), "docs/api/backend-ops-ui-delivery.json", {
+  app: "ops-web", prefix: "/ops", handlers,
+  missing: handlers.filter(e => !called.has(norm(e.path))),
+});
+function requiresMenu(rows: {method: string; path: string}[], staged: Set<string>): boolean {
+  return !rows.length || rows.some(e => !staged.has(`${e.method} ${norm(e.path)}`));
+}
+function gatesOfOpsControllers(onlyDelivered = false): Map<string, string[]> {
   const out = new Map<string, string[]>();
-  for (const f of walk(BACKEND)) {
-    const src = readFileSync(f, "utf8");
+  for (const {file: f, src} of controllers) {
+    if (onlyDelivered && !requiresMenu(endpoints(src), deferred)) continue;
     // 只看运营端：类里出现 /ops/ 路径的才算（B 端、开放平台不走这套菜单）
     if (!/"\/ops\//.test(src)) continue;
     let gate: string | null = null;
@@ -64,8 +85,16 @@ const declared = () => {
 };
 
 describe("运行时开关 ↔ 菜单登记", () => {
+  it("a controller needs a menu unless every endpoint has a validated deferred delivery entry", () => {
+    const staged = new Set(["GET /ops/example/*"]);
+    expect(requiresMenu([{method:"GET",path:"/ops/example/{id}"}], staged)).toBe(false);
+    expect(requiresMenu([{method:"GET",path:"/ops/example/{id}"},
+      {method:"POST",path:"/ops/example/{id}"}], staged)).toBe(true);
+    expect(requiresMenu([{method:"GET",path:"/ops/example/new"}], staged)).toBe(true);
+    expect(requiresMenu([], staged)).toBe(true);
+  });
   it("后端每个门着运营端端点的开关，菜单里都要有登记 —— 否则整域关掉时界面毫无信号", () => {
-    const backend = gatesOfOpsControllers();
+    const backend = gatesOfOpsControllers(true);
     const missing = [...backend.keys()].filter((g) => !declared().has(g))
       .map((g) => `${g}（门着 ${backend.get(g)!.join("、")}）`);
     expect(missing, `在 lib/nav.ts 对应的叶子上加 gated："${missing.join("、")}"`).toEqual([]);

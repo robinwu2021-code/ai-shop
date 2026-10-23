@@ -43,7 +43,8 @@ import type {
   GroupRequest,
   AfterSaleType,
   FrequentItem,
-  Merchant,
+  MerchantView,
+  FavoriteStoreView,
   ReorderResult,
   StoreHome,
   StoreCard,
@@ -51,7 +52,7 @@ import type {
   StoreChoice,
   Message,
   Review,
-  VisitedMerchant,
+  VisitedMerchantView,
   User,
   UserCard,
   CategoryType,
@@ -114,8 +115,11 @@ export interface PayInit {
 
 export interface GoodsQuery extends PageQuery {
   merchantNo?: string;
+  /** 业务类型编码或类型摘要，按当前接口定义解释 */
   type?: CategoryType;
+  /** 商品分类编号 */
   categoryNo?: string;
+  /** 关键词筛选条件 */
   keyword?: string;
   communityNo?: string;
   /**
@@ -137,6 +141,7 @@ export interface GoodsQuery extends PageQuery {
 }
 
 export interface CreateOrderReq {
+  /** 当前页业务记录 */
   items: { goodsNo: string; skuNo: string; qty: number }[];
   fulfillment: FulfillmentType;
   pickupNo?: string;
@@ -156,7 +161,10 @@ export interface CreateOrderReq {
   /** 这个主体我在逛哪家店（门户里记下的）。不传 = 自提点所属店 → 默认店 → 最近的服务店 */
   storeChoices?: StoreChoice[];
   /** 逐商家收货地址覆盖（TDD-多地址下单）：每家店送到哪个地址。不传 = 全部用 addressId */
-  addressChoices?: { merchantNo: string; addressId: string; storeNo?: string }[];
+  addressChoices?: { merchantNo: string; addressId: string;
+  /** 门店编号 */
+  storeNo?: string }[];
+  /** 操作备注 */
   remark?: string;
   /** 幂等 key，防重复提交 */
   idempotencyKey: string;
@@ -384,20 +392,26 @@ export interface ShopApi {
    * 页签由两者组合成谓词（「待取货」= FULFILLING + 自提类）。
    * 此前只有一个 `status`，值里混着 ARRIVED/SHIPPED 这种「状态 × 履约」的组合。
    */
-  orderList(q: PageQuery & { status?: string; fulfillments?: string[] }): Promise<PageResult<Order>>;
+  orderList(q: PageQuery & {
+  /** 服务端业务状态编码 */
+  status?: string; fulfillments?: string[] }): Promise<PageResult<Order>>;
   /**
    * 首页推广位。**是运营位，不是自动热销榜** —— 社区里 SKU 就那么几十个，
    * 按销量自动排出来的「热卖」和「全部商品」几乎是同一个列表，那样没有意义。
    * 它的价值在于平台/商家能主动推某样东西（新店冷启动、滞销清仓、节日主推）。
    * 一期后台配置还没有，先用销量兜底；接上配置时只换这个接口的实现，端上不动。
    */
-  promotedGoods(q?: { communityNo?: string; regionCode?: string; size?: number }): Promise<Goods[]>;
+  promotedGoods(q?: { communityNo?: string; regionCode?: string;
+  /** 请求的每页记录数量 */
+  size?: number }): Promise<Goods[]>;
   /**
    * 推荐门店（运营位）。和 promotedGoods 同一套心智：**运营意图，不是销量事实**。
    * 用途是新店冷启动 —— 一家刚入驻的店没有订单、没有评分，
    * 在任何按销量/评分排的列表里都永远排在最后，靠自然流量起不来。
    */
-  promotedMerchants(q?: { communityNo?: string; size?: number }): Promise<Merchant[]>;
+  promotedMerchants(q?: { communityNo?: string;
+  /** 请求的每页记录数量 */
+  size?: number }): Promise<MerchantView[]>;
   /**
    * 申请开票（ADR-017 §3.4 条件 2）。**平台开给消费者**，不是商家开。
    *
@@ -405,9 +419,11 @@ export interface ShopApi {
    * 被驳回后可以改抬头重新提交（后端改的是同一条，不插新的）。
    */
   applyInvoice(req: {
-    orderNo: string;
+    /** 订单内部业务编号 */
+  orderNo: string;
     titleType: InvoiceTitleType;
-    title: string;
+    /** 面向用户的业务标题 */
+  title: string;
     taxNo?: string;
     email: string;
   }): Promise<InvoiceRequest>;
@@ -581,7 +597,8 @@ export interface ShopApi {
   requestDetail(requestNo: string): Promise<GroupRequest>;
   createRequest(payload: {
     pickupNo: string;
-    title: string;
+    /** 面向用户的业务标题 */
+  title: string;
     desc: string;
     expectQty: number;
     budgetMinor?: number;
@@ -594,10 +611,12 @@ export interface ShopApi {
   confirmRequest(requestNo: string): Promise<GroupRequest>;
 
   // ---- 商家
-  merchantList(q?: { keyword?: string; communityNo?: string }): Promise<Merchant[]>;
+  merchantList(q?: {
+  /** 关键词筛选条件 */
+  keyword?: string; communityNo?: string }): Promise<MerchantView[]>;
   /** 我消费过的商家，按最近下单时间倒序 */
-  visitedMerchants(): Promise<VisitedMerchant[]>;
-  merchantDetail(merchantNo: string): Promise<Merchant>;
+  visitedMerchants(): Promise<VisitedMerchantView[]>;
+  merchantDetail(merchantNo: string): Promise<MerchantView>;
 
   // ---- 门店主页（**一期主获客路径**，ADR-004 决策 3）
   /** 扫码/分享进店。`from=QR` 时写进店归因，决定订单 trafficSource 与费率档 */
@@ -629,7 +648,7 @@ export interface ShopApi {
   /** 我的收藏 · 商品：收藏时间倒序，下架的也在（onSale=false） */
   favoriteGoods(page?: number, size?: number): Promise<PageResult<Goods>>;
   /** 我的收藏 · 店铺：只有收藏，不混入常去店 */
-  favoriteStores(): Promise<Merchant[]>;
+  favoriteStores(): Promise<FavoriteStoreView[]>;
   /**
    * 我的店：买过的门店一直在，只逛过的留 30 天。**单位是门店** ——
    * 同一主体的两家店是两张卡。游客回空数组（不是 401）。
@@ -656,9 +675,12 @@ export interface ShopApi {
     merchantNo?: string;
     /** 门户的评价页签按门店看 */
     storeNo?: string;
-    filter?: ReviewFilter;
-    page?: number;
-    size?: number;
+    /** 服务端实际采用的查询条件 */
+  filter?: ReviewFilter;
+    /** 当前页码，从1开始 */
+  page?: number;
+    /** 请求的每页记录数量 */
+  size?: number;
   }): Promise<Review[]>;
 
   /**
@@ -699,7 +721,8 @@ export interface ShopApi {
   toggleReviewLike(reviewNo: string): Promise<Review>;
   /** 发表评价（订单完成后） */
   createReview(payload: {
-    orderNo: string;
+    /** 订单内部业务编号 */
+  orderNo: string;
     goodsNo: string;
     rating: number;
     content: string;

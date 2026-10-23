@@ -48,7 +48,8 @@ export interface AppointmentSlotOpenReq {
 export interface StoreFulfillmentSaveReq {
   /** 全量：四路各一条。channel 值域 = 商家可配四路，服务端在写入口拦越界 */
   channels: Array<{
-    channel: string;
+    /** 消息或支付通道编码 */
+  channel: string;
     enabled: boolean;
     /** 仅 EXPRESS：运费模板号，空 = 平台默认 */
     templateNo?: string | null;
@@ -251,15 +252,23 @@ export interface DescribeGoodsRes {
    * <p>是挑不是写：候选由平台的类目模板给定，模型只能在里面选，后端返回前还会逐个核验。
    * <b>同样是草稿</b> —— 端上摆成待确认，商家点了才落到表单里。
    */
-  params: Array<{ dimNo: string; name: string; code: string; label: string }>;
+  params: Array<{ dimNo: string;
+  /** 业务对象显示名称 */
+  name: string; code: string; label: string }>;
 }
 
 export interface GoodsTextParse {
   /** 规格维度草稿（LLM 归类，P1 空） */
-  specs: { name: string; options: string[] }[];
+  specs: {
+  /** 业务对象显示名称 */
+  name: string; options: string[] }[];
   /** 参数草稿（LLM 从类目模板挑，P1 空）。source=llm/rule */
   params: {
-    dimNo: string; name: string; label: string; source: string; confidence: number;
+    dimNo: string;
+  /** 业务对象显示名称 */
+  name: string; label: string;
+  /** 顾客选择来源信息 */
+  source: string; confidence: number;
     /** 原文叫法（净重）。`name` 是对上之后的标准名（净含量）。端上靠它找同义的旧自由参数 */
     rawName?: string;
   }[];
@@ -361,7 +370,9 @@ export interface DescribeGoodsReq {
    * 只发中文名与中文值（`{ name: "产地", label: "山西运城临猗" }`），不发 dimNo/code：
    * 模型认得前者。售后类参数后端会挡掉（那是我们兑不了的承诺）。
    */
-  params?: Array<{ name: string; label: string }>;
+  params?: Array<{
+  /** 业务对象显示名称 */
+  name: string; label: string }>;
 }
 
 export interface RecognizeGoodsReq {
@@ -810,36 +821,166 @@ export interface StorePointStatementLinesQuery extends StorePointStatementQuery 
 
 // P1 organization request bodies and query strings; authenticated identity is never a wire field.
 export type {GrantCommand as ManagementGrantReq,BrandDraft as ManagementBrandCreateReq,BrandEdit as ManagementBrandEditReq,BrandChangeSubmit as ManagementBrandChangeSubmitReq} from './management-types';
-export interface ManagementSpaceCreateReq {name:string;sourceAccountNo:string}
-export interface ManagementResourcesQuery {resourceType?:string;view?:'EFFECTIVE'|'GRANTS';actorNo?:string;cursor?:string;size?:number}
-export interface ManagementRevokeQuery {expectedRevision:number;reason:string}
-export interface ManagementPageQuery {cursor?:string;size?:number}
-export interface ManagementStoresQuery extends ManagementPageQuery {brandNo?:string}
-export interface ManagementMerchantsQuery {managementNo:string;payChannel?:string;payScene?:string;storeNo?:string}
-export interface ManagementBrandsQuery extends ManagementPageQuery {managementNo:string;status?:string;keyword?:string}
-export interface ManagementBrandStatusReq {targetStatus:'ACTIVE'|'INACTIVE';expectedRevision:number;reason:string}
-export interface ManagementStoreContextQuery {managementNo:string}
-export interface ManagementBrandCheckReq {managementNo:string;toBrandNo:string|null}
-export interface ManagementBrandDecisionReq {decision:'APPROVE'|'REJECT';expectedRevision:number;reason:string}
+export interface ManagementSpaceCreateReq {
+  /** 业务对象显示名称 */
+  name:string;
+  /** 创建管理空间所使用的来源账号编号 */
+  sourceAccountNo:string}
+export interface ManagementResourcesQuery {
+  /** 被授权资源类型编码 */
+  resourceType?:string;
+  /** 资源查询视图编码 */
+  view?:'EFFECTIVE'|'GRANTS';
+  /** 被授权管理账号编号 */
+  actorNo?:string;
+  /** 上一页返回的分页游标，首屏可省略 */
+  cursor?:string;
+  /** 请求的每页记录数量 */
+  size?:number}
+export interface ManagementRevokeQuery {
+  /** 调用方读取到的版本号，用于乐观锁校验 */
+  expectedRevision:number;
+  /** 业务原因或阻断说明 */
+  reason:string}
+export interface ManagementPageQuery {
+  /** 上一页返回的分页游标，首屏可省略 */
+  cursor?:string;
+  /** 请求的每页记录数量 */
+  size?:number}
+export interface ManagementStoresQuery extends ManagementPageQuery {
+  /** 品牌编号 */
+  brandNo?:string}
+export interface ManagementMerchantsQuery {
+  /** 经营管理空间编号 */
+  managementNo:string;
+  /** 支付渠道编码 */
+  payChannel?:string;
+  /** 支付场景编码 */
+  payScene?:string;
+  /** 门店编号 */
+  storeNo?:string}
+export interface ManagementBrandsQuery extends ManagementPageQuery {
+  /** 经营管理空间编号 */
+  managementNo:string;
+  /** 服务端业务状态编码 */
+  status?:string;
+  /** 关键词筛选条件 */
+  keyword?:string}
+export interface ManagementBrandStatusReq {
+  /** 待切换的业务状态 */
+  targetStatus:'ACTIVE'|'INACTIVE';
+  /** 调用方读取到的版本号，用于乐观锁校验 */
+  expectedRevision:number;
+  /** 业务原因或阻断说明 */
+  reason:string}
+export interface ManagementStoreContextQuery {
+  /** 经营管理空间编号 */
+  managementNo:string}
+export interface ManagementBrandCheckReq {
+  /** 经营管理空间编号 */
+  managementNo:string;
+  /** 目标品牌编号；解除绑定时为空 */
+  toBrandNo:string|null}
+export interface ManagementBrandDecisionReq {
+  /** 审批决定编码 */
+  decision:'APPROVE'|'REJECT';
+  /** 调用方读取到的版本号，用于乐观锁校验 */
+  expectedRevision:number;
+  /** 业务原因或阻断说明 */
+  reason:string}
 
 export type {SvPlanCreate,SvRechargeCreate,SvReceipt,SvReceive,SvRecordsQuery} from './stored-value-types';
 import type {SvSelectionSource} from './stored-value-types';
-export interface SvCandidatesQuery {storeNo:string;phone?:string;keyword?:string}
-export interface SvSelectCustomerReq {storeNo:string;source:SvSelectionSource}
-export interface SvStoreQuery {storeNo:string}
-export interface SvPlansQuery {storeNo:string;status?:string;cursor?:string;size?:number}
-export interface SvAccountsQuery {storeNo:string;keyword?:string;cursor?:string;size?:number}
-export interface SvPlanStatusReq {storeNo:string;status:string;expectedRevision:number}
-export interface SvCancelReq {expectedRevision:number;reason:string}
+export interface SvCandidatesQuery {
+  /** 门店编号 */
+  storeNo:string;
+  /** 会员手机号查询条件 */
+  phone?:string;
+  /** 关键词筛选条件 */
+  keyword?:string}
+export interface SvSelectCustomerReq {
+  /** 门店编号 */
+  storeNo:string;
+  /** 顾客选择来源信息 */
+  source:SvSelectionSource}
+export interface SvStoreQuery {
+  /** 门店编号 */
+  storeNo:string}
+export interface SvPlansQuery {
+  /** 门店编号 */
+  storeNo:string;
+  /** 服务端业务状态编码 */
+  status?:string;
+  /** 上一页返回的分页游标，首屏可省略 */
+  cursor?:string;
+  /** 请求的每页记录数量 */
+  size?:number}
+export interface SvAccountsQuery {
+  /** 门店编号 */
+  storeNo:string;
+  /** 关键词筛选条件 */
+  keyword?:string;
+  /** 上一页返回的分页游标，首屏可省略 */
+  cursor?:string;
+  /** 请求的每页记录数量 */
+  size?:number}
+export interface SvPlanStatusReq {
+  /** 门店编号 */
+  storeNo:string;
+  /** 服务端业务状态编码 */
+  status:string;
+  /** 调用方读取到的版本号，用于乐观锁校验 */
+  expectedRevision:number}
+export interface SvCancelReq {
+  /** 调用方读取到的版本号，用于乐观锁校验 */
+  expectedRevision:number;
+  /** 业务原因或阻断说明 */
+  reason:string}
 
-export interface ScopeCandidateQuery {keyword?:string;cursor?:string;size?:number}
+export interface ScopeCandidateQuery {
+  /** 关键词筛选条件 */
+  keyword?:string;
+  /** 上一页返回的分页游标，首屏可省略 */
+  cursor?:string;
+  /** 请求的每页记录数量 */
+  size?:number}
 import type {ScopeSelectionSource} from './stored-value-types';
-export interface ScopeSelectCustomerReq {source:ScopeSelectionSource}
-export interface ScopeMemberCreateReq {phone:string;remark?:string;tagNos?:string[]}
+export interface ScopeSelectCustomerReq {
+  /** 顾客选择来源信息 */
+  source:ScopeSelectionSource}
+export interface ScopeMemberCreateReq {
+  /** 会员手机号查询条件 */
+  phone:string;
+  /** 操作备注 */
+  remark?:string;
+  /** 会员标签编号列表 */
+  tagNos?:string[]}
 
 // P3 issuer configuration and store-scoped recharge contracts.
 export type {IssuerConfigureRequest} from './stored-value-issuers';
-export interface SvIssuerManagementQuery {managementNo:string}
-export interface SvIssuerEntitiesQuery {managementNo:string;scopeType:'STORE'|'BRAND';scopeNo:string}
-export interface SvIssuerRouteQuery {managementNo:string;payChannel?:string;payScene?:string}
-export interface SvIssuerRechargeOptionsQuery {customerRef:string;scopeType?:'STORE';cursor?:string;size?:number}
+export interface SvIssuerManagementQuery {
+  /** 经营管理空间编号 */
+  managementNo:string}
+export interface SvIssuerEntitiesQuery {
+  /** 经营管理空间编号 */
+  managementNo:string;
+  /** 储值发行范围类型：STORE或BRAND */
+  scopeType:'STORE'|'BRAND';
+  /** 储值发行范围编号 */
+  scopeNo:string}
+export interface SvIssuerRouteQuery {
+  /** 经营管理空间编号 */
+  managementNo:string;
+  /** 支付渠道编码 */
+  payChannel?:string;
+  /** 支付场景编码 */
+  payScene?:string}
+export interface SvIssuerRechargeOptionsQuery {
+  /** 当前数据域签发的顾客选择引用 */
+  customerRef:string;
+  /** 储值发行范围类型：STORE或BRAND */
+  scopeType?:'STORE';
+  /** 上一页返回的分页游标，首屏可省略 */
+  cursor?:string;
+  /** 请求的每页记录数量 */
+  size?:number}

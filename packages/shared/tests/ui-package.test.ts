@@ -245,6 +245,7 @@ describe("小程序的块间缝：顶层组件也要在名单上", () => {
     // ⚠️ **改名要同时改这里。** 2026-09-08 把 c 端的 `biz-region-picker` 改成
     //    `biz-address-region` 之后这条闸门当场变红 —— 而它报的是「这个件不在
     //    小程序块间缝名单上」，与「改名」毫无关系。名单里的字符串是改名的暗礁。
+    "StoredValueRechargeSheet", // root is sh-sheet: fixed overlay, never an in-flow block
     "biz-cart-fab", "phone-gate", "biz-region-picker", "biz-address-region", "biz-pickup-sheet",
     "biz-item-picker", "biz-supplier-picker",
     // 切店幕布：position fixed 整屏盖住，与 sh-dialog 同一层
@@ -309,9 +310,18 @@ describe("小程序的块间缝：顶层组件也要在名单上", () => {
     expect(listed.size).toBeGreaterThan(8);
   });
 
+  const runtimeTag = (tag: string) => tag.replace(/[A-Z]/g, (c, i) => (i ? "-" : "") + c.toLowerCase());
+  it("resolves Vue import casing to Mini Program tags without accepting unregistered blocks", () => {
+    expect(runtimeTag("ShPointsEarning")).toBe("sh-points-earning");
+    expect(listed.has(runtimeTag("StoredValueRecordList"))).toBe(true);
+    expect(listed.has(runtimeTag("UnregisteredBlock"))).toBe(false);
+    const sheet = readFileSync(join(ROOT, "b-app/src/pages/stored-value/components/StoredValueRechargeSheet.vue"), "utf8");
+    expect(sheet).toMatch(/<template>\s*<sh-sheet\b/);
+  });
+
   it("页面顶层的在流组件，都在小程序那份名单里", () => {
     const offenders = tops
-      .filter(({ tag }) => !BUILTIN.has(tag) && !OVERLAY.has(tag) && !listed.has(tag))
+      .filter(({ tag }) => !BUILTIN.has(tag) && !OVERLAY.has(tag) && !listed.has(runtimeTag(tag)))
       .map(({ app, file, tag }) => `${app}/${file}  <${tag}>`);
     expect(
       [...new Set(offenders)],

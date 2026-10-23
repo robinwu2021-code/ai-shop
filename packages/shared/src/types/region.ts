@@ -41,10 +41,18 @@ export interface GeoTip {
 /** 跨级搜索（P1）：区划命中带从省到父级的路径，聚落命中带所在街道路径 */
 export interface RegionSearchResult {
   /** 命中的行政区划，带从省到父级的路径 */
-  regions: Array<{ regionCode: string; level: string; name: string; path: string }>;
+  regions: Array<{ regionCode: string; level: string;
+  /** 业务对象显示名称 */
+  name: string;
+  /** 分类层级路径 */
+  path: string }>;
   /** 命中的社区 */
   communities: Array<{
-    communityNo: string; name: string; regionCode?: string | null; path: string;
+    communityNo: string;
+  /** 业务对象显示名称 */
+  name: string; regionCode?: string | null;
+  /** 分类层级路径 */
+  path: string;
     /** ESTATE 小区 / VILLAGE 村。判「这一条底下还有没有下一级」用它，名字这时已经是口语名了 */
     kind?: string | null;
     /**
@@ -68,10 +76,12 @@ export interface RegionSearchResult {
    */
   villages?: Array<{
     regionCode: string;
-    name: string;
+    /** 业务对象显示名称 */
+  name: string;
     /** 它挂的街道码（9 位）。提报要挂到这下面 */
     streetCode: string;
-    path: string;
+    /** 分类层级路径 */
+  path: string;
     latE6?: number | null;
     lngE6?: number | null;
     /** 是不是村委会（服务端存的）。判「这一条给不给 ›」用它 */

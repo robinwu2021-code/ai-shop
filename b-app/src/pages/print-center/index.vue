@@ -88,7 +88,7 @@ onPullDownRefresh(async()=>{await load();uni.stopPullDownRefresh();});
   <template v-else>
    <view class="sh-card">
     <view class="sh-row sh-row--between"><text class="txt-strong">{{ t('printCenter.title') }}</text><button size="mini" :disabled="loading" @tap="load">{{ t('printCenter.refresh') }}</button></view>
-    <view v-if="orderNo" class="txt-muted">{{ t('printCenter.order') }} {{ orderNo }}</view>
+    <view v-if="orderNo" class="sh-muted">{{ t('printCenter.order') }} {{ orderNo }}</view>
     <view v-if="summary" class="print-summary">
      <text>{{ t('printCenter.status.'+summary.generationState) }}</text>
      <text>{{ t('printCenter.summary',{expected:summary.expectedCount,confirmed:summary.confirmedCount,resolved:summary.replacementResolvedCount,unknown:summary.unknownCount}) }}</text>
@@ -97,35 +97,35 @@ onPullDownRefresh(async()=>{await load();uni.stopPullDownRefresh();});
     <view class="sh-row print-nav"><button v-if="merchant.can('biz:print:device')" size="mini" @tap="navigate(ROUTES.printDevices)">{{ t('printCenter.devices') }}</button><button v-if="merchant.can('biz:print:config')" size="mini" @tap="navigate(ROUTES.printTemplates)">{{ t('printCenter.templates') }}</button></view>
    </view>
    <view v-if="merchant.can('biz:print:simulate')" class="sh-card">
-    <text class="txt-strong">{{ t('printCenter.simulate') }}</text><text class="print-hint">{{ t('printCenter.simulationHint') }}</text>
+    <text class="txt-strong">{{ t('printCenter.simulate') }}</text><text class="sh-muted print-hint">{{ t('printCenter.simulationHint') }}</text>
     <picker :range="sceneNames" @change="changeScene"><view class="sh-cell">{{ selectedTitle }} ▾</view></picker>
     <picker :range="SIMULATION_FIXTURES.map(x=>String(t('printCenter.fixture.'+x)))" @change="fixtureChanged"><view class="sh-cell">{{ t('printCenter.fixture.'+fixture) }} ▾</view></picker>
     <view class="sh-row"><button size="mini" :class="width===58?'print-selected':''" @tap="width=58">58mm</button><button size="mini" :class="width===80?'print-selected':''" @tap="width=80">80mm</button><button size="mini" :disabled="busy" @tap="simulate">{{ t('printCenter.runSimulation') }}</button></view>
    </view>
    <view v-if="error" class="sh-card print-error" role="alert">{{ error }}</view>
-   <view v-if="latestOperation" class="sh-card txt-muted">{{ t('printCenter.operation') }} {{ latestOperation.operationNo }} · {{ t('printCenter.status.'+latestOperation.status) }}<text class="print-hint">{{ t('printCenter.operationHint') }}</text></view>
+   <view v-if="latestOperation" class="sh-card sh-muted">{{ t('printCenter.operation') }} {{ latestOperation.operationNo }} · {{ t('printCenter.status.'+latestOperation.status) }}<text class="sh-muted print-hint">{{ t('printCenter.operationHint') }}</text></view>
    <view class="sh-row print-tabs"><button v-for="item in tabs" :key="item.key" size="mini" :class="tab===item.key?'print-selected':''" @tap="tab=item.key">{{ t('printCenter.tabs.'+item.key) }}</button></view>
    <template v-if="tab==='jobs'">
     <input v-model="reason" class="sh-card" :placeholder="String(t('printCenter.reason'))" :maxlength="60" />
     <view v-for="job in jobs" :key="job.jobNo" class="sh-card">
      <view class="sh-row sh-row--between"><text class="txt-strong">{{ job.jobNo }}</text><text>{{ t('printCenter.status.'+job.status) }}</text></view>
-     <text class="print-hint">{{ job.scene }} · {{ job.jobKind }} · {{ job.printerNo }}</text>
+     <text class="sh-muted print-hint">{{ job.scene }} · {{ job.jobKind }} · {{ job.printerNo }}</text>
      <text v-if="job.status==='UNKNOWN'" class="print-error print-hint">{{ t('printCenter.unknownHint') }}</text>
-     <text v-if="job.resolutionStatus==='RESOLVED'" class="print-hint">{{ t('printCenter.replacedHint') }}</text>
+     <text v-if="job.resolutionStatus==='RESOLVED'" class="sh-muted print-hint">{{ t('printCenter.replacedHint') }}</text>
      <view class="sh-row print-actions"><button v-for="action in printJobActions(job,merchant.can)" :key="action" size="mini" :disabled="busy" @tap="jobAction(job,action)">{{ t('printCenter.action.'+action) }}</button><button v-if="merchant.can('biz:print:export')" size="mini" :disabled="busy" @tap="exportSource('JOB',job.jobNo,job.revision)">{{ t('printCenter.exportPdf') }}</button></view>
     </view>
-    <view v-if="!jobs.length&&!loading" class="sh-card txt-muted">{{ t('printCenter.empty') }}</view>
+    <view v-if="!jobs.length&&!loading" class="sh-card sh-muted">{{ t('printCenter.empty') }}</view>
    </template>
    <template v-if="tab==='requests'"><view v-for="item in requests" :key="item.requestNo" class="sh-card"><text>{{ item.requestNo }} · {{ t('printCenter.status.'+item.status) }}</text><text v-if="item.blockCode" class="print-hint print-error">{{ t('printCenter.blockedHint') }} {{ item.blockCode }}</text><button v-if="merchant.can('biz:print:resolve')&&['PENDING','BLOCKED'].includes(item.status)" size="mini" :disabled="busy" @tap="run(()=>commands.run('J04',{expectedRevision:item.revision,reason:'CONFIGURATION_FIXED'},{requestNo:item.requestNo}))">{{ t('printCenter.retryGeneration') }}</button></view></template>
-   <template v-if="tab==='simulations'"><view v-for="item in simulations" :key="item.simulationNo" class="sh-card"><text class="txt-strong">{{ t(simulationOutcomeLabel(item.status)) }}</text><text class="print-hint">{{ item.simulationNo }} · {{ t('printCenter.fixture.'+item.fixtureCode) }}</text><text class="print-hint">{{ t('printCenter.simulationHint') }}</text><button v-if="merchant.can('biz:print:export')" size="mini" :disabled="busy" @tap="exportSource('SIMULATION',item.simulationNo,item.revision)">{{ t('printCenter.exportPdf') }}</button></view></template>
-   <template v-if="tab==='exports'"><view v-for="item in exports" :key="item.exportNo" class="sh-card"><text class="txt-strong">{{ item.exportNo }} · {{ t('printCenter.status.'+item.status) }}</text><text class="print-hint">{{ item.pageCount }} {{ t('printCenter.pages') }} · {{ t('printCenter.pdfHint') }}</text><button v-if="item.status==='READY'" size="mini" @tap="download(item)">{{ t('printCenter.download') }}</button></view></template>
+   <template v-if="tab==='simulations'"><view v-for="item in simulations" :key="item.simulationNo" class="sh-card"><text class="txt-strong">{{ t(simulationOutcomeLabel(item.status)) }}</text><text class="sh-muted print-hint">{{ item.simulationNo }} · {{ t('printCenter.fixture.'+item.fixtureCode) }}</text><text class="sh-muted print-hint">{{ t('printCenter.simulationHint') }}</text><button v-if="merchant.can('biz:print:export')" size="mini" :disabled="busy" @tap="exportSource('SIMULATION',item.simulationNo,item.revision)">{{ t('printCenter.exportPdf') }}</button></view></template>
+   <template v-if="tab==='exports'"><view v-for="item in exports" :key="item.exportNo" class="sh-card"><text class="txt-strong">{{ item.exportNo }} · {{ t('printCenter.status.'+item.status) }}</text><text class="sh-muted print-hint">{{ item.pageCount }} {{ t('printCenter.pages') }} · {{ t('printCenter.pdfHint') }}</text><button v-if="item.status==='READY'" size="mini" @tap="download(item)">{{ t('printCenter.download') }}</button></view></template>
    <template v-if="tab==='incidents'"><view v-for="item in incidents" :key="item.incidentNo" class="sh-card"><text>{{ item.targetNo }} · {{ item.incidentType }} · {{ t('printCenter.status.'+item.status) }}</text><button v-if="item.status==='OPEN'" size="mini" :disabled="busy" @tap="acknowledge(item)">{{ t('printCenter.acknowledge') }}</button></view></template>
    <view class="sh-row print-pager"><button size="mini" :disabled="page<=1||loading" @tap="next(-1)">{{ t('printCenter.previous') }}</button><text>{{ page }} / {{ Math.max(1,Math.ceil(total/20)) }}</text><button size="mini" :disabled="page*20>=total||loading" @tap="next(1)">{{ t('printCenter.next') }}</button></view>
   </template>
  </sh-scaffold>
 </template>
 <style scoped>
-.print-hint{display:block;color:var(--sh-text-secondary,#666);font-size:24rpx;margin-top:12rpx;overflow-wrap:anywhere}.print-error{color:var(--sh-danger,#c0392b)}.print-summary{display:flex;flex-direction:column;gap:12rpx;margin-top:16rpx}.print-nav,.print-tabs,.print-actions{flex-wrap:wrap;gap:12rpx;margin-top:16rpx}.print-tabs{padding:12rpx}.print-pager{justify-content:space-between;margin:24rpx}.print-actions button,.print-nav button{margin:0}
+.print-hint{display:block;color:var(--sh-sub);margin-top:12rpx;overflow-wrap:anywhere}.print-error{color:var(--sh-danger)}.print-summary{display:flex;flex-direction:column;gap:12rpx;margin-top:16rpx}.print-nav,.print-tabs,.print-actions{flex-wrap:wrap;gap:12rpx;margin-top:16rpx}.print-tabs{padding:12rpx}.print-pager{justify-content:space-between;margin:24rpx}.print-actions button,.print-nav button{margin:0}
 </style>
 
-<style scoped>.print-selected{background:#1677ff;color:white;}</style>
+<style scoped>.print-selected{background:var(--sh-primary);color:var(--sh-on-primary);}</style>

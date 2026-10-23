@@ -15,12 +15,12 @@ import { ROUTES } from "@shared/utils/constants";
 import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
 import { buildShareMessage, buildShareTimeline, shareImageUrl } from "@shared/ports/share";
-import type { Goods, Merchant, Review } from "@shared/types";
+import type { Goods, MerchantView, Review } from "@shared/types";
 
 const { t } = useI18n();
 const cart = useCartStore();
 const user = useUserStore();
-const merchant = ref<Merchant | null>(null);
+const merchant = ref<MerchantView | null>(null);
 const goods = ref<Goods[]>([]);
 const reviews = ref<Review[]>([]);
 const tab = ref<"goods" | "reviews">("goods");
@@ -189,11 +189,7 @@ onShareTimeline(() =>
         ></biz-share-act>
       </view>
 
-      <view v-if="merchant.serviceScope || tags.length" class="tags sh-wrap">
-        <!-- 经营范围排在自定义标签之前：它不是修饰词，是**这家店的货能不能卖给我** -->
-        <!-- serviceScope 已废弃（ADR-013 起销售范围在商品上），接口不再给 —— 没有就不画，
-             否则真机上露出的是词条键「serviceScope.undefined」 -->
-        <text v-if="merchant.serviceScope" class="sh-chip sh-chip--primary">{{ $t(`serviceScope.${merchant.serviceScope}`) }}</text>
+      <view v-if="tags.length" class="tags sh-wrap">
         <text v-for="tg in tags" :key="tg" class="sh-chip sh-chip--primary">{{ tg }}</text>
       </view>
 

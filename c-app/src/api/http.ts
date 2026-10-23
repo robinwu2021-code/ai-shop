@@ -75,7 +75,8 @@ import type {
   WxPhoneLoginReq,
   WxPhoneLoginResp,
   FrequentItem,
-  Merchant,
+  MerchantView,
+  FavoriteStoreView,
   ReorderResult,
   StoreHome,
   StoreCard,
@@ -92,7 +93,7 @@ import type {
   MerchantApplyStatus,
   User,
   UserCard,
-  VisitedMerchant,
+  VisitedMerchantView,
 } from "@shared/types";
 
 /** 按端点表发起请求。`p` 是路径参数，`d` 是 query(GET) 或 body(POST) */
@@ -197,13 +198,15 @@ export const httpApi: ShopApi = {
   payMethods: (orderNo) => call<PayMethodList>("payMethods", { orderNo }),
   payResult: (orderNo) => call<Order>("payResult", { orderNo }),
   payOrder: (orderNo, payChannel) => call<PayInit>("payOrder", { orderNo }, { payChannel }),
-  orderList: (q: PageQuery & { status?: string }) =>
+  orderList: (q: PageQuery & {
+  /** 服务端业务状态编码 */
+  status?: string }) =>
     call<PageResult<Order>>("orderList", undefined, { ...q } satisfies OrderListQuery),
 
   promotedGoods: (q) =>
     call<Goods[]>("promotedGoods", undefined, { ...q } satisfies PromotedGoodsQuery),
   promotedMerchants: (q) =>
-    call<Merchant[]>("promotedMerchants", undefined, { ...q } satisfies PromotedMerchantsQuery),
+    call<MerchantView[]>("promotedMerchants", undefined, { ...q } satisfies PromotedMerchantsQuery),
   applyInvoice: (req) => call<InvoiceRequest>("applyInvoice", undefined, req),
   myInvoices: () => call<InvoiceRequest[]>("myInvoices"),
   invoiceOfOrder: (orderNo) => call<InvoiceRequest | null>("invoiceOfOrder", { orderNo }),
@@ -277,9 +280,9 @@ export const httpApi: ShopApi = {
   /*
    * **分页信封要在这里拆掉。**
    *
-   * 契约写的是 `Promise<Merchant[]>`，而 `/mp/merchant` 实际回的是
+   * 契约写的是 `Promise<MerchantView[]>`，而 `/mp/merchant` 实际回的是
    * MyBatis-Plus 的分页对象 `{records: [...], total, ...}`。
-   * 网络边界上的泛型是**断言不是校验** —— `call<Merchant[]>` 不会核对，
+   * 网络边界上的泛型是**断言不是校验** —— `call<MerchantView[]>` 不会核对，
    * TypeScript 也拦不住，于是对象一路流进页面。
    *
    * 后果不是「列表空着」，是**整页空白**：`merchants` 页把它交给
@@ -290,7 +293,9 @@ export const httpApi: ShopApi = {
    * 两种形状都收：后端哪天改回数组也不会再坏一次。
    */
   merchantList: (q) =>
-    call<Merchant[] | { records?: Merchant[] }>("merchantList", undefined, {
+    call<MerchantView[] | {
+  /** 当前页业务记录列表 */
+  records?: MerchantView[] }>("merchantList", undefined, {
       ...q,
     } satisfies MerchantListQuery).then((r) =>
       Array.isArray(r) ? r : (r?.records ?? []),
@@ -310,15 +315,15 @@ export const httpApi: ShopApi = {
     http.post<{ favorited: boolean }>(buildPath(ENDPOINTS.toggleFavoriteStore.path, { merchantNo }), {}),
   toggleFavoriteGoods: (goodsNo) => call<{ favorited: boolean }>("toggleFavoriteGoods", { goodsNo }),
   favoriteGoods: (page = 1, size = 20) => call<PageResult<Goods>>("favoriteGoods", undefined, { page, size }),
-  favoriteStores: () => call<Merchant[]>("favoriteStores"),
+  favoriteStores: () => call<FavoriteStoreView[]>("favoriteStores"),
   myStores: (q) => call<StoreCard[]>("myStores", undefined, { ...q } satisfies MyStoresQuery),
   storeNearby: (q) =>
     call<PageResult<StoreCard>>("storeNearby", undefined, { ...q } satisfies StoreNearbyQuery),
   storeEnter: (no, req) =>
     call<void>("storeEnter", { no }, { ...req } satisfies StoreEnterReq),
 
-  merchantDetail: (merchantNo) => call<Merchant>("merchantDetail", { merchantNo }),
-  visitedMerchants: () => call<VisitedMerchant[]>("visitedMerchants"),
+  merchantDetail: (merchantNo) => call<MerchantView>("merchantDetail", { merchantNo }),
+  visitedMerchants: () => call<VisitedMerchantView[]>("visitedMerchants"),
   myMerchantApply: () => call<MerchantApplyStatus | null>("myMerchantApply"),
   masterData: () => call<MasterData>("masterData"),
   merchantApply: (payload) =>

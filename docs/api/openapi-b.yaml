@@ -293,6 +293,7 @@ components:
                 type: "string"
               reason:
                 type: "string"
+                description: "业务原因或阻断说明"
             required:
               - "code"
               - "reason"
@@ -473,6 +474,7 @@ components:
                 type: "number"
               orderNo:
                 type: "string"
+                description: "订单内部业务编号"
             required:
               - "nickname"
               - "qty"
@@ -522,6 +524,7 @@ components:
                 type: "string"
               title:
                 type: "string"
+                description: "面向用户的业务标题"
               spec:
                 type: "string"
               qty:
@@ -593,6 +596,7 @@ components:
                 type: "string"
               title:
                 type: "string"
+                description: "面向用户的业务标题"
               spec:
                 type: "string"
               qty:
@@ -688,6 +692,37 @@ components:
         - "name"
       additionalProperties: false
       description: "一家承运方（`CarrierVO`）。**归履约域维护，进销存只读**。"
+    InventoryState:
+      type: "string"
+      enum:
+        - "UNMANAGED"
+        - "INITIALIZING"
+        - "MAPPED"
+      description: "Inventory onboarding state."
+    InventoryAccountingMode:
+      type: "string"
+      const: "PAYMENT_DEDUCT"
+      description: "Current backend accounting mode; inventory is deducted at payment."
+    StockSyncOperationStatus:
+      type: "string"
+      enum:
+        - "PROCESSING"
+        - "WAITING"
+        - "FAILED"
+        - "BLOCKED"
+        - "COMPLETED"
+      description: "Persisted stock synchronization operation state."
+    StockAlignmentStatus:
+      type: "string"
+      enum:
+        - "PREVIEW"
+        - "PROCESSING"
+        - "PARTIAL"
+        - "BLOCKED"
+        - "COMPLETED"
+        - "STALE"
+        - "EXPIRED"
+      description: "Persisted stock alignment batch state."
     StockOverview:
       type: "object"
       properties:
@@ -703,18 +738,11 @@ components:
             - "null"
           description: "Physical stock unit; null when the SKU has no configured unit."
         inventoryState:
-          type: "string"
-          enum:
-            - "UNMANAGED"
-            - "INITIALIZING"
-            - "MAPPED"
+          "$ref": "#/components/schemas/InventoryState"
           description: "Inventory onboarding state: unmanaged, initializing or mapped."
         accountingMode:
-          type: "string"
-          enum:
-            - "PAYMENT_DEDUCT"
-            - "HANDOFF_DEDUCT"
-          description: "Point at which physical inventory is deducted: payment or handoff."
+          "$ref": "#/components/schemas/InventoryAccountingMode"
+          description: "Point at which physical inventory is deducted; currently payment only."
         onHand:
           type:
             - "number"
@@ -754,6 +782,7 @@ components:
           properties:
             scopeType:
               type: "string"
+              description: "储值发行范围类型：STORE或BRAND"
             scopeRef:
               type: "string"
             ruleType:
@@ -1396,6 +1425,7 @@ components:
                 type: "string"
               name:
                 type: "string"
+                description: "业务对象显示名称"
               specText:
                 type: "string"
               qty:
@@ -1585,6 +1615,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         operationNo:
           type: "string"
           description: "Identifier of this stock synchronization operation."
@@ -1595,13 +1626,7 @@ components:
           type: "string"
           description: "Business reason recorded for the synchronization."
         status:
-          type: "string"
-          enum:
-            - "PROCESSING"
-            - "WAITING"
-            - "FAILED"
-            - "BLOCKED"
-            - "COMPLETED"
+          "$ref": "#/components/schemas/StockSyncOperationStatus"
           description: "Current processing state of the operation."
         result:
           anyOf:
@@ -1609,6 +1634,7 @@ components:
               properties:
                 applied:
                   type: "boolean"
+                  description: "变更是否已经应用到有效关系"
                 skipped:
                   type:
                     - "string"
@@ -1619,6 +1645,7 @@ components:
                     - "null"
                 available:
                   type: "number"
+                  description: "当前环境是否支持此能力"
                 before:
                   type: "number"
                 after:
@@ -1712,6 +1739,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         batchNo:
           type: "string"
           description: "Identifier of this inventory alignment batch."
@@ -1730,15 +1758,7 @@ components:
             - "null"
           description: "Expiry time in milliseconds; null when the preview has no expiry."
         status:
-          type: "string"
-          enum:
-            - "PREVIEW"
-            - "PROCESSING"
-            - "PARTIAL"
-            - "BLOCKED"
-            - "COMPLETED"
-            - "STALE"
-            - "EXPIRED"
+          "$ref": "#/components/schemas/StockAlignmentStatus"
           description: "Current preview or execution state of the batch."
         completed:
           type: "number"
@@ -1758,6 +1778,7 @@ components:
                 type: "string"
               title:
                 type: "string"
+                description: "面向用户的业务标题"
               spec:
                 type:
                   - "string"
@@ -1780,6 +1801,7 @@ components:
                   - "null"
               status:
                 type: "string"
+                description: "服务端业务状态编码"
               operationNo:
                 type: "string"
               errorCode:
@@ -2001,6 +2023,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         couponNo:
           type: "string"
           description: "券单号"
@@ -2472,6 +2495,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         campaignNo:
           type: "string"
           description: "活动单号"
@@ -2834,6 +2858,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         issueNo:
           type: "string"
           description: "这一批发放的编号"
@@ -2852,8 +2877,10 @@ components:
             properties:
               type:
                 type: "string"
+                description: "业务类型编码或类型摘要，按当前接口定义解释"
               value:
                 type: "string"
+                description: "当前规则配置值"
             required:
               - "type"
               - "value"
@@ -2875,6 +2902,7 @@ components:
             properties:
               reason:
                 type: "string"
+                description: "业务原因或阻断说明"
               count:
                 type: "number"
             required:
@@ -3075,6 +3103,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         fissionNo:
           type: "string"
           description: "活动号。端上只用来回传，不显示"
@@ -3451,6 +3480,7 @@ components:
             properties:
               reason:
                 type: "string"
+                description: "业务原因或阻断说明"
               count:
                 type: "number"
             required:
@@ -3557,6 +3587,7 @@ components:
             properties:
               reason:
                 type: "string"
+                description: "业务原因或阻断说明"
               count:
                 type: "number"
             required:
@@ -3593,6 +3624,7 @@ components:
             properties:
               reason:
                 type: "string"
+                description: "业务原因或阻断说明"
               count:
                 type: "number"
             required:
@@ -3808,6 +3840,7 @@ components:
             properties:
               reason:
                 type: "string"
+                description: "业务原因或阻断说明"
               count:
                 type: "number"
             required:
@@ -4023,6 +4056,39 @@ components:
         - "expiresAt"
       additionalProperties: false
       description: "商家扫码得到的短期顾客引用，只在原主体、门店和操作人范围内可用。"
+    OrderPointsEarningState:
+      type: "string"
+      enum:
+        - "NONE"
+        - "EXPECTED"
+        - "PROCESSING"
+        - "PENDING"
+        - "AVAILABLE"
+        - "RETRYABLE"
+        - "MANUAL"
+        - "SKIPPED"
+        - "RECLAIMED"
+      description: "Projected order earning state, independent of ledger credit."
+    OrderPointsRedemptionState:
+      type: "string"
+      enum:
+        - "NONE"
+        - "PROCESSING"
+        - "HELD"
+        - "RELEASED"
+        - "CONSUMED"
+        - "REFUND_PROCESSING"
+        - "RETURNED"
+        - "PARTIALLY_RETURNED"
+      description: "Projected order redemption and refund progress."
+    OrderPointsRefundState:
+      type: "string"
+      enum:
+        - "NONE"
+        - "PROCESSING"
+        - "MANUAL"
+        - "COMPLETED"
+      description: "Projected order points refund progress."
     StorePointTypeStatus:
       type: "string"
       enum:
@@ -4040,6 +4106,12 @@ components:
     StorePointType:
       type: "object"
       properties:
+        earningPaused:
+          type: "boolean"
+          description: "Whether order earning is temporarily paused for this points type."
+        orderDefault:
+          type: "boolean"
+          description: "Whether this type is the server-selected default for order points earning."
         name:
           type: "string"
           description: "积分名称"
@@ -4166,18 +4238,22 @@ components:
                 type:
                   - "string"
                   - "null"
+                description: "原凭证展示单号"
               direction:
                 type:
                   - "string"
                   - "null"
+                description: "流水收支方向编码"
               businessRef:
                 type:
                   - "string"
                   - "null"
+                description: "来源业务引用"
               orderNo:
                 type:
                   - "string"
                   - "null"
+                description: "订单内部业务编号"
               holderType:
                 type: "string"
                 const: "STORE"
@@ -4572,6 +4648,181 @@ components:
         - "type"
         - "verified"
       additionalProperties: false
+    MerchantView:
+      type: "object"
+      properties:
+        merchantNo:
+          type: "string"
+          description: "Merchant identity."
+        name:
+          type: "string"
+          description: "Displayed merchant name."
+        logo:
+          type: "string"
+          description: "Merchant logo URL."
+        rating:
+          type: "number"
+          description: "Aggregate rating on the 0–5 scale."
+        verified:
+          type: "boolean"
+          description: "Whether merchant qualification is verified."
+        breachCount:
+          type: "number"
+          description: "Historical failures to honor an accepted offer."
+        type:
+          "$ref": "#/components/schemas/MerchantType"
+          description: "Registered merchant subject type."
+        desc:
+          type: "string"
+          description: "Merchant introduction."
+        salesCount:
+          type: "number"
+          description: "Completed sales count."
+        ratingCount:
+          type: "number"
+          description: "Number of ratings, distinguishing an unrated store from a low score."
+        goodsCount:
+          type: "number"
+          description: "Number of currently offered goods."
+        address:
+          type:
+            - "string"
+            - "null"
+          description: "Store address when supplied."
+        openHours:
+          type:
+            - "string"
+            - "null"
+          description: "Opening-hours description when supplied."
+        joinedAt:
+          type: "number"
+          description: "Joined time in Unix milliseconds."
+        tags:
+          type: "array"
+          items:
+            type: "string"
+          description: "Public display tags."
+        scores:
+          type: "object"
+          properties:
+            goods:
+              type: "number"
+              description: "Goods rating."
+            service:
+              type: "number"
+              description: "Service rating."
+            speed:
+              type: "number"
+              description: "Fulfillment speed rating."
+          required:
+            - "goods"
+            - "service"
+            - "speed"
+          additionalProperties: false
+          description: "Rating breakdown returned with merchant detail."
+        selfOperated:
+          type: "boolean"
+          description: "Platform-operated seller disclosure."
+        favoriteCount:
+          type: "number"
+          description: "Number of users who favorited the merchant."
+      required:
+        - "merchantNo"
+        - "name"
+        - "logo"
+        - "rating"
+        - "verified"
+        - "breachCount"
+        - "type"
+        - "desc"
+        - "salesCount"
+        - "ratingCount"
+        - "goodsCount"
+        - "address"
+        - "openHours"
+        - "joinedAt"
+        - "tags"
+        - "scores"
+        - "selfOperated"
+        - "favoriteCount"
+      additionalProperties: false
+      description: "Buyer merchant detail/list response, matching MerchantVO; service coverage belongs to goods."
+    VisitedMerchantView:
+      type: "object"
+      properties:
+        merchantNo:
+          type: "string"
+          description: "Merchant identity."
+        name:
+          type: "string"
+          description: "Displayed merchant name."
+        logo:
+          type: "string"
+          description: "Merchant logo URL."
+        rating:
+          type: "number"
+          description: "Aggregate rating on the 0–5 scale."
+        verified:
+          type: "boolean"
+          description: "Whether merchant qualification is verified."
+        breachCount:
+          type: "number"
+          description: "Historical failures to honor an accepted offer."
+        orderCount:
+          type: "number"
+          description: "Number of the current buyer's orders with this merchant."
+        lastOrderAt:
+          type: "number"
+          description: "Latest order time in Unix milliseconds."
+        selfOperated:
+          type: "boolean"
+          description: "Platform-operated seller disclosure."
+      required:
+        - "merchantNo"
+        - "name"
+        - "logo"
+        - "rating"
+        - "verified"
+        - "breachCount"
+        - "orderCount"
+        - "lastOrderAt"
+        - "selfOperated"
+      additionalProperties: false
+      description: "Purchase-history merchant projection, matching VisitedMerchantVO without detail-only fields."
+    FavoriteStoreView:
+      type: "object"
+      properties:
+        merchantNo:
+          type: "string"
+          description: "Operating merchant identity."
+        name:
+          type: "string"
+          description: "Displayed store name."
+        logo:
+          type: "string"
+          description: "Store logo URL."
+        rating:
+          type: "number"
+          description: "Store rating on the 0–5 scale; this response has no rating-count field."
+        verified:
+          type: "boolean"
+          description: "Whether merchant qualification is verified."
+        breachCount:
+          type: "number"
+          description: "Historical failures to honor an accepted offer."
+        storeNo:
+          type: "string"
+          description: "Actual favorite store identity used for navigation."
+      required:
+        - "merchantNo"
+        - "name"
+        - "logo"
+        - "rating"
+        - "verified"
+        - "breachCount"
+        - "storeNo"
+      additionalProperties: false
+      description: "Favorite store projection, matching user.StoreBriefVO and retaining the actual store identity."
     SettleAccountType:
       type: "string"
       enum:
@@ -4852,6 +5103,12 @@ components:
     MerchantProfile:
       type: "object"
       properties:
+        industry:
+          type: "string"
+          description: "行业编码，用于商家工作台能力选择"
+        description:
+          type: "string"
+          description: "对外展示的商家介绍"
         merchantNo:
           type: "string"
           description: "商家单号"
@@ -5631,10 +5888,12 @@ components:
           type:
             - "string"
             - "null"
+          description: "结算批次展示单号，业务操作仍使用原编号"
         documentNo:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         settleNo:
           type: "string"
           description: "结算单号"
@@ -5745,6 +6004,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         batchNo:
           type: "string"
           description: "批次号。**与结算单上的批次号是同一个** —— 商家照着单子来问的就是它"
@@ -6566,10 +6826,12 @@ components:
                 type: "number"
               points:
                 type: "number"
+                description: "按当前规则计算的积分数量"
               reason:
                 type:
                   - "string"
                   - "null"
+                description: "业务原因或阻断说明"
             required:
               - "number"
               - "points"
@@ -6644,10 +6906,13 @@ components:
             properties:
               orderNo:
                 type: "string"
+                description: "订单内部业务编号"
               subOrderNo:
                 type: "string"
+                description: "子订单内部业务编号"
               points:
                 type: "number"
+                description: "按当前规则计算的积分数量"
             required:
               - "orderNo"
               - "subOrderNo"
@@ -6696,60 +6961,51 @@ components:
       properties:
         orderNo:
           type: "string"
+          description: "订单内部业务编号"
         typeCode:
           type: "string"
+          description: "积分类型唯一编码"
         name:
           type: "string"
+          description: "业务对象显示名称"
         currency:
           type: "string"
+          description: "ISO货币代码，金额必须结合此字段解释"
         state:
-          type: "string"
-          enum:
-            - "NONE"
-            - "EXPECTED"
-            - "PROCESSING"
-            - "PENDING"
-            - "AVAILABLE"
-            - "RETRYABLE"
-            - "MANUAL"
-            - "SKIPPED"
-            - "RECLAIMED"
+          "$ref": "#/components/schemas/OrderPointsEarningState"
+          description: "服务端处理状态编码"
         redemptionState:
-          type: "string"
-          enum:
-            - "NONE"
-            - "PROCESSING"
-            - "HELD"
-            - "RELEASED"
-            - "CONSUMED"
-            - "REFUND_PROCESSING"
-            - "RETURNED"
-            - "PARTIALLY_RETURNED"
+          "$ref": "#/components/schemas/OrderPointsRedemptionState"
+          description: "积分抵扣处理状态"
         usedPoints:
           type: "number"
+          description: "订单已抵扣的积分数量"
         refundState:
-          type: "string"
-          enum:
-            - "NONE"
-            - "PROCESSING"
-            - "MANUAL"
-            - "COMPLETED"
+          "$ref": "#/components/schemas/OrderPointsRefundState"
+          description: "原积分返还处理状态"
         returnedPoints:
           type: "number"
+          description: "已经返还的原抵扣积分数量"
         expectedPoints:
           type: "number"
+          description: "订单预计可获得的积分数量"
         grantedPoints:
           type: "number"
+          description: "已经确认发放的积分数量"
         pendingPoints:
           type: "number"
+          description: "等待确认发放的积分数量"
         availablePoints:
           type: "number"
+          description: "当前可用积分数量"
         reclaimedPoints:
           type: "number"
+          description: "退款后已收回的赠送积分数量"
         reason:
           type:
             - "string"
             - "null"
+          description: "业务原因或阻断说明"
       required:
         - "orderNo"
         - "typeCode"
@@ -7478,6 +7734,7 @@ components:
                 type: "number"
               reason:
                 type: "string"
+                description: "业务原因或阻断说明"
             required:
               - "line"
               - "reason"
@@ -7714,8 +7971,10 @@ components:
                 type: "string"
               name:
                 type: "string"
+                description: "业务对象显示名称"
               path:
                 type: "string"
+                description: "分类层级路径"
             required:
               - "regionCode"
               - "level"
@@ -7732,12 +7991,14 @@ components:
                 type: "string"
               name:
                 type: "string"
+                description: "业务对象显示名称"
               regionCode:
                 type:
                   - "string"
                   - "null"
               path:
                 type: "string"
+                description: "分类层级路径"
               kind:
                 type:
                   - "string"
@@ -7784,11 +8045,13 @@ components:
                 type: "string"
               name:
                 type: "string"
+                description: "业务对象显示名称"
               streetCode:
                 type: "string"
                 description: "它挂的街道码（9 位）。提报要挂到这下面"
               path:
                 type: "string"
+                description: "分类层级路径"
               latE6:
                 type:
                   - "number"
@@ -9311,8 +9574,10 @@ components:
             properties:
               type:
                 type: "string"
+                description: "业务类型编码或类型摘要，按当前接口定义解释"
               value:
                 type: "string"
+                description: "当前规则配置值"
             required:
               - "type"
               - "value"
@@ -9474,8 +9739,10 @@ components:
             properties:
               type:
                 type: "string"
+                description: "业务类型编码或类型摘要，按当前接口定义解释"
               value:
                 type: "string"
+                description: "当前规则配置值"
             required:
               - "type"
               - "value"
@@ -9647,6 +9914,7 @@ components:
                 type: "string"
               title:
                 type: "string"
+                description: "面向用户的业务标题"
               qty:
                 type: "number"
             required:
@@ -10336,6 +10604,7 @@ components:
                 type: "string"
               name:
                 type: "string"
+                description: "业务对象显示名称"
               amountMinor:
                 type: "number"
             required:
@@ -10677,10 +10946,12 @@ components:
               properties:
                 status:
                   type: "string"
+                  description: "服务端业务状态编码"
                 source:
                   type:
                     - "string"
                     - "null"
+                  description: "顾客选择来源信息"
                 lastEventAt:
                   type:
                     - "number"
@@ -10691,6 +10962,7 @@ components:
                   type:
                     - "string"
                     - "null"
+                  description: "业务原因或阻断说明"
               required:
                 - "status"
                 - "pending"
@@ -10748,6 +11020,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         afterSaleNo:
           type: "string"
           description: "售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。"
@@ -10825,6 +11098,7 @@ components:
                   - "null"
               title:
                 type: "string"
+                description: "面向用户的业务标题"
               requestedQty:
                 type: "number"
             required:
@@ -10864,10 +11138,12 @@ components:
             properties:
               status:
                 type: "string"
+                description: "服务端业务状态编码"
               label:
                 type: "string"
               at:
                 type: "number"
+                description: "业务发生时间"
             required:
               - "status"
               - "label"
@@ -11768,6 +12044,7 @@ components:
             properties:
               channel:
                 type: "string"
+                description: "消息或支付通道编码"
               enabled:
                 type: "boolean"
               templateNo:
@@ -12131,6 +12408,7 @@ components:
                 type: "string"
               name:
                 type: "string"
+                description: "业务对象显示名称"
               code:
                 type: "string"
               label:
@@ -12157,6 +12435,7 @@ components:
             properties:
               name:
                 type: "string"
+                description: "业务对象显示名称"
               options:
                 type: "array"
                 items:
@@ -12175,10 +12454,12 @@ components:
                 type: "string"
               name:
                 type: "string"
+                description: "业务对象显示名称"
               label:
                 type: "string"
               source:
                 type: "string"
+                description: "顾客选择来源信息"
               confidence:
                 type: "number"
               rawName:
@@ -12398,6 +12679,7 @@ components:
             properties:
               name:
                 type: "string"
+                description: "业务对象显示名称"
               label:
                 type: "string"
             required:
@@ -13011,22 +13293,31 @@ components:
       properties:
         actorNo:
           type: "string"
+          description: "被授权管理账号编号"
         resourceType:
           type: "string"
+          description: "被授权资源类型编码"
         resourceNo:
           type: "string"
+          description: "被授权资源编号"
         permissionCode:
           type: "string"
+          description: "经营管理授权能力码"
         delegatable:
           type: "boolean"
+          description: "是否允许被授权人继续转授"
         validFrom:
           type: "string"
+          description: "授权有效期开始时间"
         validTo:
           type: "string"
+          description: "授权有效期截止时间"
         expectedRevision:
           type: "number"
+          description: "调用方读取到的版本号，用于乐观锁校验"
         reactivate:
           type: "boolean"
+          description: "是否重新激活已存在的授权"
       required:
         - "actorNo"
         - "resourceType"
@@ -13038,17 +13329,21 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "经营管理空间编号"
         name:
           type: "string"
+          description: "业务对象显示名称"
         logo:
           type:
             - "string"
             - "null"
+          description: "品牌标志资源地址"
         status:
           type: "string"
           enum:
             - "DRAFT"
             - "ACTIVE"
+          description: "服务端业务状态编码"
       required:
         - "managementNo"
         - "name"
@@ -13058,12 +13353,15 @@ components:
       properties:
         name:
           type: "string"
+          description: "业务对象显示名称"
         logo:
           type:
             - "string"
             - "null"
+          description: "品牌标志资源地址"
         expectedRevision:
           type: "number"
+          description: "调用方读取到的版本号，用于乐观锁校验"
       required:
         - "name"
         - "expectedRevision"
@@ -13073,26 +13371,34 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "经营管理空间编号"
         toBrandNo:
           type:
             - "string"
             - "null"
+          description: "目标品牌编号；解除绑定时为空"
         checkToken:
           type: "string"
+          description: "服务端签发的短时检查凭据，提交时原样传回"
         expectedStoreRevision:
           type: "number"
+          description: "检查时门店版本，用于并发校验"
         expectedScopeRevision:
           type: "number"
+          description: "检查时资源范围版本，用于并发校验"
         expectedFromBrandRevision:
           type:
             - "number"
             - "null"
+          description: "检查时原品牌版本，提交时进行乐观锁校验"
         expectedToBrandRevision:
           type:
             - "number"
             - "null"
+          description: "检查时目标品牌版本，用于并发校验"
         reason:
           type: "string"
+          description: "业务原因或阻断说明"
       required:
         - "managementNo"
         - "toBrandNo"
@@ -13108,8 +13414,10 @@ components:
       properties:
         name:
           type: "string"
+          description: "业务对象显示名称"
         sourceAccountNo:
           type: "string"
+          description: "创建管理空间所使用的来源账号编号"
       required:
         - "name"
         - "sourceAccountNo"
@@ -13119,25 +13427,32 @@ components:
       properties:
         resourceType:
           type: "string"
+          description: "被授权资源类型编码"
         view:
           type: "string"
           enum:
             - "EFFECTIVE"
             - "GRANTS"
+          description: "资源查询视图编码"
         actorNo:
           type: "string"
+          description: "被授权管理账号编号"
         cursor:
           type: "string"
+          description: "上一页返回的分页游标，首屏可省略"
         size:
           type: "number"
+          description: "请求的每页记录数量"
       additionalProperties: false
     ManagementRevokeQuery:
       type: "object"
       properties:
         expectedRevision:
           type: "number"
+          description: "调用方读取到的版本号，用于乐观锁校验"
         reason:
           type: "string"
+          description: "业务原因或阻断说明"
       required:
         - "expectedRevision"
         - "reason"
@@ -13147,30 +13462,39 @@ components:
       properties:
         cursor:
           type: "string"
+          description: "上一页返回的分页游标，首屏可省略"
         size:
           type: "number"
+          description: "请求的每页记录数量"
       additionalProperties: false
     ManagementStoresQuery:
       type: "object"
       properties:
         cursor:
           type: "string"
+          description: "上一页返回的分页游标，首屏可省略"
         size:
           type: "number"
+          description: "请求的每页记录数量"
         brandNo:
           type: "string"
+          description: "品牌编号"
       additionalProperties: false
     ManagementMerchantsQuery:
       type: "object"
       properties:
         managementNo:
           type: "string"
+          description: "经营管理空间编号"
         payChannel:
           type: "string"
+          description: "支付渠道编码"
         payScene:
           type: "string"
+          description: "支付场景编码"
         storeNo:
           type: "string"
+          description: "门店编号"
       required:
         - "managementNo"
       additionalProperties: false
@@ -13179,14 +13503,19 @@ components:
       properties:
         cursor:
           type: "string"
+          description: "上一页返回的分页游标，首屏可省略"
         size:
           type: "number"
+          description: "请求的每页记录数量"
         managementNo:
           type: "string"
+          description: "经营管理空间编号"
         status:
           type: "string"
+          description: "服务端业务状态编码"
         keyword:
           type: "string"
+          description: "关键词筛选条件"
       required:
         - "managementNo"
       additionalProperties: false
@@ -13198,10 +13527,13 @@ components:
           enum:
             - "ACTIVE"
             - "INACTIVE"
+          description: "待切换的业务状态"
         expectedRevision:
           type: "number"
+          description: "调用方读取到的版本号，用于乐观锁校验"
         reason:
           type: "string"
+          description: "业务原因或阻断说明"
       required:
         - "targetStatus"
         - "expectedRevision"
@@ -13212,6 +13544,7 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "经营管理空间编号"
       required:
         - "managementNo"
       additionalProperties: false
@@ -13220,10 +13553,12 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "经营管理空间编号"
         toBrandNo:
           type:
             - "string"
             - "null"
+          description: "目标品牌编号；解除绑定时为空"
       required:
         - "managementNo"
         - "toBrandNo"
@@ -13236,10 +13571,13 @@ components:
           enum:
             - "APPROVE"
             - "REJECT"
+          description: "审批决定编码"
         expectedRevision:
           type: "number"
+          description: "调用方读取到的版本号，用于乐观锁校验"
         reason:
           type: "string"
+          description: "业务原因或阻断说明"
       required:
         - "decision"
         - "expectedRevision"
@@ -13250,14 +13588,19 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "门店编号"
         name:
           type: "string"
+          description: "业务对象显示名称"
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO货币代码，金额必须结合此字段解释"
         paidAmountMinor:
           type: "number"
+          description: "实付充值金额，货币最小单位"
         bonusAmountMinor:
           type: "number"
+          description: "赠送金额，货币最小单位"
       required:
         - "storeNo"
         - "name"
@@ -13270,12 +13613,16 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "门店编号"
         customerRef:
           type: "string"
+          description: "当前数据域签发的顾客选择引用"
         planNo:
           type: "string"
+          description: "充值方案编号"
         versionNo:
           type: "string"
+          description: "不可变充值方案版本编号"
       required:
         - "storeNo"
         - "customerRef"
@@ -13287,15 +13634,19 @@ components:
       properties:
         expectedRevision:
           type: "number"
+          description: "调用方读取到的版本号，用于乐观锁校验"
         actualAmountMinor:
           type: "number"
+          description: "实际收款金额，货币最小单位"
         collectionMethod:
           type: "string"
           enum:
             - "CASH"
             - "TRANSFER"
+          description: "实际收款方式编码"
         receiptNo:
           type: "string"
+          description: "原收款凭据编号"
       required:
         - "expectedRevision"
         - "actualAmountMinor"
@@ -13307,10 +13658,13 @@ components:
       properties:
         expectedRevision:
           type: "number"
+          description: "调用方读取到的版本号，用于乐观锁校验"
         receiptNo:
           type: "string"
+          description: "原收款凭据编号"
         confirmationNote:
           type: "string"
+          description: "线下收款核实备注"
       required:
         - "expectedRevision"
         - "receiptNo"
@@ -13321,22 +13675,29 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "门店编号"
         type:
           type: "string"
           enum:
             - "ALL"
             - "RECHARGE"
             - "REDEMPTION"
+          description: "业务类型编码或类型摘要，按当前接口定义解释"
         startDate:
           type: "string"
+          description: "筛选开始日期"
         endDate:
           type: "string"
+          description: "筛选截止日期"
         accountRef:
           type: "string"
+          description: "服务端签发的账户引用，非用户编号"
         cursor:
           type: "string"
+          description: "上一页返回的分页游标，首屏可省略"
         size:
           type: "number"
+          description: "请求的每页记录数量"
       required:
         - "storeNo"
         - "type"
@@ -13346,10 +13707,13 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "门店编号"
         phone:
           type: "string"
+          description: "会员手机号查询条件"
         keyword:
           type: "string"
+          description: "关键词筛选条件"
       required:
         - "storeNo"
       additionalProperties: false
@@ -13358,8 +13722,10 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "门店编号"
         source:
           "$ref": "#/components/schemas/SvSelectionSource"
+          description: "顾客选择来源信息"
       required:
         - "storeNo"
         - "source"
@@ -13371,8 +13737,10 @@ components:
             type:
               type: "string"
               const: "MEMBER"
+              description: "业务类型编码或类型摘要，按当前接口定义解释"
             memberNo:
               type: "string"
+              description: "当前门店会员编号"
             memberScope:
               type: "string"
               const: "OPERATING"
@@ -13385,8 +13753,10 @@ components:
             type:
               type: "string"
               const: "ACCOUNT"
+              description: "业务类型编码或类型摘要，按当前接口定义解释"
             accountRef:
               type: "string"
+              description: "服务端签发的账户引用，非用户编号"
           required:
             - "type"
             - "accountRef"
@@ -13396,6 +13766,7 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "门店编号"
       required:
         - "storeNo"
       additionalProperties: false
@@ -13404,12 +13775,16 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "门店编号"
         status:
           type: "string"
+          description: "服务端业务状态编码"
         cursor:
           type: "string"
+          description: "上一页返回的分页游标，首屏可省略"
         size:
           type: "number"
+          description: "请求的每页记录数量"
       required:
         - "storeNo"
       additionalProperties: false
@@ -13418,12 +13793,16 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "门店编号"
         keyword:
           type: "string"
+          description: "关键词筛选条件"
         cursor:
           type: "string"
+          description: "上一页返回的分页游标，首屏可省略"
         size:
           type: "number"
+          description: "请求的每页记录数量"
       required:
         - "storeNo"
       additionalProperties: false
@@ -13432,10 +13811,13 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "门店编号"
         status:
           type: "string"
+          description: "服务端业务状态编码"
         expectedRevision:
           type: "number"
+          description: "调用方读取到的版本号，用于乐观锁校验"
       required:
         - "storeNo"
         - "status"
@@ -13446,8 +13828,10 @@ components:
       properties:
         expectedRevision:
           type: "number"
+          description: "调用方读取到的版本号，用于乐观锁校验"
         reason:
           type: "string"
+          description: "业务原因或阻断说明"
       required:
         - "expectedRevision"
         - "reason"
@@ -13457,16 +13841,20 @@ components:
       properties:
         keyword:
           type: "string"
+          description: "关键词筛选条件"
         cursor:
           type: "string"
+          description: "上一页返回的分页游标，首屏可省略"
         size:
           type: "number"
+          description: "请求的每页记录数量"
       additionalProperties: false
     ScopeSelectCustomerReq:
       type: "object"
       properties:
         source:
           "$ref": "#/components/schemas/ScopeSelectionSource"
+          description: "顾客选择来源信息"
       required:
         - "source"
       additionalProperties: false
@@ -13477,8 +13865,10 @@ components:
             type:
               type: "string"
               const: "MEMBER"
+              description: "业务类型编码或类型摘要，按当前接口定义解释"
             memberNo:
               type: "string"
+              description: "当前门店会员编号"
           required:
             - "type"
             - "memberNo"
@@ -13488,8 +13878,10 @@ components:
             type:
               type: "string"
               const: "ACCOUNT"
+              description: "业务类型编码或类型摘要，按当前接口定义解释"
             accountRef:
               type: "string"
+              description: "服务端签发的账户引用，非用户编号"
           required:
             - "type"
             - "accountRef"
@@ -13499,6 +13891,7 @@ components:
             type:
               type: "string"
               const: "MEMBER_CODE"
+              description: "业务类型编码或类型摘要，按当前接口定义解释"
             code:
               type: "string"
           required:
@@ -13510,12 +13903,15 @@ components:
       properties:
         phone:
           type: "string"
+          description: "会员手机号查询条件"
         remark:
           type: "string"
+          description: "操作备注"
         tagNos:
           type: "array"
           items:
             type: "string"
+          description: "会员标签编号列表"
       required:
         - "phone"
       additionalProperties: false
@@ -13524,8 +13920,10 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "经营管理空间编号"
         configuration:
           "$ref": "#/components/schemas/IssuerConfiguration"
+          description: "待校验或保存的发行配置"
       required:
         - "managementNo"
         - "configuration"
@@ -13535,24 +13933,33 @@ components:
       properties:
         name:
           type: "string"
+          description: "业务对象显示名称"
         settlementEntityNo:
           type: "string"
+          description: "承担发行结算责任的经营主体编号"
         collectionMode:
           type: "string"
+          description: "发行方收款模式编码"
         clearingMode:
           type: "string"
+          description: "发行方清分模式编码"
         debitAllocationMode:
           type: "string"
+          description: "消费扣减的资金分配模式编码"
         currency:
           type: "string"
+          description: "ISO货币代码，金额必须结合此字段解释"
         marketZone:
           type: "string"
+          description: "市场及时区配置编码"
         routes:
           type: "array"
           items:
             "$ref": "#/components/schemas/IssuerRoute"
+          description: "生效支付收款路由列表"
         expectedRevision:
           type: "number"
+          description: "调用方读取到的版本号，用于乐观锁校验"
       required:
         - "name"
         - "settlementEntityNo"
@@ -13571,16 +13978,21 @@ components:
           type:
             - "string"
             - "null"
+          description: "收款配置引用的支付商户编号"
         entityNo:
           type: "string"
+          description: "经营主体编号"
         storeNo:
           type:
             - "string"
             - "null"
+          description: "门店编号"
         channel:
           type: "string"
+          description: "消息或支付通道编码"
         scene:
           type: "string"
+          description: "支付或业务场景编码"
       required:
         - "paymentMerchantNo"
         - "entityNo"
@@ -13593,6 +14005,7 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "经营管理空间编号"
       required:
         - "managementNo"
       additionalProperties: false
@@ -13601,13 +14014,16 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "经营管理空间编号"
         scopeType:
           type: "string"
           enum:
             - "STORE"
             - "BRAND"
+          description: "储值发行范围类型：STORE或BRAND"
         scopeNo:
           type: "string"
+          description: "储值发行范围编号"
       required:
         - "managementNo"
         - "scopeType"
@@ -13618,10 +14034,13 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "经营管理空间编号"
         payChannel:
           type: "string"
+          description: "支付渠道编码"
         payScene:
           type: "string"
+          description: "支付场景编码"
       required:
         - "managementNo"
       additionalProperties: false
@@ -13630,16 +14049,36 @@ components:
       properties:
         customerRef:
           type: "string"
+          description: "当前数据域签发的顾客选择引用"
         scopeType:
           type: "string"
           const: "STORE"
+          description: "储值发行范围类型：STORE或BRAND"
         cursor:
           type: "string"
+          description: "上一页返回的分页游标，首屏可省略"
         size:
           type: "number"
+          description: "请求的每页记录数量"
       required:
         - "customerRef"
       additionalProperties: false
+    InventoryTraceEventStatus:
+      type: "string"
+      enum:
+        - "COMPLETED"
+        - "PENDING"
+        - "FAILED"
+        - "WARNING"
+        - "SKIPPED"
+        - "ARCHIVED"
+      description: "Delivery state of an inventory trace event."
+    InventoryTraceOutboxMode:
+      type: "string"
+      enum:
+        - "UNIFIED"
+        - "LEGACY"
+      description: "Outbox implementation supplying the inventory trace."
     MerchantOrderActionKind:
       type: "string"
       enum:
@@ -13770,20 +14209,10 @@ components:
                 type: "string"
                 description: "System that requested or handled the synchronization."
               status:
-                type: "string"
-                enum:
-                  - "COMPLETED"
-                  - "PENDING"
-                  - "FAILED"
-                  - "WARNING"
-                  - "SKIPPED"
-                  - "ARCHIVED"
+                "$ref": "#/components/schemas/InventoryTraceEventStatus"
                 description: "Delivery state of the synchronization event."
               outboxMode:
-                type: "string"
-                enum:
-                  - "UNIFIED"
-                  - "LEGACY"
+                "$ref": "#/components/schemas/InventoryTraceOutboxMode"
                 description: "Outbox implementation that persisted the event."
             required:
               - "aggregateId"
@@ -13991,12 +14420,15 @@ components:
       properties:
         actorKey:
           type: "string"
+          description: "认证管理账号标识"
         spaces:
           type: "array"
           items:
             "$ref": "#/components/schemas/ManagementSpace"
+          description: "当前账号可见的经营管理空间列表"
         canBootstrap:
           type: "boolean"
+          description: "是否允许创建初始管理空间"
         bootstrapSources:
           type: "array"
           items:
@@ -14006,6 +14438,7 @@ components:
                 type: "string"
               entityNo:
                 type: "string"
+                description: "经营主体编号"
               entityName:
                 type: "string"
               stores:
@@ -14015,8 +14448,10 @@ components:
                   properties:
                     storeNo:
                       type: "string"
+                      description: "门店编号"
                     name:
                       type: "string"
+                      description: "业务对象显示名称"
                   required:
                     - "storeNo"
                     - "name"
@@ -14028,6 +14463,7 @@ components:
                   properties:
                     payMerchantNo:
                       type: "string"
+                      description: "支付商户编号"
                   required:
                     - "payMerchantNo"
                   additionalProperties: false
@@ -14037,6 +14473,7 @@ components:
               - "stores"
               - "paymentMerchants"
             additionalProperties: false
+          description: "当前账号可用于创建管理空间的授权来源"
       required:
         - "actorKey"
         - "spaces"
@@ -14048,32 +14485,45 @@ components:
       properties:
         canManageLegacy:
           type: "boolean"
+          description: "是否允许使用原经营主体管理入口"
         canConfigureBrand:
           type: "boolean"
+          description: "当前账号是否允许配置品牌"
         resourceType:
           type: "string"
+          description: "被授权资源类型编码"
         resourceNo:
           type: "string"
+          description: "被授权资源编号"
         name:
           type: "string"
+          description: "业务对象显示名称"
         status:
           type: "string"
+          description: "服务端业务状态编码"
         revision:
           type: "number"
+          description: "当前记录版本号，用于并发控制"
         brandNo:
           type: "string"
+          description: "品牌编号"
         entityNo:
           type: "string"
+          description: "经营主体编号"
         storeNo:
           type: "string"
+          description: "门店编号"
         scopeRevision:
           type: "number"
+          description: "资源可见范围版本号"
         managementNo:
           type: "string"
+          description: "经营管理空间编号"
         actions:
           type: "array"
           items:
             type: "string"
+          description: "当前账号可执行的动作集合"
       required:
         - "actions"
         - "managementNo"
@@ -14086,28 +14536,39 @@ components:
       properties:
         actorLabel:
           type: "string"
+          description: "操作人显示名称"
         resourceName:
           type: "string"
+          description: "被授权资源显示名称"
         grantNo:
           type: "string"
+          description: "授权记录编号"
         managementNo:
           type: "string"
+          description: "经营管理空间编号"
         actorNo:
           type: "string"
+          description: "被授权管理账号编号"
         resourceType:
           type: "string"
+          description: "被授权资源类型编码"
         resourceNo:
           type: "string"
+          description: "被授权资源编号"
         permissionCode:
           type: "string"
+          description: "经营管理授权能力码"
         status:
           type: "string"
+          description: "服务端业务状态编码"
         delegatable:
           type:
             - "boolean"
             - "number"
+          description: "是否允许被授权人继续转授"
         revision:
           type: "number"
+          description: "当前记录版本号，用于并发控制"
       required:
         - "grantNo"
         - "managementNo"
@@ -14124,26 +14585,37 @@ components:
       properties:
         canManageLegacy:
           type: "boolean"
+          description: "是否允许使用原经营主体管理入口"
         canConfigureBrand:
           type: "boolean"
+          description: "当前账号是否允许配置品牌"
         resourceType:
           type: "string"
+          description: "被授权资源类型编码"
         resourceNo:
           type: "string"
+          description: "被授权资源编号"
         name:
           type: "string"
+          description: "业务对象显示名称"
         status:
           type: "string"
+          description: "服务端业务状态编码"
         revision:
           type: "number"
+          description: "当前记录版本号，用于并发控制"
         brandNo:
           type: "string"
+          description: "品牌编号"
         entityNo:
           type: "string"
+          description: "经营主体编号"
         storeNo:
           type: "string"
+          description: "门店编号"
         scopeRevision:
           type: "number"
+          description: "资源可见范围版本号"
       required:
         - "name"
         - "status"
@@ -14154,44 +14626,63 @@ components:
       properties:
         canManageLegacy:
           type: "boolean"
+          description: "是否允许使用原经营主体管理入口"
         canConfigureBrand:
           type: "boolean"
+          description: "当前账号是否允许配置品牌"
         resourceType:
           type: "string"
+          description: "被授权资源类型编码"
         resourceNo:
           type: "string"
+          description: "被授权资源编号"
         name:
           type: "string"
+          description: "业务对象显示名称"
         status:
           type: "string"
+          description: "服务端业务状态编码"
         revision:
           type: "number"
+          description: "当前记录版本号，用于并发控制"
         brandNo:
           type: "string"
+          description: "品牌编号"
         entityNo:
           type: "string"
+          description: "经营主体编号"
         storeNo:
           type: "string"
+          description: "门店编号"
         scopeRevision:
           type: "number"
+          description: "资源可见范围版本号"
         managementNo:
           type: "string"
+          description: "经营管理空间编号"
         logo:
           type: "string"
+          description: "品牌标志资源地址"
         storeCount:
           type: "number"
+          description: "品牌下可见门店数量"
         createdAt:
           type: "string"
+          description: "创建时间"
         updatedAt:
           type: "string"
+          description: "最近更新时间"
         createdByLabel:
           type: "string"
+          description: "创建人显示名称"
         updatedByLabel:
           type: "string"
+          description: "最近更新人显示名称"
         actions:
           type: "array"
           items:
             type: "string"
+          description: "当前账号可执行的动作集合"
       required:
         - "brandNo"
         - "managementNo"
@@ -14205,26 +14696,34 @@ components:
       properties:
         allowed:
           type: "boolean"
+          description: "当前业务校验是否允许继续"
         canDecide:
           type: "boolean"
+          description: "当前账号是否允许审批此变更"
         blockers:
           type: "array"
           items:
             type: "string"
+          description: "阻断原因编码列表"
         checkToken:
           type: "string"
+          description: "服务端签发的短时检查凭据，提交时原样传回"
         storeVersion:
           type: "number"
+          description: "检查时门店版本号"
         bindingRevision:
           type: "number"
+          description: "门店品牌绑定关系版本号"
         fromRevision:
           type:
             - "number"
             - "null"
+          description: "检查时原品牌版本号"
         toRevision:
           type:
             - "number"
             - "null"
+          description: "检查时目标品牌版本号"
       required:
         - "allowed"
         - "blockers"
@@ -14239,30 +14738,41 @@ components:
       properties:
         changeNo:
           type: "string"
+          description: "品牌变更业务编号"
         managementNo:
           type: "string"
+          description: "经营管理空间编号"
         storeNo:
           type: "string"
+          description: "门店编号"
         fromBrandNo:
           type: "string"
+          description: "变更前品牌编号"
         toBrandNo:
           type: "string"
+          description: "目标品牌编号；解除绑定时为空"
         status:
           type: "string"
+          description: "服务端业务状态编码"
         revision:
           type: "number"
+          description: "当前记录版本号，用于并发控制"
         applied:
           type: "boolean"
+          description: "变更是否已经应用到有效关系"
         blockers:
           type: "array"
           items:
             type: "string"
+          description: "阻断原因编码列表"
         actions:
           type: "array"
           items:
             type: "string"
+          description: "当前账号可执行的动作集合"
         reason:
           type: "string"
+          description: "业务原因或阻断说明"
       required:
         - "changeNo"
         - "managementNo"
@@ -14276,52 +14786,67 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "门店编号"
         entityNo:
           type: "string"
+          description: "经营主体编号"
         name:
           type: "string"
+          description: "业务对象显示名称"
         status:
           type: "string"
+          description: "服务端业务状态编码"
         revision:
           type: "number"
+          description: "当前记录版本号，用于并发控制"
         managementNo:
           type: "string"
+          description: "经营管理空间编号"
         brand:
           anyOf:
             - type: "object"
               properties:
                 brandNo:
                   type: "string"
+                  description: "品牌编号"
                 name:
                   type: "string"
+                  description: "业务对象显示名称"
                 scopeRevision:
                   type: "number"
+                  description: "资源可见范围版本号"
               required:
                 - "brandNo"
                 - "name"
                 - "scopeRevision"
               additionalProperties: false
             - type: "null"
+          description: "当前有效品牌摘要"
         actions:
           type: "array"
           items:
             type: "string"
+          description: "当前账号可执行的动作集合"
         pendingChange:
           anyOf:
             - type: "object"
               properties:
                 changeNo:
                   type: "string"
+                  description: "品牌变更业务编号"
                 status:
                   type: "string"
+                  description: "服务端业务状态编码"
                 revision:
                   type: "number"
+                  description: "当前记录版本号，用于并发控制"
               required:
                 - "changeNo"
                 - "status"
                 - "revision"
               additionalProperties: false
             - type: "null"
+          description: "尚未完成的品牌变更摘要"
       required:
         - "storeNo"
         - "entityNo"
@@ -14337,18 +14862,24 @@ components:
       properties:
         payMerchantNo:
           type: "string"
+          description: "支付商户编号"
         entityNo:
           type: "string"
+          description: "经营主体编号"
         storeNo:
           type: "string"
+          description: "门店编号"
         payChannel:
           type: "string"
+          description: "支付渠道编码"
         applyStatus:
           type: "string"
+          description: "支付商户申请状态"
         payMethods:
           type: "array"
           items:
             type: "string"
+          description: "已开通支付方式列表"
       required:
         - "payMerchantNo"
         - "entityNo"
@@ -14362,10 +14893,13 @@ components:
       properties:
         action:
           type: "string"
+          description: "本次执行的业务动作"
         actorKey:
           type: "string"
+          description: "认证管理账号标识"
         occurredAt:
           type: "string"
+          description: "业务实际发生时间"
       required:
         - "action"
         - "actorKey"
@@ -14376,8 +14910,10 @@ components:
       properties:
         actorNo:
           type: "string"
+          description: "被授权管理账号编号"
         displayName:
           type: "string"
+          description: "脱敏显示名称"
       required:
         - "actorNo"
         - "displayName"
@@ -14395,10 +14931,13 @@ components:
       properties:
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO货币代码，金额必须结合此字段解释"
         currencyScale:
           type: "number"
+          description: "货币最小单位的小数位数"
         timeZone:
           type: "string"
+          description: "业务日期所采用的时区"
       required:
         - "currency"
         - "currencyScale"
@@ -14409,33 +14948,45 @@ components:
       properties:
         planNo:
           type: "string"
+          description: "充值方案编号"
         versionNo:
           type: "string"
+          description: "不可变充值方案版本编号"
         revision:
           type: "number"
+          description: "当前记录版本号，用于并发控制"
         storeNo:
           type: "string"
+          description: "门店编号"
         name:
           type: "string"
+          description: "业务对象显示名称"
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO货币代码，金额必须结合此字段解释"
         paidAmountMinor:
           type: "number"
+          description: "实付充值金额，货币最小单位"
         bonusAmountMinor:
           type: "number"
+          description: "赠送金额，货币最小单位"
         totalAmountMinor:
           type: "number"
+          description: "实付加赠送的总金额，货币最小单位"
         status:
           type: "string"
           enum:
             - "ACTIVE"
             - "INACTIVE"
+          description: "服务端业务状态编码"
         createdAt:
           type: "string"
+          description: "创建时间"
         updatedAt:
           type:
             - "string"
             - "null"
+          description: "最近更新时间"
       required:
         - "planNo"
         - "versionNo"
@@ -14455,26 +15006,35 @@ components:
       properties:
         accountRef:
           type: "string"
+          description: "服务端签发的账户引用，非用户编号"
         maskedName:
           type: "string"
+          description: "服务端脱敏的顾客名称"
         maskedPhone:
           type: "string"
+          description: "服务端脱敏的手机号"
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO货币代码，金额必须结合此字段解释"
         balanceMinor:
           type: "number"
+          description: "账面余额，货币最小单位"
         heldMinor:
           type: "number"
+          description: "冻结金额，货币最小单位"
         availableMinor:
           type: "number"
+          description: "可用余额，货币最小单位"
         lastOccurredAt:
           type:
             - "string"
             - "null"
+          description: "最近业务发生时间"
         lastRechargeAt:
           type:
             - "string"
             - "null"
+          description: "最近一次充值时间"
       required:
         - "accountRef"
         - "maskedName"
@@ -14492,53 +15052,71 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         voucherDocumentNo:
           type:
             - "string"
             - "null"
+          description: "原凭证展示单号"
         recordNo:
           type: "string"
+          description: "储值流水内部编号"
         maskedName:
           type: "string"
+          description: "服务端脱敏的顾客名称"
         maskedPhone:
           type: "string"
+          description: "服务端脱敏的手机号"
         type:
           type: "string"
           enum:
             - "RECHARGE"
             - "REDEMPTION"
+          description: "业务类型编码或类型摘要，按当前接口定义解释"
         title:
           type: "string"
+          description: "面向用户的业务标题"
         storeNo:
           type: "string"
+          description: "门店编号"
         storeName:
           type: "string"
+          description: "门店显示名称"
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO货币代码，金额必须结合此字段解释"
         signedAmountMinor:
           type: "number"
+          description: "带收支方向符号的金额，货币最小单位"
         balanceAfterMinor:
           type: "number"
+          description: "此笔流水入账后余额，货币最小单位"
         occurredAt:
           type: "string"
+          description: "业务实际发生时间"
         businessNo:
           type: "string"
+          description: "来源业务编号"
         planNo:
           type:
             - "string"
             - "null"
+          description: "充值方案编号"
         versionNo:
           type:
             - "string"
             - "null"
+          description: "不可变充值方案版本编号"
         paidAmountMinor:
           type:
             - "number"
             - "null"
+          description: "实付充值金额，货币最小单位"
         bonusAmountMinor:
           type:
             - "number"
             - "null"
+          description: "赠送金额，货币最小单位"
       required:
         - "recordNo"
         - "maskedName"
@@ -14562,34 +15140,44 @@ components:
       properties:
         rechargeNo:
           type: "string"
+          description: "充值业务编号"
         documentNo:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         revision:
           type: "number"
+          description: "当前记录版本号，用于并发控制"
         status:
           type: "string"
+          description: "服务端业务状态编码"
         storeNo:
           type: "string"
+          description: "门店编号"
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO货币代码，金额必须结合此字段解释"
         paidAmountMinor:
           type:
             - "number"
             - "null"
+          description: "实付充值金额，货币最小单位"
         creditedTotalMinor:
           type:
             - "number"
             - "null"
+          description: "确认入账总金额，货币最小单位"
         creditedAt:
           type:
             - "string"
             - "null"
+          description: "充值入账时间"
         receivedAt:
           type:
             - "string"
             - "null"
+          description: "线下收款确认时间"
       required:
         - "rechargeNo"
         - "revision"
@@ -14606,42 +15194,54 @@ components:
       properties:
         customerRef:
           type: "string"
+          description: "当前数据域签发的顾客选择引用"
         expiresAt:
           type: "string"
+          description: "服务端引用失效时间"
         pendingScope:
           type: "string"
+          description: "顾客选择引用是否仍待范围确认"
         sourceStoreNo:
           type:
             - "string"
             - "null"
+          description: "来源门店编号"
         sourceStoreName:
           type:
             - "string"
             - "null"
+          description: "来源门店显示名称"
         memberNo:
           type:
             - "string"
             - "null"
+          description: "当前门店会员编号"
         displayName:
           type: "string"
+          description: "脱敏显示名称"
         phoneMasked:
           type: "string"
+          description: "服务端脱敏手机号"
         account:
           anyOf:
             - type: "object"
               properties:
                 accountRef:
                   type: "string"
+                  description: "服务端签发的账户引用，非用户编号"
                 currency:
                   "$ref": "#/components/schemas/CurrencyCode"
+                  description: "ISO货币代码，金额必须结合此字段解释"
                 availableMinor:
                   type: "number"
+                  description: "可用余额，货币最小单位"
               required:
                 - "accountRef"
                 - "currency"
                 - "availableMinor"
               additionalProperties: false
             - type: "null"
+          description: "当前范围的储值账户摘要"
       required:
         - "customerRef"
         - "expiresAt"
@@ -14654,34 +15254,44 @@ components:
       properties:
         memberNo:
           type: "string"
+          description: "当前门店会员编号"
         displayName:
           type: "string"
+          description: "脱敏显示名称"
         phoneMasked:
           type: "string"
+          description: "服务端脱敏手机号"
         memberStatus:
           type: "string"
+          description: "会员当前状态编码"
         canRecharge:
           type: "boolean"
+          description: "当前条件是否允许充值"
         unavailableReason:
           type:
             - "string"
             - "null"
+          description: "当前业务不可用的原因编码"
         account:
           anyOf:
             - type: "object"
               properties:
                 accountRef:
                   type: "string"
+                  description: "服务端签发的账户引用，非用户编号"
                 currency:
                   "$ref": "#/components/schemas/CurrencyCode"
+                  description: "ISO货币代码，金额必须结合此字段解释"
                 availableMinor:
                   type: "number"
+                  description: "可用余额，货币最小单位"
               required:
                 - "accountRef"
                 - "currency"
                 - "availableMinor"
               additionalProperties: false
             - type: "null"
+          description: "当前范围的储值账户摘要"
       required:
         - "memberNo"
         - "displayName"
@@ -14702,10 +15312,12 @@ components:
       properties:
         found:
           type: "boolean"
+          description: "是否找到原幂等命令的业务结果"
         recharge:
           anyOf:
             - "$ref": "#/components/schemas/SvProgress"
             - type: "null"
+          description: "充值处理结果"
       required:
         - "found"
         - "recharge"
@@ -14719,12 +15331,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/ScopeMemberCandidate"
+          description: "当前页业务记录"
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "下一页游标，无后续记录时为空"
         identityConflictCount:
           type: "number"
+          description: "候选身份冲突数量"
       required:
         - "items"
         - "nextCursor"
@@ -14735,48 +15350,61 @@ components:
       properties:
         displayName:
           type: "string"
+          description: "脱敏显示名称"
         phoneMasked:
           type: "string"
+          description: "服务端脱敏手机号"
         memberStatus:
           type: "string"
+          description: "会员当前状态编码"
         canRecharge:
           type: "boolean"
+          description: "当前条件是否允许充值"
         unavailableReason:
           type:
             - "string"
             - "null"
+          description: "当前业务不可用的原因编码"
         account:
           anyOf:
             - type: "object"
               properties:
                 accountRef:
                   type: "string"
+                  description: "服务端签发的账户引用，非用户编号"
                 currency:
                   "$ref": "#/components/schemas/CurrencyCode"
+                  description: "ISO货币代码，金额必须结合此字段解释"
                 availableMinor:
                   type: "number"
+                  description: "可用余额，货币最小单位"
               required:
                 - "accountRef"
                 - "currency"
                 - "availableMinor"
               additionalProperties: false
             - type: "null"
+          description: "当前范围的储值账户摘要"
         memberNo:
           type:
             - "string"
             - "null"
+          description: "当前门店会员编号"
         sourceStoreNo:
           type:
             - "string"
             - "null"
+          description: "来源门店编号"
         sourceStoreName:
           type:
             - "string"
             - "null"
+          description: "来源门店显示名称"
         lastRechargeAt:
           type:
             - "string"
             - "null"
+          description: "最近一次充值时间"
       required:
         - "account"
         - "canRecharge"
@@ -14793,14 +15421,17 @@ components:
       properties:
         selection:
           "$ref": "#/components/schemas/SvSelectedCustomer"
+          description: "服务端顾客选择引用及有效期"
         sourceStoreNo:
           type:
             - "string"
             - "null"
+          description: "来源门店编号"
         sourceStoreName:
           type:
             - "string"
             - "null"
+          description: "来源门店显示名称"
       required:
         - "selection"
         - "sourceStoreNo"
@@ -14811,20 +15442,27 @@ components:
       properties:
         scopeMemberNo:
           type: "string"
+          description: "当前管理范围的会员编号"
         displayName:
           type: "string"
+          description: "脱敏显示名称"
         phoneMasked:
           type: "string"
+          description: "服务端脱敏手机号"
         status:
           type: "string"
+          description: "服务端业务状态编码"
         sourceStoreNo:
           type: "string"
+          description: "来源门店编号"
         sourceStoreName:
           type: "string"
+          description: "来源门店显示名称"
         remark:
           type:
             - "string"
             - "null"
+          description: "操作备注"
       required:
         - "scopeMemberNo"
         - "displayName"
@@ -14839,37 +15477,51 @@ components:
       properties:
         name:
           type: "string"
+          description: "业务对象显示名称"
         settlementEntityNo:
           type: "string"
+          description: "承担发行结算责任的经营主体编号"
         collectionMode:
           type: "string"
+          description: "发行方收款模式编码"
         clearingMode:
           type: "string"
+          description: "发行方清分模式编码"
         debitAllocationMode:
           type: "string"
+          description: "消费扣减的资金分配模式编码"
         currency:
           type: "string"
+          description: "ISO货币代码，金额必须结合此字段解释"
         marketZone:
           type: "string"
+          description: "市场及时区配置编码"
         routes:
           type: "array"
           items:
             "$ref": "#/components/schemas/IssuerRoute"
+          description: "生效支付收款路由列表"
         issuerNo:
           type: "string"
+          description: "储值发行方编号"
         issuerVersionNo:
           type: "string"
+          description: "不可变发行配置版本编号"
         scopeType:
           type: "string"
           enum:
             - "STORE"
             - "BRAND"
+          description: "储值发行范围类型：STORE或BRAND"
         scopeNo:
           type: "string"
+          description: "储值发行范围编号"
         status:
           type: "string"
+          description: "服务端业务状态编码"
         revision:
           type: "number"
+          description: "当前记录版本号，用于并发控制"
       required:
         - "clearingMode"
         - "collectionMode"
@@ -14891,14 +15543,18 @@ components:
       properties:
         allowed:
           type: "boolean"
+          description: "当前业务校验是否允许继续"
         affectedAccountCount:
           type: "number"
+          description: "受配置变更影响的账户数量"
         hasPending:
           type: "boolean"
+          description: "是否存在尚未结清的相关业务"
         blockers:
           type: "array"
           items:
             type: "string"
+          description: "阻断原因编码列表"
       required:
         - "allowed"
         - "affectedAccountCount"
@@ -14910,12 +15566,15 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "门店编号"
         legacyMode:
           type: "boolean"
+          description: "当前是否使用兼容储值模式"
         issuers:
           type: "array"
           items:
             "$ref": "#/components/schemas/StoreIssuerOption"
+          description: "可用储值发行方列表"
       required:
         - "storeNo"
         - "legacyMode"
@@ -14926,27 +15585,37 @@ components:
       properties:
         issuerNo:
           type: "string"
+          description: "储值发行方编号"
         scopeType:
           type: "string"
           const: "STORE"
+          description: "储值发行范围类型：STORE或BRAND"
         scopeNo:
           type: "string"
+          description: "储值发行范围编号"
         name:
           type: "string"
+          description: "业务对象显示名称"
         currency:
           type: "string"
+          description: "ISO货币代码，金额必须结合此字段解释"
         status:
           type: "string"
+          description: "服务端业务状态编码"
         writeMode:
           type: "string"
+          description: "发行方允许的写入模式编码"
         canRecharge:
           type: "boolean"
+          description: "当前条件是否允许充值"
         canRedeem:
           type: "boolean"
+          description: "当前发行配置是否允许消费核销"
         unavailableReason:
           type:
             - "string"
             - "null"
+          description: "当前业务不可用的原因编码"
       required:
         - "issuerNo"
         - "scopeType"
@@ -14966,6 +15635,7 @@ components:
           anyOf:
             - "$ref": "#/components/schemas/IssuerView"
             - type: "null"
+          description: "当前生效发行方摘要；未配置时为空"
       required:
         - "issuer"
       additionalProperties: false
@@ -14974,12 +15644,16 @@ components:
       properties:
         entityNo:
           type: "string"
+          description: "经营主体编号"
         name:
           type: "string"
+          description: "业务对象显示名称"
         accepted:
           type: "boolean"
+          description: "是否已接受该经营主体"
         canAccept:
           type: "boolean"
+          description: "是否允许接受该发行配置"
       required:
         - "entityNo"
         - "name"
@@ -14991,8 +15665,10 @@ components:
       properties:
         issuerOptions:
           "$ref": "#/components/schemas/StoreIssuerOptions"
+          description: "门店可用发行方选项"
         plans:
           "$ref": "#/components/schemas/SvPlanPage"
+          description: "可用充值方案分页"
       required:
         - "issuerOptions"
         - "plans"
@@ -15002,12 +15678,16 @@ components:
       properties:
         issuerNo:
           type: "string"
+          description: "储值发行方编号"
         storeNo:
           type: "string"
+          description: "门店编号"
         sourceRevision:
           type: "number"
+          description: "来源配置版本号"
         status:
           type: "string"
+          description: "服务端业务状态编码"
       required:
         - "issuerNo"
         - "storeNo"
@@ -15057,10 +15737,12 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/ManagementGrant"
+          description: "当前页业务记录"
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "下一页游标，无后续记录时为空"
       required:
         - "items"
         - "nextCursor"
@@ -15072,10 +15754,12 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/ManagementResource"
+          description: "当前页业务记录"
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "下一页游标，无后续记录时为空"
       required:
         - "items"
         - "nextCursor"
@@ -15087,10 +15771,12 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/Brand"
+          description: "当前页业务记录"
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "下一页游标，无后续记录时为空"
       required:
         - "items"
         - "nextCursor"
@@ -15102,10 +15788,12 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/ManagementAudit"
+          description: "当前页业务记录"
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "下一页游标，无后续记录时为空"
       required:
         - "items"
         - "nextCursor"
@@ -15117,12 +15805,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvPlan"
+          description: "当前页业务记录列表"
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "下一页游标，无后续记录时为空"
         hasMore:
           type: "boolean"
+          description: "是否还有后续分页"
       required:
         - "records"
         - "nextCursor"
@@ -15135,12 +15826,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvAccount"
+          description: "当前页业务记录列表"
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "下一页游标，无后续记录时为空"
         hasMore:
           type: "boolean"
+          description: "是否还有后续分页"
       required:
         - "records"
         - "nextCursor"
@@ -15153,12 +15847,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvRecord"
+          description: "当前页业务记录列表"
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "下一页游标，无后续记录时为空"
         hasMore:
           type: "boolean"
+          description: "是否还有后续分页"
       required:
         - "records"
         - "nextCursor"
@@ -15171,10 +15868,12 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/ManagementRecipient"
+          description: "当前页业务记录"
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "下一页游标，无后续记录时为空"
       required:
         - "items"
         - "nextCursor"
@@ -15199,6 +15898,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "经营管理空间编号"
       responses:
         "200":
           description: "OK"
@@ -15275,6 +15975,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "经营管理空间编号"
       responses:
         "200":
           description: "OK"
@@ -15424,6 +16125,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "经营管理空间编号"
         - name: "scopeType"
           in: "query"
           required: true
@@ -15432,11 +16134,13 @@ paths:
             enum:
               - "STORE"
               - "BRAND"
+            description: "储值发行范围类型：STORE或BRAND"
         - name: "scopeNo"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "储值发行范围编号"
       responses:
         "200":
           description: "OK"
@@ -15510,22 +16214,26 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "当前数据域签发的顾客选择引用"
         - name: "scopeType"
           in: "query"
           required: false
           schema:
             type: "string"
             const: "STORE"
+            description: "储值发行范围类型：STORE或BRAND"
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "上一页返回的分页游标，首屏可省略"
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "请求的每页记录数量"
       responses:
         "200":
           description: "OK"
@@ -15564,16 +16272,19 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "经营管理空间编号"
         - name: "payChannel"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "支付渠道编码"
         - name: "payScene"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "支付场景编码"
       responses:
         "200":
           description: "OK"
@@ -15774,16 +16485,19 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "关键词筛选条件"
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "上一页返回的分页游标，首屏可省略"
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "请求的每页记录数量"
       responses:
         "200":
           description: "OK"
@@ -15895,6 +16609,7 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "被授权资源类型编码"
         - name: "view"
           in: "query"
           required: false
@@ -15903,21 +16618,25 @@ paths:
             enum:
               - "EFFECTIVE"
               - "GRANTS"
+            description: "资源查询视图编码"
         - name: "actorNo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "被授权管理账号编号"
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "上一页返回的分页游标，首屏可省略"
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "请求的每页记录数量"
       responses:
         "200":
           description: "OK"
@@ -16018,6 +16737,7 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "被授权资源类型编码"
         - name: "view"
           in: "query"
           required: false
@@ -16026,21 +16746,25 @@ paths:
             enum:
               - "EFFECTIVE"
               - "GRANTS"
+            description: "资源查询视图编码"
         - name: "actorNo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "被授权管理账号编号"
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "上一页返回的分页游标，首屏可省略"
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "请求的每页记录数量"
       responses:
         "200":
           description: "OK"
@@ -16123,11 +16847,13 @@ paths:
           required: true
           schema:
             type: "number"
+            description: "调用方读取到的版本号，用于乐观锁校验"
         - name: "reason"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "业务原因或阻断说明"
       responses:
         "200":
           description: "OK"
@@ -16166,11 +16892,13 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "上一页返回的分页游标，首屏可省略"
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "请求的每页记录数量"
       responses:
         "200":
           description: "OK"
@@ -16209,16 +16937,19 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "上一页返回的分页游标，首屏可省略"
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "请求的每页记录数量"
         - name: "brandNo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "品牌编号"
       responses:
         "200":
           description: "OK"
@@ -16257,21 +16988,25 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "经营管理空间编号"
         - name: "payChannel"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "支付渠道编码"
         - name: "payScene"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "支付场景编码"
         - name: "storeNo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "门店编号"
       responses:
         "200":
           description: "OK"
@@ -16307,26 +17042,31 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "上一页返回的分页游标，首屏可省略"
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "请求的每页记录数量"
         - name: "managementNo"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "经营管理空间编号"
         - name: "status"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "服务端业务状态编码"
         - name: "keyword"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "关键词筛选条件"
       responses:
         "200":
           description: "OK"
@@ -16508,11 +17248,13 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "上一页返回的分页游标，首屏可省略"
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "请求的每页记录数量"
       responses:
         "200":
           description: "OK"
@@ -16551,11 +17293,13 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "上一页返回的分页游标，首屏可省略"
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "请求的每页记录数量"
       responses:
         "200":
           description: "OK"
@@ -16594,6 +17338,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "经营管理空间编号"
       responses:
         "200":
           description: "OK"
@@ -16777,16 +17522,19 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "门店编号"
         - name: "phone"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "会员手机号查询条件"
         - name: "keyword"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "关键词筛选条件"
       responses:
         "200":
           description: "OK"
@@ -16909,6 +17657,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "门店编号"
       responses:
         "200":
           description: "OK"
@@ -16942,21 +17691,25 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "门店编号"
         - name: "status"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "服务端业务状态编码"
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "上一页返回的分页游标，首屏可省略"
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "请求的每页记录数量"
       responses:
         "200":
           description: "OK"
@@ -17023,6 +17776,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "门店编号"
       responses:
         "200":
           description: "OK"
@@ -17090,21 +17844,25 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "门店编号"
         - name: "keyword"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "关键词筛选条件"
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "上一页返回的分页游标，首屏可省略"
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "请求的每页记录数量"
       responses:
         "200":
           description: "OK"
@@ -17138,6 +17896,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "门店编号"
       responses:
         "200":
           description: "OK"
@@ -17176,6 +17935,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "门店编号"
         - name: "type"
           in: "query"
           required: true
@@ -17185,31 +17945,37 @@ paths:
               - "ALL"
               - "RECHARGE"
               - "REDEMPTION"
+            description: "业务类型编码或类型摘要，按当前接口定义解释"
         - name: "startDate"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "筛选开始日期"
         - name: "endDate"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "筛选截止日期"
         - name: "accountRef"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "服务端签发的账户引用，非用户编号"
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "上一页返回的分页游标，首屏可省略"
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "请求的每页记录数量"
       responses:
         "200":
           description: "OK"
@@ -17248,6 +18014,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "门店编号"
       responses:
         "200":
           description: "OK"

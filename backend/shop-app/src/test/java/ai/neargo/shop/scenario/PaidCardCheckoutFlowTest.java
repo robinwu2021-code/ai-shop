@@ -51,6 +51,7 @@ import org.springframework.test.context.ActiveProfiles;
         "spring.datasource.url=jdbc:h2:mem:card-checkout;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"})
 @ActiveProfiles("test")
 class PaidCardCheckoutFlowTest {
+    @Autowired ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger;
     @Autowired CardProductBindingService bindings;
     @Autowired ai.neargo.shop.spi.product.CardProductSalePort saleDefinitions;
     @Autowired OrderService orders;
@@ -128,7 +129,9 @@ class PaidCardCheckoutFlowTest {
         assertThat(payJdbc().queryForObject("SELECT COUNT(*) FROM ent_instance WHERE entity_no=?",Integer.class,entity)).isZero();
         paymentGate.requireReady("MAIN",order);
         assertThat(catalog.get(scope,template.templateNo()).issuePolicy().heldCount()).isEqualTo(4);
-        orders.markPaid(order,"WECHAT","PAY"+id());
+        String trade = ai.neargo.shop.support.OrderPaymentFixture.settle(
+                paymentLedger, order, actor, entity, "WECHAT", 60000);
+        orders.markPaid(order,"WECHAT",trade);
         var event=new ai.neargo.shop.event.SysOutbox();
         event.setEventType("ORDER_PAID"); event.setAggregateId(order);
         event.setPayload(json.writeValueAsString(new ai.neargo.shop.spi.trade.OrderEvents.OrderPaid(

@@ -10,6 +10,7 @@
 //
 // 覆盖面：B 端 `/biz/**` 里**两边都定义了 body** 的 POST。后端没用 @RequestBody 的
 // （如纯 @PathVariable 的 approve/receive）不在此列。
+import ts from "typescript";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -98,6 +99,27 @@ function backendBodies(portal: string): Map<string, { type: string; fields: stri
   return out;
 }
 
+/** JSON body keys are direct properties; nested address/item keys are different objects. */
+function requestFields(source: string): Map<string, string[]> {
+  const file = ts.createSourceFile('requests.ts', source, ts.ScriptTarget.Latest, true);
+  const result = new Map<string, string[]>();
+  for (const node of file.statements) {
+    if (ts.isInterfaceDeclaration(node)) {
+      result.set(node.name.text, node.members.filter(ts.isPropertySignature)
+        .map(property => property.name.getText(file).replace(/^["']|["']$/g, '')));
+    }
+  }
+  return result;
+}
+
+it('request parsing preserves top-level keys and excludes nested keys regardless of indentation', () => {
+  const fields = requestFields(`export interface Body { items: { nested: string; }[];
+  /** The address-specific field is not a body field. */
+  addresses?: { merchantNo: string;
+  storeNo?: string }[]; commandKey: string; }`);
+  expect(fields.get('Body')).toEqual(['items', 'addresses', 'commandKey']);
+});
+
 /** 前端：路径 → wire 类型字段集合。两端结构相同（endpoints + requests + 生成器的映射表） */
 function frontendBodies(app: string): Map<string, { type: string; fields: string[] }> {
   const eps = readFileSync(join(ROOT, app, "src/api/endpoints.ts"), "utf8");
@@ -116,10 +138,8 @@ function frontendBodies(app: string): Map<string, { type: string; fields: string
   for (const m of (block?.[1] ?? "").matchAll(/(\w+):\s*"(\w+)"/g)) typeOf.set(m[1]!, m[2]!);
 
   // wire 类型 → 字段（只解析直白的 interface；type 别名指向共享类型的跳过，那类由 TS 保证）
-  const fieldsOf = new Map<string, string[]>();
-  for (const m of reqs.matchAll(/export interface (\w+) \{(.*?)\n\}/gs)) {
-    fieldsOf.set(m[1]!, [...m[2]!.matchAll(/^\s{2}(\w+)\??:/gm)].map((x) => x[1]!));
-  }
+  const fieldsOf = requestFields(reqs);
+
 
   const out = new Map<string, { type: string; fields: string[] }>();
   for (const [method, path] of pathOf) {

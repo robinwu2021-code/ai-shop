@@ -130,7 +130,7 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
     const indexes = [];
     // 索引名 → 列规格。**DROP INDEX 是按名字删的**，不记名字就删不掉
     const indexNames = new Map();
-    for (const raw of body.split("\n")) {
+    for (const raw of splitTopLevel(body)) {
       const line = raw.trim();
       const u = line.match(/^UNIQUE KEY (\w+) \(([^)]*)\)/i);
       if (u) {
@@ -145,7 +145,7 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
         indexNames.set(k[1], spec);
         continue;
       }
-      const c = line.match(new RegExp(`^(\\w+)\\s+(${COL_TYPES})`, "i"));
+      const c = line.match(new RegExp(`^(\\w+)\\s+(${COL_TYPES})\\b`, "i"));
       if (!c || NOT_A_COLUMN.test(c[1])) continue;
       cols.push({
         name: c[1],
@@ -237,14 +237,17 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
   });
 
   for (const m of flatSql.matchAll(
-    /ALTER TABLE\s+(\w+)\s+(ADD COLUMN|RENAME COLUMN|DROP COLUMN|MODIFY COLUMN)\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(\w+)(?:\s+([\w()]+))?([^;]*)/gi,
+    /ALTER TABLE\s+(\w+)\s+(ADD(?:\s+COLUMN)?|RENAME COLUMN|DROP COLUMN|MODIFY(?:\s+COLUMN)?)\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(\w+)(?:\s+([\w()]+))?([^;]*)/gi,
   )) {
     const [, table, opRaw, col, rest, tail] = m;
     // 直接命中优先；命中不到再看它是不是被改名了（列 ALTER 版本早于改名的情况）
     const t = tables.get(table) ?? tables.get(renamed.get(table));
     if (!t) continue;
-    switch (opRaw.toUpperCase()) {
-      case "ADD COLUMN":
+    const operation = opRaw.toUpperCase().replace(/\s+COLUMN$/, "");
+    if ((operation === "ADD" || operation === "MODIFY")
+        && (!rest || !new RegExp(`^(?:${COL_TYPES})\\b`, "i").test(rest) || NOT_A_COLUMN.test(col))) continue;
+    switch (operation) {
+      case "ADD":
         if (!t.cols.some((c) => c.name === col)) {
           t.cols.push({
             name: col,
@@ -254,7 +257,7 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
           });
         }
         break;
-      case "DROP COLUMN":
+      case "DROP":
         t.cols = t.cols.filter((c) => c.name !== col);
         // 索引里也要摘掉。MySQL 会静默这么做，产物不跟着做的话，
         // 文档上就会出现一个引用了不存在列的索引，而读的人会照着它写查询
@@ -262,7 +265,7 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
           .map((i) => i.split(",").map((c) => c.trim()).filter((c) => c !== col).join(", "))
           .filter(Boolean);
         break;
-      case "MODIFY COLUMN": {
+      case "MODIFY": {
         const hit = t.cols.find((c) => c.name === col);
         if (!hit) break;
         if (rest) hit.type = rest.toLowerCase().replace(/\(.*/, "");
@@ -272,7 +275,7 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
         if (cm) hit.comment = cm;
         break;
       }
-      case "RENAME COLUMN": {
+      case "RENAME": {
         // `RENAME COLUMN a TO b` —— rest 是 "TO"，新名在 tail 里
         const to = tail?.trim().split(/\s+/)[0];
         const hit = t.cols.find((c) => c.name === col);
@@ -309,7 +312,13 @@ function splitTopLevel(body) {
   let buf = "";
   let depth = 0;
   let quoted = false;
-  for (const ch of body) {
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i];
+    if (!quoted && ch === "-" && body[i + 1] === "-") {
+      while (i < body.length && body[i] !== "\n") i++;
+      buf += "\n";
+      continue;
+    }
     if (quoted) {
       buf += ch;
       if (ch === "'") quoted = false;

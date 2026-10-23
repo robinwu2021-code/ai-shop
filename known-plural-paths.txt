@@ -15,6 +15,8 @@
 #
 # `/biz` 27:29 **没有多数派**，只能挑一个：跟它的同族 `/mp` 走单数
 # （同一套客户端、同一套契约生成器、同一种消费方式）。
+# 2026-10-23：/biz/management 与 /biz/stores 使用已发布的复数资源约定；
+# 最长完整命名空间优先，见 docs/api/契约漂移清单.md 对应修订。其余 /biz 仍单数。
 #
 # 清一条删一条。**只许变短。** 但也别为了变短去改线上路径 ——
 # 这张表的用途是**拦新增**，存量随各自模块重构时顺手带走。
@@ -60,7 +62,6 @@
 /biz/stored-value/plan-recharges/{rechargeNo}/submit  plan-recharges
 /biz/stored-value/plans/{planNo}  plans
 /biz/stored-value/plans/{planNo}/status  plans
-/biz/stored-value/records/{recordNo}  records
 ## These established ops actions use singular resource segments under the legacy
 ## permission/controller layout. Keep routes stable; pluralization requires matching
 ## controller, permission-matrix, and client migration with backward-compatible aliases.
@@ -77,9 +78,6 @@
 /biz/my-spec-dims/{dimNo}/archive  my-spec-dims
 /biz/my-spec-dims/{dimNo}/rename  my-spec-dims
 /biz/spec-dims/{dimNo}/values  spec-dims
-/biz/stores/{storeNo}/appointment-slots  stores
-/biz/stores/{storeNo}/fulfillment  stores
-/biz/stores/{storeNo}/fulfillment/{channel}/impact  stores
 /mp/my-memberships/{entityNo}/reach  my-memberships
 /ops/merchant/apply/{applyNo}/accept  apply
 /ops/merchant/apply/{applyNo}/audit  apply

@@ -17,7 +17,7 @@ import { GOODS_COVER_FALLBACK, ROUTES } from "@shared/utils/constants";
 import { goodsUrl } from "@/shared/goods-route";
 import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
-import type { Goods, Merchant } from "@shared/types";
+import type { Goods, FavoriteStoreView } from "@shared/types";
 
 const { t } = useI18n();
 const cart = useCartStore();
@@ -27,7 +27,7 @@ const PAGE_SIZE = 20;
 const tab = ref<"goods" | "store">("goods");
 const goods = ref<Goods[]>([]);
 const goodsTotal = ref(0);
-const stores = ref<Merchant[]>([]);
+const stores = ref<FavoriteStoreView[]>([]);
 const page = ref(1);
 const loaded = ref(false);
 const failed = ref(false);
@@ -100,7 +100,7 @@ function openGoods(g: Goods) {
   uni.navigateTo({ url: goodsUrl(g) });
 }
 
-function openStore(m: Merchant) {
+function openStore(m: FavoriteStoreView) {
   uni.navigateTo({ url: `${ROUTES.store}?no=${m.storeNo || m.merchantNo}` });
 }
 

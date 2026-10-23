@@ -546,7 +546,9 @@ export interface SkuIdentityReport {
   /** 匹配上了但三列都没变的行数 */
   noChange: number;
   /** 有问题的行：认不出货号、值不合法。**要能逐行看** —— 只给个数商家不知道改哪一行 */
-  problems: { line: number; reason: string }[];
+  problems: { line: number;
+  /** 业务原因或阻断说明 */
+  reason: string }[];
   /** 前几行的前后对照，让他确认「改的是不是我想的那些」 */
   samples: {
     skuNo: string;

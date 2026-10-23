@@ -153,7 +153,7 @@ onUnload(pager.invalidate);
 .filters { gap: 16rpx; margin-bottom: var(--sh-gap-block); }
 .dates { display: block; margin-bottom: var(--sh-gap-block); }
 .record__main { gap: 20rpx; }
-.record__amount { direction: ltr; flex-shrink: 0; font-weight: 700; }
+.record__amount { direction: ltr; flex-shrink: 0; }
 .record--focus { background: var(--sh-primary-tint); }
 .notify { display: block; margin-top: 16rpx; }
 .more { margin-top: var(--sh-gap-block); text-align: center; }

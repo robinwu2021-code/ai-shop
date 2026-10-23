@@ -452,6 +452,7 @@ components:
             properties:
               channel:
                 type: "string"
+                description: "消息或支付通道编码"
               enabled:
                 type: "boolean"
               denied:
@@ -743,8 +744,10 @@ components:
             properties:
               storeNo:
                 type: "string"
+                description: "门店编号"
               storeName:
                 type: "string"
+                description: "门店显示名称"
               role:
                 type: "string"
             required:
@@ -1401,6 +1404,7 @@ components:
               type: "number"
             currency:
               type: "string"
+              description: "ISO货币代码，金额必须结合此字段解释"
             affectedOrders:
               type: "array"
               items:
@@ -2403,6 +2407,7 @@ components:
           properties:
             total:
               type: "number"
+              description: "匹配条件的总记录数量"
             withCoords:
               type: "number"
             missing:
@@ -2412,8 +2417,10 @@ components:
                 properties:
                   storeNo:
                     type: "string"
+                    description: "门店编号"
                   storeName:
                     type: "string"
+                    description: "门店显示名称"
                   merchantNo:
                     type: "string"
                     description: "从这里跳到商家去催他标点。**刻意不带商家名**（取名字要绕数据域）"
@@ -2440,6 +2447,7 @@ components:
           properties:
             total:
               type: "number"
+              description: "匹配条件的总记录数量"
             withCoords:
               type: "number"
           required:
@@ -2452,6 +2460,7 @@ components:
           properties:
             total:
               type: "number"
+              description: "匹配条件的总记录数量"
             withCoords:
               type: "number"
             missing:
@@ -2463,6 +2472,7 @@ components:
                     type: "string"
                   name:
                     type: "string"
+                    description: "业务对象显示名称"
                 required:
                   - "communityNo"
                   - "name"
@@ -2928,8 +2938,10 @@ components:
             properties:
               channel:
                 type: "string"
+                description: "消息或支付通道编码"
               state:
                 type: "string"
+                description: "服务端处理状态编码"
               error:
                 type:
                   - "string"
@@ -3750,6 +3762,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         couponNo:
           type: "string"
           description: "券模板单号"
@@ -3878,6 +3891,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         issueNo:
           type: "string"
           description: "发放记录单号"
@@ -3991,6 +4005,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         campaignNo:
           type: "string"
           description: "活动号。跨端唯一，平台治理与商家自己看到的是同一个"
@@ -4520,6 +4535,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         refundExecution:
           anyOf:
             - "$ref": "#/components/schemas/RefundExecutionProgress"
@@ -5398,6 +5414,7 @@ components:
               type: "string"
             name:
               type: "string"
+              description: "业务对象显示名称"
           required:
             - "merchantNo"
             - "name"
@@ -5490,6 +5507,7 @@ components:
               type: "string"
             name:
               type: "string"
+              description: "业务对象显示名称"
           required:
             - "merchantNo"
             - "name"
@@ -5508,6 +5526,7 @@ components:
             properties:
               name:
                 type: "string"
+                description: "业务对象显示名称"
               options:
                 type: "array"
                 items:
@@ -5668,6 +5687,7 @@ components:
             properties:
               name:
                 type: "string"
+                description: "业务对象显示名称"
               options:
                 type: "array"
                 items:
@@ -5904,6 +5924,22 @@ components:
         - "titleMaxLength"
       additionalProperties: false
       description: "建品规则（商品①）。提审那一刻校验，**拦在进审核队列之前**。\n\n<p>**三条默认全关**（等于今天的行为）：一旦打开，命中的存量商品下次提审全会被拦， 而平台上有 200 个 SPU、194 个正卡在审核里。默认打开等于在没人预告的情况下 让一批商家的提交突然失败。"
+    InventoryTraceEventStatus:
+      type: "string"
+      enum:
+        - "COMPLETED"
+        - "PENDING"
+        - "FAILED"
+        - "WARNING"
+        - "SKIPPED"
+        - "ARCHIVED"
+      description: "Delivery state of an inventory trace event."
+    InventoryTraceOutboxMode:
+      type: "string"
+      enum:
+        - "UNIFIED"
+        - "LEGACY"
+      description: "Outbox implementation supplying the inventory trace."
     InvHealthRow:
       type: "object"
       properties:
@@ -6293,20 +6329,10 @@ components:
           type: "string"
           description: "System that requested or handled the synchronization."
         status:
-          type: "string"
-          enum:
-            - "COMPLETED"
-            - "PENDING"
-            - "FAILED"
-            - "WARNING"
-            - "SKIPPED"
-            - "ARCHIVED"
+          "$ref": "#/components/schemas/InventoryTraceEventStatus"
           description: "Delivery state of the synchronization event."
         outboxMode:
-          type: "string"
-          enum:
-            - "UNIFIED"
-            - "LEGACY"
+          "$ref": "#/components/schemas/InventoryTraceOutboxMode"
           description: "Outbox implementation that persisted the event."
       required:
         - "aggregateId"
@@ -6870,6 +6896,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         settleNo:
           type: "string"
           description: "结算单号"
@@ -6971,6 +6998,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         settleNo:
           type: "string"
           description: "所属结算单"
@@ -7131,6 +7159,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         withdrawNo:
           type: "string"
           description: "提现单号"
@@ -7199,6 +7228,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         invoiceNo:
           type: "string"
           description: "开票申请单号"
@@ -7315,10 +7345,12 @@ components:
           type: "array"
           items:
             type: "string"
+          description: "关联结算单的展示单号列表"
         documentNo:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         invoiceNo:
           type: "string"
           description: "平台侧的进项票记录号（不是发票上印的号）"
@@ -7402,6 +7434,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         requestNo:
           type: "string"
           description: "开票申请号"
@@ -7522,6 +7555,7 @@ components:
           type: "array"
           items:
             type: "string"
+          description: "关联结算单的展示单号列表"
         payoutNo:
           type:
             - "string"
@@ -7955,6 +7989,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         batchNo:
           type: "string"
           description: "批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话"
@@ -8325,8 +8360,10 @@ components:
           description: "服务端业务状态"
         earningPaused:
           type: "boolean"
+          description: "是否暂停该积分类型的订单赠送"
         orderDefault:
           type: "boolean"
+          description: "是否作为订单默认积分类型"
       required:
         - "typeCode"
         - "name"
@@ -8408,14 +8445,19 @@ components:
       properties:
         requestId:
           type: "string"
+          description: "调用方生成并在重试时保持不变的请求标识"
         typeCode:
           type: "string"
+          description: "积分类型唯一编码"
         expectedName:
           type: "string"
+          description: "调用方读取到的旧名称，用于并发校验"
         name:
           type: "string"
+          description: "业务对象显示名称"
         reason:
           type: "string"
+          description: "业务原因或阻断说明"
       required:
         - "requestId"
         - "typeCode"
@@ -9720,10 +9762,12 @@ components:
           type:
             - "string"
             - "null"
+          description: "子订单内部业务编号"
         reason:
           type:
             - "string"
             - "null"
+          description: "业务原因或阻断说明"
         id:
           type: "number"
           description: "持久记录主键"
@@ -9972,6 +10016,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         id:
           type: "number"
           description: "持久记录主键"
@@ -10077,6 +10122,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "原凭证展示单号"
         id:
           type: "number"
           description: "持久记录主键"
@@ -10122,6 +10168,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "原凭证展示单号"
         id:
           type: "number"
           description: "持久记录主键"
@@ -10589,6 +10636,7 @@ components:
           properties:
             voucherNo:
               type: "string"
+              description: "原凭证内部编号"
             typeCode:
               type: "string"
               description: "积分类型唯一编码"
@@ -10883,6 +10931,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         fissionNo:
           type: "string"
           description: "活动单号"
@@ -11258,6 +11307,7 @@ components:
                 type: "string"
               value:
                 type: "string"
+                description: "当前规则配置值"
             required:
               - "key"
               - "value"
@@ -12876,6 +12926,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "面向用户的展示单号，不能代替内部业务编号"
         activityNo:
           type: "string"
           description: "活动号"
@@ -13185,14 +13236,17 @@ components:
           anyOf:
             - "$ref": "#/components/schemas/PointsTypeConfig"
             - type: "null"
+          description: "业务类型编码或类型摘要，按当前接口定义解释"
         categories:
           type: "array"
           items:
             "$ref": "#/components/schemas/EarningCategory"
+          description: "可用商品分类列表"
         types:
           type: "array"
           items:
             "$ref": "#/components/schemas/PointsTypeConfig"
+          description: "可用积分类型列表"
       required:
         - "type"
         - "categories"
@@ -13203,14 +13257,18 @@ components:
       properties:
         categoryNo:
           type: "string"
+          description: "商品分类编号"
         parentNo:
           type:
             - "string"
             - "null"
+          description: "父分类编号，根节点可为空"
         name:
           type: "string"
+          description: "业务对象显示名称"
         path:
           type: "string"
+          description: "分类层级路径"
       required:
         - "categoryNo"
         - "parentNo"
@@ -13222,46 +13280,46 @@ components:
       properties:
         typeCode:
           type: "string"
+          description: "积分类型唯一编码"
         scope:
           type: "string"
+          description: "规则适用范围编码"
         revision:
           type: "number"
+          description: "当前记录版本号，用于并发控制"
         activeRevision:
           type:
             - "number"
             - "null"
+          description: "当前生效版本号"
         mode:
-          type: "string"
-          enum:
-            - "RATIO"
-            - "FIXED"
+          "$ref": "#/components/schemas/PointsEarningRuleMode"
+          description: "规则模式编码"
         value:
           type: "number"
+          description: "当前规则配置值"
         activeMode:
-          type:
-            - "string"
-            - "null"
-          enum:
-            - "RATIO"
-            - "FIXED"
-            - null
+          anyOf:
+            - "$ref": "#/components/schemas/PointsEarningRuleMode"
+            - type: "null"
+          description: "已生效规则模式"
         activeValue:
           type:
             - "number"
             - "null"
+          description: "已生效规则值"
         actor:
           type: "string"
+          description: "操作人标识"
         remark:
           type: "string"
+          description: "操作备注"
         at:
           type: "number"
+          description: "业务发生时间"
         action:
-          type: "string"
-          enum:
-            - "IMPORT"
-            - "SAVE"
-            - "PUBLISH"
-            - "DISABLE"
+          "$ref": "#/components/schemas/PointsEarningRuleAction"
+          description: "本次执行的业务动作"
       required:
         - "typeCode"
         - "scope"
@@ -13275,6 +13333,20 @@ components:
         - "remark"
         - "at"
       additionalProperties: false
+    PointsEarningRuleMode:
+      type: "string"
+      enum:
+        - "RATIO"
+        - "FIXED"
+      description: "Points earning rule calculation mode."
+    PointsEarningRuleAction:
+      type: "string"
+      enum:
+        - "IMPORT"
+        - "SAVE"
+        - "PUBLISH"
+        - "DISABLE"
+      description: "Rule history action, including imported revisions."
     EarningRulePage:
       type: "object"
       properties:
@@ -13282,12 +13354,16 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/EarningRule"
+          description: "当前页数据行"
         total:
           type: "number"
+          description: "匹配条件的总记录数量"
         page:
           type: "number"
+          description: "当前页码，从1开始"
         size:
           type: "number"
+          description: "请求的每页记录数量"
       required:
         - "rows"
         - "total"
@@ -13299,24 +13375,27 @@ components:
       properties:
         requestId:
           type: "string"
+          description: "调用方生成并在重试时保持不变的请求标识"
         typeCode:
           type: "string"
+          description: "积分类型唯一编码"
         scope:
           type: "string"
+          description: "规则适用范围编码"
         expectedRevision:
           type: "number"
+          description: "调用方读取到的版本号，用于乐观锁校验"
         action:
-          type: "string"
-          enum:
-            - "SAVE"
-            - "PUBLISH"
-            - "DISABLE"
+          "$ref": "#/components/schemas/PointsEarningRuleMutation"
+          description: "本次执行的业务动作"
         ratioBp:
           type:
             - "number"
             - "null"
+          description: "比例，万分比单位，10000代表100%"
         remark:
           type: "string"
+          description: "操作备注"
       required:
         - "requestId"
         - "typeCode"
@@ -13326,6 +13405,13 @@ components:
         - "ratioBp"
         - "remark"
       additionalProperties: false
+    PointsEarningRuleMutation:
+      type: "string"
+      enum:
+        - "SAVE"
+        - "PUBLISH"
+        - "DISABLE"
+      description: "Rule mutation requested by the operator."
     EarningCalculation:
       type: "object"
       properties:
@@ -13334,12 +13420,15 @@ components:
           properties:
             typeCode:
               type: "string"
+              description: "积分类型唯一编码"
             name:
               type: "string"
+              description: "业务对象显示名称"
             market:
               type: "string"
             currency:
               type: "string"
+              description: "ISO货币代码，金额必须结合此字段解释"
             scale:
               type: "number"
             ratePoints:
@@ -13355,23 +13444,25 @@ components:
             - "ratePoints"
             - "rateMinor"
           additionalProperties: false
+          description: "业务类型编码或类型摘要，按当前接口定义解释"
         matched:
           type: "object"
           properties:
             scope:
               type: "string"
+              description: "规则适用范围编码"
             revision:
               type: "number"
+              description: "当前记录版本号，用于并发控制"
             rule:
               type: "object"
               properties:
                 mode:
-                  type: "string"
-                  enum:
-                    - "RATIO"
-                    - "FIXED"
+                  "$ref": "#/components/schemas/PointsEarningRuleMode"
+                  description: "规则模式编码"
                 value:
                   type: "number"
+                  description: "当前规则配置值"
               required:
                 - "mode"
                 - "value"
@@ -13381,10 +13472,13 @@ components:
             - "revision"
             - "rule"
           additionalProperties: false
+          description: "是否命中可用赠送规则"
         cashMinor:
           type: "number"
+          description: "参与计算的现金金额，货币最小单位"
         points:
           type: "number"
+          description: "按当前规则计算的积分数量"
       required:
         - "type"
         - "matched"
@@ -13396,12 +13490,16 @@ components:
       properties:
         orderNo:
           type: "string"
+          description: "订单内部业务编号"
         subOrderNo:
           type: "string"
+          description: "子订单内部业务编号"
         typeCode:
           type: "string"
+          description: "积分类型唯一编码"
         currency:
           type: "string"
+          description: "ISO货币代码，金额必须结合此字段解释"
         snapshot:
           type: "object"
           properties:
@@ -13418,10 +13516,12 @@ components:
                     type:
                       - "string"
                       - "null"
+                    description: "商品分类编号"
                   matchedScope:
                     type: "string"
                   revision:
                     type: "number"
+                    description: "当前记录版本号，用于并发控制"
                 required:
                   - "itemId"
                   - "categoryNo"
@@ -13441,6 +13541,7 @@ components:
                     type:
                       - "string"
                       - "null"
+                    description: "商品分类编号"
                   quantity:
                     type: "number"
                   goodsCashMinor:
@@ -13449,12 +13550,11 @@ components:
                     type: "object"
                     properties:
                       mode:
-                        type: "string"
-                        enum:
-                          - "RATIO"
-                          - "FIXED"
+                        "$ref": "#/components/schemas/PointsEarningRuleMode"
+                        description: "规则模式编码"
                       value:
                         type: "number"
+                        description: "当前规则配置值"
                     required:
                       - "mode"
                       - "value"
@@ -13472,26 +13572,34 @@ components:
             - "ruleTraces"
             - "lines"
           additionalProperties: false
+          description: "业务处理时冻结的权威快照"
         ledger:
           anyOf:
             - type: "object"
               properties:
                 state:
                   type: "string"
+                  description: "服务端处理状态编码"
                 expectedPoints:
                   type: "number"
+                  description: "订单预计可获得的积分数量"
                 grantedPoints:
                   type: "number"
+                  description: "已经确认发放的积分数量"
                 availablePoints:
                   type: "number"
+                  description: "当前可用积分数量"
                 pendingPoints:
                   type: "number"
+                  description: "等待确认发放的积分数量"
                 reclaimedPoints:
                   type: "number"
+                  description: "退款后已收回的赠送积分数量"
                 reason:
                   type:
                     - "string"
                     - "null"
+                  description: "业务原因或阻断说明"
               required:
                 - "state"
                 - "expectedPoints"
@@ -13502,6 +13610,7 @@ components:
                 - "reason"
               additionalProperties: false
             - type: "null"
+          description: "权威账务查询结果"
       required:
         - "orderNo"
         - "subOrderNo"

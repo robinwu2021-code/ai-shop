@@ -1,6 +1,9 @@
 package ai.neargo.shop.arch;
 
 import ai.neargo.shop.auth.BizPerms;
+import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -414,6 +417,21 @@ class BizEndpointPermTest {
         put("/biz/entitlement-uses/{operationNo}", BizPerms.ENT_READ);
         put("/biz/entitlement-uses/{operationNo}/cancel", BizPerms.ENT_USE);
         put("/biz/entitlement-usage", BizPerms.ENT_READ);
+        // Resource checks remain in the services; multi-permission expressions are pinned below.
+        put("/biz/order/{orderNo}/points-earning", BizPerms.ORDER_VIEW);
+        put("/biz/stored-value/customer-candidates", BizPerms.CUSTOMER);
+        put("/biz/stored-value/customer-selections", BizPerms.CUSTOMER);
+        put("/biz/stored-value/plan-recharges/confirm-offline", BizPerms.SV_RECHARGE_CREATE);
+        put("/biz/stores/{storeNo}/members", BizPerms.CUSTOMER);
+        put("/biz/stores/{storeNo}/stored-value/customer-candidates", BizPerms.CUSTOMER);
+        put("/biz/stores/{storeNo}/stored-value/customer-selections", BizPerms.CUSTOMER);
+        put("/biz/stores/{storeNo}/stored-value/recharge-options", BizPerms.SV_RECHARGE_CREATE);
+        put("/biz/stores/{storeNo}/stored-value/issuer-recharges/confirm-offline", BizPerms.SV_RECHARGE_CREATE);
+        put("/biz/stores/{storeNo}/stored-value/issuer-recharges/resolve", BizPerms.SV_RECHARGE_CREATE);
+        put("/biz/stores/{storeNo}/stored-value/issuer-recharges/cancel-create", BizPerms.SV_RECHARGE_CREATE);
+        put("/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}/cancel", BizPerms.SV_RECHARGE_CREATE);
+        put("/biz/stores/{storeNo}/stored-value/issuer-records", BizPerms.SV_ACCOUNT_READ);
+        put("/biz/stores/{storeNo}/stored-value/issuer-records/{recordNo}", BizPerms.SV_ACCOUNT_READ);
         put("/biz/stored-value/context", BizPerms.SV_PLAN_READ);
         put("/biz/stored-value/plans", BizPerms.SV_PLAN_MANAGE);
         put("/biz/stored-value/plans/{planNo}", BizPerms.SV_PLAN_READ);
@@ -631,7 +649,55 @@ class BizEndpointPermTest {
      * <p>单独列一张表而不是丢进 {@link #PUBLIC}：它们仍然要求「在这家店有角色」，
      * 空角色的人一样进不来。混进 PUBLIC 会让人以为这类端点谁都能调。
      */
-    private static final Set<String> ANY_OF = Set.of("/biz/dashboard/todo");
+    private static final Set<String> ANY_OF = Set.of(
+            "/biz/dashboard/todo",
+            "/biz/stores/{storeNo}/stored-value/issuers",
+            "/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}");
+
+    /**
+     * Management uses live actor/resource grants, independently of selected-store BizPerms.
+     * Context lists only the actor's reachable spaces; creation verifies an owned source account.
+     * Query services filter grants, BrandService requires brand/store authority, IssuerAuthorityService
+     * validates issuer and settlement authority, and migration services recheck live store ownership.
+     * Authentication alone is insufficient: each approved method must retain its explicit delegation.
+     */
+    private record DomainDecision(String controller, String method, String path, String delegation) {}
+    private static final List<DomainDecision> DOMAIN = List.of(
+            new DomainDecision("BizManagementController", "context", "/biz/management/context", "scopes.context(access.actor())"),
+            new DomainDecision("BizManagementController", "create", "/biz/management/spaces", "scopes.create(access.actor()"),
+            new DomainDecision("BizManagementController", "resources", "/biz/management/spaces/{managementNo}/resources", "queries.resources(access.actor()"),
+            new DomainDecision("BizManagementController", "recipients", "/biz/management/spaces/{managementNo}/recipients", "queries.recipients(access.actor()"),
+            new DomainDecision("BizManagementController", "grant", "/biz/management/spaces/{managementNo}/grants", "scopes.grant(access.actor()"),
+            new DomainDecision("BizManagementController", "revoke", "/biz/management/spaces/{managementNo}/grants/{grantNo}", "scopes.revoke(access.actor()"),
+            new DomainDecision("BizManagementController", "entities", "/biz/management/spaces/{managementNo}/entities", "queries.list(access.actor()"),
+            new DomainDecision("BizManagementController", "stores", "/biz/management/spaces/{managementNo}/stores", "queries.list(access.actor()"),
+            new DomainDecision("BizManagementController", "merchants", "/biz/management/entities/{entityNo}/payment-merchants", "merchants.candidates(access.actor()"),
+            new DomainDecision("BizBrandController", "list", "/biz/management/brands", "queries.list(access.actor()"),
+            new DomainDecision("BizBrandController", "create", "/biz/management/brands", "brands.create(access.actor()"),
+            new DomainDecision("BizBrandController", "detail", "/biz/management/brands/{brandNo}", "brands.detail(access.actor()"),
+            new DomainDecision("BizBrandController", "edit", "/biz/management/brands/{brandNo}", "brands.edit(access.actor()"),
+            new DomainDecision("BizBrandController", "status", "/biz/management/brands/{brandNo}/status-changes", "brands.status(access.actor()"),
+            new DomainDecision("BizBrandController", "stores", "/biz/management/brands/{brandNo}/stores", "brands.detail(access.actor()"),
+            new DomainDecision("BizBrandController", "audit", "/biz/management/brands/{brandNo}/audit-events", "queries.audit(access.actor()"),
+            new DomainDecision("BizStoreOperatingContextController", "context", "/biz/stores/{storeNo}/operating-context", "queries.operating(access.actor()"),
+            new DomainDecision("BizStoreOperatingContextController", "check", "/biz/stores/{storeNo}/brand-changes/check", "brands.check(access.actor()"),
+            new DomainDecision("BizStoreOperatingContextController", "submit", "/biz/stores/{storeNo}/brand-changes", "brands.submit(access.actor()"),
+            new DomainDecision("BizStoreOperatingContextController", "change", "/biz/management/brand-changes/{changeNo}", "brands.change(access.actor()"),
+            new DomainDecision("BizStoreOperatingContextController", "decide", "/biz/management/brand-changes/{changeNo}/decisions", "brands.decide(access.actor()"),
+            new DomainDecision("BizStoredValueIssuerController", "brand", "/biz/management/brands/{brandNo}/stored-value/issuer", "authority.readScope(access.actor()"),
+            new DomainDecision("BizStoredValueIssuerController", "create", "/biz/management/brands/{brandNo}/stored-value/issuer", "authority.configureScope(access.actor()"),
+            new DomainDecision("BizStoredValueIssuerController", "store", "/biz/management/stores/{storeNo}/stored-value/issuer", "authority.readScope(access.actor()"),
+            new DomainDecision("BizStoredValueIssuerController", "configureStore", "/biz/management/stores/{storeNo}/stored-value/issuer", "authority.configureScope(actor,"),
+            new DomainDecision("BizStoredValueIssuerController", "prepare", "/biz/management/stores/{storeNo}/stored-value/issuer/prepare", "authority.prepareSettings(access.actor()"),
+            new DomainDecision("BizStoredValueIssuerController", "refresh", "/biz/management/stores/{storeNo}/stored-value/issuer/access-refresh", "authority.readScope(access.actor()"),
+            new DomainDecision("BizStoredValueIssuerController", "issuer", "/biz/management/stored-value/issuers/{issuerNo}", "authority.readScope(actor,"),
+            new DomainDecision("BizStoredValueIssuerController", "check", "/biz/management/stored-value/issuers/{issuerNo}/configuration-checks", "authority.configureScope(actor,"),
+            new DomainDecision("BizStoredValueIssuerController", "version", "/biz/management/stored-value/issuers/{issuerNo}/configuration-versions", "authority.configureScope(actor,"),
+            new DomainDecision("BizStoredValueIssuerController", "routes", "/biz/management/stored-value/issuers/{issuerNo}/collection-routes", "authority.configureScope(actor,"),
+            new DomainDecision("BizStoredValueIssuerController", "entities", "/biz/management/stored-value/settlement-entity-candidates", "authority.settlementCandidates(access.actor()"),
+            new DomainDecision("BizStoredValueMigrationController", "prepare", "/biz/management/stored-value/migration-manifests", "coordinator.prepare(access.actor()"),
+            new DomainDecision("BizStoredValueMigrationController", "pause", "/biz/management/stored-value/migration-manifests/{manifestNo}/pause", "maintenance.pause(access.actor()"),
+            new DomainDecision("BizStoredValueMigrationController", "map", "/biz/management/stored-value/migration-manifests/{manifestNo}/map", "maintenance.apply(access.actor()"));
 
     /**
      * ⚠️ <b>Patch 是 2026-08-25 补进来的</b>：此前这个正则只认 Get/Post/Put/Delete，
@@ -654,9 +720,10 @@ class BizEndpointPermTest {
         undecided.removeAll(REQUIRED.keySet());
         undecided.removeAll(ANY_OF);
         undecided.removeAll(PUBLIC);
+        undecided.removeAll(DOMAIN.stream().map(DomainDecision::path).toList());
         assertThat(undecided)
                 .as("这些 /biz 端点还没决定权限 —— 每一个都是潜在的越权口子。\n"
-                        + "把它们加进 REQUIRED（要授权）或 PUBLIC（登录即可）：")
+                        + "把它们加进 REQUIRED / ANY_OF（权限码）、DOMAIN（资源授权）或 PUBLIC（登录即可）：")
                 .isEmpty();
     }
 
@@ -665,6 +732,8 @@ class BizEndpointPermTest {
     void noStaleEntries() throws IOException {
         Set<String> endpoints = scanBizEndpoints();
         Set<String> stale = new TreeSet<>(REQUIRED.keySet());
+        stale.addAll(ANY_OF);
+        stale.addAll(DOMAIN.stream().map(DomainDecision::path).toList());
         stale.removeAll(endpoints);
         assertThat(stale)
                 .as("这些端点已经不存在了，从 REQUIRED 删掉 —— "
@@ -699,60 +768,106 @@ class BizEndpointPermTest {
                 .isEmpty();
     }
 
-    /** 扫出真的带 @PreAuthorize("@perm.canBiz(...)" / "canAnyBiz(...)") 的端点 */
+    /** Read Spring's merged annotations, supporting either order, inline and class annotations. */
     private static Set<String> scanGuardedEndpoints() throws IOException {
-        Path root = Path.of("..").toRealPath();
         Set<String> out = new TreeSet<>();
-        try (Stream<Path> files = Files.walk(root)) {
-            for (Path p : files.filter(f -> f.toString().endsWith(".java"))
-                    .filter(f -> !f.toString().contains("/test/")).toList()) {
-                String src = Files.readString(p);
-                if (!src.contains("canBiz") && !src.contains("canAnyBiz")) {
-                    continue;
-                }
-                Matcher base = CLASS_BASE.matcher(src);
-                String prefix = base.find() ? base.group(1) : "";
-                String[] lines = src.split("\n");
-                for (int i = 0; i < lines.length; i++) {
-                    Matcher m = MAPPING.matcher(lines[i]);
-                    if (!m.find()) {
-                        continue;
-                    }
-                    /*
-                     * 往上走过整个「注解 + 注释」块找 canBiz，**不是往上数固定几行**。
-                     *
-                     * 此前写死 3 行，于是在 @PreAuthorize 与 @PostMapping 之间夹一段
-                     * 五行的注释，就会被报成「表里定了权限但代码里没有 @PreAuthorize」——
-                     * 而那个端点在运行时明明是受保护的。假警报和漏报一样伤：
-                     * 这条用例的价值全在于它红的时候人会当真。
-                     *
-                     * 停在**空行或上一个方法的结尾**：注解块不会跨过这两者。
-                     */
-                    boolean has = false;
-                    for (int k = i - 1; k >= 0; k--) {
-                        String up = lines[k].trim();
-                        if (up.isEmpty() || up.equals("}") || up.startsWith("public ")
-                                || up.startsWith("private ") || up.startsWith("return ")) {
-                            break;
-                        }
-                        if (up.contains("canBiz") || up.contains("canAnyBiz")) {
-                            has = true;
-                            break;
-                        }
-                    }
-                    if (!has) {
-                        continue;
-                    }
-                    String path = m.group(1);
-                    String full = path.startsWith("/biz/") ? path
-                            : (prefix.startsWith("/biz") ? prefix + path : null);
-                    if (full != null) {
-                        out.add(full);
-                    }
+        for (Class<?> controller : controllerClasses()) {
+            for (var method : controller.getDeclaredMethods()) {
+                RequestMapping mapping = AnnotatedElementUtils.findMergedAnnotation(method, RequestMapping.class);
+                PreAuthorize guard = AnnotatedElementUtils.findMergedAnnotation(method, PreAuthorize.class);
+                if (guard == null) guard = AnnotatedElementUtils.findMergedAnnotation(controller, PreAuthorize.class);
+                if (mapping == null || guard == null
+                        || !(guard.value().contains("@perm.canBiz(") || guard.value().contains("@perm.canAnyBiz("))) continue;
+                RequestMapping base = AnnotatedElementUtils.findMergedAnnotation(controller, RequestMapping.class);
+                String prefix = base == null || base.value().length == 0 ? "" : base.value()[0];
+                for (String path : mapping.value()) {
+                    String full = path.startsWith("/biz/") ? path : prefix + path;
+                    if (full.startsWith("/biz/")) out.add(full);
                 }
             }
         }
         return out;
+    }
+
+    private static List<Class<?>> controllerClasses() throws IOException {
+        List<Class<?>> out = new ArrayList<>();
+        Path root = Path.of("..").toRealPath();
+        try (Stream<Path> files = Files.walk(root)) {
+            for (Path p : files.filter(f -> f.toString().endsWith(".java"))
+                    .filter(f -> f.toString().contains("/src/main/java/")).toList()) {
+                String src = Files.readString(p);
+                if (!src.contains("@RestController") || !src.contains("/biz/")) continue;
+                String sourcePath = p.toString();
+                String name = sourcePath.substring(sourcePath.indexOf("/src/main/java/") + "/src/main/java/".length())
+                        .replace('/', '.').replace(".java", "");
+                try { out.add(Class.forName(name, false, BizEndpointPermTest.class.getClassLoader())); }
+                catch (ClassNotFoundException e) { throw new IllegalStateException(name, e); }
+            }
+        }
+        return out;
+    }
+
+    @Test
+    void managementDecisionsKeepAuthenticationAndAuthorityDelegation() throws Exception {
+        for (String name : DOMAIN.stream().map(DomainDecision::controller).distinct().toList()) {
+            Class<?> type = Class.forName("ai.neargo.shop.portal.biz." + name);
+            Set<String> mapped = new TreeSet<>();
+            for (var method : type.getDeclaredMethods()) {
+                if (AnnotatedElementUtils.findMergedAnnotation(method, RequestMapping.class) != null)
+                    mapped.add(method.getName());
+            }
+            assertThat(mapped).as("Every management action needs an explicit authority decision: " + name)
+                    .containsExactlyInAnyOrderElementsOf(DOMAIN.stream()
+                            .filter(d -> d.controller().equals(name)).map(DomainDecision::method).toList());
+        }
+        for (DomainDecision decision : DOMAIN) {
+            Class<?> controller = Class.forName("ai.neargo.shop.portal.biz." + decision.controller());
+            var methods = java.util.Arrays.stream(controller.getDeclaredMethods())
+                    .filter(m -> m.getName().equals(decision.method())).toList();
+            assertThat(methods).as(decision.toString()).hasSize(1);
+            var method = methods.getFirst();
+            var mapping = AnnotatedElementUtils.findMergedAnnotation(method, RequestMapping.class);
+            assertThat(mapping).as(decision.toString()).isNotNull();
+            assertThat(mapping.value()).containsExactly(decision.path());
+            var guard = AnnotatedElementUtils.findMergedAnnotation(method, PreAuthorize.class);
+            if (guard == null) guard = AnnotatedElementUtils.findMergedAnnotation(controller, PreAuthorize.class);
+            assertThat(guard).as(decision.toString()).isNotNull();
+            assertThat(guard.value()).isEqualTo("@managementAccess.authenticated()");
+            String src = Files.readString(Path.of("src/main/java/ai/neargo/shop/portal/biz/" + decision.controller() + ".java"));
+            assertThat(methodBody(src, decision.method())).as(decision.toString()).contains(decision.delegation());
+        }
+    }
+
+    private static String methodBody(String src, String method) {
+        Matcher signature = Pattern.compile("public\\s+[^;{}]+?\\b" + Pattern.quote(method) + "\\s*\\(").matcher(src);
+        if (!signature.find()) throw new IllegalStateException("Missing method " + method);
+        int start = src.indexOf('{', signature.end());
+        int depth = 1, end = start + 1;
+        while (end < src.length() && depth > 0) {
+            char c = src.charAt(end++);
+            if (c == '{') depth++;
+            else if (c == '}') depth--;
+        }
+        return src.substring(start + 1, end - 1);
+    }
+
+    @Test
+    void compoundStoredValueDecisionsRetainEveryPermissionAndOperator() throws Exception {
+        assertGuard("BizStoredValueCustomerController", "candidates", "@perm.canBiz('biz:customer') and @perm.canBiz('pay:sv:recharge:create')");
+        assertGuard("BizStoredValueCustomerController", "select", "@perm.canBiz('biz:customer') and @perm.canBiz('pay:sv:recharge:create')");
+        assertGuard("BizMemberScopeController", "candidates", "@perm.canBiz('biz:customer') and @perm.canBiz('pay:sv:recharge:create')");
+        assertGuard("BizMemberScopeController", "select", "@perm.canBiz('biz:customer') and @perm.canBiz('pay:sv:recharge:create')");
+        assertGuard("BizStoredValuePlanRechargeController", "confirmOffline", "@perm.canBiz('pay:sv:recharge:create') and @perm.canBiz('pay:sv:recharge:receive')");
+        assertGuard("BizStoredValueIssuerOperationsController", "confirm", "@perm.canBiz('pay:sv:recharge:create') and @perm.canBiz('pay:sv:recharge:receive')");
+        assertGuard("BizStoredValueIssuerOperationsController", "query", "@perm.canBiz('pay:sv:recharge:read') or @perm.canBiz('pay:sv:recharge:create')");
+        assertGuard("BizStoredValueIssuerOperationsController", "issuers", "@perm.canBiz('pay:sv:account:read') or @perm.canBiz('pay:sv:recharge:create') or @perm.canBiz('pay:sv:plan:manage') or @perm.canBiz('pay:sv:plan:read')");
+    }
+
+    private static void assertGuard(String controller, String method, String expression) throws Exception {
+        Class<?> type = Class.forName("ai.neargo.shop.portal.biz." + controller);
+        var target = java.util.Arrays.stream(type.getDeclaredMethods()).filter(m -> m.getName().equals(method)).findFirst().orElseThrow();
+        assertThat(target.getAnnotation(PreAuthorize.class)).isNotNull();
+        assertThat(target.getAnnotation(PreAuthorize.class).value()).isEqualTo(expression);
     }
 
     /** 从 BizPerms 源码里抽常量值 —— 与运营端那条守卫同一手法 */

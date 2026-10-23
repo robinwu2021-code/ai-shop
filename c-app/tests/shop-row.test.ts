@@ -37,6 +37,13 @@ describe("店铺行", () => {
     expect(w.text()).not.toContain("shops.newShop");
   });
 
+  it("favorite-store projections keep the supplied rating without inventing an unrated-store claim", () => {
+    const favorite = { merchantNo: "M1", storeNo: "ST1", name: "南山店", logo: "", rating: 4.2, verified: true, breachCount: 0 };
+    expect(row({merchant: favorite}).text()).toContain("4.2 ★");
+    expect(row({merchant: favorite}).text()).not.toContain("shops.newShop");
+    expect(row({merchant: {...favorite,rating:0}}).text()).not.toContain("shops.newShop");
+  });
+
   it("★★ 自营出标、放在店名前；第三方不出", () => {
     const self = row({ merchant: m() }).text();
     expect(self.indexOf("merchant.selfOperated")).toBeLessThan(self.indexOf("虹选鲜果"));

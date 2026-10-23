@@ -34,7 +34,8 @@ import { pages, clashes, ROLE_CN } from "../../../scripts/gen-biz-feature-perm-m
 const PAGES = join(import.meta.dirname, "../../../b-app/src/pages");
 
 const sourceOf = (dir: string) =>
-  readdirSync(join(PAGES, dir))
+  readdirSync(join(PAGES, dir), { recursive: true, encoding: "utf8" })
+    .filter((f) => /\.(vue|ts)$/.test(f))
     .map((f) => readFileSync(join(PAGES, dir, f), "utf8"))
     .join("\n");
 
@@ -56,6 +57,12 @@ const cutsBy = (src: string, code: string) =>
  * 「因为它是对的」不算理由。
  */
 const EXEMPT: Record<string, string> = {
+  "stored-value/biz:customer": "首屏 ensureScope 后按 tabs.allowed 裁剪客户页；仅 biz:customer 且 pay:sv:recharge:create 或账户读取者能挂载该块；会员搜索入口按这两个 can 裁剪，列表 composable 将失败转为 error 重试行。",
+  "stored-value/pay:sv:account:read": "账户与记录 tab 按 can 裁剪；客户块可供仅充值者进入，账户列表也按 can(pay:sv:account:read) 决定请求，错误由列表 error 展示。",
+  "stored-value/pay:sv:plan:manage": "方案列表可供只读或充值人员查看；只有 can(pay:sv:plan:manage) 才显示新建操作，列表加载错误单独展示。",
+  "stored-value/pay:sv:recharge:create": "客户 tab 与充值动作按充值权限裁剪；账户只读者可进客户 tab 查看余额而不会显示充值动作。",
+  "stored-value-account/pay:sv:account:read": "账户深链无读取权限时 denied；会员选择需客户与充值权限，取得选择后仅 can(pay:sv:account:read) 才请求账户并挂载记录列表，否则只展示会员及充值操作。",
+
   "messages/biz:aftersale":
     "消息归本人；load先ensureScope再can('biz:aftersale')查询待办，无售后权限不发请求、不展示待办入口；查询失败保留原消息并可重试。",
   "order/biz:aftersale":

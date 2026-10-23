@@ -20,3 +20,38 @@ test('duplicate paths, wrong realm and missing delivery rationale remain hard fa
     data=manifest();data.reason='';assert.throws(()=>validateDeferredDelivery(data,options()));
     data=manifest();data.stage='IGNORE';assert.throws(()=>validateDeferredDelivery(data,options()));
 });
+
+test('multiple explicit contracts preserve handler and stale-entry enforcement', async () => {
+    const {mkdtempSync, mkdirSync, writeFileSync, rmSync} = await import('node:fs');
+    const {tmpdir} = await import('node:os');
+    const {join} = await import('node:path');
+    const {readDeferredDelivery} = await import('../lib/backend-ui-delivery.mjs');
+    const root = mkdtempSync(join(tmpdir(), 'delivery-contracts-'));
+    try {
+        mkdirSync(join(root, 'docs/api'), {recursive:true});
+        mkdirSync(join(root, 'docs/technical'));
+        writeFileSync(join(root, 'docs/technical/plan.md'), 'Frontend tasks');
+        const spec = paths => JSON.stringify({openapi:'3.0.3', paths});
+        writeFileSync(join(root, 'docs/api/entitlement-backend.openapi.json'), spec({'/ops/pay/entitlement-exceptions':{get:{}}}));
+        writeFileSync(join(root, 'docs/api/print-operations.openapi.json'), spec({'/ops/print/health':{get:{}}}));
+        const data = {...manifest(), plan:'docs/technical/plan.md'};
+        const entries = [{method:'GET',path:'/ops/pay/entitlement-exceptions'}, {method:'GET',path:'/ops/print/health'}];
+        const opts = {app:'ops-web',prefix:'/ops',handlers:entries,missing:entries};
+        const run = (override={}) => {
+            writeFileSync(join(root, 'docs/api/staged.json'), JSON.stringify({...data,...override}));
+            return readDeferredDelivery(root,'docs/api/staged.json',opts);
+        };
+        assert.deepEqual([...run()], [key]); // original default contract remains supported
+        const contracts = ['docs/api/entitlement-backend.openapi.json','docs/api/print-operations.openapi.json'];
+        const both = entries.map(row=>({...row,app:'ops-web'}));
+        assert.equal(run({contracts,entries:both}).size,2);
+        for (const invalid of [[],[contracts[0],contracts[0]],['../escape'],['docs/api/../escape.openapi.json'],['docs/api/missing.openapi.json'],['docs\\api\\escape.openapi.json']]) {
+            assert.throws(()=>run({contracts:invalid}));
+        }
+        assert.throws(()=>run({entries:both})); // print API needs its own contract
+        opts.handlers = [entries[0]];
+        assert.throws(()=>run({contracts,entries:both}));
+        opts.handlers = entries; opts.missing = [entries[0]];
+        assert.throws(()=>run({contracts,entries:both}));
+    } finally { rmSync(root,{recursive:true,force:true}); }
+});

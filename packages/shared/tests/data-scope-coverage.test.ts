@@ -17,6 +17,9 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+// @ts-expect-error -- shared migration parser is plain JavaScript
+import { readColumnNames } from "../../../scripts/lib/ddl.mjs";
+
 const ROOT = join(import.meta.dirname, "../../..");
 const MIGRATION_DIR = join(ROOT, "backend/shop-app/src/main/resources/db/migration");
 const REGISTRATION = join(
@@ -56,6 +59,59 @@ const OWNER_COLUMNS = [
  * 业务数据的答案永远是会。
  */
 const EXEMPT: Record<string, string> = {
+  ent_legacy_coupon_issue: "旧券迁移及原业务协调记录；EntitlementMigration/LegacyCoupon 服务按可信租户、原活动/原券归属及幂等源编号授权后点查，不提供跨主体运营列表；通用数据域不能替代原来源证据链。",
+  ent_legacy_coupon_operation: "旧券迁移及原业务协调记录；EntitlementMigration/LegacyCoupon 服务按可信租户、原活动/原券归属及幂等源编号授权后点查，不提供跨主体运营列表；通用数据域不能替代原来源证据链。",
+  ent_migration_alias: "旧券迁移及原业务协调记录；EntitlementMigration/LegacyCoupon 服务按可信租户、原活动/原券归属及幂等源编号授权后点查，不提供跨主体运营列表；通用数据域不能替代原来源证据链。",
+  ent_migration_import: "旧券迁移及原业务协调记录；EntitlementMigration/LegacyCoupon 服务按可信租户、原活动/原券归属及幂等源编号授权后点查，不提供跨主体运营列表；通用数据域不能替代原来源证据链。",
+  ent_migration_plan: "旧券迁移及原业务协调记录；EntitlementMigration/LegacyCoupon 服务按可信租户、原活动/原券归属及幂等源编号授权后点查，不提供跨主体运营列表；通用数据域不能替代原来源证据链。",
+  ent_migration_return: "旧券迁移及原业务协调记录；EntitlementMigration/LegacyCoupon 服务按可信租户、原活动/原券归属及幂等源编号授权后点查，不提供跨主体运营列表；通用数据域不能替代原来源证据链。",
+  ent_migration_stage: "旧券迁移及原业务协调记录；EntitlementMigration/LegacyCoupon 服务按可信租户、原活动/原券归属及幂等源编号授权后点查，不提供跨主体运营列表；通用数据域不能替代原来源证据链。",
+  lgs_waybill: "物流独立域；运营查询先授权原订单/主体，源端回调和任务凭可信运单身份处理，不能用运营数据域裁掉平台物流消费（与 ops-data-scope 中 lgs_waybill 的显式声明一致）。",
+  mbr_store_profile: "MemberScopeQueryService/MemberScopeService 按可信 entity/store 和 scope_member 身份查询门店资料；身份票据与授权范围先校验，不开放全局资料列表。",
+  mch_brand_change: "管理域按资源授权；BrandService.check/submit/decide/change 通过 ManagementScopeService 校验 SPACE/STORE/BRAND 的授权链、主体和有效修订，不能依赖当前选中门店的 MyBatis 数据域。",
+  mch_brand_store_binding: "管理域按资源授权；BrandService.check/submit/decide/change 通过 ManagementScopeService 校验 SPACE/STORE/BRAND 的授权链、主体和有效修订，不能依赖当前选中门店的 MyBatis 数据域。",
+  ord_legacy_coupon_checkout: "旧券迁移及原业务协调记录；EntitlementMigration/LegacyCoupon 服务按可信租户、原活动/原券归属及幂等源编号授权后点查，不提供跨主体运营列表；通用数据域不能替代原来源证据链。",
+  ord_print_fact: "OrderPrintSourceFactsPortImpl 仅按已授权 PrintScope 解析订单打印事实；事实是订单授权后的不可变源快照，不作为全局运营检索入口。",
+  ord_store_pricing_config: "门店计价配置及不可变修订；PricingPublicationPolicy.head/revision 在每次查询明确匹配 tenant_no/entity_no/store_no/config_no，Context 来自商家授权门店；运营读取走模板入口，不开放跨店配置列表。",
+  ord_store_pricing_revision: "门店计价配置及不可变修订；PricingPublicationPolicy.head/revision 在每次查询明确匹配 tenant_no/entity_no/store_no/config_no，Context 来自商家授权门店；运营读取走模板入口，不开放跨店配置列表。",
+  pay_ent_exception_action: "权益异常操作审计附属于已授权 exception；运营先经 OpsEntitlementScopes.resolve(entityNo) 与原异常身份校验，再按 exceptionNo 读取审计。",
+  pmt_migration_decision: "旧券迁移及原业务协调记录；EntitlementMigration/LegacyCoupon 服务按可信租户、原活动/原券归属及幂等源编号授权后点查，不提供跨主体运营列表；通用数据域不能替代原来源证据链。",
+  pmt_migration_return: "旧券迁移及原业务协调记录；EntitlementMigration/LegacyCoupon 服务按可信租户、原活动/原券归属及幂等源编号授权后点查，不提供跨主体运营列表；通用数据域不能替代原来源证据链。",
+  pmt_pay_coupon_projection: "旧券迁移及原业务协调记录；EntitlementMigration/LegacyCoupon 服务按可信租户、原活动/原券归属及幂等源编号授权后点查，不提供跨主体运营列表；通用数据域不能替代原来源证据链。",
+  prd_merchant_spec: "商品规格目录及主体覆盖配置，包含平台共享字典；SpecLibraryServiceImpl/SpecValueCatalogQueryPortImpl按平台或当前主体显式限定，不是按归属列裁剪的运营业务列表，登记通用数据域会屏蔽共享规格。",
+  prd_merchant_spec_override: "商品规格目录及主体覆盖配置，包含平台共享字典；SpecLibraryServiceImpl/SpecValueCatalogQueryPortImpl按平台或当前主体显式限定，不是按归属列裁剪的运营业务列表，登记通用数据域会屏蔽共享规格。",
+  prd_merchant_spec_value: "商品规格目录及主体覆盖配置，包含平台共享字典；SpecLibraryServiceImpl/SpecValueCatalogQueryPortImpl按平台或当前主体显式限定，不是按归属列裁剪的运营业务列表，登记通用数据域会屏蔽共享规格。",
+  prd_spec_dim: "商品规格目录及主体覆盖配置，包含平台共享字典；SpecLibraryServiceImpl/SpecValueCatalogQueryPortImpl按平台或当前主体显式限定，不是按归属列裁剪的运营业务列表，登记通用数据域会屏蔽共享规格。",
+  prd_spec_value: "商品规格目录及主体覆盖配置，包含平台共享字典；SpecLibraryServiceImpl/SpecValueCatalogQueryPortImpl按平台或当前主体显式限定，不是按归属列裁剪的运营业务列表，登记通用数据域会屏蔽共享规格。",
+  prn_action_log: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_agent: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_attempt: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_batch: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_credential_version: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_export_task: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_incident: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_job: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_operation: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_policy_version: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_printer: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_printer_runtime: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_receipt: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_reconcile_cursor: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_request: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_route: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_route_version: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_scene_policy: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_simulation_run: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_store_stream: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_template: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  prn_template_version: "打印模块显式授权模型：PrintActorFactory.operator 校验运营 tenant、MERCHANT 数据域和门店归属，PrintOpsServiceImpl.target 再校验 actor 的 entity/store 集合；PrintSupport.scoped/owned 及已授权父记录限定 SQL。平台模板由模板服务单独校验 PLATFORM 范围；不接通用运营表拦截器。",
+  sv_customer_identity: "储值独立账务域；IssuerAuthorityService 与 StoredValue*Service 在受信 tenant/entity/store/issuer/customer 上下文中授权，SQL 及余额操作按原账务根限定；没有无范围运营列表，MyBatis 通用运营数据域不能代替发行方和顾客身份验证。",
+  sv_issue_quota: "储值独立账务域；IssuerAuthorityService 与 StoredValue*Service 在受信 tenant/entity/store/issuer/customer 上下文中授权，SQL 及余额操作按原账务根限定；没有无范围运营列表，MyBatis 通用运营数据域不能代替发行方和顾客身份验证。",
+  sv_issuer_store_access: "储值独立账务域；IssuerAuthorityService 与 StoredValue*Service 在受信 tenant/entity/store/issuer/customer 上下文中授权，SQL 及余额操作按原账务根限定；没有无范围运营列表，MyBatis 通用运营数据域不能代替发行方和顾客身份验证。",
+  sv_recharge_plan: "储值独立账务域；IssuerAuthorityService 与 StoredValue*Service 在受信 tenant/entity/store/issuer/customer 上下文中授权，SQL 及余额操作按原账务根限定；没有无范围运营列表，MyBatis 通用运营数据域不能代替发行方和顾客身份验证。",
+  sv_statement: "储值独立账务域；IssuerAuthorityService 与 StoredValue*Service 在受信 tenant/entity/store/issuer/customer 上下文中授权，SQL 及余额操作按原账务根限定；没有无范围运营列表，MyBatis 通用运营数据域不能代替发行方和顾客身份验证。",
+  sys_ops_staff: "merchant_no/community_no/pickup_no 是该运营获授的数据域配置，不是员工记录的业务归属；员工管理由 system:staff 权限校验，不应按员工自己的授权范围裁剪员工目录。",
+
   pts_statement_build: "账单构建游标，仅内部恢复按构建号访问；对外经账单所属门店权限校验，不提供独立列表。",
   pts_statement_confirmation: "修订确认与通知状态，B仅按当前已授权门店账单访问，Ops先校验门店；后台恢复不能按请求数据域截断。",
   pts_user_account: "旧积分方案的空表；生产只读审计为 0 行，新方案无代码读取，保留表结构不做数据迁移或删除。",
@@ -269,81 +325,8 @@ const EXEMPT: Record<string, string> = {
 
 /** 迁移文件里每张表的列名（不依赖 DDL 解析器 —— 它自己另有守卫） */
 function tableColumns(): Map<string, Set<string>> {
-  const out = new Map<string, Set<string>>();
-  if (!existsSync(MIGRATION_DIR)) return out;
-  /*
-   * **按版本号排，不是按文件名排。** `.sort()` 是字典序：`V162` 会排在 `V97` 前面。
-   * 只解析 CREATE 时看不出来（一张表只建一次），而下面要重放改名/删表 ——
-   * 顺序错了就会「先把表改名，再去改一张已经不存在的表的列」。
-   */
-  const byVersion = readdirSync(MIGRATION_DIR)
-    .filter((x) => x.endsWith(".sql"))
-    .sort((a, b) => (Number(/^V(\d+)/.exec(a)?.[1] ?? 0) - Number(/^V(\d+)/.exec(b)?.[1] ?? 0))
-      || a.localeCompare(b));
-  for (const f of byVersion) {
-    const src = readFileSync(join(MIGRATION_DIR, f), "utf8");
-    for (const m of src.matchAll(
-      /*
-       * 收尾认三种：`) ENGINE=...`、`) COMMENT='...'`、以及光秃秃的 `);`。
-       *
-       * **上一版只认 ENGINE，于是 7 个迁移文件建的表整张不在视野里** ——
-       * 而它们恰恰是按我们自己推荐的写法建的：SQL 方言闸门 2026-08-31 起
-       * 建议「删掉整条 ENGINE/CHARSET/COLLATE，跟随库默认」（见 check-sql-portability.mjs）。
-       * 于是这道闸门与那道闸门互相拆台，而两边都不报错：
-       * 少扫的表不会出现在缺失名单里，PENDING 看着一直很正常。
-       *
-       * 撞上的方式：给 stl_settle_batch / mch_deposit / mch_debt 那几张登记数据域之后
-       * PENDING 一动不动 —— 数字对不上才查出来。**如果我没同时盯着这个数，
-       * 它会一直安静下去。**
-       */
-      /CREATE TABLE(?: IF NOT EXISTS)?\s+(\w+)\s*\(([\s\S]*?)\n\)\s*(?:ENGINE|COMMENT|;)/gi,
-    )) {
-      const cols = new Set<string>(
-        [...m[2]!.matchAll(/^\s{4}(\w+)\s+\w/gm)].map((c) => c[1]!.toLowerCase()),
-      );
-      out.set(m[1]!.toLowerCase(), cols);
-    }
-    // 后续迁移加的列也算 —— 一张表可能是先建后补归属列的
-    for (const m of src.matchAll(/ALTER TABLE\s+(\w+)\s+ADD COLUMN\s+(\w+)/gi)) {
-      const t = m[1]!.toLowerCase();
-      if (!out.has(t)) out.set(t, new Set());
-      out.get(t)!.add(m[2]!.toLowerCase());
-    }
-    /*
-     * **改列名**（`ALTER TABLE t RENAME COLUMN a TO b`）。
-     * 不重放的话，这张表在模型里仍然带着那个**早就不存在的列名** ——
-     * 而归属列判定看的正是列名：V97 把 `msg_message.user_no` 改成了 `receiver_no`，
-     * 不重放就会一直按 `user_no` 把它报成「带归属列却没登记」。
-     */
-    for (const m of src.matchAll(
-      /ALTER TABLE\s+(\w+)\s+RENAME COLUMN\s+(\w+)\s+TO\s+(\w+)/gi,
-    )) {
-      const cols = out.get(m[1]!.toLowerCase());
-      if (cols?.delete(m[2]!.toLowerCase())) {
-        cols.add(m[3]!.toLowerCase());
-      }
-    }
-    /*
-     * **改表名**与**删表**。守卫此前两个都不认，于是它报的是**早已不存在的表**：
-     * V162 把 6 张 `msg_*` 改成了 `notify_*`，而清单里躺着 msg_message /
-     * msg_subscribe / msg_ticket 三条。
-     *
-     * 「报错了对象」和「漏报」一样坏 —— 下一个人会照着它去登记一张不存在的表，
-     * 而真正该登记的那张（改名之后的）从头到尾没被提起过。
-     */
-    for (const m of src.matchAll(/ALTER TABLE\s+(\w+)\s+RENAME TO\s+(\w+)/gi)) {
-      const from = m[1]!.toLowerCase();
-      const to = m[2]!.toLowerCase();
-      if (out.has(from)) {
-        out.set(to, out.get(from)!);
-        out.delete(from);
-      }
-    }
-    for (const m of src.matchAll(/DROP TABLE(?:\s+IF EXISTS)?\s+(\w+)/gi)) {
-      out.delete(m[1]!.toLowerCase());
-    }
-  }
-  return out;
+  return new Map([...readColumnNames(ROOT)].map(([table, definition]: [string, { cols: string[] }]) =>
+    [table, new Set(definition.cols)]));
 }
 
 /** 已登记进表册的表名 */

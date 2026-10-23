@@ -80,6 +80,7 @@ def deferred_delivery(missing):
     return validate_deferred(data, published, set(backend()), missing)
 
 # **按设计就没有端上出口的端点** —— 服务器到服务器调用。
+# 同时包含迁移后仅供旧客户端使用的别名与受控维护 API；不能为消除告警恢复不该有的当前 UI。
 # 把它们记进「只准变短」的名单是错的：那种行永远变不短，而一份含着
 # 变不短的行的名单，会训练人把「超过基线」当噪声。排除，不是欠账。
 BY_DESIGN_NO_EXIT = {
@@ -87,6 +88,23 @@ BY_DESIGN_NO_EXIT = {
     # GET 是微信的服务器配置校验，POST 是真回调。
     ("GET", "/mp/wx/callback"),
     ("POST", "/mp/wx/callback"),
+    # Stored-value issuer rollout keeps these old-client aliases. Current merchant
+    # pages deliberately use store-scoped issuer-records/issuer-recharges instead;
+    # restoring an old UI entry would undo that scope migration.
+    ("GET", "/biz/stored-value/records"),
+    ("GET", "/biz/stored-value/records/*"),
+    ("POST", "/biz/stored-value/plan-recharges/resolve"),
+    ("POST", "/biz/stored-value/plan-recharges/cancel-create"),
+    ("POST", "/biz/stored-value/plan-recharges/confirm-offline"),
+    # The store/brand issuer configuration GET already returns this same IssuerView;
+    # the natural-resource lookup is retained for API clients, not another UI action.
+    ("GET", "/biz/management/stored-value/issuers/*"),
+    # Controlled owner-maintenance APIs, execution defaults closed. Never expose
+    # account-key migration pause/map operations as ordinary merchant UI buttons.
+    # Contract: docs/technical/TDD-品牌与门店双线储值-API清单.md (Owner maintenance).
+    ("POST", "/biz/management/stored-value/migration-manifests"),
+    ("POST", "/biz/management/stored-value/migration-manifests/*/pause"),
+    ("POST", "/biz/management/stored-value/migration-manifests/*/map"),
 }
 
 

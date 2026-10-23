@@ -1,7 +1,6 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.auth.*;
-import java.nio.file.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,16 +24,7 @@ class IssuerConfigurationHttpFlowTest {
     @Autowired TokenStores tokens;
 
     @Test void brandIssuerRequiresSettlementGrantAndNeverCreatesAnAccount() throws Exception {
-        for(String file:List.of("V548__stored_value_issuer_foundation.sql","V549__stored_value_issuer_ledger_dimensions.sql")){
-        String ddl=Files.readString(Path.of("src/main/resources/db/migration/"+file))
-                .replaceAll("(?m)^--.*$", "").replace(" ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci", "")
-                .replace(" JSON", " VARCHAR(10000)").replace("CHECK (scope_type IN ('BRAND','STORE'))", "CHECK (CASE scope_type WHEN 'BRAND' THEN TRUE WHEN 'STORE' THEN TRUE ELSE FALSE END)");
-        for(String part:ddl.split(";")) if(!part.isBlank()) {
-            var m=java.util.regex.Pattern.compile("CREATE TABLE ([a-z_]+)").matcher(part);
-            if(m.find()) part=part.replace("KEY uk_","KEY "+m.group(1)+"_uk_").replace("KEY ix_","KEY "+m.group(1)+"_ix_");
-            jdbc.execute(part);
-        }
-        }
+        // Use the generated final schema; replaying V548/V549 duplicates existing issuer tables.
         var mvc=MockMvcBuilders.webAppContextSetup(web).apply(SecurityMockMvcConfigurers.springSecurity()).build();
         String entity="E1",account="MA1";
         jdbc.update("INSERT INTO mch_entity(entity_no,name,status,market,tenant_no,created_at,updated_at) VALUES (?,'发行测试主体','ACTIVE','CN','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",entity);

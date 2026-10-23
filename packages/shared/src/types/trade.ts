@@ -305,7 +305,9 @@ export interface MerchantOffers {
   /** 店名（一单多家店时，面板里每家店的活动前面写它） */
   merchantName: string;
   /** 这家店命中的活动。金额 = 只参加它时减多少 */
-  options: { activityNo: string; name: string; amountMinor: number }[];
+  options: { activityNo: string;
+  /** 业务对象显示名称 */
+  name: string; amountMinor: number }[];
   /** 这次预览用上的活动号；`ACTIVITY_NONE` = 顾客选了不参加；空 = 这次没有活动 */
   chosen?: string | null;
 }
@@ -596,8 +598,14 @@ export interface Order {
    */
   trace?: ShipmentTrace;
   /** B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 */
-  logisticsSync?: { status: string; source?: string | null; lastEventAt?: number | null;
-    pending: boolean; reason?: string | null } | null;
+  logisticsSync?: {
+  /** 服务端业务状态编码 */
+  status: string;
+  /** 顾客选择来源信息 */
+  source?: string | null; lastEventAt?: number | null;
+    pending: boolean;
+  /** 业务原因或阻断说明 */
+  reason?: string | null } | null;
 }
 
 /** 运单状态（与后端 `lgs_waybill` 一致）。EXCEPTION 不是终态——疑难件可能之后又派送成功 */
@@ -824,6 +832,7 @@ export interface RefundExecutionProgress {
   nextAttemptAt?: number | null;
 }
 export interface AfterSale {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /**
    * 售后单号。**售后是独立资源，不是订单上的一个字段** ——
@@ -898,7 +907,9 @@ export interface AfterSale {
   /** 用户寄回的运单号（RETURN_REFUND） */
   returnExpressNo?: string;
   /** 退货验收明细，仅 B 端收货确认使用；件数与品质由商家逐行确认。 */
-  returnItems?: { itemId: number; skuNo?: string | null; title: string; requestedQty: number }[];
+  returnItems?: { itemId: number; skuNo?: string | null;
+  /** 面向用户的业务标题 */
+  title: string; requestedQty: number }[];
   /** 退货入库状态，与退款资金状态分开；PENDING/FAILED 需要继续追踪处理。 */
   returnInventoryStatus?: "PENDING" | "COMPLETED" | "FAILED" | "PLATFORM_UPDATED" | "NOT_TRACKED" | null;
   /** 上升平台时用户的申诉理由 */
@@ -910,7 +921,11 @@ export interface AfterSale {
   /** 责任方，平台裁决后才有（口径未定） */
   liability?: string;
   /** 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 */
-  timeline?: { status: string; label: string; at: number }[];
+  timeline?: {
+  /** 服务端业务状态编码 */
+  status: string; label: string;
+  /** 业务发生时间 */
+  at: number }[];
   /**
    * 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。
    * 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。

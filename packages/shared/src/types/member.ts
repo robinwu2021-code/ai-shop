@@ -173,7 +173,9 @@ export interface ReachTask {
   /** 跳过多少人 */
   skipped: number;
   /** 跳过的原因分布 */
-  skips: Array<{ reason: string; count: number }>;
+  skips: Array<{
+  /** 业务原因或阻断说明 */
+  reason: string; count: number }>;
   /** 点推送进了店的人数 */
   opened: number;
   /** 窗口内下单的人数（每人只算触达后的第一单） */
@@ -238,7 +240,9 @@ export interface ReachPlan {
   /** 能收到的人里，还会收到手机推送的（有推送设备）。其余只进小程序的消息列表 */
   pushable: number;
   /** 发不出去的人按原因分类。**必须显示** —— 商家选了 30 个人实发 8 个，只说「发送成功」他会以为 30 个都收到了 */
-  skips: Array<{ reason: string; count: number }>;
+  skips: Array<{
+  /** 业务原因或阻断说明 */
+  reason: string; count: number }>;
 }
 export interface ReachResult {
   /** 这次群发的任务号 */
@@ -250,7 +254,9 @@ export interface ReachResult {
   /** 跳过多少人 */
   skipped: number;
   /** 发不出去的人按原因分类。**必须显示** —— 商家选了 30 个人实发 8 个，只说「发送成功」他会以为 30 个都收到了 */
-  skips: Array<{ reason: string; count: number }>;
+  skips: Array<{
+  /** 业务原因或阻断说明 */
+  reason: string; count: number }>;
 }
 /**
  * 「我是这家店的会员」（C 端，P7）。
@@ -375,7 +381,9 @@ export interface AudiencePreview {
   /** 其中收得到消息的；活动场景为 null */
   reachable: number | null;
   /** 收不到的按原因分档：`LEAD` 手录未认领 · `BLOCKED` 已拉黑 · `OPT_OUT` 关了本店消息 · `NO_ACCOUNT` 还没注册 · `TOO_SOON` 最近刚收到过 */
-  skips: Array<{ reason: string; count: number }>;
+  skips: Array<{
+  /** 业务原因或阻断说明 */
+  reason: string; count: number }>;
 }
 /**
  * 批量打标的试算 / 结果。**确认框上写的就是 `willChange`** ——「其中 5 人已有，实际新增 32 人」。

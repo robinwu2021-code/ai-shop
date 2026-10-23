@@ -151,7 +151,9 @@ export interface NotifyChannelHealth {
   /** 这条通道的凭据配没配全。**没配全就发不出**，而症状是「发送成功」后没人收到 */
   credentials: { envVar: string; present: boolean; required: boolean }[];
   /** 非密业务参数，可回显（模板号、endpoint 这类本就印在短信里的东西） */
-  params: { key: string; value: string }[];
+  params: { key: string;
+  /** 当前规则配置值 */
+  value: string }[];
   /** 今天发了多少条 */
   todaySent: number;
   /** 今天失败多少条 */

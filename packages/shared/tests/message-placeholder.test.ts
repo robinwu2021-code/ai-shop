@@ -42,7 +42,7 @@ function keysWithPlaceholder(): Set<string> {
   const out = new Set<string>();
   for (const line of src.split("\n")) {
     const i = line.indexOf("=");
-    if (i > 0 && line.slice(i).includes("{0}")) out.add(line.slice(0, i).trim());
+    if (i > 0 && /\{\d+(?:[,}])/.test(line.slice(i))) out.add(line.slice(0, i).trim());
   }
   return out;
 }

@@ -31,4 +31,11 @@ public class SvStatement extends BaseEntity {
     private String planVersionNo;
     private Long paidAmountMinor;
     private Long bonusAmountMinor;
+    // Issuer attribution persisted by the issuer ledger; nullable for legacy records.
+    private String issuerNo;
+    private String scopeNo;
+    private String releaseNo;
+    private String operatingEntityNo;
+    private String settlementEntityNo;
+    private String scopeType;
 }

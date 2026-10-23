@@ -56,6 +56,7 @@ export interface CouponBestResult {
 }
 
 export interface Coupon {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 券单号 */
   couponNo: string;
@@ -334,6 +335,7 @@ export type CampaignType =
   | "BUY_GIFT"; // 买赠：买 N 送 M
 export type CampaignStatus = "DRAFT" | "RUNNING" | "PAUSED" | "ENDED";
 export interface MarketingCampaign {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 活动单号 */
   campaignNo: string;
@@ -547,6 +549,7 @@ export interface MerchantCouponDraft {
  * 实发 25 张，只说「发放成功」的话，他会以为发出去 37 张 —— 直到某个顾客说没收到。
  */
 export interface CouponIssueBatch {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 这一批发放的编号 */
   issueNo: string;
@@ -555,7 +558,11 @@ export interface CouponIssueBatch {
   /** 发给哪个人群。空 = 手动挑的人 */
   segmentNo?: string | null;
   /** 发给了哪些受众项（标签 / 分层 / 人群，取或）。旧批次为空，只看 segmentNo */
-  audiences?: Array<{ type: string; value: string }>;
+  audiences?: Array<{
+  /** 业务类型编码或类型摘要，按当前接口定义解释 */
+  type: string;
+  /** 当前规则配置值 */
+  value: string }>;
   /** 人群此刻命中多少人 */
   planned: number;
   /** 实发多少张 */
@@ -563,7 +570,9 @@ export interface CouponIssueBatch {
   /** 跳过多少人 */
   skipped: number;
   /** `UNREACHABLE` 还没注册或已退订 / `ALREADY_HAS` 到每人上限 / `SOLD_OUT` 券发完 */
-  skipReasons: Array<{ reason: string; count: number }>;
+  skipReasons: Array<{
+  /** 业务原因或阻断说明 */
+  reason: string; count: number }>;
   /** 这一批券的面额合计（分）—— 商家据此估敞口 */
   amountMinor: number;
   /** 谁发的 */
@@ -675,6 +684,7 @@ export interface CouponRedeemResult {
  * 不给一个点进去说「暂无活动」的入口，那比没有入口更糟。
  */
 export interface MyFission {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 活动号。端上只用来回传，不显示 */
   fissionNo: string;

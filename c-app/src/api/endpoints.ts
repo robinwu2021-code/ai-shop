@@ -35,7 +35,9 @@ export interface EndpointDef {
    * 把契约方法的位置参数映射成 { path 参数, query/body }。
    * 不写则默认：第一个参数是对象 → 整体作为 query(GET)/body(POST)。
    */
-  params?: (...args: never[]) => { path?: Record<string, string>; data?: unknown };
+  params?: (...args: never[]) => {
+  /** 分类层级路径 */
+  path?: Record<string, string>; data?: unknown };
 }
 
 /** 键必须与 ShopApi 的方法名一一对应，漏一个会编译报错 */

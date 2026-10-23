@@ -1,3 +1,15 @@
+/** Inventory onboarding state. */
+export type InventoryState = "UNMANAGED" | "INITIALIZING" | "MAPPED";
+
+/** Current backend accounting mode; inventory is deducted at payment. */
+export type InventoryAccountingMode = "PAYMENT_DEDUCT";
+
+/** Persisted stock synchronization operation state. */
+export type StockSyncOperationStatus = "PROCESSING" | "WAITING" | "FAILED" | "BLOCKED" | "COMPLETED";
+
+/** Persisted stock alignment batch state. */
+export type StockAlignmentStatus = "PREVIEW" | "PROCESSING" | "PARTIAL" | "BLOCKED" | "COMPLETED" | "STALE" | "EXPIRED";
+
 /** Merchant stock overview; matches InventoryOverviewQuery. Null physical values mean unknown, not zero. */
 export interface StockOverview {
   /** Merchant store identifier used to scope inventory values. */
@@ -7,9 +19,9 @@ export interface StockOverview {
   /** Physical stock unit; null when the SKU has no configured unit. */
   unit: string | null;
   /** Inventory onboarding state: unmanaged, initializing or mapped. */
-  inventoryState: "UNMANAGED" | "INITIALIZING" | "MAPPED";
-  /** Point at which physical inventory is deducted: payment or handoff. */
-  accountingMode: "PAYMENT_DEDUCT" | "HANDOFF_DEDUCT";
+  inventoryState: InventoryState;
+  /** Point at which physical inventory is deducted; currently payment only. */
+  accountingMode: InventoryAccountingMode;
   /** Physical on-hand quantity; null means the value is unknown. */
   onHand: number | null;
   /** Quantity reserved by open fulfillment work; null means unknown. */
@@ -27,7 +39,9 @@ export interface StockOverview {
   /** Rule controlling online sellable quantity. */
   salesStockMode: string;
   /** Rule scope and parameters that produced the online sellable quantity. */
-  ruleSource: { scopeType: string; scopeRef: string; ruleType: string; param: number };
+  ruleSource: {
+  /** 储值发行范围类型：STORE或BRAND */
+  scopeType: string; scopeRef: string; ruleType: string; param: number };
   /** Whether online stock changes are synchronized to inventory. */
   syncEnabled: boolean;
   /** Synchronization health marker returned by the service. */
@@ -418,7 +432,9 @@ export interface StockTransfer {
   /** 本单合计数量，按明细行汇总 */
   totalQty: number;
   /** 明细行 */
-  lines: { itemId: string; name: string; specText?: string; qty: number; uom?: string }[];
+  lines: { itemId: string;
+  /** 业务对象显示名称 */
+  name: string; specText?: string; qty: number; uom?: string }[];
 }
 /** 库存台账的方向。IN 入库 / OUT 出库 —— 台账不可变，只有查看没有编辑 */
 export type StockDocKind = "IN" | "OUT";
@@ -517,6 +533,7 @@ export interface StockSyncState {
 }
 
 export interface StockSyncOperationRecord {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** Identifier of this stock synchronization operation. */
   operationNo: string;
@@ -525,9 +542,13 @@ export interface StockSyncOperationRecord {
   /** Business reason recorded for the synchronization. */
   reason: string;
   /** Current processing state of the operation. */
-  status: "PROCESSING" | "WAITING" | "FAILED" | "BLOCKED" | "COMPLETED";
+  status: StockSyncOperationStatus;
   /** Applied quantity change or skip details; null before processing finishes. */
-  result: { applied: boolean; skipped: string | null; ruleType: string | null; available: number; before: number; after: number } | null;
+  result: {
+  /** 变更是否已经应用到有效关系 */
+  applied: boolean; skipped: string | null; ruleType: string | null;
+  /** 当前环境是否支持此能力 */
+  available: number; before: number; after: number } | null;
   /** Time when this operation was last updated. */
   updatedAt: string;
 }
@@ -559,6 +580,7 @@ export interface StockAlignRow {
 }
 
 export interface StockAlignmentBatch {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** Identifier of this inventory alignment batch. */
   batchNo: string;
@@ -571,7 +593,7 @@ export interface StockAlignmentBatch {
   /** Expiry time in milliseconds; null when the preview has no expiry. */
   expiresAt: number | null;
   /** Current preview or execution state of the batch. */
-  status: "PREVIEW" | "PROCESSING" | "PARTIAL" | "BLOCKED" | "COMPLETED" | "STALE" | "EXPIRED";
+  status: StockAlignmentStatus;
   /** Number of rows aligned successfully. */
   completed: number;
   /** Number of rows blocked from alignment. */
@@ -580,8 +602,12 @@ export interface StockAlignmentBatch {
   waiting: number;
   /** Per-SKU proposed and completed alignment results. */
   rows: Array<{
-    skuNo: string; title: string; spec: string | null; beforeQty: number | null; reserved: number | null;
-    mallStock: number; mallLocked: number; afterQty: number | null; status: string; operationNo: string; errorCode: string | null;
+    skuNo: string;
+  /** 面向用户的业务标题 */
+  title: string; spec: string | null; beforeQty: number | null; reserved: number | null;
+    mallStock: number; mallLocked: number; afterQty: number | null;
+  /** 服务端业务状态编码 */
+  status: string; operationNo: string; errorCode: string | null;
   }>;
 }
 

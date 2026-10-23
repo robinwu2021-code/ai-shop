@@ -62,6 +62,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原资金执行与独立资源恢复进度。 |
 | `afterSaleNo` | `string` | 是 | 售后单号 |
 | `subOrderNo` | `string` | 是 | 关联的子订单 |
@@ -99,6 +100,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原资金执行与独立资源恢复进度。 |
 | `afterSaleNo` | `string` | 是 | 售后单号 |
 | `subOrderNo` | `string` | 是 | 关联的子订单 |
@@ -621,7 +623,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `total` | `number` | 是 | — |
+| `total` | `number` | 是 | 匹配条件的总记录数量 |
 | `withCoords` | `number` | 是 | — |
 | `missing` | `object`（见下）\[\] | 是 | 没标点的那些。**给明细不只给数字** —— 只给一个数，运营下一步无从做起 |
 
@@ -629,8 +631,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
-| `storeName` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `storeName` | `string` | 是 | 门店显示名称 |
 | `merchantNo` | `string` | 是 | 从这里跳到商家去催他标点。**刻意不带商家名**（取名字要绕数据域） |
 | `deliveryRadiusM` | `number,null` | 是 | 他以为自己限了多少米，而实际一米都没限 —— 后果有多大就看这个数 |
 
@@ -638,14 +640,14 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `total` | `number` | 是 | — |
+| `total` | `number` | 是 | 匹配条件的总记录数量 |
 | `withCoords` | `number` | 是 | — |
 
 `communities` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `total` | `number` | 是 | — |
+| `total` | `number` | 是 | 匹配条件的总记录数量 |
 | `withCoords` | `number` | 是 | — |
 | `missing` | `object`（见下）\[\] | 是 | 没坐标的聚落**谁也匹配不到** —— 而它看起来一切正常：建档成功、列表里有 |
 
@@ -654,7 +656,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `communityNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 
 
 #### GET `/ops/geo/places`
@@ -1669,6 +1671,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `invoiceNo` | `string` | 是 | 开票申请单号 |
 | `merchantNo` | `string` | 是 | 申请商家 |
 | `merchantName` | `string` | 是 | 商家名快照 |
@@ -1703,6 +1706,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `invoiceNo` | `string` | 是 | 开票申请单号 |
 | `merchantNo` | `string` | 是 | 申请商家 |
 | `merchantName` | `string` | 是 | 商家名快照 |
@@ -1790,6 +1794,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `requestNo` | `string` | 是 | 开票申请号 |
 | `orderNo` | `string` | 是 | 针对哪一单 |
 | `titleType` | `string` | 是 | PERSONAL / COMPANY |
@@ -1822,6 +1827,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `requestNo` | `string` | 是 | 开票申请号 |
 | `orderNo` | `string` | 是 | 针对哪一单 |
 | `titleType` | `string` | 是 | PERSONAL / COMPANY |
@@ -1867,6 +1873,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `settleNo` | `string` | 是 | 结算单号 |
 | `subOrderNo` | `string` | 是 | 对应的子订单，**一条 = 一个子订单** |
 | `orderNo` | `string` | 是 | 所属主单 |
@@ -1909,6 +1916,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `settleNo` | `string` | 是 | 结算单号 |
 | `subOrderNo` | `string` | 是 | 对应的子订单，**一条 = 一个子订单** |
 | `orderNo` | `string` | 是 | 所属主单 |
@@ -1951,6 +1959,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `settleNo` | `string` | 是 | 结算单号 |
 | `subOrderNo` | `string` | 是 | 对应的子订单，**一条 = 一个子订单** |
 | `orderNo` | `string` | 是 | 所属主单 |
@@ -2213,6 +2222,19 @@ _无字段_
 | `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
 
 
+#### GET `/ops/points/accounts`
+
+pointsAccounts
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### POST `/ops/points/adjustment-review`
 
 reviewPointsAdjustment
@@ -2278,6 +2300,133 @@ pointsAgreements
 | `agreement` | [`PointsAgreement`](#pointsagreement) | 是 | 服务端冻结的门店协议快照 |
 | `state` | `string` | 是 | 服务端处理状态 |
 | `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+
+
+#### GET `/ops/points/earning-context`
+
+pointsEarningContext
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`EarningContext`](#earningcontext)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | [`PointsTypeConfig`](#pointstypeconfig) \| `null` | 是 | 业务类型编码或类型摘要，按当前接口定义解释 |
+| `categories` | [`EarningCategory`](#earningcategory)\[\] | 是 | 可用商品分类列表 |
+| `types` | [`PointsTypeConfig`](#pointstypeconfig)\[\] | 是 | 可用积分类型列表 |
+
+
+#### POST `/ops/points/earning-preview`
+
+previewPointsEarning
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`EarningCalculation`](#earningcalculation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | `object`（见下） | 是 | 业务类型编码或类型摘要，按当前接口定义解释 |
+| `matched` | `object`（见下） | 是 | 是否命中可用赠送规则 |
+| `cashMinor` | `number` | 是 | 参与计算的现金金额，货币最小单位 |
+| `points` | `number` | 是 | 按当前规则计算的积分数量 |
+
+`type` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `market` | `string` | 是 | — |
+| `currency` | `string` | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `scale` | `number` | 是 | — |
+| `ratePoints` | `number` | 是 | — |
+| `rateMinor` | `number` | 是 | — |
+
+`matched` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scope` | `string` | 是 | 规则适用范围编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `rule` | `object`（见下） | 是 | — |
+
+`matched.rule` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mode` | [`PointsEarningRuleMode`](#pointsearningrulemode) | 是 | 规则模式编码 |
+| `value` | `number` | 是 | 当前规则配置值 |
+
+
+#### GET `/ops/points/earning-rule-history`
+
+pointsEarningHistory
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`EarningRule`](#earningrule)\[\]
+
+
+#### GET `/ops/points/earning-rules`
+
+pointsEarningRules
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`EarningRulePage`](#earningrulepage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`EarningRule`](#earningrule)\[\] | 是 | 当前页数据行 |
+| `total` | `number` | 是 | 匹配条件的总记录数量 |
+| `page` | `number` | 是 | 当前页码，从1开始 |
+| `size` | `number` | 是 | 请求的每页记录数量 |
+
+
+#### POST `/ops/points/earning-rules`
+
+changePointsEarningRule
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`EarningRule`](#earningrule)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `scope` | `string` | 是 | 规则适用范围编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `activeRevision` | `number,null` | 是 | 当前生效版本号 |
+| `mode` | [`PointsEarningRuleMode`](#pointsearningrulemode) | 是 | 规则模式编码 |
+| `value` | `number` | 是 | 当前规则配置值 |
+| `activeMode` | [`PointsEarningRuleMode`](#pointsearningrulemode) \| `null` | 是 | 已生效规则模式 |
+| `activeValue` | `number,null` | 是 | 已生效规则值 |
+| `actor` | `string` | 是 | 操作人标识 |
+| `remark` | `string` | 是 | 操作备注 |
+| `at` | `number` | 是 | 业务发生时间 |
+| `action` | [`PointsEarningRuleAction`](#pointsearningruleaction) | 否 | 本次执行的业务动作 |
 
 
 #### GET `/ops/points/entries`
@@ -2426,6 +2575,63 @@ _无字段_
 |---|---|:---:|---|
 | `reference` | `string` | 是 | 原业务引用编号 |
 | `status` | [`PointsExecutionStatus`](#pointsexecutionstatus) | 是 | 服务端业务状态 |
+
+
+#### GET `/ops/points/order-earning`
+
+pointsOrderEarning
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`OrderEarningInspection`](#orderearninginspection)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单内部业务编号 |
+| `subOrderNo` | `string` | 是 | 子订单内部业务编号 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `currency` | `string` | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `snapshot` | `object`（见下） | 是 | 业务处理时冻结的权威快照 |
+| `ledger` | `object`（见下） \| `null` | 是 | 权威账务查询结果 |
+
+`snapshot` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `schemaVersion` | `number` | 是 | — |
+| `ruleTraces` | `object`（见下）\[\] | 是 | — |
+| `lines` | `object`（见下）\[\] | 是 | — |
+
+`snapshot.ruleTraces[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `string` | 是 | — |
+| `categoryNo` | `string,null` | 是 | 商品分类编号 |
+| `matchedScope` | `string` | 是 | — |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+
+`snapshot.lines[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `string` | 是 | — |
+| `goodsNo` | `string` | 是 | — |
+| `categoryNo` | `string,null` | 是 | 商品分类编号 |
+| `quantity` | `number` | 是 | — |
+| `goodsCashMinor` | `number` | 是 | — |
+| `rule` | `object`（见下） | 是 | — |
+
+`snapshot.lines[].rule` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mode` | [`PointsEarningRuleMode`](#pointsearningrulemode) | 是 | 规则模式编码 |
+| `value` | `number` | 是 | 当前规则配置值 |
 
 
 #### GET `/ops/points/order-integration`
@@ -3030,6 +3236,28 @@ pointsStats
 类型：`object`
 
 
+#### GET `/ops/points/stats-period`
+
+pointsPeriodStats
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsStatsPeriod`](#pointsstatsperiod)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码。 |
+| `from` | `string` | 是 | 统计周期起始日期，YYYY-MM-DD。 |
+| `to` | `string` | 是 | 统计周期结束日期，YYYY-MM-DD。 |
+| `metrics` | [`Record<string,number>`](#recordstringnumber) | 是 | 周期内由服务端聚合的指标。 |
+| `availableDays` | `number` | 是 | 统计数据可用的日期数量。 |
+| `missingDays` | `number` | 是 | 统计数据缺失的日期数量。 |
+
+
 #### POST `/ops/points/stats-rebuild`
 
 rebuildPointsStats
@@ -3106,6 +3334,56 @@ pointsTerms
 #### POST `/ops/points/terms`
 
 publishPointsTerms
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsChangeResult`](#pointschangeresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `action` | `string` | 是 | 请求执行的业务动作 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/transactions`
+
+pointsTransactions
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/points/transactions/{voucherNo}`
+
+pointsTransaction
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `voucherNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/points/type-name`
+
+renamePointsType
 
 **入参**
 
@@ -3240,6 +3518,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `settleDocumentNos` | `string`\[\] | 否 | 关联结算单的展示单号列表 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `invoiceNo` | `string` | 是 | 平台侧的进项票记录号（不是发票上印的号） |
 | `entityNo` | `string` | 是 | 哪家商家的票 |
 | `period` | `string` | 是 | 所属账期 yyyyMM |
@@ -3277,6 +3557,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `settleDocumentNos` | `string`\[\] | 否 | 关联结算单的展示单号列表 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `invoiceNo` | `string` | 是 | 平台侧的进项票记录号（不是发票上印的号） |
 | `entityNo` | `string` | 是 | 哪家商家的票 |
 | `period` | `string` | 是 | 所属账期 yyyyMM |
@@ -3327,6 +3609,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原资金执行与独立资源恢复进度。 |
 | `afterSaleNo` | `string` | 是 | 售后单号 |
 | `subOrderNo` | `string` | 是 | 关联的子订单 |
@@ -3377,6 +3660,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `batchNo` | `string` | 是 | 批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话 |
 | `entityNo` | `string` | 是 | 收款主体号 |
 | `payChannel` | `string` | 是 | 支付通道码。**不同通道账期不同，所以不能合批** |
@@ -3418,6 +3702,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `batchNo` | `string` | 是 | 批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话 |
 | `entityNo` | `string` | 是 | 收款主体号 |
 | `payChannel` | `string` | 是 | 支付通道码。**不同通道账期不同，所以不能合批** |
@@ -4080,8 +4365,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `channel` | `string` | 是 | — |
-| `state` | `string` | 是 | — |
+| `channel` | `string` | 是 | 消息或支付通道编码 |
+| `state` | `string` | 是 | 服务端处理状态编码 |
 | `error` | `string,null` | 否 | — |
 | `lastAttemptAt` | `number,null` | 否 | — |
 | `nextRetryAt` | `number,null` | 否 | — |
@@ -4404,6 +4689,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `fissionNo` | `string` | 是 | 活动单号 |
 | `name` | `string` | 是 | 活动名 |
 | `rewardType` | [`RewardType`](#rewardtype) | 是 | 奖励类型。**只能是券** —— 发现金会让职业薅羊毛立刻回来 |
@@ -4434,6 +4720,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `fissionNo` | `string` | 是 | 活动单号 |
 | `name` | `string` | 是 | 活动名 |
 | `rewardType` | [`RewardType`](#rewardtype) | 是 | 奖励类型。**只能是券** —— 发现金会让职业薅羊毛立刻回来 |
@@ -5307,6 +5594,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `campaignNo` | `string` | 是 | 活动号。跨端唯一，平台治理与商家自己看到的是同一个 |
 | `merchantNo` | `string` | 是 | 所属商家（主体号）。平台视角要按它归堆 |
 | `name` | `string` | 是 | 活动名，商家自己填的。C 端会原样展示，平台治理时也按它认人 |
@@ -5336,6 +5624,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `campaignNo` | `string` | 是 | 活动号。跨端唯一，平台治理与商家自己看到的是同一个 |
 | `merchantNo` | `string` | 是 | 所属商家（主体号）。平台视角要按它归堆 |
 | `name` | `string` | 是 | 活动名，商家自己填的。C 端会原样展示，平台治理时也按它认人 |
@@ -5365,6 +5654,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `campaignNo` | `string` | 是 | 活动号。跨端唯一，平台治理与商家自己看到的是同一个 |
 | `merchantNo` | `string` | 是 | 所属商家（主体号）。平台视角要按它归堆 |
 | `name` | `string` | 是 | 活动名，商家自己填的。C 端会原样展示，平台治理时也按它认人 |
@@ -5596,6 +5886,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `couponNo` | `string` | 是 | 券模板单号 |
 | `name` | `string` | 是 | 券名，展示给用户 |
 | `type` | [`CouponType`](#coupontype) | 是 | 券类型，决定 `value` 的口径 |
@@ -5632,6 +5923,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `issueNo` | `string` | 是 | 发放记录单号 |
 | `couponNo` | `string` | 是 | 发放的券模板 |
 | `couponName` | `string` | 是 | 券名快照 |
@@ -5662,6 +5954,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `couponNo` | `string` | 是 | 券模板单号 |
 | `name` | `string` | 是 | 券名，展示给用户 |
 | `type` | [`CouponType`](#coupontype) | 是 | 券类型，决定 `value` 的口径 |
@@ -5699,6 +5992,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `couponNo` | `string` | 是 | 券模板单号 |
 | `name` | `string` | 是 | 券名，展示给用户 |
 | `type` | [`CouponType`](#coupontype) | 是 | 券类型，决定 `value` 的口径 |
@@ -5736,6 +6030,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `couponNo` | `string` | 是 | 券模板单号 |
 | `name` | `string` | 是 | 券名，展示给用户 |
 | `type` | [`CouponType`](#coupontype) | 是 | 券类型，决定 `value` 的口径 |
@@ -5773,6 +6068,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `couponNo` | `string` | 是 | 券模板单号 |
 | `name` | `string` | 是 | 券名，展示给用户 |
 | `type` | [`CouponType`](#coupontype) | 是 | 券类型，决定 `value` 的口径 |
@@ -6164,6 +6460,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `activityNo` | `string` | 是 | 活动号 |
 | `name` | `string` | 是 | 名称 |
 | `triggerType` | `string` | 是 | 触发：NONE 立减 / AMOUNT 满额 / QTY 满件 |
@@ -8688,13 +8985,13 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 
 `specGroups[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `options` | `string`\[\] | 是 | — |
 
 
@@ -8730,7 +9027,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 
 
 #### GET `/ops/goods/{goodsNo}/draft-preview`
@@ -8790,13 +9087,13 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 
 `specGroups[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `options` | `string`\[\] | 是 | — |
 
 
@@ -9441,7 +9738,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `options` | `string`\[\] | 是 | — |
 | `optionCodes` | `string`\[\] | 否 | — |
 | `templateNo` | `string` | 否 | — |
@@ -9485,7 +9782,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `options` | `string`\[\] | 是 | — |
 | `optionCodes` | `string`\[\] | 否 | — |
 | `templateNo` | `string` | 否 | — |
@@ -9529,7 +9826,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `options` | `string`\[\] | 是 | — |
 | `optionCodes` | `string`\[\] | 否 | — |
 | `templateNo` | `string` | 否 | — |
@@ -10901,6 +11198,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原资金执行与独立资源恢复进度。 |
 | `afterSaleNo` | `string` | 是 | 售后单号 |
 | `subOrderNo` | `string` | 是 | 关联的子订单 |
@@ -11200,6 +11498,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `requestNo` | `string` | 是 | 开票申请号 |
 | `orderNo` | `string` | 是 | 针对哪一单 |
 | `titleType` | `string` | 是 | PERSONAL / COMPANY |
@@ -11509,6 +11808,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `couponNo` | `string` | 是 | 券模板单号 |
 | `name` | `string` | 是 | 券名，展示给用户 |
 | `type` | [`CouponType`](#coupontype) | 是 | 券类型，决定 `value` 的口径 |
@@ -11530,6 +11830,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `issueNo` | `string` | 是 | 发放记录单号 |
 | `couponNo` | `string` | 是 | 发放的券模板 |
 | `couponName` | `string` | 是 | 券名快照 |
@@ -11594,7 +11895,7 @@ DRAFT 可改可删；ACTIVE ⇄ PAUSED 之间可来回；ENDED 是终态（券�
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `total` | `number` | 是 | — |
+| `total` | `number` | 是 | 匹配条件的总记录数量 |
 | `withCoords` | `number` | 是 | — |
 | `missing` | `object`（见下）\[\] | 是 | 没标点的那些。**给明细不只给数字** —— 只给一个数，运营下一步无从做起 |
 
@@ -11602,8 +11903,8 @@ DRAFT 可改可删；ACTIVE ⇄ PAUSED 之间可来回；ENDED 是终态（券�
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
-| `storeName` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `storeName` | `string` | 是 | 门店显示名称 |
 | `merchantNo` | `string` | 是 | 从这里跳到商家去催他标点。**刻意不带商家名**（取名字要绕数据域） |
 | `deliveryRadiusM` | `number,null` | 是 | 他以为自己限了多少米，而实际一米都没限 —— 后果有多大就看这个数 |
 
@@ -11611,14 +11912,14 @@ DRAFT 可改可删；ACTIVE ⇄ PAUSED 之间可来回；ENDED 是终态（券�
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `total` | `number` | 是 | — |
+| `total` | `number` | 是 | 匹配条件的总记录数量 |
 | `withCoords` | `number` | 是 | — |
 
 `communities` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `total` | `number` | 是 | — |
+| `total` | `number` | 是 | 匹配条件的总记录数量 |
 | `withCoords` | `number` | 是 | — |
 | `missing` | `object`（见下）\[\] | 是 | 没坐标的聚落**谁也匹配不到** —— 而它看起来一切正常：建档成功、列表里有 |
 
@@ -11627,7 +11928,7 @@ DRAFT 可改可删；ACTIVE ⇄ PAUSED 之间可来回；ENDED 是终态（券�
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `communityNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 
 ### DashboardKpi
 
@@ -11750,6 +12051,85 @@ KPI 卡（金额为最小货币单位整数）。
 - `SAME_NAME`
 - `NEARBY`
 
+### EarningCalculation
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | `object`（见下） | 是 | 业务类型编码或类型摘要，按当前接口定义解释 |
+| `matched` | `object`（见下） | 是 | 是否命中可用赠送规则 |
+| `cashMinor` | `number` | 是 | 参与计算的现金金额，货币最小单位 |
+| `points` | `number` | 是 | 按当前规则计算的积分数量 |
+
+`type` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `market` | `string` | 是 | — |
+| `currency` | `string` | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `scale` | `number` | 是 | — |
+| `ratePoints` | `number` | 是 | — |
+| `rateMinor` | `number` | 是 | — |
+
+`matched` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scope` | `string` | 是 | 规则适用范围编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `rule` | `object`（见下） | 是 | — |
+
+`matched.rule` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mode` | [`PointsEarningRuleMode`](#pointsearningrulemode) | 是 | 规则模式编码 |
+| `value` | `number` | 是 | 当前规则配置值 |
+
+### EarningCategory
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `categoryNo` | `string` | 是 | 商品分类编号 |
+| `parentNo` | `string,null` | 是 | 父分类编号，根节点可为空 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `path` | `string` | 是 | 分类层级路径 |
+
+### EarningContext
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | [`PointsTypeConfig`](#pointstypeconfig) \| `null` | 是 | 业务类型编码或类型摘要，按当前接口定义解释 |
+| `categories` | [`EarningCategory`](#earningcategory)\[\] | 是 | 可用商品分类列表 |
+| `types` | [`PointsTypeConfig`](#pointstypeconfig)\[\] | 是 | 可用积分类型列表 |
+
+### EarningRule
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `scope` | `string` | 是 | 规则适用范围编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `activeRevision` | `number,null` | 是 | 当前生效版本号 |
+| `mode` | [`PointsEarningRuleMode`](#pointsearningrulemode) | 是 | 规则模式编码 |
+| `value` | `number` | 是 | 当前规则配置值 |
+| `activeMode` | [`PointsEarningRuleMode`](#pointsearningrulemode) \| `null` | 是 | 已生效规则模式 |
+| `activeValue` | `number,null` | 是 | 已生效规则值 |
+| `actor` | `string` | 是 | 操作人标识 |
+| `remark` | `string` | 是 | 操作备注 |
+| `at` | `number` | 是 | 业务发生时间 |
+| `action` | [`PointsEarningRuleAction`](#pointsearningruleaction) | 否 | 本次执行的业务动作 |
+
+### EarningRulePage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`EarningRule`](#earningrule)\[\] | 是 | 当前页数据行 |
+| `total` | `number` | 是 | 匹配条件的总记录数量 |
+| `page` | `number` | 是 | 当前页码，从1开始 |
+| `size` | `number` | 是 | 请求的每页记录数量 |
+
 ### EffectiveFeeRates
 
 某时刻实际生效的费率表，键为 `${businessMode}\|${trafficSource}`。
@@ -11848,6 +12228,7 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `fissionNo` | `string` | 是 | 活动单号 |
 | `name` | `string` | 是 | 活动名 |
 | `rewardType` | [`RewardType`](#rewardtype) | 是 | 奖励类型。**只能是券** —— 发现金会让职业薅羊毛立刻回来 |
@@ -11989,7 +12370,7 @@ KPI 卡（金额为最小货币单位整数）。
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 
 ### GoodsChain
 
@@ -12037,13 +12418,13 @@ KPI 卡（金额为最小货币单位整数）。
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 
 `specGroups[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `options` | `string`\[\] | 是 | — |
 
 ### GoodsDetailSku
@@ -12423,13 +12804,36 @@ Order-to-inventory audit chain; all quantities and source locations come from du
 | `aggregateId` | `string` | 是 | Identifier of the event aggregate that produced this synchronization. |
 | `eventType` | `string` | 是 | Event type emitted by the inventory or order lifecycle. |
 | `source` | `string` | 是 | System that requested or handled the synchronization. |
-| `status` | `COMPLETED` \| `PENDING` \| `FAILED` \| `WARNING` \| `SKIPPED` \| `ARCHIVED` | 是 | Delivery state of the synchronization event. |
-| `outboxMode` | `UNIFIED` \| `LEGACY` | 是 | Outbox implementation that persisted the event. |
+| `status` | [`InventoryTraceEventStatus`](#inventorytraceeventstatus) | 是 | Delivery state of the synchronization event. |
+| `outboxMode` | [`InventoryTraceOutboxMode`](#inventorytraceoutboxmode) | 是 | Outbox implementation that persisted the event. |
+
+### InventoryTraceEventStatus
+
+Delivery state of an inventory trace event.
+
+枚举取值：
+
+- `COMPLETED`
+- `PENDING`
+- `FAILED`
+- `WARNING`
+- `SKIPPED`
+- `ARCHIVED`
+
+### InventoryTraceOutboxMode
+
+Outbox implementation supplying the inventory trace.
+
+枚举取值：
+
+- `UNIFIED`
+- `LEGACY`
 
 ### InvoiceRequest
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `invoiceNo` | `string` | 是 | 开票申请单号 |
 | `merchantNo` | `string` | 是 | 申请商家 |
 | `merchantName` | `string` | 是 | 商家名快照 |
@@ -12930,6 +13334,7 @@ Order-to-inventory audit chain; all quantities and source locations come from du
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `campaignNo` | `string` | 是 | 活动号。跨端唯一，平台治理与商家自己看到的是同一个 |
 | `merchantNo` | `string` | 是 | 所属商家（主体号）。平台视角要按它归堆 |
 | `name` | `string` | 是 | 活动名，商家自己填的。C 端会原样展示，平台治理时也按它认人 |
@@ -13078,8 +13483,8 @@ Order-to-inventory audit chain; all quantities and source locations come from du
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
-| `storeName` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `storeName` | `string` | 是 | 门店显示名称 |
 | `role` | `string` | 是 | — |
 
 ### MerchantStatus
@@ -13212,7 +13617,7 @@ Order-to-inventory audit chain; all quantities and source locations come from du
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `key` | `string` | 是 | — |
-| `value` | `string` | 是 | — |
+| `value` | `string` | 是 | 当前规则配置值 |
 
 ### NotifyChannelRow
 
@@ -13376,6 +13781,7 @@ Order-to-inventory audit chain; all quantities and source locations come from du
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `activityNo` | `string` | 是 | 活动号 |
 | `name` | `string` | 是 | 名称 |
 | `triggerType` | `string` | 是 | 触发：NONE 立减 / AMOUNT 满额 / QTY 满件 |
@@ -13460,6 +13866,52 @@ Order-to-inventory audit chain; all quantities and source locations come from du
 | `createdAt` | `string` | 是 | 下单时间（ISO 8601 字符串） |
 | `paidAt` | `string,null` | 否 | 支付时间。未支付为 null |
 | `statusAt` | `string` | 否 | 进入**当前状态**的时刻。异常单的"卡了多久"从这里算，不是从 createdAt 算 |
+
+### OrderEarningInspection
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单内部业务编号 |
+| `subOrderNo` | `string` | 是 | 子订单内部业务编号 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `currency` | `string` | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `snapshot` | `object`（见下） | 是 | 业务处理时冻结的权威快照 |
+| `ledger` | `object`（见下） \| `null` | 是 | 权威账务查询结果 |
+
+`snapshot` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `schemaVersion` | `number` | 是 | — |
+| `ruleTraces` | `object`（见下）\[\] | 是 | — |
+| `lines` | `object`（见下）\[\] | 是 | — |
+
+`snapshot.ruleTraces[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `string` | 是 | — |
+| `categoryNo` | `string,null` | 是 | 商品分类编号 |
+| `matchedScope` | `string` | 是 | — |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+
+`snapshot.lines[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `string` | 是 | — |
+| `goodsNo` | `string` | 是 | — |
+| `categoryNo` | `string,null` | 是 | 商品分类编号 |
+| `quantity` | `number` | 是 | — |
+| `goodsCashMinor` | `number` | 是 | — |
+| `rule` | `object`（见下） | 是 | — |
+
+`snapshot.lines[].rule` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mode` | [`PointsEarningRuleMode`](#pointsearningrulemode) | 是 | 规则模式编码 |
+| `value` | `number` | 是 | 当前规则配置值 |
 
 ### OrderException
 
@@ -13812,6 +14264,7 @@ OrderPointsIntegrationQ 的 scene 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `settleDocumentNos` | `string`\[\] | 否 | 关联结算单的展示单号列表 |
 | `payoutNo` | `string,null` | 否 | 放款单号（V391）。**有号的按号回填凭证**（`payPayout`）， 没号的是存量老路（逐张 `payPayable`）。两条路并存到存量清零。 |
 | `entityNo` | `string` | 是 | 供应商主体号 |
 | `merchantName` | `string` | 是 | 商家名。查不到时回落成主体号 |
@@ -14016,6 +14469,26 @@ PENDING/REJECTED（P1）：商家自建点的审核态 —— 先审后用，地
 | `typeCode` | `string` | 是 | 积分类型唯一编码 |
 | `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
 
+### PointsEarningRuleAction
+
+Rule history action, including imported revisions.
+
+枚举取值：
+
+- `IMPORT`
+- `SAVE`
+- `PUBLISH`
+- `DISABLE`
+
+### PointsEarningRuleMode
+
+Points earning rule calculation mode.
+
+枚举取值：
+
+- `RATIO`
+- `FIXED`
+
 ### PointsEventPage
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -14028,6 +14501,8 @@ PENDING/REJECTED（P1）：商家自建点的审核态 —— 先审后用，地
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `subOrderNo` | `string,null` | 否 | 子订单内部业务编号 |
+| `reason` | `string,null` | 否 | 业务原因或阻断说明 |
 | `id` | `number` | 是 | 持久记录主键 |
 | `eventNo` | `string` | 是 | 源事实事件编号 |
 | `kind` | `string` | 是 | 原业务持仓或事件种类 |
@@ -14369,6 +14844,17 @@ Explicit receivable fields; no original bank instructions or posting payloads.
 | `sourceVersion` | `number` | 是 | 引用的原持仓版本 |
 | `points` | `number` | 是 | 积分数量 |
 
+### PointsStatsPeriod
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码。 |
+| `from` | `string` | 是 | 统计周期起始日期，YYYY-MM-DD。 |
+| `to` | `string` | 是 | 统计周期结束日期，YYYY-MM-DD。 |
+| `metrics` | [`Record<string,number>`](#recordstringnumber) | 是 | 周期内由服务端聚合的指标。 |
+| `availableDays` | `number` | 是 | 统计数据可用的日期数量。 |
+| `missingDays` | `number` | 是 | 统计数据缺失的日期数量。 |
+
 ### PointsSwitchPage
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -14398,6 +14884,7 @@ Points configuration commands carry stable intent IDs; identity and time come fr
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `name` | `string` | 是 | 积分名称，运营端展示名称 |
 | `market` | `string` | 是 | 市场代码 |
 | `currency` | `string` | 是 | ISO 货币代码 |
 | `scale` | `number` | 是 | 货币最小单位精度 |
@@ -14405,6 +14892,8 @@ Points configuration commands carry stable intent IDs; identity and time come fr
 | `deductRatioBp` | `number` | 是 | 最大抵扣比例，万分比 |
 | `idleDays` | `number` | 是 | 账户无活动失效天数 |
 | `status` | [`PointsTypeConfigStatus`](#pointstypeconfigstatus) | 是 | 服务端业务状态 |
+| `earningPaused` | `boolean` | 否 | 是否暂停该积分类型的订单赠送 |
+| `orderDefault` | `boolean` | 否 | 是否作为订单默认积分类型 |
 
 `rate` 的字段：
 
@@ -14525,6 +15014,8 @@ PointsTypeConfig 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `settleDocumentNos` | `string`\[\] | 否 | 关联结算单的展示单号列表 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `invoiceNo` | `string` | 是 | 平台侧的进项票记录号（不是发票上印的号） |
 | `entityNo` | `string` | 是 | 哪家商家的票 |
 | `period` | `string` | 是 | 所属账期 yyyyMM |
@@ -15082,6 +15573,7 @@ PointsTypeConfig 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `batchNo` | `string` | 是 | 批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话 |
 | `entityNo` | `string` | 是 | 收款主体号 |
 | `payChannel` | `string` | 是 | 支付通道码。**不同通道账期不同，所以不能合批** |
@@ -15154,6 +15646,7 @@ PointsTypeConfig 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `settleNo` | `string` | 是 | 结算单号 |
 | `subOrderNo` | `string` | 是 | 对应的子订单，**一条 = 一个子订单** |
 | `orderNo` | `string` | 是 | 所属主单 |
@@ -15222,8 +15715,8 @@ PointsTypeConfig 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `channel` | `string` | 是 | — |
-| `state` | `string` | 是 | — |
+| `channel` | `string` | 是 | 消息或支付通道编码 |
+| `state` | `string` | 是 | 服务端处理状态编码 |
 | `error` | `string,null` | 否 | — |
 | `lastAttemptAt` | `number,null` | 否 | — |
 | `nextRetryAt` | `number,null` | 否 | — |
@@ -15382,6 +15875,7 @@ REJECTED 不是终态：商家改完可以重新提审。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `settleNo` | `string` | 是 | 所属结算单 |
 | `subOrderNo` | `string` | 是 | 对应的子订单 |
 | `splitAction` | `string` | 是 | SPLIT / REVERSE / SUBSIDY / SUBSIDY_RETURN |
@@ -15416,7 +15910,7 @@ REJECTED 不是终态：商家改完可以重新提审。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `options` | `string`\[\] | 是 | — |
 | `optionCodes` | `string`\[\] | 否 | — |
 | `templateNo` | `string` | 否 | — |
@@ -15487,7 +15981,7 @@ REJECTED 不是终态：商家改完可以重新提审。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `channel` | `string` | 是 | — |
+| `channel` | `string` | 是 | 消息或支付通道编码 |
 | `enabled` | `boolean` | 是 | — |
 | `denied` | `boolean` | 是 | 准入矩阵不允许（按主体类型） |
 | `templateNo` | `string,null` | 否 | 仅 EXPRESS：运费模板号 |

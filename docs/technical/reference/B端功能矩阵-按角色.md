@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 34 个权限点 × 341 个受控端点**。
+统计：**6 个角色 × 36 个权限点 × 370 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -18,40 +18,42 @@
 |---|---|---|---|---|---|---|---|---|
 | `STOCK` | 改库存（含门店库存） | 49 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 38 | ✅ | ✅ | — | — | — | — |
+| `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 33 | ✅ | ✅ | — | — | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 32 | ✅ | ✅ | — | — | — | — |
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 30 | ✅ | — | — | — | — | — |
-| `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 24 | ✅ | — | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
 | `PRINT_READ` | 角色 → 权限码 | 15 | ✅ | ✅ | ✅ | — | — | — |
 | `PRINT_CONFIG` | 角色 → 权限码 | 15 | ✅ | ✅ | — | — | — | — |
+| `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 14 | ✅ | — | — | — | — | — |
 | `PRINT_RESOLVE` | 角色 → 权限码 | 14 | ✅ | ✅ | — | — | — | — |
 | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `AFTERSALE` | 售后同意/驳回/收货 | 8 | ✅ | ✅ | — | — | — | ✅ |
 | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
-| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 6 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
+| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 7 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
+| `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 7 | ✅ | — | — | — | — | — |
 | `PRINT_DEVICE` | 角色 → 权限码 | 6 | ✅ | ✅ | — | — | — | — |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
-| `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `PRINT_EXPORT` | 角色 → 权限码 | 3 | ✅ | ✅ | ✅ | — | — | — |
+| `SV_PLAN_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
+| `SV_PLAN_MANAGE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
+| `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
+| `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 2 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
 | `PRINT_REPRINT` | 角色 → 权限码 | 2 | ✅ | ✅ | ✅ | — | — | — |
 | `PRINT_SIMULATE` | 角色 → 权限码 | 2 | ✅ | ✅ | ✅ | — | — | — |
-| `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
-| `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
-| `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
 | `PRINT_SUBMIT` | 角色 → 权限码 | 1 | ✅ | ✅ | ✅ | — | — | — |
 | `PRINT_EXTRA` | 角色 → 权限码 | 1 | ✅ | ✅ | — | — | — | — |
 | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 
-**只有 OWNER 能碰的 14 项**：`FINANCE`、`STORE_ADMIN`、`ENT_READ`、`SV_RECHARGE_CREATE`、`ENT_USE`、`SV_CONSUME_CREATE`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`SV_ACCOUNT_READ`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`ENT_TEMPLATE_READ`
+**只有 OWNER 能碰的 16 项**：`FINANCE`、`STORE_ADMIN`、`SV_RECHARGE_CREATE`、`SV_ACCOUNT_READ`、`ENT_READ`、`ENT_USE`、`SV_PLAN_READ`、`SV_PLAN_MANAGE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`SV_CONSUME_CREATE`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`ENT_TEMPLATE_READ`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点
@@ -149,6 +151,42 @@
 - `/biz/spu-std`
 - `/biz/store-spec-dims`
 
+### `CUSTOMER`　（OWNER、MANAGER）
+
+- `/biz/cross-store/compare`
+- `/biz/cross-store/overview`
+- `/biz/customers`
+- `/biz/dashboard/stats`
+- `/biz/inventory/export`
+- `/biz/inventory/report/monthly`
+- `/biz/inventory/report/ranking`
+- `/biz/member-code/resolve`
+- `/biz/member-reach/plan`
+- `/biz/member-reach/task`
+- `/biz/member-reach/task/{taskNo}`
+- `/biz/member-segments`
+- `/biz/member-segments/preview`
+- `/biz/member-segments/{segmentNo}`
+- `/biz/member-segments/{segmentNo}/remove`
+- `/biz/member-tags`
+- `/biz/member-tags/{tagNo}`
+- `/biz/member-tags/{tagNo}/merge`
+- `/biz/member-tags/{tagNo}/usage`
+- `/biz/members`
+- `/biz/members/audience-preview`
+- `/biz/members/stats`
+- `/biz/members/tags`
+- `/biz/members/tags/batch`
+- `/biz/members/{memberNo}`
+- `/biz/report/daily`
+- `/biz/report/goods`
+- `/biz/report/monthly`
+- `/biz/stored-value/customer-candidates`
+- `/biz/stored-value/customer-selections`
+- `/biz/stores/{storeNo}/members`
+- `/biz/stores/{storeNo}/stored-value/customer-candidates`
+- `/biz/stores/{storeNo}/stored-value/customer-selections`
+
 ### `CAMPAIGN`　（OWNER、MANAGER）
 
 - `/biz/activities`
@@ -216,37 +254,6 @@
 - `/biz/settle/invoices`
 - `/biz/settle/rate-card`
 - `/biz/settle/statement`
-
-### `CUSTOMER`　（OWNER、MANAGER）
-
-- `/biz/cross-store/compare`
-- `/biz/cross-store/overview`
-- `/biz/customers`
-- `/biz/dashboard/stats`
-- `/biz/inventory/export`
-- `/biz/inventory/report/monthly`
-- `/biz/inventory/report/ranking`
-- `/biz/member-code/resolve`
-- `/biz/member-reach/plan`
-- `/biz/member-reach/task`
-- `/biz/member-reach/task/{taskNo}`
-- `/biz/member-segments`
-- `/biz/member-segments/preview`
-- `/biz/member-segments/{segmentNo}`
-- `/biz/member-segments/{segmentNo}/remove`
-- `/biz/member-tags`
-- `/biz/member-tags/{tagNo}`
-- `/biz/member-tags/{tagNo}/merge`
-- `/biz/member-tags/{tagNo}/usage`
-- `/biz/members`
-- `/biz/members/audience-preview`
-- `/biz/members/stats`
-- `/biz/members/tags`
-- `/biz/members/tags/batch`
-- `/biz/members/{memberNo}`
-- `/biz/report/daily`
-- `/biz/report/goods`
-- `/biz/report/monthly`
 
 ### `STORE_ADMIN`　（OWNER）
 
@@ -336,6 +343,23 @@
 - `/biz/print/templates`
 - `/biz/print/templates/{templateNo}/versions`
 
+### `SV_RECHARGE_CREATE`　（OWNER）
+
+- `/biz/stored-value/plan-recharges`
+- `/biz/stored-value/plan-recharges/cancel-create`
+- `/biz/stored-value/plan-recharges/confirm-offline`
+- `/biz/stored-value/plan-recharges/resolve`
+- `/biz/stored-value/plan-recharges/{rechargeNo}/cancel`
+- `/biz/stored-value/plan-recharges/{rechargeNo}/submit`
+- `/biz/stored-value/recharges`
+- `/biz/stored-value/recharges/{rechargeNo}/cancel`
+- `/biz/stored-value/recharges/{rechargeNo}/submit`
+- `/biz/stores/{storeNo}/stored-value/issuer-recharges/cancel-create`
+- `/biz/stores/{storeNo}/stored-value/issuer-recharges/confirm-offline`
+- `/biz/stores/{storeNo}/stored-value/issuer-recharges/resolve`
+- `/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}/cancel`
+- `/biz/stores/{storeNo}/stored-value/recharge-options`
+
 ### `PRINT_RESOLVE`　（OWNER、MANAGER）
 
 - `/biz/print/action-logs`
@@ -391,10 +415,21 @@
 
 - `/biz/order`
 - `/biz/order/worklist`
+- `/biz/order/{orderNo}/points-earning`
 - `/biz/order/{subOrderNo}`
 - `/biz/order/{subOrderNo}/inventory-trace`
 - `/biz/order/{subOrderNo}/logistics-updates`
 - `/biz/order/{subOrderNo}/trace`
+
+### `SV_ACCOUNT_READ`　（OWNER）
+
+- `/biz/stored-value/account-directory`
+- `/biz/stored-value/accounts`
+- `/biz/stored-value/accounts/{accountRef}`
+- `/biz/stored-value/records`
+- `/biz/stored-value/records/{recordNo}`
+- `/biz/stores/{storeNo}/stored-value/issuer-records`
+- `/biz/stores/{storeNo}/stored-value/issuer-records/{recordNo}`
 
 ### `PRINT_DEVICE`　（OWNER、MANAGER）
 
@@ -425,12 +460,6 @@
 - `/biz/review/{reviewNo}/appeal`
 - `/biz/review/{reviewNo}/reply`
 
-### `SV_RECHARGE_CREATE`　（OWNER）
-
-- `/biz/stored-value/recharges`
-- `/biz/stored-value/recharges/{rechargeNo}/cancel`
-- `/biz/stored-value/recharges/{rechargeNo}/submit`
-
 ### `ENT_USE`　（OWNER）
 
 - `/biz/entitlement-uses`
@@ -442,6 +471,26 @@
 - `/biz/print/exports`
 - `/biz/print/exports/{exportNo}`
 - `/biz/print/exports/{exportNo}/download-grants`
+
+### `SV_PLAN_READ`　（OWNER）
+
+- `/biz/stored-value/context`
+- `/biz/stored-value/plans/{planNo}`
+
+### `SV_PLAN_MANAGE`　（OWNER）
+
+- `/biz/stored-value/plans`
+- `/biz/stored-value/plans/{planNo}/status`
+
+### `SV_RECHARGE_RECEIVE`　（OWNER）
+
+- `/biz/stored-value/plan-recharges/{rechargeNo}/receive`
+- `/biz/stored-value/recharges/{rechargeNo}/receive`
+
+### `SV_RECHARGE_READ`　（OWNER）
+
+- `/biz/stored-value/plan-recharges/{rechargeNo}`
+- `/biz/stored-value/recharges/{rechargeNo}`
 
 ### `SV_CONSUME_CREATE`　（OWNER）
 
@@ -467,18 +516,6 @@
 
 - `/biz/print/simulations`
 - `/biz/print/simulations/{simulationNo}`
-
-### `SV_RECHARGE_RECEIVE`　（OWNER）
-
-- `/biz/stored-value/recharges/{rechargeNo}/receive`
-
-### `SV_RECHARGE_READ`　（OWNER）
-
-- `/biz/stored-value/recharges/{rechargeNo}`
-
-### `SV_ACCOUNT_READ`　（OWNER）
-
-- `/biz/stored-value/accounts`
 
 ### `ENT_ISSUE`　（OWNER）
 

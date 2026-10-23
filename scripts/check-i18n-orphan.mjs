@@ -22,6 +22,8 @@ import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { stripManagementPermissionData, stripTemplateActionData } from "./management-guard-refs.mjs";
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const APPS = [
   { app: "b-app", locale: "b-app/src/i18n/locale/zh-CN.ts", src: ["b-app/src"] },
@@ -140,7 +142,7 @@ function stripComments(s) {
     .replace(/<!--[\s\S]*?-->/g, " ");
 }
 
-function refsOf(files) {
+export function refsOf(files) {
   const keys = new Set();
   const prefixes = new Set();
   for (const f of files) {
@@ -149,13 +151,13 @@ function refsOf(files) {
     if (f.endsWith(".vue")) {
       const parts = [...src.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
       script = parts.join("\n");
-      const tpl = src.replace(/<script[^>]*>[\s\S]*?<\/script>/g, "");
+      const tpl = stripTemplateActionData(src.replace(/<script[^>]*>[\s\S]*?<\/script>/g, ""));
       for (const m of tpl.matchAll(TITLE_KEY)) keys.add(m[1]);
       for (const m of tpl.matchAll(T_SINGLE)) keys.add(m[1]);
       for (const m of tpl.matchAll(T_DOUBLE)) keys.add(m[2]);
       for (const m of tpl.matchAll(DYNAMIC)) prefixes.add(m[1]);
     }
-    for (const m of script.matchAll(LITERAL)) keys.add(m[1]);
+    for (const m of stripManagementPermissionData(script, key => keys.add(key)).matchAll(LITERAL)) keys.add(m[1]);
     for (const m of script.matchAll(DYNAMIC)) prefixes.add(m[1]);
   }
   return { keys, prefixes };

@@ -43,6 +43,7 @@ import tools.jackson.databind.ObjectMapper;
         "spring.datasource.url=jdbc:h2:mem:coupon-public;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"})
 @ActiveProfiles("test")
 class EntitlementCheckoutHttpFlowTest {
+    @Autowired ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger;
     @Autowired WebApplicationContext web;
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;
@@ -52,7 +53,7 @@ class EntitlementCheckoutHttpFlowTest {
     @Autowired EntitlementOrderUseService orderUses;
     @Autowired OrderService orderService;
     @MockitoSpyBean EntitlementUsePort pay;
-    private String id() { return UUID.randomUUID().toString(); }
+    private String id() { return UUID.randomUUID().toString().replace("-", ""); }
     private String phone() {
         return "125" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
     }
@@ -146,7 +147,9 @@ class EntitlementCheckoutHttpFlowTest {
         assertThat(jdbc.queryForObject("SELECT pay_amount FROM ord_order WHERE order_no=?", Long.class, order))
                 .isEqualTo(800);
         assertThat(orderUses.sealForPayment("MAIN", order).getPayAmount()).isEqualTo(800);
-        orderService.markPaid(order, "WX", id());
+        String trade = ai.neargo.shop.support.OrderPaymentFixture.settle(
+                paymentLedger, order, user, entity, "WX", 800);
+        orderService.markPaid(order, "WX", trade);
         var decided = new SysOutbox(); decided.setEventType("ENTITLEMENT_ORDER_USE_DECIDED");
         decided.setPayload(jdbc.queryForObject("SELECT payload FROM sys_outbox WHERE aggregate_id=? "
                 + "AND event_type='ENTITLEMENT_ORDER_USE_DECIDED'", String.class, op));

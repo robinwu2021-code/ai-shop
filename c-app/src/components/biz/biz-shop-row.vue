@@ -13,7 +13,7 @@ import type { Merchant } from "@shared/types";
  * @param meta 替换第二行。「我买过的」那一档用它说「买过 N 单 · 最近 …」——
  *   对回头客，这比评分更有用。
  */
-const props = defineProps<{ merchant: Merchant; meta?: string }>();
+const props = defineProps<{ merchant: Pick<Merchant, "merchantNo" | "name" | "logo" | "rating" | "verified"> & Partial<Merchant>; meta?: string }>();
 defineEmits<{ (e: "tap"): void }>();
 
 const { t } = useI18n();
@@ -27,10 +27,10 @@ const metaText = computed(() => {
   if (props.meta) return props.meta;
   const m = props.merchant;
   const parts: string[] = [];
-  if (m.ratingCount > 0) {
+  if ((m.ratingCount ?? 0) > 0 || (m.ratingCount === undefined && m.rating > 0)) {
     parts.push(`${m.rating.toFixed(1)} ★`);
-    if (m.salesCount > 0) parts.push(String(t("shops.orders", { n: m.salesCount })));
-  } else {
+    if ((m.salesCount ?? 0) > 0) parts.push(String(t("shops.orders", { n: m.salesCount })));
+  } else if (m.ratingCount === 0) {
     parts.push(String(t("shops.newShop")));
   }
   if (m.serviceScope) parts.push(String(t(`serviceScope.${m.serviceScope}`)));

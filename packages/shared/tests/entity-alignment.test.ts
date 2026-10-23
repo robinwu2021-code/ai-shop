@@ -37,7 +37,149 @@ const camel = (s: string) =>
  * 登记不是豁免，是「知道欠着」。补上实体之后要从这里删掉 ——
  * 删不掉说明还没做完。
  */
+/** Deliberate SQL/record models. Each entry names its actual persistence owner, not missing ORM work. */
+const EXPLICIT_SQL_MODELS: Record<string, { file: string; evidence: string }> = {
+  "sys_outbox_stream": {
+    "file": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "evidence": "source.prefix + \"_outbox_"
+  },
+  "sys_outbox_delivery": {
+    "file": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "evidence": "source.prefix + \"_outbox_"
+  },
+  "sys_outbox_operation": {
+    "file": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "evidence": "source.prefix + \"_outbox_"
+  },
+  "prd_stock_sync_operation": {
+    "file": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
+    "evidence": "prd_stock_sync_operation"
+  },
+  "prd_stock_alignment_batch": {
+    "file": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+    "evidence": "prd_stock_alignment_batch"
+  },
+  "prd_stock_alignment_line": {
+    "file": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+    "evidence": "prd_stock_alignment_line"
+  },
+  "ord_refund_coupon_scope": {
+    "file": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundObligationMapper.java",
+    "evidence": "ord_refund_coupon_scope"
+  },
+  "ord_refund_obligation": {
+    "file": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundObligationMapper.java",
+    "evidence": "ord_refund_obligation"
+  },
+  "sv_customer_identity": {
+    "file": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/mapper/storedvalue/SvCustomerIdentityMapper.java",
+    "evidence": "sv_customer_identity"
+  },
+  "ord_points_earn_rule": {
+    "file": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/points/earning/PointsEarningRules.java",
+    "evidence": "ord_points_earn_rule"
+  },
+  "ord_points_earn_rule_revision": {
+    "file": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/points/earning/PointsEarningRules.java",
+    "evidence": "ord_points_earn_rule_revision"
+  },
+  "pay_document_sequence": {
+    "file": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/numbering/store/JdbcDocumentNumberRepository.java",
+    "evidence": "pay_document_sequence"
+  },
+  "core_document_number": {
+    "file": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/numbering/store/JdbcDocumentNumberRepository.java",
+    "evidence": "core_document_number"
+  },
+  "pay_document_number": {
+    "file": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/numbering/store/JdbcDocumentNumberRepository.java",
+    "evidence": "pay_document_number"
+  },
+  "mch_management_space": {
+    "file": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementScopeService.java",
+    "evidence": "mch_management_space"
+  },
+  "mch_management_grant": {
+    "file": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementScopeService.java",
+    "evidence": "mch_management_grant"
+  },
+  "mch_brand": {
+    "file": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/BrandService.java",
+    "evidence": "mch_brand"
+  },
+  "mch_brand_store_binding": {
+    "file": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/BrandService.java",
+    "evidence": "mch_brand_store_binding"
+  },
+  "mch_brand_change": {
+    "file": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/BrandService.java",
+    "evidence": "mch_brand_change"
+  },
+  "mbr_scope_member": {
+    "file": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/MemberScopeService.java",
+    "evidence": "mbr_scope_member"
+  },
+  "mbr_store_profile": {
+    "file": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/MemberScopeService.java",
+    "evidence": "mbr_store_profile"
+  },
+  "mbr_scope_legacy_link": {
+    "file": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/MemberScopeService.java",
+    "evidence": "mbr_scope_legacy_link"
+  },
+  "sv_issuer": {
+    "file": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "evidence": "sv_issuer"
+  },
+  "sv_issuer_version": {
+    "file": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "evidence": "sv_issuer_version"
+  },
+  "sv_issuer_store_access": {
+    "file": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "evidence": "sv_issuer_store_access"
+  },
+  "sv_release": {
+    "file": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "evidence": "sv_release"
+  },
+  "sv_release_tier": {
+    "file": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "evidence": "sv_release_tier"
+  },
+  "sv_issue_quota": {
+    "file": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "evidence": "sv_issue_quota"
+  },
+  "sv_issue_quota_reservation": {
+    "file": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "evidence": "sv_issue_quota_reservation"
+  },
+  "sv_customer_issuer_index": {
+    "file": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "evidence": "sv_customer_issuer_index"
+  },
+  "inv_outbox_stream": {
+    "file": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "evidence": "source.prefix + \"_outbox_"
+  },
+  "inv_outbox_delivery": {
+    "file": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "evidence": "source.prefix + \"_outbox_"
+  },
+  "inv_outbox_operation": {
+    "file": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "evidence": "source.prefix + \"_outbox_"
+  },
+  "inv_event_consumed": {
+    "file": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/TransactionalOutboxHandler.java",
+    "evidence": "class TransactionalOutboxHandler"
+  }
+};
+
 const NO_ENTITY_YET: Record<string, string> = {
+  ...Object.fromEntries(Object.entries(EXPLICIT_SQL_MODELS).map(([table, model]) =>
+    [table, `SQL/record persistence owned by ${model.file}; no parallel ORM entity is used.`])),
   pts_statement_final_fact: "可信终局发生时间与首次就绪序列投影，由PointsConfigurationMapper维护，按积分SQL mapper设计无ORM实体。",
   pts_statement_build: "大账单构建状态及高水位由PointsConfigurationMapper与MybatisStatementBuildStore与不可变record维护，按积分SQL mapper设计无ORM实体。",
   pts_statement_source_history: "大账单来源版本的只增历史由PointsConfigurationMapper与MybatisStatementBuildStore维护，用于分页重建旧修订，不设独立ORM实体。",
@@ -114,6 +256,24 @@ const NO_ENTITY_YET: Record<string, string> = {
    */
 };
 
+/** Include mapped superclass columns (for example PrnRow), preserving explicit TableField names. */
+function mappedFields(src: string, file: string, seen = new Set<string>()): Set<string> {
+  if (seen.has(file)) throw new Error(`Cyclic entity inheritance: ${file}`);
+  seen.add(file);
+  const fields = new Set([...src.matchAll(
+    /((?:@[\w.]+(?:\([^)]*\))?\s*)*)private\s+[\w.]+(?:<[^>]*>)?(?:\[\])?\s+(\w+)\s*;/g,
+  )].map((m) => {
+    const column = m[1]!.match(/@TableField\(\s*(?:value\s*=\s*)?"(\w+)"/)?.[1];
+    return column ? camel(column) : m[2]!;
+  }));
+  const parent = src.match(/\bclass\s+\w+\s+extends\s+(\w+)/)?.[1];
+  if (parent) {
+    const sibling = join(file, "..", parent + ".java");
+    if (existsSync(sibling)) for (const field of mappedFields(readFileSync(sibling, "utf8"), sibling, seen)) fields.add(field);
+  }
+  return fields;
+}
+
 /** 收集 backend 下所有 `@TableName("xxx")` 的实体，键是表名 */
 function scanEntities(dir: string, out = new Map<string, { file: string; fields: Set<string> }>()) {
   for (const e of readdirSync(dir)) {
@@ -128,14 +288,7 @@ function scanEntities(dir: string, out = new Map<string, { file: string; fields:
       // `@TableField("col")` 显式映射优先 —— 全库改名（merchant_no→entity_no）后
       // 字段名与列名分离是常态，对齐要按**实际映射到的列**算。
       // Getter/Setter 等字段注解可以位于 TableField 与字段之间，必须整组读取。
-      const fields = new Set(
-        [...src.matchAll(
-          /((?:@[\w.]+(?:\([^)]*\))?\s*)*)private\s+[\w.]+(?:<[^>]*>)?(?:\[\])?\s+(\w+)\s*;/g,
-        )].map((m) => {
-          const column = m[1]!.match(/@TableField\(\s*"(\w+)"\s*\)/)?.[1];
-          return column ? camel(column) : m[2]!;
-        }),
-      );
+      const fields = mappedFields(src, p);
       /*
        * 同一张表可能有两个实体：过渡期老实体只改了表名、新实体在新模块里（TDD-物流模块 批 1：
        * FulShipment 与 LgsWaybill 都映射 lgs_waybill）。这条检查要回答的是「这一列有没有人读得到」，
@@ -162,6 +315,12 @@ const businessCols = (table: string) =>
     .filter((c) => !AUDIT.has(c) && !BASE_FIELDS.has(c));
 
 describe("Java 实体与库表对齐", () => {
+  it("Explicit SQL model registrations retain a concrete persistence owner", () => {
+    for (const [table, model] of Object.entries(EXPLICIT_SQL_MODELS)) {
+      expect(schema.has(table), table).toBe(true);
+      expect(readFileSync(join(ROOT, model.file), "utf8"), table).toContain(model.evidence);
+    }
+  });
   it("多个字段注解之间的显式列映射仍优先于 Java 字段名", () => {
     const fields = entities.get("trd_shipping_upload")?.fields;
     expect(fields?.has("sourceSnapshot")).toBe(true);

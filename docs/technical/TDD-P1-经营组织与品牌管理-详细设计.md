@@ -21,16 +21,16 @@
 
 ## 2 领域关系与模块
 
-```mermaid
-erDiagram
-    MCH_MANAGEMENT_SPACE ||--o{ MCH_BRAND : manages
-    MCH_MANAGEMENT_SPACE ||--o{ MCH_MANAGEMENT_GRANT : grants
-    MCH_BRAND ||--o{ MCH_BRAND_STORE_BINDING : history
-    MCH_STORE ||--o{ MCH_BRAND_STORE_BINDING : history
-    MCH_ENTITY ||--o{ MCH_STORE : operates
-    MCH_ENTITY ||--o{ MCH_PAYMENT_MERCHANT : payment_channels
-    MCH_STORE ||--o{ MCH_BRAND_CHANGE : changes
-```
+| 序号 | 来源 | 目标 | 关系 / 条件 / 消息 |
+|---|---|---|---|
+| 1 | MCH_MANAGEMENT_SPACE | MCH_BRAND | manages |
+| 2 | MCH_MANAGEMENT_SPACE | MCH_MANAGEMENT_GRANT | grants |
+| 3 | MCH_BRAND | MCH_BRAND_STORE_BINDING | history |
+| 4 | MCH_STORE | MCH_BRAND_STORE_BINDING | history |
+| 5 | MCH_ENTITY | MCH_STORE | operates |
+| 6 | MCH_ENTITY | MCH_PAYMENT_MERCHANT | payment_channels |
+| 7 | MCH_STORE | MCH_BRAND_CHANGE | changes |
+
 
 一个门店当前最多关联一个品牌，也可不关联品牌；独立门店不创建默认品牌。一个品牌可含不同主体的门店。品牌与主体之间不建直接关系表。品牌归属一个管理空间；同一门店可由不同获授权管理人员操作，不能以“空间可见”推导其所有资金可见。
 
@@ -250,25 +250,21 @@ MG05撤销逻辑更新status、version，同时递增空间auth_revision并写ou
 
 ### 5.2 门店加入、退出或切换品牌
 
-```mermaid
-sequenceDiagram
-    actor U as B端管理者
-    participant B as BFF
-    participant M as Merchant
-    participant D as Core数据库
-    U->>B: ST02 检查目标品牌
-    B->>M: 验证门店及品牌双方权限
-    B->>B: 汇总依赖影响与能力状态
-    B-->>U: 影响/原因/短时检查凭据
-    U->>B: ST03 提交 + 检查凭据 + 幂等键
-    B->>M: 重新校验权限及版本
-    M->>D: 保存CHECKED或BLOCKED变更
-    U->>B: ST05 APPROVE/REJECT
-    B->>B: 重新取得依赖状态
-    B->>M: 确认最新范围与能力
-    M->>D: 原绑定ENDED + 新绑定ACTIVE + scope_revision递增 + outbox
-    B-->>U: COMPLETED或明确阻断原因
-```
+| 序号 | 来源 | 目标 | 关系 / 条件 / 消息 |
+|---|---|---|---|
+| 1 | B端管理者 | BFF | ST02 检查目标品牌 |
+| 2 | BFF | Merchant | 验证门店及品牌双方权限 |
+| 3 | BFF | BFF | 汇总依赖影响与能力状态 |
+| 4 | BFF | B端管理者 | 返回：影响/原因/短时检查凭据 |
+| 5 | B端管理者 | BFF | ST03 提交 + 检查凭据 + 幂等键 |
+| 6 | BFF | Merchant | 重新校验权限及版本 |
+| 7 | Merchant | Core数据库 | 保存CHECKED或BLOCKED变更 |
+| 8 | B端管理者 | BFF | ST05 APPROVE/REJECT |
+| 9 | BFF | BFF | 重新取得依赖状态 |
+| 10 | BFF | Merchant | 确认最新范围与能力 |
+| 11 | Merchant | Core数据库 | 原绑定ENDED + 新绑定ACTIVE + scope_revision递增 + outbox |
+| 12 | BFF | B端管理者 | 返回：COMPLETED或明确阻断原因 |
+
 
 - ST02无业务写入，返回服务端签名的checkToken，默认有效期60秒；含tenant、actor、management/store、from/to、门店和品牌版本、影响摘要hash。凭据不能换人/换店/换目标，签名密钥不进前端。
 - ST03不把checkToken当金融安全锁；校验签名和时效，重新做当前权限及本地版本验证。检查过期返回CHECK_EXPIRED；数据变化返回REVISION_CONFLICT。存量资金/未完原单或检查不确定的情况写BLOCKED及check_snapshot，不改有效关系。

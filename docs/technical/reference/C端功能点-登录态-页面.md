@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**124 个功能点**，其中 **36 个游客可用**；**9 个没有任何页面调用**。
+统计：**128 个功能点**，其中 **36 个游客可用**；**9 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -94,7 +94,7 @@
 | `messageList` | `GET /mp/message` | 是 | messages | — |
 | `readMessage` | `POST /mp/message/:messageNo/read` | 是 | messages | — |
 | `readAllMessages` | `POST /mp/message/read-all` | 是 | messages | — |
-| `subscribeReport` | `POST /mp/message/subscribe` | 是 | after-sale · me · order-confirm · pay · store | — |
+| `subscribeReport` | `POST /mp/message/subscribe` | 是 | after-sale · me · order-confirm · pay · store · stored-value-records | — |
 | `unreadMessages` | `GET /mp/message/unread-count` | 是 | me | — |
 | `myStoreCoupons` | `GET /mp/my-coupons` | 是 | coupon-code · coupons | — |
 | `myMemberships` | `GET /mp/my-memberships` | 是 | my-memberships | — |
@@ -108,6 +108,7 @@
 | `payOrder` | `POST /mp/order/:orderNo/pay` | 是 | pay | — |
 | `payMethods` | `GET /mp/order/:orderNo/pay-method` | 是 | pay | — |
 | `payResult` | `GET /mp/order/:orderNo/pay-result` | 是 | pay | — |
+| `orderPointsEarning` | `GET /mp/order/:orderNo/points-earning` | 是 | order | — |
 | `orderPointsState` | `GET /mp/order/:orderNo/points-state` | 是 | pay | — |
 | `reorderFrom` | `POST /mp/order/:orderNo/reorder` | 是 | **无** | — |
 | `orderTrace` | `GET /mp/order/:orderNo/trace` | 是 | order | — |
@@ -132,6 +133,9 @@
 | `storeByCode` | `GET /mp/store/by-code` | 游客 | store | — |
 | `myStores` | `GET /mp/store/mine` | 游客 | merchants · search | — |
 | `storeNearby` | `GET /mp/store/nearby` | 游客 | merchants · search | — |
+| `storedValueNotificationCapability` | `GET /mp/stored-value/notification-capability` | 是 | stored-value-records | — |
+| `storedValueRecords` | `GET /mp/stored-value/store/:storeNo/records` | 是 | stored-value-records | — |
+| `storedValueStores` | `GET /mp/stored-value/stores` | 是 | stored-value | — |
 | `track` | `GET /mp/track` | 游客 | track | — |
 | `trackMine` | `GET /mp/track/mine` | 是 | track | — |
 | `trackMiniLink` | `GET /mp/track/mini-link` | 游客 | track | — |

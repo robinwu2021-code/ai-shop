@@ -61,7 +61,13 @@ class ShippingRefundSnapshotFlowTest {
                     before.getId());
         }
         jdbc.update("UPDATE ord_sub_order SET status='REFUNDED' WHERE sub_order_no=?", sibling);
-        events.publish(new OrderEvents.AfterSaleRefunded("RF-" + sibling, sibling, "LG-BUYER", 0L));
+        String afterSale = "RF-" + sibling;
+        // Refund consumers validate the committed source; a bare event cannot prove a refund.
+        jdbc.update("INSERT INTO ord_after_sale(after_sale_no,sub_order_no,order_no,user_no,entity_no,type,"
+                + "status,reason,refund_minor,refunded_at,tenant_no,created_at,updated_at) "
+                + "VALUES (?,?,?,'LG-BUYER','LG-MERCHANT','REFUND_ONLY','REFUNDED','fixture',0,?,'MAIN',"
+                + "CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", afterSale, sibling, pay, System.currentTimeMillis());
+        events.publish(new OrderEvents.AfterSaleRefunded(afterSale, sibling, "LG-BUYER", 0L));
         drain();
         TrdShippingUpload refreshed = row(pay);
         assertThat(refreshed.getId()).isEqualTo(before.getId());

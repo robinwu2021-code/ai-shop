@@ -17,6 +17,11 @@
  *     改成单数，收益是命名统一，代价是动后端控制器、SecurityConfig、权限矩阵
  *     与数据域注册表。承认它是另一套约定，并同样立闸门防止单数混进去。
  *
+ * 2026-10-23 补充：已发布的管理空间与门店范围 API 使用更具体的复数约定：
+ * `/biz/management`、`/biz/stores`。按完整路径段匹配、最长前缀优先；
+ * `/biz` 的单数默认不外扩，其他旧域的判据与欠账棘轮不变。
+ * 依据见《契约漂移清单》2026-10-23 修订及品牌与门店双线储值 API 实施附录。
+ *
  * **这道闸拦的是新增**，存量在 `known-plural-paths.txt` 里挂着；
  * 别为了让它变短去改线上路径 —— 那正是这条判据刻意不做的事。
  */
@@ -48,22 +53,42 @@ function paths(file: string): string[] {
  */
 const looksPlural = (seg: string) => /^[a-z][a-z-]*s$/.test(seg) && !seg.endsWith("ss") && !seg.endsWith("alias");
 
+/** The longest complete namespace wins; a namespace name is not a substring prefix. */
+const NAMESPACE_CONVENTIONS = [
+  { prefix: "/mp", plural: false },
+  { prefix: "/biz", plural: false },
+  { prefix: "/ops", plural: true },
+  { prefix: "/biz/management", plural: true },
+  { prefix: "/biz/stores", plural: true },
+];
+function wantsPlural(path: string): boolean {
+  return NAMESPACE_CONVENTIONS.filter(rule => path === rule.prefix || path.startsWith(rule.prefix + "/"))
+    .sort((a, b) => b.prefix.length - a.prefix.length)[0]?.plural ?? false;
+}
+
+/**
+ * fulfillment is a singleton settings document. Here {channel} selects a channel
+ * dimension for an impact query, not a fulfillment-resource ID. Keep this exact
+ * established shape separate from collection/{id} naming, without exempting siblings.
+ */
+function isFulfillmentChannel(path: string, segment: number): boolean {
+  return segment === 4 && /^\/biz\/stores\/\{[^}]+\}\/fulfillment\/\{channel\}\/impact$/.test(path);
+}
+function offendersForPath(path: string): string[] {
+  const out: string[] = [];
+  const segs = path.split("/");
+  for (let i = 0; i < segs.length - 1; i++) {
+    const seg = segs[i];
+    if (!seg || seg.startsWith("{") || EXEMPT.has(seg)) continue;
+    if (!segs[i + 1].startsWith("{") || isFulfillmentChannel(path, i)) continue;
+    if (looksPlural(seg) !== wantsPlural(path)) out.push(`${path}  ${seg}`);
+  }
+  return out;
+}
+
 /** 「资源段 + {id}」的所有出现，连同它该是单数还是复数 */
 function offenders(): string[] {
-  const out: string[] = [];
-  for (const [file] of SPECS) {
-    for (const p of paths(file)) {
-      const segs = p.split("/");
-      const wantPlural = segs[1] === "ops"; // 平台端用复数，其余单数
-      for (let i = 0; i < segs.length - 1; i++) {
-        const seg = segs[i];
-        if (!seg || seg.startsWith("{") || EXEMPT.has(seg)) continue;
-        if (!segs[i + 1].startsWith("{")) continue;
-        if (looksPlural(seg) !== wantPlural) out.push(`${p}  ${seg}`);
-      }
-    }
-  }
-  return [...new Set(out)].sort();
+  return [...new Set(SPECS.flatMap(([file]) => paths(file).flatMap(offendersForPath)))].sort();
 }
 
 /**
@@ -92,7 +117,35 @@ const LIST_LABEL = `<仓库根>/${LIST}`;
 const OTHER_LIST = "b-app/scripts/known-plural-paths.txt（同名，另一道闸，判据是「复数+id」）";
 
 describe("端点路径：资源段的单复数按域一致", () => {
-  it("★★ 新端点必须跟随本域的约定（/mp /biz 单数 · /ops 复数）", () => {
+  it.each([
+    ["/mp/order/{orderNo}", false], ["/biz/order/{orderNo}", false], ["/ops/orders/{orderNo}", true],
+    ["/biz/management/brands/{brandNo}", true], ["/biz/stores/{storeNo}/members/{memberNo}", true],
+    ["/biz/management-tools/item/{id}", false], ["/biz/stores-archive/item/{id}", false],
+  ])("uses the most specific complete namespace for %s", (path, plural) => {
+    expect(wantsPlural(path as string)).toBe(plural);
+  });
+
+  it.each([
+    "/mp/order/{id}", "/biz/order/{id}", "/ops/orders/{id}",
+    "/biz/management/brands/{b}", "/biz/management/spaces/{m}/grants/{g}",
+    "/biz/stores/{s}/stored-value/issuer-recharges/{r}",
+    "/biz/stores/{s}/fulfillment/{channel}/impact",
+  ])("accepts resource naming matching its namespace: %s", path => {
+    expect(offendersForPath(path)).toEqual([]);
+  });
+
+  it.each([
+    "/mp/orders/{id}", "/biz/orders/{id}", "/ops/order/{id}",
+    "/biz/management/brand/{b}", "/biz/management/spaces/{m}/grant/{g}",
+    "/biz/stores/{s}/stored-value/issuer-recharge/{r}",
+    "/biz/stores/{s}/fulfillment/{fulfillmentNo}/impact",
+    "/biz/stores/{s}/fulfillment/{channel}/impact/member/{id}",
+    "/biz/management-tools/items/{id}", "/biz/stores-archive/items/{id}",
+  ])("rejects inconsistent resource names, including within scoped namespaces: %s", path => {
+    expect(offendersForPath(path).length).toBeGreaterThan(0);
+  });
+
+  it("★★ 新端点必须跟随最具体命名空间约定（默认 /mp /biz 单数；/ops 与管理空间、门店范围复数）", () => {
     const known = new Set(
       readFileSync(join(ROOT, LIST), "utf8")
         .split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")),
@@ -101,7 +154,7 @@ describe("端点路径：资源段的单复数按域一致", () => {
     const fresh = now.filter((x) => !known.has(x));
     expect(
       fresh,
-      `这些新端点与本域约定不符（/mp /biz 要单数、/ops 要复数）：\n  ${fresh.join("\n  ")}\n`
+      `这些新端点与最具体命名空间约定不符（/mp /biz 默认单数；/ops、/biz/management、/biz/stores 复数）：\n  ${fresh.join("\n  ")}\n`
         + `\n  要破例就登记进 ${LIST_LABEL}（读它的是本文件 api-path-naming.test.ts）。`
         + `\n  ⚠️ 另有一份 ${OTHER_LIST} —— 登记一份不够，两道闸各读各的。`,
     ).toEqual([]);

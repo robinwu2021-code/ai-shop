@@ -79,10 +79,15 @@ export interface BuyerPointsAccount {
 }
 
 export interface BuyerPointsEntry {
+  /** 原凭证内部编号 */
   voucherNo?: string | null;
+  /** 原凭证展示单号 */
   voucherDocumentNo?: string | null;
+  /** 流水收支方向编码 */
   direction?: string | null;
+  /** 来源业务引用 */
   businessRef?: string | null;
+  /** 订单内部业务编号 */
   orderNo?: string | null;
   /** 不可变积分分录编号 */
   entryNo: string;

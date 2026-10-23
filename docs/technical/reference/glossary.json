@@ -4816,18 +4816,6 @@
           "ar": "سجّل الدخول للمتابعة"
         },
         {
-          "key": "points.accountExpiry",
-          "zh-CN": "到期时间",
-          "en": "Expires at",
-          "ar": "تاريخ الانتهاء"
-        },
-        {
-          "key": "points.accountFrozen",
-          "zh-CN": "账户已冻结",
-          "en": "Account frozen",
-          "ar": "الحساب مجمد"
-        },
-        {
           "key": "points.after",
           "zh-CN": "余 {n}",
           "en": "bal {n}",
@@ -5062,12 +5050,6 @@
           "ar": "{n} نقطة محجوزة"
         },
         {
-          "key": "points.historyTerms",
-          "zh-CN": "历史条款（只读）",
-          "en": "Historical terms (read only)",
-          "ar": "الشروط السابقة (للقراءة فقط)"
-        },
-        {
           "key": "points.idleRule",
           "zh-CN": "连续 {n} 天无积分变动后到期",
           "en": "Expires after {n} days without points activity",
@@ -5090,12 +5072,6 @@
           "zh-CN": "积分名称加载失败，点击重试",
           "en": "Points names failed to load. Tap to retry.",
           "ar": "تعذر تحميل أسماء النقاط. اضغط لإعادة المحاولة."
-        },
-        {
-          "key": "points.noHistoryTerms",
-          "zh-CN": "暂无历史条款",
-          "en": "No historical terms",
-          "ar": "لا توجد شروط سابقة"
         },
         {
           "key": "points.notActive",
@@ -13280,6 +13256,168 @@
           "ar": "اسم المُصدِر"
         },
         {
+          "key": "issuer.acceptAndChoose",
+          "zh-CN": "授权并选择",
+          "en": "Authorize and select",
+          "ar": "تفويض واختيار"
+        },
+        {
+          "key": "issuer.accepted",
+          "zh-CN": "已授权",
+          "en": "Authorized",
+          "ar": "مفوّض"
+        },
+        {
+          "key": "issuer.addRoute",
+          "zh-CN": "添加收款方式",
+          "en": "Add collection method",
+          "ar": "إضافة طريقة تحصيل"
+        },
+        {
+          "key": "issuer.blockers.CURRENCY_IMMUTABLE",
+          "zh-CN": "币种不可修改",
+          "en": "Currency cannot be changed",
+          "ar": "لا يمكن تغيير العملة"
+        },
+        {
+          "key": "issuer.blockers.ISSUANCE_NOT_ENABLED",
+          "zh-CN": "尚未开通储值发行",
+          "en": "Issuance is not enabled",
+          "ar": "الإصدار غير مفعّل"
+        },
+        {
+          "key": "issuer.blockers.LIABILITY_RULES_LOCKED",
+          "zh-CN": "存在余额或未完成储值，暂不能修改资金规则",
+          "en": "Outstanding balance or recharge prevents this change",
+          "ar": "الرصيد أو العمليات المعلقة تمنع هذا التغيير"
+        },
+        {
+          "key": "issuer.blockers.MAINTENANCE_IN_PROGRESS",
+          "zh-CN": "储值维护中",
+          "en": "Stored-value maintenance",
+          "ar": "صيانة الرصيد"
+        },
+        {
+          "key": "issuer.blockers.STALE_CONFIGURATION",
+          "zh-CN": "配置已更新，请刷新",
+          "en": "Configuration changed. Refresh.",
+          "ar": "تم تحديث الإعدادات. يرجى التحديث."
+        },
+        {
+          "key": "issuer.brandDraftOnly",
+          "zh-CN": "当前仅可配置品牌发行草稿",
+          "en": "Brand issuance is available as a draft only",
+          "ar": "إصدار العلامة التجارية متاح كمسودة فقط"
+        },
+        {
+          "key": "issuer.brandScope",
+          "zh-CN": "品牌储值",
+          "en": "Brand balance",
+          "ar": "رصيد العلامة التجارية"
+        },
+        {
+          "key": "issuer.channels.ALIPAY",
+          "zh-CN": "支付宝",
+          "en": "Alipay",
+          "ar": "علي باي"
+        },
+        {
+          "key": "issuer.channels.MERCHANT_OFFLINE",
+          "zh-CN": "线下收款",
+          "en": "Offline collection",
+          "ar": "تحصيل دون اتصال"
+        },
+        {
+          "key": "issuer.channels.WECHAT",
+          "zh-CN": "微信支付",
+          "en": "WeChat Pay",
+          "ar": "وي تشات باي"
+        },
+        {
+          "key": "issuer.chooseEntity",
+          "zh-CN": "选择结算主体",
+          "en": "Select settlement entity",
+          "ar": "اختيار جهة التسوية"
+        },
+        {
+          "key": "issuer.name",
+          "zh-CN": "发行名称",
+          "en": "Issuer name",
+          "ar": "اسم جهة الإصدار"
+        },
+        {
+          "key": "issuer.noRoutes",
+          "zh-CN": "暂无可用收款方式",
+          "en": "No available collection methods",
+          "ar": "لا توجد طرق تحصيل متاحة"
+        },
+        {
+          "key": "issuer.pendingSave",
+          "zh-CN": "保存结果待核对，请重试原操作",
+          "en": "Save result is unknown. Retry the original request.",
+          "ar": "نتيجة الحفظ غير معروفة. أعد المحاولة الأصلية."
+        },
+        {
+          "key": "issuer.prepareSettings",
+          "zh-CN": "开通储值设置",
+          "en": "Set up stored-value issuer",
+          "ar": "إعداد جهة إصدار الرصيد"
+        },
+        {
+          "key": "issuer.remove",
+          "zh-CN": "移除",
+          "en": "Remove",
+          "ar": "إزالة"
+        },
+        {
+          "key": "issuer.retrySave",
+          "zh-CN": "重试保存",
+          "en": "Retry save",
+          "ar": "إعادة الحفظ"
+        },
+        {
+          "key": "issuer.routes",
+          "zh-CN": "收款配置",
+          "en": "Collection methods",
+          "ar": "طرق التحصيل"
+        },
+        {
+          "key": "issuer.settlementEntity",
+          "zh-CN": "结算主体",
+          "en": "Settlement entity",
+          "ar": "جهة التسوية"
+        },
+        {
+          "key": "issuer.states.ACTIVE",
+          "zh-CN": "已启用",
+          "en": "Active",
+          "ar": "مفعّل"
+        },
+        {
+          "key": "issuer.states.DRAFT",
+          "zh-CN": "草稿",
+          "en": "Draft",
+          "ar": "مسودة"
+        },
+        {
+          "key": "issuer.states.ISSUE_STOPPED",
+          "zh-CN": "已停发",
+          "en": "Issuance stopped",
+          "ar": "الإصدار متوقف"
+        },
+        {
+          "key": "issuer.storeScope",
+          "zh-CN": "本店储值",
+          "en": "Store balance",
+          "ar": "رصيد المتجر"
+        },
+        {
+          "key": "issuer.title",
+          "zh-CN": "储值发行设置",
+          "en": "Stored-value issuer",
+          "ar": "إعدادات جهة الإصدار"
+        },
+        {
           "key": "locations.add",
           "zh-CN": "新建仓库",
           "en": "Add a warehouse",
@@ -13848,6 +13986,24 @@
           "zh-CN": "查看门店",
           "en": "View store",
           "ar": "عرض المتجر"
+        },
+        {
+          "key": "management.permission.sv_issuer_configure",
+          "zh-CN": "配置储值发行方",
+          "en": "Configure stored-value issuer",
+          "ar": "إعداد جهة الإصدار"
+        },
+        {
+          "key": "management.permission.sv_issuer_read",
+          "zh-CN": "查看储值发行设置",
+          "en": "View issuer settings",
+          "ar": "عرض إعدادات الإصدار"
+        },
+        {
+          "key": "management.permission.sv_issuer_settlement_authorize",
+          "zh-CN": "授权储值结算主体",
+          "en": "Authorize settlement entity",
+          "ar": "تفويض جهة التسوية"
         },
         {
           "key": "management.reason",
@@ -17576,6 +17732,60 @@
           "ar": "عرض الطلبات والمبالغ"
         },
         {
+          "key": "perm.biz:print:config",
+          "zh-CN": "配置打印模板与路由",
+          "en": "Configure print templates and routing",
+          "ar": "إعداد قوالب الطباعة والتوجيه"
+        },
+        {
+          "key": "perm.biz:print:device",
+          "zh-CN": "管理打印设备",
+          "en": "Manage printers",
+          "ar": "إدارة أجهزة الطباعة"
+        },
+        {
+          "key": "perm.biz:print:export",
+          "zh-CN": "导出打印PDF",
+          "en": "Export print PDF",
+          "ar": "تصدير ملف الطباعة PDF"
+        },
+        {
+          "key": "perm.biz:print:extra",
+          "zh-CN": "加印小票",
+          "en": "Print extra receipts",
+          "ar": "طباعة إيصالات إضافية"
+        },
+        {
+          "key": "perm.biz:print:read",
+          "zh-CN": "查看打印任务",
+          "en": "View print jobs",
+          "ar": "عرض مهام الطباعة"
+        },
+        {
+          "key": "perm.biz:print:reprint",
+          "zh-CN": "补打小票",
+          "en": "Reprint receipts",
+          "ar": "إعادة طباعة الإيصالات"
+        },
+        {
+          "key": "perm.biz:print:resolve",
+          "zh-CN": "核实打印异常",
+          "en": "Resolve printing exceptions",
+          "ar": "التحقق من مشكلات الطباعة"
+        },
+        {
+          "key": "perm.biz:print:simulate",
+          "zh-CN": "模拟打印",
+          "en": "Simulate printing",
+          "ar": "محاكاة الطباعة"
+        },
+        {
+          "key": "perm.biz:print:submit",
+          "zh-CN": "提交打印",
+          "en": "Submit printing",
+          "ar": "إرسال الطباعة"
+        },
+        {
           "key": "perm.biz:receive",
           "zh-CN": "到货登记与分拣",
           "en": "Goods-in and picking",
@@ -18308,12 +18518,6 @@
           "ar": "سعر خاص"
         },
         {
-          "key": "points.acceptTerms",
-          "zh-CN": "我已阅读并同意以上条款",
-          "en": "I have read and accept these terms",
-          "ar": "قرأت هذه الشروط وأوافق عليها"
-        },
-        {
           "key": "points.accountBuckets",
           "zh-CN": "账户分桶",
           "en": "Account buckets",
@@ -18330,24 +18534,6 @@
           "zh-CN": "账户已冻结",
           "en": "Account frozen",
           "ar": "الحساب مجمد"
-        },
-        {
-          "key": "points.actionFailed",
-          "zh-CN": "操作失败，请刷新后重试",
-          "en": "Action failed. Refresh and retry.",
-          "ar": "فشلت العملية. حدّث الصفحة وأعد المحاولة."
-        },
-        {
-          "key": "points.activeAgreement",
-          "zh-CN": "协议已生效",
-          "en": "Agreement active",
-          "ar": "الاتفاقية سارية"
-        },
-        {
-          "key": "points.agreement",
-          "zh-CN": "门店积分协议",
-          "en": "Store points agreement",
-          "ar": "اتفاقية نقاط المتجر"
         },
         {
           "key": "points.balanceAfter",
@@ -18396,18 +18582,6 @@
           "zh-CN": "退款预留积分",
           "en": "Refund reserved points",
           "ar": "نقاط محجوزة للاسترداد"
-        },
-        {
-          "key": "points.code",
-          "zh-CN": "积分代码",
-          "en": "Points code",
-          "ar": "رمز النقاط"
-        },
-        {
-          "key": "points.currency",
-          "zh-CN": "币种",
-          "en": "Currency",
-          "ar": "العملة"
         },
         {
           "key": "points.directionEARN",
@@ -18584,12 +18758,6 @@
           "ar": "لا توجد كشوف"
         },
         {
-          "key": "points.noTerms",
-          "zh-CN": "平台尚未发布此类型的协议条款",
-          "en": "No terms published for this points type",
-          "ar": "لم تُنشر شروط لهذا النوع من النقاط"
-        },
-        {
           "key": "points.noTypes",
           "zh-CN": "暂无积分类型",
           "en": "No points types yet",
@@ -18600,18 +18768,6 @@
           "zh-CN": "订单积分",
           "en": "Order points",
           "ar": "نقاط الطلب"
-        },
-        {
-          "key": "points.perOrder",
-          "zh-CN": "随单结算",
-          "en": "Per order",
-          "ar": "لكل طلب"
-        },
-        {
-          "key": "points.periodic",
-          "zh-CN": "定期结算",
-          "en": "Periodic",
-          "ar": "دورية"
         },
         {
           "key": "points.pointsUnit",
@@ -18714,24 +18870,6 @@
           "zh-CN": "累计退回积分",
           "en": "Total points returned",
           "ar": "إجمالي النقاط المعادة"
-        },
-        {
-          "key": "points.sign",
-          "zh-CN": "签署协议",
-          "en": "Sign agreement",
-          "ar": "توقيع الاتفاقية"
-        },
-        {
-          "key": "points.signConfirm",
-          "zh-CN": "确认以当前门店签署这份积分协议？",
-          "en": "Sign this points agreement for the current store?",
-          "ar": "هل تؤكد توقيع اتفاقية النقاط للمتجر الحالي؟"
-        },
-        {
-          "key": "points.signHint",
-          "zh-CN": "请选择当前门店已开通的收款通道与结算方式；最终路由由服务端核验。",
-          "en": "Select an active payment channel and settlement mode. The server verifies the route.",
-          "ar": "اختر قناة دفع مفعّلة وطريقة التسوية. يتحقق الخادم من المسار."
         },
         {
           "key": "points.statementChecked",
@@ -18872,24 +19010,6 @@
           "ar": "اعرض حسب المتجر الحالي ونوع النقاط. سجل الدفع هو المرجع المعتمد."
         },
         {
-          "key": "points.terminate",
-          "zh-CN": "终止协议",
-          "en": "Terminate agreement",
-          "ar": "إنهاء الاتفاقية"
-        },
-        {
-          "key": "points.terminateConfirm",
-          "zh-CN": "确认终止此门店协议？存量积分义务仍需继续处理。",
-          "en": "Terminate this store agreement? Existing points obligations still apply.",
-          "ar": "هل تؤكد إنهاء اتفاقية هذا المتجر؟ تبقى التزامات النقاط السابقة قائمة."
-        },
-        {
-          "key": "points.termsVersion",
-          "zh-CN": "条款版本",
-          "en": "Terms version",
-          "ar": "إصدار الشروط"
-        },
-        {
           "key": "points.title",
           "zh-CN": "积分",
           "en": "Points",
@@ -18906,6 +19026,804 @@
           "zh-CN": "查看关联订单",
           "en": "View order",
           "ar": "عرض الطلب"
+        },
+        {
+          "key": "printCenter.acknowledge",
+          "zh-CN": "已知悉",
+          "en": "Acknowledge",
+          "ar": "Acknowledge"
+        },
+        {
+          "key": "printCenter.action.CANCEL",
+          "zh-CN": "取消",
+          "en": "Cancel",
+          "ar": "Cancel"
+        },
+        {
+          "key": "printCenter.action.CONFIRM",
+          "zh-CN": "现场确认已出纸",
+          "en": "Confirm physical output",
+          "ar": "Confirm physical output"
+        },
+        {
+          "key": "printCenter.action.EXTRA",
+          "zh-CN": "加印一份",
+          "en": "Add one copy",
+          "ar": "Add one copy"
+        },
+        {
+          "key": "printCenter.action.QUERY",
+          "zh-CN": "查询结果",
+          "en": "Query result",
+          "ar": "Query result"
+        },
+        {
+          "key": "printCenter.action.REPRINT",
+          "zh-CN": "补打",
+          "en": "Reprint",
+          "ar": "Reprint"
+        },
+        {
+          "key": "printCenter.action.RETRY",
+          "zh-CN": "安全重试",
+          "en": "Safe retry",
+          "ar": "Safe retry"
+        },
+        {
+          "key": "printCenter.addAgent",
+          "zh-CN": "创建Windows代理",
+          "en": "Create Windows agent",
+          "ar": "Create Windows agent"
+        },
+        {
+          "key": "printCenter.addPrinter",
+          "zh-CN": "添加打印机",
+          "en": "Add printer",
+          "ar": "Add printer"
+        },
+        {
+          "key": "printCenter.agents",
+          "zh-CN": "本地代理",
+          "en": "Local agents",
+          "ar": "Local agents"
+        },
+        {
+          "key": "printCenter.autoPrint",
+          "zh-CN": "自动打印本场景",
+          "en": "Automatically print this scene",
+          "ar": "Automatically print this scene"
+        },
+        {
+          "key": "printCenter.blockedHint",
+          "zh-CN": "生成被阻断，请检查来源、模板或路由。诊断码：",
+          "en": "Generation blocked. Check source data, template or route. Diagnostic code:",
+          "ar": "Generation blocked. Check source data, template or route. Diagnostic code:"
+        },
+        {
+          "key": "printCenter.cancelHint",
+          "zh-CN": "尚未提交的任务将取消，已投递的任务需要设备明确确认。",
+          "en": "Unsubmitted tasks can be cancelled. Submitted tasks require device confirmation.",
+          "ar": "Unsubmitted tasks can be cancelled. Submitted tasks require device confirmation."
+        },
+        {
+          "key": "printCenter.clearGate",
+          "zh-CN": "解除设备未决闸门",
+          "en": "Resolve device uncertainty",
+          "ar": "Resolve device uncertainty"
+        },
+        {
+          "key": "printCenter.clearGateHint",
+          "zh-CN": "仅在旧执行端已停止、原队列已终止并完成现场核验后操作；原票仍保留待核实。",
+          "en": "Verify that the old executor has stopped and its queue has terminated. The original ticket remains uncertain.",
+          "ar": "Verify that the old executor has stopped and its queue has terminated. The original ticket remains uncertain."
+        },
+        {
+          "key": "printCenter.cloud",
+          "zh-CN": "云打印",
+          "en": "Cloud",
+          "ar": "Cloud"
+        },
+        {
+          "key": "printCenter.confirmHint",
+          "zh-CN": "仅在已现场看到完整小票时确认。队列已接收或PDF已生成均不代表打印完成。",
+          "en": "Confirm only after seeing the complete physical receipt. Queue acceptance or PDF generation is insufficient.",
+          "ar": "Confirm only after seeing the complete physical receipt. Queue acceptance or PDF generation is insufficient."
+        },
+        {
+          "key": "printCenter.copies",
+          "zh-CN": "每台打印份数（1～10）",
+          "en": "Copies per printer (1–10)",
+          "ar": "Copies per printer (1–10)"
+        },
+        {
+          "key": "printCenter.devices",
+          "zh-CN": "打印设备",
+          "en": "Printers",
+          "ar": "الطابعات"
+        },
+        {
+          "key": "printCenter.discoveryHint",
+          "zh-CN": "先在Windows代理中登记设备标识和队列，再在此选择。",
+          "en": "Register the device identity and queue in the Windows agent first.",
+          "ar": "Register the device identity and queue in the Windows agent first."
+        },
+        {
+          "key": "printCenter.download",
+          "zh-CN": "下载PDF",
+          "en": "Download PDF",
+          "ar": "تنزيل PDF"
+        },
+        {
+          "key": "printCenter.downloadFailed",
+          "zh-CN": "PDF下载失败，请重新获取下载授权",
+          "en": "PDF download failed. Request a new download grant.",
+          "ar": "PDF download failed. Request a new download grant."
+        },
+        {
+          "key": "printCenter.duplicateRisk",
+          "zh-CN": "确认承担重复出纸风险？",
+          "en": "Accept duplicate-output risk?",
+          "ar": "Accept duplicate-output risk?"
+        },
+        {
+          "key": "printCenter.duplicateRiskHint",
+          "zh-CN": "原票结果仍未明确，补打可能重复出纸；不会清除原设备的未决任务。",
+          "en": "The original result is uncertain. A replacement may duplicate output and does not clear the original device gate.",
+          "ar": "The original result is uncertain. A replacement may duplicate output and does not clear the original device gate."
+        },
+        {
+          "key": "printCenter.empty",
+          "zh-CN": "暂无打印任务",
+          "en": "No print tasks",
+          "ar": "لا توجد مهام طباعة"
+        },
+        {
+          "key": "printCenter.enable",
+          "zh-CN": "启用",
+          "en": "Enable",
+          "ar": "Enable"
+        },
+        {
+          "key": "printCenter.evidenceRef",
+          "zh-CN": "受控证据或现场核验编号",
+          "en": "Controlled evidence or verification reference",
+          "ar": "Controlled evidence or verification reference"
+        },
+        {
+          "key": "printCenter.exportPdf",
+          "zh-CN": "导出PDF",
+          "en": "Export PDF",
+          "ar": "Export PDF"
+        },
+        {
+          "key": "printCenter.failed",
+          "zh-CN": "操作失败，请重试",
+          "en": "Operation failed. Please retry.",
+          "ar": "تعذرت العملية. حاول مرة أخرى."
+        },
+        {
+          "key": "printCenter.fixture.ACCEPTED_NO_RESULT",
+          "zh-CN": "受理后无结果",
+          "en": "Accepted no result",
+          "ar": "Accepted no result"
+        },
+        {
+          "key": "printCenter.fixture.DUPLICATE_RECEIPT",
+          "zh-CN": "重复回执",
+          "en": "Duplicate receipt",
+          "ar": "Duplicate receipt"
+        },
+        {
+          "key": "printCenter.fixture.LATE_RECEIPT",
+          "zh-CN": "迟到回执",
+          "en": "Late receipt",
+          "ar": "Late receipt"
+        },
+        {
+          "key": "printCenter.fixture.NOT_ACCEPTED",
+          "zh-CN": "明确未受理",
+          "en": "Not accepted",
+          "ar": "Not accepted"
+        },
+        {
+          "key": "printCenter.fixture.OFFLINE",
+          "zh-CN": "打印机离线",
+          "en": "Offline",
+          "ar": "Offline"
+        },
+        {
+          "key": "printCenter.fixture.PAPER_OUT",
+          "zh-CN": "打印机缺纸",
+          "en": "Paper out",
+          "ar": "Paper out"
+        },
+        {
+          "key": "printCenter.fixture.PARTIAL_COPIES",
+          "zh-CN": "部分出纸",
+          "en": "Partial copies",
+          "ar": "Partial copies"
+        },
+        {
+          "key": "printCenter.fixture.SUCCESS",
+          "zh-CN": "正常完成",
+          "en": "Success",
+          "ar": "Success"
+        },
+        {
+          "key": "printCenter.fixture.TIMEOUT_UNKNOWN",
+          "zh-CN": "超时结果未知",
+          "en": "Timeout unknown",
+          "ar": "Timeout unknown"
+        },
+        {
+          "key": "printCenter.footer",
+          "zh-CN": "附加说明（可选）",
+          "en": "Additional note (optional)",
+          "ar": "Additional note (optional)"
+        },
+        {
+          "key": "printCenter.local",
+          "zh-CN": "本地打印",
+          "en": "Local",
+          "ar": "Local"
+        },
+        {
+          "key": "printCenter.mockHint",
+          "zh-CN": "当前为演示数据。连接真实后端后可管理打印、运行模拟和导出PDF。",
+          "en": "Demo data is active. Connect the backend to manage printers, run simulations and export PDFs.",
+          "ar": "Demo data is active. Connect the backend to manage printers, run simulations and export PDFs."
+        },
+        {
+          "key": "printCenter.name",
+          "zh-CN": "名称",
+          "en": "Name",
+          "ar": "الاسم"
+        },
+        {
+          "key": "printCenter.newPrinterPaused",
+          "zh-CN": "新打印机默认暂停，核对连接和纸宽后再启用。",
+          "en": "New printers start paused. Verify the connection and paper width before enabling.",
+          "ar": "New printers start paused. Verify the connection and paper width before enabling."
+        },
+        {
+          "key": "printCenter.next",
+          "zh-CN": "下一页",
+          "en": "Next",
+          "ar": "التالي"
+        },
+        {
+          "key": "printCenter.operation",
+          "zh-CN": "操作",
+          "en": "Operation",
+          "ar": "Operation"
+        },
+        {
+          "key": "printCenter.operationHint",
+          "zh-CN": "操作已受理与打印完成分别记录，请查看任务状态。",
+          "en": "Command acceptance and physical printing are recorded separately. Check the task status.",
+          "ar": "Command acceptance and physical printing are recorded separately. Check the task status."
+        },
+        {
+          "key": "printCenter.order",
+          "zh-CN": "订单",
+          "en": "Order",
+          "ar": "Order"
+        },
+        {
+          "key": "printCenter.orderEntry",
+          "zh-CN": "订单小票与打印",
+          "en": "Receipts and printing",
+          "ar": "Receipts and printing"
+        },
+        {
+          "key": "printCenter.pages",
+          "zh-CN": "页",
+          "en": "pages",
+          "ar": "pages"
+        },
+        {
+          "key": "printCenter.pairAgent",
+          "zh-CN": "生成配对材料",
+          "en": "Issue pairing material",
+          "ar": "Issue pairing material"
+        },
+        {
+          "key": "printCenter.pause",
+          "zh-CN": "暂停",
+          "en": "Pause",
+          "ar": "Pause"
+        },
+        {
+          "key": "printCenter.pdfHint",
+          "zh-CN": "文件生成不代表真实出纸",
+          "en": "File generation does not prove physical output.",
+          "ar": "File generation does not prove physical output."
+        },
+        {
+          "key": "printCenter.policyHint",
+          "zh-CN": "只影响新触发；默认伴随生成PDF，并在批次完成时通知门店负责人。",
+          "en": "Applies to new triggers. Also generates PDFs and notifies store managers when the batch is resolved.",
+          "ar": "Applies to new triggers. Also generates PDFs and notifies store managers when the batch is resolved."
+        },
+        {
+          "key": "printCenter.previous",
+          "zh-CN": "上一页",
+          "en": "Previous",
+          "ar": "السابق"
+        },
+        {
+          "key": "printCenter.probe",
+          "zh-CN": "检测连接",
+          "en": "Probe connection",
+          "ar": "Probe connection"
+        },
+        {
+          "key": "printCenter.publicKey",
+          "zh-CN": "代理公钥",
+          "en": "Agent public key",
+          "ar": "Agent public key"
+        },
+        {
+          "key": "printCenter.publishRoute",
+          "zh-CN": "发布打印去向",
+          "en": "Publish destinations",
+          "ar": "Publish destinations"
+        },
+        {
+          "key": "printCenter.publishTemplate",
+          "zh-CN": "发布小票模板",
+          "en": "Publish template",
+          "ar": "Publish template"
+        },
+        {
+          "key": "printCenter.reason",
+          "zh-CN": "操作原因",
+          "en": "Reason",
+          "ar": "السبب"
+        },
+        {
+          "key": "printCenter.receiptFields",
+          "zh-CN": "票面字段",
+          "en": "Receipt fields",
+          "ar": "Receipt fields"
+        },
+        {
+          "key": "printCenter.refresh",
+          "zh-CN": "刷新",
+          "en": "Refresh",
+          "ar": "تحديث"
+        },
+        {
+          "key": "printCenter.rename",
+          "zh-CN": "改名",
+          "en": "Rename",
+          "ar": "Rename"
+        },
+        {
+          "key": "printCenter.replacedHint",
+          "zh-CN": "已由补打解决，原票状态保留",
+          "en": "Resolved by a replacement; the original result is preserved.",
+          "ar": "Resolved by a replacement; the original result is preserved."
+        },
+        {
+          "key": "printCenter.required",
+          "zh-CN": "必需",
+          "en": "Required",
+          "ar": "Required"
+        },
+        {
+          "key": "printCenter.requiredFieldsHint",
+          "zh-CN": "必需字段和系统警示始终保留。",
+          "en": "Mandatory fields and system warnings remain visible.",
+          "ar": "Mandatory fields and system warnings remain visible."
+        },
+        {
+          "key": "printCenter.resolveRequired",
+          "zh-CN": "待核实任务的风险补打需要异常处理权限",
+          "en": "Reprinting an uncertain ticket requires resolution permission.",
+          "ar": "Reprinting an uncertain ticket requires resolution permission."
+        },
+        {
+          "key": "printCenter.retryGeneration",
+          "zh-CN": "恢复初打生成",
+          "en": "Recover initial generation",
+          "ar": "Recover initial generation"
+        },
+        {
+          "key": "printCenter.revokeAgent",
+          "zh-CN": "撤销代理",
+          "en": "Revoke agent",
+          "ar": "Revoke agent"
+        },
+        {
+          "key": "printCenter.revokeHint",
+          "zh-CN": "撤销后代理不能再领取任务或提交证据，已有未决任务仍需核查。",
+          "en": "Revoked agents cannot claim work or report evidence. Existing uncertain attempts still need review.",
+          "ar": "Revoked agents cannot claim work or report evidence. Existing uncertain attempts still need review."
+        },
+        {
+          "key": "printCenter.rotateCredential",
+          "zh-CN": "更换凭据",
+          "en": "Rotate credentials",
+          "ar": "Rotate credentials"
+        },
+        {
+          "key": "printCenter.route",
+          "zh-CN": "打印去向",
+          "en": "Print destinations",
+          "ar": "Print destinations"
+        },
+        {
+          "key": "printCenter.routeHint",
+          "zh-CN": "选择本场景需要出纸的设备，每个选中设备独立生成任务。",
+          "en": "Each selected printer receives an independent task.",
+          "ar": "Each selected printer receives an independent task."
+        },
+        {
+          "key": "printCenter.routeSelectionRequired",
+          "zh-CN": "请选择设备，份数须为1～10的整数",
+          "en": "Select a printer and an integer copy count from 1 to 10.",
+          "ar": "Select a printer and an integer copy count from 1 to 10."
+        },
+        {
+          "key": "printCenter.runSimulation",
+          "zh-CN": "运行模拟",
+          "en": "Run simulation",
+          "ar": "تشغيل المحاكاة"
+        },
+        {
+          "key": "printCenter.savePolicy",
+          "zh-CN": "保存场景策略",
+          "en": "Save scene policy",
+          "ar": "Save scene policy"
+        },
+        {
+          "key": "printCenter.savePreview",
+          "zh-CN": "保存草稿并预览",
+          "en": "Save draft and preview",
+          "ar": "Save draft and preview"
+        },
+        {
+          "key": "printCenter.sealedPairingCopied",
+          "zh-CN": "加密配对材料已复制，请交给对应Windows代理使用。",
+          "en": "Encrypted pairing material copied for the matching Windows agent.",
+          "ar": "Encrypted pairing material copied for the matching Windows agent."
+        },
+        {
+          "key": "printCenter.selectAgent",
+          "zh-CN": "选择本地代理",
+          "en": "Select agent",
+          "ar": "Select agent"
+        },
+        {
+          "key": "printCenter.selectQueue",
+          "zh-CN": "选择已登记队列",
+          "en": "Select registered queue",
+          "ar": "Select registered queue"
+        },
+        {
+          "key": "printCenter.serial",
+          "zh-CN": "打印机SN",
+          "en": "Printer serial number",
+          "ar": "Printer serial number"
+        },
+        {
+          "key": "printCenter.simulate",
+          "zh-CN": "模拟打印",
+          "en": "Simulate printing",
+          "ar": "محاكاة الطباعة"
+        },
+        {
+          "key": "printCenter.simulationFailed",
+          "zh-CN": "模拟校验失败",
+          "en": "Simulation checks failed",
+          "ar": "Simulation checks failed"
+        },
+        {
+          "key": "printCenter.simulationHint",
+          "zh-CN": "模拟仅校验内容和处理策略，不代表打印机已出纸。",
+          "en": "Simulation checks content and handling rules. It does not prove physical output.",
+          "ar": "Simulation checks content and handling rules. It does not prove physical output."
+        },
+        {
+          "key": "printCenter.simulationPassed",
+          "zh-CN": "模拟校验通过",
+          "en": "Simulation checks passed",
+          "ar": "Simulation checks passed"
+        },
+        {
+          "key": "printCenter.sourceUnavailable",
+          "zh-CN": "正式业务来源尚未接入，可配置模板和模拟预览，暂不能启用自动打印。",
+          "en": "The business source is unavailable. Templates and previews are available; automatic printing remains disabled.",
+          "ar": "The business source is unavailable. Templates and previews are available; automatic printing remains disabled."
+        },
+        {
+          "key": "printCenter.status.ACCEPTED",
+          "zh-CN": "已受理，未确认出纸",
+          "en": "Accepted; output unconfirmed",
+          "ar": "Accepted; output unconfirmed"
+        },
+        {
+          "key": "printCenter.status.ACKNOWLEDGED",
+          "zh-CN": "已知悉",
+          "en": "Acknowledged",
+          "ar": "Acknowledged"
+        },
+        {
+          "key": "printCenter.status.ACTIVE",
+          "zh-CN": "已启用",
+          "en": "Active",
+          "ar": "Active"
+        },
+        {
+          "key": "printCenter.status.BLOCKED",
+          "zh-CN": "生成被阻断",
+          "en": "Blocked",
+          "ar": "Blocked"
+        },
+        {
+          "key": "printCenter.status.CANCELLED",
+          "zh-CN": "已取消",
+          "en": "Cancelled",
+          "ar": "Cancelled"
+        },
+        {
+          "key": "printCenter.status.COMPLETED",
+          "zh-CN": "打印已完成",
+          "en": "Physical printing confirmed",
+          "ar": "Physical printing confirmed"
+        },
+        {
+          "key": "printCenter.status.DISPATCHING",
+          "zh-CN": "正在投递",
+          "en": "Dispatching",
+          "ar": "Dispatching"
+        },
+        {
+          "key": "printCenter.status.ERROR",
+          "zh-CN": "设备异常",
+          "en": "Error",
+          "ar": "Error"
+        },
+        {
+          "key": "printCenter.status.EXPIRED",
+          "zh-CN": "PDF已过期",
+          "en": "Expired",
+          "ar": "Expired"
+        },
+        {
+          "key": "printCenter.status.FAILED",
+          "zh-CN": "失败",
+          "en": "Failed",
+          "ar": "Failed"
+        },
+        {
+          "key": "printCenter.status.GENERATED",
+          "zh-CN": "票据已生成",
+          "en": "Generated",
+          "ar": "Generated"
+        },
+        {
+          "key": "printCenter.status.GENERATING",
+          "zh-CN": "PDF生成中",
+          "en": "Generating",
+          "ar": "Generating"
+        },
+        {
+          "key": "printCenter.status.NO_PRINT_REQUIRED",
+          "zh-CN": "无自动打印需求",
+          "en": "No print required",
+          "ar": "No print required"
+        },
+        {
+          "key": "printCenter.status.OFFLINE",
+          "zh-CN": "离线",
+          "en": "Offline",
+          "ar": "Offline"
+        },
+        {
+          "key": "printCenter.status.ONLINE",
+          "zh-CN": "在线",
+          "en": "Online",
+          "ar": "Online"
+        },
+        {
+          "key": "printCenter.status.OPEN",
+          "zh-CN": "待处理",
+          "en": "Open",
+          "ar": "Open"
+        },
+        {
+          "key": "printCenter.status.PAIRING",
+          "zh-CN": "待配对",
+          "en": "Pairing",
+          "ar": "Pairing"
+        },
+        {
+          "key": "printCenter.status.PAPER_OUT",
+          "zh-CN": "缺纸",
+          "en": "Paper out",
+          "ar": "Paper out"
+        },
+        {
+          "key": "printCenter.status.PASSED",
+          "zh-CN": "模拟校验通过",
+          "en": "Simulation checks passed",
+          "ar": "Simulation checks passed"
+        },
+        {
+          "key": "printCenter.status.PAUSED",
+          "zh-CN": "已暂停",
+          "en": "Paused",
+          "ar": "Paused"
+        },
+        {
+          "key": "printCenter.status.PENDING",
+          "zh-CN": "待处理",
+          "en": "Pending",
+          "ar": "Pending"
+        },
+        {
+          "key": "printCenter.status.PRINTING",
+          "zh-CN": "正在打印",
+          "en": "Printing",
+          "ar": "Printing"
+        },
+        {
+          "key": "printCenter.status.READY",
+          "zh-CN": "PDF可下载",
+          "en": "PDF available",
+          "ar": "PDF available"
+        },
+        {
+          "key": "printCenter.status.RESOLVED",
+          "zh-CN": "已解决",
+          "en": "Resolved",
+          "ar": "Resolved"
+        },
+        {
+          "key": "printCenter.status.RETIRED",
+          "zh-CN": "已退役",
+          "en": "Retired",
+          "ar": "Retired"
+        },
+        {
+          "key": "printCenter.status.RETRY_WAIT",
+          "zh-CN": "等待安全重试",
+          "en": "Retry wait",
+          "ar": "Retry wait"
+        },
+        {
+          "key": "printCenter.status.REVOKED",
+          "zh-CN": "已撤销",
+          "en": "Revoked",
+          "ar": "Revoked"
+        },
+        {
+          "key": "printCenter.status.RUNNING",
+          "zh-CN": "模拟处理中",
+          "en": "Running",
+          "ar": "Running"
+        },
+        {
+          "key": "printCenter.status.SKIPPED",
+          "zh-CN": "无需自动打印",
+          "en": "Skipped",
+          "ar": "Skipped"
+        },
+        {
+          "key": "printCenter.status.STALE",
+          "zh-CN": "已过时，待确认",
+          "en": "Stale",
+          "ar": "Stale"
+        },
+        {
+          "key": "printCenter.status.SUCCEEDED",
+          "zh-CN": "操作已完成",
+          "en": "Operation completed",
+          "ar": "Operation completed"
+        },
+        {
+          "key": "printCenter.status.UNKNOWN",
+          "zh-CN": "结果待核实",
+          "en": "Result uncertain",
+          "ar": "Result uncertain"
+        },
+        {
+          "key": "printCenter.submit",
+          "zh-CN": "生成订单小票",
+          "en": "Generate receipts",
+          "ar": "Generate receipts"
+        },
+        {
+          "key": "printCenter.summary",
+          "zh-CN": "应打 {expected} · 原票完成 {confirmed} · 补票解决 {resolved} · 待核实 {unknown}",
+          "en": "Expected {expected} · Original confirmed {confirmed} · Replacements {resolved} · Uncertain {unknown}",
+          "ar": "Expected {expected} · Original confirmed {confirmed} · Replacements {resolved} · Uncertain {unknown}"
+        },
+        {
+          "key": "printCenter.tabs.exports",
+          "zh-CN": "PDF导出",
+          "en": "PDF exports",
+          "ar": "PDF exports"
+        },
+        {
+          "key": "printCenter.tabs.incidents",
+          "zh-CN": "异常",
+          "en": "Incidents",
+          "ar": "Incidents"
+        },
+        {
+          "key": "printCenter.tabs.jobs",
+          "zh-CN": "打印任务",
+          "en": "Tasks",
+          "ar": "Tasks"
+        },
+        {
+          "key": "printCenter.tabs.requests",
+          "zh-CN": "打印需求",
+          "en": "Requests",
+          "ar": "Requests"
+        },
+        {
+          "key": "printCenter.tabs.simulations",
+          "zh-CN": "模拟记录",
+          "en": "Simulations",
+          "ar": "Simulations"
+        },
+        {
+          "key": "printCenter.templateMissing",
+          "zh-CN": "模板尚未加载，请刷新",
+          "en": "Template not loaded. Refresh first.",
+          "ar": "Template not loaded. Refresh first."
+        },
+        {
+          "key": "printCenter.templates",
+          "zh-CN": "小票模板",
+          "en": "Receipt templates",
+          "ar": "قوالب الإيصالات"
+        },
+        {
+          "key": "printCenter.testHint",
+          "zh-CN": "会实际投递测试小票，请确认设备和纸张已就绪。",
+          "en": "A physical test ticket will be submitted. Check the printer and paper.",
+          "ar": "A physical test ticket will be submitted. Check the printer and paper."
+        },
+        {
+          "key": "printCenter.testPrint",
+          "zh-CN": "打印测试票",
+          "en": "Print test ticket",
+          "ar": "Print test ticket"
+        },
+        {
+          "key": "printCenter.title",
+          "zh-CN": "打印中心",
+          "en": "Print center",
+          "ar": "مركز الطباعة"
+        },
+        {
+          "key": "printCenter.unknownHint",
+          "zh-CN": "结果待核实，请先查询或现场核验，不要直接重试原任务。",
+          "en": "Check the result or verify on site before retrying.",
+          "ar": "Check the result or verify on site before retrying."
+        },
+        {
+          "key": "printCenter.vendorKey",
+          "zh-CN": "飞鹅UKEY（仅写入）",
+          "en": "Feie UKEY (write only)",
+          "ar": "Feie UKEY (write only)"
+        },
+        {
+          "key": "printCenter.vendorUser",
+          "zh-CN": "飞鹅开发者账号",
+          "en": "Feie developer account",
+          "ar": "Feie developer account"
+        },
+        {
+          "key": "printCenter.viewTasks",
+          "zh-CN": "查看任务",
+          "en": "View tasks",
+          "ar": "View tasks"
         },
         {
           "key": "purchase.addItem",
@@ -29121,6 +30039,24 @@
           "ar": "يجب أن يكون وقت إغلاق الطلبات قبل وقت الوصول، وإلا استمر الطلب بعد وصول البضاعة"
         },
         {
+          "key": "err.print.blocked",
+          "zh-CN": "打印操作未完成，请检查配置或任务状态",
+          "en": "Printing could not proceed. Check the configuration or task status.",
+          "ar": "تعذر متابعة الطباعة. تحقق من الإعدادات أو حالة المهمة."
+        },
+        {
+          "key": "err.print.conflict",
+          "zh-CN": "打印数据已变化，请刷新后重试",
+          "en": "Print data changed. Refresh before retrying.",
+          "ar": "تغيرت بيانات الطباعة. حدّث الصفحة قبل المحاولة."
+        },
+        {
+          "key": "err.print.unavailable",
+          "zh-CN": "打印能力暂不可用，请检查配置",
+          "en": "Printing is unavailable. Check the configuration.",
+          "ar": "الطباعة غير متاحة. تحقق من الإعدادات."
+        },
+        {
           "key": "err.reset_token.invalid",
           "zh-CN": "重置码无效或已过期，请重新申请",
           "en": "Reset code is invalid or expired. Please request a new one",
@@ -30691,6 +31627,13 @@
       "package": "ai.neargo.shop.trade.entity"
     },
     {
+      "table": "ord_print_fact",
+      "class": "OrderPrintFact",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.order.printing"
+    },
+    {
       "table": "ord_refund_execution",
       "class": "OrdRefundExecution",
       "zh": "The immutable refund plan survives gateway ambiguity and independent resource recovery.",
@@ -31193,6 +32136,160 @@
       "zh": "主题 × 商品，多对多。",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
+    },
+    {
+      "table": "prn_action_log",
+      "class": "PrnActionLog",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_agent",
+      "class": "PrnAgent",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_attempt",
+      "class": "PrnAttempt",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_batch",
+      "class": "PrnBatch",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_credential_version",
+      "class": "PrnCredentialVersion",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_export_task",
+      "class": "PrnExportTask",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_incident",
+      "class": "PrnIncident",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_job",
+      "class": "PrnJob",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_operation",
+      "class": "PrnOperation",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_policy_version",
+      "class": "PrnPolicyVersion",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_printer",
+      "class": "PrnPrinter",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_printer_runtime",
+      "class": "PrnPrinterRuntime",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_receipt",
+      "class": "PrnReceipt",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_reconcile_cursor",
+      "class": "PrnReconcileCursor",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_request",
+      "class": "PrnRequest",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_route",
+      "class": "PrnRoute",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_route_version",
+      "class": "PrnRouteVersion",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_scene_policy",
+      "class": "PrnScenePolicy",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_simulation_run",
+      "class": "PrnSimulationRun",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_store_stream",
+      "class": "PrnStoreStream",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_template",
+      "class": "PrnTemplate",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_template_version",
+      "class": "PrnTemplateVersion",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
     },
     {
       "table": "pts_user_account",
@@ -32808,6 +33905,13 @@
         "module": "pay/pay-domain"
       },
       {
+        "host": "PdfFontBundle",
+        "name": "VERSION",
+        "value": "NOTO_SC_V1",
+        "zh": "",
+        "module": "print"
+      },
+      {
         "host": "InvManagedAppService",
         "name": "DONE",
         "value": "DONE",
@@ -33078,6 +34182,69 @@
         "name": "MEMBER",
         "value": "MB",
         "zh": "会员：一个人 × 一家主体的关系。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_ISSUER",
+        "value": "SVI",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_ISSUER_VERSION",
+        "value": "SIV",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_ISSUER_ACCESS",
+        "value": "SIA",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_MIGRATION",
+        "value": "SVM",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_QUOTA",
+        "value": "SVQ",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_QUOTA_RESERVATION",
+        "value": "SVQR",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_HOLD_ALLOCATION",
+        "value": "SVHA",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_RELEASE",
+        "value": "SVRL",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_RELEASE_TIER",
+        "value": "SVRT",
+        "zh": "",
         "module": "shop-base"
       },
       {
@@ -39226,6 +40393,22 @@
         "module": "shop-core"
       },
       {
+        "name": "AgentRequestPurpose",
+        "values": [
+          "OPEN_SESSION",
+          "HEARTBEAT",
+          "CLAIM",
+          "ACKNOWLEDGE",
+          "RENEW_LEASE",
+          "REPORT_EVIDENCE",
+          "RECOVER",
+          "COMMAND_RESULT",
+          "READ_DISPATCH"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
         "name": "Aggregate",
         "values": [
           "PAYMENT",
@@ -39450,6 +40633,16 @@
         "module": "pay/pay-domain"
       },
       {
+        "name": "DispatchOutcome",
+        "values": [
+          "ACCEPTED",
+          "NOT_ACCEPTED",
+          "UNKNOWN"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
         "name": "DispatchStatus",
         "values": [
           "ACCEPTED",
@@ -39509,6 +40702,9 @@
       {
         "name": "ErrorCode",
         "values": [
+          "PRINT_BLOCKED",
+          "PRINT_CONFLICT",
+          "PRINT_UNAVAILABLE",
           "BAD_REQUEST",
           "UNAUTHORIZED",
           "TOKEN_EXPIRED",
@@ -39786,6 +40982,28 @@
         "module": "shop-base"
       },
       {
+        "name": "ExportSourceType",
+        "values": [
+          "JOB",
+          "BATCH",
+          "SIMULATION"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "ExportStatus",
+        "values": [
+          "PENDING",
+          "GENERATING",
+          "READY",
+          "FAILED",
+          "EXPIRED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
         "name": "FactKind",
         "values": [
           "PAID",
@@ -39905,6 +41123,17 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "GuardDecision",
+        "values": [
+          "ALLOW_HISTORICAL_RECEIPT",
+          "CANCEL_UNSUBMITTED_EXECUTION",
+          "REQUIRE_VOID",
+          "HOLD_UNKNOWN"
+        ],
+        "zh": "",
+        "module": "print"
       },
       {
         "name": "Holder",
@@ -40162,6 +41391,22 @@
         "module": "shop-core"
       },
       {
+        "name": "ObservedPrintStatus",
+        "values": [
+          "RECEIVED",
+          "SUBMITTING",
+          "ACCEPTED",
+          "PRINTING",
+          "CONFIRMED",
+          "NOT_ACCEPTED",
+          "UNKNOWN",
+          "FAILED",
+          "CANCELLED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
         "name": "Op",
         "values": [
           "SUBSIDY",
@@ -40324,6 +41569,15 @@
         "module": "shop-core"
       },
       {
+        "name": "PdfOutputProfile",
+        "values": [
+          "ORIGINAL_ROLL",
+          "A4_SHEET"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
         "name": "Phase",
         "values": [
           "PENDING",
@@ -40402,6 +41656,168 @@
         "module": "shop-base"
       },
       {
+        "name": "PrintArtifactKind",
+        "values": [
+          "LIVE_EXPORT",
+          "SIMULATION_EXPORT"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintAttemptStatus",
+        "values": [
+          "PREPARED",
+          "SUBMITTING",
+          "ACCEPTED",
+          "PRINTING",
+          "CONFIRMED",
+          "NOT_ACCEPTED",
+          "UNKNOWN",
+          "FAILED",
+          "CANCELLED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintBatchStatus",
+        "values": [
+          "PENDING",
+          "PROCESSING",
+          "PARTIAL",
+          "ATTENTION",
+          "COMPLETED",
+          "CANCELLED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintEvidenceLevel",
+        "values": [
+          "NONE",
+          "DEVICE_CONFIRMED",
+          "PROVIDER_CONFIRMED",
+          "MANUAL_CONFIRMED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintJobKind",
+        "values": [
+          "INITIAL",
+          "REPRINT",
+          "EXTRA",
+          "VOID",
+          "TEST"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintJobStatus",
+        "values": [
+          "PENDING",
+          "DISPATCHING",
+          "ACCEPTED",
+          "PRINTING",
+          "COMPLETED",
+          "RETRY_WAIT",
+          "UNKNOWN",
+          "FAILED",
+          "CANCELLED",
+          "STALE"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintMode",
+        "values": [
+          "CURRENT_VERSION",
+          "EXISTING_FACT"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintOperationStatus",
+        "values": [
+          "PENDING",
+          "UNKNOWN",
+          "SUCCEEDED",
+          "FAILED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintReceiptStatus",
+        "values": [
+          "PENDING",
+          "APPLIED",
+          "IGNORED",
+          "CONFLICT",
+          "UNMATCHED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintRequestStatus",
+        "values": [
+          "PENDING",
+          "BLOCKED",
+          "GENERATED",
+          "CANCELLED",
+          "SKIPPED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "Printability",
+        "values": [
+          "READY",
+          "BLOCKED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrinterAdminStatus",
+        "values": [
+          "ACTIVE",
+          "PAUSED",
+          "RETIRED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrinterConnectionType",
+        "values": [
+          "CLOUD",
+          "LOCAL"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrinterHealthStatus",
+        "values": [
+          "ONLINE",
+          "OFFLINE",
+          "PAPER_OUT",
+          "ERROR",
+          "UNKNOWN"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
         "name": "Quality",
         "values": [
           "SALEABLE",
@@ -40464,6 +41880,15 @@
         ],
         "zh": "退款进度：与订单状态正交 —— 部分退款不改订单状态，只改它。",
         "module": "shop-core"
+      },
+      {
+        "name": "ResolutionPurpose",
+        "values": [
+          "PRODUCTION",
+          "SAMPLE_PREVIEW"
+        ],
+        "zh": "",
+        "module": "print"
       },
       {
         "name": "RestoreResult",
@@ -40571,6 +41996,43 @@
         ],
         "zh": "发货单（ord_shipment）状态。",
         "module": "shop-core"
+      },
+      {
+        "name": "SimulationFixtureCode",
+        "values": [
+          "SUCCESS",
+          "NOT_ACCEPTED",
+          "OFFLINE",
+          "PAPER_OUT",
+          "ACCEPTED_NO_RESULT",
+          "TIMEOUT_UNKNOWN",
+          "DUPLICATE_RECEIPT",
+          "LATE_RECEIPT",
+          "PARTIAL_COPIES"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "SimulationSourceType",
+        "values": [
+          "SAMPLE",
+          "JOB",
+          "FACT"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "SimulationStatus",
+        "values": [
+          "PENDING",
+          "RUNNING",
+          "PASSED",
+          "FAILED"
+        ],
+        "zh": "",
+        "module": "print"
       },
       {
         "name": "Source",
@@ -40899,6 +42361,15 @@
         ],
         "zh": "Owner and regional evidence decide tax effects rather than a coupon or points label.",
         "module": "shop-base"
+      },
+      {
+        "name": "TemplateSelectionMode",
+        "values": [
+          "SCENE_DEFAULT",
+          "PINNED_VERSION"
+        ],
+        "zh": "",
+        "module": "print"
       },
       {
         "name": "TicketRealm",
@@ -41566,6 +43037,15 @@
         "zh": ""
       },
       {
+        "name": "FreightRegionAction",
+        "client": "b-app",
+        "values": [
+          "REJECT",
+          "SURCHARGE"
+        ],
+        "zh": "Delivery rule behavior for a matched region."
+      },
+      {
         "name": "FundsMode",
         "client": "ops-web",
         "values": [
@@ -41788,6 +43268,68 @@
         "zh": "切换的结果。"
       },
       {
+        "name": "InventoryAccountingMode",
+        "client": "shared",
+        "values": [
+          "PAYMENT_DEDUCT"
+        ],
+        "zh": "Current backend accounting mode; inventory is deducted at payment."
+      },
+      {
+        "name": "InventoryState",
+        "client": "shared",
+        "values": [
+          "UNMANAGED",
+          "INITIALIZING",
+          "MAPPED"
+        ],
+        "zh": "Inventory onboarding state."
+      },
+      {
+        "name": "InventoryTraceEventStatus",
+        "client": "b-app",
+        "values": [
+          "COMPLETED",
+          "PENDING",
+          "FAILED",
+          "WARNING",
+          "SKIPPED",
+          "ARCHIVED"
+        ],
+        "zh": "Delivery state of an inventory trace event."
+      },
+      {
+        "name": "InventoryTraceEventStatus",
+        "client": "ops-web",
+        "values": [
+          "COMPLETED",
+          "PENDING",
+          "FAILED",
+          "WARNING",
+          "SKIPPED",
+          "ARCHIVED"
+        ],
+        "zh": "Delivery state of an inventory trace event."
+      },
+      {
+        "name": "InventoryTraceOutboxMode",
+        "client": "b-app",
+        "values": [
+          "UNIFIED",
+          "LEGACY"
+        ],
+        "zh": "Outbox implementation supplying the inventory trace."
+      },
+      {
+        "name": "InventoryTraceOutboxMode",
+        "client": "ops-web",
+        "values": [
+          "UNIFIED",
+          "LEGACY"
+        ],
+        "zh": "Outbox implementation supplying the inventory trace."
+      },
+      {
         "name": "InvoiceRequestStatus",
         "client": "shared",
         "values": [
@@ -41966,6 +43508,15 @@
           "ENDED"
         ],
         "zh": "会员卡状态。"
+      },
+      {
+        "name": "MemberTagBatchAction",
+        "client": "b-app",
+        "values": [
+          "ADD",
+          "REMOVE"
+        ],
+        "zh": "Batch membership tag mutation."
       },
       {
         "name": "MerchantApplyReviewStatus",
@@ -42184,6 +43735,22 @@
         "zh": "进件（收款开户）状态：占位 / 审核中 / 已开通 / 被拒 / 冻结。"
       },
       {
+        "name": "OrderPointsEarningState",
+        "client": "shared",
+        "values": [
+          "NONE",
+          "EXPECTED",
+          "PROCESSING",
+          "PENDING",
+          "AVAILABLE",
+          "RETRYABLE",
+          "MANUAL",
+          "SKIPPED",
+          "RECLAIMED"
+        ],
+        "zh": "Projected order earning state, independent of ledger credit."
+      },
+      {
         "name": "OrderPointsIntegrationPolicyMode",
         "client": "ops-web",
         "values": [
@@ -42210,6 +43777,32 @@
           "UNAVAILABLE"
         ],
         "zh": "OrderPointsQuote 的 state 取值域，按服务端契约校验。"
+      },
+      {
+        "name": "OrderPointsRedemptionState",
+        "client": "shared",
+        "values": [
+          "NONE",
+          "PROCESSING",
+          "HELD",
+          "RELEASED",
+          "CONSUMED",
+          "REFUND_PROCESSING",
+          "RETURNED",
+          "PARTIALLY_RETURNED"
+        ],
+        "zh": "Projected order redemption and refund progress."
+      },
+      {
+        "name": "OrderPointsRefundState",
+        "client": "shared",
+        "values": [
+          "NONE",
+          "PROCESSING",
+          "MANUAL",
+          "COMPLETED"
+        ],
+        "zh": "Projected order points refund progress."
       },
       {
         "name": "OutOfRangeAction",
@@ -42515,6 +44108,36 @@
         "zh": ""
       },
       {
+        "name": "PointsEarningRuleAction",
+        "client": "ops-web",
+        "values": [
+          "IMPORT",
+          "SAVE",
+          "PUBLISH",
+          "DISABLE"
+        ],
+        "zh": "Rule history action, including imported revisions."
+      },
+      {
+        "name": "PointsEarningRuleMode",
+        "client": "ops-web",
+        "values": [
+          "RATIO",
+          "FIXED"
+        ],
+        "zh": "Points earning rule calculation mode."
+      },
+      {
+        "name": "PointsEarningRuleMutation",
+        "client": "ops-web",
+        "values": [
+          "SAVE",
+          "PUBLISH",
+          "DISABLE"
+        ],
+        "zh": "Rule mutation requested by the operator."
+      },
+      {
         "name": "PointsExecutionStatus",
         "client": "ops-web",
         "values": [
@@ -42793,6 +44416,7 @@
         "name": "ROUTES",
         "client": "b-app",
         "values": [
+          "/pages/stored-value-issuer/index",
           "/pages/management/index",
           "/pages/brand-list/index",
           "/pages/brand-edit/index",
@@ -42807,6 +44431,9 @@
           "/pages/stored-value-account/index",
           "/pages/stored-value-record/index",
           "/pages/stored-value-recharge/index",
+          "/pages/print-center/index",
+          "/pages/print-devices/index",
+          "/pages/print-templates/index",
           "/pages/home/index",
           "/pages/orders/index",
           "/pages/goods-list/index",
@@ -43433,6 +45060,20 @@
         "zh": "对齐清单一行的提示。"
       },
       {
+        "name": "StockAlignmentStatus",
+        "client": "shared",
+        "values": [
+          "PREVIEW",
+          "PROCESSING",
+          "PARTIAL",
+          "BLOCKED",
+          "COMPLETED",
+          "STALE",
+          "EXPIRED"
+        ],
+        "zh": "Persisted stock alignment batch state."
+      },
+      {
         "name": "StockDocKind",
         "client": "shared",
         "values": [
@@ -43440,6 +45081,18 @@
           "OUT"
         ],
         "zh": "库存台账的方向。"
+      },
+      {
+        "name": "StockSyncOperationStatus",
+        "client": "shared",
+        "values": [
+          "PROCESSING",
+          "WAITING",
+          "FAILED",
+          "BLOCKED",
+          "COMPLETED"
+        ],
+        "zh": "Persisted stock synchronization operation state."
       },
       {
         "name": "StockSyncStatus",
@@ -44074,6 +45727,126 @@
       "type": "String",
       "value": "\"T+1\"",
       "zh": "次日结。",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MIGRATION_SOURCES",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/migrations/sources\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_ISSUER_LOCATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/issuers/locate\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_ISSUER_CHECK",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/issuers/check\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_ISSUER_OPTIONS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/issuers/options\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_ISSUER_REFRESH",
+      "type": "String",
+      "value": "\"/internal/stored-value/issuers/access-revisions\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MIGRATION_OPERATOR",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/migrations/operator\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MIGRATION_COMMAND",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/migrations/command\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MIGRATION_CAPABILITY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/migrations/capability\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MIGRATION_PAUSE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/migrations/pause\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MIGRATION_APPLY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/migrations/apply\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MIGRATION_PROBE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/migrations/probe\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MIGRATION_PREPARE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/migrations/prepare\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_ISSUER_PREPARE_STORE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/issuers/prepare-store\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_ISSUER_FIND",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/issuers/find\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_ISSUER_CONFIGURE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/issuers/configure\"",
+      "zh": "",
       "module": "pay/pay-domain"
     },
     {
@@ -45806,9 +47579,81 @@
     },
     {
       "host": "BizPerms",
+      "name": "PRINT_READ",
+      "type": "String",
+      "value": "\"biz:print:read\"",
+      "zh": "角色 → 权限码。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRINT_SUBMIT",
+      "type": "String",
+      "value": "\"biz:print:submit\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRINT_REPRINT",
+      "type": "String",
+      "value": "\"biz:print:reprint\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRINT_EXTRA",
+      "type": "String",
+      "value": "\"biz:print:extra\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRINT_DEVICE",
+      "type": "String",
+      "value": "\"biz:print:device\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRINT_CONFIG",
+      "type": "String",
+      "value": "\"biz:print:config\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRINT_RESOLVE",
+      "type": "String",
+      "value": "\"biz:print:resolve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRINT_SIMULATE",
+      "type": "String",
+      "value": "\"biz:print:simulate\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRINT_EXPORT",
+      "type": "String",
+      "value": "\"biz:print:export\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(PRINT_READ, \"查看打印任务\"), Map.entry(PRINT_SUBMIT, \"提交打印\"), Map.entry(PRINT_REPRINT, \"补打小票\"), Map.entry(PRINT_EXTRA, \"加印小票\"), Map.entry(PRINT_DEVICE, \"管理打印设备\"), Map.entry(PRINT_CONFIG, \"配置打印模板与路由\"), Map.entry(PRINT_RESOLVE, \"核实打印异常\"), Map.entry(PRINT_SIMULATE, \"模拟打印\"), Map.entry(PRINT_EXPORT, \"导出打印PDF\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },
@@ -45818,6 +47663,22 @@
       "type": "String",
       "value": "AbstractTokenAuthFilter.TOKEN_EXPIRED_ATTR",
       "zh": "@deprecated 已上移到 AbstractTokenAuthFilter#TOKEN_EXPIRED_ATTR。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PRINT_READ",
+      "type": "String",
+      "value": "\"ops:print:read\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PRINT_RESOLVE",
+      "type": "String",
+      "value": "\"ops:print:resolve\"",
+      "zh": "",
       "module": "shop-base-auth"
     },
     {
@@ -47373,7 +49234,9 @@
         "com.tngtech.archunit:archunit-junit5",
         "net.javacrumbs.shedlock:shedlock-provider-jdbc-template",
         "net.javacrumbs.shedlock:shedlock-spring",
-        "org.locationtech.jts:jts-core"
+        "org.apache.pdfbox:pdfbox",
+        "org.locationtech.jts:jts-core",
+        "org.xerial:sqlite-jdbc"
       ],
       "literalVersions": []
     },

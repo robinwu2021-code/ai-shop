@@ -190,6 +190,7 @@ export interface PointsReceivablePage {
 }
 
 export interface Settlement {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 结算单号 */
   settleNo: string;
@@ -260,6 +261,7 @@ export interface Settlement {
  * 出问题时要看的是后者。失败的记录也在这里。
  */
 export interface SplitLog {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 所属结算单 */
   settleNo: string;
@@ -383,6 +385,7 @@ export const WITHDRAW_TRANSITIONS: Record<WithdrawStatus, WithdrawStatus[]> = {
 };
 
 export interface Withdrawal {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 提现单号 */
   withdrawNo: string;
@@ -416,6 +419,7 @@ export type InvoiceTitleType = "COMPANY" | "PERSONAL";
 export type InvoiceStatus = "PENDING" | "ISSUED" | "REJECTED";
 
 export interface InvoiceRequest {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 开票申请单号 */
   invoiceNo: string;
@@ -492,7 +496,9 @@ export interface TaxRule {
  * 只会去问开票的人，而对方也不知道。
  */
 export interface PurchaseInvoice {
+  /** 关联结算单的展示单号列表 */
   settleDocumentNos?: string[];
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 平台侧的进项票记录号（不是发票上印的号） */
   invoiceNo: string;
@@ -544,6 +550,7 @@ export interface PurchaseInvoice {
  * 前两个此前已有类型，本类型是补的 —— 它按订单走（`orderNo`），前两个按主体/账期走。
  */
 export interface BuyerInvoiceRequest {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 开票申请号 */
   requestNo: string;
@@ -644,6 +651,7 @@ export interface ChannelMessage {
  * 不要存进任何全局 state、不要打日志。
  */
 export interface PayoutRow {
+  /** 关联结算单的展示单号列表 */
   settleDocumentNos?: string[];
   /**
    * 放款单号（V391）。**有号的按号回填凭证**（`payPayout`），
@@ -881,6 +889,7 @@ export interface PayChannelSetting {
  * 所以这一页回答的是「这家的钱卡在哪一批」，而不是「这一笔多少钱」。
  */
 export interface SettleBatch {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话 */
   batchNo: string;
@@ -1081,7 +1090,9 @@ export interface PointsTypeConfig {
   idleDays: number;
   /** 服务端业务状态 */
   status: PointsTypeConfigStatus;
+  /** 是否暂停该积分类型的订单赠送 */
   earningPaused?: boolean;
+  /** 是否作为订单默认积分类型 */
   orderDefault?: boolean;
 }
 export interface PointsChangeResult {
@@ -1112,10 +1123,15 @@ export interface PointsCreate {
   reason: string;
 }
 export interface PointsTypeRename {
+  /** 调用方生成并在重试时保持不变的请求标识 */
   requestId: string;
+  /** 积分类型唯一编码 */
   typeCode: string;
+  /** 调用方读取到的旧名称，用于并发校验 */
   expectedName: string;
+  /** 业务对象显示名称 */
   name: string;
+  /** 业务原因或阻断说明 */
   reason?: string;
 }
 
@@ -1641,7 +1657,9 @@ export interface PointsRecoveryExecution {
   status: PointsExecutionStatus;
 }
 export interface PointsEventView {
+  /** 子订单内部业务编号 */
   subOrderNo?: string | null;
+  /** 业务原因或阻断说明 */
   reason?: string | null;
   /** 持久记录主键 */
   id: number;
@@ -1732,6 +1750,7 @@ export interface PointsFreeze {
   reason: string;
 }
 export interface PointsVoucherView {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 持久记录主键 */
   id: number;
@@ -1784,6 +1803,7 @@ export interface PointsCursorPage<T> {
   hasMore: boolean;
 }
 export interface PointsEntryView {
+  /** 原凭证展示单号 */
   voucherDocumentNo?: string | null;
   /** 持久记录主键 */
   id: number;
@@ -1805,6 +1825,7 @@ export interface PointsEntryView {
   at: number;
 }
 export interface PointsFlowView {
+  /** 原凭证展示单号 */
   voucherDocumentNo?: string | null;
   /** 持久记录主键 */
   id: number;
@@ -1995,7 +2016,11 @@ export interface PointsRecon {
     actual: number;
   }[];
 }
-export type PointsEntriesQ = PointsCursor & ({ holderType: PointsHolder; holderNo: string; voucherNo?: never } | { voucherNo: string; holderType?: never; holderNo?: never });
+export type PointsEntriesQ = PointsCursor & ({ holderType: PointsHolder; holderNo: string;
+  /** 原凭证内部编号 */
+  voucherNo?: never } | {
+  /** 原凭证内部编号 */
+  voucherNo: string; holderType?: never; holderNo?: never });
 
 export interface OrderPointsStoreObligations {
   /** 核验是否完整可用；false 时禁止按零义务判断 */

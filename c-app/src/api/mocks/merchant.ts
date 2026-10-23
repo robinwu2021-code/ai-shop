@@ -11,7 +11,7 @@ import {
   reaches,
 } from "./_shared";
 import type { ShopApi } from "../contract";
-import type { Merchant, StoreCard, StoreVisitSource } from "@shared/types";
+import type { Merchant, MerchantView, VisitedMerchantView, FavoriteStoreView, StoreCard, StoreVisitSource } from "@shared/types";
 
 /*
  * mock 的门店：**一个商家种子 = 一家同名门店**，门店号 `ST` + 商家号。
@@ -26,6 +26,23 @@ const VIEW_KEEP_MS = 30 * 86_400_000;
 
 /** 进店记录：只在内存里 —— 刷新即清，mock 里「我的店」从空开始正是要看的那一屏 */
 const storeViews = new Map<string, { firstSource: StoreVisitSource; lastAt: number }>();
+
+/** Match the real buyer DTO; mock-only coverage and distance remain in the seed domain. */
+function merchantView(m: Merchant): MerchantView {
+  return {
+    merchantNo:m.merchantNo,name:m.name,logo:m.logo,rating:m.rating,verified:m.verified,breachCount:m.breachCount,
+    type:m.type,desc:m.desc,salesCount:m.salesCount,ratingCount:m.ratingCount,goodsCount:m.goodsCount,
+    address:m.address??null,openHours:m.openHours??null,joinedAt:m.joinedAt,tags:m.tags,scores:m.scores,
+    selfOperated:m.selfOperated??false,favoriteCount:m.favoriteCount??0,
+  };
+}
+function visitedView(m: Merchant,orderCount:number,lastOrderAt:number): VisitedMerchantView {
+  return {merchantNo:m.merchantNo,name:m.name,logo:m.logo,rating:m.rating,verified:m.verified,
+    breachCount:m.breachCount,selfOperated:m.selfOperated??false,orderCount,lastOrderAt};
+}
+function favoriteView(m: Merchant,storeNo:string): FavoriteStoreView {
+  return {merchantNo:m.merchantNo,name:m.name,logo:m.logo,rating:m.rating,verified:m.verified,breachCount:m.breachCount,storeNo};
+}
 
 function toStoreCard(m: Merchant): StoreCard {
   return {
@@ -104,7 +121,7 @@ export const merchantMock: Pick<ShopApi,
           m.tags.some((t) => t.toLowerCase().includes(k)),
       );
     }
-    return delay(list);
+    return delay(list.map(merchantView));
   },
 
   /** 我消费过的商家：从订单聚合。真实后端同样应由订单反查，不另存一张关系表 */
@@ -122,13 +139,13 @@ export const merchantMock: Pick<ShopApi,
       }
     }
     const list = [...agg.entries()]
-      .map(([mno, v]) => ({ ...toMerchant(mno), orderCount: v.count, lastOrderAt: v.last }))
+      .map(([mno, v]) => visitedView(toMerchant(mno),v.count,v.last))
       .sort((a, b) => b.lastOrderAt - a.lastOrderAt);
     return delay(list);
   },
 
   async merchantDetail(merchantNo) {
-    return delay(toMerchant(merchantNo));
+    return delay(merchantView(toMerchant(merchantNo)));
   },
 
   // ---------------------------------------------------------------- 门店主页
@@ -255,7 +272,7 @@ export const merchantMock: Pick<ShopApi,
       .sort((a, b) => b.joinedAt - a.joinedAt)
       .slice(0, q?.size ?? 4)
       .map((m) => toMerchant(m.merchantNo));
-    return delay(list);
+    return delay(list.map(merchantView));
   },
 
   async reorderFrom(orderNo) {
@@ -307,7 +324,7 @@ export const merchantMock: Pick<ShopApi,
   },
 
   async favoriteStores() {
-    return delay(db.favoriteStores.map(no => ({ ...toMerchant(toMerchantNo(no)), storeNo: toStoreNo(toMerchantNo(no)) })));
+    return delay(db.favoriteStores.map(no => favoriteView(toMerchant(toMerchantNo(no)),toStoreNo(toMerchantNo(no)))));
   },
 
   async myStores() {
@@ -349,7 +366,7 @@ export const merchantMock: Pick<ShopApi,
     const page = q?.page ?? 1;
     const size = q?.size ?? 20;
     const all = (await this.merchantList({ communityNo: q?.communityNo, keyword: q?.keyword }))
-      .map(toStoreCard)
+      .map(m => toStoreCard(toMerchant(m.merchantNo)))
       .filter((c) => !mine.has(c.storeNo))
       // 与后端同一条：有距离的按距离升序，没距离的排后面
       .sort((a, b) => (a.distanceM ?? Infinity) - (b.distanceM ?? Infinity));

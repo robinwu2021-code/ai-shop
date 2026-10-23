@@ -1,5 +1,5 @@
 "use client";
-import {useRef,useState} from "react";
+import {useRef,useState,type ReactNode} from "react";
 import {useQuery,useMutation,useQueryClient} from "@tanstack/react-query";
 import {api} from "@/lib/api";
 import type {EarningRule,EarningChange} from "@/lib/points-earning";
@@ -10,12 +10,12 @@ import {Button} from "@/components/ui/button";
 import {DataTable} from "@/components/ui/data-table";
 import {Drawer} from "@/components/ui/drawer";
 import {Notice} from "@/components/ui/notice";
-import {SectionHeader} from "@/components/ui/section-header";
+
 import {useConfirm} from "@/components/ui/confirm-dialog";
 import {EarningRuleEditor} from "./earning-rule-editor";
 import {EarningPreview} from "./earning-preview";
 
-export function PointsEarningRulesPanel({canEdit}:{canEdit:boolean}) {
+export function PointsEarningRulesPanel({canEdit,header}:{canEdit:boolean;header:ReactNode}) {
  const {t}=usePointsText();const qc=useQueryClient();const {confirm,dialog}=useConfirm();
  const context=useQuery({queryKey:["points-earning-context"],queryFn:api.pointsEarningContext});
  const [page,setPage]=useState(1);const [typeCode,setTypeCode]=useState("");const [scope,setScope]=useState<string|null>(null);
@@ -33,7 +33,7 @@ export function PointsEarningRulesPanel({canEdit}:{canEdit:boolean}) {
  const status=(r:EarningRule)=>r.activeRevision==null?(r.action==="DISABLE"?t("已停用","Disabled"):t("草稿","Draft")):r.activeRevision!==r.revision?t("生效中 · 有草稿","Published · draft changes"):t("生效中","Published");
  const editAllowed=canEdit&&type?.status==="ACTIVE";
  return <div className="space-y-5">
-  <div className="flex flex-wrap items-center justify-between gap-3"><SectionHeader title={t("赠送规则","Reward rules")} summary={rules.data?.total??0} className="mb-0"/>
+  <div className="flex flex-wrap items-center justify-between gap-3">{header}
   <div className="flex gap-2">{types.some(t=>t.status==="ACTIVE")&&<Button variant="outline" onClick={()=>setPreview(true)}>{t("计算预览","Calculation preview")}</Button>}{canCreate&&<Button onClick={()=>{setScope(null);save.reset();setEditor({rule:null});}}>{t("新增品类规则","New category rule")}</Button>}</div></div>
   {context.isPending&&<Notice>{t("正在加载积分配置…","Loading points configuration…")}</Notice>}
   {context.error&&<Notice tone="warning">{context.error.message}<Button onClick={()=>void context.refetch()}>{t("重试","Retry")}</Button></Notice>}
@@ -41,7 +41,7 @@ export function PointsEarningRulesPanel({canEdit}:{canEdit:boolean}) {
   {context.data&&!types.some(type=>type.status==="ACTIVE")&&<Notice>{t("暂无已生效积分，请先在积分设置中生效积分类型。","Activate a points type in Settings before configuring new rewards.")}</Notice>}
   <Notice>{t("各积分类型独立配置；所有门店默认参与。新增类型的规则暂不自动接入订单赠送。","Each points type is configured independently. All stores participate. New types are not automatically connected to order rewards.")}</Notice>
   {save.error&&<Notice tone="warning">{save.error.message}</Notice>}
-  {context.data&&<DataTable rows={rules.data?.rows??[]} loading={rules.isPending} error={rules.error} onRetry={()=>void rules.refetch()} rowKey={r=>`${r.typeCode}:${r.scope}`}
+  {context.data&&<DataTable empty={t("没有匹配的赠送规则。","No matching reward rules.")} rows={rules.data?.rows??[]} loading={rules.isPending} error={rules.error} onRetry={()=>void rules.refetch()} rowKey={r=>`${r.typeCode}:${r.scope}`}
    columns={[
     {header:t("适用范围","Scope"),cell:(r:EarningRule)=>r.scope==="DEFAULT"?t("默认","Default"):t("品类","Category")},
     {header:t("品类名称","Category name"),cell:name},

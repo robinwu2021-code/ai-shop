@@ -184,6 +184,7 @@ export interface PlatformEnrollRule {
  * 出资比例用万分比：10000 全额 / 5000 一半 / 0 不出。
  */
 export interface OpsPlatformActivity {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 活动号 */
   activityNo: string;

@@ -1,3 +1,9 @@
+/** Delivery state of an inventory trace event. */
+export type InventoryTraceEventStatus = "COMPLETED" | "PENDING" | "FAILED" | "WARNING" | "SKIPPED" | "ARCHIVED";
+
+/** Outbox implementation supplying the inventory trace. */
+export type InventoryTraceOutboxMode = "UNIFIED" | "LEGACY";
+
 // 进销存（P-18）。**独立模块、独立库** —— 与商品/电商那几个域不共表也不共类型：
 // 它将来要能单独交付，混进 product.ts 的那一刻这条就先在代码里破了。
 //
@@ -111,9 +117,9 @@ export interface InvTraceSyncEvent {
   /** System that requested or handled the synchronization. */
   source: string;
   /** Delivery state of the synchronization event. */
-  status: "COMPLETED" | "PENDING" | "FAILED" | "WARNING" | "SKIPPED" | "ARCHIVED";
+  status: InventoryTraceEventStatus;
   /** Outbox implementation that persisted the event. */
-  outboxMode: "UNIFIED" | "LEGACY";
+  outboxMode: InventoryTraceOutboxMode;
 }
 export interface InvTraceReservation {
   /** Inventory reservation identifier. */

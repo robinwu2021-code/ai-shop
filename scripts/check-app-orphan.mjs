@@ -30,6 +30,8 @@ import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { managementRouteRefs } from "./management-guard-refs.mjs";
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const APPS = ["b-app", "c-app"];
 const BASELINE = join(ROOT, "known-orphan-pages.txt");
@@ -127,8 +129,8 @@ export function orphans() {
 }
 
 /** 一段源码里提到了哪些页面（直接写路径，或走 ROUTES.x） */
-function pageRefs(text, pages, alias) {
-  const out = new Set();
+export function pageRefs(text, pages, alias) {
+  const out = managementRouteRefs(text, alias);
   for (const page of pages) {
     if (text.includes(`/${page}`) || text.includes(`"${page}"`)) out.add(page);
     const key = alias.get(page);

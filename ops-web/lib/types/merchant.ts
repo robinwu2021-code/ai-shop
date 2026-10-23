@@ -379,7 +379,8 @@ export interface StoreFulfillmentRow {
   storeStatus: string;
   /** 这家店开了哪几条履约渠道 */
   channels: Array<{
-    channel: string;
+    /** 消息或支付通道编码 */
+  channel: string;
     enabled: boolean;
     /** 准入矩阵不允许（按主体类型） */
     denied: boolean;
@@ -563,7 +564,11 @@ export interface MerchantStaffRow {
   /** ACTIVE / DISABLED */
   status: string;
   /** 他在各门店的角色。一人一店可多角色，权限取并集 */
-  roles: { storeNo: string; storeName: string; role: string }[];
+  roles: {
+  /** 门店编号 */
+  storeNo: string;
+  /** 门店显示名称 */
+  storeName: string; role: string }[];
 }
 
 // ── 增值包与门店额度（P-11.2.2~11.2.6，V150）──────────────────────────────

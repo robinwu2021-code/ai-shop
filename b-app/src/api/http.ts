@@ -221,7 +221,11 @@ export const httpApi: MerchantApi = {
   mSvAccount:(accountRef,storeNo)=>http.get<SV.SvAccount>(buildPath(E.mSvAccount.path,{accountRef}),{storeNo}),
   mSvRecords:(q)=>http.get<SV.SvPage<SV.SvRecord>>(buildPath(E.mSvRecords.path,{storeNo:q.storeNo}),q),
   mSvRecord:(recordNo,storeNo)=>http.get<SV.SvRecord>(buildPath(E.mSvRecord.path,{recordNo,storeNo}),{storeNo}),
-  mSvResolveRecharge:(body,key)=>http.post<{found:boolean;recharge:SV.SvProgress|null}>(buildPath(E.mSvResolveRecharge.path,{storeNo:body.storeNo}),body,{"Idempotency-Key":key}),
+  mSvResolveRecharge:(body,key)=>http.post<{
+  /** 是否找到原幂等命令的业务结果 */
+  found:boolean;
+  /** 充值处理结果 */
+  recharge:SV.SvProgress|null}>(buildPath(E.mSvResolveRecharge.path,{storeNo:body.storeNo}),body,{"Idempotency-Key":key}),
   mSvCancelCreate:(body,key)=>http.post<SV.SvProgress>(buildPath(E.mSvCancelCreate.path,{storeNo:body.storeNo}),body,{"Idempotency-Key":key}),
   mSvCreateRecharge:(body,key)=>http.post<SV.SvProgress>(E.mSvCreateRecharge.path,body,{'Idempotency-Key':key}),
   mSvRecharge:(rechargeNo)=>http.get<SV.SvProgress>(buildPath(E.mSvRecharge.path,{rechargeNo})),
@@ -284,7 +288,9 @@ export const httpApi: MerchantApi = {
       payload satisfies StoreFulfillmentSaveReq,
     ),
   mFulfillmentImpact: (storeNo, channel) =>
-    http.get<Array<{ goodsNo: string; title: string }>>(
+    http.get<Array<{ goodsNo: string;
+  /** 面向用户的业务标题 */
+  title: string }>>(
       buildPath(E.mFulfillmentImpact.path, { storeNo, channel }),
     ),
   mPickupCandidates: (storeNo) =>

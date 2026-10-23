@@ -211,7 +211,8 @@ export interface OrderIntervention {
 export type CancellationImpact =
   | { canCancel: false; blockedCode: string }
   | { canCancel: true; requestedOrderNo: string; payOrderNo: string; totalPayableMinor: number;
-      currency: string; affectedOrders: CancellationAffectedOrder[] };
+      /** ISO货币代码，金额必须结合此字段解释 */
+  currency: string; affectedOrders: CancellationAffectedOrder[] };
 
 export interface CancellationAffectedOrder {
   /** Child order identifier affected by cancellation. */

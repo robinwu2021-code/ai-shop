@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 订单积分：展示赠送、抵扣与退款进度，缺失名称或加载失败时提供重试。
 import { computed } from "vue";
 import type { OrderPointsEarning } from "@shared/types";
 const props = defineProps<{ rows: OrderPointsEarning[]; failed?: boolean }>();

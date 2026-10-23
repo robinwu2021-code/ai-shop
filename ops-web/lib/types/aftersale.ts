@@ -91,6 +91,7 @@ export interface RefundExecutionProgress {
 }
 
 export interface AfterSale {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 原资金执行与独立资源恢复进度。 */
   refundExecution?: RefundExecutionProgress | null;

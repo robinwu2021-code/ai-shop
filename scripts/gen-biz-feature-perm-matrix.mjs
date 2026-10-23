@@ -78,7 +78,11 @@ for (const dir of readdirSync(PAGES)) {
   const d = join(PAGES, dir);
   if (!existsSync(d)) continue;
   let src = "";
-  for (const f of readdirSync(d)) src += readFileSync(join(d, f), "utf8");
+  for (const f of readdirSync(d, { recursive: true, withFileTypes: true })) {
+    if (f.isFile() && /\.(vue|ts)$/.test(f.name)) {
+      src += readFileSync(join(f.parentPath ?? f.path, f.name), "utf8");
+    }
+  }
   /*
    * 页面门禁。**两种写法都要认**：
    *   ① 内联   `:denied="!merchant.can('biz:order:view')"`

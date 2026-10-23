@@ -1,3 +1,9 @@
+/** Delivery state of an inventory trace event. */
+export type InventoryTraceEventStatus = "COMPLETED" | "PENDING" | "FAILED" | "WARNING" | "SKIPPED" | "ARCHIVED";
+
+/** Outbox implementation supplying the inventory trace. */
+export type InventoryTraceOutboxMode = "UNIFIED" | "LEGACY";
+
 import type { AfterSale, Order } from "@shared/types";
 
 export type MerchantOrderActionKind = "AFTER_SALE" | "RECEIVE_PAYMENT" | "FULFILL" | "VERIFY";
@@ -67,9 +73,9 @@ export interface MerchantInventoryTrace {
     /** System that requested or handled the synchronization. */
     source: string;
     /** Delivery state of the synchronization event. */
-    status: "COMPLETED" | "PENDING" | "FAILED" | "WARNING" | "SKIPPED" | "ARCHIVED";
+    status: InventoryTraceEventStatus;
     /** Outbox implementation that persisted the event. */
-    outboxMode: "UNIFIED" | "LEGACY";
+    outboxMode: InventoryTraceOutboxMode;
   }>;
   /** Physical stock reservations associated with this order. */
   reservations: Array<{
@@ -165,7 +171,11 @@ import type {SvPage,SvPlan,SvAccount,SvRecord,SvProgress} from './stored-value-t
 export type SvPlanPage=SvPage<SvPlan>;
 export type SvAccountPage=SvPage<SvAccount>;
 export type SvRecordPage=SvPage<SvRecord>;
-export interface SvRechargeResolve {found:boolean;recharge:SvProgress|null}
+export interface SvRechargeResolve {
+  /** 是否找到原幂等命令的业务结果 */
+  found:boolean;
+  /** 充值处理结果 */
+  recharge:SvProgress|null}
 
 export type ManagementRecipientPage=ManagementPage<ManagementRecipient>;
 
@@ -173,8 +183,22 @@ export type {ScopeCandidatePage,ScopeSelectedCustomer,ScopeMemberSummary} from '
 
 export type {IssuerView,IssuerImpact,StoreIssuerOptions,IssuerRoute} from './stored-value-issuers';
 import type {IssuerView,StoreIssuerOptions} from './stored-value-issuers';
-export interface SvIssuerLookup {issuer:IssuerView|null}
-export interface SvIssuerEntity {entityNo:string;name:string;accepted:boolean;canAccept:boolean}
-export interface SvIssuerRechargeOptions {issuerOptions:StoreIssuerOptions;plans:SvPlanPage}
+export interface SvIssuerLookup {
+  /** 当前生效发行方摘要；未配置时为空 */
+  issuer:IssuerView|null}
+export interface SvIssuerEntity {
+  /** 经营主体编号 */
+  entityNo:string;
+  /** 业务对象显示名称 */
+  name:string;
+  /** 是否已接受该经营主体 */
+  accepted:boolean;
+  /** 是否允许接受该发行配置 */
+  canAccept:boolean}
+export interface SvIssuerRechargeOptions {
+  /** 门店可用发行方选项 */
+  issuerOptions:StoreIssuerOptions;
+  /** 可用充值方案分页 */
+  plans:SvPlanPage}
 
 export type {IssuerAccessAck} from './stored-value-issuers';

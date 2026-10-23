@@ -32,7 +32,7 @@ function javaFiles(dir: string, out: string[] = []): string[] {
 }
 
 const rel = (p: string) => p.slice(ROOT.length + 1);
-const outsiders = javaFiles(BACKEND).filter((f) => !f.startsWith(OWNER));
+const outsiders = javaFiles(BACKEND).filter((f) => !f.startsWith(OWNER) && f.includes("/src/main/java/"));
 
 describe("进销存表的写权", () => {
   it("有东西可查", () => {

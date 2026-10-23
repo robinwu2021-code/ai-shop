@@ -45,4 +45,12 @@ public class SvRecharge extends BaseEntity {
     private String receivedReceiptKey;
     private String cancellationReason;
     private LocalDateTime cancelledAt;
+    // Issuer attribution persisted by the issuer ledger; nullable for legacy records.
+    private String issuerNo;
+    private String issuerVersionNo;
+    private String releaseNo;
+    private String tierNo;
+    private String collectionEntityNo;
+    private String settlementEntityNo;
+    private String quotaReservationNo;
 }

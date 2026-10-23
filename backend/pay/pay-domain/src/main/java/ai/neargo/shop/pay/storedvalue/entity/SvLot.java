@@ -22,4 +22,11 @@ public class SvLot extends BaseEntity {
     private Long heldBonusMinor;
     private String scopeSnapshot;
     private LocalDateTime creditedAt;
+    // Issuer attribution persisted by the issuer ledger; nullable for legacy records.
+    private String issuerNo;
+    private String issuerVersionNo;
+    private String releaseNo;
+    private String tierNo;
+    private String collectionEntityNo;
+    private String settlementEntityNo;
 }

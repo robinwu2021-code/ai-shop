@@ -558,7 +558,11 @@ export interface StoreActivity {
   /** 最大敞口 = 限量 × 单次优惠。建活动页要显示它 */
   maxExposureMinor?: number | null;
   /** 空数组 = **对所有人生效**。老活动迁过来就是这个状态 */
-  audiences: Array<{ type: string; value: string }>;
+  audiences: Array<{
+  /** 业务类型编码或类型摘要，按当前接口定义解释 */
+  type: string;
+  /** 当前规则配置值 */
+  value: string }>;
   /** 参与的商品。空 = 全店商品都参与 */
   goodsNos: string[];
   /** `DRAFT` / `RUNNING` / `PAUSED` / `ENDED` */
@@ -624,7 +628,11 @@ export interface StoreActivityDraft {
   /** 预算上限（分）。空 = 不限 —— 用尽后自动停，已享受的不回收 */
   budgetMinor?: number | null;
   /** 定向到哪些人。**空数组 = 对所有人生效**，不是「谁也不发」 */
-  audiences?: Array<{ type: string; value: string }>;
+  audiences?: Array<{
+  /** 业务类型编码或类型摘要，按当前接口定义解释 */
+  type: string;
+  /** 当前规则配置值 */
+  value: string }>;
   /** 参与的商品。空 = 全店商品都参与 */
   goodsNos?: string[];
   /** 社区集单（`CUTOFF`）：每期截单时刻 HH:mm，市场时区 */
@@ -715,7 +723,9 @@ export interface BatchPeriodDetail {
   /** 这一期本身（份数、人数、金额已现算） */
   period: BatchPeriod;
   /** 按商品汇总的份数，只算已付款且未退的 —— 采购按它 */
-  byGoods: Array<{ goodsNo: string; title: string; qty: number }>;
+  byGoods: Array<{ goodsNo: string;
+  /** 面向用户的业务标题 */
+  title: string; qty: number }>;
   /** 按自提点汇总的份数 —— 配送按它 */
   byPickup: Array<{ pickupNo: string | null; pickupName: string | null; qty: number }>;
 }

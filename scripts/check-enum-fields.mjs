@@ -67,6 +67,65 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  * 不当作缺陷报。**同物异名与「后端未实现」危害完全不同**，混在一起就没法自动判定。
  */
 export const FIELDS = [
+  // Reviewed issuer, management, print and inventory lifecycle domains. Contracts whose
+  // fields are currently open strings have no finite client union to compare yet;
+  // preserve the backend domain explicitly, following the existing clients:[] policy.
+  {"concept": "inv_return_receipt.quality (persisted value domain)", "field": "inv_return_receipt.quality", "backend": {"ddl": ["inv_return_receipt", "quality"]}, "clients": []},
+  {"concept": "mbr_scope_legacy_link.status (persisted value domain)", "field": "mbr_scope_legacy_link.status", "backend": {"ddl": ["mbr_scope_legacy_link", "status"]}, "clients": []},
+  {"concept": "mbr_scope_member.scope_type (persisted value domain)", "field": "mbr_scope_member.scope_type", "backend": {"ddl": ["mbr_scope_member", "scope_type"]}, "clients": []},
+  {"concept": "mbr_scope_member.status (persisted value domain)", "field": "mbr_scope_member.status", "backend": {"ddl": ["mbr_scope_member", "status"]}, "clients": []},
+  {"concept": "mch_brand.status (persisted value domain)", "field": "mch_brand.status", "backend": {"ddl": ["mch_brand", "status"]}, "clients": []},
+  {"concept": "mch_brand_change.decision (persisted value domain)", "field": "mch_brand_change.decision", "backend": {"ddl": ["mch_brand_change", "decision"]}, "clients": []},
+  {"concept": "mch_brand_change.status (persisted value domain)", "field": "mch_brand_change.status", "backend": {"ddl": ["mch_brand_change", "status"]}, "clients": []},
+  {"concept": "mch_brand_store_binding.status (persisted value domain)", "field": "mch_brand_store_binding.status", "backend": {"ddl": ["mch_brand_store_binding", "status"]}, "clients": []},
+  {"concept": "mch_management_grant.authority_source_type (persisted value domain)", "field": "mch_management_grant.authority_source_type", "backend": {"ddl": ["mch_management_grant", "authority_source_type"]}, "clients": []},
+  {"concept": "mch_management_grant.resource_type (persisted value domain)", "field": "mch_management_grant.resource_type", "backend": {"ddl": ["mch_management_grant", "resource_type"]}, "clients": []},
+  {"concept": "mch_management_grant.status (persisted value domain)", "field": "mch_management_grant.status", "backend": {"ddl": ["mch_management_grant", "status"]}, "clients": []},
+  {"concept": "mch_management_space.status (persisted value domain)", "field": "mch_management_space.status", "backend": {"ddl": ["mch_management_space", "status"]}, "clients": []},
+  {"concept": "ord_print_fact.printability (persisted value domain)", "field": "ord_print_fact.printability", "backend": {"ddl": ["ord_print_fact", "printability"]}, "clients": []},
+  {"concept": "prd_stock_alignment_batch.status (persisted value domain)", "field": "prd_stock_alignment_batch.status", "backend": {"ddl": ["prd_stock_alignment_batch", "status"]}, "clients": [{"file": "packages/shared/src/types/inventory.ts", "type": "StockAlignmentStatus"}]},
+  {"concept": "prd_stock_alignment_line.status (persisted value domain)", "field": "prd_stock_alignment_line.status", "backend": {"ddl": ["prd_stock_alignment_line", "status"]}, "clients": []},
+  {"concept": "prd_stock_sync_operation.status (persisted value domain)", "field": "prd_stock_sync_operation.status", "backend": {"ddl": ["prd_stock_sync_operation", "status"]}, "clients": [{"file": "packages/shared/src/types/inventory.ts", "type": "StockSyncOperationStatus"}]},
+  {"concept": "prn_agent.platform (persisted value domain)", "field": "prn_agent.platform", "backend": {"ddl": ["prn_agent", "platform"]}, "clients": []},
+  {"concept": "prn_agent.status (persisted value domain)", "field": "prn_agent.status", "backend": {"ddl": ["prn_agent", "status"]}, "clients": []},
+  {"concept": "prn_attempt.status (persisted value domain)", "field": "prn_attempt.status", "backend": {"ddl": ["prn_attempt", "status"]}, "clients": []},
+  {"concept": "prn_batch.batch_kind (persisted value domain)", "field": "prn_batch.batch_kind", "backend": {"ddl": ["prn_batch", "batch_kind"]}, "clients": []},
+  {"concept": "prn_batch.resolved_status (persisted value domain)", "field": "prn_batch.resolved_status", "backend": {"ddl": ["prn_batch", "resolved_status"]}, "clients": []},
+  {"concept": "prn_batch.status (persisted value domain)", "field": "prn_batch.status", "backend": {"ddl": ["prn_batch", "status"]}, "clients": []},
+  {"concept": "prn_credential_version.status (persisted value domain)", "field": "prn_credential_version.status", "backend": {"ddl": ["prn_credential_version", "status"]}, "clients": []},
+  {"concept": "prn_export_task.artifact_kind (persisted value domain)", "field": "prn_export_task.artifact_kind", "backend": {"ddl": ["prn_export_task", "artifact_kind"]}, "clients": []},
+  {"concept": "prn_export_task.output_profile (persisted value domain)", "field": "prn_export_task.output_profile", "backend": {"ddl": ["prn_export_task", "output_profile"]}, "clients": []},
+  {"concept": "prn_export_task.source_type (persisted value domain)", "field": "prn_export_task.source_type", "backend": {"ddl": ["prn_export_task", "source_type"]}, "clients": []},
+  {"concept": "prn_export_task.status (persisted value domain)", "field": "prn_export_task.status", "backend": {"ddl": ["prn_export_task", "status"]}, "clients": []},
+  {"concept": "prn_incident.status (persisted value domain)", "field": "prn_incident.status", "backend": {"ddl": ["prn_incident", "status"]}, "clients": []},
+  {"concept": "prn_job.job_kind (persisted value domain)", "field": "prn_job.job_kind", "backend": {"ddl": ["prn_job", "job_kind"]}, "clients": []},
+  {"concept": "prn_job.result_evidence (persisted value domain)", "field": "prn_job.result_evidence", "backend": {"ddl": ["prn_job", "result_evidence"]}, "clients": []},
+  {"concept": "prn_operation.status (persisted value domain)", "field": "prn_operation.status", "backend": {"ddl": ["prn_operation", "status"]}, "clients": []},
+  {"concept": "prn_printer.connection_type (persisted value domain)", "field": "prn_printer.connection_type", "backend": {"ddl": ["prn_printer", "connection_type"]}, "clients": []},
+  {"concept": "prn_printer.status (persisted value domain)", "field": "prn_printer.status", "backend": {"ddl": ["prn_printer", "status"]}, "clients": []},
+  {"concept": "prn_receipt.source_type (persisted value domain)", "field": "prn_receipt.source_type", "backend": {"ddl": ["prn_receipt", "source_type"]}, "clients": []},
+  {"concept": "prn_receipt.status (persisted value domain)", "field": "prn_receipt.status", "backend": {"ddl": ["prn_receipt", "status"]}, "clients": []},
+  {"concept": "prn_request.status (persisted value domain)", "field": "prn_request.status", "backend": {"ddl": ["prn_request", "status"]}, "clients": []},
+  {"concept": "prn_route.status (persisted value domain)", "field": "prn_route.status", "backend": {"ddl": ["prn_route", "status"]}, "clients": []},
+  {"concept": "prn_route_version.status (persisted value domain)", "field": "prn_route_version.status", "backend": {"ddl": ["prn_route_version", "status"]}, "clients": []},
+  {"concept": "prn_simulation_run.source_type (persisted value domain)", "field": "prn_simulation_run.source_type", "backend": {"ddl": ["prn_simulation_run", "source_type"]}, "clients": []},
+  {"concept": "prn_simulation_run.status (persisted value domain)", "field": "prn_simulation_run.status", "backend": {"ddl": ["prn_simulation_run", "status"]}, "clients": []},
+  {"concept": "prn_template.scope_key (persisted value domain)", "field": "prn_template.scope_key", "backend": {"ddl": ["prn_template", "scope_key"]}, "clients": []},
+  {"concept": "prn_template.status (persisted value domain)", "field": "prn_template.status", "backend": {"ddl": ["prn_template", "status"]}, "clients": []},
+  {"concept": "prn_template.variant_code (persisted value domain)", "field": "prn_template.variant_code", "backend": {"ddl": ["prn_template", "variant_code"]}, "clients": []},
+  {"concept": "prn_template_version.status (persisted value domain)", "field": "prn_template_version.status", "backend": {"ddl": ["prn_template_version", "status"]}, "clients": []},
+  {"concept": "sv_issue_quota_reservation.status (persisted value domain)", "field": "sv_issue_quota_reservation.status", "backend": {"ddl": ["sv_issue_quota_reservation", "status"]}, "clients": []},
+  {"concept": "sv_issuer.scope_type (persisted value domain)", "field": "sv_issuer.scope_type", "backend": {"ddl": ["sv_issuer", "scope_type"]}, "clients": []},
+  {"concept": "sv_issuer.status (persisted value domain)", "field": "sv_issuer.status", "backend": {"ddl": ["sv_issuer", "status"]}, "clients": []},
+  {"concept": "sv_issuer_store_access.status (persisted value domain)", "field": "sv_issuer_store_access.status", "backend": {"ddl": ["sv_issuer_store_access", "status"]}, "clients": []},
+  {"concept": "sv_issuer_version.clearing_mode (persisted value domain)", "field": "sv_issuer_version.clearing_mode", "backend": {"ddl": ["sv_issuer_version", "clearing_mode"]}, "clients": []},
+  {"concept": "sv_issuer_version.collection_mode (persisted value domain)", "field": "sv_issuer_version.collection_mode", "backend": {"ddl": ["sv_issuer_version", "collection_mode"]}, "clients": []},
+  {"concept": "sv_issuer_version.debit_allocation_mode (persisted value domain)", "field": "sv_issuer_version.debit_allocation_mode", "backend": {"ddl": ["sv_issuer_version", "debit_allocation_mode"]}, "clients": []},
+  {"concept": "sv_recharge.source_kind (persisted value domain)", "field": "sv_recharge.source_kind", "backend": {"ddl": ["sv_recharge", "source_kind"]}, "clients": []},
+  {"concept": "sv_release.redemption_scope_mode (persisted value domain)", "field": "sv_release.redemption_scope_mode", "backend": {"ddl": ["sv_release", "redemption_scope_mode"]}, "clients": []},
+  {"concept": "sv_release.source_kind (persisted value domain)", "field": "sv_release.source_kind", "backend": {"ddl": ["sv_release", "source_kind"]}, "clients": []},
+  {"concept": "sv_release.state (persisted value domain)", "field": "sv_release.state", "backend": {"ddl": ["sv_release", "state"]}, "clients": []},
+
   // 活动/权益后端已判定字段。新版端上页面后置；生成DTO仍保留Java实际string/enum形状。
   // clients为空表示尚无独立页面枚举，不是驳回取值域；接入页面时须在此绑定其声明。
   {"concept": "ent_code_token · status（数据库取值域）", "field": "ent_code_token.status", "backend": {"ddl": ["ent_code_token", "status"]}, "clients": []},
@@ -811,6 +870,9 @@ function plannedValues(src, name, ownerConst) {
  * 那是 §3 待业务拍板的第 4 条（驳回理由谁把关）。
  */
 export const DISMISSED = [
+  {"key": "sv_release.activity_no", "why": "Identifier of the original V2 activity/revision, or a PLAN release with no activity value; V2/PLAN/NULL describe provenance/nullability, not permitted identifier values."},
+  {"key": "sv_release.draft_revision_no", "why": "Identifier of the original V2 activity/revision, or a PLAN release with no activity value; V2/PLAN/NULL describe provenance/nullability, not permitted identifier values."},
+
   { key: "pmt_preset_template.template_code", why: "AP/EP是活动/付费产品编号前缀，实际AP001等为业务键，不是二值枚举。" },
   {
     key: "ord_shipment.status",

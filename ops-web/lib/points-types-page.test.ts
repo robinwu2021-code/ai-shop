@@ -4,10 +4,11 @@ import { act, createElement as h } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-const mock = vi.hoisted(() => ({ types: vi.fn(), fallback: vi.fn(), terms: vi.fn(), create: vi.fn(), transition: vi.fn(), rename: vi.fn() }));
+const mock = vi.hoisted(() => ({ canEdit: true, types: vi.fn(), fallback: vi.fn(), terms: vi.fn(), create: vi.fn(), transition: vi.fn(), rename: vi.fn() }));
 vi.mock("@/lib/api", () => ({ api: {
   pointsTypes: mock.types, pointsFallback: mock.fallback, pointsTerms: mock.terms, createPointsType: mock.create, transitionPointsType: mock.transition, renamePointsType: mock.rename,
 } }));
+vi.mock("@/lib/use-can", () => ({ useCan: () => (permission: string) => permission === "finance:settle:read" || mock.canEdit }));
 vi.mock("@/components/ui/data-table", async () => {
   const { createElement: h } = await import("react");
   return { DataTable: ({ rows, columns, rowProps }: { rowProps?: (row: never) => Record<string, unknown>; rows?: Array<Record<string, unknown>>; columns: Array<{ header?: string; cell: (row: never) => unknown }> }) =>
@@ -21,7 +22,9 @@ vi.mock("@/components/ui/drawer", async () => {
     DrawerSection: ({ children }: { children: unknown }) => h("section", {}, children as never) };
 });
 
-import { PointsTypesTab } from "@/app/points/types-tab";
+import PointsTypesPage from "@/app/points/types/page";
+
+function settingsPage(canEdit: boolean) { mock.canEdit = canEdit; return h(PointsTypesPage); }
 
 let root: Root;
 let host: HTMLDivElement;
@@ -47,7 +50,7 @@ afterEach(async () => {
 });
 
 it("keeps the settings page focused on its own list and rule details", async () => {
-  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: false }))));
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, settingsPage(false))));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
 
   expect(host.querySelector('[data-testid="points-type-list"]')).not.toBeNull();
@@ -59,7 +62,7 @@ it("keeps the settings page focused on its own list and rule details", async () 
 });
 
 it("creates a named points type with the selected currency and conversion rate", async () => {
-  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, settingsPage(true))));
   const create = [...host.querySelectorAll("button")].find((button) => button.textContent?.includes("新建积分类型"));
   expect(create).toBeDefined();
   await act(async () => create?.click());
@@ -89,7 +92,7 @@ it("creates a named points type with the selected currency and conversion rate",
 
 it("shows a clear message when the backend rejects a duplicate code or name", async () => {
   mock.create.mockRejectedValue(new Error("积分代码或名称已存在，请修改后重试。"));
-  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, settingsPage(true))));
   const create = [...host.querySelectorAll("button")].find((button) => button.textContent?.includes("新建积分类型"));
   await act(async () => create?.click());
   (host.querySelector('[name="name"]') as HTMLInputElement).value = "积分名称";
@@ -101,7 +104,7 @@ it("shows a clear message when the backend rejects a duplicate code or name", as
 });
 
 it("sends non-default currency and rate through the page without dropping the settings", async () => {
-  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, settingsPage(true))));
   await act(async () => [...host.querySelectorAll("button")].find((b) => b.textContent?.includes("新建积分类型"))!.click());
   const currency = host.querySelector('[name="currency"]') as HTMLSelectElement;
   await act(async () => { currency.value = "KWD"; currency.dispatchEvent(new Event("change", { bubbles: true })); });
@@ -119,7 +122,7 @@ it("sends non-default currency and rate through the page without dropping the se
 it("shows the default and offers pause without affecting redemption", async () => {
   mock.types.mockResolvedValue([{ typeCode: "HX_TOKEN", name: "平台积分", market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "ACTIVE", earningPaused: false, orderDefault: true }]);
   mock.transition.mockResolvedValue({ requestId: "PAUSE1" });
-  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, settingsPage(true))));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   expect(host.textContent).toContain("订单默认");
   await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
@@ -137,7 +140,7 @@ it("shows the default and offers pause without affecting redemption", async () =
 
 it("offers resume and explicit default selection for a paused independent type", async () => {
   mock.types.mockResolvedValue([{ typeCode: "OTHER", name: "其他积分", market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "ACTIVE", earningPaused: true, orderDefault: false }]);
-  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, settingsPage(true))));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   expect(host.textContent).toContain("赠送已暂停");
   await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
@@ -153,7 +156,7 @@ it("edits an active points name in its drawer and refreshes the list", async () 
   query.setQueryData(["points-earning-context"], { types: [original] });
   mock.types.mockResolvedValue([original]);
   mock.rename.mockImplementation(async () => { mock.types.mockResolvedValue([{ ...original, name: "虹选积分" }]); return { requestId: "RENAME1" }; });
-  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, settingsPage(true))));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
   expect(host.querySelector('form#points-type-rename')).toBeNull();
@@ -174,7 +177,7 @@ it("edits an active points name in its drawer and refreshes the list", async () 
 it("blocks duplicate names in the drawer before submitting", async () => {
   const base = { market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "ACTIVE" };
   mock.types.mockResolvedValue([{ ...base, typeCode: "HX_TOKEN", name: "平台积分" }, { ...base, typeCode: "OTHER", name: "已有积分" }]);
-  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, settingsPage(true))));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
   await act(async () => (host.querySelector('button[aria-label="编辑积分名称"]') as HTMLButtonElement).click());
@@ -187,7 +190,7 @@ it("blocks duplicate names in the drawer before submitting", async () => {
 
 it("cancels inline name editing without submitting", async () => {
   mock.types.mockResolvedValue([{ typeCode: "HX_TOKEN", name: "平台积分", market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "ACTIVE", orderDefault: true }]);
-  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, settingsPage(true))));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
   await act(async () => (host.querySelector('button[aria-label="编辑积分名称"]') as HTMLButtonElement).click());
@@ -199,7 +202,7 @@ it("cancels inline name editing without submitting", async () => {
 it("edits the default field independently without a remark", async () => {
   mock.types.mockResolvedValue([{ typeCode: "OTHER", name: "其他积分", market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "ACTIVE", orderDefault: false }]);
   mock.transition.mockResolvedValue({ requestId: "D1" });
-  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, settingsPage(true))));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
   expect(host.querySelector('form')).toBeNull();
@@ -213,7 +216,7 @@ it("edits the default field independently without a remark", async () => {
 it("filters the list by name or code and keeps help collapsed initially", async () => {
   const base = { market: "CN", currency: "CNY", rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, status: "ACTIVE" };
   mock.types.mockResolvedValue([{ ...base, typeCode: "HX_TOKEN", name: "平台积分" }, { ...base, typeCode: "MEMBER", name: "会员积分" }]);
-  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: false }))));
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, settingsPage(false))));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   expect(host.textContent).not.toContain("多个积分类型可同时生效");
   const search = host.querySelector('input[aria-label="搜索积分名称或代码"]') as HTMLInputElement;
@@ -227,7 +230,7 @@ it("filters the list by name or code and keeps help collapsed initially", async 
 it("keeps a failed rename and its error within the editable field for retry", async () => {
   mock.types.mockResolvedValue([{ typeCode: "HX_TOKEN", name: "平台积分", currency: "CNY", rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, status: "ACTIVE", orderDefault: true }]);
   mock.rename.mockRejectedValue(new Error("暂时无法保存"));
-  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: true }))));
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, settingsPage(true))));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click());
   await act(async () => (host.querySelector('button[aria-label="编辑积分名称"]') as HTMLButtonElement).click());

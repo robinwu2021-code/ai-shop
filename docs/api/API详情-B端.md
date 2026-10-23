@@ -86,8 +86,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `type` | `string` | 是 | — |
-| `value` | `string` | 是 | — |
+| `type` | `string` | 是 | 业务类型编码或类型摘要，按当前接口定义解释 |
+| `value` | `string` | 是 | 当前规则配置值 |
 
 
 #### GET `/biz/activities/{activityNo}`
@@ -141,8 +141,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `type` | `string` | 是 | — |
-| `value` | `string` | 是 | — |
+| `type` | `string` | 是 | 业务类型编码或类型摘要，按当前接口定义解释 |
+| `value` | `string` | 是 | 当前规则配置值 |
 
 
 #### PUT `/biz/activities/{activityNo}/status`
@@ -196,8 +196,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `type` | `string` | 是 | — |
-| `value` | `string` | 是 | — |
+| `type` | `string` | 是 | 业务类型编码或类型摘要，按当前接口定义解释 |
+| `value` | `string` | 是 | 当前规则配置值 |
 
 
 ### activity-conflicts
@@ -268,6 +268,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -301,16 +302,16 @@
 |---|---|:---:|---|
 | `itemId` | `number` | 是 | — |
 | `skuNo` | `string,null` | 否 | — |
-| `title` | `string` | 是 | — |
+| `title` | `string` | 是 | 面向用户的业务标题 |
 | `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `status` | `string` | 是 | — |
+| `status` | `string` | 是 | 服务端业务状态编码 |
 | `label` | `string` | 是 | — |
-| `at` | `number` | 是 | — |
+| `at` | `number` | 是 | 业务发生时间 |
 
 
 #### POST `/biz/after-sale/{afterSaleNo}/confirm-refund`
@@ -329,6 +330,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -362,16 +364,16 @@
 |---|---|:---:|---|
 | `itemId` | `number` | 是 | — |
 | `skuNo` | `string,null` | 否 | — |
-| `title` | `string` | 是 | — |
+| `title` | `string` | 是 | 面向用户的业务标题 |
 | `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `status` | `string` | 是 | — |
+| `status` | `string` | 是 | 服务端业务状态编码 |
 | `label` | `string` | 是 | — |
-| `at` | `number` | 是 | — |
+| `at` | `number` | 是 | 业务发生时间 |
 
 
 #### POST `/biz/after-sale/{afterSaleNo}/receive`
@@ -405,6 +407,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -438,16 +441,16 @@
 |---|---|:---:|---|
 | `itemId` | `number` | 是 | — |
 | `skuNo` | `string,null` | 否 | — |
-| `title` | `string` | 是 | — |
+| `title` | `string` | 是 | 面向用户的业务标题 |
 | `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `status` | `string` | 是 | — |
+| `status` | `string` | 是 | 服务端业务状态编码 |
 | `label` | `string` | 是 | — |
-| `at` | `number` | 是 | — |
+| `at` | `number` | 是 | 业务发生时间 |
 
 
 #### POST `/biz/after-sale/{afterSaleNo}/reject`
@@ -472,6 +475,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -505,16 +509,16 @@
 |---|---|:---:|---|
 | `itemId` | `number` | 是 | — |
 | `skuNo` | `string,null` | 否 | — |
-| `title` | `string` | 是 | — |
+| `title` | `string` | 是 | 面向用户的业务标题 |
 | `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `status` | `string` | 是 | — |
+| `status` | `string` | 是 | 服务端业务状态编码 |
 | `label` | `string` | 是 | — |
-| `at` | `number` | 是 | — |
+| `at` | `number` | 是 | 业务发生时间 |
 
 
 #### GET `/biz/after-sale/by-order/{orderNo}`
@@ -533,6 +537,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -566,16 +571,16 @@
 |---|---|:---:|---|
 | `itemId` | `number` | 是 | — |
 | `skuNo` | `string,null` | 否 | — |
-| `title` | `string` | 是 | — |
+| `title` | `string` | 是 | 面向用户的业务标题 |
 | `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `status` | `string` | 是 | — |
+| `status` | `string` | 是 | 服务端业务状态编码 |
 | `label` | `string` | 是 | — |
-| `at` | `number` | 是 | — |
+| `at` | `number` | 是 | 业务发生时间 |
 
 
 #### GET `/biz/after-sale/worklist`
@@ -747,6 +752,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `campaignNo` | `string` | 是 | 活动单号 |
 | `merchantNo` | `string` | 是 | 所属商家。活动是店铺级的，不跨店 |
 | `type` | [`CampaignType`](#campaigntype) | 是 | 活动类型，决定下面哪几个可选字段有意义 |
@@ -788,6 +794,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `campaignNo` | `string` | 是 | 活动单号 |
 | `merchantNo` | `string` | 是 | 所属商家。活动是店铺级的，不跨店 |
 | `type` | [`CampaignType`](#campaigntype) | 是 | 活动类型，决定下面哪几个可选字段有意义 |
@@ -1089,6 +1096,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `issueNo` | `string` | 是 | 这一批发放的编号 |
 | `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
 | `segmentNo` | `string,null` | 否 | 发给哪个人群。空 = 手动挑的人 |
@@ -1107,14 +1115,14 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `type` | `string` | 是 | — |
-| `value` | `string` | 是 | — |
+| `type` | `string` | 是 | 业务类型编码或类型摘要，按当前接口定义解释 |
+| `value` | `string` | 是 | 当前规则配置值 |
 
 `skipReasons[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `reason` | `string` | 是 | — |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
 | `count` | `number` | 是 | — |
 
 
@@ -2394,7 +2402,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `options` | `string`\[\] | 是 | — |
 
 `params[]` 的字段：
@@ -2402,9 +2410,9 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `dimNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `label` | `string` | 是 | — |
-| `source` | `string` | 是 | — |
+| `source` | `string` | 是 | 顾客选择来源信息 |
 | `confidence` | `number` | 是 | — |
 | `rawName` | `string` | 否 | 原文叫法（净重）。`name` 是对上之后的标准名（净含量）。端上靠它找同义的旧自由参数 |
 
@@ -3420,7 +3428,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `itemId` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `specText` | `string` | 否 | — |
 | `qty` | `number` | 是 | — |
 | `uom` | `string` | 否 | — |
@@ -3469,6 +3477,815 @@ _无字段_
 **出参**（`data`）
 
 类型：`any`
+
+
+### management
+
+#### GET `/biz/management/brand-changes/{c}`
+
+查询品牌变更　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `c` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`BrandChange`](#brandchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `changeNo` | `string` | 是 | 品牌变更业务编号 |
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `fromBrandNo` | `string` | 否 | 变更前品牌编号 |
+| `toBrandNo` | `string` | 否 | 目标品牌编号；解除绑定时为空 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `applied` | `boolean` | 是 | 变更是否已经应用到有效关系 |
+| `blockers` | `string`\[\] | 否 | 阻断原因编码列表 |
+| `actions` | `string`\[\] | 否 | 当前账号可执行的动作集合 |
+| `reason` | `string` | 否 | 业务原因或阻断说明 |
+
+
+#### POST `/biz/management/brand-changes/{c}/decisions`
+
+决定品牌变更　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `c` | path | `string` | 是 | — |
+
+请求体：[`ManagementBrandDecisionReq`](#managementbranddecisionreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `decision` | `APPROVE` \| `REJECT` | 是 | 审批决定编码 |
+| `expectedRevision` | `number` | 是 | 调用方读取到的版本号，用于乐观锁校验 |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
+
+**出参**（`data`）
+
+类型：[`BrandChange`](#brandchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `changeNo` | `string` | 是 | 品牌变更业务编号 |
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `fromBrandNo` | `string` | 否 | 变更前品牌编号 |
+| `toBrandNo` | `string` | 否 | 目标品牌编号；解除绑定时为空 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `applied` | `boolean` | 是 | 变更是否已经应用到有效关系 |
+| `blockers` | `string`\[\] | 否 | 阻断原因编码列表 |
+| `actions` | `string`\[\] | 否 | 当前账号可执行的动作集合 |
+| `reason` | `string` | 否 | 业务原因或阻断说明 |
+
+
+#### GET `/biz/management/brands`
+
+品牌列表　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+| `managementNo` | query | `string` | 是 | — |
+| `status` | query | `string` | 否 | 状态筛选，取值见对应枚举 |
+| `keyword` | query | `string` | 否 | 搜索关键词 |
+
+**出参**（`data`）
+
+类型：[`ManagementBrandPage`](#managementbrandpage)
+
+_无字段_
+
+
+#### POST `/biz/management/brands`
+
+创建品牌　🔒
+
+**入参**
+
+请求体：[`ManagementBrandCreateReq`](#managementbrandcreatereq)
+
+**出参**（`data`）
+
+类型：[`Brand`](#brand)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `canManageLegacy` | `boolean` | 否 | 是否允许使用原经营主体管理入口 |
+| `canConfigureBrand` | `boolean` | 否 | 当前账号是否允许配置品牌 |
+| `resourceType` | `string` | 否 | 被授权资源类型编码 |
+| `resourceNo` | `string` | 否 | 被授权资源编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `brandNo` | `string` | 是 | 品牌编号 |
+| `entityNo` | `string` | 否 | 经营主体编号 |
+| `storeNo` | `string` | 否 | 门店编号 |
+| `scopeRevision` | `number` | 是 | 资源可见范围版本号 |
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `logo` | `string` | 否 | 品牌标志资源地址 |
+| `storeCount` | `number` | 否 | 品牌下可见门店数量 |
+| `createdAt` | `string` | 否 | 创建时间 |
+| `updatedAt` | `string` | 否 | 最近更新时间 |
+| `createdByLabel` | `string` | 否 | 创建人显示名称 |
+| `updatedByLabel` | `string` | 否 | 最近更新人显示名称 |
+| `actions` | `string`\[\] | 否 | 当前账号可执行的动作集合 |
+
+
+#### GET `/biz/management/brands/{b}`
+
+品牌详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `b` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`Brand`](#brand)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `canManageLegacy` | `boolean` | 否 | 是否允许使用原经营主体管理入口 |
+| `canConfigureBrand` | `boolean` | 否 | 当前账号是否允许配置品牌 |
+| `resourceType` | `string` | 否 | 被授权资源类型编码 |
+| `resourceNo` | `string` | 否 | 被授权资源编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `brandNo` | `string` | 是 | 品牌编号 |
+| `entityNo` | `string` | 否 | 经营主体编号 |
+| `storeNo` | `string` | 否 | 门店编号 |
+| `scopeRevision` | `number` | 是 | 资源可见范围版本号 |
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `logo` | `string` | 否 | 品牌标志资源地址 |
+| `storeCount` | `number` | 否 | 品牌下可见门店数量 |
+| `createdAt` | `string` | 否 | 创建时间 |
+| `updatedAt` | `string` | 否 | 最近更新时间 |
+| `createdByLabel` | `string` | 否 | 创建人显示名称 |
+| `updatedByLabel` | `string` | 否 | 最近更新人显示名称 |
+| `actions` | `string`\[\] | 否 | 当前账号可执行的动作集合 |
+
+
+#### PUT `/biz/management/brands/{b}`
+
+修改品牌　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `b` | path | `string` | 是 | — |
+
+请求体：[`ManagementBrandEditReq`](#managementbrandeditreq)
+
+**出参**（`data`）
+
+类型：[`Brand`](#brand)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `canManageLegacy` | `boolean` | 否 | 是否允许使用原经营主体管理入口 |
+| `canConfigureBrand` | `boolean` | 否 | 当前账号是否允许配置品牌 |
+| `resourceType` | `string` | 否 | 被授权资源类型编码 |
+| `resourceNo` | `string` | 否 | 被授权资源编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `brandNo` | `string` | 是 | 品牌编号 |
+| `entityNo` | `string` | 否 | 经营主体编号 |
+| `storeNo` | `string` | 否 | 门店编号 |
+| `scopeRevision` | `number` | 是 | 资源可见范围版本号 |
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `logo` | `string` | 否 | 品牌标志资源地址 |
+| `storeCount` | `number` | 否 | 品牌下可见门店数量 |
+| `createdAt` | `string` | 否 | 创建时间 |
+| `updatedAt` | `string` | 否 | 最近更新时间 |
+| `createdByLabel` | `string` | 否 | 创建人显示名称 |
+| `updatedByLabel` | `string` | 否 | 最近更新人显示名称 |
+| `actions` | `string`\[\] | 否 | 当前账号可执行的动作集合 |
+
+
+#### GET `/biz/management/brands/{b}/audit-events`
+
+品牌操作记录　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `b` | path | `string` | 是 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`ManagementAuditPage`](#managementauditpage)
+
+_无字段_
+
+
+#### POST `/biz/management/brands/{b}/status-changes`
+
+品牌启停　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `b` | path | `string` | 是 | — |
+
+请求体：[`ManagementBrandStatusReq`](#managementbrandstatusreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `targetStatus` | `ACTIVE` \| `INACTIVE` | 是 | 待切换的业务状态 |
+| `expectedRevision` | `number` | 是 | 调用方读取到的版本号，用于乐观锁校验 |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
+
+**出参**（`data`）
+
+类型：[`Brand`](#brand)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `canManageLegacy` | `boolean` | 否 | 是否允许使用原经营主体管理入口 |
+| `canConfigureBrand` | `boolean` | 否 | 当前账号是否允许配置品牌 |
+| `resourceType` | `string` | 否 | 被授权资源类型编码 |
+| `resourceNo` | `string` | 否 | 被授权资源编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `brandNo` | `string` | 是 | 品牌编号 |
+| `entityNo` | `string` | 否 | 经营主体编号 |
+| `storeNo` | `string` | 否 | 门店编号 |
+| `scopeRevision` | `number` | 是 | 资源可见范围版本号 |
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `logo` | `string` | 否 | 品牌标志资源地址 |
+| `storeCount` | `number` | 否 | 品牌下可见门店数量 |
+| `createdAt` | `string` | 否 | 创建时间 |
+| `updatedAt` | `string` | 否 | 最近更新时间 |
+| `createdByLabel` | `string` | 否 | 创建人显示名称 |
+| `updatedByLabel` | `string` | 否 | 最近更新人显示名称 |
+| `actions` | `string`\[\] | 否 | 当前账号可执行的动作集合 |
+
+
+#### GET `/biz/management/brands/{b}/stores`
+
+品牌门店　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `b` | path | `string` | 是 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`ManagementResourcePage`](#managementresourcepage)
+
+_无字段_
+
+
+#### GET `/biz/management/brands/{no}/stored-value/issuer`
+
+品牌储值发行设置　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvIssuerLookup`](#svissuerlookup)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuer` | [`IssuerView`](#issuerview) \| `null` | 是 | 当前生效发行方摘要；未配置时为空 |
+
+
+#### POST `/biz/management/brands/{no}/stored-value/issuer`
+
+保存品牌发行草稿　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`IssuerConfigureRequest`](#issuerconfigurerequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `configuration` | [`IssuerConfiguration`](#issuerconfiguration) | 是 | 待校验或保存的发行配置 |
+
+**出参**（`data`）
+
+类型：[`IssuerView`](#issuerview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `settlementEntityNo` | `string` | 是 | 承担发行结算责任的经营主体编号 |
+| `collectionMode` | `string` | 是 | 发行方收款模式编码 |
+| `clearingMode` | `string` | 是 | 发行方清分模式编码 |
+| `debitAllocationMode` | `string` | 是 | 消费扣减的资金分配模式编码 |
+| `currency` | `string` | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `marketZone` | `string` | 是 | 市场及时区配置编码 |
+| `routes` | [`IssuerRoute`](#issuerroute)\[\] | 是 | 生效支付收款路由列表 |
+| `issuerNo` | `string` | 是 | 储值发行方编号 |
+| `issuerVersionNo` | `string` | 是 | 不可变发行配置版本编号 |
+| `scopeType` | `STORE` \| `BRAND` | 是 | 储值发行范围类型：STORE或BRAND |
+| `scopeNo` | `string` | 是 | 储值发行范围编号 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+
+
+#### GET `/biz/management/context`
+
+管理空间上下文　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ManagementContext`](#managementcontext)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actorKey` | `string` | 是 | 认证管理账号标识 |
+| `spaces` | [`ManagementSpace`](#managementspace)\[\] | 是 | 当前账号可见的经营管理空间列表 |
+| `canBootstrap` | `boolean` | 是 | 是否允许创建初始管理空间 |
+| `bootstrapSources` | `object`（见下）\[\] | 是 | 当前账号可用于创建管理空间的授权来源 |
+
+`bootstrapSources[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `accountNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | 经营主体编号 |
+| `entityName` | `string` | 否 | — |
+| `stores` | `object`（见下）\[\] | 是 | — |
+| `paymentMerchants` | `object`（见下）\[\] | 是 | — |
+
+`bootstrapSources[].stores[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+
+`bootstrapSources[].paymentMerchants[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payMerchantNo` | `string` | 是 | 支付商户编号 |
+
+
+#### GET `/biz/management/entities/{e}/payment-merchants`
+
+支付商户候选　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+| `managementNo` | query | `string` | 是 | — |
+| `payChannel` | query | `string` | 否 | — |
+| `payScene` | query | `string` | 否 | — |
+| `storeNo` | query | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`PaymentMerchant`](#paymentmerchant)\[\]
+
+
+#### POST `/biz/management/spaces`
+
+创建管理空间　🔒
+
+**入参**
+
+请求体：[`ManagementSpaceCreateReq`](#managementspacecreatereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `sourceAccountNo` | `string` | 是 | 创建管理空间所使用的来源账号编号 |
+
+**出参**（`data`）
+
+类型：[`ManagementSpace`](#managementspace)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `canManageLegacy` | `boolean` | 否 | 是否允许使用原经营主体管理入口 |
+| `canConfigureBrand` | `boolean` | 否 | 当前账号是否允许配置品牌 |
+| `resourceType` | `string` | 否 | 被授权资源类型编码 |
+| `resourceNo` | `string` | 否 | 被授权资源编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `brandNo` | `string` | 否 | 品牌编号 |
+| `entityNo` | `string` | 否 | 经营主体编号 |
+| `storeNo` | `string` | 否 | 门店编号 |
+| `scopeRevision` | `number` | 否 | 资源可见范围版本号 |
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `actions` | `string`\[\] | 是 | 当前账号可执行的动作集合 |
+
+
+#### GET `/biz/management/spaces/{m}/entities`
+
+管理主体列表　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `m` | path | `string` | 是 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`ManagementResourcePage`](#managementresourcepage)
+
+_无字段_
+
+
+#### POST `/biz/management/spaces/{m}/grants`
+
+授予资源能力　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `m` | path | `string` | 是 | — |
+
+请求体：[`ManagementGrantReq`](#managementgrantreq)
+
+**出参**（`data`）
+
+类型：[`ManagementGrant`](#managementgrant)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actorLabel` | `string` | 否 | 操作人显示名称 |
+| `resourceName` | `string` | 否 | 被授权资源显示名称 |
+| `grantNo` | `string` | 是 | 授权记录编号 |
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `actorNo` | `string` | 是 | 被授权管理账号编号 |
+| `resourceType` | `string` | 是 | 被授权资源类型编码 |
+| `resourceNo` | `string` | 是 | 被授权资源编号 |
+| `permissionCode` | `string` | 是 | 经营管理授权能力码 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `delegatable` | `boolean,number` | 是 | 是否允许被授权人继续转授 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+
+
+#### DELETE `/biz/management/spaces/{m}/grants/{g}`
+
+撤销资源授权　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `m` | path | `string` | 是 | — |
+| `g` | path | `string` | 是 | — |
+| `expectedRevision` | query | `number` | 是 | — |
+| `reason` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`ManagementGrant`](#managementgrant)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actorLabel` | `string` | 否 | 操作人显示名称 |
+| `resourceName` | `string` | 否 | 被授权资源显示名称 |
+| `grantNo` | `string` | 是 | 授权记录编号 |
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `actorNo` | `string` | 是 | 被授权管理账号编号 |
+| `resourceType` | `string` | 是 | 被授权资源类型编码 |
+| `resourceNo` | `string` | 是 | 被授权资源编号 |
+| `permissionCode` | `string` | 是 | 经营管理授权能力码 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `delegatable` | `boolean,number` | 是 | 是否允许被授权人继续转授 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+
+
+#### GET `/biz/management/spaces/{m}/recipients`
+
+管理空间可授权人员　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `resourceType` | query | `string` | 否 | — |
+| `view` | query | `EFFECTIVE` \| `GRANTS` | 否 | — |
+| `actorNo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`ManagementRecipientPage`](#managementrecipientpage)
+
+_无字段_
+
+
+#### GET `/biz/management/spaces/{m}/resources`
+
+资源与授权列表　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `m` | path | `string` | 是 | — |
+| `resourceType` | query | `string` | 否 | — |
+| `view` | query | `EFFECTIVE` \| `GRANTS` | 否 | — |
+| `actorNo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`ManagementGrantPage`](#managementgrantpage)
+
+_无字段_
+
+
+#### GET `/biz/management/spaces/{m}/stores`
+
+管理门店列表　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `m` | path | `string` | 是 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+| `brandNo` | query | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`ManagementResourcePage`](#managementresourcepage)
+
+_无字段_
+
+
+#### GET `/biz/management/stored-value/issuers/{no}/collection-routes`
+
+已配置收款路由　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `payChannel` | query | `string` | 否 | — |
+| `payScene` | query | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`IssuerRoute`](#issuerroute)\[\]
+
+
+#### POST `/biz/management/stored-value/issuers/{no}/configuration-checks`
+
+检查发行配置影响　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`IssuerConfigureRequest`](#issuerconfigurerequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `configuration` | [`IssuerConfiguration`](#issuerconfiguration) | 是 | 待校验或保存的发行配置 |
+
+**出参**（`data`）
+
+类型：[`IssuerImpact`](#issuerimpact)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `allowed` | `boolean` | 是 | 当前业务校验是否允许继续 |
+| `affectedAccountCount` | `number` | 是 | 受配置变更影响的账户数量 |
+| `hasPending` | `boolean` | 是 | 是否存在尚未结清的相关业务 |
+| `blockers` | `string`\[\] | 是 | 阻断原因编码列表 |
+
+
+#### POST `/biz/management/stored-value/issuers/{no}/configuration-versions`
+
+保存发行配置版本　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`IssuerConfigureRequest`](#issuerconfigurerequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `configuration` | [`IssuerConfiguration`](#issuerconfiguration) | 是 | 待校验或保存的发行配置 |
+
+**出参**（`data`）
+
+类型：[`IssuerView`](#issuerview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `settlementEntityNo` | `string` | 是 | 承担发行结算责任的经营主体编号 |
+| `collectionMode` | `string` | 是 | 发行方收款模式编码 |
+| `clearingMode` | `string` | 是 | 发行方清分模式编码 |
+| `debitAllocationMode` | `string` | 是 | 消费扣减的资金分配模式编码 |
+| `currency` | `string` | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `marketZone` | `string` | 是 | 市场及时区配置编码 |
+| `routes` | [`IssuerRoute`](#issuerroute)\[\] | 是 | 生效支付收款路由列表 |
+| `issuerNo` | `string` | 是 | 储值发行方编号 |
+| `issuerVersionNo` | `string` | 是 | 不可变发行配置版本编号 |
+| `scopeType` | `STORE` \| `BRAND` | 是 | 储值发行范围类型：STORE或BRAND |
+| `scopeNo` | `string` | 是 | 储值发行范围编号 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+
+
+#### GET `/biz/management/stored-value/settlement-entity-candidates`
+
+有授权的结算主体　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `managementNo` | query | `string` | 是 | — |
+| `scopeType` | query | `STORE` \| `BRAND` | 是 | — |
+| `scopeNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvIssuerEntity`](#svissuerentity)\[\]
+
+
+#### GET `/biz/management/stores/{no}/stored-value/issuer`
+
+门店发行设置　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvIssuerLookup`](#svissuerlookup)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuer` | [`IssuerView`](#issuerview) \| `null` | 是 | 当前生效发行方摘要；未配置时为空 |
+
+
+#### POST `/biz/management/stores/{no}/stored-value/issuer`
+
+保存门店发行配置　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`IssuerConfigureRequest`](#issuerconfigurerequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `configuration` | [`IssuerConfiguration`](#issuerconfiguration) | 是 | 待校验或保存的发行配置 |
+
+**出参**（`data`）
+
+类型：[`IssuerView`](#issuerview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `settlementEntityNo` | `string` | 是 | 承担发行结算责任的经营主体编号 |
+| `collectionMode` | `string` | 是 | 发行方收款模式编码 |
+| `clearingMode` | `string` | 是 | 发行方清分模式编码 |
+| `debitAllocationMode` | `string` | 是 | 消费扣减的资金分配模式编码 |
+| `currency` | `string` | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `marketZone` | `string` | 是 | 市场及时区配置编码 |
+| `routes` | [`IssuerRoute`](#issuerroute)\[\] | 是 | 生效支付收款路由列表 |
+| `issuerNo` | `string` | 是 | 储值发行方编号 |
+| `issuerVersionNo` | `string` | 是 | 不可变发行配置版本编号 |
+| `scopeType` | `STORE` \| `BRAND` | 是 | 储值发行范围类型：STORE或BRAND |
+| `scopeNo` | `string` | 是 | 储值发行范围编号 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+
+
+#### POST `/biz/management/stores/{no}/stored-value/issuer/access-refresh`
+
+同步原门店准入修订　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvIssuerManagementQuery`](#svissuermanagementquery)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+
+**出参**（`data`）
+
+类型：[`IssuerAccessAck`](#issueraccessack)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerNo` | `string` | 是 | 储值发行方编号 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `sourceRevision` | `number` | 是 | 来源配置版本号 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+
+
+#### POST `/biz/management/stores/{no}/stored-value/issuer/prepare`
+
+准备门店发行元数据　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvIssuerManagementQuery`](#svissuermanagementquery)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+
+**出参**（`data`）
+
+类型：[`IssuerView`](#issuerview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `settlementEntityNo` | `string` | 是 | 承担发行结算责任的经营主体编号 |
+| `collectionMode` | `string` | 是 | 发行方收款模式编码 |
+| `clearingMode` | `string` | 是 | 发行方清分模式编码 |
+| `debitAllocationMode` | `string` | 是 | 消费扣减的资金分配模式编码 |
+| `currency` | `string` | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `marketZone` | `string` | 是 | 市场及时区配置编码 |
+| `routes` | [`IssuerRoute`](#issuerroute)\[\] | 是 | 生效支付收款路由列表 |
+| `issuerNo` | `string` | 是 | 储值发行方编号 |
+| `issuerVersionNo` | `string` | 是 | 不可变发行配置版本编号 |
+| `scopeType` | `STORE` \| `BRAND` | 是 | 储值发行范围类型：STORE或BRAND |
+| `scopeNo` | `string` | 是 | 储值发行范围编号 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
 
 
 ### marketing
@@ -3560,7 +4377,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `reason` | `string` | 是 | — |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
 | `count` | `number` | 是 | — |
 
 
@@ -3586,7 +4403,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `reason` | `string` | 是 | — |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
 | `count` | `number` | 是 | — |
 
 
@@ -3636,7 +4453,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `reason` | `string` | 是 | — |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
 | `count` | `number` | 是 | — |
 
 
@@ -3969,7 +4786,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `reason` | `string` | 是 | — |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
 | `count` | `number` | 是 | — |
 
 
@@ -4054,6 +4871,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `industry` | `string` | 否 | 行业编码，用于商家工作台能力选择 |
+| `description` | `string` | 否 | 对外展示的商家介绍 |
 | `merchantNo` | `string` | 是 | 商家单号 |
 | `name` | `string` | 是 | 店铺名 |
 | `logo` | `string` | 是 | 店铺 logo |
@@ -4265,6 +5084,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `industry` | `string` | 否 | 行业编码，用于商家工作台能力选择 |
+| `description` | `string` | 否 | 对外展示的商家介绍 |
 | `merchantNo` | `string` | 是 | 商家单号 |
 | `name` | `string` | 是 | 店铺名 |
 | `logo` | `string` | 是 | 店铺 logo |
@@ -4293,6 +5114,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `industry` | `string` | 否 | 行业编码，用于商家工作台能力选择 |
+| `description` | `string` | 否 | 对外展示的商家介绍 |
 | `merchantNo` | `string` | 是 | 商家单号 |
 | `name` | `string` | 是 | 店铺名 |
 | `logo` | `string` | 是 | 店铺 logo |
@@ -4516,6 +5339,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -4573,6 +5398,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -4630,6 +5457,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -4808,8 +5637,8 @@ _无字段_
 | `aggregateId` | `string` | 是 | Event aggregate that produced this synchronization. |
 | `eventType` | `string` | 是 | Inventory or order event type. |
 | `source` | `string` | 是 | System that requested or handled the synchronization. |
-| `status` | `COMPLETED` \| `PENDING` \| `FAILED` \| `WARNING` \| `SKIPPED` \| `ARCHIVED` | 是 | Delivery state of the synchronization event. |
-| `outboxMode` | `UNIFIED` \| `LEGACY` | 是 | Outbox implementation that persisted the event. |
+| `status` | [`InventoryTraceEventStatus`](#inventorytraceeventstatus) | 是 | Delivery state of the synchronization event. |
+| `outboxMode` | [`InventoryTraceOutboxMode`](#inventorytraceoutboxmode) | 是 | Outbox implementation that persisted the event. |
 
 `reservations[]` 的字段：
 
@@ -4883,6 +5712,21 @@ _无字段_
 类型：[`LogisticsUpdateRecord`](#logisticsupdaterecord)\[\]
 
 
+#### GET `/biz/order/{orderNo}/points-earning`
+
+订单赠送积分进度　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`OrderPointsEarning`](#orderpointsearning)\[\]
+
+
 #### POST `/biz/order/{orderNo}/prepare`
 
 开始备货　🔒
@@ -4899,6 +5743,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -4964,6 +5810,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -5074,6 +5922,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -5191,7 +6041,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `goodsNo` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
+| `title` | `string` | 是 | 面向用户的业务标题 |
 | `qty` | `number` | 是 | — |
 
 `byPickup[]` 的字段：
@@ -5310,6 +6160,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -5429,6 +6281,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -5496,7 +6350,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `code` | `string` | 是 | — |
-| `reason` | `string` | 是 | — |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
 
 
 #### GET `/biz/pickup/verify/search`
@@ -5879,6 +6733,10 @@ _无字段_
 | `id` | `number` | 是 | 持久记录主键 |
 | `entryNo` | `string` | 是 | 不可变积分分录编号 |
 | `voucherNo` | `string` | 是 | 原记账凭证编号 |
+| `voucherDocumentNo` | `string,null` | 否 | 原凭证展示单号 |
+| `direction` | `string,null` | 否 | 流水收支方向编码 |
+| `businessRef` | `string,null` | 否 | 来源业务引用 |
+| `orderNo` | `string,null` | 否 | 订单内部业务编号 |
 | `holderType` | `string` | 是 | 账本持有人类型 |
 | `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
 | `bucket` | `string` | 是 | 积分账本或资金池分桶 |
@@ -5921,8 +6779,8 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `number` | `number` | 是 | — |
-| `points` | `number` | 是 | — |
-| `reason` | `string,null` | 是 | — |
+| `points` | `number` | 是 | 按当前规则计算的积分数量 |
+| `reason` | `string,null` | 是 | 业务原因或阻断说明 |
 
 
 #### POST `/biz/points/store-statement-confirm`
@@ -6011,9 +6869,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `orderNo` | `string` | 是 | — |
-| `subOrderNo` | `string` | 是 | — |
-| `points` | `number` | 是 | — |
+| `orderNo` | `string` | 是 | 订单内部业务编号 |
+| `subOrderNo` | `string` | 是 | 子订单内部业务编号 |
+| `points` | `number` | 是 | 按当前规则计算的积分数量 |
 
 
 #### GET `/biz/points/store-statements`
@@ -6235,17 +7093,17 @@ _无字段_
 |---|---|:---:|---|
 | `regionCode` | `string` | 是 | — |
 | `level` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `path` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `path` | `string` | 是 | 分类层级路径 |
 
 `communities[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `communityNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `regionCode` | `string,null` | 否 | — |
-| `path` | `string` | 是 | — |
+| `path` | `string` | 是 | 分类层级路径 |
 | `kind` | `string,null` | 否 | ESTATE 小区 / VILLAGE 村。判「这一条底下还有没有下一级」用它，名字这时已经是口语名了 |
 | `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。为空 = 顶层聚落。 少了它，搜出来的楼栋在整个小区已被勾中时仍显示成「没选上」，商家会再勾一遍。 |
 | `originCode` | `string,null` | 否 | 下钻要用它，不是 regionCode（那是它挂的街道/镇）。没有它就是地图开通的小区，没有下一级 |
@@ -6259,9 +7117,9 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `regionCode` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `streetCode` | `string` | 是 | 它挂的街道码（9 位）。提报要挂到这下面 |
-| `path` | `string` | 是 | — |
+| `path` | `string` | 是 | 分类层级路径 |
 | `latE6` | `number,null` | 否 | — |
 | `lngE6` | `number,null` | 否 | — |
 | `rural` | `boolean` | 否 | 是不是村委会（服务端存的）。判「这一条给不给 ›」用它 |
@@ -6702,7 +7560,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `line` | `number` | 是 | — |
-| `reason` | `string` | 是 | — |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
 
 `samples[]` 的字段：
 
@@ -6742,7 +7600,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `line` | `number` | 是 | — |
-| `reason` | `string` | 是 | — |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
 
 `samples[]` 的字段：
 
@@ -7513,12 +8371,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `batchNo` | `string` | 是 | Identifier of this inventory alignment batch. |
 | `storeNo` | `string` | 是 | Store whose opening inventory is being aligned. |
 | `mode` | [`StockAlignMode`](#stockalignmode) | 是 | Whether alignment adopts mall quantities or a physical count. |
 | `snapshotVersion` | `string` | 是 | Inventory snapshot version used to guard against stale confirmation. |
 | `expiresAt` | `number,null` | 是 | Expiry time in milliseconds; null when the preview has no expiry. |
-| `status` | `PREVIEW` \| `PROCESSING` \| `PARTIAL` \| `BLOCKED` \| `COMPLETED` \| `STALE` \| `EXPIRED` | 是 | Current preview or execution state of the batch. |
+| `status` | [`StockAlignmentStatus`](#stockalignmentstatus) | 是 | Current preview or execution state of the batch. |
 | `completed` | `number` | 是 | Number of rows aligned successfully. |
 | `blocked` | `number` | 是 | Number of rows blocked from alignment. |
 | `waiting` | `number` | 是 | Number of rows waiting for a later operation. |
@@ -7529,14 +8388,14 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `skuNo` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
+| `title` | `string` | 是 | 面向用户的业务标题 |
 | `spec` | `string,null` | 是 | — |
 | `beforeQty` | `number,null` | 是 | — |
 | `reserved` | `number,null` | 是 | — |
 | `mallStock` | `number` | 是 | — |
 | `mallLocked` | `number` | 是 | — |
 | `afterQty` | `number,null` | 是 | — |
-| `status` | `string` | 是 | — |
+| `status` | `string` | 是 | 服务端业务状态编码 |
 | `operationNo` | `string` | 是 | — |
 | `errorCode` | `string,null` | 是 | — |
 
@@ -7558,12 +8417,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `batchNo` | `string` | 是 | Identifier of this inventory alignment batch. |
 | `storeNo` | `string` | 是 | Store whose opening inventory is being aligned. |
 | `mode` | [`StockAlignMode`](#stockalignmode) | 是 | Whether alignment adopts mall quantities or a physical count. |
 | `snapshotVersion` | `string` | 是 | Inventory snapshot version used to guard against stale confirmation. |
 | `expiresAt` | `number,null` | 是 | Expiry time in milliseconds; null when the preview has no expiry. |
-| `status` | `PREVIEW` \| `PROCESSING` \| `PARTIAL` \| `BLOCKED` \| `COMPLETED` \| `STALE` \| `EXPIRED` | 是 | Current preview or execution state of the batch. |
+| `status` | [`StockAlignmentStatus`](#stockalignmentstatus) | 是 | Current preview or execution state of the batch. |
 | `completed` | `number` | 是 | Number of rows aligned successfully. |
 | `blocked` | `number` | 是 | Number of rows blocked from alignment. |
 | `waiting` | `number` | 是 | Number of rows waiting for a later operation. |
@@ -7574,14 +8434,14 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `skuNo` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
+| `title` | `string` | 是 | 面向用户的业务标题 |
 | `spec` | `string,null` | 是 | — |
 | `beforeQty` | `number,null` | 是 | — |
 | `reserved` | `number,null` | 是 | — |
 | `mallStock` | `number` | 是 | — |
 | `mallLocked` | `number` | 是 | — |
 | `afterQty` | `number,null` | 是 | — |
-| `status` | `string` | 是 | — |
+| `status` | `string` | 是 | 服务端业务状态编码 |
 | `operationNo` | `string` | 是 | — |
 | `errorCode` | `string,null` | 是 | — |
 
@@ -7617,12 +8477,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `batchNo` | `string` | 是 | Identifier of this inventory alignment batch. |
 | `storeNo` | `string` | 是 | Store whose opening inventory is being aligned. |
 | `mode` | [`StockAlignMode`](#stockalignmode) | 是 | Whether alignment adopts mall quantities or a physical count. |
 | `snapshotVersion` | `string` | 是 | Inventory snapshot version used to guard against stale confirmation. |
 | `expiresAt` | `number,null` | 是 | Expiry time in milliseconds; null when the preview has no expiry. |
-| `status` | `PREVIEW` \| `PROCESSING` \| `PARTIAL` \| `BLOCKED` \| `COMPLETED` \| `STALE` \| `EXPIRED` | 是 | Current preview or execution state of the batch. |
+| `status` | [`StockAlignmentStatus`](#stockalignmentstatus) | 是 | Current preview or execution state of the batch. |
 | `completed` | `number` | 是 | Number of rows aligned successfully. |
 | `blocked` | `number` | 是 | Number of rows blocked from alignment. |
 | `waiting` | `number` | 是 | Number of rows waiting for a later operation. |
@@ -7633,14 +8494,14 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `skuNo` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
+| `title` | `string` | 是 | 面向用户的业务标题 |
 | `spec` | `string,null` | 是 | — |
 | `beforeQty` | `number,null` | 是 | — |
 | `reserved` | `number,null` | 是 | — |
 | `mallStock` | `number` | 是 | — |
 | `mallLocked` | `number` | 是 | — |
 | `afterQty` | `number,null` | 是 | — |
-| `status` | `string` | 是 | — |
+| `status` | `string` | 是 | 服务端业务状态编码 |
 | `operationNo` | `string` | 是 | — |
 | `errorCode` | `string,null` | 是 | — |
 
@@ -7664,8 +8525,8 @@ _无字段_
 | `storeNo` | `string` | 是 | Merchant store identifier used to scope inventory values. |
 | `skuNo` | `string` | 是 | SKU identifier for the inventory row. |
 | `unit` | `string,null` | 是 | Physical stock unit; null when the SKU has no configured unit. |
-| `inventoryState` | `UNMANAGED` \| `INITIALIZING` \| `MAPPED` | 是 | Inventory onboarding state: unmanaged, initializing or mapped. |
-| `accountingMode` | `PAYMENT_DEDUCT` \| `HANDOFF_DEDUCT` | 是 | Point at which physical inventory is deducted: payment or handoff. |
+| `inventoryState` | [`InventoryState`](#inventorystate) | 是 | Inventory onboarding state: unmanaged, initializing or mapped. |
+| `accountingMode` | [`InventoryAccountingMode`](#inventoryaccountingmode) | 是 | Point at which physical inventory is deducted; currently payment only. |
 | `onHand` | `number,null` | 是 | Physical on-hand quantity; null means the value is unknown. |
 | `reserved` | `number,null` | 是 | Quantity reserved by open fulfillment work; null means unknown. |
 | `available` | `number,null` | 是 | Physical quantity not reserved; null means it cannot be calculated. |
@@ -7683,7 +8544,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `scopeType` | `string` | 是 | — |
+| `scopeType` | `string` | 是 | 储值发行范围类型：STORE或BRAND |
 | `scopeRef` | `string` | 是 | — |
 | `ruleType` | `string` | 是 | — |
 | `param` | `number` | 是 | — |
@@ -7960,7 +8821,580 @@ _无字段_
 类型：[`StoreCategorySpecs`](#storecategoryspecs)\[\]
 
 
+### stored-value
+
+#### GET `/biz/stored-value/account-directory`
+
+门店储值顾客　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | query | `string` | 是 | — |
+| `keyword` | query | `string` | 否 | 搜索关键词 |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvAccountPage`](#svaccountpage)
+
+_无字段_
+
+
+#### GET `/biz/stored-value/accounts/{accountRef}`
+
+门店储值账户　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvAccount`](#svaccount)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `accountRef` | `string` | 是 | 服务端签发的账户引用，非用户编号 |
+| `maskedName` | `string` | 是 | 服务端脱敏的顾客名称 |
+| `maskedPhone` | `string` | 是 | 服务端脱敏的手机号 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `balanceMinor` | `number` | 是 | 账面余额，货币最小单位 |
+| `heldMinor` | `number` | 是 | 冻结金额，货币最小单位 |
+| `availableMinor` | `number` | 是 | 可用余额，货币最小单位 |
+| `lastOccurredAt` | `string,null` | 是 | 最近业务发生时间 |
+| `lastRechargeAt` | `string,null` | 否 | 最近一次充值时间 |
+
+
+#### GET `/biz/stored-value/context`
+
+储值上下文　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvContext`](#svcontext)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `currencyScale` | `number` | 是 | 货币最小单位的小数位数 |
+| `timeZone` | `string` | 是 | 业务日期所采用的时区 |
+
+
+#### GET `/biz/stored-value/customer-candidates`
+
+查找可办理储值的会员　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | query | `string` | 是 | — |
+| `phone` | query | `string` | 否 | — |
+| `keyword` | query | `string` | 否 | 搜索关键词 |
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvCandidate`](#svcandidate)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### POST `/biz/stored-value/customer-selections`
+
+选用储值顾客　🔒
+
+**入参**
+
+请求体：[`SvSelectCustomerReq`](#svselectcustomerreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `source` | [`SvSelectionSource`](#svselectionsource) | 是 | 顾客选择来源信息 |
+
+**出参**（`data`）
+
+类型：[`SvSelectedCustomer`](#svselectedcustomer)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `customerRef` | `string` | 是 | 当前数据域签发的顾客选择引用 |
+| `expiresAt` | `string` | 是 | 服务端引用失效时间 |
+| `pendingScope` | `string` | 否 | 顾客选择引用是否仍待范围确认 |
+| `sourceStoreNo` | `string,null` | 否 | 来源门店编号 |
+| `sourceStoreName` | `string,null` | 否 | 来源门店显示名称 |
+| `memberNo` | `string,null` | 否 | 当前门店会员编号 |
+| `displayName` | `string` | 是 | 脱敏显示名称 |
+| `phoneMasked` | `string` | 是 | 服务端脱敏手机号 |
+| `account` | `object`（见下） \| `null` | 是 | 当前范围的储值账户摘要 |
+
+
+#### POST `/biz/stored-value/plan-recharges`
+
+按方案办理储值　🔒
+
+**入参**
+
+请求体：[`SvRechargeCreate`](#svrechargecreate)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `customerRef` | `string` | 是 | 当前数据域签发的顾客选择引用 |
+| `planNo` | `string` | 是 | 充值方案编号 |
+| `versionNo` | `string` | 是 | 不可变充值方案版本编号 |
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | 充值业务编号 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `paidAmountMinor` | `number,null` | 是 | 实付充值金额，货币最小单位 |
+| `creditedTotalMinor` | `number,null` | 是 | 确认入账总金额，货币最小单位 |
+| `creditedAt` | `string,null` | 是 | 充值入账时间 |
+| `receivedAt` | `string,null` | 是 | 线下收款确认时间 |
+
+
+#### GET `/biz/stored-value/plan-recharges/{rechargeNo}`
+
+独立储值进度　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | 充值业务编号 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `paidAmountMinor` | `number,null` | 是 | 实付充值金额，货币最小单位 |
+| `creditedTotalMinor` | `number,null` | 是 | 确认入账总金额，货币最小单位 |
+| `creditedAt` | `string,null` | 是 | 充值入账时间 |
+| `receivedAt` | `string,null` | 是 | 线下收款确认时间 |
+
+
+#### POST `/biz/stored-value/plan-recharges/{rechargeNo}/cancel`
+
+取消未收款储值　🔒
+
+**入参**
+
+请求体：[`SvCancelReq`](#svcancelreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `expectedRevision` | `number` | 是 | 调用方读取到的版本号，用于乐观锁校验 |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | 充值业务编号 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `paidAmountMinor` | `number,null` | 是 | 实付充值金额，货币最小单位 |
+| `creditedTotalMinor` | `number,null` | 是 | 确认入账总金额，货币最小单位 |
+| `creditedAt` | `string,null` | 是 | 充值入账时间 |
+| `receivedAt` | `string,null` | 是 | 线下收款确认时间 |
+
+
+#### POST `/biz/stored-value/plan-recharges/{rechargeNo}/receive`
+
+确认储值收款　🔒
+
+**入参**
+
+请求体：[`SvReceive`](#svreceive)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `expectedRevision` | `number` | 是 | 调用方读取到的版本号，用于乐观锁校验 |
+| `receiptNo` | `string` | 是 | 原收款凭据编号 |
+| `confirmationNote` | `string` | 是 | 线下收款核实备注 |
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | 充值业务编号 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `paidAmountMinor` | `number,null` | 是 | 实付充值金额，货币最小单位 |
+| `creditedTotalMinor` | `number,null` | 是 | 确认入账总金额，货币最小单位 |
+| `creditedAt` | `string,null` | 是 | 充值入账时间 |
+| `receivedAt` | `string,null` | 是 | 线下收款确认时间 |
+
+
+#### POST `/biz/stored-value/plan-recharges/{rechargeNo}/submit`
+
+提交储值实收　🔒
+
+**入参**
+
+请求体：[`SvReceipt`](#svreceipt)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `expectedRevision` | `number` | 是 | 调用方读取到的版本号，用于乐观锁校验 |
+| `actualAmountMinor` | `number` | 是 | 实际收款金额，货币最小单位 |
+| `collectionMethod` | `CASH` \| `TRANSFER` | 是 | 实际收款方式编码 |
+| `receiptNo` | `string` | 是 | 原收款凭据编号 |
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | 充值业务编号 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `paidAmountMinor` | `number,null` | 是 | 实付充值金额，货币最小单位 |
+| `creditedTotalMinor` | `number,null` | 是 | 确认入账总金额，货币最小单位 |
+| `creditedAt` | `string,null` | 是 | 充值入账时间 |
+| `receivedAt` | `string,null` | 是 | 线下收款确认时间 |
+
+
+#### GET `/biz/stored-value/plans`
+
+门店储值方案　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | query | `string` | 是 | — |
+| `status` | query | `string` | 否 | 状态筛选，取值见对应枚举 |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvPlanPage`](#svplanpage)
+
+_无字段_
+
+
+#### POST `/biz/stored-value/plans`
+
+创建门店储值方案　🔒
+
+**入参**
+
+请求体：[`SvPlanCreate`](#svplancreate)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `paidAmountMinor` | `number` | 是 | 实付充值金额，货币最小单位 |
+| `bonusAmountMinor` | `number` | 是 | 赠送金额，货币最小单位 |
+
+**出参**（`data`）
+
+类型：[`SvPlan`](#svplan)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planNo` | `string` | 是 | 充值方案编号 |
+| `versionNo` | `string` | 是 | 不可变充值方案版本编号 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `paidAmountMinor` | `number` | 是 | 实付充值金额，货币最小单位 |
+| `bonusAmountMinor` | `number` | 是 | 赠送金额，货币最小单位 |
+| `totalAmountMinor` | `number` | 是 | 实付加赠送的总金额，货币最小单位 |
+| `status` | `ACTIVE` \| `INACTIVE` | 是 | 服务端业务状态编码 |
+| `createdAt` | `string` | 是 | 创建时间 |
+| `updatedAt` | `string,null` | 是 | 最近更新时间 |
+
+
+#### GET `/biz/stored-value/plans/{planNo}`
+
+储值方案详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvPlan`](#svplan)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planNo` | `string` | 是 | 充值方案编号 |
+| `versionNo` | `string` | 是 | 不可变充值方案版本编号 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `paidAmountMinor` | `number` | 是 | 实付充值金额，货币最小单位 |
+| `bonusAmountMinor` | `number` | 是 | 赠送金额，货币最小单位 |
+| `totalAmountMinor` | `number` | 是 | 实付加赠送的总金额，货币最小单位 |
+| `status` | `ACTIVE` \| `INACTIVE` | 是 | 服务端业务状态编码 |
+| `createdAt` | `string` | 是 | 创建时间 |
+| `updatedAt` | `string,null` | 是 | 最近更新时间 |
+
+
+#### PUT `/biz/stored-value/plans/{planNo}/status`
+
+启停门店储值方案　🔒
+
+**入参**
+
+请求体：[`SvPlanStatusReq`](#svplanstatusreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `expectedRevision` | `number` | 是 | 调用方读取到的版本号，用于乐观锁校验 |
+
+**出参**（`data`）
+
+类型：[`SvPlan`](#svplan)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planNo` | `string` | 是 | 充值方案编号 |
+| `versionNo` | `string` | 是 | 不可变充值方案版本编号 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `paidAmountMinor` | `number` | 是 | 实付充值金额，货币最小单位 |
+| `bonusAmountMinor` | `number` | 是 | 赠送金额，货币最小单位 |
+| `totalAmountMinor` | `number` | 是 | 实付加赠送的总金额，货币最小单位 |
+| `status` | `ACTIVE` \| `INACTIVE` | 是 | 服务端业务状态编码 |
+| `createdAt` | `string` | 是 | 创建时间 |
+| `updatedAt` | `string,null` | 是 | 最近更新时间 |
+
+
 ### stores
+
+#### POST `/biz/stores/{s}/brand-changes`
+
+提交品牌变更　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `s` | path | `string` | 是 | — |
+
+请求体：[`ManagementBrandChangeSubmitReq`](#managementbrandchangesubmitreq)
+
+**出参**（`data`）
+
+类型：[`BrandChange`](#brandchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `changeNo` | `string` | 是 | 品牌变更业务编号 |
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `fromBrandNo` | `string` | 否 | 变更前品牌编号 |
+| `toBrandNo` | `string` | 否 | 目标品牌编号；解除绑定时为空 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `applied` | `boolean` | 是 | 变更是否已经应用到有效关系 |
+| `blockers` | `string`\[\] | 否 | 阻断原因编码列表 |
+| `actions` | `string`\[\] | 否 | 当前账号可执行的动作集合 |
+| `reason` | `string` | 否 | 业务原因或阻断说明 |
+
+
+#### POST `/biz/stores/{s}/brand-changes/check`
+
+品牌变更影响检查　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `s` | path | `string` | 是 | — |
+
+请求体：[`ManagementBrandCheckReq`](#managementbrandcheckreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `toBrandNo` | `string,null` | 是 | 目标品牌编号；解除绑定时为空 |
+
+**出参**（`data`）
+
+类型：[`BrandImpact`](#brandimpact)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `allowed` | `boolean` | 是 | 当前业务校验是否允许继续 |
+| `canDecide` | `boolean` | 否 | 当前账号是否允许审批此变更 |
+| `blockers` | `string`\[\] | 是 | 阻断原因编码列表 |
+| `checkToken` | `string` | 是 | 服务端签发的短时检查凭据，提交时原样传回 |
+| `storeVersion` | `number` | 是 | 检查时门店版本号 |
+| `bindingRevision` | `number` | 是 | 门店品牌绑定关系版本号 |
+| `fromRevision` | `number,null` | 是 | 检查时原品牌版本号 |
+| `toRevision` | `number,null` | 是 | 检查时目标品牌版本号 |
+
+
+#### GET `/biz/stores/{s}/operating-context`
+
+门店组织上下文　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `s` | path | `string` | 是 | — |
+| `managementNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`OperatingContext`](#operatingcontext)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `entityNo` | `string` | 是 | 经营主体编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `brand` | `object`（见下） \| `null` | 是 | 当前有效品牌摘要 |
+| `actions` | `string`\[\] | 是 | 当前账号可执行的动作集合 |
+| `pendingChange` | `object`（见下） \| `null` | 否 | 尚未完成的品牌变更摘要 |
+
+
+#### POST `/biz/stores/{store}/members`
+
+在当前品牌或门店录入会员　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+
+请求体：[`ScopeMemberCreateReq`](#scopemembercreatereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `phone` | `string` | 是 | 会员手机号查询条件 |
+| `remark` | `string` | 否 | 操作备注 |
+| `tagNos` | `string`\[\] | 否 | 会员标签编号列表 |
+
+**出参**（`data`）
+
+类型：[`ScopeMemberSummary`](#scopemembersummary)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scopeMemberNo` | `string` | 是 | 当前管理范围的会员编号 |
+| `displayName` | `string` | 是 | 脱敏显示名称 |
+| `phoneMasked` | `string` | 是 | 服务端脱敏手机号 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `sourceStoreNo` | `string` | 是 | 来源门店编号 |
+| `sourceStoreName` | `string` | 是 | 来源门店显示名称 |
+| `remark` | `string,null` | 是 | 操作备注 |
+
+
+#### GET `/biz/stores/{store}/stored-value/customer-candidates`
+
+品牌或单店会员候选　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `keyword` | query | `string` | 否 | 搜索关键词 |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`ScopeCandidatePage`](#scopecandidatepage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`ScopeMemberCandidate`](#scopemembercandidate)\[\] | 是 | 当前页业务记录 |
+| `nextCursor` | `string,null` | 是 | 下一页游标，无后续记录时为空 |
+| `identityConflictCount` | `number` | 是 | 候选身份冲突数量 |
+
+
+#### POST `/biz/stores/{store}/stored-value/customer-selections`
+
+识别当前运营范围会员　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+
+请求体：[`ScopeSelectCustomerReq`](#scopeselectcustomerreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `source` | [`ScopeSelectionSource`](#scopeselectionsource) | 是 | 顾客选择来源信息 |
+
+**出参**（`data`）
+
+类型：[`ScopeSelectedCustomer`](#scopeselectedcustomer)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `selection` | [`SvSelectedCustomer`](#svselectedcustomer) | 是 | 服务端顾客选择引用及有效期 |
+| `sourceStoreNo` | `string,null` | 是 | 来源门店编号 |
+| `sourceStoreName` | `string,null` | 是 | 来源门店显示名称 |
+
 
 #### GET `/biz/stores/{storeNo}/appointment-slots`
 
@@ -8057,6 +9491,280 @@ _无字段_
 **出参**（`data`）
 
 类型：[`FulfillmentImpactItem`](#fulfillmentimpactitem)\[\]
+
+
+#### GET `/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}`
+
+查询本店原储值进度　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `rechargeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | 充值业务编号 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `paidAmountMinor` | `number,null` | 是 | 实付充值金额，货币最小单位 |
+| `creditedTotalMinor` | `number,null` | 是 | 确认入账总金额，货币最小单位 |
+| `creditedAt` | `string,null` | 是 | 充值入账时间 |
+| `receivedAt` | `string,null` | 是 | 线下收款确认时间 |
+
+
+#### POST `/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}/cancel`
+
+取消本店未收款储值　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `rechargeNo` | path | `string` | 是 | — |
+
+请求体：[`SvCancelReq`](#svcancelreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `expectedRevision` | `number` | 是 | 调用方读取到的版本号，用于乐观锁校验 |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | 充值业务编号 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `paidAmountMinor` | `number,null` | 是 | 实付充值金额，货币最小单位 |
+| `creditedTotalMinor` | `number,null` | 是 | 确认入账总金额，货币最小单位 |
+| `creditedAt` | `string,null` | 是 | 充值入账时间 |
+| `receivedAt` | `string,null` | 是 | 线下收款确认时间 |
+
+
+#### POST `/biz/stores/{storeNo}/stored-value/issuer-recharges/cancel-create`
+
+取消未明确创建的原充值命令　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+请求体：[`SvRechargeCreate`](#svrechargecreate)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `customerRef` | `string` | 是 | 当前数据域签发的顾客选择引用 |
+| `planNo` | `string` | 是 | 充值方案编号 |
+| `versionNo` | `string` | 是 | 不可变充值方案版本编号 |
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | 充值业务编号 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `paidAmountMinor` | `number,null` | 是 | 实付充值金额，货币最小单位 |
+| `creditedTotalMinor` | `number,null` | 是 | 确认入账总金额，货币最小单位 |
+| `creditedAt` | `string,null` | 是 | 充值入账时间 |
+| `receivedAt` | `string,null` | 是 | 线下收款确认时间 |
+
+
+#### POST `/biz/stores/{storeNo}/stored-value/issuer-recharges/confirm-offline`
+
+确认商家线下储值　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+请求体：[`SvRechargeCreate`](#svrechargecreate)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `customerRef` | `string` | 是 | 当前数据域签发的顾客选择引用 |
+| `planNo` | `string` | 是 | 充值方案编号 |
+| `versionNo` | `string` | 是 | 不可变充值方案版本编号 |
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | 充值业务编号 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `paidAmountMinor` | `number,null` | 是 | 实付充值金额，货币最小单位 |
+| `creditedTotalMinor` | `number,null` | 是 | 确认入账总金额，货币最小单位 |
+| `creditedAt` | `string,null` | 是 | 充值入账时间 |
+| `receivedAt` | `string,null` | 是 | 线下收款确认时间 |
+
+
+#### POST `/biz/stores/{storeNo}/stored-value/issuer-recharges/resolve`
+
+查询原充值创建结果　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+请求体：[`SvRechargeCreate`](#svrechargecreate)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `customerRef` | `string` | 是 | 当前数据域签发的顾客选择引用 |
+| `planNo` | `string` | 是 | 充值方案编号 |
+| `versionNo` | `string` | 是 | 不可变充值方案版本编号 |
+
+**出参**（`data`）
+
+类型：[`SvRechargeResolve`](#svrechargeresolve)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `found` | `boolean` | 是 | 是否找到原幂等命令的业务结果 |
+| `recharge` | [`SvProgress`](#svprogress) \| `null` | 是 | 充值处理结果 |
+
+
+#### GET `/biz/stores/{storeNo}/stored-value/issuer-records`
+
+门店储值收支　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `storeNo` | query | `string` | 是 | — |
+| `type` | query | `ALL` \| `RECHARGE` \| `REDEMPTION` | 是 | 类型筛选，取值见对应枚举 |
+| `startDate` | query | `string` | 否 | — |
+| `endDate` | query | `string` | 否 | — |
+| `accountRef` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvRecordPage`](#svrecordpage)
+
+_无字段_
+
+
+#### GET `/biz/stores/{storeNo}/stored-value/issuer-records/{recordNo}`
+
+储值收支详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `storeNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvRecord`](#svrecord)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
+| `voucherDocumentNo` | `string,null` | 否 | 原凭证展示单号 |
+| `recordNo` | `string` | 是 | 储值流水内部编号 |
+| `maskedName` | `string` | 是 | 服务端脱敏的顾客名称 |
+| `maskedPhone` | `string` | 是 | 服务端脱敏的手机号 |
+| `type` | `RECHARGE` \| `REDEMPTION` | 是 | 业务类型编码或类型摘要，按当前接口定义解释 |
+| `title` | `string` | 是 | 面向用户的业务标题 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `storeName` | `string` | 是 | 门店显示名称 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `signedAmountMinor` | `number` | 是 | 带收支方向符号的金额，货币最小单位 |
+| `balanceAfterMinor` | `number` | 是 | 此笔流水入账后余额，货币最小单位 |
+| `occurredAt` | `string` | 是 | 业务实际发生时间 |
+| `businessNo` | `string` | 是 | 来源业务编号 |
+| `planNo` | `string,null` | 是 | 充值方案编号 |
+| `versionNo` | `string,null` | 是 | 不可变充值方案版本编号 |
+| `paidAmountMinor` | `number,null` | 是 | 实付充值金额，货币最小单位 |
+| `bonusAmountMinor` | `number,null` | 是 | 赠送金额，货币最小单位 |
+
+
+#### GET `/biz/stores/{storeNo}/stored-value/issuers`
+
+门店可用发行方　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StoreIssuerOptions`](#storeissueroptions)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `legacyMode` | `boolean` | 是 | 当前是否使用兼容储值模式 |
+| `issuers` | [`StoreIssuerOption`](#storeissueroption)\[\] | 是 | 可用储值发行方列表 |
+
+
+#### GET `/biz/stores/{storeNo}/stored-value/recharge-options`
+
+会员可用储值方案　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `customerRef` | query | `string` | 是 | — |
+| `scopeType` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvIssuerRechargeOptions`](#svissuerrechargeoptions)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerOptions` | [`StoreIssuerOptions`](#storeissueroptions) | 是 | 门店可用发行方选项 |
+| `plans` | [`SvPlanPage`](#svplanpage) | 是 | 可用充值方案分页 |
 
 
 #### GET `/biz/stores/mine`
@@ -8163,6 +9871,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -8196,16 +9905,16 @@ _无字段_
 |---|---|:---:|---|
 | `itemId` | `number` | 是 | — |
 | `skuNo` | `string,null` | 否 | — |
-| `title` | `string` | 是 | — |
+| `title` | `string` | 是 | 面向用户的业务标题 |
 | `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `status` | `string` | 是 | — |
+| `status` | `string` | 是 | 服务端业务状态编码 |
 | `label` | `string` | 是 | — |
-| `at` | `number` | 是 | — |
+| `at` | `number` | 是 | 业务发生时间 |
 
 ### AfterSaleStatus
 
@@ -8315,7 +10024,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `reason` | `string` | 是 | — |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
 | `count` | `number` | 是 | — |
 
 ### AudienceRef
@@ -8376,7 +10085,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `goodsNo` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
+| `title` | `string` | 是 | 面向用户的业务标题 |
 | `qty` | `number` | 是 | — |
 
 `byPickup[]` 的字段：
@@ -8447,6 +10156,59 @@ _无字段_
 |---|---|:---:|---|
 | `carrier` | `string` | 是 | 微信 delivery_id |
 | `weightKg` | `number` | 是 | 申报重量（公斤），0.1–30。快递员上门称重后以计费重量为准 |
+
+### Brand
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `canManageLegacy` | `boolean` | 否 | 是否允许使用原经营主体管理入口 |
+| `canConfigureBrand` | `boolean` | 否 | 当前账号是否允许配置品牌 |
+| `resourceType` | `string` | 否 | 被授权资源类型编码 |
+| `resourceNo` | `string` | 否 | 被授权资源编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `brandNo` | `string` | 是 | 品牌编号 |
+| `entityNo` | `string` | 否 | 经营主体编号 |
+| `storeNo` | `string` | 否 | 门店编号 |
+| `scopeRevision` | `number` | 是 | 资源可见范围版本号 |
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `logo` | `string` | 否 | 品牌标志资源地址 |
+| `storeCount` | `number` | 否 | 品牌下可见门店数量 |
+| `createdAt` | `string` | 否 | 创建时间 |
+| `updatedAt` | `string` | 否 | 最近更新时间 |
+| `createdByLabel` | `string` | 否 | 创建人显示名称 |
+| `updatedByLabel` | `string` | 否 | 最近更新人显示名称 |
+| `actions` | `string`\[\] | 否 | 当前账号可执行的动作集合 |
+
+### BrandChange
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `changeNo` | `string` | 是 | 品牌变更业务编号 |
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `fromBrandNo` | `string` | 否 | 变更前品牌编号 |
+| `toBrandNo` | `string` | 否 | 目标品牌编号；解除绑定时为空 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `applied` | `boolean` | 是 | 变更是否已经应用到有效关系 |
+| `blockers` | `string`\[\] | 否 | 阻断原因编码列表 |
+| `actions` | `string`\[\] | 否 | 当前账号可执行的动作集合 |
+| `reason` | `string` | 否 | 业务原因或阻断说明 |
+
+### BrandImpact
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `allowed` | `boolean` | 是 | 当前业务校验是否允许继续 |
+| `canDecide` | `boolean` | 否 | 当前账号是否允许审批此变更 |
+| `blockers` | `string`\[\] | 是 | 阻断原因编码列表 |
+| `checkToken` | `string` | 是 | 服务端签发的短时检查凭据，提交时原样传回 |
+| `storeVersion` | `number` | 是 | 检查时门店版本号 |
+| `bindingRevision` | `number` | 是 | 门店品牌绑定关系版本号 |
+| `fromRevision` | `number,null` | 是 | 检查时原品牌版本号 |
+| `toRevision` | `number,null` | 是 | 检查时目标品牌版本号 |
 
 ### BusinessMode
 
@@ -8633,6 +10395,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `issueNo` | `string` | 是 | 这一批发放的编号 |
 | `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
 | `segmentNo` | `string,null` | 否 | 发给哪个人群。空 = 手动挑的人 |
@@ -8651,14 +10414,14 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `type` | `string` | 是 | — |
-| `value` | `string` | 是 | — |
+| `type` | `string` | 是 | 业务类型编码或类型摘要，按当前接口定义解释 |
+| `value` | `string` | 是 | 当前规则配置值 |
 
 `skipReasons[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `reason` | `string` | 是 | — |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
 | `count` | `number` | 是 | — |
 
 ### CouponRedeemResult
@@ -9152,7 +10915,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `options` | `string`\[\] | 是 | — |
 
 `params[]` 的字段：
@@ -9160,9 +10923,9 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `dimNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `label` | `string` | 是 | — |
-| `source` | `string` | 是 | — |
+| `source` | `string` | 是 | 顾客选择来源信息 |
 | `confidence` | `number` | 是 | — |
 | `rawName` | `string` | 否 | 原文叫法（净重）。`name` 是对上之后的标准名（净含量）。端上靠它找同义的旧自由参数 |
 
@@ -9378,6 +11141,112 @@ _无字段_
 - `BLOCKED`
 - `NEEDS_CONFIRM`
 
+### InventoryAccountingMode
+
+Current backend accounting mode; inventory is deducted at payment.
+
+类型：`string`
+
+### InventoryState
+
+Inventory onboarding state.
+
+枚举取值：
+
+- `UNMANAGED`
+- `INITIALIZING`
+- `MAPPED`
+
+### InventoryTraceEventStatus
+
+Delivery state of an inventory trace event.
+
+枚举取值：
+
+- `COMPLETED`
+- `PENDING`
+- `FAILED`
+- `WARNING`
+- `SKIPPED`
+- `ARCHIVED`
+
+### InventoryTraceOutboxMode
+
+Outbox implementation supplying the inventory trace.
+
+枚举取值：
+
+- `UNIFIED`
+- `LEGACY`
+
+### IssuerAccessAck
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerNo` | `string` | 是 | 储值发行方编号 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `sourceRevision` | `number` | 是 | 来源配置版本号 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+
+### IssuerConfiguration
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `settlementEntityNo` | `string` | 是 | 承担发行结算责任的经营主体编号 |
+| `collectionMode` | `string` | 是 | 发行方收款模式编码 |
+| `clearingMode` | `string` | 是 | 发行方清分模式编码 |
+| `debitAllocationMode` | `string` | 是 | 消费扣减的资金分配模式编码 |
+| `currency` | `string` | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `marketZone` | `string` | 是 | 市场及时区配置编码 |
+| `routes` | [`IssuerRoute`](#issuerroute)\[\] | 是 | 生效支付收款路由列表 |
+| `expectedRevision` | `number` | 是 | 调用方读取到的版本号，用于乐观锁校验 |
+
+### IssuerConfigureRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `configuration` | [`IssuerConfiguration`](#issuerconfiguration) | 是 | 待校验或保存的发行配置 |
+
+### IssuerImpact
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `allowed` | `boolean` | 是 | 当前业务校验是否允许继续 |
+| `affectedAccountCount` | `number` | 是 | 受配置变更影响的账户数量 |
+| `hasPending` | `boolean` | 是 | 是否存在尚未结清的相关业务 |
+| `blockers` | `string`\[\] | 是 | 阻断原因编码列表 |
+
+### IssuerRoute
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `paymentMerchantNo` | `string,null` | 是 | 收款配置引用的支付商户编号 |
+| `entityNo` | `string` | 是 | 经营主体编号 |
+| `storeNo` | `string,null` | 是 | 门店编号 |
+| `channel` | `string` | 是 | 消息或支付通道编码 |
+| `scene` | `string` | 是 | 支付或业务场景编码 |
+
+### IssuerView
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `settlementEntityNo` | `string` | 是 | 承担发行结算责任的经营主体编号 |
+| `collectionMode` | `string` | 是 | 发行方收款模式编码 |
+| `clearingMode` | `string` | 是 | 发行方清分模式编码 |
+| `debitAllocationMode` | `string` | 是 | 消费扣减的资金分配模式编码 |
+| `currency` | `string` | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `marketZone` | `string` | 是 | 市场及时区配置编码 |
+| `routes` | [`IssuerRoute`](#issuerroute)\[\] | 是 | 生效支付收款路由列表 |
+| `issuerNo` | `string` | 是 | 储值发行方编号 |
+| `issuerVersionNo` | `string` | 是 | 不可变发行配置版本编号 |
+| `scopeType` | `STORE` \| `BRAND` | 是 | 储值发行范围类型：STORE或BRAND |
+| `scopeNo` | `string` | 是 | 储值发行范围编号 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+
 ### LimitReason
 
 与后端 `OrderVO.ItemVO.LIMIT_STOCK / LIMIT_PER_USER` 逐字一致
@@ -9402,6 +11271,188 @@ _无字段_
 | `detail` | `string,null` | 是 | 查询结果或最近节点摘要；不含收件人手机号。 |
 | `occurredAt` | `number` | 是 | 更新时间，UTC 毫秒时间戳。 |
 
+### ManagementAudit
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `action` | `string` | 是 | 本次执行的业务动作 |
+| `actorKey` | `string` | 是 | 认证管理账号标识 |
+| `occurredAt` | `string` | 是 | 业务实际发生时间 |
+
+### ManagementAuditPage
+
+类型：`ManagementPage_ManagementAudit`
+
+### ManagementBrandCheckReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `toBrandNo` | `string,null` | 是 | 目标品牌编号；解除绑定时为空 |
+
+### ManagementBrandDecisionReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `decision` | `APPROVE` \| `REJECT` | 是 | 审批决定编码 |
+| `expectedRevision` | `number` | 是 | 调用方读取到的版本号，用于乐观锁校验 |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
+
+### ManagementBrandPage
+
+类型：`ManagementPage_Brand`
+
+### ManagementBrandStatusReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `targetStatus` | `ACTIVE` \| `INACTIVE` | 是 | 待切换的业务状态 |
+| `expectedRevision` | `number` | 是 | 调用方读取到的版本号，用于乐观锁校验 |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
+
+### ManagementContext
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actorKey` | `string` | 是 | 认证管理账号标识 |
+| `spaces` | [`ManagementSpace`](#managementspace)\[\] | 是 | 当前账号可见的经营管理空间列表 |
+| `canBootstrap` | `boolean` | 是 | 是否允许创建初始管理空间 |
+| `bootstrapSources` | `object`（见下）\[\] | 是 | 当前账号可用于创建管理空间的授权来源 |
+
+`bootstrapSources[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `accountNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | 经营主体编号 |
+| `entityName` | `string` | 否 | — |
+| `stores` | `object`（见下）\[\] | 是 | — |
+| `paymentMerchants` | `object`（见下）\[\] | 是 | — |
+
+`bootstrapSources[].stores[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+
+`bootstrapSources[].paymentMerchants[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payMerchantNo` | `string` | 是 | 支付商户编号 |
+
+### ManagementGrant
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actorLabel` | `string` | 否 | 操作人显示名称 |
+| `resourceName` | `string` | 否 | 被授权资源显示名称 |
+| `grantNo` | `string` | 是 | 授权记录编号 |
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `actorNo` | `string` | 是 | 被授权管理账号编号 |
+| `resourceType` | `string` | 是 | 被授权资源类型编码 |
+| `resourceNo` | `string` | 是 | 被授权资源编号 |
+| `permissionCode` | `string` | 是 | 经营管理授权能力码 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `delegatable` | `boolean,number` | 是 | 是否允许被授权人继续转授 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+
+### ManagementGrantPage
+
+类型：`ManagementPage_ManagementGrant`
+
+### ManagementPage_Brand
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`Brand`](#brand)\[\] | 是 | 当前页业务记录 |
+| `nextCursor` | `string,null` | 是 | 下一页游标，无后续记录时为空 |
+
+### ManagementPage_ManagementAudit
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`ManagementAudit`](#managementaudit)\[\] | 是 | 当前页业务记录 |
+| `nextCursor` | `string,null` | 是 | 下一页游标，无后续记录时为空 |
+
+### ManagementPage_ManagementGrant
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`ManagementGrant`](#managementgrant)\[\] | 是 | 当前页业务记录 |
+| `nextCursor` | `string,null` | 是 | 下一页游标，无后续记录时为空 |
+
+### ManagementPage_ManagementRecipient
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`ManagementRecipient`](#managementrecipient)\[\] | 是 | 当前页业务记录 |
+| `nextCursor` | `string,null` | 是 | 下一页游标，无后续记录时为空 |
+
+### ManagementPage_ManagementResource
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`ManagementResource`](#managementresource)\[\] | 是 | 当前页业务记录 |
+| `nextCursor` | `string,null` | 是 | 下一页游标，无后续记录时为空 |
+
+### ManagementRecipient
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actorNo` | `string` | 是 | 被授权管理账号编号 |
+| `displayName` | `string` | 是 | 脱敏显示名称 |
+
+### ManagementRecipientPage
+
+类型：`ManagementPage_ManagementRecipient`
+
+### ManagementResource
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `canManageLegacy` | `boolean` | 否 | 是否允许使用原经营主体管理入口 |
+| `canConfigureBrand` | `boolean` | 否 | 当前账号是否允许配置品牌 |
+| `resourceType` | `string` | 否 | 被授权资源类型编码 |
+| `resourceNo` | `string` | 否 | 被授权资源编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `brandNo` | `string` | 否 | 品牌编号 |
+| `entityNo` | `string` | 否 | 经营主体编号 |
+| `storeNo` | `string` | 否 | 门店编号 |
+| `scopeRevision` | `number` | 否 | 资源可见范围版本号 |
+
+### ManagementResourcePage
+
+类型：`ManagementPage_ManagementResource`
+
+### ManagementSpace
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `canManageLegacy` | `boolean` | 否 | 是否允许使用原经营主体管理入口 |
+| `canConfigureBrand` | `boolean` | 否 | 当前账号是否允许配置品牌 |
+| `resourceType` | `string` | 否 | 被授权资源类型编码 |
+| `resourceNo` | `string` | 否 | 被授权资源编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `brandNo` | `string` | 否 | 品牌编号 |
+| `entityNo` | `string` | 否 | 经营主体编号 |
+| `storeNo` | `string` | 否 | 门店编号 |
+| `scopeRevision` | `number` | 否 | 资源可见范围版本号 |
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `actions` | `string`\[\] | 是 | 当前账号可执行的动作集合 |
+
+### ManagementSpaceCreateReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `sourceAccountNo` | `string` | 是 | 创建管理空间所使用的来源账号编号 |
+
 ### MarkArrivedReq
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -9413,6 +11464,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `campaignNo` | `string` | 是 | 活动单号 |
 | `merchantNo` | `string` | 是 | 所属商家。活动是店铺级的，不跨店 |
 | `type` | [`CampaignType`](#campaigntype) | 是 | 活动类型，决定下面哪几个可选字段有意义 |
@@ -9826,8 +11878,8 @@ _无字段_
 | `aggregateId` | `string` | 是 | Event aggregate that produced this synchronization. |
 | `eventType` | `string` | 是 | Inventory or order event type. |
 | `source` | `string` | 是 | System that requested or handled the synchronization. |
-| `status` | `COMPLETED` \| `PENDING` \| `FAILED` \| `WARNING` \| `SKIPPED` \| `ARCHIVED` | 是 | Delivery state of the synchronization event. |
-| `outboxMode` | `UNIFIED` \| `LEGACY` | 是 | Outbox implementation that persisted the event. |
+| `status` | [`InventoryTraceEventStatus`](#inventorytraceeventstatus) | 是 | Delivery state of the synchronization event. |
+| `outboxMode` | [`InventoryTraceOutboxMode`](#inventorytraceoutboxmode) | 是 | Outbox implementation that persisted the event. |
 
 `reservations[]` 的字段：
 
@@ -9916,7 +11968,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `activityNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `amountMinor` | `number` | 是 | — |
 
 ### MerchantOrderActionKind
@@ -9968,6 +12020,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `industry` | `string` | 否 | 行业编码，用于商家工作台能力选择 |
+| `description` | `string` | 否 | 对外展示的商家介绍 |
 | `merchantNo` | `string` | 是 | 商家单号 |
 | `name` | `string` | 是 | 店铺名 |
 | `logo` | `string` | 是 | 店铺 logo |
@@ -10181,6 +12235,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `batchNo` | `string` | 是 | 批次号。**与结算单上的批次号是同一个** —— 商家照着单子来问的就是它 |
 | `payChannel` | `string` | 是 | 支付通道码。**不同通道账期不同，所以不合批** |
 | `settleCycle` | `string` | 是 | 本批采用的账期规则，如 T+1 / WEEKLY |
@@ -10216,10 +12271,26 @@ _无字段_
 | `revoked` | `boolean` | 是 | 已撤销：原单留着（删单等于账上从没发生过），列表上标出来 |
 | `items` | [`OfflineSaleItem`](#offlinesaleitem)\[\] | 是 | 这一笔卖了哪几件货 |
 
+### OperatingContext
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `entityNo` | `string` | 是 | 经营主体编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+| `brand` | `object`（见下） \| `null` | 是 | 当前有效品牌摘要 |
+| `actions` | `string`\[\] | 是 | 当前账号可执行的动作集合 |
+| `pendingChange` | `object`（见下） \| `null` | 否 | 尚未完成的品牌变更摘要 |
+
 ### Order
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -10295,6 +12366,70 @@ _无字段_
 | `limitReason` | [`LimitReason`](#limitreason) \| `null` | 否 | 是谁挡住了 `maxQty`。到顶时那句话要说对：库存等补货能买，限购补货也没用 |
 | `limitPerUser` | `number,null` | 否 | 每人限购（只在设了限购且平台开关开着时给） |
 | `boughtQty` | `number,null` | 否 | 该用户已买量（未取消、未退款的单里的件数）。与 `limitPerUser` 同时出现 |
+
+### OrderPointsEarning
+
+Server-projected earning for an authorized order; accepted work is not an account credit.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单内部业务编号 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `currency` | `string` | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `state` | [`OrderPointsEarningState`](#orderpointsearningstate) | 是 | 服务端处理状态编码 |
+| `redemptionState` | [`OrderPointsRedemptionState`](#orderpointsredemptionstate) | 是 | 积分抵扣处理状态 |
+| `usedPoints` | `number` | 是 | 订单已抵扣的积分数量 |
+| `refundState` | [`OrderPointsRefundState`](#orderpointsrefundstate) | 是 | 原积分返还处理状态 |
+| `returnedPoints` | `number` | 是 | 已经返还的原抵扣积分数量 |
+| `expectedPoints` | `number` | 是 | 订单预计可获得的积分数量 |
+| `grantedPoints` | `number` | 是 | 已经确认发放的积分数量 |
+| `pendingPoints` | `number` | 是 | 等待确认发放的积分数量 |
+| `availablePoints` | `number` | 是 | 当前可用积分数量 |
+| `reclaimedPoints` | `number` | 是 | 退款后已收回的赠送积分数量 |
+| `reason` | `string,null` | 是 | 业务原因或阻断说明 |
+
+### OrderPointsEarningState
+
+Projected order earning state, independent of ledger credit.
+
+枚举取值：
+
+- `NONE`
+- `EXPECTED`
+- `PROCESSING`
+- `PENDING`
+- `AVAILABLE`
+- `RETRYABLE`
+- `MANUAL`
+- `SKIPPED`
+- `RECLAIMED`
+
+### OrderPointsRedemptionState
+
+Projected order redemption and refund progress.
+
+枚举取值：
+
+- `NONE`
+- `PROCESSING`
+- `HELD`
+- `RELEASED`
+- `CONSUMED`
+- `REFUND_PROCESSING`
+- `RETURNED`
+- `PARTIALLY_RETURNED`
+
+### OrderPointsRefundState
+
+Projected order points refund progress.
+
+枚举取值：
+
+- `NONE`
+- `PROCESSING`
+- `MANUAL`
+- `COMPLETED`
 
 ### OrderReceiver
 
@@ -10395,6 +12530,17 @@ _无字段_
 | `activatedAt` | `number` | 否 | 通道开户完成的时间 —— 从这一刻起才真的能收钱 |
 | `storeNo` | `string` | 否 | 这条进件是**为哪家门店**做的；空 = 主体级默认号。 多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。 |
 
+### PaymentMerchant
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payMerchantNo` | `string` | 是 | 支付商户编号 |
+| `entityNo` | `string` | 是 | 经营主体编号 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `payChannel` | `string` | 是 | 支付渠道编码 |
+| `applyStatus` | `string` | 是 | 支付商户申请状态 |
+| `payMethods` | `string`\[\] | 是 | 已开通支付方式列表 |
+
 ### PaymentResolution
 
 支付异常投影，不包含其他门店的现金明细。
@@ -10434,7 +12580,7 @@ _无字段_
 |---|---|:---:|---|
 | `nickname` | `string` | 是 | — |
 | `qty` | `number` | 是 | — |
-| `orderNo` | `string` | 是 | — |
+| `orderNo` | `string` | 是 | 订单内部业务编号 |
 
 ### Pickup
 
@@ -10763,7 +12909,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `reason` | `string` | 是 | — |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
 | `count` | `number` | 是 | — |
 
 ### ReachResult
@@ -10780,7 +12926,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `reason` | `string` | 是 | — |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
 | `count` | `number` | 是 | — |
 
 ### ReachScene
@@ -10822,7 +12968,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `reason` | `string` | 是 | — |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
 | `count` | `number` | 是 | — |
 
 ### ReceiveReturnReq
@@ -10946,17 +13092,17 @@ _无字段_
 |---|---|:---:|---|
 | `regionCode` | `string` | 是 | — |
 | `level` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `path` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `path` | `string` | 是 | 分类层级路径 |
 
 `communities[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `communityNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `regionCode` | `string,null` | 否 | — |
-| `path` | `string` | 是 | — |
+| `path` | `string` | 是 | 分类层级路径 |
 | `kind` | `string,null` | 否 | ESTATE 小区 / VILLAGE 村。判「这一条底下还有没有下一级」用它，名字这时已经是口语名了 |
 | `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。为空 = 顶层聚落。 少了它，搜出来的楼栋在整个小区已被勾中时仍显示成「没选上」，商家会再勾一遍。 |
 | `originCode` | `string,null` | 否 | 下钻要用它，不是 regionCode（那是它挂的街道/镇）。没有它就是地图开通的小区，没有下一级 |
@@ -10970,9 +13116,9 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `regionCode` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `streetCode` | `string` | 是 | 它挂的街道码（9 位）。提报要挂到这下面 |
-| `path` | `string` | 是 | — |
+| `path` | `string` | 是 | 分类层级路径 |
 | `latE6` | `number,null` | 否 | — |
 | `lngE6` | `number,null` | 否 | — |
 | `rural` | `boolean` | 否 | 是不是村委会（服务端存的）。判「这一条给不给 ›」用它 |
@@ -11169,6 +13315,49 @@ _无字段_
 
 类型：`StoreProfile`
 
+### ScopeCandidatePage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`ScopeMemberCandidate`](#scopemembercandidate)\[\] | 是 | 当前页业务记录 |
+| `nextCursor` | `string,null` | 是 | 下一页游标，无后续记录时为空 |
+| `identityConflictCount` | `number` | 是 | 候选身份冲突数量 |
+
+### ScopeMemberCandidate
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `displayName` | `string` | 是 | 脱敏显示名称 |
+| `phoneMasked` | `string` | 是 | 服务端脱敏手机号 |
+| `memberStatus` | `string` | 是 | 会员当前状态编码 |
+| `canRecharge` | `boolean` | 是 | 当前条件是否允许充值 |
+| `unavailableReason` | `string,null` | 是 | 当前业务不可用的原因编码 |
+| `account` | `object`（见下） \| `null` | 是 | 当前范围的储值账户摘要 |
+| `memberNo` | `string,null` | 是 | 当前门店会员编号 |
+| `sourceStoreNo` | `string,null` | 是 | 来源门店编号 |
+| `sourceStoreName` | `string,null` | 是 | 来源门店显示名称 |
+| `lastRechargeAt` | `string,null` | 否 | 最近一次充值时间 |
+
+### ScopeMemberCreateReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `phone` | `string` | 是 | 会员手机号查询条件 |
+| `remark` | `string` | 否 | 操作备注 |
+| `tagNos` | `string`\[\] | 否 | 会员标签编号列表 |
+
+### ScopeMemberSummary
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scopeMemberNo` | `string` | 是 | 当前管理范围的会员编号 |
+| `displayName` | `string` | 是 | 脱敏显示名称 |
+| `phoneMasked` | `string` | 是 | 服务端脱敏手机号 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `sourceStoreNo` | `string` | 是 | 来源门店编号 |
+| `sourceStoreName` | `string` | 是 | 来源门店显示名称 |
+| `remark` | `string,null` | 是 | 操作备注 |
+
 ### ScopeParseCandidate
 
 同名多处时的一个候选
@@ -11222,6 +13411,24 @@ _无字段_
 | `currentBuyers` | `number` | 是 | 现在这些聚落里有几个能定位的买家 |
 | `nextCommunities` | `number` | 是 | 改成这一组之后覆盖几个聚落 |
 | `nextBuyers` | `number` | 是 | 改成这一组之后有几个能定位的买家 |
+
+### ScopeSelectCustomerReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `source` | [`ScopeSelectionSource`](#scopeselectionsource) | 是 | 顾客选择来源信息 |
+
+### ScopeSelectedCustomer
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `selection` | [`SvSelectedCustomer`](#svselectedcustomer) | 是 | 服务端顾客选择引用及有效期 |
+| `sourceStoreNo` | `string,null` | 是 | 来源门店编号 |
+| `sourceStoreName` | `string,null` | 是 | 来源门店显示名称 |
+
+### ScopeSelectionSource
+
+类型：`object`（见下） \| `object`（见下） \| `object`（见下）
 
 ### SellRule
 
@@ -11329,6 +13536,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `batchDocumentNo` | `string,null` | 否 | 结算批次展示单号，业务操作仍使用原编号 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `settleNo` | `string` | 是 | 结算单号 |
 | `subOrderNo` | `string` | 是 | 对应的子订单号 —— 分账以它为单位 |
 | `orderNo` | `string` | 是 | 所属主单号 |
@@ -11511,7 +13720,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `line` | `number` | 是 | — |
-| `reason` | `string` | 是 | — |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
 
 `samples[]` 的字段：
 
@@ -11721,12 +13930,13 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `batchNo` | `string` | 是 | Identifier of this inventory alignment batch. |
 | `storeNo` | `string` | 是 | Store whose opening inventory is being aligned. |
 | `mode` | [`StockAlignMode`](#stockalignmode) | 是 | Whether alignment adopts mall quantities or a physical count. |
 | `snapshotVersion` | `string` | 是 | Inventory snapshot version used to guard against stale confirmation. |
 | `expiresAt` | `number,null` | 是 | Expiry time in milliseconds; null when the preview has no expiry. |
-| `status` | `PREVIEW` \| `PROCESSING` \| `PARTIAL` \| `BLOCKED` \| `COMPLETED` \| `STALE` \| `EXPIRED` | 是 | Current preview or execution state of the batch. |
+| `status` | [`StockAlignmentStatus`](#stockalignmentstatus) | 是 | Current preview or execution state of the batch. |
 | `completed` | `number` | 是 | Number of rows aligned successfully. |
 | `blocked` | `number` | 是 | Number of rows blocked from alignment. |
 | `waiting` | `number` | 是 | Number of rows waiting for a later operation. |
@@ -11737,16 +13947,30 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `skuNo` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
+| `title` | `string` | 是 | 面向用户的业务标题 |
 | `spec` | `string,null` | 是 | — |
 | `beforeQty` | `number,null` | 是 | — |
 | `reserved` | `number,null` | 是 | — |
 | `mallStock` | `number` | 是 | — |
 | `mallLocked` | `number` | 是 | — |
 | `afterQty` | `number,null` | 是 | — |
-| `status` | `string` | 是 | — |
+| `status` | `string` | 是 | 服务端业务状态编码 |
 | `operationNo` | `string` | 是 | — |
 | `errorCode` | `string,null` | 是 | — |
+
+### StockAlignmentStatus
+
+Persisted stock alignment batch state.
+
+枚举取值：
+
+- `PREVIEW`
+- `PROCESSING`
+- `PARTIAL`
+- `BLOCKED`
+- `COMPLETED`
+- `STALE`
+- `EXPIRED`
 
 ### StockBalance
 
@@ -11935,8 +14159,8 @@ Merchant stock overview; matches InventoryOverviewQuery. Null physical values me
 | `storeNo` | `string` | 是 | Merchant store identifier used to scope inventory values. |
 | `skuNo` | `string` | 是 | SKU identifier for the inventory row. |
 | `unit` | `string,null` | 是 | Physical stock unit; null when the SKU has no configured unit. |
-| `inventoryState` | `UNMANAGED` \| `INITIALIZING` \| `MAPPED` | 是 | Inventory onboarding state: unmanaged, initializing or mapped. |
-| `accountingMode` | `PAYMENT_DEDUCT` \| `HANDOFF_DEDUCT` | 是 | Point at which physical inventory is deducted: payment or handoff. |
+| `inventoryState` | [`InventoryState`](#inventorystate) | 是 | Inventory onboarding state: unmanaged, initializing or mapped. |
+| `accountingMode` | [`InventoryAccountingMode`](#inventoryaccountingmode) | 是 | Point at which physical inventory is deducted; currently payment only. |
 | `onHand` | `number,null` | 是 | Physical on-hand quantity; null means the value is unknown. |
 | `reserved` | `number,null` | 是 | Quantity reserved by open fulfillment work; null means unknown. |
 | `available` | `number,null` | 是 | Physical quantity not reserved; null means it cannot be calculated. |
@@ -11954,7 +14178,7 @@ Merchant stock overview; matches InventoryOverviewQuery. Null physical values me
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `scopeType` | `string` | 是 | — |
+| `scopeType` | `string` | 是 | 储值发行范围类型：STORE或BRAND |
 | `scopeRef` | `string` | 是 | — |
 | `ruleType` | `string` | 是 | — |
 | `param` | `number` | 是 | — |
@@ -11987,12 +14211,25 @@ Merchant stock overview; matches InventoryOverviewQuery. Null physical values me
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
 | `operationNo` | `string` | 是 | Identifier of this stock synchronization operation. |
 | `skuNo` | `string` | 是 | SKU whose stock was synchronized. |
 | `reason` | `string` | 是 | Business reason recorded for the synchronization. |
-| `status` | `PROCESSING` \| `WAITING` \| `FAILED` \| `BLOCKED` \| `COMPLETED` | 是 | Current processing state of the operation. |
+| `status` | [`StockSyncOperationStatus`](#stocksyncoperationstatus) | 是 | Current processing state of the operation. |
 | `result` | `object`（见下） \| `null` | 是 | Applied quantity change or skip details; null before processing finishes. |
 | `updatedAt` | `string` | 是 | Time when this operation was last updated. |
+
+### StockSyncOperationStatus
+
+Persisted stock synchronization operation state.
+
+枚举取值：
+
+- `PROCESSING`
+- `WAITING`
+- `FAILED`
+- `BLOCKED`
+- `COMPLETED`
 
 ### StockSyncState
 
@@ -12038,7 +14275,7 @@ Merchant stock overview; matches InventoryOverviewQuery. Null physical values me
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `itemId` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 业务对象显示名称 |
 | `specText` | `string` | 否 | — |
 | `qty` | `number` | 是 | — |
 | `uom` | `string` | 否 | — |
@@ -12106,8 +14343,8 @@ Merchant stock overview; matches InventoryOverviewQuery. Null physical values me
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `type` | `string` | 是 | — |
-| `value` | `string` | 是 | — |
+| `type` | `string` | 是 | 业务类型编码或类型摘要，按当前接口定义解释 |
+| `value` | `string` | 是 | 当前规则配置值 |
 
 ### StoreCategory
 
@@ -12165,6 +14402,29 @@ Merchant stock overview; matches InventoryOverviewQuery. Null physical values me
 | `locked` | `boolean` | 否 | 运营锁路（P2）：置灰不可改，文案「平台已暂停，联系运营」 |
 | `scopeMode` | `string` | 否 | ALL / SUBSET（P2）：这一路只送经营范围的一个子集 |
 | `areaNos` | `string`\[\] | 否 | SUBSET 时适用的范围项 area_no |
+
+### StoreIssuerOption
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerNo` | `string` | 是 | 储值发行方编号 |
+| `scopeType` | `string` | 是 | 储值发行范围类型：STORE或BRAND |
+| `scopeNo` | `string` | 是 | 储值发行范围编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `currency` | `string` | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `writeMode` | `string` | 是 | 发行方允许的写入模式编码 |
+| `canRecharge` | `boolean` | 是 | 当前条件是否允许充值 |
+| `canRedeem` | `boolean` | 是 | 当前发行配置是否允许消费核销 |
+| `unavailableReason` | `string,null` | 是 | 当前业务不可用的原因编码 |
+
+### StoreIssuerOptions
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `legacyMode` | `boolean` | 是 | 当前是否使用兼容储值模式 |
+| `issuers` | [`StoreIssuerOption`](#storeissueroption)\[\] | 是 | 可用储值发行方列表 |
 
 ### StorePointAccount
 
@@ -12231,6 +14491,10 @@ StorePointAgreement 的 settleMode 取值域，按服务端契约校验。
 | `id` | `number` | 是 | 持久记录主键 |
 | `entryNo` | `string` | 是 | 不可变积分分录编号 |
 | `voucherNo` | `string` | 是 | 原记账凭证编号 |
+| `voucherDocumentNo` | `string,null` | 否 | 原凭证展示单号 |
+| `direction` | `string,null` | 否 | 流水收支方向编码 |
+| `businessRef` | `string,null` | 否 | 来源业务引用 |
+| `orderNo` | `string,null` | 否 | 订单内部业务编号 |
 | `holderType` | `string` | 是 | 账本持有人类型 |
 | `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
 | `bucket` | `string` | 是 | 积分账本或资金池分桶 |
@@ -12271,8 +14535,8 @@ Current-store statement projection; source positions and bank routes remain serv
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `number` | `number` | 是 | — |
-| `points` | `number` | 是 | — |
-| `reason` | `string,null` | 是 | — |
+| `points` | `number` | 是 | 按当前规则计算的积分数量 |
+| `reason` | `string,null` | 是 | 业务原因或阻断说明 |
 
 ### StorePointStatementChange
 
@@ -12296,9 +14560,9 @@ Current-store statement projection; source positions and bank routes remain serv
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `orderNo` | `string` | 是 | — |
-| `subOrderNo` | `string` | 是 | — |
-| `points` | `number` | 是 | — |
+| `orderNo` | `string` | 是 | 订单内部业务编号 |
+| `subOrderNo` | `string` | 是 | 子订单内部业务编号 |
+| `points` | `number` | 是 | 按当前规则计算的积分数量 |
 
 ### StorePointStatementPage
 
@@ -12336,6 +14600,9 @@ Pay ledger views are scoped to the authenticated current store and one points ty
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `earningPaused` | `boolean` | 否 | Whether order earning is temporarily paused for this points type. |
+| `orderDefault` | `boolean` | 否 | Whether this type is the server-selected default for order points earning. |
+| `name` | `string` | 是 | 积分名称 |
 | `deductRatioBp` | `number` | 是 | 最大抵扣比例，万分比 |
 | `idleDays` | `number` | 是 | 无活动失效天数 |
 | `typeCode` | `string` | 是 | 积分类型唯一编码 |
@@ -12452,6 +14719,242 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `status` | `string` | 是 | ACTIVE 在用 · ARCHIVED 已停用。**停用不删除** —— 历史单据要指得回去 |
 | `fromPlatform` | `boolean` | 是 | 引用平台档案。**据此把名称与联系方式置灰** —— 不看这一位的话，商家会改了才发现改不动。 |
 
+### SvAccount
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `accountRef` | `string` | 是 | 服务端签发的账户引用，非用户编号 |
+| `maskedName` | `string` | 是 | 服务端脱敏的顾客名称 |
+| `maskedPhone` | `string` | 是 | 服务端脱敏的手机号 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `balanceMinor` | `number` | 是 | 账面余额，货币最小单位 |
+| `heldMinor` | `number` | 是 | 冻结金额，货币最小单位 |
+| `availableMinor` | `number` | 是 | 可用余额，货币最小单位 |
+| `lastOccurredAt` | `string,null` | 是 | 最近业务发生时间 |
+| `lastRechargeAt` | `string,null` | 否 | 最近一次充值时间 |
+
+### SvAccountPage
+
+类型：`SvPage_SvAccount`
+
+### SvCancelReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `expectedRevision` | `number` | 是 | 调用方读取到的版本号，用于乐观锁校验 |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
+
+### SvCandidate
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `memberNo` | `string` | 是 | 当前门店会员编号 |
+| `displayName` | `string` | 是 | 脱敏显示名称 |
+| `phoneMasked` | `string` | 是 | 服务端脱敏手机号 |
+| `memberStatus` | `string` | 是 | 会员当前状态编码 |
+| `canRecharge` | `boolean` | 是 | 当前条件是否允许充值 |
+| `unavailableReason` | `string,null` | 是 | 当前业务不可用的原因编码 |
+| `account` | `object`（见下） \| `null` | 是 | 当前范围的储值账户摘要 |
+
+### SvContext
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `currencyScale` | `number` | 是 | 货币最小单位的小数位数 |
+| `timeZone` | `string` | 是 | 业务日期所采用的时区 |
+
+### SvIssuerEntity
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 是 | 经营主体编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `accepted` | `boolean` | 是 | 是否已接受该经营主体 |
+| `canAccept` | `boolean` | 是 | 是否允许接受该发行配置 |
+
+### SvIssuerLookup
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuer` | [`IssuerView`](#issuerview) \| `null` | 是 | 当前生效发行方摘要；未配置时为空 |
+
+### SvIssuerManagementQuery
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | 经营管理空间编号 |
+
+### SvIssuerRechargeOptions
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerOptions` | [`StoreIssuerOptions`](#storeissueroptions) | 是 | 门店可用发行方选项 |
+| `plans` | [`SvPlanPage`](#svplanpage) | 是 | 可用充值方案分页 |
+
+### SvPage_SvAccount
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvAccount`](#svaccount)\[\] | 是 | 当前页业务记录列表 |
+| `nextCursor` | `string,null` | 是 | 下一页游标，无后续记录时为空 |
+| `hasMore` | `boolean` | 是 | 是否还有后续分页 |
+
+### SvPage_SvPlan
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvPlan`](#svplan)\[\] | 是 | 当前页业务记录列表 |
+| `nextCursor` | `string,null` | 是 | 下一页游标，无后续记录时为空 |
+| `hasMore` | `boolean` | 是 | 是否还有后续分页 |
+
+### SvPage_SvRecord
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvRecord`](#svrecord)\[\] | 是 | 当前页业务记录列表 |
+| `nextCursor` | `string,null` | 是 | 下一页游标，无后续记录时为空 |
+| `hasMore` | `boolean` | 是 | 是否还有后续分页 |
+
+### SvPlan
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planNo` | `string` | 是 | 充值方案编号 |
+| `versionNo` | `string` | 是 | 不可变充值方案版本编号 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `paidAmountMinor` | `number` | 是 | 实付充值金额，货币最小单位 |
+| `bonusAmountMinor` | `number` | 是 | 赠送金额，货币最小单位 |
+| `totalAmountMinor` | `number` | 是 | 实付加赠送的总金额，货币最小单位 |
+| `status` | `ACTIVE` \| `INACTIVE` | 是 | 服务端业务状态编码 |
+| `createdAt` | `string` | 是 | 创建时间 |
+| `updatedAt` | `string,null` | 是 | 最近更新时间 |
+
+### SvPlanCreate
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `name` | `string` | 是 | 业务对象显示名称 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `paidAmountMinor` | `number` | 是 | 实付充值金额，货币最小单位 |
+| `bonusAmountMinor` | `number` | 是 | 赠送金额，货币最小单位 |
+
+### SvPlanPage
+
+类型：`SvPage_SvPlan`
+
+### SvPlanStatusReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `expectedRevision` | `number` | 是 | 调用方读取到的版本号，用于乐观锁校验 |
+
+### SvProgress
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | 充值业务编号 |
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
+| `revision` | `number` | 是 | 当前记录版本号，用于并发控制 |
+| `status` | `string` | 是 | 服务端业务状态编码 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `paidAmountMinor` | `number,null` | 是 | 实付充值金额，货币最小单位 |
+| `creditedTotalMinor` | `number,null` | 是 | 确认入账总金额，货币最小单位 |
+| `creditedAt` | `string,null` | 是 | 充值入账时间 |
+| `receivedAt` | `string,null` | 是 | 线下收款确认时间 |
+
+### SvReceipt
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `expectedRevision` | `number` | 是 | 调用方读取到的版本号，用于乐观锁校验 |
+| `actualAmountMinor` | `number` | 是 | 实际收款金额，货币最小单位 |
+| `collectionMethod` | `CASH` \| `TRANSFER` | 是 | 实际收款方式编码 |
+| `receiptNo` | `string` | 是 | 原收款凭据编号 |
+
+### SvReceive
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `expectedRevision` | `number` | 是 | 调用方读取到的版本号，用于乐观锁校验 |
+| `receiptNo` | `string` | 是 | 原收款凭据编号 |
+| `confirmationNote` | `string` | 是 | 线下收款核实备注 |
+
+### SvRechargeCreate
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `customerRef` | `string` | 是 | 当前数据域签发的顾客选择引用 |
+| `planNo` | `string` | 是 | 充值方案编号 |
+| `versionNo` | `string` | 是 | 不可变充值方案版本编号 |
+
+### SvRechargeResolve
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `found` | `boolean` | 是 | 是否找到原幂等命令的业务结果 |
+| `recharge` | [`SvProgress`](#svprogress) \| `null` | 是 | 充值处理结果 |
+
+### SvRecord
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | 面向用户的展示单号，不能代替内部业务编号 |
+| `voucherDocumentNo` | `string,null` | 否 | 原凭证展示单号 |
+| `recordNo` | `string` | 是 | 储值流水内部编号 |
+| `maskedName` | `string` | 是 | 服务端脱敏的顾客名称 |
+| `maskedPhone` | `string` | 是 | 服务端脱敏的手机号 |
+| `type` | `RECHARGE` \| `REDEMPTION` | 是 | 业务类型编码或类型摘要，按当前接口定义解释 |
+| `title` | `string` | 是 | 面向用户的业务标题 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `storeName` | `string` | 是 | 门店显示名称 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO货币代码，金额必须结合此字段解释 |
+| `signedAmountMinor` | `number` | 是 | 带收支方向符号的金额，货币最小单位 |
+| `balanceAfterMinor` | `number` | 是 | 此笔流水入账后余额，货币最小单位 |
+| `occurredAt` | `string` | 是 | 业务实际发生时间 |
+| `businessNo` | `string` | 是 | 来源业务编号 |
+| `planNo` | `string,null` | 是 | 充值方案编号 |
+| `versionNo` | `string,null` | 是 | 不可变充值方案版本编号 |
+| `paidAmountMinor` | `number,null` | 是 | 实付充值金额，货币最小单位 |
+| `bonusAmountMinor` | `number,null` | 是 | 赠送金额，货币最小单位 |
+
+### SvRecordPage
+
+类型：`SvPage_SvRecord`
+
+### SvSelectCustomerReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店编号 |
+| `source` | [`SvSelectionSource`](#svselectionsource) | 是 | 顾客选择来源信息 |
+
+### SvSelectedCustomer
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `customerRef` | `string` | 是 | 当前数据域签发的顾客选择引用 |
+| `expiresAt` | `string` | 是 | 服务端引用失效时间 |
+| `pendingScope` | `string` | 否 | 顾客选择引用是否仍待范围确认 |
+| `sourceStoreNo` | `string,null` | 否 | 来源门店编号 |
+| `sourceStoreName` | `string,null` | 否 | 来源门店显示名称 |
+| `memberNo` | `string,null` | 否 | 当前门店会员编号 |
+| `displayName` | `string` | 是 | 脱敏显示名称 |
+| `phoneMasked` | `string` | 是 | 服务端脱敏手机号 |
+| `account` | `object`（见下） \| `null` | 是 | 当前范围的储值账户摘要 |
+
+### SvSelectionSource
+
+类型：`object`（见下） \| `object`（见下）
+
 ### ToggleCampaignReq
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -12531,7 +15034,7 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `code` | `string` | 是 | — |
-| `reason` | `string` | 是 | — |
+| `reason` | `string` | 是 | 业务原因或阻断说明 |
 
 ### VerifyReq
 

@@ -20,31 +20,32 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import ts from "typescript";
+
 const ROOT = join(import.meta.dirname, "../../..");
 const APPS = ["b-app", "c-app"];
 
 /** 词条文件里的全部 key（含嵌套、含值写在下一行的） */
-function keysOf(file: string): Set<string> {
-  let src = readFileSync(file, "utf8")
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/^\s*\/\/.*$/gm, "");
+function keysFromSource(src: string): Set<string> {
+  const file = ts.createSourceFile('locale.ts', src, ts.ScriptTarget.Latest, true);
   const out = new Set<string>();
-  const stack: Array<[number, string]> = [];
-  let depth = 0;
-  for (const line of src.split("\n")) {
-    for (const m of line.matchAll(/([A-Za-z_]\w*)\s*:\s*\{/g)) stack.push([depth, m[1]!]);
-    for (const m of line.matchAll(/([A-Za-z_]\w*)\s*:\s*(?!\{)(\S|$)/g)) {
-      const nxt = m[2] ?? "";
-      // 值同行（引号开头），或本行以 `:` 结尾（值在下一行）
-      if (nxt === "" || `"'\``.includes(nxt) || line.trimEnd().endsWith(":")) {
-        out.add([...stack.map(([, n]) => n), m[1]!].join("."));
-      }
+  const visit = (node: ts.Node, path: string[] = []) => {
+    if (ts.isPropertyAssignment(node)) {
+      const name = node.name;
+      if (!ts.isIdentifier(name) && !ts.isStringLiteralLike(name)) return;
+      const next = [...path, name.text];
+      if (ts.isObjectLiteralExpression(node.initializer)) {
+        for (const property of node.initializer.properties) visit(property, next);
+      } else if (ts.isStringLiteralLike(node.initializer)) out.add(next.join('.'));
+      return;
     }
-    depth += (line.match(/\{/g)?.length ?? 0) - (line.match(/\}/g)?.length ?? 0);
-    while (stack.length && stack[stack.length - 1]![0] >= depth) stack.pop();
-  }
+    ts.forEachChild(node, child => visit(child, path));
+  };
+  visit(file);
   return out;
 }
+function keysOf(file: string): Set<string> { return keysFromSource(readFileSync(file, 'utf8')); }
+const staticCalls = /\$?t\(\s*["']([a-zA-Z]\w*\.[\w.]+)["'](?=\s*[,)])/g;
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const e of readdirSync(dir)) {
@@ -56,6 +57,11 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 describe("词条引用", () => {
+  it("parses compact nested locale objects and ignores braces inside translated text", () => {
+    const keys = keysFromSource(`export default {a:{hint:"{n}", nested:{ok:"yes"}}, b:{title:"next"}}`);
+    expect([...keys]).toEqual(['a.hint','a.nested.ok','b.title']);
+    expect([...`t('a.missing');t('a.' + state);t('a.nested.ok',{})`.matchAll(staticCalls)].map(m=>m[1])).toEqual(['a.missing','a.nested.ok']);
+  });
   it("★★★ 页面里 t(\"x.y\") 引用的 key，词条里必须真的有 —— 否则用户看到的是 key 本身", () => {
     const bad: string[] = [];
     for (const app of APPS) {
@@ -64,7 +70,7 @@ describe("词条引用", () => {
       for (const dir of ["src/pages", "src/components"]) {
         for (const f of walk(join(ROOT, app, dir))) {
           const src = readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
-          for (const m of src.matchAll(/\$?t\(\s*["']([a-zA-Z]\w*\.[\w.]+)["']/g)) {
+          for (const m of src.matchAll(staticCalls)) {
             if (!known.has(m[1]!)) {
               const line = src.slice(0, m.index).split("\n").length;
               bad.push(`${relative(ROOT, f)}:${line}  t("${m[1]}")`);

@@ -1,3 +1,12 @@
+/** Projected order earning state, independent of ledger credit. */
+export type OrderPointsEarningState = "NONE" | "EXPECTED" | "PROCESSING" | "PENDING" | "AVAILABLE" | "RETRYABLE" | "MANUAL" | "SKIPPED" | "RECLAIMED";
+
+/** Projected order redemption and refund progress. */
+export type OrderPointsRedemptionState = "NONE" | "PROCESSING" | "HELD" | "RELEASED" | "CONSUMED" | "REFUND_PROCESSING" | "RETURNED" | "PARTIALLY_RETURNED";
+
+/** Projected order points refund progress. */
+export type OrderPointsRefundState = "NONE" | "PROCESSING" | "MANUAL" | "COMPLETED";
+
 /** StorePointType 的 status 取值域，按服务端契约校验。 */
 export type StorePointTypeStatus = "DRAFT" | "ACTIVE" | "DRAINING" | "RETIRED";
 
@@ -21,6 +30,10 @@ import type { AfterSaleStatus, AfterSaleType, Order } from "./trade";
 
 /** Pay ledger views are scoped to the authenticated current store and one points type. */
 export interface StorePointType {
+  /** Whether order earning is temporarily paused for this points type. */
+  earningPaused?: boolean;
+  /** Whether this type is the server-selected default for order points earning. */
+  orderDefault?: boolean;
   /** 积分名称 */
   name: string;
   /** 最大抵扣比例，万分比 */
@@ -79,10 +92,14 @@ export interface StorePointEntryPage {
     entryNo: string;
     /** 原记账凭证编号 */
     voucherNo: string;
-    voucherDocumentNo?: string | null;
-    direction?: string | null;
-    businessRef?: string | null;
-    orderNo?: string | null;
+    /** 原凭证展示单号 */
+  voucherDocumentNo?: string | null;
+    /** 流水收支方向编码 */
+  direction?: string | null;
+    /** 来源业务引用 */
+  businessRef?: string | null;
+    /** 订单内部业务编号 */
+  orderNo?: string | null;
     /** 账本持有人类型 */
     holderType: "STORE";
     /** 账本持有人编号，与持有人类型联合定位 */
@@ -293,6 +310,93 @@ export interface Merchant extends MerchantBrief {
   /** 分维度评分：商品/服务/时效 */
   scores: { goods: number; service: number; speed: number };
 }
+/** Buyer merchant detail/list response, matching MerchantVO; service coverage belongs to goods. */
+export interface MerchantView {
+  /** Merchant identity. */
+  merchantNo: string;
+  /** Displayed merchant name. */
+  name: string;
+  /** Merchant logo URL. */
+  logo: string;
+  /** Aggregate rating on the 0–5 scale. */
+  rating: number;
+  /** Whether merchant qualification is verified. */
+  verified: boolean;
+  /** Historical failures to honor an accepted offer. */
+  breachCount: number;
+  /** Registered merchant subject type. */
+  type: MerchantType;
+  /** Merchant introduction. */
+  desc: string;
+  /** Completed sales count. */
+  salesCount: number;
+  /** Number of ratings, distinguishing an unrated store from a low score. */
+  ratingCount: number;
+  /** Number of currently offered goods. */
+  goodsCount: number;
+  /** Store address when supplied. */
+  address: string | null;
+  /** Opening-hours description when supplied. */
+  openHours: string | null;
+  /** Joined time in Unix milliseconds. */
+  joinedAt: number;
+  /** Public display tags. */
+  tags: string[];
+  /** Rating breakdown returned with merchant detail. */
+  scores: {
+    /** Goods rating. */
+    goods: number;
+    /** Service rating. */
+    service: number;
+    /** Fulfillment speed rating. */
+    speed: number;
+  };
+  /** Platform-operated seller disclosure. */
+  selfOperated: boolean;
+  /** Number of users who favorited the merchant. */
+  favoriteCount: number;
+}
+
+/** Purchase-history merchant projection, matching VisitedMerchantVO without detail-only fields. */
+export interface VisitedMerchantView {
+  /** Merchant identity. */
+  merchantNo: string;
+  /** Displayed merchant name. */
+  name: string;
+  /** Merchant logo URL. */
+  logo: string;
+  /** Aggregate rating on the 0–5 scale. */
+  rating: number;
+  /** Whether merchant qualification is verified. */
+  verified: boolean;
+  /** Historical failures to honor an accepted offer. */
+  breachCount: number;
+  /** Number of the current buyer's orders with this merchant. */
+  orderCount: number;
+  /** Latest order time in Unix milliseconds. */
+  lastOrderAt: number;
+  /** Platform-operated seller disclosure. */
+  selfOperated: boolean;
+}
+
+/** Favorite store projection, matching user.StoreBriefVO and retaining the actual store identity. */
+export interface FavoriteStoreView {
+  /** Operating merchant identity. */
+  merchantNo: string;
+  /** Displayed store name. */
+  name: string;
+  /** Store logo URL. */
+  logo: string;
+  /** Store rating on the 0–5 scale; this response has no rating-count field. */
+  rating: number;
+  /** Whether merchant qualification is verified. */
+  verified: boolean;
+  /** Historical failures to honor an accepted offer. */
+  breachCount: number;
+  /** Actual favorite store identity used for navigation. */
+  storeNo: string;
+}
+
 // ---------------------------------------------------------------- 订单
 
 
@@ -629,6 +733,10 @@ export type MerchantStatus =
 export type MerchantTier = "SMALL" | "MEDIUM" | "LARGE";
 /** 登录后的商家会话 */
 export interface MerchantProfile {
+  /** 行业编码，用于商家工作台能力选择 */
+  industry?: string;
+  /** 对外展示的商家介绍 */
+  description?: string;
   /** 商家单号 */
   merchantNo: string;
   /** 店铺名 */
@@ -1173,7 +1281,9 @@ export interface PermOption {
  * > 连真后端会整片 undefined。与本轮反复撞到的「单看任一端都完整，断在两端之间」同形状。
  */
 export interface SettleBill {
+  /** 结算批次展示单号，业务操作仍使用原编号 */
   batchDocumentNo?: string | null;
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 结算单号 */
   settleNo: string;
@@ -1294,6 +1404,7 @@ export type SettleBatchStatus =
  * 我的账期批次。**商家问的是「这一批什么时候放、卡在哪」**。
  */
 export interface MySettleBatch {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 批次号。**与结算单上的批次号是同一个** —— 商家照着单子来问的就是它 */
   batchNo: string;
@@ -1880,7 +1991,11 @@ export interface StorePointStatement {
   /** 当前异议原因，无异议时为空 */
   disputeReason: string | null;
   /** 历史修订摘要，number为修订号，points为积分数，reason为修订原因 */
-  revisions: { number: number; points: number; reason: string | null }[];
+  revisions: { number: number;
+  /** 按当前规则计算的积分数量 */
+  points: number;
+  /** 业务原因或阻断说明 */
+  reason: string | null }[];
 }
 export interface StorePointStatementPage {
   /** 本页记录 */
@@ -1905,7 +2020,13 @@ export interface StorePointStatementChange {
 
 export interface StorePointStatementLinePage {
   /** 本页记录 */
-  rows: { orderNo: string; subOrderNo: string; points: number }[];
+  rows: {
+  /** 订单内部业务编号 */
+  orderNo: string;
+  /** 子订单内部业务编号 */
+  subOrderNo: string;
+  /** 按当前规则计算的积分数量 */
+  points: number }[];
   /** 下一页游标，无更多记录时保留末尾游标 */
   next: number;
   /** 是否还有下一页 */
@@ -1928,19 +2049,34 @@ export interface StorePointStatementReceipt {
 
 /** Server-projected earning for an authorized order; accepted work is not an account credit. */
 export interface OrderPointsEarning {
+  /** 订单内部业务编号 */
   orderNo: string;
+  /** 积分类型唯一编码 */
   typeCode: string;
+  /** 业务对象显示名称 */
   name: string;
+  /** ISO货币代码，金额必须结合此字段解释 */
   currency: string;
-  state: "NONE" | "EXPECTED" | "PROCESSING" | "PENDING" | "AVAILABLE" | "RETRYABLE" | "MANUAL" | "SKIPPED" | "RECLAIMED";
-  redemptionState: "NONE" | "PROCESSING" | "HELD" | "RELEASED" | "CONSUMED" | "REFUND_PROCESSING" | "RETURNED" | "PARTIALLY_RETURNED";
+  /** 服务端处理状态编码 */
+  state: OrderPointsEarningState;
+  /** 积分抵扣处理状态 */
+  redemptionState: OrderPointsRedemptionState;
+  /** 订单已抵扣的积分数量 */
   usedPoints: number;
-  refundState: "NONE" | "PROCESSING" | "MANUAL" | "COMPLETED";
+  /** 原积分返还处理状态 */
+  refundState: OrderPointsRefundState;
+  /** 已经返还的原抵扣积分数量 */
   returnedPoints: number;
+  /** 订单预计可获得的积分数量 */
   expectedPoints: number;
+  /** 已经确认发放的积分数量 */
   grantedPoints: number;
+  /** 等待确认发放的积分数量 */
   pendingPoints: number;
+  /** 当前可用积分数量 */
   availablePoints: number;
+  /** 退款后已收回的赠送积分数量 */
   reclaimedPoints: number;
+  /** 业务原因或阻断说明 */
   reason: string | null;
 }

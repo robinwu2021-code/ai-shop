@@ -8,7 +8,7 @@
 
 **Tech Stack:** Java/Spring、现有 MyBatis/JDBC 与 Flyway、Vue/uni-app、TypeScript、现有统一 Outbox。
 
-**Spec:** [库存领域与前后端优化方案](../../technical/design/reviews/库存业务与进销存-领域流程与前后端优化方案-2026-10-19.md)
+**Spec:** [库存领域与前后端优化方案](../../technical/design/TDD-进销存领域模型.md)
 
 ## Global Constraints
 

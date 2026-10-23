@@ -67,6 +67,11 @@ const OPS_DIMS = ["MERCHANT", "COMMUNITY", "PICKUP"] as const;
  * 不过写端点本来就不在 G1 的扫描范围里（G1 只看 GET），所以它们不必登记。
  */
 const SCOPE_BYPASS_OK: Record<string, string> = {
+  "MerchantScopeFactsPortImpl#storesOwned":
+    "只验证 tenant/entity/store 关系，不返回业务列表；打印运营入口由 PrintActorFactory.operator 独立校验操作者租户与 MERCHANT 数据域，随后 PrintOpsServiceImpl.target 和 PrintSupport.scoped/owned 再限定查询。",
+  "SettleServiceImpl#invoiceViews":
+    "按已授权进项发票回捞结算号：opsInvoices 主查询 stl_purchase_invoice 已过 MERCHANT 数据域，invoiceViews 只按这些发票号的 purchaseInvoiceNo 集合读取附属 stl_bill，不扩大可见主体。",
+
   /*
    * 供应商收款账户的回捞（ADR-011）。这个方法**同时服务两侧**：
    * B 端商家看自己的账户（那边的会话里没有运营数据域，直查会 SELECT 不到），
@@ -1113,6 +1118,12 @@ describe("运营端数据域接入", () => {
    *   · 接上会打断 C 端 —— 买家会话在这张表上没有锚点，fail-closed 变空白
    */
   const OPS_READS_UNREGISTERED_OK: Record<string, string> = {
+    prn_incident: "PrintActorFactory.operator 校验 tenant、MERCHANT 数据域与门店归属；PrintOpsServiceImpl.target 校验 actor 范围，PrintSupport.scoped/owned 按 tenant/entity/store 显式限定。打印独立模块不接通用运营表域。",
+    prn_job: "PrintActorFactory.operator 校验 tenant、MERCHANT 数据域与门店归属；PrintOpsServiceImpl.target 校验 actor 范围，PrintSupport.scoped/owned 按 tenant/entity/store 显式限定。打印独立模块不接通用运营表域。",
+    prn_operation: "PrintActorFactory.operator 校验 tenant、MERCHANT 数据域与门店归属；PrintOpsServiceImpl.target 校验 actor 范围，PrintSupport.scoped/owned 按 tenant/entity/store 显式限定。打印独立模块不接通用运营表域。",
+    prn_printer: "PrintActorFactory.operator 校验 tenant、MERCHANT 数据域与门店归属；PrintOpsServiceImpl.target 校验 actor 范围，PrintSupport.scoped/owned 按 tenant/entity/store 显式限定。打印独立模块不接通用运营表域。",
+    prn_request: "PrintActorFactory.operator 校验 tenant、MERCHANT 数据域与门店归属；PrintOpsServiceImpl.target 校验 actor 范围，PrintSupport.scoped/owned 按 tenant/entity/store 显式限定。打印独立模块不接通用运营表域。",
+
     stl_payment: "源检查先从原绑定验证 PointsOpsAccess.store，再按原支付号核验；不提供无范围支付列表。",
     ord_payment_resolution:
       "ops 单详情先由 requireInScope 授权子单，再按子单对应主单号与买家号读取单条待核验记录；仅用于已授权详情补充，不作为行级授权或运营列表入口。",

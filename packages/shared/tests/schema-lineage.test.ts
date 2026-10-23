@@ -131,31 +131,25 @@ const LINEAGE: Hop[] = [
  */
 const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
   build_no: { table: "pts_statement_build" },
-  voucher_no: { table: "pts_voucher" },
   evidence_no: { table: "pts_fund_evidence" },
   receivable_no: { table: "pts_receivable" },
   statement_no: { table: "pts_store_statement", col: "position_no" },
   cash_payment_no: { table: "stl_payment", col: "payment_no" },
   origin_payment_no: { table: "stl_payment", col: "payment_no" },
   pay_no: { table: "ord_create_intent" },
-  tier_no: { table: "pmt_recharge_tier" },
-  grant_no: { table: "ent_grant" },
   instance_no: { table: "ent_instance" },
   usage_no: { table: "ent_usage" },
   source_order_no: { table: "ord_order", col: "order_no" },
   recharge_no: { table: "sv_recharge" },
   lot_no: { table: "sv_lot" },
-  voucher_no: { table: "sv_voucher" },
   exception_no: { table: "pay_ent_exception" },
   recon_no: { table: "pay_ent_recon_run" },
   stage_no: { table: "ent_migration_stage" },
   alias_no: { table: "ent_migration_alias" },
   checkout_no: { table: "ord_legacy_coupon_checkout" },
-  plan_no: { table: "ent_migration_plan" },
   import_no: { table: "ent_migration_import" },
   return_no: { table: "pmt_migration_return" },
   target_template_no: { table: "ent_template", col: "template_no" },
-  template_version_no: { table: "ent_template_version", col: "version_no" },
   activity_version_no: { table: "pmt_activity_version", col: "version_no" },
 
   /*
@@ -250,6 +244,31 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
    * 要改就连着这条链一起改，单独动表名是净亏。
    */
   merchant_no: { table: "mch_entity", col: "entity_no" },
+  source_event_no: {"table": "sys_outbox", "col": "event_no"},
+  first_store_no: {"table": "mch_store", "col": "store_no"},
+  execution_no: {"table": "ord_refund_execution"},
+  issuer_no: {"table": "sv_issuer"},
+  scope_member_no: {"table": "mbr_scope_member"},
+  issuer_version_no: {"table": "sv_issuer_version"},
+  plan_version_no: {"table": "sv_recharge_plan_version", "col": "version_no"},
+  release_no: {"table": "sv_release"},
+  collection_entity_no: {"table": "mch_entity", "col": "entity_no"},
+  settlement_entity_no: {"table": "mch_entity", "col": "entity_no"},
+  operating_entity_no: {"table": "mch_entity", "col": "entity_no"},
+  customer_no: {"table": "usr_person", "col": "person_no"},
+  management_no: {"table": "mch_management_space"},
+  brand_no: {"table": "mch_brand"},
+  change_no: {"table": "mch_brand_change"},
+  config_no: {"table": "ord_store_pricing_config"},
+  quota_no: {"table": "sv_issue_quota"},
+  agent_no: {"table": "prn_agent"},
+  printer_no: {"table": "prn_printer"},
+  route_no: {"table": "prn_route"},
+  route_version_no: {"table": "prn_route_version"},
+  policy_no: {"table": "prn_scene_policy"},
+  policy_version_no: {"table": "prn_policy_version"},
+  job_no: {"table": "prn_job"},
+
 };
 
 /**
@@ -260,6 +279,24 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  * 我们自己就连错过一次。
  */
 const NAME_COLLISIONS: Record<string, string> = {
+  voucher_no: "积分凭证 pts_voucher 与储值凭证 sv_voucher 各自发号；必须结合账务域，按名字跨账本关联会串账。",
+  tier_no: "活动充值档位 pmt_recharge_tier 与发行批次档位 sv_release_tier 各自发号，需结合活动或发行批次根。",
+  plan_no: "积分充值计划、储值充值方案与权益迁移计划是独立业务根，不可仅按 plan_no 关联。",
+  template_version_no: "权益模板版本与打印模板版本各自发号，需结合所属模板域。",
+  grant_no: "权益发放 ent_grant 与管理授权 mch_management_grant 是独立业务根，不能按同名编号关联。",
+
+  trace_no: "营销归因追踪与打印操作审计各自发号，不可跨域关联。",
+  link_no: "旧会员来源链接与新范围会员迁移链接各自发号，不是共同身份。",
+  attempt_no: "物流订阅尝试与打印发送尝试分别发号，须由各自业务根定位。",
+  entry_no: "积分账目和权益账目分别发号，须按账本域定位。",
+  binding_no: "订单积分绑定与门店品牌绑定分别发号，没有跨域外键关系。",
+  line_no: "库存对齐明细与储值记账明细分别发号，须按所属批次或凭证定位。",
+  target_no: "权益所有者注册与打印操作对象都是多态目标号，必须同时匹配目标类型。",
+  receipt_no: "旧券迁移退回回执与打印通道回执分别发号，不是同一个回执根。",
+  document_no: "展示凭证号按Core或Pay发号域及单据类型限定；禁止按展示号码作跨域外键。",
+  active_revision_no: "平台计价模板与门店计价配置各自的当前修订指针，必须结合所属配置类型。",
+  previous_revision_no: "平台模板修订与门店配置修订各自的历史链，不能跨链连接。",
+
   trade_no: "stl_payment 与 ord_payment_resolution 保存渠道交易号快照；该号仅在 pay_channel 范围内唯一，不能脱离渠道直接关联。",
   source_shipment_no:
     "lgs_waybill 与 lgs_channel_subscription 保存同一个上游发货身份的快照；更新订阅必须同时匹配 source_shipment_version，不能把历史订阅行当作当前运单主记录。",

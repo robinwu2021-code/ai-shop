@@ -79,6 +79,7 @@ export interface AttributionTrace {
 export type RewardType = "COUPON";
 
 export interface FissionCampaign {
+  /** 面向用户的展示单号，不能代替内部业务编号 */
   documentNo?: string | null;
   /** 活动单号 */
   fissionNo: string;

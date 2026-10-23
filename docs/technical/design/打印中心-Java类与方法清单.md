@@ -1,5 +1,7 @@
 # 打印中心Java类与方法清单
 
+状态：设计参考；实施与验收进度见对应任务表和验收记录。
+
 > 设计稿 · 2026-10-23 · 未生成产品Java源码。真源：[类结构JSON](./schema/print-java-class-design.json)；阅读入口：[Java结构设计](./打印中心-Java类结构设计.md)。
 
 本清单登记250个顶层类型；嵌套DTO和22个Mapper不是额外模块。83项业务API均有Controller→Service方法映射，厂商回调另列。仅为目标结构，不代表已实现。

@@ -24,21 +24,21 @@ if (result.valid()) {
 
 代码片段为调用示意，verifiedCapabilities必须来自后端可信适配，不能从前端布尔值构造。前三行业的默认definition均取自[规则初始数据](./design/schema/pricing-initial-data.example.json)。整个种子文件不能直接作为template参数传入，传入的是industryTemplates中选定项的definition对象JSON。
 
-```mermaid
-classDiagram
-    PricingConfigCompiler --> SystemConstraints
-    PricingConfigCompiler --> PricingCapabilities
-    PricingConfigCompiler --> CompilationResult
-    SystemConstraints --> PricingRuleCatalog
-    PricingRuleCatalog --> RuleDefinition
-    CompilationResult --> EffectivePricingConfig
-    EffectivePricingConfig --> Definition
-    EffectivePricingConfig --> RuleDefinition
-    RuleDefinition --> Parameters
-    Parameters <|-- ForbiddenCombination
-    Parameters <|-- CountLimits
-    Parameters <|-- FixedPolicyParameters
-```
+| 序号 | 来源 | 目标 | 关系 / 条件 / 消息 |
+|---|---|---|---|
+| 1 | PricingConfigCompiler | SystemConstraints | 依赖 |
+| 2 | PricingConfigCompiler | PricingCapabilities | 依赖 |
+| 3 | PricingConfigCompiler | CompilationResult | 依赖 |
+| 4 | SystemConstraints | PricingRuleCatalog | 依赖 |
+| 5 | PricingRuleCatalog | RuleDefinition | 依赖 |
+| 6 | CompilationResult | EffectivePricingConfig | 依赖 |
+| 7 | EffectivePricingConfig | Definition | 依赖 |
+| 8 | EffectivePricingConfig | RuleDefinition | 依赖 |
+| 9 | RuleDefinition | Parameters | 依赖 |
+| 10 | Parameters | ForbiddenCombination | 继承 |
+| 11 | Parameters | CountLimits | 继承 |
+| 12 | Parameters | FixedPolicyParameters | 继承 |
+
 
 ## L3 编译与合同
 

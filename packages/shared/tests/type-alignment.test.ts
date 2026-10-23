@@ -10,6 +10,7 @@
 //   · 基线里的分歧 = 已知、已记录、有归属，不报错
 //   · 基线外的新分歧 = 立刻失败
 // 否则的话，今天数出 5 个，下周就是 8 个，而没人会注意到多出来的那 3 个。
+import ts from "typescript";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -146,42 +147,152 @@ describe("端点前缀：文档与代码不许再对不上", () => {
   });
 });
 
+/** Resolve declarations through local aliases/imports; inspect only each public object's own keys. */
+class ApiSourceReader {
+  private parsed = new Map<string, ts.SourceFile>();
+  constructor(private readSource: (file: string) => string = file => readFileSync(file, 'utf8')) {}
+  source(file: string): ts.SourceFile {
+    if (!this.parsed.has(file)) this.parsed.set(file, ts.createSourceFile(file, this.readSource(file), ts.ScriptTarget.Latest, true));
+    return this.parsed.get(file)!;
+  }
+  module(file: string, specifier: string): string {
+    if (!specifier.startsWith('.')) throw new Error(`API source import must resolve locally: ${file}: ${specifier}`);
+    const base = join(file, '..', specifier);
+    for (const candidate of [base, `${base}.ts`, join(base, 'index.ts')]) {
+      try { this.source(candidate); return candidate; } catch (error) {
+        if (!(error instanceof Error) || !('code' in error) || !['ENOENT','EISDIR'].includes(String(error.code))) throw error;
+      }
+    }
+    throw new Error(`Unresolved API module: ${file}: ${specifier}`);
+  }
+  declaration(file: string, name: string, visited = new Set<string>()): {file: string; node: ts.Node} {
+    const key = `${file}:${name}`;
+    if (visited.has(key)) throw new Error(`Cyclic API declaration: ${key}`);
+    visited.add(key);
+    const source = this.source(file);
+    for (const statement of source.statements) {
+      if (ts.isInterfaceDeclaration(statement) && statement.name.text === name) return {file,node:statement};
+      if (ts.isVariableStatement(statement)) for (const declaration of statement.declarationList.declarations) {
+        if (ts.isIdentifier(declaration.name) && declaration.name.text === name && declaration.initializer) return {file,node:declaration.initializer};
+      }
+      if (name === 'default' && ts.isExportAssignment(statement)) return {file,node:statement.expression};
+    }
+    for (const statement of source.statements) {
+      if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
+        const bindings = statement.importClause?.namedBindings;
+        if (bindings && ts.isNamedImports(bindings)) for (const item of bindings.elements) {
+          if (item.name.text === name) return this.declaration(this.module(file,statement.moduleSpecifier.text),item.propertyName?.text ?? name,visited);
+        }
+        if (statement.importClause?.name?.text === name) return this.declaration(this.module(file,statement.moduleSpecifier.text),'default',visited);
+      }
+      if (ts.isExportDeclaration(statement) && statement.exportClause && ts.isNamedExports(statement.exportClause)) {
+        for (const item of statement.exportClause.elements) if (item.name.text === name) {
+          const target = statement.moduleSpecifier;
+          return this.declaration(target && ts.isStringLiteral(target) ? this.module(file,target.text) : file,item.propertyName?.text ?? name,visited);
+        }
+      }
+    }
+    throw new Error(`Missing API declaration: ${key}`);
+  }
+  methods(file: string, name: string, visited = new Set<string>()): Set<string> {
+    const resolved = this.declaration(file,name);
+    if (!ts.isInterfaceDeclaration(resolved.node)) throw new Error(`Expected API interface: ${file}:${name}`);
+    const key = `${resolved.file}:${resolved.node.name.text}`;
+    if (visited.has(key)) return new Set();
+    visited.add(key);
+    const result = new Set<string>();
+    for (const clause of resolved.node.heritageClauses ?? []) for (const base of clause.types) {
+      if (!ts.isIdentifier(base.expression)) throw new Error(`Unsupported API base: ${base.getText()}`);
+      for (const method of this.methods(resolved.file,base.expression.text,visited)) result.add(method);
+    }
+    for (const member of resolved.node.members) if (ts.isMethodSignature(member)) result.add(this.name(member.name));
+    return result;
+  }
+  private name(node: ts.PropertyName): string {
+    if (ts.isIdentifier(node) || ts.isStringLiteralLike(node) || ts.isNumericLiteral(node)) return node.text;
+    throw new Error(`Non-static API property: ${node.getText()}`);
+  }
+  keys(file: string, name: string): Set<string> {
+    const active = new Set<string>();
+    const binding = (from: string, symbol: string): Set<string> => {
+      const key = `${from}:${symbol}`;
+      if (active.has(key)) throw new Error(`Cyclic API object spread: ${key}`);
+      active.add(key);
+      const resolved = this.declaration(from,symbol);
+      const keys = expression(resolved.file,resolved.node);
+      active.delete(key);
+      return keys;
+    };
+    const expression = (from: string, node: ts.Node): Set<string> => {
+      if (ts.isIdentifier(node)) return binding(from,node.text);
+      if (ts.isAsExpression(node) || ts.isSatisfiesExpression(node) || ts.isParenthesizedExpression(node) || ts.isTypeAssertionExpression(node)) return expression(from,node.expression);
+      if (!ts.isObjectLiteralExpression(node)) throw new Error(`Expected API object: ${from}: ${node.getText()}`);
+      const names = new Set<string>();
+      for (const property of node.properties) {
+        if (ts.isSpreadAssignment(property)) for (const name of expression(from,property.expression)) names.add(name);
+        else if (ts.isPropertyAssignment(property) || ts.isMethodDeclaration(property) || ts.isShorthandPropertyAssignment(property)) names.add(this.name(property.name));
+        else throw new Error(`Unsupported API property: ${property.getText()}`);
+      }
+      return names;
+    };
+    return binding(file,name);
+  }
+}
+
+function apiGaps(methods: Set<string>, endpoints: Set<string>, mocks: Set<string>, http: Set<string>): string[] {
+  const gaps: string[] = [];
+  for (const method of methods) {
+    if (!endpoints.has(method)) gaps.push(`${method}: 端点表缺`);
+    if (!mocks.has(method)) gaps.push(`${method}: mock 缺`);
+    if (!http.has(method)) gaps.push(`${method}: http 缺`);
+  }
+  for (const endpoint of endpoints) if (!methods.has(endpoint)) gaps.push(`${endpoint}: 端点表多出（契约里没有）`);
+  return gaps;
+}
+
 describe("契约四件套：契约 / 端点表 / mock / http 必须一一对应", () => {
+  it("follows imported spreads and inherited aliases without collecting nested or unrelated properties", () => {
+    const files: Record<string,string> = {
+      '/fixture/base.ts': `export interface Base { one():Promise<void>; two():Promise<void> }`,
+      '/fixture/contract.ts': `import type {Base as Parent} from './base'; export interface Api extends Parent { direct():Promise<void> }`,
+      '/fixture/domain.ts': `const local={two:()=>null}; const unrelated={phantom:()=>null}; export const domain={one:()=>({nested:true}),...local};`,
+      '/fixture/barrel/index.ts': `export {domain as forwarded} from '../domain';`,
+      '/fixture/main.ts': `import {forwarded as imported} from './barrel';const alias=imported; export const API=({...alias,direct(){return {shadow:true}}} satisfies Shape);`,
+      '/fixture/endpoint.ts': `const helper={unrelated:true};export const ENDPOINTS={one:{method:'GET',path:'/one',summary:'One'},two:{method:'GET'},direct:{auth:true}};`,
+      '/fixture/mock.ts': `export const MOCK={one:()=>({two(){}}),direct(){}};`,
+      '/fixture/broken.ts': `export const API={...unresolved};`,
+    };
+    const api = new ApiSourceReader(file => {
+      if (files[file] === undefined) throw Object.assign(new Error(`Missing ${file}`),{code:'ENOENT'});
+      return files[file]!;
+    });
+    expect([...api.methods('/fixture/contract.ts','Api')].sort()).toEqual(['direct','one','two']);
+    expect([...api.keys('/fixture/main.ts','API')].sort()).toEqual(['direct','one','two']);
+    expect([...api.keys('/fixture/endpoint.ts','ENDPOINTS')].sort()).toEqual(['direct','one','two']);
+    expect([...api.keys('/fixture/mock.ts','MOCK')].sort()).toEqual(['direct','one']);
+    expect(() => api.keys('/fixture/broken.ts','API')).toThrow('Missing API declaration');
+    expect(apiGaps(api.methods('/fixture/contract.ts','Api'),api.keys('/fixture/endpoint.ts','ENDPOINTS'),api.keys('/fixture/mock.ts','MOCK'),api.keys('/fixture/main.ts','API'))).toEqual(['two: mock 缺']);
+  });
+  it("keeps endpoint, mock, HTTP omissions and extra endpoints observable", () => {
+    expect(apiGaps(new Set(['missing']),new Set(['extra']),new Set(),new Set())).toEqual([
+      'missing: 端点表缺','missing: mock 缺','missing: http 缺','extra: 端点表多出（契约里没有）',
+    ]);
+  });
+
   // 少一处的后果各不相同，但都不会在编译期暴露：
   //   · 端点表缺 → 走真后端时抛「未知端点」，mock 下一切正常
   //   · mock 缺 → 开发期该页直接空白
   //   · http 缺 → 切到真后端才发现这个功能没接
   // 逐条比对是唯一可靠的办法 —— 46+60 个方法靠人眼看不出来。
-  const read = (app: string, f: string) =>
-    readFileSync(join(ROOT, app, "src/api", f), "utf8");
-
   for (const app of ["c-app", "b-app"]) {
     it(`${app}: 四处齐全`, () => {
-      const methods = new Set([...read(app, "contract.ts").matchAll(/^ {2}(\w+)\(/gm)].map((m) => m[1]!));
-      const eps = new Set([...read(app, "endpoints.ts").matchAll(/^ {2}(\w+): \{/gm)].map((m) => m[1]!));
-      /*
-       * B 端替身 2026-09-03 按域拆到了 `src/api/mocks/`（原文件 5240 行）。
-       * **目录优先**：只读 `mock.ts` 的话读到的是一份 `export` 门面，
-       * 228 个方法会全被判成「mock 缺」—— 这次是响的（它当场红了），
-       * 但反过来的少扫是哑的，所以这里按目录读，别再回到单文件。
-       */
-      const mockDir = join(ROOT, app, "src/api/mocks");
-      const mockSrc = existsSync(mockDir)
-        ? readdirSync(mockDir).filter((f) => f.endsWith(".ts"))
-          .map((f) => readFileSync(join(mockDir, f), "utf8")).join("\n")
-        : read(app, "mock.ts");
-      const mocks = new Set(
-        [...mockSrc.matchAll(/^ {2}(?:async )?(\w+)[(:]/gm)].map((m) => m[1]!),
-      );
-      const https = new Set([...read(app, "http.ts").matchAll(/^ {2}(\w+):/gm)].map((m) => m[1]!));
-
-      const gaps: string[] = [];
-      for (const m of methods) {
-        if (!eps.has(m)) gaps.push(`${m}: 端点表缺`);
-        if (!mocks.has(m)) gaps.push(`${m}: mock 缺`);
-        if (!https.has(m)) gaps.push(`${m}: http 缺`);
-      }
-      for (const e of eps) if (!methods.has(e)) gaps.push(`${e}: 端点表多出（契约里没有）`);
+      const api = new ApiSourceReader();
+      const directory = join(ROOT, app, "src/api");
+      const methods = api.methods(join(directory,"contract.ts"),app === 'b-app' ? 'MerchantApi' : 'ShopApi');
+      const eps = api.keys(join(directory,"endpoints.ts"),'ENDPOINTS');
+      const mocks = api.keys(join(directory,"mock.ts"),'mockApi');
+      const https = api.keys(join(directory,"http.ts"),'httpApi');
+      const gaps = apiGaps(methods,eps,mocks,https);
       expect(gaps, `${app} 契约四件套对不上：\n${gaps.join("\n")}`).toEqual([]);
     });
   }

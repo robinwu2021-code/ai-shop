@@ -162,6 +162,20 @@
 
     <build>
         <plugins>
+            <!-- Bound integration-test contexts and install the managed Mockito agent at
+                 startup; Java 21 environments need not permit dynamic self-attachment. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-Xmx1536m -javaagent:"${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar"</argLine>
+                    <forkCount>1</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <systemPropertyVariables>
+                        <spring.test.context.cache.maxSize>2</spring.test.context.cache.maxSize>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
             <!-- 与 neargo-parent 的 enforce-build-env（锁 JDK/Maven 版本）并列的第二条执行。
                  dependencyConvergence：同一个 classpath 上一个 g:a 只许解析出一个版本，
                  传递依赖带进来的也算 —— 「两处各写一份版本」的真正后果在这里报，

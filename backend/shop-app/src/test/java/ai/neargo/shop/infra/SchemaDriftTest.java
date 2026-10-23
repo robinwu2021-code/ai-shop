@@ -82,8 +82,12 @@ class SchemaDriftTest {
      * 幂等迁移不是可选风格（见 V18 的说明：一次失败的迁移不该需要人手工进库
      * 才能重试），所以解析器要认它。
      */
+    // MySQL also accepts bare ADD (V539). Require a column datatype so ADD CONSTRAINT/INDEX
+    // and other table alterations cannot manufacture phantom columns in the schema comparison.
     private static final Pattern ADD_COLUMN_NAME = Pattern.compile(
-            "ADD COLUMN\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?(\\w+)", Pattern.CASE_INSENSITIVE);
+            "\\bADD\\s+(?:COLUMN\\s+)?(?:IF\\s+NOT\\s+EXISTS\\s+)?"
+                    + "(?!(?:CONSTRAINT|PRIMARY|UNIQUE|INDEX|KEY|FOREIGN|CHECK|PARTITION)\\b)(\\w+)\\s+"
+                    + "(?:BIGINT|INT|INTEGER|SMALLINT|TINYINT|MEDIUMINT|DECIMAL|NUMERIC|FLOAT|DOUBLE|REAL|CHAR|VARCHAR|TEXT|TINYTEXT|MEDIUMTEXT|LONGTEXT|CLOB|JSON|DATE|DATETIME|TIMESTAMP|TIME|BOOL|BOOLEAN|BIT|BLOB|LONGBLOB|VARBINARY|BINARY|ENUM|SET)\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern VERSION = Pattern.compile("^V(\\d+)__");
     /** 表改名。不认它的话，后续针对新表名的 ALTER 全部报「该表尚未建立」，而真因在几十行之前。 */
     private static final Pattern RENAME_TABLE = Pattern.compile(
@@ -163,6 +167,23 @@ class SchemaDriftTest {
     }
 
     /** 重放一份迁移脚本：CREATE 收表，ALTER RENAME/ADD 改表 —— 与 gen-test-schema.py 同口径。 */
+    @Test
+    void replaysBareAndExplicitColumnAddsWithoutTreatingKeysAsColumns() {
+        Map<String, Set<String>> tables = new LinkedHashMap<>();
+        tables.put("ticket", new LinkedHashSet<>(Set.of("user_no")));
+        replay("""
+                ALTER TABLE ticket MODIFY user_no VARCHAR(64) NULL,
+                  ADD customer_no VARCHAR(64) NULL,
+                  ADD COLUMN IF NOT EXISTS issuer_no VARCHAR(64),
+                  ADD IF NOT EXISTS revision BIGINT,
+                  ADD CONSTRAINT fk_customer FOREIGN KEY (customer_no) REFERENCES customer(id),
+                  ADD INDEX ix_customer (customer_no), ADD UNIQUE KEY uk_issuer (issuer_no),
+                  ADD CHECK (revision >= 0);
+                """, tables);
+        assertThat(tables.get("ticket")).containsExactlyInAnyOrder(
+                "user_no", "customer_no", "issuer_no", "revision");
+    }
+
     private void replay(String sql, Map<String, Set<String>> tables) {
         collectCreates(sql, tables);
         // 表改名要在其余 ALTER 之前重放 —— 同一份迁移里往往是「先改名，再往新名上加列」

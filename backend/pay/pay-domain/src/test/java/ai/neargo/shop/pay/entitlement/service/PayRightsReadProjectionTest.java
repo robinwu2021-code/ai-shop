@@ -6,6 +6,9 @@ import ai.neargo.shop.pay.points.admin.impl.PointsInspectionServiceImpl;
 import ai.neargo.shop.pay.points.model.*;
 import ai.neargo.shop.pay.points.store.*;
 import ai.neargo.shop.pay.storedvalue.entity.SvRecharge;
+import ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository;
+import ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssueQuotaService;
+import ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerLedgerBridge;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueRechargeWriter;
 import ai.neargo.shop.pay.storedvalue.service.impl.StoredValueRechargeWriterImpl;
 import ai.neargo.shop.pay.mapper.storedvalue.SvRechargeMapper;
@@ -60,8 +63,11 @@ class PayRightsReadProjectionTest {
   when(rows.lock("MAIN","internal")).thenReturn(row);when(rows.updateById(row)).thenReturn(1);
   var writer=new StoredValueRechargeWriterImpl(rows,commands,mock(PayEntitlementEventPublisher.class),new ObjectMapper());
   ReflectionTestUtils.setField(writer,"documentNumbers",mock(PayRightsDocumentNumbers.class));
+  // This numbering regression exercises the legacy writer with issuer mode disabled.
+  var issuerRows=mock(IssuerRepository.class);var issuerQuotas=mock(StoredValueIssueQuotaService.class);
+  ReflectionTestUtils.setField(writer,"issuerLedger",new StoredValueIssuerLedgerBridge(issuerRows,issuerQuotas,commands,false));
   var factory=new ProxyFactory(writer);factory.addAdvisor(new PayRightsNumberReservations(coordinator));var proxy=(StoredValueRechargeWriter)factory.getProxy();
   var result=new TransactionTemplate(manager).execute(tx->proxy.cancel(new EntitlementContext("MAIN","ACTOR","REQ","0".repeat(64)),"ENTITY",new CancelRecharge("internal",0,"cancel"),null));
-  assertEquals(RechargeState.CANCELLED,result.status());verifyNoInteractions(generator);verify(rows,never()).insert(any(SvRecharge.class));
+  assertEquals(RechargeState.CANCELLED,result.status());verifyNoInteractions(generator,issuerRows,issuerQuotas);verify(rows,never()).insert(any(SvRecharge.class));
  }
 }

@@ -34,6 +34,7 @@
 import { readFileSync } from "node:fs";
 import { globSync } from "node:fs";
 import { join } from "node:path";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "../../..");
@@ -160,14 +161,46 @@ function effectiveClass(cls: string): string {
   return out;
 }
 
+/** A server redirect with no rendered body is navigation, not a page assembling UI. */
+function redirectOnly(src: string): boolean {
+  const file = ts.createSourceFile("page.tsx", src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  if (file.statements.some(s => ts.isExpressionStatement(s) && ts.isStringLiteral(s.expression)
+      && s.expression.text === "use client")) return false;
+  const imported = file.statements.some(s => ts.isImportDeclaration(s)
+    && ts.isStringLiteral(s.moduleSpecifier) && s.moduleSpecifier.text === "next/navigation"
+    && s.importClause?.namedBindings && ts.isNamedImports(s.importClause.namedBindings)
+    && s.importClause.namedBindings.elements.some(e => e.name.text === "redirect"
+      && !e.propertyName));
+  const page = file.statements.find(s => ts.isFunctionDeclaration(s)
+    && s.modifiers?.some(m => m.kind === ts.SyntaxKind.DefaultKeyword));
+  if (!imported || !page || !ts.isFunctionDeclaration(page) || page.parameters.length
+      || page.body?.statements.length !== 1) return false;
+  const statement = page.body.statements[0];
+  if (!ts.isExpressionStatement(statement) || !ts.isCallExpression(statement.expression)) return false;
+  const call = statement.expression;
+  return ts.isIdentifier(call.expression) && call.expression.text === "redirect"
+    && call.arguments.length === 1 && ts.isStringLiteral(call.arguments[0])
+    && call.arguments[0].text.startsWith("/");
+}
+
 function pages(): string[] {
   return globSync(`${OPS}/app/**/page.tsx`, { cwd: ROOT });
 }
 
 describe("运营端界面纪律", () => {
+  it("only exempts a server page whose entire body is an imported Next redirect", () => {
+    const imported = 'import { redirect } from "next/navigation";';
+    expect(redirectOnly(`${imported} export default function Page(){ redirect("/points/types"); }`)).toBe(true);
+    expect(redirectOnly('export default function Page(){ redirect("/points/types"); }')).toBe(false);
+    expect(redirectOnly(`${imported} export default function Page(){ redirect("/points/types"); return <div/>; }`)).toBe(false);
+    expect(redirectOnly(`"use client"; ${imported} export default function Page(){ redirect("/points/types"); }`)).toBe(false);
+  });
   it("★ 每个页面都从 ui 层取件，不自己从零搭", () => {
     const bad = pages().filter(
-      (f) => !/components\/ui/.test(readFileSync(join(ROOT, f), "utf8")),
+      (f) => {
+        const src = readFileSync(join(ROOT, f), "utf8");
+        return !/components\/ui/.test(src) && !redirectOnly(src);
+      },
     );
     expect(bad, `这些页面一个 ui 层的件都没用上：\n${bad.join("\n")}`).toEqual([]);
   });
@@ -212,6 +245,8 @@ describe("运营端界面纪律", () => {
       if (CATALOG.test(f) || f.includes("node_modules")) continue;
       for (const el of jsxElements(readFileSync(join(ROOT, f), "utf8"), FOCUSABLE_TAGS)) {
         if (el.tag === "a" && !/\bhref\b/.test(el.attrs)) continue;
+        // HTML hidden inputs cannot receive keyboard focus; no focus ring can be rendered.
+        if (el.tag === "input" && /(?:^|\s)type\s*=\s*["']hidden["']/.test(el.attrs)) continue;
         // `<Link>` 渲染成 <a>，同样可聚焦。第一版漏了它，浏览器里还剩 33 个无环
         if (el.attrs.includes("data-audit-skip")) continue;
         if (HAS_RING.test(effectiveClass(classAttr(el.attrs)))) continue;

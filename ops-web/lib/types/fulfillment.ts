@@ -160,7 +160,11 @@ export interface Shipment {
   /** 订阅累计尝试次数 */
   subAttempts?: number;
   /** Current shipment identity only; WeChat follow and Kuaidi100 are independent. */
-  subscriptions?: Array<{ channel: string; state: string; error?: string | null;
+  subscriptions?: Array<{
+  /** 消息或支付通道编码 */
+  channel: string;
+  /** 服务端处理状态编码 */
+  state: string; error?: string | null;
     lastAttemptAt?: number | null; nextRetryAt?: number | null }>;
   /** 微信 token 状态 */
   bindState?: BindState;

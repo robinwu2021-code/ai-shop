@@ -72,6 +72,24 @@ export interface EnumEntry {
 }
 
 export const ENUM_REGISTRY: EnumEntry[] = [
+  {"decl": "ops-web:PointsEarningRuleAction", "dom": "finance", "shape": "CLASS", "verdict": "OK", "note": "Rule history action, including imported revisions."},
+  {"decl": "ops-web:PointsEarningRuleMutation", "dom": "finance", "shape": "CLASS", "verdict": "OK", "note": "Rule mutation requested by the operator."},
+  {"decl": "b-app:FreightRegionAction", "dom": "merchant", "shape": "CLASS", "verdict": "OK", "note": "Delivery rule behavior for a matched region."},
+  {"decl": "b-app:MemberTagBatchAction", "dom": "merchant", "shape": "CLASS", "verdict": "OK", "note": "Batch membership tag mutation."},
+
+  {"decl": "shared:InventoryState", "dom": "inventory", "shape": "STATUS", "verdict": "OK", "words": ["UNMANAGED", "INITIALIZING", "MAPPED"], "note": "Inventory onboarding state."},
+  {"decl": "shared:StockSyncOperationStatus", "dom": "inventory", "shape": "STATUS", "verdict": "OK", "words": ["WAITING", "BLOCKED", "COMPLETED"], "note": "Persisted stock synchronization operation state."},
+  {"decl": "shared:StockAlignmentStatus", "dom": "inventory", "shape": "STATUS", "verdict": "OK", "words": ["PREVIEW", "PARTIAL", "BLOCKED", "COMPLETED", "STALE", "EXPIRED"], "note": "Persisted stock alignment batch state."},
+  {"decl": "shared:OrderPointsEarningState", "dom": "finance", "shape": "STATUS", "verdict": "OK", "words": ["NONE", "EXPECTED", "AVAILABLE", "RETRYABLE", "MANUAL", "SKIPPED", "RECLAIMED"], "note": "Projected order earning state, independent of ledger credit."},
+  {"decl": "shared:OrderPointsRedemptionState", "dom": "finance", "shape": "STATUS", "verdict": "OK", "words": ["NONE", "HELD", "RELEASED", "CONSUMED", "REFUND_PROCESSING", "RETURNED", "PARTIALLY_RETURNED"], "note": "Projected order redemption and refund progress."},
+  {"decl": "shared:OrderPointsRefundState", "dom": "finance", "shape": "STATUS", "verdict": "OK", "words": ["NONE", "MANUAL", "COMPLETED"], "note": "Projected order points refund progress."},
+  {"decl": "ops-web:InventoryTraceEventStatus", "dom": "inventory", "shape": "STATUS", "verdict": "OK", "words": ["COMPLETED", "WARNING", "SKIPPED", "ARCHIVED"], "note": "Delivery state of an inventory trace event."},
+  {"decl": "ops-web:InventoryTraceOutboxMode", "dom": "inventory", "shape": "CLASS", "verdict": "OK", "note": "Outbox implementation supplying the inventory trace."},
+  {"decl": "b-app:InventoryTraceEventStatus", "dom": "inventory", "shape": "STATUS", "verdict": "OK", "words": ["COMPLETED", "WARNING", "SKIPPED", "ARCHIVED"], "note": "Delivery state of an inventory trace event."},
+  {"decl": "b-app:InventoryTraceOutboxMode", "dom": "inventory", "shape": "CLASS", "verdict": "OK", "note": "Outbox implementation supplying the inventory trace."},
+  {"decl": "ops-web:PointsEarningRuleMode", "dom": "finance", "shape": "CLASS", "verdict": "OK", "note": "Points earning rule calculation mode."},
+  {"decl": "c-app:StoredValueType", "dom": "finance", "shape": "CLASS", "verdict": "OK", "note": "Consumer stored-value statement filter: ALL, RECHARGE or REDEMPTION."},
+
   { decl: "shared:RecipientSalutation", dom: "user", shape: "CLASS", verdict: "OK",
     note: "地址簿与订单收件人快照的称呼码；usr_address.salutation 注释给出完整值域。" },
   { decl: "shared:ShipPrecheckVerdict", dom: "fulfillment", shape: "CLASS", verdict: "OK",

@@ -13,6 +13,8 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import ts from "typescript";
+
 const ROOT = join(import.meta.dirname, "../../..");
 
 /**
@@ -99,17 +101,33 @@ function declaredTypes(app: string): Record<string, string> {
   return out;
 }
 
-/** shared 里某个 interface 的字段：{ name, optional } */
-function tsFields(type: string): { name: string; optional: boolean }[] {
-  const src = sharedTypesSrc(ROOT);
-  const i = src.indexOf(`export interface ${type} {`);
-  if (i < 0) return [];
-  const body = src.slice(i, src.indexOf("\n}", i));
-  return [...body.matchAll(/^\s{2}(\w+)(\??):\s/gm)].map((m) => ({
-    name: m[1]!,
-    optional: m[2] === "?",
-  }));
+/** Only direct interface members are response fields; nested type literals stay nested. */
+function interfaceFields(src: string) {
+  const file = ts.createSourceFile('shared.ts',src,ts.ScriptTarget.Latest,true);
+  const declarations = new Map(file.statements.filter(ts.isInterfaceDeclaration).map(node => [node.name.text,node]));
+  const fields = (type: string, active = new Set<string>()): { name: string; optional: boolean }[] => {
+    const declaration = declarations.get(type);
+    if (!declaration) return [];
+    if (active.has(type)) throw new Error(`Cyclic response interface: ${type}`);
+    const next = new Set(active).add(type);
+    const result = new Map<string,{name:string;optional:boolean}>();
+    for (const clause of declaration.heritageClauses ?? []) for (const base of clause.types) {
+      const name = base.expression.getText(file);
+      if (!declarations.has(name)) throw new Error(`Unresolved response interface base: ${type} extends ${name}`);
+      for (const field of fields(name,next)) result.set(field.name,field);
+    }
+    for (const member of declaration.members) {
+      if (!ts.isPropertySignature(member)) continue;
+      if (!ts.isIdentifier(member.name) && !ts.isStringLiteralLike(member.name)) throw new Error(`Non-static response field: ${type}`);
+      const name = member.name.text;
+      result.set(name,{name,optional:!!member.questionToken});
+    }
+    return [...result.values()];
+  };
+  return fields;
 }
+const sharedFields = interfaceFields(sharedTypesSrc(ROOT));
+function tsFields(type: string): { name: string; optional: boolean }[] { return sharedFields(type); }
 
 /** 收集后端所有 java 源码 */
 function javaFiles(dir = "backend", out: string[] = []): string[] {
@@ -249,6 +267,30 @@ function pathOf(key: string): string {
   const i = key.indexOf(" ");
   return i < 0 ? key : key.slice(i + 1);
 }
+
+describe("response interface field parsing", () => {
+  it("ignores nested members at any indentation and preserves inherited optional flags and overrides", () => {
+    const fields = interfaceFields(`
+      export interface Base { inherited?:string; id?:number }
+      export interface Result extends Base {
+      /** Comment and formatting do not change membership. */
+      snapshot: {
+      nestedRequired:string;
+      nestedOptional?:number;
+      };
+      id:number; optional?:{ deeplyNested:boolean }; method():void;
+      'quoted-field'?:string;
+      }
+    `);
+    expect(fields('Result')).toEqual([
+      {name:'inherited',optional:true},{name:'id',optional:false},{name:'snapshot',optional:false},
+      {name:'optional',optional:true},{name:'quoted-field',optional:true},
+    ]);
+    // Missing top-level fields remain visible to both sides of the comparison.
+    expect(fields('Result').filter(f=>!f.optional).map(f=>f.name).filter(name=>!['id'].includes(name))).toEqual(['snapshot']);
+    expect(['id','backendOnly'].filter(name=>!fields('Result').some(f=>f.name===name))).toEqual(['backendOnly']);
+  });
+});
 
 describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
   const eps = endpoints(app);
