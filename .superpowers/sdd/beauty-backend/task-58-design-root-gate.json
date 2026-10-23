@@ -1,0 +1,65 @@
+{
+  "status": "IMPLEMENTATION_RELEASED_FIRST_ACTUAL_V8_EXECUTION_PIN_PENDING",
+  "design_base": "eb9ec7734334214fe04d5b7d4e6f2593cc2cafd2",
+  "checked_at": "2026-10-23T20:09:16.792688+00:00",
+  "candidate_bytes": 4582,
+  "candidate_sha256": "c5b54d574624a5265366cf4bf7897ec949d107bd302f171539c461a89a9d8343",
+  "actual_sql_file_exists": false,
+  "beauty_max": 7,
+  "platform_max": 540,
+  "baseline": {
+    "head": "eb9ec7734334214fe04d5b7d4e6f2593cc2cafd2",
+    "beauty": [
+      {
+        "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V1__beauty_p1_tables.sql",
+        "bytes": 35885,
+        "sha256": "ac2a539664c42fdb7e4893f1359879fc5affbe4b24f95aae1809cd25f11061a4"
+      },
+      {
+        "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V2__beauty_appointment_resource_fence.sql",
+        "bytes": 5785,
+        "sha256": "5b6768928018b68635c9c081b200a2cb6202d40645c5db62c91c558cc49d4114"
+      },
+      {
+        "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V3__beauty_appointment_business.sql",
+        "bytes": 8020,
+        "sha256": "c8d54df07cabc5b0903e0dd4fba73e2b7fc4aa75539a148837cc5837deaa8da7"
+      },
+      {
+        "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V4__beauty_appointment_resource_decision.sql",
+        "bytes": 1996,
+        "sha256": "7df4e8d2e3aeeb57bf1e704004957d996912a17021c5f58842ac91152e7a003a"
+      },
+      {
+        "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V5__beauty_reception_work_order.sql",
+        "bytes": 9806,
+        "sha256": "8e9aec144736ee3502fb9c0f9c4c95edf6f4a02c1cecbd597ff0c3b51aa4eab5"
+      },
+      {
+        "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V6__beauty_reception_identity_guard.sql",
+        "bytes": 445,
+        "sha256": "220ed777c56a77c22cf835f2a5bcc42ccb41cc98a4348831df06e0e404b89f20"
+      },
+      {
+        "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V7__beauty_appointment_assignment_units.sql",
+        "bytes": 417,
+        "sha256": "8894786048bf04ca45eff129a83fa7776da867994d72dff2343a91b215d6d3f2"
+      }
+    ],
+    "platform_max": 540,
+    "frozen_platform": [
+      {
+        "path": "backend/shop-app/src/main/resources/db/migration/V539__checkout_source_foundation.sql",
+        "bytes": 8444,
+        "sha256": "5a8e346341e5b378403761f2a77555c0558ff6b27a6071584207a9d8f9e14d3b"
+      },
+      {
+        "path": "backend/shop-app/src/main/resources/db/migration/V540__checkout_payment_operation.sql",
+        "bytes": 7477,
+        "sha256": "ca76b6512cf79c6f25fa71a4441f533e03cc609c6320611a0dcdc9634a10f745"
+      }
+    ]
+  },
+  "design_sha256": "8f055bb53a5b6ee1ebce807b9b1e111302955af1acf7c25ecb3f3a3a3a565856",
+  "report_sha256": "58cc263194ffe377a27b163b302b9a790ab4f44cf4d03503bd8a96d08494434e"
+}

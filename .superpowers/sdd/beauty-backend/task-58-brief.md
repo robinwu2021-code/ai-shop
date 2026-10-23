@@ -39,3 +39,9 @@
 13. native仍本机cached mysql:9.7.2、DISK64M、colima-hxkey-tests/profile hxkey-tests、MemAvailable>=524288KiB、串行自有UUID/随机loopback库/--pull never/秘密env/finally只清自己。不停他人容器/改VM/共享autotest或远程环境。JDK21=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home；Maven -o -Dmaven.repo.local=/tmp/codex-beauty-bm01-m2。复用真实runner及native具体类隔离，强制fresh非零0skip报告。
 14. 相关beauty常规/现source/预约接待/零售餐饮owner/架构/三语/SQL/生成验证按变化范围，非无限全量重复。Task60已记旧OpsPoints FQN、store/job/beauty域登记、V506/实体CHECK解析/12表、booking标签/common.delete/库存placeholder、生成漂移、四旧B端路径登记、55D告警、claim→USER/真实REPLACE与插件SQL定向覆盖。新增Task57 M1 runner未知/空selector可假绿也必须Task60最终门修复；本步合法selectorfresh执行证据有效，不能把旧债宣布清零或用它掩新失败。
 15. 报告按设计阶段/实施阶段分别持续记录：真实审计file:line、裁决/风险成本、逐AC方法与真实provider、精确commands/logs/counts、SQL冻结、RED/firstGREEN/消融/资源清理、未验边界和精确owned。设计交接只design/report两文件，根主TDD/progress/brief/ADR/pins/reviews不改不stage。实施完成后精确hash/只owned diff冻结，未commit交根独立spec+quality审查；通过后根精确提交，不push/merge/deploy。整个BM04部署与whole-branch审查仍Task60。
+
+## 根技术放行（2026-10-24）
+
+已完整核对task-58-design.md及report；6.2必须包含旧epoch更高可信版本提升最高水位，以及可信UNKNOWN有/无pair使全部在途ticket失效的原子分支，不可简化为discard。三条新增AC及消融selector已核。候选V8 literal根独立提取4582字节/SHA c5b54d574624a5265366cf4bf7897ec949d107bd302f171539c461a89a9d8343；旧beauty1–7/平台539/540未变、max7/540。允许按设计写产品/测试/生成器及构建，IMPLEMENTATION_BASE为本次根文档提交HEAD。首次执行任何V8前必须先报告实际生成文件供根独立pin；未取得实际文件pin，不得运行会触发V8的测试/应用。无平台新DDL。
+
+先真实行为RED再最小实现/GREEN；源码编译缺失或夹具失败不算RED。当前已有全部用户授权，不需再次确认。按精确owned清单变更，新增必要路径先记录理由；不改根主TDD/progress/brief/ADR/pins或其他会话工作区，不stage/commit，不派子agent。提交独立审查前冻结完整owned hash/差异与真实证据。Task58非部署准出，BM05关闭。

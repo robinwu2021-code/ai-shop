@@ -1834,7 +1834,7 @@ embedded停止后才启动真正无core的standalone HOST；独立SERVER单一�
 
 本轮裁决：有限预算匹配必须诚实报告搜索不完整，不能以贪心设计解释假无解；较大合法请求可能需要缩小查询或增加明确指定。ops/no-api禁止公开预约入口与Job，受机器令牌保护的内部协议按已批准合同保留。这些边界改变将需要明确的后续任务。下一模块按§21.3先深化BM04，不重复领取已完成BM03。
 
-## §32 BM04进度：接待工单与共用建单完成，资金阶段实施中
+## §32 BM04进度：资金已验收，来源绑定实施中
 
 Task54实现6932ef5c4及文档源修复7b3142e3f已通过独立任务审查。[实现与验证报告](../../.superpowers/sdd/beauty-backend/task-54-report.md)、[完整审查](../../.superpowers/sdd/beauty-backend/review-task-54.md)、[修复复审](../../.superpowers/sdd/beauty-backend/review-task-54-r1.md)保留实际命令/日志、原生库/真实TCP/fixture边界。共用member owner提供临客登记/验证/不可变认领及本人mc1核验；行业不复制顾客主档，不授付款权。新增平台V537/V538已执行并冻结，旧迁移未改。
 
@@ -1923,3 +1923,13 @@ Task56本地owner完成；BM04整体尚未完成。按[Task57任务](../../.supe
 V540首次执行前独立pin并复核真实文件7477字节/SHA256 ca76b6512cf79c6f25fa71a4441f533e03cc609c6320611a0dcdc9634a10f745，现已冻结；V539及beautyV1–V7逐字不变。[ADR-047](./ADR/ADR-047-资金原号操作与正式线下实收归属.md)保留全局identity、UTC实收下界与可信内部投影等边界。
 
 完整普通门禁仍有已定位旧架构/四端点登记/标签/生成漂移；Task57 M1未知/空native selector校验作为Minor明确进入Task60最终门，不因本任务验收丢弃。58来源绑定/账单、59公开协议、60整BM04真实JAR部署和whole-branch审查仍按序，BM05保持关闭。完整证据与未验边界见[报告](../../.superpowers/sdd/beauty-backend/task-57-report.md)。
+
+### 32.7 Task58设计：来源提交、观察分配与逐来源账单
+
+以功能矩阵 BTY-H01/H03/I04 与 Task58 为范围，实际 WorkOrderService 仅已有 open/get/getMy，新增提交/账单及原号查询恢复服务。详细 DTO、方法、Mapper、Bean 图、状态/租约/锁序、AC 与真实 owner 测试边界见[Task58设计](../../.superpowers/sdd/beauty-backend/task-58-design.md)。公开 Controller/Remote/SERVER 仍为 Task59，不提前宣称已开放。
+
+现有 guard 只能保证本域原子分配，不能承担远端退款/执行许可；新增 V8 观察水位表解决已分配量之下退款与旧回执回退。最高 pair 不下降，旧 epoch 的更高可信事实也提升阻断水位，可信 UNKNOWN 使在途观察失效。绑定按 observation→行 guard→工单→任务→submission，原子核当前净数量上限；保留历史绑定，不自动释放/重新购买，canStart=false。新增表的归属与可用性成本见[ADR-048](./ADR/ADR-048-美业来源观察水位与本域分配仲裁.md)。
+
+B 仅原身份准备与查询，C 真实本人确认/下单/支付；其他 B 缺原证明时原号待恢复，不冒用。账单按 owner 同快照真实回执/净收/退款与币种展示，未知金额 null、跨工单共享来源的金额不归摊，不能推导新收款权。
+
+根已独立提取候选 SQL：4582 字节/SHA256 c5b54d574624a5265366cf4bf7897ec949d107bd302f171539c461a89a9d8343，实际最大号 beauty7/platform540、旧冻结字节未变。设计已通过根技术核对并放行实施，尚未执行 SQL/业务测试/部署；实际生成文件执行前 pin 独立记录。所有既有 Task60 门禁债保留，BM04 整体未完成。
