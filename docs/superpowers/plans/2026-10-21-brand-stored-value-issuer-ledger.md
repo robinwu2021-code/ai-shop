@@ -40,7 +40,7 @@ API主交付编号：IS01, IS02, IS03, IS04, IS05, RC01, RC02, RC03, RC04, RC05,
 
 新表：`sv_issuer`, `sv_issuer_version`, `sv_issuer_store_access`, `sv_release`, `sv_release_tier`, `sv_issue_quota`, `sv_issue_quota_reservation`, `sv_customer_issuer_index`。只迁移本阶段需要结构，不一次上线26张表。
 
-### P3-T01 发行方与收款路由
+### Task 1: P3-T01 发行方与收款路由
 
 **Files（新增或改造位置，尚未实现）：**
 - `backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/StoredValueIssuerService.java`
@@ -55,7 +55,7 @@ API主交付编号：IS01, IS02, IS03, IS04, IS05, RC01, RC02, RC03, RC04, RC05,
 - [ ] 运行本轮受影响模块编译和基本定向测试；前端同步使用统一UI及三语词条，记录真实结果。
 - [ ] 提交本任务及更新任务表；阶段联调留本阶段编码完成后统一执行，不在任务之间重复整个链路。
 
-### P3-T02 旧账审计与唯一键切换
+### Task 2: P3-T02 旧账审计与唯一键切换
 
 **Files（新增或改造位置，尚未实现）：**
 - `backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/migration/StoredValueIssuerMigrationService.java`
@@ -70,7 +70,7 @@ API主交付编号：IS01, IS02, IS03, IS04, IS05, RC01, RC02, RC03, RC04, RC05,
 - [ ] 运行本轮受影响模块编译和基本定向测试；前端同步使用统一UI及三语词条，记录真实结果。
 - [ ] 提交本任务及更新任务表；阶段联调留本阶段编码完成后统一执行，不在任务之间重复整个链路。
 
-### P3-T03 单店原单与额度计数
+### Task 3: P3-T03 单店原单与额度计数
 
 **Files（新增或改造位置，尚未实现）：**
 - `backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRechargeService.java`
@@ -85,7 +85,7 @@ API主交付编号：IS01, IS02, IS03, IS04, IS05, RC01, RC02, RC03, RC04, RC05,
 - [ ] 运行本轮受影响模块编译和基本定向测试；前端同步使用统一UI及三语词条，记录真实结果。
 - [ ] 提交本任务及更新任务表；阶段联调留本阶段编码完成后统一执行，不在任务之间重复整个链路。
 
-### P3-T04 B端发行设置及单店兼容
+### Task 4: P3-T04 B端发行设置及单店兼容
 
 **Files（新增或改造位置，尚未实现）：**
 - `b-app/src/api/stored-value-issuers.ts`

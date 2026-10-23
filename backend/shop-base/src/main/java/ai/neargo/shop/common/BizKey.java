@@ -37,6 +37,9 @@ public final class BizKey {
     public static final String PERSON = "PS";
     /** 会员：一个人 × 一家主体的关系。与 PERSON 分开 —— 一份人档可以是好几家店的会员 */
     public static final String MEMBER = "MB";
+    public static final String STORED_VALUE_ISSUER = "SVI";
+    public static final String STORED_VALUE_ISSUER_VERSION = "SIV";
+    public static final String STORED_VALUE_ISSUER_ACCESS = "SIA";
     public static final String SCOPE_MEMBER = "MSM";
     public static final String STORE_MEMBER_PROFILE = "MSP";
     public static final String MEMBER_SCOPE_LINK = "MSL";

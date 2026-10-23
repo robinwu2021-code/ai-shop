@@ -14,9 +14,9 @@ public class ManagementScopeService {
  final ManagementRepository db;
  private static final Map<String,Set<String>> PERMISSIONS=Map.of(
   "SPACE",Set.of("management.enter","management.resource.read","management.grant.manage","brand.manage","brand.change.read","brand.change.decide"),
-  "BRAND",Set.of("brand.read","brand.manage","brand.audit.read","brand.change.read","brand.change.decide"),
-  "STORE",Set.of("store.read","store.brand.change"),
-  "ENTITY",Set.of("entity.read","payment.merchant.read"),
+  "BRAND",Set.of("brand.read","brand.manage","brand.audit.read","brand.change.read","brand.change.decide","sv.issuer.read","sv.issuer.configure"),
+  "STORE",Set.of("store.read","store.brand.change","sv.issuer.read","sv.issuer.configure"),
+  "ENTITY",Set.of("entity.read","payment.merchant.read","sv.issuer.settlement.authorize"),
   "PAYMENT_MERCHANT",Set.of("payment.merchant.read"));
  public ManagementScopeService(ManagementRepository db){this.db=db;}
  Map<String,Object> space(Actor a,String m){return db.one("SELECT * FROM mch_management_space WHERE tenant_no=? AND management_no=? AND deleted=0",a.tenantNo(),m);}

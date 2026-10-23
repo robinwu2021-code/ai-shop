@@ -370,6 +370,11 @@ public interface PayInternalApi {
     ai.neargo.shop.spi.entitlement.LegacyCouponUsePort.Operation legacyCouponQuery(
             @RequestBody PayLegacyCouponRequests.Query request);
 
+    @PostExchange(PayInternalPaths.SV_ISSUER_FIND)
+    ai.neargo.shop.spi.storedvalue.StoredValueIssuers.Lookup svIssuerFind(@RequestBody PayStoredValueIssuerRequests.Find request);
+    @PostExchange(PayInternalPaths.SV_ISSUER_CONFIGURE)
+    ai.neargo.shop.spi.storedvalue.StoredValueIssuers.View svIssuerConfigure(@RequestBody PayStoredValueIssuerRequests.Configure request);
+
     @PostExchange(PayInternalPaths.SV_PLAN_CREATE)
     StoredValuePlans.View svPlanCreate(@RequestBody PayStoredValuePlanRequests.Create request);
     @PostExchange(PayInternalPaths.SV_PLAN_GET)
