@@ -712,8 +712,8 @@ Bean图约束：AppointmentService.openWorkOrderFromAppointment与WorkOrderServi
 
 消费55真实范围及56/57完整CheckoutPort与OfflineReceiptPort，实现056/071/072/073及P1必要来源确认/trace。外调前持久原意图/原号/摘要，来源buyer/store/行/量/版本核实后按guard→工单→任务的既有锁序CAS绑定；数量守恒，旧范围晚回执不能覆盖。UNKNOWN不新号建单/支付，账单金额读取owner且按币种，缺失明确不完整。开工前补完整签名与绑定/撤销边界。
 
-- [ ] 细化方案后TDD实现，native并发数量/重复绑定/原号恢复/owner异常/账单不完整验证。
-- [ ] 提交并独立审查，不提前开放BM05。
+- [x] 细化方案后TDD实现，native并发数量/重复绑定/原号恢复/owner异常/账单不完整验证。
+- [x] 提交并独立审查，不提前开放BM05。
 
 #### Task 59: BM04公开入口与双向协议
 
@@ -1834,7 +1834,7 @@ embedded停止后才启动真正无core的standalone HOST；独立SERVER单一�
 
 本轮裁决：有限预算匹配必须诚实报告搜索不完整，不能以贪心设计解释假无解；较大合法请求可能需要缩小查询或增加明确指定。ops/no-api禁止公开预约入口与Job，受机器令牌保护的内部协议按已批准合同保留。这些边界改变将需要明确的后续任务。下一模块按§21.3先深化BM04，不重复领取已完成BM03。
 
-## §32 BM04进度：资金已验收，来源绑定实施中
+## §32 BM04进度：来源与账单内核已验收，公开协议待实施
 
 Task54实现6932ef5c4及文档源修复7b3142e3f已通过独立任务审查。[实现与验证报告](../../.superpowers/sdd/beauty-backend/task-54-report.md)、[完整审查](../../.superpowers/sdd/beauty-backend/review-task-54.md)、[修复复审](../../.superpowers/sdd/beauty-backend/review-task-54-r1.md)保留实际命令/日志、原生库/真实TCP/fixture边界。共用member owner提供临客登记/验证/不可变认领及本人mc1核验；行业不复制顾客主档，不授付款权。新增平台V537/V538已执行并冻结，旧迁移未改。
 
@@ -1924,12 +1924,16 @@ V540首次执行前独立pin并复核真实文件7477字节/SHA256 ca76b6512cf79
 
 完整普通门禁仍有已定位旧架构/四端点登记/标签/生成漂移；Task57 M1未知/空native selector校验作为Minor明确进入Task60最终门，不因本任务验收丢弃。58来源绑定/账单、59公开协议、60整BM04真实JAR部署和whole-branch审查仍按序，BM05保持关闭。完整证据与未验边界见[报告](../../.superpowers/sdd/beauty-backend/task-57-report.md)。
 
-### 32.7 Task58设计：来源提交、观察分配与逐来源账单
+### 32.7 Task58已验收：来源提交、观察分配与逐来源账单
 
-以功能矩阵 BTY-H01/H03/I04 与 Task58 为范围，实际 WorkOrderService 仅已有 open/get/getMy，新增提交/账单及原号查询恢复服务。详细 DTO、方法、Mapper、Bean 图、状态/租约/锁序、AC 与真实 owner 测试边界见[Task58设计](../../.superpowers/sdd/beauty-backend/task-58-design.md)。公开 Controller/Remote/SERVER 仍为 Task59，不提前宣称已开放。
+产品提交 ea2ead5c63f4830de566fdb3dcdda4b0a32424a9，基于 8cc2482ad；独立初审及两轮限定复审后 Important 全部关闭。覆盖功能矩阵 BTY-H01/H03/I04、BAPI056/071/072/073/137 的本地 Service 内核，公开 Controller/Remote/SERVER 归 Task59。真实 DTO、方法、Mapper、Bean 图、状态及锁序见[设计](../../.superpowers/sdd/beauty-backend/task-58-design.md)；命令、断言与边界见[报告](../../.superpowers/sdd/beauty-backend/task-58-report.md)、[初审](../../.superpowers/sdd/beauty-backend/review-task-58.md)、[R1复审](../../.superpowers/sdd/beauty-backend/review-task-58-r1.md)、[R2复审](../../.superpowers/sdd/beauty-backend/review-task-58-r2.md)。
 
-现有 guard 只能保证本域原子分配，不能承担远端退款/执行许可；新增 V8 观察水位表解决已分配量之下退款与旧回执回退。最高 pair 不下降，旧 epoch 的更高可信事实也提升阻断水位，可信 UNKNOWN 使在途观察失效。绑定按 observation→行 guard→工单→任务→submission，原子核当前净数量上限；保留历史绑定，不自动释放/重新购买，canStart=false。新增表的归属与可用性成本见[ADR-048](./ADR/ADR-048-美业来源观察水位与本域分配仲裁.md)。
+已交付持久原意图及不可变端点回执、显式项目选择和加项、当前真实消费者映射、原号查询恢复、本域数量仲裁与账单/trace。B 仅准备和查询，C 真实本人确认/下单/支付；未知不换号。确定的 owner REJECTED/REQUOTE_REQUIRED 原子结束当前租约；EXISTING 恢复回执返回本域 submissionNo。原交易缺失使已知来源 epoch 失效，身份/授权失败仍传播，不能转成普通待恢复结果。
 
-B 仅原身份准备与查询，C 真实本人确认/下单/支付；其他 B 缺原证明时原号待恢复，不冒用。账单按 owner 同快照真实回执/净收/退款与币种展示，未知金额 null、跨工单共享来源的金额不归摊，不能推导新收款权。
+V8 已在首次执行前由根独立核对实际文件：4582 字节，SHA256 c5b54d574624a5265366cf4bf7897ec949d107bd302f171539c461a89a9d8343；已实际执行并冻结，当前 ready8/28，V1–V7 与平台 V539/V540 字节不变。观察最高 pair 不下降，旧 epoch 的更高可信事实及可信 UNKNOWN 均阻断旧 ticket。按 observation→行 guard→工单→任务→submission 原子核净量并保留历史分配。绑定不授开工权，canStart=false、BM05 关闭；见[ADR-048](./ADR/ADR-048-美业来源观察水位与本域分配仲裁.md)。
 
-根已独立提取候选 SQL：4582 字节/SHA256 c5b54d574624a5265366cf4bf7897ec949d107bd302f171539c461a89a9d8343，实际最大号 beauty7/platform540、旧冻结字节未变。设计已通过根技术核对并放行实施，尚未执行 SQL/业务测试/部署；实际生成文件执行前 pin 独立记录。所有既有 Task60 门禁债保留，BM04 整体未完成。
+账单读取 owner 同快照真实回执、净收、已退和未结，按币种汇总。来源因退款 BLOCKED 不等于资金不完整：当前财务事实完整且全部归属本工单时仍汇总，操作阻断单独保留。UNKNOWN、部分归属保持金额 null 或汇总不完整，不按任务数量分摊。提供方缺失及非 CREATED 仍展示历史来源与 lastVerified，不能推导新收款权。
+
+初始原生内核 92/0/0/0、实际 HOST 4/0/0/0；R1 最终定向 7/0/0/0、R2 定向 4/0/0/0，分批重叠不相加。R1 RED7 和 R2 RED2 均为真实断言失败，修复后同风险场景通过；消融及逐字还原证据保留。平台 23 项仍有已登记的 2 项架构失败，不能声称全平台通过。HOST 的退款为受控 owner 事实而非完整退款 API；当前测试不代 Task59 公开协议或 Task60 实际构件部署。
+
+原审查 M1 的跨动作竞争测试误定胜者留给 Task60 明确修复/分诊；其他历史门禁债继续保留。下一步 Task59 先逐 API/Bean 图核对及设计，再实施；整个 BM04 尚未部署准出。

@@ -1,0 +1,17 @@
+{
+  "status": "IMMUTABLE_STAGED_TASK_REVIEW",
+  "base": "8cc2482adaa8e3f3df469307e92e78fadd5b58b3",
+  "tree": "63140e3b010e605c53c716f1a992f1c95c9485d0",
+  "owned_count": 68,
+  "owned_manifest": "/tmp/task58-owned-manifest.json",
+  "owned_manifest_sha256": "19f45e04da9f83ca27e25b9cbe6e2b9b0c884af01538cd1d2e0f54018e148346",
+  "package": "/tmp/task58-root-review-package.diff",
+  "package_bytes": 732600,
+  "package_sha256": "3e4c62f835b45fa62a953bc46b7d0ee0607d934c0b34cec66194bd32a84f17f9",
+  "checked_at": "2026-10-23T21:47:55.950434+00:00",
+  "all_actual_hashes_verified": true,
+  "frozen_sql_verified": true,
+  "root_excluded": [
+    ".superpowers/sdd/beauty-backend/progress.md"
+  ]
+}

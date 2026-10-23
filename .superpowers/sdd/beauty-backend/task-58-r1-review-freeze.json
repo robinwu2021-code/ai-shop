@@ -1,0 +1,13 @@
+{
+  "round": 1,
+  "fix_base_tree": "63140e3b010e605c53c716f1a992f1c95c9485d0",
+  "tree": "ba8998e35b7d5cd94fc9270e285f4c1ef133766b",
+  "head": "8cc2482adaa8e3f3df469307e92e78fadd5b58b3",
+  "package": "/tmp/task58-root-r1-review-package.diff",
+  "bytes": 63351,
+  "sha256": "b29d114a05007e363c0d3c6dd27f7ad170aa1153563b9fc833979eeaa14695c5",
+  "actual68verified": true,
+  "frozen10SQLverified": true,
+  "manifest_sha256": "5919db120fcdd18f818e7c2c756117bd6f8f278c36364c5d2641c69046d0e01c",
+  "checked_at": "2026-10-23T22:14:03.756234+00:00"
+}
