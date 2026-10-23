@@ -184,4 +184,14 @@
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>food-embedded</id>
+            <modules>
+                <module>../backend-plugins/shop-industry-food/food-api</module>
+                <module>../backend-plugins/shop-industry-food/food-core</module>
+                <module>../backend-plugins/shop-industry-food/food-web</module>
+            </modules>
+        </profile>
+    </profiles>
 </project>
