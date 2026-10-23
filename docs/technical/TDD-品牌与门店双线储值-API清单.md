@@ -416,10 +416,10 @@ Core 和 Pay 分别提供 POST /internal/pay/stored-value/migrations/capability�
 | 字段 | 真源及用途 |
 | --- | --- |
 | application/processNo | 当前应用名称、进程启动后稳定的随机标识；别名指向同一进程会被发现，重启要求重新确认清单 |
-| buildSha/protocol | 本产物 META-INF/build-info.properties 的完整40位gitSha、当前协议1；来源未知的普通构建为unknown并阻断 |
+| buildSha/protocol | 本产物 META-INF/build-info.properties 的完整40位gitSha、当前协议2；来源未知的普通构建为unknown并阻断 |
 | writerGuardEnabled/maintenanceEnabled | 当前进程实际 issuer-mode/migration-enabled；不使用调用方声明的开关 |
 | ledgerFingerprint | MySQL SHA2(server_uuid + ':' + DATABASE(),256)，只输出摘要，不输出连接地址、库名、凭据或原始数据库标识 |
-| schemaReady | Pay 数据源的 V548/V549 已执行且必需维度列可查询；查询失败返回不可用 |
+| schemaReady | Pay 数据源的 V548/V549/V550 已执行且必需维度列可查询；查询失败返回不可用 |
 | challenge/checkedAt | 原随机挑战和本次探测时间，拒绝跨轮复用与陈旧响应 |
 
 Core 内部 StoredValueMigrationReadinessService.check() 没有公开接口或请求参数；从服务端配置 shop.pay.stored-value.migration.inventory 读取封存清单，经 InternalHttp/PayInternalApi 逐实例直连，超时/异常统一为PROBE_UNAVAILABLE，不返回原始错误。配置缺失、未封存或格式无效不开始探测。最多16个实例。

@@ -124,6 +124,7 @@
   "docs/technical/design/ui-catalog.json",
   "docs/technical/design/ui-lib.json",
   "docs/technical/任务表-品牌与门店双线储值-P3批量交付.md",
+  "scripts/deploy-backend.sh",
   "scripts/release/brand-p3.json",
   "scripts/release/brand-p3.mjs",
   "scripts/release/brand-p3.test.mjs",

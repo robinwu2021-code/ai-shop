@@ -796,12 +796,34 @@
   },
   "currentBatch": {
     "stage": "P3",
-    "status": "VERIFIED_PENDING_PUBLICATION",
+    "status": "COMPATIBILITY_PUBLISHED",
     "baseline": "96c94cd18efab05b613faff1111238e88f141b54",
     "execution": "Complete all phase coding and compilation, then one focused test chain; retest failures and affected seams only",
     "backendDistinctTests": 24,
     "frontendDistinctTests": 15,
     "review": "One whole-stage reviewer; four important findings fixed with scoped verification",
-    "onlineCutover": "NOT_EXECUTED; issuer, execution and key-cutover switches remain closed"
+    "onlineCutover": "NOT_EXECUTED; issuer, execution and key-cutover switches remain closed",
+    "publication": {
+      "backendSha": "83db9a8ff0900743618e043c98bcfe12779e0852",
+      "bH5AndSiteSha": "87408ba11e98efe74d79de523236a56b24adc548",
+      "appVersion": "0.6.1",
+      "appVersionCode": 334,
+      "appMd5": "21b53a85f567d14312999827ab2e3e64",
+      "schemaVersions": [
+        "548",
+        "549",
+        "550"
+      ],
+      "coreHealth": 200,
+      "payProtectedHealth": 401,
+      "capabilityProtocol": 2,
+      "schemaReady": true,
+      "financialSwitches": false,
+      "device": "INSTALLED_BASIC_UI_VERIFIED_NO_POSTING"
+    },
+    "remaining": [
+      "Controlled online original-ledger mapping, key cutover and STORE resume; not executed",
+      "P3 signoff after controlled rollout; P4-P6 remain separately planned"
+    ]
   }
 }

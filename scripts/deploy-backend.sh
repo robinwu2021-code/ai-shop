@@ -88,7 +88,8 @@ fi
 # HEAD 上躺着别人刚提交、还没决定上线的功能（2026-09-29：要发门店化第二步，而 HEAD 上多了
 # 两笔出款相关的迁移）。发 HEAD 等于替他们决定了上线时间。变量名仍叫 HEAD_SHA，指的是「这次要发的那一版」。
 REF="${REF:-HEAD}"
-HEAD_SHA="$(git rev-parse --short "$REF")"
+FULL_SHA="$(git rev-parse --verify "$REF^{commit}")"
+HEAD_SHA="$(git rev-parse --short "$FULL_SHA")"
 HEAD_MSG="$(git log -1 --format=%s "$REF" | cut -c1-60)"
 say "本次要上线的是 ${REF} = $HEAD_SHA  $HEAD_MSG"
 
@@ -222,17 +223,19 @@ trap cleanup EXIT
 # **不在主工作区打包。** 这个目录常有多个会话同时在改，主工作区里别人未提交的
 # 半成品会被一起烘进 jar 推上线，而 git status 里那些行看起来跟你毫无关系。
 WT="$(mktemp -d)/deploy-head"
-git worktree add -q --detach "$WT" "$HEAD_SHA"
+git worktree add -q --detach "$WT" "$FULL_SHA"
 
 TS="$(date +%Y%m%d-%H%M)"
 # **名字里带上提交号。** 时间戳答不了「线上跑的是哪个提交」——
 # 2026-08-29 为这个问题反推了四轮。带上 SHA 之后 readlink 一眼就是答案。
 JAR_NAME="$APP-$TS-$HEAD_SHA.jar"
 say "构建中（干净副本，约 2 分钟）…"
-( cd "$WT/backend" && mvn -o clean package -pl "$MVN_MODULE" -am -DskipTests -q -Dgit.sha="$HEAD_SHA" ) \
+( cd "$WT/backend" && mvn -o clean package -pl "$MVN_MODULE" -am -DskipTests -q -Dgit.sha="$FULL_SHA" ) \
     || die "构建失败"
 LOCAL_JAR="$WT/backend/$JAR_IN_REPO"
 [ -f "$LOCAL_JAR" ] || die "构建完了却找不到 jar：$LOCAL_JAR"
+BUILT_SHA="$(unzip -p "$LOCAL_JAR" META-INF/build-info.properties | sed -n 's/^build.gitSha=//p' | tr -d '\r')"
+[ "$BUILT_SHA" = "$FULL_SHA" ] || die "Build metadata does not match exact full source SHA: ${BUILT_SHA:-missing}"
 ok "构建完成 $(du -h "$LOCAL_JAR" | cut -f1)"
 
 # ── ③ 传包并核对 ─────────────────────────────────────────────────────────
@@ -308,11 +311,11 @@ if wait_healthy; then
     else
     LIVE_SHA="$(ssh "$HOST" "curl -s '${HEALTH%/health}/info'" \
         | sed -n 's/.*"gitSha":"\([^"]*\)".*/\1/p')"
-    if [ "$LIVE_SHA" = "$HEAD_SHA" ]; then
+    if [ "$LIVE_SHA" = "$FULL_SHA" ]; then
         ok "线上进程确认在跑 $HEAD_SHA"
     else
         die "包切过去了、health 也 200，但**进程在跑的不是这一版**：
-       期望 $HEAD_SHA
+       期望 $FULL_SHA
        实际 ${LIVE_SHA:-（/actuator/info 里没有 gitSha —— 这个包不是走部署流程出来的）}
     多半是重启没真的换进程。看：ssh $HOST 'sudo systemctl status $SERVICE'"
     fi
