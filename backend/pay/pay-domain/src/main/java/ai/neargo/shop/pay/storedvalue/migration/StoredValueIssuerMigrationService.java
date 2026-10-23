@@ -23,6 +23,7 @@ public class StoredValueIssuerMigrationService {
     public record Report(boolean ready,String fingerprint,List<AccountMapping> accounts,List<Issue> issues) {
         public Report { accounts=List.copyOf(accounts); issues=List.copyOf(issues); }
     }
+    public record MappingResult(String state,long accountCount,String auditedFingerprint) { }
     private final IssuerRepository db;
     public StoredValueIssuerMigrationService(IssuerRepository db) { this.db=db; }
 
@@ -30,12 +31,86 @@ public class StoredValueIssuerMigrationService {
         validate(batch);
         return db.write(()->inspect(batch));
     }
+    /** Add scope references only. This never activates issuance or removes legacy indexes. */
+    public MappingResult map(Batch batch,String expectedFingerprint,String commandKey) {
+        validate(batch);
+        if(expectedFingerprint==null||!expectedFingerprint.matches("[0-9a-f]{64}")||commandKey==null||commandKey.isBlank()||commandKey.length()>64)
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        String payloadHash=hash(db.encode(List.of(batch,expectedFingerprint)));
+        return db.write(()->{
+            var command=db.one("SELECT * FROM pay_ent_command_dedup WHERE tenant_no=? AND operation_kind='SV_ISSUER_MAP' AND request_key=? AND deleted=0 FOR UPDATE",batch.tenantNo(),commandKey);
+            if(command!=null) {
+                if(!payloadHash.equals(text(command,"payload_hash"))||!"COMPLETED".equals(text(command,"result_status"))) throw BizException.of(ErrorCode.CONFLICT);
+                return db.decode(text(command,"response_snapshot"),MappingResult.class);
+            }
+            var now=java.sql.Timestamp.from(java.time.Instant.now());
+            db.update("INSERT INTO pay_ent_command_dedup(tenant_no,operation_kind,request_key,payload_hash,resource_no,result_status,version,deleted,created_at,updated_at,created_by,updated_by) VALUES(?,'SV_ISSUER_MAP',?,?,?,'PENDING',0,0,?,?,?,?)",
+                    batch.tenantNo(),commandKey,payloadHash,BizKey.next(BizKey.STORED_VALUE_MIGRATION),now,now,batch.actorNo(),batch.actorNo());
+            for(var store:batch.stores().stream().sorted(Comparator.comparing(StoreMapping::issuerNo)).toList()) {
+                var issuer=db.one("SELECT issuer_no,write_mode FROM sv_issuer WHERE tenant_no=? AND issuer_no=? AND scope_type='STORE' AND scope_no=? AND deleted=0 FOR UPDATE",batch.tenantNo(),store.issuerNo(),store.storeNo());
+                if(issuer==null||!Set.of("LEGACY","LEGACY_MAPPED").contains(text(issuer,"write_mode"))) throw BizException.of(ErrorCode.CONFLICT);
+                db.rows("SELECT account_no FROM sv_account WHERE tenant_no=? AND (store_no=? OR (store_no IS NULL AND entity_no=?)) AND deleted=0 ORDER BY account_no FOR UPDATE",batch.tenantNo(),store.storeNo(),store.entityNo());
+            }
+            var report=inspect(batch);
+            if(!report.ready()||!expectedFingerprint.equals(report.fingerprint())) throw BizException.of(ErrorCode.CONFLICT);
+            for(var store:batch.stores()) {
+                var config=db.one("SELECT current_issuer_version_no FROM sv_issuer WHERE tenant_no=? AND issuer_no=?",batch.tenantNo(),store.issuerNo());
+                String version=text(config,"current_issuer_version_no");
+                var accounts=report.accounts().stream().filter(a->store.issuerNo().equals(a.issuerNo())).toList();
+                BigInteger outstanding=accounts.stream().map(a->BigInteger.valueOf(a.principalMinor()).add(BigInteger.valueOf(a.bonusMinor()))).reduce(BigInteger.ZERO,BigInteger::add);
+                if(outstanding.compareTo(BigInteger.valueOf(Long.MAX_VALUE))>0) throw BizException.of(ErrorCode.CONFLICT);
+                for(var account:accounts) {
+                    db.update("UPDATE sv_account SET issuer_no=COALESCE(issuer_no,?),issuer_version_no=COALESCE(issuer_version_no,?),customer_no=?,updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND account_no=?",store.issuerNo(),version,account.customerNo(),now,batch.actorNo(),batch.tenantNo(),account.accountNo());
+                    db.update("UPDATE sv_lot SET issuer_no=COALESCE(issuer_no,?),issuer_version_no=COALESCE(issuer_version_no,?),collection_entity_no=COALESCE(collection_entity_no,?),settlement_entity_no=COALESCE(settlement_entity_no,?),updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND account_no=?",store.issuerNo(),version,store.entityNo(),store.entityNo(),now,batch.actorNo(),batch.tenantNo(),account.accountNo());
+                    db.update("UPDATE sv_voucher SET issuer_no=?,updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND account_no=?",store.issuerNo(),now,batch.actorNo(),batch.tenantNo(),account.accountNo());
+                    for(var lot:db.rows("SELECT lot_no FROM sv_lot WHERE tenant_no=? AND account_no=? AND deleted=0",batch.tenantNo(),account.accountNo())) {
+                        for(var hold:db.rows("SELECT operation_no FROM sv_hold_allocation WHERE tenant_no=? AND lot_no=? AND deleted=0",batch.tenantNo(),text(lot,"lot_no")))
+                            db.update("UPDATE sv_hold_allocation SET issuer_no=?,allocation_no=COALESCE(allocation_no,?),updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND lot_no=? AND operation_no=?",store.issuerNo(),BizKey.next(BizKey.STORED_VALUE_HOLD_ALLOCATION),now,batch.actorNo(),batch.tenantNo(),text(lot,"lot_no"),text(hold,"operation_no"));
+                    }
+                    index(batch,store,account,now);
+                }
+                db.update("UPDATE sv_recharge SET issuer_no=COALESCE(issuer_no,?),issuer_version_no=COALESCE(issuer_version_no,?),collection_entity_no=COALESCE(collection_entity_no,entity_no),settlement_entity_no=COALESCE(settlement_entity_no,entity_no),updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND entity_no=? AND store_no=?",store.issuerNo(),version,now,batch.actorNo(),batch.tenantNo(),store.entityNo(),store.storeNo());
+                db.update("UPDATE sv_statement SET issuer_no=?,scope_type='STORE',scope_no=?,operating_entity_no=entity_no,settlement_entity_no=entity_no,updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND entity_no=? AND store_no=?",store.issuerNo(),store.storeNo(),now,batch.actorNo(),batch.tenantNo(),store.entityNo(),store.storeNo());
+                db.update("UPDATE sv_recharge_plan SET issuer_no=?,updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND entity_no=? AND store_no=?",store.issuerNo(),now,batch.actorNo(),batch.tenantNo(),store.entityNo(),store.storeNo());
+                var quota=db.one("SELECT quota_no,reserved_minor FROM sv_issue_quota WHERE tenant_no=? AND store_no=? AND currency='CNY' FOR UPDATE",batch.tenantNo(),store.storeNo());
+                if(quota==null) {
+                    var row=base(batch,now);row.put("quota_no",BizKey.next(BizKey.STORED_VALUE_QUOTA));row.put("store_no",store.storeNo());row.put("currency","CNY");row.put("outstanding_minor",outstanding.longValueExact());row.put("reserved_minor",0);
+                    db.insert("sv_issue_quota",row);
+                } else {
+                    if(number(quota,"reserved_minor")!=0) throw BizException.of(ErrorCode.CONFLICT);
+                    db.update("UPDATE sv_issue_quota SET outstanding_minor=?,updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND quota_no=?",outstanding.longValueExact(),now,batch.actorNo(),batch.tenantNo(),text(quota,"quota_no"));
+                }
+                db.update("UPDATE sv_issuer SET write_mode='LEGACY_MAPPED',updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND issuer_no=?",now,batch.actorNo(),batch.tenantNo(),store.issuerNo());
+            }
+            var result=new MappingResult("MAPPED",report.accounts().size(),expectedFingerprint);
+            db.update("UPDATE pay_ent_command_dedup SET result_status='COMPLETED',response_snapshot=?,updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND operation_kind='SV_ISSUER_MAP' AND request_key=?",db.encode(result),now,batch.actorNo(),batch.tenantNo(),commandKey);
+            return result;
+        });
+    }
+    private void index(Batch batch,StoreMapping store,AccountMapping account,java.sql.Timestamp now) {
+        var prior=db.one("SELECT issuer_no,customer_no FROM sv_customer_issuer_index WHERE tenant_no=? AND account_no=? FOR UPDATE",batch.tenantNo(),account.accountNo());
+        if(prior!=null&&(!store.issuerNo().equals(text(prior,"issuer_no"))||!account.customerNo().equals(text(prior,"customer_no")))) throw BizException.of(ErrorCode.CONFLICT);
+        var dates=db.one("SELECT COUNT(*) AS count,MAX(credited_at) AS last_recharge_at FROM sv_lot WHERE tenant_no=? AND account_no=? AND deleted=0",batch.tenantNo(),account.accountNo());
+        var last=db.one("SELECT MAX(occurred_at) AS last_activity_at FROM sv_statement WHERE tenant_no=? AND account_no=? AND deleted=0",batch.tenantNo(),account.accountNo());
+        Object rechargeAt=dates.get("last_recharge_at"),activityAt=last.get("last_activity_at");
+        if(activityAt==null) activityAt=rechargeAt;
+        int hasRecharge=number(dates,"count")>0?1:0;
+        if(prior==null) {
+            var row=base(batch,now);row.put("customer_no",account.customerNo());row.put("issuer_no",store.issuerNo());row.put("account_no",account.accountNo());row.put("currency",account.currency());
+            row.put("has_recharge",hasRecharge);row.put("last_recharge_at",rechargeAt);row.put("last_activity_at",activityAt);row.put("last_occurrence_store_no",hasRecharge==1?store.storeNo():null);
+            db.insert("sv_customer_issuer_index",row);
+        } else db.update("UPDATE sv_customer_issuer_index SET has_recharge=?,last_recharge_at=?,last_activity_at=?,last_occurrence_store_no=?,updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND account_no=?",hasRecharge,rechargeAt,activityAt,hasRecharge==1?store.storeNo():null,now,batch.actorNo(),batch.tenantNo(),account.accountNo());
+    }
+    private Map<String,Object> base(Batch batch,java.sql.Timestamp now) {
+        var row=new LinkedHashMap<String,Object>();row.put("tenant_no",batch.tenantNo());row.put("version",0);row.put("deleted",0);
+        row.put("created_at",now);row.put("updated_at",now);row.put("created_by",batch.actorNo());row.put("updated_by",batch.actorNo());return row;
+    }
     private Report inspect(Batch batch) {
         var mappings=new HashMap<String,StoreMapping>();
-        var configs=new HashMap<String,Map<String,Object>>();
+        var configs=new TreeMap<String,Map<String,Object>>();
         for(var store:batch.stores()) {
             if(mappings.put(store.storeNo(),store)!=null) throw BizException.of(ErrorCode.BAD_REQUEST);
-            var config=db.one("SELECT i.issuer_no,v.currency FROM sv_issuer i JOIN sv_issuer_version v ON v.tenant_no=i.tenant_no AND v.issuer_no=i.issuer_no AND v.issuer_version_no=i.current_issuer_version_no WHERE i.tenant_no=? AND i.issuer_no=? AND i.scope_type='STORE' AND i.scope_no=? AND i.deleted=0 AND v.deleted=0 AND v.settlement_entity_no=?",
+            var config=db.one("SELECT i.issuer_no,v.currency,v.issuer_version_no FROM sv_issuer i JOIN sv_issuer_version v ON v.tenant_no=i.tenant_no AND v.issuer_no=i.issuer_no AND v.issuer_version_no=i.current_issuer_version_no WHERE i.tenant_no=? AND i.issuer_no=? AND i.scope_type='STORE' AND i.scope_no=? AND i.deleted=0 AND v.deleted=0 AND v.settlement_entity_no=?",
                     batch.tenantNo(),store.issuerNo(),store.storeNo(),store.entityNo());
             if(config==null) throw BizException.of(ErrorCode.CONFLICT);
             configs.put(store.storeNo(),config);
@@ -43,6 +118,7 @@ public class StoredValueIssuerMigrationService {
         var issues=new ArrayList<Issue>();
         var output=new ArrayList<AccountMapping>();
         var snapshots=new ArrayList<Object>();
+        snapshots.add(configs);
         var seenAccounts=new HashSet<String>();
         var walletKeys=new HashSet<String>();
         for(var store:batch.stores()) {
@@ -63,8 +139,10 @@ public class StoredValueIssuerMigrationService {
                 if(customer==null) { issues.add(new Issue("IDENTITY_UNRESOLVED",no));continue; }
                 String walletKey=store.issuerNo()+"|"+customer+"|"+currency;
                 if(!walletKeys.add(walletKey)) issues.add(new Issue("DUPLICATE_ISSUER_CUSTOMER",no));
+                existingIssuer(batch.tenantNo(),store,row,no,issues);
                 var lots=db.rows("SELECT * FROM sv_lot WHERE tenant_no=? AND account_no=? AND deleted=0 ORDER BY lot_no",batch.tenantNo(),no);
                 var vouchers=db.rows("SELECT * FROM sv_voucher WHERE tenant_no=? AND account_no=? AND deleted=0 ORDER BY account_seq",batch.tenantNo(),no);
+                for(var lot:lots) existingIssuer(batch.tenantNo(),store,lot,no,issues);
                 snapshots.add(lots);snapshots.add(vouchers);
                 verifyJournalAndHolds(batch.tenantNo(),store,no,lots,vouchers,issues,snapshots);
                 String[] amounts={"principal_minor","bonus_minor","held_principal_minor","held_bonus_minor"};
@@ -102,14 +180,23 @@ public class StoredValueIssuerMigrationService {
                     batch.tenantNo(),store.entityNo(),store.storeNo());
             snapshots.add(pending);
             for(var original:pending) issues.add(new Issue("RECHARGE_IN_FLIGHT",null));
-            var credited=db.rows("SELECT recharge_no,version FROM sv_recharge WHERE tenant_no=? AND entity_no=? AND store_no=? AND deleted=0 AND status='CREDITED' ORDER BY recharge_no",batch.tenantNo(),store.entityNo(),store.storeNo());
+            var credited=db.rows("SELECT * FROM sv_recharge WHERE tenant_no=? AND entity_no=? AND store_no=? AND deleted=0 AND status='CREDITED' ORDER BY recharge_no",batch.tenantNo(),store.entityNo(),store.storeNo());
             snapshots.add(credited);
             for(var recharge:credited) {
+                existingIssuer(batch.tenantNo(),store,recharge,null,issues);
                 var owners=db.rows("SELECT l.lot_no,l.account_no FROM sv_lot l JOIN sv_account a ON a.tenant_no=l.tenant_no AND a.account_no=l.account_no WHERE l.tenant_no=? AND l.recharge_no=? AND l.deleted=0 AND a.deleted=0 AND a.entity_no=? AND a.store_no=?",batch.tenantNo(),text(recharge,"recharge_no"),store.entityNo(),store.storeNo());
                 if(owners.size()!=1) issues.add(new Issue("ORPHAN_CREDITED_RECHARGE",null));
             }
         }
         return new Report(issues.isEmpty(),hash(db.encode(List.of(batch,snapshots))),output,issues);
+    }
+    private void existingIssuer(String tenant,StoreMapping store,Map<String,Object> row,String account,List<Issue> issues) {
+        String issuer=text(row,"issuer_no"),version=text(row,"issuer_version_no");
+        if(issuer!=null&&!store.issuerNo().equals(issuer)) issues.add(new Issue("ISSUER_SCOPE_CONFLICT",account));
+        if(version!=null&&db.one("SELECT issuer_version_no FROM sv_issuer_version WHERE tenant_no=? AND issuer_no=? AND issuer_version_no=? AND settlement_entity_no=? AND currency='CNY' AND deleted=0",tenant,store.issuerNo(),version,store.entityNo())==null)
+            issues.add(new Issue("ISSUER_VERSION_CONFLICT",account));
+        for(String key:List.of("collection_entity_no","settlement_entity_no"))
+            if(text(row,key)!=null&&!store.entityNo().equals(text(row,key))) issues.add(new Issue("COLLECTION_SCOPE_CONFLICT",account));
     }
     private void verifyJournalAndHolds(String tenant,StoreMapping store,String account,List<Map<String,Object>> lots,
             List<Map<String,Object>> vouchers,List<Issue> issues,List<Object> snapshots) {

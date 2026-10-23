@@ -40,6 +40,10 @@ public final class BizKey {
     public static final String STORED_VALUE_ISSUER = "SVI";
     public static final String STORED_VALUE_ISSUER_VERSION = "SIV";
     public static final String STORED_VALUE_ISSUER_ACCESS = "SIA";
+    public static final String STORED_VALUE_MIGRATION = "SVM";
+    public static final String STORED_VALUE_QUOTA = "SVQ";
+    public static final String STORED_VALUE_QUOTA_RESERVATION = "SVQR";
+    public static final String STORED_VALUE_HOLD_ALLOCATION = "SVHA";
     public static final String SCOPE_MEMBER = "MSM";
     public static final String STORE_MEMBER_PROFILE = "MSP";
     public static final String MEMBER_SCOPE_LINK = "MSL";

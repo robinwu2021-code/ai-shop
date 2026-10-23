@@ -93,4 +93,52 @@ class IssuerAccountMigrationTest {
         f.jdbc().update("UPDATE sv_posting_line SET book='CUSTOMER_CLAIM' WHERE voucher_no='V1' AND side='CREDIT'");
         assertThat(f.service().audit(batch()).issues()).extracting(x->x.code()).contains("ORPHAN_CREDITED_RECHARGE","JOURNAL_BOOK_MISMATCH");
     }
+    void migrationSchema(JdbcTemplate j) throws Exception {
+        j.execute("CREATE TABLE sv_statement(tenant_no varchar,account_no varchar,store_no varchar,entity_no varchar,type varchar,occurred_at timestamp,version bigint default 0,deleted int default 0,updated_by varchar,updated_at timestamp)");
+        j.execute("CREATE TABLE sv_recharge_plan(tenant_no varchar,entity_no varchar,store_no varchar,plan_no varchar,version bigint default 0,deleted int default 0,updated_by varchar,updated_at timestamp)");
+        for(String table:List.of("sv_account","sv_lot","sv_recharge","sv_voucher","sv_hold_allocation","sv_issuer")) {
+            if(!List.of("sv_account","sv_recharge").contains(table)) j.execute("ALTER TABLE "+table+" ADD COLUMN version bigint DEFAULT 0");
+            j.execute("ALTER TABLE "+table+" ADD COLUMN updated_at timestamp");j.execute("ALTER TABLE "+table+" ADD COLUMN updated_by varchar");
+        }
+        j.execute("ALTER TABLE sv_lot ADD COLUMN credited_at timestamp");
+        j.update("UPDATE sv_lot SET credited_at='2026-10-20 01:00:00'");
+        j.execute("CREATE TABLE pay_ent_command_dedup(id bigint auto_increment primary key,tenant_no varchar,operation_kind varchar,request_key varchar,payload_hash varchar,resource_no varchar,result_status varchar,response_snapshot varchar(20000),version bigint,deleted int,created_at timestamp,updated_at timestamp,created_by varchar,updated_by varchar,UNIQUE(tenant_no,operation_kind,request_key))");
+        String ddl=java.nio.file.Files.readString(java.nio.file.Path.of("../../shop-app/src/main/resources/db/migration/V547__stored_value_issuer_ledger_dimensions.sql"))
+                .replaceAll("(?m)^--.*$", "").replace(" ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci", "").replace(" JSON", " VARCHAR(10000)");
+        for(String part:ddl.split(";")) if(!part.isBlank()) {
+            var m=java.util.regex.Pattern.compile("CREATE TABLE ([a-z_]+)").matcher(part);
+            if(m.find()) part=part.replace("KEY uk_","KEY "+m.group(1)+"_uk_").replace("KEY ix_","KEY "+m.group(1)+"_ix_");
+            j.execute(part);
+        }
+    }
+    @Test void auditedMappingIsIdempotentAndPreservesOriginalIdsAndMoney() throws Exception {
+        var f=fixture();zeroBalanceHistory(f.jdbc());migrationSchema(f.jdbc());
+        var report=f.service().audit(batch());assertThat(report.ready()).isTrue();
+        var result=f.service().map(batch(),report.fingerprint(),"M1");
+        assertThat(f.service().map(batch(),report.fingerprint(),"M1")).isEqualTo(result);
+        assertThat(f.jdbc().queryForObject("SELECT account_no FROM sv_account",String.class)).isEqualTo("A1");
+        assertThat(f.jdbc().queryForObject("SELECT issuer_no FROM sv_account",String.class)).isEqualTo("I1");
+        assertThat(f.jdbc().queryForObject("SELECT principal_minor+bonus_minor FROM sv_account",Long.class)).isZero();
+        assertThat(f.jdbc().queryForObject("SELECT account_seq FROM sv_account",Long.class)).isEqualTo(2);
+        assertThat(f.jdbc().queryForObject("SELECT COUNT(*) FROM sv_voucher",Long.class)).isEqualTo(2);
+        assertThat(f.jdbc().queryForObject("SELECT has_recharge FROM sv_customer_issuer_index",Integer.class)).isEqualTo(1);
+        assertThat(f.jdbc().queryForObject("SELECT status FROM sv_issuer",String.class)).isEqualTo("DRAFT");
+    }
+    @Test void changedFactsInvalidateManifestWithoutPartialMetadataWrites() throws Exception {
+        var f=fixture();zeroBalanceHistory(f.jdbc());migrationSchema(f.jdbc());
+        var report=f.service().audit(batch());
+        f.jdbc().update("UPDATE sv_account SET version=version+1");
+        assertThatThrownBy(()->f.service().map(batch(),report.fingerprint(),"M1")).isInstanceOf(ai.neargo.shop.common.BizException.class);
+        assertThat(f.jdbc().queryForObject("SELECT issuer_no FROM sv_account",String.class)).isNull();
+        assertThat(f.jdbc().queryForObject("SELECT COUNT(*) FROM pay_ent_command_dedup",Long.class)).isZero();
+    }
+    @Test void laterConfigurationDoesNotReinterpretAlreadyMappedOriginalFacts() throws Exception {
+        var f=fixture();zeroBalanceHistory(f.jdbc());migrationSchema(f.jdbc());
+        var first=f.service().audit(batch());f.service().map(batch(),first.fingerprint(),"M1");
+        f.jdbc().update("INSERT INTO sv_issuer_version VALUES('MAIN','I1','IV2','E1','CNY',0)");
+        f.jdbc().update("UPDATE sv_issuer SET current_issuer_version_no='IV2'");
+        var second=f.service().audit(batch());f.service().map(batch(),second.fingerprint(),"M2");
+        for(String table:List.of("sv_account","sv_lot","sv_recharge"))
+            assertThat(f.jdbc().queryForObject("SELECT issuer_version_no FROM "+table,String.class)).isEqualTo("IV1");
+    }
 }

@@ -38,7 +38,7 @@ public class IssuerRepository {
     public int update(String sql, Object... args) { return jdbc.update(sql, args); }
 
     public void insert(String table, Map<String,Object> values) {
-        if (!Set.of("sv_issuer", "sv_issuer_version", "sv_issuer_store_access").contains(table))
+        if (!Set.of("sv_issuer", "sv_issuer_version", "sv_issuer_store_access", "sv_release", "sv_release_tier", "sv_issue_quota", "sv_issue_quota_reservation", "sv_customer_issuer_index").contains(table))
             throw new IllegalArgumentException("Issuer table required");
         String columns = String.join(",", values.keySet());
         jdbc.update("INSERT INTO " + table + " (" + columns + ") VALUES ("
@@ -54,6 +54,8 @@ public class IssuerRepository {
             }
         }
     }
+
+    public <T> T decode(String value, Class<T> type) { return json.readValue(value, type); }
 
     public String encode(Object value) { return json.writeValueAsString(value); }
     public List<ai.neargo.shop.spi.storedvalue.StoredValueIssuers.Route> routes(String value) {
