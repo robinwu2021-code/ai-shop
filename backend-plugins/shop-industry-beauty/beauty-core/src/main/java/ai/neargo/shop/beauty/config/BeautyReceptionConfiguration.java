@@ -8,6 +8,11 @@ import ai.neargo.shop.beauty.policy.ReceptionIdentity;
 import ai.neargo.shop.beauty.service.impl.AppointmentPersistence;
 import ai.neargo.shop.beauty.service.impl.GuestRegistrationServiceImpl;
 import ai.neargo.shop.beauty.service.impl.ReceptionPreparation;
+import ai.neargo.shop.beauty.service.impl.ReceptionCoordinator;
+import ai.neargo.shop.beauty.service.impl.AppointmentCoordinator;
+import ai.neargo.shop.beauty.service.impl.AppointmentMatching;
+import ai.neargo.shop.beauty.service.impl.AppointmentPreparationService;
+import ai.neargo.shop.beauty.service.impl.WorkOrderPreparation;
 import ai.neargo.shop.beauty.service.impl.ReceptionServiceImpl;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
@@ -41,8 +46,26 @@ public class BeautyReceptionConfiguration {
                 receipts, publisher);
     }
     @Bean Clock beautyReceptionClock() { return Clock.systemUTC(); }
+    @Bean WorkOrderPreparation workOrderPreparation(AppointmentPersistence db, AppointmentCoordinator appointments,
+            BeautyMappers.ServiceDefinitionMapper definitions, BeautyMappers.ServiceDefinitionVersionMapper versions,
+            BeautyMappers.ServiceRequirementMapper requirements, BeautyMappers.StorePolicyMapper policies,
+            BeautyMappers.StorePolicyVersionMapper policyVersions) {
+        return new WorkOrderPreparation(db, appointments, definitions, versions, requirements, policies,
+                policyVersions);
+    }
+    @Bean ReceptionCoordinator receptionCoordinator(AppointmentPersistence db, AppointmentAccess access,
+            ReceptionAccess receptionAccess, ReceptionIdentity identities, CustomerOwnership ownership,
+            ReceptionPreparation preparations, AppointmentCoordinator appointments,
+            BeautyMappers.ReceptionOperationMapper operations, BeautyMappers.ArrivalChallengeMapper challenges,
+            @Qualifier("beautyOutboxPublisher") OutboxPublisher publisher,
+            @Qualifier("beautyReceptionClock") Clock clock, AppointmentMatching matching,
+            AppointmentPreparationService appointmentPreparations, WorkOrderPreparation workOrders) {
+        return new ReceptionCoordinator(db, access, receptionAccess, identities, ownership, preparations,
+                appointments, operations, challenges, publisher, clock, matching, appointmentPreparations, workOrders);
+    }
     @Bean ReceptionServiceImpl receptionServiceImpl(AppointmentPersistence db, AppointmentAccess access,
-            BeautyMappers.ArrivalChallengeMapper challenges, @Qualifier("beautyReceptionClock") Clock clock) {
-        return new ReceptionServiceImpl(db, access, challenges, clock);
+            BeautyMappers.ArrivalChallengeMapper challenges, @Qualifier("beautyReceptionClock") Clock clock,
+                    ReceptionCoordinator coordinator) {
+        return new ReceptionServiceImpl(db, access, challenges, clock, coordinator);
     }
 }

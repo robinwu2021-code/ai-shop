@@ -6,7 +6,7 @@
 
 ## 一、方法及持久化规则
 
-本清单逐项覆盖95条美业候选HTTP、11条共用候选HTTP，并保留54项共用CONTRACT对照。Mapper共25个，新增38个必要自定义锁/CAS/查询方法；其余使用继承CRUD。类总表、完整Service与Impl签名、DTO和辅助类见[Java类与方法清单](./美业系统-Java类与方法清单.md)。
+本清单逐项覆盖95条美业候选HTTP、11条共用候选HTTP，并保留54项共用CONTRACT对照。Mapper共25个，新增40个必要自定义锁/CAS/查询方法；其余使用继承CRUD。类总表、完整Service与Impl签名、DTO和辅助类见[Java类与方法清单](./美业系统-Java类与方法清单.md)。
 
 - Controller仅绑定路径/Body/Query/协议头、鉴权与调用Service，返回业务VO/PageData；沿平台ApiResponseWrapper，不再包ApiResult。声明省略import、类级条件、Mapping和权限注解，HTTP方法/路径在标题；实施必须补齐其对应注解及“为什么”的公开API Javadoc。
 - Service接口归beauty-api/service，Impl归beauty-core/service/impl且同名后缀Impl；Service方法无HTTP注解，Impl直接注入本域Mapper。禁止新增Repository、等义Application/DomainService或一个巨型BeautyManager。
@@ -949,9 +949,9 @@ ArrivalVO checkIn(String entityNo, String currentStoreNo, String actorNo, CheckI
 
 关键自定义调用：`BeautyMappers.AppointmentMapper.selectScopedForUpdate`；`BeautyMappers.AppointmentMapper.markArrived`。
 
-跨域/基础设施：共用身份核验。
+跨域/基础设施：CustomerIdentityPort.resolveClaimReference/verifyConsumerProof；GuestRegistrationPort.verify；ResourceBookingPort.queryHold（当前成功arrangement绑定）；共用Outbox（BeautyReceptionStateChanged）。
 
-守卫：签到不调用会完成订单的履约核销。
+守卫：Task55B已实现Service 047/154；真实身份/权限/hold锁外；根→fence→current→operation短事务CAS，checkedInAt服务端UTC；当前成功arrangement取证；不改hold/计划、不创建工单/tasks。HTTP归59。
 
 #### BAPI-048 · POST /biz/x/beauty/walk-ins
 
@@ -1077,7 +1077,7 @@ WorkOrderVO openWorkOrderFromAppointment(String entityNo, String currentStoreNo,
 
 #### BAPI-053 · POST /biz/x/beauty/reception-exceptions
 
-目的：迟到早到及无法服务协调；阶段：P1；模式：**ORCHESTRATED**。
+目的：迟到早到及无法服务协调；阶段：P1；模式：**LOCAL_ATOMIC**。
 
 Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizReceptionExceptionController`
 
@@ -1091,13 +1091,13 @@ Service（beauty-api）：`ai.neargo.shop.beauty.service.ReceptionService`；Imp
 ReceptionExceptionVO coordinateReceptionException(String entityNo, String currentStoreNo, String actorNo, ReceptionExceptionReq req, String idempotencyKey);
 ```
 
-本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`。
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`。
 
-本域写入候选：无。
+本域写入候选：`BeautyMappers.ActionLogMapper.insert`。
 
-跨域/基础设施：共用业务待办/协调登记。
+跨域/基础设施：共用Outbox（BeautyReceptionStateChanged安全投影，已实现）。
 
-守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+守卫：根→fence→operation；expectedRevision；ActionLog/requestNo+operation/result+Outbox同事务。reason仅本域，原键返回原请求号/实际受影响task，不自动取消/释放/开工/资金。
 
 #### BAPI-154 · POST /mp/x/beauty/arrivals
 
@@ -1121,9 +1121,9 @@ MyArrivalVO checkInMyAppointment(String userNo, MyCheckInReq req, String idempot
 
 关键自定义调用：`BeautyMappers.AppointmentMapper.selectScopedForUpdate`；`BeautyMappers.AppointmentMapper.markArrived`。
 
-跨域/基础设施：共用身份核验。
+跨域/基础设施：CustomerIdentityPort.resolveClaimReference/verifyConsumerProof；GuestRegistrationPort.verify；ResourceBookingPort.queryHold（当前成功arrangement绑定）；共用Outbox（BeautyReceptionStateChanged）。
 
-守卫：签到不调用会完成订单的履约核销。
+守卫：Task55B已实现Service 047/154；真实身份/权限/hold锁外；根→fence→current→operation短事务CAS，checkedInAt服务端UTC；当前成功arrangement取证；不改hold/计划、不创建工单/tasks。HTTP归59。
 
 ### H 工单与任务执行
 
@@ -2776,6 +2776,18 @@ int markArrived(String entityNo, String storeNo, String appointmentNo, long expe
 
 CAS守卫：幂等签到不代替订单履约；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
 
+```java
+long countWorkOrders(String entityNo, String storeNo, String appointmentNo);
+```
+
+READ守卫：接待重排与到店要求不存在同范围工单或关联实际task；孤立task保守阻断，不能以空工单查询允许重复执行。
+
+```java
+List<String> affectedTaskNos(String entityNo, String storeNo, String appointmentNo);
+```
+
+READ守卫：异常协调只返回同实体同门店预约下未删除工单的实际未删除task引用，不生成任务或待办。
+
 ### ai.neargo.shop.beauty.mapper.BeautyMappers.AppointmentItemMapper
 
 表：`bty_appointment_item`；Entity：`ai.neargo.shop.beauty.entity.BtyAppointmentItem`。
@@ -3480,13 +3492,20 @@ BOOKING VIEW或MANAGE可读、MANAGE写；C私有入口显式CONSUMER/USR；公�
 
 ## Task55A身份/认领/到店码增量
 
-Task55A service only; original 160 identifiers unchanged; no reception HTTP/remote/job yet
+Task55A+B service only; original 160 identifiers unchanged; no reception HTTP/remote/job, work-order opening or walk-in yet
 
 ```java
 GuestRegistrationVO GuestRegistrationService.registerGuest(String entityNo, String storeNo, String actorNo, RegisterGuestReq req, String idempotencyKey)
 GuestClaimVO GuestRegistrationService.claimGuest(String entityNo, String storeNo, String actorNo, String guestNo, ClaimGuestReq req, String idempotencyKey)
 ArrivalChallengeVO ReceptionService.issueArrivalChallenge(String entityNo, String storeNo, String actorNo, String idempotencyKey)
 GuestClaimVO GuestRegistrationServiceImpl.recoverClaim(String entityNo, String storeNo, String actorNo, String operationNo) [internal]
+ArrivalVO ReceptionService.checkIn(String entityNo,String currentStoreNo,String actorNo,CheckInReq req,String idempotencyKey)
+MyArrivalVO ReceptionService.checkInMyAppointment(String userNo,MyCheckInReq req,String idempotencyKey)
+ReceptionExceptionVO ReceptionService.coordinateReceptionException(String entityNo,String currentStoreNo,String actorNo,ReceptionExceptionReq req,String idempotencyKey)
+BtyAppointmentOperation ReceptionCoordinator.reassign(String entity,String store,String actor,String appointment,long revision,List<AppointmentAssignmentReq> assignments,OffsetDateTime startAt,String key) [internal; null means verified unchanged arrangement]
+HoldEvidence AppointmentCoordinator.currentArrangementEvidence(BtyAppointment root) [internal]
+PreparedWorkOrderScope WorkOrderPreparation.fromAppointment(BtyAppointment root); void verifyLocked(PreparedWorkOrderScope scope) [internal]
+Matched AppointmentMatching.matchFrozen(Scope scope,FrozenAppointmentScope frozen,List<AppointmentAssignmentReq> assignments,OffsetDateTime startAt,Replacement replacement) [internal]
 ```
 
 ArrivalChallengeVO(challengeNo,storeNo,code,issuedAt,expiresAt)：SecureRandom32字节43字符；UTC毫秒；固定90秒原键不续期，禁止进入日志/operation/outbox。
@@ -3495,3 +3514,10 @@ BeautyMappers新增ReceptionOperationMapper.selectScopedForUpdate(entityNo,store
 REGISTER直接owner派生完整namespace key；本域无登记operation或低熵联系资料摘要。CLAIM本域成功时receipt+operation+ActionLog+BeautyReceptionStateChanged/outbox同事务。
 ResultUnknown只表示通信结果未知；Remote明确HTTP403/503及NOT_CONFIGURED保持失败；合法owner CLAIMED仅在先存规范USER匹配后允许当前员工补receipt，不冒充原actor。
 真实member/mc1/cr1消费bridge位于shop-app；core owner/resource边界用controlled fixture，非真实资源网络验收。
+Task55B：currentArrangementEvidence按current.arrangementRevision+成功operation.previewNo取原CONFIRM/REPLACE，后续失败receipt不可覆盖；sourceRevision与根revision独立。
+047/154：CONFIRMED→CHECKED_IN；EARLY/ON_TIME/LATE；end到期明确BEAUTY_ARRIVAL_REQUIRES_RESCHEDULE。全namespace幂等，成功重放仍核当前权限；无hold释放/订单核销/工单或任务。
+内部RECEPTION_CHANGE仅CHECKED_IN且无工单/关联task；原不可变定义/requirements/policy/hash/缓冲/数量核验，当前资格/排班/容量；同一个Slot/allocate/occupied有界算法；完整展开itemIndex，新itemNo与old→new日志映射；新时段未来5分钟网格且before buffer未来。
+永久fence acquire/intent authorize SQL仅在current指向PENDING RECEPTION_CHANGE、REPLACE且无工单/task时允许CHECKED_IN。普通CHANGE不扩状态。UNKNOWN原号/current/fence保留，拒绝保旧，成功保留checkedInAt/CHECKED_IN。
+ReceptionPreparation泛化完整endpoint/actor命名空间find/begin，typed ArrivalPayload/ExceptionPayload，无原proof持久化；A claim路径不变。
+053仅append-only ActionLog+原requestNo+实际受影响task及共用安全Outbox，同事务原键重放，无公共审批owner假成功。
+V1–V6冻结不变；本步仅Mapper守卫SQL、Service/DTO/Bean DAG、host真实member消费及controlled资源fixture测试。

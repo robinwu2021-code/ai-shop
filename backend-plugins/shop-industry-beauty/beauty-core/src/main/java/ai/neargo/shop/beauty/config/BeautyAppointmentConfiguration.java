@@ -74,13 +74,13 @@ public class BeautyAppointmentConfiguration {
     @Bean
     AppointmentCoordinator appointmentCoordinator(AppointmentPersistence db, AppointmentAccess access,
             ObjectProvider<ResourceBookingPort> owner,
-            @Qualifier("beautyOutboxPublisher") OutboxPublisher publisher) {
-        return new AppointmentCoordinator(db, access, owner, publisher);
+            @Qualifier("beautyOutboxPublisher") OutboxPublisher publisher, ReceptionAccess receptionAccess) {
+        return new AppointmentCoordinator(db, access, owner, publisher, receptionAccess);
     }
     @Bean
     AppointmentSourceAuthority appointmentSourceAuthority(AppointmentPersistence db, AppointmentAccess access,
-            BeautyMappers.AppointmentResourceDecisionMapper decisions) {
-        return new AppointmentSourceAuthority(db, access, decisions);
+            BeautyMappers.AppointmentResourceDecisionMapper decisions, ReceptionAccess receptionAccess) {
+        return new AppointmentSourceAuthority(db, access, decisions, receptionAccess);
     }
     @Bean
     AppointmentSourceAuthorityPortImpl appointmentSourceAuthorityPortImpl(AppointmentSourceAuthority authority) {

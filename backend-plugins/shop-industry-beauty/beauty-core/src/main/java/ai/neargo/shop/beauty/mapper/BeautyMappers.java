@@ -121,6 +121,28 @@ public final class BeautyMappers {
 
     /** 预约单；业务事务先锁预约根，再处理项目及安排历史。 */
     public interface AppointmentMapper extends BaseMapper<BtyAppointment> {
+        /** Existing order roots forbid reception replacement even before actual task execution. */
+        @Select("""
+                SELECT (SELECT COUNT(*) FROM bty_work_order w WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo}
+                AND w.store_no=#{storeNo} AND w.appointment_no=#{appointmentNo} AND w.deleted=0)
+                + (SELECT COUNT(*) FROM bty_service_task t JOIN bty_appointment_item a
+                ON a.tenant_no=t.tenant_no AND a.entity_no=t.entity_no
+                AND a.appointment_item_no=t.appointment_item_no AND a.deleted=0
+                WHERE a.tenant_no='MAIN' AND a.entity_no=#{entityNo} AND a.appointment_no=#{appointmentNo}
+                AND t.deleted=0)
+                """)
+        long countWorkOrders(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo);
+        /** Parent scope is checked before exposing affected task references. */
+        @Select("""
+                SELECT t.task_no FROM bty_service_task t JOIN bty_work_order w
+                ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no AND w.work_order_no=t.work_order_no
+                WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo} AND w.store_no=#{storeNo}
+                AND w.appointment_no=#{appointmentNo} AND w.deleted=0 AND t.deleted=0 ORDER BY t.id
+                """)
+        List<String> affectedTaskNos(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo);
+
         /** 显式父链范围读取；不会按当前人员反推历史安排。 */
         @Select("""
                 SELECT * FROM bty_appointment WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND
@@ -209,7 +231,21 @@ public final class BeautyMappers {
                   AND f.appointment_no=#{appointmentNo} AND f.deleted=0 AND f.active_intent_no IS NULL
                   AND f.version=#{expectedFenceVersion} AND f.version<9223372036854775807
                   AND i.intent_no=#{intentNo} AND i.phase_code=0 AND i.source_revision=p.version
-                  AND p.status IN ('HELD','CONFIRMED')
+                  AND (p.status IN ('HELD','CONFIRMED') OR (p.status='CHECKED_IN' AND i.action='REPLACE'
+                    AND NOT EXISTS (SELECT 1 FROM bty_work_order w WHERE w.tenant_no=p.tenant_no
+                      AND w.entity_no=p.entity_no AND w.store_no=p.store_no
+                      AND w.appointment_no=p.appointment_no AND w.deleted=0)
+                    AND NOT EXISTS (SELECT 1 FROM bty_service_task t JOIN bty_appointment_item a
+                      ON a.tenant_no=t.tenant_no AND a.entity_no=t.entity_no
+                      AND a.appointment_item_no=t.appointment_item_no AND a.deleted=0
+                      WHERE a.tenant_no=p.tenant_no AND a.entity_no=p.entity_no
+                      AND a.appointment_no=p.appointment_no AND t.deleted=0)
+                    AND EXISTS (SELECT 1 FROM bty_appointment_current c JOIN bty_appointment_operation o
+                      ON o.tenant_no=c.tenant_no AND o.entity_no=c.entity_no AND o.appointment_no=c.appointment_no
+                      AND o.operation_no=c.operation_no AND o.deleted=0
+                      WHERE c.tenant_no=p.tenant_no AND c.entity_no=p.entity_no
+                      AND c.appointment_no=p.appointment_no AND c.deleted=0 AND o.store_no=p.store_no
+                      AND o.action='RECEPTION_CHANGE' AND o.state='PENDING')))
                   AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
         int acquire(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
@@ -263,7 +299,22 @@ public final class BeautyMappers {
                 WHERE i.tenant_no='MAIN' AND i.entity_no=#{entityNo} AND i.store_no=#{storeNo}
                   AND i.intent_no=#{intentNo} AND i.deleted=0 AND i.phase_code=0
                   AND i.version=#{expectedVersion} AND i.version<9223372036854775807
-                  AND i.source_revision=p.version AND p.status IN ('HELD','CONFIRMED')
+                  AND i.source_revision=p.version AND (p.status IN ('HELD',
+                          'CONFIRMED') OR (p.status='CHECKED_IN' AND i.action='REPLACE'
+                    AND NOT EXISTS (SELECT 1 FROM bty_work_order w WHERE w.tenant_no=p.tenant_no
+                      AND w.entity_no=p.entity_no AND w.store_no=p.store_no
+                      AND w.appointment_no=p.appointment_no AND w.deleted=0)
+                    AND NOT EXISTS (SELECT 1 FROM bty_service_task t JOIN bty_appointment_item a
+                      ON a.tenant_no=t.tenant_no AND a.entity_no=t.entity_no
+                      AND a.appointment_item_no=t.appointment_item_no AND a.deleted=0
+                      WHERE a.tenant_no=p.tenant_no AND a.entity_no=p.entity_no
+                      AND a.appointment_no=p.appointment_no AND t.deleted=0)
+                    AND EXISTS (SELECT 1 FROM bty_appointment_current c JOIN bty_appointment_operation o
+                      ON o.tenant_no=c.tenant_no AND o.entity_no=c.entity_no AND o.appointment_no=c.appointment_no
+                      AND o.operation_no=c.operation_no AND o.deleted=0
+                      WHERE c.tenant_no=p.tenant_no AND c.entity_no=p.entity_no
+                      AND c.appointment_no=p.appointment_no AND c.deleted=0 AND o.store_no=p.store_no
+                      AND o.action='RECEPTION_CHANGE' AND o.state='PENDING')))
                   AND #{decisionNo} IS NOT NULL AND LENGTH(TRIM(#{decisionNo}))>0
                   AND #{issuedAt} IS NOT NULL AND #{validUntil}>#{issuedAt}
                   AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL

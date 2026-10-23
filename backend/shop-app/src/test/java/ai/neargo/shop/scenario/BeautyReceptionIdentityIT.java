@@ -1,6 +1,19 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.auth.DelegatedIdentityContext;
+import ai.neargo.shop.idem.IdempotencyScope;
+import ai.neargo.shop.spi.resource.ResourceBookingPort;
+import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
+import ai.neargo.shop.spi.resource.ResourcePlanContract;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import java.util.Map;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Optional;
+import tools.jackson.databind.ObjectMapper;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.member.config.MemberGuestCrypto;
@@ -57,6 +70,8 @@ class BeautyReceptionIdentityIT {
     @Autowired MemberCodeResolveService codes;
     @Autowired MemberGuestRegistrationService owner;
     @Autowired FaultPort faults;
+    @Autowired ArrivalHoldFixture holds;
+    @Autowired ObjectMapper json;
     @Autowired CustomerIdentityPort identities;
     @Autowired MemberGuestRegistrationMapper mapper;
     @Autowired MerchantOperatorAccessPort access;
@@ -187,6 +202,111 @@ class BeautyReceptionIdentityIT {
         sql.update("UPDATE mch_account SET status='SUSPENDED' WHERE mch_account_no=?", actor);
         rejected(() -> as(actor, () -> identities.resolveClaimReference(c, query)), ErrorCode.FORBIDDEN);
     }
+    @Test void receptionCheckInConsumesStrictCurrentReferenceAndRealGuestToken() {
+        Object reception = context.getBean(type("service.ReceptionService"));
+        String appointment = arrivalRoot(user, null);
+        String ref = reference(actor);
+        Object req = dto("CheckInReq", appointment, dto("ReceptionIdentityProof", ref, null, null), 7L);
+        rejected(() -> as(manager, () -> call(reception, "checkIn", entity, store, manager, req, "ARRIVAL")),
+                ErrorCode.NOT_FOUND);
+        var merchantUser = new DelegatedIdentity("MAIN", "MERCHANT", "USR", actor);
+        rejected(() -> DelegatedIdentityContext.call(merchantUser,
+                () -> call(reception, "checkIn", entity, store, actor, req, "ARRIVAL")), ErrorCode.NOT_FOUND);
+        assertThat(count("bty_reception_operation")).isZero();
+        Object arrived = as(actor, () -> call(reception, "checkIn", entity, store, actor, req, "ARRIVAL"));
+        assertThat(value(arrived, "status")).isEqualTo("CHECKED_IN");
+        Object registration = as(actor, () -> register("arrival-contact", "guest-registration"));
+        String guest = (String) value(registration, "guestNo");
+        String guestAppointment = arrivalRoot(null, guest);
+        Object forged = dto("CheckInReq", guestAppointment,
+                dto("ReceptionIdentityProof", null, guest, "x".repeat(43)), 7L);
+        rejected(() -> as(actor, () -> call(reception, "checkIn", entity, store, actor, forged, "GUEST")),
+                ErrorCode.NOT_FOUND);
+        Object proof = dto("CheckInReq", guestAppointment,
+                dto("ReceptionIdentityProof", null, guest, value(registration, "claimToken")), 7L);
+        assertThat(value(as(actor, () -> call(reception, "checkIn", entity, store, actor, proof, "GUEST")), "status"))
+                .isEqualTo("CHECKED_IN");
+        assertThat(count("bty_work_order")).isZero(); assertThat(count("bty_service_task")).isZero();
+        sql.update("UPDATE mch_account SET status='SUSPENDED' WHERE mch_account_no=?", actor);
+        rejected(() -> as(actor, () -> call(reception, "checkIn", entity, store, actor, req, "ARRIVAL")),
+                ErrorCode.FORBIDDEN);
+    }
+    @Test void consumerArrivalConsumesRealOwnMc1AndLiveStoreChallenge() {
+        Object reception = context.getBean(type("service.ReceptionService"));
+        String appointment = arrivalRoot(user, null);
+        Object challenge = as(actor, () -> call(reception, "issueArrivalChallenge", entity, store, actor, "CODE"));
+        String code = codes.issue("MAIN", user).memberCode();
+        var consumer = new DelegatedIdentity("MAIN", "CONSUMER", "USR", user);
+        Object forged = dto("MyCheckInReq", appointment, dto("CheckInProof", "mc1_" + "x".repeat(43),
+                value(challenge, "code")), 7L);
+        rejected(() -> DelegatedIdentityContext.call(consumer,
+                () -> call(reception, "checkInMyAppointment", user, forged, "MY")), ErrorCode.MEMBER_CODE_INVALID);
+        String other = "OTHER-" + UUID.randomUUID().toString().substring(0, 8);
+        sql.update("INSERT INTO usr_account(user_no,nickname,status,created_at,updated_at) "
+                + "VALUES (?,'other','NORMAL',NOW(),NOW())", other);
+        Object wrongOwner = dto("MyCheckInReq", appointment,
+                dto("CheckInProof", codes.issue("MAIN", other).memberCode(), value(challenge, "code")), 7L);
+        rejected(() -> DelegatedIdentityContext.call(consumer,
+                () -> call(reception, "checkInMyAppointment", user, wrongOwner, "MY")), ErrorCode.MEMBER_CODE_INVALID);
+        Object req = dto("MyCheckInReq", appointment, dto("CheckInProof", code, value(challenge, "code")), 7L);
+        rejected(() -> as(actor, () -> call(reception, "checkInMyAppointment", user, req, "MY")), ErrorCode.FORBIDDEN);
+        Object arrived = DelegatedIdentityContext.call(consumer,
+                () -> call(reception, "checkInMyAppointment", user, req, "MY"));
+        assertThat(value(arrived, "status")).isEqualTo("CHECKED_IN");
+        assertThat(value(arrived, "timing")).isEqualTo("EARLY");
+        assertThat(count("bty_reception_operation")).isOne();
+        assertThat(count("bty_work_order")).isZero(); assertThat(count("bty_service_task")).isZero();
+    }
+    /** Only resource admission is fixture evidence here; member tickets, grants and beauty writes are real. */
+    private String arrivalRoot(String customer, String guest) {
+        String number = "BA-" + UUID.randomUUID().toString().substring(0, 8);
+        String preview = "BP-" + number, holdNo = "BH-" + number, line = "BL-" + number;
+        var start = OffsetDateTime.now(ZoneOffset.UTC).plusHours(2).truncatedTo(ChronoUnit.SECONDS);
+        var end = start.plusMinutes(20);
+        String group = line + ":REQ:0";
+        String plan = ResourcePlanContract.encode(List.of(new ResourcePlanContract.Demand("R", group, 1,
+                List.of(new ResourcePlanContract.Interval(start.toInstant(), end.toInstant())))),
+                List.of(new ResourcePlanContract.Qualification("R", group, "G", "SKU", true)));
+        String snapshot = json.writeValueAsString(Map.of("items", List.of(dto("AppointmentPlanItemVO", line, "SKU",
+                "G", "DV", 1, 1000L, 20, start, end, 1L, 1L)), "assignments", List.of(dto("AppointmentAssignmentVO",
+                line, "REQ", "P", "R", start, end)), "priceMinor", 1000L,
+                "cancelRule", Map.of("freeCancelBeforeMinutes", 60, "allowCustomerCancel", true)));
+        var binding = new ResourceSourceAuthorityPort.Binding("MAIN", entity, store, "BC-" + number,
+                "BEAUTY_APPOINTMENT", number, 4, "CONFIRM", "d".repeat(64), ResourcePlanContract.hash(plan));
+        var hold = new ResourceBookingPort.Hold(holdNo, "CONFIRMED", 2, 1, 4, 2, binding.planHash());
+        holds.holds.put(holdNo, hold);
+        var receipt = new ResourceBookingPort.Receipt(binding, "OWNER", "SUCCEEDED", 1, 1,
+                new ResourceBookingPort.Target(holdNo, 1, 1), plan,
+                json.writeValueAsString(Map.of("holdNo", holdNo, "status", "CONFIRMED", "ownerRevision", 2)), null);
+        row("bty_appointment", "appointment_no", number, "store_no", store, "customer_ref", customer,
+                "guest_ref", guest, "source", "STAFF", "status", "CONFIRMED", "start_at", start.toLocalDateTime(),
+                "end_at", end.toLocalDateTime(), "timezone", "UTC", "policy_version_no", "PV", "hold_no", holdNo,
+                "version", 7);
+        row("bty_appointment_preparation", "preview_no", preview, "store_no", store, "actor_no", actor,
+                "actor_realm", "MERCHANT", "actor_kind", "MCH", "expected_revision", 0, "policy_version_no", "PV",
+                "start_at", start.toLocalDateTime(), "end_at", end.toLocalDateTime(), "timezone", "UTC",
+                "frozen_plan", plan, "plan_hash", binding.planHash(), "snapshot", snapshot,
+                "expires_at", end.toLocalDateTime());
+        row("bty_appointment_current", "appointment_no", number, "arrangement_revision", 1);
+        row("bty_appointment_resource_fence", "appointment_no", number, "store_no", store, "fence_no", "BF-" + number);
+        row("bty_appointment_arrangement", "appointment_no", number, "arrangement_revision", 1,
+                "preview_no", preview, "hold_no", holdNo, "snapshot", snapshot);
+        row("bty_appointment_operation", "operation_no", "BO-" + number, "store_no", store, "actor_no", actor,
+                "actor_realm", "MERCHANT", "actor_kind", "MCH", "key_hash", IdempotencyScope.requestHash(number),
+                "request_hash", "a".repeat(64), "appointment_no", number, "preview_no", preview, "action", "CREATE",
+                "state", "SUCCEEDED", "accept_payload", "{}", "receipt", json.writeValueAsString(receipt),
+                "next_retry_at", start.toLocalDateTime());
+        return number;
+    }
+    private void row(String table, Object... pairs) {
+        var columns = new StringBuilder("tenant_no,entity_no,created_at,updated_at");
+        var values = new StringBuilder("'MAIN',?,NOW(),NOW()");
+        var args = new ArrayList<Object>(); args.add(entity);
+        for (int i = 0; i < pairs.length; i += 2) {
+            columns.append(',').append(pairs[i]); values.append(",?"); args.add(pairs[i + 1]);
+        }
+        sql.update("INSERT INTO " + table + "(" + columns + ") VALUES (" + values + ")", args.toArray());
+    }
     private String reference(String account) {
         String mc1 = codes.issue("MAIN", user).memberCode(); assertThat(mc1).startsWith("mc1_");
         String cr1 = as(account, () -> codes.resolve(new MemberCodeScope("MAIN", entity, store, account), mc1)
@@ -225,7 +345,25 @@ class BeautyReceptionIdentityIT {
     }
     @TestConfiguration(proxyBeanMethods = false)
     static class FaultConfiguration {
+        @Bean @Primary ArrivalHoldFixture arrivalHoldFixture() { return new ArrivalHoldFixture(); }
         @Bean @Primary FaultPort faultPort(MemberGuestRegistrationService owner) { return new FaultPort(owner); }
+    }
+    static class ArrivalHoldFixture implements ResourceBookingPort {
+        final Map<String, Hold> holds = new LinkedHashMap<>();
+        @Override public Hold queryHold(Actor actor, ResourceSourceAuthorityPort.Binding binding, String number) {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            var hold = holds.get(number); assertThat(hold.planHash()).isEqualTo(binding.planHash()); return hold;
+        }
+        @Override public Receipt accept(Actor actor, Accept req) { throw new AssertionError("Arrival cannot accept"); }
+        @Override public Optional<Receipt> query(Actor actor, Scope scope,
+                String command) { throw new AssertionError(); }
+        @Override public Receipt execute(Actor actor, Scope scope, String command) { throw new AssertionError(); }
+        @Override public Optional<Receipt> reconcile(ResourceSourceAuthorityPort.Binding binding) {
+            throw new AssertionError();
+        }
+        @Override public Hold reconcileHold(ResourceSourceAuthorityPort.Binding binding, String number) {
+            throw new AssertionError();
+        }
     }
     static class FaultPort implements GuestRegistrationPort {
         MemberGuestRegistrationService delegate;

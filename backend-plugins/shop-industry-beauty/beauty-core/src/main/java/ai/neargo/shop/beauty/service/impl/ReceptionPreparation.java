@@ -2,6 +2,8 @@ package ai.neargo.shop.beauty.service.impl;
 
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
+import ai.neargo.shop.beauty.policy.ReceptionIdentity.VerifiedIdentity;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.idem.IdempotencyScope;
@@ -49,6 +51,46 @@ public final class ReceptionPreparation {
         }
         return op;
     }
+    public BtyReceptionOperation find(String entity, String store, String actor, String endpoint,
+            String key, String hash) {
+        var user = SecurityUtils.requireUser();
+        AppointmentPersistence.require(actor.equals(user.userNo()));
+        var op = db.read(() -> operations.selectOne(Wrappers.<BtyReceptionOperation>lambdaQuery()
+                .eq(BtyReceptionOperation::getTenantNo, user.tenantNo()).eq(BtyReceptionOperation::getEntityNo, entity)
+                .eq(BtyReceptionOperation::getStoreNo, store).eq(BtyReceptionOperation::getActorNo, actor)
+                .eq(BtyReceptionOperation::getActorRealm, user.realm().name())
+                .eq(BtyReceptionOperation::getActorKind, user.subjectKind().name())
+                .eq(BtyReceptionOperation::getEndpoint, endpoint)
+                .eq(BtyReceptionOperation::getKeyHash,
+                        IdempotencyScope.requestHash(IdempotencyScope.requireKey(key)))));
+        if (op != null) { AppointmentPersistence.require(hash.equals(op.getRequestHash())); }
+        return op;
+    }
+    public BtyReceptionOperation begin(String entity, String store, String actor, String endpoint,
+            String key, String hash, VerifiedIdentity identity, ReceptionPayload payload) {
+        var existing = find(entity, store, actor, endpoint, key, hash);
+        if (existing != null) { return existing; }
+        var user = SecurityUtils.requireUser();
+        var op = new BtyReceptionOperation(); op.setEntityNo(entity); op.setStoreNo(store);
+        op.setOperationNo(BizKey.next("BTRO")); op.setActorNo(actor); op.setActorRealm(user.realm().name());
+        op.setActorKind(user.subjectKind().name()); op.setEndpoint(endpoint);
+        op.setAction(payload instanceof ArrivalPayload ? "CHECK_IN" : "RECEPTION_EXCEPTION");
+        op.setKeyHash(IdempotencyScope.requestHash(IdempotencyScope.requireKey(key))); op.setRequestHash(hash);
+        op.setAppointmentNo(payload.appointmentNo()); op.setPhase("RECEIVED");
+        if (identity != null) { op.setIdentityKind(identity.kind()); op.setIdentityRef(identity.reference()); }
+        op.setDerivedKeyHash(derived(entity, store, endpoint, key));
+        op.setFrozenPayload(db.json.writeValueAsString(payload));
+        if (TransactionSynchronizationManager.isActualTransactionActive()) { operations.insert(op); }
+        else { db.tx(() -> { operations.insert(op); return null; }); }
+        return op;
+    }
+    public sealed interface ReceptionPayload permits ArrivalPayload, ExceptionPayload {
+        String appointmentNo();
+    }
+    public record ArrivalPayload(int schemaVersion, String appointmentNo, long expectedRevision)
+            implements ReceptionPayload { }
+    public record ExceptionPayload(int schemaVersion, String appointmentNo, String kind, String proposal,
+            long expectedRevision) implements ReceptionPayload { }
     public static String derived(String entity, String store, String endpoint, String key) {
         var user = SecurityUtils.requireUser();
         return IdempotencyScope.requestHash("BEAUTY_RECEPTION_V1", user.tenantNo(), entity, store,

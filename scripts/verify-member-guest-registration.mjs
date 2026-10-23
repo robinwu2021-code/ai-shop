@@ -10,7 +10,7 @@ const restartFile = '/tmp/' + name + '.properties';
 const docker = (args, input) => execFileSync('docker', args,
   {encoding: 'utf8', input, stdio: ['pipe', 'pipe', 'pipe']}).trim();
 try {
-  docker(['run', '--pull', 'never', '--detach', '--name', name, '--publish', '127.0.0.1::3306',
+  docker(['run', '--rm', '--pull', 'never', '--detach', '--name', name, '--publish', '127.0.0.1::3306',
     ...(process.env.BEAUTY_TEST_DISK === '1' ? [] : ['--tmpfs', '/var/lib/mysql']), '--env', 'MYSQL_ALLOW_EMPTY_PASSWORD=yes', '--env', 'MYSQL_ROOT_HOST=%', 'mysql:8.4',
     ...(process.env.BEAUTY_TEST_DISK === '1' ? ['--datadir=/var/lib/beauty-test', '--innodb-buffer-pool-size=64M', '--performance-schema=OFF'] : [])]);
   let ready = false;

@@ -6,6 +6,8 @@ import ai.neargo.shop.beauty.dto.AppointmentAssignmentVO;
 import ai.neargo.shop.beauty.dto.AppointmentItemReq;
 import ai.neargo.shop.beauty.dto.AppointmentPlanItemVO;
 import ai.neargo.shop.beauty.dto.PublishStorePolicyVersionReq;
+import ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq;
+import ai.neargo.shop.beauty.dto.WorkOrderRequirementVO;
 import ai.neargo.shop.beauty.dto.ServiceDetailQuery;
 import ai.neargo.shop.beauty.entity.BtyServiceRequirement;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
@@ -90,6 +92,63 @@ public final class AppointmentMatching {
         if (startAt.toInstant().isAfter(Instant.now().plus(store.policy().bookingAheadDays(), ChronoUnit.DAYS))) {
             bad();
         }
+        List<MatchItem> inputs = new ArrayList<>();
+        int count = 0;
+        for (var item : requested) {
+            if (item == null || item.qty() < 1 || item.qty() > 10 || (count += item.qty()) > 10) { bad(); }
+            var product = catalog.getPublicService(item.skuNo(), new ServiceDetailQuery(scope.storeNo()));
+            var observed = stores.getObject().service(scope.storeNo(), item.skuNo());
+            AppointmentPersistence.require(observed.goodsRevision() != null && observed.skuRevision() != null
+                    && observed.goodsRevision() >= 0 && observed.skuRevision() >= 0
+                    && scope.entityNo().equals(observed.store().entityNo())
+                    && scope.storeNo().equals(observed.store().storeNo()) && item.skuNo().equals(observed.skuNo())
+                    && product.goodsNo().equals(observed.goodsNo()) && product.priceMinor() == observed.priceMinor()
+                    && product.duration().minutes() == observed.durationMin());
+            if (!product.sales().saleableNow()) { throw BizException.of(ErrorCode.CONFLICT); }
+            var rules = DataScopeContext.executeWithoutScope(() -> requirements.selectList(
+                    Wrappers.<BtyServiceRequirement>lambdaQuery().eq(BtyServiceRequirement::getTenantNo, "MAIN")
+                            .eq(BtyServiceRequirement::getEntityNo, scope.entityNo())
+                            .eq(BtyServiceRequirement::getDefinitionVersionNo, product.definitionVersionNo())
+                            .orderByAsc(BtyServiceRequirement::getSequenceNo,
+                                    BtyServiceRequirement::getRequirementNo)));
+            if (rules.isEmpty() || rules.size() > 30) { bad(); }
+            inputs.add(new MatchItem(item, product.goodsNo(), product.definitionVersionNo(), product.priceMinor(),
+                    new PublishServiceDefinitionVersionReq.Duration(product.duration().minutes(),
+                            product.duration().bufferBeforeMin(), product.duration().bufferAfterMin()),
+                    observed.goodsRevision(), observed.skuRevision(), rules.stream()
+                            .map(WorkOrderPreparation::requirement).toList()));
+        }
+        return allocatePlan(scope, publicOnly, inputs, specified, requestedPerson, startAt, replacement,
+                store.policyVersionNo(), store.policy().cancelRule(), false);
+    }
+    /** Frozen service rules and price references share the same Slot search as ordinary appointment matching. */
+    public Matched matchFrozen(Scope scope, FrozenAppointmentScope frozen, List<AppointmentAssignmentReq> specified,
+            OffsetDateTime startAt, ResourceCandidatesPort.Replacement replacement) {
+        if (startAt == null || !startAt.toInstant().isAfter(Instant.now()) || startAt.getNano() != 0
+                || Math.floorMod(startAt.toEpochSecond(), 300) != 0 || specified == null || specified.isEmpty()
+                || specified.size() > 30 || new HashSet<>(specified).size() != specified.size()) { bad(); }
+        List<MatchItem> inputs = new ArrayList<>();
+        for (int i = 0; i < frozen.items().size(); i++) {
+            var item = frozen.items().get(i); var definition = frozen.definitions().get(i);
+            var current = catalog.getPublicService(item.skuNo(), new ServiceDetailQuery(scope.storeNo()));
+            var observed = stores.getObject().service(scope.storeNo(), item.skuNo());
+            AppointmentPersistence.require(current.sales().saleableNow()
+                    && item.goodsNo().equals(current.goodsNo()) && item.goodsNo().equals(observed.goodsNo())
+                    && scope.entityNo().equals(observed.store().entityNo())
+                    && scope.storeNo().equals(observed.store().storeNo()) && item.skuNo().equals(observed.skuNo()));
+            inputs.add(new MatchItem(new AppointmentItemReq(item.skuNo(), item.qty()), item.goodsNo(),
+                    item.definitionVersionNo(), item.priceMinor(), new PublishServiceDefinitionVersionReq.Duration(
+                            definition.durationMin(), definition.bufferBeforeMin(), definition.bufferAfterMin()),
+                    observed.goodsRevision(), observed.skuRevision(), definition.requirements()));
+        }
+        try { return allocatePlan(scope, false, inputs, List.copyOf(specified), null, startAt, replacement,
+                frozen.policyVersionNo(), frozen.cancelRule(), true); }
+        catch (IncompleteSearch incomplete) { throw BizException.of(ErrorCode.BEAUTY_SEARCH_INCOMPLETE); }
+    }
+    private Matched allocatePlan(Scope scope, boolean publicOnly, List<MatchItem> inputs,
+            List<AppointmentAssignmentReq> specified, String requestedPerson, OffsetDateTime startAt,
+            ResourceCandidatesPort.Replacement replacement, String policyVersion,
+            PublishStorePolicyVersionReq.CancellationRule cancelRule, boolean frozen) {
         var pool = candidates.getObject().candidates(new ResourceCandidatesPort.Query(scope, publicOnly,
                 startAt.toInstant(), 50)).stream()
                 .sorted(Comparator.comparing(ResourceFactsPort.ResourceFact::resourceNo)).toList();
@@ -118,26 +177,10 @@ public final class AppointmentMatching {
         Instant cursor = startAt.toInstant();
         Instant lastServiceEnd = cursor;
         long price = 0;
-        int count = 0;
-        for (int itemIndex = 0; itemIndex < requested.size(); itemIndex++) {
-            var item = requested.get(itemIndex);
-            if (item == null || item.qty() < 1 || item.qty() > 10 || (count += item.qty()) > 10) { bad(); }
-            var product = catalog.getPublicService(item.skuNo(), new ServiceDetailQuery(scope.storeNo()));
-            var observed = stores.getObject().service(scope.storeNo(), item.skuNo());
-            AppointmentPersistence.require(observed.goodsRevision() != null && observed.skuRevision() != null
-                    && observed.goodsRevision() >= 0 && observed.skuRevision() >= 0
-                    && scope.entityNo().equals(observed.store().entityNo())
-                    && scope.storeNo().equals(observed.store().storeNo()) && item.skuNo().equals(observed.skuNo())
-                    && product.goodsNo().equals(observed.goodsNo()) && product.priceMinor() == observed.priceMinor()
-                    && product.duration().minutes() == observed.durationMin());
-            if (!product.sales().saleableNow()) { throw BizException.of(ErrorCode.CONFLICT); }
-            var rules = DataScopeContext.executeWithoutScope(() -> requirements.selectList(
-                    Wrappers.<BtyServiceRequirement>lambdaQuery().eq(BtyServiceRequirement::getTenantNo, "MAIN")
-                            .eq(BtyServiceRequirement::getEntityNo, scope.entityNo())
-                            .eq(BtyServiceRequirement::getDefinitionVersionNo, product.definitionVersionNo())
-                            .orderByAsc(BtyServiceRequirement::getSequenceNo,
-                                    BtyServiceRequirement::getRequirementNo)));
-            if (rules.isEmpty() || rules.size() > 30) { bad(); }
+        for (int itemIndex = 0; itemIndex < inputs.size(); itemIndex++) {
+            var product = inputs.get(itemIndex);
+            var item = product.request();
+            var rules = product.rules();
             for (int repetition = 0; repetition < item.qty(); repetition++) {
                 String line = BizKey.next("BTAI");
                 Instant serviceStart = items.isEmpty() ? cursor
@@ -146,18 +189,19 @@ public final class AppointmentMatching {
                 items.add(new AppointmentPlanItemVO(line, item.skuNo(), product.goodsNo(),
                         product.definitionVersionNo(), 1, product.priceMinor(), product.duration().minutes(),
                         serviceStart.atOffset(ZoneOffset.UTC), lastServiceEnd.atOffset(ZoneOffset.UTC),
-                        observed.goodsRevision(), observed.skuRevision()));
+                        product.goodsRevision(), product.skuRevision()));
                 price = Math.addExact(price, product.priceMinor());
                 for (var rule : rules) {
-                    Instant a = serviceStart.plus(rule.getOffsetMin(), ChronoUnit.MINUTES)
+                    Instant a = serviceStart.plus(rule.offsetMin(), ChronoUnit.MINUTES)
                             .minus(product.duration().bufferBeforeMin(), ChronoUnit.MINUTES);
-                    Instant b = serviceStart.plus(rule.getOffsetMin() + rule.getDurationMin(), ChronoUnit.MINUTES)
+                    Instant b = serviceStart.plus(rule.offsetMin() + rule.durationMin(), ChronoUnit.MINUTES)
                             .plus(product.duration().bufferAfterMin(), ChronoUnit.MINUTES);
                     int index = itemIndex;
                     var wanted = specified.stream().filter(v -> v.itemIndex() == index
-                            && rule.getRequirementNo().equals(v.requirementNo())).toList();
-                    if (wanted.size() > rule.getQty()) { bad(); }
-                    for (int n = 0; n < rule.getQty(); n++) {
+                            && rule.requirementNo().equals(v.requirementNo())).toList();
+                    if (wanted.size() > rule.qty() || frozen && wanted.size() != rule.qty()) { bad(); }
+                    if (frozen && !a.isAfter(Instant.now())) { bad(); }
+                    for (int n = 0; n < rule.qty(); n++) {
                         if (slots.size() >= SEARCH_BUDGET) { throw new IncompleteSearch(); }
                         var explicit = n < wanted.size() ? wanted.get(n) : null;
                         if (explicit != null) { consumed.add(explicit); }
@@ -165,7 +209,7 @@ public final class AppointmentMatching {
                         List<Choice> choices = new ArrayList<>();
                         for (var resource : pool) {
                             boolean isStaff = resource.resourceType() == ResourceFactsPort.Type.STAFF;
-                            if (!resource.resourceType().name().equals(rule.getResourceType())
+                            if (!resource.resourceType().name().equals(rule.resourceType())
                                     || resource.openOccupied() || isStaff && resource.personnelNo() == null
                                     || explicit != null && explicit.resourceNo() != null
                                         && !explicit.resourceNo().equals(resource.resourceNo())
@@ -176,7 +220,7 @@ public final class AppointmentMatching {
                                     p.personnelNo().equals(resource.personnelNo()) && (!publicOnly || p.publicVisible())
                                     && !p.validFrom().isAfter(a) && (p.validTo() == null || !p.validTo().isBefore(b))
                                     && p.qualifications().stream().anyMatch(q ->
-                                        rule.getSkillGoodsNo().equals(q.goodsNo())
+                                        rule.skillGoodsNo().equals(q.goodsNo())
                                         && (q.skuNo() == null || item.skuNo().equals(q.skuNo()))
                                         && (q.storeNo() == null || scope.storeNo().equals(q.storeNo()))
                                         && !q.validFrom().isAfter(a) && (q.validTo() == null ||
@@ -194,7 +238,7 @@ public final class AppointmentMatching {
                                 choices.add(new Choice(resource, buckets));
                             }
                         }
-                        slots.add(new Slot(line, rule.getRequirementNo(), rule.getSkillGoodsNo(), item.skuNo(), n,
+                        slots.add(new Slot(line, rule.requirementNo(), rule.skillGoodsNo(), item.skuNo(), n,
                                 a, b, choices));
                     }
                 }
@@ -216,9 +260,9 @@ public final class AppointmentMatching {
                     chosen.resourceNo(), slot.from().atOffset(ZoneOffset.UTC), slot.to().atOffset(ZoneOffset.UTC)));
         }
         String plan = ResourcePlanContract.encode(demands, qualifications);
-        return new Matched(scope, store.policyVersionNo(), startAt.withOffsetSameInstant(ZoneOffset.UTC),
+        return new Matched(scope, policyVersion, startAt.withOffsetSameInstant(ZoneOffset.UTC),
                 lastServiceEnd.atOffset(ZoneOffset.UTC), plan,
-                new Snapshot(items, assignments, price, store.policy().cancelRule()), pool.size() < 50);
+                new Snapshot(items, assignments, price, cancelRule), pool.size() < 50);
     }
     /** No IO here: undo every allocation on backtrack and distinguish exhausted work from proven infeasibility. */
     private Choice[] allocate(List<Slot> slots, boolean truncated) {
@@ -283,6 +327,9 @@ public final class AppointmentMatching {
         }
     }
 
+    private record MatchItem(AppointmentItemReq request, String goodsNo, String definitionVersionNo,
+            long priceMinor, PublishServiceDefinitionVersionReq.Duration duration, Long goodsRevision,
+            Long skuRevision, List<WorkOrderRequirementVO> rules) { }
     private record Bucket(String key, int remaining) { }
     private record Choice(ResourceFactsPort.ResourceFact resource, List<Bucket> buckets) { }
     private record Slot(String line, String requirement, String goods, String sku, int unit, Instant from, Instant to,

@@ -21,6 +21,7 @@ import ai.neargo.shop.spi.resource.ResourceBookingPort;
 import ai.neargo.shop.spi.resource.ResourcePlanContract;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.ZoneOffset;
+import java.util.Objects;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DuplicateKeyException;
 
@@ -132,6 +133,17 @@ public final class AppointmentPreparationService {
     public BtyAppointmentOperation prepare(BtyAppointmentPreparation preview, BtyAppointment target,
             long expected, String action, String key, String hash, ResourceBookingPort.Hold hold,
             String requestEvidence) {
+        return prepare(preview, target, expected, action, key, hash, hold, requestEvidence, () -> { });
+    }
+    public BtyAppointmentOperation prepareReception(BtyAppointmentPreparation preview, BtyAppointment target,
+            long expected, String key, String hash, PreparedWorkOrderScope scope, WorkOrderPreparation frozen,
+            String requestEvidence) {
+        return prepare(preview, target, expected, "RECEPTION_CHANGE", key, hash, scope.frozen().holdEvidence().hold(),
+                requestEvidence, () -> frozen.verifyLocked(scope));
+    }
+    private BtyAppointmentOperation prepare(BtyAppointmentPreparation preview, BtyAppointment target,
+            long expected, String action, String key, String hash, ResourceBookingPort.Hold hold,
+            String requestEvidence, Runnable lockedCheck) {
         if ("CANCEL".equals(action) || "NO_SHOW".equals(action)) { access.root(target, true); }
         else { own(preview); }
         var existing = find(preview.getEntityNo(), preview.getStoreNo(), key, hash);
@@ -169,7 +181,17 @@ public final class AppointmentPreparationService {
                 }
                 var root = target == null ? createRoot(preview) : db.lock(target);
                 AppointmentPersistence.require(root.getVersion() == expected || target == null && expected == 0);
-                AppointmentPersistence.require("HELD".equals(root.getStatus()) || "CONFIRMED".equals(root.getStatus()));
+                boolean reception = "RECEPTION_CHANGE".equals(action);
+                AppointmentPersistence.require(reception ? "CHECKED_IN".equals(root.getStatus())
+                        && db.roots.countWorkOrders(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo()) == 0
+                        : "HELD".equals(root.getStatus()) || "CONFIRMED".equals(root.getStatus()));
+                var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
+                        root.getAppointmentNo());
+                AppointmentPersistence.require(fence != null && fence.getActiveIntentNo() == null);
+                if (target != null) {
+                    AppointmentPersistence.require(Objects.equals(root.getHoldNo(), target.getHoldNo()));
+                }
+                lockedCheck.run();
                 var current = db.current(root);
                 AppointmentPersistence.require(current.getOperationNo() == null);
                 String operationNo = BizKey.next("BTOP");
@@ -181,7 +203,8 @@ public final class AppointmentPreparationService {
                 op.setKeyHash(IdempotencyScope.requestHash(IdempotencyScope.requireKey(key))); op.setRequestHash(hash);
                 op.setAppointmentNo(root.getAppointmentNo()); op.setPreviewNo(preview.getPreviewNo());
                 op.setAction(action); op.setState("PENDING"); op.setNextRetryAt(AppointmentPersistence.now());
-                String commandAction = switch (action) { case "CREATE" -> "RESERVE"; case "CHANGE" -> "REPLACE";
+                String commandAction = switch (action) { case "CREATE" -> "RESERVE"; case "CHANGE",
+                        "RECEPTION_CHANGE" -> "REPLACE";
                     default -> "RELEASE"; };
                 var request = new ResourceBookingPort.Accept(new ResourceBookingPort.Scope("MAIN", root.getEntityNo(),
                         root.getStoreNo()), commandAction, operationNo + ":" + commandAction, "BEAUTY_APPOINTMENT",
@@ -193,7 +216,9 @@ public final class AppointmentPreparationService {
                 var log = new BtyActionLog();
                 log.setEntityNo(root.getEntityNo()); log.setStoreNo(root.getStoreNo());
                 log.setActionNo(BizKey.next("BTAL")); log.setAggregateType("BEAUTY_APPOINTMENT");
-                log.setAggregateNo(root.getAppointmentNo()); log.setAction("APPOINTMENT_" + action + "_PREPARED");
+                log.setAggregateNo(root.getAppointmentNo());
+                        log.setAction("RECEPTION_CHANGE".equals(action) ? "RECEPTION_CHANGE_PREPARED"
+                        : "APPOINTMENT_" + action + "_PREPARED");
                 log.setOperatorRef(actor.operatorNo()); log.setExpectedRevision(root.getVersion());
                 log.setResultRevision(root.getVersion()); log.setSafeSnapshot(requestEvidence);
                 log.setRequestRef(op.getOperationNo()); db.actions.insert(log);

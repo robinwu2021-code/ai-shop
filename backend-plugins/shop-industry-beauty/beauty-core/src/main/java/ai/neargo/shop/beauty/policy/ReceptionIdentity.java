@@ -37,6 +37,22 @@ public final class ReceptionIdentity {
         }
         return result.userNo();
     }
+    /** A formal guest token must be verified by the owner; get() alone proves no possession. */
+    public VerifiedIdentity verifyGuest(String entity, String store, String guestNo, String token) {
+        var scope = access.customer(entity, store, SecurityUtils.requireUser().userNo());
+        var fact = guests.getObject().verify(scope, guestNo, token);
+        validFact(fact, guestNo);
+        return "CLAIMED".equals(fact.state()) ? new VerifiedIdentity("USER", fact.userNo())
+                : new VerifiedIdentity("GUEST", guestNo);
+    }
+    /** Real consumer proof is checked by its owner under the current consumer namespace. */
+    public String consumer(String memberCode) {
+        var user = SecurityUtils.requireUser();
+        var result = customers.getObject().verifyConsumerProof(new EntitlementContext(user.tenantNo(), user.userNo(),
+                BizKey.next("BTMC"), IdempotencyScope.requestHash(memberCode)), memberCode);
+        if (result == null || !user.userNo().equals(result.userNo())) { throw BizException.of(ErrorCode.FORBIDDEN); }
+        return result.userNo();
+    }
     public static void validFact(GuestRegistrationPort.GuestFact fact, String expected) {
         if (fact == null || !expected.equals(fact.guestNo())
                 || !("REGISTERED".equals(fact.state()) && fact.userNo() == null && fact.revision() == 1

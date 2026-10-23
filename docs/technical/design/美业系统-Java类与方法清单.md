@@ -6,7 +6,7 @@
 
 ## 一、范围与规范
 
-目标包含44个美业用户Controller、28个Service及同名Impl、25个内嵌Mapper、25个Entity、162个Req/Query/VO和7个必要辅助类。95条美业HTTP方法与6条内部业务方法合计101条Service方法。按需提供同接口远程实现、协议客户端和内部入口，不能把目标清单当已生成源码。
+目标包含44个美业用户Controller、28个Service及同名Impl、25个内嵌Mapper、25个Entity、167个Req/Query/VO和7个必要辅助类。95条美业HTTP方法与6条内部业务方法合计101条Service方法。按需提供同接口远程实现、协议客户端和内部入口，不能把目标清单当已生成源码。
 
 11个共用HTTP目标另列其所属域的类/方法，其中5个人员、2个资源和1个班表查询已编码，另补1个P1周规则写入口，54个CONTRACT是能力接入点而非54条已定Java方法。共享资源、账户、打印、报表等不复制到美业；需要补齐的正式契约在原所有者评审。
 
@@ -821,7 +821,7 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | bty_service_definition | `ai.neargo.shop.beauty.entity.BtyServiceDefinition` | `ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceDefinitionMapper` | 2 |
 | bty_service_definition_version | `ai.neargo.shop.beauty.entity.BtyServiceDefinitionVersion` | `ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceDefinitionVersionMapper` | 0 |
 | bty_service_requirement | `ai.neargo.shop.beauty.entity.BtyServiceRequirement` | `ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceRequirementMapper` | 0 |
-| bty_appointment | `ai.neargo.shop.beauty.entity.BtyAppointment` | `ai.neargo.shop.beauty.mapper.BeautyMappers.AppointmentMapper` | 4 |
+| bty_appointment | `ai.neargo.shop.beauty.entity.BtyAppointment` | `ai.neargo.shop.beauty.mapper.BeautyMappers.AppointmentMapper` | 6 |
 | bty_appointment_item | `ai.neargo.shop.beauty.entity.BtyAppointmentItem` | `ai.neargo.shop.beauty.mapper.BeautyMappers.AppointmentItemMapper` | 0 |
 | bty_appointment_assignment | `ai.neargo.shop.beauty.entity.BtyAppointmentAssignment` | `ai.neargo.shop.beauty.mapper.BeautyMappers.AppointmentAssignmentMapper` | 1 |
 | bty_work_order | `ai.neargo.shop.beauty.entity.BtyWorkOrder` | `ai.neargo.shop.beauty.mapper.BeautyMappers.WorkOrderMapper` | 4 |
@@ -862,7 +862,7 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.AppointmentQuery` | QUERY | storeNo,from,to,status,personnelNo,page,size,assignmentState | BAPI-040 |
 | `ai.neargo.shop.beauty.dto.AppointmentSummaryVO` | VO | PageData<AppointmentSummaryVO> | BAPI-040 |
 | `ai.neargo.shop.beauty.dto.AppointmentVO` | VO | AppointmentVO与资源确认结果；AppointmentVO保留旧安排版本 | BAPI-039、BAPI-043 |
-| `ai.neargo.shop.beauty.dto.ArrivalVO` | VO | ArrivalVO不履约核销 | BAPI-047 |
+| `ai.neargo.shop.beauty.dto.ArrivalVO` | VO | appointmentNo,revision,status,checkedInAt,timing,plannedStartAt,plannedEndAt,operationNo,operationState；仅到店，无工单/资金 | BAPI-047 |
 | `ai.neargo.shop.beauty.dto.AssetDisputeVO` | VO | AssetDisputeVO保留原账 | BAPI-103 |
 | `ai.neargo.shop.beauty.dto.AuthorizeCareMediaReq` | REQ | taskNo,action,mediaNo?,purpose | BAPI-036 |
 | `ai.neargo.shop.beauty.dto.AvailabilityQuery` | QUERY | storeNo,items,from,to,requestedPersonnelNo | BAPI-010 |
@@ -884,7 +884,8 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.CareProfileVO` | VO | CareProfileVO按字段授权 | BAPI-034 |
 | `ai.neargo.shop.beauty.dto.ChangeAppointmentReq` | REQ | previewNo,expectedRevision,reason,consentRef?；previewNo,expectedRevision,consentRef? | BAPI-043、BAPI-152 |
 | `ai.neargo.shop.beauty.dto.ChangeResourcesReq` | REQ | previewNo,expectedRevision,reason | BAPI-028 |
-| `ai.neargo.shop.beauty.dto.CheckInReq` | REQ | appointmentNo,identityProof | BAPI-047 |
+| `ai.neargo.shop.beauty.dto.CheckInProof` | REQ | memberCode,arrivalChallenge；真实mc1与同店90秒挑战均必填 | 内部产出分配 |
+| `ai.neargo.shop.beauty.dto.CheckInReq` | REQ | appointmentNo,identityProof,expectedRevision；revision必填且>=0 | BAPI-047 |
 | `ai.neargo.shop.beauty.dto.ClaimGuestReq` | REQ | String verifiedIdentity(cr1_43), claimToken(base64url43)；toString脱敏 | BAPI-032 |
 | `ai.neargo.shop.beauty.dto.CloseWorkOrderReq` | REQ | previewNo,expectedRevision | BAPI-066 |
 | `ai.neargo.shop.beauty.dto.ClosurePreviewVO` | VO | ClosurePreviewVO含阻断项 | BAPI-065 |
@@ -917,8 +918,8 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.MyAppointmentDetailVO` | VO | MyAppointmentDetailVO | BAPI-150 |
 | `ai.neargo.shop.beauty.dto.MyAppointmentQuery` | QUERY | from,to,status,page,size | BAPI-149 |
 | `ai.neargo.shop.beauty.dto.MyAppointmentVO` | VO | MyAppointmentVO；PageData<MyAppointmentVO> | BAPI-148、BAPI-149、BAPI-152 |
-| `ai.neargo.shop.beauty.dto.MyArrivalVO` | VO | MyArrivalVO | BAPI-154 |
-| `ai.neargo.shop.beauty.dto.MyCheckInReq` | REQ | appointmentNo,checkInProof | BAPI-154 |
+| `ai.neargo.shop.beauty.dto.MyArrivalVO` | VO | appointmentNo,revision,status,checkedInAt,timing,plannedStartAt,plannedEndAt,operationNo,operationState；本人到店视图 | BAPI-154 |
+| `ai.neargo.shop.beauty.dto.MyCheckInReq` | REQ | appointmentNo,checkInProof,expectedRevision；严格CONSUMER/USR本人 | BAPI-154 |
 | `ai.neargo.shop.beauty.dto.MyTimelineQuery` | QUERY | from,to,page,size | BAPI-158 |
 | `ai.neargo.shop.beauty.dto.MyTimelineVO` | VO | PageData<MyTimelineVO> | BAPI-158 |
 | `ai.neargo.shop.beauty.dto.MyTreatmentPlanQuery` | QUERY | page,size | BAPI-156 |
@@ -953,8 +954,9 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.PublishStorePolicyVersionReq` | REQ | expectedRevision,validFrom,policy | BAPI-002 |
 | `ai.neargo.shop.beauty.dto.RaiseMyServiceDisputeReq` | REQ | taskNo,reason,evidenceRefs | BAPI-157 |
 | `ai.neargo.shop.beauty.dto.ReceiveWalkInReq` | REQ | customerRef,items,assignments,startAt | BAPI-048 |
-| `ai.neargo.shop.beauty.dto.ReceptionExceptionReq` | REQ | appointmentNo,kind,proposal,reason | BAPI-053 |
-| `ai.neargo.shop.beauty.dto.ReceptionExceptionVO` | VO | ReceptionExceptionVO含受影响待办 | BAPI-053 |
+| `ai.neargo.shop.beauty.dto.ReceptionExceptionReq` | REQ | appointmentNo,kind,proposal,reason,expectedRevision；kind=EARLY/LATE/UNAVAILABLE/CONFLICT/IDENTITY_REQUIRED；proposal=REQUEST_RESCHEDULE/KEEP_WAITING/REQUEST_CANCEL | BAPI-053 |
+| `ai.neargo.shop.beauty.dto.ReceptionExceptionVO` | VO | requestNo,appointmentNo,state,affectedTaskNos,operationNo；PENDING_REVIEW，requestNo为本域ActionLog号，不宣称外部待办已建 | BAPI-053 |
+| `ai.neargo.shop.beauty.dto.ReceptionIdentityProof` | REQ | customerRef,guestNo,claimToken；USER cr1与GUEST guestNo+token互斥；toString脱敏 | 内部产出分配 |
 | `ai.neargo.shop.beauty.dto.RecordCommissionSettlementReq` | REQ | entryNos,approvalRef,paymentEvidence | BAPI-110 |
 | `ai.neargo.shop.beauty.dto.RecordNoShowReq` | REQ | expectedRevision,reason,evidenceRef? | BAPI-045 |
 | `ai.neargo.shop.beauty.dto.RecoverSubmissionReq` | REQ | expectedRevision,reason | BAPI-073 |
@@ -1008,6 +1010,9 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.WorkOrderBillVO` | VO | WorkOrderBillVO不生成混合收款单 | BAPI-071 |
 | `ai.neargo.shop.beauty.dto.WorkOrderClosureVO` | VO | WorkOrderClosureVO | BAPI-066 |
 | `ai.neargo.shop.beauty.dto.WorkOrderDetailVO` | VO | WorkOrderDetailVO | BAPI-055 |
+| `ai.neargo.shop.beauty.dto.WorkOrderRequirementVO` | VO | requirementNo,roleCode,resourceType,skillGoodsNo,qty,sequenceNo,offsetMin,durationMin,selectionRule | 内部产出分配 |
+| `ai.neargo.shop.beauty.dto.WorkOrderStepTemplateVO` | VO | stepCode,sequenceNo | 内部产出分配 |
+| `ai.neargo.shop.beauty.dto.WorkOrderTaskSnapshotVO` | VO | schemaVersion,goodsNo,skuNo,definitionVersionNo,definitionHash,durationMin,bufferBeforeMin,bufferAfterMin,requirements,stepsTemplate,notes；原不可变规则，列表防御复制 | 内部产出分配 |
 | `ai.neargo.shop.beauty.dto.WorkOrderVO` | VO | WorkOrderVO幂等返回原工单；WorkOrderVO | BAPI-052、BAPI-054 |
 | `ai.neargo.shop.beauty.dto.WorkbenchExceptionQuery` | QUERY | storeNo,from,to,kind,page,size | BAPI-124 |
 | `ai.neargo.shop.beauty.dto.WorkbenchSummaryQuery` | QUERY | storeNo,businessDate | BAPI-117 |
@@ -1217,13 +1222,20 @@ BOOKING VIEW或MANAGE可读、MANAGE写；C私有入口显式CONSUMER/USR；公�
 
 ## Task55A身份/认领/到店码增量
 
-Task55A service only; original 160 identifiers unchanged; no reception HTTP/remote/job yet
+Task55A+B service only; original 160 identifiers unchanged; no reception HTTP/remote/job, work-order opening or walk-in yet
 
 ```java
 GuestRegistrationVO GuestRegistrationService.registerGuest(String entityNo, String storeNo, String actorNo, RegisterGuestReq req, String idempotencyKey)
 GuestClaimVO GuestRegistrationService.claimGuest(String entityNo, String storeNo, String actorNo, String guestNo, ClaimGuestReq req, String idempotencyKey)
 ArrivalChallengeVO ReceptionService.issueArrivalChallenge(String entityNo, String storeNo, String actorNo, String idempotencyKey)
 GuestClaimVO GuestRegistrationServiceImpl.recoverClaim(String entityNo, String storeNo, String actorNo, String operationNo) [internal]
+ArrivalVO ReceptionService.checkIn(String entityNo,String currentStoreNo,String actorNo,CheckInReq req,String idempotencyKey)
+MyArrivalVO ReceptionService.checkInMyAppointment(String userNo,MyCheckInReq req,String idempotencyKey)
+ReceptionExceptionVO ReceptionService.coordinateReceptionException(String entityNo,String currentStoreNo,String actorNo,ReceptionExceptionReq req,String idempotencyKey)
+BtyAppointmentOperation ReceptionCoordinator.reassign(String entity,String store,String actor,String appointment,long revision,List<AppointmentAssignmentReq> assignments,OffsetDateTime startAt,String key) [internal; null means verified unchanged arrangement]
+HoldEvidence AppointmentCoordinator.currentArrangementEvidence(BtyAppointment root) [internal]
+PreparedWorkOrderScope WorkOrderPreparation.fromAppointment(BtyAppointment root); void verifyLocked(PreparedWorkOrderScope scope) [internal]
+Matched AppointmentMatching.matchFrozen(Scope scope,FrozenAppointmentScope frozen,List<AppointmentAssignmentReq> assignments,OffsetDateTime startAt,Replacement replacement) [internal]
 ```
 
 ArrivalChallengeVO(challengeNo,storeNo,code,issuedAt,expiresAt)：SecureRandom32字节43字符；UTC毫秒；固定90秒原键不续期，禁止进入日志/operation/outbox。
@@ -1232,3 +1244,10 @@ BeautyMappers新增ReceptionOperationMapper.selectScopedForUpdate(entityNo,store
 REGISTER直接owner派生完整namespace key；本域无登记operation或低熵联系资料摘要。CLAIM本域成功时receipt+operation+ActionLog+BeautyReceptionStateChanged/outbox同事务。
 ResultUnknown只表示通信结果未知；Remote明确HTTP403/503及NOT_CONFIGURED保持失败；合法owner CLAIMED仅在先存规范USER匹配后允许当前员工补receipt，不冒充原actor。
 真实member/mc1/cr1消费bridge位于shop-app；core owner/resource边界用controlled fixture，非真实资源网络验收。
+Task55B：currentArrangementEvidence按current.arrangementRevision+成功operation.previewNo取原CONFIRM/REPLACE，后续失败receipt不可覆盖；sourceRevision与根revision独立。
+047/154：CONFIRMED→CHECKED_IN；EARLY/ON_TIME/LATE；end到期明确BEAUTY_ARRIVAL_REQUIRES_RESCHEDULE。全namespace幂等，成功重放仍核当前权限；无hold释放/订单核销/工单或任务。
+内部RECEPTION_CHANGE仅CHECKED_IN且无工单/关联task；原不可变定义/requirements/policy/hash/缓冲/数量核验，当前资格/排班/容量；同一个Slot/allocate/occupied有界算法；完整展开itemIndex，新itemNo与old→new日志映射；新时段未来5分钟网格且before buffer未来。
+永久fence acquire/intent authorize SQL仅在current指向PENDING RECEPTION_CHANGE、REPLACE且无工单/task时允许CHECKED_IN。普通CHANGE不扩状态。UNKNOWN原号/current/fence保留，拒绝保旧，成功保留checkedInAt/CHECKED_IN。
+ReceptionPreparation泛化完整endpoint/actor命名空间find/begin，typed ArrivalPayload/ExceptionPayload，无原proof持久化；A claim路径不变。
+053仅append-only ActionLog+原requestNo+实际受影响task及共用安全Outbox，同事务原键重放，无公共审批owner假成功。
+V1–V6冻结不变；本步仅Mapper守卫SQL、Service/DTO/Bean DAG、host真实member消费及controlled资源fixture测试。

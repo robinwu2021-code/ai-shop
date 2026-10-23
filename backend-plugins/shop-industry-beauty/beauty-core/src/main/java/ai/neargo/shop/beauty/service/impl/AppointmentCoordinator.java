@@ -7,6 +7,7 @@ import ai.neargo.shop.beauty.entity.BtyAppointmentItem;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
 import ai.neargo.shop.beauty.entity.BtyAppointmentResourceIntent;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
+import ai.neargo.shop.beauty.policy.ReceptionAccess;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.PublishOptions;
@@ -28,18 +29,22 @@ public final class AppointmentCoordinator {
     private final AppointmentAccess access;
     private final ObjectProvider<ResourceBookingPort> owner;
     private final OutboxPublisher publisher;
+    private final ReceptionAccess receptionAccess;
     public AppointmentCoordinator(AppointmentPersistence db, AppointmentAccess access,
-            ObjectProvider<ResourceBookingPort> owner, OutboxPublisher publisher) {
+            ObjectProvider<ResourceBookingPort> owner, OutboxPublisher publisher, ReceptionAccess receptionAccess) {
         this.db = db;
         this.access = access;
         this.owner = owner;
-        this.publisher = publisher;
+        this.publisher = publisher; this.receptionAccess = receptionAccess;
     }
 
     public BtyAppointmentOperation advance(String operationNo) {
         var op = db.operation(operationNo);
         var root = db.root(op.getAppointmentNo());
         access.root(root, true);
+        if ("RECEPTION_CHANGE".equals(op.getAction())) {
+            receptionAccess.customer(root.getEntityNo(), root.getStoreNo(), access.actor().operatorNo());
+        }
         if ("PENDING".equals(op.getState())) {
             AppointmentPersistence.require(op.getOperationNo().equals(db.current(root).getOperationNo()));
         }
@@ -83,52 +88,76 @@ public final class AppointmentCoordinator {
         AppointmentPersistence.require(bound.binding().equals(result.binding()));
         finish(op, result, terminalHold(result, true));
     }
-    /** Ownership and the immutable successful arrangement establish the only hold capacity may exclude. */
+    /** Ownership and the exact successful arrangement select the only hold capacity may exclude. */
     public ResourceCandidatesPort.Replacement replacement(BtyAppointment root) {
         access.root(root, true);
+        AppointmentPersistence.require("CONFIRMED".equals(root.getStatus()));
+        return replacementEvidence(root);
+    }
+    /** Internal reception capability; normal appointment changes keep their CONFIRMED boundary. */
+    public ResourceCandidatesPort.Replacement replacementForReception(BtyAppointment root) {
+        access.root(root, true);
+        AppointmentPersistence.require("CHECKED_IN".equals(root.getStatus())
+                && db.read(() -> db.roots.countWorkOrders(root.getEntityNo(), root.getStoreNo(),
+                        root.getAppointmentNo())) == 0);
+        return replacementEvidence(root);
+    }
+    private ResourceCandidatesPort.Replacement replacementEvidence(BtyAppointment root) {
         var current = db.current(root);
-        AppointmentPersistence.require(current != null && root.getHoldNo() != null
-                && current.getOperationNo() == null && "CONFIRMED".equals(root.getStatus()));
+        AppointmentPersistence.require(current != null && current.getOperationNo() == null);
+        var evidence = currentArrangementEvidence(root);
+        var hold = evidence.hold();
+        return new ResourceCandidatesPort.Replacement(evidence.binding(),
+                new ResourceBookingPort.Target(hold.holdNo(), hold.version(), hold.leaseRevision()));
+    }
+    /** A failed later operation cannot replace the successful current arrangement's owner binding. */
+    public HoldEvidence currentArrangementEvidence(BtyAppointment root) {
+        access.root(root, true);
+        var current = db.current(root);
+        AppointmentPersistence.require(current != null && current.getArrangementRevision() > 0
+                && root.getHoldNo() != null);
         var history = db.read(() -> db.arrangements.selectOne(Wrappers.<BtyAppointmentArrangement>lambdaQuery()
-                .eq(BtyAppointmentArrangement::getTenantNo, "MAIN")
+                .eq(BtyAppointmentArrangement::getTenantNo, root.getTenantNo())
                 .eq(BtyAppointmentArrangement::getEntityNo, root.getEntityNo())
                 .eq(BtyAppointmentArrangement::getAppointmentNo, root.getAppointmentNo())
                 .eq(BtyAppointmentArrangement::getArrangementRevision, current.getArrangementRevision())));
+        AppointmentPersistence.require(history != null && root.getHoldNo().equals(history.getHoldNo()));
         var op = db.read(() -> db.operations.selectOne(Wrappers.<BtyAppointmentOperation>lambdaQuery()
-                .eq(BtyAppointmentOperation::getTenantNo, "MAIN")
+                .eq(BtyAppointmentOperation::getTenantNo, root.getTenantNo())
                 .eq(BtyAppointmentOperation::getEntityNo, root.getEntityNo())
+                .eq(BtyAppointmentOperation::getStoreNo, root.getStoreNo())
                 .eq(BtyAppointmentOperation::getAppointmentNo, root.getAppointmentNo())
+                .eq(BtyAppointmentOperation::getPreviewNo, history.getPreviewNo())
                 .eq(BtyAppointmentOperation::getState, "SUCCEEDED")
-                .in(BtyAppointmentOperation::getAction, "CREATE", "CHANGE")
-                .orderByDesc(BtyAppointmentOperation::getId).last("LIMIT 1")));
-        AppointmentPersistence.require(history != null && root.getHoldNo().equals(history.getHoldNo())
-                && op != null && op.getReceipt() != null);
+                .in(BtyAppointmentOperation::getAction, "CREATE", "CHANGE", "RECEPTION_CHANGE")));
+        AppointmentPersistence.require(op != null && op.getReceipt() != null);
         var receipt = db.json.readValue(op.getReceipt(), ResourceBookingPort.Receipt.class);
-        var b = receipt.binding();
-        AppointmentPersistence.require("MAIN".equals(b.tenantNo()) && root.getEntityNo().equals(b.entityNo())
-                && root.getStoreNo().equals(b.storeNo()) && root.getAppointmentNo().equals(b.sourceNo())
-                && "BEAUTY_APPOINTMENT".equals(b.sourceType()) && "SUCCEEDED".equals(receipt.status())
-                && List.of("CONFIRM", "REPLACE").contains(b.action()));
+        var binding = receipt.binding();
+        var preview = db.preview(history.getPreviewNo());
+        AppointmentPersistence.require(root.getTenantNo().equals(binding.tenantNo())
+                && root.getEntityNo().equals(binding.entityNo()) && root.getStoreNo().equals(binding.storeNo())
+                && "BEAUTY_APPOINTMENT".equals(binding.sourceType())
+                && root.getAppointmentNo().equals(binding.sourceNo())
+                && "SUCCEEDED".equals(receipt.status()) && List.of("CONFIRM", "REPLACE").contains(binding.action())
+                && preview.getSnapshot().equals(history.getSnapshot())
+                && preview.getPlanHash().equals(binding.planHash())
+                && preview.getFrozenPlan().equals(receipt.frozenPayload()));
         var hold = terminalHold(receipt, false);
         AppointmentPersistence.require(root.getHoldNo().equals(hold.holdNo()));
-        return new ResourceCandidatesPort.Replacement(b, new ResourceBookingPort.Target(hold.holdNo(),
-                hold.version(), hold.leaseRevision()));
+        return new HoldEvidence(binding, hold, current.getArrangementRevision(),
+                IdempotencyScope.requestHash(history.getPreviewNo(), history.getHoldNo(), history.getSnapshot()));
     }
     public ResourceBookingPort.Hold hold(BtyAppointment root) {
-        access.root(root, true); // Source-owned proof precedes every owner query, including C requests.
-        var current = db.current(root);
-        var history = db.read(() -> db.arrangements.selectOne(Wrappers.<BtyAppointmentArrangement>lambdaQuery()
-                .eq(BtyAppointmentArrangement::getTenantNo, "MAIN")
-                .eq(BtyAppointmentArrangement::getEntityNo, root.getEntityNo())
-                .eq(BtyAppointmentArrangement::getAppointmentNo, root.getAppointmentNo())
-                .eq(BtyAppointmentArrangement::getArrangementRevision, current.getArrangementRevision())));
+        if (!"HELD".equals(root.getStatus())) { return currentArrangementEvidence(root).hold(); }
+        access.root(root, true);
         var op = db.read(() -> db.operations.selectOne(Wrappers.<BtyAppointmentOperation>lambdaQuery()
-                .eq(BtyAppointmentOperation::getTenantNo, "MAIN").eq(BtyAppointmentOperation::getEntityNo,
-                        root.getEntityNo())
+                .eq(BtyAppointmentOperation::getTenantNo, root.getTenantNo())
+                .eq(BtyAppointmentOperation::getEntityNo, root.getEntityNo())
+                .eq(BtyAppointmentOperation::getStoreNo, root.getStoreNo())
                 .eq(BtyAppointmentOperation::getAppointmentNo, root.getAppointmentNo())
                 .isNotNull(BtyAppointmentOperation::getReceipt).orderByDesc(BtyAppointmentOperation::getId)
                 .last("LIMIT 1")));
-        AppointmentPersistence.require(op != null && (history != null || "HELD".equals(root.getStatus())));
+        AppointmentPersistence.require(op != null);
         var binding = db.json.readValue(op.getReceipt(), ResourceBookingPort.Receipt.class).binding();
         return owner.getObject().queryHold(access.actor(), binding, root.getHoldNo());
     }
@@ -250,7 +279,8 @@ public final class AppointmentCoordinator {
                 if ("RELEASE".equals(receipt.binding().action())) {
                     root.setStatus("NO_SHOW".equals(op.getAction()) ? "NO_SHOW" : "CANCELLED");
                 } else {
-                    root.setStatus("CONFIRMED"); root.setHoldNo(hold.holdNo()); arrange(root, op, hold.holdNo());
+                    root.setStatus("RECEPTION_CHANGE".equals(op.getAction()) ? "CHECKED_IN" : "CONFIRMED");
+                    root.setHoldNo(hold.holdNo()); arrange(root, op, hold.holdNo());
                 }
                 AppointmentPersistence.require(db.roots.updateById(root) == 1);
                 op.setState("SUCCEEDED");

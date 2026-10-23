@@ -2,6 +2,12 @@ package ai.neargo.shop.beauty.service.impl;
 
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.beauty.dto.ArrivalChallengeVO;
+import ai.neargo.shop.beauty.dto.ArrivalVO;
+import ai.neargo.shop.beauty.dto.MyArrivalVO;
+import ai.neargo.shop.beauty.dto.ReceptionExceptionVO;
+import ai.neargo.shop.beauty.dto.CheckInReq;
+import ai.neargo.shop.beauty.dto.MyCheckInReq;
+import ai.neargo.shop.beauty.dto.ReceptionExceptionReq;
 import ai.neargo.shop.beauty.entity.BtyArrivalChallenge;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
@@ -23,10 +29,22 @@ public final class ReceptionServiceImpl implements ReceptionService {
     private final AppointmentAccess access;
     private final BeautyMappers.ArrivalChallengeMapper challenges;
     private final Clock clock;
+    private final ReceptionCoordinator coordinator;
     private final SecureRandom random = new SecureRandom();
     public ReceptionServiceImpl(AppointmentPersistence db, AppointmentAccess access,
-            BeautyMappers.ArrivalChallengeMapper challenges, Clock clock) {
+            BeautyMappers.ArrivalChallengeMapper challenges, Clock clock, ReceptionCoordinator coordinator) {
         this.db = db; this.access = access; this.challenges = challenges; this.clock = clock;
+                this.coordinator = coordinator;
+    }
+    @Override public ArrivalVO checkIn(String entity, String store, String actor, CheckInReq req, String key) {
+        return coordinator.checkIn(entity, store, actor, req, key);
+    }
+    @Override public MyArrivalVO checkInMyAppointment(String user, MyCheckInReq req, String key) {
+        return coordinator.checkInMine(user, req, key);
+    }
+    @Override public ReceptionExceptionVO coordinateReceptionException(String entity, String store, String actor,
+            ReceptionExceptionReq req, String key) {
+        return coordinator.coordinateException(entity, store, actor, req, key);
     }
     @Override
     public ArrivalChallengeVO issueArrivalChallenge(String entity, String store, String actor, String key) {

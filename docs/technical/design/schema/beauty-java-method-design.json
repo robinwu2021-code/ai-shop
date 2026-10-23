@@ -5268,10 +5268,12 @@
         "bty_action_log"
       ],
       "externalCapabilities": [
-        "共用身份核验"
+        "CustomerIdentityPort.resolveClaimReference/verifyConsumerProof；GuestRegistrationPort.verify",
+        "ResourceBookingPort.queryHold（当前成功arrangement绑定）",
+        "共用Outbox（BeautyReceptionStateChanged）"
       ],
       "transaction": "LOCAL_ATOMIC",
-      "note": "签到不调用会完成订单的履约核销",
+      "note": "Task55B已实现Service 047/154；真实身份/权限/hold锁外；根→fence→current→operation短事务CAS，checkedInAt服务端UTC；当前成功arrangement取证；不改hold/计划、不创建工单/tasks。HTTP归59。",
       "customCalls": [
         "bty_appointment.selectScopedForUpdate",
         "bty_appointment.markArrived"
@@ -5346,14 +5348,17 @@
     "receptionException": {
       "readTables": [
         "bty_appointment",
+        "bty_work_order",
         "bty_service_task"
       ],
-      "writeTables": [],
-      "externalCapabilities": [
-        "共用业务待办/协调登记"
+      "writeTables": [
+        "bty_action_log"
       ],
-      "transaction": "ORCHESTRATED",
-      "note": "",
+      "externalCapabilities": [
+        "共用Outbox（BeautyReceptionStateChanged安全投影，已实现）"
+      ],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "根→fence→operation；expectedRevision；ActionLog/requestNo+operation/result+Outbox同事务。reason仅本域，原键返回原请求号/实际受影响task，不自动取消/释放/开工/资金。",
       "customCalls": []
     },
     "workOrderRead": {
@@ -6728,7 +6733,7 @@
       "class": "ai.neargo.shop.beauty.dto.CheckInReq",
       "kind": "REQ",
       "fieldsContract": [
-        "appointmentNo,identityProof"
+        "appointmentNo,identityProof,expectedRevision；revision必填且>=0"
       ],
       "apiIds": [
         "BAPI-047"
@@ -6738,7 +6743,7 @@
       "class": "ai.neargo.shop.beauty.dto.ArrivalVO",
       "kind": "VO",
       "fieldsContract": [
-        "ArrivalVO不履约核销"
+        "appointmentNo,revision,status,checkedInAt,timing,plannedStartAt,plannedEndAt,operationNo,operationState；仅到店，无工单/资金"
       ],
       "apiIds": [
         "BAPI-047"
@@ -6834,7 +6839,7 @@
       "class": "ai.neargo.shop.beauty.dto.ReceptionExceptionReq",
       "kind": "REQ",
       "fieldsContract": [
-        "appointmentNo,kind,proposal,reason"
+        "appointmentNo,kind,proposal,reason,expectedRevision；kind=EARLY/LATE/UNAVAILABLE/CONFLICT/IDENTITY_REQUIRED；proposal=REQUEST_RESCHEDULE/KEEP_WAITING/REQUEST_CANCEL"
       ],
       "apiIds": [
         "BAPI-053"
@@ -6844,7 +6849,7 @@
       "class": "ai.neargo.shop.beauty.dto.ReceptionExceptionVO",
       "kind": "VO",
       "fieldsContract": [
-        "ReceptionExceptionVO含受影响待办"
+        "requestNo,appointmentNo,state,affectedTaskNos,operationNo；PENDING_REVIEW，requestNo为本域ActionLog号，不宣称外部待办已建"
       ],
       "apiIds": [
         "BAPI-053"
@@ -6854,7 +6859,7 @@
       "class": "ai.neargo.shop.beauty.dto.MyCheckInReq",
       "kind": "REQ",
       "fieldsContract": [
-        "appointmentNo,checkInProof"
+        "appointmentNo,checkInProof,expectedRevision；严格CONSUMER/USR本人"
       ],
       "apiIds": [
         "BAPI-154"
@@ -6864,7 +6869,7 @@
       "class": "ai.neargo.shop.beauty.dto.MyArrivalVO",
       "kind": "VO",
       "fieldsContract": [
-        "MyArrivalVO"
+        "appointmentNo,revision,status,checkedInAt,timing,plannedStartAt,plannedEndAt,operationNo,operationState；本人到店视图"
       ],
       "apiIds": [
         "BAPI-154"
@@ -7761,6 +7766,46 @@
       "apiIds": [
         "BAPI-145"
       ]
+    },
+    {
+      "class": "ai.neargo.shop.beauty.dto.ReceptionIdentityProof",
+      "kind": "REQ",
+      "apiIds": [],
+      "fieldsContract": [
+        "customerRef,guestNo,claimToken；USER cr1与GUEST guestNo+token互斥；toString脱敏"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.beauty.dto.CheckInProof",
+      "kind": "REQ",
+      "apiIds": [],
+      "fieldsContract": [
+        "memberCode,arrivalChallenge；真实mc1与同店90秒挑战均必填"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.beauty.dto.WorkOrderRequirementVO",
+      "kind": "VO",
+      "apiIds": [],
+      "fieldsContract": [
+        "requirementNo,roleCode,resourceType,skillGoodsNo,qty,sequenceNo,offsetMin,durationMin,selectionRule"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.beauty.dto.WorkOrderStepTemplateVO",
+      "kind": "VO",
+      "apiIds": [],
+      "fieldsContract": [
+        "stepCode,sequenceNo"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.beauty.dto.WorkOrderTaskSnapshotVO",
+      "kind": "VO",
+      "apiIds": [],
+      "fieldsContract": [
+        "schemaVersion,goodsNo,skuNo,definitionVersionNo,definitionHash,durationMin,bufferBeforeMin,bufferAfterMin,requirements,stepsTemplate,notes；原不可变规则，列表防御复制"
+      ]
     }
   ],
   "sharedEntries": [
@@ -8477,6 +8522,52 @@
             "updated_at"
           ],
           "guard": "幂等签到不代替订单履约；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。"
+        },
+        {
+          "name": "countWorkOrders",
+          "returnType": "long",
+          "parameters": [
+            {
+              "type": "String",
+              "name": "entityNo"
+            },
+            {
+              "type": "String",
+              "name": "storeNo"
+            },
+            {
+              "type": "String",
+              "name": "appointmentNo"
+            }
+          ],
+          "access": "READ",
+          "columns": [
+            "appointment_no"
+          ],
+          "guard": "接待重排与到店要求不存在同范围工单或关联实际task；孤立task保守阻断，不能以空工单查询允许重复执行。"
+        },
+        {
+          "name": "affectedTaskNos",
+          "returnType": "List<String>",
+          "parameters": [
+            {
+              "type": "String",
+              "name": "entityNo"
+            },
+            {
+              "type": "String",
+              "name": "storeNo"
+            },
+            {
+              "type": "String",
+              "name": "appointmentNo"
+            }
+          ],
+          "access": "READ",
+          "columns": [
+            "appointment_no"
+          ],
+          "guard": "异常协调只返回同实体同门店预约下未删除工单的实际未删除task引用，不生成任务或待办。"
         }
       ]
     },
@@ -11130,12 +11221,19 @@
     }
   ],
   "receptionFoundation": {
-    "status": "Task55A service only; original 160 identifiers unchanged; no reception HTTP/remote/job yet",
+    "status": "Task55A+B service only; original 160 identifiers unchanged; no reception HTTP/remote/job, work-order opening or walk-in yet",
     "methods": [
       "GuestRegistrationVO GuestRegistrationService.registerGuest(String entityNo, String storeNo, String actorNo, RegisterGuestReq req, String idempotencyKey)",
       "GuestClaimVO GuestRegistrationService.claimGuest(String entityNo, String storeNo, String actorNo, String guestNo, ClaimGuestReq req, String idempotencyKey)",
       "ArrivalChallengeVO ReceptionService.issueArrivalChallenge(String entityNo, String storeNo, String actorNo, String idempotencyKey)",
-      "GuestClaimVO GuestRegistrationServiceImpl.recoverClaim(String entityNo, String storeNo, String actorNo, String operationNo) [internal]"
+      "GuestClaimVO GuestRegistrationServiceImpl.recoverClaim(String entityNo, String storeNo, String actorNo, String operationNo) [internal]",
+      "ArrivalVO ReceptionService.checkIn(String entityNo,String currentStoreNo,String actorNo,CheckInReq req,String idempotencyKey)",
+      "MyArrivalVO ReceptionService.checkInMyAppointment(String userNo,MyCheckInReq req,String idempotencyKey)",
+      "ReceptionExceptionVO ReceptionService.coordinateReceptionException(String entityNo,String currentStoreNo,String actorNo,ReceptionExceptionReq req,String idempotencyKey)",
+      "BtyAppointmentOperation ReceptionCoordinator.reassign(String entity,String store,String actor,String appointment,long revision,List<AppointmentAssignmentReq> assignments,OffsetDateTime startAt,String key) [internal; null means verified unchanged arrangement]",
+      "HoldEvidence AppointmentCoordinator.currentArrangementEvidence(BtyAppointment root) [internal]",
+      "PreparedWorkOrderScope WorkOrderPreparation.fromAppointment(BtyAppointment root); void verifyLocked(PreparedWorkOrderScope scope) [internal]",
+      "Matched AppointmentMatching.matchFrozen(Scope scope,FrozenAppointmentScope frozen,List<AppointmentAssignmentReq> assignments,OffsetDateTime startAt,Replacement replacement) [internal]"
     ],
     "contracts": [
       "ArrivalChallengeVO(challengeNo,storeNo,code,issuedAt,expiresAt)：SecureRandom32字节43字符；UTC毫秒；固定90秒原键不续期，禁止进入日志/operation/outbox。",
@@ -11143,7 +11241,14 @@
       "BeautyMappers新增ReceptionOperationMapper.selectScopedForUpdate(entityNo,storeNo,operationNo)及WorkOrderContextMapper/GuestClaimReceiptMapper/ArrivalChallengeMapper继承BaseMapper；entity继承BaseEntity。",
       "REGISTER直接owner派生完整namespace key；本域无登记operation或低熵联系资料摘要。CLAIM本域成功时receipt+operation+ActionLog+BeautyReceptionStateChanged/outbox同事务。",
       "ResultUnknown只表示通信结果未知；Remote明确HTTP403/503及NOT_CONFIGURED保持失败；合法owner CLAIMED仅在先存规范USER匹配后允许当前员工补receipt，不冒充原actor。",
-      "真实member/mc1/cr1消费bridge位于shop-app；core owner/resource边界用controlled fixture，非真实资源网络验收。"
+      "真实member/mc1/cr1消费bridge位于shop-app；core owner/resource边界用controlled fixture，非真实资源网络验收。",
+      "Task55B：currentArrangementEvidence按current.arrangementRevision+成功operation.previewNo取原CONFIRM/REPLACE，后续失败receipt不可覆盖；sourceRevision与根revision独立。",
+      "047/154：CONFIRMED→CHECKED_IN；EARLY/ON_TIME/LATE；end到期明确BEAUTY_ARRIVAL_REQUIRES_RESCHEDULE。全namespace幂等，成功重放仍核当前权限；无hold释放/订单核销/工单或任务。",
+      "内部RECEPTION_CHANGE仅CHECKED_IN且无工单/关联task；原不可变定义/requirements/policy/hash/缓冲/数量核验，当前资格/排班/容量；同一个Slot/allocate/occupied有界算法；完整展开itemIndex，新itemNo与old→new日志映射；新时段未来5分钟网格且before buffer未来。",
+      "永久fence acquire/intent authorize SQL仅在current指向PENDING RECEPTION_CHANGE、REPLACE且无工单/task时允许CHECKED_IN。普通CHANGE不扩状态。UNKNOWN原号/current/fence保留，拒绝保旧，成功保留checkedInAt/CHECKED_IN。",
+      "ReceptionPreparation泛化完整endpoint/actor命名空间find/begin，typed ArrivalPayload/ExceptionPayload，无原proof持久化；A claim路径不变。",
+      "053仅append-only ActionLog+原requestNo+实际受影响task及共用安全Outbox，同事务原键重放，无公共审批owner假成功。",
+      "V1–V6冻结不变；本步仅Mapper守卫SQL、Service/DTO/Bean DAG、host真实member消费及controlled资源fixture测试。"
     ]
   }
 }
