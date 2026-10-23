@@ -693,10 +693,10 @@ Bean图约束：AppointmentService.openWorkOrderFromAppointment与WorkOrderServi
 按[精确设计](../../.superpowers/sdd/beauty-backend/bm04-checkout-design.md)冻结CheckoutPort八方法/DTO（支付分支由57补齐）：prepare、readQuote、confirm、place、findOperation、source、initiatePayment、findPayment，confirm/place/initiatePayment只允许真实当前C。复用现有OrderService和同次writer定价，原子比对封版报价，优先采用原doCreate最终同次定价结果之后、库存/订单写入之前的ExpectedCheckoutQuote seal钩子及共享纯经济摘要，不强制整体拆零售定价算法；quote/source/美业任务统一COUNT，拒绝EA等隐式换算。持久过程事实/稳定来源行/原号映射，不复制订单/支付账。SERVICE商品必须真实支持STORE_VERIFY；成交时原子登记managed authority，通用完成写门及全部旧核销/收货/自动完成入口关闭提前完成，BM05执行继续门控。正式支付/线下receipt由Task57独立资金关口补齐；本任务不开放尚未实现的支付入口，不能把旧confirmOfflinePay输出包装成资金凭证。开工前详定签名/状态/SQL/配置/AC、追加平台最新迁移及ADR。
 
 
-实施深化按档位2复用既有美业PRD与主TDD，补充[ADR-046](./ADR/ADR-046-共用购买确认与受管理服务订单归属.md)及[Task56精确设计](../../.superpowers/sdd/beauty-backend/task-56-design.md)。精确设计已通过技术核对，V539候选SQL摘要已固定，进入真实RED与编码；尚未交付56生产能力。方案保留现有零售普通writer，与已知本地餐饮分支实际writer一致；不整分支合并未接线定价引擎。首次成功确认/建单请求键永久绑定，异键冲突后查原操作；来源指纹仅标识真实一致观察，未知资金明确阻断。完整资金及offline receipt仍归57。
+实施深化按档位2复用既有美业PRD与主TDD，补充[ADR-046](./ADR/ADR-046-共用购买确认与受管理服务订单归属.md)及[Task56精确设计](../../.superpowers/sdd/beauty-backend/task-56-design.md)。精确设计、真实实现及独立任务审查已完成，产品提交dbb635a7c；V539首次执行前独立固定并冻结。本地owner交付已验收，尚未部署BM04整体。方案保留现有零售普通writer，与已知本地餐饮分支实际writer一致；不整分支合并未接线定价引擎。首次成功确认/建单请求键永久绑定，异键冲突后查原操作；来源指纹仅标识真实一致观察，未知资金明确阻断。完整资金及offline receipt仍归57。
 
-- [ ] 按审计补完整可执行设计，不以未实现Port或手写PAID替身交付。
-- [ ] RED/GREEN验证真实quote/create/买家确认/价格变化/原号订单恢复/旧完成入口防线；提交并独立审查。支付实现及其崩溃/原号金融验证归57。
+- [x] 按审计完成可执行设计；真实owner六方法已交付，历史receipt种子仅作只读组件夹具，正式资金归57。
+- [x] RED/GREEN、恢复与消融验证及独立审查完成，产品dbb635a7c；具体分批证据见§32.5，支付及独立进程资金恢复归57。
 
 #### Task 57: 资金原支付号恢复与正式线下实收
 
@@ -786,7 +786,7 @@ python3 scripts/gen-beauty-development-plan.py --check
 
 ## §6 下一次领取任务与本轮交付
 
-**当前交付：BM-03预约后端模块完成，Task50–53及修复复审通过，embedded/standalone真实构件隔离部署验收通过，详见§31；BM-02/BM-01分别见§25/§22。BM-04的Task54共用临客及身份能力已完成任务验收，Task55接待与工单设计已冻结，55A–55D的本地服务能力已完成实现与独立复审，Task56共用普通服务报价建单进入精确设计，详细执行见§2.22；BM04整体尚未完成。** 后续按BM-04接待工单等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
+**当前交付：BM-03预约后端模块完成，Task50–53及修复复审通过，embedded/standalone真实构件隔离部署验收通过，详见§31；BM-02/BM-01分别见§25/§22。BM-04的Task54共用临客及身份能力已完成任务验收，Task55接待与工单设计已冻结，55A–55D的本地服务能力已完成实现与独立复审，Task56共用普通服务报价建单已完成设计技术核对并进入编码验证，详细执行见§2.22；BM04整体尚未完成。** 后续按BM-04接待工单等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
 
 初始计划阶段产物（2026-10-20，非当前工程状态）：本TDD、开发任务JSON、生成任务对照索引和校验器；当时尚未编码。之后实际实现及验收按§7–20逐批记录，当前总览与后续领取以§21为准。
 
@@ -1894,3 +1894,20 @@ Task60 验证闸门补充：现 scripts/check-sql-portability.mjs 的 targets()�
 验证分批而非重复加总：首轮D整类21及后补11、真实HOST最新1（此前HOST回归5另记）、严格迁移24及相关5；R1原生D33+B2+C4=39、最终定向7、完整普通插件118；R2最新定向12和装配/架构23通过。有效SQL防线消融1断言失败后还原通过；R1各问题真实RED、R2锁等待真实业务RED均保留，前期夹具/观测失败不计业务证据。R2测试以真实独立行锁和线程阻塞点同步，依赖当前JDK21/JDBC栈，不把监控表观测写成最终GREEN。V1–V7字节不变，ready7/27私表，统一本机MySQL9.7.2，未推送或远程部署。
 
 原Minor M1为故障注入WARN与既有Flyway/HOST环境警告分类，继续留在全分支审查，不称日志pristine；SQL gate现有扫描范围、未穷举的身份排列/交错和真实资源owner部署等边界详见报告，后续60按既定闸门验收。Task55本地业务完成，BM04整体未完成。接下来按[Task56任务](../../.superpowers/sdd/beauty-backend/task-56-brief.md)先精确设计，再交真实共用报价/普通建单/受管理履约；57资金、58来源账单、59协议、60大模块真实部署顺序保持。
+
+
+### 32.5 Task56共用报价建单与受管理履约验收（2026-10-23）
+
+产品提交dbb635a7cf9d36ddddfbd0138e8dfc40216d4e9b，87文件；commit tree 95a19a1b0fa62cca2e317086bb202b1a178ae463与最终独立复审快照完全一致，父提交f33bf12cf。共用owner交付prepare/readQuote/confirm/place/findOperation/source真实六方法及HOST C/内部B入口，复用零售与已知本地餐饮相同的普通writer、实际商品/活动/券和最终同次分摊；未合并未接线餐饮定价引擎。永久首键映射、稳定来源行、RR来源观察和受管理SERVICE_EXECUTION最低CAS已交付，支付方法留57，不以SQL历史receipt夹具充正式收款。
+
+[首次独立审查](../../.superpowers/sdd/beauty-backend/review-task-56.md)为SPEC PASS/QUALITY NEEDS_FIXES，仅1项Important：native重启测试破坏默认Maven入口。R1同时按实际JSON/MySQL依赖隔离8个具体测试类，保留真实native断言，并让runner核新报告非零/零skip；[窄复审](../../.superpowers/sdd/beauty-backend/review-task-56-r1.md)确认I1 ADDRESSED、Scoped SPEC PASS/QUALITY APPROVED，新增Critical/Important/Minor均0。全量证据和失败历史见[实施报告](../../.superpowers/sdd/beauty-backend/task-56-report.md)。
+
+验证按快照分批：防线消融A/B分别6项、2项真实业务断言失败，逐字节还原后合同4项、应用83项原生通过；owner分层修正后合同4项、原生/架构18项通过，后补配置2及合法取消/超时2通过。旧相关回归129项中3项架构失败、1项standalone条件跳过，其中本次优惠router→Mapper问题已修并定向通过，剩余OpsPoints FQN/store登记保留60。餐饮embedded实际5项通过、standalone专用1项跳过，不能称独立构件已验。
+
+R1真实默认入口先1断言失败，另2项H2 JSON错误；抽象fixture条件不继承的中间态73项7失败/52错误/8跳过诚实保留。最终默认入口73项全部预期跳过，仅证明测试选择；真正native代表4项通过/0跳过，错误native配置1项断言失败且runner实际拒绝skip XML。没有累计历史批次冒充最终全套通过。
+
+V539固定8444bytes/SHA256 5a8e346341e5b378403761f2a77555c0558ff6b27a6071584207a9d8f9e14d3b，首次执行前根独立固定，此后不变；beauty V1–V7/ready7/27不变。原生平台用V538结构夹具追加冻结V539，不代表全历史Flyway升级；库存独立库仍未原生验证。仅自有缓存mysql9.7.2串行/finally清理，未推送/远程部署。
+
+共享静态当前及隔离HEAD基线均19项11通过/8失败：预约权限三语、B端common.delete、实体CHECK解析与12表清单、库存文案参数；属于本美业分支旧预约接线的亦为本项目部署前必修，不称无关历史。旧OpsPoints权限矩阵/文档索引生成漂移同样未放宽checker，不称全backend或全生成gate绿。Task60须连同JobLock迁已登记包、beauty域登记、插件SQL定向覆盖、真实认领+REPLACE和告警分类收口。
+
+Task56本地owner完成；BM04整体尚未完成。按[Task57任务](../../.superpowers/sdd/beauty-backend/task-57-brief.md)先审计真实资金owner、全部open入口、原号/凭证/权限与新SQL，再技术核对、RED/编码/原生和独立审查。58来源绑定账单、59美业协议、60大模块真实JAR部署顺序保持，BM05仍关闭。
