@@ -55,10 +55,70 @@ HEADER = """-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema
 
 
 
+# Constant-set IN expressions in H2 2.4 retain the first evaluating session as
+# their comparator. A pooled session closing then breaks valid CHECK writes.
+# CASE compares through the current session and keeps SQL's nullable result.
+_H2_LITERAL = r"(?:'(?:''|[^'])*'|[+-]?\d+(?:\.\d+)?)"
+_H2_IN_LIST = re.compile(
+    rf"(?P<column>[A-Za-z_]\w*)\s+(?P<not>NOT\s+)?IN\s*"
+    rf"\(\s*(?P<values>{_H2_LITERAL}(?:\s*,\s*{_H2_LITERAL})*)\s*\)", re.I)
+
+
+def _h2_session_safe_in(expression: str) -> str:
+    """Rewrite full simple-column operands only; preserve quoted and complex SQL."""
+    result = []
+    i = 0
+    previous = None
+    operand_boundaries = {None, '(', 'AND', 'OR', 'NOT', 'WHEN', 'THEN', 'ELSE'}
+    keywords = {'NOT', 'IN', 'NULL', 'TRUE', 'FALSE', 'AND', 'OR', 'WHEN',
+                'THEN', 'ELSE', 'CASE', 'END', 'CHECK', 'AS'}
+    while i < len(expression):
+        char = expression[i]
+        if char in "'\"`":
+            # Consume the entire string/quoted identifier, including doubled quote
+            # escapes. Never inspect its contents as SQL identifiers or operators.
+            end = i + 1
+            while end < len(expression):
+                if expression[end] == char:
+                    if end + 1 < len(expression) and expression[end + 1] == char:
+                        end += 2
+                        continue
+                    end += 1
+                    break
+                end += 1
+            result.append(expression[i:end])
+            previous = '<quoted>'
+            i = end
+            continue
+        word = re.match(r"[A-Za-z_]\w*", expression[i:])
+        if word:
+            token = word.group()
+            match = _H2_IN_LIST.match(expression, i)
+            if match and previous in operand_boundaries and token.upper() not in keywords:
+                column = match.group('column')
+                values = re.findall(_H2_LITERAL, match.group('values'))
+                cases = ''.join(f" WHEN {value} THEN TRUE" for value in values)
+                converted = (f"(CASE {column}{cases} ELSE CASE WHEN {column} IS NULL "
+                             "THEN NULL ELSE FALSE END END)")
+                result.append("NOT " + converted if match.group('not') else converted)
+                previous = ')'
+                i = match.end()
+            else:
+                result.append(token)
+                previous = token.upper()
+                i += len(token)
+        else:
+            result.append(char)
+            if not char.isspace():
+                previous = char
+            i += 1
+    return ''.join(result)
+
+
 def _h2_generated_column(col: str) -> str:
     # H2 calculates generated columns itself and has no MySQL STORED storage modifier.
     if re.search(r"\bGENERATED\s+ALWAYS\s+AS\b", col, flags=re.I):
-        return re.sub(r"\s+STORED\s*$", "", col, flags=re.I)
+        return _h2_session_safe_in(re.sub(r"\s+STORED\s*$", "", col, flags=re.I))
     return col
 
 
@@ -77,7 +137,7 @@ def _h2_type(col: str) -> str:
     # H2 has no JSON_VALID function. Preserve checks using its equivalent JSON predicate.
     if re.match(r"\s*(?:CONSTRAINT\s+\w+\s+)?CHECK\b", col, re.I):
         col = re.sub(r"\bJSON_VALID\(\s*(`?\w+`?)\s*\)", r"(\1 IS JSON)", col, flags=re.I)
-        return col
+        return _h2_session_safe_in(col)
     return _h2_generated_column(re.sub(r"(?<![\w])JSON(?![\w])", "TEXT", col, flags=re.I))
 
 

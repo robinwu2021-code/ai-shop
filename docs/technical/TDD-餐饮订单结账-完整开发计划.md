@@ -933,6 +933,31 @@ Schema发布修复：按原生成器重建schema-test.sql，补齐已合并储�
 
 正常推送补充收据：f80f99b54的干净前置门禁发现库存界面清单stock-detail缺一项；同步发现原Python词条解析器漏读带引号键，不能只补空白中文表格。改为复用现有规范localeEntries读取实际词条，3项回归先红后绿（中文/URL与转义/非法目录拒绝），14屏文档已重生成并对账。盘点超期提示沿用is-danger公共组件类，删除等值局部颜色声明；无界面功能或语义变化。完整27项前端/静态检查、B298/C629、双类型、ops831与实际eslint均通过，25生成器一致，未增长基线。日志`/tmp/food-final-chain-results.json`、`/tmp/food-inv-ui-locale-red.log`、`/tmp/food-inv-ui-locale-green.log`。本段不代替最终干净HEAD后端门禁或云端上线回执。
 
+
+晚段回归修复收据（尚未上线）：正式4607073a4全量运行已越过原OOM位置，发现的后段失败继续归因，不把部分通过当完整通过。H2 2.4.240常量集合IN比较器引用已关闭建表连接（23514/90098），造成合法会员归属写入和种子重放失败；测试库生成器仅将完整简单列＋非NULL常量列表转换为保留三值逻辑的CASE，复杂操作数/引号标识符保持原SQL，生产迁移不变。旧schema跨连接重放实测失败，新schema通过；100条SQL真值比较一致；词法边界独立审查发现并修复初版尾部误匹配，最终Python14项通过。SchemaSeedReplayTest恢复真实多物理连接，不再用单连接规避根因。日志`/tmp/food-h2-full-cross-connection-before.log`、`/tmp/food-h2-full-cross-connection-replay.log`、`/tmp/food-h2-check-truth-table.log`、`/tmp/food-cloud-final-generator-parent.log`。
+
+其他后段修复：积分发帖夹具补唯一名称，配置切片按实际V537升级，退款并发/回滚测试在业务事务外预留真实编号；Issuer HTTP测试复用正式完整schema，删除重复重放旧DDL。通知事件补真实持久化订单归属及实际支付台账，并按本事件SENT/零重试验证，避免全队列污染或事件被拒绝造成假成功。运营权限保持V556/V557五项API-only权限不自动赋给角色，比较精确集合；补录已存在的治理能力API合同。支付发起失败沿现有PAY-01保留原意图，原键重放只有一笔流水；通道查询使用实际PayQueryPortImpl，不受共享FakePayQueryPort默认NOT_FOUND影响。
+
+| 后段目标批次 | 实测 | 日志 |
+| --- | --- | --- |
+| 积分发帖fixture | 4项通过 | `/tmp/food-cloud-posting-fixture-target-fixed.log` |
+| 权限／事件隔离／API合同 | 36项通过 | `/tmp/food-cloud-late-contract-permissions-test.log` |
+| 退款／物流／评分／通知／积分 | 98项通过 | `/tmp/food-cloud-late-schema-events-points-test.log` |
+| 跨连接schema／结算／跨店／团期／售后 | 41项通过 | `/tmp/food-cloud-cross-connection-final-target.log` |
+| 活动／复购／支付初次补验 | 36项中35通过；支付missing-channel被共享fake误判为NOT_FOUND，已改为真实查询端口 | `/tmp/food-cloud-late-payment-campaign-test.log` |
+| 真实通道查询与原支付意图 | 4项通过 | `/tmp/food-cloud-real-query-gateway-test.log` |
+
+4607073a4正式门禁本轮结束：21个有测试模块合计5716项（72失败、27错误、132条件跳过），末尾ArchitectureTest导入完整类图再次Java heap space；即使5716项已识别也不能当完整有效回归。日志`/tmp/food-cloud-final-normal-push-2.log`、完整保留`/tmp/food-cloud-final-head-test.log`。共26个失败类已归因；后续还须修测试资源安排并在干净新HEAD重跑，不以增大失败容忍或手写gate回执替代。
+
+统一Outbox补12个真实稳定处理器ID；11个跨PAY/独立恢复流程维持自有短事务，纯本地异常通知仍与platform inbox同事务。通用权益通知显式调用代理@Transactional pushTo写入，避免外部流程中自调用丢事务；未知结果不标SENT。真实H2事务、原键恢复、通知幂等、统一注册及离线结算合批33项通过（`/tmp/food-cloud-unified-outbox-final-target.log`），独立只读事务分类复审已完成。完整B端权限登记及审计守卫仍在修复；未跳过正常推送门禁，未切换云端。
+
+
+后段专项收尾：统一Outbox/通知/离线结算33项通过；架构17＋物流边界3＋真实Outbox边界1＋审计守卫3＋双部署迁移审计2＝26项通过（`/tmp/food-cloud-final-architecture-audit-target.log`）。两种部署迁移六入口补成功访问/执行AuditLogPort记录，保留原owner不可变操作回执；只记录操作者及业务引用，不记录proof/token/原始快照。B端守卫改用真实Java/SpEL AST，逐method核对canBiz或具体管理资源授权，不将management接口放入PUBLIC；伪字符串/OR true/同路径未登记handler/未调用嵌套类等负例及独立复审完成，最终B权限／源码反例／审计／迁移留痕Maven19项全部通过（`/tmp/food-cloud-final-permission-audit-test.log`）。
+
+完整测试资源安排：同一Surefire执行改为alphabetical，架构扫描优先；ArchitectureTest和LogisticsBoundaryTest在@AfterAll释放静态完整类图。未改测试选择、基线、堆/Fork、失败容忍或部署门禁，内存改善须以接下来完整回归证明。
+
+并发统一分支核对：远端已推进aa7796955，品牌储值P5已部署，实际云端gitSha为659e065f2585bdfca7aafbc66af5c3a7cab5df28、health=UP、CORE574、ai_shop393表且fnb0；PAY仍standalone，inventory仍true。此前c8e3ea7b0/CORE566/382表是前一次只读预检历史，不能再作为本次切换预期。先合并P5并重新完整验证；本次只新增餐饮私有15SQL/83业务表＋history，不重放已应用CORE567～574，不覆盖已上线品牌储值。备份/切换前再次验证实际版本，发生变化则先核对兼容。
+
 ## §3 任务边界及排期方式
 
 共享内核、配置发布、报价持久化、资金/库存合同、餐饮结账、经营凭证各自为可单独评审的工作包，但依上述合同连成一条主线。不要按Controller→Service→Mapper分批开发一堆不可验收空壳。

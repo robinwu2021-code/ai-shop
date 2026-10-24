@@ -215,6 +215,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <!-- Import the architecture graphs before the long-lived Spring context cache grows.
+                         This keeps the same single test execution and -Dtest selection semantics;
+                         graph fixtures release their references after their own rules finish. -->
+                    <runOrder>alphabetical</runOrder>
                     <!-- 用属性而不是写死：空的 <excludedGroups/> 在 profile 合并时不会覆盖父值 -->
                     <systemPropertyVariables>
                         <food.build.shape>${food.build.shape}</food.build.shape>

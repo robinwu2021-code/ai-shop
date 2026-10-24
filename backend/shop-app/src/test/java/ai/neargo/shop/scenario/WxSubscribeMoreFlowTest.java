@@ -18,6 +18,8 @@ import ai.neargo.shop.spi.product.ProductEvents;
 import ai.neargo.shop.spi.notify.WxSubscribePort;
 import ai.neargo.shop.spi.trade.OrderEvents;
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.OrderLogisticsFixture;
+import ai.neargo.shop.pay.service.PaymentLedgerService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -60,6 +63,10 @@ class WxSubscribeMoreFlowTest {
     private OtpStore otpStore;
     @Autowired
     private OutboxEventBus eventBus;
+    @Autowired
+    private JdbcTemplate jdbc;
+    @Autowired
+    private PaymentLedgerService ledger;
     @Autowired
     private OutboxDispatcher dispatcher;
     @Autowired
@@ -138,17 +145,25 @@ class WxSubscribeMoreFlowTest {
         Person b = aWechatUser("wx-open-wsm-4");
         grant(b.userNo, WxSubscribePort.SCENE_DELIVERY_START);
 
-        eventBus.publish(new OrderEvents.SubOrderShipped("SUB-WSM-4E", "SO-WSM-4E", "M-WSM", b.userNo,
+        String express = OrderLogisticsFixture.seed(jdbc, ledger, true, b.userNo, "EXPRESS");
+        jdbc.update("UPDATE ord_sub_order SET status='FULFILLING' WHERE sub_order_no=?", express);
+        String expressEvent = "WSM-EXPRESS-" + express;
+        eventBus.publish(expressEvent, new OrderEvents.SubOrderShipped(express, "O-" + express, "LG-MERCHANT", b.userNo,
                 "EXPRESS", "SF", "SF4001"));
         drainOutbox();
+        assertEventSent(expressEvent);
         assertThat(sentTo(b.openId)).as("快递发货再发一条微信就是重复").isEmpty();
 
-        eventBus.publish(new OrderEvents.SubOrderShipped("SUB-WSM-4D", "SO-WSM-4D", "M-WSM", b.userNo,
+        String delivery = OrderLogisticsFixture.seed(jdbc, ledger, true, b.userNo, "MERCHANT_DELIVERY");
+        jdbc.update("UPDATE ord_sub_order SET status='FULFILLING' WHERE sub_order_no=?", delivery);
+        String deliveryEvent = "WSM-DELIVERY-" + delivery;
+        eventBus.publish(deliveryEvent, new OrderEvents.SubOrderShipped(delivery, "O-" + delivery, "LG-MERCHANT", b.userNo,
                 "MERCHANT_DELIVERY", null, null));
         drainOutbox();
+        assertEventSent(deliveryEvent);
         assertThat(sentTo(b.openId)).singleElement().satisfies(s -> {
             assertThat(s.scene()).isEqualTo(WxSubscribePort.SCENE_DELIVERY_START);
-            assertThat(s.summary()).contains("SUB-WSM-4D").contains("配送中");
+            assertThat(s.summary()).contains(delivery).contains("配送中");
         });
     }
 
@@ -278,6 +293,13 @@ class WxSubscribeMoreFlowTest {
         s.setQuota(1);
         s.setAt(System.currentTimeMillis());
         subscribeMapper.insert(s);
+    }
+
+    private void assertEventSent(String eventNo) {
+        assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE event_no=?",
+                String.class, eventNo)).isEqualTo("SENT");
+        assertThat(jdbc.queryForObject("SELECT retry_count FROM sys_outbox WHERE event_no=?",
+                Integer.class, eventNo)).isZero();
     }
 
     private void drainOutbox() {

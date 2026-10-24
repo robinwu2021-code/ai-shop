@@ -32,6 +32,10 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 @Transactional(propagation=Propagation.NOT_SUPPORTED)
 public class EntitlementMarketingEffectSubscriber implements OutboxConsumer {
+    @Override public String handlerId() { return "entitlement-marketing-effect"; }
+    // Original owner/action ledgers provide replay safety across PAY calls and independent core writes.
+    @Override public boolean externalWorkflow() { return true; }
+
     private final ai.neargo.shop.payclient.StoredValuePlanRechargeAppService direct;
     private final RechargeIntentService recharges;
     private final ActivityBenefitIntentService benefits;

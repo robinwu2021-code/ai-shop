@@ -265,9 +265,9 @@ CREATE TABLE IF NOT EXISTS mkt_coupon
     PRIMARY KEY (id),
     CONSTRAINT uk_coupon_no UNIQUE (coupon_no),
     CONSTRAINT ck_mkt_migration_state CHECK (
-    migration_state IN ('OPEN','DRAINING','FROZEN','COMMIT_DECIDED','ABORT_DECIDED')
+    (CASE migration_state WHEN 'OPEN' THEN TRUE WHEN 'DRAINING' THEN TRUE WHEN 'FROZEN' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'ABORT_DECIDED' THEN TRUE ELSE CASE WHEN migration_state IS NULL THEN NULL ELSE FALSE END END)
     AND (migration_state='OPEN' OR migration_batch_no IS NOT NULL)
-    AND (migration_state NOT IN ('FROZEN','COMMIT_DECIDED') OR (migration_watermark IS NOT NULL AND migration_frozen_revision IS NOT NULL))
+    AND (NOT (CASE migration_state WHEN 'FROZEN' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE ELSE CASE WHEN migration_state IS NULL THEN NULL ELSE FALSE END END) OR (migration_watermark IS NOT NULL AND migration_frozen_revision IS NOT NULL))
     AND (migration_frozen_revision IS NULL OR migration_frozen_revision>=0))
 );
 
@@ -3574,9 +3574,9 @@ CREATE TABLE IF NOT EXISTS pmt_coupon
     PRIMARY KEY (id),
     CONSTRAINT uk_pmt_coupon_no UNIQUE (coupon_no),
     CONSTRAINT ck_pmt_migration_state CHECK (
-    migration_state IN ('OPEN','DRAINING','FROZEN','COMMIT_DECIDED','ABORT_DECIDED')
+    (CASE migration_state WHEN 'OPEN' THEN TRUE WHEN 'DRAINING' THEN TRUE WHEN 'FROZEN' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'ABORT_DECIDED' THEN TRUE ELSE CASE WHEN migration_state IS NULL THEN NULL ELSE FALSE END END)
     AND (migration_state='OPEN' OR migration_batch_no IS NOT NULL)
-    AND (migration_state NOT IN ('FROZEN','COMMIT_DECIDED') OR (migration_watermark IS NOT NULL AND migration_frozen_revision IS NOT NULL))
+    AND (NOT (CASE migration_state WHEN 'FROZEN' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE ELSE CASE WHEN migration_state IS NULL THEN NULL ELSE FALSE END END) OR (migration_watermark IS NOT NULL AND migration_frozen_revision IS NOT NULL))
     AND (migration_frozen_revision IS NULL OR migration_frozen_revision>=0))
 );
 
@@ -6395,8 +6395,8 @@ CREATE TABLE IF NOT EXISTS ord_ent_authorization
     CONSTRAINT uk_order_auth_quote UNIQUE (tenant_no,quote_ref),
     CHECK (source_revision>=0 AND amount_minor>=0),
     CHECK (expires_at>created_at),
-    CHECK ((status='PENDING' AND authorization_no IS NULL AND request_key IS NULL AND authorized_at IS NULL) OR (status='AUTHORIZED' AND authorization_no IS NOT NULL AND request_key IS NOT NULL AND authorized_at IS NOT NULL AND authorized_at<expires_at) OR (status IN ('CANCELLED','EXPIRED'))),
-    CHECK (status IN ('PENDING','AUTHORIZED','CANCELLED','EXPIRED'))
+    CHECK ((status='PENDING' AND authorization_no IS NULL AND request_key IS NULL AND authorized_at IS NULL) OR (status='AUTHORIZED' AND authorization_no IS NOT NULL AND request_key IS NOT NULL AND authorized_at IS NOT NULL AND authorized_at<expires_at) OR ((CASE status WHEN 'CANCELLED' THEN TRUE WHEN 'EXPIRED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))),
+    CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'AUTHORIZED' THEN TRUE WHEN 'CANCELLED' THEN TRUE WHEN 'EXPIRED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS ord_ent_source_decision
@@ -6470,7 +6470,7 @@ CREATE TABLE IF NOT EXISTS ord_card_sale_snapshot
     CONSTRAINT uk_card_sale_unit UNIQUE (tenant_no, order_line_no, unit_index, entitlement_index),
     CHECK (unit_index > 0 AND entitlement_index > 0 AND unit_price_minor >= 0),
     CHECK ((paid_fact_no IS NULL AND paid_at IS NULL) OR (paid_fact_no IS NOT NULL AND paid_at IS NOT NULL)),
-    CONSTRAINT ck_card_sale_delivery CHECK (delivery_status IN ('PENDING','ACKNOWLEDGED'))
+    CONSTRAINT ck_card_sale_delivery CHECK ((CASE delivery_status WHEN 'PENDING' THEN TRUE WHEN 'ACKNOWLEDGED' THEN TRUE ELSE CASE WHEN delivery_status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS pay_ent_outbox
@@ -6496,7 +6496,7 @@ CREATE TABLE IF NOT EXISTS pay_ent_outbox
     PRIMARY KEY (id),
     CONSTRAINT uk_pay_event UNIQUE (tenant_no,event_no),
     CHECK (schema_version > 0 AND attempts >= 0),
-    CHECK (status IN ('PENDING','SENT','DEAD'))
+    CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'SENT' THEN TRUE WHEN 'DEAD' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS pay_ent_inbox
@@ -6539,7 +6539,7 @@ CREATE TABLE IF NOT EXISTS pmt_preset_template
     PRIMARY KEY (id),
     CONSTRAINT uk_preset UNIQUE (tenant_no,template_code,template_version),
     CHECK (template_version > 0),
-    CHECK (catalog_kind IN ('ACTIVITY','PAID_PRODUCT'))
+    CHECK ((CASE catalog_kind WHEN 'ACTIVITY' THEN TRUE WHEN 'PAID_PRODUCT' THEN TRUE ELSE CASE WHEN catalog_kind IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS pmt_activity_version
@@ -7024,7 +7024,7 @@ CREATE TABLE IF NOT EXISTS ent_usage
      AND amount_minor IS NOT NULL AND amount_minor>0 AND source_order_no IS NOT NULL)
  OR (protocol='MIGRATED' AND migration_import_no IS NOT NULL AND asset_kind='ORDER_COUPON'
      AND currency IS NOT NULL AND currency='CNY' AND units IS NOT NULL AND units=1
-     AND amount_minor IS NOT NULL AND amount_minor>=0 AND status IN ('COMMITTED','REVERSED'))
+     AND amount_minor IS NOT NULL AND amount_minor>=0 AND (CASE status WHEN 'COMMITTED' THEN TRUE WHEN 'REVERSED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 )
 );
 
@@ -7071,7 +7071,7 @@ CREATE TABLE IF NOT EXISTS pay_ent_source_fence
     PRIMARY KEY (id),
     CONSTRAINT uk_ent_fence_source UNIQUE (tenant_no,purpose,source_key),
     CONSTRAINT uk_ent_fence_operation UNIQUE (tenant_no,purpose,operation_no),
-    CHECK (status IN ('OPEN','CANCELLED')),
+    CHECK ((CASE status WHEN 'OPEN' THEN TRUE WHEN 'CANCELLED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
     CHECK ((status='OPEN' AND decision_snapshot IS NULL AND cancelled_at IS NULL) OR (status='CANCELLED' AND decision_snapshot IS NOT NULL AND cancelled_at IS NOT NULL))
 );
 
@@ -7100,8 +7100,8 @@ CREATE TABLE IF NOT EXISTS ord_ent_order_use
     CONSTRAINT uk_order_use_operation UNIQUE (tenant_no,operation_no),
     CONSTRAINT uk_order_use_order UNIQUE (tenant_no,order_no),
     CONSTRAINT uk_order_use_source UNIQUE (tenant_no,source_key),
-    CHECK (status IN ('PENDING','APPLIED','COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED')),
-    CHECK ((status IN ('PENDING','APPLIED') AND decision_snapshot IS NULL) OR (status IN ('COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED') AND decision_snapshot IS NOT NULL))
+    CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'APPLIED' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'CANCEL_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (((CASE status WHEN 'PENDING' THEN TRUE WHEN 'APPLIED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND decision_snapshot IS NULL) OR ((CASE status WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'CANCEL_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND decision_snapshot IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS ord_ent_payment_seal
@@ -7175,8 +7175,8 @@ CREATE TABLE IF NOT EXISTS ent_code_token
     PRIMARY KEY (id),
     CONSTRAINT uk_token UNIQUE (tenant_no,token_hash),
     CONSTRAINT uk_token_request UNIQUE (tenant_no,user_no,request_key_hash),
-    CHECK (status IN ('ACTIVE','USED','REVOKED')),
-    CHECK ((status='USED' AND consumed_operation_no IS NOT NULL AND consumed_store_no IS NOT NULL AND consumed_actor_no IS NOT NULL AND consumed_at IS NOT NULL) OR (status IN ('ACTIVE','REVOKED') AND consumed_operation_no IS NULL AND consumed_store_no IS NULL AND consumed_actor_no IS NULL AND consumed_at IS NULL))
+    CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'USED' THEN TRUE WHEN 'REVOKED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((status='USED' AND consumed_operation_no IS NOT NULL AND consumed_store_no IS NOT NULL AND consumed_actor_no IS NOT NULL AND consumed_at IS NOT NULL) OR ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'REVOKED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND consumed_operation_no IS NULL AND consumed_store_no IS NULL AND consumed_actor_no IS NULL AND consumed_at IS NULL))
 );
 
 CREATE TABLE IF NOT EXISTS pmt_benefit_intent
@@ -7198,7 +7198,7 @@ CREATE TABLE IF NOT EXISTS pmt_benefit_intent
     PRIMARY KEY (id),
     CONSTRAINT uk_benefit_intent UNIQUE (tenant_no,intent_no),
     CONSTRAINT uk_benefit_request UNIQUE (tenant_no,user_no,request_key_hash),
-    CHECK (status IN ('PENDING','COMMIT_DECIDED','ABORT_DECIDED','COMMITTED','ABORTED'))
+    CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'ABORT_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'ABORTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS ord_ent_service_order
@@ -7233,10 +7233,10 @@ CREATE TABLE IF NOT EXISTS ord_ent_service_order
     CONSTRAINT uk_service_order UNIQUE (tenant_no,service_order_no),
     CONSTRAINT uk_service_operation UNIQUE (tenant_no,operation_no),
     CONSTRAINT uk_service_request UNIQUE (tenant_no,entity_no,operator_no,request_key_hash),
-    CHECK (status IN ('CREATED','PREVIEWED','AUTHORIZED','PENDING','COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED')),
-    CHECK (status NOT IN ('PREVIEWED','AUTHORIZED','PENDING','COMMIT_DECIDED','COMMITTED') OR (preview_snapshot IS NOT NULL AND preview_expires_at IS NOT NULL)),
-    CHECK (status NOT IN ('PENDING','COMMIT_DECIDED','COMMITTED') OR command_snapshot IS NOT NULL),
-    CHECK ((status IN ('CREATED','PREVIEWED','AUTHORIZED','PENDING') AND decision_snapshot IS NULL) OR (status IN ('COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED') AND decision_snapshot IS NOT NULL))
+    CHECK ((CASE status WHEN 'CREATED' THEN TRUE WHEN 'PREVIEWED' THEN TRUE WHEN 'AUTHORIZED' THEN TRUE WHEN 'PENDING' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'CANCEL_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (NOT (CASE status WHEN 'PREVIEWED' THEN TRUE WHEN 'AUTHORIZED' THEN TRUE WHEN 'PENDING' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) OR (preview_snapshot IS NOT NULL AND preview_expires_at IS NOT NULL)),
+    CHECK (NOT (CASE status WHEN 'PENDING' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) OR command_snapshot IS NOT NULL),
+    CHECK (((CASE status WHEN 'CREATED' THEN TRUE WHEN 'PREVIEWED' THEN TRUE WHEN 'AUTHORIZED' THEN TRUE WHEN 'PENDING' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND decision_snapshot IS NULL) OR ((CASE status WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'CANCEL_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND decision_snapshot IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS prd_entitlement_binding
@@ -7261,7 +7261,7 @@ CREATE TABLE IF NOT EXISTS prd_entitlement_binding
     PRIMARY KEY (id),
     CONSTRAINT uk_product_entitlement UNIQUE (tenant_no,goods_no,sku_no),
     CHECK (units_per_item BETWEEN 1 AND 100),
-    CHECK (status IN ('ACTIVE','DISABLED'))
+    CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'DISABLED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS prd_ent_binding_command
@@ -7311,7 +7311,7 @@ CREATE TABLE IF NOT EXISTS sv_account
     CONSTRAINT uk_sv_owner UNIQUE (tenant_no,user_no,entity_no,store_no,currency),
     PRIMARY KEY (id),
     CONSTRAINT uk_sv_account UNIQUE (tenant_no,account_no),
-    CHECK (status IN ('ACTIVE','FROZEN')),
+    CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'FROZEN' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
     CHECK (principal_minor>=held_principal_minor AND held_principal_minor>=0 AND bonus_minor>=held_bonus_minor AND held_bonus_minor>=0),
     CONSTRAINT ck_sv_account_total_balance CHECK (principal_minor <= 9223372036854775807 - bonus_minor)
 );
@@ -7373,8 +7373,8 @@ CREATE TABLE IF NOT EXISTS sv_recharge
     CONSTRAINT uk_recharge_request UNIQUE (tenant_no,request_id),
     CONSTRAINT uk_recharge_permit UNIQUE (tenant_no,reservation_no),
     CHECK (principal_minor>0 AND bonus_minor>=0),
-    CHECK (status IN ('WAIT_COLLECTION','SUBMITTED','RECEIVED','CREDITED','CANCELLED','REJECTED')),
-    CHECK (status NOT IN ('RECEIVED','CREDITED') OR (received_by IS NOT NULL AND received_at IS NOT NULL AND received_decision_snapshot IS NOT NULL)),
+    CHECK ((CASE status WHEN 'WAIT_COLLECTION' THEN TRUE WHEN 'SUBMITTED' THEN TRUE WHEN 'RECEIVED' THEN TRUE WHEN 'CREDITED' THEN TRUE WHEN 'CANCELLED' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (NOT (CASE status WHEN 'RECEIVED' THEN TRUE WHEN 'CREDITED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) OR (received_by IS NOT NULL AND received_at IS NOT NULL AND received_decision_snapshot IS NOT NULL)),
     CHECK ((status='CREDITED' AND credited_at IS NOT NULL) OR (status<>'CREDITED' AND credited_at IS NULL)),
     CONSTRAINT ck_sv_cancel_facts CHECK ((status='CANCELLED' AND cancellation_reason IS NOT NULL AND cancelled_at IS NOT NULL)
         OR (status<>'CANCELLED' AND cancelled_at IS NULL)),
@@ -7382,9 +7382,9 @@ CREATE TABLE IF NOT EXISTS sv_recharge
  (source_kind='ACTIVITY' AND reservation_no IS NOT NULL AND activity_no IS NOT NULL AND activity_version_no IS NOT NULL AND plan_no IS NULL AND plan_version_no IS NULL)
  OR (source_kind='PLAN' AND reservation_no IS NULL AND activity_no IS NULL AND activity_version_no IS NULL AND plan_no IS NOT NULL AND plan_version_no IS NOT NULL)),
     CONSTRAINT ck_sv_collection_receipt CHECK (
-    status NOT IN ('SUBMITTED','RECEIVED','CREDITED') OR
+    NOT (CASE status WHEN 'SUBMITTED' THEN TRUE WHEN 'RECEIVED' THEN TRUE WHEN 'CREDITED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) OR
     (collection_method IS NOT NULL AND actual_amount_minor IS NOT NULL
-     AND collection_method IN ('CASH','TRANSFER','MERCHANT_OFFLINE')
+     AND (CASE collection_method WHEN 'CASH' THEN TRUE WHEN 'TRANSFER' THEN TRUE WHEN 'MERCHANT_OFFLINE' THEN TRUE ELSE CASE WHEN collection_method IS NULL THEN NULL ELSE FALSE END END)
      AND actual_amount_minor=principal_minor AND receipt_ref IS NOT NULL AND receipt_digest IS NOT NULL)
 )
 );
@@ -7515,9 +7515,9 @@ CREATE TABLE IF NOT EXISTS sv_posting_line
     PRIMARY KEY (id),
     CONSTRAINT uk_sv_posting_line UNIQUE (tenant_no,voucher_no,line_no),
     CHECK (line_no>0 AND amount_minor>0),
-    CHECK (pool IN ('PRINCIPAL','BONUS')),
-    CHECK (book IN ('CUSTOMER_CLAIM','MERCHANT_OBLIGATION')),
-    CHECK (side IN ('DEBIT','CREDIT'))
+    CHECK ((CASE pool WHEN 'PRINCIPAL' THEN TRUE WHEN 'BONUS' THEN TRUE ELSE CASE WHEN pool IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((CASE book WHEN 'CUSTOMER_CLAIM' THEN TRUE WHEN 'MERCHANT_OBLIGATION' THEN TRUE ELSE CASE WHEN book IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((CASE side WHEN 'DEBIT' THEN TRUE WHEN 'CREDIT' THEN TRUE ELSE CASE WHEN side IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS pmt_recharge_intent
@@ -7542,7 +7542,7 @@ CREATE TABLE IF NOT EXISTS pmt_recharge_intent
     CONSTRAINT uk_recharge_intent UNIQUE (tenant_no,intent_no),
     CONSTRAINT uk_recharge_intent_pay UNIQUE (tenant_no,recharge_no),
     CONSTRAINT uk_recharge_intent_request UNIQUE (tenant_no,entity_no,operator_no,request_key_hash),
-    CHECK (status IN ('PENDING','CREDITED','CANCELLED'))
+    CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'CREDITED' THEN TRUE WHEN 'CANCELLED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS sv_hold_allocation
@@ -7594,8 +7594,8 @@ CREATE TABLE IF NOT EXISTS ent_sale_reservation
     PRIMARY KEY (id),
     CONSTRAINT uk_sale_reservation UNIQUE (tenant_no,reservation_no),
     CONSTRAINT uk_sale_reservation_source UNIQUE (tenant_no,source_key),
-    CHECK (status IN ('RESERVING','RESERVED','TRANSFERRED','RELEASED')),
-    CHECK (status NOT IN ('RESERVED','TRANSFERRED') OR (template_no IS NOT NULL AND definition_snapshot IS NOT NULL)),
+    CHECK ((CASE status WHEN 'RESERVING' THEN TRUE WHEN 'RESERVED' THEN TRUE WHEN 'TRANSFERRED' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (NOT (CASE status WHEN 'RESERVED' THEN TRUE WHEN 'TRANSFERRED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) OR (template_no IS NOT NULL AND definition_snapshot IS NOT NULL)),
     CHECK (status <> 'TRANSFERRED' OR grant_no IS NOT NULL),
     CHECK (status <> 'RELEASED' OR source_decision_no IS NOT NULL)
 );
@@ -7622,7 +7622,7 @@ CREATE TABLE IF NOT EXISTS pay_ent_exception
     PRIMARY KEY (id),
     CONSTRAINT uk_pay_exception UNIQUE (tenant_no,exception_no),
     CONSTRAINT uk_exception_source UNIQUE (tenant_no,kind,biz_no),
-    CHECK (status IN ('OPEN','PROCESSING','RESOLVED'))
+    CHECK ((CASE status WHEN 'OPEN' THEN TRUE WHEN 'PROCESSING' THEN TRUE WHEN 'RESOLVED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS pay_ent_exception_action
@@ -7648,9 +7648,9 @@ CREATE TABLE IF NOT EXISTS pay_ent_exception_action
     PRIMARY KEY(id),
     CONSTRAINT uk_exception_action UNIQUE (tenant_no,action_no),
     CONSTRAINT uk_exception_request UNIQUE (tenant_no,request_key),
-    CHECK (status IN ('PENDING','DONE')),
+    CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'DONE' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
     CHECK (status <> 'DONE' OR response_snapshot IS NOT NULL),
-    CONSTRAINT ck_exception_action_kind CHECK (operation_kind IN ('RETRY_GRANT','QUERY_SOURCE','RETRY_EVENT','QUERY_EVENT'))
+    CONSTRAINT ck_exception_action_kind CHECK ((CASE operation_kind WHEN 'RETRY_GRANT' THEN TRUE WHEN 'QUERY_SOURCE' THEN TRUE WHEN 'RETRY_EVENT' THEN TRUE WHEN 'QUERY_EVENT' THEN TRUE ELSE CASE WHEN operation_kind IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS pay_ent_recon_run
@@ -7681,9 +7681,9 @@ CREATE TABLE IF NOT EXISTS pay_ent_recon_run
     CONSTRAINT uk_ent_recon_no UNIQUE (tenant_no,recon_no),
     CONSTRAINT uk_ent_recon_request UNIQUE (tenant_no,request_key),
     CHECK (checked_count>=0 AND diff_count>=0 AND diff_count<=checked_count),
-    CHECK (axis IN ('ISSUANCE','RIGHTS','HOLD','MONEY')),
+    CHECK ((CASE axis WHEN 'ISSUANCE' THEN TRUE WHEN 'RIGHTS' THEN TRUE WHEN 'HOLD' THEN TRUE WHEN 'MONEY' THEN TRUE ELSE CASE WHEN axis IS NULL THEN NULL ELSE FALSE END END)),
     CHECK (axis<>'MONEY' OR currency IS NOT NULL),
-    CHECK (status IN ('RUNNING','COMPLETED','FAILED'))
+    CHECK ((CASE status WHEN 'RUNNING' THEN TRUE WHEN 'COMPLETED' THEN TRUE WHEN 'FAILED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS pay_ent_recon_diff
@@ -7709,7 +7709,7 @@ CREATE TABLE IF NOT EXISTS pay_ent_recon_diff
     PRIMARY KEY (id),
     CONSTRAINT uk_ent_recon_diff UNIQUE (tenant_no,diff_no),
     CONSTRAINT uk_ent_recon_resource UNIQUE (tenant_no,recon_no,resource_no,diff_kind),
-    CHECK (status IN ('OPEN','ACKNOWLEDGED','RESOLVED'))
+    CHECK ((CASE status WHEN 'OPEN' THEN TRUE WHEN 'ACKNOWLEDGED' THEN TRUE WHEN 'RESOLVED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS ent_owner_registry
@@ -7732,12 +7732,12 @@ CREATE TABLE IF NOT EXISTS ent_owner_registry
     updated_by VARCHAR(64) NOT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_source_owner UNIQUE (tenant_no,source_system,source_kind,source_no),
-    CHECK (source_system IN ('MKT_LEGACY','PMT','PAY')),
-    CHECK (source_kind IN ('TEMPLATE','INSTANCE','USAGE')),
-    CHECK (owner_system IN ('CORE_LEGACY','PAY')),
-    CHECK (status IN ('PREPARING','VERIFIED','CUTOVER','ARCHIVED')),
-    CHECK (owner_system<>'CORE_LEGACY' OR status IN ('PREPARING','VERIFIED')),
-    CHECK (owner_system<>'PAY' OR (status IN ('CUTOVER','ARCHIVED') AND target_no IS NOT NULL AND cutover_watermark IS NOT NULL)),
+    CHECK ((CASE source_system WHEN 'MKT_LEGACY' THEN TRUE WHEN 'PMT' THEN TRUE WHEN 'PAY' THEN TRUE ELSE CASE WHEN source_system IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((CASE source_kind WHEN 'TEMPLATE' THEN TRUE WHEN 'INSTANCE' THEN TRUE WHEN 'USAGE' THEN TRUE ELSE CASE WHEN source_kind IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((CASE owner_system WHEN 'CORE_LEGACY' THEN TRUE WHEN 'PAY' THEN TRUE ELSE CASE WHEN owner_system IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((CASE status WHEN 'PREPARING' THEN TRUE WHEN 'VERIFIED' THEN TRUE WHEN 'CUTOVER' THEN TRUE WHEN 'ARCHIVED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (owner_system<>'CORE_LEGACY' OR (CASE status WHEN 'PREPARING' THEN TRUE WHEN 'VERIFIED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (owner_system<>'PAY' OR ((CASE status WHEN 'CUTOVER' THEN TRUE WHEN 'ARCHIVED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND target_no IS NOT NULL AND cutover_watermark IS NOT NULL)),
     CHECK (status<>'VERIFIED' OR (target_no IS NOT NULL AND cutover_watermark IS NOT NULL)),
     CHECK (source_system<>'PAY' OR owner_system='PAY')
 );
@@ -7776,7 +7776,7 @@ CREATE TABLE IF NOT EXISTS ent_migration_stage
     CONSTRAINT uk_migration_stage UNIQUE (tenant_no,stage_no),
     CONSTRAINT uk_migration_stage_request UNIQUE (tenant_no,request_key),
     CONSTRAINT uk_migration_stage_origin UNIQUE (tenant_no,source_system,source_template_no,migration_batch_no),
-    CHECK (source_system IN ('MKT_LEGACY','PMT')),
+    CHECK ((CASE source_system WHEN 'MKT_LEGACY' THEN TRUE WHEN 'PMT' THEN TRUE ELSE CASE WHEN source_system IS NULL THEN NULL ELSE FALSE END END)),
     CHECK (source_schema_version=1 AND frozen_revision>=0),
     CHECK (payload_bytes BETWEEN 1 AND 8388608),
     CHECK (CHAR_LENGTH(payload_cipher) BETWEEN 1 AND 12000000),
@@ -7784,7 +7784,7 @@ CREATE TABLE IF NOT EXISTS ent_migration_stage
     CHECK (CHAR_LENGTH(TRIM(reason))>0 AND CHAR_LENGTH(TRIM(crypto_key_id))>0),
     CHECK (CHAR_LENGTH(watermark)=64 AND CHAR_LENGTH(content_hash)=64 AND CHAR_LENGTH(command_hash)=64),
     CHECK (status='STAGED'),
-    CONSTRAINT ck_migration_manifest_version CHECK (manifest_version IN (1,2)),
+    CONSTRAINT ck_migration_manifest_version CHECK ((CASE manifest_version WHEN 1 THEN TRUE WHEN 2 THEN TRUE ELSE CASE WHEN manifest_version IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT ck_migration_manifest_history CHECK (
    (manifest_version=1 AND history_available IS NULL)
    OR (history_available IS NOT NULL AND
@@ -7878,12 +7878,12 @@ CREATE TABLE IF NOT EXISTS ent_legacy_coupon_operation
     PRIMARY KEY(id),
     CONSTRAINT uk_legacy_coupon_operation UNIQUE (tenant_no,operation_no),
     CONSTRAINT uk_legacy_coupon_checkout UNIQUE (tenant_no,checkout_no),
-    CHECK (origin_system IN ('MKT_LEGACY','PMT','PAY') AND source_version=1),
+    CHECK ((CASE origin_system WHEN 'MKT_LEGACY' THEN TRUE WHEN 'PMT' THEN TRUE WHEN 'PAY' THEN TRUE ELSE CASE WHEN origin_system IS NULL THEN NULL ELSE FALSE END END) AND source_version=1),
     CHECK (CHAR_LENGTH(owner_plan_hash)=64 AND CHAR_LENGTH(economic_hash)=64 AND CHAR_LENGTH(command_hash)=64),
     CHECK (discount_minor IS NULL OR discount_minor>0),
-    CHECK (status IN ('PREPARING','HELD','COMMITTED','RELEASED','REVERSED')),
-    CHECK ((ever_held=0 AND discount_minor IS NULL AND allocation_snapshot IS NULL AND rule_snapshot IS NULL AND hold_asset_seq IS NULL AND held_at IS NULL AND status IN ('PREPARING','RELEASED')) OR (ever_held=1 AND discount_minor IS NOT NULL AND allocation_snapshot IS NOT NULL AND rule_snapshot IS NOT NULL AND hold_asset_seq IS NOT NULL AND hold_asset_seq>0 AND held_at IS NOT NULL AND status<>'PREPARING')),
-    CHECK ((status IN ('COMMITTED','REVERSED') AND commit_asset_seq IS NOT NULL AND commit_asset_seq>hold_asset_seq AND commit_decision_no IS NOT NULL AND source_order_no IS NOT NULL AND commit_snapshot IS NOT NULL AND committed_at IS NOT NULL AND source_committed_at IS NOT NULL) OR (status NOT IN ('COMMITTED','REVERSED') AND commit_asset_seq IS NULL AND commit_decision_no IS NULL AND source_order_no IS NULL AND commit_snapshot IS NULL AND committed_at IS NULL AND source_committed_at IS NULL)),
+    CHECK ((CASE status WHEN 'PREPARING' THEN TRUE WHEN 'HELD' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE WHEN 'REVERSED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((ever_held=0 AND discount_minor IS NULL AND allocation_snapshot IS NULL AND rule_snapshot IS NULL AND hold_asset_seq IS NULL AND held_at IS NULL AND (CASE status WHEN 'PREPARING' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)) OR (ever_held=1 AND discount_minor IS NOT NULL AND allocation_snapshot IS NOT NULL AND rule_snapshot IS NOT NULL AND hold_asset_seq IS NOT NULL AND hold_asset_seq>0 AND held_at IS NOT NULL AND status<>'PREPARING')),
+    CHECK (((CASE status WHEN 'COMMITTED' THEN TRUE WHEN 'REVERSED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND commit_asset_seq IS NOT NULL AND commit_asset_seq>hold_asset_seq AND commit_decision_no IS NOT NULL AND source_order_no IS NOT NULL AND commit_snapshot IS NOT NULL AND committed_at IS NOT NULL AND source_committed_at IS NOT NULL) OR (NOT (CASE status WHEN 'COMMITTED' THEN TRUE WHEN 'REVERSED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND commit_asset_seq IS NULL AND commit_decision_no IS NULL AND source_order_no IS NULL AND commit_snapshot IS NULL AND committed_at IS NULL AND source_committed_at IS NULL)),
     CHECK ((status='RELEASED' AND abort_decision_no IS NOT NULL AND abort_snapshot IS NOT NULL AND released_at IS NOT NULL AND ((ever_held=0 AND release_asset_seq IS NULL) OR (ever_held=1 AND release_asset_seq IS NOT NULL AND release_asset_seq>hold_asset_seq))) OR (status<>'RELEASED' AND abort_decision_no IS NULL AND abort_snapshot IS NULL AND released_at IS NULL AND release_asset_seq IS NULL)),
     CHECK ((status='REVERSED' AND reverse_asset_seq IS NOT NULL AND reverse_asset_seq>commit_asset_seq AND reverse_decision_no IS NOT NULL AND reverse_snapshot IS NOT NULL AND reversed_at IS NOT NULL AND source_reversed_at IS NOT NULL) OR (status<>'REVERSED' AND reverse_asset_seq IS NULL AND reverse_decision_no IS NULL AND reverse_snapshot IS NULL AND reversed_at IS NULL AND source_reversed_at IS NULL))
 );
@@ -7922,7 +7922,7 @@ CREATE TABLE IF NOT EXISTS ord_legacy_coupon_checkout
     CONSTRAINT ck_legacy_checkout_state CHECK ( (status='OPEN' AND decision_snapshot IS NULL AND order_no IS NULL AND reversal_snapshot IS NULL) OR (status='ABORTED' AND decision_snapshot IS NOT NULL AND order_no IS NULL AND reversal_snapshot IS NULL) OR (status='COMMITTED' AND decision_snapshot IS NOT NULL AND order_no IS NOT NULL AND held_snapshot IS NOT NULL)),
     CONSTRAINT ck_legacy_checkout_not_deleted CHECK (deleted=0),
     CONSTRAINT ck_legacy_checkout_pay_ack CHECK (
-   (pay_state IN ('PENDING','NONE') AND pay_decision_no IS NULL AND pay_acked_at IS NULL)
+   ((CASE pay_state WHEN 'PENDING' THEN TRUE WHEN 'NONE' THEN TRUE ELSE CASE WHEN pay_state IS NULL THEN NULL ELSE FALSE END END) AND pay_decision_no IS NULL AND pay_acked_at IS NULL)
    OR (pay_state='COMMITTED' AND status='COMMITTED' AND reversal_snapshot IS NULL AND pay_decision_no IS NOT NULL AND pay_acked_at IS NOT NULL)
    OR (pay_state='RELEASED' AND status='ABORTED' AND pay_decision_no IS NOT NULL AND pay_acked_at IS NOT NULL)
    OR (pay_state='REVERSED' AND status='COMMITTED' AND reversal_snapshot IS NOT NULL AND pay_decision_no IS NOT NULL AND pay_acked_at IS NOT NULL)),
@@ -7966,7 +7966,7 @@ CREATE TABLE IF NOT EXISTS ent_migration_plan
     CONSTRAINT uk_migration_plan_stage UNIQUE (tenant_no,stage_no),
     CONSTRAINT uk_migration_plan_request UNIQUE (tenant_no,request_key),
     CONSTRAINT uk_migration_plan_origin UNIQUE (tenant_no,source_system,source_template_no,migration_batch_no),
-    CHECK (source_system IN ('PMT','MKT_LEGACY')),
+    CHECK ((CASE source_system WHEN 'PMT' THEN TRUE WHEN 'MKT_LEGACY' THEN TRUE ELSE CASE WHEN source_system IS NULL THEN NULL ELSE FALSE END END)),
     CHECK (alias_no IS NULL OR source_system='PMT'),
     CHECK (status='PLANNED' AND deleted=0),
     CHECK (asset_count>=0 AND archival_count>=0 AND version_count>=1),
@@ -8023,7 +8023,7 @@ CREATE TABLE IF NOT EXISTS pmt_migration_source
     updated_by VARCHAR(64) NOT NULL,
     PRIMARY KEY(id),
     CONSTRAINT uk_migration_source UNIQUE (tenant_no,source_system,source_template_no),
-    CHECK (source_system IN ('PMT','MKT_LEGACY') AND deleted=0 AND version=0)
+    CHECK ((CASE source_system WHEN 'PMT' THEN TRUE WHEN 'MKT_LEGACY' THEN TRUE ELSE CASE WHEN source_system IS NULL THEN NULL ELSE FALSE END END) AND deleted=0 AND version=0)
 );
 
 CREATE TABLE IF NOT EXISTS ent_migration_import
@@ -8080,7 +8080,7 @@ CREATE TABLE IF NOT EXISTS ent_migration_asset
     CONSTRAINT uk_migration_asset_source UNIQUE (tenant_no,source_system,source_instance_no),
     CONSTRAINT uk_migration_asset_target UNIQUE (tenant_no,instance_no),
     CONSTRAINT uk_migration_asset_baseline UNIQUE (tenant_no,baseline_no),
-    CHECK (source_system IN ('PMT','MKT_LEGACY') AND deleted=0 AND version=0),
+    CHECK ((CASE source_system WHEN 'PMT' THEN TRUE WHEN 'MKT_LEGACY' THEN TRUE ELSE CASE WHEN source_system IS NULL THEN NULL ELSE FALSE END END) AND deleted=0 AND version=0),
     CHECK (total_units>0 AND baseline_remaining_units>=0 AND baseline_remaining_units<=total_units),
     CHECK ((archival_only=1 AND instance_no IS NULL AND baseline_no IS NULL) OR (archival_only=0 AND instance_no IS NOT NULL AND baseline_no IS NOT NULL))
 );
@@ -8193,7 +8193,7 @@ CREATE TABLE IF NOT EXISTS ent_legacy_coupon_issue
     PRIMARY KEY(id),
     CONSTRAINT uk_legacy_issue_no UNIQUE (tenant_no,issue_no),
     CONSTRAINT uk_legacy_issue_batch UNIQUE (tenant_no,batch_no),
-    CHECK (source_system IN ('PMT','MKT_LEGACY') AND mode IN ('TARGETED','CENTER') AND deleted=0 AND version>=0),
+    CHECK ((CASE source_system WHEN 'PMT' THEN TRUE WHEN 'MKT_LEGACY' THEN TRUE ELSE CASE WHEN source_system IS NULL THEN NULL ELSE FALSE END END) AND (CASE mode WHEN 'TARGETED' THEN TRUE WHEN 'CENTER' THEN TRUE ELSE CASE WHEN mode IS NULL THEN NULL ELSE FALSE END END) AND deleted=0 AND version>=0),
     CHECK ((status='PREPARED' AND result_snapshot IS NULL AND completed_at IS NULL) OR (status='COMPLETED' AND result_snapshot IS NOT NULL AND completed_at IS NOT NULL))
 );
 
@@ -8223,7 +8223,7 @@ CREATE TABLE IF NOT EXISTS pmt_pay_coupon_projection
     updated_by VARCHAR(64) NOT NULL,
     PRIMARY KEY(id),
     CONSTRAINT uk_pay_coupon_projection UNIQUE (tenant_no,instance_no),
-    CHECK (source_system IN ('PMT','MKT_LEGACY') AND version=0 AND deleted=0),
+    CHECK ((CASE source_system WHEN 'PMT' THEN TRUE WHEN 'MKT_LEGACY' THEN TRUE ELSE CASE WHEN source_system IS NULL THEN NULL ELSE FALSE END END) AND version=0 AND deleted=0),
     CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(fact_hash)=64)
 );
 
@@ -8252,7 +8252,7 @@ CREATE TABLE IF NOT EXISTS sv_recharge_plan
     CONSTRAINT uk_sv_plan_governed_tier UNIQUE (tenant_no,governed_activity_no,governed_tier_key),
     CONSTRAINT uk_sv_plan_legacy_name UNIQUE (tenant_no,entity_no,store_no,legacy_name_key),
     CONSTRAINT uk_sv_plan UNIQUE (tenant_no,plan_no),
-    CHECK (status IN ('ACTIVE','INACTIVE'))
+    CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'INACTIVE' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS sv_recharge_plan_version
@@ -8509,7 +8509,7 @@ CREATE TABLE IF NOT EXISTS mch_brand_store_binding
     updated_by VARCHAR(64) NOT NULL,
     CONSTRAINT mch_brand_store_binding_uk_1 UNIQUE (tenant_no,binding_no),
     CONSTRAINT mch_brand_store_binding_uk_2 UNIQUE (tenant_no,active_store_no),
-    CHECK (status IN ('PREPARING','ACTIVE','ENDED'))
+    CHECK ((CASE status WHEN 'PREPARING' THEN TRUE WHEN 'ACTIVE' THEN TRUE WHEN 'ENDED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS mch_brand_change
@@ -8538,7 +8538,7 @@ CREATE TABLE IF NOT EXISTS mch_brand_change
     decided_at DATETIME(3) NULL,
     decision_key VARCHAR(64) NULL,
     decision_hash CHAR(64) NULL,
-    pending_store_no VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN status IN ('CHECKED','PREPARING') THEN store_no ELSE NULL END),
+    pending_store_no VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN (CASE status WHEN 'CHECKED' THEN TRUE WHEN 'PREPARING' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) THEN store_no ELSE NULL END),
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
     created_at DATETIME(3) NOT NULL,
@@ -8570,7 +8570,7 @@ CREATE TABLE IF NOT EXISTS mbr_scope_member
     updated_by VARCHAR(64) NOT NULL,
     CONSTRAINT mbr_scope_member_uk_1 UNIQUE (tenant_no,scope_member_no),
     CONSTRAINT mbr_scope_member_uk_2 UNIQUE (tenant_no,scope_type,scope_no,customer_no),
-    CHECK (scope_type IN ('BRAND','STORE'))
+    CHECK ((CASE scope_type WHEN 'BRAND' THEN TRUE WHEN 'STORE' THEN TRUE ELSE CASE WHEN scope_type IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS mbr_store_profile
@@ -8639,7 +8639,7 @@ CREATE TABLE IF NOT EXISTS ord_pricing_template
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_pricing_template_no UNIQUE (tenant_no,template_no),
     CHECK (draft_version >= 0),
-    CHECK (status IN ('ACTIVE','ARCHIVED')),
+    CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'ARCHIVED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT uk_ord_pricing_template_code UNIQUE (tenant_no,industry_code,template_code),
     CHECK ((draft_content IS JSON)),
     CONSTRAINT ck_ord_pricing_seed_shape CHECK (
@@ -8702,7 +8702,7 @@ CREATE TABLE IF NOT EXISTS ord_store_pricing_config
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_store_pricing_config_no UNIQUE (tenant_no,config_no),
     CHECK (draft_version >= 0),
-    CHECK (status IN ('ACTIVE','ARCHIVED')),
+    CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'ARCHIVED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT uk_ord_store_pricing_scope UNIQUE (tenant_no,store_no,industry_code),
     CHECK ((draft_override IS JSON))
 );
@@ -8762,7 +8762,7 @@ CREATE TABLE IF NOT EXISTS sv_issuer
     write_mode VARCHAR(24) NOT NULL DEFAULT 'LEGACY',
     CONSTRAINT sv_issuer_uk_1 UNIQUE (tenant_no,issuer_no),
     CONSTRAINT sv_issuer_uk_2 UNIQUE (tenant_no,scope_type,scope_no),
-    CHECK (scope_type IN ('BRAND','STORE'))
+    CHECK ((CASE scope_type WHEN 'BRAND' THEN TRUE WHEN 'STORE' THEN TRUE ELSE CASE WHEN scope_type IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS sv_issuer_version
@@ -9014,7 +9014,7 @@ CREATE TABLE IF NOT EXISTS ord_price_quote
     retained_ref VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_price_quote_no UNIQUE (tenant_no,quote_no),
-    CHECK (status IN ('READY','EXPIRED','SUPERSEDED')),
+    CHECK ((CASE status WHEN 'READY' THEN TRUE WHEN 'EXPIRED' THEN TRUE WHEN 'SUPERSEDED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
     CHECK (schema_version = 1),
     CHECK (source_version >= 0),
     CHECK ((root_scope_no IS NULL AND scope_version IS NULL) OR (root_scope_no IS NOT NULL AND scope_version IS NOT NULL AND scope_version >= 0)),
@@ -9159,8 +9159,8 @@ CREATE TABLE IF NOT EXISTS prd_sku_pricing_policy
     deleted TINYINT NOT NULL DEFAULT 0,
     CONSTRAINT uk_sku_pricing_policy_no UNIQUE (policy_no),
     CONSTRAINT uk_sku_pricing_policy_scope UNIQUE (tenant_no, entity_no, store_no, sku_no),
-    CONSTRAINT ck_sku_pricing_policy_flag CHECK (promotion_eligible IN (0, 1)),
-    CONSTRAINT ck_sku_pricing_policy_tax CHECK (tax_class IN ('STANDARD', 'ZERO_RATED', 'EXEMPT', 'OUT_OF_SCOPE')),
+    CONSTRAINT ck_sku_pricing_policy_flag CHECK ((CASE promotion_eligible WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN promotion_eligible IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_sku_pricing_policy_tax CHECK ((CASE tax_class WHEN 'STANDARD' THEN TRUE WHEN 'ZERO_RATED' THEN TRUE WHEN 'EXEMPT' THEN TRUE WHEN 'OUT_OF_SCOPE' THEN TRUE ELSE CASE WHEN tax_class IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT ck_sku_pricing_policy_version CHECK (version >= 1 AND version <= 9007199254740991)
 );
 
@@ -9255,10 +9255,10 @@ CREATE TABLE IF NOT EXISTS sv_issue_policy
     updated_by VARCHAR(64) NOT NULL,
     CONSTRAINT uk_sv_policy_no UNIQUE (tenant_no,policy_no),
     CONSTRAINT uk_sv_policy_target UNIQUE (tenant_no,management_no,target_type,target_no,currency),
-    CONSTRAINT ck_sv_policy_target CHECK (target_type IN ('SPACE','BRAND_STORES','STORE')),
-    CONSTRAINT ck_sv_policy_status CHECK (status IN ('ACTIVE','INACTIVE')),
+    CONSTRAINT ck_sv_policy_target CHECK ((CASE target_type WHEN 'SPACE' THEN TRUE WHEN 'BRAND_STORES' THEN TRUE WHEN 'STORE' THEN TRUE ELSE CASE WHEN target_type IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_sv_policy_status CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'INACTIVE' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT ck_sv_policy_space CHECK (target_type <> 'SPACE' OR target_no=management_no),
-    CONSTRAINT ck_sv_policy_revision CHECK (version>=0 AND deleted IN (0,1))
+    CONSTRAINT ck_sv_policy_revision CHECK (version>=0 AND (CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS sv_issue_policy_version
@@ -9290,12 +9290,12 @@ CREATE TABLE IF NOT EXISTS sv_issue_policy_version
     CONSTRAINT uk_sv_policy_version UNIQUE (tenant_no,policy_version_no),
     CONSTRAINT uk_sv_policy_sequence UNIQUE (tenant_no,policy_no,version_index),
     CONSTRAINT uk_sv_policy_command UNIQUE (tenant_no,policy_no,configuration_key),
-    CONSTRAINT ck_sv_policy_boolean CHECK (allow_issue IN (0,1) AND require_approval IN (0,1)),
+    CONSTRAINT ck_sv_policy_boolean CHECK ((CASE allow_issue WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN allow_issue IS NULL THEN NULL ELSE FALSE END END) AND (CASE require_approval WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN require_approval IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT ck_sv_policy_amounts CHECK (max_paid_minor>0 AND max_bonus_minor>=0 AND max_outstanding_minor>0),
     CONSTRAINT ck_sv_policy_ratio CHECK (max_bonus_bps>=0 AND max_bonus_bps<=10000),
     CONSTRAINT ck_sv_policy_duration CHECK (max_active_days>0),
     CONSTRAINT ck_sv_policy_effect CHECK (effect_mode='NEW_ISSUANCE_ONLY'),
-    CONSTRAINT ck_sv_policy_version_revision CHECK (version_index>0 AND version>=0 AND deleted IN (0,1))
+    CONSTRAINT ck_sv_policy_version_revision CHECK (version_index>0 AND version>=0 AND (CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS pmt_sv_release_link
@@ -9333,8 +9333,8 @@ CREATE TABLE IF NOT EXISTS pmt_sv_release_link
     CONSTRAINT uk_sv_link_version UNIQUE (tenant_no,activity_version_no),
     CONSTRAINT uk_sv_link_release UNIQUE (tenant_no,release_no),
     CONSTRAINT uk_sv_link_command UNIQUE (tenant_no,publish_command_no),
-    CONSTRAINT ck_sv_link_state CHECK (state IN ('DRAFT','PENDING_APPROVAL','APPROVED','PREPARING','PAY_READY','ACTIVE','STOP_REQUESTED','STOPPED','STALE','BLOCKED_POLICY','FAILED')),
-    CONSTRAINT ck_sv_link_approval CHECK (approval_required IN (0,1))
+    CONSTRAINT ck_sv_link_state CHECK ((CASE state WHEN 'DRAFT' THEN TRUE WHEN 'PENDING_APPROVAL' THEN TRUE WHEN 'APPROVED' THEN TRUE WHEN 'PREPARING' THEN TRUE WHEN 'PAY_READY' THEN TRUE WHEN 'ACTIVE' THEN TRUE WHEN 'STOP_REQUESTED' THEN TRUE WHEN 'STOPPED' THEN TRUE WHEN 'STALE' THEN TRUE WHEN 'BLOCKED_POLICY' THEN TRUE WHEN 'FAILED' THEN TRUE ELSE CASE WHEN state IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_sv_link_approval CHECK ((CASE approval_required WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN approval_required IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS pmt_sv_approval
@@ -9368,7 +9368,7 @@ CREATE TABLE IF NOT EXISTS pmt_sv_approval
     updated_by VARCHAR(64) NOT NULL,
     CONSTRAINT uk_sv_approval_no UNIQUE (tenant_no,approval_no),
     CONSTRAINT uk_sv_approval_draft UNIQUE (tenant_no,activity_no,draft_revision_no),
-    CONSTRAINT ck_sv_approval_status CHECK (status IN ('PENDING','APPROVED','RETURNED','STALE','BLOCKED_POLICY'))
+    CONSTRAINT ck_sv_approval_status CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'APPROVED' THEN TRUE WHEN 'RETURNED' THEN TRUE WHEN 'STALE' THEN TRUE WHEN 'BLOCKED_POLICY' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS prn_device

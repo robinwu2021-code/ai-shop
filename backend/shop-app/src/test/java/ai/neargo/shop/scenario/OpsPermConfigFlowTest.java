@@ -73,14 +73,36 @@ class OpsPermConfigFlowTest {
     }
 
     @Test
-    @DisplayName("★★ 超管在库里拿到全部功能点 —— 通配 * 要能展开")
+    @DisplayName("★★ 超管拥有全部已分配功能点，API-only 结账权限不得自动授予角色")
     void superAdminHasEveryPoint() throws Exception {
         String admin = opsLogin("admin", "admin123");
-        int all = countPoints(admin);
+        Set<String> all = allPointCodes(admin);
+        // V556/V557 intentionally register these API authorities without assigning any role.
+        Set<String> unassignedPricing = Set.of("OPS_PRICING_TEMPLATE_READ", "OPS_PRICING_TEMPLATE_UPDATE",
+                "OPS_PRICING_TEMPLATE_PUBLISH", "OPS_PRICING_TAX_READ", "OPS_PRICING_TAX_UPDATE");
+        assertThat(all).containsAll(unassignedPricing);
+        assertThat(jdbc.queryForList("""
+                SELECT point_code FROM sys_function_point
+                WHERE deleted = 0 AND point_type = 'ACTION' AND point_code IN
+                  ('OPS_PRICING_TEMPLATE_READ', 'OPS_PRICING_TEMPLATE_UPDATE', 'OPS_PRICING_TEMPLATE_PUBLISH',
+                   'OPS_PRICING_TAX_READ', 'OPS_PRICING_TAX_UPDATE')
+                """, String.class)).containsExactlyInAnyOrderElementsOf(unassignedPricing);
+        assertThat(jdbc.queryForList("""
+                SELECT point_code FROM sys_role_point
+                WHERE deleted = 0 AND point_code IN
+                  ('OPS_PRICING_TEMPLATE_READ', 'OPS_PRICING_TEMPLATE_UPDATE', 'OPS_PRICING_TEMPLATE_PUBLISH',
+                   'OPS_PRICING_TAX_READ', 'OPS_PRICING_TAX_UPDATE')
+                """, String.class)).as("API-only 权限点不得自动扩大任何既有角色授权").isEmpty();
+        Set<String> expected = new HashSet<>(all);
+        expected.removeAll(unassignedPricing);
         String body = mvc().perform(get("/ops/perm/roles/SUPER_ADMIN/points")
                         .header("Authorization", "Bearer " + admin))
                 .andReturn().getResponse().getContentAsString();
-        assertThat(json.readTree(body).get("data").size()).isEqualTo(all);
+        Set<String> actual = new HashSet<>();
+        for (JsonNode point : json.readTree(body).get("data")) {
+            actual.add(point.asString());
+        }
+        assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
     }
 
     // ---------------------------------------------------------------- 动态菜单
@@ -841,15 +863,17 @@ class OpsPermConfigFlowTest {
         return perms;
     }
 
-    private int countPoints(String adminToken) throws Exception {
+    private Set<String> allPointCodes(String adminToken) throws Exception {
         String fns = mvc().perform(get("/ops/perm/functions")
                         .header("Authorization", "Bearer " + adminToken))
                 .andReturn().getResponse().getContentAsString();
-        int n = 0;
+        Set<String> points = new HashSet<>();
         for (JsonNode f : json.readTree(fns).get("data")) {
-            n += f.get("points").size();
+            for (JsonNode point : f.get("points")) {
+                points.add(point.get("pointCode").asString());
+            }
         }
-        return n;
+        return points;
     }
 
     /** 找一个 perm_code 是给定值的功能点 */

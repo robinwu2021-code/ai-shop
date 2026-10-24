@@ -3,6 +3,7 @@ package ai.neargo.shop.paybridge;
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.message.MessageService;
+import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.notify.StoredValueNotificationService;
 import ai.neargo.shop.payclient.StoredValueConsumerQueryAppService;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
@@ -28,6 +29,10 @@ import tools.jackson.databind.ObjectMapper;
 /** Receives committed facts only. Message retries never invoke any financial or entitlement command. */
 @Component
 public class EntitlementNotificationSubscriber implements OutboxConsumer {
+    @Override public String handlerId() { return "entitlement-notification"; }
+    // Original owner/action ledgers provide replay safety across PAY calls and independent core writes.
+    @Override public boolean externalWorkflow() { return true; }
+
     private final MessageService messages;
     private final ObjectMapper json;
     private StoredValueConsumerQueryAppService facts;
@@ -92,7 +97,8 @@ public class EntitlementNotificationSubscriber implements OutboxConsumer {
             return;
         }
         if(user==null)return; // Offline customers have no registered C-side inbox.
-        messages.push(user,MessageService.TRADE,title,body,null,key(event.eventNo(),user));
+        // Enter the proxied transactional writer; push() self-invokes pushTo() without a transaction.
+        messages.pushTo(MsgMessage.RECEIVER_USER,user,MessageService.TRADE,title,body,null,key(event.eventNo(),user));
     }
     private static String key(String no,String user) {
         try {

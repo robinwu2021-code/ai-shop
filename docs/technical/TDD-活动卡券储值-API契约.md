@@ -1101,3 +1101,5 @@ Command包含精确模板Reference、TARGETED/CENTER及人群/标签选择条件
 | C12 | GET | /mp/stored-value/store/{storeNo}/records | type?,startDate?,endDate?,focusDocumentNo?,cursor?,size | StoredValueConsumerViews.Records | 消费者登录本人及实际门店记录归属 | 日期沿门店市场时区，展示真实消费/充值记录 |
 
 | C13 | GET | /mp/stored-value/notification-capability | 无 | Capability | 消费者登录 | 仅真实模板就绪才允许客户端发起通知授权 |
+
+| P94 | GET | /biz/stored-value/governance-capability | 无 | Capability(protocol,enabled) | 管理空间认证 | 只读治理能力探测；本地开关关闭或Pay未声明兼容协议1时返回enabled=false，不授予维护权限 |

@@ -9,8 +9,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,10 +40,6 @@ class PayAuditTrailTest {
     private static final Path IMPL = BACKEND.resolve(
             "shop-app/src/main/java/ai/neargo/shop/payclient/impl");
 
-    /** {@code public 返回类型 方法名(...) {} —— 用它切出每个方法的起点 */
-    private static final Pattern METHOD = Pattern.compile(
-            "(?m)^    public\\s+[\\w<>\\[\\], .?]+\\s+(\\w+)\\s*\\(");
-
     @Test
     @DisplayName("★★★ 拿到操作人的资金动作必须留痕 —— 漏一行不报错，事后就查不到是谁做的")
     void moneyActionsWithAnOperatorMustLeaveAnAuditTrail() throws IOException {
@@ -60,17 +54,15 @@ class PayAuditTrailTest {
         try (Stream<Path> files = Files.walk(IMPL)) {
             for (Path f : files.filter(p -> p.toString().endsWith(".java")).toList()) {
                 String text = Files.readString(f, StandardCharsets.UTF_8);
-                for (String[] m : methodsOf(text)) {
+                for (var m : PayAuditSourceAnalysis.methods(text)) {
                     scannedMethods++;
-                    String name = m[0];
-                    String body = m[1];
-                    boolean hasOperator = body.contains("currentUserNo()")
-                            || body.contains("operatorNo") || body.contains("operator");
+                    String name = m.name();
+                    boolean hasOperator = m.operator();
                     if (!hasOperator) {
                         continue;
                     }
                     needsTrail++;
-                    if (!body.contains("auditLogPort.record")) {
+                    if (!m.audited()) {
                         offenders.add(f.getFileName() + "#" + name);
                     }
                 }
@@ -98,21 +90,51 @@ class PayAuditTrailTest {
                 .isEmpty();
     }
 
-    /** 切出 {@code (方法名, 方法体)}。方法体 = 本方法起点到下一个 public 方法起点 */
-    private static List<String[]> methodsOf(String text) {
-        List<String[]> out = new ArrayList<>();
-        Matcher m = METHOD.matcher(text);
-        List<int[]> spans = new ArrayList<>();
-        List<String> names = new ArrayList<>();
-        while (m.find()) {
-            spans.add(new int[]{m.start(), m.end()});
-            names.add(m.group(1));
-        }
-        for (int i = 0; i < spans.size(); i++) {
-            int from = spans.get(i)[0];
-            int to = i + 1 < spans.size() ? spans.get(i + 1)[0] : text.length();
-            out.add(new String[]{names.get(i), text.substring(from, to)});
-        }
-        return out;
+    @Test
+    void methodBodiesDoNotBorrowAuditFromNeighborsCommentsOrStrings() throws IOException {
+        String source = """
+                class Subject {
+                    AuditLogPort auditLogPort;
+                    public Subject(String operatorNo) { }
+                    @Deprecated public void missing(String operatorNo) {
+                        String text = "auditLogPort.record(null, null, null)";
+                        // auditLogPort.record("fake", null, null);
+                        use(operatorNo);
+                    }
+                    private void unrelated() { auditLogPort.record("OTHER", "N", "detail"); }
+                    public void fieldOnly() { operator.sources(); }
+                    private final Operator operator = null;
+                    public void stringOnly() { use("operatorNo currentUserNo()"); }
+                }
+                """;
+        var methods = PayAuditSourceAnalysis.methods(source);
+        assertThat(methods).hasSize(3);
+        assertThat(methods.get(0)).isEqualTo(new PayAuditSourceAnalysis.MethodAudit("missing", true, false));
+        assertThat(methods.get(1).operator()).isFalse();
+        assertThat(methods.get(2).operator()).isFalse();
     }
+
+    @Test
+    void realPrivateAuditHelpersAreFollowedAndRemovingTheirCallIsDetected() throws IOException {
+        String source = """
+                class Subject {
+                    AuditLogPort audit;
+                    public void execute(String operatorNo) { work(operatorNo); logged(); }
+                    private void logged() { this.audit.record("EXECUTE", "N", "detail"); }
+                    public void queried() {
+                        var operator = SecurityUtils.currentUserNo();
+                        audit.record("QUERY", "N", operator);
+                    }
+                }
+                """;
+        var methods = PayAuditSourceAnalysis.methods(source);
+        assertThat(methods).allMatch(m -> m.operator() && m.audited());
+        var removedCall = PayAuditSourceAnalysis.methods(source.replace(" logged();", ""));
+        assertThat(removedCall.getFirst().operator()).isTrue();
+        assertThat(removedCall.getFirst().audited()).isFalse();
+        var removedAudit = PayAuditSourceAnalysis.methods(source.replace(
+                "this.audit.record(\"EXECUTE\", \"N\", \"detail\");", ""));
+        assertThat(removedAudit.getFirst().audited()).isFalse();
+    }
+
 }

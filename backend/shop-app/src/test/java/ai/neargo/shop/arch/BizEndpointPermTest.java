@@ -13,8 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -563,6 +561,40 @@ class BizEndpointPermTest {
          */
         put("/biz/plan", BizPerms.STORE_ADMIN);
         put("/biz/plan/trial", BizPerms.STORE_ADMIN);
+
+        // The syntax parser also recognizes fully qualified mapping/permission annotations.
+        put("/biz/stores/{storeNo}/fulfillment/{channel}/impact", BizPerms.STORE);
+        // Pricing, member selection and issuer operations use the existing enforced business grants.
+        put("/biz/pricing-configs/initialize", BizPerms.PRICING_CONFIG_PUBLISH);
+        put("/biz/pricing-configs/{no}/draft", BizPerms.PRICING_CONFIG_READ);
+        put("/biz/pricing-configs/{no}/preview", BizPerms.PRICING_CONFIG_READ);
+        put("/biz/pricing-configs/{no}/publish", BizPerms.PRICING_CONFIG_PUBLISH);
+        put("/biz/pricing-configs/{no}/rollback", BizPerms.PRICING_CONFIG_PUBLISH);
+        put("/biz/pricing-configs/{no}/revisions/{revisionNo}", BizPerms.PRICING_CONFIG_READ);
+        put("/biz/pricing-configs/{no}/reset", BizPerms.PRICING_CONFIG_UPDATE);
+        put("/biz/pricing-configs/{no}/upgrade", BizPerms.PRICING_CONFIG_UPDATE);
+        put("/biz/pricing-manual-policies/{currency}/{reasonCode}/{kind}", BizPerms.FINANCE);
+        put("/biz/pricing-manual-adjustments", BizPerms.CAMPAIGN);
+        put("/biz/pricing-manual-adjustments/{no}", BizPerms.CAMPAIGN);
+        put("/biz/pricing-manual-adjustments/{no}:approve", BizPerms.FINANCE);
+        put("/biz/pricing-manual-adjustments/{no}:quote", BizPerms.CAMPAIGN);
+        put("/biz/goods/{goodsNo}/skus/{skuNo}/pricing-policy", BizPerms.STOCK);
+        put("/biz/stored-value/plan-recharges/confirm-offline", BizPerms.SV_RECHARGE_CREATE);
+        put("/biz/stores/{storeNo}/stored-value/customer-candidates", "biz:customer");
+        put("/biz/stores/{storeNo}/stored-value/customer-selections", "biz:customer");
+        put("/biz/stores/{storeNo}/members", "biz:customer");
+        put("/biz/stored-value/customer-candidates", "biz:customer");
+        put("/biz/stored-value/customer-selections", "biz:customer");
+        put("/biz/stores/{storeNo}/stored-value/issuers", "pay:sv:account:read");
+        put("/biz/stores/{storeNo}/stored-value/recharge-options", "pay:sv:recharge:create");
+        put("/biz/stores/{storeNo}/stored-value/issuer-recharges/confirm-offline", "pay:sv:recharge:create");
+        put("/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}", "pay:sv:recharge:read");
+        put("/biz/stores/{storeNo}/stored-value/issuer-recharges/resolve", "pay:sv:recharge:create");
+        put("/biz/stores/{storeNo}/stored-value/issuer-recharges/cancel-create", "pay:sv:recharge:create");
+        put("/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}/cancel", "pay:sv:recharge:create");
+        put("/biz/stores/{storeNo}/stored-value/issuer-records", "pay:sv:account:read");
+        put("/biz/stores/{storeNo}/stored-value/issuer-records/{recordNo}", "pay:sv:account:read");
+        put("/biz/order/{orderNo}/points-earning", BizPerms.ORDER_VIEW);
     }};
 
     /**
@@ -574,17 +606,6 @@ class BizEndpointPermTest {
      */
     private static final Set<String> ANY_OF = Set.of("/biz/dashboard/todo");
 
-    /**
-     * ⚠️ <b>Patch 是 2026-08-25 补进来的</b>：此前这个正则只认 Get/Post/Put/Delete，
-     * 于是任何 {@code @PatchMapping} 的 /biz 端点都会**整个绕过权限决策检查** ——
-     * 表里没有它、这条用例也不报，而它在线上是真的能被调用的。
-     * 加一种 HTTP 方法就要来这里加一次，否则守卫看着绿、洞开着。
-     */
-    private static final Pattern MAPPING = Pattern.compile(
-            "@(?:Get|Post|Put|Patch|Delete)Mapping\\(\\s*(?:value\\s*=\\s*)?\"([^\"]*)\"");
-    private static final Pattern CLASS_BASE = Pattern.compile(
-            "@RequestMapping\\(\\s*\"([^\"]+)\"\\s*\\)");
-
     @Test
     @DisplayName("★★ 每个 /biz 端点都必须明确它要什么权限 —— 没定的直接报出来")
     void everyBizEndpointHasADecision() throws IOException {
@@ -595,6 +616,7 @@ class BizEndpointPermTest {
         undecided.removeAll(REQUIRED.keySet());
         undecided.removeAll(ANY_OF);
         undecided.removeAll(PUBLIC);
+        undecided.removeAll(BizResourceAuthorization.paths());
         assertThat(undecided)
                 .as("这些 /biz 端点还没决定权限 —— 每一个都是潜在的越权口子。\n"
                         + "把它们加进 REQUIRED（要授权）或 PUBLIC（登录即可）：")
@@ -628,10 +650,12 @@ class BizEndpointPermTest {
     @Test
     @DisplayName("★★★ 表里写了要授权的，代码里必须真的有 @PreAuthorize —— 否则这张表只是许愿")
     void decisionsAreActuallyEnforced() throws IOException {
-        Set<String> guarded = scanGuardedEndpoints();
-        Set<String> missing = new TreeSet<>(REQUIRED.keySet());
-        missing.addAll(ANY_OF);   // 「任一」也是决定，同样必须落到注解上
-        missing.removeAll(guarded);
+        Set<String> expected = new TreeSet<>(REQUIRED.keySet());
+        expected.addAll(ANY_OF);
+        Set<String> missing = sourceEndpoints().stream()
+                .filter(e -> expected.contains(e.path()) && !e.method().bizGuard())
+                .map(e -> e.path() + " " + e.method().owner() + "#" + e.method().name())
+                .collect(java.util.stream.Collectors.toCollection(TreeSet::new));
         assertThat(missing)
                 .as("这些端点在表里定了权限，但代码里没有 @PreAuthorize —— "
                         + "**表是许愿，注解才是执行**。\n"
@@ -640,60 +664,9 @@ class BizEndpointPermTest {
                 .isEmpty();
     }
 
-    /** 扫出真的带 @PreAuthorize("@perm.canBiz(...)" / "canAnyBiz(...)") 的端点 */
-    private static Set<String> scanGuardedEndpoints() throws IOException {
-        Path root = Path.of("..").toRealPath();
-        Set<String> out = new TreeSet<>();
-        try (Stream<Path> files = Files.walk(root)) {
-            for (Path p : files.filter(f -> f.toString().endsWith(".java"))
-                    .filter(f -> !f.toString().contains("/test/")).toList()) {
-                String src = Files.readString(p);
-                if (!src.contains("canBiz") && !src.contains("canAnyBiz")) {
-                    continue;
-                }
-                Matcher base = CLASS_BASE.matcher(src);
-                String prefix = base.find() ? base.group(1) : "";
-                String[] lines = src.split("\n");
-                for (int i = 0; i < lines.length; i++) {
-                    Matcher m = MAPPING.matcher(lines[i]);
-                    if (!m.find()) {
-                        continue;
-                    }
-                    /*
-                     * 往上走过整个「注解 + 注释」块找 canBiz，**不是往上数固定几行**。
-                     *
-                     * 此前写死 3 行，于是在 @PreAuthorize 与 @PostMapping 之间夹一段
-                     * 五行的注释，就会被报成「表里定了权限但代码里没有 @PreAuthorize」——
-                     * 而那个端点在运行时明明是受保护的。假警报和漏报一样伤：
-                     * 这条用例的价值全在于它红的时候人会当真。
-                     *
-                     * 停在**空行或上一个方法的结尾**：注解块不会跨过这两者。
-                     */
-                    boolean has = false;
-                    for (int k = i - 1; k >= 0; k--) {
-                        String up = lines[k].trim();
-                        if (up.isEmpty() || up.equals("}") || up.startsWith("public ")
-                                || up.startsWith("private ") || up.startsWith("return ")) {
-                            break;
-                        }
-                        if (up.contains("canBiz") || up.contains("canAnyBiz")) {
-                            has = true;
-                            break;
-                        }
-                    }
-                    if (!has) {
-                        continue;
-                    }
-                    String path = m.group(1);
-                    String full = path.startsWith("/biz/") ? path
-                            : (prefix.startsWith("/biz") ? prefix + path : null);
-                    if (full != null) {
-                        out.add(full);
-                    }
-                }
-            }
-        }
-        return out;
+    @Test
+    void resourceDecisionsHaveLiveActorAndResourceAuthorization() throws IOException {
+        BizResourceAuthorization.verify(Path.of("../..").toRealPath(), sourceEndpoints());
     }
 
     /** 从 BizPerms 源码里抽常量值 —— 与运营端那条守卫同一手法 */
@@ -714,29 +687,23 @@ class BizEndpointPermTest {
         return out;
     }
 
-    private static Set<String> scanBizEndpoints() throws IOException {
+    private static List<BizEndpointSource.Endpoint> cachedEndpoints;
+    private static List<BizEndpointSource.Endpoint> sourceEndpoints() throws IOException {
+        if (cachedEndpoints != null) return cachedEndpoints;
         Path root = Path.of("..").toRealPath();
-        Set<String> out = new TreeSet<>();
+        List<BizEndpointSource.Endpoint> out = new ArrayList<>();
         try (Stream<Path> files = Files.walk(root)) {
-            for (Path p : files.filter(f -> f.toString().endsWith(".java"))
-                    .filter(f -> !f.toString().contains("/test/")).toList()) {
-                String src = Files.readString(p);
-                if (!src.contains("/biz/")) {
-                    continue;
-                }
-                Matcher base = CLASS_BASE.matcher(src);
-                String prefix = base.find() ? base.group(1) : "";
-                Matcher m = MAPPING.matcher(src);
-                while (m.find()) {
-                    String path = m.group(1);
-                    String full = path.startsWith("/biz/") ? path
-                            : (prefix.startsWith("/biz") ? prefix + path : null);
-                    if (full != null && full.startsWith("/biz/")) {
-                        out.add(full);
-                    }
-                }
+            for (Path path : files.filter(p -> p.toString().contains("/src/main/")
+                    && p.toString().endsWith(".java")).toList()) {
+                String source = Files.readString(path);
+                if (source.contains("/biz")) out.addAll(BizEndpointSource.parse(source).endpoints());
             }
         }
-        return out;
+        cachedEndpoints = List.copyOf(out);
+        return cachedEndpoints;
+    }
+    private static Set<String> scanBizEndpoints() throws IOException {
+        return sourceEndpoints().stream().map(BizEndpointSource.Endpoint::path)
+                .collect(java.util.stream.Collectors.toSet());
     }
 }

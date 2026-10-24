@@ -15,6 +15,7 @@ import java.util.List;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -86,6 +87,13 @@ class ArchitectureTest {
     }
 
     private static JavaClasses classes;
+
+    @AfterAll
+    static void releaseImportedClasses() {
+        // The whole-domain graph is only needed by this class. Do not retain it while later
+        // Spring context tests populate the shared Surefire JVM; full-run memory still needs validation.
+        classes = null;
+    }
 
     @BeforeAll
     static void importClasses() {

@@ -16,6 +16,21 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import tools.jackson.databind.ObjectMapper;
+import ai.neargo.shop.message.MessageService;
+import ai.neargo.shop.event.outbox.OutboxEnvelope;
+import ai.neargo.shop.event.outbox.DeliveryResult;
+import ai.neargo.shop.event.outbox.runtime.TransactionalOutboxHandler;
+import org.aopalliance.intercept.MethodInterceptor;
+import org.springframework.aop.framework.ProxyFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.test.util.AopTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.AnnotationTransactionAttributeSource;
+import org.springframework.transaction.interceptor.TransactionInterceptor;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import javax.sql.DataSource;
+import java.time.Instant;
+import java.util.concurrent.atomic.AtomicInteger;
 @SpringBootTest(properties="spring.datasource.url=jdbc:h2:mem:ent-notifications;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1")
 @ActiveProfiles("test")
 class EntitlementNotificationFlowTest {
@@ -23,8 +38,41 @@ class EntitlementNotificationFlowTest {
     @Autowired EntitlementExceptionNotificationSubscriber exceptions;
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper json;
+    @Autowired @Qualifier("transactionManager") PlatformTransactionManager platformTx;
+    @Autowired @Qualifier("dataSource") DataSource platformDataSource;
     @Autowired ai.neargo.shop.message.MessageService messages;
     @Autowired ai.neargo.shop.message.notify.StoredValueNotificationService storedValueNotifications;
+
+    @Test void unifiedGenericNoticeStartsItsOwnLocalWriteTransactionAndReplaysOnce() {
+        var transactions = new TransactionInterceptor();
+        transactions.setTransactionManager(platformTx);
+        transactions.setTransactionAttributeSource(new AnnotationTransactionAttributeSource());
+        Object target = AopTestUtils.getUltimateTargetObject(messages);
+        var writer = new ProxyFactory(target);
+        writer.addAdvice(transactions);
+        AtomicInteger writes = new AtomicInteger();
+        writer.addAdvice((MethodInterceptor) invocation -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive())
+                    .as("generic notification write must enter the real @Transactional method").isTrue();
+            writes.incrementAndGet();
+            return invocation.proceed();
+        });
+        var subscriber = new EntitlementNotificationSubscriber((MessageService) writer.getProxy(),json);
+        var handler = new TransactionalOutboxHandler(subscriber,platformDataSource,platformTx,"sys_event_consumed");
+        String user=id();
+        var fact=new EntitlementGranted(id(),id(),user,"M1","V1","CENTER","O1",System.currentTimeMillis());
+        var event=new OutboxEnvelope(fact.eventNo(),"PLATFORM",fact.eventNo(),fact.aggregateType(),
+                fact.aggregateId(),fact.eventType(),1,"ENTITLEMENT:"+fact.aggregateId(),0,
+                json.writeValueAsString(fact),Instant.now());
+        assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+        assertThat(handler.handle(event).kind()).isEqualTo(DeliveryResult.Kind.SENT);
+        assertThat(handler.handle(event).kind()).isEqualTo(DeliveryResult.Kind.SENT);
+        assertThat(writes.get()).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notify_message WHERE receiver_no=?",Integer.class,user))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_event_consumed WHERE event_no=?",Integer.class,fact.eventNo()))
+                .as("external workflow acknowledgement must follow its own durable writer").isZero();
+    }
 
     @Test void storedValueBusinessKeySurvivesDifferentEventNumbersWithoutHistoricalBackfill() {
         String user=id(),usage=id();
@@ -86,12 +134,13 @@ class EntitlementNotificationFlowTest {
         var attempts=new java.util.concurrent.atomic.AtomicInteger();
         org.mockito.Mockito.doAnswer(call -> {
             if(attempts.getAndIncrement()==0) throw new IllegalStateException("Transient message failure");
-            messages.push(call.getArgument(0),call.getArgument(1),call.getArgument(2),call.getArgument(3),
-                    call.getArgument(4),call.getArgument(5));
+            messages.pushTo(call.getArgument(0),call.getArgument(1),call.getArgument(2),call.getArgument(3),
+                    call.getArgument(4),call.getArgument(5),call.getArgument(6));
             return null;
-        }).when(message).push(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString(),
+        }).when(message).pushTo(org.mockito.ArgumentMatchers.eq("USER"),org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.isNull(),org.mockito.ArgumentMatchers.anyString());
+                org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.anyString());
         var subscriber=new EntitlementNotificationSubscriber(message,json);
         var event=row(new StoredValueCredited(id(),id(),"A1",user,"M1","S1",1000,1200,"CNY",System.currentTimeMillis()));
         assertThatThrownBy(() -> subscriber.consume(event)).isInstanceOf(IllegalStateException.class);
