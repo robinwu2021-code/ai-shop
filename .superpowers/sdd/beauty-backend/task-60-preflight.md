@@ -42,3 +42,7 @@ Read-only findings only; no product edits/test execution in this preparation. La
 
 - M1 from review-task-59.md: BeautyBm04EmbeddedHttpIT merchant-token confirmation negative currently sends Map.of() and accepts any failure. Before final deployment, change fixture code to otherwise-valid confirmation for its prepared quote, assert specific wrong-realm authority failure and zero confirm/order/payment effects; retain separate malformed-body cases. This is60A code quality, not a request to launch deferred HTTP topology. Task59 R1 onlyI1/I2.
 - M2 explicitly keeps existing deprecated-API/dynamic-agent/Flyway9.7-versus-verified8.1/duplicate-mapper warnings visible and attributed; no blanket suppression or pristine-output claim.
+
+## 当前60A实施状态（2026-10-24）
+
+A1/A1b架构已由产品94aa791edb445b56bec9bcd348724ecff4ad803a和review-task-60a-a1.md关闭：HOST34、SERVER11、定向消融/恢复及构件卫生均有真实证据；旧store路径和辅助类名仅保留上文原审计历史。下一片A2仅旧checkout runner+新unit文件，精确要求见task-60a-a2-brief.md。selector/M1竞争、SQL解析/12表/插件SQL、CLAIMED真实REPLACE、权限词条/生成物、M1夹具和告警triage仍按后续片推进，未因A1完成而清零。实际60B统一部署仍最后。

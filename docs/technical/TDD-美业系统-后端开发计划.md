@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A质量收尾待实施，整体部署待统一关口。完整作业和任务日历尚未完成。
+> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
 > **执行方式：** 使用`superpowers:subagent-driven-development`逐任务实施及独立审查，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -767,10 +767,31 @@ Bean图约束：AppointmentService.openWorkOrderFromAppointment与WorkOrderServi
 | A1-2 | ArchitectureTest登记beauty到DOMAINS，原规则/棘轮不变；新增条件启用的实际beauty类存在性断言（不静态依赖core） | -Pbeauty-embedded/-Dbeauty.arch.required=true；原16规则及新增presence实际执行。撤beauty登记定向消融应红，恢复同selector绿 |
 | A1-3 | OpsPointsInspectionController正常PathVariable import | 原noFullyQualifiedReferences通过，不改端点/权限 |
 
-- [ ] 先仅测试断言，可信构件刷新后取得原架构失败RED；异常setup不算RED。
-- [ ] 最小迁包/两个import/DOMAINS/注解修复；只clean本工作区store、app、beauty-server三个target，按store install→HOST embedded→SERVER顺序验证，记录无旧class及实际classpath。
-- [ ] 仅DOMAINS beauty最小消融，精确topLevelPackagesMustBeRegistered RED；逐字恢复同selector GREEN，归档源/JAR/XML/SHA。
-- [ ] 独立spec+quality审查及必要修复复审后精确提交，补§5/§6真实证据；无部署、无其他片/数据库/角色授予变化。
+- [x] 先仅测试断言，可信构件刷新后取得原架构失败RED；异常setup不算RED。
+- [x] 最小迁包/两个import/DOMAINS/注解修复；只clean本工作区store、app、beauty-server三个target，按store install→HOST embedded→SERVER顺序验证，记录无旧class及实际classpath。
+- [x] 仅DOMAINS beauty最小消融，精确topLevelPackagesMustBeRegistered RED；逐字恢复同selector GREEN，归档源/JAR/XML/SHA。
+- [x] 独立spec+quality审查及必要修复复审后精确提交，补§5/§6真实证据；无部署、无其他片/数据库/角色授予变化。
+
+
+#### 2.23.1 A1b：登记后暴露的内部准备辅助类命名
+
+实际HOST34项仅serviceMustBeInterface仍失败，原因是AppointmentPreparationService具体类的内部协作者命名。根核定[A1b补充brief](../../.superpowers/sdd/beauty-backend/task-60a-a1b-brief.md)：重命名为AppointmentPreparation并更新六个生产调用/配置文件和两处方法设计真源、两份生成产物，保持Bean名及所有业务方法体。与A1联合准出，不弱化原规则或造空接口。增量10旧文件已核与实施基线一致，合计19路径/17逻辑文件。只新增本工作区beauty-core target清理/离线安装；HOST34全量、SERVER锁与core装配、原定向消融及生成校验构成验收，无native/部署。A1/A1b已联合代码验收，见§32.10。
+
+
+### 2.24 Task60A-A2：原生付款测试选择与自有资源（2026-10-24）
+
+A1/A1b产品`94aa791edb445b56bec9bcd348724ecff4ad803a`已通过独立审查；当前接续A2档位0脚本修复，精确需求见[A2 brief](../../.superpowers/sdd/beauty-backend/task-60a-a2-brief.md)。只修改verify-checkout-payment.mjs与新增checkout-payment-runner.test.mjs，原Java/SQL/迁移pin/Task59runner不改。
+
+| AC | 实施 | 验证 |
+|---|---|---|
+| A2-1 | 14个payment类与1个beauty-source类的显式选择/方法白名单；仅unset默认，保留合法+多方法及payment逗号组合 | 非法选择在任何read/锁/工具/资源前失败；真实声明方法的正例和重复/空/未知反例 |
+| A2-2 | 每选类本轮fresh、非零零失败/错误/skip XML；每个显式方法与正确class实际出现 | stale/零/skip/错类/缺方法及非零Maven退出均不能假绿，最小消融与恢复 |
+| A2-3 | 密码env-only、同一串行锁、自有UUID创建前记attempt、丢创建响应仍finally清理 | fake effects验证argv不含秘密、只清本UUID及自己锁；安全unit通过后仅1个真实隔离MySQL9.7.2 source smoke |
+
+- [ ] 先安全CLI/受控effect RED，修复后Node GREEN，源方法来源复核。
+- [ ] 最小空值或XML防线消融应红，逐字恢复绿。
+- [ ] 一个既有实际native方法freshXML/归属cleanup验证；不重跑完整业务套件，不执行双进程部署。
+- [ ] 两文件精确差异、独立规格/质量审查与必要复审后提交；剩余60A片继续细化。
 
 ## §3 数据层之后的业务任务与启动深化
 
@@ -1995,3 +2016,10 @@ V8 已在首次执行前由根独立核对实际文件：4582 字节，SHA256 c5
 独立R0规格/质量审查发现公开path校验及详情任务关联两项Important；R1已修复并独立复审通过，无新增阻塞。公开11路径在业务提供方选择前校验非空白/max32；B/C详情按真实owner顺序严格比对root.taskNos与嵌套任务。R1定向Ingress51、Responses3、Machine11共65项无失败/错误/跳过，插件及两形态HOST夹具编译通过。此前工单native30、核心native33、真实owner7和两项消融证据分别归档，不把重叠回归相加。证据与边界见[报告](../../.superpowers/sdd/beauty-backend/task-59-report.md)、[初审](../../.superpowers/sdd/beauty-backend/review-task-59.md)、[修复复审](../../.superpowers/sdd/beauty-backend/review-task-59-r1.md)。
 
 这只是Task59代码阶段验收。HOST仍有已登记的全限定名/beauty-store包登记两项架构失败，进入60A；弱授权负例夹具和既有告警同样保留。实际AC15～18双子JVM、真实会话撤权/完整owner链及token-bypass消融待全部P1～P4代码后统一部署执行，未标通过。下一项为60A代码质量设计审计，之后继续BM05；不以Task59代码提交表示整个BM04部署准出。
+
+
+### 32.10 60A-A1/A1b架构收尾代码验收（2026-10-24）
+
+产品`94aa791edb445b56bec9bcd348724ecff4ad803a`，17逻辑文件/19路径。JobLock配置同模块迁job.config、两个薄import、Ops正常PathVariable；beauty纳入DOMAINS实际业务域并启用显式presence测试。登记暴露的内部准备辅助类改名AppointmentPreparation，Bean名和业务体逐字保留，仅类型及真实接线/方法设计产物对齐；没有放宽旧规则、造接口或新增业务能力。
+
+HOST34/0失败/0错误/0跳过，含Architecture17、JobTarget7、Endpoint10；SERVER11/0/0/0，含独立关闭、唯一锁Bean/真实锁冲突及core装配。唯一beauty登记消融精确1项失败，逐字恢复同selector1项通过。store/core JAR目标与缓存一致、旧class为0，实际classpath已核；不是native/实际部署结论。独立spec+quality审查Approved，无阻塞，[报告](../../.superpowers/sdd/beauty-backend/task-60a-a1-report.md)/[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a1.md)保留警告与边界。下一片A2修复旧runner，60A整体、BM04统一部署和BM05仍未完成。
