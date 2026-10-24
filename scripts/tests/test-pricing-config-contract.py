@@ -27,7 +27,8 @@ class PricingConfigContractTest(unittest.TestCase):
         spec.loader.exec_module(module)
         handlers = set(module.backend())
         operations = {(m.upper(), module.norm(p)) for p, methods in SPEC['paths'].items() for m in methods}
-        self.assertEqual(len(operations), 23)
+        self.assertEqual(len(operations), 28)
+        self.assertEqual(sum(len(methods) for methods in SPEC['paths'].values()), 29)
         self.assertTrue(operations.issubset(handlers), operations - handlers)
         self.assertFalse(any(path.startswith('/mp/') for _, path in operations))
 

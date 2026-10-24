@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Shared pricing configuration API",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "description": "Shared pricing configuration and merchant-managed tax APIs. Global template publication validates definitions and the deployed rule registry; merchant initialization/publication/runtime still require actual owner capability and tax evidence. Platform defaults and merchant overrides take effect without approval. Calculation ports are backend-only; no client tax-rate override."
   },
   "paths": {
@@ -1918,6 +1918,542 @@
         ],
         "description": "Current authenticated store only; entity owner only for PUT. Missing configuration has no default."
       }
+    },
+    "/biz/pricing-manual-policies/{currency}/{reasonCode}/{kind}": {
+      "get": {
+        "operationId": "manualPolicyGet",
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "x-permission": "biz:finance",
+        "parameters": [
+          {
+            "name": "currency",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "reasonCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        ],
+        "description": "Real current merchant/store scope and role authority; distinct approver for concessions; no payment execution. Unsupported sources and ROUNDING remain blocked. Frontend integration is deferred in the original food TDD.",
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope; code 0 carries the result; nonzero code is a business rejection.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/ManualPolicyVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed or unsupported input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or source authority denied"
+          },
+          "409": {
+            "description": "Stale version or incompatible pricing/source state"
+          }
+        }
+      },
+      "put": {
+        "operationId": "manualPolicySave",
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "x-permission": "biz:finance",
+        "parameters": [
+          {
+            "name": "currency",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "reasonCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "description": "Real current merchant/store scope and role authority; distinct approver for concessions; no payment execution. Unsupported sources and ROUNDING remain blocked. Frontend integration is deferred in the original food TDD.",
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope; code 0 carries the result; nonzero code is a business rejection.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/ManualPolicyVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed or unsupported input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or source authority denied"
+          },
+          "409": {
+            "description": "Stale version or incompatible pricing/source state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualPolicySave"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/pricing-manual-adjustments": {
+      "post": {
+        "operationId": "manualPropose",
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "x-permission": "biz:campaign",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "description": "Real current merchant/store scope and role authority; distinct approver for concessions; no payment execution. Unsupported sources and ROUNDING remain blocked. Frontend integration is deferred in the original food TDD.",
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope; code 0 carries the result; nonzero code is a business rejection.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/ManualAdjustmentVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed or unsupported input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or source authority denied"
+          },
+          "409": {
+            "description": "Stale version or incompatible pricing/source state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualAdjustmentRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/pricing-manual-adjustments/{no}": {
+      "get": {
+        "operationId": "manualGet",
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "x-permission": "biz:campaign",
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        ],
+        "description": "Real current merchant/store scope and role authority; distinct approver for concessions; no payment execution. Unsupported sources and ROUNDING remain blocked. Frontend integration is deferred in the original food TDD.",
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope; code 0 carries the result; nonzero code is a business rejection.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/ManualAdjustmentVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed or unsupported input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or source authority denied"
+          },
+          "409": {
+            "description": "Stale version or incompatible pricing/source state"
+          }
+        }
+      }
+    },
+    "/biz/pricing-manual-adjustments/{no}:approve": {
+      "post": {
+        "operationId": "manualApprove",
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "x-permission": "biz:finance",
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "description": "Real current merchant/store scope and role authority; distinct approver for concessions; no payment execution. Unsupported sources and ROUNDING remain blocked. Frontend integration is deferred in the original food TDD.",
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope; code 0 carries the result; nonzero code is a business rejection.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/ManualAdjustmentVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed or unsupported input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or source authority denied"
+          },
+          "409": {
+            "description": "Stale version or incompatible pricing/source state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualApprove"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/pricing-manual-adjustments/{no}:quote": {
+      "post": {
+        "operationId": "manualQuote",
+        "security": [
+          {
+            "BizToken": []
+          }
+        ],
+        "x-permission": "biz:campaign",
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "description": "Real current merchant/store scope and role authority; distinct approver for concessions; no payment execution. Unsupported sources and ROUNDING remain blocked. Frontend integration is deferred in the original food TDD.",
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope; code 0 carries the result; nonzero code is a business rejection.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/ManualQuoteVO"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed or unsupported input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or source authority denied"
+          },
+          "409": {
+            "description": "Stale version or incompatible pricing/source state"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2526,6 +3062,488 @@
           "effective"
         ],
         "additionalProperties": false
+      },
+      "ManualPolicySave": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": -1,
+            "maximum": 9223372036854775807
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "selfLimitMinor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807,
+            "const": 0
+          },
+          "maxLimitMinor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "minPayableRateBp": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "enabled",
+          "selfLimitMinor",
+          "maxLimitMinor",
+          "minPayableRateBp"
+        ]
+      },
+      "ManualApprove": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "ManualAdjustmentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "sourceSystem": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "sourceType": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "sourceNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "sourceVersion": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9223372036854775807
+              },
+              "scopeNo": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 32
+              },
+              "scopeVersion": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 9223372036854775807
+              }
+            },
+            "required": [
+              "sourceSystem",
+              "sourceType",
+              "sourceNo",
+              "sourceVersion"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "PERCENT",
+              "AMOUNT",
+              "WAIVER",
+              "ROUNDING"
+            ]
+          },
+          "amountMinor": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "payableRateBp": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "reasonCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "source",
+          "kind",
+          "reasonCode",
+          "reason"
+        ],
+        "description": "PERCENT requires payableRateBp only; AMOUNT/WAIVER require amountMinor only. ROUNDING is a declared enum but currently rejected. Real source, role, limits and distinct approval are revalidated server-side."
+      },
+      "ManualPolicyVO": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "policyNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "currency": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "reasonCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "selfLimitMinor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "maxLimitMinor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "minPayableRateBp": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          }
+        },
+        "required": [
+          "policyNo",
+          "currency",
+          "reasonCode",
+          "kind",
+          "enabled",
+          "selfLimitMinor",
+          "maxLimitMinor",
+          "minPayableRateBp",
+          "version"
+        ]
+      },
+      "ManualAdjustmentVO": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "adjustmentNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actorNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reasonCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "approvedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "discountMinor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "policyVersion": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          }
+        },
+        "required": [
+          "adjustmentNo",
+          "status",
+          "actorNo",
+          "kind",
+          "currency",
+          "reasonCode",
+          "reason",
+          "approvedBy",
+          "expiresAt",
+          "discountMinor",
+          "policyVersion",
+          "version"
+        ]
+      },
+      "ManualQuoteTotalsVO": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "goodsMinor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "discountMinor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "netMinor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "taxMinor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "receivableMinor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "remainingDueMinor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          }
+        },
+        "required": [
+          "goodsMinor",
+          "discountMinor",
+          "netMinor",
+          "taxMinor",
+          "receivableMinor",
+          "remainingDueMinor"
+        ]
+      },
+      "ManualQuoteLineVO": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "sourceLineNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "componentRef": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoiceLineRef": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "goodsNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "skuNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quantityStart": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "quantityEnd": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "goodsMinor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "netMinor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "taxMinor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "receivableMinor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          }
+        },
+        "required": [
+          "sourceLineNo",
+          "componentRef",
+          "invoiceLineRef",
+          "kind",
+          "goodsNo",
+          "skuNo",
+          "quantityStart",
+          "quantityEnd",
+          "goodsMinor",
+          "netMinor",
+          "taxMinor",
+          "receivableMinor"
+        ]
+      },
+      "ManualQuoteVO": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "quoteNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "status": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "sourceVersion": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "sourceHash": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 3
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManualQuoteLineVO"
+            }
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ManualQuoteTotalsVO"
+          },
+          "confirmationDigest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quoteNo",
+          "status",
+          "expiresAt",
+          "sourceVersion",
+          "sourceHash",
+          "currency",
+          "lines",
+          "totals",
+          "confirmationDigest"
+        ]
       }
     }
   }
