@@ -977,6 +977,10 @@ P5合并兼容收尾收据：支付侧保留101个原P5方法体及全部公开�
 
 扫描边界修复验证：真实宿主扫描启用/关闭2项全部通过（`/tmp/food-cloud-bean-scan-final.log`），解析真实application.yml、API+OPS且禁止bean覆盖；原嵌入装配6项中5通过、1standalone条件跳过（`/tmp/food-cloud-bean-scan-fixed.log`）。红例与线上异常一致；仅变更扫描边界和一个Bean名，未修改业务金额、权限、数据库SQL。
 
+第二次启动在MyBatis注册阶段发现幂等Mapper兜底早于平台MapperScan执行，已恢复并核对原P6健康。扩充同一回归真实执行MapperScannerConfigurer后，启用餐饮场景复现sysIdempotentMapper同名冲突、关闭场景通过（`/tmp/food-cloud-mapper-scan-red.log`）。修复让兜底同时识别已注册的平台扫描配置owner，继续保留独立部署的原兜底及已有Mapper优先逻辑，不改幂等业务或SQL。
+
+Mapper修复最终验证：真实配置解析＋Mapper注册启用/关闭2项通过（`/tmp/food-cloud-mapper-scan-fixed.log`），既有幂等7项通过。新增FoodEmbeddedStartupIT仅在显式disposable环境执行；一次性回环MySQL9.7导入P6仅表结构与Flyway元数据（无业务记录），干净24模块编译后1项真实完整宿主启动通过、0跳过，15个原始餐饮迁移全部执行，目录及唯一幂等Mapper断言通过（`/tmp/food-cloud-native-host-test.log`），仅本次容器已删除。宿主扫描、Mapper owner、自动配置与outbox延迟解析经独立只读审查无新明确阻断。此前空库重放暴露的旧迁移混合方言未扩范围修改；本次不宣称全新MySQL环境初始化兼容或全量业务回归通过。
+
 ## §3 任务边界及排期方式
 
 共享内核、配置发布、报价持久化、资金/库存合同、餐饮结账、经营凭证各自为可单独评审的工作包，但依上述合同连成一条主线。不要按Controller→Service→Mapper分批开发一堆不可验收空壳。

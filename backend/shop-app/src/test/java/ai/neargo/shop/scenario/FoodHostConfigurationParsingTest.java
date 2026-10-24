@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import ai.neargo.shop.ShopApplication;
 import java.io.IOException;
 import java.util.Map;
+import org.mybatis.spring.mapper.MapperScannerConfigurer;
 import org.springframework.boot.context.TypeExcludeFilter;
 import org.springframework.boot.env.YamlPropertySourceLoader;
 import org.springframework.core.io.ClassPathResource;
@@ -43,6 +44,15 @@ class FoodHostConfigurationParsingTest {
             var parser = new ConfigurationClassPostProcessor();
             parser.setEnvironment(context.getEnvironment());
             parser.postProcessBeanDefinitionRegistry(context.getDefaultListableBeanFactory());
+            var factory = context.getDefaultListableBeanFactory();
+            for (String name : factory.getBeanNamesForType(MapperScannerConfigurer.class, false, false)) {
+                var scanner = factory.getBean(name, MapperScannerConfigurer.class);
+                scanner.setApplicationContext(context);
+                // Production scan packages/refs are literal; no refresh is needed to resolve placeholders.
+                scanner.setProcessPropertyPlaceHolders(false);
+                scanner.postProcessBeanDefinitionRegistry(factory);
+            }
+            assertThat(factory.getBeanDefinition("sysIdempotentMapper").getFactoryMethodName()).isNull();
             assertThat(context.getBeanDefinition("mpCatalogController").getBeanClassName())
                     .isEqualTo("ai.neargo.shop.portal.mp.MpCatalogController");
             assertThat(context.containsBeanDefinition("foodMpCatalogController")).isEqualTo(enabled);
