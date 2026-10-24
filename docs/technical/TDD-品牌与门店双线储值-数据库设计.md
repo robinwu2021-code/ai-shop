@@ -1,6 +1,6 @@
 # 品牌与门店双线储值 · 数据库设计
 
-状态：V2评审草案，未实现、未执行DDL。范围：34屏原型；逻辑模块及数据源分别归属Merchant/Core/Pay。现有迁移局部读至V543，仅作为本工作区基线；实际开发前必须重新盘点目标分支和环境的Flyway历史，本文不预占迁移号。
+状态：设计基线与分阶段实施记录。原 V2 评审 DDL 仍仅用于设计；实际已落地结构以后续各阶段的迁移记录为准。P5 仅新增 V570–V574，P6 结算表尚未发布；不将原评审 SQL 整体当作已执行迁移。
 
 配套：[系统设计](TDD-品牌与门店双线储值-系统设计.md) · [API清单](TDD-品牌与门店双线储值-API清单.md) · [结构化模型](design/schema/brand-stored-value-v2-database.json) · [评审DDL](design/schema/brand-stored-value-v2-review.sql)。SQL明确标为DESIGN ONLY，不放backend迁移目录。
 
@@ -822,3 +822,18 @@ V566 links sv_release_tier.projected_plan_version_no to immutable compatibility 
 No new account is created by policy, prepare/activate or projection. These migrations do not change balances, receipts or historical order identities. Governed collection still writes the original source_kind PLAN/Funding facts and null-user/customerNo semantics; issuer/release/tier dimensions bind the approved monetary source. Actual policy versions are stored with the quota reservation.
 
 The target database already applied stored-value V548-V550. Incoming pricing/industry V548-V555 were unapplied there and collide; their unchanged SQL is ordered at V556-V563. Recheck all target environments and current branch versions before deployment; never rename an already-applied migration or run Flyway repair to hide a collision.
+
+## P5 实施数据库增量（2026-10-24）
+
+远端餐饮与定价占用 V567–V569；本阶段仅新增 V570–V574，不修改已执行版本。最终字段以对应迁移 SQL 为准，账户四维唯一键仍通过 P3 受控切换完成，不由这些迁移自动开通。
+
+| 模块 / 表 | 关键字段 | 约束与用途 |
+|---|---|---|
+| Pay / sv_clearing_entry（V570） | issuer_no、usage_no、allocation_no、lot_no、release_no、issuer_version_no；实际储值/核销门店；付款/收款主体；币种、本金使用、赠金使用、应付、发行方承担金额；source_event_key、content_hash | tenant/clearing_no 及 tenant/source_event_key 唯一；普通 USE 金额为正、应付不大于本金、承担额等于赠金；同主体应付为零；与扣减同事务，重放不重复清分 |
+| Core / pmt_brand_activity_owner（V571） | tenant_no、activity_no、management_no、brand_no、entity_no、created_at/by | tenant/activity 唯一；运营品牌归属独立于技术主体分区，历史归属不可改 |
+| Core / pmt_sv_release_link、pmt_sv_approval（V571） | 新增 scope_type、scope_no；store_no 允许空 | STORE 保留门店；BRAND 使用真实品牌；存量门店日志只补 scope_no，不变更资金事实 |
+| Pay / sv_issue_quota（V572） | store_no 允许空；新增 issuer_no；原 reserved_minor、outstanding_minor 保留 | CHECK 强制 STORE/BRAND 维度二选一；tenant/issuer/currency 唯一；赠金计入额度；取消、入账、核销同事务更新 |
+| Merchant / mch_brand、mch_brand_financial_activation（V573） | 品牌 stored_value_status；启用单 activation_no、management/brand/issuer、source_revision、command_key/hash、source_snapshot、status、审计字段 | tenant/brand 唯一启用原单；先持久 PREPARING 再调用 Pay；原键恢复并确认 ACTIVE；启用后旧直接组织变更入口被围栏阻止 |
+| Pay / sv_release、sv_recharge（V574） | 扩展来源 CHECK：V2_BRAND_ACTIVITY、ISSUER_RELEASE | 品牌来源必须具备原活动、发行版本、档位、canonical 顾客、收款及结算主体；一次插入完整来源；ACTIVITY/PLAN 原约束保留 |
+
+全部新表保留租户、版本和创建/修改审计；品牌账户仍按 tenant/issuer/customer/currency 唯一，不因品牌跨店、收款渠道或切换门店拆分。P6 的结算账单与组织变更 saga 尚未发布，P5 不提前创建或启用跨主体资金能力。
