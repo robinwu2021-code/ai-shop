@@ -748,7 +748,7 @@
         "CL12"
       ],
       "planFile": "2026-10-21-brand-stored-value-settlement-reporting.md",
-      "status": "PARTIAL_BACKEND_VERIFIED_PENDING_PUBLICATION",
+      "status": "PARTIAL_BACKEND_COMPATIBILITY_PUBLISHED_FULL_STAGE_IN_PROGRESS",
       "codingProgress": {
         "reports": "Pay aggregate, bounded daily projector, RP01-05 BFF drafted",
         "settlements": "Generation, queries, reconcile/dispute/adjust/payment/independent receipt drafted",
@@ -774,7 +774,17 @@
         "reviewImportantFixed": 3,
         "crossEntityEnabled": false,
         "fullStageComplete": false,
-        "report": "docs/technical/delivery/P6-清分结算-兼容发布记录.md"
+        "report": "docs/technical/delivery/P6-清分结算-兼容发布记录.md",
+        "businessSha": "d4cdc5f498ae51d6ea2a1b4a11462446712b4614",
+        "canonicalBranch": "codex/ai-shop-codex",
+        "coreHealth": 200,
+        "payInternalHealth": 401,
+        "actualProcessShaVerified": true,
+        "migrations": [
+          "575",
+          "576"
+        ],
+        "financialBaselineUnchanged": true
       }
     }
   ],
@@ -946,7 +956,7 @@
   },
   "nextStagePreparation": {
     "stage": "P6",
-    "status": "PARTIAL_BACKEND_VERIFIED_PENDING_PUBLICATION",
+    "status": "PARTIAL_BACKEND_COMPATIBILITY_PUBLISHED_FULL_STAGE_IN_PROGRESS",
     "planFile": "2026-10-21-brand-stored-value-settlement-reporting.md",
     "releaseDependsOn": "P5 compatibility published; actual financial opening remains blocked by P3 historical-original decision",
     "testOrder": "Complete all phase coding and compilation, then one focused chain; no unrelated reruns",
