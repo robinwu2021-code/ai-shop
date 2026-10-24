@@ -24,14 +24,15 @@ export function validateDeferredDelivery(data, {app, prefix, published, handlers
     return result;
 }
 
-export function readDeferredDelivery(root, file, {app, prefix, handlers, missing}) {
+export function readDeferredDelivery(root, file, {app, prefix, handlers, missing,
+    contract = 'docs/api/entitlement-backend.openapi.json'}) {
     if (!existsSync(join(root, file))) return new Set();
     const data = JSON.parse(readFileSync(join(root, file), 'utf8'));
     if (typeof data.plan !== 'string' || !data.plan.startsWith('docs/technical/')
             || data.plan.split('/').includes('..') || !existsSync(join(root, data.plan))) {
         throw new Error('Staged delivery must name an existing frontend task plan');
     }
-    const spec = JSON.parse(readFileSync(join(root, 'docs/api/entitlement-backend.openapi.json'), 'utf8'));
+    const spec = JSON.parse(readFileSync(join(root, contract), 'utf8'));
     const published = new Set(Object.entries(spec.paths).flatMap(([path, methods]) => Object.keys(methods)
         .filter(method => ['get', 'post', 'put', 'patch', 'delete'].includes(method))
         .map(method => keyOf({method: method.toUpperCase(), path}))));

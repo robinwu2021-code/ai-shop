@@ -23,6 +23,13 @@
 
 /** [方法或 *, 路径正则, 权限码, 理由（只在不显然时写）] */
 export const RULES = [
+  ["GET", /^\/ops\/pricing-tax-settings$/, "pricing:tax:read"],
+  ["PUT", /^\/ops\/pricing-tax-settings$/, "pricing:tax:update"],
+  ["GET", /^\/ops\/pricing-templates\/[^/]+\/(?:draft|revisions\/[^/]+)$/, "pricing:template:read"],
+  ["POST", /^\/ops\/pricing-templates\/[^/]+\/preview$/, "pricing:template:read"],
+  ["POST", /^\/ops\/pricing-templates\/[^/]+\/publish$/, "pricing:template:publish"],
+  ["PUT", /^\/ops\/pricing-templates\/[^/]+\/draft$/, "pricing:template:update"],
+  ["POST", /^\/ops\/pricing-templates(?:\/seed-import)?$/, "pricing:template:update"],
   ["GET", /^\/ops\/points\/adjustments$/, "finance:settle:read"],
   ["POST", /^\/ops\/points\/adjustments$/, "finance:settle:execute"],
   ["POST", /^\/ops\/points\/adjustment-review$/, "finance:payout:execute"],

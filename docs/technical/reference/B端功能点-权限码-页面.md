@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**25 个权限码 × 6 个角色 × 282 个受控功能点**
+统计：**32 个权限码 × 6 个角色 × 299 个受控功能点**
 （另有 39 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -30,21 +30,28 @@
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
 | `biz:ship` | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 8 | ✅ | ✅ | — | — | — | ✅ |
+| `pay:sv:recharge:create` | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 8 | ✅ | — | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 6 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
+| `pay:sv:account:read` | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `pay:ent:read` | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `biz:review` | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
-| `pay:sv:recharge:create` | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `pay:ent:use` | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
+| `biz:pricing:tax:update` | `PRICING_TAX_UPDATE` | 修改全主体所有门店的税配置，仅主体属主，不可按门店委派 | 2 | ✅ | — | — | — | — | — |
+| `pay:sv:plan:read` | `SV_PLAN_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
+| `pay:sv:plan:manage` | `SV_PLAN_MANAGE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
+| `pay:sv:recharge:receive` | `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
+| `pay:sv:recharge:read` | `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `pay:sv:consume:create` | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `pay:ent:template:write` | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 2 | ✅ | — | — | — | — | — |
 | `pay:ent:template:publish` | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
-| `pay:sv:recharge:receive` | `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
-| `pay:sv:recharge:read` | `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
-| `pay:sv:account:read` | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `pay:ent:issue` | `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `pay:ent:issue:manage` | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
+| `biz:pricing:tax:read` | `PRICING_TAX_READ` | 查看当前授权商家的有效税配置 | 0 | ✅ | — | — | — | — | — |
+| `biz:pricing:config:read` | `PRICING_CONFIG_READ` | Shared pricing configuration: read | 0 | ✅ | — | — | — | — | — |
+| `biz:pricing:config:update` | `PRICING_CONFIG_UPDATE` | Shared pricing configuration: read | 0 | ✅ | — | — | — | — | — |
+| `biz:pricing:config:publish` | `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read | 0 | ✅ | — | — | — | — | — |
 | `pay:ent:template:read` | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 
 > `OWNER` 是 `*`：**不走这张表**。新增权限码时老板自动有，其余角色要显式加。
@@ -215,7 +222,7 @@
 | 保证金流水 | GET | `/biz/deposit/txns` | `mDepositTxns` | deposit |
 | 我的欠款与流水 | GET | `/biz/merchant/debt` | `mMyDebt` | income |
 | 本店能开的收款通道（含没开的） | GET | `/biz/merchant/pay-channel` | `mPayChannels` | payment |
-| 收款进件状态 | GET | `/biz/merchant/payment` | `mPayments` | entity-detail、home、payment、points、stores |
+| 收款进件状态 | GET | `/biz/merchant/payment` | `mPayments` | entity-detail、home、payment、stores |
 | 补交资料并提交进件 | POST | `/biz/merchant/payment` | `mSubmitPayment` | payment |
 | 回查进件结果 | POST | `/biz/merchant/payment/:payChannel/refresh` | `mRefreshPayment` | payment |
 | 为门店单独开通收款 | POST | `/biz/merchant/payment/store/:storeNo` | `mOpenStorePayment` | payment |
@@ -223,15 +230,15 @@
 | 提交收款账户 | POST | `/biz/payout-account` | `mSubmitPayoutAccount` | payout-account |
 | 当前门店积分账本 | GET | `/biz/points/store-account` | `mStorePointAccount` | points |
 | 当前门店有效积分签约 | GET | `/biz/points/store-agreement` | `mStorePointAgreement` | points |
-| 主体属主签署当前门店积分协议 | POST | `/biz/points/store-agreement/sign` | `mSignStorePointAgreement` | points |
-| 主体属主终止当前门店积分协议 | POST | `/biz/points/store-agreement/terminate` | `mTerminateStorePointAgreement` | points |
+| 主体属主签署当前门店积分协议 | POST | `/biz/points/store-agreement/sign` | `mSignStorePointAgreement` | — |
+| 主体属主终止当前门店积分协议 | POST | `/biz/points/store-agreement/terminate` | `mTerminateStorePointAgreement` | — |
 | 当前门店积分流水 | GET | `/biz/points/store-entries` | `mStorePointEntries` | points-records |
 | 当前门店指定积分账单 | GET | `/biz/points/store-statement` | `mStorePointStatement` | — |
 | 确认当前门店指定修订积分账单 | POST | `/biz/points/store-statement-confirm` | `mConfirmStorePointStatement` | — |
 | 对当前门店积分账单提出异议 | POST | `/biz/points/store-statement-dispute` | `mDisputeStorePointStatement` | — |
 | 当前门店指定修订积分账单明细 | GET | `/biz/points/store-statement-lines` | `mStorePointStatementLines` | — |
 | 当前门店积分账单 | GET | `/biz/points/store-statements` | `mStorePointStatements` | — |
-| 当前积分签约条款 | GET | `/biz/points/store-terms` | `mStorePointTerms` | points |
+| 当前积分签约条款 | GET | `/biz/points/store-terms` | `mStorePointTerms` | — |
 | 当前门店可见的积分类型 | GET | `/biz/points/store-types` | `mStorePointTypes` | points、points-records |
 | 我的账期批次 | GET | `/biz/settle/batch` | `mSettleBatches` | income |
 | 结算单列表 | GET | `/biz/settle/bills` | `mSettleList` | settle |
@@ -257,7 +264,7 @@
 | 经营数据 | GET | `/biz/dashboard/stats` | `mStats` | home、stats |
 | 进销存月报 | GET | `/biz/inventory/report/monthly` | `mStockMonthly` | stock-report |
 | 动销/滞销榜 | GET | `/biz/inventory/report/ranking` | `mStockRanking` | stock-report |
-| 识别统一会员码 | POST | `/biz/member-code/resolve` | `mResolveMemberCode` | — |
+| 识别统一会员码 | POST | `/biz/member-code/resolve` | `mResolveMemberCode` | stored-value-recharge |
 | 群发试算：能发多少、跳过多少 | POST | `/biz/member-reach/plan` | `mPlanReach` | member-reach |
 | 发出去的消息（批次列表） | GET | `/biz/member-reach/task` | `mReachTasks` | reach-tasks |
 | 一次触达的效果 | GET | `/biz/member-reach/task/{taskNo}` | `mReachTask` | reach-task |
@@ -387,6 +394,21 @@
 | 订单的当前售后 | GET | `/biz/after-sale/by-order/:orderNo` | `mActiveAfterSaleForOrder` | order |
 | 分页售后待办 | GET | `/biz/after-sale/worklist` | `mAfterSaleWorklist` | after-sale、messages、orders |
 
+### `pay:sv:recharge:create`　查看主体级权益目录，不授予变更能力
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 按方案办理储值 | POST | `/biz/stored-value/plan-recharges` | `mSvCreateRecharge` | stored-value-recharge |
+| 取消未收款储值 | POST | `/biz/stored-value/plan-recharges/{rechargeNo}/cancel` | `mSvCancel` | stored-value-recharge |
+| 提交储值实收 | POST | `/biz/stored-value/plan-recharges/{rechargeNo}/submit` | `mSvSubmit` | stored-value-recharge |
+| 取消未明确创建的原充值命令 | POST | `/biz/stored-value/plan-recharges/cancel-create` | `mSvCancelCreate` | stored-value、stored-value-recharge |
+| 查询原充值创建结果 | POST | `/biz/stored-value/plan-recharges/resolve` | `mSvResolveRecharge` | stored-value、stored-value-recharge |
+| —（b-app 未接） | — | `/biz/stored-value/recharges` | — | — |
+| —（b-app 未接） | — | `/biz/stored-value/recharges/{}/cancel` | — | — |
+| —（b-app 未接） | — | `/biz/stored-value/recharges/{}/submit` | — | — |
+
 ### `biz:verify`　核销、批量核销、按码搜索
 
 **可用角色**：老板、店长、店员
@@ -413,6 +435,18 @@
 | 物流更新记录 | GET | `/biz/order/:orderNo/logistics-updates` | `mOrderUpdates` | order |
 | 物流轨迹 | GET | `/biz/order/:orderNo/trace` | `mOrderTrace` | order |
 | 按优先级分页的订单待办 | GET | `/biz/order/worklist` | `mOrderWorklist` | orders |
+
+### `pay:sv:account:read`　查看主体级权益目录，不授予变更能力
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 门店储值顾客 | GET | `/biz/stored-value/account-directory` | `mSvAccounts` | stored-value |
+| 门店储值账户 | GET | `/biz/stored-value/accounts/{accountRef}` | `mSvAccount` | stored-value-account |
+| 门店储值收支 | GET | `/biz/stored-value/records` | `mSvRecords` | stored-value |
+| 储值收支详情 | GET | `/biz/stored-value/records/{recordNo}` | `mSvRecord` | stored-value-record |
+| —（b-app 未接） | — | `/biz/stored-value/accounts` | — | — |
 
 ### `biz:receive`　到货登记、分拣单、短少上报
 
@@ -446,16 +480,6 @@
 | 申诉差评 | POST | `/biz/review/:reviewNo/appeal` | `mAppealReview` | reviews |
 | 回复评价 | POST | `/biz/review/:reviewNo/reply` | `mReplyReview` | reviews |
 
-### `pay:sv:recharge:create`　查看主体级权益目录，不授予变更能力
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| —（b-app 未接） | — | `/biz/stored-value/recharges` | — | — |
-| —（b-app 未接） | — | `/biz/stored-value/recharges/{}/cancel` | — | — |
-| —（b-app 未接） | — | `/biz/stored-value/recharges/{}/submit` | — | — |
-
 ### `pay:ent:use`　查看主体级权益目录，不授予变更能力
 
 **可用角色**：老板
@@ -465,6 +489,52 @@
 | —（b-app 未接） | — | `/biz/entitlement-uses/preview` | — | — |
 | —（b-app 未接） | — | `/biz/entitlement-uses` | — | — |
 | —（b-app 未接） | — | `/biz/entitlement-uses/{}/cancel` | — | — |
+
+### `biz:pricing:tax:update`　修改全主体所有门店的税配置，仅主体属主，不可按门店委派
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/pricing-tax-settings` | — | — |
+| —（b-app 未接） | — | `/biz/pricing-tax-settings/reset` | — | — |
+
+### `pay:sv:plan:read`　查看主体级权益目录，不授予变更能力
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 储值上下文 | GET | `/biz/stored-value/context` | `mSvContext` | stored-value-plan-edit |
+| 储值方案详情 | GET | `/biz/stored-value/plans/{planNo}` | `mSvPlan` | stored-value-plan-detail、stored-value-recharge |
+
+### `pay:sv:plan:manage`　查看主体级权益目录，不授予变更能力
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 门店储值方案 | GET | `/biz/stored-value/plans` | `mSvPlans` | stored-value、stored-value-recharge |
+| 创建门店储值方案 | POST | `/biz/stored-value/plans` | `mSvCreatePlan` | stored-value-plan-edit |
+| 启停门店储值方案 | PUT | `/biz/stored-value/plans/{planNo}/status` | `mSvPlanStatus` | stored-value-plan-detail |
+
+### `pay:sv:recharge:receive`　查看主体级权益目录，不授予变更能力
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 确认储值收款 | POST | `/biz/stored-value/plan-recharges/{rechargeNo}/receive` | `mSvReceive` | stored-value-recharge |
+| —（b-app 未接） | — | `/biz/stored-value/recharges/{}/receive` | — | — |
+
+### `pay:sv:recharge:read`　查看主体级权益目录，不授予变更能力
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 独立储值进度 | GET | `/biz/stored-value/plan-recharges/{rechargeNo}` | `mSvRecharge` | stored-value、stored-value-recharge |
+| —（b-app 未接） | — | `/biz/stored-value/recharges/{}` | — | — |
 
 ### `pay:sv:consume:create`　查看主体级权益目录，不授予变更能力
 
@@ -492,30 +562,6 @@
 |---|---|---|---|---|
 | —（b-app 未接） | — | `/biz/entitlement-templates/{}/publish` | — | — |
 | —（b-app 未接） | — | `/biz/entitlement-templates/{}/status` | — | — |
-
-### `pay:sv:recharge:receive`　查看主体级权益目录，不授予变更能力
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| —（b-app 未接） | — | `/biz/stored-value/recharges/{}/receive` | — | — |
-
-### `pay:sv:recharge:read`　查看主体级权益目录，不授予变更能力
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| —（b-app 未接） | — | `/biz/stored-value/recharges/{}` | — | — |
-
-### `pay:sv:account:read`　查看主体级权益目录，不授予变更能力
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| —（b-app 未接） | — | `/biz/stored-value/accounts` | — | — |
 
 ### `pay:ent:issue`　查看主体级权益目录，不授予变更能力
 
@@ -623,6 +669,12 @@
 | `store-categories` | `biz:store:admin` | `biz:store`、`biz:stock` | 老板 | — |
 | `store-notice` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `store-scope` | `biz:store` | `biz:store` | 老板、店长 | — |
+| `stored-value` | **无** | `pay:sv:account:read`、`pay:sv:plan:manage`、`pay:sv:recharge:create`、`pay:sv:recharge:read` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 pay:sv:account:read、pay:sv:plan:manage、pay:sv:recharge:create、pay:sv:recharge:read）　店员（缺 pay:sv:account:read、pay:sv:plan:manage、pay:sv:recharge:create、pay:sv:recharge:read）　理货员（缺 pay:sv:account:read、pay:sv:plan:manage、pay:sv:recharge:create、pay:sv:recharge:read）　配送员（缺 pay:sv:account:read、pay:sv:plan:manage、pay:sv:recharge:create、pay:sv:recharge:read）　客服（缺 pay:sv:account:read、pay:sv:plan:manage、pay:sv:recharge:create、pay:sv:recharge:read） |
+| `stored-value-account` | **无** | `pay:sv:account:read` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 pay:sv:account:read）　店员（缺 pay:sv:account:read）　理货员（缺 pay:sv:account:read）　配送员（缺 pay:sv:account:read）　客服（缺 pay:sv:account:read） |
+| `stored-value-plan-detail` | `pay:sv:plan:read` | `pay:sv:plan:read`、`pay:sv:plan:manage` | 老板 | — |
+| `stored-value-plan-edit` | `pay:sv:plan:manage` | `pay:sv:plan:read`、`pay:sv:plan:manage` | 老板 | — |
+| `stored-value-recharge` | `pay:sv:recharge:create` | `pay:sv:recharge:create`、`pay:sv:recharge:receive`、`pay:sv:recharge:read`、`pay:sv:plan:manage`、`pay:sv:plan:read`、`biz:customer` | 老板 | — |
+| `stored-value-record` | `pay:sv:account:read` | `pay:sv:account:read` | 老板 | — |
 | `stores` | `biz:store:admin` | `biz:finance`、`biz:store:admin`、`biz:customer` | 老板 | — |
 | `suppliers` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `transfer` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
@@ -655,6 +707,8 @@
 | `/biz/entitlements/{}` | `pay:ent:read` | 老板 |
 | `/biz/inventory/export` | `biz:customer` | 老板、店长 |
 | `/biz/marketing-summary` | `biz:campaign` | 老板、店长 |
+| `/biz/pricing-tax-settings` | `biz:pricing:tax:update` | 老板 |
+| `/biz/pricing-tax-settings/reset` | `biz:pricing:tax:update` | 老板 |
 | `/biz/quote/{}/revise` | `biz:campaign` | 老板、店长 |
 | `/biz/settle/bills/{}` | `biz:finance` | 老板 |
 | `/biz/store/{}/stock-reconcile` | `biz:store:admin` | 老板 |
@@ -689,7 +743,6 @@
 | 压缩包服务端解压（小程序端没有本地解压能力） | `/biz/goods/zip-import` | `mZipImport` | `biz:goods` |
 | 拨一个品类记不记库存（有在途拒绝、有库存要确认） | `/biz/inventory/category-setting/:categoryNo` | `mInvSetCategory` | `biz:goods` |
 | 改进货草稿 | `/biz/inventory/inbounds/:no` | `mInboundUpdate` | `biz:stock` |
-| 识别统一会员码 | `/biz/member-code/resolve` | `mResolveMemberCode` | `biz:customer` |
 | 改备注 / 拉黑 | `/biz/members/{memberNo}` | `mPatchMember` | `biz:customer` |
 | 批量打/去一个标签（confirm=false 只试算） | `/biz/members/tags/batch` | `mBatchTagMembers` | `biz:customer` |
 | 停用/启用自建维度 | `/biz/my-spec-dims/{dimNo}/archive` | `mArchiveSpecDim` | `biz:goods` |
@@ -698,11 +751,14 @@
 | 快递报价 | `/biz/order/:orderNo/express/quotes` | `mExpressQuotes` | `biz:ship` |
 | 自建自提点（待运营核实） | `/biz/pickup-points` | `mSelfBuildPickup` | `biz:store` |
 | 门店可引用的取货点候选 | `/biz/pickup-points/candidates` | `mPickupCandidates` | `biz:store` |
+| 主体属主签署当前门店积分协议 | `/biz/points/store-agreement/sign` | `mSignStorePointAgreement` | `biz:finance` |
+| 主体属主终止当前门店积分协议 | `/biz/points/store-agreement/terminate` | `mTerminateStorePointAgreement` | `biz:finance` |
 | 当前门店指定积分账单 | `/biz/points/store-statement` | `mStorePointStatement` | `biz:finance` |
 | 确认当前门店指定修订积分账单 | `/biz/points/store-statement-confirm` | `mConfirmStorePointStatement` | `biz:finance` |
 | 对当前门店积分账单提出异议 | `/biz/points/store-statement-dispute` | `mDisputeStorePointStatement` | `biz:finance` |
 | 当前门店指定修订积分账单明细 | `/biz/points/store-statement-lines` | `mStorePointStatementLines` | `biz:finance` |
 | 当前门店积分账单 | `/biz/points/store-statements` | `mStorePointStatements` | `biz:finance` |
+| 当前积分签约条款 | `/biz/points/store-terms` | `mStorePointTerms` | `biz:finance` |
 | 近几日报表 | `/biz/report/daily` | `mDailyReport` | `biz:customer` |
 | 商品销售榜 | `/biz/report/goods` | `mGoodsRank` | `biz:customer` |
 | 按月营收 | `/biz/report/monthly` | `mMonthlyReport` | `biz:customer` |

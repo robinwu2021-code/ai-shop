@@ -9,6 +9,18 @@ import java.util.Map;
 public final class FoodDataScopeRegistration implements DataScopeRegistrar {
     @Override
     public void register(DataScopeTableRegistry registry) {
+        registry.register("fnb_sales_quota_claim", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_settlement", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_settlement_item", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_charge_intent", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_return", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_return_item", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_order_batch", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_core_order_binding", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_order_line", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_core_line_allocation", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_order_component", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_order_modifier", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_check_cart", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_check_cart_item", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_station", Map.of(ScopeDim.MERCHANT, "entity_no"));

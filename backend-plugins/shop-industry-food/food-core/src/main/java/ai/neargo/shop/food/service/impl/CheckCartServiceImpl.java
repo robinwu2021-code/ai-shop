@@ -226,7 +226,13 @@ public class CheckCartServiceImpl implements CheckCartService {
     public CartResultVO customerGetCart(String number, CartAccess access) {
         CartInputPolicy.key(number); accessInput(access); outer();
         return scoped(() -> read.execute(tx -> {
-            var row=rawCart(number); customer(row,access,false);
+            var row=rawCart(number);
+            boolean originalBuyerRead = "CLOSED".equals(row.getStatus()) && "H5".equals(row.getOrderSource())
+                    && access.sessionNo() == null && access.accessToken() == null && access.buyerNo() != null
+                    && access.buyerNo().equals(row.getBuyerNo())
+                    && carts.submittedBuyerBindingCount(row.getEntityNo(), row.getStoreNo(), row.getCartNo(),
+                            access.buyerNo()) > 0;
+            if (!originalBuyerRead) customer(row,access,false);
             return new CartResultVO(view(row,true));
         }));
     }
@@ -414,6 +420,8 @@ public class CheckCartServiceImpl implements CheckCartService {
     }
     private void editable(FnbCheckCart row, long version) {
         if(!"OPEN".equals(row.getStatus()) || !Objects.equals(row.getVersion(),version)) conflict();
+        // Caller already holds the original cart row lock; placement takes that same lock before staging.
+        if (carts.activePlacementCount(row.getEntityNo(), row.getCartNo()) != 0) conflict();
     }
     private void advance(FnbCheckCart row, String actor, String status) {
         if(row.getVersion()==null || row.getVersion()==Long.MAX_VALUE) conflict();

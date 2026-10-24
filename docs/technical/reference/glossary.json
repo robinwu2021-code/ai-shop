@@ -29121,6 +29121,12 @@
           "ar": "يجب أن يكون وقت إغلاق الطلبات قبل وقت الوصول، وإلا استمر الطلب بعد وصول البضاعة"
         },
         {
+          "key": "err.pricing.owner_unsupported",
+          "zh-CN": "有效的能力或税配置来源暂不可用，请检查配置后重试",
+          "en": "Effective capability or tax configuration source is unavailable; check settings and retry",
+          "ar": "مصدر القدرات أو إعدادات الضريبة الفعالة غير متاح؛ تحقق من الإعدادات وأعد المحاولة"
+        },
+        {
           "key": "err.reset_token.invalid",
           "zh-CN": "重置码无效或已过期，请重新申请",
           "en": "Reset code is invalid or expired. Please request a new one",
@@ -30677,6 +30683,34 @@
       "package": "ai.neargo.shop.trade.order.entity"
     },
     {
+      "table": "ord_price_quote",
+      "class": "OrdPriceQuote",
+      "zh": "Insert-only economic fields; only the head lifecycle may be transitioned by PricingQuoteService.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_price_quote_allocation",
+      "class": "OrdPriceQuoteAllocation",
+      "zh": "Insert-only economic fields; only the head lifecycle may be transitioned by PricingQuoteService.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_price_quote_line",
+      "class": "OrdPriceQuoteLine",
+      "zh": "Insert-only economic fields; only the head lifecycle may be transitioned by PricingQuoteService.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_pricing_funding_source",
+      "class": "OrdPricingFundingSource",
+      "zh": "Immutable quote binding; lifecycle changes never revise the economic source identity.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
       "table": "ord_pricing_template",
       "class": "OrdPricingTemplate",
       "zh": "Pricing publication evidence uses business numbers; immutable revisions are insert/query only.",
@@ -31100,6 +31134,13 @@
       "table": "prd_sku",
       "class": "PrdSku",
       "zh": "SKU 与价格。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
+      "table": "prd_sku_pricing_policy",
+      "class": "PrdSkuPricingPolicy",
+      "zh": "Sparse store/SKU extension: no price copy and no implicit policy for missing rows.",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
     },
@@ -33302,6 +33343,20 @@
         "name": "SKU",
         "value": "SK",
         "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "PRICING_FUNDING_SOURCE",
+        "value": "PFS",
+        "zh": "报价资金来源日志，仅绑定报价生命周期，不代表扣款授权。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "SKU_PRICING_POLICY",
+        "value": "SPP",
+        "zh": "Store SKU promotion eligibility and merchant tax classification.",
         "module": "shop-base"
       },
       {
@@ -39509,6 +39564,7 @@
       {
         "name": "ErrorCode",
         "values": [
+          "PRICING_OWNER_UNSUPPORTED",
           "BAD_REQUEST",
           "UNAUTHORIZED",
           "TOKEN_EXPIRED",
@@ -39798,6 +39854,15 @@
         "module": "shop-base"
       },
       {
+        "name": "Family",
+        "values": [
+          "ORDER_COUPON",
+          "STORED_VALUE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "FixedPolicy",
         "values": [
           "B03",
@@ -39937,6 +40002,16 @@
         "module": "shop-core"
       },
       {
+        "name": "Industry",
+        "values": [
+          "FOOD",
+          "RETAIL",
+          "BEAUTY_SERVICE"
+        ],
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "name": "IndustryRestriction",
         "values": [
           "PUBLISHED_MENU_CHANNEL_PRICE_ONLY",
@@ -40056,12 +40131,40 @@
       {
         "name": "Kind",
         "values": [
+          "MAIN",
+          "ADDON",
+          "BUNDLE_INCLUDED",
+          "BUNDLE_ADD",
+          "BUNDLE_DIFFERENCE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Kind",
+        "values": [
           "RECHARGE",
           "SERVICE_USE",
           "ORDER_USE",
           "ACTIVITY_BENEFIT",
           "LEGACY_COUPON",
           "HISTORICAL_COUPON_RETURN"
+        ],
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "name": "Kind",
+        "values": [
+          "ACTIVITY_DISCOUNT",
+          "COUPON_DISCOUNT",
+          "MANUAL_DISCOUNT",
+          "POINTS_DISCOUNT",
+          "WAIVER",
+          "POINTS_CONSIDERATION",
+          "STORED_PLAN",
+          "OTHER_PLAN",
+          "CASH_PLAN"
         ],
         "zh": "",
         "module": "shop-core"
@@ -40090,6 +40193,17 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "LineKind",
+        "values": [
+          "GOODS",
+          "ADDON",
+          "BUNDLE_COMPONENT",
+          "FEE"
+        ],
+        "zh": "",
+        "module": "shop-core"
       },
       {
         "name": "LoginEvent",
@@ -40321,6 +40435,15 @@
           "CLOSED"
         ],
         "zh": "支付单（ord_order）状态。",
+        "module": "shop-core"
+      },
+      {
+        "name": "Phase",
+        "values": [
+          "LIVE",
+          "FROZEN_UNPAID"
+        ],
+        "zh": "",
         "module": "shop-core"
       },
       {
@@ -40575,10 +40698,28 @@
       {
         "name": "Source",
         "values": [
+          "PLATFORM_DEFAULT",
+          "MERCHANT_CUSTOM"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Source",
+        "values": [
           "TRADE"
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "Source",
+        "values": [
+          "PLATFORM_DEFAULT",
+          "MERCHANT_CUSTOM"
+        ],
+        "zh": "",
+        "module": "shop-core"
       },
       {
         "name": "Source",
@@ -40809,6 +40950,19 @@
           "RETRYABLE",
           "MANUAL",
           "REJECTED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Status",
+        "values": [
+          "SUPPORTED",
+          "TENANT_UNSUPPORTED",
+          "SOURCE_UNSUPPORTED",
+          "CURRENCY_UNSUPPORTED",
+          "DISABLED",
+          "OWNER_UNAVAILABLE"
         ],
         "zh": "",
         "module": "shop-base"
@@ -44766,6 +44920,22 @@
     },
     {
       "host": "PayInternalPaths",
+      "name": "ENT_PRICING_CAPABILITIES",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/capabilities/pricing\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_PRICING_CAPABILITIES",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/capabilities/pricing\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
       "name": "ENT_CAPABILITIES",
       "type": "String",
       "value": "\"/internal/pay/entitlement/capabilities\"",
@@ -45590,6 +45760,46 @@
     },
     {
       "host": "BizPerms",
+      "name": "PRICING_TAX_READ",
+      "type": "String",
+      "value": "\"biz:pricing:tax:read\"",
+      "zh": "查看当前授权商家的有效税配置。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRICING_TAX_UPDATE",
+      "type": "String",
+      "value": "\"biz:pricing:tax:update\"",
+      "zh": "修改全主体所有门店的税配置，仅主体属主，不可按门店委派。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRICING_CONFIG_READ",
+      "type": "String",
+      "value": "\"biz:pricing:config:read\"",
+      "zh": "Shared pricing configuration: read, draft edit and publication are independent grants.",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRICING_CONFIG_UPDATE",
+      "type": "String",
+      "value": "\"biz:pricing:config:update\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRICING_CONFIG_PUBLISH",
+      "type": "String",
+      "value": "\"biz:pricing:config:publish\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
       "name": "RECEIVE",
       "type": "String",
       "value": "\"biz:receive\"",
@@ -45808,7 +46018,7 @@
       "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },
@@ -45818,6 +46028,46 @@
       "type": "String",
       "value": "AbstractTokenAuthFilter.TOKEN_EXPIRED_ATTR",
       "zh": "@deprecated 已上移到 AbstractTokenAuthFilter#TOKEN_EXPIRED_ATTR。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PRICING_TAX_READ",
+      "type": "String",
+      "value": "\"pricing:tax:read\"",
+      "zh": "查看平台默认税配置。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PRICING_TAX_UPDATE",
+      "type": "String",
+      "value": "\"pricing:tax:update\"",
+      "zh": "维护平台默认税率及价税模式，不涉及商家审批。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PRICING_TEMPLATE_READ",
+      "type": "String",
+      "value": "\"pricing:template:read\"",
+      "zh": "Shared pricing configuration: read, draft edit and publication are independent grants.",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PRICING_TEMPLATE_UPDATE",
+      "type": "String",
+      "value": "\"pricing:template:update\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PRICING_TEMPLATE_PUBLISH",
+      "type": "String",
+      "value": "\"pricing:template:publish\"",
+      "zh": "",
       "module": "shop-base-auth"
     },
     {

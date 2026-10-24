@@ -19,6 +19,8 @@ import ai.neargo.shop.trade.service.CloseRuleService;
 import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.trade.service.LegacyCouponOrderPricingService;
 import ai.neargo.shop.trade.service.LegacyCouponBoundOrderService;
+import ai.neargo.shop.trade.mapper.TradeMappers.IndustryOrderSourceMapper;
+import ai.neargo.shop.trade.entity.OrdIndustryOrderSource;
 import ai.neargo.shop.trade.service.LegacyCouponCheckoutJournal;
 import ai.neargo.shop.trade.service.LegacyCouponOrderCreationCoordinator;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
@@ -100,6 +102,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -111,6 +114,7 @@ import java.util.stream.Collectors;
  */
 @Service
 public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingService, LegacyCouponBoundOrderService {
+    @Autowired(required = false) private IndustryOrderSourceMapper industryOrderSources;
     @Autowired private LegacyCouponCheckoutJournal legacyCheckoutJournal;
     @Autowired private ObjectProvider<LegacyCouponOrderCreationCoordinator> legacyCreationCoordinators;
     @Autowired private ObjectProvider<LegacyCouponBoundOrderService> coreCreationWriters;
@@ -641,7 +645,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         if (nos.isEmpty()) {
             return Map.of();
         }
-        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> merchantPort.storeNames(nos));
+        return DataScopeContext.executeWithoutScope(() -> merchantPort.storeNames(nos));
     }
 
     private static java.util.Set<String> intersect(java.util.Set<String> a,
@@ -2202,11 +2206,22 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         return new ai.neargo.shop.trade.dto.OrderPayMethodVO(currency, anyConfigured, methods);
     }
 
+    private boolean industryOwned(OrdOrder order) {
+        return industryOrderSources != null && DataScopeContext.executeWithoutScope(
+                () -> industryOrderSources.selectCount(Wrappers.<OrdIndustryOrderSource>lambdaQuery()
+                        .eq(OrdIndustryOrderSource::getTenantNo, order.getTenantNo())
+                        .eq(OrdIndustryOrderSource::getOrderNo, order.getOrderNo()))) > 0;
+    }
+
     @Override
     public PayResult pay(String orderNo, String payChannel) {
         // 同 payMethods：子单号也要能进收银台；下游（记账、商户单号）只认主单号
         OrdOrder order = resolveOrder(orderNo);
         orderNo = order.getOrderNo();
+        if (industryOwned(order)) {
+            // Source-owned checkout pins the original route, payer and attempt; generic retail pay cannot bypass it.
+            throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+        }
         if (!OrdOrder.WAIT_PAY.equals(order.getStatus())) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
@@ -2299,7 +2314,21 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          */
         boolean settled = ai.neargo.shop.common.PayChannels.FREE.equals(init.payChannel());
         if (settled) {
-            orderServiceProvider.getObject().markPaid(orderNo, init.payChannel(), init.outTradeNo());
+            // The merchant attempt reference is not the channel's confirmed transaction number.
+            if (init.outTradeNo() == null || init.outTradeNo().isBlank()) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            var receipt = settlePort.paymentByOutTradeNo(init.outTradeNo());
+            if (receipt == null || !"SUCCESS".equals(receipt.status())
+                    || !Objects.equals(orderNo, receipt.orderNo())
+                    || !Objects.equals(order.getUserNo(), receipt.userNo())
+                    || !Objects.equals(init.payChannel(), receipt.payChannel())
+                    || order.getPayAmount() == null || order.getPayAmount() != 0L || receipt.amountMinor() != 0L
+                    || !Objects.equals(order.getCurrency(), receipt.currency())
+                    || receipt.tradeNo() == null || receipt.tradeNo().isBlank()) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            orderServiceProvider.getObject().markPaid(orderNo, init.payChannel(), receipt.tradeNo());
         }
         return new PayResult(orderNo, init.payChannel(), init.payParams(), settled);
     }
@@ -2314,6 +2343,13 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         OrdOrder source = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getOrderNo, orderNo).last("limit 1"));
         if (source == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        PaymentLifecycleService.ConfirmedPayment sourceCashProof = null;
+        if (industryOwned(source)) {
+            if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) {
+                throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+            }
+            sourceCashProof = paymentLifecycle.requireConfirmed(source, payChannel, payTradeNo);
+        }
         ai.neargo.shop.spi.points.PointsPaymentSnapshotPort.VerifiedPayment proof = null;
         if (Boolean.TRUE.equals(source.getPointsIntegrated()) && !OrdOrder.PAID.equals(source.getStatus())) {
             if (org.springframework.transaction.support.TransactionSynchronizationManager
@@ -2334,23 +2370,29 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             }
         }
         var verified = proof;
+        var verifiedCash = sourceCashProof;
         String settledChannel = proof == null ? payChannel : proof.channel();
         String settledTrade = proof == null ? payTradeNo : proof.tradeNo();
         if (sourceTransactions != null) {
-            sourceTransactions.execute(s -> { markPaidSource(orderNo, settledChannel, settledTrade, verified); return null; });
+            sourceTransactions.execute(s -> { markPaidSource(orderNo, settledChannel, settledTrade, verified, verifiedCash); return null; });
         } else {
-            markPaidSource(orderNo, settledChannel, settledTrade, verified);
+            markPaidSource(orderNo, settledChannel, settledTrade, verified, verifiedCash);
         }
     }
 
     private void markPaidSource(String orderNo, String payChannel, String payTradeNo,
-                                ai.neargo.shop.spi.points.PointsPaymentSnapshotPort.VerifiedPayment proof) {
+                                ai.neargo.shop.spi.points.PointsPaymentSnapshotPort.VerifiedPayment proof,
+                                PaymentLifecycleService.ConfirmedPayment sourceCashProof) {
         OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getOrderNo, orderNo).last("limit 1 FOR UPDATE"));
         if (order == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        var confirmed = paymentLifecycle.requireConfirmed(order, payChannel, payTradeNo);
+        PaymentLifecycleService.ConfirmedPayment confirmed;
+        if (sourceCashProof == null) confirmed = paymentLifecycle.requireConfirmed(order, payChannel, payTradeNo);
+        else {
+            paymentLifecycle.verifyConfirmed(order, sourceCashProof); confirmed = sourceCashProof;
+        }
         if (OrdOrder.PAID.equals(order.getStatus())) {
             if (entitlementOrderUses != null) {
                 entitlementOrderUses.decideForTerminalOrder(order.getTenantNo(), orderNo);
@@ -3599,7 +3641,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         if (no == null || no.isBlank()) {
             return null;
         }
-        String name = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+        String name = DataScopeContext.executeWithoutScope(
                 () -> merchantPort.storeNames(List.of(no)).get(no));
         return new OrderVO.StoreBrief(no, name);
     }

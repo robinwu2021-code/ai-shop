@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.order.refund.service.impl;
 
+import ai.neargo.shop.trade.order.refund.model.RefundPlan;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.spi.platform.PlatformSwitchPort;
@@ -80,9 +81,14 @@ public class RefundResourceServiceImpl implements RefundResourceService {
             List<StockPort.SkuQty> items = json.readValue(row.getStockNeedsJson(), new TypeReference<>() { });
             OrdSubOrder child = DataScopeContext.executeWithoutScope(() -> children.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
                     .eq(OrdSubOrder::getSubOrderNo, row.getSubOrderNo()).last("LIMIT 1")));
-            if (child != null && Integer.valueOf(2).equals(child.getInventoryLifecycleVersion())
-                    && OrdSubOrder.WAIT_FULFILL.equals(child.getStatus())) {
-                stock.releaseAllocated(child.getSubOrderNo(), child.getOrderNo());
+            if(child==null) throw new IllegalStateException("ORIGINAL_REFUND_CHILD_REQUIRED");
+            // For lifecycle 2, restoreStock was frozen only when the original units were unshipped.
+            // The cash projection may already have changed the child to REFUNDED. Original inventory
+            // release targets verify actual issued/released quantities instead of that later business status.
+            if (Integer.valueOf(2).equals(child.getInventoryLifecycleVersion())) {
+                var plan = json.readValue(row.getPlanJson(), RefundPlan.class);
+                if (plan.allocationReleaseTargets().isEmpty()) stock.releaseAllocated(child.getSubOrderNo(), child.getOrderNo());
+                else stock.releaseAllocatedTo(child.getSubOrderNo(), child.getOrderNo(), plan.allocationReleaseTargets());
                 restored = true;
             } else {
                 restored = stock.restoreOriginal(row.getExecutionNo(), row.getOrderNo(), items)

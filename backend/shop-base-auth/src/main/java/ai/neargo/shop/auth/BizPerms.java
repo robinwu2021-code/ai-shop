@@ -34,6 +34,17 @@ import java.util.Set;
  */
 public final class BizPerms {
 
+    /** 查看当前授权商家的有效税配置。 */
+    public static final String PRICING_TAX_READ = "biz:pricing:tax:read";
+    /** 修改全主体所有门店的税配置，仅主体属主，不可按门店委派。 */
+    public static final String PRICING_TAX_UPDATE = "biz:pricing:tax:update";
+
+    /** Shared pricing configuration: read, draft edit and publication are independent grants. */
+    public static final String PRICING_CONFIG_READ = "biz:pricing:config:read";
+    public static final String PRICING_CONFIG_UPDATE = "biz:pricing:config:update";
+    public static final String PRICING_CONFIG_PUBLISH = "biz:pricing:config:publish";
+
+
     // ---------------------------------------------------------------- 履约（按「面对谁」分三档）
 
     /** 到货登记、分拣单、短少上报。只对货，不对人 —— 分拣单本就不含金额与买家 */
@@ -140,6 +151,11 @@ public final class BizPerms {
      * {@code BizRoleSeedTest} 断言这里覆盖了全部权限码 —— 加码忘了加说明就红。
      */
     public static final Map<String, String> LABELS = Map.ofEntries(
+            Map.entry(PRICING_TAX_READ, "查看商家税配置"),
+            Map.entry(PRICING_TAX_UPDATE, "维护商家税配置（仅主体属主）"),
+            Map.entry(PRICING_CONFIG_READ, "查看门店结账规则"),
+            Map.entry(PRICING_CONFIG_UPDATE, "编辑门店结账规则草稿"),
+            Map.entry(PRICING_CONFIG_PUBLISH, "发布门店结账规则"),
             Map.entry(RECEIVE, "到货登记与分拣"),
             Map.entry(VERIFY, "核销取货"),
             Map.entry(SHIP, "发货与标记送达"),
@@ -180,7 +196,7 @@ public final class BizPerms {
     }
 
     /**
-     * 商家<b>自定义</b>角色可以勾的权限码 —— 少了 {@link #STORE_ADMIN}。
+     * 商家<b>自定义</b>角色可以勾的权限码 —— 不含主体结构及跨店税配置写权限。
      *
      * <p>那是「管人」的码：授出去等于让被授权的人能改所有人的授权、
      * 能给自己加任何角色，<b>一次授权就绕开了整个模型</b>。
@@ -189,7 +205,7 @@ public final class BizPerms {
      */
     public static Set<String> assignableCodes() {
         return LABELS.keySet().stream()
-                .filter(c -> !STORE_ADMIN.equals(c))
+                .filter(c -> !STORE_ADMIN.equals(c) && !PRICING_TAX_UPDATE.equals(c))
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 

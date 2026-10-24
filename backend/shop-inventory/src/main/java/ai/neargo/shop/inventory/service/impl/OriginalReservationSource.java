@@ -50,7 +50,8 @@ class OriginalReservationSource {
     }
 
     private List<Source> prove(InvReservation head, String originalRef) {
-        if (Integer.valueOf(2).equals(head.getLifecycleVersion())) {
+        if (Integer.valueOf(2).equals(head.getLifecycleVersion())
+                || Integer.valueOf(3).equals(head.getLifecycleVersion())) {
             return proveFulfillmentIssuedLines(head, originalRef);
         }
         if (!"COMMITTED".equals(head.getStatus()) || head.getOutboundNo() == null) {
@@ -72,7 +73,9 @@ class OriginalReservationSource {
     }
 
     private List<Source> proveFulfillmentIssuedLines(InvReservation head, String originalRef) {
-        if (!List.of("COMMITTED", InvEnums.ReservationStatus.PARTIALLY_COMMITTED, "PARTIAL_RELEASED").contains(head.getStatus())) throw invalid();
+        if (!List.of("COMMITTED", InvEnums.ReservationStatus.PARTIALLY_COMMITTED, "PARTIAL_RELEASED",
+                InvEnums.ReservationStatus.PARTIAL_UNPAID, InvEnums.ReservationStatus.ISSUED_UNPAID)
+                .contains(head.getStatus())) throw invalid();
         List<Source> result = new ArrayList<>();
         for (InvReservationLine line : lines.selectList(Wrappers.<InvReservationLine>lambdaQuery()
                 .eq(InvReservationLine::getReservationId, head.getReservationId()).orderByAsc(InvReservationLine::getId))) {

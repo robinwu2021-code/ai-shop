@@ -9,6 +9,7 @@ import ai.neargo.shop.trade.order.command.OrderActor;
 import ai.neargo.shop.trade.order.entity.OrdRefundExecution;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
 import ai.neargo.shop.trade.order.refund.service.BasicRefundExecutionService;
+import ai.neargo.shop.trade.order.refund.service.RefundFinancialOwnerService;
 import ai.neargo.shop.trade.order.refund.service.RefundExecutionStore;
 import ai.neargo.shop.trade.order.refund.service.RefundPreparationService;
 import ai.neargo.shop.trade.order.refund.service.RefundResourceService;
@@ -27,11 +28,13 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
     private final RefundResultService results;
     private final RefundResourceService resources;
     private final SettlePort settle;
+    private final RefundFinancialOwnerService financialOwner;
     private final ObjectMapper json;
     private final ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations;
 
     public BasicRefundExecutionServiceImpl(RefundPreparationService preparation, RefundExecutionStore store,
             RefundResultService results, RefundResourceService resources, SettlePort settle, ObjectMapper json,
+            RefundFinancialOwnerService financialOwner,
             ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations) {
         this.obligations=obligations;
         this.preparation = preparation;
@@ -39,6 +42,7 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
         this.results = results;
         this.resources = resources;
         this.settle = settle;
+        this.financialOwner = financialOwner;
         this.json = json;
     }
 
@@ -68,7 +72,7 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
                 }
                 store.cashReady(no);
             }
-            applyResult(settle.requestRefund(request(row)));
+            applyResult(financialOwner.request(row));
         } catch (RuntimeException failure) {
             results.apply(new RefundDispatchResult(no, row.getPaymentNo(), DispatchStatus.UNKNOWN,
                     "REFUND_EXECUTION_UNKNOWN", true, null));
@@ -82,7 +86,7 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
             throw new IllegalArgumentException("refund result required");
         }
         RefundDispatchResult verified = result.status() == DispatchStatus.SUCCEEDED
-                ? settle.queryRefundExecution(request(store.read(result.executionNo()))) : result;
+                ? financialOwner.query(store.read(result.executionNo())) : result;
         results.apply(verified);
         if (verified.status() == DispatchStatus.SUCCEEDED) {
             recoverSuccessful(verified.executionNo());
@@ -98,7 +102,7 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
         if (OrdRefundExecution.SUCCEEDED.equals(row.getStatus())) {
             recoverSuccessful(no);
         } else if (OrdRefundExecution.CASH.equals(row.getPhase())) {
-            RefundDispatchResult result = settle.queryRefundExecution(request(row));
+            RefundDispatchResult result = financialOwner.query(row);
             if ("REFUND_NOT_PREPARED".equals(result.errorCode())
                     || "REFUND_NOT_DISPATCHED".equals(result.errorCode())) {
                 dispatch(no);

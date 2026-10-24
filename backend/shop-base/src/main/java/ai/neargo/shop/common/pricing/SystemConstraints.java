@@ -23,6 +23,14 @@ public final class SystemConstraints {
         return rules().stream().map(RuleDefinition::ruleNo).collect(Collectors.toUnmodifiableSet());
     }
 
+    public List<RuleDefinition> rules(int schemaVersion) {
+        return PricingRuleCatalog.rulesForSchema(schemaVersion);
+    }
+
+    String semanticHash(int schemaVersion) {
+        return PricingRuleCatalog.semanticHash(schemaVersion);
+    }
+
     String semanticHash() {
         return PricingRuleCatalog.semanticHash();
     }

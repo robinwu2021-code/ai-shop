@@ -75,6 +75,31 @@ class PricingSeedServiceTest {
         seed = Files.readString(Path.of("../../docs/technical/design/schema/pricing-initial-data.example.json"));
     }
 
+    @Test
+    void merchantTaxSeedImportsDraftsWithoutActivatingPlatformDefaults() throws Exception {
+        String next = Files.readString(Path.of("../../docs/technical/design/schema/"
+                + "pricing-merchant-tax-initial-data.example.json"));
+        var first = service.importDrafts(platform(), next, ImportMode.DRAFT);
+        assertThat(first.taxDraftCount()).isZero();
+        assertThat(first.templateCount()).isEqualTo(3);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_pricing_template WHERE draft_schema_version=3",
+                Long.class)).isEqualTo(3);
+        assertThat(service.importDrafts(platform(), next, ImportMode.DRAFT)).isEqualTo(first);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_pricing_template WHERE active_revision_no IS NOT NULL",
+                Long.class)).isZero();
+        assertThat(count("ord_pricing_template_revision")).isZero();
+        String snapshot = jdbc.queryForObject("SELECT seed_snapshot FROM ord_pricing_template LIMIT 1", String.class);
+        assertThat(snapshot).contains("platformTaxDefaultExample").doesNotContain("REQUIRES_PLATFORM_REVIEW");
+        for (String malformed : List.of("{}", "{", "{\"schemaVersion\":3,\"schemaVersion\":2}",
+                "{\"schemaVersion\":999}",
+                "{\"schemaVersion\":9223372036854775807}", "{\"schemaVersion\":\"3\"}")) {
+            assertThatThrownBy(() -> service.importDrafts(platform(), malformed, ImportMode.DRAFT))
+                    .isInstanceOfSatisfying(BizException.class,
+                            error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.BAD_REQUEST));
+        }
+        assertThat(count("ord_pricing_template")).isEqualTo(3);
+    }
+
     @BeforeEach
     void reset() {
         jdbc.execute("DELETE FROM ord_pricing_template");

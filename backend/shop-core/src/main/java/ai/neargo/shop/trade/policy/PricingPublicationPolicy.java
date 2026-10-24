@@ -14,12 +14,15 @@ import tools.jackson.core.StreamReadFeature;
 import tools.jackson.databind.json.JsonMapper;
 import java.util.TreeMap;
 import java.util.function.Supplier;
+import java.util.function.Function;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.CompilationResult;
+import ai.neargo.shop.common.pricing.PricingCapabilities;
+import ai.neargo.shop.common.pricing.PricingRuleCatalog;
 import ai.neargo.shop.common.pricing.PricingConfigCompiler;
 import ai.neargo.shop.common.pricing.SystemConstraints;
 import ai.neargo.shop.event.OutboxEventBus;
@@ -57,7 +60,6 @@ import tools.jackson.databind.ObjectMapper;
 /** Same-store explicit SQL predicates and a short transaction own all publication writes, including receipts/events. */
 @Component
 public class PricingPublicationPolicy {
-    private static final String ENGINE = "PRICING_RULE_SPEC_V4";
 
     private final PricingTemplateMapper templates;
     private final PricingTemplateRevisionMapper templateRevisions;
@@ -105,7 +107,7 @@ public class PricingPublicationPolicy {
                         row.setName(req.name());
                         row.setStatus("ACTIVE");
                         row.setDraftVersion(0L);
-                        row.setDraftSchemaVersion(2);
+                        row.setDraftSchemaVersion(draftSchemaVersion(normalized.definition()));
                         row.setDraftContent(normalized.definition());
                         templates.insert(row);
                         return head(c, row.getTemplateNo(), true, false).draft();
@@ -113,18 +115,19 @@ public class PricingPublicationPolicy {
         });
     }
 
-    /** Initialization atomically publishes the empty override pinned to one immutable template revision. */
+    /** Initialization atomically publishes the explicit initial override pinned to one immutable template revision. */
     public RevisionVO initialize(Context c, InitializeReq req, String key) {
+        var normalized = normalize(req);
         return authorized(c, false, () -> {
-            reason(req.reason());
-            String endpoint = endpoint(c, "INIT", req.templateRevisionNo(), false);
-            String bodyHash = digest(canonical(req));
+            reason(normalized.reason());
+            String endpoint = endpoint(c, "INIT", normalized.templateRevisionNo(), false);
+            String bodyHash = digest(canonical(normalized));
             var completed = idempotency.findCompleted(key(key), endpoint, c.actorNo(), bodyHash, RevisionVO.class);
             if (completed.isPresent()) return completed.get();
-            var template = templateRevision(c, req.templateRevisionNo());
-            var compilation = compile(c, template.getDefinitionSnapshot(), "{}");
+            var template = templateRevision(c, normalized.templateRevisionNo());
+            var compilation = compile(c, template.getDefinitionSnapshot(), normalized.initialOverride());
             requireValid(compilation);
-            return write(c, "INIT", req.templateRevisionNo(), false, req, key, RevisionVO.class, () -> {
+            return write(c, "INIT", normalized.templateRevisionNo(), false, normalized, key, RevisionVO.class, () -> {
                 fresh(c);
                 var row = new OrdStorePricingConfig();
                 audit(row, c);
@@ -135,12 +138,12 @@ public class PricingPublicationPolicy {
                 row.setTemplateNo(template.getTemplateNo());
                 row.setStatus("ACTIVE");
                 row.setDraftVersion(0L);
-                row.setDraftSchemaVersion(2);
-                row.setDraftOverride("{}");
+                row.setDraftSchemaVersion(compilation.config().definition().schemaVersion());
+                row.setDraftOverride(normalized.initialOverride());
                 row.setDraftTemplateRevisionNo(template.getRevisionNo());
                 stores.insert(row);
                 var current = head(c, row.getConfigNo(), false, true);
-                return append(c, current, compilation, template.getRevisionNo(), "{}", req.reason(), null, false);
+                return append(c, current, compilation, template.getRevisionNo(), normalized.initialOverride(), normalized.reason(), null, false);
             });
         });
     }
@@ -174,10 +177,11 @@ public class PricingPublicationPolicy {
         return authorized(c, false, () -> write(c, "RESET", no, false, req, key, DraftVO.class, () -> {
             var head = head(c, no, false, true);
             expected(head, req.expectedDraftVersion(), head.draft().activeRevisionNo());
-            fresh(c);
             var template = templateRevision(c, head.draft().templateRevisionNo());
+            // Draft-only syntax/path validation is not an owner capability grant or a publication.
             var validation = compiler.compile(template.getDefinitionSnapshot(), head.draft().content(),
-                    Set.copyOf(req.paths()), SystemConstraints.standard(), c.capabilities());
+                    Set.copyOf(req.paths()), SystemConstraints.standard(),
+                    new PricingCapabilities(8, 4, true, true, true));
             requireValid(validation);
             var patch = (ObjectNode) json.readTree(head.draft().content());
             for (String path : req.paths()) {
@@ -202,6 +206,45 @@ public class PricingPublicationPolicy {
             change(c, head, head.draft().content(), template.getRevisionNo(), head.draft().activeRevisionNo(), false);
             return head(c, no, false, false).draft();
         }));
+    }
+
+    /** API callers retain receipt recovery even if a live owner has become unavailable since success. */
+    public RevisionVO publish(Context identity, String no, PublishReq req, String key, boolean template,
+            Supplier<Context> evidence) {
+        return resolveForCommand(identity, "PUBLISH", no, req, key, template, evidence,
+                live -> publish(live, no, req, key, template));
+    }
+
+    public RevisionVO initialize(Context identity, InitializeReq req, String key, Supplier<Context> evidence) {
+        var normalized = normalize(req);
+        return resolveForCommand(identity, "INIT", normalized.templateRevisionNo(), normalized, key, false, evidence,
+                live -> initialize(live, normalized, key));
+    }
+
+    private RevisionVO resolveForCommand(Context identity, String op, String no, Object req, String key,
+            boolean template, Supplier<Context> evidence, Function<Context, RevisionVO> action) {
+        var completed = authorized(identity, template, () -> idempotency.findCompleted(key(key),
+                endpoint(identity, op, no, template), identity.actorNo(),
+                    digest(canonical(req)), RevisionVO.class));
+        if (completed.isPresent()) return completed.get();
+        try {
+            // Do not propagate the config SQL data-scope bypass into an external evidence owner.
+            Context live = evidence.get();
+            if (live == null || !Objects.equals(identity.tenantNo(), live.tenantNo())
+                    || !Objects.equals(identity.actorNo(), live.actorNo())
+                    || !Objects.equals(identity.entityNo(), live.entityNo())
+                    || !Objects.equals(identity.storeNo(), live.storeNo())
+                    || identity.platformOperator() != live.platformOperator()) {
+                throw BizException.of(ErrorCode.FORBIDDEN);
+            }
+            return action.apply(live);
+        } catch (BizException blocked) {
+            var raced = authorized(identity, template, () -> idempotency.findCompleted(key,
+                    endpoint(identity, op, no, template), identity.actorNo(),
+                    digest(canonical(req)), RevisionVO.class));
+            if (raced.isPresent()) return raced.get();
+            throw blocked;
+        }
     }
 
     public PreviewVO preview(Context c, String no, long version, String rollbackFrom, boolean template) {
@@ -271,8 +314,10 @@ public class PricingPublicationPolicy {
 
     private CompilationResult compile(Context c, String definition, String patch) {
         fresh(c);
-        var result = compiler.compile(definition, patch, SystemConstraints.standard(), c.capabilities());
-        if (result.valid()) {
+        var result = c.platformOperator()
+                ? compiler.compileDefinition(definition, SystemConstraints.standard())
+                : compiler.compile(definition, patch, SystemConstraints.standard(), c.capabilities());
+        if (result.valid() && !c.platformOperator()) {
             String profile = result.config().definition().taxBinding().taxProfileNo();
             if (profile != null && !c.verifiedTaxProfiles().contains(profile)) throw bad();
         }
@@ -297,8 +342,9 @@ public class PricingPublicationPolicy {
             row.setSchemaVersion(compilation.config().definition().schemaVersion());
             row.setDefinitionSnapshot(effective);
             row.setDefinitionHash(hash);
-            row.setEngineSpecVersion(ENGINE);
-            row.setRuleCatalogVersion(digest(canonical(SystemConstraints.standard().rules())));
+            row.setEngineSpecVersion(PricingRuleCatalog.registryVersion(
+                    compilation.config().definition().schemaVersion()));
+            row.setRuleCatalogVersion(digest(canonical(compilation.config().rules())));
             row.setPreviousRevisionNo(previous);
             row.setPublishedAt(LocalDateTime.now());
             row.setPublishedBy(c.actorNo());
@@ -318,8 +364,9 @@ public class PricingPublicationPolicy {
             row.setEffectiveSnapshot(effective);
             row.setSchemaVersion(compilation.config().definition().schemaVersion());
             row.setEffectiveHash(hash);
-            row.setEngineSpecVersion(ENGINE);
-            row.setRuleCatalogVersion(digest(canonical(SystemConstraints.standard().rules())));
+            row.setEngineSpecVersion(PricingRuleCatalog.registryVersion(
+                    compilation.config().definition().schemaVersion()));
+            row.setRuleCatalogVersion(digest(canonical(compilation.config().rules())));
             row.setPreviousRevisionNo(previous);
             row.setRollbackFromRevisionNo(rollback);
             row.setPublishedAt(LocalDateTime.now());
@@ -333,6 +380,12 @@ public class PricingPublicationPolicy {
         return revision(c, head.draft().no(), no, template);
     }
 
+    private int draftSchemaVersion(String definition) {
+        var declared = json.readTree(definition).path("schemaVersion");
+        // Incomplete drafts remain admissible; their legacy marker never grants compilation validity.
+        return declared.isIntegralNumber() && declared.canConvertToInt() ? declared.asInt() : 2;
+    }
+
     private void change(Context c, Head head, String content, String templateRevision, String active,
                     boolean template) {
         long version = head.draft().draftVersion();
@@ -340,7 +393,8 @@ public class PricingPublicationPolicy {
         if (template) {
             var update = new UpdateWrapper<OrdPricingTemplate>().eq("tenant_no", c.tenantNo())
                     .eq("template_no", head.draft().no()).eq("draft_version", version).eq("status", "ACTIVE")
-                    .set("draft_content", content).set("draft_version", Math.addExact(version, 1))
+                    .set("draft_content", content).set("draft_schema_version", draftSchemaVersion(content))
+                    .set("draft_version", Math.addExact(version, 1))
                     .set("active_revision_no", active).set("updated_at", LocalDateTime.now())
                     .set("updated_by", c.actorNo())
                     .setSql("version = version + 1");
@@ -351,7 +405,9 @@ public class PricingPublicationPolicy {
             var update = new UpdateWrapper<OrdStorePricingConfig>().eq("tenant_no", c.tenantNo())
                     .eq("entity_no", c.entityNo()).eq("store_no", c.storeNo()).eq("config_no", head.draft().no())
                     .eq("draft_version", version).eq("status", "ACTIVE").set("draft_override", content)
-                    .set("draft_template_revision_no", templateRevision).set("draft_version", Math.addExact(version, 1))
+                    .set("draft_template_revision_no", templateRevision)
+                    .set("draft_schema_version", templateRevision(c, templateRevision).getSchemaVersion())
+                    .set("draft_version", Math.addExact(version, 1))
                     .set("active_revision_no", active).set("updated_at", LocalDateTime.now())
                     .set("updated_by", c.actorNo())
                     .setSql("version = version + 1");
@@ -388,6 +444,11 @@ public class PricingPublicationPolicy {
         var row = templateRevisions.selectOne(new QueryWrapper<OrdPricingTemplateRevision>()
                 .eq("tenant_no", c.tenantNo()).eq("revision_no", no));
         if (row == null) throw missing();
+        var definition = compiler.compileDefinition(row.getDefinitionSnapshot(), SystemConstraints.standard());
+        if (!definition.valid() || !digest(definition.config().canonicalJson()).equals(row.getDefinitionHash())
+                || !PricingRuleCatalog.registryVersion(definition.config().definition().schemaVersion())
+                        .equals(row.getEngineSpecVersion())
+                || !digest(canonical(definition.config().rules())).equals(row.getRuleCatalogVersion())) throw bad();
         return row;
     }
 
@@ -423,6 +484,11 @@ public class PricingPublicationPolicy {
     private String endpoint(Context c, String op, String no, boolean template) {
         return "PRICING:" + digest(canonical(Arrays.asList(op, no, template,
                 c.tenantNo(), c.entityNo(), c.storeNo())));
+    }
+
+    private InitializeReq normalize(InitializeReq request) {
+        if (request == null) throw bad();
+        return new InitializeReq(request.templateRevisionNo(), request.reason(), content(request.initialOverride()));
     }
 
     private String content(String value) {

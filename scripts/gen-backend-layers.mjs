@@ -34,7 +34,8 @@ const DOMAIN_CN = {
 };
 
 const files = [];
-(function walk(dir) {
+const pluginFiles = [];
+function walk(dir, output) {
   for (const f of readdirSync(dir)) {
     const p = join(dir, f);
     const st = statSync(p);
@@ -42,10 +43,14 @@ const files = [];
       // ⚠️ 是 continue 不是 return —— return 会把这个目录**剩下的条目全跳过**。
       // 第一版写成 return，于是排在 target/ 之后的兄弟目录整片没扫到。
       if (f === "target" || f === "test") continue;
-      walk(p);
-    } else if (f.endsWith(".java")) files.push(p);
+      walk(p, output);
+    } else if (f.endsWith(".java")) output.push(p);
   }
-})(BACKEND);
+}
+walk(BACKEND, files);
+// Industry-owned SPI implementations live outside backend; include them only in implementation lookup.
+// The module/domain inventory below retains its original backend-only counting boundary.
+walk(join(ROOT, "backend-plugins"), pluginFiles);
 
 /**
  * 「被实现过」的接口名。**从所有 java 文件收集，不能只从已分类的 rows 里收** ——
@@ -56,7 +61,7 @@ const files = [];
  * 实现落在下一层）、以及泛型参数要剥掉。
  */
 const implemented = new Set();
-for (const p of files) {
+for (const p of [...files, ...pluginFiles]) {
   const src = readFileSync(p, "utf8");
   for (const m of src.matchAll(/\b(?:class|interface)\s+\w+[^{]*?\b(?:implements|extends)\s+([^{]+?)\s*\{/gs)) {
     for (const t of m[1].split(",")) {
@@ -153,6 +158,7 @@ L.push(`统计：**Controller ${count("Controller")} · Service ${count("Service
 L.push("");
 
 L.push("## 对齐判据");
+L.push("\n> 实现查找包含 backend-plugins 行业插件；模块与域的数量仍仅统计 backend。\n");
 L.push("");
 L.push("| 判据 | 数 | 不对的后果 |");
 L.push("|---|---|---|");

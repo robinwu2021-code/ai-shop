@@ -111,7 +111,7 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
                 String msg = "微信下单未返回 prepay_id";
                 log.warn("[wechat-direct] {}（单号 {}）", msg, cmd.outTradeNo());
                 recorder.sent(payChannel(), WechatDirectApis.JSAPI, cmd.outTradeNo(), false, msg, body);
-                return PrepayResult.fail(msg);
+                return PrepayResult.unknown(msg);
             }
             recorder.sent(payChannel(), WechatDirectApis.JSAPI, cmd.outTradeNo(), true, null, body);
             log.info("[wechat-direct] 下单成功：单号 {}，金额 {} 分", cmd.outTradeNo(), cmd.amountMinor());
@@ -127,7 +127,7 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
                     e.getMessage(), cmd.outTradeNo(), e.isRetryable());
             recorder.sent(payChannel(), WechatDirectApis.JSAPI, cmd.outTradeNo(), false,
                     e.getMessage(), body);
-            return PrepayResult.fail(e.getMessage());
+            return PrepayResult.unknown(e.getMessage());
         }
     }
 

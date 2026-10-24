@@ -9,6 +9,9 @@ package ai.neargo.shop.common;
  */
 public enum ErrorCode {
 
+    /** No authentic capability/tax publication evidence; a saved draft is not permission to activate it. */
+    PRICING_OWNER_UNSUPPORTED(40190, "err.pricing.owner_unsupported"),
+
     // ---- 1xxxx 通用 ----
     BAD_REQUEST(10400, "err.bad_request"),
     UNAUTHORIZED(10401, "err.unauthorized"),

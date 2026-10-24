@@ -9,7 +9,7 @@ const {instance}=await import(process.env.FOOD_ER_VIZ_MODULE||'@viz-js/viz');con
 const dir=path.join(root,'docs/technical/design');
 const e=x=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const parse=x=>x?x.split(';').map(p=>{const [name,type,...d]=p.split(':');return {name:name.replace(/\?$/,''),type,desc:d.join(':'),required:!name.endsWith('?')}}):[];
-const header=title=>`# ${title}\n\n> 状态：待评审 · ${s.reviewDate||'2026-10-19'} · ${s.databaseInitialization?"V1含73张fnb_业务表；增强目标82张，V4新增2张配方草稿表、V5新增1张调整表、V6新增1张餐牌选配表、V7新增1张渠道草稿表、另4张PLANNED；可用迁移版本7，历史经营库执行证据仍V1/73；目标API不代表全部交付，prn/rpt保持共享候选":"目标设计，未执行迁移或实现端点"}。\n> 由 \`node scripts/gen-food-system-design.mjs\` 生成，勿手改；真源：[领域数据库API设计源](./schema/food-system-design.json)。生成依赖沿用 @viz-js/viz，可用 FOOD_ER_VIZ_MODULE 指定模块路径。\n> 业务入口：[后端业务模块功能清单](../../requirements/餐饮系统-后端业务模块功能清单.md) · [数据库与API评审对齐](../TDD-餐饮系统-数据库与API评审对齐.md)。按桌台→菜品→订单查阅，A–L仍保留为持久化分域编号。\n> 项目约束：[底座兼容对齐](./餐饮系统-项目底座兼容对齐.md)，账号、门店、营业时间、公共实体及协议冲突时优先按该对齐说明修订。
+const header=title=>`# ${title}\n\n> 状态：待评审 · ${s.reviewDate||'2026-10-19'} · ${s.databaseInitialization?"V1含73张fnb_业务表；增强目标82张，V4新增2张配方草稿表、V5新增1张调整表、V6新增1张餐牌选配表、V7新增1张渠道草稿表、另4张PLANNED；可用迁移版本8（新增结账/售后来源元数据），历史经营库执行证据仍V1/73；目标API不代表全部交付，prn/rpt保持共享候选":"目标设计，未执行迁移或实现端点"}。\n> 由 \`node scripts/gen-food-system-design.mjs\` 生成，勿手改；真源：[领域数据库API设计源](./schema/food-system-design.json)。生成依赖沿用 @viz-js/viz，可用 FOOD_ER_VIZ_MODULE 指定模块路径。\n> 业务入口：[后端业务模块功能清单](../../requirements/餐饮系统-后端业务模块功能清单.md) · [数据库与API评审对齐](../TDD-餐饮系统-数据库与API评审对齐.md)。按桌台→菜品→订单查阅，A–L仍保留为持久化分域编号。\n> 项目约束：[底座兼容对齐](./餐饮系统-项目底座兼容对齐.md)，账号、门店、营业时间、公共实体及协议冲突时优先按该对齐说明修订。
 > 产品依据：[完整需求文档](../../requirements/餐饮系统-完整需求文档.md) · [109项需求矩阵](../../requirements/餐饮系统-需求矩阵.md)。\n\n`;
 const statusNames={DEFINED:'目标已定义',CORE_CONTRACT:'依赖共享/核心合同',DESIGN_GAP:'尚缺专项设计'};
 const counts=Object.fromEntries(Object.keys(statusNames).map(k=>[k,s.requirementAlignment.filter(r=>r.status===k).length]));
@@ -62,6 +62,11 @@ if(s.catalogEnhancement){
  apiDoc+='\n## 九、增强跨域合同（目标交易合同与已实现只读管理分开验收）\n\n字段类型见上方DTO字典。主体、渠道由可信服务身份解析；终端不可自报价格策略授权。\n\n| 权威 | 输入DTO | 输出DTO | 实现状态 | 失败与恢复 |\n|---|---|---|---|---|\n';
  for(const [name,c] of Object.entries(s.catalogEnhancement.contracts))apiDoc+=`| ${name} / ${c.authority} | ${c.inputDto} | ${c.outputDto} | ${c.implementation} | ${c.errors.join('/')}；${c.queryRecovery} |\n`;
  apiDoc+='\nKeeta：首批规划渠道，按用户决定暂不接入；不注册真实适配器或同步任务。真实报价和库存合同未验收前，增强交易保持关闭。\n';
+}
+if(s.checkoutImplementation?.implementedApis){
+ apiDoc+='\n## 十、当前结账与售后实际合同（目标API清单的受控子集）\n\n完整目标保留在前文。以下按实际Controller/DTO登记，编译与测试证据见原开发计划§2.4和§6；列出端点不表示全部餐饮场景已完成。\n\n| 接口 | 输入 | 输出 | 授权及剩余边界 |\n|---|---|---|---|\n';
+ for(const a of s.checkoutImplementation.implementedApis)apiDoc+=`| \`${a.method} ${a.path}\` | ${a.input.replaceAll('|','/')} | ${a.output.replaceAll('|','/')} | ${a.authorization}；${a.remaining} |\n`;
+ apiDoc+='\n未实现目标：'+s.checkoutImplementation.targetReconciliation.unimplementedTargetApis.join('、')+'。台账范围结账FOOD-API-140仍未开放；当前按单一原批次冻结，不能代表AA或跨根结账。\n';
 }
 fs.writeFileSync(path.join(dir,'餐饮系统-API设计.md'),apiDoc);
 console.log(`Generated 3 design documents, ${groups.length} SVGs; ${s.tables.length} tables, ${s.apis.length} APIs, ${s.domains.reduce((n,d)=>n+d.requirements.length,0)} requirements`);

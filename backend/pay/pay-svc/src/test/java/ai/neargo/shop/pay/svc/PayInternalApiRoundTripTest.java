@@ -5,6 +5,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ai.neargo.shop.pay.service.PaymentLedgerService;
+import ai.neargo.shop.spi.pay.PayQueryPort;
+import ai.neargo.shop.spi.settle.OrdinaryPaymentPort;
+import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.pay.service.OrdinaryPaymentInitiationService;
+import ai.neargo.shop.pay.client.PayOrdinaryPaymentRequests;
+import ai.neargo.shop.pay.service.RefundExecutionService;
+import ai.neargo.shop.spi.settle.OrdinaryRefundPort;
+import ai.neargo.shop.spi.settle.RefundRequest;
+import ai.neargo.shop.spi.settle.RefundDispatchResult;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.common.CursorPage;
 import ai.neargo.shop.pay.client.PayStoredValueConsumerRequests;
@@ -144,6 +154,86 @@ class PayInternalApiRoundTripTest {
         verify(consumerReads).records(ctx,"STORE_A","ALL",at,null,"EU20261021000001",null,20);
         assertThatThrownBy(()->ServiceCalls.call(ServiceName.PAY,()->api("wrong").svConsumerRecords(request)))
                 .isInstanceOfSatisfying(ServiceCallException.class,e->assertThat(e.statusCode()).isEqualTo(401));
+    }
+
+
+    @MockitoBean
+    private PaymentLedgerService paymentLedger;
+
+    @MockitoBean
+    private PayQueryPort paymentQueries;
+
+    @Test
+    void ordinaryLedgerContractKeepsExactRetryReferenceOwnershipAndChannelUncertainty() {
+        var reference = new OrdinaryPaymentPort.Reference("O1", "U1", "O1-2");
+        var attempt = new OrdinaryPaymentPort.Attempt(
+                "P1", "O1-2", "O1", "U1", "E1", "WECHAT", null, 123L, "USD", "PENDING", "D1");
+        var command = new SettlePort.PaymentOpen(
+                "O1", "U1", "E1", "WECHAT", 123, "items", "USD", List.of());
+        when(paymentLedger.open(command)).thenReturn("O1-2");
+        when(paymentLedger.ordinaryPayment("O1-2")).thenReturn(attempt);
+        assertThat(api("tk").ordinaryPaymentOpen(command)).isEqualTo(attempt);
+        assertThat(api("tk").ordinaryPaymentQuery(reference).payment()).isEqualTo(attempt);
+        when(paymentLedger.successfulOrdinaryPayment("O1")).thenReturn(null);
+        assertThat(api("tk").ordinaryPaymentSuccess(
+                new OrdinaryPaymentPort.OrderReference("O1", "U1")).found()).isFalse();
+        when(paymentQueries.query("WECHAT", "O1-2"))
+                .thenReturn(new PayQueryPort.Result(false, false, false, 0, null, null));
+        var outcome = api("tk").ordinaryPaymentChannelQuery(reference);
+        assertThat(outcome.status()).isEqualTo(OrdinaryPaymentPort.ChannelStatus.UNKNOWN);
+        assertThat(outcome.amountMinor()).isNull();
+        assertThat(outcome.currency()).isNull();
+        assertThatThrownBy(() -> ServiceCalls.call(ServiceName.PAY,
+                () -> api("wrong").ordinaryPaymentQuery(reference)))
+                .isInstanceOfSatisfying(ServiceCallException.class, e -> assertThat(e.statusCode()).isEqualTo(401));
+        assertThatThrownBy(() -> ServiceCalls.call(ServiceName.PAY,
+                () -> api("tk").ordinaryPaymentQuery(
+                        new OrdinaryPaymentPort.Reference("OTHER", "U1", "O1-2"))))
+                .isInstanceOf(ServiceCallException.class);
+    }
+    @MockitoBean
+    private OrdinaryPaymentInitiationService ordinaryInitiation;
+
+    @Test
+    void ordinaryInitiationCarriesTrustedIdentityContextAndReturnsActualGatewayParams() {
+        var payment = new SettlePort.PaymentOpen("OI1", "UI1", "EI1", "WECHAT", 120,
+                "items", "USD", List.of());
+        var payer = new PayOrdinaryPaymentRequests.PayerIdentity(
+                "UI1", "OI1", "openid-original", "APP1",
+                PayOrdinaryPaymentRequests.hash(payment));
+        var expected = new SettlePort.PayInitResult(true, "OI1-2", "WECHAT", Map.of("package", "prepay_id=p1"), null);
+        when(ordinaryInitiation.initiate(payment, payer)).thenReturn(expected);
+        var command = new PayOrdinaryPaymentRequests.Initiate(payment, payer);
+        assertThat(api("tk").ordinaryPaymentInitiate(command)).isEqualTo(expected);
+        verify(ordinaryInitiation).initiate(payment, payer);
+    }
+
+    @MockitoBean
+    private RefundExecutionService refundExecution;
+
+    @Test
+    void ordinaryRefundRoundTripPreservesFrozenOwnerCoordinatesAndUnknownOutcome() {
+        var original = new OrdinaryPaymentPort.Attempt("P-RF", "O-RF-2", "O-RF", "U-RF", "E-RF",
+                "WECHAT", "TX-RF", 120L, "USD", "SUCCESS", "DOC-RF");
+        when(paymentLedger.ordinaryPayment("O-RF-2")).thenReturn(original);
+        var frozen = new RefundRequest("RF1", "AS1", "S1", "P-RF", 50, "USD", "return");
+        var command = new OrdinaryRefundPort.Execution("O-RF", "U-RF", "O-RF-2", frozen);
+        var outcome = new RefundDispatchResult("RF1", "REFUND-P1",
+                RefundDispatchResult.DispatchStatus.UNKNOWN,
+                "REFUND_QUERY_UNKNOWN", true, null);
+        when(refundExecution.request(frozen)).thenReturn(outcome);
+        when(refundExecution.query(frozen)).thenReturn(outcome);
+        var expected = new OrdinaryRefundPort.Receipt(command, outcome);
+        assertThat(api("tk").ordinaryRefundRequest(command)).isEqualTo(expected);
+        assertThat(api("tk").ordinaryRefundQuery(command)).isEqualTo(expected);
+        verify(refundExecution).request(frozen);
+        verify(refundExecution).query(frozen);
+        assertThatThrownBy(() -> ServiceCalls.call(ServiceName.PAY,
+                () -> api("wrong").ordinaryRefundRequest(command)))
+                .isInstanceOfSatisfying(ServiceCallException.class, e -> assertThat(e.statusCode()).isEqualTo(401));
+        var foreign = new OrdinaryRefundPort.Execution("O-RF", "OTHER", "O-RF-2", frozen);
+        assertThatThrownBy(() -> ServiceCalls.call(ServiceName.PAY, () -> api("tk").ordinaryRefundRequest(foreign)))
+                .isInstanceOf(ServiceCallException.class);
     }
 
 }

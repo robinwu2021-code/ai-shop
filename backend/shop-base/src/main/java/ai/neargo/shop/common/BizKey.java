@@ -95,6 +95,10 @@ public final class BizKey {
     public static final String COMMUNITY_APPLY = "CA";
     public static final String GOODS = "G";
     public static final String SKU = "SK";
+    /** 报价资金来源日志，仅绑定报价生命周期，不代表扣款授权。 */
+    public static final String PRICING_FUNDING_SOURCE = "PFS";
+    /** Store SKU promotion eligibility and merchant tax classification. */
+    public static final String SKU_PRICING_POLICY = "SPP";
     public static final String SPEC_TEMPLATE = "SPT";
     /** 平台标准品（TDD-标准品库）。种子用的是 STD1xxx/STD2xxx，新建走这个前缀 */
     public static final String SPU_STD = "STD";

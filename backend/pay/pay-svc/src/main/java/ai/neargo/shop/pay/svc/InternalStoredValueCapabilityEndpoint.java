@@ -1,6 +1,7 @@
 package ai.neargo.shop.pay.svc;
 
 import ai.neargo.shop.pay.client.PayInternalPaths;
+import ai.neargo.shop.pay.client.PayCapabilityRequests;
 import ai.neargo.shop.pay.client.PayStoredValueRequests;
 import ai.neargo.shop.spi.storedvalue.StoredValueCapabilityPort;
 import ai.neargo.shop.svc.InternalHttp;
@@ -23,5 +24,10 @@ public class InternalStoredValueCapabilityEndpoint {
     public ResponseEntity<?> status(@RequestBody PayStoredValueRequests.Capabilities r,
             @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given) {
         return InternalServiceResponses.invoke(token,given,() -> owner.status(r.tenantNo()));
+    }
+    @PostMapping(PayInternalPaths.SV_PRICING_CAPABILITIES)
+    public ResponseEntity<?> pricing(@RequestBody PayCapabilityRequests.Pricing request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String supplied) {
+        return InternalServiceResponses.invoke(token, supplied, () -> owner.pricing(request.scope()));
     }
 }

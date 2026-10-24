@@ -7,11 +7,11 @@ export type AccountView_a2884d5da1 = { "accountRef"?: string | null; "availableM
 
 export type Account_fe73b25b80 = { "accountRef"?: string | null; "availableMinor"?: number; "currency"?: string | null; };
 
-export type ActionView_d9019e9a24 = { "actionNo"?: string | null; "actorNo"?: string | null; "createdAt"?: string | null; "exceptionNo"?: string | null; "operationKind"?: string | null; "reason"?: string | null; "status"?: string | null; "updatedAt"?: string | null; };
+export type ActionView_d9019e9a24 = { "actionNo"?: string | null; "actorNo"?: string | null; "createdAt"?: string | null; "documentNo"?: string | null; "exceptionNo"?: string | null; "operationKind"?: string | null; "reason"?: string | null; "status"?: string | null; "updatedAt"?: string | null; };
 
 export type ActivationQuote_6d02c39a9d = { "activationAction"?: "NONE" | "ON_FIRST_COMMIT" | null; "effectiveFrom"?: string | null; "effectiveUntil"?: string | null; "instanceNo"?: string | null; "periodBasis"?: string | null; "startBasis"?: string | null; };
 
-export type ActivityView_976c03ce3f = { "activityNo"?: string | null; "currentVersionNo"?: string | null; "definition"?: UnifiedActivityDefinition_d13b99bbf6 | null; "revision"?: number; "status"?: string | null; };
+export type ActivityView_976c03ce3f = { "activityNo"?: string | null; "currentVersionNo"?: string | null; "definition"?: UnifiedActivityDefinition_d13b99bbf6 | null; "documentNo"?: string | null; "revision"?: number; "status"?: string | null; };
 
 export type AllowanceView_b79b036036 = { "dayLimit"?: number | null; "dayRemaining"?: number | null; "dayReserved"?: number | null; "dayUsed"?: number | null; "instanceNo"?: string | null; "serviceDay"?: string | null; "totalRemaining"?: number | null; "zone"?: string | null; };
 
@@ -21,7 +21,7 @@ export type AuthorizationCommand_7591095b56 = { "orderRevision"?: number; "quote
 
 export type AuthorizationView_7b695158e3 = { "authorizationRef"?: string | null; "expiresAt"?: string | null; "operationNo"?: string | null; "status"?: string | null; "useStatus"?: string | null; };
 
-export type BatchView_622771cd8a = { "batchNo"?: string | null; "failedCount"?: number; "issuedCount"?: number; "pendingCount"?: number; "plannedCount"?: number; "results"?: Array<Item_06c68c6f28> | null; "skippedCount"?: number; "status"?: string | null; };
+export type BatchView_622771cd8a = { "batchNo"?: string | null; "documentNo"?: string | null; "failedCount"?: number; "issuedCount"?: number; "pendingCount"?: number; "plannedCount"?: number; "results"?: Array<Item_06c68c6f28> | null; "skippedCount"?: number; "status"?: string | null; };
 
 export type BenefitClaimCommand_e6847a3141 = { "activityNo"?: string | null; "activityVersionNo"?: string | null; "entityNo"?: string | null; "storeNo"?: string | null; "templateVersionNo"?: string | null; };
 
@@ -36,6 +36,8 @@ export type CancelRequest_3a23a3fd60 = { "reason"?: string | null; };
 export type CancelRequest_55d90a72a8 = { "expectedRevision"?: number; "reason"?: string | null; };
 
 export type Candidate_26d715df44 = { "account"?: Account_fe73b25b80 | null; "canRecharge"?: boolean; "displayName"?: string | null; "memberNo"?: string | null; "memberStatus"?: string | null; "phoneMasked"?: string | null; "unavailableReason"?: string | null; };
+
+export type Capability_b04b79f443 = { "available"?: boolean; "channel"?: string | null; "reasonCode"?: string | null; "templateId"?: string | null; };
 
 export type CardProductBindingView_7e26a87ef7 = { "bindingRevision"?: number; "currency"?: string | null; "goodsNo"?: string | null; "productRevision"?: number; "skuNo"?: string | null; "status"?: string | null; "templateVersionNo"?: string | null; "unitsPerItem"?: number; };
 
@@ -61,6 +63,8 @@ export type CreateRequest_6c84c85148 = { "customerRef"?: string | null; "planNo"
 
 export type Create_e8b2342d73 = { "bonusAmountMinor"?: number; "currency"?: string | null; "name"?: string | null; "paidAmountMinor"?: number; "storeNo"?: string | null; };
 
+export type CursorPage_17f0e48d34 = { "hasMore"?: boolean; "nextCursor"?: string | null; "records"?: Array<Store_c046f1b128> | null; };
+
 export type CursorPage_18a4b8942c = { "hasMore"?: boolean; "nextCursor"?: string | null; "records"?: Array<AccountView_a2884d5da1> | null; };
 
 export type CursorPage_196417b701 = { "hasMore"?: boolean; "nextCursor"?: string | null; "records"?: Array<RecordView_c8b429540b> | null; };
@@ -71,8 +75,6 @@ export type CursorPage_47cc766c65 = { "hasMore"?: boolean; "nextCursor"?: string
 
 export type CursorPage_583b14cff2 = { "hasMore"?: boolean; "nextCursor"?: string | null; "records"?: Array<UsageItem_7a93ce2544> | null; };
 
-export type CursorPage_938d18590d = { "hasMore"?: boolean; "nextCursor"?: string | null; "records"?: Array<StoreItem_443598882d> | null; };
-
 export type CustomerReference_0a9cd90168 = { "customerRef"?: string | null; "expiresAt"?: string | null; "maskedName"?: string | null; };
 
 export type DeadLetterPage_9938252721 = { "nextCursor"?: string | null; "records"?: Array<DeadLetter_cc6965053c> | null; };
@@ -81,7 +83,7 @@ export type DeadLetter_cc6965053c = { "aggregateNo"?: string | null; "attempts"?
 
 export type DeliveryEvidence_86f5e63f74 = { "attempts"?: number; "eventNo"?: string | null; "eventType"?: string | null; "status"?: string | null; };
 
-export type DiffView_45537e1661 = { "diffKind"?: string | null; "diffNo"?: string | null; "entityNo"?: string | null; "reconNo"?: string | null; "resourceNo"?: string | null; "status"?: string | null; };
+export type DiffView_45537e1661 = { "diffKind"?: string | null; "diffNo"?: string | null; "documentNo"?: string | null; "entityNo"?: string | null; "reconNo"?: string | null; "resourceNo"?: string | null; "status"?: string | null; };
 
 export type DraftRequest_1fb0a22ae2 = { "allowedIssueModes": Array<string>; "benefitCapMinor"?: number | null; "benefitMode": string; "benefitRef"?: string | null; "benefitValue"?: number | null; "currency": string; "dailyUnits"?: number | null; "expectedRevision"?: number | null; "funder": string; "kind": string; "minAmountMinor"?: number | null; "minQty"?: number | null; "redemptionScope": RedemptionScope_6f42b23f52; "title": string; "totalUnits"?: number | null; "usageModel": string; "validity": Validity_eaa8530e32; };
 
@@ -95,7 +97,9 @@ export type EntitlementItem_573170a672 = { "dailyRemaining"?: number | null; "ef
 
 export type Evidence_3fa6c24df7 = { "delivery"?: DeliveryEvidence_86f5e63f74 | null; "grantNo"?: string | null; "grantStatus"?: string | null; "reasonCode"?: string | null; "sourceStatus"?: string | null; "sourceType"?: string | null; };
 
-export type ExceptionView_32cdf5b5f3 = { "bizNo"?: string | null; "entityNo"?: string | null; "evidence"?: Evidence_3fa6c24df7 | null; "exceptionNo"?: string | null; "kind"?: string | null; "lastAction"?: string | null; "revision"?: number; "status"?: string | null; };
+export type ExceptionView_32cdf5b5f3 = { "bizNo"?: string | null; "documentNo"?: string | null; "entityNo"?: string | null; "evidence"?: Evidence_3fa6c24df7 | null; "exceptionNo"?: string | null; "kind"?: string | null; "lastAction"?: string | null; "revision"?: number; "status"?: string | null; };
+
+export type Filter_9bcdb949eb = { "endDate"?: string | null; "startDate"?: string | null; "type"?: string | null; };
 
 export type FreezeCommand_ce62c49cc0 = { "action"?: string | null; "expectedAssetRevision"?: number; "reason"?: string | null; };
 
@@ -109,7 +113,13 @@ export type Item_c3bc12262d = { "itemNo"?: string | null; "quantity"?: number; "
 
 export type Line_d9b60e0992 = { "quantity"?: number; "skuNo"?: string | null; };
 
+export type Lookup_a07b55a2c3 = { "issuer"?: View_ffb58b55b6 | null; };
+
+export type MaintenanceResult_15d8775d82 = { "accountCount"?: number; "inventoryHash"?: string | null; "issuerCount"?: number; "manifestNo"?: string | null; "receiptNo"?: string | null; "state"?: string | null; };
+
 export type ManagedTemplateView_8b7b3c18f2 = { "currentVersionNo"?: string | null; "draft"?: EntitlementDefinition_c8eae6a14c | null; "issuePolicy"?: PolicyView_d97fd919de | null; "revision"?: number; "status"?: string | null; "templateNo"?: string | null; };
+
+export type Manifest_cfcba47797 = { "accountCount"?: number; "authorityHash"?: string | null; "fingerprint"?: string | null; "manifestNo"?: string | null; };
 
 export type MarketBrief_2df960aa68 = { "currency"?: string | null; "currencyScale"?: number; "displayRate"?: number; "enabled"?: boolean; "market"?: string | null; "name"?: string | null; "timeZone"?: string | null; };
 
@@ -175,7 +185,11 @@ export type ReceiveRequest_bd5ee73df5 = { "confirmationNote"?: string | null; "e
 
 export type RechargeIntentCreate_9560cdf9fe = { "activityNo"?: string | null; "customerRef"?: string | null; "storeNo"?: string | null; "tierNo"?: string | null; "versionNo"?: string | null; };
 
-export type RecordView_c8b429540b = { "balanceAfterMinor"?: number; "bonusAmountMinor"?: number | null; "businessNo"?: string | null; "currency"?: string | null; "maskedName"?: string | null; "maskedPhone"?: string | null; "occurredAt"?: string | null; "paidAmountMinor"?: number | null; "planNo"?: string | null; "recordNo"?: string | null; "signedAmountMinor"?: number; "storeName"?: string | null; "storeNo"?: string | null; "title"?: string | null; "type"?: string | null; "versionNo"?: string | null; };
+export type RecordView_c8b429540b = { "balanceAfterMinor"?: number; "bonusAmountMinor"?: number | null; "businessNo"?: string | null; "currency"?: string | null; "documentNo"?: string | null; "maskedName"?: string | null; "maskedPhone"?: string | null; "occurredAt"?: string | null; "paidAmountMinor"?: number | null; "planNo"?: string | null; "recordNo"?: string | null; "signedAmountMinor"?: number; "storeName"?: string | null; "storeNo"?: string | null; "title"?: string | null; "type"?: string | null; "versionNo"?: string | null; "voucherDocumentNo"?: string | null; };
+
+export type Record_c1eab0800c = { "currency"?: string | null; "documentNo"?: string | null; "occurredAt"?: string | null; "signedAmountMinor"?: number; "title"?: string | null; "type"?: string | null; };
+
+export type Records_7fae5113cf = { "filter"?: Filter_9bcdb949eb | null; "hasMore"?: boolean; "nextCursor"?: string | null; "records"?: Array<Record_c1eab0800c> | null; "store"?: StoreHeader_90b0bbcc79 | null; };
 
 export type RecoveryCommand_b181030e56 = { "expectedExceptionRevision"?: number; "reason"?: string | null; };
 
@@ -183,13 +197,17 @@ export type RedemptionScope_4c3762ab1a = { "mode"?: string | null; "refs"?: Arra
 
 export type RedemptionScope_6f42b23f52 = { "mode"?: string | null; "refs"?: Array<string> | null; };
 
+export type Request_cb21faa468 = { "pauseReceiptNo"?: string | null; "storeNos"?: Array<string> | null; };
+
 export type ResolveView_e64f88b202 = { "found"?: boolean; "recharge"?: StoredValueRechargeProgress_ba849030ea | null; };
+
+export type Route_2dd9a77067 = { "channel"?: string | null; "entityNo"?: string | null; "paymentMerchantNo"?: string | null; "scene"?: string | null; "storeNo"?: string | null; };
 
 export type Rule_51f3b19c0f = { "benefits"?: Array<Benefit_4d5d7710e1> | null; "schemaVersion"?: number; "tiers"?: Array<Tier_dba41bccd4> | null; "trigger"?: Trigger_40fa2dfb77 | null; };
 
 export type Rule_9a9a06bfc5 = { "benefits"?: Array<Benefit_13d3750a52> | null; "schemaVersion"?: number; "tiers"?: Array<Tier_23536d895a> | null; "trigger"?: Trigger_eef765ed29 | null; };
 
-export type RunView_5f575b8ee6 = { "axis"?: string | null; "bizDate"?: string | null; "checkedCount"?: number; "currency"?: string | null; "diffCount"?: number; "entityNo"?: string | null; "marketZone"?: string | null; "nextCursor"?: string | null; "reconNo"?: string | null; "status"?: string | null; };
+export type RunView_5f575b8ee6 = { "axis"?: string | null; "bizDate"?: string | null; "checkedCount"?: number; "currency"?: string | null; "diffCount"?: number; "documentNo"?: string | null; "entityNo"?: string | null; "marketZone"?: string | null; "nextCursor"?: string | null; "reconNo"?: string | null; "status"?: string | null; };
 
 export type Schedule_461bb338ae = { "endAt"?: string | null; "from"?: string | null; "startAt"?: string | null; "to"?: string | null; "type"?: string | null; "weekdays"?: Array<number> | null; "zone"?: string | null; };
 
@@ -213,7 +231,9 @@ export type StatusRequest_3bef91a707 = { "expectedRevision": number; "status": s
 
 export type Status_78f06cee13 = { "expectedRevision"?: number; "status"?: string | null; "storeNo"?: string | null; };
 
-export type StoreItem_443598882d = { "entityNo"?: string | null; "lastActivityAt"?: string | null; "lastActivityType"?: "RECHARGE" | "CONSUMPTION" | null; "storeName"?: string | null; "storeNo"?: string | null; "storeStatus"?: string | null; };
+export type StoreHeader_90b0bbcc79 = { "businessTimeZone"?: string | null; "storeName"?: string | null; "storeNo"?: string | null; };
+
+export type Store_c046f1b128 = { "entityNo"?: string | null; "lastActivityAt"?: string | null; "lastActivityType"?: string | null; "lastOccurredAt"?: string | null; "lastType"?: string | null; "storeName"?: string | null; "storeNo"?: string | null; "storeStatus"?: string | null; };
 
 export type StoredValueBalanceView_a38761fe32 = { "applicableMinor"?: number | null; "availableMinor"?: number; "balanceMinor"?: number; "currency"?: string | null; "heldMinor"?: number; };
 
@@ -221,7 +241,7 @@ export type StoredValueConsumeRequest_6f8d934355 = { "authorizationRef"?: string
 
 export type StoredValueQuoteView_1a7792392a = { "amountMinor"?: number; "applicableMinor"?: number; "assetRevision"?: number; "currency"?: string | null; "expiresAt"?: string | null; "quoteRef"?: string | null; "reason"?: "OK" | "NO_ACCOUNT" | "FROZEN" | "INSUFFICIENT_APPLICABLE_BALANCE" | null; "redeemable"?: boolean; "selectionDigest"?: string | null; };
 
-export type StoredValueRechargeProgress_ba849030ea = { "creditedAt"?: string | null; "creditedTotalMinor"?: number | null; "currency"?: string | null; "entityNo"?: string | null; "paidAmountMinor"?: number | null; "receivedAt"?: string | null; "rechargeNo"?: string | null; "revision"?: number; "status"?: string | null; "storeNo"?: string | null; "userNo"?: string | null; };
+export type StoredValueRechargeProgress_ba849030ea = { "creditedAt"?: string | null; "creditedTotalMinor"?: number | null; "currency"?: string | null; "documentNo"?: string | null; "entityNo"?: string | null; "paidAmountMinor"?: number | null; "receivedAt"?: string | null; "rechargeNo"?: string | null; "revision"?: number; "status"?: string | null; "storeNo"?: string | null; "userNo"?: string | null; };
 
 export type SubmitRequest_059e35e2b5 = { "actualAmountMinor"?: number; "collectionMethod"?: "CASH" | "TRANSFER" | "MERCHANT_OFFLINE" | null; "expectedRevision"?: number; "receiptNo"?: string | null; };
 
@@ -245,7 +265,7 @@ export type UnifiedActivityDefinition_d13b99bbf6 = { "audienceRef"?: string | nu
 
 export type UsageDetail_d25a5d2ebd = { "items"?: Array<UseItem_26c295d6e3> | null; "remainingUnits"?: number | null; "serviceStaffName"?: string | null; "sourceOrderNo"?: string | null; "usage"?: UsageItem_7a93ce2544 | null; };
 
-export type UsageItem_7a93ce2544 = { "amountMinor"?: number | null; "assetKind"?: "ORDER_COUPON" | "STORE_EXCHANGE" | "PAID_CARD" | "STORED_VALUE" | null; "currency"?: string | null; "occurredAt"?: string | null; "status"?: string | null; "storeName"?: string | null; "storeNo"?: string | null; "title"?: string | null; "units"?: number | null; "usageNo"?: string | null; };
+export type UsageItem_7a93ce2544 = { "amountMinor"?: number | null; "assetKind"?: "ORDER_COUPON" | "STORE_EXCHANGE" | "PAID_CARD" | "STORED_VALUE" | null; "currency"?: string | null; "documentNo"?: string | null; "occurredAt"?: string | null; "status"?: string | null; "storeName"?: string | null; "storeNo"?: string | null; "title"?: string | null; "units"?: number | null; "usageNo"?: string | null; };
 
 export type UseItem_26c295d6e3 = { "amountMinor"?: number; "itemNo"?: string | null; "orderLineNo"?: string | null; "quantity"?: number; "title"?: string | null; };
 
@@ -256,6 +276,8 @@ export type Validity_eaa8530e32 = { "endAt"?: string | null; "mode"?: string | n
 export type VersionView_0c9d33a791 = { "activityNo"?: string | null; "definition"?: UnifiedActivityDefinition_d13b99bbf6 | null; "publishedAt"?: string | null; "snapshotHash"?: string | null; "versionIndex"?: number; "versionNo"?: string | null; };
 
 export type View_a11db9045d = { "bonusAmountMinor"?: number; "createdAt"?: string | null; "currency"?: string | null; "name"?: string | null; "paidAmountMinor"?: number; "planNo"?: string | null; "revision"?: number; "status"?: string | null; "storeNo"?: string | null; "totalAmountMinor"?: number; "updatedAt"?: string | null; "versionNo"?: string | null; };
+
+export type View_ffb58b55b6 = { "clearingMode"?: string | null; "collectionMode"?: string | null; "currency"?: string | null; "debitAllocationMode"?: string | null; "issuerNo"?: string | null; "issuerVersionNo"?: string | null; "marketZone"?: string | null; "name"?: string | null; "revision"?: number; "routes"?: Array<Route_2dd9a77067> | null; "scopeNo"?: string | null; "scopeType"?: string | null; "settlementEntityNo"?: string | null; "status"?: string | null; };
 
 export interface EntitlementBackendOperations {
   "BizVersionedActivityController_list": {
@@ -446,6 +468,41 @@ export interface EntitlementBackendOperations {
     headers: Record<string, never>;
     pathParams: { "instanceNo": string; };
     response: { "code": number; "data"?: EntitlementDetail_799d2fe4e1 | null; "msg": string; };
+  };
+  "BizStoredValueIssuerController_issuer": {
+    method: "GET";
+    path: "/biz/management/stored-value/issuers/{issuerNo}";
+    query: { "managementNo": string; };
+    headers: Record<string, never>;
+    pathParams: { "issuerNo": string; };
+    response: { "code": number; "data"?: Lookup_a07b55a2c3 | null; "msg": string; };
+  };
+  "BizStoredValueMigrationController_prepare": {
+    method: "POST";
+    path: "/biz/management/stored-value/migration-manifests";
+    query: Record<string, never>;
+    headers: { "Idempotency-Key": string; };
+    pathParams: Record<string, never>;
+    body: Request_cb21faa468;
+    response: { "code": number; "data"?: Manifest_cfcba47797 | null; "msg": string; };
+  };
+  "BizStoredValueMigrationController_map": {
+    method: "POST";
+    path: "/biz/management/stored-value/migration-manifests/{manifestNo}/map";
+    query: Record<string, never>;
+    headers: { "Idempotency-Key": string; };
+    pathParams: { "manifestNo": string; };
+    body: Request_cb21faa468;
+    response: { "code": number; "data"?: MaintenanceResult_15d8775d82 | null; "msg": string; };
+  };
+  "BizStoredValueMigrationController_pause": {
+    method: "POST";
+    path: "/biz/management/stored-value/migration-manifests/{manifestNo}/pause";
+    query: Record<string, never>;
+    headers: { "Idempotency-Key": string; };
+    pathParams: { "manifestNo": string; };
+    body: Request_cb21faa468;
+    response: { "code": number; "data"?: MaintenanceResult_15d8775d82 | null; "msg": string; };
   };
   "BizActivityMarketingSummaryController_summary": {
     method: "GET";
@@ -828,13 +885,29 @@ export interface EntitlementBackendOperations {
     pathParams: Record<string, never>;
     response: { "code": number; "data"?: CursorPage_583b14cff2 | null; "msg": string; };
   };
+  "MpStoredValueNotificationController_capability": {
+    method: "GET";
+    path: "/mp/stored-value/notification-capability";
+    query: Record<string, never>;
+    headers: Record<string, never>;
+    pathParams: Record<string, never>;
+    response: { "code": number; "data"?: Capability_b04b79f443 | null; "msg": string; };
+  };
+  "MpStoredValueController_records": {
+    method: "GET";
+    path: "/mp/stored-value/store/{storeNo}/records";
+    query: { "cursor"?: string; "endDate"?: string; "focusDocumentNo"?: string; "size"?: number; "startDate"?: string; "type"?: string; };
+    headers: Record<string, never>;
+    pathParams: { "storeNo": string; };
+    response: { "code": number; "data"?: Records_7fae5113cf | null; "msg": string; };
+  };
   "MpStoredValueController_stores": {
     method: "GET";
     path: "/mp/stored-value/stores";
     query: { "cursor"?: string; "size"?: number; };
     headers: Record<string, never>;
     pathParams: Record<string, never>;
-    response: { "code": number; "data"?: CursorPage_938d18590d | null; "msg": string; };
+    response: { "code": number; "data"?: CursorPage_17f0e48d34 | null; "msg": string; };
   };
   "OpsNotifyLogController_inAppMessages": {
     method: "GET";
@@ -963,4 +1036,4 @@ export interface EntitlementBackendOperations {
   };
 }
 
-export const ENTITLEMENT_BACKEND_ROUTES = [{"operationId":"BizVersionedActivityController_list","method":"GET","path":"/biz/activities"},{"operationId":"BizVersionedActivityController_save","method":"POST","path":"/biz/activities"},{"operationId":"BizVersionedActivityController_detail","method":"GET","path":"/biz/activities/{activityNo}"},{"operationId":"BizVersionedActivityController_publish","method":"POST","path":"/biz/activities/{activityNo}/publish"},{"operationId":"BizVersionedActivityController_status","method":"PUT","path":"/biz/activities/{activityNo}/status"},{"operationId":"BizActivityPresetController_activities","method":"GET","path":"/biz/activity-presets"},{"operationId":"BizCardProductBindingController_bind","method":"POST","path":"/biz/card-product-bindings"},{"operationId":"BizActivityPresetController_products","method":"GET","path":"/biz/card-product-presets"},{"operationId":"BizEntitlementIssueController_create","method":"POST","path":"/biz/entitlement-issue-batches"},{"operationId":"BizEntitlementIssueController_get","method":"GET","path":"/biz/entitlement-issue-batches/{batchNo}"},{"operationId":"BizEntitlementTemplateController_list","method":"GET","path":"/biz/entitlement-templates"},{"operationId":"BizEntitlementTemplateController_create","method":"POST","path":"/biz/entitlement-templates"},{"operationId":"BizEntitlementTemplateController_draft","method":"PUT","path":"/biz/entitlement-templates/{templateNo}/draft"},{"operationId":"BizEntitlementTemplateController_policy","method":"PUT","path":"/biz/entitlement-templates/{templateNo}/issue-policy"},{"operationId":"BizEntitlementTemplateController_publish","method":"POST","path":"/biz/entitlement-templates/{templateNo}/publish"},{"operationId":"BizEntitlementTemplateController_status","method":"PUT","path":"/biz/entitlement-templates/{templateNo}/status"},{"operationId":"BizEntitlementQueryController_usage","method":"GET","path":"/biz/entitlement-usage"},{"operationId":"BizEntitlementUseController_submit","method":"POST","path":"/biz/entitlement-uses"},{"operationId":"BizEntitlementUseController_preview","method":"POST","path":"/biz/entitlement-uses/preview"},{"operationId":"BizEntitlementUseController_query","method":"GET","path":"/biz/entitlement-uses/{operationNo}"},{"operationId":"BizEntitlementUseController_cancel","method":"POST","path":"/biz/entitlement-uses/{operationNo}/cancel"},{"operationId":"BizEntitlementQueryController_detail","method":"GET","path":"/biz/entitlements/{instanceNo}"},{"operationId":"BizActivityMarketingSummaryController_summary","method":"GET","path":"/biz/marketing-summary"},{"operationId":"BizMemberCodeController_resolve","method":"POST","path":"/biz/member-code/resolve"},{"operationId":"BizStoredValueMerchantQueryController_directory","method":"GET","path":"/biz/stored-value/account-directory"},{"operationId":"BizStoredValueController_balance","method":"GET","path":"/biz/stored-value/accounts"},{"operationId":"BizStoredValueMerchantQueryController_account","method":"GET","path":"/biz/stored-value/accounts/{accountRef}"},{"operationId":"BizStoredValueController_consume","method":"POST","path":"/biz/stored-value/consumptions"},{"operationId":"BizStoredValueController_previewConsumption","method":"POST","path":"/biz/stored-value/consumptions/preview"},{"operationId":"BizStoredValuePlanController_context","method":"GET","path":"/biz/stored-value/context"},{"operationId":"BizStoredValueCustomerController_candidates","method":"GET","path":"/biz/stored-value/customer-candidates"},{"operationId":"BizStoredValueCustomerController_select","method":"POST","path":"/biz/stored-value/customer-selections"},{"operationId":"BizStoredValuePlanRechargeController_create","method":"POST","path":"/biz/stored-value/plan-recharges"},{"operationId":"BizStoredValuePlanRechargeController_cancelCreation","method":"POST","path":"/biz/stored-value/plan-recharges/cancel-create"},{"operationId":"BizStoredValuePlanRechargeController_confirmOffline","method":"POST","path":"/biz/stored-value/plan-recharges/confirm-offline"},{"operationId":"BizStoredValuePlanRechargeController_resolve","method":"POST","path":"/biz/stored-value/plan-recharges/resolve"},{"operationId":"BizStoredValuePlanRechargeController_query","method":"GET","path":"/biz/stored-value/plan-recharges/{rechargeNo}"},{"operationId":"BizStoredValuePlanRechargeController_cancel","method":"POST","path":"/biz/stored-value/plan-recharges/{rechargeNo}/cancel"},{"operationId":"BizStoredValuePlanRechargeController_receive","method":"POST","path":"/biz/stored-value/plan-recharges/{rechargeNo}/receive"},{"operationId":"BizStoredValuePlanRechargeController_submit","method":"POST","path":"/biz/stored-value/plan-recharges/{rechargeNo}/submit"},{"operationId":"BizStoredValuePlanController_list","method":"GET","path":"/biz/stored-value/plans"},{"operationId":"BizStoredValuePlanController_create","method":"POST","path":"/biz/stored-value/plans"},{"operationId":"BizStoredValuePlanController_get","method":"GET","path":"/biz/stored-value/plans/{planNo}"},{"operationId":"BizStoredValuePlanController_status","method":"PUT","path":"/biz/stored-value/plans/{planNo}/status"},{"operationId":"BizStoredValueController_create","method":"POST","path":"/biz/stored-value/recharges"},{"operationId":"BizStoredValueController_query","method":"GET","path":"/biz/stored-value/recharges/{rechargeNo}"},{"operationId":"BizStoredValueController_cancel","method":"POST","path":"/biz/stored-value/recharges/{rechargeNo}/cancel"},{"operationId":"BizStoredValueController_receive","method":"POST","path":"/biz/stored-value/recharges/{rechargeNo}/receive"},{"operationId":"BizStoredValueController_submit","method":"POST","path":"/biz/stored-value/recharges/{rechargeNo}/submit"},{"operationId":"BizStoredValueMerchantQueryController_records","method":"GET","path":"/biz/stored-value/records"},{"operationId":"BizStoredValueMerchantQueryController_record","method":"GET","path":"/biz/stored-value/records/{recordNo}"},{"operationId":"MpEntitlementController_claim","method":"POST","path":"/mp/entitlement-claims"},{"operationId":"MpEntitlementController_query","method":"GET","path":"/mp/entitlement-claims/{intentNo}"},{"operationId":"MpEntitlementQuoteController_quote","method":"POST","path":"/mp/entitlement-quotes"},{"operationId":"MpEntitlementServiceOrderController_pendingServices","method":"GET","path":"/mp/entitlement-service-orders"},{"operationId":"MpEntitlementServiceOrderController_service","method":"GET","path":"/mp/entitlement-service-orders/{serviceOrderNo}"},{"operationId":"MpEntitlementController_historyList","method":"GET","path":"/mp/entitlement-usage"},{"operationId":"MpEntitlementController_usage","method":"GET","path":"/mp/entitlement-usage/{usageNo}"},{"operationId":"MpEntitlementController_mine","method":"GET","path":"/mp/entitlements"},{"operationId":"MpEntitlementController_detail","method":"GET","path":"/mp/entitlements/{instanceNo}"},{"operationId":"MpEntitlementController_activation","method":"POST","path":"/mp/entitlements/{instanceNo}/activation-quotes"},{"operationId":"MpEntitlementController_allowances","method":"GET","path":"/mp/entitlements/{instanceNo}/allowances"},{"operationId":"MpEntitlementController_code","method":"POST","path":"/mp/entitlements/{instanceNo}/redeem-codes"},{"operationId":"MpEntitlementController_history","method":"GET","path":"/mp/entitlements/{instanceNo}/usage"},{"operationId":"MpMemberCodeController_issue","method":"POST","path":"/mp/member-code"},{"operationId":"MpEntitlementAuthorizationController_confirm","method":"POST","path":"/mp/orders/{orderNo}/entitlement-authorizations"},{"operationId":"MpStoredValueController_consumptions","method":"GET","path":"/mp/stored-value/consumptions"},{"operationId":"MpStoredValueController_stores","method":"GET","path":"/mp/stored-value/stores"},{"operationId":"OpsNotifyLogController_inAppMessages","method":"GET","path":"/ops/inapp-messages"},{"operationId":"OpsNotifyLogController_list","method":"GET","path":"/ops/notify-logs"},{"operationId":"OpsEntitlementController_deadLetters","method":"GET","path":"/ops/pay/entitlement-dead-letters"},{"operationId":"OpsEntitlementController_list","method":"GET","path":"/ops/pay/entitlement-exceptions"},{"operationId":"OpsEntitlementController_get","method":"GET","path":"/ops/pay/entitlement-exceptions/{exceptionNo}"},{"operationId":"OpsEntitlementController_actions","method":"GET","path":"/ops/pay/entitlement-exceptions/{exceptionNo}/actions"},{"operationId":"OpsEntitlementController_source","method":"POST","path":"/ops/pay/entitlement-exceptions/{exceptionNo}/query-source"},{"operationId":"OpsEntitlementController_retryEvent","method":"POST","path":"/ops/pay/entitlement-exceptions/{exceptionNo}/retry-event"},{"operationId":"OpsEntitlementController_retry","method":"POST","path":"/ops/pay/entitlement-exceptions/{exceptionNo}/retry-grant"},{"operationId":"OpsEntitlementReconciliationController_list","method":"GET","path":"/ops/pay/entitlement-reconciliations"},{"operationId":"OpsEntitlementReconciliationController_check","method":"POST","path":"/ops/pay/entitlement-reconciliations"},{"operationId":"OpsEntitlementReconciliationController_get","method":"GET","path":"/ops/pay/entitlement-reconciliations/{reconNo}"},{"operationId":"OpsEntitlementReconciliationController_differences","method":"GET","path":"/ops/pay/entitlement-reconciliations/{reconNo}/differences"},{"operationId":"OpsEntitlementLifecycleController_freeze","method":"POST","path":"/ops/pay/entitlements/{instanceNo}/freeze"},{"operationId":"OpsEntitlementLifecycleController_state","method":"GET","path":"/ops/pay/entitlements/{instanceNo}/lifecycle"}] as const;
+export const ENTITLEMENT_BACKEND_ROUTES = [{"operationId":"BizVersionedActivityController_list","method":"GET","path":"/biz/activities"},{"operationId":"BizVersionedActivityController_save","method":"POST","path":"/biz/activities"},{"operationId":"BizVersionedActivityController_detail","method":"GET","path":"/biz/activities/{activityNo}"},{"operationId":"BizVersionedActivityController_publish","method":"POST","path":"/biz/activities/{activityNo}/publish"},{"operationId":"BizVersionedActivityController_status","method":"PUT","path":"/biz/activities/{activityNo}/status"},{"operationId":"BizActivityPresetController_activities","method":"GET","path":"/biz/activity-presets"},{"operationId":"BizCardProductBindingController_bind","method":"POST","path":"/biz/card-product-bindings"},{"operationId":"BizActivityPresetController_products","method":"GET","path":"/biz/card-product-presets"},{"operationId":"BizEntitlementIssueController_create","method":"POST","path":"/biz/entitlement-issue-batches"},{"operationId":"BizEntitlementIssueController_get","method":"GET","path":"/biz/entitlement-issue-batches/{batchNo}"},{"operationId":"BizEntitlementTemplateController_list","method":"GET","path":"/biz/entitlement-templates"},{"operationId":"BizEntitlementTemplateController_create","method":"POST","path":"/biz/entitlement-templates"},{"operationId":"BizEntitlementTemplateController_draft","method":"PUT","path":"/biz/entitlement-templates/{templateNo}/draft"},{"operationId":"BizEntitlementTemplateController_policy","method":"PUT","path":"/biz/entitlement-templates/{templateNo}/issue-policy"},{"operationId":"BizEntitlementTemplateController_publish","method":"POST","path":"/biz/entitlement-templates/{templateNo}/publish"},{"operationId":"BizEntitlementTemplateController_status","method":"PUT","path":"/biz/entitlement-templates/{templateNo}/status"},{"operationId":"BizEntitlementQueryController_usage","method":"GET","path":"/biz/entitlement-usage"},{"operationId":"BizEntitlementUseController_submit","method":"POST","path":"/biz/entitlement-uses"},{"operationId":"BizEntitlementUseController_preview","method":"POST","path":"/biz/entitlement-uses/preview"},{"operationId":"BizEntitlementUseController_query","method":"GET","path":"/biz/entitlement-uses/{operationNo}"},{"operationId":"BizEntitlementUseController_cancel","method":"POST","path":"/biz/entitlement-uses/{operationNo}/cancel"},{"operationId":"BizEntitlementQueryController_detail","method":"GET","path":"/biz/entitlements/{instanceNo}"},{"operationId":"BizStoredValueIssuerController_issuer","method":"GET","path":"/biz/management/stored-value/issuers/{issuerNo}"},{"operationId":"BizStoredValueMigrationController_prepare","method":"POST","path":"/biz/management/stored-value/migration-manifests"},{"operationId":"BizStoredValueMigrationController_map","method":"POST","path":"/biz/management/stored-value/migration-manifests/{manifestNo}/map"},{"operationId":"BizStoredValueMigrationController_pause","method":"POST","path":"/biz/management/stored-value/migration-manifests/{manifestNo}/pause"},{"operationId":"BizActivityMarketingSummaryController_summary","method":"GET","path":"/biz/marketing-summary"},{"operationId":"BizMemberCodeController_resolve","method":"POST","path":"/biz/member-code/resolve"},{"operationId":"BizStoredValueMerchantQueryController_directory","method":"GET","path":"/biz/stored-value/account-directory"},{"operationId":"BizStoredValueController_balance","method":"GET","path":"/biz/stored-value/accounts"},{"operationId":"BizStoredValueMerchantQueryController_account","method":"GET","path":"/biz/stored-value/accounts/{accountRef}"},{"operationId":"BizStoredValueController_consume","method":"POST","path":"/biz/stored-value/consumptions"},{"operationId":"BizStoredValueController_previewConsumption","method":"POST","path":"/biz/stored-value/consumptions/preview"},{"operationId":"BizStoredValuePlanController_context","method":"GET","path":"/biz/stored-value/context"},{"operationId":"BizStoredValueCustomerController_candidates","method":"GET","path":"/biz/stored-value/customer-candidates"},{"operationId":"BizStoredValueCustomerController_select","method":"POST","path":"/biz/stored-value/customer-selections"},{"operationId":"BizStoredValuePlanRechargeController_create","method":"POST","path":"/biz/stored-value/plan-recharges"},{"operationId":"BizStoredValuePlanRechargeController_cancelCreation","method":"POST","path":"/biz/stored-value/plan-recharges/cancel-create"},{"operationId":"BizStoredValuePlanRechargeController_confirmOffline","method":"POST","path":"/biz/stored-value/plan-recharges/confirm-offline"},{"operationId":"BizStoredValuePlanRechargeController_resolve","method":"POST","path":"/biz/stored-value/plan-recharges/resolve"},{"operationId":"BizStoredValuePlanRechargeController_query","method":"GET","path":"/biz/stored-value/plan-recharges/{rechargeNo}"},{"operationId":"BizStoredValuePlanRechargeController_cancel","method":"POST","path":"/biz/stored-value/plan-recharges/{rechargeNo}/cancel"},{"operationId":"BizStoredValuePlanRechargeController_receive","method":"POST","path":"/biz/stored-value/plan-recharges/{rechargeNo}/receive"},{"operationId":"BizStoredValuePlanRechargeController_submit","method":"POST","path":"/biz/stored-value/plan-recharges/{rechargeNo}/submit"},{"operationId":"BizStoredValuePlanController_list","method":"GET","path":"/biz/stored-value/plans"},{"operationId":"BizStoredValuePlanController_create","method":"POST","path":"/biz/stored-value/plans"},{"operationId":"BizStoredValuePlanController_get","method":"GET","path":"/biz/stored-value/plans/{planNo}"},{"operationId":"BizStoredValuePlanController_status","method":"PUT","path":"/biz/stored-value/plans/{planNo}/status"},{"operationId":"BizStoredValueController_create","method":"POST","path":"/biz/stored-value/recharges"},{"operationId":"BizStoredValueController_query","method":"GET","path":"/biz/stored-value/recharges/{rechargeNo}"},{"operationId":"BizStoredValueController_cancel","method":"POST","path":"/biz/stored-value/recharges/{rechargeNo}/cancel"},{"operationId":"BizStoredValueController_receive","method":"POST","path":"/biz/stored-value/recharges/{rechargeNo}/receive"},{"operationId":"BizStoredValueController_submit","method":"POST","path":"/biz/stored-value/recharges/{rechargeNo}/submit"},{"operationId":"BizStoredValueMerchantQueryController_records","method":"GET","path":"/biz/stored-value/records"},{"operationId":"BizStoredValueMerchantQueryController_record","method":"GET","path":"/biz/stored-value/records/{recordNo}"},{"operationId":"MpEntitlementController_claim","method":"POST","path":"/mp/entitlement-claims"},{"operationId":"MpEntitlementController_query","method":"GET","path":"/mp/entitlement-claims/{intentNo}"},{"operationId":"MpEntitlementQuoteController_quote","method":"POST","path":"/mp/entitlement-quotes"},{"operationId":"MpEntitlementServiceOrderController_pendingServices","method":"GET","path":"/mp/entitlement-service-orders"},{"operationId":"MpEntitlementServiceOrderController_service","method":"GET","path":"/mp/entitlement-service-orders/{serviceOrderNo}"},{"operationId":"MpEntitlementController_historyList","method":"GET","path":"/mp/entitlement-usage"},{"operationId":"MpEntitlementController_usage","method":"GET","path":"/mp/entitlement-usage/{usageNo}"},{"operationId":"MpEntitlementController_mine","method":"GET","path":"/mp/entitlements"},{"operationId":"MpEntitlementController_detail","method":"GET","path":"/mp/entitlements/{instanceNo}"},{"operationId":"MpEntitlementController_activation","method":"POST","path":"/mp/entitlements/{instanceNo}/activation-quotes"},{"operationId":"MpEntitlementController_allowances","method":"GET","path":"/mp/entitlements/{instanceNo}/allowances"},{"operationId":"MpEntitlementController_code","method":"POST","path":"/mp/entitlements/{instanceNo}/redeem-codes"},{"operationId":"MpEntitlementController_history","method":"GET","path":"/mp/entitlements/{instanceNo}/usage"},{"operationId":"MpMemberCodeController_issue","method":"POST","path":"/mp/member-code"},{"operationId":"MpEntitlementAuthorizationController_confirm","method":"POST","path":"/mp/orders/{orderNo}/entitlement-authorizations"},{"operationId":"MpStoredValueController_consumptions","method":"GET","path":"/mp/stored-value/consumptions"},{"operationId":"MpStoredValueNotificationController_capability","method":"GET","path":"/mp/stored-value/notification-capability"},{"operationId":"MpStoredValueController_records","method":"GET","path":"/mp/stored-value/store/{storeNo}/records"},{"operationId":"MpStoredValueController_stores","method":"GET","path":"/mp/stored-value/stores"},{"operationId":"OpsNotifyLogController_inAppMessages","method":"GET","path":"/ops/inapp-messages"},{"operationId":"OpsNotifyLogController_list","method":"GET","path":"/ops/notify-logs"},{"operationId":"OpsEntitlementController_deadLetters","method":"GET","path":"/ops/pay/entitlement-dead-letters"},{"operationId":"OpsEntitlementController_list","method":"GET","path":"/ops/pay/entitlement-exceptions"},{"operationId":"OpsEntitlementController_get","method":"GET","path":"/ops/pay/entitlement-exceptions/{exceptionNo}"},{"operationId":"OpsEntitlementController_actions","method":"GET","path":"/ops/pay/entitlement-exceptions/{exceptionNo}/actions"},{"operationId":"OpsEntitlementController_source","method":"POST","path":"/ops/pay/entitlement-exceptions/{exceptionNo}/query-source"},{"operationId":"OpsEntitlementController_retryEvent","method":"POST","path":"/ops/pay/entitlement-exceptions/{exceptionNo}/retry-event"},{"operationId":"OpsEntitlementController_retry","method":"POST","path":"/ops/pay/entitlement-exceptions/{exceptionNo}/retry-grant"},{"operationId":"OpsEntitlementReconciliationController_list","method":"GET","path":"/ops/pay/entitlement-reconciliations"},{"operationId":"OpsEntitlementReconciliationController_check","method":"POST","path":"/ops/pay/entitlement-reconciliations"},{"operationId":"OpsEntitlementReconciliationController_get","method":"GET","path":"/ops/pay/entitlement-reconciliations/{reconNo}"},{"operationId":"OpsEntitlementReconciliationController_differences","method":"GET","path":"/ops/pay/entitlement-reconciliations/{reconNo}/differences"},{"operationId":"OpsEntitlementLifecycleController_freeze","method":"POST","path":"/ops/pay/entitlements/{instanceNo}/freeze"},{"operationId":"OpsEntitlementLifecycleController_state","method":"GET","path":"/ops/pay/entitlements/{instanceNo}/lifecycle"}] as const;

@@ -139,6 +139,18 @@ public class InventoryStockPort implements StockPort {
     }
 
     @Override
+    public void releaseAllocatedTo(String fulfillmentRef, String orderNo, List<SkuQty> targets) {
+        if (targets == null || targets.isEmpty()) throw new IllegalArgumentException("ALLOCATION_TARGETS_REQUIRED");
+        Map<String, List<ReservationService.ReleaseTarget>> owners = new LinkedHashMap<>();
+        for (SkuQty target : targets) {
+            String owner = acl.ownerOfSku(target.skuNo());
+            owners.computeIfAbsent(owner, ignored -> new ArrayList<>())
+                    .add(new ReservationService.ReleaseTarget(acl.itemIdOfSku(target.skuNo()), target.qty()));
+        }
+        owners.forEach((owner, quantities) -> reservations.releaseAllocatedTo(owner, orderNo, fulfillmentRef, quantities));
+    }
+
+    @Override
     public void restore(String restoreNo, List<SkuQty> items) {
         if (items == null || items.isEmpty()) {
             return;

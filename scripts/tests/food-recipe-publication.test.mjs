@@ -7,7 +7,7 @@ test('recipe publication is implemented as gated config revision without inventi
  const a=s.apis.find(a=>a.id==='FOOD-API-152');
  assert.match(a.needs,/RECIPE-01C/);
  assert.match(a.guard,/schema3/);
- assert.equal(s.databaseInitialization.targetSchemaVersion,7);
+ assert.equal(s.databaseInitialization.targetSchemaVersion,8);
  assert.equal(s.catalogEnhancement.runtimeEnabled,false);
  assert.equal(s.catalogEnhancement.contracts.inventory.implementation,'PENDING');
  assert.match(s.dtos.ConfigRevision,/RECIPE/);

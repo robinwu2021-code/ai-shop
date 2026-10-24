@@ -40,6 +40,7 @@ import ai.neargo.shop.svc.InternalHttp;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -119,10 +120,13 @@ class FoodServerPrimaryDatabaseTest {
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_store_policy",Integer.class)).isEqualTo(1);
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_idempotent",Integer.class)).isZero();
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox",Integer.class)).isZero();
+                        // Keep this publication in the future; fixed calendar dates eventually become current.
+                        String futurePolicy = Instant.now().plus(2, ChronoUnit.DAYS)
+                                .truncatedTo(ChronoUnit.MILLIS).toString();
                         String command = "{\"entityNo\":\"E\",\"storeNo\":\"A\",\"actorNo\":\"trusted-actor\","
                                 + "\"idempotencyKey\":\"original-publication\","
                                 + "\"policy\":{\"timezone\":\"Asia/Shanghai\","
-                                + "\"cutoverMinute\":240,\"effectiveFrom\":\"2026-10-22T12:00:00Z\","
+                                + "\"cutoverMinute\":240,\"effectiveFrom\":\"" + futurePolicy + "\","
                                 + "\"payPolicy\":\"POSTPAY\",\"capabilities\":[],\"version\":0}}";
                         String receipt = mvc.perform(post(StorePolicyPublicationInternalApi.POLICY_CREATE_PATH)
                                         .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
@@ -138,7 +142,8 @@ class FoodServerPrimaryDatabaseTest {
                         mvc.perform(post(StorePolicyPublicationInternalApi.POLICY_CREATE_PATH)
                                         .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
                                         .contentType(MediaType.APPLICATION_JSON)
-                                        .content(command.replace("2026-10-22", "2026-10-23")))
+                                        .content(command.replace(futurePolicy,
+                                                Instant.parse(futurePolicy).plus(1, ChronoUnit.DAYS).toString())))
                                 .andExpect(status().isConflict());
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_store_policy",Integer.class))
                                 .isEqualTo(2);
@@ -298,7 +303,7 @@ class FoodServerPrimaryDatabaseTest {
                         tableCall(mvc,DiningSessionInternalApi.RESOLVE_PATH,new DiningSessionInternalApi.ResolveCommand(raw),json)
                                 .andExpect(status().isNotFound());
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_guest_session WHERE revoked_at IS NULL",Integer.class)).isZero();
-                        assertThat(context.getBean(FoodSchemaReady.class).version()).isEqualTo("7");
+                        assertThat(context.getBean(FoodSchemaReady.class).version()).isEqualTo("8");
                         var extraTables=new ArrayList<String>();
                         for(String code:List.of("T03","T04")) extraTables.add(json.readTree(tableCall(mvc,
                                 TableInternalApi.TABLE_CREATE_PATH,new TableInternalApi.TableCreateCommand("E","A",

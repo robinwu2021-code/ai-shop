@@ -64,6 +64,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * 售后。
@@ -289,17 +291,47 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     @Override
     public AfterSaleVO apply(String subOrderNo, ApplyCommand cmd) {
-        return documentNumbers.withReservation(java.util.Map.of(DocumentType.AFTER_SALE, 1), () -> refundTransactions.execute(status -> applyNumbered(subOrderNo, cmd)));
+        return applyForBuyer(subOrderNo, SecurityUtils.currentUserNo(), cmd);
     }
 
-    private AfterSaleVO applyNumbered(String subOrderNo, ApplyCommand cmd) {
+    @Override
+    public AfterSaleVO applyForBuyer(String subOrderNo, String buyerNo, ApplyCommand cmd) {
+        return applyForBuyer(subOrderNo, buyerNo, cmd, null);
+    }
+
+    @Override
+    public AfterSaleVO applyForBuyer(String subOrderNo, String buyerNo, ApplyCommand cmd, SourceRequest source) {
+        requireBuyer(buyerNo);
+        Supplier<AfterSaleVO> action=() -> documentNumbers.withReservation(
+                Map.of(DocumentType.AFTER_SALE,1),
+                () -> refundTransactions.execute(status -> applyNumbered(subOrderNo,buyerNo,cmd,source)));
+        return source==null ? action.get() : AfterCommit.withDeferredActions(action);
+    }
+
+    private AfterSaleVO applyNumbered(String subOrderNo, String buyerNo, ApplyCommand cmd, SourceRequest source) {
         // 售后定位日志（2026-10-11 店主反馈退款"数据不存在"）：先把"谁在退哪一单、带没带图"记下来
         LOG.info("[after-sale] apply 进入 subOrderNo={} currentUser={} type={} hasReason={} imageCount={}",
-                subOrderNo, SecurityUtils.currentUserNo(),
+                subOrderNo, buyerNo,
                 cmd == null ? null : cmd.type(),
                 cmd != null && cmd.reason() != null && !cmd.reason().isBlank(),
                 cmd == null || cmd.images() == null ? 0 : cmd.images().size());
-        OrdSubOrder sub = ownSubOrder(subOrderNo);
+        OrdSubOrder sub = ownSubOrder(subOrderNo, buyerNo);
+        if (source != null) {
+            if (source.sourceSystem() == null || source.sourceSystem().isBlank() || source.sourceSystem().length() > 32
+                    || source.requestKey() == null || !source.requestKey().matches("[a-f0-9]{64}")
+                    || source.requestHash() == null || !source.requestHash().matches("[a-f0-9]{64}"))
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            // Recheck under the same original child lock before active-case and mutable policy checks.
+            OrdAfterSale prior = DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectOne(
+                    Wrappers.<OrdAfterSale>lambdaQuery().eq(OrdAfterSale::getSourceSystem, source.sourceSystem())
+                            .eq(OrdAfterSale::getSourceRequestKey, source.requestKey())));
+            if (prior != null) {
+                if (!Objects.equals(prior.getSourceRequestHash(), source.requestHash())
+                        || !Objects.equals(prior.getSubOrderNo(), subOrderNo)
+                        || !Objects.equals(prior.getUserNo(), buyerNo)) throw BizException.of(ErrorCode.CONFLICT);
+                return detailOf(prior);
+            }
+        }
 
         /*
          * 售后类型与原因都是**必填**，在入口就挡住。
@@ -353,15 +385,30 @@ public class AfterSaleServiceImpl implements AfterSaleService {
          * 退什么、退多少（第 5 步）：售后期守卫 → 按行 × 件数出方案（不传行 = 整单剩余）→ 只给金额就按额分回
          * → 渠道不支持部分退则拒。上限是剩余可退额，不再是实付（第二张售后只能退剩下的）。
          */
-        RefundPlan full = BasicRefundPolicy.full(sub, refundQuery.items(sub));
-        RefundPlan plan = requestPlanner.planFull(sub, full,
+        RefundPlan plan = requestPlanner.planOriginal(sub, refundQuery.lockItems(sub),
                 cmd.items() == null ? null : cmd.items().stream()
                         .map(i -> new RefundLine(i.itemId(), i.qty(), 0L)).toList(),
                 cmd.refundMinor(), cmd.ruleReason(), System.currentTimeMillis());
         long refund = plan.totalMinor();
+        if (refund != sub.getPayAmount() || (sub.getRefundedMinor() != null && sub.getRefundedMinor() > 0)) {
+            if (source == null || pointsIntegrated(sub) || (couponPort != null && couponPort.usedTitleOf(sub.getOrderNo()) != null))
+                throw BizException.of(ErrorCode.AFTERSALE_AMOUNT_INVALID);
+            var latest = latestOf(subOrderNo);
+            if (latest.isPresent()) {
+                var previous = basicRefunds.find(latest.get().getAfterSaleNo());
+                if (previous != null && (!OrdRefundExecution.DONE.equals(previous.getResourceStatus())
+                        || (Integer.valueOf(2).equals(previous.getClosureVersion()) && !"DONE".equals(previous.getClosureStatus()))))
+                    throw BizException.of(ErrorCode.CONFLICT);
+            }
+        }
 
         OrdAfterSale as = new OrdAfterSale();
         as.setAfterSaleNo(BizKey.next(BizKey.AFTER_SALE));
+        if (source != null) {
+            as.setSourceSystem(source.sourceSystem());
+            as.setSourceRequestKey(source.requestKey());
+            as.setSourceRequestHash(source.requestHash());
+        }
         as.setSubOrderNo(subOrderNo);
         as.setOrderNo(sub.getOrderNo());
         as.setUserNo(sub.getUserNo());
@@ -488,13 +535,26 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     @Override
     public AfterSaleVO detail(String afterSaleNo) {
-        return detailOf(own(afterSaleNo));
+        return detailForBuyer(afterSaleNo, SecurityUtils.currentUserNo());
+    }
+
+    @Override
+    public AfterSaleVO detailForBuyer(String afterSaleNo, String buyerNo) {
+        return detailOf(own(afterSaleNo, buyerNo));
     }
 
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO cancel(String afterSaleNo) {
-        OrdAfterSale as = ownForMutation(afterSaleNo);
+        return cancelForBuyer(afterSaleNo, SecurityUtils.currentUserNo());
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public AfterSaleVO cancelForBuyer(String afterSaleNo, String buyerNo) {
+        OrdAfterSale hint = own(afterSaleNo, buyerNo);
+        lockRefundChild(hint.getSubOrderNo());
+        OrdAfterSale as = own(afterSaleNo, buyerNo);
         // 状态机判：买家只能在待处理 / 待寄回 / 被驳回时撤销 —— 钱已在路上、平台已介入都不能撤
         transit(as, AfterSaleEvent.WITHDRAW, Actor.BUYER, as.getUserNo(), "用户撤销申请",
                 AfterSaleContext.builder().build());
@@ -658,7 +718,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
         // 当前仅支持整单全退；商家不能缩减核定金额，积分返还仍由原支付协议处理。
         if (refundMinor != null) {
-            if (!refundMinor.equals(sub.getPayAmount())) {
+            if (!refundMinor.equals(as.getRefundMinor())) {
                 throw BizException.of(ErrorCode.AFTERSALE_AMOUNT_INVALID);
             }
             as.setApprovedMinor(refundMinor);
@@ -889,7 +949,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             }
             transit(as, event, actor, operatorNo, label, context.build());
         }
-        basicRefunds.prepare(as.getAfterSaleNo(), new OrderActor(as.getEntityNo(), null, operatorNo));
+        prepareOrdinaryAfterDecision(as, operatorNo);
 
     }
 
@@ -998,9 +1058,14 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     // ---------------------------------------------------------------- 装配
 
     private OrdAfterSale own(String afterSaleNo) {
+        return own(afterSaleNo, SecurityUtils.currentUserNo());
+    }
+
+    private OrdAfterSale own(String afterSaleNo, String buyerNo) {
+        requireBuyer(buyerNo);
         OrdAfterSale as = documentNumbers.loadOne(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
                 .eq(OrdAfterSale::getAfterSaleNo, afterSaleNo)
-                .eq(OrdAfterSale::getUserNo, SecurityUtils.currentUserNo())
+                .eq(OrdAfterSale::getUserNo, buyerNo)
                 .last("limit 1")), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo);
         if (as == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
@@ -1039,8 +1104,14 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                         .last("limit 1")), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo));
     }
 
-    private OrdSubOrder ownSubOrder(String subOrderNo) {
-        String currentUser = SecurityUtils.currentUserNo();
+    private static void requireBuyer(String buyerNo) {
+        if (buyerNo == null || buyerNo.isBlank()) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+    }
+
+    private OrdSubOrder ownSubOrder(String subOrderNo, String currentUser) {
+        requireBuyer(currentUser);
         OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
                 .eq(OrdSubOrder::getSubOrderNo, subOrderNo)
                 .eq(OrdSubOrder::getUserNo, currentUser)
@@ -1313,9 +1384,22 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                         .goodsReturned(as.getReturnReceivedAt() != null)
                         .inTransit(as.getExpressNo() != null && !as.getExpressNo().isBlank()).build());
         if (OrdAfterSale.REFUNDING.equals(as.getStatus())) {
-            basicRefunds.prepare(as.getAfterSaleNo(), new OrderActor(as.getEntityNo(), null, operatorNo));
+            prepareOrdinaryAfterDecision(as, operatorNo);
         }
         return opsDetailOf(as);
+    }
+
+    private void prepareOrdinaryAfterDecision(OrdAfterSale as,String operatorNo) {
+        var actor=new OrderActor(as.getEntityNo(),null,operatorNo);
+        if(as.getSourceSystem()==null) {
+            basicRefunds.prepare(as.getAfterSaleNo(),actor);
+            return;
+        }
+        // REFUNDING + immutable case lines are durable. The existing retry scan resumes a missing execution
+        // if a transactional merchant entry has not yet reached a clean outer after-commit boundary.
+        AfterCommit.run("prepare original source refund "+as.getAfterSaleNo(),()-> {
+            if(!TransactionSynchronizationManager.isActualTransactionActive()) basicRefunds.prepare(as.getAfterSaleNo(),actor);
+        });
     }
 
     /**
@@ -1388,6 +1472,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         }
         OrdRefundExecution ordinary = basicRefunds.find(afterSaleNo);
         if (ordinary != null) basicRefunds.recover(ordinary.getExecutionNo());
+        else if(as.getSourceSystem()!=null && OrdAfterSale.REFUNDING.equals(as.getStatus()))
+            basicRefunds.prepare(afterSaleNo,new OrderActor(as.getEntityNo(),sub.getStoreNo(),operatorNo));
     }
 
     @Override

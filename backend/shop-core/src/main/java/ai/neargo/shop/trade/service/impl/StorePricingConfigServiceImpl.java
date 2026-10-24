@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
+import java.util.function.Supplier;
+
 import ai.neargo.shop.trade.dto.PricingConfigCommands.Context;
 import ai.neargo.shop.trade.dto.PricingConfigCommands.ResetReq;
 import ai.neargo.shop.trade.dto.PricingConfigCommands.UpgradeReq;
@@ -44,6 +46,22 @@ public class StorePricingConfigServiceImpl implements StorePricingConfigService 
     @Override
     public RevisionVO publish(Context c, String no, PublishReq req, String key) {
         return policy.publish(c, no, req, key, false);
+    }
+
+    @Override
+    public RevisionVO publish(Context identity, String no, PublishReq req, String key, Supplier<Context> evidence) {
+        return policy.publish(identity, no, req, key, false, evidence);
+    }
+
+    @Override
+    public RevisionVO initialize(Context identity, InitializeReq req, String key, Supplier<Context> evidence) {
+        return policy.initialize(identity, req, key, evidence);
+    }
+
+    @Override
+    public RevisionVO rollback(Context identity, String no, PublishReq req, String key, Supplier<Context> evidence) {
+        if (req.rollbackFromRevisionNo() == null) throw BizException.of(ErrorCode.BAD_REQUEST);
+        return policy.publish(identity, no, req, key, false, evidence);
     }
 
     @Override

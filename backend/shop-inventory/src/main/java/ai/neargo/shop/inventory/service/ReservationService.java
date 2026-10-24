@@ -1,6 +1,7 @@
 package ai.neargo.shop.inventory.service;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 预留协议 —— <b>交易域与本领域之间唯一的写路径</b>。
@@ -32,18 +33,46 @@ public interface ReservationService {
         return reserve(ownerId, externalRef, lines, ttlSeconds);
     }
 
+    /** Returns persisted original facts; absence is distinct from a durable RELEASED cancellation tombstone. */
+    Optional<Snapshot> query(String ownerId, String externalRef);
+
+    /** Typed inventory lifecycle states, including partial fulfillment and partial cancellation. */
+    enum Status {
+        HELD, ACCEPTED_UNPAID, PARTIAL_UNPAID, ISSUED_UNPAID,
+        ALLOCATED, PARTIALLY_COMMITTED, COMMITTED, PARTIAL_RELEASED, RELEASED, EXPIRED
+    }
+
+    /** Original reserved quantities remain unchanged by issue/release; callers can compare retry intent exactly. */
+    record Snapshot(String reservationId, Status status, int lifecycleVersion,
+                    boolean paymentAcknowledged, List<Line> lines) {
+        public Snapshot {
+            lines = List.copyOf(lines);
+        }
+    }
+
+    /** Accepts lifecycle3 credit orders without recording payment; accepted holds are excluded from expiry. */
+    void acceptUnpaid(String ownerId, String externalRef);
+
     /**
      * 确认：{@code reserved} 转实扣，并**自动开一张 SALE 出库单**。
      *
      * <p>「直接扣库存」在这个模型里不存在 —— 会计问「这 200 斤米怎么少的」，
      * 要能点开一张单，而不是一行日志。
      *
-     * @return 生成的出库单号；重复 commit 返回原单号
+     * <p>Lifecycle3 acknowledges payment only; physical stock is issued by fulfillment handoff.
+     *
+     * @return 生成的出库单号；重复 commit 返回原单号；lifecycle3 未交付时为 null
      */
     String commit(String ownerId, String externalRef, String operator);
 
-    /** Paid V2 orders keep their physical hold until a merchant confirms a fulfillment handoff. */
+    /** V2 allocates paid holds; V3 acknowledges payment without deducting stock already issued on credit. */
     void allocatePaidByRef(String externalRef);
+
+    /** Owner-bound transport commands must not mutate another owner's coincident external reference. */
+    void allocatePaid(String ownerId, String externalRef);
+
+    /** Owner/reference-bound handoff uses the same original reservation facts as the existing global entry. */
+    String issue(String ownerId, String externalRef, String fulfillmentRef, String operator);
 
     /** Issues only the original reserved lines belonging to one fulfillment reference. */
     String issueByFulfillmentRef(String fulfillmentRef, String operator);
@@ -53,7 +82,11 @@ public interface ReservationService {
 
     void releaseAllocatedByFulfillmentRef(String fulfillmentRef);
 
-    /** 释放。幂等：只作用于 {@code HELD} 的预留。 */
+    record ReleaseTarget(String itemId, int cumulativeQty) { }
+    /** Set original unissued release progress monotonically, under owner/reference/child locks. */
+    void releaseAllocatedTo(String ownerId, String externalRef, String fulfillmentRef, List<ReleaseTarget> targets);
+
+    /** Releases HELD reservations; lifecycle3 also releases accepted but unissued quantities idempotently. */
     void release(String ownerId, String externalRef);
 
     /**

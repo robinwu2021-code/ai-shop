@@ -2663,6 +2663,14 @@
           "label": "此批额度预占引用，绑定限制与量",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "next_recovery_at",
+          "type": "datetime(3)",
+          "label": "原请求投影下次恢复时间（短事务抢占后调用权威服务）",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V8"
         }
       ],
       "unique": [
@@ -2892,6 +2900,14 @@
           "label": "核心分配数量单位",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "source_component_ref",
+          "type": "char(64)",
+          "label": "包含MAIN主项的原计价组件标识",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V8"
         }
       ],
       "unique": [
@@ -2903,7 +2919,7 @@
           "order_item_id"
         ]
       ],
-      "rules": "每核心行分配数量守恒；不同价格赠品不能歧义绑定"
+      "rules": "每核心行分配数量守恒；不同价格赠品不能歧义绑定 V8新增来源元数据可空只为兼容历史；新服务必须完整写入。请求原键跨通用幂等缓存过期仍唯一。"
     },
     {
       "domain": "D",
@@ -3381,14 +3397,59 @@
           "label": "报价有效期",
           "nullable": false,
           "ref": null
+        },
+        {
+          "name": "request_key",
+          "type": "varchar(64)",
+          "label": "稳定结账请求键",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V8"
+        },
+        {
+          "name": "request_hash",
+          "type": "char(64)",
+          "label": "不可变请求摘要",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V8"
+        },
+        {
+          "name": "request_snapshot",
+          "type": "json",
+          "label": "原单范围与应收冻结快照",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V8"
+        },
+        {
+          "name": "buyer_no",
+          "type": "varchar(32)",
+          "label": "原登录买家",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V8"
+        },
+        {
+          "name": "next_recovery_at",
+          "type": "datetime(3)",
+          "label": "原请求投影下次恢复时间（短事务抢占后调用权威服务）",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V8"
         }
       ],
       "unique": [
         [
           "settlement_no"
+        ],
+        [
+          "entity_no",
+          "store_no",
+          "request_key"
         ]
       ],
-      "rules": "金额是快照不再定价；冻结时防止同应收重复占用"
+      "rules": "金额是快照不再定价；冻结时防止同应收重复占用 V8新增来源元数据可空只为兼容历史；新服务必须完整写入。请求原键跨通用幂等缓存过期仍唯一。"
     },
     {
       "domain": "F",
@@ -3617,14 +3678,67 @@
           "label": "厨房轨道 PENDING / VOIDING / HANDLED / FAILED",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "batch_no",
+          "type": "varchar(32)",
+          "label": "原餐饮批次",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V8"
+        },
+        {
+          "name": "buyer_no",
+          "type": "varchar(32)",
+          "label": "原登录买家",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V8"
+        },
+        {
+          "name": "request_key",
+          "type": "varchar(64)",
+          "label": "稳定来源请求键",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V8"
+        },
+        {
+          "name": "request_hash",
+          "type": "char(64)",
+          "label": "不可变请求摘要",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V8"
+        },
+        {
+          "name": "request_snapshot",
+          "type": "json",
+          "label": "原请求与来源冻结快照",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V8"
+        },
+        {
+          "name": "next_recovery_at",
+          "type": "datetime(3)",
+          "label": "原请求投影下次恢复时间（短事务抢占后调用权威服务）",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V8"
         }
       ],
       "unique": [
         [
           "return_no"
+        ],
+        [
+          "entity_no",
+          "store_no",
+          "request_key"
         ]
       ],
-      "rules": "资金和厨房进度分别守卫；通过审批不等于退款成功"
+      "rules": "资金和厨房进度分别守卫；通过审批不等于退款成功 V8新增来源元数据可空只为兼容历史；新服务必须完整写入。请求原键跨通用幂等缓存过期仍唯一。"
     },
     {
       "domain": "G",
@@ -10996,9 +11110,10 @@
       "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V4__recipe_draft_tables.sql",
       "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V5__recipe_adjustment_table.sql",
       "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V6__menu_composition.sql",
-      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V7__menu_context_channels.sql"
+      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V7__menu_context_channels.sql",
+      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V8__checkout_request_identity.sql"
     ],
-    "targetSchemaVersion": 7,
+    "targetSchemaVersion": 8,
     "note": "历史证据仅V1/73张本机业务表；additionalMigrations表示提供的后续迁移，不表示已应用到该经营库。当前Java五模块及部分后端端点已实现，验收以CAT-ALL记录为准。"
   },
   "catalogEnhancement": {
@@ -11177,5 +11292,268 @@
       "不预占库存、不扣款",
       "称重、预约、道次与设备凭证另阶段"
     ]
+  },
+  "checkoutImplementation": {
+    "date": "2026-10-23",
+    "status": "VERIFIED_CONTROLLED_PREPAY_BATCH",
+    "plan": "docs/technical/TDD-餐饮订单结账-完整开发计划.md",
+    "migration": "V8",
+    "note": "受控登录H5/PICKUP/PREPAY/整数MAIN的报价、原订单绑定、单根收银、未发货部分/余量退餐与原PAY/库存合同已开发、编译并集中验证。零额FREE沿真实回执推进，财务成功不伪造厨房/库存成功。新增迁移未应用经营库；匿名/堂食/现金/AA/后付/复杂组件交易与完整权益、打印日结闭环仍未完成。",
+    "implementedApis": [
+      {
+        "method": "POST",
+        "path": "/biz/x/food/stores/{storeNo}/quotes",
+        "controller": "BizDiningPricingController",
+        "input": "DiningQuoteReq{cartNo,version,selection?:{couponNos,storedValueAccountNo,pointsToUse}}；Idempotency-Key",
+        "output": "PricingCheckoutPort.QuoteVO{quoteNo,status,expiresAt,sourceVersion,sourceHash,currency,lines,totals,confirmationDigest}",
+        "authorization": "biz:order:view；认证主体/当前门店由FoodBizStoreScope解析；actor来自登录；不授予资金写权限",
+        "targetApi": "FOOD-API-041",
+        "increment": false,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "完整原购物车受控报价；权益/活动及复杂场景按owner门控；不接原目标lines/buyer/价格字段"
+      },
+      {
+        "method": "GET",
+        "path": "/biz/x/food/quotes/{quoteNo}",
+        "controller": "BizDiningPricingController",
+        "input": "query cartNo,version",
+        "output": "PricingCheckoutPort.QuoteVO{quoteNo,status,expiresAt,sourceVersion,sourceHash,currency,lines,totals,confirmationDigest}",
+        "authorization": "biz:order:view；认证主体/当前门店由FoodBizStoreScope解析；actor来自登录；不授予资金写权限",
+        "targetApi": null,
+        "increment": true,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "绑定原车及版本读取，不是任意报价号授权"
+      },
+      {
+        "method": "POST",
+        "path": "/biz/x/food/quotes/{quoteNo}:confirm",
+        "controller": "BizDiningPricingController",
+        "input": "DiningQuoteConfirmReq{cartNo,version,confirmationDigest}",
+        "output": "PricingCheckoutPort.QuoteVO{quoteNo,status,expiresAt,sourceVersion,sourceHash,currency,lines,totals,confirmationDigest}",
+        "authorization": "biz:order:view；认证主体/当前门店由FoodBizStoreScope解析；actor来自登录；不授予资金写权限",
+        "targetApi": null,
+        "increment": true,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "仅revalidate；不扣款/核销权益，不代替正式提交"
+      },
+      {
+        "method": "POST",
+        "path": "/mp/x/food/stores/{storeNo}/quotes",
+        "controller": "MpDiningPricingController",
+        "input": "DiningQuoteReq{cartNo,version,selection?:{couponNos,storedValueAccountNo,pointsToUse}}；Idempotency-Key；optional query sessionNo/header X-Food-Session",
+        "output": "PricingCheckoutPort.QuoteVO{quoteNo,status,expiresAt,sourceVersion,sourceHash,currency,lines,totals,confirmationDigest}",
+        "authorization": "CartAccess由consumer登录或原sessionNo/X-Food-Session生成；原购物车服务逐次鉴权",
+        "targetApi": "FOOD-API-131",
+        "increment": false,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "完整原购物车受控报价；权益/活动及复杂场景按owner门控；不接原目标lines/buyer/价格字段"
+      },
+      {
+        "method": "GET",
+        "path": "/mp/x/food/quotes/{quoteNo}",
+        "controller": "MpDiningPricingController",
+        "input": "query cartNo,version；optional query sessionNo/header X-Food-Session",
+        "output": "PricingCheckoutPort.QuoteVO{quoteNo,status,expiresAt,sourceVersion,sourceHash,currency,lines,totals,confirmationDigest}",
+        "authorization": "CartAccess由consumer登录或原sessionNo/X-Food-Session生成；原购物车服务逐次鉴权",
+        "targetApi": null,
+        "increment": true,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "绑定原车及版本读取，不是任意报价号授权"
+      },
+      {
+        "method": "POST",
+        "path": "/mp/x/food/quotes/{quoteNo}:confirm",
+        "controller": "MpDiningPricingController",
+        "input": "DiningQuoteConfirmReq{cartNo,version,confirmationDigest}；optional query sessionNo/header X-Food-Session",
+        "output": "PricingCheckoutPort.QuoteVO{quoteNo,status,expiresAt,sourceVersion,sourceHash,currency,lines,totals,confirmationDigest}",
+        "authorization": "CartAccess由consumer登录或原sessionNo/X-Food-Session生成；原购物车服务逐次鉴权",
+        "targetApi": null,
+        "increment": true,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "仅revalidate；不扣款/核销权益，不代替正式提交"
+      },
+      {
+        "method": "POST",
+        "path": "/mp/x/food/stores/{storeNo}/batches",
+        "controller": "MpOrderBatchController",
+        "input": "CreateDiningOrderReq{cartNo,version,quoteNo,confirmationDigest,payMode}；Idempotency-Key；optional session/token经原鉴权",
+        "output": "DiningOrderBatchVO{batchNo,storeNo,checkNo,cartNo,cartVersion,quoteNo,status,payMode,businessDate,orderNo,subOrderNo,coreStatus,currency,amountMinor,version}",
+        "authorization": "仅登录consumer本人；服务端核验原批次/订单归属；无匿名session付款或客户端buyer",
+        "targetApi": "FOOD-API-132",
+        "increment": false,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "仅H5/PICKUP/PREPAY、MAIN整数完整车；DTO接受POSTPAY但服务拒绝；无selectedLineRefs/splitByPerson"
+      },
+      {
+        "method": "GET",
+        "path": "/mp/x/food/batches/{batchNo}",
+        "controller": "MpOrderBatchController",
+        "input": "optional query sessionNo/header X-Food-Session",
+        "output": "DiningOrderBatchVO{batchNo,storeNo,checkNo,cartNo,cartVersion,quoteNo,status,payMode,businessDate,orderNo,subOrderNo,coreStatus,currency,amountMinor,version}",
+        "authorization": "CartAccess由consumer登录或原sessionNo/X-Food-Session生成；原购物车服务逐次鉴权",
+        "targetApi": "FOOD-API-133",
+        "increment": false,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "原本人范围；UNKNOWN不是受理/支付成功"
+      },
+      {
+        "method": "GET",
+        "path": "/biz/x/food/batches/{batchNo}",
+        "controller": "BizOrderBatchController",
+        "input": "无body",
+        "output": "DiningOrderBatchVO{batchNo,storeNo,checkNo,cartNo,cartVersion,quoteNo,status,payMode,businessDate,orderNo,subOrderNo,coreStatus,currency,amountMinor,version}",
+        "authorization": "biz:order:view；认证主体/当前门店由FoodBizStoreScope解析；actor来自登录；不授予资金写权限",
+        "targetApi": "FOOD-API-043",
+        "increment": false,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "B端042正式提交仍未实现"
+      },
+      {
+        "method": "POST",
+        "path": "/mp/x/food/batches/{batchNo}/settlements",
+        "controller": "MpSettlementController",
+        "input": "CreateDiningSettlementReq{confirmationDigest}；Idempotency-Key",
+        "output": "DiningSettlementVO{settlementNo,storeNo,batchNo,checkNo,orderNo,subOrderNo,status,currency,dueMinor,scopeHash,confirmationDigest,version,batchStatus,coreOrderStatus,payment,readyToAccept}",
+        "authorization": "仅登录consumer本人；服务端核验原批次/订单归属；无匿名session付款或客户端buyer",
+        "targetApi": null,
+        "increment": true,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "单完整原批次/单支付根增量；不实现140台账范围冻结，不支持AA/整桌代付/跨根"
+      },
+      {
+        "method": "GET",
+        "path": "/mp/x/food/settlements/{settlementNo}",
+        "controller": "MpSettlementController",
+        "input": "无body/query",
+        "output": "DiningSettlementVO{settlementNo,storeNo,batchNo,checkNo,orderNo,subOrderNo,status,currency,dueMinor,scopeHash,confirmationDigest,version,batchStatus,coreOrderStatus,payment,readyToAccept}",
+        "authorization": "仅登录consumer本人；服务端核验原批次/订单归属；无匿名session付款或客户端buyer",
+        "targetApi": "FOOD-API-134",
+        "increment": false,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "customerQuery查询原支付并合并持久状态，非纯本地只读；无目标confirmedAmount/pendingIntentNos字段"
+      },
+      {
+        "method": "POST",
+        "path": "/mp/x/food/settlements/{settlementNo}:pay",
+        "controller": "MpSettlementController",
+        "input": "PayDiningSettlementReq{version,confirmationDigest,payChannel}；Idempotency-Key",
+        "output": "DiningSettlementVO{settlementNo,storeNo,batchNo,checkNo,orderNo,subOrderNo,status,currency,dueMinor,scopeHash,confirmationDigest,version,batchStatus,coreOrderStatus,payment,readyToAccept}",
+        "authorization": "仅登录consumer本人；服务端核验原批次/订单归属；无匿名session付款或客户端buyer",
+        "targetApi": "FOOD-API-135",
+        "increment": false,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "canonical路由一致；仅真实owner支持线上渠道；无客户端amount/tool/现金；单根单尝试，UNKNOWN按原意图查回"
+      },
+      {
+        "method": "POST",
+        "path": "/mp/x/food/settlements/{settlementNo}:finalize",
+        "controller": "MpSettlementController",
+        "input": "无body/query",
+        "output": "DiningSettlementVO{settlementNo,storeNo,batchNo,checkNo,orderNo,subOrderNo,status,currency,dueMinor,scopeHash,confirmationDigest,version,batchStatus,coreOrderStatus,payment,readyToAccept}",
+        "authorization": "仅登录consumer本人；服务端核验原批次/订单归属；无匿名session付款或客户端buyer",
+        "targetApi": null,
+        "increment": true,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "依原核心支付/库存证明推进；厨房实际处理独立；非B端060"
+      },
+      {
+        "method": "POST",
+        "path": "/mp/x/food/settlements/{settlementNo}:cancel",
+        "controller": "MpSettlementController",
+        "input": "DiningSettlementVersionReq{version}",
+        "output": "DiningSettlementVO{settlementNo,storeNo,batchNo,checkNo,orderNo,subOrderNo,status,currency,dueMinor,scopeHash,confirmationDigest,version,batchStatus,coreOrderStatus,payment,readyToAccept}",
+        "authorization": "仅登录consumer本人；服务端核验原批次/订单归属；无匿名session付款或客户端buyer",
+        "targetApi": null,
+        "increment": true,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "受未知/成功支付仲裁约束；非B端059，不以本地状态冒充渠道关单"
+      },
+      {
+        "method": "GET",
+        "path": "/biz/x/food/settlements/{settlementNo}",
+        "controller": "BizSettlementController",
+        "input": "无body",
+        "output": "DiningSettlementVO{settlementNo,storeNo,batchNo,checkNo,orderNo,subOrderNo,status,currency,dueMinor,scopeHash,confirmationDigest,version,batchStatus,coreOrderStatus,payment,readyToAccept}",
+        "authorization": "biz:order:view；认证主体/当前门店由FoodBizStoreScope解析；actor来自登录；不授予资金写权限",
+        "targetApi": "FOOD-API-057",
+        "increment": false,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "仅门店读取；056/058/059/060/061写入口未实现；响应非目标包装"
+      },
+      {
+        "method": "POST",
+        "path": "/mp/x/food/stores/{storeNo}/returns",
+        "controller": "MpDiningReturnController",
+        "input": "DiningReturnApplyReq{batchNo,type:REFUND_ONLY|RETURN_REFUND,reason,reasonCode?,images[],lines:[{sourceLineRef,quantity}]}；Idempotency-Key",
+        "output": "DiningReturnVO{returnNo,batchNo,storeNo,status,financialStatus,kitchenStatus,coreCaseRef,reason,lines,financialCase}；没有version",
+        "authorization": "仅登录consumer本人；服务端核验原批次/订单归属；无匿名session付款或客户端buyer",
+        "targetApi": "FOOD-API-136",
+        "increment": false,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "选中原MAIN整数行退量，走原核心售后/退款上限；无客户端金额/任意itemId/厨房命令；不实现B审批执行；部分/余量必须原子单WAIT_FULFILL且所有原行shippedQty为0，混合履约拒绝"
+      },
+      {
+        "method": "GET",
+        "path": "/mp/x/food/returns/{returnNo}",
+        "controller": "MpDiningReturnController",
+        "input": "无body/query",
+        "output": "DiningReturnVO{returnNo,batchNo,storeNo,status,financialStatus,kitchenStatus,coreCaseRef,reason,lines,financialCase}；没有version",
+        "authorization": "仅登录consumer本人；服务端核验原批次/订单归属；无匿名session付款或客户端buyer",
+        "targetApi": "FOOD-API-137",
+        "increment": false,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "查询原核心售后并刷新持久状态；financialCase可空；厨房独立，不返回目标version"
+      },
+      {
+        "method": "POST",
+        "path": "/mp/x/food/returns/{returnNo}:cancel",
+        "controller": "MpDiningReturnController",
+        "input": "空body且无query",
+        "output": "DiningReturnVO{returnNo,batchNo,storeNo,status,financialStatus,kitchenStatus,coreCaseRef,reason,lines,financialCase}；没有version",
+        "authorization": "仅登录consumer本人；服务端核验原批次/订单归属；无匿名session付款或客户端buyer",
+        "targetApi": null,
+        "increment": true,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "撤回本人原售后；未知申请保留CANCEL_PENDING并查原键，不是退款执行"
+      },
+      {
+        "method": "GET",
+        "path": "/biz/x/food/returns/{returnNo}",
+        "controller": "BizDiningReturnController",
+        "input": "无body/query",
+        "output": "DiningReturnVO{returnNo,batchNo,storeNo,status,financialStatus,kitchenStatus,coreCaseRef,reason,lines,financialCase}；没有version",
+        "authorization": "biz:order:view；认证主体/当前门店由FoodBizStoreScope解析；actor来自登录；不授予资金写权限",
+        "targetApi": "FOOD-API-064",
+        "increment": false,
+        "status": "IMPLEMENTED_BACKEND_CONTROLLED_SCOPE",
+        "remaining": "仅本地授权读取，financialCase可空；062/063未实现，不返回目标version"
+      }
+    ],
+    "targetReconciliation": {
+      "preserveOriginalApis": "apis保留完整目标合同；implementedApis仅登记实际受控子集，不视为完整目标完成",
+      "unimplementedTargetApis": [
+        "FOOD-API-042",
+        "FOOD-API-056",
+        "FOOD-API-058",
+        "FOOD-API-059",
+        "FOOD-API-060",
+        "FOOD-API-061",
+        "FOOD-API-062",
+        "FOOD-API-063",
+        "FOOD-API-140"
+      ],
+      "api140": "POST /mp/x/food/checks/{checkNo}/settlements仍未实现；batch settlement是独立增量",
+      "remainingCapabilities": [
+        "POSTPAY",
+        "匿名付款/堂食",
+        "小数/称重与复杂组件交易准入",
+        "现金/AA/跨根/混合/订金结账",
+        "B端资金写授权与审批执行",
+        "厨房实际处理与营业履约证据",
+        "完整权益/活动owner及经营验收",
+        "部分或余量退款仅支持原完整未发货事实；混合履约/已发货部分退款仍关闭，原完整已发货退货沿既有实际收货路径"
+      ],
+      "verification": "集中验证收据见原TDD §6最新批次；核心与餐饮条件数据库用例分别在一次性MariaDB/MySQL实际执行。宿主8项既有架构/schema失败仍保留，未新增跨域依赖或字段差异；不是全餐饮方案或真实渠道营业验收。"
+    }
   }
 }

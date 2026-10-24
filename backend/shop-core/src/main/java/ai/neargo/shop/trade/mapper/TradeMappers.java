@@ -1,6 +1,11 @@
 package ai.neargo.shop.trade.mapper;
 
 import ai.neargo.shop.trade.entity.OrdPricingTemplate;
+import ai.neargo.shop.trade.entity.OrdIndustryOrderSource;
+import ai.neargo.shop.trade.entity.OrdPricingFundingSource;
+import ai.neargo.shop.trade.entity.OrdPriceQuote;
+import ai.neargo.shop.trade.entity.OrdPriceQuoteLine;
+import ai.neargo.shop.trade.entity.OrdPriceQuoteAllocation;
 import ai.neargo.shop.trade.entity.OrdPricingTemplateRevision;
 import ai.neargo.shop.trade.entity.OrdStorePricingConfig;
 import ai.neargo.shop.trade.entity.OrdStorePricingRevision;
@@ -27,6 +32,10 @@ public final class TradeMappers {
 
     private TradeMappers() {
     }
+
+    public interface IndustryOrderSourceMapper extends BaseMapper<OrdIndustryOrderSource> { }
+
+    public interface PricingFundingSourceMapper extends BaseMapper<OrdPricingFundingSource> { }
 
     public interface CartItemMapper extends BaseMapper<TrdCartItem> {
     }
@@ -129,6 +138,10 @@ public final class TradeMappers {
         @Select("SELECT next_value FROM sys_sequence WHERE seq_name = #{name}")
         Long peek(@Param("name") String name);
     }
+    public interface PriceQuoteMapper extends BaseMapper<OrdPriceQuote> { }
+    public interface PriceQuoteLineMapper extends BaseMapper<OrdPriceQuoteLine> { }
+    public interface PriceQuoteAllocationMapper extends BaseMapper<OrdPriceQuoteAllocation> { }
+
     public interface PricingTemplateMapper extends BaseMapper<OrdPricingTemplate> { }
     public interface PricingTemplateRevisionMapper extends BaseMapper<OrdPricingTemplateRevision> { }
     public interface StorePricingConfigMapper extends BaseMapper<OrdStorePricingConfig> { }

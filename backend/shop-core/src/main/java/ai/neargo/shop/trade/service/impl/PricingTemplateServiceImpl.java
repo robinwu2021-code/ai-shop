@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
+import java.util.function.Supplier;
+
 import ai.neargo.shop.trade.dto.PricingConfigCommands.Context;
 import ai.neargo.shop.trade.dto.PricingConfigCommands.DraftSaveReq;
 import ai.neargo.shop.trade.dto.PricingConfigCommands.DraftVO;
@@ -40,6 +42,11 @@ public class PricingTemplateServiceImpl implements PricingTemplateService {
     @Override
     public RevisionVO publish(Context c, String no, PublishReq req, String key) {
         return policy.publish(c, no, req, key, true);
+    }
+
+    @Override
+    public RevisionVO publish(Context identity, String no, PublishReq req, String key, Supplier<Context> evidence) {
+        return policy.publish(identity, no, req, key, true, evidence);
     }
 
     @Override

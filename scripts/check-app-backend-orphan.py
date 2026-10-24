@@ -66,18 +66,25 @@ def validate_deferred(data, published, handlers, missing):
     return result
 
 
-def deferred_delivery(missing):
-    file = ROOT / "docs/api/backend-ui-delivery.json"
+def read_deferred_delivery(manifest, contract, missing):
+    file = ROOT / manifest
     if not file.exists():
         return set()
     data = json.loads(file.read_text(encoding="utf-8"))
     plan = data.get("plan", "")
     if not plan.startswith("docs/technical/") or ".." in Path(plan).parts or not (ROOT / plan).is_file():
         raise ValueError("Staged delivery must point to its existing frontend task plan")
-    spec = json.loads((ROOT / "docs/api/entitlement-backend.openapi.json").read_text(encoding="utf-8"))
+    spec = json.loads((ROOT / contract).read_text(encoding="utf-8"))
     published = {(method.upper(), norm(path)) for path, methods in spec["paths"].items()
                  for method in methods if method in {"get", "post", "put", "patch", "delete"}}
     return validate_deferred(data, published, set(backend()), missing)
+
+
+def deferred_delivery(missing):
+    return (read_deferred_delivery("docs/api/backend-ui-delivery.json",
+                                  "docs/api/entitlement-backend.openapi.json", missing)
+            | read_deferred_delivery("docs/api/pricing-config-biz-ui-delivery.json",
+                                     "docs/api/pricing-config.openapi.json", missing))
 
 # **按设计就没有端上出口的端点** —— 服务器到服务器调用。
 # 把它们记进「只准变短」的名单是错的：那种行永远变不短，而一份含着

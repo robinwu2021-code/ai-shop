@@ -141,6 +141,11 @@ public class OrdAfterSale extends BaseEntity {
      */
     private Integer stockRestored;
 
+    /** Immutable source request identity; historical consumer cases have no external source claim. */
+    private String sourceSystem;
+    private String sourceRequestKey;
+    private String sourceRequestHash;
+
     /** Receiving a return does not imply that the goods are fit to restock. */
     private Boolean restockApproved;
     /** Actual merchant receipt; tracking information cannot establish receipt. */

@@ -1,8 +1,10 @@
 package ai.neargo.shop.payclient.port;
 
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.spi.trade.PricingFundingCapabilities;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.client.PayInternalApi;
+import ai.neargo.shop.pay.client.PayCapabilityRequests;
 import ai.neargo.shop.pay.client.PayStoredValueRequests;
 import ai.neargo.shop.payclient.RemoteEntitlementCalls;
 import ai.neargo.shop.spi.storedvalue.StoredValueCapabilityPort;
@@ -22,5 +24,11 @@ public class RemoteStoredValueCapabilityPort implements StoredValueCapabilityPor
             throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         }
         return status;
+    }
+    @Override public PricingFundingCapabilities.Snapshot pricing(PricingFundingCapabilities.Scope scope) {
+        var value = RemoteEntitlementCalls.call(() -> pay.storedPricingCapabilities(new PayCapabilityRequests.Pricing(scope)));
+        try { PricingFundingCapabilities.validate(value, PricingFundingCapabilities.Family.STORED_VALUE, scope); }
+        catch (RuntimeException invalid) { throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED); }
+        return value;
     }
 }

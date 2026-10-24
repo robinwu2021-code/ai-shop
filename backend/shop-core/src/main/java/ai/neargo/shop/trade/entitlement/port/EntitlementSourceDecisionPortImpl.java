@@ -2,6 +2,11 @@ package ai.neargo.shop.trade.entitlement.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.trade.service.PricingFundingSourceService;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.SourceDecisionPort;
 import ai.neargo.shop.spi.entitlement.SourceRef;
@@ -22,6 +27,7 @@ public class EntitlementSourceDecisionPortImpl implements SourceDecisionPort {
     private final EntitlementAuthorizationMapper authorizations;
     private final EntitlementSourceDecisionMapper decisions;
     private final ObjectMapper json;
+    private ObjectProvider<PricingFundingSourceService> fundingSources;
 
     public EntitlementSourceDecisionPortImpl(EntitlementAuthorizationMapper authorizations,
             EntitlementSourceDecisionMapper decisions, ObjectMapper json) {
@@ -30,8 +36,46 @@ public class EntitlementSourceDecisionPortImpl implements SourceDecisionPort {
         this.json = json;
     }
 
+    @Autowired
+    public EntitlementSourceDecisionPortImpl(EntitlementAuthorizationMapper authorizations,
+            EntitlementSourceDecisionMapper decisions, ObjectMapper json,
+            ObjectProvider<PricingFundingSourceService> fundingSources) {
+        this(authorizations, decisions, json);
+        this.fundingSources = fundingSources;
+    }
+
     @Override
     public SourceDecision query(EntitlementContext context, SourceRef source) {
+        var row = durable(context, source);
+        if (row == null) {
+            if ("CORE".equals(source.sourceSystem()) && PricingFundingSourceService.SOURCE_TYPE.equals(source.sourceType())
+                    && fundingSources != null) {
+                var owners = fundingSources.orderedStream().limit(2).toList();
+                if (owners.size() > 1) throw new IllegalStateException("Ambiguous funding journal owner");
+                if (owners.size() == 1) {
+                    try {
+                        return owners.getFirst().pendingDecision(context, source);
+                    } catch (BizException changed) {
+                        if (changed.errorCode() != ErrorCode.CONFLICT) throw changed;
+                        // Cancel can commit between the first decision read and the journal read.
+                        // Retry durable truth once; never turn an inconsistent terminal journal into cancellation.
+                        row = durable(context, source);
+                        if (row == null) throw changed;
+                    }
+                }
+            }
+            if (row == null) return new SourceDecision(source, State.UNKNOWN, null, null, null, null, null, null, null);
+        }
+        SourceRef persisted = readSource(row.getSourceSnapshot());
+        var type = DecisionRef.DecisionType.valueOf(row.getDecisionType());
+        var ref = new DecisionRef(row.getDecisionNo(), row.getOccurredAt().toInstant(ZoneOffset.UTC),
+                row.getSourceRevision(), type);
+        return new SourceDecision(persisted, "COMMITTED".equals(row.getStatus()) ? State.COMMITTED : State.CANCELLED,
+                ref, row.getUserNo(), row.getEntityNo(), row.getStoreNo(), row.getCurrency(), row.getAmountMinor(),
+                row.getSnapshotHash());
+    }
+
+    private OrdEntSourceDecision durable(EntitlementContext context, SourceRef source) {
         var row = DataScopeContext.executeWithoutScope(() -> decisions.selectOne(
                 Wrappers.<OrdEntSourceDecision>lambdaQuery().eq(OrdEntSourceDecision::getTenantNo,
                         context.tenantNo()).eq(OrdEntSourceDecision::getPurpose, purpose(source))
@@ -43,14 +87,7 @@ public class EntitlementSourceDecisionPortImpl implements SourceDecisionPort {
                             .eq(OrdEntSourceDecision::getSettledSourceKey, source.settledKey())
                             .eq(OrdEntSourceDecision::getStatus, "COMMITTED").last("limit 1")));
         }
-        if (row == null) return new SourceDecision(source, State.UNKNOWN, null, null, null, null, null, null, null);
-        SourceRef persisted = readSource(row.getSourceSnapshot());
-        var type = DecisionRef.DecisionType.valueOf(row.getDecisionType());
-        var ref = new DecisionRef(row.getDecisionNo(), row.getOccurredAt().toInstant(ZoneOffset.UTC),
-                row.getSourceRevision(), type);
-        return new SourceDecision(persisted, "COMMITTED".equals(row.getStatus()) ? State.COMMITTED : State.CANCELLED,
-                ref, row.getUserNo(), row.getEntityNo(), row.getStoreNo(), row.getCurrency(), row.getAmountMinor(),
-                row.getSnapshotHash());
+        return row;
     }
 
     @Override

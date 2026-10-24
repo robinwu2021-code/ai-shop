@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.LinkedHashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -30,7 +31,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import tools.jackson.databind.json.JsonMapper;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.pricing.PricingCapabilities;
+import ai.neargo.shop.spi.trade.PricingSourceRef;
+import ai.neargo.shop.spi.trade.PricingConfigEvidencePort;
+import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope;
+import ai.neargo.shop.trade.service.impl.PricingRuntimeConfigServiceImpl;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.event.OutboxPump;
 import ai.neargo.shop.event.SysOutboxMapper;
@@ -113,6 +120,128 @@ class PricingConfigServiceTest {
                 "ord_pricing_template_revision", "ord_pricing_template", "sys_idempotent", "sys_outbox")) {
             jdbc.execute("DELETE FROM " + table);
         }
+    }
+
+    @Test
+    void merchantTaxRevisionRecordsItsActualRegistryAndRuleVersions() throws Exception {
+        String next = JSON.readTree(Files.readString(Path.of("../../docs/technical/design/schema/"
+                + "pricing-merchant-tax-initial-data.example.json"))).path("industryTemplates").get(0)
+                .path("definition").toString();
+        var draft = templates.create(platform(), new CreateTemplateReq("FOOD", "MERCHANT_TAX", "Food", next),
+                "MERCHANT_TAX_CREATE");
+        assertThat(jdbc.queryForObject("SELECT draft_schema_version FROM ord_pricing_template"
+                + " WHERE template_no=?", Integer.class, draft.no())).isEqualTo(3);
+        var preview = templates.preview(platform(), draft.no(), 0, null);
+        assertThat(preview.compilation().valid()).isTrue();
+        var revision = templates.publish(platform(), draft.no(),
+                new PublishReq(0, null, preview.previewHash(), "merchant tax", null), "MERCHANT_TAX_PUBLISH");
+        assertThat(jdbc.queryForObject("SELECT engine_spec_version FROM ord_pricing_template_revision"
+                + " WHERE revision_no=?", String.class, revision.revisionNo())).isEqualTo("PRICING_RULE_SPEC_V5");
+        var initialized = stores.initialize(store(), new InitializeReq(revision.revisionNo(), "init"),
+                "MERCHANT_TAX_INIT");
+        assertThat(jdbc.queryForObject("SELECT engine_spec_version FROM ord_store_pricing_revision"
+                + " WHERE revision_no=?", String.class, initialized.revisionNo())).isEqualTo("PRICING_RULE_SPEC_V5");
+        assertThat(jdbc.queryForObject("SELECT schema_version FROM ord_store_pricing_revision"
+                + " WHERE revision_no=?", Integer.class, initialized.revisionNo())).isEqualTo(3);
+        String catalog = jdbc.queryForObject("SELECT rule_catalog_version FROM ord_pricing_template_revision"
+                + " WHERE revision_no=?", String.class, revision.revisionNo());
+        assertThat(jdbc.queryForObject("SELECT rule_catalog_version FROM ord_store_pricing_revision"
+                + " WHERE revision_no=?", String.class, initialized.revisionNo())).isEqualTo(catalog);
+        assertThat(jdbc.queryForObject("SELECT draft_schema_version FROM ord_store_pricing_config"
+                + " WHERE config_no=?", Integer.class, initialized.parentNo())).isEqualTo(3);
+        var saved = templates.saveDraft(platform(), draft.no(), new DraftSaveReq(1, definition, null),
+                "MERCHANT_TAX_SAVE_LEGACY");
+        assertThat(jdbc.queryForObject("SELECT draft_schema_version FROM ord_pricing_template"
+                + " WHERE template_no=?", Integer.class, draft.no())).isEqualTo(2);
+        var legacy = templates.publish(platform(), draft.no(), request(saved), "MERCHANT_TAX_LEGACY");
+        assertThat(jdbc.queryForObject("SELECT rule_catalog_version FROM ord_pricing_template_revision"
+                + " WHERE revision_no=?", String.class, legacy.revisionNo())).isNotEqualTo(catalog);
+        var storeDraft = stores.getDraft(store(), initialized.parentNo());
+        stores.upgradeTemplate(store(), storeDraft.no(), new UpgradeReq(storeDraft.draftVersion(),
+                legacy.revisionNo()), "MERCHANT_TAX_UPGRADE");
+        assertThat(jdbc.queryForObject("SELECT draft_schema_version FROM ord_store_pricing_config"
+                + " WHERE config_no=?", Integer.class, initialized.parentNo())).isEqualTo(2);
+    }
+
+    @Test
+    void explicitInitialOverridePublishesActualZeroCapabilityAndBindsReceipt() throws Exception {
+        String merchantTax = JSON.readTree(Files.readString(Path.of("../../docs/technical/design/schema/"
+                + "pricing-merchant-tax-initial-data.example.json"))).path("industryTemplates").get(0)
+                .path("definition").toString();
+        var definitionOnly = new Context("MAIN", "OPS", true, null, null,
+                new PricingCapabilities(0, 0, false, false, false), "DEF_DEPLOYED_REGISTRY", CAP_EXPIRY, Set.of());
+        var draft = templates.create(definitionOnly, new CreateTemplateReq("FOOD", "ZERO_INIT", "Food", merchantTax),
+                "ZERO_CREATE");
+        var preview = templates.preview(definitionOnly, draft.no(), 0, null);
+        var template = templates.publish(definitionOnly, draft.no(),
+                new PublishReq(0, null, preview.previewHash(), "template", null), "ZERO_TEMPLATE");
+        var actualZero = new Context("MAIN", "ACTOR", false, "E1", "S1",
+                new PricingCapabilities(0, 0, false, false, false), "OWNER_ZERO", CAP_EXPIRY, Set.of());
+        assertThatThrownBy(() -> stores.initialize(actualZero,
+                new InitializeReq(template.revisionNo(), "default"), "ZERO_DEFAULT"))
+                .isInstanceOf(BizException.class);
+        assertThat(count("ord_store_pricing_config")).isZero();
+        String patch = """
+                {"couponLimits":{"total":0,"percent":0,"amountTotal":0,"cash":0,"deduction":0},
+                 "discountCouponPolicy":{"maxUsedPerOrder":0},"allowedCouponCombinations":[],
+                 "storedValueEnabled":false,"pointsEnabled":false,"manualOperations":{"enabled":false}}
+                """;
+        var command = new InitializeReq(template.revisionNo(), "explicit no benefits", patch);
+        var initialized = stores.initialize(actualZero, command, "ZERO_INIT");
+        assertThat(JSON.readTree(initialized.effectiveSnapshot()).path("couponLimits").path("total").asInt())
+                .isZero();
+        assertThat(JSON.readTree(initialized.overrideSnapshot())).isEqualTo(JSON.readTree(patch));
+        assertThat(JSON.readTree(stores.getDraft(actualZero, initialized.parentNo()).content()))
+                .isEqualTo(JSON.readTree(patch));
+        // Whitespace/order normalization is applied before both receipt recovery and initial writes.
+        assertThat(stores.initialize(actualZero, new InitializeReq(template.revisionNo(), "explicit no benefits",
+                JSON.readTree(patch).toString()), "ZERO_INIT")).isEqualTo(initialized);
+        assertThatThrownBy(() -> stores.initialize(actualZero, new InitializeReq(template.revisionNo(),
+                "explicit no benefits", patch.replace("\"enabled\":false", "\"enabled\":true")), "ZERO_INIT"))
+                .isInstanceOf(BizException.class);
+        assertThat(count("ord_store_pricing_config")).isEqualTo(1);
+        // Native publish -> explicit initialize -> runtime resolve verifies the global defaults separately
+        // and admits only the actual zero-benefit store override under negative owner proof.
+        var runtime = runtimeConfig(scope -> { }, actualZero.capabilities());
+        assertThat(runtime.resolve(new Scope("MAIN", "E1", "S1"), "FOOD").config()
+                .definition().couponLimits().total()).isZero();
+        assertThat(JSON.readTree(template.effectiveSnapshot()).path("couponLimits").path("total").asInt())
+                .isEqualTo(2);
+    }
+
+    @Test
+    void apiReceiptReplayDoesNotReloadUnavailablePublicationOwners() {
+        var draft = create();
+        var preview = templates.preview(platform(), draft.no(), 0, null);
+        var req = new PublishReq(0, null, preview.previewHash(), "first", null);
+        var first = templates.publish(platform(), draft.no(), req, "API_PUB");
+        var expired = new Context("MAIN", platform().actorNo(), true, null, null,
+                new PricingCapabilities(0, 0, false, false, false), "DRAFT_ONLY", Instant.EPOCH, Set.of());
+        assertThat(assertDoesNotThrow(() -> templates.publish(expired, draft.no(), req, "API_PUB", () -> {
+            throw new AssertionError("Receipt replay must not contact owner");
+        }))).isEqualTo(first);
+        var init = new InitializeReq(first.revisionNo(), "init");
+        var original = stores.initialize(store(), init, "API_INIT");
+        var identity = new Context("MAIN", store().actorNo(), false, "E1", "S1",
+                new PricingCapabilities(0, 0, false, false, false), "DRAFT_ONLY", Instant.EPOCH, Set.of());
+        assertThat(assertDoesNotThrow(() -> stores.initialize(identity, init, "API_INIT", () -> {
+            throw new AssertionError("Initialization receipt must survive owner outage");
+        }))).isEqualTo(original);
+    }
+
+    @Test
+    void publicationEvidenceCannotSwitchTheTrustedOperatorIdentity() {
+        var draft = create();
+        var preview = templates.preview(platform(), draft.no(), 0, null);
+        var req = new PublishReq(0, null, preview.previewHash(), "publish", null);
+        var other = new Context("MAIN", "OTHER_OPS", true, null, null, capabilities(), "CAP1",
+                Instant.now().plusSeconds(60), Set.of());
+        assertThatThrownBy(() -> templates.publish(platform(), draft.no(), req, "SWITCH", () -> {
+            assertThat(DataScopeContext.isSkipped()).isFalse();
+            return other;
+        }))
+                .isInstanceOf(BizException.class);
+        assertThat(count("ord_pricing_template_revision")).isZero();
     }
 
     @Test
@@ -333,20 +462,22 @@ class PricingConfigServiceTest {
         var current = stores.getDraft(store(), first.parentNo());
         var saved = stores.saveDraft(store(), current.no(), new DraftSaveReq(current.draftVersion(),
                 "{\"couponLimits\":{\"total\":1}}", template.revisionNo()), "SAVE1");
+        var drafts = new Context("MAIN", store().actorNo(), false, "E1", "S1",
+                new PricingCapabilities(0, 0, false, false, false), "DRAFT_ONLY", Instant.EPOCH, Set.of());
         var resetReq = new ResetReq(saved.draftVersion(), List.of("couponLimits.total"));
-        var reset = assertDoesNotThrow(() -> stores.resetOverrides(store(), saved.no(), resetReq, "RESET1"));
+        var reset = assertDoesNotThrow(() -> stores.resetOverrides(drafts, saved.no(), resetReq, "RESET1"));
         assertThat(reset.content()).doesNotContain("total");
-        assertThat(stores.resetOverrides(store(), saved.no(), resetReq, "RESET1")).isEqualTo(reset);
+        assertThat(stores.resetOverrides(drafts, saved.no(), resetReq, "RESET1")).isEqualTo(reset);
         assertThat(reset.activeRevisionNo()).isEqualTo(first.revisionNo());
         var templateHead = templates.getDraft(platform(), template.parentNo());
         var second = templates.publish(platform(), template.parentNo(), request(templateHead), "TEMPLATE2");
         var upgradeReq = new UpgradeReq(reset.draftVersion(), second.revisionNo());
-        var upgraded = stores.upgradeTemplate(store(), reset.no(), upgradeReq, "UPGRADE1");
+        var upgraded = stores.upgradeTemplate(drafts, reset.no(), upgradeReq, "UPGRADE1");
         assertThat(upgraded.templateRevisionNo()).isEqualTo(second.revisionNo());
         assertThat(upgraded.activeRevisionNo()).isEqualTo(first.revisionNo());
-        assertThat(stores.upgradeTemplate(store(), reset.no(), upgradeReq, "UPGRADE1")).isEqualTo(upgraded);
+        assertThat(stores.upgradeTemplate(drafts, reset.no(), upgradeReq, "UPGRADE1")).isEqualTo(upgraded);
         assertThat(count("ord_store_pricing_revision")).isEqualTo(1);
-        assertThatThrownBy(() -> stores.resetOverrides(store(), current.no(),
+        assertThatThrownBy(() -> stores.resetOverrides(drafts, current.no(),
                 new ResetReq(upgraded.draftVersion(), List.of("taxBinding.storeMayEditRate")), "PROTECTED"))
                 .isInstanceOf(BizException.class);
     }
@@ -363,6 +494,71 @@ class PricingConfigServiceTest {
                 "{\"couponMode\":\"SINGLE\",\"couponMode\":\"MULTI\"}"), "DUPLICATE"))
                 .isInstanceOf(BizException.class);
         assertThat(count("ord_pricing_template")).isZero();
+    }
+
+    @Test
+    void runtimeReadsPublishedRevisionWithoutConsumingWorkingDraft() throws Exception {
+        var published = initializeRuntimeConfig();
+        var runtime = runtimeConfig(scope -> { });
+        var before = runtime.resolve(new Scope("MAIN", "E1", "S1"), "FOOD");
+        assertThat(before.revisionNo()).isEqualTo(published.revisionNo());
+        var draft = stores.getDraft(store(), published.parentNo());
+        stores.saveDraft(store(), draft.no(), new DraftSaveReq(draft.draftVersion(),
+                "{\"couponLimits\":{\"total\":1}}", draft.templateRevisionNo()), "RUNTIME_DRAFT");
+        assertThat(runtime.resolve(new Scope("MAIN", "E1", "S1"), "FOOD").snapshotHash())
+                .isEqualTo(before.snapshotHash());
+    }
+
+    @Test
+    void runtimeRejectsForeignStoreAndTamperedEffectiveHash() throws Exception {
+        var published = initializeRuntimeConfig();
+        var runtime = runtimeConfig(scope -> { });
+        assertThatThrownBy(() -> runtime.resolve(new Scope("MAIN", "E2", "S1"), "FOOD"))
+                .isInstanceOf(BizException.class);
+        jdbc.update("UPDATE ord_store_pricing_revision SET effective_hash=? WHERE revision_no=?",
+                "0".repeat(64), published.revisionNo());
+        assertThatThrownBy(() -> runtime.resolve(new Scope("MAIN", "E1", "S1"), "FOOD"))
+                .isInstanceOf(BizException.class);
+    }
+
+    @Test
+    void runtimeDetectsActivePointerMovedDuringOwnerRead() throws Exception {
+        var published = initializeRuntimeConfig();
+        var runtime = runtimeConfig(scope -> jdbc.update(
+                "UPDATE ord_store_pricing_config SET active_revision_no='MOVED' WHERE config_no=?",
+                published.parentNo()));
+        assertThatThrownBy(() -> runtime.resolve(new Scope("MAIN", "E1", "S1"), "FOOD"))
+                .isInstanceOfSatisfying(BizException.class, error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+    }
+
+    private RevisionVO initializeRuntimeConfig() throws Exception {
+        String next = JSON.readTree(Files.readString(Path.of("../../docs/technical/design/schema/"
+                + "pricing-merchant-tax-initial-data.example.json"))).path("industryTemplates").get(0)
+                .path("definition").toString();
+        var draft = templates.create(platform(), new CreateTemplateReq("FOOD", "RUNTIME", "Food", next),
+                "RUNTIME_CREATE");
+        var revision = templates.publish(platform(), draft.no(), request(draft), "RUNTIME_PUBLISH");
+        return stores.initialize(store(), new InitializeReq(revision.revisionNo(), "runtime"), "RUNTIME_INIT");
+    }
+
+    private PricingRuntimeConfigServiceImpl runtimeConfig(
+            Consumer<PricingConfigEvidencePort.Scope> duringRead) {
+        return runtimeConfig(duringRead, capabilities());
+    }
+
+    private PricingRuntimeConfigServiceImpl runtimeConfig(
+            Consumer<PricingConfigEvidencePort.Scope> duringRead, PricingCapabilities actualCapabilities) {
+        var beans = new DefaultListableBeanFactory();
+        var expires = Instant.now().plusSeconds(180);
+        beans.registerSingleton("runtimeOwner", (PricingConfigEvidencePort) scope -> {
+            duringRead.accept(scope);
+            return new PricingConfigEvidencePort.Evidence(scope, actualCapabilities, "CAP_RUNTIME", expires, Set.of(),
+                    List.of(new PricingSourceRef("OWNER", "CAPABILITY", "CAP_RUNTIME", 1, "S1", 1L)));
+        });
+        return new PricingRuntimeConfigServiceImpl(session.getMapper(TradeMappers.StorePricingConfigMapper.class),
+                session.getMapper(TradeMappers.StorePricingRevisionMapper.class),
+                session.getMapper(TradeMappers.PricingTemplateRevisionMapper.class),
+                beans.getBeanProvider(PricingConfigEvidencePort.class));
     }
 
     private static PricingPublicationPolicy buildPolicy(IdempotencyService idempotency) {

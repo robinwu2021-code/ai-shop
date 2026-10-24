@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 25 个权限点 × 282 个受控端点**。
+统计：**6 个角色 × 32 个权限点 × 299 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -25,24 +25,31 @@
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
 | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `AFTERSALE` | 售后同意/驳回/收货 | 8 | ✅ | ✅ | — | — | — | ✅ |
+| `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 8 | ✅ | — | — | — | — | — |
 | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 6 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
+| `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
-| `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
+| `PRICING_TAX_UPDATE` | 修改全主体所有门店的税配置，仅主体属主，不可按门店委派 | 2 | ✅ | — | — | — | — | — |
+| `SV_PLAN_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
+| `SV_PLAN_MANAGE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
+| `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
+| `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 2 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
-| `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
-| `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
-| `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
+| `PRICING_TAX_READ` | 查看当前授权商家的有效税配置 | 0 | ✅ | — | — | — | — | — |
+| `PRICING_CONFIG_READ` | Shared pricing configuration: read, draf | 0 | ✅ | — | — | — | — | — |
+| `PRICING_CONFIG_UPDATE` | Shared pricing configuration: read, draf | 0 | ✅ | — | — | — | — | — |
+| `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read, draf | 0 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 
-**只有 OWNER 能碰的 14 项**：`FINANCE`、`STORE_ADMIN`、`ENT_READ`、`SV_RECHARGE_CREATE`、`ENT_USE`、`SV_CONSUME_CREATE`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`SV_ACCOUNT_READ`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`ENT_TEMPLATE_READ`
+**只有 OWNER 能碰的 21 项**：`FINANCE`、`STORE_ADMIN`、`SV_RECHARGE_CREATE`、`SV_ACCOUNT_READ`、`ENT_READ`、`ENT_USE`、`PRICING_TAX_UPDATE`、`SV_PLAN_READ`、`SV_PLAN_MANAGE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`SV_CONSUME_CREATE`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`PRICING_TAX_READ`、`PRICING_CONFIG_READ`、`PRICING_CONFIG_UPDATE`、`PRICING_CONFIG_PUBLISH`、`ENT_TEMPLATE_READ`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点
@@ -315,6 +322,17 @@
 - `/biz/after-sale/{afterSaleNo}/receive`
 - `/biz/after-sale/{afterSaleNo}/reject`
 
+### `SV_RECHARGE_CREATE`　（OWNER）
+
+- `/biz/stored-value/plan-recharges`
+- `/biz/stored-value/plan-recharges/cancel-create`
+- `/biz/stored-value/plan-recharges/resolve`
+- `/biz/stored-value/plan-recharges/{rechargeNo}/cancel`
+- `/biz/stored-value/plan-recharges/{rechargeNo}/submit`
+- `/biz/stored-value/recharges`
+- `/biz/stored-value/recharges/{rechargeNo}/cancel`
+- `/biz/stored-value/recharges/{rechargeNo}/submit`
+
 ### `VERIFY`　（OWNER、MANAGER、CLERK）
 
 - `/biz/coupon-redeem`
@@ -333,6 +351,14 @@
 - `/biz/order/{subOrderNo}/inventory-trace`
 - `/biz/order/{subOrderNo}/logistics-updates`
 - `/biz/order/{subOrderNo}/trace`
+
+### `SV_ACCOUNT_READ`　（OWNER）
+
+- `/biz/stored-value/account-directory`
+- `/biz/stored-value/accounts`
+- `/biz/stored-value/accounts/{accountRef}`
+- `/biz/stored-value/records`
+- `/biz/stored-value/records/{recordNo}`
 
 ### `RECEIVE`　（OWNER、MANAGER、CLERK、PICKER）
 
@@ -354,17 +380,36 @@
 - `/biz/review/{reviewNo}/appeal`
 - `/biz/review/{reviewNo}/reply`
 
-### `SV_RECHARGE_CREATE`　（OWNER）
-
-- `/biz/stored-value/recharges`
-- `/biz/stored-value/recharges/{rechargeNo}/cancel`
-- `/biz/stored-value/recharges/{rechargeNo}/submit`
-
 ### `ENT_USE`　（OWNER）
 
 - `/biz/entitlement-uses`
 - `/biz/entitlement-uses/preview`
 - `/biz/entitlement-uses/{operationNo}/cancel`
+
+### `PRICING_TAX_UPDATE`　（OWNER）
+
+- `/biz/pricing-tax-settings`
+- `/biz/pricing-tax-settings/reset`
+
+### `SV_PLAN_READ`　（OWNER）
+
+- `/biz/stored-value/context`
+- `/biz/stored-value/plans/{planNo}`
+
+### `SV_PLAN_MANAGE`　（OWNER）
+
+- `/biz/stored-value/plans`
+- `/biz/stored-value/plans/{planNo}/status`
+
+### `SV_RECHARGE_RECEIVE`　（OWNER）
+
+- `/biz/stored-value/plan-recharges/{rechargeNo}/receive`
+- `/biz/stored-value/recharges/{rechargeNo}/receive`
+
+### `SV_RECHARGE_READ`　（OWNER）
+
+- `/biz/stored-value/plan-recharges/{rechargeNo}`
+- `/biz/stored-value/recharges/{rechargeNo}`
 
 ### `SV_CONSUME_CREATE`　（OWNER）
 
@@ -380,18 +425,6 @@
 
 - `/biz/entitlement-templates/{templateNo}/publish`
 - `/biz/entitlement-templates/{templateNo}/status`
-
-### `SV_RECHARGE_RECEIVE`　（OWNER）
-
-- `/biz/stored-value/recharges/{rechargeNo}/receive`
-
-### `SV_RECHARGE_READ`　（OWNER）
-
-- `/biz/stored-value/recharges/{rechargeNo}`
-
-### `SV_ACCOUNT_READ`　（OWNER）
-
-- `/biz/stored-value/accounts`
 
 ### `ENT_ISSUE`　（OWNER）
 

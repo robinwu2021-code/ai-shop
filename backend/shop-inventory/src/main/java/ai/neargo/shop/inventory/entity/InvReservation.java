@@ -28,6 +28,7 @@ public class InvReservation extends InvMutableEntity {
     /** ★ 到期自动回收。调用方可能永远不回来 —— 跨进程之后兜底必须在本领域内 */
     private LocalDateTime expiresAt;
 
+    /** Payment commit/allocation acknowledgement; lifecycle3 acceptance and credit issue leave this null. */
     private LocalDateTime committedAt;
 
     private LocalDateTime releasedAt;

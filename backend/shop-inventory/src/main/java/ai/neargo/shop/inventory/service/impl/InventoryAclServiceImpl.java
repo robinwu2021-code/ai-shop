@@ -596,6 +596,32 @@ public class InventoryAclServiceImpl implements InventoryAclService {
                         item.getWeighed(), item.getDataSource())).toList();
     }
 
+    @Override
+    @Transactional(transactionManager = "invTransactionManager", readOnly = true)
+    public String findOwnerId(String entityNo) {
+        InvOwner owner = findOwner(entityNo);
+        return owner == null ? null : owner.getOwnerId();
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager", readOnly = true)
+    public String skuOfItem(String ownerId, String itemId) {
+        List<InvItemRef> refs = refMapper.selectList(Wrappers.<InvItemRef>lambdaQuery()
+                .eq(InvItemRef::getOwnerId, ownerId).eq(InvItemRef::getRefSystem, InvEnums.RefSystem.AISHOP)
+                .eq(InvItemRef::getItemId, itemId));
+        return refs.size() == 1 ? refs.getFirst().getRef() : null;
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager", readOnly = true)
+    public String stockLocationOfExistingStore(String entityNo, String storeNo) {
+        InvOwner owner = findOwner(entityNo);
+        if (owner == null || storeNo == null || storeNo.isBlank()) return null;
+        InvLocation store = locationMapper.selectOne(Wrappers.<InvLocation>lambdaQuery()
+                .eq(InvLocation::getOwnerId, owner.getOwnerId()).eq(InvLocation::getExternalRef, storeNo));
+        return store == null ? null : locations.resolveStockLocation(owner.getOwnerId(), store.getLocationId());
+    }
+
     /** 只读地找业主。{@link #ownerIdOf} 找不到会建一个 —— 查询路径上不能有这种副作用 */
     private InvOwner findOwner(String entityNo) {
         return entityNo == null ? null : ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()

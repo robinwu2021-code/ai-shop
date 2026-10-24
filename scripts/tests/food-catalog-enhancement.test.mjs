@@ -9,7 +9,7 @@ test('enhancement schema traces nine target objects without pretending to have m
  const s=source();assert.equal(s.catalogEnhancement?.version,1);
  assert.equal(s.tables.filter(t=>t.name.startsWith('fnb_')).length,82);
  for(const name of added)assert.equal(s.tables.find(t=>t.name===name)?.deployment,['fnb_recipe','fnb_recipe_line'].includes(name)?'MIGRATION_V4':name==='fnb_recipe_adjustment'?'MIGRATION_V5':name==='fnb_menu_item_option_group'?'MIGRATION_V6':name==='fnb_menu_channel_binding'?'MIGRATION_V7':'PLANNED',name);
- assert.equal(s.databaseInitialization.targetSchemaVersion,7);
+ assert.equal(s.databaseInitialization.targetSchemaVersion,8);
  assert.equal(s.catalogEnhancement.runtimeEnabled,false);
  assertFrozenFoodV1(renderFoodV1(s));
 });
