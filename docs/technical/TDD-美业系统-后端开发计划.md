@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5已代码验收，A5b已按范围验收，A5c报价误连已修复验收，A6及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
+> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5已代码验收，A5b已按范围验收，A5c报价误连已修复验收，A6已代码验收，A7及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
 > **执行方式：** 使用`superpowers:subagent-driven-development`逐任务实施及独立审查，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -888,10 +888,30 @@ Owned仅纯lineage模块、原lineage测试、生成器live说明行和其实际
 | A6-2 | 静态Java payload与.sql同规则，SQL/Java噪音不误报 | 普通注解/三引号、转义、文件行号和相邻真实代码反例 |
 | A6-3 | 保留fresh/stale、精确baseline和旧跳过项 | tmp known/stale案例；真实--check，两个最小消融和逐字恢复 |
 
-- [ ] 必要只提接口后取得漏beauty/Java的真实行为RED，缺导出/环境错误不算。
-- [ ] Node专属测试GREEN及真实node scripts/check-sql-portability.mjs --check。
-- [ ] 移除beauty根及Java回退旧mask两类消融RED，精确恢复最终GREEN。
-- [ ] 独立规格/质量审查与精确提交，baseline/mask哈希保持；无native或部署。
+- [x] 必要只提接口后取得漏beauty/Java的真实行为RED，缺导出/环境错误不算。
+- [x] Node专属测试GREEN及真实node scripts/check-sql-portability.mjs --check。
+- [x] 移除beauty根及Java回退旧mask两类消融RED，精确恢复最终GREEN。
+- [x] 独立规格/质量审查与精确提交，baseline/mask哈希保持；无native或部署。
+
+### 2.31 Task60A-A7：已认领临客与真实资源替换组合（2026-10-24）
+
+档位0，收尾既有业务的组合验证，不新增执行能力。精确三方法、DTO/服务、文件和安全环境见[A7 brief](../../.superpowers/sdd/beauty-backend/task-60a-a7-brief.md)。三产品仅新BeautyClaimedGuestResourceIT、旧checkout runner与其Node测试；默认retail反射编译边界保留，固定新class/三方法而非Beauty前缀通配。
+
+| AC | 实施 | 验证 |
+|---|---|---|
+| A7-1 | 真实guest注册→GUEST预约/CONFIRMED→claim→当前mc1/cr1签到→原guestNo换人开工单 | USER身份/原guest与claim历史、真实REPLACE成功/新旧hold和容量/fence、原key重放无重做 |
+| A7-2 | 真实非owner MERCHANT/USR当前当店角色撤BOOKING_MANAGE，保留查看/客户能力 | 精确FORBIDDEN，旧hold/current/安排不丢，无新增开单效果 |
+| A7-3 | 排序人员A锁作测试门闩，真实REPLACE已许可后另一真实预约占B，再释放门闩 | owner实际CAPACITY_UNAVAILABLE/开单CONFLICT，原A和peerB持有都保留，无伪造结果 |
+| A7-4 | 严格finite source selector/真实XML与默认编译 | 新selector Node RED/GREEN；native三例零跳过；一次实时权限SQL防线临时消融/恢复；默认test-compile |
+
+资源/人员/班表/预约/身份/接待均用真实owner写链，不借ArrivalHoldFixture/FaultConfiguration/mock Port或替换Bean；SQL只作auth/goods前置、只读事实与独立人员行锁门闩。默认owner只配置前置，撤权主体必须非owner USR。保护登记/claim加密及原始凭据，摘要比较不在断言日志输出秘密。
+
+唯一临时生产消融限MerchantMappers.OperatorAccessMapper的allowed表达式置真，观察撤权例真实RED后finally逐字恢复、重编译当前bytecode再GREEN；绝不进入产品提交。采用既有cached MySQL9.7.2/DISK64M/内存guard/共享串行锁/env凭据/ownUUID finally清理，仅必要隔离开发测试，正式部署仍后置。
+
+- [ ] 新selector真实行为RED，三产品最小接入/Node GREEN；组合已有业务正确可首次native GREEN，不制造假业务RED。
+- [ ] native三方法真实零fail/error/skip，身份/持久命令/新旧资源与历史共同断言。
+- [ ] 临时实时权限防线消融RED/精确恢复定向GREEN、默认retail test-compile与bytecode来源证明。
+- [ ] 独立规格/质量审查及精确提交，环境失败和警告单列，不宣称BM05或BM04部署完成。
 
 ## §3 数据层之后的业务任务与启动深化
 
@@ -2175,3 +2195,11 @@ A5b审查另确认继承Important：quote_no使结算报价误连到营销。本
 真实旧逻辑4失败/67通过，最小修复后71项通过，旧global消融3失败/68通过，逐字恢复后71项通过。两次实际gen:erd均成功；21项有首次/第二次直接SHA一致证明，三张专题图首次SHA漏采，最终与基线一致及首次未变状态有记录，明确不声称24项完整直接首次指纹。此历史证据限制经独立审查评估，无确认当前正确性缺陷，不为补历史证明重复运行。
 
 独立规格/质量PASS，A5b继承Important与Minor均ADDRESSED，无新增发现。[报告](../../.superpowers/sdd/beauty-backend/task-60a-a5c-report.md)、[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a5c.md)。根核对五文件源码/生成物、71项及消融恢复、21直接指纹和三专题最终BASE、精确提交父树与index。A5登记SHA未变，无SQL/Java/数据库/部署，整体P1～P4尚未完成，下片A6。
+
+### 32.17 60A-A6统一SQL方言扫描代码验收（2026-10-24）
+
+产品`9136d67c98ff24a6448cd009511e3685370d2dfb`仅扫描器与新增Node测试。CLI固定扫描backend和美业插件，共用原十规则、SQL掩码及精确path/rule基线；Java普通字符串/textblock有界提取后扫描，保留原文件行号，导入不运行扫描，缺根明确失败。
+
+真实RED9项/7失败、最小修复及最终9项通过；移除beauty目录与回退Java整文件mask两次消融真实1/3失败、逐字恢复。实际--check exit0：162处/51文件、54已知、fresh0/stale0，未扩baseline；SQLmask和known逐字不变。独立规格PASS/质量APPROVE，无重要问题。[报告](../../.superpowers/sdd/beauty-backend/task-60a-a6-report.md)、[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a6.md)。
+
+审查Minor：Java仅bare-CR换行时//注释终止与原行计数仍有边界缺口，已带到最终分支审查triage，未声称所有合法Java格式全覆盖。无AST/Unicode/octal/跨字符串拼接或动态运行时SQL证明，报告明确静态边界。未执行Java编译/数据库/部署，下一项A7才运行必要隔离原生组合测试；全部P1～P4正式部署顺序保持。
