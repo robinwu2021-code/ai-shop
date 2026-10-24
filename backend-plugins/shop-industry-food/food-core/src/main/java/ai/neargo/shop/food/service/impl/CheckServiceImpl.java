@@ -47,6 +47,8 @@ import ai.neargo.shop.food.policy.ServiceCalendarPolicy;
 import ai.neargo.shop.food.policy.TableOccupancyPolicy;
 import ai.neargo.shop.food.policy.TableResourceLocks;
 import ai.neargo.shop.food.service.CheckService;
+import ai.neargo.shop.food.mapper.ReservationTableMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.food.CheckChanged;
@@ -98,11 +100,23 @@ public class CheckServiceImpl implements CheckService {
     private final ObjectMapper json;
     private final TransactionTemplate tx;
     private final TableResourceLocks locks;
+    private final ReservationTableMapper reservationTables;
 
     public CheckServiceImpl(CheckMapper checks,TableAreaMapper areas,TableMapper tables,TableOccupancyMapper occupancies,
             SeatMapper seats,TableOperationMapper operations,GuestSessionMapper sessions,ActionLogMapper actions,
             StoreOperationService policies,IdempotencyService idem,@Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager) {
+        this(checks, areas, tables, occupancies, seats, operations, sessions, actions, policies, idem,
+                publisher, json, manager, null);
+    }
+    @Autowired
+    public CheckServiceImpl(CheckMapper checks, TableAreaMapper areas, TableMapper tables,
+            TableOccupancyMapper occupancies, SeatMapper seats, TableOperationMapper operations,
+            GuestSessionMapper sessions, ActionLogMapper actions, StoreOperationService policies,
+            IdempotencyService idem, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
+            ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager,
+            ReservationTableMapper reservationTables) {
+        this.reservationTables = reservationTables;
         this.checks=checks;this.tables=tables;this.occupancies=occupancies;this.seats=seats;this.operations=operations;
         this.sessions=sessions;this.actions=actions;this.policies=policies;this.idem=idem;this.publisher=publisher;this.json=json;
         this.locks=new TableResourceLocks(areas,tables);this.tx=new TransactionTemplate(manager);
@@ -111,21 +125,41 @@ public class CheckServiceImpl implements CheckService {
     @Override public CheckResultVO openCheck(String entity,String store,String actor,OpenCheckReq req,String key) {
         return open(entity,store,actor,req,key,"OPEN_CHECK");
     }
+    @Override public CheckResultVO openQueuedCheck(String entity,String store,String actor,OpenCheckReq req,String key) {
+        return open(entity,store,actor,req,key,"OPEN_CHECK",true);
+    }
+    @Override public CheckResultVO openReservedCheck(String entity, String store, String actor,
+            OpenCheckReq req, String key, Instant reservedUntil) {
+        if (reservationTables == null || reservedUntil == null || !reservedUntil.isAfter(Instant.now())
+                || reservedUntil.getNano() % 1_000_000 != 0) throw BizException.of(ErrorCode.CONFLICT);
+        return open(entity, store, actor, req, key, "OPEN_RESERVED_CHECK", true, reservedUntil);
+    }
     private CheckResultVO open(String entity,String store,String actor,OpenCheckReq req,String key,String action) {
+        return open(entity,store,actor,req,key,action,false);
+    }
+    private CheckResultVO open(String entity,String store,String actor,OpenCheckReq req,String key,String action,boolean queued) {
+        return open(entity, store, actor, req, key, action, queued, null);
+    }
+    private CheckResultVO open(String entity, String store, String actor, OpenCheckReq req, String key,
+            String action, boolean queued, Instant reservedUntil) {
         if(req==null || req.partySize()==null || req.partySize()<1) bad();
-        prepay(req.payMode());unverified(req.reservationNo());unverified(req.serviceEmployeeNo());
+        payMode(req.payMode());unverified(req.reservationNo());unverified(req.serviceEmployeeNo());
         if(!Set.of("EXCLUSIVE","SHARED").contains(req.sharingMode()==null ? "":req.sharingMode())) bad();
         var targets=numbers(req.tableNos(),100);var versions=versions(req.tableVersions(),100);
         if(!versions.keySet().equals(new HashSet<>(targets))) bad();
         var desired=seatInputs(req.seats(),req.partySize());
         if(desired.stream().anyMatch(s -> s.seatNo()!=null)) bad();
-        String hash=FoodCommandFingerprint.hash(json.writeValueAsString(targets),req.partySize().toString(),
+        String originalHash=FoodCommandFingerprint.hash(json.writeValueAsString(targets),req.partySize().toString(),
                 req.payMode(),req.sharingMode(),json.writeValueAsString(versions),json.writeValueAsString(desired));
-        return write(action,entity,store,actor,key,hash,CheckResultVO.class,() -> {
+        // Preserve historical walk-in/queue fingerprints; only reservations bind a bounded occupancy window.
+        String hash = reservedUntil == null ? originalHash
+                : FoodCommandFingerprint.hash(originalHash, "RESERVED_UNTIL", reservedUntil.toString());
+        return write(action,entity,store,actor,key,hash,CheckResultVO.class,queued,() -> {
             var locked=locks.lock(entity,store,targets,versions,true);
-            var allocation=allocation(entity,locked,req.partySize(),req.sharingMode(),null);
+            var allocation=allocation(entity,locked,req.partySize(),req.sharingMode(),null,reservedUntil);
             var at=Instant.now().truncatedTo(ChronoUnit.MILLIS);
             var policy=policies.getPolicy(entity,store,new GetPolicyQuery(at));
+            if (!req.payMode().equals(policy.payPolicy())) throw BizException.of(ErrorCode.CONFLICT);
             var check=new FnbCheck();check.setEntityNo(entity);check.setStoreNo(store);check.setCheckNo(BizKey.next("FCHK"));
             check.setBusinessDate(ServiceCalendarPolicy.businessDate(at,policy));check.setPolicyNo(policy.policyNo());
             check.setPartySize(req.partySize());check.setPayMode(req.payMode());check.setStatus("OPEN");
@@ -225,7 +259,7 @@ public class CheckServiceImpl implements CheckService {
         String hash=FoodCommandFingerprint.hash(number,Long.toString(version),reason,json.writeValueAsString(targets),
                 json.writeValueAsString(versions));
         return write(action,entity,store,actor,key,hash,OperationResultVO.class,() -> {
-            var check=locked(entity,store,number,version);noTrade(check);var before=view(check);var active=active(check);
+            var check=locked(entity,store,number,version);movable(check);var before=view(check);var active=active(check);
             var old=tableNos(active);var all=Stream.concat(old.stream(),targets.stream()).distinct().sorted().toList();
             boolean combine=action.equals("COMBINE_TABLES");
             if(combine && targets.stream().anyMatch(old::contains)) bad();
@@ -274,10 +308,22 @@ public class CheckServiceImpl implements CheckService {
                 a.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant(),a.getReason())).toList(),result.getTotal(),page,size);
     }
     private <T> T write(String action,String entity,String store,String actor,String key,String hash,Class<T> type,Supplier<T> work) {
+        return write(action,entity,store,actor,key,hash,type,false,work);
+    }
+    private <T> T write(String action,String entity,String store,String actor,String key,String hash,Class<T> type,
+            boolean queued,Supplier<T> work) {
         scope(entity,store);if(actor==null || actor.isBlank() || actor.length()>32) throw BizException.of(ErrorCode.FORBIDDEN);
-        text(key,128);if(TransactionSynchronizationManager.isActualTransactionActive())
-            throw new IllegalStateException("Check command cannot join an existing transaction");
-        try { return tx.execute(status -> idem.execute(key,FoodCommandFingerprint.scope(action,entity,store),actor,hash,type,work)); }
+        text(key,128);
+        boolean active=TransactionSynchronizationManager.isActualTransactionActive();
+        if(queued ? !active : active)
+            throw new IllegalStateException(queued ? "Queued check requires its queue transaction"
+                    : "Check command cannot join an existing transaction");
+        try { return tx.execute(status -> {
+            // REQUIRED must participate in this manager, not start a second database transaction.
+            if(queued && status.isNewTransaction())
+                throw new IllegalStateException("Queued check requires the primary queue transaction");
+            return idem.execute(key,FoodCommandFingerprint.scope(action,entity,store),actor,hash,type,work);
+        }); }
         catch(ConcurrencyFailureException | DuplicateKeyException conflict) { throw BizException.of(ErrorCode.CONFLICT); }
     }
     private FnbCheck find(String entity,String store,String number,boolean lock) {
@@ -295,6 +341,14 @@ public class CheckServiceImpl implements CheckService {
         if(active.stream().anyMatch(row -> row.getResourceClaimNo()!=null)
                 || tables.stream().anyMatch(row -> row.getResourceNo()!=null)) throw BizException.of(ErrorCode.FORBIDDEN);
     }
+    /** Same-check topology preserves trade identities; check settlement states and pending external operations stay closed. */
+    private void movable(FnbCheck row) {
+        if (!"OPEN".equals(row.getStatus()) || !"OPEN".equals(row.getServiceState())
+                || !("PREPAY".equals(row.getPayMode()) || "POSTPAY".equals(row.getPayMode()))
+                || operations.externalOrPendingForCheck(row.getEntityNo(), row.getCheckNo()) > 0) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
     private void noTrade(FnbCheck row) {
         if(!"PREPAY".equals(row.getPayMode()) || checks.tradeFacts(row.getEntityNo(),row.getCheckNo())>0
                 || operations.externalOrPendingForCheck(row.getEntityNo(),row.getCheckNo())>0)
@@ -306,6 +360,19 @@ public class CheckServiceImpl implements CheckService {
         return active;
     }
     private Map<String,Integer> allocation(String entity,List<FnbTable> tables,int party,String mode,String own) {
+        return allocation(entity, tables, party, mode, own, null);
+    }
+    private Map<String,Integer> allocation(String entity, List<FnbTable> tables, int party, String mode,
+            String own, Instant reservedUntil) {
+        var at = Instant.now();
+        if (reservedUntil != null && !reservedUntil.isAfter(at)) throw BizException.of(ErrorCode.CONFLICT);
+        if (reservationTables != null) for (var table : tables) {
+            long conflicts = reservedUntil == null
+                    ? reservationTables.pending(entity, table.getStoreNo(), table.getTableNo(), local(at))
+                    : reservationTables.overlaps(entity, table.getStoreNo(), table.getTableNo(), local(at),
+                            local(reservedUntil), null);
+            if (conflicts > 0) throw BizException.of(ErrorCode.CONFLICT);
+        }
         var active=new LinkedHashMap<String,List<FnbTableOccupancy>>();
         for(var table:tables) active.put(table.getTableNo(),occupancies.activeForTable(entity,table.getTableNo()));
         return TableOccupancyPolicy.allocate(tables,active,party,mode,own);
@@ -432,8 +499,8 @@ public class CheckServiceImpl implements CheckService {
     private static void initialize(BaseEntity row,String actor) {
         row.setVersion(0L);row.setDeleted(0);
     }
-    private static void prepay(String mode) {
-        if("POSTPAY".equals(mode)) throw BizException.of(ErrorCode.FORBIDDEN);if(!"PREPAY".equals(mode)) bad();
+    private static void payMode(String mode) {
+        if (!"PREPAY".equals(mode) && !"POSTPAY".equals(mode)) bad();
     }
     private static void unverified(String ref) { if(ref!=null && !ref.isBlank()) throw BizException.of(ErrorCode.FORBIDDEN); }
     private static void scope(String entity,String store) { id(entity);id(store); }

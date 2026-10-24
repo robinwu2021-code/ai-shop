@@ -1,7 +1,7 @@
 {
   "version": 1,
   "stage": "JAVA_BACKEND_UI_DEFERRED",
-  "reason": "用户要求后端优先；规则、税配置与门店SKU优惠参与/税分类管理API已提供，UI后续接入。税配置无审批，规则发布仍需真实能力来源。",
+  "reason": "用户要求后端优先；规则、税配置与门店SKU优惠参与/税分类管理API已提供，UI后续接入。税配置无审批，规则发布仍需真实能力来源。 人工调价六条实际Handler也仅完成后端；反向守卫将approve与quote规范为同一动作模式，清单登记一个模式，公开合同保留六条。",
   "plan": "docs/technical/TDD-餐饮订单结账-完整开发计划.md",
   "entries": [
     {
@@ -73,6 +73,31 @@
       "app": "b-app",
       "method": "PUT",
       "path": "/biz/goods/{goodsNo}/skus/{skuNo}/pricing-policy"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/pricing-manual-policies/{currency}/{reasonCode}/{kind}"
+    },
+    {
+      "app": "b-app",
+      "method": "PUT",
+      "path": "/biz/pricing-manual-policies/{currency}/{reasonCode}/{kind}"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pricing-manual-adjustments"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/pricing-manual-adjustments/{no}"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pricing-manual-adjustments/{no}:approve"
     }
   ]
 }

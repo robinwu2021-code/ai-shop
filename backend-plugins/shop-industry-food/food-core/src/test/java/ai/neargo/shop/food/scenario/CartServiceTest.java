@@ -1,6 +1,9 @@
 package ai.neargo.shop.food.scenario;
 
 import java.io.IOException;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.TimeoutException;
 
 import java.util.regex.Pattern;
 
@@ -147,6 +150,48 @@ class CartServiceTest extends FoodWriteGuardFixture {
                             null,null,null,null,0,0)),c.getBean(ObjectMapper.class),
                     c.getBean(PlatformTransactionManager.class),Clock.fixed(NOW,ZoneOffset.UTC));
             test.accept(new State(f,service,outage,fail));
+        });
+    }
+    @Test void diningRoomAuthorityRequiresLiveOriginalPostpayCheckAndJoinsOwningTransaction() {
+        run(t -> {
+            t.f.sql().update("UPDATE fnb_check SET pay_mode='POSTPAY',service_state='OPEN' WHERE check_no='CHECK'");
+            var cart=t.service.createCart("E","A","staff",new CreateCartReq("CHECK",null,null,"POS","DINE_IN",null),
+                    "dining-cart").cart();
+            t.f.tx().execute(tx -> { t.service.requireDiningRoomCart("E","A",cart.cartNo()); return null; });
+            for(String state:List.of("SETTLING","RELEASED")) {
+                t.f.sql().update("UPDATE fnb_check SET service_state=? WHERE check_no='CHECK'",state);
+                assertThatThrownBy(() -> t.service.requireDiningRoomCart("E","A",cart.cartNo()))
+                        .isInstanceOf(BizException.class);
+            }
+            t.f.sql().update("UPDATE fnb_check SET service_state='OPEN',pay_mode='PREPAY' WHERE check_no='CHECK'");
+            assertThatThrownBy(() -> t.service.requireDiningRoomCart("E","A",cart.cartNo()))
+                    .isInstanceOf(BizException.class);
+            t.f.sql().update("UPDATE fnb_check SET pay_mode='POSTPAY',status='CLOSED' WHERE check_no='CHECK'");
+            assertThatThrownBy(() -> t.service.requireDiningRoomCart("E","A",cart.cartNo()))
+                    .isInstanceOf(BizException.class);
+            assertThat(t.f.sql().queryForObject("SELECT COUNT(*) FROM fnb_order_batch",Integer.class)).isZero();
+        });
+    }
+    @Test void diningRoomAuthorityKeepsOriginalCheckLockUntilPlacementTransactionCompletes() {
+        run(t -> {
+            t.f.sql().update("UPDATE fnb_check SET pay_mode='POSTPAY',service_state='OPEN' WHERE check_no='CHECK'");
+            var cart=t.service.createCart("E","A","staff",new CreateCartReq("CHECK",null,null,"POS","DINE_IN",null),
+                    "dining-cart").cart();
+            try(var writer=Executors.newSingleThreadExecutor()) {
+                var entered=new CountDownLatch(1);
+                var pending=new AtomicReference<Future<Integer>>();
+                t.f.tx().execute(tx -> {
+                    t.service.requireDiningRoomCart("E","A",cart.cartNo());
+                    pending.set(writer.submit(() -> { entered.countDown();
+                        return t.f.sql().update("UPDATE fnb_check SET status='CLOSED' WHERE check_no='CHECK'"); }));
+                    try { assertThat(entered.await(2,TimeUnit.SECONDS)).isTrue(); }
+                    catch(InterruptedException failure) { Thread.currentThread().interrupt(); throw new IllegalStateException(failure); }
+                    assertThatThrownBy(() -> pending.get().get(100,TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+                    return null;
+                });
+                try { assertThat(pending.get().get(2,TimeUnit.SECONDS)).isOne(); }
+                catch(Exception failure) { throw new IllegalStateException(failure); }
+            }
         });
     }
     private static void create(JdbcTemplate sql,Class<?> type) {

@@ -270,6 +270,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         if (current == null || !new OrderActor(merchantNo, storeNo, operatorNo).owns(current)) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        requireGenericFulfillment(current);
         if (OrdSubOrder.EXPRESS.equals(current.getFulfillment())) {
             orderShippingService.ship(subOrderNo, new ShipCommand(List.of(), expressCompany, expressNo),
                     new OrderActor(merchantNo, storeNo, operatorNo));
@@ -374,6 +375,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     @Transactional
     public OrderVO delivered(String merchantNo, String storeNo, String subOrderNo) {
         OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
+        requireGenericFulfillment(sub);
         if (hasOpenAfterSale(subOrderNo)) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
@@ -467,6 +469,14 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         return sub;
+    }
+
+    private void requireGenericFulfillment(OrdSubOrder sub) {
+        long owned = DataScopeContext.executeWithoutScope(() -> subOrderMapper.countIndustrySources(
+                sub.getTenantNo(), sub.getEntityNo(), sub.getStoreNo(), sub.getOrderNo(), sub.getSubOrderNo()));
+        if (owned > 0) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
     }
 
     private void save(OrdSubOrder sub) {

@@ -1,7 +1,9 @@
 package ai.neargo.shop.food.config;
 
 import ai.neargo.shop.event.outbox.OutboxPublisher;
+import ai.neargo.shop.food.service.KitchenTaskService;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
+import ai.neargo.shop.food.mapper.ReservationTableMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.BundleChoiceMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.BundleGroupMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.BundleMapper;
@@ -29,6 +31,14 @@ import ai.neargo.shop.food.mapper.FoodMappers.TableTokenMapper;
 import ai.neargo.shop.food.policy.BundlePublicationSource;
 import ai.neargo.shop.food.policy.RecipePublicationSource;
 import ai.neargo.shop.food.service.BundleService;
+import ai.neargo.shop.food.service.DiningBatchQueryService;
+import ai.neargo.shop.food.service.impl.DiningBatchQueryServiceImpl;
+import ai.neargo.shop.food.mapper.DiningBatchQueryMapper;
+import ai.neargo.shop.food.service.BusinessShareService;
+import ai.neargo.shop.food.service.BusinessReturnService;
+import ai.neargo.shop.food.service.impl.BusinessReturnServiceImpl;
+import ai.neargo.shop.food.service.impl.BusinessShareServiceImpl;
+import ai.neargo.shop.food.mapper.BusinessSharePlanMapper;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.CheckCartService;
 import ai.neargo.shop.food.service.DiningPricingService;
@@ -55,6 +65,8 @@ import ai.neargo.shop.food.service.impl.SalesQuotaClaimServiceImpl;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.CoreOrderBindingMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OrderComponentMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OrderModifierMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.CoreLineAllocationMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.SalesQuotaClaimMapper;
 import ai.neargo.shop.food.service.DiningPricingFactsService;
@@ -137,7 +149,7 @@ import tools.jackson.databind.ObjectMapper;
 /** 餐饮模块装配入口。 */
 @AutoConfiguration(afterName = {"org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration",
         "com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration"})
-@Import({FoodPersistenceConfiguration.class, FoodWriteGuardConfiguration.class})
+@Import({FoodPersistenceConfiguration.class, FoodWriteGuardConfiguration.class, FoodOperationsConfiguration.class})
 @ConditionalOnFoodEnabled
 @EnableConfigurationProperties(FoodProperties.class)
 public class FoodAutoConfiguration {
@@ -416,10 +428,10 @@ public class FoodAutoConfiguration {
     @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
     @ConditionalOnMissingBean(TableService.class)
     TableService tableService(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions,
-            IdempotencyService idem,
+            IdempotencyService idem, ReservationTableMapper reservationTables,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
-        return new TableServiceImpl(areas, tables, actions, idem, publisher, manager);
+        return new TableServiceImpl(areas, tables, actions, idem, publisher, manager, reservationTables);
     }
 
     @Bean
@@ -482,10 +494,14 @@ public class FoodAutoConfiguration {
     DiningOrderService diningOrderService(CheckCartService carts, DiningPricingFactsService facts,
             StoreOperationService policies, SalesQuotaClaimService quotas, CheckCartMapper cartRows,
             StorePolicyMapper policyRows, OrderBatchMapper batches, CoreOrderBindingMapper bindings,
-            OrderLineMapper lines, CoreLineAllocationMapper allocations, ObjectProvider<IndustryOrderPort> orders,
-            ObjectProvider<PricingCheckoutPort> pricing, ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            OrderLineMapper lines, CoreLineAllocationMapper allocations, OrderComponentMapper components,
+            OrderModifierMapper modifiers, ActionLogMapper actions,
+            ObjectProvider<IndustryOrderPort> orders,
+            ObjectProvider<PricingCheckoutPort> pricing, ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager,
+            KitchenTaskService kitchen, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher) {
         return new DiningOrderServiceImpl(carts, facts, policies, quotas, cartRows, policyRows, batches,
-                bindings, lines, allocations, orders::getIfUnique, pricing::getIfUnique, json, Clock.systemUTC(), manager);
+                bindings, lines, allocations, orders::getIfUnique, pricing::getIfUnique, json, Clock.systemUTC(), manager,
+                kitchen, publisher, components, modifiers, actions);
     }
 
     @Bean
@@ -530,15 +546,52 @@ public class FoodAutoConfiguration {
             GuestSessionMapper sessions,ActionLogMapper actions,
             StoreOperationService policies,IdempotencyService idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier("transactionManager") PlatformTransactionManager manager, ReservationTableMapper reservationTables) {
         return new CheckServiceImpl(checks,areas,tables,occupancy,seats,operations,
-                sessions,actions,policies,idem,publisher,json,manager);
+                sessions,actions,policies,idem,publisher,json,manager,reservationTables);
     }
 
     @Bean
     @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
     @ConditionalOnMissingBean(ReservationService.class)
-    ReservationService reservationService(ReservationMapper mapper) { return new ReservationServiceImpl(mapper); }
+    ReservationService reservationService(ReservationMapper mapper, ReservationTableMapper reservationTables,
+            TableAreaMapper areas, TableMapper tables, TableOccupancyMapper occupancy, ActionLogMapper actions,
+            CheckService checks, StoreOperationService policies, IdempotencyService idem, ObjectMapper json,
+            ObjectProvider<StoreCardQueryPort> stores, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new ReservationServiceImpl(mapper, reservationTables, areas, tables, occupancy, actions,
+                checks, policies, idem, json, numbers -> stores.getObject().cards(numbers), publisher, manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(DiningBatchQueryService.class)
+    DiningBatchQueryService diningBatchQueryService(DiningBatchQueryMapper mapper,
+            ObjectProvider<StoreCardQueryPort> stores,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new DiningBatchQueryServiceImpl(mapper, numbers -> stores.getObject().cards(numbers), manager);
+    }
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(BusinessReturnService.class)
+    BusinessReturnService businessReturnService(OrderBatchMapper batches, CoreOrderBindingMapper bindings,
+            OrderLineMapper lines, CoreLineAllocationMapper allocations, OrderComponentMapper components,
+            ReturnMapper returns, ReturnItemMapper items, ActionLogMapper actions,
+            ObjectProvider<IndustryOrderPort> orders, ObjectMapper json,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new BusinessReturnServiceImpl(batches, bindings, lines, allocations, components, returns, items,
+                actions, orders::getIfAvailable, json, Clock.systemUTC(), manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(BusinessShareService.class)
+    BusinessShareService businessShareService(BusinessSharePlanMapper plans, CheckMapper checks,
+            OrderBatchMapper batches, OrderLineMapper lines, CoreOrderBindingMapper bindings,
+            CoreLineAllocationMapper allocations, IdempotencyService idem, ObjectMapper json,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new BusinessShareServiceImpl(plans, checks, batches, lines, bindings, allocations, idem, json, manager);
+    }
 
     @Bean
     @ConditionalOnProperty(prefix = "shop.food.migration", name = "mode", havingValue = "off")

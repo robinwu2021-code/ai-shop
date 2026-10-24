@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.service;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.dto.AuthorizeCartSessionReq;
 import ai.neargo.shop.food.dto.CartAccess;
 import ai.neargo.shop.food.dto.CartResultVO;
@@ -15,6 +17,10 @@ import ai.neargo.shop.food.dto.ReplaceCartLineReq;
 public interface CheckCartService {
     CartResultVO createCart(String entity, String store, String actor, CreateCartReq req, String key);
     CartResultVO getCart(String entity, String store, String cart);
+    /** Local placement authority joins the owning primary transaction and locks the live original check before its cart. */
+    default void requireDiningRoomCart(String entity, String store, String cart) {
+        throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+    }
     CartVersionVO replaceLine(String entity, String store, String cart, String source, String actor,
             ReplaceCartLineReq req, String key);
     CartVersionVO archiveLine(String entity, String store, String cart, String source, String actor,

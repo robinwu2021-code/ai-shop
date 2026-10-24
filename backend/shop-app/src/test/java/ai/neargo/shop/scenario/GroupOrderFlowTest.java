@@ -208,6 +208,23 @@ class GroupOrderFlowTest {
 
         pay(orderNo, "TX-G6-" + seq);
         assertThat(joined(groupNo)).as("散了的团不该再加人").isZero();
+        // The automatic reversal runs before the callback's deferred bill generation.
+        // Advance only its retry deadline, as in BasicRefundRecoveryFlowTest; keep the
+        // original execution and require its real financial owner to produce the refund.
+        String automaticRefund = jdbc.queryForObject(
+                "SELECT after_sale_no FROM ord_after_sale WHERE order_no=? AND status='REFUNDING'",
+                String.class, orderNo);
+        var pending = jdbc.queryForMap(
+                "SELECT status,phase,error_code,next_attempt_at FROM ord_refund_execution WHERE after_sale_no=?",
+                automaticRefund);
+        assertThat(pending).containsEntry("status", "PROCESSING").containsEntry("phase", "REVERSAL")
+                .containsEntry("error_code", "REVERSE_UNCONFIRMED");
+        assertThat(((Number) pending.get("next_attempt_at")).longValue()).isGreaterThan(System.currentTimeMillis());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE after_sale_no=?",
+                Long.class, automaticRefund)).isZero();
+        assertThat(jdbc.update("UPDATE ord_refund_execution SET next_attempt_at=0 WHERE after_sale_no=?"
+                        + " AND status='PROCESSING' AND phase='REVERSAL' AND error_code='REVERSE_UNCONFIRMED'",
+                automaticRefund)).isEqualTo(1);
         finishRefund(orderNo);
         assertThat(subOf(orderNo).get("status"))
                 .as("★ 付款时团已散却没退 —— 钱付进来了，没有团可参").isEqualTo("REFUNDED");

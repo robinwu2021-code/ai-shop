@@ -1,6 +1,6 @@
 # 餐饮系统Controller、Service与Mapper方法清单
 
-> 状态：目标与已实现后端方法对照 · 2026-10-21。按156个目标与实际API逐项登记55个Controller、37个Service及对应Impl、88个持久化接口/DAO；已实现范围以逐项状态及CAT-ALL验收记录为准，未实现目标不等于运行能力。
+> 状态：目标与已实现后端方法对照 · 2026-10-21。按165个目标与实际API逐项登记56个Controller、38个Service及对应Impl、91个持久化接口/DAO；已实现范围以逐项状态及CAT-ALL验收记录为准，未实现目标不等于运行能力。
 > 由 `node scripts/gen-food-code-inventory.mjs` 统一生成；输入为[方法用例计划](./schema/food-method-plan.json)、[类清单](./schema/food-module-code-inventory.json)。[API参数](./餐饮系统-API设计.md) · [模块代码清单](./餐饮系统-按业务模块代码清单.md) · [方法机器清单](./schema/food-method-inventory.json)。
 
 ## 一、签名及调用边界
@@ -19,7 +19,7 @@ Mapper的insert/select/update是继承BaseMapper，不重写空方法；Wrapper�
 
 | 模块 | 业务 | 本模块API方法数 |
 |---|---|---|
-| MOD-01 | 桌台与就餐管理 | 32 |
+| MOD-01 | 桌台与就餐管理 | 41 |
 | MOD-02 | 菜品与餐牌管理 | 45 |
 | MOD-03 | 点餐与订单管理 | 19 |
 | MOD-04 | 厨房与履约管理 | 14 |
@@ -674,6 +674,186 @@ OperationResultVO customerEndSession(String entityNo, String currentStoreNo, Str
 跨域：无新增跨域调用。
 
 事务：**LOCAL_ATOMIC**。本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。 结束本次会话，不取消正式订单。
+
+#### FOOD-API-157 · POST /biz/x/food/queue-tickets
+
+Controller：`ai.neargo.shop.food.api.biz.BizQueueController`
+
+```java
+QueueResultVO issue(@Valid @RequestBody IssueReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service / Impl：`ai.neargo.shop.food.service.QueueService` / `ai.neargo.shop.food.service.impl.QueueServiceImpl`
+
+```java
+QueueResultVO issue(String entityNo, String currentStoreNo, String actorNo, IssueReq req, String idempotencyKey);
+```
+
+持久化：`FoodMappers.QueueTicketMapper.selectList`（READ）；`FoodMappers.StorePolicyMapper.selectList`（READ）；`FoodMappers.QueueTicketMapper.insert`（WRITE）。
+
+跨域：无新增跨域调用。
+
+事务：**LOCAL_ATOMIC**。本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。 原排队票与可信当前门店范围。锁定原门店策略及排队票，CAS/持久幂等操作与票状态同事务；排队号不作取餐号，未送通知不宣称成功。
+
+#### FOOD-API-158 · GET /biz/x/food/queue-tickets
+
+Controller：`ai.neargo.shop.food.api.biz.BizQueueController`
+
+```java
+ListQueueResultVO list(@Valid @ModelAttribute QueueListQuery query);
+```
+
+Service / Impl：`ai.neargo.shop.food.service.QueueService` / `ai.neargo.shop.food.service.impl.QueueServiceImpl`
+
+```java
+ListQueueResultVO list(String entityNo, String currentStoreNo, QueueListQuery query);
+```
+
+持久化：`FoodMappers.QueueTicketMapper.selectList`（READ）。
+
+跨域：无新增跨域调用。
+
+事务：**READ_ONLY**。只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。 原排队票与可信当前门店范围。仅查持久票据，不补发通知/开台。
+
+#### FOOD-API-159 · GET /biz/x/food/queue-tickets/{ticketNo}
+
+Controller：`ai.neargo.shop.food.api.biz.BizQueueController`
+
+```java
+QueueResultVO get(@PathVariable("ticketNo") String ticketNo);
+```
+
+Service / Impl：`ai.neargo.shop.food.service.QueueService` / `ai.neargo.shop.food.service.impl.QueueServiceImpl`
+
+```java
+QueueResultVO get(String entityNo, String currentStoreNo, String ticketNo);
+```
+
+持久化：`FoodMappers.QueueTicketMapper.selectOne`（READ）。
+
+跨域：无新增跨域调用。
+
+事务：**READ_ONLY**。只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。 原排队票与可信当前门店范围。仅查持久票据，不补发通知/开台。
+
+#### FOOD-API-160 · POST /biz/x/food/queue-tickets:call-next
+
+Controller：`ai.neargo.shop.food.api.biz.BizQueueController`
+
+```java
+QueueResultVO callNext(@Valid @RequestBody CallNextReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service / Impl：`ai.neargo.shop.food.service.QueueService` / `ai.neargo.shop.food.service.impl.QueueServiceImpl`
+
+```java
+QueueResultVO callNext(String entityNo, String currentStoreNo, String actorNo, CallNextReq req, String idempotencyKey);
+```
+
+持久化：`FoodMappers.QueueTicketMapper.selectList`（READ）；`FoodMappers.StorePolicyMapper.selectList`（READ）；`FoodMappers.QueueTicketMapper.update`（WRITE）。
+
+跨域：无新增跨域调用。
+
+事务：**LOCAL_ATOMIC**。本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。 原排队票与可信当前门店范围。锁定原门店策略及排队票，CAS/持久幂等操作与票状态同事务；排队号不作取餐号，未送通知不宣称成功。
+
+#### FOOD-API-161 · POST /biz/x/food/queue-tickets/{ticketNo}:call
+
+Controller：`ai.neargo.shop.food.api.biz.BizQueueController`
+
+```java
+QueueResultVO call(@PathVariable("ticketNo") String ticketNo, @Valid @RequestBody CallReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service / Impl：`ai.neargo.shop.food.service.QueueService` / `ai.neargo.shop.food.service.impl.QueueServiceImpl`
+
+```java
+QueueResultVO change(String entityNo, String currentStoreNo, String ticketNo, String actorNo, CallReq req, String idempotencyKey);
+```
+
+持久化：`FoodMappers.QueueTicketMapper.selectOne`（READ）；`FoodMappers.StorePolicyMapper.selectList`（READ）；`FoodMappers.QueueTicketMapper.update`（WRITE）。
+
+跨域：无新增跨域调用。
+
+事务：**LOCAL_ATOMIC**。本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。 原排队票与可信当前门店范围。锁定原门店策略及排队票，CAS/持久幂等操作与票状态同事务；排队号不作取餐号，未送通知不宣称成功。
+
+#### FOOD-API-162 · POST /biz/x/food/queue-tickets/{ticketNo}:cancel
+
+Controller：`ai.neargo.shop.food.api.biz.BizQueueController`
+
+```java
+QueueResultVO cancel(@PathVariable("ticketNo") String ticketNo, @Valid @RequestBody CancelReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service / Impl：`ai.neargo.shop.food.service.QueueService` / `ai.neargo.shop.food.service.impl.QueueServiceImpl`
+
+```java
+QueueResultVO change(String entityNo, String currentStoreNo, String ticketNo, String actorNo, CancelReq req, String idempotencyKey);
+```
+
+持久化：`FoodMappers.QueueTicketMapper.selectOne`（READ）；`FoodMappers.StorePolicyMapper.selectList`（READ）；`FoodMappers.QueueTicketMapper.update`（WRITE）。
+
+跨域：无新增跨域调用。
+
+事务：**LOCAL_ATOMIC**。本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。 原排队票与可信当前门店范围。锁定原门店策略及排队票，CAS/持久幂等操作与票状态同事务；排队号不作取餐号，未送通知不宣称成功。
+
+#### FOOD-API-163 · POST /biz/x/food/queue-tickets/{ticketNo}:no-show
+
+Controller：`ai.neargo.shop.food.api.biz.BizQueueController`
+
+```java
+QueueResultVO noShow(@PathVariable("ticketNo") String ticketNo, @Valid @RequestBody NoShowReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service / Impl：`ai.neargo.shop.food.service.QueueService` / `ai.neargo.shop.food.service.impl.QueueServiceImpl`
+
+```java
+QueueResultVO change(String entityNo, String currentStoreNo, String ticketNo, String actorNo, NoShowReq req, String idempotencyKey);
+```
+
+持久化：`FoodMappers.QueueTicketMapper.selectOne`（READ）；`FoodMappers.StorePolicyMapper.selectList`（READ）；`FoodMappers.QueueTicketMapper.update`（WRITE）。
+
+跨域：无新增跨域调用。
+
+事务：**LOCAL_ATOMIC**。本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。 原排队票与可信当前门店范围。锁定原门店策略及排队票，CAS/持久幂等操作与票状态同事务；排队号不作取餐号，未送通知不宣称成功。
+
+#### FOOD-API-164 · POST /biz/x/food/queue-tickets/{ticketNo}:seat
+
+Controller：`ai.neargo.shop.food.api.biz.BizQueueController`
+
+```java
+QueueResultVO seat(@PathVariable("ticketNo") String ticketNo, @Valid @RequestBody QueueSeatReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service / Impl：`ai.neargo.shop.food.service.QueueService` / `ai.neargo.shop.food.service.impl.QueueServiceImpl`
+
+```java
+QueueResultVO seat(String entityNo, String currentStoreNo, String ticketNo, String actorNo, QueueSeatReq req, String idempotencyKey);
+```
+
+持久化：`FoodMappers.QueueTicketMapper.selectOne`（READ）；`FoodMappers.StorePolicyMapper.selectList`（READ）；`FoodMappers.QueueTicketMapper.update`（WRITE）。
+
+跨域：无新增跨域调用。
+
+事务：**LOCAL_ATOMIC**。本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。 新就座锁定原票后，在同一food primary事务内调用CheckService.openQueuedCheck，仅限内部Java调用，不能经HTTP/remote；原开台、SEATED、queue动作与outbox同提交。冲突整体回滚，原CALLED票可重选；不把永久SEATING作为新流程。
+
+#### FOOD-API-165 · POST /biz/x/food/queue-tickets/{ticketNo}:recover-seating
+
+Controller：`ai.neargo.shop.food.api.biz.BizQueueController`
+
+```java
+QueueResultVO recover(@PathVariable("ticketNo") String ticketNo, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service / Impl：`ai.neargo.shop.food.service.QueueService` / `ai.neargo.shop.food.service.impl.QueueServiceImpl`
+
+```java
+QueueResultVO recoverSeating(String entityNo, String currentStoreNo, String ticketNo, String actorNo, String idempotencyKey);
+```
+
+持久化：`FoodMappers.QueueTicketMapper.selectOne`（READ）；`FoodMappers.StorePolicyMapper.selectList`（READ）；`FoodMappers.QueueTicketMapper.update`（WRITE）。
+
+跨域：无新增跨域调用。
+
+事务：**ORCHESTRATED**。外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。 旧SEATING仅兼容原冻结命令/OPEN_CHECK原键回执恢复；未知保持未知，不创建替代开台。新seat走同primary原子事务。
 
 ### MOD-02 菜品与餐牌管理
 
@@ -2206,20 +2386,20 @@ HandoverBatchOrderBatchResultVO handoverBatch(String entityNo, String currentSto
 Controller：`ai.neargo.shop.food.api.biz.BizProductionConsumptionController`
 
 ```java
-PageData<ProductionConsumptionVO> listProductionConsumptions(@PathVariable("storeNo") String storeNo, @Valid @ModelAttribute ListProductionConsumptionsQuery query);
+PageData<ProductionConsumptionVO> list(@PathVariable("storeNo") String storeNo, @Valid @ModelAttribute ListQuery query);
 ```
 
 Service / Impl：`ai.neargo.shop.food.service.ProductionConsumptionService` / `ai.neargo.shop.food.service.impl.ProductionConsumptionServiceImpl`
 
 ```java
-PageData<ProductionConsumptionVO> listProductionConsumptions(String entityNo, String storeNo, ListProductionConsumptionsQuery query);
+PageData<ProductionConsumptionVO> list(String entityNo, String storeNo, ListQuery query);
 ```
 
 持久化：`FoodMappers.ProductionConsumptionMapper.selectPage`（READ）；`FoodMappers.ProductionConsumptionLineMapper.selectList`（READ）。
 
 跨域：无新增跨域调用。
 
-事务：**READ_ONLY**。只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。 PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易
+事务：**READ_ONLY**。只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。 CODED_PENDING_VERIFICATION；可信主体/门店/actor；from/to营业日区间最多93日，SQL同过滤COUNT与分页；共享PageData<ConsumptionVO>真实回执递归，BLOCKED/UNKNOWN/未知成本保真；只读不补扣库存。
 
 #### FOOD-API-154 · GET /biz/x/food/production-consumptions/{consumptionNo}
 
@@ -2529,13 +2709,13 @@ GetReturnDiningReturnResultVO customerGetReturn(String entityNo, String currentS
 
 #### FOOD-API-065 · POST /biz/print/jobs
 
-Controller：`ai.neargo.shop.print.api.biz.BizPrintJobController`
+Controller：`ai.neargo.shop.food.api.biz.BizPrintJobController`
 
 ```java
 PrintJobResultVO createJob(@Valid @RequestBody CreateJobReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
 ```
 
-Service / Impl：`ai.neargo.shop.print.service.PrintService` / `ai.neargo.shop.print.service.impl.PrintServiceImpl`
+Service / Impl：`ai.neargo.shop.printing.service.PrintService` / `ai.neargo.shop.printing.service.impl.PrintServiceImpl`
 
 ```java
 PrintJobResultVO createJob(String entityNo, String currentStoreNo, String actorNo, CreateJobReq req, String idempotencyKey);
@@ -2545,17 +2725,17 @@ PrintJobResultVO createJob(String entityNo, String currentStoreNo, String actorN
 
 跨域：无新增跨域调用。
 
-事务：**LOCAL_ATOMIC**。本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。 共享打印持有队列，food只冻结票面；此段是共享模块目标方法，不在food-core实现其Mapper。 共享PrintService经受控票面提供者取得冻结内容，再本地写队列/outbox；不回调自己实现的PrintPort。
+事务：**LOCAL_ATOMIC**。本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。 共享打印持有队列，food只冻结票面；此段是共享模块目标方法，不在food-core实现其Mapper。 共享PrintService经受控票面提供者取得冻结内容，再本地写队列/outbox；不回调自己实现的PrintPort。 共享B端目标路径NOT_REGISTERED；以下目标方法/Req/VO为PLANNED_TRANSPORT_CONTRACT，不声称存在对应Java；实际FOOD打印Controller/DTO及delegate见actualImplementations。
 
 #### FOOD-API-066 · GET /biz/print/jobs/{jobNo}
 
-Controller：`ai.neargo.shop.print.api.biz.BizPrintJobController`
+Controller：`ai.neargo.shop.food.api.biz.BizPrintJobController`
 
 ```java
 GetJobPrintJobResultVO getJob(@PathVariable("jobNo") String jobNo);
 ```
 
-Service / Impl：`ai.neargo.shop.print.service.PrintService` / `ai.neargo.shop.print.service.impl.PrintServiceImpl`
+Service / Impl：`ai.neargo.shop.printing.service.PrintService` / `ai.neargo.shop.printing.service.impl.PrintServiceImpl`
 
 ```java
 GetJobPrintJobResultVO getJob(String entityNo, String currentStoreNo, String jobNo);
@@ -2565,17 +2745,17 @@ GetJobPrintJobResultVO getJob(String entityNo, String currentStoreNo, String job
 
 跨域：无新增跨域调用。
 
-事务：**READ_ONLY**。只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。
+事务：**READ_ONLY**。只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。 共享B端目标路径NOT_REGISTERED；以下目标方法/Req/VO为PLANNED_TRANSPORT_CONTRACT，不声称存在对应Java；实际FOOD打印Controller/DTO及delegate见actualImplementations。
 
 #### FOOD-API-067 · POST /biz/print/jobs/{jobNo}:reprint
 
-Controller：`ai.neargo.shop.print.api.biz.BizPrintJobController`
+Controller：`ai.neargo.shop.food.api.biz.BizPrintJobController`
 
 ```java
 ReprintJobResultVO reprintJob(@PathVariable("jobNo") String jobNo, @Valid @RequestBody ReprintJobReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
 ```
 
-Service / Impl：`ai.neargo.shop.print.service.PrintService` / `ai.neargo.shop.print.service.impl.PrintServiceImpl`
+Service / Impl：`ai.neargo.shop.printing.service.PrintService` / `ai.neargo.shop.printing.service.impl.PrintServiceImpl`
 
 ```java
 ReprintJobResultVO reprintJob(String entityNo, String currentStoreNo, String jobNo, String actorNo, ReprintJobReq req, String idempotencyKey);
@@ -2585,7 +2765,7 @@ ReprintJobResultVO reprintJob(String entityNo, String currentStoreNo, String job
 
 跨域：无新增跨域调用。
 
-事务：**LOCAL_ATOMIC**。本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。 创建新补打任务并引用原任务，不再次派工。 共享PrintService经受控票面提供者取得冻结内容，再本地写队列/outbox；不回调自己实现的PrintPort。
+事务：**LOCAL_ATOMIC**。本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。 创建新补打任务并引用原任务，不再次派工。 共享PrintService经受控票面提供者取得冻结内容，再本地写队列/outbox；不回调自己实现的PrintPort。 共享B端目标路径NOT_REGISTERED；以下目标方法/Req/VO为PLANNED_TRANSPORT_CONTRACT，不声称存在对应Java；实际FOOD打印Controller/DTO及delegate见actualImplementations。
 
 ### MOD-08 班次与现金管理
 
@@ -4648,7 +4828,7 @@ int update(FnbRoomChargeIntent changes, com.baomidou.mybatisplus.core.conditions
 
 ### prn_device
 
-`ai.neargo.shop.print.mapper.PrintMappers.DeviceMapper`；文件：`共享打印模块（位置待共享能力落地）/ai/neargo/shop/print/mapper/PrintMappers.java`。
+`ai.neargo.shop.printing.mapper.PrintMappers.DeviceMapper`；文件：`backend/shop-core/src/main/java/ai/neargo/shop/printing/mapper/PrintMappers.java`。
 
 ```java
 // inherited BaseMapper
@@ -4669,7 +4849,7 @@ int update(PrnDevice changes, com.baomidou.mybatisplus.core.conditions.Wrapper<P
 
 ### prn_template
 
-`ai.neargo.shop.print.mapper.PrintMappers.TemplateMapper`；文件：`共享打印模块（位置待共享能力落地）/ai/neargo/shop/print/mapper/PrintMappers.java`。
+`ai.neargo.shop.printing.mapper.PrintMappers.TemplateMapper`；文件：`backend/shop-core/src/main/java/ai/neargo/shop/printing/mapper/PrintMappers.java`。
 
 ```java
 // inherited BaseMapper
@@ -4690,7 +4870,7 @@ int update(PrnTemplate changes, com.baomidou.mybatisplus.core.conditions.Wrapper
 
 ### prn_route
 
-`ai.neargo.shop.print.mapper.PrintMappers.RouteMapper`；文件：`共享打印模块（位置待共享能力落地）/ai/neargo/shop/print/mapper/PrintMappers.java`。
+`ai.neargo.shop.printing.mapper.PrintMappers.RouteMapper`；文件：`backend/shop-core/src/main/java/ai/neargo/shop/printing/mapper/PrintMappers.java`。
 
 ```java
 // inherited BaseMapper
@@ -4711,7 +4891,7 @@ int update(PrnRoute changes, com.baomidou.mybatisplus.core.conditions.Wrapper<Pr
 
 ### prn_job
 
-`ai.neargo.shop.print.mapper.PrintMappers.JobMapper`；文件：`共享打印模块（位置待共享能力落地）/ai/neargo/shop/print/mapper/PrintMappers.java`。
+`ai.neargo.shop.printing.mapper.PrintMappers.JobMapper`；文件：`backend/shop-core/src/main/java/ai/neargo/shop/printing/mapper/PrintMappers.java`。
 
 ```java
 // inherited BaseMapper
@@ -4732,7 +4912,7 @@ int update(PrnJob changes, com.baomidou.mybatisplus.core.conditions.Wrapper<PrnJ
 
 ### prn_attempt
 
-`ai.neargo.shop.print.mapper.PrintMappers.AttemptMapper`；文件：`共享打印模块（位置待共享能力落地）/ai/neargo/shop/print/mapper/PrintMappers.java`。
+`ai.neargo.shop.printing.mapper.PrintMappers.AttemptMapper`；文件：`backend/shop-core/src/main/java/ai/neargo/shop/printing/mapper/PrintMappers.java`。
 
 ```java
 // inherited BaseMapper
@@ -5092,6 +5272,69 @@ Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbCatalogSync
 int insert(FnbCatalogSyncItem row);
 // inherited BaseMapper
 int update(FnbCatalogSyncItem changes, com.baomidou.mybatisplus.core.conditions.Wrapper<FnbCatalogSyncItem> updateWrapper);
+```
+
+
+
+### fnb_queue_ticket
+
+`ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper`；文件：`backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodMappers.java`。
+
+```java
+// inherited BaseMapper
+FnbQueueTicket selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbQueueTicket> queryWrapper);
+// inherited BaseMapper
+List<FnbQueueTicket> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbQueueTicket> queryWrapper);
+// inherited BaseMapper
+com.baomidou.mybatisplus.core.metadata.IPage<FnbQueueTicket> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<FnbQueueTicket> page, com.baomidou.mybatisplus.core.conditions.Wrapper<FnbQueueTicket> queryWrapper);
+// inherited BaseMapper
+Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbQueueTicket> queryWrapper);
+// inherited BaseMapper
+int insert(FnbQueueTicket row);
+// inherited BaseMapper
+int update(FnbQueueTicket changes, com.baomidou.mybatisplus.core.conditions.Wrapper<FnbQueueTicket> updateWrapper);
+```
+
+
+
+### fnb_reservation_table
+
+`ai.neargo.shop.food.mapper.ReservationTableMapper`；文件：`backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/ReservationTableMapper.java`。
+
+```java
+// inherited BaseMapper
+FnbReservationTable selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbReservationTable> queryWrapper);
+// inherited BaseMapper
+List<FnbReservationTable> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbReservationTable> queryWrapper);
+// inherited BaseMapper
+com.baomidou.mybatisplus.core.metadata.IPage<FnbReservationTable> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<FnbReservationTable> page, com.baomidou.mybatisplus.core.conditions.Wrapper<FnbReservationTable> queryWrapper);
+// inherited BaseMapper
+Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbReservationTable> queryWrapper);
+// inherited BaseMapper
+int insert(FnbReservationTable row);
+// inherited BaseMapper
+int update(FnbReservationTable changes, com.baomidou.mybatisplus.core.conditions.Wrapper<FnbReservationTable> updateWrapper);
+```
+
+
+
+### fnb_business_share_plan
+
+`ai.neargo.shop.food.mapper.BusinessSharePlanMapper`；文件：`backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/BusinessSharePlanMapper.java`。
+
+```java
+// inherited BaseMapper
+FnbBusinessSharePlan selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbBusinessSharePlan> queryWrapper);
+// inherited BaseMapper
+List<FnbBusinessSharePlan> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbBusinessSharePlan> queryWrapper);
+// inherited BaseMapper
+com.baomidou.mybatisplus.core.metadata.IPage<FnbBusinessSharePlan> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<FnbBusinessSharePlan> page, com.baomidou.mybatisplus.core.conditions.Wrapper<FnbBusinessSharePlan> queryWrapper);
+// inherited BaseMapper
+Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbBusinessSharePlan> queryWrapper);
+// inherited BaseMapper
+int insert(FnbBusinessSharePlan row);
+// inherited BaseMapper
+int update(FnbBusinessSharePlan changes, com.baomidou.mybatisplus.core.conditions.Wrapper<FnbBusinessSharePlan> updateWrapper);
 ```
 
 

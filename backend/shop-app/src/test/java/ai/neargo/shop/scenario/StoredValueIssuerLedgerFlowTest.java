@@ -7,7 +7,6 @@ import ai.neargo.shop.pay.storedvalue.service.*;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.storedvalue.*;
 import ai.neargo.shop.spi.storedvalue.StoredValueIssuers.*;
-import java.nio.file.*;
 import java.util.*;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,22 +29,21 @@ class StoredValueIssuerLedgerFlowTest {
     @Autowired StoredValueRechargeWriter writer;
     @Autowired StoredValueRedemptionPostingService redemption;
     @Autowired StoredValueQueryService queries;
-    static boolean installed;
-    @BeforeEach void schema() throws Exception {
-        if(installed)return;
-        for(String file:List.of("V548__stored_value_issuer_foundation.sql","V549__stored_value_issuer_ledger_dimensions.sql")) {
-            String ddl=Files.readString(Path.of("src/main/resources/db/migration/"+file))
-                .replaceAll("(?m)^--.*$", "").replace(" ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci", "")
-                .replace(" JSON", " VARCHAR(10000)").replace("CHECK ((source_kind='V2_ACTIVITY' AND activity_no IS NOT NULL AND draft_revision_no IS NOT NULL) OR (source_kind='LEGACY_PLAN' AND legacy_plan_version_no IS NOT NULL))", "CHECK (CASE source_kind WHEN 'V2_ACTIVITY' THEN TRUE WHEN 'LEGACY_PLAN' THEN TRUE WHEN 'LEGACY_ACTIVITY' THEN TRUE ELSE FALSE END)").replace("CHECK (scope_type IN ('BRAND','STORE'))", "CHECK (CASE scope_type WHEN 'BRAND' THEN TRUE WHEN 'STORE' THEN TRUE ELSE FALSE END)");
-            for(String part:ddl.split(";"))if(!part.isBlank()) {
-                var m=java.util.regex.Pattern.compile("CREATE TABLE ([a-z_]+)").matcher(part);
-                if(m.find())part=part.replace("KEY uk_","KEY "+m.group(1)+"_uk_").replace("KEY ix_","KEY "+m.group(1)+"_ix_");
-                jdbc.execute(part);
-            }
-        }
-        jdbc.execute("ALTER TABLE sv_release ADD COLUMN legacy_activity_version_no VARCHAR(64)");
-        jdbc.execute("ALTER TABLE sv_release_tier ADD COLUMN legacy_tier_key VARCHAR(128)");
-        installed=true;
+    @BeforeEach void generatedSchemaIsReady() {
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables "
+                + "WHERE table_schema='public' AND table_name='sv_issuer'", Long.class))
+                .as("Generated schema includes the original issuer table")
+                .isEqualTo(1L);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.columns "
+                + "WHERE table_schema='public' AND table_name='sv_release' "
+                + "AND column_name='legacy_activity_version_no'", Long.class))
+                .as("Generated schema includes the V550 release provenance column")
+                .isEqualTo(1L);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.columns "
+                + "WHERE table_schema='public' AND table_name='sv_release_tier' "
+                + "AND column_name='legacy_tier_key'", Long.class))
+                .as("Generated schema includes the V550 tier provenance column")
+                .isEqualTo(1L);
     }
     record Fixture(String entity,String store,String issuer,EntitlementContext actor,StoredValuePlanRecharges.Create command) { }
     Fixture fixture() {

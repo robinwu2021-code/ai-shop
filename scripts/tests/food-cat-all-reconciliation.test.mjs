@@ -6,7 +6,7 @@ const read=n=>JSON.parse(fs.readFileSync(new URL('../../docs/technical/design/sc
 const s=read('food-system-design.json'),plan=read('food-code-plan.json');
 const inventory=()=>buildFoodModuleInventory(s,read('food-code-inventory.json'),plan,read('food-code-baselines.json'));
 test('ALL155 records the actual read-only station SKU route endpoint and ownership',()=>{
- assert.equal(s.apis.length,156);
+ assert.equal(s.apis.length,165);
  const a=s.apis.find(a=>a.id==='FOOD-API-155');
  assert.equal(a.method,'GET');assert.equal(a.path,'/biz/x/food/stores/{storeNo}/sku-routes/{skuNo}');
  assert.equal(plan.apiOwners[a.id],'MOD-02');assert.equal(plan.methodOverrides[a.id].method,'getRoutes');
@@ -18,8 +18,8 @@ test('provided migrations are not represented as historical locally applied tabl
  for(const version of [6,7])assert(s.databaseInitialization.additionalMigrations.some(p=>p.includes('/V'+version+'__')));
  const p=inventory().persistence;
  assert.equal(p.filter(t=>t.schemaStatus==='CREATED_LOCAL').length,73);
- assert.equal(p.filter(t=>t.schemaStatus==='MIGRATION_AVAILABLE_NOT_APPLIED').length,5);
- assert.equal(p.filter(t=>t.schemaStatus==='PLANNED_NOT_CREATED').length,4);
+ assert.equal(p.filter(t=>t.schemaStatus==='MIGRATION_AVAILABLE_NOT_APPLIED').length,10);
+ assert.equal(p.filter(t=>t.schemaStatus==='PLANNED_NOT_CREATED').length,2);
 });
 test('menu sections and catalog preserve actual nullable authority and private read contracts',()=>{
  const api=id=>s.apis.find(a=>a.id===id);

@@ -112,6 +112,27 @@ class DiningTransactionRecoveryServiceTest extends FoodWriteGuardFixture {
             assertThat(s.f.sql().queryForObject("SELECT status FROM fnb_order_batch",String.class)).isEqualTo("UNKNOWN");
         });
     }
+    @Test void businessOnlyReturnsNeverEnterFinancialRecoveryAndLegacyNullStillRecovers() {
+        run(s -> {
+            s.f.sql().update("INSERT INTO fnb_return(entity_no,store_no,return_no,status,financial_status,"
+                    + "request_snapshot,created_at) VALUES('E','A','BUSINESS','BUSINESS_REQUESTED',"
+                    + "'NOT_REQUESTED','business-only','2026-10-23 09:00:00')");
+            s.f.sql().update("INSERT INTO fnb_return(entity_no,store_no,return_no,status,request_snapshot,created_at) "
+                    + "VALUES('E','A','LEGACY','UNKNOWN','original','2026-10-23 10:00:00')");
+            when(s.returns.recoverOriginal("E", "A", "LEGACY")).thenReturn(new DiningReturnVO(
+                    "LEGACY", "B", "A", "REFUNDED", "REFUNDED", "PENDING", "CASE", "reason", List.of(), null));
+            var result = s.service.recoverDue(200);
+            assertThat(result.claimed()).isEqualTo(1);
+            assertThat(result.complete()).isEqualTo(1);
+            verify(s.returns).recoverOriginal("E", "A", "LEGACY");
+            verifyNoMoreInteractions(s.returns);
+            verifyNoInteractions(s.orders, s.checkout);
+            assertThat(s.f.sql().queryForObject("SELECT version FROM fnb_return WHERE return_no='BUSINESS'",
+                    Long.class)).isZero();
+            assertThat(s.f.sql().queryForObject("SELECT financial_status FROM fnb_return WHERE return_no='BUSINESS'",
+                    String.class)).isEqualTo("NOT_REQUESTED");
+        });
+    }
     @Test void settledCashWithoutKitchenAcceptanceRemainsPendingAndCannotRewriteCashHistory() {
         run(s -> {
             s.f.sql().update("INSERT INTO fnb_settlement(entity_no,store_no,settlement_no,status,request_snapshot,created_at) "

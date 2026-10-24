@@ -159,7 +159,16 @@
     "FOOD-API-153": "MOD-04",
     "FOOD-API-154": "MOD-04",
     "FOOD-API-155": "MOD-02",
-    "FOOD-API-156": "MOD-03"
+    "FOOD-API-156": "MOD-03",
+    "FOOD-API-157": "MOD-01",
+    "FOOD-API-158": "MOD-01",
+    "FOOD-API-159": "MOD-01",
+    "FOOD-API-160": "MOD-01",
+    "FOOD-API-161": "MOD-01",
+    "FOOD-API-162": "MOD-01",
+    "FOOD-API-163": "MOD-01",
+    "FOOD-API-164": "MOD-01",
+    "FOOD-API-165": "MOD-01"
   },
   "tableOwners": {
     "fnb_dish": {
@@ -678,6 +687,23 @@
       "moduleId": "MOD-12",
       "writeService": "CatalogSyncService",
       "customMapperMethods": []
+    },
+    "fnb_queue_ticket": {
+      "moduleId": "MOD-01",
+      "writeService": "QueueService",
+      "customMapperMethods": []
+    },
+    "fnb_reservation_table": {
+      "moduleId": "MOD-01",
+      "writeService": "ReservationService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.ReservationTableMapper"
+    },
+    "fnb_business_share_plan": {
+      "moduleId": "MOD-05",
+      "writeService": "BusinessShareService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.BusinessSharePlanMapper"
     }
   },
   "methodOverrides": {
@@ -749,7 +775,8 @@
     },
     "FOOD-API-153": {
       "service": "ProductionConsumptionService",
-      "method": "listProductionConsumptions"
+      "method": "list",
+      "controller": "BizProductionConsumptionController"
     },
     "FOOD-API-154": {
       "service": "ProductionConsumptionService",
@@ -910,6 +937,60 @@
       "requestClass": "ai.neargo.shop.food.dto.AuthorizeCartSessionReq",
       "returnType": "ai.neargo.shop.food.dto.CartSessionGrantVO",
       "serviceMethod": "authorizeSession"
+    },
+    "FOOD-API-157": {
+      "controller": "BizQueueController",
+      "service": "QueueService",
+      "method": "issue",
+      "serviceMethod": "issue"
+    },
+    "FOOD-API-158": {
+      "controller": "BizQueueController",
+      "service": "QueueService",
+      "method": "list",
+      "serviceMethod": "list"
+    },
+    "FOOD-API-159": {
+      "controller": "BizQueueController",
+      "service": "QueueService",
+      "method": "get",
+      "serviceMethod": "get"
+    },
+    "FOOD-API-160": {
+      "controller": "BizQueueController",
+      "service": "QueueService",
+      "method": "callNext",
+      "serviceMethod": "callNext"
+    },
+    "FOOD-API-161": {
+      "controller": "BizQueueController",
+      "service": "QueueService",
+      "method": "call",
+      "serviceMethod": "change"
+    },
+    "FOOD-API-162": {
+      "controller": "BizQueueController",
+      "service": "QueueService",
+      "method": "cancel",
+      "serviceMethod": "change"
+    },
+    "FOOD-API-163": {
+      "controller": "BizQueueController",
+      "service": "QueueService",
+      "method": "noShow",
+      "serviceMethod": "change"
+    },
+    "FOOD-API-164": {
+      "controller": "BizQueueController",
+      "service": "QueueService",
+      "method": "seat",
+      "serviceMethod": "seat"
+    },
+    "FOOD-API-165": {
+      "controller": "BizQueueController",
+      "service": "QueueService",
+      "method": "recover",
+      "serviceMethod": "recoverSeating"
     }
   },
   "requestAliases": {
@@ -1440,12 +1521,12 @@
       "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
     },
     "PrintPort": {
-      "interfaceClass": "ai.neargo.shop.spi.print.PrintPort",
-      "existingSource": null,
-      "status": "TARGET_NOT_PRESENT",
-      "localClass": "ai.neargo.shop.industrybridge.food.port.PrintPortImpl",
-      "remoteClass": "ai.neargo.shop.food.port.RemotePrintPortImpl",
-      "localModule": "backend/shop-app",
+      "interfaceClass": "ai.neargo.shop.spi.printing.PrintPort",
+      "existingSource": "backend/shop-base/src/main/java/ai/neargo/shop/spi/printing/PrintPort.java",
+      "status": "EXISTS",
+      "localClass": "ai.neargo.shop.printing.service.impl.PrintServiceImpl",
+      "remoteClass": "ai.neargo.shop.food.channel.port.CorePrintPortImpl",
+      "localModule": "backend/shop-core",
       "remoteModule": "food-channel",
       "interfaceRule": "优先唯一既有SPI，签名缺口在权威域扩展，不能按模块重复创建"
     },
@@ -1534,5 +1615,18 @@
     "OrderLineInput": "ai.neargo.shop.food.dto.OrderLineInput",
     "CartBundleChoiceInput": "ai.neargo.shop.food.dto.CartBundleChoiceInput",
     "Selection": "ai.neargo.shop.food.dto.CartSelectionInput"
+  },
+  "printingOwnership": {
+    "publicController": "ai.neargo.shop.food.api.biz.BizPrintJobController",
+    "publicModule": "food-web",
+    "sharedService": "ai.neargo.shop.printing.service.PrintService",
+    "sharedImplementation": "ai.neargo.shop.printing.service.impl.PrintServiceImpl",
+    "sharedModule": "backend/shop-core",
+    "spi": "ai.neargo.shop.spi.printing.PrintPort",
+    "targetSharedBizRouteStatus": "PLANNED_SHARED_B_ENTRY_NOT_REGISTERED",
+    "targetDtoStatus": "PLANNED_TRANSPORT_CONTRACT",
+    "enqueueDelegate": "FoodPrintService.enqueue -> PrintPort.enqueue",
+    "otherJobDelegates": "PrintPort.list/get/retry/reprint directly",
+    "historicalBaselineRule": "Keep frozen snapshots unchanged; canonicalize legacy printing package only in displayed historical diffs."
   }
 }

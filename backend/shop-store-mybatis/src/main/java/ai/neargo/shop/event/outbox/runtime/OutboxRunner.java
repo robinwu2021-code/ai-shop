@@ -88,8 +88,10 @@ public final class OutboxRunner implements AutoCloseable {
             for (int i = 0; i < stores.size(); i++) {
                 var store = stores.get((i + start) % stores.size());
                 try {
-                    store.recoverExpired(clock.instant(), batchSize);
-                    for (DeliveryRef ref : store.findDue(clock.instant(), batchSize)) {
+                    Set<String> localHandlers = facade.localHandlerIds(store.source());
+                    if (localHandlers.isEmpty()) { continue; }
+                    store.recoverExpired(clock.instant(), batchSize, localHandlers);
+                    for (DeliveryRef ref : store.findDue(clock.instant(), batchSize, localHandlers)) {
                         if (!queued.add(ref)) { continue; }
                         try { executor.execute(() -> runOne(ref)); }
                         catch (RuntimeException rejected) { queued.remove(ref); break; }

@@ -41,6 +41,8 @@ import ai.neargo.shop.trade.dto.PricingQuoteCommands.SaveReq;
 import ai.neargo.shop.trade.service.PricingCheckoutService;
 import ai.neargo.shop.trade.service.PricingPreparationService;
 import ai.neargo.shop.trade.service.PricingQuoteService;
+import ai.neargo.shop.trade.service.PricingManualAdjustmentService;
+import org.springframework.beans.factory.ObjectProvider;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -63,6 +65,8 @@ public class PricingCheckoutServiceImpl implements PricingCheckoutService {
     private final PricingQuoteAssembler assembler;
     private final Clock clock;
     private final JsonMapper json = JsonMapper.builder().build();
+    @Autowired(required = false)
+    private ObjectProvider<PricingManualAdjustmentService> manualAdjustments;
 
     @Autowired
     public PricingCheckoutServiceImpl(PricingPreparationService preparations, PricingQuoteService quotes,
@@ -137,6 +141,11 @@ public class PricingCheckoutServiceImpl implements PricingCheckoutService {
     private void verify(Prepared prepared, Context context, PricingQuoteCommands.QuoteVO stored, String digest) {
         if (!"READY".equals(stored.status()) || !clock.instant().isBefore(Instant.parse(stored.expiresAt()))
                 || !digest(stored).equals(digest)) throw conflict();
+        var manual = manualAdjustments == null ? null : manualAdjustments.getIfUnique();
+        if (manual != null && manual.handles(stored)) {
+            manual.verify(prepared, context, stored);
+            return;
+        }
         var facts = json.readTree(stored.factsSnapshot());
         if (!prepared.preparationHash().equals(facts.path("orchestrationHash").asText())) throw conflict();
         var current = assembler.prepare(context, calculate(prepared, context.actorNo()),

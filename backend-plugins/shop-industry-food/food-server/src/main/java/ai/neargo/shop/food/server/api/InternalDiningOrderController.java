@@ -1,6 +1,7 @@
 package ai.neargo.shop.food.server.api;
 
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Snapshot;
 import ai.neargo.shop.food.config.ConditionalOnFoodEnabled;
 import ai.neargo.shop.food.config.FoodPersistenceConfiguration.PersistenceEnabled;
 import ai.neargo.shop.food.dto.DiningOrderBatchVO;
@@ -20,6 +21,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class InternalDiningOrderController {
     private final DiningOrderService service;
     public InternalDiningOrderController(DiningOrderService service) { this.service = service; }
+    @PostMapping(DiningOrderInternalApi.ROOT + "/authorize-cancellation")
+    public Snapshot authorizeCancellation(@RequestBody DiningOrderInternalApi.CancellationSource request) {
+        return service.authorizeCancellation(request.command(), request.key(), request.fulfillment());
+    }
+    @PostMapping(DiningOrderInternalApi.ROOT + "/staff/cancel")
+    public DiningOrderBatchVO staffCancel(@RequestBody DiningOrderInternalApi.StaffCancel request) {
+        return service.staffCancel(request.entity(), request.store(), request.actor(), request.batchNo(),
+                request.request(), request.key());
+    }
+    @PostMapping(DiningOrderInternalApi.ROOT + "/staff/place")
+    public DiningOrderBatchVO staffPlace(@RequestBody DiningOrderInternalApi.StaffPlace request) {
+        return service.staffPlace(request.entity(), request.store(), request.actor(), request.request(), request.key());
+    }
     @PostMapping(DiningOrderInternalApi.ROOT + "/place")
     public DiningOrderBatchVO place(@RequestBody DiningOrderInternalApi.Place r) {
         return service.customerPlace(r.store(), r.access(), r.request(), r.key());

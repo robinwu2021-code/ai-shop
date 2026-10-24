@@ -75,6 +75,75 @@ class FoodPrimaryDatabaseTest {
                 .withPropertyValues("shop.food.enabled=true", "spring.datasource.url=" + ((DriverManagerDataSource)source).getUrl(),
                         "spring.datasource.username=root", "spring.datasource.password=");
     }
+    @Test void nativeKitchenUsesOriginalFrozenRoutesAndDurableTransactionalServiceEvents() {
+        appliedFood();
+        runner().withUserConfiguration(RealFoodProducer.class).run(c -> {
+            assertThat(c).hasNotFailed();
+            var json=c.getBean(ObjectMapper.class);
+            String station="""
+                    {"contentSchema":5,"configKind":"STATION","configNo":"STATION","sourceVersion":0,
+                     "entityNo":"E","storeNo":"S","station":{"configNo":"STATION","storeNo":"S",
+                     "name":"Kitchen","stationType":"KITCHEN","enabled":true,"status":"PUBLISHED","version":0},
+                     "routes":[{"skuNo":"SKU","taskRole":"MAKE","routeVersion":1}],
+                     "skuFacts":[{"skuNo":"SKU","goodsNo":"GOODS","entityNo":"E","storeNo":"S","version":0}],
+                     "approvalRef":"APPROVAL"}
+                    """;
+            // Validate the exact publication DTO before inserting an immutable original publication fixture.
+            ai.neargo.shop.food.policy.StationPublicationDocuments.validate(json,"STATION",station);
+            String hash=ai.neargo.shop.common.pricing.PricingSnapshotHash.of(json.readTree(station));
+            sql.update("INSERT INTO fnb_config_revision(entity_no,created_at,created_by,updated_at,updated_by,"
+                    +"revision_no,config_kind,config_no,revision,content_schema,definition_snapshot,content_hash,"
+                    +"effective_at,status,scope_store_nos) VALUES('E',NOW(),'A',NOW(),'A','REV','STATION','STATION',1,5,?,?,NOW(),'PUBLISHED','[\"S\"]')",
+                    station,hash);
+            String frozen=json.writeValueAsString(java.util.Map.of("kitchenRoutes",
+                    new ai.neargo.shop.food.dto.KitchenContracts.FrozenRoutes(List.of(
+                            new ai.neargo.shop.food.dto.KitchenContracts.FrozenRoute("SKU","STATION","MAKE",1,"REV",hash)))));
+            sql.update("INSERT INTO fnb_order_batch(entity_no,created_at,created_by,updated_at,updated_by,"
+                    +"batch_no,store_no,request_key,request_hash,source,buyer_no,operator_no,status,frozen_request,"
+                    +"accepted_at,cart_no,cart_version,quote_ref,quote_hash,business_date,policy_no,fulfillment,pay_mode,"
+                    +"actor_realm,quota_claim_refs) VALUES('E',NOW(),'A',NOW(),'A','B','S',? ,?,'H5','BUYER','A',"
+                    +"'ACCEPTED',?,NOW(),'CART',0,'QUOTE',?,'2026-10-24','POLICY','PICKUP','POSTPAY','MP','[]')",
+                    "1".repeat(64),"2".repeat(64),frozen,"3".repeat(64));
+            sql.update("INSERT INTO fnb_order_line(entity_no,created_at,created_by,updated_at,updated_by,"
+                    +"food_line_no,batch_no,goods_no,sku_no,qty,selection_version,display_snapshot,source_line_ref,"
+                    +"config_revision_nos,unit) VALUES('E',NOW(),'A',NOW(),'A','L','B','GOODS','SKU',2,1,'{}','SRC','[]','EA')");
+            var kitchen=c.getBean(ai.neargo.shop.food.service.KitchenTaskService.class);
+            var ticket=kitchen.accepted("E","S","B","OUTBOX_ORIGINAL");
+            assertThat(kitchen.accepted("E","S","B","REDELIVERY").ticketNo()).isEqualTo(ticket.ticketNo());
+            assertThat(ticket.tasks()).hasSize(1);
+            var task=ticket.tasks().getFirst();
+            var start=new ai.neargo.shop.food.dto.KitchenContracts.TaskActionReq(task.version(),"START",java.math.BigDecimal.ONE,null);
+            var event=kitchen.act("E","S","A",task.taskNo(),start,"START_1");
+            assertThat(kitchen.act("E","S","A",task.taskNo(),start,"START_1").eventNo()).isEqualTo(event.eventNo());
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_service_event",Integer.class)).isOne();
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery",Integer.class)).isOne();
+            assertThatThrownBy(() -> kitchen.act("E","S","A",task.taskNo(),start,"STALE_NEW_KEY"))
+                    .isInstanceOf(ai.neargo.shop.common.BizException.class);
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_service_event",Integer.class)).isOne();
+            var current=kitchen.queue("E","S",null,"B").getFirst();
+            kitchen.act("E","S","A",task.taskNo(),new ai.neargo.shop.food.dto.KitchenContracts.TaskActionReq(
+                    current.version(),"READY",java.math.BigDecimal.ONE,null),"READY_1");
+            var ready=kitchen.queue("E","S",null,"B").getFirst();
+            assertThat(ready.readyQty()).isEqualByComparingTo("1");
+            assertThat(ready.makingQty()).isEqualByComparingTo("1");
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery",Integer.class)).isEqualTo(2);
+        });
+    }
+
+    @org.springframework.context.annotation.Configuration(proxyBeanMethods=false)
+    static class RealFoodProducer {
+        @org.springframework.context.annotation.Bean
+        ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade foodProducer(DataSource source,
+                PlatformTransactionManager transactionManager,ObjectMapper json) {
+            var facade=new ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade(json);
+            facade.setArchiveOnly(ai.neargo.shop.spi.food.FoodOutboxRouting.ARCHIVE_ONLY);
+            facade.registerProducer(new ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore(
+                    ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore.Source.PLATFORM,source,transactionManager,json),
+                    ai.neargo.shop.spi.food.FoodOutboxRouting.DELIVERY_TARGETS);
+            return facade;
+        }
+    }
+
     @Test void specIdentityMigrationWidensWithoutRewritingExistingRows() {
         Flyway.configure().dataSource(source).table("fnb_flyway_history").locations("classpath:db/industry/food")
                 .baselineOnMigrate(true).baselineVersion("0").target("2").load().migrate();
@@ -83,7 +152,7 @@ class FoodPrimaryDatabaseTest {
         sql.update("INSERT INTO fnb_option_group_item(entity_no,created_at,created_by,updated_at,updated_by,"
                 + "option_item_no,group_no,source_kind,spec_value_no,min_qty,max_qty,default_qty,sort_no) "
                 + "VALUES('E',NOW(),'SYSTEM',NOW(),'SYSTEM','OLD','OG','SPEC_VALUE','OLD_VALUE',0,1,0,0)");
-        assertThat(validator.initialize(source, FoodProperties.MigrationMode.MIGRATE).version()).isEqualTo("8");
+        assertThat(validator.initialize(source, FoodProperties.MigrationMode.MIGRATE).version()).isEqualTo("15");
         assertThat(sql.queryForObject("SELECT spec_value_no FROM fnb_option_group_item", String.class))
                 .isEqualTo("OLD_VALUE");
         sql.update("UPDATE fnb_option_group_item SET spec_value_no=?", "V".repeat(64));
@@ -110,7 +179,7 @@ class FoodPrimaryDatabaseTest {
                 +"occupancy_no,table_no,check_no,seats,started_at) VALUES('E',NOW(),'SYSTEM',NOW(),'SYSTEM',"
                 +"'OLD_OCC','OLD_TABLE','OLD_CHECK',4,NOW())");
         var result=validator.initialize(source,FoodProperties.MigrationMode.MIGRATE);
-        assertThat(result.version()).isEqualTo("8");
+        assertThat(result.version()).isEqualTo("15");
         assertThat(sql.queryForObject("SELECT sharing_mode FROM fnb_table_occupancy",String.class)).isEqualTo("EXCLUSIVE");
         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_flyway_history WHERE version IN ('1','2') AND success=1",Integer.class)).isEqualTo(2);
     }
@@ -125,9 +194,13 @@ class FoodPrimaryDatabaseTest {
     @Test void explicitPublishMigratesOnlyFood() {
         assertThat(validator.initialize(source, FoodProperties.MigrationMode.MIGRATE).ready()).isTrue();
         assertThat(sql.queryForObject("SELECT COUNT(*) FROM information_schema.tables "
-                + "WHERE table_schema=DATABASE() AND table_name LIKE 'fnb\\_%'", Integer.class)).isEqualTo(79);
+                + "WHERE table_schema=DATABASE() AND table_name LIKE 'fnb\\_%'", Integer.class)).isEqualTo(84);
         assertThat(tableExists("fnb_recipe")).isTrue();
         assertThat(tableExists("fnb_recipe_line")).isTrue();
+        assertThat(tableExists("fnb_reservation_table")).isTrue();
+        assertThat(tableExists("fnb_business_share_plan")).isTrue();
+        assertThat(tableExists("fnb_catalog_sync_job")).isFalse();
+        assertThat(tableExists("fnb_catalog_sync_item")).isFalse();
         assertThat(tableExists("flyway_schema_history")).isFalse();
     }
     @Test void similarlyNamedTablesCannotSupplyMissingColumns() {

@@ -118,6 +118,21 @@ public class CheckCartServiceImpl implements CheckCartService {
         return scoped(() -> read.execute(tx -> new CartResultVO(view(head(entity,store,number,false),false))));
     }
     @Override
+    public void requireDiningRoomCart(String entity,String store,String number) {
+        CartInputPolicy.key(entity); CartInputPolicy.key(store); CartInputPolicy.key(number);
+        scoped(() -> write.execute(tx -> {
+            var snapshot=head(entity,store,number,false);
+            if (!"DINE_IN".equals(snapshot.getFulfillment()) || snapshot.getCheckNo()==null) conflict();
+            var owner=check(entity,store,snapshot.getCheckNo(),true);
+            if (!"OPEN".equals(owner.getServiceState()) || !"POSTPAY".equals(owner.getPayMode())) conflict();
+            var current=head(entity,store,number,true);
+            if (!"OPEN".equals(current.getStatus()) || !"DINE_IN".equals(current.getFulfillment())
+                    || !snapshot.getCheckNo().equals(current.getCheckNo())
+                    || !snapshot.getVersion().equals(current.getVersion())) conflict();
+            return null;
+        }));
+    }
+    @Override
     public CartVersionVO replaceLine(String entity, String store, String number, String source, String actor,
             ReplaceCartLineReq req, String key) {
         context(entity,store,actor,key); lineInput(number,source,req);

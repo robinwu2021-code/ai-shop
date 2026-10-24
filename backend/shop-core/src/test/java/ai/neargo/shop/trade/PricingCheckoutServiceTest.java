@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -32,6 +33,9 @@ import ai.neargo.shop.trade.dto.PricingQuoteCommands;
 import ai.neargo.shop.trade.policy.PricingRuntimeConfigPolicy;
 import ai.neargo.shop.trade.service.PricingPreparationService;
 import ai.neargo.shop.trade.service.PricingQuoteService;
+import ai.neargo.shop.trade.service.PricingManualAdjustmentService;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.test.util.ReflectionTestUtils;
 import ai.neargo.shop.trade.service.impl.PricingCheckoutServiceImpl;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -103,6 +107,23 @@ class PricingCheckoutServiceTest {
         assertThat(quote.lines().stream().mapToLong(line -> line.taxMinor()).sum()).isEqualTo(1);
         assertThat(service.revalidateStaff(scope, "ACTOR", source, "PQ", quote.confirmationDigest()))
                 .isEqualTo(quote);
+    }
+    @Test void finalRevalidationHonorsFreshManualAuthorityVeto() throws Exception {
+        var prepared = prepared("d".repeat(64), PriceTaxMode.EXCLUSIVE);
+        when(preparations.staff(scope, source)).thenReturn(prepared);
+        when(preparations.confirmStaff(scope, source, prepared.preparationHash())).thenReturn(prepared);
+        store(prepared);
+        var quote = service.quoteStaff(scope, "ACTOR", source, Selection.none(), "KEY");
+        var authority = mock(PricingManualAdjustmentService.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<PricingManualAdjustmentService> providers = mock(ObjectProvider.class);
+        when(providers.getIfUnique()).thenReturn(authority);
+        when(authority.handles(any())).thenReturn(true);
+        doThrow(BizException.of(ErrorCode.FORBIDDEN)).when(authority).verify(any(), any(), any());
+        ReflectionTestUtils.setField(service, "manualAdjustments", providers);
+        assertThatThrownBy(() -> service.revalidateStaff(scope, "ACTOR", source, "PQ", quote.confirmationDigest()))
+                .isInstanceOfSatisfying(BizException.class,
+                        error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.FORBIDDEN));
     }
     @Test void inclusiveTaxAndSafeOutputAreDerivedFromStoredEvidence() throws Exception {
         var prepared = prepared("d".repeat(64), PriceTaxMode.INCLUSIVE);

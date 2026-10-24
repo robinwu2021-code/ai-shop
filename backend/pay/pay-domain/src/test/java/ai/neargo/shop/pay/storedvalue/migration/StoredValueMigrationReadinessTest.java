@@ -30,7 +30,7 @@ class StoredValueMigrationReadinessTest {
             new Capability(challenge,"pay-svc","boot-pay",sha,2,true,false,ledger,true,now),
             new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,ledger,false,now),
             new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,ledger,true,now.minusSeconds(31)),
-            new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,ledger,true,now));
+            new Capability(challenge,"pay-svc","boot-pay",sha,2,true,true,ledger,true,now.plusSeconds(6)));
         for(var capability:bad)assertThat(StoredValueMigrationReadiness.check(inventory(true),List.of(healthy().getFirst(),new NodeResult("pay-1",capability,null)),challenge,now).ready()).isFalse();
         assertThat(StoredValueMigrationReadiness.check(inventory(true),List.of(healthy().getFirst(),new NodeResult("pay-1",null,"PROBE_UNAVAILABLE")),challenge,now).ready()).isFalse();
     }

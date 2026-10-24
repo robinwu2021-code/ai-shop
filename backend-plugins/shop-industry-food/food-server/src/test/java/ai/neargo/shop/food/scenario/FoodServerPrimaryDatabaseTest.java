@@ -6,8 +6,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import ai.neargo.shop.common.AuditMetaObjectHandler;
-import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.config.FoodSchemaReady;
 import ai.neargo.shop.food.dto.ArchiveTableReq;
 import ai.neargo.shop.food.dto.ClearCheckReq;
@@ -52,8 +50,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -82,11 +78,14 @@ class FoodServerPrimaryDatabaseTest {
             Flyway.configure().dataSource(source).locations("classpath:db/industry/food").table("fnb_flyway_history")
                     .baselineOnMigrate(true).baselineVersion("0").load().migrate();
             new WebApplicationContextRunner().withInitializer(new ConfigDataApplicationContextInitializer())
-                    .withUserConfiguration(FoodApplication.class, PublicationRoute.class)
-                    .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root", "spring.datasource.password=",
+                    .withUserConfiguration(FoodApplication.class)
+                    .withPropertyValues("shop.outbox.sources.platform.mode=unified",
+                            "shop.outbox.sources.inventory.mode=legacy", "shop.outbox.enabled=false",
+                            "spring.datasource.url=" + url, "spring.datasource.username=root", "spring.datasource.password=",
                             "shop.services.internal-token=food-disposable-server-test",
                             "spring.autoconfigure.exclude=org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration,org.springframework.boot.data.redis.autoconfigure.DataRedisRepositoriesAutoConfiguration")
                     .run(context -> {
+                        FoodServerProducerAssertions.verify(context);
                         assertThat(context).hasNotFailed().hasSingleBean(DataSource.class).hasSingleBean(SqlSessionFactory.class)
                                 .hasSingleBean(PlatformTransactionManager.class).hasSingleBean(MetaObjectHandler.class)
                                 .hasSingleBean(FoodMappers.TableAreaMapper.class).doesNotHaveBean(Flyway.class);
@@ -303,13 +302,15 @@ class FoodServerPrimaryDatabaseTest {
                         tableCall(mvc,DiningSessionInternalApi.RESOLVE_PATH,new DiningSessionInternalApi.ResolveCommand(raw),json)
                                 .andExpect(status().isNotFound());
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_guest_session WHERE revoked_at IS NULL",Integer.class)).isZero();
-                        assertThat(context.getBean(FoodSchemaReady.class).version()).isEqualTo("8");
+                        assertThat(context.getBean(FoodSchemaReady.class).version()).isEqualTo("15");
                         var extraTables=new ArrayList<String>();
                         for(String code:List.of("T03","T04")) extraTables.add(json.readTree(tableCall(mvc,
                                 TableInternalApi.TABLE_CREATE_PATH,new TableInternalApi.TableCreateCommand("E","A",
                                         "trusted-actor","check-table-"+code,new CreateTableReq(areaNo,code,code,4,0,null)),json)
                                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
                                 .get("table").get("tableNo").asString());
+                        // The following legacy empty-check seat/clear flow requires PREPAY.
+                        sql.update("UPDATE fnb_store_policy SET pay_policy='PREPAY' WHERE policy_no='P1' AND entity_no='E' AND store_no='A'");
                         var checkOpen=new CheckInternalApi.OpenCommand("E","A","trusted-actor","check-open",
                                 new OpenCheckReq(List.of(diningTable),2,"PREPAY",null,
                                         List.of(new TableVersionReq(diningTable,2L)),"SHARED",List.of(new SeatReq(null,"1",null)),null));
@@ -373,16 +374,4 @@ class FoodServerPrimaryDatabaseTest {
                 .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(command)));
     }
 
-    /** Only a disposable test source/route; production registration remains owned by the platform. */
-    @Configuration(proxyBeanMethods = false)
-    static class PublicationRoute {
-        @Bean UnifiedOutboxFacade policyFacade(DataSource source, PlatformTransactionManager manager,
-                ObjectMapper json) {
-            var facade = new UnifiedOutboxFacade(json);
-            facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
-            facade.setArchiveOnly(Set.of("PLATFORM:FOOD_STORE_POLICY_PUBLISHED",
-                    "PLATFORM:FOOD_SERVICE_CALENDAR_SAVED", "PLATFORM:FOOD_TABLE_AREA_CHANGED", "PLATFORM:FOOD_TABLE_CHANGED", "PLATFORM:FOOD_DINING_SESSION_CHANGED", "PLATFORM:FOOD_CHECK_CHANGED"));
-            return facade;
-        }
-    }
 }

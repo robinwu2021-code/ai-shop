@@ -13,6 +13,9 @@ import ai.neargo.shop.food.config.FoodWebAutoConfiguration;
 import ai.neargo.shop.food.dto.CartAccess;
 import ai.neargo.shop.food.port.FoodPricingSourceFactsPortImpl;
 import ai.neargo.shop.food.service.DiningPricingFactsService;
+import ai.neargo.shop.food.service.DiningOrderService;
+import ai.neargo.shop.food.policy.DiningPricingSourcePolicy;
+import ai.neargo.shop.spi.trade.IndustryOrderPort;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Credentials;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope;
@@ -28,6 +31,20 @@ class FoodPricingSourceFactsPortTest {
     private final Scope scope = new Scope("MAIN", "E", "A");
     private final PricingSourceRef source = new PricingSourceRef("FOOD", "CART", "C", 4, null, null);
 
+    @Test void cancellationDelegatesToFrozenOrderAuthorityWithoutReadingLiveCatalogOrQuota() {
+        var orders = mock(DiningOrderService.class);
+        var command = new IndustryOrderPort.Command(new IndustryOrderPort.Identity("MAIN", "E", "A", "U", "STAFF"),
+                source, null, "Q", "a".repeat(64), IndustryOrderPort.Mode.POSTPAY, null);
+        var frozen = DiningPricingSourcePolicy.project(new RemoteDiningPricingFactsTest().receipt(null),
+                scope, source, null);
+        when(orders.authorizeCancellation(command, "BATCH", "STORE_PICKUP")).thenReturn(frozen);
+        assertThat(new FoodPricingSourceFactsPortImpl(dining, () -> orders)
+                .cancellationForStore(command, "BATCH", "STORE_PICKUP")).isEqualTo(frozen);
+        verify(orders).authorizeCancellation(command, "BATCH", "STORE_PICKUP");
+        verifyNoInteractions(dining);
+        assertThatThrownBy(() -> port.cancellationForStore(command, "BATCH", "STORE_PICKUP"))
+                .isInstanceOf(BizException.class);
+    }
     @Test void mapsAuthorizedStaffPricesWithOriginalInvoiceIdentityAndDistinctProjectionDigest() {
         var facts = new RemoteDiningPricingFactsTest().receipt(null);
         when(dining.staff("E", "A", "C", 4)).thenReturn(facts);

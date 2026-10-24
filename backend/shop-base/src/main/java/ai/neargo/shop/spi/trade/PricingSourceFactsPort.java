@@ -1,6 +1,8 @@
 package ai.neargo.shop.spi.trade;
 
 import ai.neargo.shop.common.pricing.MoneyMinor;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingFacts;
 import ai.neargo.shop.common.pricing.PricingPortion;
 import ai.neargo.shop.common.pricing.PricingUnit;
@@ -11,6 +13,10 @@ public interface PricingSourceFactsPort {
     String sourceSystem();
     Snapshot staff(Scope scope, PricingSourceRef source);
     Snapshot customer(PricingSourceRef source, Credentials credentials);
+    /** Original durable withdrawal authority, distinct from current saleability and not a placement grant. */
+    default Snapshot cancellationForStore(IndustryOrderPort.Command command, String key, String fulfillment) {
+        throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+    }
 
     /** Server-resolved staff scope; constructing this value grants no merchant or store access. */
     record Scope(String tenantNo, String entityNo, String storeNo) {

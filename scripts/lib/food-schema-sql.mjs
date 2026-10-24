@@ -27,7 +27,7 @@ export function renderFoodSchema(s){
  validateFoodDesign(s);
  const tables=s.tables.filter(t=>t.name.startsWith('fnb_'));
  const spec=tables.find(t=>t.name==='fnb_option_group_item')?.fields.find(f=>f.name==='spec_value_no');
- const version=tables.some(t=>t.fields.some(f=>f.introducedIn==='V8'))?8:tables.some(t=>t.deployment==='MIGRATION_V7')?7:tables.some(t=>t.deployment==='MIGRATION_V6')?6:tables.some(t=>t.deployment==='MIGRATION_V5')?5:tables.some(t=>t.deployment==='MIGRATION_V4')?4:spec?.type==='varchar(64)'?3:tables.some(t=>t.name==='fnb_table_occupancy'&&t.fields.some(f=>f.name==='sharing_mode'))?2:1;
+ const version=tables.some(t=>t.fields.some(f=>f.introducedIn==='V15'))?15:tables.some(t=>t.deployment==='MIGRATION_V14')?14:tables.some(t=>t.deployment==='MIGRATION_V11')?11:tables.some(t=>t.deployment==='MIGRATION_V10')?10:tables.some(t=>t.deployment==='MIGRATION_V9')?9:tables.some(t=>t.fields.some(f=>f.introducedIn==='V8'))?8:tables.some(t=>t.deployment==='MIGRATION_V7')?7:tables.some(t=>t.deployment==='MIGRATION_V6')?6:tables.some(t=>t.deployment==='MIGRATION_V5')?5:tables.some(t=>t.deployment==='MIGRATION_V4')?4:spec?.type==='varchar(64)'?3:tables.some(t=>t.name==='fnb_table_occupancy'&&t.fields.some(f=>f.name==='sharing_mode'))?2:1;
  let sql='-- Food-owned tables only; use the existing product/order database.\n-- Flyway location: db/industry/food; history: fnb_flyway_history; version: '+version+'.\n-- Frozen after application. Add a new migration for any subsequent change.\n-- No cross-domain physical foreign keys; services must enforce ownership and concurrency.\n\n';
  if(s.catalogEnhancement)sql='-- TARGET DESIGN ONLY; planned objects are not applied migrations.\n'+sql;
  for(const t of tables){
@@ -68,7 +68,7 @@ export function renderFoodV1(s){
  const v1=structuredClone(s);
  if(v1.catalogEnhancement){
   validateFoodDesign(s);
-  const planned=new Set(v1.catalogEnhancement.plannedTables);
+  const planned=new Set([...v1.catalogEnhancement.plannedTables,'fnb_queue_ticket','fnb_reservation_table','fnb_business_share_plan']);
   v1.tables=v1.tables.filter(t=>!planned.has(t.name));
   const fields={
    fnb_sales_restriction:['order_source','fulfillment'],
@@ -87,10 +87,12 @@ export function renderFoodV1(s){
   delete v1.catalogEnhancement;
  }
  for(const table of v1.tables){
-  const added=new Set(table.fields.filter(f=>f.introducedIn==='V8').map(f=>f.name));
+  const added=new Set(table.fields.filter(f=>/^V(?:8|11|12|13|15)$/.test(f.introducedIn||'')).map(f=>f.name));
   table.fields=table.fields.filter(f=>!added.has(f.name));
   table.unique=table.unique.filter(key=>key.every(name=>!added.has(name)));
  }
+ v1.tables.find(t=>t.name==='fnb_order_component').fields.find(f=>f.name==='choice_no').nullable=false;
+ v1.tables.find(t=>t.name==='fnb_order_modifier').fields.find(f=>f.name==='source_no').type='varchar(32)';
  const publicationKind=v1.tables.find(t=>t.name==='fnb_config_revision').fields.find(f=>f.name==='config_kind');
  if(publicationKind.label==='MENU / BUNDLE / OPTION_GROUP / MODIFIER / STATION / RECIPE')
   publicationKind.label='MENU / BUNDLE / OPTION_GROUP / MODIFIER / STATION';

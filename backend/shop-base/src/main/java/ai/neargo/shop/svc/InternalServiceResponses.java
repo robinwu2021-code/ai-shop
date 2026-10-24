@@ -25,7 +25,7 @@ public final class InternalServiceResponses {
                 case FORBIDDEN -> 403;
                 case NOT_FOUND -> 404;
                 case CONFLICT -> 409;
-                case ENTITLEMENT_FEATURE_UNAVAILABLE -> 503;
+                case ENTITLEMENT_FEATURE_UNAVAILABLE, PAY_MODE_NOT_SUPPORTED, PRICING_OWNER_UNSUPPORTED -> 503;
                 default -> 500;
             };
             return ResponseEntity.status(status).build();

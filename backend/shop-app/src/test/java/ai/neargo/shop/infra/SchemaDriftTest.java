@@ -59,7 +59,9 @@ class SchemaDriftTest {
      */
     private static final Pattern TABLE = Pattern.compile(
             "CREATE TABLE\\s+(?:IF NOT EXISTS\\s+)?(\\w+)\\s*\\((.*?)\\n\\)", Pattern.DOTALL);
-    private static final Pattern COLUMN = Pattern.compile("^\\s{2,}(\\w+)\\s+[A-Z]", Pattern.MULTILINE);
+    private static final Pattern COLUMN = Pattern.compile(
+            "(?:^|,)\\s*(\\w+)\\s+(?:BIGINT|INT|INTEGER|SMALLINT|TINYINT|MEDIUMINT|CHAR|VARCHAR|TEXT|LONGTEXT|MEDIUMTEXT|DATETIME|TIMESTAMP|DATE|TIME|DECIMAL|NUMERIC|DOUBLE|FLOAT|BOOLEAN|BOOL|JSON|BLOB|LONGBLOB|VARBINARY|BINARY|BIT|ENUM|SET)\\b",
+            Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
     private static final Set<String> NOT_COLUMNS = Set.of(
             "UNIQUE", "KEY", "CONSTRAINT", "PRIMARY", "INDEX", "GENERATED");
     private static final Pattern RENAME = Pattern.compile(
@@ -83,7 +85,7 @@ class SchemaDriftTest {
      * 才能重试），所以解析器要认它。
      */
     private static final Pattern ADD_COLUMN_NAME = Pattern.compile(
-            "ADD COLUMN\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?(\\w+)", Pattern.CASE_INSENSITIVE);
+            "\\bADD\\s+(?:COLUMN\\s+)?(?:IF\\s+NOT\\s+EXISTS\\s+)?(?!(?:IF|COLUMN|CONSTRAINT|UNIQUE|KEY|INDEX|PRIMARY|FOREIGN|CHECK)\\b)(\\w+)\\s+[A-Z]", Pattern.CASE_INSENSITIVE);
     private static final Pattern VERSION = Pattern.compile("^V(\\d+)__");
     /** 表改名。不认它的话，后续针对新表名的 ALTER 全部报「该表尚未建立」，而真因在几十行之前。 */
     private static final Pattern RENAME_TABLE = Pattern.compile(
@@ -151,6 +153,24 @@ class SchemaDriftTest {
         migration.forEach((table, columns) -> assertThat(test.get(table))
                 .as("表 %s 的列不一致（改了 Flyway 就要同步改 schema-test.sql）", table)
                 .containsExactlyInAnyOrderElementsOf(columns));
+    }
+
+    @Test
+    void compactCreateRetainsEveryColumnAndIgnoresConstraintExpressions() {
+        Map<String, Set<String>> tables = new LinkedHashMap<>();
+        replay("CREATE TABLE compact (\n id BIGINT, tenant_no VARCHAR(32), amount DECIMAL(12,2), "
+                + "state ENUM('ACTIVE','INACTIVE'), CONSTRAINT ck_state CHECK (state IN ('ACTIVE','INACTIVE'))\n);", tables);
+        assertThat(tables.get("compact")).containsExactlyInAnyOrder("id", "tenant_no", "amount", "state");
+    }
+
+    @Test
+    void mixedAlterAddsColumnsWithoutTreatingKeysAsColumns() {
+        Map<String, Set<String>> tables = new LinkedHashMap<>();
+        replay("CREATE TABLE ticket (\n  id BIGINT NOT NULL\n);", tables);
+        replay("ALTER TABLE ticket MODIFY id BIGINT NULL, ADD customer_no VARCHAR(64) NULL, "
+                + "ADD COLUMN IF NOT EXISTS actor_no VARCHAR(64), ADD UNIQUE KEY uk_ticket (customer_no), "
+                + "ADD CONSTRAINT ck_ticket CHECK (id >= 0);", tables);
+        assertThat(tables.get("ticket")).containsExactlyInAnyOrder("id", "customer_no", "actor_no");
     }
 
     /** 从 {@code V15__xxx.sql} 取出 15。文件名不合规直接失败，好过按 0 排到最前面。 */

@@ -4,6 +4,7 @@ import ai.neargo.shop.trade.entity.OrdSubOrder;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Update;
+import org.apache.ibatis.annotations.Select;
 
 /** 订单域持久化：沿用原表、平台工厂及SQL语义。 */
 public interface StoreOrderMapper extends BaseMapper<OrdSubOrder> {
@@ -26,5 +27,31 @@ public interface StoreOrderMapper extends BaseMapper<OrdSubOrder> {
               AND appointment_slot_no IS NOT NULL AND appointment_released_at IS NULL
             """)
     int markAppointmentReleased(@Param("subOrderNo") String subOrderNo, @Param("at") long at);
+
+    /** Source ownership follows persisted original references, never client labels or lifecycle guesses. */
+    @Select("""
+            SELECT COUNT(*) FROM ord_industry_order_source
+            WHERE tenant_no = #{tenantNo} AND entity_no = #{entityNo} AND store_no = #{storeNo}
+              AND order_no = #{orderNo} AND sub_order_no = #{subOrderNo} AND deleted = 0
+            """)
+    long countIndustrySources(@Param("tenantNo") String tenantNo, @Param("entityNo") String entityNo,
+                              @Param("storeNo") String storeNo, @Param("orderNo") String orderNo,
+                              @Param("subOrderNo") String subOrderNo);
+
+    /** A buyer may confirm only after the source-aware owner persisted the original physical receipt. */
+    @Select("""
+            SELECT COUNT(*) FROM ord_industry_order_source s
+            JOIN ord_industry_fulfillment f ON f.tenant_no = s.tenant_no AND f.entity_no = s.entity_no
+              AND f.store_no = s.store_no AND f.order_no = s.order_no AND f.sub_order_no = s.sub_order_no
+              AND f.source_system = s.source_system AND f.source_type = s.source_type
+              AND f.source_no = s.source_no AND f.source_version = s.source_version AND f.source_hash = s.source_hash
+            WHERE s.tenant_no = #{tenantNo} AND s.entity_no = #{entityNo} AND s.store_no = #{storeNo}
+              AND s.order_no = #{orderNo} AND s.sub_order_no = #{subOrderNo}
+              AND s.deleted = 0 AND f.deleted = 0 AND f.status IN ('BUYER_CONFIRM_PENDING', 'VERIFIED')
+              AND f.inventory_receipt_json IS NOT NULL
+            """)
+    long countIndustryFulfillmentReceipts(@Param("tenantNo") String tenantNo, @Param("entityNo") String entityNo,
+                                         @Param("storeNo") String storeNo, @Param("orderNo") String orderNo,
+                                         @Param("subOrderNo") String subOrderNo);
 
 }

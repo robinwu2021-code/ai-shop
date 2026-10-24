@@ -13,7 +13,7 @@ test('recipe draft V4 contains only two newly owned tables and never a fake conv
  assert.equal(sql,renderRecipeDraftV4(s));
 });
 test('recipe draft source distinguishes migrated base lines from planned adjustments and execution',()=>{
- assert.equal(s.databaseInitialization.targetSchemaVersion,8);
+ assert.equal(s.databaseInitialization.targetSchemaVersion,15);
  for(const name of ['fnb_recipe','fnb_recipe_line'])assert.equal(s.tables.find(t=>t.name===name).deployment,'MIGRATION_V4');
  assert.equal(s.tables.find(t=>t.name==='fnb_recipe_adjustment').deployment,'MIGRATION_V5');
  assert.equal(s.catalogEnhancement.contracts.inventory.implementation,'PENDING');
@@ -22,5 +22,5 @@ test('recipe draft source distinguishes migrated base lines from planned adjustm
  assert(line.fields.some(f=>f.name==='material_definition_hash'&&f.type==='varchar(64)'));
  assert(line.fields.find(f=>f.name==='conversion_ref').nullable);
  assertFrozenFoodV1(renderFoodV1(s));
- assert.match(renderFoodSchema(s),/version: 8/);
+ assert.match(renderFoodSchema(s),/version: 15/);
 });

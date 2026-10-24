@@ -29,6 +29,7 @@
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import {managementRouteRef} from "./lib/management-route-refs.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const APPS = ["b-app", "c-app"];
@@ -132,6 +133,7 @@ function pageRefs(text, pages, alias) {
   for (const page of pages) {
     if (text.includes(`/${page}`) || text.includes(`"${page}"`)) out.add(page);
     const key = alias.get(page);
+    if (key && managementRouteRef(text, key)) out.add(page);
     if (key && new RegExp(`ROUTES\\s*\\.\\s*${key}\\b`).test(text)) out.add(page);
   }
   return out;

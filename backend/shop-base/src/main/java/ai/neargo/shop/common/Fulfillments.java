@@ -22,6 +22,8 @@ public final class Fulfillments {
 
     /** 到商家自有门店自取。 */
     public static final String STORE_PICKUP = "STORE_PICKUP";
+    /** 员工正式堂食订单；商品必须显式选择，不作为实物商品默认或自提/服务类履约。 */
+    public static final String DINE_IN = "DINE_IN";
     /** 到社区自提点自取（含邻居家自提点）。 */
     public static final String NEIGHBOR_PICKUP = "NEIGHBOR_PICKUP";
     /** 商家自送。<b>留痕最弱的一档</b>：自送、自签、自证，无任何独立第三方记录。 */
@@ -50,7 +52,7 @@ public final class Fulfillments {
     public static final String APPOINTMENT = "APPOINTMENT";
 
     public static final Set<String> ALL = Set.of(
-            STORE_PICKUP, NEIGHBOR_PICKUP, MERCHANT_DELIVERY, EXPRESS, STORE_VERIFY, APPOINTMENT);
+            STORE_PICKUP, NEIGHBOR_PICKUP, MERCHANT_DELIVERY, EXPRESS, STORE_VERIFY, APPOINTMENT, DINE_IN);
 
     /**
      * 服务类履约：<b>没有前置的交付动作</b>，付款即可用 / 即已约定。
