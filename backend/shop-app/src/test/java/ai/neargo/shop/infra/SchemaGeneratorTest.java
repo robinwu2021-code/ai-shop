@@ -8,15 +8,13 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * {@code schema-test.sql} 必须**真的是生成出来的**。
@@ -41,12 +39,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ol>
  */
 class SchemaGeneratorTest {
-
-    /** 只解析最终形态的 {@code CREATE TABLE}：两份文件都已是建表语句，不需要重放 ALTER。 */
-    private static final Pattern TABLE = Pattern.compile(
-            "CREATE TABLE IF NOT EXISTS\\s+(\\w+)\\s*\\((.*?)\\n\\)", Pattern.DOTALL);
-    private static final Pattern COLUMN = Pattern.compile("^\\s{4}(\\w+)\\s+[A-Z]", Pattern.MULTILINE);
-    private static final Set<String> NOT_COLUMNS = Set.of("UNIQUE", "KEY", "CONSTRAINT", "PRIMARY", "INDEX");
 
     @Test
     @DisplayName("★ schema-test.sql 必须真的是生成出来的（生成器能跑 + 产出等价 + H2 能建）")
@@ -82,6 +74,46 @@ class SchemaGeneratorTest {
 
         assertH2CanLoad(generated);
         Files.deleteIfExists(generated);
+    }
+
+    @Test
+    void checksAreNotColumns() throws IOException {
+        Path file = Files.createTempFile("schema-columns", ".sql");
+        try {
+            Files.writeString(
+                    file,
+                    """
+                    CREATE TABLE IF NOT EXISTS probe (
+                        id BIGINT, title VARCHAR(80) DEFAULT 'it''s, (fine)',
+                        CHECK (title IS NOT NULL
+                            AND CHAR_LENGTH(title)>0),
+                        /* comment, ignored */ amount DECIMAL(10,2),
+                        `label` VARCHAR(80) DEFAULT "double, (quoted)",
+                        computed INT GENERATED ALWAYS AS ((COALESCE(id,0) + amount)) STORED,
+                        CONSTRAINT ck CHECK (id IN (1,2))
+                    );
+                    """);
+            assertThat(parse(file).get("probe"))
+                    .containsExactly("id", "title", "amount", "label", "computed");
+            for (String malformed :
+                    List.of(
+                            "CREATE TABLE broken (id INT;",
+                            "CREATE TABLE broken (id INT",
+                            "CREATE TABLE broken (id INT)",
+                            "CREATE TABLE broken id INT;",
+                            "CREATE TABLE broken (id INT));",
+                            "CREATE TABLE broken (id INT, CHECK ((id > 0));",
+                            "CREATE TABLE broken (title VARCHAR(32) DEFAULT 'unterminated);",
+                            "CREATE TABLE broken (id INT /* unterminated);")) {
+                Files.writeString(
+                        file, malformed + "\nCREATE TABLE following (\n    real_column INT\n);");
+                assertThatThrownBy(() -> parse(file))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("Malformed SQL");
+            }
+        } finally {
+            Files.deleteIfExists(file);
+        }
     }
 
     private int runGenerator(Path script, Path out) throws IOException, InterruptedException {
@@ -130,18 +162,6 @@ class SchemaGeneratorTest {
     }
 
     private Map<String, Set<String>> parse(Path file) throws IOException {
-        Map<String, Set<String>> tables = new LinkedHashMap<>();
-        Matcher t = TABLE.matcher(Files.readString(file, StandardCharsets.UTF_8));
-        while (t.find()) {
-            Set<String> columns = new LinkedHashSet<>();
-            Matcher c = COLUMN.matcher(t.group(2));
-            while (c.find()) {
-                if (!NOT_COLUMNS.contains(c.group(1).toUpperCase())) {
-                    columns.add(c.group(1));
-                }
-            }
-            tables.put(t.group(1), columns);
-        }
-        return tables;
+        return SchemaDdl.createColumns(Files.readString(file, StandardCharsets.UTF_8));
     }
 }

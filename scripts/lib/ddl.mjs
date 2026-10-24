@@ -44,7 +44,7 @@ const COL_TYPES =
   "BIGINT|MEDIUMINT|SMALLINT|TINYINT|INTEGER|INT|VARCHAR|CHAR|DATETIME|TIMESTAMP|DATE|TIME"
   + "|MEDIUMTEXT|LONGTEXT|TINYTEXT|TEXT|JSON|DECIMAL|NUMERIC|DOUBLE|FLOAT"
   + "|MEDIUMBLOB|LONGBLOB|BLOB|BOOLEAN|BOOL";
-const NOT_A_COLUMN = /^(KEY|UNIQUE|PRIMARY|INDEX|CONSTRAINT|FULLTEXT)$/i;
+const NOT_A_COLUMN = /^(CHECK|KEY|UNIQUE|PRIMARY|INDEX|CONSTRAINT|FULLTEXT|FOREIGN|SPATIAL)$/i;
 
 /** 把迁移按**版本号数字**拼成一条时间线。字典序会把 V15 排在 V2 前面。 */
 function concatMigrations(dir) {
@@ -55,7 +55,8 @@ function concatMigrations(dir) {
     .join("\n");
 }
 
-const commentOf = (s) => s?.match(/COMMENT\s+'([^']*)'/)?.[1] ?? "";
+const commentOf = (s) => s?.match(/COMMENT\s+'((?:''|\\.|[^'])*)'/i)?.[1]
+  .replace(/''/g, "'").replace(/\\(.)/g, "$1") ?? "";
 
 /**
  * 重放全部迁移，得到**当前**的表结构。
@@ -74,63 +75,13 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
   // 顺序无所谓 —— 但这句要写明，免得以后有人以为编号可以合并。
   const sql = present.map(concatMigrations).join("\n");
 
-  for (const m of sql.matchAll(
-    // 收尾只认「行首的 `)` 一直到 `;`」——**表选项一律不作要求**。
-    // 此前写死了 `\)\s*ENGINE`，于是合法的 `) COMMENT='…';`（不写 ENGINE，
-    // MySQL 默认就是 InnoDB）整张表匹配不上，而且会一路吃到下一个文件，
-    // 把别人的列算到它头上。V27 那三张表就是这么消失的。
-    // 建表的收尾写法不该由解析器来规定 —— 它的职责是读，不是立规矩。
-    //
-    // 表选项**允许跨行，但有上界**（`[^;]{0,600}`）。
-    //
-    // 上界到底防什么，量过之后的准确说法是：**它防的是畸形/被截断的迁移文件**
-    // （尾巴上再也没有 `;` 的那种）。构造「很多个 `\n)` 重试点 + 全文无分号」：
-    //
-    //     重试点数        500      1000     2000     4000
-    //     无界           2.3ms    8.7ms   34.6ms  207.2ms   ← 翻倍即四倍，是 O(n²)
-    //     {0,600}        0.9ms    1.5ms    3.1ms    8.7ms   ← 线性
-    //
-    // 退化的不是负向字符组自己（它一遍扫到 `;` 就停），是它与前面那个**惰性 body**
-    // （`[\s\S]*?`）的组合：收尾匹配失败时 body 向后扩一格再试，每扩一格重扫一遍尾巴。
-    //
-    // 但只要文件尾部还有一个 `;`（也就是任何正常的 SQL），结论反过来 ——
-    // 无界几乎不失败所以是 0.1ms，有界反而要在每个 `)` 点先扫满上界再回退（6ms）。
-    // 三者都是毫秒级，所以这个取舍不是性能问题，是**畸形输入下的兜底**。
-    //
-    // 600 这个数是量出来的：全仓真实建表收尾最长 157（`) ENGINE=… COLLATE=… COMMENT='…'`），
-    // 90 分位 122、中位数 93。300 的余量对中文 COMMENT 太薄。
-    //
-    // **超界的后果是静默吞表**，这是不要随手调小它的证据：把上界收到 {0,100}
-    // （低于真实最长 157），解析器不报任何错，只解析出 **104 张而不是 145 张** ——
-    // 41 张凭空消失，列被算到别的表头上。唯一会喊出来的是
-    // `tests/ddl-parsable.test.ts`（「声明过的表解析器都要读得到」），
-    // 那是这条上界的网。**那张网红着的时候不要动这个数**——
-    // 它红过整整一段时间（6 张 msg_* 的噪音），期间任何真漏读都混在里面看不出来。
-    //
-    // 以上三组数据来自 2026-08-25 的一次三人复核。原来两种说法
-    // （「无界会 O(n²)」与「无界不会 O(n²)」）都不够准，差别在后面还有没有分号。
-    //
-    // 完全不许跨行（`[^;\n]*`）也有代价，而且这个代价已经付过了：
-    // V152 里两处写成
-    //     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci
-    //         COMMENT='…';
-    // 于是那两张表**整张匹配不上**，解析器一路吃到下一张单行收尾的表，
-    // 把中间所有列（连同三条 INSERT 语句里的词）都算到 `sys_media_asset` 头上。
-    // 症状是实体对齐守卫报「sys_media_asset 缺 17 列，其中三列叫 INSERT」——
-    // 一条看不懂的报错，于是那条守卫就一直红着，而红着的守卫等于没有守卫。
-    //
-    // 加上界是第三条路：允许跨行，同时给畸形输入留了兜底。
-    // **不能改 V152 本身**：它早就在生产上应用过，改文件会改掉 Flyway 校验和，
-    // 线上重启会以 checksum mismatch 起不来（2026-08 已经因此停过约 4 分钟）。
-    /CREATE TABLE(?: IF NOT EXISTS)? (\w+)\s*\(([\s\S]*?)\n\)([^;]{0,600});/g,
-  )) {
-    const [, name, body, tail] = m;
+  for (const { name, body, tail } of createDefinitions(sql)) {
     const cols = [];
     const uniques = new Set();
     const indexes = [];
     // 索引名 → 列规格。**DROP INDEX 是按名字删的**，不记名字就删不掉
     const indexNames = new Map();
-    for (const raw of body.split("\n")) {
+    for (const raw of splitTopLevel(body)) {
       const line = raw.trim();
       const u = line.match(/^UNIQUE KEY (\w+) \(([^)]*)\)/i);
       if (u) {
@@ -145,7 +96,7 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
         indexNames.set(k[1], spec);
         continue;
       }
-      const c = line.match(new RegExp(`^(\\w+)\\s+(${COL_TYPES})`, "i"));
+      const c = line.match(new RegExp("^`?(\\w+)`?\\s+(" + COL_TYPES + ")(?![\\w])", "i"));
       if (!c || NOT_A_COLUMN.test(c[1])) continue;
       cols.push({
         name: c[1],
@@ -225,25 +176,19 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
   // 差异里却看不出所以然（踩过一次）。
   // 幂等迁移不是可选风格：一次失败的迁移不该需要人手工进库才能重试（见 V18 的说明），
   // 所以解析器要认它，而不是逼人把 IF NOT EXISTS 去掉。
-  // 一条 ALTER 里可以有多个子句（`ADD COLUMN a …, ADD COLUMN b …`），
-  // 而下面那条正则每条语句只认**第一个** —— 其余的会被 `([^;]*)` 当成尾巴吃掉。
-  // 症状是「实体多出 communityNo、pickupNo」这类漂移报告，
-  // 而那几列明明写在同一条 ALTER 里（V60 就是这么被报出来的）。
-  // 先把多子句拆成多条单子句语句，正则那边就不用动。
-  const flatSql = sql.replace(/ALTER TABLE\s+(\w+)\s+([\s\S]*?);/gi, (full, table, body) => {
-    const parts = splitTopLevel(body);
-    return parts.length <= 1 ? full
-      : parts.map((c) => `ALTER TABLE ${table} ${c.trim()};`).join("\n");
-  });
-
-  for (const m of flatSql.matchAll(
-    /ALTER TABLE\s+(\w+)\s+(ADD COLUMN|RENAME COLUMN|DROP COLUMN|MODIFY COLUMN)\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(\w+)(?:\s+([\w()]+))?([^;]*)/gi,
-  )) {
-    const [, table, opRaw, col, rest, tail] = m;
+  // 一条 ALTER 可以带多个子句；只在 SQL 代码中的分号处结束语句，
+  // 再按顶层逗号分子句。引号/注释里的分号不能截断 COMMENT 或丢掉后续 ALTER。
+  // 下游也直接读取完整子句，不再用 [^;]* 把合法的元数据截短。
+  for (const { table, action } of alterActions(sql)) {
+    const m = action.match(
+      /^(ADD\s+COLUMN|RENAME\s+COLUMN|DROP\s+COLUMN|MODIFY\s+COLUMN)\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(\w+)(?:\s+([\w()]+))?([\s\S]*)$/i,
+    );
+    if (!m) continue;
+    const [, opRaw, col, rest, tail] = m;
     // 直接命中优先；命中不到再看它是不是被改名了（列 ALTER 版本早于改名的情况）
     const t = tables.get(table) ?? tables.get(renamed.get(table));
     if (!t) continue;
-    switch (opRaw.toUpperCase()) {
+    switch (opRaw.toUpperCase().replace(/\s+/g, " ")) {
       case "ADD COLUMN":
         if (!t.cols.some((c) => c.name === col)) {
           t.cols.push({
@@ -294,37 +239,111 @@ export function readColumnNames(root, dirs) {
 }
 
 /**
- * 按**顶层逗号**切分 ALTER 的多个子句。
- *
- * <p>括号内（`UNIQUE KEY uk_x (a, b)`）与单引号内（`COMMENT '甲, 乙'`）的逗号
- * 不是分隔符。用正则前瞻切会在注释里带逗号时切错，而切错的产物是一条
- * 语法上说得通、语义上错的列定义 —— 那种错要到建表时才炸，且报错指向别处。
- *
- * <p>与 `backend/scripts/gen-test-schema.py` 的 `_split_actions` 同一套判据。
- * 两个解析器分叉过一次（多子句 ALTER：python 认得、JS 不认），
- * 症状是漂移报告说实体「多出」几列，而那几列就写在同一条 ALTER 里。
+ * Mask quotes and comments once so punctuation only has structural meaning in SQL code.
+ * Keep literal text in clean for column metadata, replacing comments with whitespace.
  */
-function splitTopLevel(body) {
-  const parts = [];
-  let buf = "";
-  let depth = 0;
-  let quoted = false;
-  for (const ch of body) {
-    if (quoted) {
-      buf += ch;
-      if (ch === "'") quoted = false;
-      continue;
-    }
-    if (ch === "'") quoted = true;
-    else if (ch === "(") depth++;
-    else if (ch === ")") depth--;
-    if (ch === "," && depth === 0) {
-      parts.push(buf.trim());
-      buf = "";
-      continue;
-    }
-    buf += ch;
+function sqlText(sql) {
+  // Use UTF-16 offsets, as String.slice and RegExp do (including non-BMP comments).
+  const clean = sql.split("");
+  const code = sql.split("");
+  for (let i = 0; i < sql.length;) {
+    const start = i;
+    const ch = sql[i];
+    const line = (ch === "-" && sql[i + 1] === "-" && /\s|^$/.test(sql[i + 2] ?? "")) || ch === "#";
+    const block = ch === "/" && sql[i + 1] === "*";
+    if (line || block) {
+      if (line) {
+        while (i < sql.length && sql[i] !== "\n") i++;
+      } else {
+        i = sql.indexOf("*/", i + 2);
+        if (i < 0) throw new Error("Malformed SQL: unclosed comment");
+        i += 2;
+      }
+      for (let j = start; j < i; j++) clean[j] = code[j] = sql[j] === "\n" ? "\n" : " ";
+    } else if (ch === "'" || ch === '"' || ch === "`") {
+      i++;
+      let closed = false;
+      while (i < sql.length) {
+        if (sql[i] === "\\") { i += 2; continue; }
+        if (sql[i++] !== ch) continue;
+        if (sql[i] === ch) { i++; continue; }
+        closed = true;
+        break;
+      }
+      if (!closed) throw new Error("Malformed SQL: unclosed quote");
+      for (let j = start; j < i; j++) code[j] = " ";
+    } else i++;
   }
-  if (buf.trim()) parts.push(buf.trim());
+  return { clean: clean.join(""), code: code.join("") };
+}
+
+/** CREATE bodies end at their matching parenthesis; the existing table-tail bound is 600. */
+function* createDefinitions(sql) {
+  const { clean, code } = sqlText(sql);
+  const header = /\bCREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?(\w+)`?(?!\w)/gi;
+  for (let m; (m = header.exec(clean));) {
+    if (code[m.index].toUpperCase() !== "C") continue;
+    let start = header.lastIndex;
+    while (/\s/.test(clean[start] ?? "")) start++;
+    if (code[start] !== "(") throw new Error(`Malformed SQL: missing CREATE body for ${m[1]}`);
+    start++;
+    const nextCreate = /\bCREATE\s+TABLE\b/gi;
+    nextCreate.lastIndex = start;
+    const boundary = nextCreate.exec(code)?.index ?? code.length;
+    let depth = 1;
+    let end = start;
+    for (; end < boundary; end++) {
+      if (code[end] === ";") throw new Error(`Malformed SQL: unclosed CREATE ${m[1]}`);
+      if (code[end] === "(") depth++;
+      if (code[end] === ")" && --depth === 0) break;
+    }
+    if (depth !== 0) throw new Error(`Malformed SQL: unclosed CREATE ${m[1]}`);
+    let tailEnd = end + 1;
+    let tailDepth = 0;
+    while (tailEnd < boundary && tailEnd - end - 1 <= 600 && code[tailEnd] !== ";") {
+      if (code[tailEnd] === "(") tailDepth++;
+      if (code[tailEnd] === ")" && --tailDepth < 0) throw new Error("Malformed SQL: unmatched table-tail parenthesis");
+      tailEnd++;
+    }
+    if (tailDepth !== 0) throw new Error("Malformed SQL: unclosed table-tail parenthesis");
+    if (tailEnd >= boundary || code[tailEnd] !== ";" || tailEnd - end - 1 > 600) {
+      throw new Error(`Malformed SQL: missing or oversized table tail for ${m[1]}`);
+    }
+    yield { name: m[1], body: clean.slice(start, end), tail: clean.slice(end + 1, tailEnd) };
+    header.lastIndex = tailEnd + 1;
+  }
+}
+
+/** Read complete ALTER statements from the same quote/comment mask used by CREATE. */
+function* alterActions(sql) {
+  const { clean, code } = sqlText(sql);
+  const header = /\bALTER\s+TABLE\s+(\w+)\s+/gi;
+  for (let m; (m = header.exec(code));) {
+    const start = header.lastIndex;
+    const terminator = code.indexOf(";", start);
+    const end = terminator < 0 ? code.length : terminator;
+    for (const action of splitTopLevel(clean.slice(start, end))) {
+      yield { table: m[1], action };
+    }
+    header.lastIndex = end + 1;
+  }
+}
+
+/** Split CREATE definitions and ALTER actions only on commas outside quotes/comments/parentheses. */
+function splitTopLevel(body) {
+  const { clean, code } = sqlText(body);
+  const parts = [];
+  let start = 0;
+  let depth = 0;
+  for (let i = 0; i < code.length; i++) {
+    if (code[i] === "(") depth++;
+    if (code[i] === ")" && --depth < 0) throw new Error("Malformed SQL: unmatched parenthesis");
+    if (code[i] === "," && depth === 0) {
+      parts.push(clean.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  if (depth !== 0) throw new Error("Malformed SQL: unclosed parenthesis");
+  if (clean.slice(start).trim()) parts.push(clean.slice(start).trim());
   return parts;
 }

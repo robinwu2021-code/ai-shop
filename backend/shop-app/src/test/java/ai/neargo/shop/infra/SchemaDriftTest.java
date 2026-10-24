@@ -9,7 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,6 +16,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 拦截「两份 DDL 漂移」：生产走 {@code db/migration/V*.sql}（MySQL），
@@ -50,18 +50,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class SchemaDriftTest {
 
-    /*
-     * `IF NOT EXISTS` 必须可选，缩进必须宽松 —— 否则**整张表被静默漏掉**，
-     * 症状却伪装成下游某支迁移「ALTER 了一张不存在的表」（V187/V195/V213 就是这么炸的：
-     * 它们写的是裸 `CREATE TABLE` + 2 空格缩进，而 120 份用 4 空格 + IF NOT EXISTS）。
-     * gen-test-schema.py 一直是 `CREATE TABLE(?: IF NOT EXISTS)?` 且不挑缩进 ——
-     * **两个重放器必须同口径**，这里严于生成器就等于凭空造出一份差异。
-     */
-    private static final Pattern TABLE = Pattern.compile(
-            "CREATE TABLE\\s+(?:IF NOT EXISTS\\s+)?(\\w+)\\s*\\((.*?)\\n\\)", Pattern.DOTALL);
-    private static final Pattern COLUMN = Pattern.compile("^\\s{2,}(\\w+)\\s+[A-Z]", Pattern.MULTILINE);
-    private static final Set<String> NOT_COLUMNS = Set.of(
-            "UNIQUE", "KEY", "CONSTRAINT", "PRIMARY", "INDEX", "GENERATED");
     private static final Pattern RENAME = Pattern.compile(
             "ALTER TABLE\\s+(\\w+)\\s+RENAME COLUMN\\s+(\\w+)\\s+TO\\s+(\\w+)", Pattern.CASE_INSENSITIVE);
     /**
@@ -153,6 +141,60 @@ class SchemaDriftTest {
                 .containsExactlyInAnyOrderElementsOf(columns));
     }
 
+    @Test
+    void singleSpaceColumnsAndMultilineChecksAreParsedStructurally() throws IOException {
+        Map<String, Set<String>> tables = new LinkedHashMap<>();
+        for (String file :
+                List.of(
+                        "V506__entitlement_exception_action.sql",
+                        "V517__entitlement_migration_alias.sql",
+                        "V533__shared_resource_identity.sql")) {
+            replay(Files.readString(Path.of("src/main/resources/db/migration", file)), tables);
+        }
+        assertThat(tables.get("pay_ent_exception_action"))
+                .hasSize(17)
+                .contains("id", "response_snapshot");
+        assertThat(tables.get("ent_migration_alias")).hasSize(23).contains("comparison_hash");
+        assertThat(tables.get("mch_resource")).hasSize(17).doesNotContain("CHECK", "AND", "OR");
+        replay(
+                "ALTER TABLE mch_resource RENAME TO renamed_resource;"
+                        + "ALTER TABLE renamed_resource RENAME COLUMN name TO title;"
+                        + "ALTER TABLE renamed_resource DROP COLUMN capacity;"
+                        + "ALTER TABLE renamed_resource ADD COLUMN extra INT;",
+                tables);
+        assertThat(tables.get("renamed_resource"))
+                .contains("title", "extra")
+                .doesNotContain("name", "capacity");
+        replay("DROP TABLE renamed_resource;", tables);
+        assertThat(tables).doesNotContainKey("renamed_resource");
+    }
+
+    @Test
+    void malformedCreateCannotConsumeFollowingTable() {
+        for (String malformed :
+                List.of(
+                        "CREATE TABLE broken (id INT;",
+                        "CREATE TABLE broken (id INT",
+                        "CREATE TABLE broken (id INT)",
+                        "CREATE TABLE broken id INT;",
+                        "CREATE TABLE broken (id INT));",
+                        "CREATE TABLE broken (id INT, CHECK ((id > 0));",
+                        "CREATE TABLE broken (title VARCHAR(32) DEFAULT 'unterminated);",
+                        "CREATE TABLE broken (id INT /* unterminated);")) {
+            assertThatThrownBy(
+                            () ->
+                                    replay(
+                                            malformed
+                                                    + "\n"
+                                                    + "CREATE TABLE following (\n"
+                                                    + "  real_column INT\n"
+                                                    + ");",
+                                            new LinkedHashMap<>()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Malformed SQL");
+        }
+    }
+
     /** 从 {@code V15__xxx.sql} 取出 15。文件名不合规直接失败，好过按 0 排到最前面。 */
     private static int versionOf(Path f) {
         Matcher m = VERSION.matcher(f.getFileName().toString());
@@ -213,17 +255,6 @@ class SchemaDriftTest {
     }
 
     private void collectCreates(String sql, Map<String, Set<String>> tables) {
-        Matcher t = TABLE.matcher(sql);
-        while (t.find()) {
-            Set<String> columns = new LinkedHashSet<>();
-            Matcher c = COLUMN.matcher(t.group(2));
-            while (c.find()) {
-                String name = c.group(1);
-                if (!NOT_COLUMNS.contains(name.toUpperCase())) {
-                    columns.add(name);
-                }
-            }
-            tables.put(t.group(1), columns);
-        }
+        tables.putAll(SchemaDdl.createColumns(sql));
     }
 }
