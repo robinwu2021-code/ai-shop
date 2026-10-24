@@ -2,6 +2,10 @@ package ai.neargo.shop;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.AutoConfigurationExcludeFilter;
+import org.springframework.boot.context.TypeExcludeFilter;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 
 /**
  * ai-shop 服务端（模块化单体形态）。
@@ -10,6 +14,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * 拆微服务时新增 {@code shop-app-xxx} 启动模块，只改依赖列表，本类与业务代码不动。
  */
 @SpringBootApplication
+@ComponentScan(excludeFilters = {
+        @ComponentScan.Filter(type = FilterType.CUSTOM, classes = TypeExcludeFilter.class),
+        @ComponentScan.Filter(type = FilterType.CUSTOM, classes = AutoConfigurationExcludeFilter.class),
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "ai\\.neargo\\.shop\\.food\\..*")
+})
 public class ShopApplication {
 
     public static void main(String[] args) {

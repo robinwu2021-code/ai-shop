@@ -310,7 +310,7 @@ public class FoodWebAutoConfiguration {
     @Conditional(PolicyEnabled.class)
     @ConditionalOnBean(CatalogService.class)
     @ConditionalOnMissingBean(MpCatalogController.class)
-    MpCatalogController mpCatalogController(CatalogService service) { return new MpCatalogController(service); }
+    MpCatalogController foodMpCatalogController(CatalogService service) { return new MpCatalogController(service); }
 
     @Bean
     @Profile("api")

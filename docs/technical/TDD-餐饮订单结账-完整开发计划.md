@@ -973,6 +973,10 @@ P5合并兼容收尾收据：支付侧保留101个原P5方法体及全部公开�
 
 本次合并定向实测：24模块依赖编译成功，所选55项中50通过、5条件跳过，0失败/错误（`/tmp/food-cloud-p6-focused-test.log`）；跳过为4个需原生数据库的PAY测试及1个standalone专属装配场景。PAY 94个方法体与远端P6逐项一致，merchant 29组方法/权限集合对账通过；SQL及既有CORE迁移均未改变。不将条件跳过计为实际通过。
 
+首次云端启动发现真实宿主根扫描与餐饮独立自动装配重叠，mpCatalogController与零售重名；已立即恢复原P6包与配置并验证UP。专项回归FoodHostConfigurationParsingTest已复现相同异常（`/tmp/food-cloud-bean-scan-red.log`）。修复只调整宿主扫描边界：food由原AutoConfiguration按开关装配，保留Spring Boot原两项扫描过滤器；餐饮目录factory使用独立bean名，不改任何HTTP路径、业务或表。之后仅跑该真实配置解析及既有装配测试，不重跑全量。
+
+扫描边界修复验证：真实宿主扫描启用/关闭2项全部通过（`/tmp/food-cloud-bean-scan-final.log`），解析真实application.yml、API+OPS且禁止bean覆盖；原嵌入装配6项中5通过、1standalone条件跳过（`/tmp/food-cloud-bean-scan-fixed.log`）。红例与线上异常一致；仅变更扫描边界和一个Bean名，未修改业务金额、权限、数据库SQL。
+
 ## §3 任务边界及排期方式
 
 共享内核、配置发布、报价持久化、资金/库存合同、餐饮结账、经营凭证各自为可单独评审的工作包，但依上述合同连成一条主线。不要按Controller→Service→Mapper分批开发一堆不可验收空壳。
