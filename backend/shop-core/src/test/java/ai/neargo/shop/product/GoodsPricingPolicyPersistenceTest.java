@@ -50,7 +50,7 @@ class GoodsPricingPolicyPersistenceTest {
         var source = new DriverManagerDataSource(url + "_product", "root", ""); jdbc = new JdbcTemplate(source);
         assertThat(jdbc.queryForObject("SELECT VERSION()", String.class)).contains("MariaDB");
         for (String sql : Files.readString(Path.of("../shop-app/src/main/resources/db/migration/"
-                + "V551__sku_pricing_policy.sql")).split(";")) {
+                + "V559__sku_pricing_policy.sql")).split(";")) {
             if (!sql.isBlank()) jdbc.execute(sql);
         }
         jdbc.execute("CREATE TABLE prd_goods(id BIGINT AUTO_INCREMENT PRIMARY KEY,goods_no VARCHAR(32),"

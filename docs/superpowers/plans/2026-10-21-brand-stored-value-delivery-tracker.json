@@ -475,7 +475,12 @@
         "IN05"
       ],
       "planFile": "2026-10-21-brand-stored-value-activity-governance.md",
-      "status": "NOT_STARTED"
+      "status": "IN_PROGRESS",
+      "implementationNotes": [
+        "Offline coding started: Pay policy contracts/evaluator/versioned configuration and V564; no public API or issuance integration yet",
+        "Stage test chain deferred until all coding and compilation complete, per user instruction",
+        "No P4 deployment; P3 controlled cutover signoff remains release prerequisite"
+      ]
     },
     {
       "id": "P5",
@@ -849,9 +854,10 @@
   },
   "nextStagePreparation": {
     "stage": "P4",
-    "status": "SOURCE_INVENTORY_COMPLETE_NOT_IMPLEMENTED",
+    "status": "IMPLEMENTATION_IN_PROGRESS",
     "taskTable": "docs/technical/任务表-品牌与门店双线储值-P4开发准备.md",
     "releaseDependsOn": "P3 controlled cutover signoff",
-    "testOrder": "All stage coding and compilation, then focused chain; no unaffected reruns"
+    "testOrder": "All stage coding and compilation, then focused chain; no unaffected reruns",
+    "deliveryReport": "docs/technical/delivery/P4-活动治理-开发记录.md"
   }
 }
