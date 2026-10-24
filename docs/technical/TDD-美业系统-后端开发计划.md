@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
+> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
 > **执行方式：** 使用`superpowers:subagent-driven-development`逐任务实施及独立审查，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -818,10 +818,27 @@ A3代码验收后，档位0收尾工具与测试守卫。精确需求、五文�
 | A4-2 | SchemaDriftTest/SchemaGeneratorTest共用SchemaDdl.createColumns(String) | V506单空格/匿名CHECK和V517/V533续行CHECK均按结构识别；保留原ALTER重放语义 |
 | A4-3 | 畸形闭合明确失败、table tail600及线性有界扫描保留 | 不吞下一表，不改冻结SQL/known/schema-test.sql；真实生成/列对账继续执行 |
 
-- [ ] 现有Node inline/CHECK及两个Java守卫路径取得真实行为RED，缺helper编译不算RED。
-- [ ] 五文件最小修复后Node双文件、SchemaDriftTest/SchemaGeneratorTest定向GREEN及freshXML；无native/部署。
-- [ ] entity-alignment/schema-lineage真实拆分记录，新增12个无ORM表登记仍归A5，不放宽守卫。
-- [ ] 逐行解析或约束防线最小消融RED，逐字恢复GREEN，独立规格/质量审查后精确提交。
+- [x] 现有Node inline/CHECK及两个Java守卫路径取得真实行为RED，缺helper编译不算RED。
+- [x] 五文件最小修复后Node双文件、SchemaDriftTest/SchemaGeneratorTest定向GREEN及freshXML；无native/部署。
+- [x] entity-alignment/schema-lineage真实拆分记录，新增12个无ORM表登记仍归A5，不放宽守卫。
+- [x] 逐行解析或约束防线最小消融RED，逐字恢复GREEN，独立规格/质量审查后精确提交。
+
+A4实际共享校验22项19通过3失败，旧/新parser九个业务键对应表集合一致：12个非ORM登记归A5；另两项为九个未分类跨表键及gen-erd缺18键、voucher_no重复覆盖造成的归属分叉，列为A5b候选。A4不修这些登记，不把整个共享套件记绿。A5b须先按真实唯一键和读写者核验同义引用/同名异义，特别是积分与储值voucher，不能仅复制某份map消除差异；具体文件/AC/方法待前置验收后单独release。
+
+### 2.27 Task60A-A5：精确非ORM表登记与未知表拒绝（2026-10-24）
+
+A4代码验收后，档位0守卫收尾。唯一产品文件为 packages/shared/tests/entity-alignment.test.ts，精确要求见[A5 brief](../../.superpowers/sdd/beauty-backend/task-60a-a5-brief.md)。不动实体、DDL、持久化方案或known名单，不扩大IGNORE。
+
+| AC | 实施 | 验证 |
+|---|---|---|
+| A5-1 | NO_ENTITY_YET只新增12个真实JDBC/SQL Mapper表及精确owner理由，保留原有全部键值 | 根对基线做新增键差集与理由核对 |
+| A5-2 | 真实表守卫与负例共用unregisteredBusinessTables；仅own登记键有效 | 真实schema/实体/登记加入未知probe只返回probe；删除一个真实新登记同时返回两者 |
+| A5-3 | 保留实体列、ghost与stale登记守卫及精确anchored IGNORE | entity-alignment单文件RED/GREEN及删登记消融；不重跑有生成副作用的schema-lineage |
+
+- [ ] 真实旧守卫取得12missing行为RED；不把缺helper/环境错误算RED。
+- [ ] 补12精确登记、抽共用分类函数及行为负例，已有points/logistics与新表同路分类。
+- [ ] 最小删登记消融RED，逐字恢复GREEN，记录实际命令/版本/计数和唯一文件SHA。
+- [ ] 独立规格/质量审查后精确提交；A5b血缘语义债另片，不声称整个共享套件通过。
 
 ## §3 数据层之后的业务任务与启动深化
 
@@ -2071,3 +2088,11 @@ R1原生检查点仅指定BeautySourceCheckoutIT一个真实方法1/0/0/0，现�
 Node8项通过，最终受影响四selector共5例原生0失败/0错误/0跳过；三种动作/回执/数量突变分别真实RED，同一最终SHA逐字恢复后参数化2例通过。历史整类29/5比较失败仍保留，不把分批结果相加声称最终单次29全绿。测试查询错误、准备/沙箱失败单列透明记录。独立spec+quality审查通过，六处经核对的AOSP附带换行只改变格式；10个本任务容器和显式临时目录已清，SQL504与known5不变。详见[报告](../../.superpowers/sdd/beauty-backend/task-60a-a3-report.md)及[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a3.md)。
 
 既有警告继续归A11，60A整体及BM04部署未准出；下片A4修复列/CHECK解析，全部P1～P4代码后才统一部署。没有商品、订单、支付、权限或迁移变更。
+
+### 32.13 60A-A4结构DDL解析代码验收（2026-10-24）
+
+产品`a018b4dc09956fe84f937543bd85d07512c3e0b2`仅五文件：JS唯一DDL解析器及真实测试、两个Java守卫及共用test-only SchemaDdl。CREATE按引号/注释/括号结构分列，完整类型token、CHECK整约束、下一表边界和既有600字符tail限制均保留。V506/V517/V533读取冻结源，Java守卫共用一份实现，Python与schema-test.sql未改。
+
+初轮Node7项、Java6项均零失败/错误/跳过，最小分隔消融真实RED后五文件逐字恢复。独立审查I1发现合法ALTER注释分号被原正则截断；R1修复完整语句与下游子句边界，新增三项真实回归，最终Node10项全部通过。三Java源码与初轮验证时完全相同，保留六项XML证据，无重复Maven执行。独立复审I1已关闭、无新增重要问题。详见[报告](../../.superpowers/sdd/beauty-backend/task-60a-a4-report.md)及[R1复审](../../.superpowers/sdd/beauty-backend/review-task-60a-a4-r1.md)。
+
+553冻结源保持不变；共享套件实际22项/19通过/3失败仍明确归A5和A5b，未改名单掩盖。编译诊断归A11；本片无native/部署，H2仅证明fixture可加载。60A整体、BM04和全部P1～P4尚未验收，正式部署继续统一后置。
