@@ -34,7 +34,7 @@ public class StoredValueActivityServiceImpl implements StoredValueActivityServic
  private final ActivityVersionService activities;private final StoredValueActivityJournal journal;private final StoredValueActivityFinancePort pay;
  public StoredValueActivityServiceImpl(ActivityVersionService activities,StoredValueActivityJournal journal,StoredValueActivityFinancePort pay){this.activities=activities;this.journal=journal;this.pay=pay;}
  public ActivityView save(Scope scope,SaveDraft command,String key){validate(scope,command.definition());var saved=activities.saveDraft(scope.actor(),command,key);journal.invalidateOlder(scope,saved.activityNo());return saved;}
- 
+
  public Detail detail(Scope scope,String activity){var value=get(scope,activity);return new Detail(value,journal.latest(scope,activity));}
  public ActivityView get(Scope scope,String activity){var view=activities.get(scope.actor(),activity);validate(scope,view.definition());return view;}
  public ai.neargo.shop.common.PageData<ActivityView> list(Scope scope,String status,long page,long size){return activities.list(scope.actor(),"RECHARGE",status,page,size);}

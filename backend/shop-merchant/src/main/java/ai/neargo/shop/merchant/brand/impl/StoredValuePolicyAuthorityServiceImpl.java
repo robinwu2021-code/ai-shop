@@ -76,7 +76,7 @@ public class StoredValuePolicyAuthorityServiceImpl implements StoredValuePolicyA
         if(targets.size()>1000)throw BizException.of(ErrorCode.CONFLICT);
         return new CatalogScope(actor.tenantNo(),actor.actorKey(),management,currency,targets);
     }
-    
+
     public List<PolicyTarget> policyTargets(Actor actor,String management){
         scopes.resolve(actor,management);var result=new ArrayList<PolicyTarget>();
         if(scopes.can(actor,management,"SPACE",management,"sv.policy.read")||scopes.can(actor,management,"SPACE",management,"sv.policy.manage"))result.add(new PolicyTarget("SPACE",management,str(scopes.space(actor,management),"name"),scopes.can(actor,management,"SPACE",management,"sv.policy.manage")));

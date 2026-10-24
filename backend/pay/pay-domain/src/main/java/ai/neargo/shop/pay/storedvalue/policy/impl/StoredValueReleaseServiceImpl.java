@@ -40,7 +40,7 @@ import static ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.text;
 public class StoredValueReleaseServiceImpl implements StoredValueReleaseService {
  private final StoredValueReleasePlanProjectionService projections;
  private final IssuerRepository db; private final StoredValueIssuePolicyService policies; private final StoredValueIssuePolicyEvaluator evaluator;
- 
+
  public StoredValueReleaseServiceImpl(IssuerRepository db,StoredValueIssuePolicyService policies,StoredValueIssuePolicyEvaluator evaluator,StoredValueReleasePlanProjectionService projections){this.db=db;this.policies=policies;this.evaluator=evaluator;this.projections=projections;}
  public Check check(Prepare c){
   var policy=policies.evaluate(c.scope());var blockers=new LinkedHashSet<String>();boolean approval=false;
