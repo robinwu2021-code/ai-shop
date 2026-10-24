@@ -1,6 +1,6 @@
 # 美业 Java 项目结构与类职责
 
-> 状态：候选目录与类职责，待评审 · 2026-10-20 · 未创建Java模块、POM、Controller或迁移。
+> 状态：目标目录与实际实施对照 · 2026-10-24 · Task59代码接线已实现，实际部署后置；全表不代表全部完成。
 > 由 `python3 scripts/gen-beauty-java-project-design.py` 生成，勿手改。真源：[项目结构JSON](./schema/beauty-java-project-design.json)。
 > 总体决策：[美业独立项目与包依赖方案](../TDD-美业系统-独立项目与包依赖方案.md)；接口：[分模块API](./美业系统-API清单.md)；数据库：[结构设计](./美业系统-数据库结构设计.md)。
 
@@ -80,15 +80,15 @@
 
 ## 五、用户Controller归属
 
-44个候选资源Controller承接95条美业候选HTTP接口；共用人员/资源HTTP与共用CONTRACT不转移到美业。Controller完整包名是类身份，Spring装配时还须验证跨行业Bean名不冲突。
+42个候选资源Controller承接95条美业候选HTTP接口；共用人员/资源HTTP与共用CONTRACT不转移到美业。Controller完整包名是类身份，Spring装配时还须验证跨行业Bean名不冲突。
 
 | beauty-web内完整类名 | 调用的Service | API编号 |
 |---|---|---|
 | `ai.neargo.shop.beauty.api.biz.BizAppointmentController` | AppointmentService | BAPI-038、BAPI-039、BAPI-040、BAPI-041、BAPI-042、BAPI-043、BAPI-044、BAPI-045、BAPI-052 |
 | `ai.neargo.shop.beauty.api.biz.BizAppointmentWorkbenchController` | AppointmentWorkbenchQueryService | BAPI-025、BAPI-026、BAPI-117、BAPI-124 |
-| `ai.neargo.shop.beauty.api.biz.BizArrivalController` | ReceptionService | BAPI-047 |
 | `ai.neargo.shop.beauty.api.biz.BizAssetDisputeController` | ServiceCaseCoordinationService | BAPI-103 |
 | `ai.neargo.shop.beauty.api.biz.BizAvailabilityController` | AppointmentAvailabilityService | BAPI-010 |
+| `ai.neargo.shop.beauty.api.biz.BizBusinessTraceController` | WorkOrderBillService | BAPI-137 |
 | `ai.neargo.shop.beauty.api.biz.BizCapabilityApplicationController` | CapabilityService | BAPI-004 |
 | `ai.neargo.shop.beauty.api.biz.BizCapabilityController` | CapabilityService | BAPI-135 |
 | `ai.neargo.shop.beauty.api.biz.BizCareProfileController` | CareProfileService | BAPI-034、BAPI-035、BAPI-036、BAPI-037 |
@@ -101,7 +101,7 @@
 | `ai.neargo.shop.beauty.api.biz.BizGroupSchedulingController` | GroupSchedulingService | BAPI-029 |
 | `ai.neargo.shop.beauty.api.biz.BizGuestRegistrationController` | GuestRegistrationService | BAPI-031、BAPI-032 |
 | `ai.neargo.shop.beauty.api.biz.BizPerformanceAdjustmentCaseController` | PerformanceService | BAPI-109 |
-| `ai.neargo.shop.beauty.api.biz.BizReceptionExceptionController` | ReceptionService | BAPI-053 |
+| `ai.neargo.shop.beauty.api.biz.BizReceptionController` | ReceptionService | BAPI-047、BAPI-048、BAPI-053 |
 | `ai.neargo.shop.beauty.api.biz.BizReportExportController` | ServiceReportQueryService | BAPI-121、BAPI-122 |
 | `ai.neargo.shop.beauty.api.biz.BizResourceChangeController` | ResourceChangeService | BAPI-027、BAPI-028 |
 | `ai.neargo.shop.beauty.api.biz.BizServiceController` | ServiceCatalogQueryService | BAPI-009 |
@@ -112,16 +112,14 @@
 | `ai.neargo.shop.beauty.api.biz.BizServiceReportController` | ServiceReportQueryService | BAPI-119、BAPI-120 |
 | `ai.neargo.shop.beauty.api.biz.BizServiceSubmissionController` | ServiceSubmissionService | BAPI-072、BAPI-073 |
 | `ai.neargo.shop.beauty.api.biz.BizServiceTaskController` | ServiceTaskService | BAPI-057、BAPI-058、BAPI-059、BAPI-060、BAPI-061、BAPI-062、BAPI-063、BAPI-064、BAPI-159、BAPI-100、BAPI-101、BAPI-105 |
-| `ai.neargo.shop.beauty.api.biz.BizServiceTraceController` | ServiceTraceQueryService | BAPI-137 |
 | `ai.neargo.shop.beauty.api.biz.BizStorePolicyController` | StorePolicyService | BAPI-001、BAPI-002 |
 | `ai.neargo.shop.beauty.api.biz.BizTreatmentPlanController` | TreatmentPlanService | BAPI-086、BAPI-087 |
 | `ai.neargo.shop.beauty.api.biz.BizWaitingTicketController` | ReceptionService | BAPI-049、BAPI-050、BAPI-051 |
-| `ai.neargo.shop.beauty.api.biz.BizWalkInController` | ReceptionService | BAPI-048 |
 | `ai.neargo.shop.beauty.api.biz.BizWorkOrderController` | WorkOrderService | BAPI-054、BAPI-055、BAPI-056、BAPI-065、BAPI-066、BAPI-067、BAPI-071 |
 | `ai.neargo.shop.beauty.api.mp.MpAppointmentController` | AppointmentService | BAPI-147、BAPI-148、BAPI-149、BAPI-150、BAPI-151、BAPI-152、BAPI-153 |
-| `ai.neargo.shop.beauty.api.mp.MpArrivalController` | ReceptionService | BAPI-154 |
 | `ai.neargo.shop.beauty.api.mp.MpAvailabilityController` | AppointmentAvailabilityService | BAPI-146 |
 | `ai.neargo.shop.beauty.api.mp.MpCustomerTimelineController` | CustomerTimelineQueryService | BAPI-158 |
+| `ai.neargo.shop.beauty.api.mp.MpReceptionController` | ReceptionService | BAPI-154 |
 | `ai.neargo.shop.beauty.api.mp.MpServiceController` | ServiceCatalogQueryService | BAPI-145 |
 | `ai.neargo.shop.beauty.api.mp.MpServiceDisputeController` | ServiceCaseCoordinationService | BAPI-157 |
 | `ai.neargo.shop.beauty.api.mp.MpStoreController` | ServiceCatalogQueryService | BAPI-144 |
@@ -329,3 +327,44 @@
 ## 八、生成物边界
 
 本清单不生成Java源文件。API输入输出细节沿API清单和工作台契约；具体类与方法签名已整理到[Java类与方法清单](./美业系统-Java类与方法清单.md)及[Controller-Service-Mapper方法清单](./美业系统-Controller-Service-Mapper方法清单.md)，以方法设计JSON为真源；不使用BAPI序号作类名或方法名。共享权限、资金、资源、打印和任务等合同须先核验真实提供方，不能仅由类名推断其已实现。
+
+## 九、Task59 实际增量类型
+
+Task59 code/protocol scope implemented; two-JVM actual owner deployment DEFERRED; candidate inventory below is not completion evidence.
+
+| Module / source | Actual class / responsibility |
+|---|---|
+| `backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/spi/BeautyReceptionInternalApi.java` | `ai.neargo.shop.beauty.spi.BeautyReceptionInternalApi`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/BeautyReceptionCalls.java` | `ai.neargo.shop.beauty.client.BeautyReceptionCalls`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/BeautyReceptionResponses.java` | `ai.neargo.shop.beauty.client.BeautyReceptionResponses`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteGuestRegistrationService.java` | `ai.neargo.shop.beauty.client.RemoteGuestRegistrationService`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteReceptionService.java` | `ai.neargo.shop.beauty.client.RemoteReceptionService`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteServiceSubmissionService.java` | `ai.neargo.shop.beauty.client.RemoteServiceSubmissionService`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteWorkOrderBillService.java` | `ai.neargo.shop.beauty.client.RemoteWorkOrderBillService`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteWorkOrderService.java` | `ai.neargo.shop.beauty.client.RemoteWorkOrderService`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/config/BeautyCheckoutClientConfiguration.java` | `ai.neargo.shop.beauty.config.BeautyCheckoutClientConfiguration`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemoteCheckoutPort.java` | `ai.neargo.shop.beauty.port.RemoteCheckoutPort`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautyGuestController.java` | `ai.neargo.shop.beauty.server.api.InternalBeautyGuestController`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautyOperationController.java` | `ai.neargo.shop.beauty.server.api.InternalBeautyOperationController`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautyReceptionController.java` | `ai.neargo.shop.beauty.server.api.InternalBeautyReceptionController`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautySubmissionController.java` | `ai.neargo.shop.beauty.server.api.InternalBeautySubmissionController`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautyTraceController.java` | `ai.neargo.shop.beauty.server.api.InternalBeautyTraceController`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautyWorkOrderController.java` | `ai.neargo.shop.beauty.server.api.InternalBeautyWorkOrderController`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizArrivalChallengeController.java` | `ai.neargo.shop.beauty.api.biz.BizArrivalChallengeController`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizBusinessTraceController.java` | `ai.neargo.shop.beauty.api.biz.BizBusinessTraceController`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizGuestRegistrationController.java` | `ai.neargo.shop.beauty.api.biz.BizGuestRegistrationController`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizReceptionController.java` | `ai.neargo.shop.beauty.api.biz.BizReceptionController`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizServiceSubmissionController.java` | `ai.neargo.shop.beauty.api.biz.BizServiceSubmissionController`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizWorkOrderController.java` | `ai.neargo.shop.beauty.api.biz.BizWorkOrderController`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/mp/MpReceptionController.java` | `ai.neargo.shop.beauty.api.mp.MpReceptionController`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/mp/MpWorkOrderController.java` | `ai.neargo.shop.beauty.api.mp.MpWorkOrderController`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BoundDelegatedCalls.java` | `ai.neargo.shop.auth.BoundDelegatedCalls`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend/shop-base/src/main/java/ai/neargo/shop/spi/security/InternalCall.java` | `ai.neargo.shop.spi.security.InternalCall`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend/shop-base/src/main/java/ai/neargo/shop/spi/security/InternalReply.java` | `ai.neargo.shop.spi.security.InternalReply`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend/shop-base/src/main/java/ai/neargo/shop/spi/security/InternalRequestBinding.java` | `ai.neargo.shop.spi.security.InternalRequestBinding`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalBindings.java` | `ai.neargo.shop.svc.InternalBindings`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalCallSerializer.java` | `ai.neargo.shop.svc.InternalCallSerializer`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalReplyDeserializer.java` | `ai.neargo.shop.svc.InternalReplyDeserializer`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+| `backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalReplySerializer.java` | `ai.neargo.shop.svc.InternalReplySerializer`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
+
+HOST实际classpath排除beauty-core/server；SERVER排除shop-app/core/merchant/web；双JVM夹具已编码，运行待统一部署关口。

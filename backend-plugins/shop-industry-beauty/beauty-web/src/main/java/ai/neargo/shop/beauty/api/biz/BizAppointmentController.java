@@ -15,13 +15,17 @@ import ai.neargo.shop.beauty.dto.CancellationVO;
 import ai.neargo.shop.beauty.dto.ChangeAppointmentReq;
 import ai.neargo.shop.beauty.dto.CreateAppointmentReq;
 import ai.neargo.shop.beauty.dto.NoShowVO;
+import ai.neargo.shop.beauty.dto.OpenAppointmentWorkOrderReq;
 import ai.neargo.shop.beauty.dto.PreviewAppointmentChangeReq;
 import ai.neargo.shop.beauty.dto.PreviewAppointmentReq;
 import ai.neargo.shop.beauty.dto.RecordNoShowReq;
+import ai.neargo.shop.beauty.dto.WorkOrderVO;
 import ai.neargo.shop.beauty.service.AppointmentService;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
+
 import jakarta.validation.Valid;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Profile;
 import org.springframework.validation.annotation.Validated;
@@ -96,21 +100,31 @@ public class BizAppointmentController {
                 BizContext.requireStoreNo(), SecurityUtils.currentUserNo(), appointmentNo, req);
     }
 
-    /** changeAppointment retains the approved public contract and delegates business authorization. */
+    /**
+     * changeAppointment retains the approved public contract and delegates business authorization.
+     */
     @PostMapping("/{appointmentNo}/changes")
-    public AppointmentVO changeAppointment(@PathVariable("appointmentNo") String appointmentNo, @Valid
-            @RequestBody ChangeAppointmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey,
-            @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false) String requestedStore) {
+    public AppointmentVO changeAppointment(
+            @PathVariable("appointmentNo") String appointmentNo,
+            @Valid @RequestBody ChangeAppointmentReq req,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false)
+                    String requestedStore) {
         BookingStoreScope.require(directories, requestedStore);
         return appointmentService.getObject().changeAppointment(BizContext.requireMerchantNo(),
                 BizContext.requireStoreNo(), SecurityUtils.currentUserNo(), appointmentNo, req, idempotencyKey);
     }
 
-    /** cancelAppointment retains the approved public contract and delegates business authorization. */
+    /**
+     * cancelAppointment retains the approved public contract and delegates business authorization.
+     */
     @PostMapping("/{appointmentNo}/cancellations")
-    public CancellationVO cancelAppointment(@PathVariable("appointmentNo") String appointmentNo, @Valid
-            @RequestBody CancelAppointmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey,
-            @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false) String requestedStore) {
+    public CancellationVO cancelAppointment(
+            @PathVariable("appointmentNo") String appointmentNo,
+            @Valid @RequestBody CancelAppointmentReq req,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false)
+                    String requestedStore) {
         BookingStoreScope.require(directories, requestedStore);
         return appointmentService.getObject().cancelAppointment(BizContext.requireMerchantNo(),
                 BizContext.requireStoreNo(), SecurityUtils.currentUserNo(), appointmentNo, req, idempotencyKey);
@@ -118,12 +132,39 @@ public class BizAppointmentController {
 
     /** recordNoShow retains the approved public contract and delegates business authorization. */
     @PostMapping("/{appointmentNo}/no-shows")
-    public NoShowVO recordNoShow(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody
-            RecordNoShowReq req, @RequestHeader("Idempotency-Key") String idempotencyKey, @RequestHeader(value
-            = BizContextFilter.STORE_HEADER, required = false) String requestedStore) {
+    public NoShowVO recordNoShow(
+            @PathVariable("appointmentNo") String appointmentNo,
+            @Valid @RequestBody RecordNoShowReq req,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false)
+                    String requestedStore) {
         BookingStoreScope.require(directories, requestedStore);
         return appointmentService.getObject().recordNoShow(BizContext.requireMerchantNo(),
                 BizContext.requireStoreNo(), SecurityUtils.currentUserNo(), appointmentNo, req, idempotencyKey);
     }
 
+    /**
+     * Opening reuses the existing durable Service; the URL never creates a second business
+     * namespace.
+     */
+    @PostMapping("/{appointmentNo}/work-orders")
+    public WorkOrderVO openWorkOrderFromAppointment(
+            @PathVariable("appointmentNo") String appointmentNo,
+            @Valid @RequestBody OpenAppointmentWorkOrderReq req,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false)
+                    String requestedStore) {
+        BookingStoreScope.requireResourceNo(appointmentNo);
+        BookingStoreScope.require(directories, requestedStore);
+        BookingStoreScope.requireKey(idempotencyKey);
+        return appointmentService
+                .getObject()
+                .openWorkOrderFromAppointment(
+                        BizContext.requireMerchantNo(),
+                        BizContext.requireStoreNo(),
+                        SecurityUtils.currentUserNo(),
+                        appointmentNo,
+                        req,
+                        idempotencyKey);
+    }
 }

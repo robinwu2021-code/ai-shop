@@ -1,5 +1,5 @@
 {
-  "status": "DESIGN_REVIEW_PENDING",
+  "status": "PARTIALLY_IMPLEMENTED_TASK59_DEPLOYMENT_DEFERRED",
   "root": "backend-plugins/shop-industry-beauty",
   "package": "ai.neargo.shop.beauty",
   "modules": [
@@ -676,14 +676,14 @@
       "apiId": "BAPI-047",
       "module": "G",
       "owner": "beauty-web",
-      "controller": "ai.neargo.shop.beauty.api.biz.BizArrivalController",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizReceptionController",
       "service": "ReceptionService"
     },
     {
       "apiId": "BAPI-048",
       "module": "G",
       "owner": "beauty-web",
-      "controller": "ai.neargo.shop.beauty.api.biz.BizWalkInController",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizReceptionController",
       "service": "ReceptionService"
     },
     {
@@ -718,14 +718,14 @@
       "apiId": "BAPI-053",
       "module": "G",
       "owner": "beauty-web",
-      "controller": "ai.neargo.shop.beauty.api.biz.BizReceptionExceptionController",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizReceptionController",
       "service": "ReceptionService"
     },
     {
       "apiId": "BAPI-154",
       "module": "G",
       "owner": "beauty-web",
-      "controller": "ai.neargo.shop.beauty.api.mp.MpArrivalController",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpReceptionController",
       "service": "ReceptionService"
     },
     {
@@ -1348,8 +1348,8 @@
       "apiId": "BAPI-137",
       "module": "T",
       "owner": "beauty-web",
-      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceTraceController",
-      "service": "ServiceTraceQueryService"
+      "controller": "ai.neargo.shop.beauty.api.biz.BizBusinessTraceController",
+      "service": "WorkOrderBillService"
     },
     {
       "apiId": "BAPI-138",
@@ -1527,5 +1527,168 @@
       "entity": "ai.neargo.shop.beauty.entity.BtySourceAllocationGuard",
       "mapper": "BeautyMappers.SourceAllocationGuardMapper"
     }
-  ]
+  ],
+  "implementationClasses": [
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/spi/BeautyReceptionInternalApi.java",
+      "class": "ai.neargo.shop.beauty.spi.BeautyReceptionInternalApi",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/BeautyReceptionCalls.java",
+      "class": "ai.neargo.shop.beauty.client.BeautyReceptionCalls",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/BeautyReceptionResponses.java",
+      "class": "ai.neargo.shop.beauty.client.BeautyReceptionResponses",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteGuestRegistrationService.java",
+      "class": "ai.neargo.shop.beauty.client.RemoteGuestRegistrationService",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteReceptionService.java",
+      "class": "ai.neargo.shop.beauty.client.RemoteReceptionService",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteServiceSubmissionService.java",
+      "class": "ai.neargo.shop.beauty.client.RemoteServiceSubmissionService",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteWorkOrderBillService.java",
+      "class": "ai.neargo.shop.beauty.client.RemoteWorkOrderBillService",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteWorkOrderService.java",
+      "class": "ai.neargo.shop.beauty.client.RemoteWorkOrderService",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/config/BeautyCheckoutClientConfiguration.java",
+      "class": "ai.neargo.shop.beauty.config.BeautyCheckoutClientConfiguration",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemoteCheckoutPort.java",
+      "class": "ai.neargo.shop.beauty.port.RemoteCheckoutPort",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautyGuestController.java",
+      "class": "ai.neargo.shop.beauty.server.api.InternalBeautyGuestController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautyOperationController.java",
+      "class": "ai.neargo.shop.beauty.server.api.InternalBeautyOperationController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautyReceptionController.java",
+      "class": "ai.neargo.shop.beauty.server.api.InternalBeautyReceptionController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautySubmissionController.java",
+      "class": "ai.neargo.shop.beauty.server.api.InternalBeautySubmissionController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautyTraceController.java",
+      "class": "ai.neargo.shop.beauty.server.api.InternalBeautyTraceController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautyWorkOrderController.java",
+      "class": "ai.neargo.shop.beauty.server.api.InternalBeautyWorkOrderController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizArrivalChallengeController.java",
+      "class": "ai.neargo.shop.beauty.api.biz.BizArrivalChallengeController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizBusinessTraceController.java",
+      "class": "ai.neargo.shop.beauty.api.biz.BizBusinessTraceController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizGuestRegistrationController.java",
+      "class": "ai.neargo.shop.beauty.api.biz.BizGuestRegistrationController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizReceptionController.java",
+      "class": "ai.neargo.shop.beauty.api.biz.BizReceptionController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizServiceSubmissionController.java",
+      "class": "ai.neargo.shop.beauty.api.biz.BizServiceSubmissionController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizWorkOrderController.java",
+      "class": "ai.neargo.shop.beauty.api.biz.BizWorkOrderController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/mp/MpReceptionController.java",
+      "class": "ai.neargo.shop.beauty.api.mp.MpReceptionController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/mp/MpWorkOrderController.java",
+      "class": "ai.neargo.shop.beauty.api.mp.MpWorkOrderController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BoundDelegatedCalls.java",
+      "class": "ai.neargo.shop.auth.BoundDelegatedCalls",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/security/InternalCall.java",
+      "class": "ai.neargo.shop.spi.security.InternalCall",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/security/InternalReply.java",
+      "class": "ai.neargo.shop.spi.security.InternalReply",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/security/InternalRequestBinding.java",
+      "class": "ai.neargo.shop.spi.security.InternalRequestBinding",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalBindings.java",
+      "class": "ai.neargo.shop.svc.InternalBindings",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalCallSerializer.java",
+      "class": "ai.neargo.shop.svc.InternalCallSerializer",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalReplyDeserializer.java",
+      "class": "ai.neargo.shop.svc.InternalReplyDeserializer",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalReplySerializer.java",
+      "class": "ai.neargo.shop.svc.InternalReplySerializer",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    }
+  ],
+  "implementationStatus": "Task59 code/protocol scope implemented; two-JVM actual owner deployment DEFERRED; candidate inventory below is not completion evidence."
 }

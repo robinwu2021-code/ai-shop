@@ -1,6 +1,6 @@
 {
   "status": "PARTIALLY_IMPLEMENTED_MODULE_ACCEPTANCE_PENDING",
-  "date": "2026-10-21",
+  "date": "2026-10-24",
   "sourceApis": "beauty-api-design.json",
   "sourceStructure": "beauty-java-project-design.json",
   "endpoints": [
@@ -739,7 +739,7 @@
       "flow": "guest",
       "readOnly": false,
       "phase": "P1",
-      "implementationStatus": "IMPLEMENTED_TASK55A_SERVICE_ONLY_HTTP_PENDING"
+      "implementationStatus": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     },
     {
       "apiId": "BAPI-032",
@@ -804,7 +804,7 @@
       "flow": "guest",
       "readOnly": false,
       "phase": "P1",
-      "implementationStatus": "IMPLEMENTED_TASK55A_SERVICE_ONLY_HTTP_PENDING"
+      "implementationStatus": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     },
     {
       "apiId": "BAPI-034",
@@ -1831,7 +1831,7 @@
     {
       "apiId": "BAPI-047",
       "method": "checkIn",
-      "controller": "ai.neargo.shop.beauty.api.biz.BizArrivalController",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizReceptionController",
       "service": "ai.neargo.shop.beauty.service.ReceptionService",
       "impl": "ai.neargo.shop.beauty.service.impl.ReceptionServiceImpl",
       "result": "ArrivalVO",
@@ -1879,12 +1879,13 @@
       "inputType": "CheckInReq",
       "flow": "reception",
       "readOnly": false,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     },
     {
       "apiId": "BAPI-048",
       "method": "receiveWalkIn",
-      "controller": "ai.neargo.shop.beauty.api.biz.BizWalkInController",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizReceptionController",
       "service": "ai.neargo.shop.beauty.service.ReceptionService",
       "impl": "ai.neargo.shop.beauty.service.impl.ReceptionServiceImpl",
       "result": "WalkInVO",
@@ -1933,7 +1934,7 @@
       "flow": "walkIn",
       "readOnly": false,
       "phase": "P1",
-      "implementationStatus": "LOCAL_SERVICE_TASK55D_REVIEW_PENDING; HTTP/remote wire pending Task59"
+      "implementationStatus": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     },
     {
       "apiId": "BAPI-049",
@@ -2157,12 +2158,12 @@
       "flow": "workOrderCreate",
       "readOnly": false,
       "phase": "P1",
-      "implementationStatus": "IMPLEMENTED_LOCAL_SERVICE_TASK55C; HTTP/remote wire pending Task59"
+      "implementationStatus": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     },
     {
       "apiId": "BAPI-053",
       "method": "coordinateReceptionException",
-      "controller": "ai.neargo.shop.beauty.api.biz.BizReceptionExceptionController",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizReceptionController",
       "service": "ai.neargo.shop.beauty.service.ReceptionService",
       "impl": "ai.neargo.shop.beauty.service.impl.ReceptionServiceImpl",
       "result": "ReceptionExceptionVO",
@@ -2210,12 +2211,13 @@
       "inputType": "ReceptionExceptionReq",
       "flow": "receptionException",
       "readOnly": false,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     },
     {
       "apiId": "BAPI-154",
       "method": "checkInMyAppointment",
-      "controller": "ai.neargo.shop.beauty.api.mp.MpArrivalController",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpReceptionController",
       "service": "ai.neargo.shop.beauty.service.ReceptionService",
       "impl": "ai.neargo.shop.beauty.service.impl.ReceptionServiceImpl",
       "result": "MyArrivalVO",
@@ -2253,7 +2255,8 @@
       "inputType": "MyCheckInReq",
       "flow": "reception",
       "readOnly": false,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     },
     {
       "apiId": "BAPI-054",
@@ -2307,7 +2310,7 @@
       "flow": "workOrderCreate",
       "readOnly": false,
       "phase": "P1",
-      "implementationStatus": "IMPLEMENTED_LOCAL_SERVICE_TASK55C; HTTP/remote wire pending Task59"
+      "implementationStatus": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     },
     {
       "apiId": "BAPI-055",
@@ -2350,7 +2353,7 @@
       "flow": "workOrderRead",
       "readOnly": true,
       "phase": "P1",
-      "implementationStatus": "IMPLEMENTED_LOCAL_SERVICE_TASK55C; HTTP/remote wire pending Task59"
+      "implementationStatus": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     },
     {
       "apiId": "BAPI-056",
@@ -2414,7 +2417,8 @@
       "inputType": "SubmitServicesReq",
       "flow": "submissionWrite",
       "readOnly": false,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     },
     {
       "apiId": "BAPI-057",
@@ -3118,7 +3122,7 @@
       "flow": "workOrderRead",
       "readOnly": true,
       "phase": "P1",
-      "implementationStatus": "IMPLEMENTED_LOCAL_SERVICE_TASK55C; HTTP/remote wire pending Task59"
+      "implementationStatus": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     },
     {
       "apiId": "BAPI-159",
@@ -3202,7 +3206,8 @@
       "inputType": null,
       "flow": "bill",
       "readOnly": true,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     },
     {
       "apiId": "BAPI-072",
@@ -3244,7 +3249,8 @@
       "inputType": null,
       "flow": "submissionRead",
       "readOnly": true,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     },
     {
       "apiId": "BAPI-073",
@@ -3308,7 +3314,8 @@
       "inputType": "RecoverSubmissionReq",
       "flow": "recovery",
       "readOnly": false,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     },
     {
       "apiId": "BAPI-086",
@@ -4682,10 +4689,10 @@
     },
     {
       "apiId": "BAPI-137",
-      "method": "getBusinessTrace",
-      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceTraceController",
-      "service": "ai.neargo.shop.beauty.service.ServiceTraceQueryService",
-      "impl": "ai.neargo.shop.beauty.service.impl.ServiceTraceQueryServiceImpl",
+      "method": "getTrace",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizBusinessTraceController",
+      "service": "ai.neargo.shop.beauty.service.WorkOrderBillService",
+      "impl": "ai.neargo.shop.beauty.service.impl.WorkOrderBillServiceImpl",
       "result": "BusinessTraceVO",
       "parameters": [
         {
@@ -4720,7 +4727,8 @@
       "inputType": null,
       "flow": "trace",
       "readOnly": true,
-      "phase": "P1"
+      "phase": "P1",
+      "implementationStatus": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     },
     {
       "apiId": "BAPI-138",
@@ -4864,7 +4872,7 @@
       "flow": "operationRead",
       "readOnly": true,
       "phase": "P1",
-      "implementationStatus": "IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING"
+      "implementationStatus": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     }
   ],
   "flows": {
@@ -11427,6 +11435,213 @@
       "purpose": "Task55A fix1：当前完整realm/kind/actor/entity/store与CUSTOMER严格核验后建claim intent；旧resolveReference兼容不变",
       "request": "CustomerIdentityInternalApi.ClaimReferenceRequest(identity,EntitlementContext,ReferenceQuery)",
       "response": "ClaimReferenceResolution(request,ResolvedCustomer)；全请求回显核对，不是资金授权"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/registerGuest",
+      "owner": "beauty-server / InternalBeautyGuestController → GuestRegistrationService",
+      "purpose": "Task59 REGISTER_GUEST; U; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.RegisterGuest>",
+      "response": "InternalReply<GuestRegistrationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/claimGuest",
+      "owner": "beauty-server / InternalBeautyGuestController → GuestRegistrationService",
+      "purpose": "Task59 CLAIM_GUEST; U; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.ClaimGuest>",
+      "response": "InternalReply<GuestClaimVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/checkIn",
+      "owner": "beauty-server / InternalBeautyReceptionController → ReceptionService",
+      "purpose": "Task59 CHECK_IN; W + U; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.CheckIn>",
+      "response": "InternalReply<ArrivalVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/receiveWalkIn",
+      "owner": "beauty-server / InternalBeautyReceptionController → ReceptionService",
+      "purpose": "Task59 RECEIVE_WALK_IN; W + U; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.ReceiveWalkIn>",
+      "response": "InternalReply<WalkInVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/coordinateReceptionException",
+      "owner": "beauty-server / InternalBeautyReceptionController → ReceptionService",
+      "purpose": "Task59 COORDINATE_EXCEPTION; W; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.CoordinateException>",
+      "response": "InternalReply<ReceptionExceptionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/issueArrivalChallenge",
+      "owner": "beauty-server / InternalBeautyReceptionController → ReceptionService",
+      "purpose": "Task59 ISSUE_ARRIVAL_CHALLENGE; W; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.IssueArrivalChallenge>",
+      "response": "InternalReply<ArrivalChallengeVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/openWorkOrderFromAppointment",
+      "owner": "beauty-server / InternalBeautyWorkOrderController → AppointmentService",
+      "purpose": "Task59 OPEN_APPOINTMENT; W + U; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.OpenAppointment>",
+      "response": "InternalReply<WorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/openWorkOrder",
+      "owner": "beauty-server / InternalBeautyWorkOrderController → WorkOrderService",
+      "purpose": "Task59 OPEN_WORK_ORDER; W + U; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.OpenWorkOrder>",
+      "response": "InternalReply<WorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/getWorkOrder",
+      "owner": "beauty-server / InternalBeautyWorkOrderController → WorkOrderService",
+      "purpose": "Task59 GET_WORK_ORDER; R; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.WorkOrderRef>",
+      "response": "InternalReply<WorkOrderDetailVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/getMyWorkOrder",
+      "owner": "beauty-server / InternalBeautyWorkOrderController → WorkOrderService",
+      "purpose": "Task59 GET_MY_WORK_ORDER; current C + active owner; CONSUMER; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.WorkOrderRef>",
+      "response": "InternalReply<MyWorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/checkInMyAppointment",
+      "owner": "beauty-server / InternalBeautyReceptionController → ReceptionService",
+      "purpose": "Task59 CHECK_IN_MY_APPOINTMENT; current C + own appointment + memberCode + store challenge; CONSUMER; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.CheckInMine>",
+      "response": "InternalReply<MyArrivalVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/submitServices",
+      "owner": "beauty-server / InternalBeautyWorkOrderController → WorkOrderService",
+      "purpose": "Task59 SUBMIT_SERVICES; W + U + O; PREPARE also P; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.SubmitServices>",
+      "response": "InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/getBill",
+      "owner": "beauty-server / InternalBeautyWorkOrderController → WorkOrderService",
+      "purpose": "Task59 GET_BILL; R + U + O; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.WorkOrderRef>",
+      "response": "InternalReply<WorkOrderBillVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/getSubmission",
+      "owner": "beauty-server / InternalBeautySubmissionController → ServiceSubmissionService",
+      "purpose": "Task59 GET_SUBMISSION; R + U + O; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.SubmissionRef>",
+      "response": "InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/requestSubmissionRecovery",
+      "owner": "beauty-server / InternalBeautySubmissionController → ServiceSubmissionService",
+      "purpose": "Task59 REQUEST_SUBMISSION_RECOVERY; W + U + O; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.RequestSubmissionRecovery>",
+      "response": "InternalReply<RecoveryRequestVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/recoverPending",
+      "owner": "beauty-server / InternalBeautySubmissionController → ServiceSubmissionService",
+      "purpose": "Task59 RECOVER_PENDING; W + U + O; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.SubmissionRef>",
+      "response": "InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/getTrace",
+      "owner": "beauty-server / InternalBeautyTraceController → WorkOrderBillService",
+      "purpose": "Task59 GET_TRACE; R + U + O; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.BusinessRef>",
+      "response": "InternalReply<BusinessTraceVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/getOperation",
+      "owner": "beauty-server / InternalBeautyOperationController → ServiceOperationQueryService",
+      "purpose": "Task59 GET_OPERATION; actual operation family current authorization; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.OperationRef>",
+      "response": "InternalReply<OperationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/beauty/reception/recoverOperation",
+      "owner": "beauty-server / InternalBeautyOperationController → ServiceOperationRecoveryService",
+      "purpose": "Task59 RECOVER_OPERATION; actual operation family current recovery authorization; MERCHANT; immutable full binding, no incoming proof echo to public VO",
+      "request": "InternalCall<BeautyReceptionInternalApi.OperationRef>",
+      "response": "InternalReply<OperationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/trade/checkout/bound/prepare",
+      "owner": "HOST / InternalCheckoutController → actual CheckoutPortImpl",
+      "purpose": "Task59 B-only prepare; current MERCHANT MCH/USR; no delegated C confirm/place/pay or cash",
+      "request": "InternalCall<CheckoutInternalApi.BoundPrepare>",
+      "response": "InternalReply<CheckoutPort.CheckoutQuote>; full binding digest and strict typed result",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/trade/checkout/bound/readQuote",
+      "owner": "HOST / InternalCheckoutController → actual CheckoutPortImpl",
+      "purpose": "Task59 B-only readQuote; current MERCHANT MCH/USR; no delegated C confirm/place/pay or cash",
+      "request": "InternalCall<CheckoutInternalApi.BoundOperation>",
+      "response": "InternalReply<CheckoutPort.CheckoutQuote>; full binding digest and strict typed result",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/trade/checkout/bound/findOperation",
+      "owner": "HOST / InternalCheckoutController → actual CheckoutPortImpl",
+      "purpose": "Task59 B-only findOperation; current MERCHANT MCH/USR; no delegated C confirm/place/pay or cash",
+      "request": "InternalCall<CheckoutInternalApi.BoundOperation>",
+      "response": "InternalReply<CheckoutPort.CheckoutResult>; full binding digest and strict typed result",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/trade/checkout/bound/source",
+      "owner": "HOST / InternalCheckoutController → actual CheckoutPortImpl",
+      "purpose": "Task59 B-only source; current MERCHANT MCH/USR; no delegated C confirm/place/pay or cash",
+      "request": "InternalCall<CheckoutInternalApi.BoundSource>",
+      "response": "InternalReply<CheckoutPort.CheckoutSourceFacts>; full binding digest and strict typed result",
+      "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED"
     }
   ],
   "implementationTopology": [
@@ -11527,7 +11742,7 @@
     ]
   },
   "sourceFoundation": {
-    "status": "Task58 local kernel implemented; independent review pending. No Task59 beauty HTTP/remote protocol or Task60 deployment acceptance. BM05 remains closed.",
+    "status": "Task58 local source kernels accepted; Task59 public/typed Remote code and protocol tests implemented; real-owner deployment deferred. BM05 remains closed.",
     "methods": [
       {
         "owner": "beauty-api / ai.neargo.shop.beauty.service.ServiceSubmissionService",
@@ -11620,6 +11835,284 @@
       "Actual embedded HOST CheckoutPort and member owners are exercised by true C HTTP read/confirmation/order/payment and current B cash receipt HTTP. Refund bill test changes controlled owner ledger facts, not a complete reverse API.",
       "Standalone missing checkout provider returns explicit SOURCE_UNAVAILABLE; Task59 must supply real transport wiring. No new Remote or Controller is claimed.",
       "Only actual BEAUTY_SOURCE_CUSTOMER_REQUIRED exception80106 is registered with three languages. Proposed quantity/revision/scope/dependency exception placeholders remain durable safe phases instead."
+    ]
+  },
+  "publicProtocolFoundation": {
+    "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+    "targetCount": 160,
+    "publicCount": 18,
+    "newServerMethods": 19,
+    "newHostOwnerMethods": 4,
+    "permissionLegend": {
+      "R": "biz:booking:manage OR biz:booking:view",
+      "W": "biz:booking:manage",
+      "U": "biz:customer",
+      "O": "biz:order:view",
+      "P": "trade:checkout:prepare"
+    },
+    "publicMethods": [
+      {
+        "apiId": "BAPI-031",
+        "name": "registerGuest",
+        "permission": "U",
+        "realm": "MERCHANT",
+        "signature": "GuestRegistrationVO registerGuest(String entityNo, String currentStoreNo, String actorNo, RegisterGuestReq req, String idempotencyKey);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/GuestRegistrationService.java",
+        "service": "ai.neargo.shop.beauty.service.GuestRegistrationService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "POST",
+        "path": "/biz/x/beauty/guest-registrations",
+        "controller": "ai.neargo.shop.beauty.api.biz.BizGuestRegistrationController",
+        "idempotency": "required original Idempotency-Key"
+      },
+      {
+        "apiId": "BAPI-032",
+        "name": "claimGuest",
+        "permission": "U",
+        "realm": "MERCHANT",
+        "signature": "GuestClaimVO claimGuest(String entityNo, String currentStoreNo, String actorNo, String guestNo, ClaimGuestReq req, String idempotencyKey);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/GuestRegistrationService.java",
+        "service": "ai.neargo.shop.beauty.service.GuestRegistrationService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "POST",
+        "path": "/biz/x/beauty/guest-registrations/{guestNo}/claims",
+        "controller": "ai.neargo.shop.beauty.api.biz.BizGuestRegistrationController",
+        "idempotency": "required original Idempotency-Key"
+      },
+      {
+        "apiId": "BAPI-047",
+        "name": "checkIn",
+        "permission": "W + U",
+        "realm": "MERCHANT",
+        "signature": "ArrivalVO checkIn(String entityNo, String currentStoreNo, String actorNo, CheckInReq req, String idempotencyKey);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/ReceptionService.java",
+        "service": "ai.neargo.shop.beauty.service.ReceptionService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "POST",
+        "path": "/biz/x/beauty/arrivals",
+        "controller": "ai.neargo.shop.beauty.api.biz.BizReceptionController",
+        "idempotency": "required original Idempotency-Key"
+      },
+      {
+        "apiId": "BAPI-048",
+        "name": "receiveWalkIn",
+        "permission": "W + U",
+        "realm": "MERCHANT",
+        "signature": "WalkInVO receiveWalkIn(String entityNo, String currentStoreNo, String actorNo, ReceiveWalkInReq req, String idempotencyKey);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/ReceptionService.java",
+        "service": "ai.neargo.shop.beauty.service.ReceptionService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "POST",
+        "path": "/biz/x/beauty/walk-ins",
+        "controller": "ai.neargo.shop.beauty.api.biz.BizReceptionController",
+        "idempotency": "required original Idempotency-Key"
+      },
+      {
+        "apiId": "BAPI-053",
+        "name": "coordinateReceptionException",
+        "permission": "W",
+        "realm": "MERCHANT",
+        "signature": "ReceptionExceptionVO coordinateReceptionException(String entityNo, String currentStoreNo, String actorNo, ReceptionExceptionReq req, String idempotencyKey);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/ReceptionService.java",
+        "service": "ai.neargo.shop.beauty.service.ReceptionService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "POST",
+        "path": "/biz/x/beauty/reception-exceptions",
+        "controller": "ai.neargo.shop.beauty.api.biz.BizReceptionController",
+        "idempotency": "required original Idempotency-Key"
+      },
+      {
+        "apiId": "BM04-ARRIVAL-CHALLENGE",
+        "name": "issueArrivalChallenge",
+        "permission": "W",
+        "realm": "MERCHANT",
+        "signature": "ArrivalChallengeVO issueArrivalChallenge(String entityNo, String currentStoreNo, String actorNo, String idempotencyKey);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/ReceptionService.java",
+        "service": "ai.neargo.shop.beauty.service.ReceptionService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "POST",
+        "path": "/biz/x/beauty/arrival-challenges",
+        "controller": "ai.neargo.shop.beauty.api.biz.BizArrivalChallengeController",
+        "idempotency": "required original Idempotency-Key"
+      },
+      {
+        "apiId": "BAPI-052",
+        "name": "openWorkOrderFromAppointment",
+        "permission": "W + U",
+        "realm": "MERCHANT",
+        "signature": "WorkOrderVO openWorkOrderFromAppointment(String entityNo, String currentStoreNo, String actorNo, String appointmentNo, OpenAppointmentWorkOrderReq req, String idempotencyKey);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/AppointmentService.java",
+        "service": "ai.neargo.shop.beauty.service.AppointmentService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "POST",
+        "path": "/biz/x/beauty/appointments/{appointmentNo}/work-orders",
+        "controller": "ai.neargo.shop.beauty.api.biz.BizAppointmentController",
+        "idempotency": "required original Idempotency-Key"
+      },
+      {
+        "apiId": "BAPI-054",
+        "name": "openWorkOrder",
+        "permission": "W + U",
+        "realm": "MERCHANT",
+        "signature": "WorkOrderVO openWorkOrder(String entityNo, String currentStoreNo, String actorNo, OpenWorkOrderReq req, String idempotencyKey);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/WorkOrderService.java",
+        "service": "ai.neargo.shop.beauty.service.WorkOrderService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "POST",
+        "path": "/biz/x/beauty/work-orders",
+        "controller": "ai.neargo.shop.beauty.api.biz.BizWorkOrderController",
+        "idempotency": "required original Idempotency-Key"
+      },
+      {
+        "apiId": "BAPI-055",
+        "name": "getWorkOrder",
+        "permission": "R",
+        "realm": "MERCHANT",
+        "signature": "WorkOrderDetailVO getWorkOrder(String entityNo, String currentStoreNo, String actorNo, String workOrderNo);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/WorkOrderService.java",
+        "service": "ai.neargo.shop.beauty.service.WorkOrderService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "GET",
+        "path": "/biz/x/beauty/work-orders/{workOrderNo}",
+        "controller": "ai.neargo.shop.beauty.api.biz.BizWorkOrderController",
+        "idempotency": "none; original operation reference only"
+      },
+      {
+        "apiId": "BAPI-155",
+        "name": "getMyWorkOrder",
+        "permission": "current C + active owner",
+        "realm": "CONSUMER",
+        "signature": "MyWorkOrderVO getMyWorkOrder(String userNo, String workOrderNo);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/WorkOrderService.java",
+        "service": "ai.neargo.shop.beauty.service.WorkOrderService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "GET",
+        "path": "/mp/x/beauty/work-orders/{workOrderNo}",
+        "controller": "ai.neargo.shop.beauty.api.mp.MpWorkOrderController",
+        "idempotency": "none; original operation reference only"
+      },
+      {
+        "apiId": "BAPI-154",
+        "name": "checkInMyAppointment",
+        "permission": "current C + own appointment + memberCode + store challenge",
+        "realm": "CONSUMER",
+        "signature": "MyArrivalVO checkInMyAppointment(String userNo, MyCheckInReq req, String idempotencyKey);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/ReceptionService.java",
+        "service": "ai.neargo.shop.beauty.service.ReceptionService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "POST",
+        "path": "/mp/x/beauty/arrivals",
+        "controller": "ai.neargo.shop.beauty.api.mp.MpReceptionController",
+        "idempotency": "required original Idempotency-Key"
+      },
+      {
+        "apiId": "BAPI-056",
+        "name": "submitServices",
+        "permission": "W + U + O; PREPARE also P",
+        "realm": "MERCHANT",
+        "signature": "ServiceSubmissionVO submitServices( String entityNo, String currentStoreNo, String actorNo, String workOrderNo, SubmitServicesReq req, String idempotencyKey);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/WorkOrderService.java",
+        "service": "ai.neargo.shop.beauty.service.WorkOrderService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "POST",
+        "path": "/biz/x/beauty/work-orders/{workOrderNo}/service-submissions",
+        "controller": "ai.neargo.shop.beauty.api.biz.BizWorkOrderController",
+        "idempotency": "required original Idempotency-Key"
+      },
+      {
+        "apiId": "BAPI-071",
+        "name": "getBill",
+        "permission": "R + U + O",
+        "realm": "MERCHANT",
+        "signature": "WorkOrderBillVO getBill( String entityNo, String currentStoreNo, String actorNo, String workOrderNo);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/WorkOrderService.java",
+        "service": "ai.neargo.shop.beauty.service.WorkOrderService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "GET",
+        "path": "/biz/x/beauty/work-orders/{workOrderNo}/bill",
+        "controller": "ai.neargo.shop.beauty.api.biz.BizWorkOrderController",
+        "idempotency": "none; original operation reference only"
+      },
+      {
+        "apiId": "BAPI-072",
+        "name": "getSubmission",
+        "permission": "R + U + O",
+        "realm": "MERCHANT",
+        "signature": "ServiceSubmissionVO getSubmission( String entityNo, String currentStoreNo, String actorNo, String submissionNo);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/ServiceSubmissionService.java",
+        "service": "ai.neargo.shop.beauty.service.ServiceSubmissionService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "GET",
+        "path": "/biz/x/beauty/service-submissions/{submissionNo}",
+        "controller": "ai.neargo.shop.beauty.api.biz.BizServiceSubmissionController",
+        "idempotency": "none; original operation reference only"
+      },
+      {
+        "apiId": "BAPI-073",
+        "name": "requestSubmissionRecovery",
+        "permission": "W + U + O",
+        "realm": "MERCHANT",
+        "signature": "RecoveryRequestVO requestSubmissionRecovery( String entityNo, String currentStoreNo, String actorNo, String submissionNo, RecoverSubmissionReq req, String idempotencyKey);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/ServiceSubmissionService.java",
+        "service": "ai.neargo.shop.beauty.service.ServiceSubmissionService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "POST",
+        "path": "/biz/x/beauty/service-submissions/{submissionNo}/recovery-requests",
+        "controller": "ai.neargo.shop.beauty.api.biz.BizServiceSubmissionController",
+        "idempotency": "required original Idempotency-Key"
+      },
+      {
+        "apiId": "BAPI-137",
+        "name": "getTrace",
+        "permission": "R + U + O",
+        "realm": "MERCHANT",
+        "signature": "BusinessTraceVO getTrace( String entityNo, String currentStoreNo, String actorNo, String businessNo);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/WorkOrderBillService.java",
+        "service": "ai.neargo.shop.beauty.service.WorkOrderBillService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "GET",
+        "path": "/biz/x/beauty/traces/{businessNo}",
+        "controller": "ai.neargo.shop.beauty.api.biz.BizBusinessTraceController",
+        "idempotency": "none; original operation reference only"
+      },
+      {
+        "apiId": "BAPI-160",
+        "name": "getOperation",
+        "permission": "actual operation family current authorization",
+        "realm": "MERCHANT",
+        "signature": "OperationVO getOperation(String entityNo, String currentStoreNo, String actorNo, String operationNo);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/ServiceOperationQueryService.java",
+        "service": "ai.neargo.shop.beauty.service.ServiceOperationQueryService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "GET",
+        "path": "/biz/x/beauty/operations/{operationNo}",
+        "controller": "ai.neargo.shop.beauty.api.biz.BizServiceOperationController",
+        "idempotency": "none; original operation reference only"
+      },
+      {
+        "apiId": "BM03-OPERATION-RECOVERY",
+        "name": "recoverOperation",
+        "permission": "actual operation family current recovery authorization",
+        "realm": "MERCHANT",
+        "signature": "OperationVO recoverOperation(String entityNo, String currentStoreNo, String actorNo, String operationNo);",
+        "servicePath": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/ServiceOperationRecoveryService.java",
+        "service": "ai.neargo.shop.beauty.service.ServiceOperationRecoveryService",
+        "status": "IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED",
+        "method": "POST",
+        "path": "/biz/x/beauty/operations/{operationNo}/recoveries",
+        "controller": "ai.neargo.shop.beauty.api.biz.BizServiceOperationController",
+        "idempotency": "none; original operation reference only"
+      }
+    ],
+    "contracts": [
+      "Public api-only + enabled; embedded actual core, no-core HOST Remote, private SERVER real core with production reverse owners; disabled/ops no new public routes.",
+      "Existing static X-Internal-Token and delegated MAIN MERCHANT MCH/USR or CONSUMER USR; no nonce/session transport added. Current HOST token-store authentication and owner live authorization remain authoritative.",
+      "InternalCall strict recursive required keys including nullable fields; canonical HMAC independent of ObjectMapper escaping; result includes binding + digest, not incoming contact/proof/raw key. No proof or C token in durable intent/log.",
+      "GuestRegistrationVO.claimToken and ArrivalChallengeVO.code remain authorized issuance/replay exceptions. Original past expiry is not rejected by transport.",
+      "Opt-in non2xx headers X-Internal-Error-Code and X-Internal-Request-Digest; blank/wrong token401 before digest/authority; bound owner404 differs from transport404; unbound/200error/null/mismatch → dependency unavailable.",
+      "Appointment OPEN052/054 canonical052 schema2 stores only original endpoint/fullhash/canonicalhash; schema1 original054/recovery supported; full054 first→minimal052 replay,052 first→nonminimal054409; dual legacy conflict.",
+      "Default BizEndpointPermTest scans backend only and excludes this external plugin reactor. No false single-code annotation or PUBLIC grant is introduced; composite permissions are enforced by actual Service policy and owner scopes.",
+      "Unit/HTTP/native core evidence is distinct from full real-owner two-JVM acceptance, which is DEFERRED by the user until unified P1–P4 deployment verification. No Task60 packaged JAR claim."
     ]
   }
 }

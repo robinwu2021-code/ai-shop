@@ -1,21 +1,39 @@
 package ai.neargo.shop.beauty.client;
 
-import ai.neargo.shop.auth.DelegatedIdentityContext;
 import ai.neargo.shop.beauty.dto.OperationVO;
 import ai.neargo.shop.beauty.service.ServiceOperationRecoveryService;
-import ai.neargo.shop.beauty.spi.BeautyBookingInternalApi;
-import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.beauty.spi.BeautyReceptionInternalApi;
+import ai.neargo.shop.svc.InternalBindings;
 
-/** Same authenticated service contract across a process boundary, without retrying uncertain writes. */
-public final class RemoteServiceOperationRecoveryService implements ServiceOperationRecoveryService {
-    private final BeautyBookingInternalApi api;
-    public RemoteServiceOperationRecoveryService(BeautyBookingInternalApi api) { this.api = api; }
+import java.util.Objects;
+
+/**
+ * Original operation numbers share the strict wire across appointment, reception and source
+ * families.
+ */
+public final class RemoteServiceOperationRecoveryService
+        implements ServiceOperationRecoveryService {
+    private final BeautyReceptionInternalApi api;
+    private final InternalBindings bindings;
+
+    /** Bound transport replaces the legacy bare-VO path for this facade. */
+    public RemoteServiceOperationRecoveryService(
+            BeautyReceptionInternalApi api, InternalBindings bindings) {
+        this.api = Objects.requireNonNull(api);
+        this.bindings = Objects.requireNonNull(bindings);
+    }
+
     @Override
     public OperationVO recoverOperation(String entityNo, String currentStoreNo, String actorNo, String operationNo) {
-        DelegatedIdentityContext.outside();
-        return BeautyBookingResponses.identity(BeautyServiceCalls.call(() ->
-                BeautyBookingResponses.require(api.recoverOperation(new
-                BeautyBookingInternalApi.RecoverOperation(entityNo, currentStoreNo, actorNo, operationNo,
-                DelegatedIdentityContext.current(actorNo))))), operationNo);
+        return BeautyReceptionCalls.call(
+                "BM03-OPERATION-RECOVERY",
+                "RECOVER_OPERATION",
+                entityNo,
+                currentStoreNo,
+                actorNo,
+                operationNo,
+                new BeautyReceptionInternalApi.OperationRef(operationNo),
+                bindings,
+                api::recoverOperation);
     }
 }

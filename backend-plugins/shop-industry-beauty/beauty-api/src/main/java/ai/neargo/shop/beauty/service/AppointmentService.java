@@ -26,11 +26,14 @@ import ai.neargo.shop.common.PageData;
 
 /** Current authenticated scope is verified for every appointment operation. */
 public interface AppointmentService {
-    /** Local opening is delivered independently of the Task59 remote reception protocol. */
-    default WorkOrderVO openWorkOrderFromAppointment(String entityNo, String currentStoreNo, String actorNo,
-            String appointmentNo, OpenAppointmentWorkOrderReq req, String idempotencyKey) {
-        throw new UnsupportedOperationException("reception wire is owned by Task59");
-    }
+    /** Every deployment must delegate opening to the same delivered reception owner contract. */
+    WorkOrderVO openWorkOrderFromAppointment(
+            String entityNo,
+            String currentStoreNo,
+            String actorNo,
+            String appointmentNo,
+            OpenAppointmentWorkOrderReq req,
+            String idempotencyKey);
 
     AppointmentPreviewVO previewAppointment(String entityNo, String currentStoreNo, String actorNo,
             PreviewAppointmentReq req);

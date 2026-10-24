@@ -7,9 +7,8 @@ import ai.neargo.shop.beauty.config.ConditionalOnBeautyWebEnabled;
 import ai.neargo.shop.beauty.dto.OperationVO;
 import ai.neargo.shop.beauty.service.ServiceOperationQueryService;
 import ai.neargo.shop.beauty.service.ServiceOperationRecoveryService;
-import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
-import jakarta.validation.Valid;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Profile;
 import org.springframework.validation.annotation.Validated;
@@ -40,17 +39,25 @@ public class BizServiceOperationController {
 
     /** getOperation retains the approved public contract and delegates business authorization. */
     @GetMapping("/{operationNo}")
-    public OperationVO getOperation(@PathVariable("operationNo") String operationNo, @RequestHeader(value =
-            BizContextFilter.STORE_HEADER, required = false) String requestedStore) {
+    public OperationVO getOperation(
+            @PathVariable("operationNo") String operationNo,
+            @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false)
+                    String requestedStore) {
+        BookingStoreScope.requireResourceNo(operationNo);
         BookingStoreScope.require(directories, requestedStore);
         return serviceOperationQueryService.getObject().getOperation(BizContext.requireMerchantNo(),
                 BizContext.requireStoreNo(), SecurityUtils.currentUserNo(), operationNo);
     }
 
-    /** recoverOperation retains the approved public contract and delegates business authorization. */
+    /**
+     * recoverOperation retains the approved public contract and delegates business authorization.
+     */
     @PostMapping("/{operationNo}/recoveries")
-    public OperationVO recoverOperation(@PathVariable("operationNo") String operationNo, @RequestHeader(value =
-            BizContextFilter.STORE_HEADER, required = false) String requestedStore) {
+    public OperationVO recoverOperation(
+            @PathVariable("operationNo") String operationNo,
+            @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false)
+                    String requestedStore) {
+        BookingStoreScope.requireResourceNo(operationNo);
         BookingStoreScope.require(directories, requestedStore);
         return serviceOperationRecoveryService.getObject().recoverOperation(BizContext.requireMerchantNo(),
                 BizContext.requireStoreNo(), SecurityUtils.currentUserNo(), operationNo);

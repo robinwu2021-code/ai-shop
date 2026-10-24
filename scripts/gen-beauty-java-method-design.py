@@ -283,6 +283,19 @@ def generate():
         for row in source['helpers']:
             increment.append(f"| {row['owner']} | {row['role']} |")
         increment += [''] + [rule + '\n' for rule in source['contracts']]
+    bm04 = d.get('publicProtocolFoundation')
+    if bm04:
+        increment += ['', '## Task59 BM04 actual public and typed owner protocol', '', bm04['status'], '',
+                      '| API / HTTP | Actual controller / Service signature | Authority |', '|---|---|---|']
+        for row in bm04['publicMethods']:
+            actual = (ROOT / row['servicePath']).read_text()
+            assert re.sub(r'\s+', '', row['signature']) in re.sub(r'\s+', '', actual), row['service']
+            increment.append(f"| {row['apiId']} / `{row['method']} {row['path']}` | `{row['controller']}`<br>`{row['signature']}` | {row['permission']} |")
+        increment += ['', '| Direction / exact private route | Typed payload / result |', '|---|---|']
+        for row in d['implementationProtocols']:
+            if row.get('status', '').startswith('IMPLEMENTED_TASK59'):
+                increment.append(f"| {row['owner']}<br>`{row['method']} {row['path']}` | `{row['request']}`<br>{row['response']} |")
+        increment += [''] + [rule + '\n' for rule in bm04['contracts']]
     classes += increment
     methods += increment
     stats={'controllers':len(controllers),'services':len(services),'serviceMethods':method_count,'dtos':len(dtos),'mappers':len(mappers),'customMapperMethods':sum(len(m['customMethods']) for m in mappers),'ownedHttp':len(eps),'sharedHttp':len(d['sharedHttpMethods'])}

@@ -8,11 +8,14 @@ import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.ReceptionIdentity.VerifiedIdentity;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.idem.IdempotencyScope;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import java.time.OffsetDateTime;
-import java.util.List;
+
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.time.OffsetDateTime;
+import java.util.List;
 
 /** Durable verified claim intents contain only canonical references, never tickets or contact fingerprints. */
 public final class ReceptionPreparation {
@@ -70,6 +73,40 @@ public final class ReceptionPreparation {
         if (op != null) { AppointmentPersistence.require(hash.equals(op.getRequestHash())); }
         return op;
     }
+
+    /**
+     * Reads both historical appointment OPEN namespaces without discarding original full request
+     * assertions.
+     */
+    public List<BtyReceptionOperation> findOpenAliases(
+            String entity, String store, String actor, String key) {
+        var user = SecurityUtils.requireUser();
+        AppointmentPersistence.require(actor.equals(user.userNo()));
+        return db.read(
+                () ->
+                        operations.selectList(
+                                Wrappers.<BtyReceptionOperation>lambdaQuery()
+                                        .eq(BtyReceptionOperation::getTenantNo, user.tenantNo())
+                                        .eq(BtyReceptionOperation::getEntityNo, entity)
+                                        .eq(BtyReceptionOperation::getStoreNo, store)
+                                        .eq(BtyReceptionOperation::getActorNo, actor)
+                                        .eq(
+                                                BtyReceptionOperation::getActorRealm,
+                                                user.realm().name())
+                                        .eq(
+                                                BtyReceptionOperation::getActorKind,
+                                                user.subjectKind().name())
+                                        .in(
+                                                BtyReceptionOperation::getEndpoint,
+                                                List.of("BAPI-052", "BAPI-054"))
+                                        .eq(BtyReceptionOperation::getAction, "OPEN_WORK_ORDER")
+                                        .isNotNull(BtyReceptionOperation::getAppointmentNo)
+                                        .eq(
+                                                BtyReceptionOperation::getKeyHash,
+                                                IdempotencyScope.requestHash(
+                                                        IdempotencyScope.requireKey(key)))));
+    }
+
     public BtyReceptionOperation begin(String entity, String store, String actor, String endpoint,
             String key, String hash, VerifiedIdentity identity, ReceptionPayload payload) {
         var existing = find(entity, store, actor, endpoint, key, hash);
@@ -77,14 +114,21 @@ public final class ReceptionPreparation {
         var user = SecurityUtils.requireUser();
         var op = new BtyReceptionOperation(); op.setTenantNo(user.tenantNo());
         op.setEntityNo(entity); op.setStoreNo(store);
-        op.setOperationNo(BizKey.next("BTRO")); op.setActorNo(actor); op.setActorRealm(user.realm().name());
+        op.setOperationNo(BizKey.next("BTRO"));
+        op.setActorNo(actor); op.setActorRealm(user.realm().name());
         op.setActorKind(user.subjectKind().name()); op.setEndpoint(endpoint);
-        op.setAction(payload instanceof WalkInPayload ? "RECEIVE_WALK_IN"
-                : payload instanceof ArrivalPayload ? "CHECK_IN"
-                : payload instanceof WorkOrderCoordinator.OpenPayload ? "OPEN_WORK_ORDER" : "RECEPTION_EXCEPTION");
+        op.setAction(
+                payload instanceof WalkInPayload
+                        ? "RECEIVE_WALK_IN"
+                        : payload instanceof ArrivalPayload
+                                ? "CHECK_IN"
+                                : payload instanceof WorkOrderCoordinator.OpenPayload
+                                        ? "OPEN_WORK_ORDER"
+                                        : "RECEPTION_EXCEPTION");
         op.setKeyHash(IdempotencyScope.requestHash(IdempotencyScope.requireKey(key))); op.setRequestHash(hash);
         op.setAppointmentNo(payload instanceof WalkInPayload ? null : payload.appointmentNo());
-        op.setPhase(payload instanceof WorkOrderCoordinator.OpenPayload ? "OPEN_PENDING" : "RECEIVED");
+        op.setPhase(
+                payload instanceof WorkOrderCoordinator.OpenPayload ? "OPEN_PENDING" : "RECEIVED");
         if (identity != null) { op.setIdentityKind(identity.kind()); op.setIdentityRef(identity.reference()); }
         op.setDerivedKeyHash(derived(entity, store, endpoint, key));
         op.setFrozenPayload(db.json.writeValueAsString(payload));
@@ -105,21 +149,38 @@ public final class ReceptionPreparation {
     }
     /** Freeze once outside the root lock chain; a concurrent winner always keeps its original complete plan. */
     public BtyReceptionOperation freezeWalkIn(BtyReceptionOperation observed, AppointmentMatching.Matched match) {
-        return db.tx(() -> {
-            var row = operations.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
-                    observed.getOperationNo());
-            AppointmentPersistence.require(row != null && row.getRequestHash().equals(observed.getRequestHash())
-                    && row.getDerivedKeyHash().equals(observed.getDerivedKeyHash()));
-            var payload = db.json.readValue(row.getFrozenPayload(), WalkInPayload.class);
-            if (!"RECEIVED".equals(row.getPhase()) || payload.matched() != null) { return row; }
-            AppointmentPersistence.require(match.scope().entityNo().equals(row.getEntityNo())
-                    && match.scope().storeNo().equals(row.getStoreNo()));
-            row.setFrozenPayload(db.json.writeValueAsString(payload.withMatch(match, IdempotencyScope.requestHash(
-                    "BEAUTY_WALK_IN_CREATE_V1", row.getOperationNo(), row.getRequestHash(), payload.previewNo(),
-                    match.plan()))));
-            AppointmentPersistence.require(operations.updateById(row) == 1);
-            return row;
-        });
+        return db.tx(
+                () -> {
+                    var row =
+                            operations.selectScopedForUpdate(
+                                    observed.getEntityNo(),
+                                    observed.getStoreNo(),
+                                    observed.getOperationNo());
+                    AppointmentPersistence.require(
+                            row != null
+                                    && row.getRequestHash().equals(observed.getRequestHash())
+                                    && row.getDerivedKeyHash()
+                                            .equals(observed.getDerivedKeyHash()));
+                    var payload = db.json.readValue(row.getFrozenPayload(), WalkInPayload.class);
+                    if (!"RECEIVED".equals(row.getPhase()) || payload.matched() != null) {
+                        return row;
+                    }
+                    AppointmentPersistence.require(
+                            match.scope().entityNo().equals(row.getEntityNo())
+                                    && match.scope().storeNo().equals(row.getStoreNo()));
+                    row.setFrozenPayload(
+                            db.json.writeValueAsString(
+                                    payload.withMatch(
+                                            match,
+                                            IdempotencyScope.requestHash(
+                                                    "BEAUTY_WALK_IN_CREATE_V1",
+                                                    row.getOperationNo(),
+                                                    row.getRequestHash(),
+                                                    payload.previewNo(),
+                                                    match.plan()))));
+                    AppointmentPersistence.require(operations.updateById(row) == 1);
+                    return row;
+                });
     }
     public record WalkInPayload(int schemaVersion, String appointmentNo, String previewNo,
             String appointmentOperationNo, List<AppointmentItemReq> items,

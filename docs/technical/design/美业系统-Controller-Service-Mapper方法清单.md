@@ -931,7 +931,7 @@ CancellationVO cancelMyAppointment(String userNo, String appointmentNo, CancelAp
 
 目的：核对身份并到店签到；阶段：P1；模式：**LOCAL_ATOMIC**。
 
-Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizArrivalController`
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizReceptionController`
 
 ```java
 ArrivalVO checkIn(@Valid @RequestBody CheckInReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
@@ -957,7 +957,7 @@ ArrivalVO checkIn(String entityNo, String currentStoreNo, String actorNo, CheckI
 
 目的：直客接待并安排即时资源；阶段：P1；模式：**ORCHESTRATED**。
 
-Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizWalkInController`
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizReceptionController`
 
 ```java
 WalkInVO receiveWalkIn(@Valid @RequestBody ReceiveWalkInReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
@@ -1079,7 +1079,7 @@ WorkOrderVO openWorkOrderFromAppointment(String entityNo, String currentStoreNo,
 
 目的：迟到早到及无法服务协调；阶段：P1；模式：**LOCAL_ATOMIC**。
 
-Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizReceptionExceptionController`
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizReceptionController`
 
 ```java
 ReceptionExceptionVO coordinateReceptionException(@Valid @RequestBody ReceptionExceptionReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
@@ -1103,7 +1103,7 @@ ReceptionExceptionVO coordinateReceptionException(String entityNo, String curren
 
 目的：本人到店签到；阶段：P1；模式：**LOCAL_ATOMIC**。
 
-Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpArrivalController`
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpReceptionController`
 
 ```java
 MyArrivalVO checkInMyAppointment(@Valid @RequestBody MyCheckInReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
@@ -2317,16 +2317,16 @@ CapabilityStatusVO getCapabilityStatus(String entityNo, String currentStoreNo, S
 
 目的：关联预约工单任务来源资金状态；阶段：P1；模式：**READ_MODEL**。
 
-Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceTraceController`
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizBusinessTraceController`
 
 ```java
-BusinessTraceVO getBusinessTrace(@PathVariable("businessNo") String businessNo);
+BusinessTraceVO getTrace(@PathVariable("businessNo") String businessNo);
 ```
 
-Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceTraceQueryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceTraceQueryServiceImpl`
+Service（beauty-api）：`ai.neargo.shop.beauty.service.WorkOrderBillService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.WorkOrderBillServiceImpl`
 
 ```java
-BusinessTraceVO getBusinessTrace(String entityNo, String currentStoreNo, String actorNo, String businessNo);
+BusinessTraceVO getTrace(String entityNo, String currentStoreNo, String actorNo, String businessNo);
 ```
 
 本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceSubmissionMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`；`BeautyMappers.ActionLogMapper.selectList`。
@@ -3478,7 +3478,6 @@ a2仍须实现正式权限、持久预约生成计划、同Binding幂等及可�
 | BAPI-151 / `previewMyAppointmentChange` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
 | BAPI-152 / `changeMyAppointment` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
 | BAPI-153 / `cancelMyAppointment` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
-| BAPI-160 / `getOperation` | ai.neargo.shop.beauty.api.biz.BizServiceOperationController<br>ai.neargo.shop.beauty.service.ServiceOperationQueryService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
 | `POST /biz/x/beauty/operations/{operationNo}/recoveries`<br>`OperationVO recoverOperation(String entityNo,String currentStoreNo,String actorNo,String operationNo)` | ai.neargo.shop.beauty.api.biz.BizServiceOperationController<br>ai.neargo.shop.beauty.service.ServiceOperationRecoveryService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
 
 | 内部方法 / 路径 | 所有者 | 请求 | 返回 |
@@ -3519,6 +3518,29 @@ a2仍须实现正式权限、持久预约生成计划、同Binding幂等及可�
 | `POST /internal/guest-registration/claim` | PLATFORM / InternalGuestRegistrationController → MemberGuestRegistrationPortImpl (shop-core/member) | GuestRegistrationInternalApi.ClaimRequest(scope,guestNo,ClaimCommand(verifiedIdentity,claimToken,idempotencyKey)) | Claimed(request,Claim(guestNo,userNo,revision))；完整请求回显，不改绑或创建账号/订单 |
 | `POST /internal/customer-identity/verify-consumer-proof` | PLATFORM / InternalCustomerIdentityController → MemberCustomerIdentityPortImpl | CustomerIdentityInternalApi.ProofRequest(identity,EntitlementContext,memberCode) | ProofResolution(request,ResolvedCustomer)；完整身份/上下文/原memberCode请求回显，必须解析为当前用户；过期/伪造mc1为400 |
 | `POST /internal/customer-identity/resolve-claim-reference` | PLATFORM / InternalCustomerIdentityController → MemberCustomerIdentityPortImpl | CustomerIdentityInternalApi.ClaimReferenceRequest(identity,EntitlementContext,ReferenceQuery) | ClaimReferenceResolution(request,ResolvedCustomer)；全请求回显核对，不是资金授权 |
+| `POST /internal/beauty/reception/registerGuest` | beauty-server / InternalBeautyGuestController → GuestRegistrationService | InternalCall<BeautyReceptionInternalApi.RegisterGuest> | InternalReply<GuestRegistrationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/claimGuest` | beauty-server / InternalBeautyGuestController → GuestRegistrationService | InternalCall<BeautyReceptionInternalApi.ClaimGuest> | InternalReply<GuestClaimVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/checkIn` | beauty-server / InternalBeautyReceptionController → ReceptionService | InternalCall<BeautyReceptionInternalApi.CheckIn> | InternalReply<ArrivalVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/receiveWalkIn` | beauty-server / InternalBeautyReceptionController → ReceptionService | InternalCall<BeautyReceptionInternalApi.ReceiveWalkIn> | InternalReply<WalkInVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/coordinateReceptionException` | beauty-server / InternalBeautyReceptionController → ReceptionService | InternalCall<BeautyReceptionInternalApi.CoordinateException> | InternalReply<ReceptionExceptionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/issueArrivalChallenge` | beauty-server / InternalBeautyReceptionController → ReceptionService | InternalCall<BeautyReceptionInternalApi.IssueArrivalChallenge> | InternalReply<ArrivalChallengeVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/openWorkOrderFromAppointment` | beauty-server / InternalBeautyWorkOrderController → AppointmentService | InternalCall<BeautyReceptionInternalApi.OpenAppointment> | InternalReply<WorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/openWorkOrder` | beauty-server / InternalBeautyWorkOrderController → WorkOrderService | InternalCall<BeautyReceptionInternalApi.OpenWorkOrder> | InternalReply<WorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getWorkOrder` | beauty-server / InternalBeautyWorkOrderController → WorkOrderService | InternalCall<BeautyReceptionInternalApi.WorkOrderRef> | InternalReply<WorkOrderDetailVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getMyWorkOrder` | beauty-server / InternalBeautyWorkOrderController → WorkOrderService | InternalCall<BeautyReceptionInternalApi.WorkOrderRef> | InternalReply<MyWorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/checkInMyAppointment` | beauty-server / InternalBeautyReceptionController → ReceptionService | InternalCall<BeautyReceptionInternalApi.CheckInMine> | InternalReply<MyArrivalVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/submitServices` | beauty-server / InternalBeautyWorkOrderController → WorkOrderService | InternalCall<BeautyReceptionInternalApi.SubmitServices> | InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getBill` | beauty-server / InternalBeautyWorkOrderController → WorkOrderService | InternalCall<BeautyReceptionInternalApi.WorkOrderRef> | InternalReply<WorkOrderBillVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getSubmission` | beauty-server / InternalBeautySubmissionController → ServiceSubmissionService | InternalCall<BeautyReceptionInternalApi.SubmissionRef> | InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/requestSubmissionRecovery` | beauty-server / InternalBeautySubmissionController → ServiceSubmissionService | InternalCall<BeautyReceptionInternalApi.RequestSubmissionRecovery> | InternalReply<RecoveryRequestVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/recoverPending` | beauty-server / InternalBeautySubmissionController → ServiceSubmissionService | InternalCall<BeautyReceptionInternalApi.SubmissionRef> | InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getTrace` | beauty-server / InternalBeautyTraceController → WorkOrderBillService | InternalCall<BeautyReceptionInternalApi.BusinessRef> | InternalReply<BusinessTraceVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getOperation` | beauty-server / InternalBeautyOperationController → ServiceOperationQueryService | InternalCall<BeautyReceptionInternalApi.OperationRef> | InternalReply<OperationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/recoverOperation` | beauty-server / InternalBeautyOperationController → ServiceOperationRecoveryService | InternalCall<BeautyReceptionInternalApi.OperationRef> | InternalReply<OperationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/trade/checkout/bound/prepare` | HOST / InternalCheckoutController → actual CheckoutPortImpl | InternalCall<CheckoutInternalApi.BoundPrepare> | InternalReply<CheckoutPort.CheckoutQuote>; full binding digest and strict typed result |
+| `POST /internal/trade/checkout/bound/readQuote` | HOST / InternalCheckoutController → actual CheckoutPortImpl | InternalCall<CheckoutInternalApi.BoundOperation> | InternalReply<CheckoutPort.CheckoutQuote>; full binding digest and strict typed result |
+| `POST /internal/trade/checkout/bound/findOperation` | HOST / InternalCheckoutController → actual CheckoutPortImpl | InternalCall<CheckoutInternalApi.BoundOperation> | InternalReply<CheckoutPort.CheckoutResult>; full binding digest and strict typed result |
+| `POST /internal/trade/checkout/bound/source` | HOST / InternalCheckoutController → actual CheckoutPortImpl | InternalCall<CheckoutInternalApi.BoundSource> | InternalReply<CheckoutPort.CheckoutSourceFacts>; full binding digest and strict typed result |
 
 | 部署形态 | 唯一来源provider | owner / 装配 |
 |---|---|---|
@@ -3607,7 +3629,7 @@ D adds no migration: V1-V7 unchanged, ready7 and 27 private tables. HTTP and rem
 
 ## Task58 actual local source submission, binding and bill
 
-Task58 local kernel implemented; independent review pending. No Task59 beauty HTTP/remote protocol or Task60 deployment acceptance. BM05 remains closed.
+Task58 local source kernels accepted; Task59 public/typed Remote code and protocol tests implemented; real-owner deployment deferred. BM05 remains closed.
 
 | Module / owner | Actual signature |
 |---|---|
@@ -3662,3 +3684,71 @@ Actual embedded HOST CheckoutPort and member owners are exercised by true C HTTP
 Standalone missing checkout provider returns explicit SOURCE_UNAVAILABLE; Task59 must supply real transport wiring. No new Remote or Controller is claimed.
 
 Only actual BEAUTY_SOURCE_CUSTOMER_REQUIRED exception80106 is registered with three languages. Proposed quantity/revision/scope/dependency exception placeholders remain durable safe phases instead.
+
+
+## Task59 BM04 actual public and typed owner protocol
+
+IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED
+
+| API / HTTP | Actual controller / Service signature | Authority |
+|---|---|---|
+| BAPI-031 / `POST /biz/x/beauty/guest-registrations` | `ai.neargo.shop.beauty.api.biz.BizGuestRegistrationController`<br>`GuestRegistrationVO registerGuest(String entityNo, String currentStoreNo, String actorNo, RegisterGuestReq req, String idempotencyKey);` | U |
+| BAPI-032 / `POST /biz/x/beauty/guest-registrations/{guestNo}/claims` | `ai.neargo.shop.beauty.api.biz.BizGuestRegistrationController`<br>`GuestClaimVO claimGuest(String entityNo, String currentStoreNo, String actorNo, String guestNo, ClaimGuestReq req, String idempotencyKey);` | U |
+| BAPI-047 / `POST /biz/x/beauty/arrivals` | `ai.neargo.shop.beauty.api.biz.BizReceptionController`<br>`ArrivalVO checkIn(String entityNo, String currentStoreNo, String actorNo, CheckInReq req, String idempotencyKey);` | W + U |
+| BAPI-048 / `POST /biz/x/beauty/walk-ins` | `ai.neargo.shop.beauty.api.biz.BizReceptionController`<br>`WalkInVO receiveWalkIn(String entityNo, String currentStoreNo, String actorNo, ReceiveWalkInReq req, String idempotencyKey);` | W + U |
+| BAPI-053 / `POST /biz/x/beauty/reception-exceptions` | `ai.neargo.shop.beauty.api.biz.BizReceptionController`<br>`ReceptionExceptionVO coordinateReceptionException(String entityNo, String currentStoreNo, String actorNo, ReceptionExceptionReq req, String idempotencyKey);` | W |
+| BM04-ARRIVAL-CHALLENGE / `POST /biz/x/beauty/arrival-challenges` | `ai.neargo.shop.beauty.api.biz.BizArrivalChallengeController`<br>`ArrivalChallengeVO issueArrivalChallenge(String entityNo, String currentStoreNo, String actorNo, String idempotencyKey);` | W |
+| BAPI-052 / `POST /biz/x/beauty/appointments/{appointmentNo}/work-orders` | `ai.neargo.shop.beauty.api.biz.BizAppointmentController`<br>`WorkOrderVO openWorkOrderFromAppointment(String entityNo, String currentStoreNo, String actorNo, String appointmentNo, OpenAppointmentWorkOrderReq req, String idempotencyKey);` | W + U |
+| BAPI-054 / `POST /biz/x/beauty/work-orders` | `ai.neargo.shop.beauty.api.biz.BizWorkOrderController`<br>`WorkOrderVO openWorkOrder(String entityNo, String currentStoreNo, String actorNo, OpenWorkOrderReq req, String idempotencyKey);` | W + U |
+| BAPI-055 / `GET /biz/x/beauty/work-orders/{workOrderNo}` | `ai.neargo.shop.beauty.api.biz.BizWorkOrderController`<br>`WorkOrderDetailVO getWorkOrder(String entityNo, String currentStoreNo, String actorNo, String workOrderNo);` | R |
+| BAPI-155 / `GET /mp/x/beauty/work-orders/{workOrderNo}` | `ai.neargo.shop.beauty.api.mp.MpWorkOrderController`<br>`MyWorkOrderVO getMyWorkOrder(String userNo, String workOrderNo);` | current C + active owner |
+| BAPI-154 / `POST /mp/x/beauty/arrivals` | `ai.neargo.shop.beauty.api.mp.MpReceptionController`<br>`MyArrivalVO checkInMyAppointment(String userNo, MyCheckInReq req, String idempotencyKey);` | current C + own appointment + memberCode + store challenge |
+| BAPI-056 / `POST /biz/x/beauty/work-orders/{workOrderNo}/service-submissions` | `ai.neargo.shop.beauty.api.biz.BizWorkOrderController`<br>`ServiceSubmissionVO submitServices( String entityNo, String currentStoreNo, String actorNo, String workOrderNo, SubmitServicesReq req, String idempotencyKey);` | W + U + O; PREPARE also P |
+| BAPI-071 / `GET /biz/x/beauty/work-orders/{workOrderNo}/bill` | `ai.neargo.shop.beauty.api.biz.BizWorkOrderController`<br>`WorkOrderBillVO getBill( String entityNo, String currentStoreNo, String actorNo, String workOrderNo);` | R + U + O |
+| BAPI-072 / `GET /biz/x/beauty/service-submissions/{submissionNo}` | `ai.neargo.shop.beauty.api.biz.BizServiceSubmissionController`<br>`ServiceSubmissionVO getSubmission( String entityNo, String currentStoreNo, String actorNo, String submissionNo);` | R + U + O |
+| BAPI-073 / `POST /biz/x/beauty/service-submissions/{submissionNo}/recovery-requests` | `ai.neargo.shop.beauty.api.biz.BizServiceSubmissionController`<br>`RecoveryRequestVO requestSubmissionRecovery( String entityNo, String currentStoreNo, String actorNo, String submissionNo, RecoverSubmissionReq req, String idempotencyKey);` | W + U + O |
+| BAPI-137 / `GET /biz/x/beauty/traces/{businessNo}` | `ai.neargo.shop.beauty.api.biz.BizBusinessTraceController`<br>`BusinessTraceVO getTrace( String entityNo, String currentStoreNo, String actorNo, String businessNo);` | R + U + O |
+| BAPI-160 / `GET /biz/x/beauty/operations/{operationNo}` | `ai.neargo.shop.beauty.api.biz.BizServiceOperationController`<br>`OperationVO getOperation(String entityNo, String currentStoreNo, String actorNo, String operationNo);` | actual operation family current authorization |
+| BM03-OPERATION-RECOVERY / `POST /biz/x/beauty/operations/{operationNo}/recoveries` | `ai.neargo.shop.beauty.api.biz.BizServiceOperationController`<br>`OperationVO recoverOperation(String entityNo, String currentStoreNo, String actorNo, String operationNo);` | actual operation family current recovery authorization |
+
+| Direction / exact private route | Typed payload / result |
+|---|---|
+| beauty-server / InternalBeautyGuestController → GuestRegistrationService<br>`POST /internal/beauty/reception/registerGuest` | `InternalCall<BeautyReceptionInternalApi.RegisterGuest>`<br>InternalReply<GuestRegistrationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyGuestController → GuestRegistrationService<br>`POST /internal/beauty/reception/claimGuest` | `InternalCall<BeautyReceptionInternalApi.ClaimGuest>`<br>InternalReply<GuestClaimVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyReceptionController → ReceptionService<br>`POST /internal/beauty/reception/checkIn` | `InternalCall<BeautyReceptionInternalApi.CheckIn>`<br>InternalReply<ArrivalVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyReceptionController → ReceptionService<br>`POST /internal/beauty/reception/receiveWalkIn` | `InternalCall<BeautyReceptionInternalApi.ReceiveWalkIn>`<br>InternalReply<WalkInVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyReceptionController → ReceptionService<br>`POST /internal/beauty/reception/coordinateReceptionException` | `InternalCall<BeautyReceptionInternalApi.CoordinateException>`<br>InternalReply<ReceptionExceptionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyReceptionController → ReceptionService<br>`POST /internal/beauty/reception/issueArrivalChallenge` | `InternalCall<BeautyReceptionInternalApi.IssueArrivalChallenge>`<br>InternalReply<ArrivalChallengeVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyWorkOrderController → AppointmentService<br>`POST /internal/beauty/reception/openWorkOrderFromAppointment` | `InternalCall<BeautyReceptionInternalApi.OpenAppointment>`<br>InternalReply<WorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyWorkOrderController → WorkOrderService<br>`POST /internal/beauty/reception/openWorkOrder` | `InternalCall<BeautyReceptionInternalApi.OpenWorkOrder>`<br>InternalReply<WorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyWorkOrderController → WorkOrderService<br>`POST /internal/beauty/reception/getWorkOrder` | `InternalCall<BeautyReceptionInternalApi.WorkOrderRef>`<br>InternalReply<WorkOrderDetailVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyWorkOrderController → WorkOrderService<br>`POST /internal/beauty/reception/getMyWorkOrder` | `InternalCall<BeautyReceptionInternalApi.WorkOrderRef>`<br>InternalReply<MyWorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyReceptionController → ReceptionService<br>`POST /internal/beauty/reception/checkInMyAppointment` | `InternalCall<BeautyReceptionInternalApi.CheckInMine>`<br>InternalReply<MyArrivalVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyWorkOrderController → WorkOrderService<br>`POST /internal/beauty/reception/submitServices` | `InternalCall<BeautyReceptionInternalApi.SubmitServices>`<br>InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyWorkOrderController → WorkOrderService<br>`POST /internal/beauty/reception/getBill` | `InternalCall<BeautyReceptionInternalApi.WorkOrderRef>`<br>InternalReply<WorkOrderBillVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautySubmissionController → ServiceSubmissionService<br>`POST /internal/beauty/reception/getSubmission` | `InternalCall<BeautyReceptionInternalApi.SubmissionRef>`<br>InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautySubmissionController → ServiceSubmissionService<br>`POST /internal/beauty/reception/requestSubmissionRecovery` | `InternalCall<BeautyReceptionInternalApi.RequestSubmissionRecovery>`<br>InternalReply<RecoveryRequestVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautySubmissionController → ServiceSubmissionService<br>`POST /internal/beauty/reception/recoverPending` | `InternalCall<BeautyReceptionInternalApi.SubmissionRef>`<br>InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyTraceController → WorkOrderBillService<br>`POST /internal/beauty/reception/getTrace` | `InternalCall<BeautyReceptionInternalApi.BusinessRef>`<br>InternalReply<BusinessTraceVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyOperationController → ServiceOperationQueryService<br>`POST /internal/beauty/reception/getOperation` | `InternalCall<BeautyReceptionInternalApi.OperationRef>`<br>InternalReply<OperationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyOperationController → ServiceOperationRecoveryService<br>`POST /internal/beauty/reception/recoverOperation` | `InternalCall<BeautyReceptionInternalApi.OperationRef>`<br>InternalReply<OperationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| HOST / InternalCheckoutController → actual CheckoutPortImpl<br>`POST /internal/trade/checkout/bound/prepare` | `InternalCall<CheckoutInternalApi.BoundPrepare>`<br>InternalReply<CheckoutPort.CheckoutQuote>; full binding digest and strict typed result |
+| HOST / InternalCheckoutController → actual CheckoutPortImpl<br>`POST /internal/trade/checkout/bound/readQuote` | `InternalCall<CheckoutInternalApi.BoundOperation>`<br>InternalReply<CheckoutPort.CheckoutQuote>; full binding digest and strict typed result |
+| HOST / InternalCheckoutController → actual CheckoutPortImpl<br>`POST /internal/trade/checkout/bound/findOperation` | `InternalCall<CheckoutInternalApi.BoundOperation>`<br>InternalReply<CheckoutPort.CheckoutResult>; full binding digest and strict typed result |
+| HOST / InternalCheckoutController → actual CheckoutPortImpl<br>`POST /internal/trade/checkout/bound/source` | `InternalCall<CheckoutInternalApi.BoundSource>`<br>InternalReply<CheckoutPort.CheckoutSourceFacts>; full binding digest and strict typed result |
+
+Public api-only + enabled; embedded actual core, no-core HOST Remote, private SERVER real core with production reverse owners; disabled/ops no new public routes.
+
+Existing static X-Internal-Token and delegated MAIN MERCHANT MCH/USR or CONSUMER USR; no nonce/session transport added. Current HOST token-store authentication and owner live authorization remain authoritative.
+
+InternalCall strict recursive required keys including nullable fields; canonical HMAC independent of ObjectMapper escaping; result includes binding + digest, not incoming contact/proof/raw key. No proof or C token in durable intent/log.
+
+GuestRegistrationVO.claimToken and ArrivalChallengeVO.code remain authorized issuance/replay exceptions. Original past expiry is not rejected by transport.
+
+Opt-in non2xx headers X-Internal-Error-Code and X-Internal-Request-Digest; blank/wrong token401 before digest/authority; bound owner404 differs from transport404; unbound/200error/null/mismatch → dependency unavailable.
+
+Appointment OPEN052/054 canonical052 schema2 stores only original endpoint/fullhash/canonicalhash; schema1 original054/recovery supported; full054 first→minimal052 replay,052 first→nonminimal054409; dual legacy conflict.
+
+Default BizEndpointPermTest scans backend only and excludes this external plugin reactor. No false single-code annotation or PUBLIC grant is introduced; composite permissions are enforced by actual Service policy and owner scopes.
+
+Unit/HTTP/native core evidence is distinct from full real-owner two-JVM acceptance, which is DEFERRED by the user until unified P1–P4 deployment verification. No Task60 packaged JAR claim.

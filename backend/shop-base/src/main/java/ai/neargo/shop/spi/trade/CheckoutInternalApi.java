@@ -3,6 +3,8 @@ package ai.neargo.shop.spi.trade;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.security.DelegatedIdentity;
+import ai.neargo.shop.spi.security.InternalCall;
+import ai.neargo.shop.spi.security.InternalReply;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 
@@ -44,6 +46,89 @@ public interface CheckoutInternalApi {
     @PostExchange(BASE + "findPayment")
     Result<CheckoutPort.PaymentAttemptView> findPayment(
             @RequestBody Scoped<CheckoutPort.PaymentLookup> request);
+
+    /** Prepare through a fully bound current merchant request. */
+    @PostExchange(BASE + "bound/prepare")
+    InternalReply<CheckoutPort.CheckoutQuote> prepareBound(
+            @RequestBody InternalCall<BoundPrepare> request);
+
+    /** Read the original historical quote without introducing a client freshness policy. */
+    @PostExchange(BASE + "bound/readQuote")
+    InternalReply<CheckoutPort.CheckoutQuote> readQuoteBound(
+            @RequestBody InternalCall<BoundOperation> request);
+
+    /** Find original durable owner state with request-bound absence semantics. */
+    @PostExchange(BASE + "bound/findOperation")
+    InternalReply<CheckoutPort.CheckoutResult> findOperationBound(
+            @RequestBody InternalCall<BoundOperation> request);
+
+    /** Observe original nullable financial facts under current merchant authority. */
+    @PostExchange(BASE + "bound/source")
+    InternalReply<CheckoutPort.CheckoutSourceFacts> sourceBound(
+            @RequestBody InternalCall<BoundSource> request);
+
+    /** Exact nested scope is checked against the authenticated binding before owner effects. */
+    record BoundPrepare(CheckoutPort.CheckoutScope scope, CheckoutPort.PrepareCheckoutReq request) {
+        /** Required records remain strict independently of HTTP framework validation. */
+        public BoundPrepare {
+            if (scope == null || request == null) {
+                throw new IllegalArgumentException("invalid bound checkout request");
+            }
+        }
+
+        /** Reject additional authority or economic assertions. */
+        @JsonAnySetter
+        public void unknown(String field, Object value) {
+            throw new IllegalArgumentException("invalid bound checkout field");
+        }
+
+        @Override
+        public String toString() {
+            return "BoundPrepare[REDACTED]";
+        }
+    }
+
+    /** Exact nested scope is checked against the authenticated binding before owner effects. */
+    record BoundOperation(CheckoutPort.CheckoutScope scope, CheckoutPort.OperationRef operation) {
+        /** Required records remain strict independently of HTTP framework validation. */
+        public BoundOperation {
+            if (scope == null || operation == null) {
+                throw new IllegalArgumentException("invalid bound checkout request");
+            }
+        }
+
+        /** Reject additional authority or economic assertions. */
+        @JsonAnySetter
+        public void unknown(String field, Object value) {
+            throw new IllegalArgumentException("invalid bound checkout field");
+        }
+
+        @Override
+        public String toString() {
+            return "BoundOperation[REDACTED]";
+        }
+    }
+
+    /** Exact nested scope is checked against the authenticated binding before owner effects. */
+    record BoundSource(CheckoutPort.CheckoutScope scope, CheckoutPort.SourceLookup request) {
+        /** Required records remain strict independently of HTTP framework validation. */
+        public BoundSource {
+            if (scope == null || request == null) {
+                throw new IllegalArgumentException("invalid bound checkout request");
+            }
+        }
+
+        /** Reject additional authority or economic assertions. */
+        @JsonAnySetter
+        public void unknown(String field, Object value) {
+            throw new IllegalArgumentException("invalid bound checkout field");
+        }
+
+        @Override
+        public String toString() {
+            return "BoundSource[REDACTED]";
+        }
+    }
 
     /**
      * Bind the versioned transport envelope to the real delegated merchant namespace before owner

@@ -4,15 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sun.net.httpserver.HttpServer;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +14,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.service.annotation.GetExchange;
 import org.springframework.web.service.annotation.HttpExchange;
 import org.springframework.web.service.annotation.PostExchange;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 真实 socket 上的服务间调用：本地起一个 JDK {@link HttpServer}，不用 MockRestServiceServer ——
@@ -55,40 +58,63 @@ class ServiceClientsTest {
     }
 
     private String startServer(int status, String json) throws IOException {
+        return startServer(status, json, Map.of());
+    }
+
+    private String startServer(int status, String json, Map<String, String> headers)
+            throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/", ex -> {
-            seen.add(ex.getRequestMethod() + " " + ex.getRequestURI() + " " + ex.getProtocol()
-                    + " token=" + ex.getRequestHeaders().getFirst("X-Test-Token")
-                    // 没锁 HTTP/1.1 时，JDK HttpClient 会在明文请求上带 Upgrade: h2c 试着升级 ——
-                    // 服务端不支持时协议照样是 HTTP/1.1，所以「协议版本」这个量证伪不了，要看这个头
-                    + (ex.getRequestHeaders().containsKey("Upgrade") ? " UPGRADE" : ""));
-            if (ex.getRequestURI().getPath().endsWith("/slow")) {
-                try {
-                    Thread.sleep(1500);
-                } catch (InterruptedException ignored) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-            byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
-            ex.getResponseHeaders().set("Content-Type", "application/json");
-            ex.sendResponseHeaders(status, bytes.length);
-            ex.getResponseBody().write(bytes);
-            ex.close();
-        });
+        server.createContext(
+                "/",
+                ex -> {
+                    seen.add(
+                            ex.getRequestMethod()
+                                    + " "
+                                    + ex.getRequestURI()
+                                    + " "
+                                    + ex.getProtocol()
+                                    + " token="
+                                    + ex.getRequestHeaders().getFirst("X-Test-Token")
+                                    // 没锁 HTTP/1.1 时，JDK HttpClient 会在明文请求上带 Upgrade: h2c 试着升级 ——
+                                    // 服务端不支持时协议照样是 HTTP/1.1，所以「协议版本」这个量证伪不了，要看这个头
+                                    + (ex.getRequestHeaders().containsKey("Upgrade")
+                                            ? " UPGRADE"
+                                            : ""));
+                    if (ex.getRequestURI().getPath().endsWith("/slow")) {
+                        try {
+                            Thread.sleep(1500);
+                        } catch (InterruptedException ignored) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }
+                    byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
+                    ex.getResponseHeaders().set("Content-Type", "application/json");
+                    headers.forEach((name, value) -> ex.getResponseHeaders().set(name, value));
+                    ex.sendResponseHeaders(status, bytes.length);
+                    ex.getResponseBody().write(bytes);
+                    ex.close();
+                });
         server.start();
         servers.add(server);
         return "http://127.0.0.1:" + server.getAddress().getPort();
     }
 
     private static ServiceClientSpec spec(AtomicReference<String> base, String token, boolean requireToken) {
-        return new ServiceClientSpec("DEMO", name -> Optional.ofNullable(base.get()), "X-Test-Token",
-                () -> token, requireToken, Duration.ofSeconds(1), Duration.ofMillis(500));
+        return new ServiceClientSpec(
+                "DEMO",
+                name -> Optional.ofNullable(base.get()),
+                "X-Test-Token",
+                () -> token,
+                requireToken,
+                Duration.ofSeconds(1),
+                Duration.ofMillis(500));
     }
 
     @Test
     @DisplayName("★★★ 成功：路径 / 查询串 / 令牌头都到了对方，锁在 HTTP/1.1（不试 h2c 升级），应答解成对象")
     void okRoundTrip() throws IOException {
-        AtomicReference<String> base = new AtomicReference<>(startServer(200, "[{\"code\":\"A\",\"rateBp\":30}]"));
+        AtomicReference<String> base =
+                new AtomicReference<>(startServer(200, "[{\"code\":\"A\",\"rateBp\":30}]"));
         DemoApi api = ServiceClients.create(DemoApi.class, spec(base, "s3cret", true));
 
         List<Rule> rules = ServiceCalls.call("DEMO", () -> api.rules(42));
@@ -146,7 +172,8 @@ class ServiceClientsTest {
     @Test
     @DisplayName("★★★ 对方回非 2xx：REMOTE_ERROR，带上状态码（job 侧要靠 409 / 404 分辨跳过与缺 handler）")
     void remoteErrorKeepsStatus() throws IOException {
-        AtomicReference<String> base = new AtomicReference<>(startServer(409, "{\"msg\":\"locked\"}"));
+        AtomicReference<String> base =
+                new AtomicReference<>(startServer(409, "{\"msg\":\"locked\"}"));
         DemoApi api = ServiceClients.create(DemoApi.class, spec(base, "s3cret", true));
 
         assertThatThrownBy(() -> ServiceCalls.call("DEMO", () -> api.touch("A", new Rule("A", 1))))
@@ -161,7 +188,8 @@ class ServiceClientsTest {
     @Test
     @DisplayName("★★ 200 但应答读不了：REMOTE_ERROR，不当成功")
     void unreadableBodyIsRemoteError() throws IOException {
-        AtomicReference<String> base = new AtomicReference<>(startServer(200, "<html>not json</html>"));
+        AtomicReference<String> base =
+                new AtomicReference<>(startServer(200, "<html>not json</html>"));
         DemoApi api = ServiceClients.create(DemoApi.class, spec(base, "s3cret", true));
 
         assertThatThrownBy(() -> ServiceCalls.call("DEMO", () -> api.rules(1)))
@@ -206,6 +234,54 @@ class ServiceClientsTest {
         assertThat(ServiceCalls.call("DEMO", () -> api.rules(1))).isEmpty();
         base.set(second);
         assertThat(ServiceCalls.call("DEMO", () -> api.rules(2))).containsExactly(new Rule("B", 5));
-        assertThat(seen).as("尾斜杠被去掉，没有拼出 //internal").allMatch(line -> !line.contains("//internal"));
+        assertThat(seen)
+                .as("尾斜杠被去掉，没有拼出 //internal")
+                .allMatch(line -> !line.contains("//internal"));
+    }
+
+    @Test
+    void optionalBoundHeadersPreserveSafeMetadataWithoutReadingPrivateBody() throws IOException {
+        String digest = "a".repeat(64);
+        AtomicReference<String> base =
+                new AtomicReference<>(
+                        startServer(
+                                404,
+                                "private-proof-body",
+                                Map.of(
+                                        "X-Internal-Error-Code",
+                                        "NOT_FOUND",
+                                        "X-Internal-Request-Digest",
+                                        digest)));
+        DemoApi api = ServiceClients.create(DemoApi.class, spec(base, "s3cret", true));
+        assertThatThrownBy(() -> ServiceCalls.call("DEMO", () -> api.rules(1)))
+                .isInstanceOfSatisfying(
+                        ServiceCallException.class,
+                        error -> {
+                            assertThat(error.statusCode()).isEqualTo(404);
+                            assertThat(error.remoteErrorCode()).isEqualTo("NOT_FOUND");
+                            assertThat(error.requestDigest()).isEqualTo(digest);
+                            assertThat(error.toString())
+                                    .doesNotContain(digest, "private-proof-body", "NOT_FOUND");
+                        });
+        base.set(
+                startServer(
+                        409,
+                        "private",
+                        Map.of(
+                                "X-Internal-Error-Code",
+                                "unsafe proof text",
+                                "X-Internal-Request-Digest",
+                                "invalid")));
+        assertThatThrownBy(() -> ServiceCalls.call("DEMO", () -> api.rules(1)))
+                .isInstanceOfSatisfying(
+                        ServiceCallException.class,
+                        error -> {
+                            assertThat(error.statusCode()).isEqualTo(409);
+                            assertThat(error.remoteErrorCode()).isNull();
+                            assertThat(error.requestDigest()).isNull();
+                        });
+        var old = new ServiceCallException(CallOutcome.REMOTE_ERROR, "DEMO", 404, "safe");
+        assertThat(old.remoteErrorCode()).isNull();
+        assertThat(old.requestDigest()).isNull();
     }
 }

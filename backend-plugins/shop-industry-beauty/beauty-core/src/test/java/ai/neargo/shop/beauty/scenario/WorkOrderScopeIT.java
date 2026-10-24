@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
+
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.beauty.config.BeautyDefinitionConfiguration;
 import ai.neargo.shop.beauty.dto.AppointmentAssignmentReq;
@@ -16,41 +17,418 @@ import ai.neargo.shop.beauty.dto.OpenAppointmentWorkOrderReq;
 import ai.neargo.shop.beauty.dto.OpenWorkOrderReq;
 import ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq;
 import ai.neargo.shop.beauty.dto.WorkOrderVO;
+import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.ReceptionIdentity.VerifiedIdentity;
 import ai.neargo.shop.beauty.service.AppointmentService;
 import ai.neargo.shop.beauty.service.ReceptionService;
 import ai.neargo.shop.beauty.service.ServiceDefinitionService;
 import ai.neargo.shop.beauty.service.WorkOrderService;
+import ai.neargo.shop.beauty.service.impl.AppointmentCoordinator;
 import ai.neargo.shop.beauty.service.impl.ReceptionCoordinator;
 import ai.neargo.shop.beauty.service.impl.ReceptionPreparation;
-import ai.neargo.shop.beauty.service.impl.AppointmentCoordinator;
-import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
-import org.springframework.beans.factory.config.BeanPostProcessor;
+import ai.neargo.shop.beauty.service.impl.WorkOrderCoordinator;
 import ai.neargo.shop.beauty.service.impl.WorkOrderPreparation;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.idem.IdempotencyScope;
+import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.member.GuestRegistrationPort;
+import ai.neargo.shop.spi.product.ServiceProductFactsPort;
+import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
+
+import tools.jackson.databind.node.ObjectNode;
+
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
-import ai.neargo.shop.idem.IdempotencyScope;
-import java.sql.Timestamp;
 import java.util.stream.IntStream;
-import ai.neargo.shop.spi.product.ServiceProductFactsPort;
-import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 
 /** Native local scope/transaction behavior; directory and resource owners are controlled fixtures. */
 class WorkOrderScopeIT extends ReceptionFixture {
+    @Test
+    void openAliasesShareCanonicalIntentAndPreserveOriginalProofReplay() {
+        var expired = new AtomicBoolean();
+        var resolutions = new AtomicInteger();
+        business()
+                .withBean(
+                        "expiringProof",
+                        BeanPostProcessor.class,
+                        () ->
+                                new BeanPostProcessor() {
+                                    @Override
+                                    public Object postProcessAfterInitialization(
+                                            Object bean, String name) {
+                                        if (!(bean instanceof CustomerIdentityPort port)) {
+                                            return bean;
+                                        }
+                                        var observed = spy(port);
+                                        doAnswer(
+                                                        invocation -> {
+                                                            resolutions.incrementAndGet();
+                                                            if (expired.get()) {
+                                                                throw BizException.of(
+                                                                        ErrorCode
+                                                                                .MEMBER_CODE_INVALID);
+                                                            }
+                                                            return invocation.callRealMethod();
+                                                        })
+                                                .when(observed)
+                                                .resolveClaimReference(any(), any());
+                                        return observed;
+                                    }
+                                })
+                .run(
+                        c -> {
+                            var appointment = create(c);
+                            login(LoginUser.merchant("A", "operator"));
+                            var arrived =
+                                    c.getBean(ReceptionService.class)
+                                            .checkIn(
+                                                    "E",
+                                                    "S",
+                                                    "A",
+                                                    request(
+                                                            appointment.appointmentNo(),
+                                                            appointment.revision()),
+                                                    "ARRIVE");
+                            var minimal =
+                                    new OpenAppointmentWorkOrderReq(arrived.revision(), List.of());
+                            var full =
+                                    new OpenWorkOrderReq(
+                                            "cr1_" + "c".repeat(43),
+                                            "S",
+                                            List.of(new AppointmentItemReq("SKU", 1)),
+                                            appointment.appointmentNo(),
+                                            null,
+                                            arrived.revision(),
+                                            List.of(),
+                                            null);
+                            var workOrders = c.getBean(WorkOrderService.class);
+                            var appointments = c.getBean(AppointmentService.class);
+                            var opened = assertDoesNotThrow(
+                                    () -> workOrders.openWorkOrder("E", "S", "A", full, "ALIAS"));
+                            assertThat(
+                                            sql.queryForObject(
+                                                    "SELECT endpoint FROM bty_reception_operation"
+                                                        + " WHERE operation_no=?",
+                                                    String.class,
+                                                    opened.operationNo()))
+                                    .isEqualTo("BAPI-052");
+                            assertThat(
+                                            appointments.openWorkOrderFromAppointment(
+                                                    "E",
+                                                    "S",
+                                                    "A",
+                                                    appointment.appointmentNo(),
+                                                    minimal,
+                                                    "ALIAS"))
+                                    .isEqualTo(opened);
+                            assertThat(workOrders.openWorkOrder("E", "S", "A", full, "ALIAS"))
+                                    .isEqualTo(opened);
+                            var original =
+                                    sql.queryForObject(
+                                            "SELECT frozen_payload FROM bty_reception_operation"
+                                                + " WHERE operation_no=?",
+                                            String.class,
+                                            opened.operationNo());
+                            assertThat(original).doesNotContain("cr1_", "customerRef", "ALIAS");
+                            assertThat(json.readTree(original).get("schemaVersion").asInt())
+                                    .isEqualTo(2);
+                            assertThat(
+                                            json.readTree(original)
+                                                    .get("replayEvidence")
+                                                    .get("originalEndpoint")
+                                                    .asString())
+                                    .isEqualTo("BAPI-054");
+                            int acceptedProofReads = resolutions.get();
+                            assertThat(acceptedProofReads).isPositive();
+                            clockAt = receptionClock.instant().plusSeconds(3600);
+                            expired.set(true);
+                            assertThat(workOrders.openWorkOrder("E", "S", "A", full, "ALIAS"))
+                                    .isEqualTo(opened);
+                            for (var changed :
+                                    List.of(
+                                            new OpenWorkOrderReq(
+                                                    "cr1_" + "d".repeat(43),
+                                                    "S",
+                                                    full.items(),
+                                                    appointment.appointmentNo(),
+                                                    null,
+                                                    arrived.revision(),
+                                                    List.of(),
+                                                    null),
+                                            new OpenWorkOrderReq(
+                                                    full.customerRef(),
+                                                    "S",
+                                                    List.of(new AppointmentItemReq("SKU", 2)),
+                                                    appointment.appointmentNo(),
+                                                    null,
+                                                    arrived.revision(),
+                                                    List.of(),
+                                                    null),
+                                            new OpenWorkOrderReq(
+                                                    null,
+                                                    "S",
+                                                    List.of(),
+                                                    appointment.appointmentNo(),
+                                                    null,
+                                                    arrived.revision() + 1,
+                                                    List.of(),
+                                                    null))) {
+                                assertThatThrownBy(
+                                                () ->
+                                                        workOrders.openWorkOrder(
+                                                                "E", "S", "A", changed, "ALIAS"))
+                                        .isInstanceOfSatisfying(
+                                                BizException.class,
+                                                failure ->
+                                                        assertThat(failure.errorCode())
+                                                                .isEqualTo(ErrorCode.CONFLICT));
+                            }
+                            assertThat(
+                                            sql.queryForObject(
+                                                    "SELECT COUNT(*) FROM bty_reception_operation"
+                                                        + " WHERE action='OPEN_WORK_ORDER'",
+                                                    Integer.class))
+                                    .isEqualTo(1);
+                            assertThat(count("bty_work_order")).isEqualTo(1);
+                            assertThat(resolutions).hasValue(acceptedProofReads);
+                        });
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void openAliasRaceAcceptsEitherWinnerAndLegacyRowsStayOriginal(boolean assertions) {
+        business()
+                .run(
+                        c -> {
+                            var appointment = create(c);
+                            login(LoginUser.merchant("A", "operator"));
+                            var arrived =
+                                    c.getBean(ReceptionService.class)
+                                            .checkIn(
+                                                    "E",
+                                                    "S",
+                                                    "A",
+                                                    request(
+                                                            appointment.appointmentNo(),
+                                                            appointment.revision()),
+                                                    "ARRIVE");
+                            var minimal =
+                                    new OpenAppointmentWorkOrderReq(arrived.revision(), List.of());
+                            var full =
+                                    new OpenWorkOrderReq(
+                                            assertions ? "cr1_" + "c".repeat(43) : null,
+                                            "S",
+                                            List.of(),
+                                            appointment.appointmentNo(),
+                                            null,
+                                            arrived.revision(),
+                                            List.of(),
+                                            null);
+                            var gate = new CountDownLatch(1);
+                            try (var pool = Executors.newFixedThreadPool(2)) {
+                                var first =
+                                        pool.submit(
+                                                () -> {
+                                                    login(LoginUser.merchant("A", "operator"));
+                                                    gate.await(10, TimeUnit.SECONDS);
+                                                    return c.getBean(AppointmentService.class)
+                                                            .openWorkOrderFromAppointment(
+                                                                    "E",
+                                                                    "S",
+                                                                    "A",
+                                                                    appointment.appointmentNo(),
+                                                                    minimal,
+                                                                    "RACE");
+                                                });
+                                var second =
+                                        pool.submit(
+                                                () -> {
+                                                    login(LoginUser.merchant("A", "operator"));
+                                                    gate.await(10, TimeUnit.SECONDS);
+                                                    try {
+                                                        return c.getBean(WorkOrderService.class)
+                                                                .openWorkOrder(
+                                                                        "E", "S", "A", full,
+                                                                        "RACE");
+                                                    } catch (BizException failure) {
+                                                        return failure;
+                                                    }
+                                                });
+                                gate.countDown();
+                                var opened = first.get(25, TimeUnit.SECONDS);
+                                var other = second.get(25, TimeUnit.SECONDS);
+                                if (other instanceof BizException failure) {
+                                    assertThat(assertions).isTrue();
+                                    assertThat(failure.errorCode()).isEqualTo(ErrorCode.CONFLICT);
+                                    assertThat(
+                                                    json.readTree(
+                                                                    sql.queryForObject(
+                                                                            "SELECT frozen_payload"
+                                                                                + " FROM"
+                                                                                + " bty_reception_operation"
+                                                                                + " WHERE"
+                                                                                + " operation_no=?",
+                                                                            String.class,
+                                                                            opened.operationNo()))
+                                                            .get("replayEvidence")
+                                                            .get("originalEndpoint")
+                                                            .asString())
+                                            .isEqualTo("BAPI-052");
+                                } else {
+                                    assertThat(other).isEqualTo(opened);
+                                }
+                                assertThat(count("bty_work_order")).isEqualTo(1);
+                                assertThat(
+                                                sql.queryForObject(
+                                                        "SELECT COUNT(*) FROM"
+                                                            + " bty_reception_operation WHERE"
+                                                            + " action='OPEN_WORK_ORDER'",
+                                                        Integer.class))
+                                        .isEqualTo(1);
+                                assertThat(
+                                                sql.queryForObject(
+                                                        "SELECT endpoint FROM"
+                                                            + " bty_reception_operation WHERE"
+                                                            + " operation_no=?",
+                                                        String.class,
+                                                        opened.operationNo()))
+                                        .isEqualTo("BAPI-052");
+                                var nonminimal =
+                                        new OpenWorkOrderReq(
+                                                "cr1_" + "d".repeat(43),
+                                                "S",
+                                                List.of(),
+                                                appointment.appointmentNo(),
+                                                null,
+                                                arrived.revision(),
+                                                List.of(),
+                                                null);
+                                assertThatThrownBy(
+                                                () ->
+                                                        c.getBean(WorkOrderService.class)
+                                                                .openWorkOrder(
+                                                                        "E",
+                                                                        "S",
+                                                                        "A",
+                                                                        nonminimal,
+                                                                        "RACE"))
+                                        .isInstanceOf(BizException.class);
+                                // Exact old namespace/full fingerprint is retained, never
+                                // recomputed as canonical052 during recovery.
+                                var old =
+                                        (ObjectNode)
+                                                json.readTree(
+                                                        sql.queryForObject(
+                                                                "SELECT frozen_payload FROM"
+                                                                    + " bty_reception_operation"
+                                                                    + " WHERE operation_no=?",
+                                                                String.class,
+                                                                opened.operationNo()));
+                                old.put("schemaVersion", 1);
+                                old.remove("replayEvidence");
+                                String fullHash =
+                                        IdempotencyScope.requestHash(
+                                                "BEAUTY_RECEPTION_V1",
+                                                "BAPI-054",
+                                                "MAIN",
+                                                "E",
+                                                "S",
+                                                "MERCHANT",
+                                                "MCH",
+                                                "A",
+                                                appointment.appointmentNo(),
+                                                json.writeValueAsString(full));
+                                String derived =
+                                        ReceptionPreparation.derived("E", "S", "BAPI-054", "RACE");
+                                sql.update(
+                                        "UPDATE bty_reception_operation SET"
+                                            + " endpoint='BAPI-054',request_hash=?,derived_key_hash=?,frozen_payload=?"
+                                            + " WHERE operation_no=?",
+                                        fullHash,
+                                        derived,
+                                        old.toString(),
+                                        opened.operationNo());
+                                assertThat(
+                                                c.getBean(WorkOrderService.class)
+                                                        .openWorkOrder("E", "S", "A", full, "RACE"))
+                                        .isEqualTo(opened);
+                                assertThat(
+                                                c.getBean(AppointmentService.class)
+                                                        .openWorkOrderFromAppointment(
+                                                                "E",
+                                                                "S",
+                                                                "A",
+                                                                appointment.appointmentNo(),
+                                                                minimal,
+                                                                "RACE"))
+                                        .isEqualTo(opened);
+                                assertThat(
+                                                c.getBean(WorkOrderCoordinator.class)
+                                                        .recover(
+                                                                "E",
+                                                                "S",
+                                                                "A",
+                                                                opened.operationNo()))
+                                        .isEqualTo(opened);
+                                assertThat(
+                                                sql.queryForObject(
+                                                        "SELECT derived_key_hash FROM"
+                                                            + " bty_reception_operation WHERE"
+                                                            + " operation_no=?",
+                                                        String.class,
+                                                        opened.operationNo()))
+                                        .isEqualTo(derived);
+                                var duplicate =
+                                        new LinkedHashMap<>(
+                                                sql.queryForMap(
+                                                        "SELECT * FROM bty_reception_operation"
+                                                            + " WHERE operation_no=?",
+                                                        opened.operationNo()));
+                                duplicate.remove("id");
+                                duplicate.put("operation_no", "LEGACY_DUP");
+                                duplicate.put("endpoint", "BAPI-052");
+                                sql.update(
+                                        "INSERT INTO bty_reception_operation ("
+                                                + String.join(",", duplicate.keySet())
+                                                + ") VALUES ("
+                                                + String.join(
+                                                        ",",
+                                                        Collections.nCopies(duplicate.size(), "?"))
+                                                + ")",
+                                        duplicate.values().toArray());
+                                int accepts = owner.accepts.size();
+                                assertThatThrownBy(
+                                                () ->
+                                                        c.getBean(WorkOrderService.class)
+                                                                .openWorkOrder(
+                                                                        "E", "S", "A", full,
+                                                                        "RACE"))
+                                        .isInstanceOf(BizException.class);
+                                assertThat(count("bty_work_order")).isEqualTo(1);
+                                assertThat(owner.accepts).hasSize(accepts);
+                            }
+                        });
+    }
+
     @Test void originalKeyReplaysAndDifferentKeysCreateOneScope() {
         business().run(c -> {
             var appointment = create(c);

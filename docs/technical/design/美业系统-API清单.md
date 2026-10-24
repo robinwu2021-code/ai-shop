@@ -128,8 +128,8 @@
 | 编号 / 功能 / 阶段 | 方法与路径或合同 | 操作与关键入参 | 返回 / 状态 |
 |---|---|---|---|
 | BAPI-030<br>BTY-E01<br>P2 | `CONTRACT member.identification` | 共用会员码识别/身份核验<br>memberToken,purpose,storeNo | CustomerIdentityVO非资产扣款授权<br>共用合同接入，路径待核对 |
-| BAPI-031<br>BTY-E02<br>P1 | `POST /biz/x/beauty/guest-registrations` | 登记临客及后续本人认领<br>contact,displayName,consent | GuestRegistrationVO不伪造买家<br>美业候选新接口 |
-| BAPI-032<br>BTY-E02<br>P1 | `POST /biz/x/beauty/guest-registrations/{guestNo}/claims` | 本人认领临客预约/服务<br>verifiedIdentity,claimToken | GuestClaimVO<br>美业候选新接口 |
+| BAPI-031<br>BTY-E02<br>P1 | `POST /biz/x/beauty/guest-registrations` | 登记临客及后续本人认领<br>See actual Task59 typed method/DTO and fullscope binding below; required original Idempotency-Key | GuestRegistrationVO<br>IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED; canStart=false; BM05 closed |
+| BAPI-032<br>BTY-E02<br>P1 | `POST /biz/x/beauty/guest-registrations/{guestNo}/claims` | 本人认领临客预约/服务<br>See actual Task59 typed method/DTO and fullscope binding below; required original Idempotency-Key | GuestClaimVO<br>IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED; canStart=false; BM05 closed |
 | BAPI-033<br>BTY-E03<br>P1 | `CONTRACT member.profile-and-history` | 顾客档案会员关系和受权历史<br>customerNo,purpose,storeNo | CustomerProfileVO<br>共用合同接入，路径待核对 |
 | BAPI-034<br>BTY-E04<br>P3 | `GET /biz/x/beauty/care-profiles/{customerNo}` | 读取最少必要护理提醒<br>purpose,taskNo? | CareProfileVO按字段授权<br>美业候选新接口 |
 | BAPI-035<br>BTY-E04<br>P3 | `POST /biz/x/beauty/care-profiles/{customerNo}/notes` | 追加护理事实及更正引用<br>taskNo,content,consentRef,correctsNoteNo? | CareNoteVO<br>美业候选新接口 |
@@ -165,14 +165,14 @@
 
 | 编号 / 功能 / 阶段 | 方法与路径或合同 | 操作与关键入参 | 返回 / 状态 |
 |---|---|---|---|
-| BAPI-047<br>BTY-G01<br>P1 | `POST /biz/x/beauty/arrivals` | 核对身份并到店签到<br>appointmentNo,identityProof | ArrivalVO不履约核销<br>美业候选新接口 |
-| BAPI-048<br>BTY-G02<br>P1 | `POST /biz/x/beauty/walk-ins` | 直客接待并安排即时资源<br>ReceiveWalkInReq(storeNo,customerRef,guestNo,items,assignments,startAt); exactly one customerRef/guestNo | WalkInVO(operationNo,operationState,appointmentNo,workOrder,startAt,recoveryAction); PENDING workOrder=null; frozen selectedStartAt UTC<br>Local Service Task55D review pending; HTTP/remote wire Task59 |
+| BAPI-047<br>BTY-G01<br>P1 | `POST /biz/x/beauty/arrivals` | 核对身份并到店签到<br>See actual Task59 typed method/DTO and fullscope binding below; required original Idempotency-Key | ArrivalVO<br>IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED; canStart=false; BM05 closed |
+| BAPI-048<br>BTY-G02<br>P1 | `POST /biz/x/beauty/walk-ins` | 直客接待并安排即时资源<br>See actual Task59 typed method/DTO and fullscope binding below; required original Idempotency-Key | WalkInVO<br>IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED; canStart=false; BM05 closed |
 | BAPI-049<br>BTY-G03<br>P3 | `GET /biz/x/beauty/waiting-tickets` | 查询等候队列<br>storeNo,status,page,size | PageData<WaitingTicketVO><br>美业候选新接口 |
 | BAPI-050<br>BTY-G03<br>P3 | `POST /biz/x/beauty/waiting-tickets` | 取号加入等候<br>customerRef,items | WaitingTicketVO<br>美业候选新接口 |
 | BAPI-051<br>BTY-G03<br>P3 | `POST /biz/x/beauty/waiting-tickets/{ticketNo}/actions` | 叫号过号取消等候<br>action,expectedRevision | WaitingTicketVO<br>美业候选新接口 |
-| BAPI-052<br>BTY-G04<br>P1 | `POST /biz/x/beauty/appointments/{appointmentNo}/work-orders` | 预约转工单并确认接待安排<br>expectedRevision,assignments,startAt? | WorkOrderVO幂等返回原工单<br>Task55C本地Service已实现；公开HTTP与remote接线待Task59 |
-| BAPI-053<br>BTY-G05<br>P1 | `POST /biz/x/beauty/reception-exceptions` | 迟到早到及无法服务协调<br>appointmentNo,kind,proposal,reason | ReceptionExceptionVO含受影响待办<br>美业候选新接口 |
-| BAPI-154<br>BTY-G01<br>P1 | `POST /mp/x/beauty/arrivals` | 本人到店签到<br>appointmentNo,checkInProof | MyArrivalVO<br>美业候选新接口 |
+| BAPI-052<br>BTY-G04<br>P1 | `POST /biz/x/beauty/appointments/{appointmentNo}/work-orders` | 预约转工单并确认接待安排<br>See actual Task59 typed method/DTO and fullscope binding below; required original Idempotency-Key | WorkOrderVO<br>IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED; canStart=false; BM05 closed |
+| BAPI-053<br>BTY-G05<br>P1 | `POST /biz/x/beauty/reception-exceptions` | 迟到早到及无法服务协调<br>See actual Task59 typed method/DTO and fullscope binding below; required original Idempotency-Key | ReceptionExceptionVO<br>IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED; canStart=false; BM05 closed |
+| BAPI-154<br>BTY-G01<br>P1 | `POST /mp/x/beauty/arrivals` | 本人到店签到<br>See actual Task59 typed method/DTO and fullscope binding below; required original Idempotency-Key | MyArrivalVO<br>IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED; canStart=false; BM05 closed |
 
 ### H 工单与任务执行
 
@@ -180,9 +180,9 @@
 
 | 编号 / 功能 / 阶段 | 方法与路径或合同 | 操作与关键入参 | 返回 / 状态 |
 |---|---|---|---|
-| BAPI-054<br>BTY-H01<br>P1 | `POST /biz/x/beauty/work-orders` | 建立工单项目行及来源提交意图<br>customerRef?,storeNo,items,appointmentNo?,guestNo?,expectedRevision?,assignments,startAt? | WorkOrderVO<br>Task55C本地Service已实现；公开HTTP与remote接线待Task59 |
-| BAPI-055<br>BTY-H01<br>P1 | `GET /biz/x/beauty/work-orders/{workOrderNo}` | 查工单任务来源与进度<br>workOrderNo | WorkOrderDetailVO<br>Task55C本地Service已实现；公开HTTP与remote接线待Task59 |
-| BAPI-056<br>BTY-H01、BTY-H03<br>P1 | `POST /biz/x/beauty/work-orders/{workOrderNo}/service-submissions` | 提交新项目/加项及可信来源绑定流程<br>expectedRevision,expectedScopeRevision,tasks(taskNo,expectedRevision,expectedBindingRevision),additions(clientItemRef,skuNo,definitionVersionNo,quantity),source(PREPARE or EXISTING); no buyer/amount/customerConsent | ServiceSubmissionVO含恢复号<br>Task58 local service kernel implemented; independent review pending; HTTP/remote remains Task59; canStart=false |
+| BAPI-054<br>BTY-H01<br>P1 | `POST /biz/x/beauty/work-orders` | 建立工单项目行及来源提交意图<br>See actual Task59 typed method/DTO and fullscope binding below; required original Idempotency-Key | WorkOrderVO<br>IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED; canStart=false; BM05 closed |
+| BAPI-055<br>BTY-H01<br>P1 | `GET /biz/x/beauty/work-orders/{workOrderNo}` | 查工单任务来源与进度<br>See actual Task59 typed method/DTO and fullscope binding below; none; original operation reference only | WorkOrderDetailVO<br>IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED; canStart=false; BM05 closed |
+| BAPI-056<br>BTY-H01、BTY-H03<br>P1 | `POST /biz/x/beauty/work-orders/{workOrderNo}/service-submissions` | 提交新项目/加项及可信来源绑定流程<br>See actual Task59 typed method/DTO and fullscope binding below; required original Idempotency-Key | ServiceSubmissionVO<br>IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED; canStart=false; BM05 closed |
 | BAPI-057<br>BTY-H02<br>P1 | `GET /biz/x/beauty/tasks` | 查询我的或受权任务<br>storeNo,from,to,status,personnelNo,page,size,assignmentState | PageData<ServiceTaskVO><br>美业候选新接口 |
 | BAPI-058<br>BTY-H02<br>P1 | `POST /biz/x/beauty/tasks/{taskNo}/acceptances` | 接单<br>expectedRevision | TaskActionResultVO<br>美业候选新接口 |
 | BAPI-059<br>BTY-H02<br>P1 | `POST /biz/x/beauty/tasks/{taskNo}/starts` | 复核来源资格资源后开始服务<br>expectedRevision,expectedBindingRevision | TaskActionResultVO含实际开始时间<br>美业候选新接口 |
@@ -194,7 +194,7 @@
 | BAPI-065<br>BTY-H07<br>P1 | `POST /biz/x/beauty/work-orders/{workOrderNo}/closure-previews` | 检查真实任务/来源版本和未结项<br>expectedRevision | ClosurePreviewVO含阻断项<br>美业候选新接口 |
 | BAPI-066<br>BTY-H07<br>P1 | `POST /biz/x/beauty/work-orders/{workOrderNo}/closures` | 冻结范围后关闭并释放占用<br>previewNo,expectedRevision | WorkOrderClosureVO<br>美业候选新接口 |
 | BAPI-067<br>BTY-H08<br>P4 | `POST /biz/x/beauty/work-orders/{workOrderNo}/stage-plans` | 跨日多阶段并行与上门作业计划<br>stageItems,resourceRequirements,expectedRevision | StagePlanVO仅能力开放后<br>美业候选新接口 |
-| BAPI-155<br>BTY-H01、BTY-H02、BTY-H06<br>P1 | `GET /mp/x/beauty/work-orders/{workOrderNo}` | 本人服务任务及完成进度<br>workOrderNo | MyWorkOrderVO<br>Task55C本地Service已实现；公开HTTP与remote接线待Task59 |
+| BAPI-155<br>BTY-H01、BTY-H02、BTY-H06<br>P1 | `GET /mp/x/beauty/work-orders/{workOrderNo}` | 本人服务任务及完成进度<br>See actual Task59 typed method/DTO and fullscope binding below; none; original operation reference only | MyWorkOrderVO<br>IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED; canStart=false; BM05 closed |
 | BAPI-159<br>BTY-H01、BTY-H02<br>P1 | `GET /biz/x/beauty/tasks/{taskNo}` | 查询具体任务步骤与安排/实际参与摘要<br>taskNo | ServiceTaskDetailVO含来源状态及允许动作<br>美业候选新接口 |
 
 ### I 共用交易与收银
@@ -206,9 +206,9 @@
 | BAPI-068<br>BTY-I01<br>P1 | `CONTRACT trade.quote-and-create` | 核心报价建单及买家接管<br>storeNo,buyerRef,skuLines,quoteVersion | OrderVO美业仅记来源引用<br>共用合同接入，路径待核对 |
 | BAPI-069<br>BTY-I02<br>P1 | `CONTRACT payment.initiate-and-query` | 顾客付款和原支付号查结果<br>orderNo,payMethod,customerConsent | PaymentVO由资金域判定结果<br>共用合同接入，路径待核对 |
 | BAPI-070<br>BTY-I03<br>P1 | `CONTRACT payment.offline-receipt` | 正式合同允许的线下实收确认<br>orderNo,method,amount,evidence,operator | ReceiptVO禁止代消费者线上确认<br>共用合同接入，路径待核对 |
-| BAPI-071<br>BTY-I04<br>P1 | `GET /biz/x/beauty/work-orders/{workOrderNo}/bill` | 汇总逐来源应收实收与未结<br>workOrderNo | WorkOrderBillVO: nullable per-source/per-currency due/gross received/refunded/net/outstanding, completeness/blockers; partial allocation WHOLE_SOURCE is not attributable aggregate<br>Task58 local service kernel implemented; independent review pending; HTTP/remote remains Task59; canStart=false |
-| BAPI-072<br>BTY-I05<br>P1 | `GET /biz/x/beauty/service-submissions/{submissionNo}` | 查提交意图与来源绑定进度<br>submissionNo | ServiceSubmissionVO: original operation, immutable selected tasks and actual bindings, highest/last verified pair; GET observes only, never binds or pays<br>Task58 local service kernel implemented; independent review pending; HTTP/remote remains Task59; canStart=false |
-| BAPI-073<br>BTY-I05<br>P1 | `POST /biz/x/beauty/service-submissions/{submissionNo}/recovery-requests` | 申请原号恢复查单及绑定<br>expectedRevision,reason | RecoveryRequestVO: immutable accepted request receipt; authenticated original recovery dispatch does not generate new purchase/payment identity<br>Task58 local service kernel implemented; independent review pending; HTTP/remote remains Task59; canStart=false |
+| BAPI-071<br>BTY-I04<br>P1 | `GET /biz/x/beauty/work-orders/{workOrderNo}/bill` | 汇总逐来源应收实收与未结<br>See actual Task59 typed method/DTO and fullscope binding below; none; original operation reference only | WorkOrderBillVO<br>IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED; canStart=false; BM05 closed |
+| BAPI-072<br>BTY-I05<br>P1 | `GET /biz/x/beauty/service-submissions/{submissionNo}` | 查提交意图与来源绑定进度<br>See actual Task59 typed method/DTO and fullscope binding below; none; original operation reference only | ServiceSubmissionVO<br>IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED; canStart=false; BM05 closed |
+| BAPI-073<br>BTY-I05<br>P1 | `POST /biz/x/beauty/service-submissions/{submissionNo}/recovery-requests` | 申请原号恢复查单及绑定<br>See actual Task59 typed method/DTO and fullscope binding below; required original Idempotency-Key | RecoveryRequestVO<br>IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED; canStart=false; BM05 closed |
 | BAPI-074<br>BTY-I06、BTY-I07<br>P4 | `CONTRACT cashier.advanced-contracts` | 混合/跨单/后付/定金/免单/改价<br>已批准政策及原来源,本人授权 | 待正式合同不设执行路由<br>共用合同接入，路径待核对 |
 
 ### J 储值
@@ -352,14 +352,14 @@
 |---|---|---|---|
 | BAPI-135<br>BTY-T01<br>P1 | `GET /biz/x/beauty/capability-status` | 查询门店接线兼容和验收能力<br>storeNo,clientVersion | CapabilityStatusVO缺省关闭<br>美业候选新接口 |
 | BAPI-136<br>BTY-T02<br>P1 | `CONTRACT audit.scoped-events` | 受控操作审计及代客身份追踪<br>subjectRef,storeScope,from,to,page,size | PageData<AuditEventVO>不含护理正文<br>共用合同接入，路径待核对 |
-| BAPI-137<br>BTY-T03<br>P1 | `GET /biz/x/beauty/traces/{businessNo}` | 关联预约工单任务来源资金状态<br>businessNo | BusinessTraceVO via actual WorkOrderBillService.getTrace local method; target HTTP class remains unimplemented<br>Task58 local service kernel implemented; independent review pending; HTTP/remote remains Task59; canStart=false |
+| BAPI-137<br>BTY-T03<br>P1 | `GET /biz/x/beauty/traces/{businessNo}` | 关联预约工单任务来源资金状态<br>See actual Task59 typed method/DTO and fullscope binding below; none; original operation reference only | BusinessTraceVO<br>IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED; canStart=false; BM05 closed |
 | BAPI-138<br>BTY-T04<br>P1 | `GET /ops/x/beauty/recovery-workitems` | 平台查已付未绑定资源事件积压<br>entityNo,storeNo,kind,page,size | PageData<RecoveryWorkitemVO><br>美业候选新接口 |
 | BAPI-139<br>BTY-T04<br>P1 | `POST /ops/x/beauty/recovery-requests` | 申请原号技术恢复<br>workitemNo,expectedRevision,reason,approvalRef? | RecoveryRequestVO不能代完工代授权<br>美业候选新接口 |
 | BAPI-140<br>BTY-T05<br>P1 | `CONTRACT observability.health-and-alerts` | 健康慢请求错误率设备存活与告警<br>serviceScope,timeRange,traceNo | HealthVO/AlertVO接已有观测设施<br>共用合同接入，路径待核对 |
 | BAPI-141<br>BTY-T06<br>P3 | `CONTRACT governance.privacy-config-backup` | 隐私配置发布备份恢复受控流程<br>scope,changeNo,purpose,approvalRef | GovernanceJobVO不提供任意表写入<br>共用合同接入，路径待核对 |
 | BAPI-142<br>BTY-T07<br>P4 | `CONTRACT integration.external-booking` | 第三方预约来源映射签名去重冲突<br>provider,externalNo,revision,signedPayload | ExternalBindingVO需独立合同<br>共用合同接入，路径待核对 |
 | BAPI-143<br>BTY-T08<br>P4 | `CONTRACT offline.claim-and-sync` | 断网事实认领去重同步<br>deviceNo,localIntentNo,evidence | SyncClaimVO未验收不开放营业<br>共用合同接入，路径待核对 |
-| BAPI-160<br>BTY-T03、BTY-T04<br>P1 | `GET /biz/x/beauty/operations/{operationNo}` | 查询异步命令的原号进度和阻断原因<br>operationNo | OperationVO(operationNo,appointmentNo,state,action,recoveryAction,workOrderNo,failureCode); original appointment semantics retained<br>已实现Task52端点与独立双向机器协议；TCP/装配已测，BM03部署验收待Task53 |
+| BAPI-160<br>BTY-T03、BTY-T04<br>P1 | `GET /biz/x/beauty/operations/{operationNo}` | 查询异步命令的原号进度和阻断原因<br>See actual Task59 typed method/DTO and fullscope binding below; none; original operation reference only | OperationVO<br>IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED; canStart=false; BM05 closed |
 
 ## 五、既有路由证据与兼容边界
 
@@ -551,3 +551,72 @@ P1完成人员/资源统一、单次先付服务、无交易预约、接待工�
 | `POST /internal/guest-registration/claim` | PLATFORM / InternalGuestRegistrationController → MemberGuestRegistrationPortImpl (shop-core/member)<br>Task54实际增量；当前完整namespace/actor/store绑定的有效cr1加原guest凭证，同guest根锁唯一真实用户；旧无namespace票据拒绝。精确原key/hash/full claim actor/secret可在cr1过期后回原结果，仍重核当前权限及活动用户；新key/改参/异身份409。安全、配置与验证边界见[Task54共用身份说明](../../../backend-plugins/shop-industry-beauty/README.md)。 | GuestRegistrationInternalApi.ClaimRequest(scope,guestNo,ClaimCommand(verifiedIdentity,claimToken,idempotencyKey)) | Claimed(request,Claim(guestNo,userNo,revision))；完整请求回显，不改绑或创建账号/订单 |
 | `POST /internal/customer-identity/verify-consumer-proof` | PLATFORM / InternalCustomerIdentityController → MemberCustomerIdentityPortImpl<br>Task54实际增量；当前CONSUMER/USR、同租户/本人活动账号及原MEMBER_CODE短票据；不接受登录token/手机号/任意字符串，识别不授予支付授权。安全、配置与验证边界见[Task54共用身份说明](../../../backend-plugins/shop-industry-beauty/README.md)。 | CustomerIdentityInternalApi.ProofRequest(identity,EntitlementContext,memberCode) | ProofResolution(request,ResolvedCustomer)；完整身份/上下文/原memberCode请求回显，必须解析为当前用户；过期/伪造mc1为400 |
 | `POST /internal/customer-identity/resolve-claim-reference` | PLATFORM / InternalCustomerIdentityController → MemberCustomerIdentityPortImpl<br>Task55A fix1：当前完整realm/kind/actor/entity/store与CUSTOMER严格核验后建claim intent；旧resolveReference兼容不变 | CustomerIdentityInternalApi.ClaimReferenceRequest(identity,EntitlementContext,ReferenceQuery) | ClaimReferenceResolution(request,ResolvedCustomer)；全请求回显核对，不是资金授权 |
+| `POST /internal/beauty/reception/registerGuest` | beauty-server / InternalBeautyGuestController → GuestRegistrationService<br>Task59 REGISTER_GUEST; U; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.RegisterGuest> | InternalReply<GuestRegistrationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/claimGuest` | beauty-server / InternalBeautyGuestController → GuestRegistrationService<br>Task59 CLAIM_GUEST; U; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.ClaimGuest> | InternalReply<GuestClaimVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/checkIn` | beauty-server / InternalBeautyReceptionController → ReceptionService<br>Task59 CHECK_IN; W + U; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.CheckIn> | InternalReply<ArrivalVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/receiveWalkIn` | beauty-server / InternalBeautyReceptionController → ReceptionService<br>Task59 RECEIVE_WALK_IN; W + U; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.ReceiveWalkIn> | InternalReply<WalkInVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/coordinateReceptionException` | beauty-server / InternalBeautyReceptionController → ReceptionService<br>Task59 COORDINATE_EXCEPTION; W; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.CoordinateException> | InternalReply<ReceptionExceptionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/issueArrivalChallenge` | beauty-server / InternalBeautyReceptionController → ReceptionService<br>Task59 ISSUE_ARRIVAL_CHALLENGE; W; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.IssueArrivalChallenge> | InternalReply<ArrivalChallengeVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/openWorkOrderFromAppointment` | beauty-server / InternalBeautyWorkOrderController → AppointmentService<br>Task59 OPEN_APPOINTMENT; W + U; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.OpenAppointment> | InternalReply<WorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/openWorkOrder` | beauty-server / InternalBeautyWorkOrderController → WorkOrderService<br>Task59 OPEN_WORK_ORDER; W + U; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.OpenWorkOrder> | InternalReply<WorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getWorkOrder` | beauty-server / InternalBeautyWorkOrderController → WorkOrderService<br>Task59 GET_WORK_ORDER; R; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.WorkOrderRef> | InternalReply<WorkOrderDetailVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getMyWorkOrder` | beauty-server / InternalBeautyWorkOrderController → WorkOrderService<br>Task59 GET_MY_WORK_ORDER; current C + active owner; CONSUMER; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.WorkOrderRef> | InternalReply<MyWorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/checkInMyAppointment` | beauty-server / InternalBeautyReceptionController → ReceptionService<br>Task59 CHECK_IN_MY_APPOINTMENT; current C + own appointment + memberCode + store challenge; CONSUMER; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.CheckInMine> | InternalReply<MyArrivalVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/submitServices` | beauty-server / InternalBeautyWorkOrderController → WorkOrderService<br>Task59 SUBMIT_SERVICES; W + U + O; PREPARE also P; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.SubmitServices> | InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getBill` | beauty-server / InternalBeautyWorkOrderController → WorkOrderService<br>Task59 GET_BILL; R + U + O; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.WorkOrderRef> | InternalReply<WorkOrderBillVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getSubmission` | beauty-server / InternalBeautySubmissionController → ServiceSubmissionService<br>Task59 GET_SUBMISSION; R + U + O; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.SubmissionRef> | InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/requestSubmissionRecovery` | beauty-server / InternalBeautySubmissionController → ServiceSubmissionService<br>Task59 REQUEST_SUBMISSION_RECOVERY; W + U + O; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.RequestSubmissionRecovery> | InternalReply<RecoveryRequestVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/recoverPending` | beauty-server / InternalBeautySubmissionController → ServiceSubmissionService<br>Task59 RECOVER_PENDING; W + U + O; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.SubmissionRef> | InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getTrace` | beauty-server / InternalBeautyTraceController → WorkOrderBillService<br>Task59 GET_TRACE; R + U + O; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.BusinessRef> | InternalReply<BusinessTraceVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getOperation` | beauty-server / InternalBeautyOperationController → ServiceOperationQueryService<br>Task59 GET_OPERATION; actual operation family current authorization; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.OperationRef> | InternalReply<OperationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/recoverOperation` | beauty-server / InternalBeautyOperationController → ServiceOperationRecoveryService<br>Task59 RECOVER_OPERATION; actual operation family current recovery authorization; MERCHANT; immutable full binding, no incoming proof echo to public VO | InternalCall<BeautyReceptionInternalApi.OperationRef> | InternalReply<OperationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/trade/checkout/bound/prepare` | HOST / InternalCheckoutController → actual CheckoutPortImpl<br>Task59 B-only prepare; current MERCHANT MCH/USR; no delegated C confirm/place/pay or cash | InternalCall<CheckoutInternalApi.BoundPrepare> | InternalReply<CheckoutPort.CheckoutQuote>; full binding digest and strict typed result |
+| `POST /internal/trade/checkout/bound/readQuote` | HOST / InternalCheckoutController → actual CheckoutPortImpl<br>Task59 B-only readQuote; current MERCHANT MCH/USR; no delegated C confirm/place/pay or cash | InternalCall<CheckoutInternalApi.BoundOperation> | InternalReply<CheckoutPort.CheckoutQuote>; full binding digest and strict typed result |
+| `POST /internal/trade/checkout/bound/findOperation` | HOST / InternalCheckoutController → actual CheckoutPortImpl<br>Task59 B-only findOperation; current MERCHANT MCH/USR; no delegated C confirm/place/pay or cash | InternalCall<CheckoutInternalApi.BoundOperation> | InternalReply<CheckoutPort.CheckoutResult>; full binding digest and strict typed result |
+| `POST /internal/trade/checkout/bound/source` | HOST / InternalCheckoutController → actual CheckoutPortImpl<br>Task59 B-only source; current MERCHANT MCH/USR; no delegated C confirm/place/pay or cash | InternalCall<CheckoutInternalApi.BoundSource> | InternalReply<CheckoutPort.CheckoutSourceFacts>; full binding digest and strict typed result |
+| `POST /biz/x/beauty/arrival-challenges` | ai.neargo.shop.beauty.api.biz.BizArrivalChallengeController<br>Task59 explicit increment; W; original key replays original challenge including historical expiry | Idempotency-Key + current trusted B store | ArrivalChallengeVO; authorized code issuance exception only |
+
+## 九、Task59 BM04 实际公开入口与权限
+
+IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED
+
+原160目标编号不变；18条本次接线包括原052/160/恢复入口；新增SERVER19、反向HOST4。实际部署后置，未记为PASS。
+
+权限：R=biz:booking:manage OR biz:booking:view；W=biz:booking:manage；U=biz:customer；O=biz:order:view；P=trade:checkout:prepare
+
+| 编号 / 路径 | 实际Service方法 | 当前权限 / 幂等 |
+|---|---|---|
+| BAPI-031 / `POST /biz/x/beauty/guest-registrations` | `ai.neargo.shop.beauty.service.GuestRegistrationService.registerGuest` | U / required original Idempotency-Key |
+| BAPI-032 / `POST /biz/x/beauty/guest-registrations/{guestNo}/claims` | `ai.neargo.shop.beauty.service.GuestRegistrationService.claimGuest` | U / required original Idempotency-Key |
+| BAPI-047 / `POST /biz/x/beauty/arrivals` | `ai.neargo.shop.beauty.service.ReceptionService.checkIn` | W + U / required original Idempotency-Key |
+| BAPI-048 / `POST /biz/x/beauty/walk-ins` | `ai.neargo.shop.beauty.service.ReceptionService.receiveWalkIn` | W + U / required original Idempotency-Key |
+| BAPI-053 / `POST /biz/x/beauty/reception-exceptions` | `ai.neargo.shop.beauty.service.ReceptionService.coordinateReceptionException` | W / required original Idempotency-Key |
+| BM04-ARRIVAL-CHALLENGE / `POST /biz/x/beauty/arrival-challenges` | `ai.neargo.shop.beauty.service.ReceptionService.issueArrivalChallenge` | W / required original Idempotency-Key |
+| BAPI-052 / `POST /biz/x/beauty/appointments/{appointmentNo}/work-orders` | `ai.neargo.shop.beauty.service.AppointmentService.openWorkOrderFromAppointment` | W + U / required original Idempotency-Key |
+| BAPI-054 / `POST /biz/x/beauty/work-orders` | `ai.neargo.shop.beauty.service.WorkOrderService.openWorkOrder` | W + U / required original Idempotency-Key |
+| BAPI-055 / `GET /biz/x/beauty/work-orders/{workOrderNo}` | `ai.neargo.shop.beauty.service.WorkOrderService.getWorkOrder` | R / none; original operation reference only |
+| BAPI-155 / `GET /mp/x/beauty/work-orders/{workOrderNo}` | `ai.neargo.shop.beauty.service.WorkOrderService.getMyWorkOrder` | current C + active owner / none; original operation reference only |
+| BAPI-154 / `POST /mp/x/beauty/arrivals` | `ai.neargo.shop.beauty.service.ReceptionService.checkInMyAppointment` | current C + own appointment + memberCode + store challenge / required original Idempotency-Key |
+| BAPI-056 / `POST /biz/x/beauty/work-orders/{workOrderNo}/service-submissions` | `ai.neargo.shop.beauty.service.WorkOrderService.submitServices` | W + U + O; PREPARE also P / required original Idempotency-Key |
+| BAPI-071 / `GET /biz/x/beauty/work-orders/{workOrderNo}/bill` | `ai.neargo.shop.beauty.service.WorkOrderService.getBill` | R + U + O / none; original operation reference only |
+| BAPI-072 / `GET /biz/x/beauty/service-submissions/{submissionNo}` | `ai.neargo.shop.beauty.service.ServiceSubmissionService.getSubmission` | R + U + O / none; original operation reference only |
+| BAPI-073 / `POST /biz/x/beauty/service-submissions/{submissionNo}/recovery-requests` | `ai.neargo.shop.beauty.service.ServiceSubmissionService.requestSubmissionRecovery` | W + U + O / required original Idempotency-Key |
+| BAPI-137 / `GET /biz/x/beauty/traces/{businessNo}` | `ai.neargo.shop.beauty.service.WorkOrderBillService.getTrace` | R + U + O / none; original operation reference only |
+| BAPI-160 / `GET /biz/x/beauty/operations/{operationNo}` | `ai.neargo.shop.beauty.service.ServiceOperationQueryService.getOperation` | actual operation family current authorization / none; original operation reference only |
+| BM03-OPERATION-RECOVERY / `POST /biz/x/beauty/operations/{operationNo}/recoveries` | `ai.neargo.shop.beauty.service.ServiceOperationRecoveryService.recoverOperation` | actual operation family current recovery authorization / none; original operation reference only |
+
+Public api-only + enabled; embedded actual core, no-core HOST Remote, private SERVER real core with production reverse owners; disabled/ops no new public routes.
+
+Existing static X-Internal-Token and delegated MAIN MERCHANT MCH/USR or CONSUMER USR; no nonce/session transport added. Current HOST token-store authentication and owner live authorization remain authoritative.
+
+InternalCall strict recursive required keys including nullable fields; canonical HMAC independent of ObjectMapper escaping; result includes binding + digest, not incoming contact/proof/raw key. No proof or C token in durable intent/log.
+
+GuestRegistrationVO.claimToken and ArrivalChallengeVO.code remain authorized issuance/replay exceptions. Original past expiry is not rejected by transport.
+
+Opt-in non2xx headers X-Internal-Error-Code and X-Internal-Request-Digest; blank/wrong token401 before digest/authority; bound owner404 differs from transport404; unbound/200error/null/mismatch → dependency unavailable.
+
+Appointment OPEN052/054 canonical052 schema2 stores only original endpoint/fullhash/canonicalhash; schema1 original054/recovery supported; full054 first→minimal052 replay,052 first→nonminimal054409; dual legacy conflict.
+
+Default BizEndpointPermTest scans backend only and excludes this external plugin reactor. No false single-code annotation or PUBLIC grant is introduced; composite permissions are enforced by actual Service policy and owner scopes.
+
+Unit/HTTP/native core evidence is distinct from full real-owner two-JVM acceptance, which is DEFERRED by the user until unified P1–P4 deployment verification. No Task60 packaged JAR claim.

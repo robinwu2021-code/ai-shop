@@ -6,11 +6,16 @@ import ai.neargo.shop.auth.StoreRequestScopeValidator;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
-import java.util.List;
+
 import org.springframework.beans.factory.ObjectProvider;
 
-/** Shares current namespace and store target validation; actual services retain endpoint permission decisions. */
-final class BookingStoreScope {
+import java.util.List;
+
+/**
+ * Shares current namespace and store target validation; actual services retain endpoint permission
+ * decisions.
+ */
+public final class BookingStoreScope {
     private BookingStoreScope() { }
 
     static void require(ObjectProvider<StoreDirectoryPort> directories, String requestedStore) {
@@ -26,5 +31,24 @@ final class BookingStoreScope {
         if (target == null) { throw BizException.of(ErrorCode.NOT_FOUND); }
         StoreRequestScopeValidator.requireStoreTarget(entity, store, target.entityNo(), target.storeNo(),
                 requestedStore, context.storeNos());
+    }
+
+    /** Reject malformed public resource identities before selecting a local or remote owner. */
+    public static void requireResourceNo(String number) {
+        if (number == null || number.isBlank() || number.length() > 32) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+    }
+
+    static void requireKey(String key) {
+        if (key == null || key.isBlank() || key.length() > 128 || !key.equals(key.strip())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+    }
+
+    static void requireBodyStore(String store) {
+        if (!BizContext.requireStoreNo().equals(store)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
     }
 }

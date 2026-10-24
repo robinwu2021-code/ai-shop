@@ -88,6 +88,17 @@ def render():
         for x in supplemental:
             lines.append(f'| `{x["method"]} {x["path"]}` | {x["owner"]}<br>{x["purpose"]} | {x["request"]} | {x["response"]} |')
         lines.append('')
+    bm04 = data.get('bm04Protocol')
+    if bm04:
+        assert bm04['targetCount'] == len(apis) == 160
+        assert len(bm04['publicMethods']) == bm04['publicCount'] == 18
+        lines += ['## 九、Task59 BM04 实际公开入口与权限', '', bm04['status'], '',
+                  '原160目标编号不变；18条本次接线包括原052/160/恢复入口；新增SERVER19、反向HOST4。实际部署后置，未记为PASS。', '',
+                  '权限：' + '；'.join(k + '=' + v for k, v in bm04['permissionLegend'].items()), '',
+                  '| 编号 / 路径 | 实际Service方法 | 当前权限 / 幂等 |', '|---|---|---|']
+        for row in bm04['publicMethods']:
+            lines.append(f"| {row['apiId']} / `{row['method']} {row['path']}` | `{row['service']}.{row['name']}` | {row['permission']} / {row['idempotency']} |")
+        lines += [''] + [rule + '\n' for rule in bm04['contracts']]
     return '\n'.join(lines)
 
 

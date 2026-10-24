@@ -16,19 +16,60 @@ import ai.neargo.shop.beauty.dto.MyAppointmentDetailVO;
 import ai.neargo.shop.beauty.dto.MyAppointmentQuery;
 import ai.neargo.shop.beauty.dto.MyAppointmentVO;
 import ai.neargo.shop.beauty.dto.NoShowVO;
+import ai.neargo.shop.beauty.dto.OpenAppointmentWorkOrderReq;
 import ai.neargo.shop.beauty.dto.PreviewAppointmentChangeReq;
 import ai.neargo.shop.beauty.dto.PreviewAppointmentReq;
 import ai.neargo.shop.beauty.dto.PreviewMyAppointmentChangeReq;
 import ai.neargo.shop.beauty.dto.PreviewMyAppointmentReq;
 import ai.neargo.shop.beauty.dto.RecordNoShowReq;
+import ai.neargo.shop.beauty.dto.WorkOrderVO;
 import ai.neargo.shop.beauty.service.AppointmentService;
 import ai.neargo.shop.beauty.spi.BeautyBookingInternalApi;
+import ai.neargo.shop.beauty.spi.BeautyReceptionInternalApi;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.svc.InternalBindings;
+
+import java.util.Objects;
 
 /** Same authenticated service contract across a process boundary, without retrying uncertain writes. */
 public final class RemoteAppointmentService implements AppointmentService {
     private final BeautyBookingInternalApi api;
-    public RemoteAppointmentService(BeautyBookingInternalApi api) { this.api = api; }
+    private final BeautyReceptionInternalApi reception;
+    private final InternalBindings bindings;
+
+    /**
+     * The OPEN protocol is mandatory even when older booking reads retain their original wire
+     * contract.
+     */
+    public RemoteAppointmentService(
+            BeautyBookingInternalApi api,
+            BeautyReceptionInternalApi reception,
+            InternalBindings bindings) {
+        this.api = Objects.requireNonNull(api);
+        this.reception = Objects.requireNonNull(reception);
+        this.bindings = Objects.requireNonNull(bindings);
+    }
+
+    @Override
+    public WorkOrderVO openWorkOrderFromAppointment(
+            String entityNo,
+            String currentStoreNo,
+            String actorNo,
+            String appointmentNo,
+            OpenAppointmentWorkOrderReq req,
+            String idempotencyKey) {
+        return BeautyReceptionCalls.call(
+                "BAPI-052",
+                "OPEN_APPOINTMENT",
+                entityNo,
+                currentStoreNo,
+                actorNo,
+                appointmentNo,
+                new BeautyReceptionInternalApi.OpenAppointment(appointmentNo, req, idempotencyKey),
+                bindings,
+                reception::openWorkOrderFromAppointment);
+    }
+
     @Override
     public AppointmentPreviewVO previewAppointment(String entityNo, String currentStoreNo, String actorNo,
             PreviewAppointmentReq req) {

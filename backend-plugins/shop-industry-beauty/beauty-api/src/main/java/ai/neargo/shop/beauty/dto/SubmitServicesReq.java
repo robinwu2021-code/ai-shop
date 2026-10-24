@@ -5,6 +5,9 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.trade.CheckoutPort;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 
 import tools.jackson.databind.annotation.JsonDeserialize;
 
@@ -17,8 +20,8 @@ import java.util.Map;
  * authority.
  */
 public record SubmitServicesReq(
-        long expectedRevision,
-        long expectedScopeRevision,
+        @JsonProperty(required = true) @JsonSetter(nulls = Nulls.FAIL) long expectedRevision,
+        @JsonProperty(required = true) @JsonSetter(nulls = Nulls.FAIL) long expectedScopeRevision,
         List<TaskSelection> tasks,
         List<AddedItem> additions,
         SourceSelection source) {
@@ -54,7 +57,10 @@ public record SubmitServicesReq(
 
     /** Selects the entire immutable COUNT task without a client quantity override. */
     public record TaskSelection(
-            String taskNo, long expectedRevision, long expectedBindingRevision) {
+            String taskNo,
+            @JsonProperty(required = true) @JsonSetter(nulls = Nulls.FAIL) long expectedRevision,
+            @JsonProperty(required = true) @JsonSetter(nulls = Nulls.FAIL)
+                    long expectedBindingRevision) {
         public TaskSelection {
             reference(taskNo, 32);
             require(expectedRevision >= 0 && expectedBindingRevision >= 0);

@@ -40,7 +40,7 @@ def generate():
         else:assert b['controller'] is None and b['service'] is None
     for bs in controllers.values():
         assert len({apis[b['apiId']]['path'].split('/x/beauty/')[1].split('/')[0] for b in bs})<=3
-    lines=['# 美业 Java 项目结构与类职责', '', '> 状态：候选目录与类职责，待评审 · 2026-10-20 · 未创建Java模块、POM、Controller或迁移。',
+    lines=['# 美业 Java 项目结构与类职责', '', '> 状态：目标目录与实际实施对照 · 2026-10-24 · Task59代码接线已实现，实际部署后置；全表不代表全部完成。',
            '> 由 `python3 scripts/gen-beauty-java-project-design.py` 生成，勿手改。真源：[项目结构JSON](./schema/beauty-java-project-design.json)。',
            '> 总体决策：[美业独立项目与包依赖方案](../TDD-美业系统-独立项目与包依赖方案.md)；接口：[分模块API](./美业系统-API清单.md)；数据库：[结构设计](./美业系统-数据库结构设计.md)。', '',
            '## 一、定位', '',
@@ -67,6 +67,13 @@ def generate():
     for t in data['tables']:lines.append(f'| {t["table"]} | `{t["entity"]}` | `{t["mapper"]}` |')
     lines += ['', '## 八、生成物边界', '',
               '本清单不生成Java源文件。API输入输出细节沿API清单和工作台契约；具体类与方法签名已整理到[Java类与方法清单](./美业系统-Java类与方法清单.md)及[Controller-Service-Mapper方法清单](./美业系统-Controller-Service-Mapper方法清单.md)，以方法设计JSON为真源；不使用BAPI序号作类名或方法名。共享权限、资金、资源、打印和任务等合同须先核验真实提供方，不能仅由类名推断其已实现。', '']
+    if data.get('implementationClasses'):
+        lines += ['## 九、Task59 实际增量类型', '', data['implementationStatus'], '',
+                  '| Module / source | Actual class / responsibility |', '|---|---|']
+        for row in data['implementationClasses']:
+            assert (ROOT / row['path']).is_file(), row['path']
+            lines.append(f"| `{row['path']}` | `{row['class']}`<br>{row['role']} |")
+        lines += ['', 'HOST实际classpath排除beauty-core/server；SERVER排除shop-app/core/merchant/web；双JVM夹具已编码，运行待统一部署关口。', '']
     svg=['<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="510" viewBox="0 0 1080 510" role="img" aria-labelledby="title desc">', '<title id="title">美业五模块Java依赖设计</title>', '<desc id="desc">web和core使用api，channel使用api，server装配core和channel，web按需使用channel。图由模块设计JSON生成。</desc>', '<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#56769b"/></marker></defs>', '<rect width="1080" height="510" fill="#f5f8fc"/>','<style>text{font-family:"PingFang SC","Noto Sans CJK SC",sans-serif;fill:#24364d;font-size:16px}.sub{font-size:13px;fill:#566b84}.head{font-size:23px;font-weight:700}</style>', '<text x="30" y="36" class="head">美业独立项目：五模块、无环依赖</text>']
     pos={'beauty-web':(40,75),'beauty-core':(820,75),'beauty-api':(430,230),'beauty-channel':(40,380),'beauty-server':(820,380)}
     for n,deps in graph.items():

@@ -1,10 +1,13 @@
 package ai.neargo.shop.portal.internal;
 
+import ai.neargo.shop.auth.BoundDelegatedCalls;
 import ai.neargo.shop.auth.DelegatedIdentityContext;
+import ai.neargo.shop.spi.security.InternalCall;
 import ai.neargo.shop.spi.trade.CheckoutInternalApi;
 import ai.neargo.shop.spi.trade.CheckoutInternalApi.Result;
 import ai.neargo.shop.spi.trade.CheckoutInternalApi.Scoped;
 import ai.neargo.shop.spi.trade.CheckoutPort;
+import ai.neargo.shop.svc.InternalBindings;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.InternalServiceResponses;
 
@@ -24,12 +27,16 @@ import java.util.function.Supplier;
 public class InternalCheckoutController {
     private final CheckoutPort checkout;
     private final String token;
+    private final BoundDelegatedCalls bound;
+    private final InternalBindings bindings;
 
     /** Use shared transport authentication before the owner checks current merchant authority. */
     public InternalCheckoutController(
             CheckoutPort checkout, @Value("${shop.services.internal-token:}") String token) {
         this.checkout = checkout;
         this.token = token;
+        this.bound = new BoundDelegatedCalls(token);
+        this.bindings = new InternalBindings(token);
     }
 
     /** Publish a quote without interpreting merchant delegation as buyer consent. */
@@ -75,6 +82,102 @@ public class InternalCheckoutController {
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
         return invoke(
                 request, given, () -> checkout.findPayment(request.scope(), request.request()));
+    }
+
+    /** The bound route retains the real owner's current authorization decisions. */
+    @PostMapping(CheckoutInternalApi.BASE + "bound/prepare")
+    public ResponseEntity<?> prepareBound(
+            @RequestBody InternalCall<CheckoutInternalApi.BoundPrepare> request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return bound.invoke(
+                given,
+                request,
+                "CHECKOUT_PREPARE",
+                "PREPARE",
+                BoundDelegatedCalls.Mode.MERCHANT,
+                request.request().request().operation().operationNo(),
+                () -> {
+                    var scope = request.request().scope();
+                    bindings.requireCoordinates(
+                            request,
+                            scope.tenantNo(),
+                            scope.entityNo(),
+                            scope.storeNo(),
+                            scope.actorNo());
+                    return checkout.prepare(scope, request.request().request());
+                });
+    }
+
+    /** The bound route retains the real owner's current authorization decisions. */
+    @PostMapping(CheckoutInternalApi.BASE + "bound/readQuote")
+    public ResponseEntity<?> readQuoteBound(
+            @RequestBody InternalCall<CheckoutInternalApi.BoundOperation> request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return bound.invoke(
+                given,
+                request,
+                "CHECKOUT_READ_QUOTE",
+                "READ_QUOTE",
+                BoundDelegatedCalls.Mode.MERCHANT,
+                request.request().operation().operationNo(),
+                () -> {
+                    var scope = request.request().scope();
+                    bindings.requireCoordinates(
+                            request,
+                            scope.tenantNo(),
+                            scope.entityNo(),
+                            scope.storeNo(),
+                            scope.actorNo());
+                    return checkout.readQuote(scope, request.request().operation());
+                });
+    }
+
+    /** The bound route retains the real owner's current authorization decisions. */
+    @PostMapping(CheckoutInternalApi.BASE + "bound/findOperation")
+    public ResponseEntity<?> findOperationBound(
+            @RequestBody InternalCall<CheckoutInternalApi.BoundOperation> request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return bound.invoke(
+                given,
+                request,
+                "CHECKOUT_FIND_OPERATION",
+                "FIND_OPERATION",
+                BoundDelegatedCalls.Mode.MERCHANT,
+                request.request().operation().operationNo(),
+                () -> {
+                    var scope = request.request().scope();
+                    bindings.requireCoordinates(
+                            request,
+                            scope.tenantNo(),
+                            scope.entityNo(),
+                            scope.storeNo(),
+                            scope.actorNo());
+                    return checkout.findOperation(scope, request.request().operation());
+                });
+    }
+
+    /** The bound route retains the real owner's current authorization decisions. */
+    @PostMapping(CheckoutInternalApi.BASE + "bound/source")
+    public ResponseEntity<?> sourceBound(
+            @RequestBody InternalCall<CheckoutInternalApi.BoundSource> request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return bound.invoke(
+                given,
+                request,
+                "CHECKOUT_SOURCE",
+                "SOURCE",
+                BoundDelegatedCalls.Mode.MERCHANT,
+                request.request().request().operation().operationNo(),
+                () -> {
+                    var scope = request.request().scope();
+                    bindings.requireCoordinates(
+                            request,
+                            scope.tenantNo(),
+                            scope.entityNo(),
+                            scope.storeNo(),
+                            scope.actorNo());
+                    return checkout.source(scope, request.request().request());
+                });
     }
 
     private ResponseEntity<?> invoke(Scoped<?> request, String given, Supplier<?> work) {
