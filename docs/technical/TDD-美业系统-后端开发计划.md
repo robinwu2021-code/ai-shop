@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
+> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
 > **执行方式：** 使用`superpowers:subagent-driven-development`逐任务实施及独立审查，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -800,13 +800,28 @@ A2代码验收后，按[60A设计A3](../../.superpowers/sdd/beauty-backend/task-
 | AC | 实施 | 验证 |
 |---|---|---|
 | A3-1 | 保存每个原请求与完整结果，按实际赢家核对SUBMIT_SOURCE或ADD_SOURCE唯一永久提交/参数摘要/原回执 | 原无偏向并发三场景保留；两种定向合法赢家均实际覆盖，输家冲突且无残留添加/来源 |
-| A3-2 | 原请求重放完整回执及不可变接受事实不变，prepare恰好一次 | 不能只比较submissionNo；篡改非编号观察字段必须触发真实比较失败 |
+| A3-2 | 不可变接受回执/冻结事实不变，prepare恰好一次；完整重放VO对应当前查询投影 | 租约可合法推进revision，其余稳定字段与首次结果核对；不能只比较编号，非编号突变应失败 |
 | A3-3 | aliases仅增加原三race方法和新参数化赢家方法 | Node白名单/非法选择提前拒绝；有限ServiceSubmissionIT原生类，不跑其它业务类/正式部署 |
 
-- [ ] 先定向ADD赢家取得旧固定SUBMIT_SOURCE断言的真实RED，不依赖随机调度。
-- [ ] 最小修复后有限整类GREEN，fresh非零零失败/错误/skip；保留同请求重放和改参冲突。
-- [ ] 旧固定赢家断言及回执字段突变覆盖检查，逐字恢复同selectorGREEN；新改Java按统一规范。
-- [ ] 三文件精确diff、Node安全检查、独立spec+quality及必要复审后提交；部署仍统一后置。
+- [x] 先定向ADD赢家取得旧固定SUBMIT_SOURCE断言的真实RED，不依赖随机调度。
+- [x] 整类基线29/5失败/0错误/0跳过后，仅五个受影响race定向GREEN；BigDecimal数值比较不忽略qty，fresh非零零失败/错误/skip，不将分批说成单次整类全绿。
+- [x] 旧固定赢家断言及回执字段突变覆盖检查，逐字恢复同selectorGREEN；新改Java按统一规范。
+- [x] 三文件精确diff、Node安全检查、独立spec+quality及必要复审后提交；部署仍统一后置。
+
+### 2.26 Task60A-A4：CHECK与列定义结构解析（2026-10-24）
+
+A3代码验收后，档位0收尾工具与测试守卫。精确需求、五文件、接口和命令见[A4 brief](../../.superpowers/sdd/beauty-backend/task-60a-a4-brief.md)。新增test-only SchemaDdl给两个Java守卫共用，替代两份按缩进识别的正则；Java生产和既有迁移不改，Python生成器/test-schema-constraints只执行不编辑。
+
+| AC | 实施 | 验证 |
+|---|---|---|
+| A4-1 | JS唯一DDL parser按引号/注释/括号层级拆CREATE定义，复用并完善现splitTopLevel判据，类型完整token | inline多列及多行CHECK不产生AND/CHAR_LENGTH假列，合法列/类型/索引/注释不丢 |
+| A4-2 | SchemaDriftTest/SchemaGeneratorTest共用SchemaDdl.createColumns(String) | V506单空格/匿名CHECK和V517/V533续行CHECK均按结构识别；保留原ALTER重放语义 |
+| A4-3 | 畸形闭合明确失败、table tail600及线性有界扫描保留 | 不吞下一表，不改冻结SQL/known/schema-test.sql；真实生成/列对账继续执行 |
+
+- [ ] 现有Node inline/CHECK及两个Java守卫路径取得真实行为RED，缺helper编译不算RED。
+- [ ] 五文件最小修复后Node双文件、SchemaDriftTest/SchemaGeneratorTest定向GREEN及freshXML；无native/部署。
+- [ ] entity-alignment/schema-lineage真实拆分记录，新增12个无ORM表登记仍归A5，不放宽守卫。
+- [ ] 逐行解析或约束防线最小消融RED，逐字恢复GREEN，独立规格/质量审查后精确提交。
 
 ## §3 数据层之后的业务任务与启动深化
 
@@ -2047,3 +2062,12 @@ HOST34/0失败/0错误/0跳过，含Architecture17、JobTarget7、Endpoint10；S
 独立初审两项Important（XML文本假用例、保留报告含临时凭据）经两轮定向修复复审关闭。最终安全单测19/0失败/0错误/0跳过，真实RED与原字节恢复证据保留。报告处理先从streams及所有本次可归属产物收齐凭据，再统一脱敏、全部复读核验后才写证明；失败不虚报安全，保留警告。
 
 R1原生检查点仅指定BeautySourceCheckoutIT一个真实方法1/0/0/0，现场/归档XML及summary已脱敏、统计/用例不变，自有UUID/tmp/锁清理确认。R2只是纯凭据发现顺序修复，以生产main受控effects的19项测试验证，未重复native；不得把R1原生检查点说成最终R2源代码重跑。无Java/SQL/POM变化，也无正式部署。[报告](../../.superpowers/sdd/beauty-backend/task-60a-a2-report.md)、[初审](../../.superpowers/sdd/beauty-backend/review-task-60a-a2.md)、[R1复审](../../.superpowers/sdd/beauty-backend/review-task-60a-a2-r1.md)、[R2复审](../../.superpowers/sdd/beauty-backend/review-task-60a-a2-r2.md)记录边界；既有告警归A11，A3接续。60A整体、BM04部署、BM05及后续P2～P4尚未完成。
+
+
+### 32.12 60A-A3跨动作竞争夹具代码验收（2026-10-24）
+
+产品`ba07edc99c7b88a1d3de70c18c6e0586eae0073c`仅ServiceSubmissionIT、aliases精确名单和Node单测三文件。任一SUBMIT_SOURCE/ADD_SOURCE都可合法获胜；保留无偏向并发三场景，另定向覆盖两种赢家。独立按原请求核对永久namespace/payload、原SOURCE_SUBMITTED回执和冻结来源，失败方真实CONFLICT且无额外任务/来源，prepare一次。完整VO按当前投影核对，租约revision可推进，BigDecimal按数值比较；不可变回执与冻结命令仍逐字不变。
+
+Node8项通过，最终受影响四selector共5例原生0失败/0错误/0跳过；三种动作/回执/数量突变分别真实RED，同一最终SHA逐字恢复后参数化2例通过。历史整类29/5比较失败仍保留，不把分批结果相加声称最终单次29全绿。测试查询错误、准备/沙箱失败单列透明记录。独立spec+quality审查通过，六处经核对的AOSP附带换行只改变格式；10个本任务容器和显式临时目录已清，SQL504与known5不变。详见[报告](../../.superpowers/sdd/beauty-backend/task-60a-a3-report.md)及[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a3.md)。
+
+既有警告继续归A11，60A整体及BM04部署未准出；下片A4修复列/CHECK解析，全部P1～P4代码后才统一部署。没有商品、订单、支付、权限或迁移变更。
