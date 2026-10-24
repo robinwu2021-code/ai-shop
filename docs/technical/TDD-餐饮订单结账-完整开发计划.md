@@ -884,6 +884,10 @@ MySQL收据仅验证FOOD V1～V15与所列JDBC场景，CORE仅应用本批V556�
 
 发布对账补充：共享人工调价6条Handler补入原pricing-config.openapi.json及前端待接入登记，保留后端先行口径，不增加历史known欠账。approve/quote在反向守卫中归同一动作模式，公开合同仍分别记录。
 
+Schema发布修复：按原生成器重建schema-test.sql，补齐已合并储值及人工调价6张表/列；SchemaDrift解析器此前只认ADD COLUMN及每行首列，漏读真实ADD省略COLUMN/紧凑多列语句。新增混合ALTER及小数/枚举/约束负例，完整表列对账、版本唯一与生成器共5项通过，日志/tmp/food-cloud-schema-replay-final.log。仅测试产物与解析器变化，无经营库操作。
+
+当前剩余阻断：主应用StoreCodeRedeemTest及CouponIssueFlowTest暴露PmtCouponServiceImpl.issue在外层未开事务时调用MANDATORY LegacyCouponSourceFenceService.requireWritable，实际发券路径异常；不能通过给测试套事务来掩盖。需要明确共享优惠券事务边界的修复范围并重跑正式门禁。正常pre-push另停在前端i18n 3缺失/19未引用；本次未改词条基线。后续发布授权范围已向用户询问；等待前不切云端。
+
 发布守卫修复：管理12页实际通过managementGo从已有管理入口可达，原守卫只认ROUTES.x造成误报；新增仅识别从真实@/shared/management导入的静态调用，任意同名函数/动态参数/别名字符串不算入口。实际导航链测试先红后绿，2项通过，可达性0新增；不修改页面或known清单。PAY两条夹具7项回归已通过，后续仍须合并后全量门禁。
 
 阻断修复范围：仅更新两处PAY测试夹具，原取消单据测试补齐已存在的issuerLedger依赖并验证beforeOriginal/cancelled调用；迁移readiness拒绝列表的最后一项原为健康回执，改成未来6秒回执，验证原5秒时钟容忍限制。资金生产代码和业务断言均不放宽。
