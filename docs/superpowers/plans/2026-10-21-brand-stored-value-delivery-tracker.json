@@ -475,12 +475,35 @@
         "IN05"
       ],
       "planFile": "2026-10-21-brand-stored-value-activity-governance.md",
-      "status": "IN_PROGRESS",
+      "status": "COMPATIBILITY_PUBLISHED_ENABLEMENT_BLOCKED_P3",
       "implementationNotes": [
         "Full P4 coding integrated; backend and B type compilation passed, H5 built",
         "Focused acceptance in progress; 20 backend plus4 UI passed,5 release fixture failures under targeted retry, downstream/native unrun",
         "No live deployment or enablement; original recharge deferred and P3 signoff remains prerequisite"
-      ]
+      ],
+      "publication": {
+        "backendSha": "c8e3ea7b0eea2dbcb7057ca2e1fcc7ad87a6522c",
+        "bH5Sha": "c8e3ea7b0",
+        "appSourceSha": "4d0101f12fdba9054809e9d99a9a8237bd164cef",
+        "appVersion": "0.6.2",
+        "appVersionCode": 335,
+        "appMd5": "511edd8d1e4e027bdc3c574a73ce1380",
+        "governanceEnabled": false,
+        "writerGuardEnabled": false,
+        "schemaVersions": [
+          "564",
+          "565",
+          "566"
+        ],
+        "device": "NO_ADB_DEVICE"
+      },
+      "verification": {
+        "backendDistinctTests": 32,
+        "nativeMysqlTests": 5,
+        "frontendDistinctTests": 9,
+        "releaseGateTests": 2,
+        "review": "One whole-stage review; four important findings fixed; no deferred minors"
+      }
     },
     {
       "id": "P5",
@@ -853,16 +876,10 @@
     }
   },
   "nextStagePreparation": {
-    "stage": "P4",
-    "status": "REVIEW_FIXED_FOCUSED_ACCEPTANCE_PASSED_PUBLICATION_PENDING",
-    "taskTable": "docs/technical/任务表-品牌与门店双线储值-P4开发准备.md",
-    "releaseDependsOn": "P3 controlled cutover signoff",
-    "testOrder": "All stage coding and compilation, then focused chain; no unaffected reruns",
-    "deliveryReport": "docs/technical/delivery/P4-活动治理-开发记录.md",
-    "backendDistinctTests": 32,
-    "nativeMysqlTests": 5,
-    "frontendDistinctTests": 9,
-    "releaseGateTests": 2,
-    "review": "One whole-stage review; four important findings fixed; spacing finding withdrawn"
+    "stage": "P5",
+    "status": "SOURCE_INVENTORY_IN_PROGRESS",
+    "planFile": "2026-10-21-brand-stored-value-brand-redemption.md",
+    "releaseDependsOn": "P3 controlled cutover signoff; P6 before cross-entity activation",
+    "testOrder": "All phase coding and compilation, then one focused chain; no unaffected reruns"
   }
 }
