@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5已代码验收，A5b已按范围验收，A5c报价误连及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
+> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5已代码验收，A5b已按范围验收，A5c报价误连已修复验收，A6及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
 > **执行方式：** 使用`superpowers:subagent-driven-development`逐任务实施及独立审查，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -871,10 +871,27 @@ Owned：新scripts/lib/schema-lineage.mjs、scripts/gen-erd.mjs、packages/share
 
 Owned仅纯lineage模块、原lineage测试、生成器live说明行和其实际变化的既有ER产物。Java/SQL/parser/known/A5登记/域图定义不改。全registry审计不扩入本片。
 
-- [ ] 新实际报价关系/未知成员行为先RED，缺模块等不算。
-- [ ] 最小限定修复后entity+lineage联合GREEN，A5登记SHA不变。
-- [ ] quote_no旧global消融真实RED，逐字恢复最终GREEN，不重复A5b无关消融。
-- [ ] 生成/幂等、实际HTML/文本检查、独立规格质量审查后精确提交；关闭继承Important再进入A6。
+- [x] 新实际报价关系/未知成员行为先RED，缺模块等不算。
+- [x] 最小限定修复后entity+lineage联合GREEN，A5登记SHA不变。
+- [x] quote_no旧global消融真实RED，逐字恢复最终GREEN，不重复A5b无关消融。
+- [x] 生成/幂等、实际HTML/文本检查、独立规格质量审查后精确提交；关闭继承Important再进入A6。
+
+### 2.30 Task60A-A6：统一SQL方言扫描覆盖（2026-10-24）
+
+档位0，既有AC5的永久守卫。精确接口、两文件及验证见[A6 brief](../../.superpowers/sdd/beauty-backend/task-60a-a6-brief.md)。固定CLI同时扫描backend与backend-plugins/shop-industry-beauty，共用唯一RULES、SQLmask、路径/规则baseline判据，不增加baseline或跳过测试目录。
+
+只读验证确认原整文件mask会删掉Java注解字符串与SQL textblock，单加目录仍漏Java。采用同checker内有界提取静态Java字符串/textblock后再复用原SQLmask；忽略Java注释/字符，保留原文件行号。不解析动态运行时SQL、不加AST依赖，不改SQL/Java/mask/known。额外实际违规须交根处理，不绕过。
+
+| AC | 实施 | 验证 |
+|---|---|---|
+| A6-1 | 导出scanSqlPortability(root,scanRoots)；CLI固定两根且导入无副作用 | 相同真实坏SQL/Java在两根均命中同rule；实际复制CLI --check exit1 |
+| A6-2 | 静态Java payload与.sql同规则，SQL/Java噪音不误报 | 普通注解/三引号、转义、文件行号和相邻真实代码反例 |
+| A6-3 | 保留fresh/stale、精确baseline和旧跳过项 | tmp known/stale案例；真实--check，两个最小消融和逐字恢复 |
+
+- [ ] 必要只提接口后取得漏beauty/Java的真实行为RED，缺导出/环境错误不算。
+- [ ] Node专属测试GREEN及真实node scripts/check-sql-portability.mjs --check。
+- [ ] 移除beauty根及Java回退旧mask两类消融RED，精确恢复最终GREEN。
+- [ ] 独立规格/质量审查与精确提交，baseline/mask哈希保持；无native或部署。
 
 ## §3 数据层之后的业务任务与启动深化
 
@@ -2150,3 +2167,11 @@ Node8项通过，最终受影响四selector共5例原生0失败/0错误/0跳过�
 实际生成输出、精确计数/变更文件及边界以报告和root gate为准；未改DDL/业务Java/A5登记/known或扩大域图。既有DOMAINS缺sv/ent/pay详情等限制保留，关系集合与限定说明已受测试保护。本片不是数据库行完整性或实际部署验收；后续A6～A11、BM05及其余P1～P4继续，正式部署统一后置。
 
 A5b审查另确认继承Important：quote_no使结算报价误连到营销。本范围验收不关闭该问题，已在§2.29单独发布A5c必须修复；同处live54文案Minor同片处理。整体关口仍未准出。
+
+### 32.16 60A-A5c报价命名空间血缘验收（2026-10-24）
+
+产品`811de0f35c67dd1319e087974cb92d7ace8ded0e`仅纯lineage、原测试、生成器live说明及两个实际生成物。quote_no不再全局指营销；营销修订→营销根、结算确认→结算根以及operation当前报价→结算根按精确源表限定并保留tenant scope，根/self/跨族/未知第五成员无edge/FK，UK优先和原业务冻结校验不改。live54数字从生成器源移除。
+
+真实旧逻辑4失败/67通过，最小修复后71项通过，旧global消融3失败/68通过，逐字恢复后71项通过。两次实际gen:erd均成功；21项有首次/第二次直接SHA一致证明，三张专题图首次SHA漏采，最终与基线一致及首次未变状态有记录，明确不声称24项完整直接首次指纹。此历史证据限制经独立审查评估，无确认当前正确性缺陷，不为补历史证明重复运行。
+
+独立规格/质量PASS，A5b继承Important与Minor均ADDRESSED，无新增发现。[报告](../../.superpowers/sdd/beauty-backend/task-60a-a5c-report.md)、[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a5c.md)。根核对五文件源码/生成物、71项及消融恢复、21直接指纹和三专题最终BASE、精确提交父树与index。A5登记SHA未变，无SQL/Java/数据库/部署，整体P1～P4尚未完成，下片A6。

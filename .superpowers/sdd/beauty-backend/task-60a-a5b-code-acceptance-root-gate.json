@@ -69,5 +69,10 @@
   "productCommit": "44fa7f3ce3eed5e36ae2d80d9e7cc9dca345fc2d",
   "productTree": "6d4983e22ec8186e03b0ba7ea6ed0b3b303433e3",
   "reviewSha256": "f3551ddc67ed521b85f40d6d0f8091a5ae8154de151059b83f14da44e09801f5",
-  "inheritedImportant": "OPEN quote_no; mandatory next A5c before wholebranchgate"
+  "inheritedImportant": "OPEN quote_no; mandatory next A5c before wholebranchgate",
+  "inheritedImportantClosure": {
+    "status": "CLOSED",
+    "product": "811de0f35c67dd1319e087974cb92d7ace8ded0e",
+    "reviewSha256": "9fe8d710d0885a2e66622c525dc2ec93e0a12038ec2c71d221cf716b78f398f7"
+  }
 }
