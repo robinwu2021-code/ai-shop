@@ -91,6 +91,6 @@ public class InternalStoredValueEndpoint {
     @PostMapping(PayInternalPaths.SV_USE_QUOTE)
     public ResponseEntity<?> useQuote(@RequestBody PayStoredValueRequests.UseQuote r,
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
-        return InternalServiceResponses.invoke(token, given, () -> redemptions.quote(r.context(), r.sourceRef()));
+        return InternalServiceResponses.invoke(token, given, () -> r.choice()==null?redemptions.quote(r.context(),r.sourceRef()):redemptions.quote(r.context(),r.sourceRef(),r.choice()));
     }
 }

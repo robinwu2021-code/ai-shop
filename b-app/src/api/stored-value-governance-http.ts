@@ -4,6 +4,17 @@ import type {StoredValueGovernanceApi} from './stored-value-governance';
 const h=(key:string)=>({'Idempotency-Key':key});
 const path=(endpoint:{path:string},params:Record<string,string>={})=>buildPath(endpoint.path,params);
 export const storedValueGovernanceHttp:StoredValueGovernanceApi={
+ mSvBrandActivityContext:(store,q)=>http.get(path(E.mSvBrandActivityContext,{store}),q),
+ mSvBrandActivityPresets:(store,q)=>http.get(path(E.mSvBrandActivityPresets,{store}),q),
+ mSvBrandActivitySchedule:(store,q)=>http.get(path(E.mSvBrandActivitySchedule,{store}),q),
+ mSvBrandActivities:(store,q)=>http.get(path(E.mSvBrandActivities,{store}),q),
+ mSvBrandActivity:(store,no,q)=>http.get(path(E.mSvBrandActivity,{store,no}),q),
+ mSvBrandActivitySave:(store,no,body,key)=>no?http.put(path(E.mSvBrandActivityDraftEdit,{store,no}),body,h(key)):http.post(path(E.mSvBrandActivitySave,{store}),body,h(key)),
+ mSvBrandActivityDraftEdit:(store,no,body,key)=>http.put(path(E.mSvBrandActivityDraftEdit,{store,no}),body,h(key)),
+ mSvBrandActivityCheck:(store,no,body)=>http.post(path(E.mSvBrandActivityCheck,{store,no}),body),
+ mSvBrandActivitySubmit:(store,no,body,key)=>http.post(path(E.mSvBrandActivitySubmit,{store,no}),body,h(key)),
+ mSvBrandActivityStop:(store,no,body,key)=>http.post(path(E.mSvBrandActivityStop,{store,no}),body,h(key)),
+ mSvBrandActivityCopy:(store,no,body,key)=>http.post(path(E.mSvBrandActivityCopy,{store,no}),body,h(key)),
  mSvActivityDraftEdit:(store,no,body,key)=>http.put(path(E.mSvActivityDraftEdit,{store,no}),body,h(key)),
  mSvPreparePolicyPermissions:managementNo=>http.post(E.mSvPreparePolicyPermissions.path,{managementNo}),
  mSvActivityContext:(store,q)=>http.get(path(E.mSvActivityContext,{store}),q),

@@ -19,7 +19,7 @@ public class BrandService {
  public BrandService(ManagementRepository db,ManagementScopeService scopes,ManagementTokenCodec tokens,BrandChangeImpactPort impacts,
      @Qualifier("coreDocumentNumberCoordinator") DocumentNumberCoordinator numbers){this.db=db;this.scopes=scopes;this.tokens=tokens;this.impacts=impacts;this.numbers=numbers;}
  Map<String,Object> raw(Actor a,String no){var row=db.one("SELECT * FROM mch_brand WHERE tenant_no=? AND brand_no=? AND deleted=0",a.tenantNo(),no);if(row==null)throw BizException.of(ErrorCode.NOT_FOUND);return row;}
- public Map<String,Object> detail(Actor a,String no){var row=raw(a,no);var m=str(row,"management_no");scopes.resolve(a,m);scopes.require(a,m,"BRAND",no,"brand.read");var result=db.view(row);result.put("storeCount",num(db.one("SELECT COUNT(*) AS total FROM mch_brand_store_binding WHERE tenant_no=? AND brand_no=? AND status='ACTIVE' AND deleted=0",a.tenantNo(),no),"total"));result.put("actions",List.of("brand.read","brand.manage","brand.audit.read","brand.change.decide","sv.issuer.read","sv.issuer.configure").stream().filter(p->scopes.can(a,m,"BRAND",no,p)).toList());return result;}
+ public Map<String,Object> detail(Actor a,String no){var row=raw(a,no);var m=str(row,"management_no");scopes.resolve(a,m);scopes.require(a,m,"BRAND",no,"brand.read");var result=db.view(row);result.put("storeCount",num(db.one("SELECT COUNT(*) AS total FROM mch_brand_store_binding WHERE tenant_no=? AND brand_no=? AND status='ACTIVE' AND deleted=0",a.tenantNo(),no),"total"));result.put("actions",List.of("brand.read","brand.manage","brand.audit.read","brand.change.decide","sv.issuer.read","sv.issuer.configure","sv.brand.activity.read","sv.brand.activity.manage","sv.brand.activity.publish","sv.brand.activity.approve").stream().filter(p->scopes.can(a,m,"BRAND",no,p)).toList());return result;}
  public Map<String,Object> create(Actor a,BrandCreate c,String key){
   var name=Normalizer.normalize(text(c.name(),100),Normalizer.Form.NFC);var status=c.status()==null?"DRAFT":c.status();
   if(!Set.of("DRAFT","ACTIVE").contains(status))throw BizException.of(ErrorCode.BAD_REQUEST);validateLogo(c.logo());text(key,64);
@@ -44,7 +44,7 @@ public class BrandService {
  }
  private Map<String,Object> mutate(Actor a,String no,String action,String key,String body,long revision,java.util.function.IntSupplier update){
   var m=str(raw(a,no),"management_no");return db.write(()->{
-  scopes.lock(a,m);var row=raw(a,no);if(!m.equals(str(row,"management_no")))throw BizException.of(ErrorCode.CONFLICT);scopes.resolve(a,m);scopes.require(a,m,"BRAND",no,"brand.manage");
+  scopes.lock(a,m);var row=raw(a,no);if("BRAND_STATUS".equals(action)&&str(row,"stored_value_status")!=null&&!"NONE".equals(str(row,"stored_value_status")))throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);if(!m.equals(str(row,"management_no")))throw BizException.of(ErrorCode.CONFLICT);scopes.resolve(a,m);scopes.require(a,m,"BRAND",no,"brand.manage");
   var id=db.commandId(a,no,action,key);var digest=hash(body);var replay=db.replay(id,digest);if(replay!=null)return replay;
   row=db.one("SELECT * FROM mch_brand WHERE tenant_no=? AND brand_no=? FOR UPDATE",a.tenantNo(),no);
   if(num(row,"version")!=revision||update.getAsInt()!=1)throw BizException.of(ErrorCode.CONFLICT);
@@ -57,7 +57,7 @@ public class BrandService {
   if(!"ACTIVE".equals(str(st,"status")))throw BizException.of(ErrorCode.CONFLICT);
   var old=binding(a,store);String from=str(old,"brand_no"),to=c.toBrandNo();if(Objects.equals(from,to))throw BizException.of(ErrorCode.BAD_REQUEST);
   Long fromRevision=null,toRevision=null;
-  for(String no:new String[]{from,to})if(no!=null){var brand=raw(a,no);if(!c.managementNo().equals(str(brand,"management_no")))throw BizException.of(ErrorCode.FORBIDDEN);scopes.require(a,c.managementNo(),"BRAND",no,"brand.manage");if(no.equals(to)&&!"ACTIVE".equals(str(brand,"status")))throw BizException.of(ErrorCode.CONFLICT);if(no.equals(from))fromRevision=num(brand,"scope_revision");else toRevision=num(brand,"scope_revision");}
+  for(String no:new String[]{from,to})if(no!=null){var brand=raw(a,no);if(str(brand,"stored_value_status")!=null&&!"NONE".equals(str(brand,"stored_value_status")))throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);if(!c.managementNo().equals(str(brand,"management_no")))throw BizException.of(ErrorCode.FORBIDDEN);scopes.require(a,c.managementNo(),"BRAND",no,"brand.manage");if(no.equals(to)&&!"ACTIVE".equals(str(brand,"status")))throw BizException.of(ErrorCode.CONFLICT);if(no.equals(from))fromRevision=num(brand,"scope_revision");else toRevision=num(brand,"scope_revision");}
   var result=new LinkedHashMap<String,Object>();result.put("tenantNo",a.tenantNo());result.put("actorKey",a.actorKey());result.put("managementNo",c.managementNo());result.put("storeNo",store);result.put("entityNo",str(st,"entity_no"));result.put("fromBrandNo",from);result.put("toBrandNo",to);result.put("storeVersion",num(st,"version"));result.put("bindingRevision",num(old,"scope_revision"));result.put("fromRevision",fromRevision);result.put("toRevision",toRevision);return result;
  }
  public Map<String,Object> check(Actor a,String store,ChangeCheck c){

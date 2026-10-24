@@ -50,6 +50,8 @@ public class BizStoredValueController {
     private final EntitlementServiceOrderService serviceOrders;
     private final EntitlementServiceUseCoordinator serviceUses;
     private final StoredValueUseQuotePort useQuotes;
+    @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.spi.storedvalue.StoredValueExecutionScopePort walletScopes;
+    @org.springframework.beans.factory.annotation.Value("${shop.pay.stored-value.brand-execution-enabled:false}") private boolean walletSelectionEnabled;
     public BizStoredValueController(StoredValueRechargeCoordinator recharges, RechargeIntentService intents,
             StoredValueRechargeAppService storedValue, CustomerIdentityPort customers,
             EntitlementServiceOrderService serviceOrders, EntitlementServiceUseCoordinator serviceUses,
@@ -118,11 +120,13 @@ public class BizStoredValueController {
         var ctx = context(key); String entity = BizContext.requireMerchantNo();
         requireStore(c.storeNo(), BizPerms.SV_CONSUME_CREATE);
         // Core resolves the reference only when creating; original-key replay verifies its frozen payload instead.
-        var order = serviceOrders.createMonetary(ctx, entity,
-                new ServiceOrderCreate(c.customerRef(), c.storeNo(), c.items()), key);
+        boolean selected=c.issuerRef()!=null;
+        if(selected&&!walletSelectionEnabled)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        var create=new ServiceOrderCreate(c.customerRef(),c.storeNo(),c.items());
+        var order=selected?serviceOrders.createMonetarySelected(ctx,entity,create,key,ActivityCommandDeduplicator.hash(c.issuerRef()+"\n"+c.accountRef())):serviceOrders.createMonetary(ctx,entity,create,key);
         var quote = order.preview() != null && order.preview().moneyQuote() != null
                 && (order.command() != null || java.time.Instant.now().isBefore(order.preview().expiresAt()))
-                ? order.preview().moneyQuote() : useQuotes.quote(ctx, order.fact().source());
+                ? order.preview().moneyQuote() : selected?selectedQuote(ctx,entity,c,order):useQuotes.quote(ctx,order.fact().source());
         if (quote.redeemable() && (order.preview() == null || order.preview().moneyQuote() == null
                 || !quote.quoteRef().equals(order.preview().ref()))) {
             order = serviceOrders.bindMoneyPreview(ctx, entity, c.storeNo(), order.serviceOrderNo(), quote);
@@ -146,6 +150,37 @@ public class BizStoredValueController {
         var result = serviceUses.submit(ctx, entity, order.fact().storeNo(), new ServiceUseSubmit(order.serviceOrderNo(),
                 order.preview().ref(), c.authorizationRef(), order.preview().assetRevision()));
         return EntitlementServiceViews.Operation.from(result);
+    }
+    @PreAuthorize("@perm.canBiz('"+BizPerms.SV_CONSUME_CREATE+"')")
+    @GetMapping("/biz/stored-value/consumptions/orders/{orderNo}")
+    public EntitlementServiceViews.ServiceView consumptionOrder(@PathVariable String orderNo,@RequestParam String storeNo){
+        requireStore(storeNo,BizPerms.SV_CONSUME_CREATE);
+        return EntitlementServiceViews.consumer(serviceOrders.requireMerchant(context("read-sv-service"),BizContext.requireMerchantNo(),storeNo,orderNo));
+    }
+    @PreAuthorize("@perm.canBiz('"+BizPerms.SV_CONSUME_CREATE+"')")
+    @PostMapping("/biz/stored-value/consumptions/orders/{orderNo}/cancel")
+    public EntitlementServiceViews.Operation cancelConsumption(@PathVariable String orderNo,@RequestBody CancelConsumption c){
+        requireStore(c.storeNo(),BizPerms.SV_CONSUME_CREATE);var ctx=context("cancel-sv-service");String entity=BizContext.requireMerchantNo();serviceOrders.requireMerchant(ctx,entity,c.storeNo(),orderNo);
+        return EntitlementServiceViews.Operation.from(serviceUses.cancel(ctx,entity,c.storeNo(),orderNo,"Merchant cancelled service"));
+    }
+    public record CancelConsumption(String storeNo){public CancelConsumption{ContractChecks.id(storeNo);}}
+    @PreAuthorize("@perm.canBiz('"+BizPerms.SV_CONSUME_CREATE+"')")
+    @PostMapping("/biz/stored-value/consumptions/resolve")
+    public ConsumptionResolution resolveConsumption(@RequestBody ConsumptionPreviewRequest c,@RequestHeader("Idempotency-Key")String key){
+        requireStore(c.storeNo(),BizPerms.SV_CONSUME_CREATE);var ctx=context(key);String entity=BizContext.requireMerchantNo();
+        var known=serviceOrders.findOperation(ctx.tenantNo(),entity,serviceOrders.operationNoForKey(ctx,entity,key));
+        if(known==null)return new ConsumptionResolution(false,null);
+        var create=new ServiceOrderCreate(c.customerRef(),c.storeNo(),c.items());
+        // Exact existing payload replay validates the original selection, without resolving expired references.
+        var original=c.issuerRef()==null?serviceOrders.createMonetary(ctx,entity,create,key):serviceOrders.createMonetarySelected(ctx,entity,create,key,ActivityCommandDeduplicator.hash(c.issuerRef()+"\n"+c.accountRef()));
+        return new ConsumptionResolution(true,EntitlementServiceViews.consumer(original));
+    }
+    public record ConsumptionResolution(boolean found,EntitlementServiceViews.ServiceView service){}
+    private StoredValueUseQuotePort.Quote selectedQuote(EntitlementContext ctx,String entity,ConsumptionPreviewRequest command,ai.neargo.shop.trade.dto.ServiceOrderSnapshot order){
+        var customer=customers.resolveReference(ctx,new ReferenceQuery(entity,command.storeNo(),command.customerRef()));
+        var scope=walletScopes.current(ctx.tenantNo(),ctx.actorNo(),entity,command.storeNo(),order.fact().currency());
+        var query=new ai.neargo.shop.spi.storedvalue.StoredValueWallets.Query(scope,new ai.neargo.shop.spi.storedvalue.StoredValueWallets.Customer(customer.customerNo(),customer.userNo()));
+        return useQuotes.quote(ctx,order.fact().source(),new ai.neargo.shop.spi.storedvalue.StoredValueWallets.Choice(query,command.issuerRef(),command.accountRef()));
     }
     private void requireOriginalStore(EntitlementContext ctx, String entity, String no, String permission) {
         var p = intents.byRechargeNo(ctx.tenantNo(), no);
@@ -172,8 +207,10 @@ public class BizStoredValueController {
         @Override public String toString() { return "ReceiveRequest[evidence=REDACTED]"; }
     }
     public record CancelRequest(long expectedRevision, String reason) { }
-    public record ConsumptionPreviewRequest(String customerRef, String storeNo, List<ServiceOrderCreate.Line> items) {
+    public record ConsumptionPreviewRequest(String customerRef,String storeNo,List<ServiceOrderCreate.Line> items,String issuerRef,String accountRef) {
+        public ConsumptionPreviewRequest(String customerRef,String storeNo,List<ServiceOrderCreate.Line> items){this(customerRef,storeNo,items,null,null);}
         public ConsumptionPreviewRequest {
+            ContractChecks.require(issuerRef==null?accountRef==null:accountRef!=null&&!issuerRef.isBlank()&&!accountRef.isBlank()&&issuerRef.length()<=2048&&accountRef.length()<=2048);
             ContractChecks.id(customerRef); ContractChecks.id(storeNo);
             items = items == null ? List.of() : List.copyOf(items);
             ContractChecks.require(!items.isEmpty());
@@ -184,10 +221,10 @@ public class BizStoredValueController {
     public record ConsumptionPreview(EntitlementServiceViews.ServiceView service, StoredValueQuoteView quote) { }
     public record StoredValueQuoteView(String quoteRef, String currency, long amountMinor, long applicableMinor,
                                        boolean redeemable, StoredValueUseQuotePort.Reason reason,
-                                       long assetRevision, String selectionDigest, java.time.Instant expiresAt) {
+                                       long assetRevision, String selectionDigest, java.time.Instant expiresAt,String scopeType,String issuerName) {
         static StoredValueQuoteView from(StoredValueUseQuotePort.Quote q) {
             return new StoredValueQuoteView(q.quoteRef(), q.currency(), q.amountMinor(), q.applicableMinor(),
-                    q.redeemable(), q.reason(), q.assetRevision(), q.snapshotHash(), q.expiresAt());
+                    q.redeemable(),q.reason(),q.assetRevision(),q.snapshotHash(),q.expiresAt(),q.walletProof()==null?"STORE":q.walletProof().selected().scopeType(),q.walletProof()==null?null:q.walletProof().selected().issuerName());
         }
     }
     /** Public merchant view contains totals only; the pay account identifier and pool splits stay internal. */
@@ -202,7 +239,7 @@ public class BizStoredValueController {
                                              String authorizationRef) {
         public StoredValueConsumeRequest {
             ContractChecks.id(customerRef); ContractChecks.id(orderNo); ContractChecks.require(orderRevision >= 0);
-            ContractChecks.id(authorizationRef);
+            ContractChecks.optionalId(authorizationRef);
         }
         @Override public String toString() { return "StoredValueConsumeRequest[customerRef=REDACTED, orderNo="
                 + orderNo + ", authorizationRef=REDACTED]"; }

@@ -1,9 +1,9 @@
 export default {
-  storedValue: {
+  storedValue: {"accountLocalTime": "账户时区", "serviceState": {"WAIT_SUBMIT": "已确认，等待门店核销", "PROCESSING": "正在核对消费结果", "COMMITTED": "核销成功", "EXPIRED": "确认已过期，请门店重新发起", "CANCELLED": "本次消费已取消", "RELEASED": "本次消费已取消"},"brandScope": "品牌储值", "storeScope": "本店储值", "confirmConsumption": "确认本次消费", "paymentWallet": "扣款账户", "consumeAmount": "消费金额", "waitingMerchant": "已确认，等待门店完成核销", "refreshConfirmation": "刷新消费状态",
     "storeLocalTime": "门店当地时间",
     "title": "储值记录",
-    "entryHint": "查看门店收支",
-    "storesHint": "选择门店，查看已到账储值和已完成核销。",
+    "entryHint": "查看储值与消费记录",
+    "storesHint": "查看本店与品牌的储值、核销记录。",
     "emptyStores": "还没有储值记录",
     "emptyStoresTip": "到店储值到账后，可在这里查看记录。",
     "viewRecords": "查看记录",

@@ -43,12 +43,13 @@ public final class EntitlementServiceSnapshotPolicy {
                 || !source.source().equals(reference(row.getServiceOrderNo()))) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
+        var preview=row.getPreviewSnapshot()==null?null:json.readValue(row.getPreviewSnapshot(),PreviewBinding.class);
         var fact = new UseSourceFact(source.tenantNo(), source.source(), source.userNo(), source.entityNo(),
                 source.storeNo(), source.currency(), source.items(), row.getSourceHash(), source.storeName(),
                 source.staffName(), null, 0, source.categories(), source.performedAt(),
                 row.getCommandSnapshot() != null &&
                         Set.of("PENDING", "COMMIT_DECIDED", "COMMITTED").contains(row.getStatus())
-                        ? row.getOperationNo() : null);
+                        ? row.getOperationNo() : null,preview==null||preview.moneyQuote()==null?null:preview.moneyQuote().walletProof());
         return new ServiceOrderSnapshot(row.getServiceOrderNo(), row.getOperationNo(), row.getStatus(), fact,
                 json.readValue(row.getContextSnapshot(), EntitlementContext.class),
                 row.getPreviewSnapshot() == null ? null

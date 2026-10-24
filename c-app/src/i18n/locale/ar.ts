@@ -1,13 +1,13 @@
 export default {
-  storedValue: {
+  storedValue: {"accountLocalTime": "المنطقة الزمنية للحساب", "serviceState": {"WAIT_SUBMIT": "تم التأكيد، بانتظار المتجر", "PROCESSING": "جارٍ التحقق من نتيجة الخدمة", "COMMITTED": "تم الاستخدام", "EXPIRED": "انتهت مهلة التأكيد. اطلب من المتجر إعادة الطلب.", "CANCELLED": "تم إلغاء الخدمة", "RELEASED": "تم إلغاء الخدمة"},"brandScope": "رصيد العلامة", "storeScope": "رصيد المتجر", "confirmConsumption": "تأكيد هذه الخدمة", "paymentWallet": "حساب الخصم", "consumeAmount": "المبلغ", "waitingMerchant": "تم التأكيد، بانتظار المتجر", "refreshConfirmation": "تحديث حالة الخدمة",
     "storeLocalTime": "التوقيت المحلي للمتجر",
     "title": "سجل الرصيد المخزن",
-    "entryHint": "عرض معاملات المتجر",
-    "storesHint": "اختر متجرًا لعرض عمليات الشحن المضافة والخصم المكتملة.",
+    "entryHint": "عرض الشحن والاستخدام",
+    "storesHint": "عرض شحن واستخدام رصيد المتجر والعلامة.",
     "emptyStores": "لا توجد سجلات رصيد مخزن بعد",
     "emptyStoresTip": "ستظهر السجلات بعد إضافة رصيدك في المتجر.",
     "viewRecords": "عرض السجلات",
-    "recordsTitle": "معاملات المتجر",
+    "recordsTitle": "سجل المعاملات",
     "ALL": "الكل",
     "RECHARGE": "الشحن",
     "REDEMPTION": "الخصم",

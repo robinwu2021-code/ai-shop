@@ -8,14 +8,16 @@ import {useMerchantStore} from '@/stores/merchant';
 import {money} from '@shared/utils/money';
 import {storedValuePending,type SvPending} from '@/shared/stored-value-pending';
 import {idempotencyKey} from '@shared/net/http-client';
-import type {SvPlan,SvProgress,SvRechargeCreate,SvSelectedCustomer,SvSelectionSource} from '@/api/stored-value-types';
+import {isBrandOffer,offerKey,offerName,type SvRechargeOffer,type SvProgress,type SvSelectedCustomer,type SvSelectionSource} from '@/api/stored-value-types';
 
 const props=defineProps<{visible:boolean;source?:SvSelectionSource;identified?:SvSelectedCustomer;planNo?:string}>();
 const emit=defineEmits<{close:[];credited:[SvProgress]}>();
 const merchant=useMerchantStore();const {t}=useI18n();
 type Pending=SvPending;
-const customer=ref<SvSelectedCustomer|null>(null),plans=ref<SvPlan[]>([]),selected=ref<SvPlan|null>(null);
+const customer=ref<SvSelectedCustomer|null>(null),plans=ref<SvRechargeOffer[]>([]),selected=ref<SvRechargeOffer|null>(null);
 const pending=ref<Pending|null>(null),progress=ref<SvProgress|null>(null);
+const scopeType=ref<'STORE'|'BRAND'>('STORE'),hasBrand=ref(false);let customerScope='';
+const scopeTabs=computed(()=>[{key:'STORE',label:t('issuer.storeScope')},{key:'BRAND',label:t('issuer.brandScope')}]);
 const busy=ref(false),loading=ref(false),failed=ref(false),error=ref(''),cursor=ref<string|null>(null),resumed=ref(false);
 const recoveryChoices=ref<Array<{scope:string;pending:Pending}>>([]);
 let recovery=storedValuePending('',''),pendingScope='',selectionReady=false;
@@ -39,7 +41,7 @@ function sameCustomer(p:Pending,c:SvSelectedCustomer){
  return !!((c.memberNo&&p.customer.memberNo===c.memberNo)||(c.account?.accountRef&&p.customer.account?.accountRef===c.account.accountRef));
 }
 async function restore(p:Pending,scope:string,token:number){
- pendingScope=scope;pending.value=p;customer.value=p.customer;selected.value=p.plan;progress.value=p.progress;resumed.value=true;
+ pendingScope=scope;pending.value=p;customer.value=p.customer;selected.value=p.plan;scopeType.value=p.body.scopeType||'STORE';progress.value=p.progress;resumed.value=true;
  try{
   const result=await api.mSvResolveRecharge(p.body,p.key);if(!live(token))return false;
   if(result.found&&result.recharge){accept(result.recharge);if(!terminal.value)schedule();return true;}
@@ -59,9 +61,10 @@ async function restore(p:Pending,scope:string,token:number){
 }
 async function load(){
  const token=++generation;clearTimeout(timer);loading.value=true;busy.value=false;failed.value=false;error.value='';
- store=merchant.storeNo;recovery=storedValuePending(merchant.profile?.merchantNo||'',store);
+ store=merchant.storeNo;
  customer.value=null;plans.value=[];selected.value=null;pending.value=null;progress.value=null;resumed.value=false;recoveryChoices.value=[];cursor.value=null;selectionReady=false;
  try{
+  const actor=await api.mManagementContext();if(!live(token))return;recovery=storedValuePending(merchant.profile?.merchantNo||'',store,actor.actorKey);
   if(!props.source&&!props.identified){
    const all=Object.entries(recovery.entries()).map(([scope,pending])=>({scope,pending}));const old=recovery.legacy();if(old)all.push({scope:'legacy',pending:old});
    if(all.length>1){recoveryChoices.value=all;return;}
@@ -69,19 +72,31 @@ async function load(){
    throw Error(t('storedValue.chooseMember'));
   }
   const c=props.identified??await selectStoredValueMember(store,props.source!);if(!live(token))return;
-  pendingScope=c.pendingScope||JSON.stringify(props.source||c.customerRef);
+  customerScope=c.pendingScope||JSON.stringify(props.source||c.customerRef);pendingScope=customerScope+':'+scopeType.value;
   const original=recovery.entries()[pendingScope];const old=recovery.legacy();
   if(original||(old&&sameCustomer(old,c))){if(await restore(original||old!,pendingScope,token))return;if(!live(token))return;}
-  customer.value=c;const result=await api.mSvRechargeOptions({storeNo:store,customerRef:c.customerRef});if(!live(token))return;
+  customer.value=c;const result=await api.mSvRechargeOptions({storeNo:store,customerRef:c.customerRef,scopeType:scopeType.value});if(!live(token))return;
   if(!result.issuerOptions.legacyMode&&!result.issuerOptions.issuers.some(i=>i.canRecharge))throw Error(t('issuer.blockers.'+(result.issuerOptions.issuers[0]?.unavailableReason||'ISSUANCE_NOT_ENABLED')));
-  const page=result.plans;
+  hasBrand.value=result.issuerOptions.issuers.some(i=>i.scopeType==='BRAND');
+  const page=scopeType.value==='BRAND'?result.brandOptions:result.plans;if(!page)throw Error(t('storedValue.empty'));
   plans.value=page.records;cursor.value=page.nextCursor;selectionReady=true;
-  if(props.planNo)selected.value=plans.value.find(p=>p.planNo===props.planNo)||null;
+  if(props.planNo)selected.value=plans.value.find(p=>!isBrandOffer(p)&&p.planNo===props.planNo)||null;
  }catch(e){if(live(token)){failed.value=true;error.value=(e as Error).message;}}
  finally{if(generation===token)loading.value=false;}
 }
+async function chooseScope(value:string){
+ if(locked.value||!customer.value||!['STORE','BRAND'].includes(value)||value===scopeType.value)return;
+ scopeType.value=value as 'STORE'|'BRAND';selected.value=null;plans.value=[];cursor.value=null;error.value='';failed.value=false;
+ const token=++generation;loading.value=true;pendingScope=customerScope+':'+scopeType.value;
+ try{
+  const original=recovery.entries()[pendingScope];if(original&&await restore(original,pendingScope,token))return;
+  const result=await api.mSvRechargeOptions({storeNo:store,customerRef:customer.value.customerRef,scopeType:scopeType.value});
+  if(!live(token))return;const page=scopeType.value==='BRAND'?result.brandOptions:result.plans;
+  if(!page)throw Error(t('storedValue.empty'));plans.value=page.records;cursor.value=page.nextCursor;
+ }catch(e){if(live(token)){failed.value=true;error.value=(e as Error).message;}}finally{if(token===generation)loading.value=false;}
+}
 async function chooseRecovery(choice:{scope:string;pending:Pending}){if(busy.value||loading.value)return;const token=generation;recoveryChoices.value=[];loading.value=true;await restore(choice.pending,choice.scope,token);if(token===generation)loading.value=false;}
-async function more(){if(locked.value||!cursor.value)return;const token=generation;loading.value=true;try{if(!customer.value)return;const result=await api.mSvRechargeOptions({storeNo:store,customerRef:customer.value.customerRef,cursor:cursor.value});const page=result.plans;if(live(token)){plans.value.push(...page.records);cursor.value=page.nextCursor;}}catch(e){if(live(token))error.value=(e as Error).message;}finally{if(generation===token)loading.value=false;}}
+async function more(){if(locked.value||!cursor.value)return;const token=generation;loading.value=true;try{if(!customer.value)return;const result=await api.mSvRechargeOptions({storeNo:store,customerRef:customer.value.customerRef,scopeType:scopeType.value,cursor:cursor.value});const page=scopeType.value==='BRAND'?result.brandOptions:result.plans;if(!page)return;if(live(token)){plans.value.push(...page.records);cursor.value=page.nextCursor;}}catch(e){if(live(token))error.value=(e as Error).message;}finally{if(generation===token)loading.value=false;}}
 async function submit(){
  if(busy.value||loading.value||!allowed.value||store!==merchant.storeNo||!selected.value||!customer.value)return;
  const token=generation;busy.value=true;error.value='';
@@ -92,7 +107,7 @@ async function submit(){
     if(!props.source)throw Error(t('storedValue.referenceExpired'));
     const c=await selectStoredValueMember(store,props.source);if(!live(token))return;customer.value=c;
    }
-   pending.value={body:{storeNo:store,customerRef:customer.value.customerRef,planNo:selected.value.planNo,versionNo:selected.value.versionNo},key:idempotencyKey(),customer:customer.value,plan:selected.value,progress:null};persist();
+   pending.value={body:{storeNo:store,customerRef:customer.value.customerRef,...(isBrandOffer(selected.value)?{scopeType:'BRAND' as const,planNo:null,versionNo:null,optionRef:selected.value.optionRef}:{scopeType:'STORE' as const,planNo:selected.value.planNo,versionNo:selected.value.versionNo})},key:idempotencyKey(),customer:customer.value,plan:selected.value,progress:null};persist();
   }
   const p=pending.value;const r=await api.mSvConfirmOffline(p.body,p.key);if(!live(token))return;accept(r);if(!terminal.value)schedule();
  }catch(e){if(live(token)){
@@ -135,12 +150,13 @@ onUnmounted(()=>{generation++;clearTimeout(timer);});
   <view class="sv-sheet-list" :class="{'sv-sheet-list--plans':!progress}">
    <view v-for="choice in recoveryChoices" :key="choice.scope" role="button" class="sh-card" @tap="chooseRecovery(choice)"><text class="txt-strong">{{choice.pending.customer.displayName}}</text><text class="sh-muted">{{choice.pending.customer.phoneMasked}}</text></view>
    <view v-if="customer" class="sh-row sh-row--between"><text class="txt-strong">{{customer.displayName}}</text><text class="sh-muted sh-num">{{customer.phoneMasked}}</text></view>
-   <view v-if="pending&&!progress" class="sh-card"><text class="txt-strong">{{pending.plan.name}}</text><sh-kv :label="t('storedValue.total')" between>{{money(pending.plan.totalAmountMinor,pending.plan.currency)}}</sh-kv></view>
+   <view v-if="pending&&!progress" class="sh-card"><text class="txt-strong">{{offerName(pending.plan)}}</text><sh-kv :label="t('storedValue.total')" between>{{money(pending.plan.totalAmountMinor,pending.plan.currency)}}</sh-kv></view>
    <text v-if="resumed&&!terminal" class="sh-hint">{{t('storedValue.savePending')}}</text>
    <sh-empty v-if="loading||failed" :pending="loading" :failed="failed" compact @retry="load"/>
+   <sh-tabs v-if="hasBrand&&!progress" :items="scopeTabs" :active="scopeType" @change="chooseScope"/>
    <template v-if="!progress&&!failed">
-    <view v-for="plan in plans" :key="plan.planNo" data-testid="recharge-plan" role="radio" :aria-checked="selected?.planNo===plan.planNo" class="sh-card sv-plan" :class="{'sv-plan--selected':selected?.planNo===plan.planNo}" @tap="!locked&&(selected=plan)">
-     <view class="sh-row sh-row--between"><text class="txt-strong">{{plan.name}}</text><text class="txt-price sh-num">{{money(plan.paidAmountMinor,plan.currency)}}</text></view>
+    <view v-for="plan in plans" :key="offerKey(plan)" data-testid="recharge-plan" role="radio" :aria-checked="!!selected&&offerKey(selected)===offerKey(plan)" class="sh-card sv-plan" :class="{'sv-plan--selected':!!selected&&offerKey(selected)===offerKey(plan)}" @tap="!locked&&(selected=plan)">
+     <view class="sh-row sh-row--between"><text class="txt-strong">{{offerName(plan)}}</text><text class="txt-price sh-num">{{money(plan.paidAmountMinor,plan.currency)}}</text></view>
      <text class="sh-muted">{{t('storedValue.total')}} {{money(plan.totalAmountMinor,plan.currency)}}</text>
     </view>
     <sh-empty v-if="!loading&&!plans.length&&!pending&&!recoveryChoices.length" :text="t('storedValue.empty')" compact/>

@@ -4,7 +4,7 @@ import {mount,flushPromises} from '@vue/test-utils';
 import './component-setup';
 const m=vi.hoisted(()=>({scoped:vi.fn(),select:vi.fn(),plans:vi.fn(),confirm:vi.fn(),query:vi.fn(),resolve:vi.fn(),cancel:vi.fn(),hide:()=>{},show:()=>{}}));
 vi.mock('@dcloudio/uni-app',()=>({onHide:(f:()=>void)=>{m.hide=f;},onShow:(f:()=>void)=>{m.show=f;}}));
-vi.mock('@/api',()=>({api:{mScopeSelectCustomer:m.scoped,mSvSelectCustomer:m.select,mSvPlans:m.plans,mSvRechargeOptions:async(q:unknown)=>({issuerOptions:{legacyMode:true,issuers:[]},plans:await m.plans(q)}),mSvIssuerRecharge:m.query,mSvConfirmOffline:m.confirm,mSvRecharge:m.query,mSvResolveRecharge:m.resolve,mSvCancelCreate:m.cancel}}));
+vi.mock('@/api',()=>({api:{mManagementContext:async()=>({actorKey:'ACTOR'}),mScopeSelectCustomer:m.scoped,mSvSelectCustomer:m.select,mSvPlans:m.plans,mSvRechargeOptions:async(q:unknown)=>({issuerOptions:{legacyMode:true,issuers:[]},plans:await m.plans(q)}),mSvIssuerRecharge:m.query,mSvConfirmOffline:m.confirm,mSvRecharge:m.query,mSvResolveRecharge:m.resolve,mSvCancelCreate:m.cancel}}));
 vi.mock('@/stores/merchant',()=>({useMerchantStore:()=>({storeNo:'S1',profile:{merchantNo:'M1'},can:()=>true})}));
 vi.mock('vue-i18n',()=>({useI18n:()=>({t:(s:string)=>s})}));
 Object.assign(uni,{removeStorageSync:vi.fn()});
@@ -21,7 +21,7 @@ it('opens plans directly and submits only identity and the chosen plan with the 
  await w.find('[data-testid="confirm-offline"]').trigger('tap');await flushPromises();
  await w.find('[data-testid="confirm-offline"]').trigger('tap');await flushPromises();
  expect(m.confirm).toHaveBeenCalledTimes(2);
- expect(m.confirm.mock.calls[0][0]).toEqual({storeNo:'S1',customerRef:'REF',planNo:'P1',versionNo:'V1'});
+ expect(m.confirm.mock.calls[0][0]).toEqual({storeNo:'S1',customerRef:'REF',scopeType:'STORE',planNo:'P1',versionNo:'V1'});
  expect(m.confirm.mock.calls[1]).toEqual(m.confirm.mock.calls[0]);
  expect(w.text()).toContain('storedValue.credited');expect(w.emitted('credited')).toHaveLength(1);w.unmount();
 });
@@ -48,7 +48,7 @@ it('reloads a first selection discarded while the app was hidden',async()=>{
 
 it("does not restore another member's pending operation from the same store",async()=>{
  const old={body:{storeNo:'S1',customerRef:'OLD',planNo:'P1',versionNo:'V1'},key:'OLDKEY',customer:{memberNo:'MEM1',customerRef:'OLD',displayName:'会员甲',account:null},plan,progress:null};
- vi.mocked(uni.getStorageSync).mockImplementation(k=>String(k).startsWith('sv.offline:')?JSON.stringify(old):'');
+ vi.mocked(uni.getStorageSync).mockImplementation(k=>String(k).startsWith('sv.offline.v3:')?JSON.stringify({'SCOPE1:STORE':old}):'');
  m.select.mockResolvedValueOnce({customerRef:'NEW',memberNo:'MEM2',pendingScope:'SCOPE2',expiresAt:new Date(Date.now()+120000).toISOString(),displayName:'会员乙',phoneMasked:'138****0002',account:null});
  const w=mount(Sheet,{props:{visible:true,source:{type:'MEMBER',memberNo:'MEM2'}}});await flushPromises();
  expect(w.text()).toContain('会员乙');expect(w.text()).not.toContain('会员甲');expect(w.find('[data-testid="recharge-plan"]').exists()).toBe(true);
@@ -57,7 +57,7 @@ it("does not restore another member's pending operation from the same store",asy
 
 it('queries an original before restoring it and clears a never-committed draft safely',async()=>{
  const old={body:{storeNo:'S1',customerRef:'OLD',planNo:'P1',versionNo:'V1'},key:'OLDKEY',customer:{memberNo:'MEM1',customerRef:'OLD',displayName:'林女士',account:null},plan,progress:null};
- vi.mocked(uni.getStorageSync).mockImplementation(k=>String(k).startsWith('sv.offline:')?JSON.stringify(old):'');
+ vi.mocked(uni.getStorageSync).mockImplementation(k=>String(k).startsWith('sv.offline.v3:')?JSON.stringify({'SCOPE1:STORE':old}):'');
  m.select.mockResolvedValueOnce({customerRef:'NEW',memberNo:'MEM1',pendingScope:'SCOPE1',expiresAt:new Date(Date.now()+120000).toISOString(),displayName:'林女士',phoneMasked:'138****0001',account:null});
  m.resolve.mockResolvedValue({found:false,recharge:null});m.cancel.mockResolvedValue({status:'CANCELLED'});
  const w=mount(Sheet,{props:{visible:true,source:{type:'MEMBER',memberNo:'MEM1'}}});await flushPromises();
@@ -77,7 +77,7 @@ it('does not preserve a business-rejected draft when the server proves no origin
 
 it('shows a terminal result when a missing original is sealed from recovery without a customer source',async()=>{
  const old={body:{storeNo:'S1',customerRef:'OLD',planNo:'P1',versionNo:'V1'},key:'OLDKEY',customer:{memberNo:'MEM1',customerRef:'OLD',displayName:'林女士',account:null},plan,progress:null};
- vi.mocked(uni.getStorageSync).mockImplementation(k=>String(k).startsWith('sv.offline:')?JSON.stringify(old):'');
+ vi.mocked(uni.getStorageSync).mockImplementation(k=>String(k).startsWith('sv.offline.v3:')?JSON.stringify({'SCOPE1:STORE':old}):'');
  m.resolve.mockResolvedValue({found:false,recharge:null});m.cancel.mockResolvedValue({status:'CANCELLED'});
  const w=mount(Sheet,{props:{visible:true}});await flushPromises();
  expect(w.text()).toContain('storedValue.cancelled');expect(w.find('[data-testid="confirm-offline"]').text()).toContain('storedValue.finish');

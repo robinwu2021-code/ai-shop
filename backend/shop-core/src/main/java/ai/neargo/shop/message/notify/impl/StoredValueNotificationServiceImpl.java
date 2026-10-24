@@ -147,8 +147,8 @@ public class StoredValueNotificationServiceImpl implements StoredValueNotificati
 
     /** Registered C-side page; its read API verifies the authenticated owner again after login. */
     public static String page(String storeNo, String documentNo) {
-        String page = "/pages/stored-value-records/index?storeNo=" + encode(storeNo);
-        return documentNo == null || documentNo.isBlank() ? page : page + "&focusDocumentNo=" + encode(documentNo);
+        if(documentNo!=null&&!documentNo.isBlank())return "/pages/stored-value-records/index?focusDocumentNo="+encode(documentNo);
+        return "/pages/stored-value-records/index?storeNo="+encode(storeNo);
     }
 
     private static String encode(String value) { return URLEncoder.encode(value, StandardCharsets.UTF_8); }

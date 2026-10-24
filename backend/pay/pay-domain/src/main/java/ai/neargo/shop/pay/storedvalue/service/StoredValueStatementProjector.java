@@ -23,14 +23,14 @@ public class StoredValueStatementProjector {
     private final ObjectMapper json;
     public StoredValueStatementProjector(SvStatementMapper statements,ObjectMapper json){this.statements=statements;this.json=json;}
     public void recharge(EntitlementContext ctx,SvAccount a,SvRecharge r,SvVoucher v){
-        var row=base(ctx,a,v);row.setType("RECHARGE");row.setStoreName(r.getStoreName());row.setTitle("储值到账");
+        var row=base(ctx,a,v);row.setStoreNo(r.getStoreNo());row.setEntityNo(r.getEntityNo());row.setType("RECHARGE");row.setStoreName(r.getStoreName());row.setTitle("储值到账");
         row.setPaidAmountMinor(r.getPrincipalMinor());row.setBonusAmountMinor(r.getBonusMinor());
         row.setPlanNo(r.getPlanNo());row.setPlanVersionNo(r.getPlanVersionNo());
         if("PLAN".equals(r.getSourceKind()))row.setTitle(json.readValue(r.getPermitSnapshot(),Funding.class).planName());
         statements.insert(row);
     }
     public void redemption(EntitlementContext ctx,SvAccount a,EntUsage u,SvVoucher v){
-        var row=base(ctx,a,v);row.setType("REDEMPTION");row.setStoreName(u.getStoreName());row.setTitle(u.getTitle());
+        var row=base(ctx,a,v);row.setStoreNo(u.getStoreNo());row.setEntityNo(u.getEntityNo());row.setType("REDEMPTION");row.setStoreName(u.getStoreName());row.setTitle(u.getTitle());
         statements.insert(row);
     }
     private static SvStatement base(EntitlementContext ctx,SvAccount a,SvVoucher v){

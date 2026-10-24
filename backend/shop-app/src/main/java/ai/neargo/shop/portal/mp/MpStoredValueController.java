@@ -80,6 +80,33 @@ public class MpStoredValueController {
                 new ConsumptionQuery(ctx.actorNo(), entityNo, storeNo, cursor, size));
     }
 
+
+    @GetMapping("/mp/stored-value/issuers")
+    public CursorPage<StoredValueConsumerViews.Issuer> issuers(@RequestParam(required=false)String cursor,@RequestParam(defaultValue="20")int size){
+        return reads.issuers(context("stored-value-issuers",cursor==null?"first":cursor),cursor,size);
+    }
+    @GetMapping("/mp/stored-value/records/locate")
+    public StoredValueConsumerViews.Issuer locate(@RequestParam String focusDocumentNo){
+        return withZone(reads.locateIssuer(context("stored-value-locate",focusDocumentNo),focusDocumentNo));
+    }
+    @GetMapping("/mp/stored-value/issuer-records")
+    public StoredValueConsumerViews.IssuerRecords issuerRecords(@RequestParam String issuerRef,
+            @RequestParam(defaultValue="ALL")String type,
+            @RequestParam(required=false)@DateTimeFormat(iso=DateTimeFormat.ISO.DATE)LocalDate startDate,
+            @RequestParam(required=false)@DateTimeFormat(iso=DateTimeFormat.ISO.DATE)LocalDate endDate,
+            @RequestParam(required=false)String focusDocumentNo,@RequestParam(required=false)String cursor,@RequestParam(defaultValue="20")int size){
+        var ctx=context("stored-value-issuer-records","owned");
+        ContractChecks.require(startDate==null||endDate==null||!startDate.isAfter(endDate));
+        var issuer=withZone(reads.issuer(ctx,issuerRef));var zone=ZoneId.of(issuer.businessTimeZone());
+        var page=reads.issuerRecords(ctx,issuerRef,type,startDate==null?null:startDate.atStartOfDay(zone).toInstant(),
+            endDate==null?null:endDate.plusDays(1).atStartOfDay(zone).toInstant(),focusDocumentNo,cursor,size);
+        return new StoredValueConsumerViews.IssuerRecords(issuer,new StoredValueConsumerViews.Filter(type,startDate,endDate),page.records(),page.nextCursor(),page.hasMore());
+    }
+    private StoredValueConsumerViews.Issuer withZone(StoredValueConsumerViews.Issuer issuer){
+        if(issuer.businessTimeZone()!=null)return issuer;
+        var market=markets.find(merchants.marketOf(issuer.entityNo())).orElseThrow(()->BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE));
+        return new StoredValueConsumerViews.Issuer(issuer.issuerRef(),issuer.scopeType(),issuer.name(),issuer.entityNo(),issuer.storeNo(),issuer.currency(),market.timeZone(),issuer.lastType(),issuer.lastOccurredAt());
+    }
     private EntitlementContext context(String request, String payload) {
         var user = SecurityUtils.requireUser();
         if (user.realm() != Realm.CONSUMER) throw BizException.of(ErrorCode.FORBIDDEN);

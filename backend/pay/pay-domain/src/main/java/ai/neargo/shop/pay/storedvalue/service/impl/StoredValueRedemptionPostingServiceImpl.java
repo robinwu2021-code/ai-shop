@@ -61,10 +61,16 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
     private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerLedgerBridge issuerLedger;
     @org.springframework.beans.factory.annotation.Autowired
     private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.pay.storedvalue.issuer.StoredValueLotBasisService lotBasis;
     private final EntitlementSourceFence fences;
     private final EntUseIntentMapper intents;
     @org.springframework.beans.factory.annotation.Autowired
     private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerAccountService issuerAccounts;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.issuer.StoredValueWalletExecutionGuard walletGuard;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.clearing.StoredValueClearingService clearing;
+    @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.pay.storedvalue.issuer.StoredValueBrandLedgerService brandLedger;
     private final SvAccountMapper accounts;
     private final SvLotMapper lots;
     private final SvHoldAllocationMapper allocations;
@@ -102,12 +108,13 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
         var original = intents.lock(ctx.tenantNo(), c.operationNo());
         if (original == null || !claim.getPayloadHash().equals(original.getPayloadHash())) conflict();
         if (!"PREPARING".equals(original.getStatus())) return view(original);
-        issuerLedger.beforeAccount(ctx,c.entityNo(),c.storeNo(),c.currency(),c.accountNo());
-        var account = account(ctx, c);
+        boolean brandWallet=walletGuard.before(ctx,c,frozen.source().walletProof(),false);
+        if(!brandWallet)issuerLedger.beforeAccount(ctx,c.entityNo(),c.storeNo(),c.currency(),c.accountNo());
+        var account = account(ctx,c,frozen.source().walletProof());
         if (!"ACTIVE".equals(account.getStatus()) || account.getVersion() != c.expectedAssetRevision()) conflict();
         var ownedLots = lots.lockLive(ctx.tenantNo(), account.getAccountNo());
         StoredValueUseFacts.conserve(account, ownedLots);
-        var plan = policy.allocate(StoredValueUseFacts.available(ownedLots, json), frozen.source());
+        var plan = policy.allocate(brandWallet?lotBasis.available(ctx.tenantNo(),ownedLots):StoredValueUseFacts.available(ownedLots, json), frozen.source());
         if (plan.amountMinor() != c.amountMinor() || plan.allocations().isEmpty()) conflict();
         var byNo = ownedLots.stream().collect(Collectors.toMap(SvLot::getLotNo, Function.identity()));
         long principal = 0, bonus = 0;
@@ -143,8 +150,9 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
                     || !decision.decisionNo().equals(row.getSourceDecisionNo())) conflict();
             return view(row);
         }
-        issuerLedger.beforeAccount(ctx,c.entityNo(),c.storeNo(),c.currency(),c.accountNo());
-        var account = account(ctx, c);
+        boolean brandWallet=walletGuard.before(ctx,c,frozen.source().walletProof(),true);
+        if(!brandWallet)issuerLedger.beforeAccount(ctx,c.entityNo(),c.storeNo(),c.currency(),c.accountNo());
+        var account = account(ctx,c,frozen.source().walletProof());
         var ownedLots = lots.lockLive(ctx.tenantNo(), account.getAccountNo());
         StoredValueUseFacts.conserve(account, ownedLots);
         Map<String, SvLot> byNo = ownedLots.stream().collect(Collectors.toMap(SvLot::getLotNo, Function.identity()));
@@ -190,7 +198,8 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
             changed(usages.insert(usage));
             documentNumbers.bind(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_USAGE, ctx.tenantNo(), usage.getUsageNo());
             statements.redemption(ctx, account, usage, voucher);
-            issuerLedger.consumed(ctx,c.entityNo(),account.getAccountNo(),voucher.getVoucherNo());
+            if(brandWallet)brandLedger.consumed(ctx,c.entityNo(),account.getAccountNo(),voucher.getVoucherNo());else issuerLedger.consumed(ctx,c.entityNo(),account.getAccountNo(),voucher.getVoucherNo());
+            clearing.record(ctx,usage.getUsageNo(),voucher.getVoucherNo());
             stores.consume(ctx, c.userNo(), c.entityNo(), c.storeNo(), frozen.source().storeName(), at);
             events.publish(new EntitlementUsed(no("UE", List.of(ctx.tenantNo(), operation), json), row.getUsageNo(),
                     c.userNo(), c.entityNo(), c.storeNo(), "STORED_VALUE", c.accountNo(), c.amountMinor(), null,
@@ -230,7 +239,8 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
         }
             return voucher;
     }
-    private SvAccount account(EntitlementContext ctx, UseCommand c) {
+    private SvAccount account(EntitlementContext ctx,UseCommand c,ai.neargo.shop.spi.storedvalue.StoredValueWallets.Proof proof){
+        if(proof!=null){var selected=accounts.lockAccount(ctx.tenantNo(),c.accountNo());if(selected==null)conflict();walletGuard.account(ctx,c,proof);return selected;}
         StoredValueAccountScope.requireMigrated(accounts, ctx.tenantNo(), c.userNo(), c.entityNo(), c.currency());
         var selected=issuerAccounts.lookup(ctx.tenantNo(),c.entityNo(),c.storeNo(),c.currency(),c.userNo(),true);
         var account=selected.issuerScoped()?accounts.lockAccount(ctx.tenantNo(),selected.accountNo()):accounts.lockOwner(ctx.tenantNo(),c.userNo(),c.entityNo(),c.currency(),c.storeNo());

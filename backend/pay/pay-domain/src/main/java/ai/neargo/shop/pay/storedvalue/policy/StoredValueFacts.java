@@ -42,6 +42,11 @@ public final class StoredValueFacts {
         if (!decision.equals(c.decisionRef()) || !decision.occurredAt().equals(instant(r.getReceivedAt()))) conflict();
         decision.requireFor(expected, DecisionRef.DecisionType.RECHARGE_RECEIVED);
         var source = json.readValue(r.getSourceSnapshot(), SourceRef.class);
+        if("ISSUER_RELEASE".equals(r.getSourceKind())){
+            var f=json.readValue(r.getPermitSnapshot(),ai.neargo.shop.spi.storedvalue.StoredValueIssuerRecharges.Funding.class);
+            if(!new SourceRef("PAY","ISSUER_RECHARGE",r.getRechargeNo(),null,null,null,0).equals(source)||!r.getRechargeNo().equals(f.rechargeNo())||!Objects.equals(r.getUserNo(),f.userNo())||!r.customerIdentity().equals(f.customerNo())||!r.getEntityNo().equals(f.operatingEntityNo())||!r.getStoreNo().equals(f.storeNo())||!r.getCurrency().equals(f.currency())||!Objects.equals(r.getPrincipalMinor(),f.paidAmountMinor())||!Objects.equals(r.getBonusMinor(),f.bonusAmountMinor())||!Objects.equals(r.getActivityNo(),f.activityNo())||!Objects.equals(r.getActivityVersionNo(),f.activityVersionNo()))conflict();
+            return new ReceivedScope(new RedemptionScope("ALL",List.of()));
+        }
         if ("PLAN".equals(r.getSourceKind())) {
             var f = json.readValue(r.getPermitSnapshot(), Funding.class);
             if (!new SourceRef("PAY", "RECHARGE_PLAN", r.getRechargeNo(), null, null, null, 0).equals(source)

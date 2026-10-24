@@ -20,6 +20,7 @@ public class StoredValueIssuerLedgerBridge {
     @org.springframework.beans.factory.annotation.Autowired
     private org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.pay.storedvalue.policy.StoredValueGovernedIssuanceService> governedIssuance;
     public void beforeGovernedActivity(EntitlementContext ctx,String entity,ai.neargo.shop.spi.storedvalue.RechargeSourcePort.SourceFact source){if(governance){if(!enabled)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);governedIssuance.getObject().beforeIssuer(ctx,entity,source);}else if(db.one("SELECT release_no FROM sv_release WHERE tenant_no=? AND activity_version_no=? AND source_kind='V2_ACTIVITY' AND deleted=0",ctx.tenantNo(),source.permit().versionNo())!=null)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);}
+    @org.springframework.beans.factory.annotation.Autowired private StoredValueBrandLedgerService brandLedger;
     private final IssuerRepository db;
     private final StoredValueIssueQuotaService quotas;
     private final boolean enabled;
@@ -134,6 +135,7 @@ public class StoredValueIssuerLedgerBridge {
     }
     /** Always precedes receipt/account row locks, including a replay whose creation closure did not run. */
     public void beforeOriginal(EntitlementContext ctx,String entity,String rechargeNo) {
+        var originalKind=original(ctx,entity,rechargeNo);if(originalKind!=null&&"ISSUER_RELEASE".equals(text(originalKind,"source_kind"))){brandLedger.original(ctx,entity,rechargeNo);return;}
         if(!enabled)return;
         transaction();
         var row=original(ctx,entity,rechargeNo);
@@ -149,13 +151,14 @@ public class StoredValueIssuerLedgerBridge {
     }
 
     public void cancelled(EntitlementContext ctx,String entity,String rechargeNo) {
-        if(!enabled)return;
         var row=original(ctx,entity,rechargeNo);
+        if(!enabled&&(row==null||!"ISSUER_RELEASE".equals(text(row,"source_kind"))))return;
         if(row!=null&&text(row,"quota_reservation_no")!=null)quotas.release(ctx,rechargeNo);
     }
 
     /** Metadata, immutable source provenance and quota commit join the actual ledger commit. */
     public void credited(EntitlementContext ctx,String entity,String rechargeNo,String accountNo,String lotNo,String voucherNo) {
+        var originalKind=db.one("SELECT * FROM sv_recharge WHERE tenant_no=? AND recharge_no=? AND deleted=0",ctx.tenantNo(),rechargeNo);if(originalKind!=null&&"ISSUER_RELEASE".equals(text(originalKind,"source_kind"))){brandLedger.credited(ctx,entity,rechargeNo,accountNo,lotNo,voucherNo);return;}
         if(!enabled)return;
         transaction();var row=original(ctx,entity,rechargeNo);
         if(row==null||text(row,"issuer_no")==null)return;

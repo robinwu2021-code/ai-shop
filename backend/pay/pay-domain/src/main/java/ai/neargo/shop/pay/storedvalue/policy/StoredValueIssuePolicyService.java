@@ -17,13 +17,13 @@ public class StoredValueIssuePolicyService {
     }
 
     /** Preview only, never sufficient by itself to publish a release or authorize issuance. */
-    public EffectivePolicy evaluate(StoreScope scope) { return read(scope, false); }
+    public EffectivePolicy evaluate(IssueScope scope){return scope instanceof StoreScope store?read(store,false):brand((BrandScope)scope,false);}
 
     /** The caller owns the Pay transaction and must follow policy -> issuer/quota lock order. */
-    public EffectivePolicy evaluateLocked(StoreScope scope) {
+    public EffectivePolicy evaluateLocked(IssueScope scope) {
         if (!db.payTransactionActive())
             throw new IllegalStateException("Policy authorization requires a Pay transaction");
-        return read(scope, true);
+        return scope instanceof StoreScope store?read(store,true):brand((BrandScope)scope,true);
     }
 
     public ai.neargo.shop.spi.storedvalue.StoredValuePolicies.PolicyLocation locate(String tenant, String policyNo) {
@@ -37,7 +37,7 @@ public class StoredValueIssuePolicyService {
         var row=db.one("SELECT r.* FROM sv_release r JOIN sv_release_tier t ON CAST(t.tenant_no AS BINARY(256))=CAST(r.tenant_no AS BINARY(256)) AND CAST(t.release_no AS BINARY(256))=CAST(r.release_no AS BINARY(256)) JOIN sv_recharge_plan_version v ON CAST(v.tenant_no AS BINARY(256))=CAST(t.tenant_no AS BINARY(256)) AND CAST(v.version_no AS BINARY(256))=CAST(t.projected_plan_version_no AS BINARY(256)) JOIN sv_recharge_plan p ON CAST(p.tenant_no AS BINARY(256))=CAST(v.tenant_no AS BINARY(256)) AND CAST(p.plan_no AS BINARY(256))=CAST(v.plan_no AS BINARY(256)) WHERE r.tenant_no=? AND p.entity_no=? AND p.store_no=? AND v.version_no=? AND r.source_kind='V2_ACTIVITY' AND r.state='ACTIVE' AND p.status='ACTIVE' AND CAST(p.current_version_no AS BINARY(256))=CAST(v.version_no AS BINARY(256)) AND p.deleted=0 AND v.deleted=0 AND r.deleted=0 AND t.deleted=0",tenant,entity,store,version);
         if(row==null)throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         var evidence=db.decode(text(row,"policy_versions"),StoredValueReleaseService.Evidence.class);
-        return new PlanBinding(evidence.scope(),evidence.entityNo(),text(row,"activity_version_no"),version);
+        return new PlanBinding((StoreScope)evidence.scope(),evidence.entityNo(),text(row,"activity_version_no"),version);
     }
     public java.util.List<PolicyView> list(CatalogScope scope) {
         ContractChecks.present(scope); var result=new java.util.ArrayList<PolicyView>();
@@ -50,8 +50,8 @@ public class StoredValueIssuePolicyService {
     private Rules versionRules(Map<String,Object> row) {
         return new Rules(number(row,"allow_issue")==1,number(row,"require_approval")==1,Math.toIntExact(number(row,"max_bonus_bps")),number(row,"max_paid_minor"),number(row,"max_bonus_minor"),Math.toIntExact(number(row,"max_active_days")),number(row,"max_outstanding_minor"));
     }
-    public void requireStoreAccess(StoreScope scope,String entity,String issuer){
-        if(!db.payTransactionActive()||scope.storeRevision()<0)throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+    public void requireStoreAccess(IssueScope scope,String entity,String issuer){
+        if(!(scope instanceof StoreScope)||!db.payTransactionActive()||scope.storeRevision()<0)throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         var row=db.one("SELECT status,can_issue,source_revision,operating_entity_no FROM sv_issuer_store_access WHERE tenant_no=? AND issuer_no=? AND store_no=? AND deleted=0 FOR UPDATE",scope.tenantNo(),issuer,scope.storeNo());
         if(row==null||!"ACTIVE".equals(text(row,"status"))||number(row,"can_issue")!=1||number(row,"source_revision")!=scope.storeRevision()||!entity.equals(text(row,"operating_entity_no")))throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
     }
@@ -81,6 +81,12 @@ public class StoredValueIssuePolicyService {
                 + (lock ? " FOR UPDATE" : ""), scope.tenantNo(), scope.managementNo(), scope.currency(),
                 scope.managementNo(), scope.storeNo(), scope.brandNo());
         return evaluator.evaluate(scope, rows.stream().map(this::version).toList());
+    }
+    private EffectivePolicy brand(BrandScope scope,boolean lock){
+        var head=db.one("SELECT * FROM sv_issue_policy WHERE tenant_no=? AND management_no=? AND target_type='SPACE' AND target_no=? AND currency=? AND status='ACTIVE' AND deleted=0"+(lock?" FOR UPDATE":""),scope.tenantNo(),scope.managementNo(),scope.managementNo(),scope.currency());
+        java.util.List<PolicyVersion> sources=java.util.List.of();
+        if(head!=null){var immutable=db.one("SELECT * FROM sv_issue_policy_version WHERE tenant_no=? AND policy_no=? AND policy_version_no=? AND deleted=0"+(lock?" FOR UPDATE":""),scope.tenantNo(),text(head,"policy_no"),text(head,"current_version_no"));if(immutable==null)throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.CONFLICT);var row=new java.util.LinkedHashMap<String,Object>(head);row.putAll(immutable);var source=version(row);sources=java.util.List.of(source);}
+        return evaluator.evaluate(scope,sources);
     }
     private PolicyVersion version(Map<String,Object> row) {
         var rules = new Rules(number(row,"allow_issue") == 1, number(row,"require_approval") == 1,

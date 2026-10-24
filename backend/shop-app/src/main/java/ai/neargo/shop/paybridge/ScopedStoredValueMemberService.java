@@ -4,6 +4,11 @@ import ai.neargo.shop.member.service.*;import ai.neargo.shop.member.dto.MemberCo
 @Service
 public class ScopedStoredValueMemberService {
  private final MemberScopeService members;private final MemberScopeQueryService query;private final MemberCodeResolveService codes;private final StoredValueMerchantQueryAppService accounts;private final StoredValuePlanRechargeAppService direct;private final StoredValueMemberSelectionService legacy;
+ @org.springframework.beans.factory.annotation.Value("${shop.pay.stored-value.brand-execution-enabled:false}") private boolean dualWallets;
+ @org.springframework.beans.factory.annotation.Autowired private StoredValueIssuerRechargeAppService issuerReads;
+ @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.spi.storedvalue.StoredValueExecutionScopePort execution;
+ @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.spi.pay.MarketPort markets;
+ @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.spi.user.MerchantQueryPort merchants;
  private StoredValueCustomerProfilePort profiles;
  @org.springframework.beans.factory.annotation.Autowired public void setProfiles(StoredValueCustomerProfilePort profiles){this.profiles=profiles;}
  public ScopedStoredValueMemberService(MemberScopeService members,MemberScopeQueryService query,MemberCodeResolveService codes,StoredValueMerchantQueryAppService accounts,StoredValuePlanRechargeAppService direct,StoredValueMemberSelectionService legacy){this.members=members;this.query=query;this.codes=codes;this.accounts=accounts;this.direct=direct;this.legacy=legacy;}
@@ -12,6 +17,7 @@ public class ScopedStoredValueMemberService {
   var financial=new CatalogScope(ctx.tenantNo(),entity,ctx.actorNo(),false);
   if(keyword==null||keyword.isBlank()){
    members.scope(ctx.tenantNo(),entity,store);if(!readAccount)return new Page(List.of(),null);
+   if(dualWallets)return funded(ctx,entity,store,cursor,size);
    var page=accounts.directory(financial,store,null,"scoped-funded",cursor,size);var ids=page.records().stream().map(a->a.identityNo()).toList();var names=profiles==null?Map.<String,StoredValueCustomerProfilePort.Profile>of():profiles.profiles(ctx.tenantNo(),entity,store,ids);
    return new Page(page.records().stream().map(a->{var p=names.get(a.identityNo());return new Candidate(null,p==null?"顾客":p.maskedName(),p==null?"":p.maskedPhone(),"ACTIVE",true,null,new StoredValueCustomerViews.Account(a.accountRef(),a.currency(),a.availableMinor()),null,null,a.lastRechargeAt());}).toList(),page.nextCursor());
   }
@@ -31,6 +37,20 @@ public class ScopedStoredValueMemberService {
   if(readAccount){var ids=person.userNo()==null?List.of(person.customerNo()):List.of(person.customerNo(),person.userNo());var page=accounts.directory(new CatalogScope(ctx.tenantNo(),entity,ctx.actorNo(),false),store,ids,"scoped-member-selection",null,1);if(!page.records().isEmpty()){var a=page.records().getFirst();account=new StoredValueCustomerViews.Account(a.accountRef(),a.currency(),a.availableMinor());}}
   var selected=new StoredValueCustomerViews.Selection(reference.customerRef(),reference.expiresAt(),memberNo,summary.displayName(),summary.phoneMasked(),account,ai.neargo.shop.promotion.service.ActivityCommandDeduplicator.hash(dbKey(ctx,entity,store,member.customerNo())));
   return new Selection(selected,summary.sourceStoreNo(),summary.sourceStoreName());
+ }
+ private Page funded(EntitlementContext ctx,String entity,String store,String cursor,int size){
+  members.importLegacy(ctx.tenantNo(),entity,store,ctx.actorNo());
+  var market=markets.find(merchants.marketOf(entity)).orElseThrow(()->BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE));
+  var scope=execution.current(ctx.tenantNo(),ctx.actorNo(),entity,store,market.currency());
+  var page=issuerReads.funded(scope,cursor,size);var result=new ArrayList<Candidate>();
+  for(var funded:page.records()){
+   try{
+    var member=members.byCustomer(ctx.tenantNo(),entity,store,funded.customerNo());var summary=query.detail(ctx.tenantNo(),entity,store,member.scopeMemberNo());
+    boolean active=Set.of("ACTIVE","LEAD").contains(member.status());
+    result.add(new Candidate(member.scopeMemberNo(),summary.displayName(),summary.phoneMasked(),summary.status(),active,active?null:"MEMBER_BLOCKED",null,summary.sourceStoreNo(),summary.sourceStoreName(),funded.lastRechargeAt()));
+   }catch(BizException missing){if(missing.errorCode()!=ErrorCode.NOT_FOUND)throw missing;}
+  }
+  return new Page(result,page.nextCursor());
  }
  private String dbKey(EntitlementContext ctx,String entity,String store,String customer){return java.util.stream.Stream.of(ctx.tenantNo(),entity,store,ctx.actorNo(),customer).map(s->s.length()+":"+s).collect(java.util.stream.Collectors.joining());}
 }

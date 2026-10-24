@@ -1101,3 +1101,33 @@ Command包含精确模板Reference、TARGETED/CENTER及人群/标签选择条件
 | C12 | GET | /mp/stored-value/store/{storeNo}/records | type?,startDate?,endDate?,focusDocumentNo?,cursor?,size | StoredValueConsumerViews.Records | 消费者登录本人及实际门店记录归属 | 日期沿门店市场时区，展示真实消费/充值记录 |
 
 | C13 | GET | /mp/stored-value/notification-capability | 无 | Capability | 消费者登录 | 仅真实模板就绪才允许客户端发起通知授权 |
+
+
+## P5 implemented issuer-wallet contracts (2026-10-24)
+
+| ID | Method | Path | Request | Response | Permission | Semantics |
+|---|---|---|---|---|---|---|
+| P94 | GET | /biz/stored-value/brand-capability | - | Capability | management login | P3 key/receipt and P5 schema readiness |
+| P95 | GET | /biz/stored-value/consumptions/orders/{orderNo} | storeNo | ServiceView | pay:sv:consume:create | Owned original in current store |
+| P96 | POST | /biz/stored-value/consumptions/orders/{orderNo}/cancel | storeNo | Operation | pay:sv:consume:create | Cancel original service; never refund a committed use |
+| P97 | GET | /biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts | - | List<AvailableAccount> | pay:sv:account:read | Separate wallets; no automatic opening |
+| P98 | GET | /biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records | issuerRef,accountRef,type,dates,cursor,size | CursorPage<RecordView> | pay:sv:account:read | Only actual execution store records |
+| P99 | POST | /biz/management/brands/{brandNo}/stored-value/issuer/activation | Activate + Idempotency-Key | Ack | management and issuer configuration authority | Frozen full brand membership snapshot |
+| C14 | GET | /mp/stored-value/issuers | cursor?,size | CursorPage<Issuer> | consumer login | Funded owned accounts; distinct brand |
+| C15 | GET | /mp/stored-value/issuer-records | issuerRef,type?,dates?,focusDocumentNo?,cursor?,size | IssuerRecords | consumer account ownership | Actual store; no money pool breakdown |
+| C16 | GET | /mp/stored-value/records/locate | focusDocumentNo | Issuer | consumer original document ownership | Fresh signed issuer reference for durable notifications |
+| P100 | GET | /biz/management/brands/{brandNo}/stored-value/activity-context | managementNo + typed command/query | ContextView | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P101 | GET | /biz/management/brands/{brandNo}/stored-value/activity-presets | managementNo + typed command/query | PageData<PresetOption> | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P102 | GET | /biz/management/brands/{brandNo}/stored-value/activity-schedules | managementNo + typed command/query | Schedule | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P103 | GET | /biz/management/brands/{brandNo}/stored-value/activities | managementNo + typed command/query | PageData<ActivityView> | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P104 | POST | /biz/management/brands/{brandNo}/stored-value/activities | managementNo + typed command/query | ActivityView | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P105 | GET | /biz/management/brands/{brandNo}/stored-value/activities/{activityNo} | managementNo + typed command/query | Detail | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P106 | PUT | /biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/draft | managementNo + typed command/query | ActivityView | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P107 | POST | /biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/checks | managementNo + typed command/query | Check | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P108 | POST | /biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/submissions | managementNo + typed command/query | Submission | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P109 | POST | /biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/stop-issuance | managementNo + typed command/query | Submission | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P110 | POST | /biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/copies | managementNo + typed command/query | ActivityView | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+
+| P111 | POST | /biz/stored-value/consumptions/resolve | Original PreviewRequest + Idempotency-Key | ResolveView | pay:sv:consume:create | Locate the owned original without expired references; no new quote or debit |
+
+| P112 | GET | /biz/stored-value/governance-capability | - | Capability | management login | Both Core and Pay governance flags must be enabled |

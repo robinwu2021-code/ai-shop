@@ -12,7 +12,8 @@ const type=ref<'STORE'|'BRAND'>('STORE'),no=ref(''),management=ref('');
 const issuer=ref<IssuerView|null>(null),options=ref<StoreIssuerOptions|null>(null),entities=ref<Array<{entityNo:string;name:string;accepted:boolean;canAccept:boolean}>>([]),routes=ref<IssuerRoute[]>([]),candidates=ref<IssuerRoute[]>([]);
 const name=ref(''),entity=ref(''),choosingEntity=ref(false),choosingRoute=ref(false),busy=ref(false),loading=ref(true),failed=ref(false),error=ref(''),canEdit=ref(false);
 type Pending={configuration:IssuerConfiguration;key:string;issuerNo:string|null};
-const canPrepare=ref(false),needsPrepare=ref(false);
+const canPrepare=ref(false),needsPrepare=ref(false),brandReady=ref(false);
+const activation=ref<{key:string;expectedRevision:number}|null>(null);
 const pending=ref<Pending|null>(null);let generation=0,originStore='';
 const storage=computed(()=>`sv-issuer:${management.value}:${type.value}:${no.value}`);
 const locked=computed(()=>busy.value||!!pending.value);
@@ -34,6 +35,7 @@ async function load(){
   try{result=await api.mSvIssuer(type.value,no.value,management.value);}catch(e){if(canPrepare.value&&(e as {code?:number}).code===10403){needsPrepare.value=true;name.value=t('issuer.storeScope');return;}throw e;}
   if(!live(token))return;needsPrepare.value=false;
   issuer.value=result.issuer;
+  if(type.value==='BRAND'){const capability=await api.mSvBrandCapability();brandReady.value=capability.ready;const original=uni.getStorageSync(storage.value+':activation');activation.value=original?JSON.parse(String(original)):null;}
   if(result.issuer){const v=result.issuer;restore({...v,expectedRevision:v.revision});}
   else{name.value=t(type.value==='BRAND'?'issuer.brandScope':'issuer.storeScope');entity.value='';routes.value=[];}
   try{const list=await api.mSvIssuerEntities(management.value,type.value,no.value);if(!live(token))return;entities.value=list;canEdit.value=list.length>0;}catch{canEdit.value=false;}
@@ -74,7 +76,7 @@ function addRoute(route:IssuerRoute){if(locked.value)return;routes.value=routes.
 function removeRoute(index:number){if(!locked.value)routes.value.splice(index,1);}
 function configuration():IssuerConfiguration{
  const old=issuer.value;
- return {name:name.value.trim(),settlementEntityNo:entity.value,collectionMode:old?.collectionMode||(type.value==='BRAND'?'CENTRALIZED':'STORE_LOCAL'),clearingMode:old?.clearingMode||'INTERNAL_RECON',debitAllocationMode:old?.debitAllocationMode||'LEGACY_SNAPSHOT',currency:old?.currency||'CNY',marketZone:old?.marketZone||'Asia/Shanghai',routes:routes.value.map(r=>({...r})),expectedRevision:old?.revision||0};
+ return {name:name.value.trim(),settlementEntityNo:entity.value,collectionMode:old?.collectionMode||(type.value==='BRAND'?'CENTRALIZED':'STORE_LOCAL'),clearingMode:old?.clearingMode||(type.value==='BRAND'?'PRINCIPAL_COMPONENT':'INTERNAL_RECON'),debitAllocationMode:old?.debitAllocationMode||(type.value==='BRAND'?'PRO_RATA':'LEGACY_SNAPSHOT'),currency:old?.currency||'CNY',marketZone:old?.marketZone||'Asia/Shanghai',routes:routes.value.map(r=>({...r})),expectedRevision:old?.revision||0};
 }
 async function save(){
  if(busy.value||!canEdit.value||!live(generation)||!valid.value)return;busy.value=true;error.value='';
@@ -94,13 +96,22 @@ async function save(){
   if(code&&[10400,10403,10404,10409,70006,40040].includes(code)){pending.value=null;uni.removeStorageSync(storage.value);}
  }finally{if(token===generation)busy.value=false;}
 }
+async function activateBrand(){
+ if(busy.value||type.value!=='BRAND'||!canEdit.value||!issuer.value||!brandReady.value&&!activation.value)return;
+ busy.value=true;error.value='';
+ try{
+  if(!activation.value){activation.value={key:idempotencyKey(),expectedRevision:issuer.value.revision};uni.setStorageSync(storage.value+':activation',JSON.stringify(activation.value));}
+  await api.mSvBrandActivate(no.value,{managementNo:management.value,expectedRevision:activation.value.expectedRevision},activation.value.key);
+  activation.value=null;uni.removeStorageSync(storage.value+':activation');await load();
+ }catch(e){error.value=(e as Error).message;}finally{busy.value=false;}
+}
 watch(()=>merchant.storeNo,()=>{if(originStore&&type.value==='STORE'&&originStore!==merchant.storeNo){generation++;failed.value=true;error.value=t('storedValue.leaveStore');canEdit.value=false;choosingEntity.value=false;choosingRoute.value=false;}});
 onLoad(q=>{type.value=q?.b?'BRAND':'STORE';no.value=q?.b||q?.s||merchant.storeNo;management.value=q?.m||'';canPrepare.value=q?.prepare==='1';originStore=q?.local==='1'?merchant.storeNo:'';void load();});
 </script>
 <template><sh-scaffold title-key="issuer.title" :pending="loading" :failed="failed" @retry="load">
  <view v-if="!loading&&!failed" class="sh-card">
   <view class="sh-row sh-row--between"><text class="txt-title">{{scopeLabel}}</text><text class="sh-chip">{{t('issuer.states.'+status)}}</text></view>
-  <text v-if="type==='BRAND'" class="sh-hint">{{t('issuer.brandDraftOnly')}}</text>
+  <text v-if="type==='BRAND'&&!brandReady" class="sh-hint">{{t('issuer.brandNotReady')}}</text>
   <template v-if="canEdit">
    <view class="field"><text class="field__label">{{t('issuer.name')}}</text><input v-model="name" class="field__input" maxlength="64" :disabled="locked"/></view>
    <view data-testid="issuer-entity" role="button" class="sh-cell sh-row sh-row--between sh-hit" @tap="!locked&&(choosingEntity=true)"><text>{{t('issuer.settlementEntity')}}</text><view class="sh-row"><text>{{entityName||t('issuer.chooseEntity')}}</text><sh-go/></view></view>
@@ -112,6 +123,7 @@ onLoad(q=>{type.value=q?.b?'BRAND':'STORE';no.value=q?.b||q?.s||merchant.storeNo
   <view v-for="(route,index) in routes" :key="route.channel+route.scene+route.storeNo" class="sh-cell sh-row sh-row--between"><view><text>{{t('issuer.channels.'+route.channel)}}</text><view v-if="route.paymentMerchantNo" class="sh-muted txt-sub">{{route.paymentMerchantNo}} · {{route.scene}}</view></view><view v-if="canEdit&&!locked" role="button" class="sh-link sh-hit" @tap="removeRoute(index)">{{t('issuer.remove')}}</view></view>
   <sh-empty v-if="!routes.length" compact :text="t('issuer.noRoutes')"/>
  </view>
+ <view v-if="type==='BRAND'&&issuer&&issuer.status==='DRAFT'&&canEdit" role="button" data-testid="brand-activate" class="sh-btn" :class="{'is-disabled':busy||!brandReady&&!activation}" @tap="activateBrand">{{t(activation?'issuer.retryActivation':'issuer.activateBrand')}}</view>
  <text v-if="error" class="sh-hint">{{error}}</text><text v-if="pending" class="sh-hint">{{t('issuer.pendingSave')}}</text>
  <sh-actionbar v-if="needsPrepare&&!failed"><view class="sh-row"><view data-testid="issuer-prepare" role="button" class="sh-btn sh-fill" @tap="prepareSettings">{{t(busy?'management.loading':'issuer.prepareSettings')}}</view></view></sh-actionbar>
  <sh-actionbar v-else-if="canEdit&&!failed"><view class="sh-row"><view data-testid="issuer-save" role="button" class="sh-btn sh-fill" :class="{'is-disabled':busy||!valid}" :aria-disabled="busy||!valid" @tap="save">{{t(busy?'management.loading':pending?'issuer.retrySave':'management.save')}}</view></view></sh-actionbar>

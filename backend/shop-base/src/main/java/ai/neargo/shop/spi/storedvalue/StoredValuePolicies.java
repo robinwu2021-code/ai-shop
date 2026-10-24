@@ -10,8 +10,22 @@ public final class StoredValuePolicies {
     public static final Set<String> TARGET_TYPES = Set.of("SPACE", "BRAND_STORES", "STORE");
 
     public record Capability(int protocol,boolean enabled) { }
-    public static boolean sameStoreIdentity(StoreScope a,StoreScope b){return a!=null&&b!=null&&a.tenantNo().equals(b.tenantNo())&&a.managementNo().equals(b.managementNo())&&a.storeNo().equals(b.storeNo())&&a.currency().equals(b.currency());}
-    public record StoreScope(String tenantNo, String managementNo, String storeNo, String brandNo, String currency,long storeRevision) {
+    public static boolean sameStoreIdentity(IssueScope a,IssueScope b){return a instanceof StoreScope&&b instanceof StoreScope&&a.tenantNo().equals(b.tenantNo())&&a.managementNo().equals(b.managementNo())&&a.storeNo().equals(b.storeNo())&&a.currency().equals(b.currency());}
+    @com.fasterxml.jackson.annotation.JsonTypeInfo(use=com.fasterxml.jackson.annotation.JsonTypeInfo.Id.DEDUCTION)
+    @com.fasterxml.jackson.annotation.JsonSubTypes({@com.fasterxml.jackson.annotation.JsonSubTypes.Type(StoreScope.class),@com.fasterxml.jackson.annotation.JsonSubTypes.Type(BrandScope.class)})
+    public sealed interface IssueScope permits StoreScope,BrandScope {
+        String tenantNo();String managementNo();String currency();String brandNo();
+        @com.fasterxml.jackson.annotation.JsonIgnore String scopeType();
+        @com.fasterxml.jackson.annotation.JsonIgnore String scopeNo();
+        default String storeNo(){return null;}default long storeRevision(){return -1;}
+    }
+    public record BrandScope(String tenantNo,String managementNo,String brandNo,String issuerNo,String currency,long brandRevision) implements IssueScope {
+        public BrandScope{for(String value:List.of(tenantNo,managementNo,brandNo,issuerNo))ContractChecks.id(value);ContractChecks.currency(currency);ContractChecks.require(brandRevision>=0);}
+        public String scopeType(){return "BRAND";}public String scopeNo(){return brandNo;}
+    }
+    public static boolean sameIssueIdentity(IssueScope a,IssueScope b){return a!=null&&b!=null&&a.scopeType().equals(b.scopeType())&&a.tenantNo().equals(b.tenantNo())&&a.managementNo().equals(b.managementNo())&&a.scopeNo().equals(b.scopeNo())&&a.currency().equals(b.currency())&&(!(a instanceof BrandScope x)||b instanceof BrandScope y&&x.issuerNo().equals(y.issuerNo()));}
+    public record StoreScope(String tenantNo, String managementNo, String storeNo, String brandNo, String currency,long storeRevision) implements IssueScope {
+        public String scopeType(){return "STORE";}public String scopeNo(){return storeNo;}
         public StoreScope(String tenantNo,String managementNo,String storeNo,String brandNo,String currency){this(tenantNo,managementNo,storeNo,brandNo,currency,-1);}
         public StoreScope {
             ContractChecks.id(tenantNo); ContractChecks.id(managementNo); ContractChecks.id(storeNo);
@@ -44,7 +58,7 @@ public final class StoredValuePolicies {
             ContractChecks.require("STORE".equals(targetType) || brandNo == null);
         }
     }
-    public record ActivityAuthority(StoreScope policyScope,String entityNo,String actorNo,String principalNo,long authorityRevision) { }
+    public record ActivityAuthority(IssueScope policyScope,String entityNo,String actorNo,String principalNo,long authorityRevision) { }
     public record Target(String type, String no) {
         public Target { ContractChecks.require(type!=null&&TARGET_TYPES.contains(type)); ContractChecks.id(no); }
     }
@@ -64,7 +78,7 @@ public final class StoredValuePolicies {
             String currency, Rules rules, List<String> parentVersionRefs, String contentHash) {
         public PolicyView { parentVersionRefs = List.copyOf(parentVersionRefs); ContractChecks.hash(contentHash); }
     }
-    public record EffectivePolicy(StoreScope scope, Rules rules, List<PolicyVersion> sources, String hash,
+    public record EffectivePolicy(IssueScope scope, Rules rules, List<PolicyVersion> sources, String hash,
             boolean configured) {
         public EffectivePolicy {
             ContractChecks.present(scope); ContractChecks.present(rules); sources = List.copyOf(sources);

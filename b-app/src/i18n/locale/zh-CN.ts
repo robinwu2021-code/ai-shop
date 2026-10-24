@@ -2,7 +2,7 @@
 // 同一笔订单两端说法不同，强行共用一套词条只会互相将就。
 export default {
  svGov:{"copy":"复制为新活动","policies": "储值管控", "activities": "本店储值活动", "activityDetail": "储值活动", "approvals": "活动审批", "ratio": "赠送比例上限", "outstanding": "未消费余额上限", "paidCap": "单笔实收上限", "bonusCap": "单笔赠送上限", "daysCap": "活动天数上限", "allow": "允许新发行", "disabled": "已限制发行", "approvalRequired": "需要审批", "noApproval": "无需审批", "noPolicies": "暂无管控规则", "addPolicy": "新增规则", "chooseScope": "选择作用范围", "invalidRules": "请填写有效的管控规则", "invalidActivity": "请完善活动信息", "tooManyTargets": "可选范围过多，请缩小查询范围", "unknown": "结果待核对，请重试原操作", "retry": "重试原操作", "save": "保存", "saved": "已保存", "saveDraft": "保存草稿", "submit": "提交发布", "stop": "停止新发行", "give": "赠送", "more": "加载更多", "noActivities": "暂无储值活动", "createActivity": "新建储值活动", "name": "活动名称", "template": "活动类型", "chooseTemplate": "选择活动类型", "noTemplates": "暂无可用活动类型", "startDate": "开始日期", "endDate": "结束日期", "tier": "储值档位", "remove": "移除", "paid": "实收金额", "bonus": "赠送金额", "addTier": "添加档位", "noApprovals": "暂无审批记录", "reason": "审批意见", "reasonRequired": "请填写审批意见", "return": "退回", "approve": "批准", "targets": {"SPACE": "经营空间", "BRAND_STORES": "品牌下门店", "STORE": "指定门店"}, "states": {"DRAFT": "草稿", "PENDING": "待审批", "PENDING_APPROVAL": "待审批", "APPROVED": "审批通过", "RETURNED": "已退回", "STALE": "内容已变更", "BLOCKED_POLICY": "规则不符", "PREPARING": "待发布", "PAY_READY": "待发布", "ACTIVE": "已发布", "RUNNING": "进行中", "PAUSED": "已暂停", "ENDED": "已结束", "STOP_REQUESTED": "停发中", "STOPPED": "已停发", "FAILED": "发布失败", "ALL": "全部"}},
- issuer: {"prepareSettings":"开通储值设置","accepted":"已授权","acceptAndChoose":"授权并选择","title": "储值发行设置", "storeScope": "本店储值", "brandScope": "品牌储值", "brandDraftOnly": "当前仅可配置品牌发行草稿", "name": "发行名称", "settlementEntity": "结算主体", "chooseEntity": "选择结算主体", "routes": "收款配置", "addRoute": "添加收款方式", "remove": "移除", "noRoutes": "暂无可用收款方式", "pendingSave": "保存结果待核对，请重试原操作", "retrySave": "重试保存", "states": {"DRAFT": "草稿", "ACTIVE": "已启用", "ISSUE_STOPPED": "已停发"}, "channels": {"MERCHANT_OFFLINE": "线下收款", "WECHAT": "微信支付", "ALIPAY": "支付宝"}, "blockers": {"STALE_CONFIGURATION": "配置已更新，请刷新", "CURRENCY_IMMUTABLE": "币种不可修改", "MAINTENANCE_IN_PROGRESS": "储值维护中", "LIABILITY_RULES_LOCKED": "存在余额或未完成储值，暂不能修改资金规则", "ISSUANCE_NOT_ENABLED": "尚未开通储值发行"}},
+ issuer: {"brandNotReady": "品牌储值尚未开通", "activateBrand": "启用品牌储值", "retryActivation": "重试启用","prepareSettings":"开通储值设置","accepted":"已授权","acceptAndChoose":"授权并选择","title": "储值发行设置", "storeScope": "本店储值", "brandScope": "品牌储值", "brandDraftOnly": "当前仅可配置品牌发行草稿", "name": "发行名称", "settlementEntity": "结算主体", "chooseEntity": "选择结算主体", "routes": "收款配置", "addRoute": "添加收款方式", "remove": "移除", "noRoutes": "暂无可用收款方式", "pendingSave": "保存结果待核对，请重试原操作", "retrySave": "重试保存", "states": {"DRAFT": "草稿", "ACTIVE": "已启用", "ISSUE_STOPPED": "已停发"}, "channels": {"MERCHANT_OFFLINE": "线下收款", "WECHAT": "微信支付", "ALIPAY": "支付宝"}, "blockers": {"BRAND_EXECUTION_DISABLED": "品牌储值尚未开通", "ISSUER_NOT_READY": "发行方尚未就绪", "ISSUER_INACTIVE": "发行方已停用", "CROSS_ENTITY_SETTLEMENT_UNAVAILABLE": "跨主体结算尚未开通", "STORE_NOT_ACCEPTED": "本店暂不支持此账户", "STORE_SCOPE_CHANGED": "门店配置已更新，请刷新", "NO_ACCOUNT": "暂无储值账户", "ACCOUNT_FROZEN": "账户已冻结","STALE_CONFIGURATION": "配置已更新，请刷新", "CURRENCY_IMMUTABLE": "币种不可修改", "MAINTENANCE_IN_PROGRESS": "储值维护中", "LIABILITY_RULES_LOCKED": "存在余额或未完成储值，暂不能修改资金规则", "ISSUANCE_NOT_ENABLED": "尚未开通储值发行"}},
  management: {
  "managePayment": "收款配置",
  "createEntity": "新增经营主体",
@@ -76,7 +76,7 @@ export default {
     "IMPACT_UNKNOWN": "业务影响尚未确认，请稍后重试",
     "DEPENDENCY_NOT_READY": "共享能力尚未就绪"
   },
-  "permission": {"sv_policy_read":"查看储值规则","sv_policy_manage":"配置储值规则","sv_store_activity_read":"查看储值活动","sv_store_activity_manage":"管理储值活动","sv_store_activity_publish":"提交储值活动","sv_store_activity_approve":"审批储值活动","sv_issuer_read":"查看储值发行设置","sv_issuer_configure":"配置储值发行方","sv_issuer_settlement_authorize":"授权储值结算主体",
+  "permission": {"sv_brand_activity_read": "查看品牌储值活动", "sv_brand_activity_manage": "管理品牌储值活动", "sv_brand_activity_publish": "提交品牌储值活动", "sv_brand_activity_approve": "审批品牌储值活动","sv_policy_read":"查看储值规则","sv_policy_manage":"配置储值规则","sv_store_activity_read":"查看储值活动","sv_store_activity_manage":"管理储值活动","sv_store_activity_publish":"提交储值活动","sv_store_activity_approve":"审批储值活动","sv_issuer_read":"查看储值发行设置","sv_issuer_configure":"配置储值发行方","sv_issuer_settlement_authorize":"授权储值结算主体",
     "management_enter": "进入管理空间",
     "management_resource_read": "查看经营资源",
     "management_grant_manage": "管理资源授权",
@@ -97,7 +97,7 @@ export default {
     "BRAND_STORE_CHANGED": "调整品牌门店"
   }
 },
-  storedValue: {
+  storedValue: {"noWallet": "暂无储值账户", "noServices": "暂无可核销服务", "consumeAmount": "核销金额", "askCustomerConfirm": "请顾客进入「储值记录」确认本次消费。", "cancelConsumption": "取消本次核销", "completeRedemption": "完成核销", "previewConsumption": "发起核销", "insufficientWallet": "所选账户可用余额不足", "consumeState": {"WAIT_AUTH": "待顾客确认", "WAIT_SUBMIT": "顾客已确认", "PROCESSING": "正在核对核销结果", "COMMITTED": "核销成功", "CANCELLED": "已取消", "RELEASED": "已取消", "EXPIRED": "已过期"},
     "sourceStore": "来源门店",
     "identityConflict": "部分会员身份待核实",
     "memberSuggest": "姓名、备注或手机号",

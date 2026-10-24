@@ -494,4 +494,36 @@ public interface PayInternalApi {
     ai.neargo.shop.spi.storedvalue.StoredValuePolicies.Capability svPolicyCapability();
     @PostExchange(PayInternalPaths.SV_POLICY_PLAN_BINDING)
     ai.neargo.shop.spi.storedvalue.StoredValuePolicies.PlanBinding svPolicyPlanBinding(@RequestBody PayStoredValuePolicyRequests.PlanBinding request);
+    @PostExchange(PayInternalPaths.SV_WALLETS_ACCOUNTS)
+    java.util.List<ai.neargo.shop.spi.storedvalue.StoredValueWallets.AvailableAccount> svWalletAccounts(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueWallets.Query query);
+    @PostExchange(PayInternalPaths.SV_WALLETS_SELECT)
+    ai.neargo.shop.spi.storedvalue.StoredValueWallets.Selected svWalletSelect(@RequestBody PayStoredValueWalletRequests.Select request);
+    @PostExchange(PayInternalPaths.SV_BRAND_CAPABILITY)
+    ai.neargo.shop.spi.storedvalue.StoredValueBrandActivation.Capability svBrandCapability();
+    @PostExchange(PayInternalPaths.SV_BRAND_ACTIVATE)
+    ai.neargo.shop.spi.storedvalue.StoredValueBrandActivation.Ack svBrandActivate(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueBrandActivation.Prepare command);
+    @PostExchange(PayInternalPaths.SV_EXECUTION_ISSUERS)
+    ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreOptions svExecutionIssuers(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueWallets.ExecutionScope scope);
+    @PostExchange(PayInternalPaths.SV_BRAND_RECHARGE_OPTIONS)
+    CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueIssuerRecharges.Option> svBrandRechargeOptions(@RequestBody PayStoredValueIssuerRechargeRequests.Options request);
+    @PostExchange(PayInternalPaths.SV_BRAND_RECHARGE_CONFIRM)
+    StoredValuePort.RechargeView svBrandRechargeConfirm(@RequestBody PayStoredValueIssuerRechargeRequests.Confirm request);
+    @PostExchange(PayInternalPaths.SV_BRAND_RECHARGE_RESUME)
+    StoredValuePort.RechargeView svBrandRechargeResume(@RequestBody PayStoredValueIssuerRechargeRequests.Replay request);
+    @PostExchange(PayInternalPaths.SV_BRAND_RECHARGE_REPLAY)
+    StoredValuePlanRecharges.ReplayResult svBrandRechargeReplay(@RequestBody PayStoredValueIssuerRechargeRequests.Replay request);
+    @PostExchange(PayInternalPaths.SV_BRAND_RECHARGE_CANCEL_CREATE)
+    StoredValuePort.RechargeView svBrandRechargeCancelCreate(@RequestBody PayStoredValueIssuerRechargeRequests.Replay request);
+    @PostExchange(PayInternalPaths.SV_CONSUMER_ISSUERS)
+    CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews.Issuer> svConsumerIssuers(@RequestBody PayStoredValueConsumerRequests.Issuers request);
+    @PostExchange(PayInternalPaths.SV_CONSUMER_ISSUER)
+    ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews.Issuer svConsumerIssuer(@RequestBody PayStoredValueConsumerRequests.Issuer request);
+    @PostExchange(PayInternalPaths.SV_CONSUMER_LOCATE_ISSUER)
+    ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews.Issuer svConsumerLocateIssuer(@RequestBody PayStoredValueConsumerRequests.Locate request);
+    @PostExchange(PayInternalPaths.SV_CONSUMER_ISSUER_RECORDS)
+    CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews.Record> svConsumerIssuerRecords(@RequestBody PayStoredValueConsumerRequests.IssuerRecords request);
+ @PostExchange(PayInternalPaths.SV_FUNDED_CUSTOMERS)
+ CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueIssuerRecharges.FundedCustomer> svFundedCustomers(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueIssuerRecharges.FundedPage request);
+ @PostExchange(PayInternalPaths.SV_WALLETS_RECORDS)
+ CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueMerchantViews.Record> svWalletRecords(@RequestBody PayStoredValueWalletRequests.Records request);
 }

@@ -14,7 +14,7 @@ public class ManagementScopeService {
  final ManagementRepository db;
  private static final Map<String,Set<String>> PERMISSIONS=Map.of(
   "SPACE",Set.of("management.enter","management.resource.read","management.grant.manage","brand.manage","brand.change.read","brand.change.decide","sv.policy.read","sv.policy.manage","sv.store.activity.approve"),
-  "BRAND",Set.of("brand.read","brand.manage","brand.audit.read","brand.change.read","brand.change.decide","sv.issuer.read","sv.issuer.configure","sv.policy.read","sv.policy.manage"),
+  "BRAND",Set.of("brand.read","brand.manage","brand.audit.read","brand.change.read","brand.change.decide","sv.issuer.read","sv.issuer.configure","sv.policy.read","sv.policy.manage","sv.brand.activity.read","sv.brand.activity.manage","sv.brand.activity.publish","sv.brand.activity.approve"),
   "STORE",Set.of("store.read","store.brand.change","sv.issuer.read","sv.issuer.configure","sv.policy.read","sv.policy.manage","sv.store.activity.read","sv.store.activity.manage","sv.store.activity.publish"),
   "ENTITY",Set.of("entity.read","payment.merchant.read","sv.issuer.settlement.authorize"),
   "PAYMENT_MERCHANT",Set.of("payment.merchant.read"));

@@ -1,13 +1,13 @@
 export default {
-  storedValue: {
+  storedValue: {"accountLocalTime": "Account time zone", "serviceState": {"WAIT_SUBMIT": "Confirmed. Awaiting the store.", "PROCESSING": "Checking service result", "COMMITTED": "Redeemed", "EXPIRED": "Confirmation expired. Ask the store to start again.", "CANCELLED": "Service cancelled", "RELEASED": "Service cancelled"},"brandScope": "Brand balance", "storeScope": "Store balance", "confirmConsumption": "Confirm this service", "paymentWallet": "Payment wallet", "consumeAmount": "Amount", "waitingMerchant": "Confirmed. Awaiting the store.", "refreshConfirmation": "Refresh service status",
     "storeLocalTime": "Store local time",
     "title": "Stored value records",
-    "entryHint": "View store activity",
-    "storesHint": "Choose a store to view credited top-ups and completed redemptions.",
+    "entryHint": "View top-ups and redemptions",
+    "storesHint": "View top-ups and redemptions for your store and brand wallets.",
     "emptyStores": "No stored value records yet",
     "emptyStoresTip": "Records appear here after your in-store top-up is credited.",
     "viewRecords": "View records",
-    "recordsTitle": "Store activity",
+    "recordsTitle": "Activity",
     "ALL": "All",
     "RECHARGE": "Top-ups",
     "REDEMPTION": "Redemptions",

@@ -9,6 +9,7 @@ import ai.neargo.shop.spi.storedvalue.StoredValueUseQuotePort.Quote;
 
 public interface StoredValueRedemptionService {
     Quote quote(EntitlementContext context, SourceRef source);
+    Quote quote(EntitlementContext context,SourceRef source,ai.neargo.shop.spi.storedvalue.StoredValueWallets.Choice choice);
     HoldView prepare(EntitlementContext context, UseCommand command);
     HoldView finish(EntitlementContext context, String operationNo, SourceRef source, DecisionRef decision,
                     boolean commit);

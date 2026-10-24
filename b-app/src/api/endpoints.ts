@@ -15,6 +15,17 @@ export interface EndpointDef {
 
 /** key 与 MerchantApi 的方法名一一对应，缺一个就编译不过 */
 export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
+  mSvBrandActivityContext:{method:"GET",path:"/biz/management/brands/:store/stored-value/activity-context",auth:true,summary:"储值活动门店市场上下文"},
+  mSvBrandActivityPresets:{method:"GET",path:"/biz/management/brands/:store/stored-value/activity-presets",auth:true,summary:"可用储值活动类型"},
+  mSvBrandActivitySchedule:{method:"GET",path:"/biz/management/brands/:store/stored-value/activity-schedules",auth:true,summary:"按门店时区换算活动日期"},
+  mSvBrandActivities:{method:"GET",path:"/biz/management/brands/:store/stored-value/activities",auth:true,summary:"门店储值活动"},
+  mSvBrandActivity:{method:"GET",path:"/biz/management/brands/:store/stored-value/activities/:no",auth:true,summary:"储值活动详情"},
+  mSvBrandActivitySave:{method:"POST",path:"/biz/management/brands/:store/stored-value/activities",auth:true,summary:"保存储值活动草稿"},
+  mSvBrandActivityDraftEdit:{method:"PUT",path:"/biz/management/brands/:store/stored-value/activities/:no/draft",auth:true,summary:"修订储值活动草稿"},
+  mSvBrandActivityCheck:{method:"POST",path:"/biz/management/brands/:store/stored-value/activities/:no/checks",auth:true,summary:"检查储值活动"},
+  mSvBrandActivitySubmit:{method:"POST",path:"/biz/management/brands/:store/stored-value/activities/:no/submissions",auth:true,summary:"提交储值活动"},
+  mSvBrandActivityStop:{method:"POST",path:"/biz/management/brands/:store/stored-value/activities/:no/stop-issuance",auth:true,summary:"停止新发行"},
+  mSvBrandActivityCopy:{method:"POST",path:"/biz/management/brands/:store/stored-value/activities/:no/copies",auth:true,summary:"复制储值活动"},
   mSvActivityDraftEdit:{method:"PUT",path:"/biz/stores/:store/stored-value/activities/:no/draft",auth:true,summary:"修订储值活动草稿"},
   mSvPreparePolicyPermissions:{method:"POST",path:"/biz/management/stored-value/policy-permissions/prepare",auth:true,summary:"准备已有管控权限的授权项"},
   mSvActivityContext:{method:"GET",path:"/biz/stores/:store/stored-value/activity-context",auth:true,summary:"储值活动门店市场上下文"},
@@ -37,6 +48,15 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSvApproval:{method:"GET",path:"/biz/management/stored-value/activity-approvals/:no",auth:true,summary:"储值活动审批详情"},
   mSvApprovalDecide:{method:"POST",path:"/biz/management/stored-value/activity-approvals/:no/decisions",auth:true,summary:"审批储值活动"},
 
+  mSvWalletRecords:{method:"GET",path:"/biz/stores/:storeNo/stored-value/customer-selections/:customerRef/records",auth:true,summary:"Current store records of selected wallet"},
+  mSvConsumptionCancel:{method:"POST",path:"/biz/stored-value/consumptions/orders/:orderNo/cancel",auth:true,summary:"Cancel original service without refund"},
+  mSvConsumptionResolve:{method:"POST",path:"/biz/stored-value/consumptions/resolve",auth:true,summary:"Resolve exact original preview without expired references"},
+  mSvConsumptionPreview:{method:"POST",path:"/biz/stored-value/consumptions/preview",auth:true,summary:"Selected wallet service preview"},
+  mSvConsumptionOrder:{method:"GET",path:"/biz/stored-value/consumptions/orders/:orderNo",auth:true,summary:"Merchant original service status"},
+  mSvConsume:{method:"POST",path:"/biz/stored-value/consumptions",auth:true,summary:"Consume using existing consumer confirmation"},
+  mSvWallets:{method:"GET",path:"/biz/stores/:storeNo/stored-value/customer-selections/:customerRef/accounts",auth:true,summary:"Separate local and brand wallets"},
+  mSvBrandCapability:{method:"GET",path:"/biz/stored-value/brand-capability",auth:true,summary:"Brand readiness"},
+  mSvBrandActivate:{method:"POST",path:"/biz/management/brands/:brandNo/stored-value/issuer/activation",auth:true,summary:"Activate original brand snapshot"},
   mSvStoreIssuerConfiguration:{method:"GET",path:"/biz/management/stores/:no/stored-value/issuer",auth:true,summary:"门店发行设置"},
   mSvConfigureStoreIssuer:{method:"POST",path:"/biz/management/stores/:no/stored-value/issuer",auth:true,summary:"保存门店发行配置"},
   mSvIssuer: {method:"GET",path:"/biz/management/brands/:no/stored-value/issuer",auth:true,summary:"品牌储值发行设置"},

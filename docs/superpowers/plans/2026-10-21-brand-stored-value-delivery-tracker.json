@@ -599,7 +599,7 @@
         "MP02"
       ],
       "planFile": "2026-10-21-brand-stored-value-brand-redemption.md",
-      "status": "NOT_STARTED"
+      "status": "CODING_IN_PROGRESS_NOT_COMPILED_OR_TESTED"
     },
     {
       "id": "P6",
@@ -877,9 +877,13 @@
   },
   "nextStagePreparation": {
     "stage": "P5",
-    "status": "SOURCE_INVENTORY_IN_PROGRESS",
+    "status": "COMPILED_FOCUSED_ACCEPTANCE_IN_PROGRESS",
     "planFile": "2026-10-21-brand-stored-value-brand-redemption.md",
     "releaseDependsOn": "P3 controlled cutover signoff; P6 before cross-entity activation",
-    "testOrder": "All phase coding and compilation, then one focused chain; no unaffected reruns"
+    "testOrder": "All phase coding and compilation, then one focused chain; no unaffected reruns",
+    "taskTable": "docs/technical/任务表-品牌与门店双线储值-P5执行.md",
+    "backendCompile": "PASS Java21 food-embedded Core + standalone Pay test-compile",
+    "frontendCompile": "PASS B and C type-check",
+    "focusedAcceptance": "27 Java + 24 B + 6 C passed; integrated money fixture and native MySQL pending"
   }
 }

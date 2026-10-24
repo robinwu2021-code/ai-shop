@@ -23,4 +23,5 @@ public class RemoteStoredValueUseQuotePort implements StoredValueUseQuotePort {
     public Quote quote(EntitlementContext context, SourceRef source) {
         return RemoteEntitlementCalls.call(() -> pay.svUseQuote(new PayStoredValueRequests.UseQuote(context, source)));
     }
+    @Override public Quote quote(EntitlementContext context,SourceRef source,ai.neargo.shop.spi.storedvalue.StoredValueWallets.Choice choice){return RemoteEntitlementCalls.call(()->pay.svUseQuote(new PayStoredValueRequests.UseQuote(context,source,choice)));}
 }

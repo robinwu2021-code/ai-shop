@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 /** Deterministic, Pay-owned policy intersection. This evaluator does not reserve funds or grant approval. */
 @Component
 public class StoredValueIssuePolicyEvaluator {
-    public EffectivePolicy evaluate(StoreScope scope, List<PolicyVersion> versions) {
+    public EffectivePolicy evaluate(IssueScope scope, List<PolicyVersion> versions) {
         ContractChecks.present(scope); ContractChecks.present(versions);
         ContractChecks.require(versions.size() <= 3);
         var seenPolicies = new HashSet<String>(); var seenTargets = new HashSet<String>();
@@ -26,8 +26,8 @@ public class StoredValueIssuePolicyEvaluator {
                     && seenPolicies.add(version.policyNo()) && seenTargets.add(version.targetType() + ":" + version.targetNo()));
             boolean matches = switch (version.targetType()) {
                 case "SPACE" -> scope.managementNo().equals(version.targetNo());
-                case "BRAND_STORES" -> Objects.equals(scope.brandNo(), version.targetNo());
-                case "STORE" -> scope.storeNo().equals(version.targetNo());
+                case "BRAND_STORES" -> scope instanceof StoreScope&&Objects.equals(scope.brandNo(),version.targetNo());
+                case "STORE" -> scope instanceof StoreScope&&scope.storeNo().equals(version.targetNo());
                 default -> false;
             };
             ContractChecks.require(matches);
@@ -72,10 +72,10 @@ public class StoredValueIssuePolicyEvaluator {
                 Math.min(a.maxBonusMinor(), b.maxBonusMinor()), Math.min(a.maxActiveDays(), b.maxActiveDays()),
                 Math.min(a.maxOutstandingMinor(), b.maxOutstandingMinor()));
     }
-    private String digest(StoreScope scope, List<PolicyVersion> sources) {
+    private String digest(IssueScope scope, List<PolicyVersion> sources) {
         var parts = new ArrayList<String>();
-        Collections.addAll(parts, "SV_POLICY_V1", scope.tenantNo(), scope.managementNo(), scope.storeNo(),
-                Objects.toString(scope.brandNo(), ""), scope.currency());
+        if(scope instanceof BrandScope brand)Collections.addAll(parts,"SV_BRAND_POLICY_V1",scope.tenantNo(),scope.managementNo(),brand.brandNo(),brand.issuerNo(),scope.currency());
+        else Collections.addAll(parts,"SV_POLICY_V1",scope.tenantNo(),scope.managementNo(),scope.storeNo(),Objects.toString(scope.brandNo(),""),scope.currency());
         for (var source : sources) {
             var r = source.rules();
             Collections.addAll(parts, source.policyNo(), source.versionNo(), source.targetType(), source.targetNo(),

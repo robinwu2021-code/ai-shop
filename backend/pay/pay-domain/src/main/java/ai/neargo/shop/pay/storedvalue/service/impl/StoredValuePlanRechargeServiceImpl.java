@@ -46,6 +46,8 @@ import tools.jackson.databind.ObjectMapper;
 public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechargeService {
     @org.springframework.beans.factory.annotation.Autowired
     private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerLedgerBridge issuerLedger;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.issuer.StoredValueBrandRechargeService brandRecharges;
     private final ai.neargo.shop.pay.mapper.storedvalue.SvCustomerIdentityMapper identities;
     private final SvRechargeMapper recharges;
     private final SvRechargePlanMapper plans;
@@ -154,10 +156,11 @@ public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechar
     }
     private static List<String> identity(String store,String plan,String version,String hash){return List.of(store,plan,version,hash);}
 
-    @Override public RechargeView query(EntitlementContext ctx,String entity,String no){return view(owned(ctx,entity,no));}
+    @Override public RechargeView query(EntitlementContext ctx,String entity,String no){var r=recharges.find(ctx.tenantNo(),no);if(r!=null&&"ISSUER_RELEASE".equals(r.getSourceKind()))return brandRecharges.query(ctx,entity,no);return view(owned(ctx,entity,no));}
 
     @Override public boolean recover(EntitlementContext ctx,String entity,String no){
         var r=recharges.find(ctx.tenantNo(),no);
+        if(r!=null&&"ISSUER_RELEASE".equals(r.getSourceKind()))return brandRecharges.recover(ctx,entity,no);
         if(r==null||!"PLAN".equals(r.getSourceKind()))return false;
         if(!entity.equals(r.getEntityNo()))throw BizException.of(ErrorCode.NOT_FOUND);
         if("RECEIVED".equals(r.getStatus())){

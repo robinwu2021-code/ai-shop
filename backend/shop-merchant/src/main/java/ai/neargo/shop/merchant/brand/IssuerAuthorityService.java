@@ -25,6 +25,8 @@ public class IssuerAuthorityService {
         if(scopes.ownerAccounts(actor).stream().noneMatch(account->entity.equals(str(account,"entity_no"))))throw BizException.of(ErrorCode.FORBIDDEN);
         return new StoreAuthority(actor.tenantNo(),actor.actorKey(),entity,storeNo,str(row,"name"),num(row,"version"));
     }
+    public void requireConfigurationWritable(Actor actor,String management,String type,String no){configurationLookup(actor,management,type,no);if("BRAND".equals(type)){var brand=db.one("SELECT * FROM mch_brand WHERE tenant_no=? AND brand_no=? AND deleted=0",actor.tenantNo(),no);if("PREPARING".equals(str(brand,"stored_value_status")))throw BizException.of(ErrorCode.CONFLICT);}}
+    public AuthorizedScope configurationLookup(Actor actor,String management,String type,String no){return scope(actor,management,type,no,"sv.issuer.configure",Set.of(),List.of());}
     public AuthorizedScope readScope(Actor actor, String management, String type, String no) {
         return scope(actor,management,type,no,"sv.issuer.read",Set.of(),List.of());
     }

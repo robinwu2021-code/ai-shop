@@ -9,5 +9,6 @@ import ai.neargo.shop.spi.storedvalue.StoredValueUseQuotePort;
 public class StoredValueUseQuotePortImpl implements StoredValueUseQuotePort {
     private final StoredValueRedemptionService service;
     public StoredValueUseQuotePortImpl(StoredValueRedemptionService service) { this.service = service; }
+    @Override public Quote quote(EntitlementContext ctx,SourceRef source,ai.neargo.shop.spi.storedvalue.StoredValueWallets.Choice choice){return service.quote(ctx,source,choice);}
     @Override public Quote quote(EntitlementContext ctx, SourceRef source) { return service.quote(ctx, source); }
 }

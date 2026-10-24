@@ -12,7 +12,7 @@ import { storedValueDateTime } from "@/shared/stored-value-time";
 import { readStoredValueWithSession } from "@/shared/stored-value-session";
 import { canNativeShare } from "@shared/ports/share";
 const { t } = useI18n();
-const storeNo = ref("");
+const storeNo = ref("");const issuerRef=ref("");const locating=ref(false),locationFailed=ref(false);let loadEpoch=0;
 const focusDocumentNo = ref("");
 const type = ref<StoredValueType>("ALL");
 const startDate = ref(""); const endDate = ref("");
@@ -27,7 +27,7 @@ const pager = createStoredValuePager<StoredValueRecord, StoredValueRecordsQuery,
   (query, cursor) => {
     const { focusDocumentNo: _focus, ...filters } = query;
     const params = cursor ? { ...filters, cursor, size: 20 } : { ...query, size: 20 };
-    return readStoredValueWithSession(() => api.storedValueRecords(storeNo.value, params), recordsPath);
+    return readStoredValueWithSession(() => issuerRef.value?api.storedValueIssuerRecords(issuerRef.value,params):api.storedValueRecords(storeNo.value, params), recordsPath);
   },
 );
 const state = pager.state;
@@ -35,10 +35,17 @@ const tabs = computed(() => (["ALL", "RECHARGE", "REDEMPTION"] as const).map(key
 const filtered = computed(() => type.value !== "ALL" || !!startDate.value || !!endDate.value);
 const unavailable = computed(() => [404, 10404].includes(state.errorCode));
 function recordsPath() {
-  return `${ROUTES.storedValueRecords}?storeNo=${encodeURIComponent(storeNo.value)}${focusDocumentNo.value ? `&focusDocumentNo=${encodeURIComponent(focusDocumentNo.value)}` : ""}`;
+  return focusDocumentNo.value?`${ROUTES.storedValueRecords}?focusDocumentNo=${encodeURIComponent(focusDocumentNo.value)}`:`${ROUTES.storedValueRecords}?${issuerRef.value?'issuerRef='+encodeURIComponent(issuerRef.value):'storeNo='+encodeURIComponent(storeNo.value)}`;
 }
-function load() {
-  if (!storeNo.value) return;
+async function load() {
+  const epoch=++loadEpoch;locationFailed.value=false;
+  if(focusDocumentNo.value&&!issuerRef.value){
+    locating.value=true;
+    try{const issuer=await readStoredValueWithSession(()=>api.storedValueLocateIssuer(focusDocumentNo.value),recordsPath);if(epoch!==loadEpoch)return;issuerRef.value=issuer.issuerRef;}
+    catch{if(epoch===loadEpoch)locationFailed.value=true;return;}
+    finally{if(epoch===loadEpoch)locating.value=false;}
+  }
+  if (!storeNo.value&&!issuerRef.value) return;
   void pager.reset({ type: type.value, ...(startDate.value ? { startDate: startDate.value } : {}),
     ...(endDate.value ? { endDate: endDate.value } : {}),
     ...(focusDocumentNo.value ? { focusDocumentNo: focusDocumentNo.value } : {}),
@@ -92,21 +99,22 @@ function subscribe() {
   // #endif
 }
 onLoad(query => {
+  issuerRef.value = typeof query?.issuerRef === "string" ? query.issuerRef : "";
   storeNo.value = typeof query?.storeNo === "string" ? query.storeNo : "";
   focusDocumentNo.value = typeof query?.focusDocumentNo === "string" ? query.focusDocumentNo : "";
 });
 onShow(() => { load(); void loadCapability(); });
 onReachBottom(() => void pager.more());
-onUnload(pager.invalidate);
+onUnload(()=>{++loadEpoch;pager.invalidate();});
 </script>
 <template>
-  <sh-scaffold title-key="storedValue.recordsTitle">
-    <sh-empty v-if="!storeNo || unavailable" bare :text="$t('storedValue.unavailable')" :tip="$t('storedValue.unavailableTip')" />
-    <button v-if="!storeNo || unavailable" class="sh-btn sh-btn--muted" @tap="backStores">{{ $t("storedValue.backStores") }}</button>
+  <sh-scaffold title-key="storedValue.recordsTitle" :pending="locating">
+    <sh-empty v-if="locationFailed || (!storeNo && !issuerRef && !locating) || unavailable" bare :text="$t('storedValue.unavailable')" :tip="$t('storedValue.unavailableTip')" />
+    <button v-if="locationFailed || (!storeNo && !issuerRef && !locating) || unavailable" class="sh-btn sh-btn--muted" @tap="backStores">{{ $t("storedValue.backStores") }}</button>
     <template v-else>
       <view class="sh-card header">
         <text class="txt-title">{{ state.page?.store.storeName || $t("storedValue.recordsTitle") }}</text>
-        <text class="txt-caption sh-muted block">{{ $t("storedValue.storeLocalTime") }}</text>
+        <text class="txt-caption sh-muted block">{{ $t(state.page?.issuer?'storedValue.accountLocalTime':'storedValue.storeLocalTime') }}</text>
         <text class="sh-link txt-caption notify" @tap="showNotifications">{{ $t("storedValue.notifications") }} ›</text>
       </view>
       <view class="filters sh-row sh-row--between">
@@ -123,6 +131,7 @@ onUnload(pager.invalidate);
           <view class="sh-fill"><text class="txt-strong block">{{ record.title }}</text><text class="txt-caption sh-muted block">{{ $t(typeKeys[record.type]) }}</text></view>
           <text class="record__amount sh-num txt-strong" :class="{ 'txt-primary': record.signedAmountMinor > 0 }">{{ record.signedAmountMinor > 0 ? '+' : '−' }}{{ money(Math.abs(record.signedAmountMinor), record.currency) }}</text>
         </view>
+        <text v-if="record.storeName" class="txt-caption sh-muted block">{{record.storeName}}</text>
         <text class="txt-caption sh-muted block sh-num">{{ storedValueDateTime(record.occurredAt, state.page?.store.businessTimeZone || "UTC", false) }}</text>
         <text v-if="focusDocumentNo && record.documentNo === focusDocumentNo" class="txt-caption txt-primary block">{{ $t("storedValue.focused") }}</text>
       </view>

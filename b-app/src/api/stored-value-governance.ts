@@ -7,13 +7,25 @@ export interface SvGovernanceContext {currency:CurrencyCode;currencyScale:number
 export interface SvPolicy {policyNo:string;versionNo:string;revision:number;targetType:SvPolicyTarget;targetNo:string;currency:CurrencyCode;rules:SvPolicyRules;parentVersionRefs:string[];contentHash:string}
 export interface SvPolicyVersion {tenantNo:string;managementNo:string;policyNo:string;versionNo:string;targetType:SvPolicyTarget;targetNo:string;currency:CurrencyCode;rules:SvPolicyRules}
 export interface SvEffectivePolicy {scope:{tenantNo:string;managementNo:string;storeNo:string;brandNo:string|null;currency:CurrencyCode;storeRevision:number};rules:SvPolicyRules;sources:SvPolicyVersion[];hash:string;configured:boolean}
-export interface SvActivityDefinition {name:string;scene:'RECHARGE';templateCode:string;templateVersion:number;storeParticipationScope:{mode:'STORES';refs:string[]};audienceRef:string|null;schedule:{type:string;startAt:string;endAt:string;zone:string;weekdays:number[];from:string|null;to:string|null};rule:{schemaVersion:number;trigger:{type:string;amountMinor:null;quantity:null};benefits:never[];tiers:Array<{tierNo:string;payAmountMinor:number;bonusAmountMinor:number;redemptionScope:{mode:'STORES';refs:string[]}}>};quotaLimit:number|null;budgetLimitMinor:number|null;perUserLimit:number;currency:CurrencyCode}
+export interface SvActivityDefinition {name:string;scene:'RECHARGE';templateCode:string;templateVersion:number;storeParticipationScope:{mode:'ALL'|'STORES';refs:string[]};audienceRef:string|null;schedule:{type:string;startAt:string;endAt:string;zone:string;weekdays:number[];from:string|null;to:string|null};rule:{schemaVersion:number;trigger:{type:string;amountMinor:null;quantity:null};benefits:never[];tiers:Array<{tierNo:string;payAmountMinor:number;bonusAmountMinor:number;redemptionScope:{mode:'ALL'|'STORES';refs:string[]}}>};quotaLimit:number|null;budgetLimitMinor:number|null;perUserLimit:number;currency:CurrencyCode}
 export interface SvActivity {activityNo:string;revision:number;status:string;currentVersionNo:string|null;definition:SvActivityDefinition;documentNo?:string|null}
 export interface SvSubmission {linkNo:string;activityNo:string;draftRevisionNo:string;draftHash:string;state:string;releaseNo:string|null;releaseHash:string|null;policyHash:string;approvalRequired:boolean;approvalNo:string|null;activityVersionNo:string|null}
-export interface SvApproval {approvalNo:string;linkNo:string;activityNo:string;draftRevisionNo:string;draftHash:string;storeNo:string;managementNo:string;status:string;policyHash:string;submittedBy:string;decidedBy:string|null;revision:number;reason:string|null;definition:SvActivityDefinition}
+export interface SvApproval {approvalNo:string;linkNo:string;activityNo:string;draftRevisionNo:string;draftHash:string;storeNo:string|null;scopeType?:'STORE'|'BRAND';scopeNo?:string;managementNo:string;status:string;policyHash:string;submittedBy:string;decidedBy:string|null;revision:number;reason:string|null;definition:SvActivityDefinition}
 export interface SvActivityCheck {policy:SvEffectivePolicy;allowed:boolean;approvalRequired:boolean;blockers:string[]}
 export interface SvGovCommand {managementNo:string;currency:CurrencyCode;expectedRevision:number}
 export interface StoredValueGovernanceApi {
+ mSvBrandActivityContext:StoredValueGovernanceApi["mSvActivityContext"];
+ mSvBrandActivityPresets:StoredValueGovernanceApi["mSvActivityPresets"];
+ mSvBrandActivitySchedule:StoredValueGovernanceApi["mSvActivitySchedule"];
+ mSvBrandActivities:StoredValueGovernanceApi["mSvActivities"];
+ mSvBrandActivity:StoredValueGovernanceApi["mSvActivity"];
+ mSvBrandActivitySave:StoredValueGovernanceApi["mSvActivitySave"];
+ mSvBrandActivityDraftEdit:StoredValueGovernanceApi["mSvActivityDraftEdit"];
+ mSvBrandActivityCheck:StoredValueGovernanceApi["mSvActivityCheck"];
+ mSvBrandActivitySubmit:StoredValueGovernanceApi["mSvActivitySubmit"];
+ mSvBrandActivityStop:StoredValueGovernanceApi["mSvActivityStop"];
+ mSvBrandActivityCopy:StoredValueGovernanceApi["mSvActivityCopy"];
+
  mSvActivityDraftEdit(store:string,no:string,body:{managementNo:string;definition:SvActivityDefinition;expectedRevision?:number},key:string):Promise<SvActivity>;
  mSvPreparePolicyPermissions(managementNo:string):Promise<{prepared:boolean}>;
  mSvActivityContext(store:string,q:{managementNo:string;currency:CurrencyCode;intent:'READ'|'MANAGE'}):Promise<SvGovernanceContext>;

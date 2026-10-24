@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 const mocks = vi.hoisted(() => ({ records: vi.fn(), capability: vi.fn(), report: vi.fn(), native: false, load: {} as Record<string, string> }));
-vi.mock("@/api", () => ({ api: { storedValueRecords: mocks.records, storedValueNotificationCapability: mocks.capability, subscribeReport: mocks.report } }));
+vi.mock("@/api", () => ({ api: { storedValueLocateIssuer:async()=>({issuerRef:"S1"}),storedValueIssuerRecords:mocks.records,storedValueRecords: mocks.records, storedValueNotificationCapability: mocks.capability, subscribeReport: mocks.report } }));
 vi.mock("@/stores/user", () => ({ useUserStore: () => ({ token: "session", silentLogin: async () => false }) }));
 vi.mock("@shared/ports/share", () => ({ canNativeShare: () => mocks.native }));
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
