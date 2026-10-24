@@ -4917,17 +4917,9 @@
         "sh-scaffold"
       ],
       "libClassHits": 63,
-      "localSelectors": 9,
-      "localCssLines": 32,
-      "rolled": [
-        {
-          "id": "semcolor",
-          "label": "语义色自写",
-          "lib": ".is-danger / .is-success / .is-warning",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "localSelectors": 8,
+      "localCssLines": 29,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -6638,16 +6630,6 @@
         "b-app/goods-edit",
         "b-app/store-scope-polygon",
         "c-app/after-sale"
-      ]
-    },
-    {
-      "id": "semcolor",
-      "label": "语义色自写",
-      "lib": ".is-danger / .is-success / .is-warning",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-      "pages": [
-        "b-app/stock-check"
       ]
     },
     {

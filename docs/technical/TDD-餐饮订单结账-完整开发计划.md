@@ -931,6 +931,8 @@ Schema发布修复：按原生成器重建schema-test.sql，补齐已合并储�
 
 补充：原全量进程因默认堆内存耗尽拖慢并产生上下文连带失败；后续验证进程独立使用`JAVA_TOOL_OPTIONS=-Xmx6g`，不修改测试集合、业务配置或失败容忍。17个PAY服务拆分及事务修复另经独立只读审查，未发现Important/Critical问题；审查不代替上述实际运行。最终发布仍须在提交后执行干净HEAD完整门禁，成功前不标记上线。云端只读预检为9.7.2、ai_shop382表、CORE历史566、原gitSha c8e3ea7b0健康；此次尚未改经营库、配置或包。
 
+正常推送补充收据：f80f99b54的干净前置门禁发现库存界面清单stock-detail缺一项；同步发现原Python词条解析器漏读带引号键，不能只补空白中文表格。改为复用现有规范localeEntries读取实际词条，3项回归先红后绿（中文/URL与转义/非法目录拒绝），14屏文档已重生成并对账。盘点超期提示沿用is-danger公共组件类，删除等值局部颜色声明；无界面功能或语义变化。完整27项前端/静态检查、B298/C629、双类型、ops831与实际eslint均通过，25生成器一致，未增长基线。日志`/tmp/food-final-chain-results.json`、`/tmp/food-inv-ui-locale-red.log`、`/tmp/food-inv-ui-locale-green.log`。本段不代替最终干净HEAD后端门禁或云端上线回执。
+
 ## §3 任务边界及排期方式
 
 共享内核、配置发布、报价持久化、资金/库存合同、餐饮结账、经营凭证各自为可单独评审的工作包，但依上述合同连成一条主线。不要按Controller→Service→Mapper分批开发一堆不可验收空壳。

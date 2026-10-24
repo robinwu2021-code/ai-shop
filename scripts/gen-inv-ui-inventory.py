@@ -16,7 +16,7 @@
 
 分类靠**最近的那个开标签**，不靠往前扫一大段：扫 260 字符会把上一行的
 sh-empty 算到这一行头上（第一版就把「点一行看那张单」判成了空态）。"""
-import json, re, sys, io, pathlib
+import json, re, sys, io, pathlib, subprocess
 
 # 路径一律从仓库根算起，**不吃当前工作目录**。
 # pre-push 的闸门是这么跑的：`python3 $GATE_WT/scripts/xxx.py`，
@@ -34,33 +34,24 @@ PAGES = ["stock","stock-cross","stock-detail","stock-docs","purchase-edit","stoc
 # 而按前缀扫出来的顺序是文件系统的。
 INV_PREFIXES = ("stock", "purchase-edit", "transfer", "suppliers", "locations")
 
-# ── 词条表：把 zh-CN.ts 当近似 JSON 读 ──
+# ── Share the canonical locale reader with the i18n guards. ──
 def load_locale(path):
-    src = open(path, encoding="utf-8").read()
-    src = re.sub(r'//[^\n]*', '', src)                      # 行注释
-    src = re.sub(r'/\*.*?\*/', '', src, flags=re.S)         # 块注释
-    out, stack, key = {}, [out := {}], None
-    # 用一个极简状态机：只要 key: "value" 与嵌套花括号
-    path_stack = []
-    cur = out
-    stk = [out]
-    for m in re.finditer(r'([A-Za-z_$][\w$]*)\s*:\s*(\{|"((?:[^"\\]|\\.)*)")|(\})', src):
-        name, opener, val, closer = m.group(1), m.group(2), m.group(3), m.group(4)
-        if closer:
-            if len(stk) > 1: stk.pop()
-            continue
-        if opener == "{":
-            d = {}
-            stk[-1][name] = d
-            stk.append(d)
-        else:
-            # **不要 unicode_escape** —— 文件本来就是 UTF-8，那个解码会把中文拆成乱码。
-            # 只还原 JS 字符串里真正的转义。
-            stk[-1][name] = (val.replace('\\"', '"').replace("\\\\", "\\")
-                                .replace("\\n", "\n"))
-    return out
+    script = (
+        "const {localeEntries}=await import(process.argv[1]);"
+        "process.stdout.write(JSON.stringify(Object.fromEntries(localeEntries(process.argv[2]))));"
+    )
+    try:
+        result = subprocess.run(
+            ["node", "--input-type=module", "-e", script,
+             (ROOT / "scripts/lib/i18n-locale.mjs").as_uri(), str(path)],
+            check=True, capture_output=True, text=True, encoding="utf-8")
+        return json.loads(result.stdout)
+    except (subprocess.CalledProcessError, json.JSONDecodeError) as failure:
+        raise ValueError(f"Cannot parse inventory locale catalog: {path}") from failure
 
 def get(d, dotted):
+    if dotted in d:
+        return d[dotted] if isinstance(d[dotted], str) else None
     cur = d
     for p in dotted.split("."):
         if not isinstance(cur, dict) or p not in cur: return None
