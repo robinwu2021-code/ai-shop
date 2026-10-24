@@ -748,7 +748,34 @@
         "CL12"
       ],
       "planFile": "2026-10-21-brand-stored-value-settlement-reporting.md",
-      "status": "PREPARING_IMPLEMENTATION"
+      "status": "PARTIAL_BACKEND_VERIFIED_PENDING_PUBLICATION",
+      "codingProgress": {
+        "reports": "Pay aggregate, bounded daily projector, RP01-05 BFF drafted",
+        "settlements": "Generation, queries, reconcile/dispute/adjust/payment/independent receipt drafted",
+        "integration": "24 typed internal operations, remote/embedded adapters drafted",
+        "membership": "Pay prepare/commit and describe drafted; Core journal/coordinator not yet implemented",
+        "tests": "Behavior assertions written, not run; no compilation yet",
+        "remaining": [
+          "Core financial membership journal/coordinator and recovery",
+          "Central collection permission proof and cross-entity funding attribution",
+          "B report/settlement pages, entry/action permissions and three locales",
+          "Whole-phase compilation, focused MySQL/HTTP/UI test chain and one final review",
+          "Exact release gate, commit, push and compatibility publication"
+        ]
+      },
+      "partialRelease": {
+        "asOf": "2026-10-24",
+        "businessCases": 26,
+        "mysqlCases": 25,
+        "schemaCases": 1,
+        "contractAssertions": 3,
+        "publicOperations": 131,
+        "dtoSchemas": 188,
+        "reviewImportantFixed": 3,
+        "crossEntityEnabled": false,
+        "fullStageComplete": false,
+        "report": "docs/technical/delivery/P6-清分结算-兼容发布记录.md"
+      }
     }
   ],
   "apiFirstDelivery": {
@@ -919,10 +946,11 @@
   },
   "nextStagePreparation": {
     "stage": "P6",
-    "status": "PREPARING_IMPLEMENTATION",
+    "status": "PARTIAL_BACKEND_VERIFIED_PENDING_PUBLICATION",
     "planFile": "2026-10-21-brand-stored-value-settlement-reporting.md",
     "releaseDependsOn": "P5 compatibility published; actual financial opening remains blocked by P3 historical-original decision",
     "testOrder": "Complete all phase coding and compilation, then one focused chain; no unrelated reruns",
-    "scope": "Reports, bills, disputes, payment registration/independent receipt, organization membership saga, cross-entity readiness"
+    "scope": "Reports, bills, disputes, payment registration/independent receipt, organization membership saga, cross-entity readiness",
+    "currentBatch": "Pay reports/bills/decisions/payments; RP01-05/CL01-14 and typed remote/embedded; Pay membership participant. Core saga, collection proof, B UI, unified compile/tests/review/publication remain."
   }
 }

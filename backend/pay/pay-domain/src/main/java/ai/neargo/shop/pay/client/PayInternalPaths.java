@@ -195,4 +195,29 @@ public final class PayInternalPaths {
     public static final String SV_CONSUMER_ISSUER_RECORDS="/internal/pay/stored-value/consumer/issuer-records";
  public static final String SV_FUNDED_CUSTOMERS="/internal/pay/stored-value/wallets/funded-customers";
  public static final String SV_WALLETS_RECORDS="/internal/pay/stored-value/wallets/records";
+
+    public static final String SV_FINANCE_CAPABILITIES="/internal/pay/stored-value/finance/capabilities";
+    public static final String SV_FINANCE_DIRECTORY="/internal/pay/stored-value/finance/directory";
+    public static final String SV_FINANCE_SUMMARY="/internal/pay/stored-value/finance/summary";
+    public static final String SV_FINANCE_STORES="/internal/pay/stored-value/finance/stores";
+    public static final String SV_FINANCE_ACTIVITIES="/internal/pay/stored-value/finance/activities";
+    public static final String SV_FINANCE_LOCAL_ISSUERS="/internal/pay/stored-value/finance/local-issuers";
+    public static final String SV_FINANCE_LOCATE="/internal/pay/stored-value/finance/locate";
+    public static final String SV_FINANCE_BILLS="/internal/pay/stored-value/finance/bills";
+    public static final String SV_FINANCE_DETAIL="/internal/pay/stored-value/finance/detail";
+    public static final String SV_FINANCE_ITEMS="/internal/pay/stored-value/finance/items";
+    public static final String SV_FINANCE_EVENTS="/internal/pay/stored-value/finance/events";
+    public static final String SV_FINANCE_PAYMENTS="/internal/pay/stored-value/finance/payments";
+    public static final String SV_FINANCE_GENERATE="/internal/pay/stored-value/finance/generate";
+    public static final String SV_FINANCE_RECONCILE="/internal/pay/stored-value/finance/reconcile";
+    public static final String SV_FINANCE_DISPUTE="/internal/pay/stored-value/finance/dispute";
+    public static final String SV_FINANCE_RESOLVE_DISPUTE="/internal/pay/stored-value/finance/resolve-dispute";
+    public static final String SV_FINANCE_ADJUST="/internal/pay/stored-value/finance/adjust";
+    public static final String SV_FINANCE_REGISTER="/internal/pay/stored-value/finance/register";
+    public static final String SV_FINANCE_CONFIRM="/internal/pay/stored-value/finance/confirm";
+    public static final String SV_FINANCE_VOID_PAYMENT="/internal/pay/stored-value/finance/void-payment";
+    public static final String SV_FINANCE_RESOLVE_PAYMENT="/internal/pay/stored-value/finance/resolve-payment";
+ public static final String SV_FINANCE_MEMBERSHIP_TARGETS="/internal/pay/stored-value/finance/membership-targets";
+ public static final String SV_FINANCE_PREPARE_MEMBERSHIP="/internal/pay/stored-value/finance/prepare-membership";
+ public static final String SV_FINANCE_COMMIT_MEMBERSHIP="/internal/pay/stored-value/finance/commit-membership";
 }

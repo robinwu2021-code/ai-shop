@@ -1131,3 +1131,28 @@ Command包含精确模板Reference、TARGETED/CENTER及人群/标签选择条件
 | P111 | POST | /biz/stored-value/consumptions/resolve | Original PreviewRequest + Idempotency-Key | ResolveView | pay:sv:consume:create | Locate the owned original without expired references; no new quote or debit |
 
 | P112 | GET | /biz/stored-value/governance-capability | - | Capability | management login | Both Core and Pay governance flags must be enabled |
+
+## P6 兼容发布接口（功能仍按能力与资源权限限制）
+
+| 编号 | 方法 | 路径 | 请求/返回 | 所属模块 | 权限 | 状态 |
+|---|---|---|---|---|---|---|
+| P113 | GET | /biz/management/brands/{brandNo}/stored-value/summary | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P114 | GET | /biz/management/brands/{brandNo}/stored-value/store-breakdown | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P115 | GET | /biz/management/stored-value/store-issuer-summary | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P116 | GET | /biz/stores/{storeNo}/stored-value/store-summary | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P117 | GET | /biz/management/stored-value/activities/{activityNo}/summary | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P118 | GET | /biz/management/stored-value/financial-resources | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P119 | GET | /biz/management/stored-value/settlement-bills | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P120 | POST | /biz/management/stored-value/settlement-bills/generations | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P121 | GET | /biz/management/stored-value/settlement-bills/{billNo} | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P122 | GET | /biz/management/stored-value/settlement-bills/{billNo}/items | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P123 | GET | /biz/management/stored-value/settlement-bills/{billNo}/events | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P124 | GET | /biz/management/stored-value/settlement-bills/{billNo}/payments | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P125 | POST | /biz/management/stored-value/settlement-bills/{billNo}/reconciliation-confirmations | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P126 | POST | /biz/management/stored-value/settlement-bills/{billNo}/disputes | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P127 | POST | /biz/management/stored-value/settlement-bills/{billNo}/dispute-resolutions | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P128 | POST | /biz/management/stored-value/settlement-bills/{billNo}/adjustments | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P129 | POST | /biz/management/stored-value/settlement-bills/{billNo}/payments | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P130 | GET | /biz/management/stored-value/settlement-bills/{billNo}/payment-resolutions | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P131 | POST | /biz/management/stored-value/settlement-payments/{paymentNo}/receipt-confirmations | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P132 | POST | /biz/management/stored-value/settlement-payments/{paymentNo}/voids | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |

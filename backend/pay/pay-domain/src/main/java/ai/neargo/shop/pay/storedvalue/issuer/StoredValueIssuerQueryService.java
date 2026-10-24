@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 /** Read-only issuer wallets. No fallback merging, account creation or amount aggregation across issuers. */
 @Service
 public class StoredValueIssuerQueryService {
+    @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.pay.storedvalue.settlement.StoredValueCrossEntityReadiness financialReadiness;
     private final IssuerRepository db;private final StoredValueCursorCodec refs;private final boolean enabled;private final boolean brandEnabled;private final boolean crossEntityEnabled;
     public StoredValueIssuerQueryService(IssuerRepository db,StoredValueCursorCodec refs,
             @Value("${shop.pay.stored-value.issuer-mode:false}")boolean enabled,
@@ -75,7 +76,7 @@ public class StoredValueIssuerQueryService {
         if("BRAND".equals(type)&&!brandEnabled)return "BRAND_EXECUTION_DISABLED";
         if(!"ISSUER".equals(text(issuer,"write_mode")))return "ISSUER_NOT_READY";
         if(!(issue?"ACTIVE".equals(text(issuer,"status")):Set.of("ACTIVE","ISSUE_STOPPED").contains(text(issuer,"status"))))return "ISSUER_INACTIVE";
-        if(!crossEntityEnabled&&!s.entityNo().equals(text(issuer,"settlement_entity_no")))return "CROSS_ENTITY_SETTLEMENT_UNAVAILABLE";
+        if(!s.entityNo().equals(text(issuer,"settlement_entity_no"))&&(!crossEntityEnabled||s.coreFinanceProtocol()<2||financialReadiness==null||!financialReadiness.capability().ready()))return "CROSS_ENTITY_SETTLEMENT_UNAVAILABLE";
         var access=db.one("SELECT * FROM sv_issuer_store_access WHERE tenant_no=? AND issuer_no=? AND store_no=? AND deleted=0",s.tenantNo(),text(issuer,"issuer_no"),s.storeNo());
         if(access==null||!"ACTIVE".equals(text(access,"status"))||!s.entityNo().equals(text(access,"operating_entity_no"))||number(access,issue?"can_issue":"can_redeem")!=1)return "STORE_NOT_ACCEPTED";
         String binding="STORE".equals(type)?s.storeNo():s.brandBindingNo();long revision="STORE".equals(type)?s.storeRevision():s.brandBindingRevision();

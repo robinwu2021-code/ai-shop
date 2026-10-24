@@ -140,3 +140,9 @@ Pay报表/账单worker和API→BFF与B端报表结算页面→完整跨主体联
 - [ ] 使用标准部署脚本发布适用服务与前端，检查health、进程版本、H5 VERSION及资源；涉及App/小程序时构建并上传对应包，正式提审/发布另按用户授权。
 - [ ] 上线后只做版本、权限和本阶段代表性读写/原单恢复冒烟，登记阶段交付报告；出现新缺陷只测修复点及受影响接缝。
 - [ ] 将状态标记为“已上线”，记录提交、服务/前端包版本、迁移号、测试结果、兼容限制和回滚说明后再进入下一阶段。
+
+## 2026-10-24 implementation binding
+
+Detailed execution table: ../../technical/任务表-品牌与门店双线储值-P6执行.md
+
+P5 compatibility published; financial opening blocked P3. Execute the full P6 module batch then compile and one focused test chain. Include durable financial organization membership saga (P6-05), keep P5 direct-operation fence until coordinated replacement is complete. Settlement posting-created_at period prevents late-commit omission; preserve original occurred_at for attribution. No bank calls or historical-original writes. Candidate migrations575/576 must be rechecked before publication.

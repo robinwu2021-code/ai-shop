@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 /** Activates the entire trusted brand membership snapshot; no individual manual store enablement list. */
 @Service
 public class StoredValueBrandActivationService {
+    @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.pay.storedvalue.settlement.StoredValueCrossEntityReadiness financialReadiness;
     private final IssuerRepository db;private final StoredValueBrandRuntimeReadiness readiness;private final EntitlementCommandDeduplicator commands;private final boolean crossEntity;
     public StoredValueBrandActivationService(IssuerRepository db,StoredValueBrandRuntimeReadiness readiness,EntitlementCommandDeduplicator commands,@Value("${shop.pay.stored-value.cross-entity-enabled:false}")boolean crossEntity){this.db=db;this.readiness=readiness;this.commands=commands;this.crossEntity=crossEntity;}
     public Ack activate(Prepare command){
@@ -29,7 +30,8 @@ public class StoredValueBrandActivationService {
             int accepted=0;var at=Timestamp.from(Instant.now());
             for(var store:command.stores().stream().sorted(Comparator.comparing(ai.neargo.shop.spi.storedvalue.StoredValueWallets.ExecutionScope::storeNo)).toList()){
                 if(!authority.tenantNo().equals(store.tenantNo())||!authority.managementNo().equals(store.managementNo())||!authority.scopeNo().equals(store.brandNo())||store.brandBindingNo()==null||!view.currency().equals(store.currency()))conflict();
-                boolean can=crossEntity||view.settlementEntityNo().equals(store.entityNo());if(can)accepted++;
+                if(financialReadiness!=null&&financialReadiness.schemaReady()&&db.one("SELECT change_no FROM sv_financial_membership_change WHERE tenant_no=? AND issuer_no=? AND store_no=? AND status='PREPARED' AND deleted=0 LIMIT 1",authority.tenantNo(),view.issuerNo(),store.storeNo())!=null)conflict();
+                boolean can=view.settlementEntityNo().equals(store.entityNo())||crossEntity&&store.coreFinanceProtocol()>=2&&financialReadiness!=null&&financialReadiness.capability().ready();if(can)accepted++;
                 var access=db.one("SELECT * FROM sv_issuer_store_access WHERE tenant_no=? AND issuer_no=? AND store_no=? AND deleted=0 FOR UPDATE",authority.tenantNo(),view.issuerNo(),store.storeNo());
                 if(access!=null&&(number(access,"source_revision")>store.brandBindingRevision()||number(access,"source_revision")==store.brandBindingRevision()&&!Objects.equals(text(access,"source_binding_no"),store.brandBindingNo())))conflict();
                 if(access==null){var row=base(authority.tenantNo(),authority.actorNo(),at);row.put("access_no",BizKey.next(BizKey.STORED_VALUE_ISSUER_ACCESS));row.put("issuer_no",view.issuerNo());row.put("store_no",store.storeNo());row.put("operating_entity_no",store.entityNo());row.put("source_binding_no",store.brandBindingNo());row.put("source_revision",store.brandBindingRevision());row.put("can_issue",can?1:0);row.put("can_redeem",can?1:0);row.put("status","ACTIVE");row.put("effective_from",at);db.insert("sv_issuer_store_access",row);}

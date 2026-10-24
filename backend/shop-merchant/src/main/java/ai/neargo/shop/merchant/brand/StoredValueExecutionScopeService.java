@@ -20,6 +20,6 @@ public class StoredValueExecutionScopeService implements StoredValueExecutionSco
         var brand=db.one("SELECT b.management_no,b.version FROM mch_brand b JOIN mch_management_space m ON CAST(m.tenant_no AS BINARY(256))=CAST(b.tenant_no AS BINARY(256)) AND CAST(m.management_no AS BINARY(256))=CAST(b.management_no AS BINARY(256)) WHERE b.tenant_no=? AND b.brand_no=? AND b.status='ACTIVE' AND b.deleted=0 AND m.status='ACTIVE' AND m.deleted=0",tenant,str(binding,"brand_no"));
         var now=java.time.Instant.now();var from=instant(binding.get("effective_from"));var to=instant(binding.get("effective_to"));
         if(brand==null||from==null||now.isBefore(from)||to!=null&&!now.isBefore(to))throw BizException.of(ErrorCode.CONFLICT);
-        return new StoredValueWallets.ExecutionScope(tenant,actor,str(brand,"management_no"),entity,store,num(row,"version"),str(binding,"brand_no"),str(binding,"binding_no"),num(binding,"scope_revision"),currency,num(brand,"version"));
+        return new StoredValueWallets.ExecutionScope(tenant,actor,str(brand,"management_no"),entity,store,num(row,"version"),str(binding,"brand_no"),str(binding,"binding_no"),num(binding,"scope_revision"),currency,num(brand,"version"),2);
     }
 }
