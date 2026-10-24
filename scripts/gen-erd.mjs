@@ -15,7 +15,8 @@
  */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { domainOverview, tableGraph } from "./lib/svg-erd.mjs";
-import { readSchema } from "./lib/ddl.mjs";
+import { readSchema, AUDIT } from "./lib/ddl.mjs";
+import { NAME_COLLISIONS, relations, columnBadge, describeRelation } from "./lib/schema-lineage.mjs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -58,84 +59,6 @@ const DOMAINS = [
   ["pmt", "券与活动"],
   ["sys", "系统"],
 ];
-
-/**
- * 业务键归属：这个 `xxx_no` 是谁的主键。
- *
- * **必须显式登记，不能从表名推断** —— 真实的表名与主键列名经常对不上：
- * `stl_bill` 的主键叫 `settle_no`、`pts_user_ledger` 的叫 `ledger_no`。
- * 与 packages/shared/tests/schema-lineage.test.ts 的同名表保持一致（有断言校验）。
- */
-export const KEY_OWNERS = {
-  build_no: "pts_statement_build",
-  payout_no: "stl_payout",
-  voucher_no: "pts_voucher",
-  evidence_no: "pts_fund_evidence",
-  receivable_no: "pts_receivable",
-  statement_no: "pts_store_statement",
-  cash_payment_no: "stl_payment",
-  origin_payment_no: "stl_payment",
-  pay_no: "ord_create_intent",
-  /*
-   * ── 2026-08-29 补齐的十三个 ──
-   * 与 packages/shared/tests/schema-lineage.test.ts 的 KEY_OWNERS **必须逐条相等**
-   * （那边有一条断言盯着，两份分叉会让 ER 图连错线）。
-   * 归属判据：看哪张表把它建成了唯一键，只有一张的就是它的主。
-   */
-  std_no: "prd_spu_std",
-  dim_no: "prd_spec_dim",
-  value_no: "prd_spec_value",
-  topic_no: "prd_topic",
-  // 事件号：sys_outbox 是主，sys_event_consumed（事件级幂等）引用它
-  event_no: "sys_outbox",
-  shipment_no: "lgs_waybill",
-  // 商户订单号：stl_payment 是主，trd_shipping_upload（微信发货上报台账 V323）引用它。
-  // 判据与理由见 packages/shared/tests/schema-lineage.test.ts 的同一条 —— 两份必须一致
-  out_trade_no: "stl_payment",
-  area_no: "mch_service_area",
-  // person_no 与 member_no 是两级：跨商家的人 vs 他在某一家的会员身份
-  person_no: "usr_person",
-  member_no: "mbr_member",
-  tag_no: "mbr_tag",
-  segment_no: "mbr_segment",
-  activity_no: "pmt_activity",
-  fission_no: "mkt_fission_campaign",
-  task_no: "notify_push_task",
-  entity_no: "mch_entity",
-  // 门店与商家账号。store_no 与 entity_no 是两级，别按名字互相 join
-  store_no: "mch_store",
-  mch_account_no: "mch_account",
-  personnel_no: "mch_personnel",
-  assignment_no: "mch_personnel_store",
-  command_no: "mch_resource_command",
-  bucket_no: "mch_resource_bucket",
-  hold_no: "mch_booking_hold",
-  pay_merchant_no: "mch_payment_merchant",
-  user_no: "usr_account",
-  order_no: "ord_order",
-  sub_order_no: "ord_sub_order",
-  community_no: "cmt_community",
-  pickup_no: "cmt_pickup_point",
-  goods_no: "prd_goods",
-  sku_no: "prd_sku",
-  category_no: "prd_category",
-  coupon_no: "mkt_coupon",
-  quote_no: "mkt_quote",
-  group_no: "mkt_group_buy",
-  period_no: "pmt_period",
-  enrollment_no: "pmt_enrollment",
-  review_no: "rvw_review",
-  staff_no: "sys_ops_staff",
-  settle_no: "stl_bill",
-  after_sale_no: "ord_after_sale",
-  payment_no: "stl_payment",
-  // 商家进账挂用户的 USE 流水：一次使用一条进账。积分发出后与发放方脱钩（V28）
-  use_ledger_no: "pts_user_ledger",
-  inviter_no: "usr_account",
-  issuer_merchant_no: "mch_entity",
-  // 保证金账户/流水按商家挂；命名欠账见 schema-lineage.test.ts 里的说明
-  merchant_no: "mch_entity",
-};
 
 /**
  * 专题图：一个业务域**横跨多个表名前缀**时，按前缀分的图看不全它。
@@ -250,51 +173,6 @@ const TOPICS = [
   },
 ];
 
-/**
- * 同名不同义：**不可按名字连线**，连了就是错的。
- *
- * 键是列名，值是理由 —— 文档里那张表由它渲染，不再手写一份。
- * 手写的那份在 `pts_merchant_ledger` 被删（V34）之后还挂着 `ledger_no` 一行，
- * 而守卫只查集合不查文档，漏了两天没人发现。
- */
-const NAME_COLLISIONS_WHY = {
-  rule_no: "分账费率规则与资源班表规则属于不同域，不可按同名编号关联。",
-  resource_no: "共用人员或物理资源在mch_resource；幂等结果与对账差异按各自资源类型解释，不可仅按同名字段关联。",
-  owner_no: "通知渠道的owner_no按owner_type解释；资源归属头在mch_booking_owner，不能按同名字段跨域关联。",
-  parent_no: "不同层级树的父节点，必须结合所属树。",
-  provider_no: "通道回执需结合通道、资金方向与原请求。",
-  scope_no: "角色授权范围与积分开关统计范围，须按各自范围类型解释。",
-  revision_no: "商品版本与积分账单版本，各自独立。",
-  holder_no: "积分持有人多态编号，必须结合 holder_type。",
-  position_no: "积分持仓与业务岗位分配的编号分别属于各自表，必须结合所属业务。",
-  link_no: "会员来源关联号与业务人员账号关联号分别属于各自表，不可按列名关联。",
-  ticket_no: "积分资金指令与客服工单的独立编号，不可直接关联。",
-  request_no: "`mkt_request` 是求团需求单号；`stl_split_log` 是分账幂等号",
-  express_no: "`ord_sub_order` 是发货单号；`ord_after_sale` 是退货单号，**方向相反**",
-  operator_no: "各表各自记录操作人，不是外键",
-};
-const NAME_COLLISIONS = new Set(Object.keys(NAME_COLLISIONS_WHY));
-
-/** 每张表都有，画进图里只会挤满屏幕 */
-const AUDIT = new Set([
-  "id", "tenant_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted",
-]);
-
-// ---------------------------------------------------------------- 关系
-/** 表 A 的某列是表 B 的主键 → A 引用 B */
-function relations(tables) {
-  const out = [];
-  for (const [table, def] of tables) {
-    for (const c of def.cols) {
-      if (AUDIT.has(c.name) || NAME_COLLISIONS.has(c.name)) continue;
-      const owner = KEY_OWNERS[c.name];
-      if (!owner || owner === table || !tables.has(owner)) continue;
-      out.push({ from: table, to: owner, col: c.name });
-    }
-  }
-  return out;
-}
-
 const domainOf = (t) => t.split("_")[0];
 
 // ---------------------------------------------------------------- 渲染
@@ -387,7 +265,7 @@ for (const d of domainList) {
     ...new Set(
       rels
         .filter((r) => own.includes(r.from) && !own.includes(r.to))
-        .map((r) => `\`${r.from}.${r.col}\` → \`${r.to}\``),
+        .map((r) => `\`${describeRelation(r)}\``),
     ),
   ];
   md.push(
@@ -411,14 +289,19 @@ md.push(
   "",
   "## 四、不可按名字连线的列",
   "",
-  "以下列名出现在多张表里但**语义不同**，图中刻意不连：",
+  "以下列名不能按全局同名编号直接关联；已证明的限定引用列在下一节，其余不画无条件边：",
   "",
   "| 列 | 为什么 |",
   "|---|---|",
-  ...Object.entries(NAME_COLLISIONS_WHY).map(([k, why]) => `| \`${k}\` | ${why} |`),
+  ...Object.entries(NAME_COLLISIONS).map(([k, why]) => `| \`${k}\` | ${why.replace(/\r?\n/g, "<br>").replace(/\|/g, "\\|")} |`),
   "",
 );
 
+md.push(
+  "## 五、带作用域的限定引用", "",
+  "以下逻辑引用必须同时匹配列出的作用域，不能只按编号 join。条件型路径见上一节。现有域图未覆盖 sv/ent/pay 等前缀，本列表保留其限定语义。", "",
+  ...rels.filter(r => r.scope.length).map(r => `- \`${describeRelation(r)}\``), "",
+);
 writeFileSync(OUT, md.join("\n"));
 
 // ---------------------------------------------------------------- HTML
@@ -463,11 +346,7 @@ for (const [prefix, label] of DOMAINS) {
       const rows = def.cols
         .filter((c) => !AUDIT.has(c.name))
         .map((c) => {
-          const badge = def.uniques.has(c.name)
-            ? '<i class="k uk">UK</i>'
-            : KEY_OWNERS[c.name] && KEY_OWNERS[c.name] !== t
-              ? '<i class="k fk">FK</i>'
-              : "";
+          const badge = columnBadge(tables, t, c.name);
           return `<tr><td class="cn"><code>${c.name}</code>${badge}</td>` +
             `<td class="ct">${c.type}</td>` +
             `<td class="cnl">${c.nullable ? "可空" : "必填"}</td>` +
@@ -475,8 +354,8 @@ for (const [prefix, label] of DOMAINS) {
         })
         .join("");
       const relLines = [
-        ...refsOut.map((r) => `<code>${r.col}</code> → <code>${r.to}</code>`),
-        ...refsIn.map((r) => `<code>${r.from}</code> 经 <code>${r.col}</code> 指向本表`),
+        ...refsOut.map((r) => `<code>${esc(describeRelation(r))}</code>`),
+        ...refsIn.map((r) => `<code>${esc(describeRelation(r))}</code>`),
       ];
       return `<article class="card" id="t-${t}">
 <h3><code>${t}</code><span class="tdesc">${escMd(def.comment || "")}</span></h3>
@@ -493,8 +372,8 @@ ${def.indexes.length ? `<p class="rel"><span class="rl">索引</span>${def.index
 <div class="canvas">${svg}</div>
 ${inward.length || outward.length ? `<p class="xref"><span class="xlabel">跨域</span>${[
     ...new Set([
-      ...outward.map((r) => `${r.from}.${r.col} → ${r.to}`),
-      ...inward.map((r) => `${r.from}.${r.col} → ${r.to}`),
+      ...outward.map((r) => describeRelation(r)),
+      ...inward.map((r) => describeRelation(r)),
     ]),
   ].map((x) => `<code>${esc(x)}</code>`).join("")}</p>` : ""}
 ${cards}
@@ -609,13 +488,17 @@ ${navItems
 ${sections.join("\n")}
 <section id="caveat"><div class="caveat">
 <h2>不可按名字连线的列</h2>
-<p>以下列名出现在多张表里但语义不同，图中刻意不给它们画关系。按名字连就是错的。</p>
+<p>以下列名不能按全局同名编号直接关联。已证明的限定引用列在后面；其余不画无条件边。</p>
 <table><tbody>
-${Object.entries(NAME_COLLISIONS_WHY)
+${Object.entries(NAME_COLLISIONS)
   .map(([k, why]) => `<tr><td><code>${k}</code></td><td>${escMd(why.replace(/`([^`]+)`/g, "<code>$1</code>"))}</td></tr>`)
   .join("\n")}
 </tbody></table>
 </div></section>
+<section id="scoped-references"><h2>带作用域的限定引用</h2>
+<p>必须同时匹配所列作用域，不能只按编号 join。条件型路径见上节；现有域图未覆盖 sv/ent/pay 等前缀。</p>
+<ul>${rels.filter(r => r.scope.length).map(r => `<li><code>${esc(describeRelation(r))}</code></li>`).join("\n")}</ul>
+</section>
 </main>
 </div>
 <script>
