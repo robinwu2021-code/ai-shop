@@ -18,12 +18,12 @@
  * 用法：node scripts/check-sql-portability.mjs [--check]
  */
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { maskSqlNoise } from "./lib/sql-mask.mjs";
 
 const ROOT = join(fileURLToPath(import.meta.url), "../..");
-const BASELINE = join(ROOT, "backend/known-sql-dialect.txt");
+export const SCAN_ROOTS = Object.freeze(["backend", "backend-plugins/shop-industry-beauty"]);
 
 /**
  * 每条规则要能**指出替代写法** —— 只说「不许用」的闸门，人会绕过去而不是改对。
@@ -129,9 +129,9 @@ const RULES = [
 ];
 
 /** 扫 SQL 迁移，以及 Java 里手写的 SQL（@Select/@Update/... 与文本块） */
-function targets() {
+function targets(root, scanRoots) {
   const out = [];
-  (function walk(d) {
+  function walk(d) {
     for (const f of readdirSync(d)) {
       const p = join(d, f);
       if (statSync(p).isDirectory()) {
@@ -141,7 +141,8 @@ function targets() {
         out.push(p);
       }
     }
-  })(join(ROOT, "backend"));
+  }
+  for (const dir of scanRoots) walk(join(root, dir));
   return out;
 }
 
@@ -150,82 +151,136 @@ function lineOf(src, idx) {
   return src.slice(0, idx).split("\n").length;
 }
 
-const hits = [];
-for (const p of targets()) {
-  /*
-   * **先把注释与字符串盖成空格**（等长，行号不变）。
-   *
-   * 不这么做的话，闸门会命中「注释里写出来的那个错误示例」——
-   * 而那正是这个仓库最该鼓励的写法：把「为什么不能这么写」写在离现场最近的地方。
-   * 2026-08-30 真实发生：有人改完排序规则仍然红，红在他解释这次改动的那段注释上。
-   *
-   * 这不是放宽 —— 被盖掉的每一段都不会被数据库执行。见 lib/sql-mask.mjs。
-   */
-  const src = maskSqlNoise(readFileSync(p, "utf8"));
-  for (const r of RULES) {
-    r.re.lastIndex = 0;
-    let m;
-    while ((m = r.re.exec(src)) !== null) {
-      hits.push({
-        file: relative(ROOT, p),
-        line: lineOf(src, m.index),
-        id: r.id,
-        side: r.side,
-        why: r.why,
-        fix: r.fix,
-        text: m[0].replace(/\s+/g, " ").slice(0, 60),
-      });
-      if (m[0].length === 0) r.re.lastIndex++;   // 防零宽匹配死循环
+/**
+ * 有界静态提取：每个 Java 普通字符串 / textblock 独立扫描，不拼接、不求值。
+ * Java 注释和字符字面量先跳过；SQL 注释/字符串交给唯一 maskSqlNoise。
+ * offsets 将 Java 基本转义解码后的每个字符映回源码，\\n 不会伪造文件行号。
+ * 不实现 Unicode 预处理、完整 textblock 缩进语义或运行时 SQL 分析。
+ */
+function javaSqlPayloads(source) {
+  const payloads = [];
+  const escapes = { n: "\n", r: "\r", t: "\t", b: "\b", f: "\f", s: " ",
+    '"': '"', "'": "'", "\\": "\\" };
+  let i = 0;
+  while (i < source.length) {
+    if (source.startsWith("//", i)) {
+      while (i < source.length && source[i] !== "\n") i++;
+    } else if (source.startsWith("/*", i)) {
+      const end = source.indexOf("*/", i + 2);
+      i = end < 0 ? source.length : end + 2;
+    } else if (source[i] === "'") {
+      i++;
+      while (i < source.length) {
+        if (source[i] === "\\") i += 2;
+        else if (source[i++] === "'") break;
+      }
+    } else if (source[i] === '"') {
+      const delimiter = source.startsWith('"""', i) ? '"""' : '"';
+      i += delimiter.length;
+      let text = "";
+      const offsets = [];
+      while (i < source.length && !source.startsWith(delimiter, i)) {
+        const offset = i;
+        let value = source[i++];
+        if (value === "\\" && i < source.length) {
+          const escaped = source[i++];
+          // Java textblock line continuation contributes no SQL characters.
+          if (escaped === "\n") continue;
+          if (escaped === "\r" && source[i] === "\n") { i++; continue; }
+          value = escapes[escaped] ?? `\\${escaped}`;
+        }
+        text += value;
+        for (let n = 0; n < value.length; n++) offsets.push(offset);
+      }
+      i += delimiter.length;
+      payloads.push({ text, offsets });
+    } else {
+      i++;
     }
   }
+  return payloads;
 }
 
-const known = existsSync(BASELINE)
-  ? new Set(readFileSync(BASELINE, "utf8").split("\n").map((l) => l.trim())
-      .filter((l) => l && !l.startsWith("#")))
-  : new Set();
-
-/**
- * 基线的键是 **文件 + 规则**，不带行号。
- * 带行号的话，同一个文件里插一行注释就会让所有条目「变新」——
- * 那种闸门第二天就会被人加 `--no-verify` 绕过去。
- */
-const keyOf = (h) => `${h.file}\t${h.id}`;
-const fresh = hits.filter((h) => !known.has(keyOf(h)));
-const freshKeys = new Set(fresh.map(keyOf));
-const stale = [...known].filter((k) => !hits.some((h) => keyOf(h) === k));
-
-const byFile = new Map();
-for (const h of hits) {
-  if (!byFile.has(h.file)) byFile.set(h.file, []);
-  byFile.get(h.file).push(h);
-}
-
-console.log(`SQL 方言扫描｜命中 ${hits.length} 处 / ${byFile.size} 个文件（已知欠账 ${known.size} 条）`);
-if (fresh.length) {
-  console.log(`\n★ 新增 ${fresh.length} 处：`);
-  for (const h of fresh) {
-    console.log(`   ${h.file}:${h.line}`);
-    console.log(`     [${h.side} 独有] ${h.text}`);
-    console.log(`     为什么不行：${h.why}`);
-    console.log(`     改成：${h.fix}`);
+export function scanSqlPortability(root, scanRoots = SCAN_ROOTS) {
+  const baseline = join(root, "backend/known-sql-dialect.txt");
+  const hits = [];
+  for (const p of targets(root, scanRoots)) {
+    const source = readFileSync(p, "utf8");
+    const payloads = p.endsWith(".java") ? javaSqlPayloads(source) : [{ text: source }];
+    for (const payload of payloads) {
+      const src = maskSqlNoise(payload.text);
+      for (const r of RULES) {
+        r.re.lastIndex = 0;
+        let m;
+        while ((m = r.re.exec(src)) !== null) {
+          hits.push({
+            file: relative(root, p),
+            line: lineOf(source, payload.offsets ? payload.offsets[m.index] : m.index),
+            id: r.id,
+            side: r.side,
+            why: r.why,
+            fix: r.fix,
+            text: m[0].replace(/\s+/g, " ").slice(0, 60),
+          });
+          if (m[0].length === 0) r.re.lastIndex++;   // 防零宽匹配死循环
+        }
+      }
+    }
   }
-}
-if (stale.length) {
-  console.log(`\n✅ 基线里这 ${stale.length} 条已经不再命中，删掉：`);
-  for (const k of stale) console.log(`      ${k.replace("\t", "  ")}`);
+
+  const known = existsSync(baseline)
+    ? new Set(readFileSync(baseline, "utf8").split("\n").map((l) => l.trim())
+        .filter((l) => l && !l.startsWith("#")))
+    : new Set();
+
+  /**
+   * 基线的键是 **文件 + 规则**，不带行号。
+   * 带行号的话，同一个文件里插一行注释就会让所有条目「变新」——
+   * 那种闸门第二天就会被人加 `--no-verify` 绕过去。
+   */
+  const keyOf = (h) => `${h.file}\t${h.id}`;
+  const fresh = hits.filter((h) => !known.has(keyOf(h)));
+  const stale = [...known].filter((k) => !hits.some((h) => keyOf(h) === k));
+  return { hits, fresh, stale, knownCount: known.size };
 }
 
-const check = process.argv.includes("--check");
-if (check && fresh.length) {
-  console.error(`\n✗ ${freshKeys.size} 个文件用了只有一边认的 SQL。`);
-  console.error("  我们已经拍板将来切 MySQL，所以新写的 SQL 两边都要能跑。");
-  console.error("  确实非用不可（比如为了修历史）就登记进 backend/known-sql-dialect.txt 并写明为什么。");
-  process.exit(1);
+function main() {
+  const { hits, fresh, stale, knownCount } = scanSqlPortability(ROOT);
+  const freshKeys = new Set(fresh.map((h) => `${h.file}\t${h.id}`));
+  const byFile = new Map();
+  for (const h of hits) {
+    if (!byFile.has(h.file)) byFile.set(h.file, []);
+    byFile.get(h.file).push(h);
+  }
+
+  console.log(`SQL 方言扫描｜命中 ${hits.length} 处 / ${byFile.size} 个文件（已知欠账 ${knownCount} 条）`);
+  if (fresh.length) {
+    console.log(`\n★ 新增 ${fresh.length} 处：`);
+    for (const h of fresh) {
+      console.log(`   ${h.file}:${h.line}`);
+      console.log(`     [${h.side} 独有] ${h.text}`);
+      console.log(`     为什么不行：${h.why}`);
+      console.log(`     改成：${h.fix}`);
+    }
+  }
+  if (stale.length) {
+    console.log(`\n✅ 基线里这 ${stale.length} 条已经不再命中，删掉：`);
+    for (const k of stale) console.log(`      ${k.replace("\t", "  ")}`);
+  }
+
+  const check = process.argv.includes("--check");
+  if (check && fresh.length) {
+    console.error(`\n✗ ${freshKeys.size} 个文件用了只有一边认的 SQL。`);
+    console.error("  我们已经拍板将来切 MySQL，所以新写的 SQL 两边都要能跑。");
+    console.error("  确实非用不可（比如为了修历史）就登记进 backend/known-sql-dialect.txt 并写明为什么。");
+    process.exit(1);
+  }
+  if (check && stale.length) {
+    console.error(`\n✗ 基线里有 ${stale.length} 条已经不再命中了，删掉它。`);
+    console.error("  留着的话那个文件将来把方言写回去也不会有人发现 —— 名单上的是免检的。");
+    process.exit(1);
+  }
+  if (!fresh.length && !stale.length) console.log("\n✓ 没有新增的方言依赖");
 }
-if (check && stale.length) {
-  console.error(`\n✗ 基线里有 ${stale.length} 条已经不再命中了，删掉它。`);
-  console.error("  留着的话那个文件将来把方言写回去也不会有人发现 —— 名单上的是免检的。");
-  process.exit(1);
-}
-if (!fresh.length && !stale.length) console.log("\n✓ 没有新增的方言依赖");
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
