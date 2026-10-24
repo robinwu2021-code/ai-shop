@@ -1,3 +1,5 @@
+import type {SvActivity,SvSubmission,SvApproval} from "./stored-value-governance";
+import type {CurrencyCode} from "@shared/types";
 import type { AfterSale, Order } from "@shared/types";
 
 export type MerchantOrderActionKind = "AFTER_SALE" | "RECEIVE_PAYMENT" | "FULFILL" | "VERIFY";
@@ -178,3 +180,15 @@ export interface SvIssuerEntity {entityNo:string;name:string;accepted:boolean;ca
 export interface SvIssuerRechargeOptions {issuerOptions:StoreIssuerOptions;plans:SvPlanPage}
 
 export type {IssuerAccessAck} from './stored-value-issuers';
+
+export type {SvPolicy,SvEffectivePolicy,SvActivity,SvSubmission,SvApproval,SvActivityCheck} from './stored-value-governance';
+export interface SvGovernanceCapability {protocol:number;enabled:boolean}
+export interface SvGovernancePrepared {prepared:boolean}
+export interface SvGovernanceDetail {activity:SvActivity;submission:SvSubmission|null}
+export interface SvGovernanceActivitiesPage {records:SvActivity[];total:number;page:number;size:number}
+export interface SvGovernanceApprovalsPage {records:SvApproval[];nextCursor:string|null;hasMore:boolean}
+export interface SvGovernancePreset {templateCode:string;templateVersion:number;name:string;enabled:boolean;available:boolean;missingCapabilities:string[]}
+export interface SvGovernancePresetsPage {records:SvGovernancePreset[];total:number;page:number;size:number}
+export interface SvGovernanceSchedule {startAt:string;endAt:string;zone:string;currency:CurrencyCode;currencyScale:number}
+
+export type {SvPolicyTargetOption,SvGovernanceContext} from './stored-value-governance';

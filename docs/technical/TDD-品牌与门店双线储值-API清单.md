@@ -520,3 +520,21 @@ This section supersedes earlier P3 statements that maintenance is Java-only or h
 ### Acceptance and rollout
 
 Compile Core (food-embedded), independent Pay and B-app together after all coding. Then run focused issuer/configuration/identity/operator/HTTP/UI tests and isolated native MySQL8.4 constraint/resume/migration tests. No full repository test suite and no duplicate unrelated regressions. Stage signoff requires actual evidence, then one whole-stage review and controlled deployment. New issuer/execution/key-cutover switches remain false during ordinary publication; no online DDL or financial transaction is implied by source deployment.
+
+
+## P4 implemented transport (2026-10-24, acceptance pending)
+
+PL01-04, SA01-08 and AP01-03 have implementations; stage tests/review/deployment remain pending. PL04 and SA reads explicitly receive managementNo/currency; public requests never accept actor, entity, policy source facts or approval evidence. General activity publishing requires durable PAY_READY evidence in governance mode. Old standalone plan creates/status changes require upgrade; approved release tiers are immutable Pay-derived PLAN offers so customerNo-only members retain the original collection flow.
+
+Additional read APIs: GET /biz/stored-value/governance-capability (Core and Pay/schema agreement), GET /biz/stores/{storeNo}/stored-value/activity-context (intent READ/MANAGE), /activity-presets (existing available catalog), /activity-schedules (startDate/endDate, server market timezone). POST /biz/management/stored-value/policy-permissions/prepare only materializes permissions already held and delegatable by that actor; it does not grant new financial/entity/store authority.
+
+Typed internal paths are /internal/pay/stored-value/policies/{capability,locate,list,evaluate,configure,plan-binding} and /internal/pay/stored-value/releases/{check,prepare,activate,stop}. Each requires the internal token. Internal scope, actor, principal, current store revision, submittedBy and approval are derived server-side. Extra endpoints do not open BRAND finance.
+
+New issuance locks current policies before issuer/plan/release/access/quota, verifies active source revision and scopes, and reserves bonus-inclusive exposure in the same Pay transaction. Existing received commitments recover without checking new issuance eligibility. Disabling the governance switch does not convert V2 offers back into unrestricted legacy writes.
+
+Approval details include the frozen draft for human review. Draft revision/hash or policy changes invalidate decisions, canonical user principal prevents account alias self-approval, and unknown results retry the exact original command/key. Internal prepare/activate acknowledgements are separate from collection/credit evidence.
+
+
+### P4 审查补充接口（2026-10-24）
+
+GET /biz/management/stored-value/policy-targets?managementNo=... 返回按sv.policy.read/manage过滤的type/no/name/canManage，不依赖brand.read/store.read。activity-context追加canManage/canPublish；只读详情使用READ，不请求管理预置。所有写接口继续服务端验证。B端草稿保存后先checks，硬限制拒绝时允许修改；已发送提交、停发和审批只按持久原记录终态解除未知请求，不以业务错误码推断零写入。

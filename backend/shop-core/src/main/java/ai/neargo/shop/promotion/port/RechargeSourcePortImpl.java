@@ -8,6 +8,10 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class RechargeSourcePortImpl implements RechargeSourcePort {
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.storedvalue.StoredValuePolicyFactsPort> policyFacts;
+    @org.springframework.beans.factory.annotation.Value("${shop.pay.stored-value.governance-enabled:false}")
+    private boolean governance;
     private final RechargeIntentService intents;
     private ai.neargo.shop.spi.user.PersonPort people;
     private ai.neargo.shop.spi.user.MemberIdentityFactsPort identities;
@@ -23,11 +27,17 @@ public class RechargeSourcePortImpl implements RechargeSourcePort {
     }
 
     private SourceFact fact(SourceFact source){
+        if(governance){
+            var facts=policyFacts.getIfAvailable();
+            var scope=facts==null?null:facts.current(source.context().tenantNo(),source.permit().entityNo(),source.permit().storeNo(),source.permit().versionNo());
+            source=new SourceFact(source.context(),source.source(),source.rechargeNo(),source.participation(),source.permit(),source.storeName(),source.createdAt(),source.expiresAt(),source.customerNo(),scope);
+        }
         if(people==null)return source;
         var person=people.findByUser(source.permit().userNo());
         if(person.isEmpty())return source;
         var p=person.get();
-        var identity=identities.find(source.context().tenantNo(),p.personNo()).filter(i->i.consistent()&&p.personNo().equals(i.customerNo())&&source.permit().userNo().equals(i.userNo())&&source.permit().userNo().equals(p.userNo())).orElseThrow(()->ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.CONFLICT));
-        return new SourceFact(source.context(),source.source(),source.rechargeNo(),source.participation(),source.permit(),source.storeName(),source.createdAt(),source.expiresAt(),identity.customerNo());
+        String expectedUser=source.permit().userNo();
+        var identity=identities.find(source.context().tenantNo(),p.personNo()).filter(i->i.consistent()&&p.personNo().equals(i.customerNo())&&expectedUser.equals(i.userNo())&&expectedUser.equals(p.userNo())).orElseThrow(()->ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.CONFLICT));
+        return new SourceFact(source.context(),source.source(),source.rechargeNo(),source.participation(),source.permit(),source.storeName(),source.createdAt(),source.expiresAt(),identity.customerNo(),source.policyScope());
     }
 }

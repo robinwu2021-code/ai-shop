@@ -32,6 +32,8 @@ import org.springframework.web.bind.annotation.*;
 @Profile("api")
 @RestController
 public class BizStoredValuePlanRechargeController {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.paybridge.StoredValuePlanGovernanceBinding governanceBinding;
     private final StoredValuePlanRechargeAppService direct;
     private final StoredValueRechargeAppService receipts;
     private final EntitlementScopeResolver scopes;
@@ -54,7 +56,7 @@ public class BizStoredValuePlanRechargeController {
         var prior=direct.replay(ctx,entity,replay(c));
         var user=prior.found()?new CustomerIdentityPort.ResolvedCustomer(prior.recharge().userNo(),prior.recharge().customerNo()):customers.resolveReference(ctx,new ReferenceQuery(entity,c.storeNo(),c.customerRef()));
         return StoredValueRechargeProgress.from(direct.confirmOffline(ctx,entity,
-                new Create(user.userNo(),c.storeNo(),card.storeName(),c.planNo(),c.versionNo(),replay(c).referenceHash(),user.customerNo())));
+                new Create(user.userNo(),c.storeNo(),card.storeName(),c.planNo(),c.versionNo(),replay(c).referenceHash(),user.customerNo(),prior.found()?null:governanceBinding.resolve(ctx.tenantNo(),entity,c.storeNo(),c.versionNo()))));
     }
 
     @PreAuthorize("@perm.canBiz('"+BizPerms.SV_RECHARGE_CREATE+"')")
@@ -68,7 +70,7 @@ public class BizStoredValuePlanRechargeController {
         if(prior.found())return StoredValueRechargeProgress.from(prior.recharge());
         var user=customers.resolveReference(ctx,new ReferenceQuery(entity,c.storeNo(),c.customerRef()));
         return StoredValueRechargeProgress.from(direct.create(ctx,entity,
-                new Create(user.userNo(),c.storeNo(),card.storeName(),c.planNo(),c.versionNo(),replay(c).referenceHash(),user.customerNo())));
+                new Create(user.userNo(),c.storeNo(),card.storeName(),c.planNo(),c.versionNo(),replay(c).referenceHash(),user.customerNo(),prior.found()?null:governanceBinding.resolve(ctx.tenantNo(),entity,c.storeNo(),c.versionNo()))));
     }
     @PreAuthorize("@perm.canBiz('"+BizPerms.SV_RECHARGE_READ+"') or @perm.canBiz('"+BizPerms.SV_RECHARGE_CREATE+"')")
     @GetMapping("/biz/stored-value/plan-recharges/{rechargeNo}")

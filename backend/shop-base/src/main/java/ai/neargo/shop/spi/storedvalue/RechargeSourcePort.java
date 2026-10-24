@@ -14,7 +14,8 @@ public interface RechargeSourcePort {
 
     record SourceFact(EntitlementContext context, SourceRef source, String rechargeNo,
                       ReserveActivity participation, ParticipationPermit permit, String storeName,
-                      Instant createdAt, Instant expiresAt,String customerNo) {
+                      Instant createdAt, Instant expiresAt,String customerNo,StoredValuePolicies.StoreScope policyScope) {
+        public SourceFact(EntitlementContext context,SourceRef source,String rechargeNo,ReserveActivity participation,ParticipationPermit permit,String storeName,Instant createdAt,Instant expiresAt,String customerNo){this(context,source,rechargeNo,participation,permit,storeName,createdAt,expiresAt,customerNo,null);}
         public SourceFact(EntitlementContext context,SourceRef source,String rechargeNo,ReserveActivity participation,ParticipationPermit permit,String storeName,Instant createdAt,Instant expiresAt){this(context,source,rechargeNo,participation,permit,storeName,createdAt,expiresAt,null);}
         public SourceFact {
             if(customerNo!=null)ContractChecks.id(customerNo);

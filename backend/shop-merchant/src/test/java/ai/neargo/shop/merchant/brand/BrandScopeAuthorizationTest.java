@@ -39,7 +39,7 @@ class BrandScopeAuthorizationTest {
  }
  @Test void bootstrapPersistsDelegatableEntryAndIndependentDiscovery() throws Exception {
   var f=new BrandFixture();String m=f.no(f.space(),"managementNo");
-  assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM mch_management_grant WHERE management_no=? AND resource_type='SPACE' AND delegatable=1",Long.class,m)).isEqualTo(6);
+  assertThat(f.jdbc.queryForList("SELECT permission_code FROM mch_management_grant WHERE management_no=? AND resource_type='SPACE' AND delegatable=1",String.class,m)).contains("management.enter","management.grant.manage","brand.manage","sv.policy.read","sv.policy.manage","sv.store.activity.approve");
   var sources=(java.util.List<java.util.Map<String,Object>>)f.scopes.context(new ManagementModels.Actor("MAIN","USER:U1")).get("bootstrapSources");
   assertThat(sources.getFirst()).containsKey("stores").containsKey("paymentMerchants");
  }

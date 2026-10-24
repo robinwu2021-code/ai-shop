@@ -1,3 +1,4 @@
+import {storedValueGovernanceHttp} from "./stored-value-governance-http";
 import {issuerHttpApi} from "./stored-value-issuer-http";
 import {managementHttpApi} from "./management-http";
 import { requirePointsNames } from "@shared/utils/points-name";
@@ -206,6 +207,7 @@ import type {
 export const httpApi: MerchantApi = {
   ...managementHttpApi,
   ...issuerHttpApi,
+  ...storedValueGovernanceHttp,
   mScopeCandidates:(store,q)=>http.get(buildPath(E.mScopeCandidates.path,{store}),q),
   mScopeSelectCustomer:(store,body)=>http.post(buildPath(E.mScopeSelectCustomer.path,{store}),body),
   mScopeEnrollMember:(store,body)=>http.post(buildPath(E.mScopeEnrollMember.path,{store}),body),

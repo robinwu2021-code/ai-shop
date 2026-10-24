@@ -23,11 +23,11 @@ public class StoredValuePolicyConfigurationService {
     public PolicyView configure(PolicyAuthority scope, PolicyEdit edit, String key) {
         ContractChecks.present(scope); ContractChecks.present(edit); ContractChecks.id(key);
         String hash = hash(db.encode(List.of(scope.tenantNo(), scope.actorNo(), scope.managementNo(), scope.targetType(),
-                scope.targetNo(), scope.currency(), edit.expectedRevision(), edit.rules())));
+                scope.targetNo(), scope.currency(), edit.expectedRevision(),edit.createOnly(), edit.rules())));
         return db.write(() -> {
             // Read-only replay first; a newer policy must not transform an old successful command into a new edit.
             var prior = db.one("SELECT v.* FROM sv_issue_policy_version v JOIN sv_issue_policy p "
-                    + "ON p.tenant_no=v.tenant_no AND p.policy_no=v.policy_no WHERE p.tenant_no=? AND p.management_no=? "
+                    + "ON CAST(p.tenant_no AS BINARY(256))=CAST(v.tenant_no AS BINARY(256)) AND CAST(p.policy_no AS BINARY(256))=CAST(v.policy_no AS BINARY(256)) WHERE p.tenant_no=? AND p.management_no=? "
                     + "AND p.target_type=? AND p.target_no=? AND p.currency=? AND v.configuration_key=?",
                     scope.tenantNo(), scope.managementNo(), scope.targetType(), scope.targetNo(), scope.currency(), key);
             if (prior != null) {
@@ -51,6 +51,7 @@ public class StoredValuePolicyConfigurationService {
                     return view(scope, replay);
                 }
             }
+            if(existing!=null&&edit.createOnly())conflict();
             long revision = existing == null ? 0 : number(existing,"version");
             if (edit.expectedRevision() != revision) conflict();
             String policyNo = existing == null ? BizKey.next(BizKey.STORED_VALUE_ISSUE_POLICY) : text(existing,"policy_no");
@@ -85,14 +86,15 @@ public class StoredValuePolicyConfigurationService {
     }
     private List<Map<String,Object>> parents(PolicyAuthority scope) {
         if ("SPACE".equals(scope.targetType())) return List.of();
-        return db.rows("SELECT p.target_type,v.* FROM sv_issue_policy p JOIN sv_issue_policy_version v "
-                + "ON v.tenant_no=p.tenant_no AND v.policy_no=p.policy_no AND v.policy_version_no=p.current_version_no "
-                + "WHERE p.tenant_no=? AND p.management_no=? AND p.currency=? AND p.status='ACTIVE' AND p.deleted=0 "
-                + "AND v.deleted=0 AND ((p.target_type='SPACE' AND p.target_no=?) OR "
-                + "(p.target_type='BRAND_STORES' AND p.target_no=?)) "
-                + "ORDER BY CASE p.target_type WHEN 'SPACE' THEN 0 ELSE 1 END,p.policy_no FOR UPDATE",
-                scope.tenantNo(), scope.managementNo(), scope.currency(), scope.managementNo(),
-                "STORE".equals(scope.targetType()) ? scope.brandNo() : null);
+        var result=new ArrayList<Map<String,Object>>();var targets=new ArrayList<Target>();targets.add(new Target("SPACE",scope.managementNo()));
+        if("STORE".equals(scope.targetType())&&scope.brandNo()!=null)targets.add(new Target("BRAND_STORES",scope.brandNo()));
+        for(var target:targets){
+            var head=db.one("SELECT * FROM sv_issue_policy WHERE tenant_no=? AND management_no=? AND currency=? AND target_type=? AND target_no=? AND status='ACTIVE' AND deleted=0 FOR UPDATE",scope.tenantNo(),scope.managementNo(),scope.currency(),target.type(),target.no());
+            if(head==null)continue;
+            var version=db.one("SELECT * FROM sv_issue_policy_version WHERE tenant_no=? AND policy_no=? AND policy_version_no=? AND deleted=0 FOR UPDATE",scope.tenantNo(),text(head,"policy_no"),text(head,"current_version_no"));
+            if(version==null)conflict();var row=new LinkedHashMap<String,Object>(version);row.put("target_type",target.type());result.add(row);
+        }
+        return List.copyOf(result);
     }
     private PolicyView view(PolicyAuthority scope, Map<String,Object> row) {
         return new PolicyView(text(row,"policy_no"), text(row,"policy_version_no"), number(row,"version_index") - 1,

@@ -84,3 +84,16 @@ mSvResolveRecharge	Approved P3 store-scoped original recharge recovery contract.
 mSvCancelCreate	Approved P3 store-scoped original recharge cancellation contract.
 mSvRecords	Approved P3 unified issuer record contract.
 mSvRecord	Approved P3 store-scoped original record contract.
+mSvPolicyEdit	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
+mSvEffectivePolicy	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
+mSvActivities	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
+mSvActivity	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
+mSvActivitySave	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
+mSvActivityDraftEdit	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
+mSvActivityCheck	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
+mSvActivitySubmit	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
+mSvActivityStop	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
+mSvActivityCopy	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
+mSvActivityContext	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
+mSvActivityPresets	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
+mSvActivitySchedule	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.

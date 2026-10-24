@@ -169,4 +169,14 @@ public final class PayInternalPaths {
     public static final String SV_MERCHANT_RECORD="/internal/pay/stored-value/merchant/record";
     public static final String SV_PLAN_RECHARGE_REPLAY="/internal/pay/stored-value/plan-recharges/replay";
     public static final String SV_PLAN_RECHARGE_CANCEL_CREATION="/internal/pay/stored-value/plan-recharges/cancel-creation";
+    public static final String SV_POLICY_LOCATE="/internal/pay/stored-value/policies/locate";
+    public static final String SV_POLICY_LIST="/internal/pay/stored-value/policies/list";
+    public static final String SV_POLICY_EVALUATE="/internal/pay/stored-value/policies/evaluate";
+    public static final String SV_POLICY_CONFIGURE="/internal/pay/stored-value/policies/configure";
+    public static final String SV_RELEASE_CHECK="/internal/pay/stored-value/releases/check";
+    public static final String SV_RELEASE_PREPARE="/internal/pay/stored-value/releases/prepare";
+    public static final String SV_RELEASE_ACTIVATE="/internal/pay/stored-value/releases/activate";
+    public static final String SV_RELEASE_STOP="/internal/pay/stored-value/releases/stop";
+    public static final String SV_POLICY_CAPABILITY="/internal/pay/stored-value/policies/capability";
+    public static final String SV_POLICY_PLAN_BINDING="/internal/pay/stored-value/policies/plan-binding";
 }

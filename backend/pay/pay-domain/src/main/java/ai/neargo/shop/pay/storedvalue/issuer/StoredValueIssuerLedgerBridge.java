@@ -15,6 +15,11 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** Pay-local legacy PLAN adapter. Never resolves Core authority or calls payment channels under money locks. */
 @Service
 public class StoredValueIssuerLedgerBridge {
+    @Value("${shop.pay.stored-value.governance-enabled:false}")
+    private boolean governance;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.pay.storedvalue.policy.StoredValueGovernedIssuanceService> governedIssuance;
+    public void beforeGovernedActivity(EntitlementContext ctx,String entity,ai.neargo.shop.spi.storedvalue.RechargeSourcePort.SourceFact source){if(governance){if(!enabled)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);governedIssuance.getObject().beforeIssuer(ctx,entity,source);}else if(db.one("SELECT release_no FROM sv_release WHERE tenant_no=? AND activity_version_no=? AND source_kind='V2_ACTIVITY' AND deleted=0",ctx.tenantNo(),source.permit().versionNo())!=null)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);}
     private final IssuerRepository db;
     private final StoredValueIssueQuotaService quotas;
     private final boolean enabled;
@@ -27,15 +32,25 @@ public class StoredValueIssuerLedgerBridge {
 
     /** Issuer precedes an existing plan lock, matching migration issuer -> account/plan ordering. */
     public void beforePlanOriginal(EntitlementContext ctx,String entity,String store) {
+        if(governance)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        lockPlanIssuer(ctx,entity,store);
+    }
+    public void beforePlanOriginal(EntitlementContext ctx,String entity,String store,String version,ai.neargo.shop.spi.storedvalue.StoredValuePolicies.StoreScope scope,String rechargeNo){
+        if(governance){if(!enabled)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);governedIssuance.getObject().beforePlanIssuer(ctx,entity,store,version,scope,rechargeNo);}
+        else if(db.one("SELECT r.release_no FROM sv_recharge_plan p JOIN sv_recharge_plan_version v ON CAST(v.tenant_no AS BINARY(256))=CAST(p.tenant_no AS BINARY(256)) AND CAST(v.plan_no AS BINARY(256))=CAST(p.plan_no AS BINARY(256)) JOIN sv_release r ON CAST(r.tenant_no AS BINARY(256))=CAST(p.tenant_no AS BINARY(256)) AND CAST(r.release_no AS BINARY(256))=CAST(p.migrated_release_no AS BINARY(256)) WHERE p.tenant_no=? AND p.entity_no=? AND p.store_no=? AND v.version_no=? AND r.source_kind='V2_ACTIVITY' AND p.deleted=0 AND r.deleted=0",ctx.tenantNo(),entity,store,version)!=null)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        lockPlanIssuer(ctx,entity,store);
+    }
+    private void lockPlanIssuer(EntitlementContext ctx,String entity,String store){
         if(!enabled)return;
         transaction();
-        var issuer=db.one("SELECT i.write_mode,i.status,v.settlement_entity_no FROM sv_issuer i JOIN sv_issuer_version v ON v.tenant_no=i.tenant_no AND v.issuer_no=i.issuer_no AND v.issuer_version_no=i.current_issuer_version_no WHERE i.tenant_no=? AND i.scope_type='STORE' AND i.scope_no=? AND i.deleted=0 AND v.deleted=0 FOR UPDATE",ctx.tenantNo(),store);
+        var issuer=db.one("SELECT i.write_mode,i.status,v.settlement_entity_no FROM sv_issuer i JOIN sv_issuer_version v ON CAST(v.tenant_no AS BINARY(256))=CAST(i.tenant_no AS BINARY(256)) AND CAST(v.issuer_no AS BINARY(256))=CAST(i.issuer_no AS BINARY(256)) AND CAST(v.issuer_version_no AS BINARY(256))=CAST(i.current_issuer_version_no AS BINARY(256)) WHERE i.tenant_no=? AND i.scope_type='STORE' AND i.scope_no=? AND i.deleted=0 AND v.deleted=0 FOR UPDATE",ctx.tenantNo(),store);
         if(issuer==null||!"ISSUER".equals(text(issuer,"write_mode"))||!"ACTIVE".equals(text(issuer,"status"))||!entity.equals(text(issuer,"settlement_entity_no")))
             throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
     }
 
     /** Called only for a newly inserted original, within its owning Pay transaction. */
     public void freezePlan(EntitlementContext ctx,SvRechargePlan plan,SvRechargePlanVersion version,SvRecharge original) {
+        if(governance){governedIssuance.getObject().freezePlan(ctx,plan.getEntityNo(),version,original);return;}
         if(!enabled)return;
         transaction();
         var issuer=db.one("SELECT * FROM sv_issuer WHERE tenant_no=? AND scope_type='STORE' AND scope_no=? AND deleted=0 FOR UPDATE",ctx.tenantNo(),plan.getStoreNo());
@@ -75,7 +90,7 @@ public class StoredValueIssuerLedgerBridge {
     public void beforeLegacyActivityCreate(EntitlementContext ctx,String entity,String store) {
         if(!enabled)return;
         transaction();
-        var issuer=db.one("SELECT i.write_mode,v.settlement_entity_no FROM sv_issuer i JOIN sv_issuer_version v ON v.tenant_no=i.tenant_no AND v.issuer_no=i.issuer_no AND v.issuer_version_no=i.current_issuer_version_no WHERE i.tenant_no=? AND i.scope_type='STORE' AND i.scope_no=? AND i.deleted=0 AND v.deleted=0 FOR UPDATE",ctx.tenantNo(),store);
+        var issuer=db.one("SELECT i.write_mode,v.settlement_entity_no FROM sv_issuer i JOIN sv_issuer_version v ON CAST(v.tenant_no AS BINARY(256))=CAST(i.tenant_no AS BINARY(256)) AND CAST(v.issuer_no AS BINARY(256))=CAST(i.issuer_no AS BINARY(256)) AND CAST(v.issuer_version_no AS BINARY(256))=CAST(i.current_issuer_version_no AS BINARY(256)) WHERE i.tenant_no=? AND i.scope_type='STORE' AND i.scope_no=? AND i.deleted=0 AND v.deleted=0 FOR UPDATE",ctx.tenantNo(),store);
         if(issuer!=null&&(!entity.equals(text(issuer,"settlement_entity_no"))||!("ISSUER".equals(text(issuer,"write_mode"))||Set.of("LEGACY","LEGACY_MAPPED").contains(text(issuer,"write_mode")))))
             throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
     }
@@ -83,6 +98,7 @@ public class StoredValueIssuerLedgerBridge {
 
     /** Freeze a Core-authorized single-store activity version and tier; never infer a current activity or merge identities. */
     public void freezeActivity(EntitlementContext ctx,String entity,ai.neargo.shop.spi.storedvalue.RechargeSourcePort.SourceFact source,SvRecharge original) {
+        if(governance){governedIssuance.getObject().freeze(ctx,entity,source,original);return;}
         if(!enabled)return;
         transaction();var permit=source.permit();
         var issuer=db.one("SELECT * FROM sv_issuer WHERE tenant_no=? AND scope_type='STORE' AND scope_no=? AND deleted=0 FOR UPDATE",ctx.tenantNo(),permit.storeNo());
@@ -123,7 +139,7 @@ public class StoredValueIssuerLedgerBridge {
         var row=original(ctx,entity,rechargeNo);
         if(row==null)return;
         if(text(row,"issuer_no")==null) { requireUnswitchedStore(ctx,text(row,"store_no"));return; }
-        var version=db.one("SELECT i.write_mode AS issuer_write_mode,v.* FROM sv_issuer i JOIN sv_issuer_version v ON v.tenant_no=i.tenant_no AND v.issuer_no=i.issuer_no WHERE i.tenant_no=? AND i.issuer_no=? AND i.scope_type='STORE' AND i.scope_no=? AND v.issuer_version_no=? AND i.deleted=0 AND v.deleted=0 FOR UPDATE",
+        var version=db.one("SELECT i.write_mode AS issuer_write_mode,v.* FROM sv_issuer i JOIN sv_issuer_version v ON CAST(v.tenant_no AS BINARY(256))=CAST(i.tenant_no AS BINARY(256)) AND CAST(v.issuer_no AS BINARY(256))=CAST(i.issuer_no AS BINARY(256)) WHERE i.tenant_no=? AND i.issuer_no=? AND i.scope_type='STORE' AND i.scope_no=? AND v.issuer_version_no=? AND i.deleted=0 AND v.deleted=0 FOR UPDATE",
                 ctx.tenantNo(),text(row,"issuer_no"),text(row,"store_no"),text(row,"issuer_version_no"));
         if(version!=null&&"FENCED".equals(text(version,"issuer_write_mode")))throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         if(version==null||!text(row,"currency").equals(text(version,"currency"))
@@ -183,7 +199,7 @@ public class StoredValueIssuerLedgerBridge {
         if(!enabled)return;
         var account=db.one("SELECT * FROM sv_account WHERE tenant_no=? AND account_no=? AND deleted=0",ctx.tenantNo(),accountNo);
         if(account==null||text(account,"issuer_no")==null)return;
-        var parts=db.rows("SELECT a.id,l.issuer_no,l.release_no FROM sv_hold_allocation a JOIN sv_lot l ON l.tenant_no=a.tenant_no AND l.lot_no=a.lot_no WHERE a.tenant_no=? AND a.operation_no=? AND l.account_no=? AND a.deleted=0 AND l.deleted=0",ctx.tenantNo(),operationNo,accountNo);
+        var parts=db.rows("SELECT a.id,l.issuer_no,l.release_no FROM sv_hold_allocation a JOIN sv_lot l ON CAST(l.tenant_no AS BINARY(256))=CAST(a.tenant_no AS BINARY(256)) AND CAST(l.lot_no AS BINARY(256))=CAST(a.lot_no AS BINARY(256)) WHERE a.tenant_no=? AND a.operation_no=? AND l.account_no=? AND a.deleted=0 AND l.deleted=0",ctx.tenantNo(),operationNo,accountNo);
         if(parts.isEmpty())throw BizException.of(ErrorCode.CONFLICT);
         for(var part:parts) {
             if(!text(account,"issuer_no").equals(text(part,"issuer_no")))throw BizException.of(ErrorCode.CONFLICT);

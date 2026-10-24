@@ -66,6 +66,7 @@ public class StoredValueRechargeWriterImpl implements StoredValueRechargeWriter 
     public RechargeView create(EntitlementContext ctx, String entity, CreateRecharge c, SourceFact source) {
         commands.execute(scope(ctx, entity), "SV_CREATE", ctx.requestId(), c, source.rechargeNo(), RechargeView.class,
                 () -> {
+                    issuerLedger.beforeGovernedActivity(ctx,entity,source);
                     issuerLedger.beforeLegacyActivityCreate(ctx,entity,source.permit().storeNo());
                     var prior = recharges.lock(ctx.tenantNo(), source.rechargeNo());
                     if (prior != null) { requireCreate(prior, ctx, entity, c); return view(prior); }

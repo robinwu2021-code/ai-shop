@@ -811,3 +811,14 @@ This section supersedes earlier P3 statements that maintenance is Java-only or h
 ### Acceptance and rollout
 
 Compile Core (food-embedded), independent Pay and B-app together after all coding. Then run focused issuer/configuration/identity/operator/HTTP/UI tests and isolated native MySQL8.4 constraint/resume/migration tests. No full repository test suite and no duplicate unrelated regressions. Stage signoff requires actual evidence, then one whole-stage review and controlled deployment. New issuer/execution/key-cutover switches remain false during ordinary publication; no online DDL or financial transaction is implied by source deployment.
+
+
+## P4 additive implementation (2026-10-24, not deployed)
+
+V564 creates sv_issue_policy and immutable sv_issue_policy_version, with explicit command key, parent refs, normalized content hash and permission/audit snapshot. V565 creates pmt_sv_release_link and pmt_sv_approval and adds sv_release.activity_version_hash; draft hash and Core published snapshot hash are distinct. Link persists draft_revision_no/hash, management/store/entity, original submitter/principal, policy hash/versions and original command. activity_version_no/release_no remain NULL before remote preparation/publication, rather than invented identifiers. Approval stores the exact draft snapshot, decision key/hash, true decision actor/principal and immutable original scope.
+
+V566 links sv_release_tier.projected_plan_version_no to immutable compatibility plans, adds governed_activity_no/governed_tier_key and an ownership uniqueness key. Old independent plan name uniqueness is preserved using generated legacy_name_key only when governed_activity_no IS NULL. Build its replacement unique key before removing the former global name key. Governed human labels are not identity keys; no business code is appended to their display names. Pay-derived plan versions cannot be edited/activated independently.
+
+No new account is created by policy, prepare/activate or projection. These migrations do not change balances, receipts or historical order identities. Governed collection still writes the original source_kind PLAN/Funding facts and null-user/customerNo semantics; issuer/release/tier dimensions bind the approved monetary source. Actual policy versions are stored with the quota reservation.
+
+The target database already applied stored-value V548-V550. Incoming pricing/industry V548-V555 were unapplied there and collide; their unchanged SQL is ordered at V556-V563. Recheck all target environments and current branch versions before deployment; never rename an already-applied migration or run Flyway repair to hide a collision.

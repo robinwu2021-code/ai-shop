@@ -63,6 +63,7 @@ class StoredValuePolicyConfigurationTest {
                 + ";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1", "sa", "");
         var jdbc = new JdbcTemplate(ds);
         var ddl = Files.readString(Path.of("../../shop-app/src/main/resources/db/migration/V564__stored_value_issue_policy.sql"));
+        ddl=ddl.replace("CHECK (target_type IN ('SPACE','BRAND_STORES','STORE'))", "CHECK (CASE target_type WHEN 'SPACE' THEN TRUE WHEN 'BRAND_STORES' THEN TRUE WHEN 'STORE' THEN TRUE ELSE FALSE END)").replace("CHECK (status IN ('ACTIVE','INACTIVE'))", "CHECK (CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'INACTIVE' THEN TRUE ELSE FALSE END)").replace("allow_issue IN (0,1)","allow_issue BETWEEN 0 AND 1").replace("require_approval IN (0,1)","require_approval BETWEEN 0 AND 1").replace("deleted IN (0,1)","deleted BETWEEN 0 AND 1").replace(" JSON"," VARCHAR(20000)").replaceAll(" ENGINE=InnoDB[^;]*", "");
         for (String sql : ddl.split(";")) if (!sql.isBlank()) jdbc.execute(sql);
         var db = new IssuerRepository(new DataSourceTransactionManager(ds), new ObjectMapper());
         var evaluator = new StoredValueIssuePolicyEvaluator();
