@@ -756,6 +756,22 @@ Bean图约束：AppointmentService.openWorkOrderFromAppointment与WorkOrderServi
 - [ ] 验证正式迁移/升级、零售餐饮影响，留当前SHA和HTTP/DB证据；finally仅清理本任务资源。
 - [ ] 全BM04独立审查及必要修复复审通过，更新三处对账/README/主计划，再进入BM05；不以readiness或测试Bean代真实部署。
 
+
+### 2.23 Task60A-A1：锁配置与业务域架构收尾（2026-10-24）
+
+依据Task60旧债及[60A设计A1](../../.superpowers/sdd/beauty-backend/task-60a-design.md)，先实施档位0有界片；其余A2～A11仍须到片前细化，不因总设计存在而一次授权所有文件。精确需求/命令/owned见[A1 brief](../../.superpowers/sdd/beauty-backend/task-60a-a1-brief.md)。
+
+| AC | 文件与接口 | 验证 |
+|---|---|---|
+| A1-1 | shop-store-mybatis内JobLockConfiguration由store.config迁job.config；ShedLockConfig与BeautyJobTargetConfiguration更新import，原lockProvider/lockingTaskExecutor/usingDbTime不变 | HOST/SERVER唯一Bean，原DB锁及token路由，SERVER独立beauty/job关闭与non-api均无DataSource/target；不改POM/配置键 |
+| A1-2 | ArchitectureTest登记beauty到DOMAINS，原规则/棘轮不变；新增条件启用的实际beauty类存在性断言（不静态依赖core） | -Pbeauty-embedded/-Dbeauty.arch.required=true；原16规则及新增presence实际执行。撤beauty登记定向消融应红，恢复同selector绿 |
+| A1-3 | OpsPointsInspectionController正常PathVariable import | 原noFullyQualifiedReferences通过，不改端点/权限 |
+
+- [ ] 先仅测试断言，可信构件刷新后取得原架构失败RED；异常setup不算RED。
+- [ ] 最小迁包/两个import/DOMAINS/注解修复；只clean本工作区store、app、beauty-server三个target，按store install→HOST embedded→SERVER顺序验证，记录无旧class及实际classpath。
+- [ ] 仅DOMAINS beauty最小消融，精确topLevelPackagesMustBeRegistered RED；逐字恢复同selector GREEN，归档源/JAR/XML/SHA。
+- [ ] 独立spec+quality审查及必要修复复审后精确提交，补§5/§6真实证据；无部署、无其他片/数据库/角色授予变化。
+
 ## §3 数据层之后的业务任务与启动深化
 
 每部分开工前重新核对功能矩阵对应行、API输入输出、类/方法、表字段、权限与真实跨域提供方，提交“可实施 / 需先补合同 / 延后关闭”结论，再编码。上次形成的类清单不代替这次业务规则梳理。
