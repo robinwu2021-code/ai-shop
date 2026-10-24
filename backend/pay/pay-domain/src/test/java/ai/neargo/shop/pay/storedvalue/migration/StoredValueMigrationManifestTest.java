@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.storedvalue.migration;
+import ai.neargo.shop.pay.storedvalue.migration.impl.StoredValueMigrationManifestServiceImpl;
+
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreAuthority;
@@ -14,12 +16,12 @@ class StoredValueMigrationManifestTest {
         f.jdbc().execute("CREATE TABLE sv_issuer_store_access(tenant_no varchar,issuer_no varchar,store_no varchar,operating_entity_no varchar,source_binding_no varchar,source_revision bigint,status varchar,can_issue int default 0,can_redeem int default 0,deleted int default 0)");
         f.jdbc().update("INSERT INTO sv_issuer_store_access(tenant_no,issuer_no,store_no,operating_entity_no,source_binding_no,source_revision,status,deleted) VALUES('MAIN','I1','S1','E1','S1',7,'PREPARING',0)");
         var evidence=new StoredValueMigrationManifestService.Evidence(old.batch(),List.of(new StoreAuthority("MAIN","AUDITOR","E1","S1","本店",7)));
-        return new Fixture(f,new StoredValueMigrationManifestService(f.db(),f.service(),maintenance,writers),evidence);
+        return new Fixture(f,new StoredValueMigrationManifestServiceImpl(f.db(),f.service(),maintenance,writers),evidence);
     }
     @Test void manifestIsDurableAndReplayNeverReauditsDifferentFinancialFacts() throws Exception {
         var f=fixture(true,true);var first=f.service().prepare(f.evidence(),"PREPARE1");
         f.data().jdbc().update("UPDATE sv_account SET version=version+1");
-        var restarted=new StoredValueMigrationManifestService(f.data().db(),f.data().service(),true,true);
+        var restarted=new StoredValueMigrationManifestServiceImpl(f.data().db(),f.data().service(),true,true);
         assertThat(restarted.prepare(f.evidence(),"PREPARE1")).isEqualTo(first);
         assertThat(f.service().find(f.evidence(),first.manifestNo())).isEqualTo(first);
         f.data().jdbc().update("UPDATE sv_issuer SET write_mode='FENCED'");
@@ -119,7 +121,7 @@ class StoredValueMigrationManifestTest {
         assertThat(f.data().jdbc().queryForObject("SELECT issuer_no FROM sv_account",String.class)).isNull();
         assertThat(f.data().jdbc().queryForObject("SELECT status FROM sv_issuer",String.class)).isEqualTo("DRAFT");
         f.service().apply(f.evidence(),manifest.manifestNo(),"A1");
-        var restarted=new StoredValueMigrationManifestService(f.data().db(),f.data().service(),true,true);
+        var restarted=new StoredValueMigrationManifestServiceImpl(f.data().db(),f.data().service(),true,true);
         assertThat(restarted.fence(f.evidence(),manifest.manifestNo(),"F1")).isEqualTo(fenced);
         assertThat(f.data().jdbc().queryForObject("SELECT write_mode FROM sv_issuer",String.class)).isEqualTo("FENCED");
         assertThat(f.data().jdbc().queryForObject("SELECT COUNT(*) FROM sv_voucher",Long.class)).isEqualTo(2);
@@ -133,7 +135,7 @@ class StoredValueMigrationManifestTest {
     }
     @Test void fenceCannotDowngradeIssuerModeOrRunWithoutUpgradedLocalWriters() throws Exception {
         var f=fixture(true,true);var manifest=f.service().prepare(f.evidence(),"P1");
-        var old=new StoredValueMigrationManifestService(f.data().db(),f.data().service(),true,false);
+        var old=new StoredValueMigrationManifestServiceImpl(f.data().db(),f.data().service(),true,false);
         assertThatThrownBy(()->old.fence(f.evidence(),manifest.manifestNo(),"F1")).isInstanceOf(BizException.class);
         f.data().jdbc().update("UPDATE sv_issuer SET write_mode='ISSUER'");
         assertThatThrownBy(()->f.service().fence(f.evidence(),manifest.manifestNo(),"F1")).isInstanceOf(BizException.class);

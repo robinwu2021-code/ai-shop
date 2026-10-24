@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.storedvalue.issuer;
+import ai.neargo.shop.pay.storedvalue.issuer.impl.StoredValueIssuerServiceImpl;
+
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.spi.storedvalue.StoredValueIssuers.*;
@@ -38,7 +40,7 @@ class IssuerCollectionRouteTest {
         jdbc.execute("ALTER TABLE sv_issuer ADD COLUMN write_mode VARCHAR DEFAULT 'LEGACY'");
         jdbc.execute("CREATE TABLE sv_account(tenant_no VARCHAR,issuer_no VARCHAR,principal_minor BIGINT,bonus_minor BIGINT,held_principal_minor BIGINT,held_bonus_minor BIGINT,deleted INT DEFAULT 0)");
         jdbc.execute("CREATE TABLE sv_recharge(tenant_no VARCHAR,issuer_no VARCHAR,status VARCHAR,deleted INT DEFAULT 0)");
-        return new Fixture(new StoredValueIssuerService(new IssuerRepository(new DataSourceTransactionManager(ds), new ObjectMapper())),jdbc);
+        return new Fixture(new StoredValueIssuerServiceImpl(new IssuerRepository(new DataSourceTransactionManager(ds), new ObjectMapper())),jdbc);
     }
     @Test void channelDoesNotSplitIssuerAndConfigurationReplayDoesNotCreateAnotherVersion() throws Exception {
         var service=service();var scope=scope("STORE");

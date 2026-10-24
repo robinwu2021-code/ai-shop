@@ -1,3 +1,4 @@
+import type { InventorySyncEventState, InventoryOutboxMode } from "@shared/types";
 import type {SvActivity,SvSubmission,SvApproval} from "./stored-value-governance";
 import type {CurrencyCode} from "@shared/types";
 import type { AfterSale, Order } from "@shared/types";
@@ -69,9 +70,9 @@ export interface MerchantInventoryTrace {
     /** System that requested or handled the synchronization. */
     source: string;
     /** Delivery state of the synchronization event. */
-    status: "COMPLETED" | "PENDING" | "FAILED" | "WARNING" | "SKIPPED" | "ARCHIVED";
+    status: InventorySyncEventState;
     /** Outbox implementation that persisted the event. */
-    outboxMode: "UNIFIED" | "LEGACY";
+    outboxMode: InventoryOutboxMode;
   }>;
   /** Physical stock reservations associated with this order. */
   reservations: Array<{
@@ -167,7 +168,11 @@ import type {SvPage,SvPlan,SvAccount,SvRecord,SvProgress} from './stored-value-t
 export type SvPlanPage=SvPage<SvPlan>;
 export type SvAccountPage=SvPage<SvAccount>;
 export type SvRecordPage=SvPage<SvRecord>;
-export interface SvRechargeResolve {found:boolean;recharge:SvProgress|null}
+export interface SvRechargeResolve {
+  /** Whether the original idempotent recharge creation command has been resolved. */
+  found:boolean;
+  /** Original recharge result; null while no durable creation result exists. */
+  recharge:SvProgress|null}
 
 export type ManagementRecipientPage=ManagementPage<ManagementRecipient>;
 
@@ -175,20 +180,88 @@ export type {ScopeCandidatePage,ScopeSelectedCustomer,ScopeMemberSummary} from '
 
 export type {IssuerView,IssuerImpact,StoreIssuerOptions,IssuerRoute} from './stored-value-issuers';
 import type {IssuerView,StoreIssuerOptions} from './stored-value-issuers';
-export interface SvIssuerLookup {issuer:IssuerView|null}
-export interface SvIssuerEntity {entityNo:string;name:string;accepted:boolean;canAccept:boolean}
-export interface SvIssuerRechargeOptions {issuerOptions:StoreIssuerOptions;plans:SvPlanPage}
+export interface SvIssuerLookup {
+  /** Current issuer configuration; null when none has been configured. */
+  issuer:IssuerView|null}
+export interface SvIssuerEntity {
+  /** Operating entity identifier; authorization remains server-derived. */
+  entityNo:string;
+  /** Human-readable name displayed for this business resource. */
+  name:string;
+  /** Whether the operating entity has accepted this issuer arrangement. */
+  accepted:boolean;
+  /** Whether the current operator may accept this issuer arrangement. */
+  canAccept:boolean}
+export interface SvIssuerRechargeOptions {
+  /** Issuer choices and their current recharge/redemption availability. */
+  issuerOptions:StoreIssuerOptions;
+  /** Recharge plans available for the selected store and customer. */
+  plans:SvPlanPage}
 
 export type {IssuerAccessAck} from './stored-value-issuers';
 
 export type {SvPolicy,SvEffectivePolicy,SvActivity,SvSubmission,SvApproval,SvActivityCheck} from './stored-value-governance';
-export interface SvGovernanceCapability {protocol:number;enabled:boolean}
-export interface SvGovernancePrepared {prepared:boolean}
-export interface SvGovernanceDetail {activity:SvActivity;submission:SvSubmission|null}
-export interface SvGovernanceActivitiesPage {records:SvActivity[];total:number;page:number;size:number}
-export interface SvGovernanceApprovalsPage {records:SvApproval[];nextCursor:string|null;hasMore:boolean}
-export interface SvGovernancePreset {templateCode:string;templateVersion:number;name:string;enabled:boolean;available:boolean;missingCapabilities:string[]}
-export interface SvGovernancePresetsPage {records:SvGovernancePreset[];total:number;page:number;size:number}
-export interface SvGovernanceSchedule {startAt:string;endAt:string;zone:string;currency:CurrencyCode;currencyScale:number}
+export interface SvGovernanceCapability {
+  /** Capability protocol version supported by the current server. */
+  protocol:number;
+  /** Whether this feature or preset is enabled in the current deployment. */
+  enabled:boolean}
+export interface SvGovernancePrepared {
+  /** Whether the requested permission preparation has completed. */
+  prepared:boolean}
+export interface SvGovernanceDetail {
+  /** Stored-value activity and its current versioned definition. */
+  activity:SvActivity;
+  /** Durable activity submission state; null before any submission. */
+  submission:SvSubmission|null}
+export interface SvGovernanceActivitiesPage {
+  /** Business records returned by the current query. */
+  records:SvActivity[];
+  /** Total number of records matching the current query. */
+  total:number;
+  /** One-based page index for the returned or requested result. */
+  page:number;
+  /** Maximum records per page requested or returned by the server. */
+  size:number}
+export interface SvGovernanceApprovalsPage {
+  /** Business records returned by the current query. */
+  records:SvApproval[];
+  /** Opaque cursor for the next page; null when the result is exhausted. */
+  nextCursor:string|null;
+  /** Whether a further page is available using nextCursor. */
+  hasMore:boolean}
+export interface SvGovernancePreset {
+  /** Activity preset code identifying the supported definition template. */
+  templateCode:string;
+  /** Version of the selected activity preset. */
+  templateVersion:number;
+  /** Human-readable name displayed for this business resource. */
+  name:string;
+  /** Whether this feature or preset is enabled in the current deployment. */
+  enabled:boolean;
+  /** Whether this capability or preset is available in the current deployment. */
+  available:boolean;
+  /** Deployment capabilities missing for this preset to be usable. */
+  missingCapabilities:string[]}
+export interface SvGovernancePresetsPage {
+  /** Business records returned by the current query. */
+  records:SvGovernancePreset[];
+  /** Total number of records matching the current query. */
+  total:number;
+  /** One-based page index for the returned or requested result. */
+  page:number;
+  /** Maximum records per page requested or returned by the server. */
+  size:number}
+export interface SvGovernanceSchedule {
+  /** Start of the configured activity window as a server timestamp. */
+  startAt:string;
+  /** End of the configured activity window as a server timestamp. */
+  endAt:string;
+  /** IANA time zone used to interpret the activity schedule. */
+  zone:string;
+  /** ISO currency code determining the interpretation of monetary amounts. */
+  currency:CurrencyCode;
+  /** Number of decimal places in the currency's major unit. */
+  currencyScale:number}
 
 export type {SvPolicyTargetOption,SvGovernanceContext} from './stored-value-governance';

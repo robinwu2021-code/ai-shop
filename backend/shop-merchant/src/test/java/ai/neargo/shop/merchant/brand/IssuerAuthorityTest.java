@@ -1,5 +1,8 @@
 package ai.neargo.shop.merchant.brand;
 
+import ai.neargo.shop.merchant.brand.impl.IssuerAuthorityServiceImpl;
+import ai.neargo.shop.merchant.brand.impl.PaymentMerchantScopeServiceImpl;
+
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.spi.storedvalue.StoredValueIssuers.*;
 import java.util.List;
@@ -9,7 +12,7 @@ import static org.assertj.core.api.Assertions.*;
 
 class IssuerAuthorityTest {
     @Test void preparationUsesLiveStoreOwnerWithoutInventingManagementOrSettlementGrant() throws Exception {
-        var f=new BrandFixture();var service=new IssuerAuthorityService(f.repo,f.scopes,new PaymentMerchantScopeService(f.repo,f.scopes));
+        var f=new BrandFixture();var service=new IssuerAuthorityServiceImpl(f.repo,f.scopes,new PaymentMerchantScopeServiceImpl(f.repo,f.scopes));
         f.jdbc.update("UPDATE mch_store SET version=7 WHERE store_no='S1'");
         var scope=service.storePreparationScope(f.owner,"S1");
         assertThat(scope.entityNo()).isEqualTo("E1");assertThat(scope.storeRevision()).isEqualTo(7);
@@ -24,7 +27,7 @@ class IssuerAuthorityTest {
 
     @Test void storeManagementDoesNotImplicitlyAuthorizeSettlementAndOfflineHasNoFakeMerchant() throws Exception {
         var f=new BrandFixture();String m=f.no(f.space(),"managementNo");
-        var service=new IssuerAuthorityService(f.repo,f.scopes,new PaymentMerchantScopeService(f.repo,f.scopes));
+        var service=new IssuerAuthorityServiceImpl(f.repo,f.scopes,new PaymentMerchantScopeServiceImpl(f.repo,f.scopes));
         var offline=new Route(null,"E1","S1","MERCHANT_OFFLINE","OFFLINE");
         var c=new Config("本店发行","E1","STORE_LOCAL","INTERNAL_RECON","PRO_RATA","CNY","Asia/Shanghai",List.of(offline),0);
         f.scopes.grant(f.owner,m,new GrantCommand("MCH:MA1","STORE","S1","sv.issuer.configure",null,null,false,null,false));
@@ -40,7 +43,7 @@ class IssuerAuthorityTest {
 
     @Test void explicitOwnerPreparationGrantsSettingsButNeverSettlementOrAnotherOwnersStore() throws Exception {
         var f=new BrandFixture();String m=f.no(f.space(),"managementNo");
-        var service=new IssuerAuthorityService(f.repo,f.scopes,new PaymentMerchantScopeService(f.repo,f.scopes));
+        var service=new IssuerAuthorityServiceImpl(f.repo,f.scopes,new PaymentMerchantScopeServiceImpl(f.repo,f.scopes));
         f.scopes.grant(f.owner,m,new GrantCommand(f.owner.actorKey(),"STORE","S1","store.read",null,null,false,null,false));
         f.scopes.grant(f.owner,m,new GrantCommand(f.owner.actorKey(),"ENTITY","E1","entity.read",null,null,false,null,false));
         assertThat(f.scopes.can(f.owner,m,"STORE","S1","sv.issuer.configure")).isFalse();

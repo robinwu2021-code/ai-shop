@@ -10,7 +10,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { Drawer } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
 import { Notice } from "@/components/ui/notice";
-import { SectionHeader } from "@/components/ui/section-header";
+import { TabHeader } from "@/components/ui/tab-header";
 import styles from "./page.module.css";
 
 const buckets: PointsBucket[] = ["AVAILABLE", "HELD", "PENDING", "REFUND_RESERVED", "RECIRCULATABLE"];
@@ -50,7 +50,7 @@ export default function PointsAccountsPage() {
     { header: t("状态", "Status"), cell: status },
   ];
   return <main className={`space-y-3 ${styles.page}`}>
-    <SectionHeader title={t("积分账户", "Points accounts")} summary={query.data?.rows.length ?? 0} className="mb-0" />
+    <TabHeader tabs={[{ key: "accounts", label: t("积分账户", "Points accounts") }]} value="accounts" onChange={() => {}} desc={t("查询积分账户余额与流水", "View points account balances and entries")} />
     <form className={styles.filters} onSubmit={e => { e.preventDefault(); searchAccounts(); }}>
       <label>{t("积分名称", "Points name")}<Select value={typeCode} onChange={e => { setChosenType(e.target.value); setHolderNo(""); setSearch(""); resetSelection(); }}>{types.data?.map(x => <option key={x.typeCode} value={x.typeCode}>{x.name} · {x.typeCode}</option>)}</Select></label>
       <label>{t("账户对象", "Account holder")}<Select value={holderType} onChange={e => { setHolderType(e.target.value as PointsHolder); setHolderNo(""); setSearch(""); resetSelection(); }}><option value="USER">{t("会员", "Member")}</option><option value="STORE">{t("门店", "Store")}</option></Select></label>

@@ -23,6 +23,16 @@
 
 /** [方法或 *, 路径正则, 权限码, 理由（只在不显然时写）] */
 export const RULES = [
+  ["GET", /^\/ops\/pay\/entitlement-(?:dead-letters|exceptions(?:\/[^/]+(?:\/actions)?)?|reconciliations(?:\/[^/]+(?:\/differences)?)?)$/, "ops:pay:ent:read"],
+  ["GET", /^\/ops\/pay\/entitlements\/[^/]+\/lifecycle$/, "ops:pay:ent:read"],
+  ["POST", /^\/ops\/pay\/entitlements\/[^/]+\/freeze$/, "ops:pay:ent:freeze"],
+  ["POST", /^\/ops\/pay\/entitlement-exceptions\/[^/]+\/(?:retry-event|retry-grant)$/, "ops:pay:ent:recover"],
+  ["POST", /^\/ops\/pay\/entitlement-exceptions\/[^/]+\/query-source$/, "ops:pay:ent:verify"],
+  ["POST", /^\/ops\/pay\/entitlement-reconciliations$/, "ops:pay:ent:verify"],
+  ["GET", /^\/ops\/points\/(?:earning-context|earning-rules|earning-rule-history|order-earning)$/, "finance:settle:read"],
+  ["POST", /^\/ops\/points\/earning-preview$/, "finance:settle:read"],
+  ["POST", /^\/ops\/points\/(?:earning-rules|type-name)$/, "finance:settle:execute"],
+
   ["GET", /^\/ops\/pricing-tax-settings$/, "pricing:tax:read"],
   ["PUT", /^\/ops\/pricing-tax-settings$/, "pricing:tax:update"],
   ["GET", /^\/ops\/pricing-templates\/[^/]+\/(?:draft|revisions\/[^/]+)$/, "pricing:template:read"],

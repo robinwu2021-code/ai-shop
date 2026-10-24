@@ -1,11 +1,9 @@
 package ai.neargo.shop.marketing.campaign.impl;
 
 import ai.neargo.shop.numbering.DocumentType;
-import ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers;
-
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.shop.spi.entitlement.LegacyCouponWriteFencePort;
 import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
-
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -22,7 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Set;

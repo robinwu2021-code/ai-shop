@@ -29,7 +29,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.transaction.annotation.Transactional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -38,7 +37,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         "spring.datasource.url=jdbc:h2:mem:activity-management;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"})
 @ActiveProfiles("test")
 @Import(UnifiedActivityManagementFlowTest.Readiness.class)
-@Transactional
 class UnifiedActivityManagementFlowTest {
     @Autowired ActivityVersionService service;
     @Autowired ActivityGovernanceService operations;

@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 业务写 Outbox → 投递器分发 → 消费者产生消息。
  * 前面七个模块发了一路事件，但从来没有消费者 —— 这一轮才第一次证明它们没白发。
  */
-@SpringBootTest
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:message-flow;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1")
 @ActiveProfiles("test")
 class M8MessageFlowTest {
 

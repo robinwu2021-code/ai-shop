@@ -403,8 +403,8 @@
 | 按方案办理储值 | POST | `/biz/stored-value/plan-recharges` | `mSvCreateRecharge` | stored-value-recharge |
 | 取消未收款储值 | POST | `/biz/stored-value/plan-recharges/{rechargeNo}/cancel` | `mSvCancel` | stored-value-recharge |
 | 提交储值实收 | POST | `/biz/stored-value/plan-recharges/{rechargeNo}/submit` | `mSvSubmit` | stored-value-recharge |
-| 取消未明确创建的原充值命令 | POST | `/biz/stored-value/plan-recharges/cancel-create` | `mSvCancelCreate` | stored-value、stored-value-recharge |
-| 查询原充值创建结果 | POST | `/biz/stored-value/plan-recharges/resolve` | `mSvResolveRecharge` | stored-value、stored-value-recharge |
+| —（b-app 未接） | — | `/biz/stored-value/plan-recharges/resolve` | — | — |
+| —（b-app 未接） | — | `/biz/stored-value/plan-recharges/cancel-create` | — | — |
 | —（b-app 未接） | — | `/biz/stored-value/recharges` | — | — |
 | —（b-app 未接） | — | `/biz/stored-value/recharges/{}/cancel` | — | — |
 | —（b-app 未接） | — | `/biz/stored-value/recharges/{}/submit` | — | — |
@@ -444,8 +444,8 @@
 |---|---|---|---|---|
 | 门店储值顾客 | GET | `/biz/stored-value/account-directory` | `mSvAccounts` | stored-value |
 | 门店储值账户 | GET | `/biz/stored-value/accounts/{accountRef}` | `mSvAccount` | stored-value-account |
-| 门店储值收支 | GET | `/biz/stored-value/records` | `mSvRecords` | stored-value |
-| 储值收支详情 | GET | `/biz/stored-value/records/{recordNo}` | `mSvRecord` | stored-value-record |
+| —（b-app 未接） | — | `/biz/stored-value/records` | — | — |
+| —（b-app 未接） | — | `/biz/stored-value/records/{}` | — | — |
 | —（b-app 未接） | — | `/biz/stored-value/accounts` | — | — |
 
 ### `biz:receive`　到货登记、分拣单、短少上报
@@ -533,7 +533,7 @@
 
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
-| 独立储值进度 | GET | `/biz/stored-value/plan-recharges/{rechargeNo}` | `mSvRecharge` | stored-value、stored-value-recharge |
+| 独立储值进度 | GET | `/biz/stored-value/plan-recharges/{rechargeNo}` | `mSvRecharge` | stored-value-recharge |
 | —（b-app 未接） | — | `/biz/stored-value/recharges/{}` | — | — |
 
 ### `pay:sv:consume:create`　查看主体级权益目录，不授予变更能力
@@ -669,12 +669,11 @@
 | `store-categories` | `biz:store:admin` | `biz:store`、`biz:stock` | 老板 | — |
 | `store-notice` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `store-scope` | `biz:store` | `biz:store` | 老板、店长 | — |
-| `stored-value` | **无** | `pay:sv:account:read`、`pay:sv:plan:manage`、`pay:sv:recharge:create`、`pay:sv:recharge:read` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 pay:sv:account:read、pay:sv:plan:manage、pay:sv:recharge:create、pay:sv:recharge:read）　店员（缺 pay:sv:account:read、pay:sv:plan:manage、pay:sv:recharge:create、pay:sv:recharge:read）　理货员（缺 pay:sv:account:read、pay:sv:plan:manage、pay:sv:recharge:create、pay:sv:recharge:read）　配送员（缺 pay:sv:account:read、pay:sv:plan:manage、pay:sv:recharge:create、pay:sv:recharge:read）　客服（缺 pay:sv:account:read、pay:sv:plan:manage、pay:sv:recharge:create、pay:sv:recharge:read） |
+| `stored-value` | **无** | `pay:sv:account:read`、`pay:sv:plan:manage` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 pay:sv:account:read、pay:sv:plan:manage）　店员（缺 pay:sv:account:read、pay:sv:plan:manage）　理货员（缺 pay:sv:account:read、pay:sv:plan:manage）　配送员（缺 pay:sv:account:read、pay:sv:plan:manage）　客服（缺 pay:sv:account:read、pay:sv:plan:manage） |
 | `stored-value-account` | **无** | `pay:sv:account:read` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 pay:sv:account:read）　店员（缺 pay:sv:account:read）　理货员（缺 pay:sv:account:read）　配送员（缺 pay:sv:account:read）　客服（缺 pay:sv:account:read） |
 | `stored-value-plan-detail` | `pay:sv:plan:read` | `pay:sv:plan:read`、`pay:sv:plan:manage` | 老板 | — |
 | `stored-value-plan-edit` | `pay:sv:plan:manage` | `pay:sv:plan:read`、`pay:sv:plan:manage` | 老板 | — |
 | `stored-value-recharge` | `pay:sv:recharge:create` | `pay:sv:recharge:create`、`pay:sv:recharge:receive`、`pay:sv:recharge:read`、`pay:sv:plan:manage`、`pay:sv:plan:read`、`biz:customer` | 老板 | — |
-| `stored-value-record` | `pay:sv:account:read` | `pay:sv:account:read` | 老板 | — |
 | `stores` | `biz:store:admin` | `biz:finance`、`biz:store:admin`、`biz:customer` | 老板 | — |
 | `suppliers` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `transfer` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
@@ -716,11 +715,15 @@
 | `/biz/stored-value/accounts` | `pay:sv:account:read` | 老板 |
 | `/biz/stored-value/consumptions` | `pay:sv:consume:create` | 老板 |
 | `/biz/stored-value/consumptions/preview` | `pay:sv:consume:create` | 老板 |
+| `/biz/stored-value/plan-recharges/cancel-create` | `pay:sv:recharge:create` | 老板 |
+| `/biz/stored-value/plan-recharges/resolve` | `pay:sv:recharge:create` | 老板 |
 | `/biz/stored-value/recharges` | `pay:sv:recharge:create` | 老板 |
 | `/biz/stored-value/recharges/{}` | `pay:sv:recharge:read` | 老板 |
 | `/biz/stored-value/recharges/{}/cancel` | `pay:sv:recharge:create` | 老板 |
 | `/biz/stored-value/recharges/{}/receive` | `pay:sv:recharge:receive` | 老板 |
 | `/biz/stored-value/recharges/{}/submit` | `pay:sv:recharge:create` | 老板 |
+| `/biz/stored-value/records` | `pay:sv:account:read` | 老板 |
+| `/biz/stored-value/records/{}` | `pay:sv:account:read` | 老板 |
 
 > 这些是「写了、测了、没人调用」—— 要么排期接上，要么从 `REQUIRED` 删掉。
 > `noStaleEntries` 只拦已删除的端点，**拦不住「端点还在但没人用」**。

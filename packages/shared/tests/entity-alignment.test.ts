@@ -20,6 +20,9 @@ import { describe, expect, it } from "vitest";
 // @ts-expect-error -- 生成器是 .mjs，没有类型声明；它是 DDL 解析的唯一真源
 import { readSchema, AUDIT, MIGRATION_DIR, INVENTORY_MIGRATION_DIR } from "../../../scripts/lib/ddl.mjs";
 
+// @ts-expect-error -- shared evidence validator is an ES module without declarations
+import { persistenceOwners } from "../../../scripts/lib/persistence-owners.mjs";
+
 const ROOT = join(import.meta.dirname, "../../..");
 const BACKEND = join(ROOT, "backend");
 
@@ -154,6 +157,10 @@ const schema: Map<string, { cols: { name: string }[] }> = existsSync(BACKEND)
   ? readSchema(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR])
   : new Map();
 const entities = existsSync(BACKEND) ? scanEntities(BACKEND) : new Map();
+const sqlOwners = persistenceOwners(ROOT, JSON.parse(readFileSync(join(ROOT, "scripts/lib/persistence-owners.json"), "utf8")));
+for (const table of sqlOwners) {
+  if (!schema.has(table)) throw new Error(`Persistence owner names a missing table: ${table}`);
+}
 
 /** 库里的业务列（去掉 BaseEntity 那八列），转成 camelCase */
 const businessCols = (table: string) =>
@@ -253,7 +260,7 @@ const DELIBERATELY_UNMAPPED: Record<string, Record<string, string>> = {
     const IGNORE = new RegExp("^(flyway_schema_history|sys_idempotent|sys_outbox|shedlock"
       + "|(usr|mch|ops)_(session|login_log))$");
     const naked = [...schema.keys()]
-      .filter((t) => !IGNORE.test(t) && !entities.has(t) && !(t in NO_ENTITY_YET));
+      .filter((t) => !IGNORE.test(t) && !entities.has(t) && !sqlOwners.has(t) && !(t in NO_ENTITY_YET));
     expect(
       naked,
       "这些表没有 Java 实体，也没登记原因：\n  " +

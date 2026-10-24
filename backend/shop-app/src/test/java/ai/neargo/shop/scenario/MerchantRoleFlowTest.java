@@ -233,8 +233,10 @@ class MerchantRoleFlowTest {
                 "biz:receive","biz:verify","biz:ship","biz:order:view","biz:stock","biz:goods",
                 "biz:campaign","biz:review","biz:aftersale","biz:customer","biz:store","biz:finance",
                 "pay:sv:recharge:create","pay:sv:recharge:receive","pay:sv:recharge:read","pay:sv:account:read",
-                "pay:sv:consume:create","pay:ent:use","pay:ent:issue","pay:ent:read","pay:ent:template:read",
-                "pay:ent:template:write","pay:ent:template:publish","pay:ent:issue:manage"));
+                "pay:sv:plan:read","pay:sv:plan:manage","pay:sv:consume:create","pay:ent:use","pay:ent:issue","pay:ent:read","pay:ent:template:read",
+                "pay:ent:template:write","pay:ent:template:publish","pay:ent:issue:manage",
+                "biz:pricing:config:read","biz:pricing:config:update","biz:pricing:config:publish",
+                "biz:pricing:tax:read"));
     }
 
     @Test

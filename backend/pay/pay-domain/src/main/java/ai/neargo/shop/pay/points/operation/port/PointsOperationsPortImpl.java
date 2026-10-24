@@ -1,21 +1,40 @@
-package ai.neargo.shop.pay.points.operation;
+package ai.neargo.shop.pay.points.operation.port;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.mapper.points.PointsEventMapper;
 import ai.neargo.shop.pay.points.admin.PointsInspectionService;
-import ai.neargo.shop.pay.points.model.*;
-import ai.neargo.shop.pay.points.store.PointsReadStore;
+import ai.neargo.shop.pay.points.lifecycle.AccountExpiryGuard;
+import ai.neargo.shop.pay.points.model.Bucket;
+import ai.neargo.shop.pay.points.model.HolderType;
+import ai.neargo.shop.pay.points.model.PointType;
+import ai.neargo.shop.pay.points.model.PointsKeys;
+import ai.neargo.shop.pay.points.model.PositionMove;
+import ai.neargo.shop.pay.points.operation.PointsOperationJournal;
+import ai.neargo.shop.pay.points.operation.PointsOperationKeys;
 import ai.neargo.shop.pay.points.redeem.RedeemService;
-import ai.neargo.shop.spi.points.*;
-import ai.neargo.shop.spi.points.PointsOperationsPort.*;
+import ai.neargo.shop.pay.points.redeem.impl.RedeemServiceImpl.HoldSnapshot;
+import ai.neargo.shop.pay.points.store.PointsOperationsStore;
+import ai.neargo.shop.pay.points.store.PointsReadStore;
+import ai.neargo.shop.spi.points.PointsEarnPort;
+import ai.neargo.shop.spi.points.PointsFactPort;
+import ai.neargo.shop.spi.points.PointsLifecycleFacts;
+import ai.neargo.shop.spi.points.PointsOperationsPort;
+import ai.neargo.shop.spi.points.PointsRedeemPort;
+import ai.neargo.shop.spi.points.PointsRefundPort;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
-import java.util.*;
+
 /** Unified trusted integration; mutations delegate to the existing pay transaction and proof chain. */
 @Component @Transactional("payTxManager") public class PointsOperationsPortImpl implements PointsOperationsPort {
-    private final ai.neargo.shop.pay.points.store.PointsOperationsStore operations;
+    private final PointsOperationsStore operations;
     private final boolean enabled;
-    private final ai.neargo.shop.pay.points.lifecycle.AccountExpiryGuard expiry;
+    private final AccountExpiryGuard expiry;
     private final PointsReadStore read;
     private final PointsInspectionService inspection;
     private final RedeemService redeem;
@@ -24,7 +43,7 @@ import java.util.*;
     private final PointsOperationJournal journal;
     private final PointsEventMapper events;
     private final ObjectMapper json=new ObjectMapper();
-    public PointsOperationsPortImpl(@org.springframework.beans.factory.annotation.Value("${shop.points.enabled:false}") boolean enabled, ai.neargo.shop.pay.points.lifecycle.AccountExpiryGuard expiry, ai.neargo.shop.pay.points.store.PointsOperationsStore operations, PointsReadStore read, PointsInspectionService inspection, RedeemService redeem, PointsRefundPort refunds, PointsFactPort facts, PointsOperationJournal journal, PointsEventMapper events) {
+    public PointsOperationsPortImpl(@Value("${shop.points.enabled:false}") boolean enabled, AccountExpiryGuard expiry, PointsOperationsStore operations, PointsReadStore read, PointsInspectionService inspection, RedeemService redeem, PointsRefundPort refunds, PointsFactPort facts, PointsOperationJournal journal, PointsEventMapper events) {
         this.enabled=enabled;
         this.expiry=expiry;
         this.operations=operations;
@@ -54,7 +73,7 @@ import java.util.*;
             if(root==null)return receipt;
             String state=(String)root.get("state");
             if("HELD".equals(state)) {
-                var snap=json.readValue((String)root.get("payload_json"), ai.neargo.shop.pay.points.redeem.impl.RedeemServiceImpl.HoldSnapshot.class);
+                var snap=json.readValue((String)root.get("payload_json"), HoldSnapshot.class);
                 int paid=0, held=0, released=0;
                 for(var share:snap.outcome().shares()) {
                     var child=read.position(PositionMove.Kind.REDEEM.table(), PointsKeys.position("R", op.typeCode(), share.subOrderNo()));

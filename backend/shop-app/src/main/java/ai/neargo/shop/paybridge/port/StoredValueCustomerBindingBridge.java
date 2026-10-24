@@ -1,4 +1,4 @@
-package ai.neargo.shop.paybridge;
+package ai.neargo.shop.paybridge.port;
 
 import ai.neargo.shop.payclient.StoredValuePlanRechargeAppService;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;

@@ -1,8 +1,7 @@
 package ai.neargo.shop.promotion.service.impl;
 
 import ai.neargo.shop.numbering.DocumentType;
-import ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers;
-
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -23,7 +22,6 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;

@@ -190,6 +190,7 @@ export interface PointsReceivablePage {
 }
 
 export interface Settlement {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 结算单号 */
   settleNo: string;
@@ -260,6 +261,7 @@ export interface Settlement {
  * 出问题时要看的是后者。失败的记录也在这里。
  */
 export interface SplitLog {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 所属结算单 */
   settleNo: string;
@@ -383,6 +385,7 @@ export const WITHDRAW_TRANSITIONS: Record<WithdrawStatus, WithdrawStatus[]> = {
 };
 
 export interface Withdrawal {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 提现单号 */
   withdrawNo: string;
@@ -416,6 +419,7 @@ export type InvoiceTitleType = "COMPANY" | "PERSONAL";
 export type InvoiceStatus = "PENDING" | "ISSUED" | "REJECTED";
 
 export interface InvoiceRequest {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 开票申请单号 */
   invoiceNo: string;
@@ -492,7 +496,9 @@ export interface TaxRule {
  * 只会去问开票的人，而对方也不知道。
  */
 export interface PurchaseInvoice {
+  /** Human-facing settlement document numbers linked to this record. */
   settleDocumentNos?: string[];
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 平台侧的进项票记录号（不是发票上印的号） */
   invoiceNo: string;
@@ -544,6 +550,7 @@ export interface PurchaseInvoice {
  * 前两个此前已有类型，本类型是补的 —— 它按订单走（`orderNo`），前两个按主体/账期走。
  */
 export interface BuyerInvoiceRequest {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 开票申请号 */
   requestNo: string;
@@ -644,6 +651,7 @@ export interface ChannelMessage {
  * 不要存进任何全局 state、不要打日志。
  */
 export interface PayoutRow {
+  /** Human-facing settlement document numbers linked to this record. */
   settleDocumentNos?: string[];
   /**
    * 放款单号（V391）。**有号的按号回填凭证**（`payPayout`），
@@ -881,6 +889,7 @@ export interface PayChannelSetting {
  * 所以这一页回答的是「这家的钱卡在哪一批」，而不是「这一笔多少钱」。
  */
 export interface SettleBatch {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话 */
   batchNo: string;
@@ -1081,7 +1090,9 @@ export interface PointsTypeConfig {
   idleDays: number;
   /** 服务端业务状态 */
   status: PointsTypeConfigStatus;
+  /** Whether new earning is paused; existing promised work remains recoverable. */
   earningPaused?: boolean;
+  /** Whether this is the server-selected points type for order rewards. */
   orderDefault?: boolean;
 }
 export interface PointsChangeResult {
@@ -1112,10 +1123,15 @@ export interface PointsCreate {
   reason: string;
 }
 export interface PointsTypeRename {
+  /** Stable idempotency identifier; retry the same command with the same identifier. */
   requestId: string;
+  /** Unique points-type code; separate points types never share balances or rules. */
   typeCode: string;
+  /** Previously observed points name used to detect concurrent renaming. */
   expectedName: string;
+  /** Human-readable name displayed for this business resource. */
   name: string;
+  /** Business reason recorded for the operation, rejection or manual recovery. */
   reason?: string;
 }
 
@@ -1641,7 +1657,9 @@ export interface PointsRecoveryExecution {
   status: PointsExecutionStatus;
 }
 export interface PointsEventView {
+  /** Suborder identifier whose reward facts are being inspected. */
   subOrderNo?: string | null;
+  /** Business reason recorded for the operation, rejection or manual recovery. */
   reason?: string | null;
   /** 持久记录主键 */
   id: number;
@@ -1732,6 +1750,7 @@ export interface PointsFreeze {
   reason: string;
 }
 export interface PointsVoucherView {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 持久记录主键 */
   id: number;
@@ -1784,6 +1803,7 @@ export interface PointsCursorPage<T> {
   hasMore: boolean;
 }
 export interface PointsEntryView {
+  /** Human-facing accounting voucher number; absent for historical unmapped vouchers. */
   voucherDocumentNo?: string | null;
   /** 持久记录主键 */
   id: number;
@@ -1805,6 +1825,7 @@ export interface PointsEntryView {
   at: number;
 }
 export interface PointsFlowView {
+  /** Human-facing accounting voucher number; absent for historical unmapped vouchers. */
   voucherDocumentNo?: string | null;
   /** 持久记录主键 */
   id: number;

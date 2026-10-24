@@ -13,6 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createGenerator } from "ts-json-schema-generator";
+import { resourcePluralityOffenders } from "../../scripts/api-path-convention.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
@@ -56,19 +57,25 @@ const knownPlural = new Set(
     .filter((l) => l.trim() && !l.startsWith("#"))
     .map((l) => l.split("\t")[0]),
 );
+// Reuse the existing repository path debt for old brace-id contracts. This is
+// the same frozen baseline checked by api-path-naming, not a second allowance.
+const knownPaths = new Set(fs.readFileSync(path.resolve(root, "../known-plural-paths.txt"), "utf8")
+  .split("\n").map(line => line.trim()).filter(line => line && !line.startsWith("#")));
+const normalizeIds = value => value.replace(/:([^/]+)/g, "{$1}");
 const fixedPlural = [...knownPlural];
 
-// 与 C 端同一条规矩：带 id 的资源段用单数；前缀必须是 /biz（ADR-007）
+// Respect the deployed namespace convention; prefix remains /biz (ADR-007).
 for (const [key, ep] of Object.entries(endpoints)) {
-  const bad = ep.path.match(/\/(\w+s)\/:/);
-  if (bad && !/^(goods|address)$/.test(bad[1])) {
-    if (!knownPlural.has(key)) {
+  const bad = resourcePluralityOffenders(ep.path);
+  if (bad.length) {
+    if (!knownPlural.has(key) && !bad.every(segment => knownPaths.has(`${normalizeIds(ep.path)}  ${segment}`))) {
       throw new Error(
-        `端点 "${key}" 的路径 ${ep.path} 用了复数资源名 "${bad[1]}" 且紧跟 id。\n` +
-          "  ADR-007 是资源段用单数。确实要破例的话，把它加进 b-app/scripts/known-plural-paths.txt 并写清理由。",
+        `端点 "${key}" 的路径 ${ep.path} 资源段 "${bad.join(", ")}" 不符合其既有命名空间约定。\n` +
+          "  旧 /biz 和 /mp 使用单数；/biz/management 与门店作用域子资源使用复数。不要重命名已发布接口或扩大历史基线。",
       );
     }
-    fixedPlural.splice(fixedPlural.indexOf(key), 1);
+    const index = fixedPlural.indexOf(key);
+    if (index >= 0) fixedPlural.splice(index, 1);
   }
   /*
    * `/common/**` 是跨端公共元数据（行业/主体/通道），C 端与 B 端要的是同一份。

@@ -40,7 +40,7 @@ class FulfillmentDomainFlowTest {
     private MerchantGoodsService goodsService;
 
     @Test
-    @DisplayName("★ 取值域是单一来源：订单侧常量就是 base 里那四个")
+    @DisplayName("★ 取值域是单一来源：订单侧常量与 base 取值域一致")
     void singleSourceOfTruth() {
         assertThat(OrdSubOrder.STORE_PICKUP).isEqualTo(Fulfillments.STORE_PICKUP);
         assertThat(OrdSubOrder.EXPRESS).isEqualTo(Fulfillments.EXPRESS);
@@ -48,10 +48,10 @@ class FulfillmentDomainFlowTest {
                 .as("没有「平台仓发货」—— 平台无仓、不碰货，只对接第三方物流")
                 .containsExactlyInAnyOrder(Fulfillments.STORE_PICKUP, Fulfillments.NEIGHBOR_PICKUP,
                         Fulfillments.MERCHANT_DELIVERY, Fulfillments.EXPRESS,
-                        Fulfillments.STORE_VERIFY, Fulfillments.APPOINTMENT);
+                        Fulfillments.STORE_VERIFY, Fulfillments.APPOINTMENT, Fulfillments.DINE_IN);
         assertThat(Fulfillments.PHYSICAL)
                 .as("服务类不进实物集合 —— 默认值用的是它，一件大米不该声称支持上门预约")
-                .doesNotContain(Fulfillments.STORE_VERIFY, Fulfillments.APPOINTMENT);
+                .doesNotContain(Fulfillments.STORE_VERIFY, Fulfillments.APPOINTMENT, Fulfillments.DINE_IN);
     }
 
     @Test

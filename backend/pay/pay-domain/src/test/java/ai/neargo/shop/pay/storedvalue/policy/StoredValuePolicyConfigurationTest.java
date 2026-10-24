@@ -1,5 +1,9 @@
 package ai.neargo.shop.pay.storedvalue.policy;
 
+import ai.neargo.shop.pay.storedvalue.policy.impl.StoredValuePolicyConfigurationServiceImpl;
+
+import ai.neargo.shop.pay.storedvalue.policy.impl.StoredValueIssuePolicyServiceImpl;
+
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository;
 import ai.neargo.shop.spi.storedvalue.StoredValuePolicies.*;
@@ -67,8 +71,8 @@ class StoredValuePolicyConfigurationTest {
         for (String sql : ddl.split(";")) if (!sql.isBlank()) jdbc.execute(sql);
         var db = new IssuerRepository(new DataSourceTransactionManager(ds), new ObjectMapper());
         var evaluator = new StoredValueIssuePolicyEvaluator();
-        return new Fixture(new StoredValuePolicyConfigurationService(db, evaluator),
-                new StoredValueIssuePolicyService(db, evaluator), db, jdbc);
+        return new Fixture(new StoredValuePolicyConfigurationServiceImpl(db, evaluator),
+                new StoredValueIssuePolicyServiceImpl(db, evaluator), db, jdbc);
     }
     private record Fixture(StoredValuePolicyConfigurationService service, StoredValueIssuePolicyService query,
             IssuerRepository db, JdbcTemplate jdbc) { }

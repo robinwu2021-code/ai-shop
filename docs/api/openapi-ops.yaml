@@ -3750,6 +3750,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         couponNo:
           type: "string"
           description: "券模板单号"
@@ -3878,6 +3879,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         issueNo:
           type: "string"
           description: "发放记录单号"
@@ -3991,6 +3993,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         campaignNo:
           type: "string"
           description: "活动号。跨端唯一，平台治理与商家自己看到的是同一个"
@@ -4520,6 +4523,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         refundExecution:
           anyOf:
             - "$ref": "#/components/schemas/RefundExecutionProgress"
@@ -6293,20 +6297,10 @@ components:
           type: "string"
           description: "System that requested or handled the synchronization."
         status:
-          type: "string"
-          enum:
-            - "COMPLETED"
-            - "PENDING"
-            - "FAILED"
-            - "WARNING"
-            - "SKIPPED"
-            - "ARCHIVED"
+          "$ref": "#/components/schemas/InventorySyncEventState"
           description: "Delivery state of the synchronization event."
         outboxMode:
-          type: "string"
-          enum:
-            - "UNIFIED"
-            - "LEGACY"
+          "$ref": "#/components/schemas/InventoryOutboxMode"
           description: "Outbox implementation that persisted the event."
       required:
         - "aggregateId"
@@ -6315,6 +6309,22 @@ components:
         - "status"
         - "outboxMode"
       additionalProperties: false
+    InventorySyncEventState:
+      type: "string"
+      enum:
+        - "COMPLETED"
+        - "PENDING"
+        - "FAILED"
+        - "WARNING"
+        - "SKIPPED"
+        - "ARCHIVED"
+      description: "Delivery state of an inventory/order synchronization event."
+    InventoryOutboxMode:
+      type: "string"
+      enum:
+        - "UNIFIED"
+        - "LEGACY"
+      description: "Outbox mechanism which persisted the synchronization event."
     InvReconReport:
       type: "object"
       properties:
@@ -6870,6 +6880,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         settleNo:
           type: "string"
           description: "结算单号"
@@ -6971,6 +6982,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         settleNo:
           type: "string"
           description: "所属结算单"
@@ -7131,6 +7143,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         withdrawNo:
           type: "string"
           description: "提现单号"
@@ -7199,6 +7212,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         invoiceNo:
           type: "string"
           description: "开票申请单号"
@@ -7315,10 +7329,12 @@ components:
           type: "array"
           items:
             type: "string"
+          description: "Human-facing settlement document numbers linked to this record."
         documentNo:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         invoiceNo:
           type: "string"
           description: "平台侧的进项票记录号（不是发票上印的号）"
@@ -7402,6 +7418,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         requestNo:
           type: "string"
           description: "开票申请号"
@@ -7522,6 +7539,7 @@ components:
           type: "array"
           items:
             type: "string"
+          description: "Human-facing settlement document numbers linked to this record."
         payoutNo:
           type:
             - "string"
@@ -7955,6 +7973,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         batchNo:
           type: "string"
           description: "批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话"
@@ -8325,8 +8344,10 @@ components:
           description: "服务端业务状态"
         earningPaused:
           type: "boolean"
+          description: "Whether new earning is paused; existing promised work remains recoverable."
         orderDefault:
           type: "boolean"
+          description: "Whether this is the server-selected points type for order rewards."
       required:
         - "typeCode"
         - "name"
@@ -8408,14 +8429,19 @@ components:
       properties:
         requestId:
           type: "string"
+          description: "Stable idempotency identifier; retry the same command with the same identifier."
         typeCode:
           type: "string"
+          description: "Unique points-type code; separate points types never share balances or rules."
         expectedName:
           type: "string"
+          description: "Previously observed points name used to detect concurrent renaming."
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         reason:
           type: "string"
+          description: "Business reason recorded for the operation, rejection or manual recovery."
       required:
         - "requestId"
         - "typeCode"
@@ -9720,10 +9746,12 @@ components:
           type:
             - "string"
             - "null"
+          description: "Suborder identifier whose reward facts are being inspected."
         reason:
           type:
             - "string"
             - "null"
+          description: "Business reason recorded for the operation, rejection or manual recovery."
         id:
           type: "number"
           description: "持久记录主键"
@@ -9972,6 +10000,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         id:
           type: "number"
           description: "持久记录主键"
@@ -10077,6 +10106,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing accounting voucher number; absent for historical unmapped vouchers."
         id:
           type: "number"
           description: "持久记录主键"
@@ -10122,6 +10152,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing accounting voucher number; absent for historical unmapped vouchers."
         id:
           type: "number"
           description: "持久记录主键"
@@ -10883,6 +10914,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         fissionNo:
           type: "string"
           description: "活动单号"
@@ -12876,6 +12908,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         activityNo:
           type: "string"
           description: "活动号"
@@ -13185,14 +13218,17 @@ components:
           anyOf:
             - "$ref": "#/components/schemas/PointsTypeConfig"
             - type: "null"
+          description: "Order-default points type; null when no default type is active."
         categories:
           type: "array"
           items:
             "$ref": "#/components/schemas/EarningCategory"
+          description: "Selectable product categories with their hierarchy and display paths."
         types:
           type: "array"
           items:
             "$ref": "#/components/schemas/PointsTypeConfig"
+          description: "Points types available for independent rule configuration."
       required:
         - "type"
         - "categories"
@@ -13203,14 +13239,18 @@ components:
       properties:
         categoryNo:
           type: "string"
+          description: "Product category identifier; null when no category was assigned."
         parentNo:
           type:
             - "string"
             - "null"
+          description: "Parent category identifier; null for a root category."
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         path:
           type: "string"
+          description: "Human-readable category hierarchy from its root to this category."
       required:
         - "categoryNo"
         - "parentNo"
@@ -13222,46 +13262,46 @@ components:
       properties:
         typeCode:
           type: "string"
+          description: "Unique points-type code; separate points types never share balances or rules."
         scope:
           type: "string"
+          description: "DEFAULT or a category identifier selecting the reward rule's applicability."
         revision:
           type: "number"
+          description: "Current revision used for optimistic concurrency or snapshot traceability."
         activeRevision:
           type:
             - "number"
             - "null"
+          description: "Published rule revision; null when no revision is active."
         mode:
-          type: "string"
-          enum:
-            - "RATIO"
-            - "FIXED"
+          "$ref": "#/components/schemas/EarningRewardMode"
+          description: "Calculation or scope mode determining how the associated value and references are interpreted."
         value:
           type: "number"
+          description: "Reward value interpreted by its mode: basis points for RATIO, points per item for FIXED."
         activeMode:
-          type:
-            - "string"
-            - "null"
-          enum:
-            - "RATIO"
-            - "FIXED"
-            - null
+          anyOf:
+            - "$ref": "#/components/schemas/EarningRewardMode"
+            - type: "null"
+          description: "Published reward calculation mode; null before publication."
         activeValue:
           type:
             - "number"
             - "null"
+          description: "Published reward value interpreted using activeMode."
         actor:
           type: "string"
+          description: "Server-recorded operator responsible for the rule revision."
         remark:
           type: "string"
+          description: "Operator-supplied audit note explaining the submitted operation."
         at:
           type: "number"
+          description: "Time the operation was recorded, as epoch milliseconds."
         action:
-          type: "string"
-          enum:
-            - "IMPORT"
-            - "SAVE"
-            - "PUBLISH"
-            - "DISABLE"
+          "$ref": "#/components/schemas/EarningRuleAction"
+          description: "Operation recorded for this command or audit entry."
       required:
         - "typeCode"
         - "scope"
@@ -13275,6 +13315,20 @@ components:
         - "remark"
         - "at"
       additionalProperties: false
+    EarningRewardMode:
+      type: "string"
+      enum:
+        - "RATIO"
+        - "FIXED"
+      description: "Reward calculation mode; historical fixed rewards remain readable."
+    EarningRuleAction:
+      type: "string"
+      enum:
+        - "IMPORT"
+        - "SAVE"
+        - "PUBLISH"
+        - "DISABLE"
+      description: "Reward rule history includes imported legacy revisions."
     EarningRulePage:
       type: "object"
       properties:
@@ -13282,12 +13336,16 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/EarningRule"
+          description: "Records returned for the current indexed page."
         total:
           type: "number"
+          description: "Total number of records matching the current query."
         page:
           type: "number"
+          description: "One-based page index for the returned or requested result."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
       required:
         - "rows"
         - "total"
@@ -13299,24 +13357,27 @@ components:
       properties:
         requestId:
           type: "string"
+          description: "Stable idempotency identifier; retry the same command with the same identifier."
         typeCode:
           type: "string"
+          description: "Unique points-type code; separate points types never share balances or rules."
         scope:
           type: "string"
+          description: "DEFAULT or a category identifier selecting the reward rule's applicability."
         expectedRevision:
           type: "number"
+          description: "Previously observed resource revision; stale writes are rejected."
         action:
-          type: "string"
-          enum:
-            - "SAVE"
-            - "PUBLISH"
-            - "DISABLE"
+          "$ref": "#/components/schemas/EarningChangeAction"
+          description: "Operation recorded for this command or audit entry."
         ratioBp:
           type:
             - "number"
             - "null"
+          description: "Reward percentage in basis points; zero means no reward and null is used outside SAVE."
         remark:
           type: "string"
+          description: "Operator-supplied audit note explaining the submitted operation."
       required:
         - "requestId"
         - "typeCode"
@@ -13326,6 +13387,16 @@ components:
         - "ratioBp"
         - "remark"
       additionalProperties: false
+    EarningChangeAction:
+      "$ref": "#/components/schemas/Exclude%3CEarningRuleAction%2C%22IMPORT%22%3E"
+      description: "Actions operators may submit; legacy import is server-owned."
+    "Exclude<EarningRuleAction,\"IMPORT\">":
+      type: "string"
+      enum:
+        - "SAVE"
+        - "PUBLISH"
+        - "DISABLE"
+      description: "Reward rule history includes imported legacy revisions."
     EarningCalculation:
       type: "object"
       properties:
@@ -13334,18 +13405,25 @@ components:
           properties:
             typeCode:
               type: "string"
+              description: "Unique points-type code; separate points types never share balances or rules."
             name:
               type: "string"
+              description: "Human-readable name displayed for this business resource."
             market:
               type: "string"
+              description: "Market code whose currency and business calendar apply."
             currency:
               type: "string"
+              description: "ISO currency code determining the interpretation of monetary amounts."
             scale:
               type: "number"
+              description: "Currency decimal precision used to convert displayed money to minor units."
             ratePoints:
               type: "number"
+              description: "Points component of the points conversion ratio."
             rateMinor:
               type: "number"
+              description: "Minor-currency-unit component of the points conversion ratio."
           required:
             - "typeCode"
             - "name"
@@ -13355,36 +13433,42 @@ components:
             - "ratePoints"
             - "rateMinor"
           additionalProperties: false
+          description: "Points identity, currency precision and exchange ratio used for this calculation."
         matched:
           type: "object"
           properties:
             scope:
               type: "string"
+              description: "DEFAULT or a category identifier selecting the reward rule's applicability."
             revision:
               type: "number"
+              description: "Current revision used for optimistic concurrency or snapshot traceability."
             rule:
               type: "object"
               properties:
                 mode:
-                  type: "string"
-                  enum:
-                    - "RATIO"
-                    - "FIXED"
+                  "$ref": "#/components/schemas/EarningRewardMode"
+                  description: "Calculation or scope mode determining how the associated value and references are interpreted."
                 value:
                   type: "number"
+                  description: "Reward value interpreted by its mode: basis points for RATIO, points per item for FIXED."
               required:
                 - "mode"
                 - "value"
               additionalProperties: false
+              description: "Immutable calculation rule or versioned activity rule definition."
           required:
             - "scope"
             - "revision"
             - "rule"
           additionalProperties: false
+          description: "Published reward rule and revision selected for this calculation."
         cashMinor:
           type: "number"
+          description: "Cash amount used for the reward calculation, in minor currency units."
         points:
           type: "number"
+          description: "Calculated reward points after applying the published rule and exchange rate."
       required:
         - "type"
         - "matched"
@@ -13396,17 +13480,22 @@ components:
       properties:
         orderNo:
           type: "string"
+          description: "Parent order identifier for the reward inspection."
         subOrderNo:
           type: "string"
+          description: "Suborder identifier whose reward facts are being inspected."
         typeCode:
           type: "string"
+          description: "Unique points-type code; separate points types never share balances or rules."
         currency:
           type: "string"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         snapshot:
           type: "object"
           properties:
             schemaVersion:
               type: "number"
+              description: "Version of the immutable rule or order snapshot format."
             ruleTraces:
               type: "array"
               items:
@@ -13414,20 +13503,25 @@ components:
                 properties:
                   itemId:
                     type: "string"
+                    description: "Order-line identifier used to correlate the reward snapshot and rule trace."
                   categoryNo:
                     type:
                       - "string"
                       - "null"
+                    description: "Product category identifier; null when no category was assigned."
                   matchedScope:
                     type: "string"
+                    description: "Category identifier or DEFAULT identifying the matched reward rule."
                   revision:
                     type: "number"
+                    description: "Current revision used for optimistic concurrency or snapshot traceability."
                 required:
                   - "itemId"
                   - "categoryNo"
                   - "matchedScope"
                   - "revision"
                 additionalProperties: false
+              description: "Per-line matched rule scopes and revisions captured when the order was accepted."
             lines:
               type: "array"
               items:
@@ -13435,30 +13529,35 @@ components:
                 properties:
                   itemId:
                     type: "string"
+                    description: "Order-line identifier used to correlate the reward snapshot and rule trace."
                   goodsNo:
                     type: "string"
+                    description: "Product identifier captured in the order's reward snapshot."
                   categoryNo:
                     type:
                       - "string"
                       - "null"
+                    description: "Product category identifier; null when no category was assigned."
                   quantity:
                     type: "number"
+                    description: "Product quantity used by the snapshot or trigger; null when not applicable."
                   goodsCashMinor:
                     type: "number"
+                    description: "Cash actually paid for this product line, in minor currency units."
                   rule:
                     type: "object"
                     properties:
                       mode:
-                        type: "string"
-                        enum:
-                          - "RATIO"
-                          - "FIXED"
+                        "$ref": "#/components/schemas/EarningRewardMode"
+                        description: "Calculation or scope mode determining how the associated value and references are interpreted."
                       value:
                         type: "number"
+                        description: "Reward value interpreted by its mode: basis points for RATIO, points per item for FIXED."
                     required:
                       - "mode"
                       - "value"
                     additionalProperties: false
+                    description: "Immutable calculation rule or versioned activity rule definition."
                 required:
                   - "itemId"
                   - "goodsNo"
@@ -13467,31 +13566,40 @@ components:
                   - "goodsCashMinor"
                   - "rule"
                 additionalProperties: false
+              description: "Product lines with their immutable reward-calculation inputs."
           required:
             - "schemaVersion"
             - "ruleTraces"
             - "lines"
           additionalProperties: false
+          description: "Immutable order reward inputs and matched rule traces."
         ledger:
           anyOf:
             - type: "object"
               properties:
                 state:
                   type: "string"
+                  description: "Current processing projection for the submitted business operation."
                 expectedPoints:
                   type: "number"
+                  description: "Original expected reward points frozen when the order was accepted."
                 grantedPoints:
                   type: "number"
+                  description: "Reward points actually posted to the account ledger."
                 availablePoints:
                   type: "number"
+                  description: "Granted points that have become available for use."
                 pendingPoints:
                   type: "number"
+                  description: "Granted points still awaiting conversion to an available balance."
                 reclaimedPoints:
                   type: "number"
+                  description: "Previously granted points subsequently recovered by refunds or reversals."
                 reason:
                   type:
                     - "string"
                     - "null"
+                  description: "Business reason recorded for the operation, rejection or manual recovery."
               required:
                 - "state"
                 - "expectedPoints"
@@ -13502,6 +13610,7 @@ components:
                 - "reason"
               additionalProperties: false
             - type: "null"
+          description: "Posted reward accounting projection; null before a grant is recorded."
       required:
         - "orderNo"
         - "subOrderNo"

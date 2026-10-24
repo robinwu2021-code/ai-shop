@@ -11,7 +11,7 @@ import { Input, Select } from "@/components/ui/input";
 import { DataTable } from "@/components/ui/data-table";
 import { Drawer } from "@/components/ui/drawer";
 import { Notice } from "@/components/ui/notice";
-import { SectionHeader } from "@/components/ui/section-header";
+import { TabHeader } from "@/components/ui/tab-header";
 import { pointsCurrency } from "@/lib/points-currency";
 import styles from "./page.module.css";
 
@@ -53,7 +53,7 @@ export default function PointsBudgetPage() {
   const card = "rounded-card border border-border p-4";
   return <main className={`space-y-3 ${styles.page}`}>
 
-    <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end"><SectionHeader title={t("平台预算", "Platform budget")} summary={requests.data?.rows.length ?? 0} className="mb-0 min-w-0" /><div className="flex min-w-0 flex-wrap items-end gap-3"><label className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-none">{t("积分名称", "Points name")}<Select className="w-full sm:w-64" value={code} disabled={save.isPending} onChange={(e) => { setChosenType(e.target.value); setAfter(0); setSelected(null); setCreateOpen(false); }}>{types.data?.map((x) => <option key={x.typeCode} value={x.typeCode}>{x.name} · {x.typeCode}</option>)}</Select></label>{can("finance:settle:execute") && <Button className="shrink-0" disabled={!code} onClick={openCreate}>{t("新增预算申请", "New budget request")}</Button>}</div></div>
+    <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end"><TabHeader tabs={[{ key: "budget", label: t("平台预算", "Platform budget") }]} value="budget" onChange={() => {}} desc={t("申请、审批与核对积分预算", "Request, review and reconcile points budgets")} /><div className="flex min-w-0 flex-wrap items-end gap-3"><label className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-none">{t("积分名称", "Points name")}<Select className="w-full sm:w-64" value={code} disabled={save.isPending} onChange={(e) => { setChosenType(e.target.value); setAfter(0); setSelected(null); setCreateOpen(false); }}>{types.data?.map((x) => <option key={x.typeCode} value={x.typeCode}>{x.name} · {x.typeCode}</option>)}</Select></label>{can("finance:settle:execute") && <Button className="shrink-0" disabled={!code} onClick={openCreate}>{t("新增预算申请", "New budget request")}</Button>}</div></div>
     <div className="flex justify-end"><Button variant="ghost" size="sm" aria-expanded={showHelp} aria-controls="budget-help" onClick={() => setShowHelp(!showHelp)}>{t("使用说明", "Help")}</Button></div>
     {showHelp && <div id="budget-help"><Notice>{t("预算变更需提交申请，由另一位有权限的运营人员复核后处理。金额按所选积分币种分别核算。", "Budget changes require a request and review by another authorized operator. Amounts are tracked separately by points currency.")}</Notice></div>}
     {(types.error || requests.error || overview.error) && <Notice tone="warning">{String(types.error?.message ?? requests.error?.message ?? overview.error?.message)}<Button onClick={() => { void types.refetch(); void requests.refetch(); void overview.refetch(); }}>{t("重试", "Retry")}</Button></Notice>}

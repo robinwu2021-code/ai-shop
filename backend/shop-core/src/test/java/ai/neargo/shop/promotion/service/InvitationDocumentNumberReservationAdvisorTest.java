@@ -1,5 +1,7 @@
 package ai.neargo.shop.promotion.service;
 
+import ai.neargo.shop.numbering.InvitationDocumentNumberReservationAdvisor;
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.shop.marketing.attribution.entity.MktFissionCampaign;
 import ai.neargo.shop.marketing.attribution.mapper.AttributionMappers.FissionCampaignMapper;
 import ai.neargo.shop.numbering.DocumentType;

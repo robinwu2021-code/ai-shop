@@ -689,6 +689,53 @@ components:
         - "name"
       additionalProperties: false
       description: "一家承运方（`CarrierVO`）。**归履约域维护，进销存只读**。"
+    InventorySyncEventState:
+      type: "string"
+      enum:
+        - "COMPLETED"
+        - "PENDING"
+        - "FAILED"
+        - "WARNING"
+        - "SKIPPED"
+        - "ARCHIVED"
+      description: "Delivery state of an inventory/order synchronization event."
+    InventoryOutboxMode:
+      type: "string"
+      enum:
+        - "UNIFIED"
+        - "LEGACY"
+      description: "Outbox mechanism which persisted the synchronization event."
+    InventoryOnboardingState:
+      type: "string"
+      enum:
+        - "UNMANAGED"
+        - "INITIALIZING"
+        - "MAPPED"
+      description: "Inventory onboarding progression; MAPPED means a physical inventory mapping exists."
+    InventoryAccountingMode:
+      type: "string"
+      const: "PAYMENT_DEDUCT"
+      description: "Current backend accounting policy: inventory is deducted when payment completes."
+    StockSyncOperationState:
+      type: "string"
+      enum:
+        - "PROCESSING"
+        - "WAITING"
+        - "FAILED"
+        - "BLOCKED"
+        - "COMPLETED"
+      description: "Processing state of a persisted stock synchronization command."
+    StockAlignmentBatchState:
+      type: "string"
+      enum:
+        - "PREVIEW"
+        - "PROCESSING"
+        - "PARTIAL"
+        - "BLOCKED"
+        - "COMPLETED"
+        - "STALE"
+        - "EXPIRED"
+      description: "Preview and execution state of a stock alignment batch."
     StockOverview:
       type: "object"
       properties:
@@ -704,18 +751,11 @@ components:
             - "null"
           description: "Physical stock unit; null when the SKU has no configured unit."
         inventoryState:
-          type: "string"
-          enum:
-            - "UNMANAGED"
-            - "INITIALIZING"
-            - "MAPPED"
+          "$ref": "#/components/schemas/InventoryOnboardingState"
           description: "Inventory onboarding state: unmanaged, initializing or mapped."
         accountingMode:
-          type: "string"
-          enum:
-            - "PAYMENT_DEDUCT"
-            - "HANDOFF_DEDUCT"
-          description: "Point at which physical inventory is deducted: payment or handoff."
+          "$ref": "#/components/schemas/InventoryAccountingMode"
+          description: "Current accounting policy; the server only supports payment-time deduction."
         onHand:
           type:
             - "number"
@@ -1586,6 +1626,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         operationNo:
           type: "string"
           description: "Identifier of this stock synchronization operation."
@@ -1596,13 +1637,7 @@ components:
           type: "string"
           description: "Business reason recorded for the synchronization."
         status:
-          type: "string"
-          enum:
-            - "PROCESSING"
-            - "WAITING"
-            - "FAILED"
-            - "BLOCKED"
-            - "COMPLETED"
+          "$ref": "#/components/schemas/StockSyncOperationState"
           description: "Current processing state of the operation."
         result:
           anyOf:
@@ -1713,6 +1748,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         batchNo:
           type: "string"
           description: "Identifier of this inventory alignment batch."
@@ -1731,15 +1767,7 @@ components:
             - "null"
           description: "Expiry time in milliseconds; null when the preview has no expiry."
         status:
-          type: "string"
-          enum:
-            - "PREVIEW"
-            - "PROCESSING"
-            - "PARTIAL"
-            - "BLOCKED"
-            - "COMPLETED"
-            - "STALE"
-            - "EXPIRED"
+          "$ref": "#/components/schemas/StockAlignmentBatchState"
           description: "Current preview or execution state of the batch."
         completed:
           type: "number"
@@ -2002,6 +2030,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         couponNo:
           type: "string"
           description: "券单号"
@@ -2473,6 +2502,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         campaignNo:
           type: "string"
           description: "活动单号"
@@ -2614,6 +2644,11 @@ components:
     MerchantCoupon:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; absent for historical rows without a mapping."
         couponNo:
           type: "string"
           description: "券模板号 —— 一张券和它的模板是两个对象"
@@ -2835,6 +2870,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         issueNo:
           type: "string"
           description: "这一批发放的编号"
@@ -3076,6 +3112,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         fissionNo:
           type: "string"
           description: "活动号。端上只用来回传，不显示"
@@ -4024,6 +4061,39 @@ components:
         - "expiresAt"
       additionalProperties: false
       description: "商家扫码得到的短期顾客引用，只在原主体、门店和操作人范围内可用。"
+    OrderPointsEarningState:
+      type: "string"
+      enum:
+        - "NONE"
+        - "EXPECTED"
+        - "PROCESSING"
+        - "PENDING"
+        - "AVAILABLE"
+        - "RETRYABLE"
+        - "MANUAL"
+        - "SKIPPED"
+        - "RECLAIMED"
+      description: "Order reward processing projection; accepted work is not a posted account credit."
+    OrderPointsRedemptionState:
+      type: "string"
+      enum:
+        - "NONE"
+        - "PROCESSING"
+        - "HELD"
+        - "RELEASED"
+        - "CONSUMED"
+        - "REFUND_PROCESSING"
+        - "RETURNED"
+        - "PARTIALLY_RETURNED"
+      description: "Lifecycle of the order points hold and its subsequent returns."
+    OrderPointsRefundState:
+      type: "string"
+      enum:
+        - "NONE"
+        - "PROCESSING"
+        - "MANUAL"
+        - "COMPLETED"
+      description: "Processing state of the order points refund projection."
     StorePointTypeStatus:
       type: "string"
       enum:
@@ -4041,6 +4111,12 @@ components:
     StorePointType:
       type: "object"
       properties:
+        earningPaused:
+          type: "boolean"
+          description: "Whether new earning is paused; existing accounting obligations still complete."
+        orderDefault:
+          type: "boolean"
+          description: "Whether this type is the server-selected default for order rewards."
         name:
           type: "string"
           description: "积分名称"
@@ -5632,10 +5708,12 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing settlement batch number; absent for historical unmapped batches."
         documentNo:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         settleNo:
           type: "string"
           description: "结算单号"
@@ -5746,6 +5824,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         batchNo:
           type: "string"
           description: "批次号。**与结算单上的批次号是同一个** —— 商家照着单子来问的就是它"
@@ -6697,60 +6776,51 @@ components:
       properties:
         orderNo:
           type: "string"
+          description: "Parent order identifier for the reward inspection."
         typeCode:
           type: "string"
+          description: "Unique points-type code; separate points types never share balances or rules."
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         currency:
           type: "string"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         state:
-          type: "string"
-          enum:
-            - "NONE"
-            - "EXPECTED"
-            - "PROCESSING"
-            - "PENDING"
-            - "AVAILABLE"
-            - "RETRYABLE"
-            - "MANUAL"
-            - "SKIPPED"
-            - "RECLAIMED"
+          "$ref": "#/components/schemas/OrderPointsEarningState"
+          description: "Current processing projection for the submitted business operation."
         redemptionState:
-          type: "string"
-          enum:
-            - "NONE"
-            - "PROCESSING"
-            - "HELD"
-            - "RELEASED"
-            - "CONSUMED"
-            - "REFUND_PROCESSING"
-            - "RETURNED"
-            - "PARTIALLY_RETURNED"
+          "$ref": "#/components/schemas/OrderPointsRedemptionState"
+          description: "Processing state of the order's points hold, consumption and subsequent returns."
         usedPoints:
           type: "number"
+          description: "Points actually consumed by this order's completed redemption."
         refundState:
-          type: "string"
-          enum:
-            - "NONE"
-            - "PROCESSING"
-            - "MANUAL"
-            - "COMPLETED"
+          "$ref": "#/components/schemas/OrderPointsRefundState"
+          description: "Processing state of points returned for this order's refund."
         returnedPoints:
           type: "number"
+          description: "Points actually returned to the account by completed refund operations."
         expectedPoints:
           type: "number"
+          description: "Original expected reward points frozen when the order was accepted."
         grantedPoints:
           type: "number"
+          description: "Reward points actually posted to the account ledger."
         pendingPoints:
           type: "number"
+          description: "Granted points still awaiting conversion to an available balance."
         availablePoints:
           type: "number"
+          description: "Granted points that have become available for use."
         reclaimedPoints:
           type: "number"
+          description: "Previously granted points subsequently recovered by refunds or reversals."
         reason:
           type:
             - "string"
             - "null"
+          description: "Business reason recorded for the operation, rejection or manual recovery."
       required:
         - "orderNo"
         - "typeCode"
@@ -9861,6 +9931,11 @@ components:
     PlatformActivity:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; absent for historical rows without a mapping."
         activityNo:
           type: "string"
           description: "活动单号"
@@ -10749,6 +10824,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         afterSaleNo:
           type: "string"
           description: "售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。"
@@ -12383,24 +12459,32 @@ components:
       properties:
         cursor:
           type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
       additionalProperties: false
     StoredValueRecordsQuery:
       type: "object"
       properties:
         cursor:
           type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
         type:
           "$ref": "#/components/schemas/StoredValueType"
+          description: "Record, target or calculation classification used to interpret this object."
         startDate:
           type: "string"
+          description: "Inclusive first business date in YYYY-MM-DD format."
         endDate:
           type: "string"
+          description: "Inclusive final business date in YYYY-MM-DD format."
         focusDocumentNo:
           type: "string"
+          description: "Human-facing document number to locate within the account's authorized records."
       additionalProperties: false
     StoredValueType:
       type: "string"
@@ -12591,22 +12675,27 @@ components:
           type:
             - "string"
             - "null"
+          description: "Internal accounting voucher identifier used for authorized ledger references."
         voucherDocumentNo:
           type:
             - "string"
             - "null"
+          description: "Human-facing accounting voucher number; absent for historical unmapped vouchers."
         direction:
           type:
             - "string"
             - "null"
+          description: "Accounting direction of the posted points entry."
         businessRef:
           type:
             - "string"
             - "null"
+          description: "Original business operation reference associated with the posted points entry."
         orderNo:
           type:
             - "string"
             - "null"
+          description: "Parent order identifier for the reward inspection."
         entryNo:
           type: "string"
           description: "不可变积分分录编号"
@@ -12723,12 +12812,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/StoredValueStore"
+          description: "Business records returned by the current query."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque cursor for the next page; null when the result is exhausted."
         hasMore:
           type: "boolean"
+          description: "Whether a further page is available using nextCursor."
       required:
         - "records"
         - "nextCursor"
@@ -12739,12 +12831,16 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         storeName:
           type: "string"
+          description: "Store display name captured for the record or selection."
         lastOccurredAt:
           type: "string"
+          description: "Time of the most recent account record; null when there are no records."
         lastType:
           "$ref": "#/components/schemas/Exclude_StoredValueType_ALL"
+          description: "Type of the most recent stored-value record, excluding the ALL query filter."
       required:
         - "storeNo"
         - "storeName"
@@ -12759,43 +12855,54 @@ components:
           properties:
             storeNo:
               type: "string"
+              description: "Store identifier scoping the requested operation or returned business record."
             storeName:
               type: "string"
+              description: "Store display name captured for the record or selection."
             businessTimeZone:
               type: "string"
+              description: "IANA time zone used to interpret the store's business dates."
           required:
             - "storeNo"
             - "storeName"
             - "businessTimeZone"
           additionalProperties: false
+          description: "Authorized store identity and business time zone for the returned records."
         filter:
           type: "object"
           properties:
             type:
               "$ref": "#/components/schemas/StoredValueType"
+              description: "Record, target or calculation classification used to interpret this object."
             startDate:
               type:
                 - "string"
                 - "null"
+              description: "Inclusive first business date in YYYY-MM-DD format."
             endDate:
               type:
                 - "string"
                 - "null"
+              description: "Inclusive final business date in YYYY-MM-DD format."
           required:
             - "type"
             - "startDate"
             - "endDate"
           additionalProperties: false
+          description: "Effective record filters after the server has normalized the request."
         records:
           type: "array"
           items:
             "$ref": "#/components/schemas/StoredValueRecord"
+          description: "Business records returned by the current query."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque cursor for the next page; null when the result is exhausted."
         hasMore:
           type: "boolean"
+          description: "Whether a further page is available using nextCursor."
       required:
         - "store"
         - "filter"
@@ -12808,18 +12915,24 @@ components:
       properties:
         type:
           "$ref": "#/components/schemas/Exclude_StoredValueType_ALL"
+          description: "Record, target or calculation classification used to interpret this object."
         title:
           type: "string"
+          description: "Human-readable title of the stored-value business record."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         signedAmountMinor:
           type: "number"
+          description: "Signed change in stored-value balance, in minor currency units."
         occurredAt:
           type: "string"
+          description: "Time the server recorded the business operation."
         documentNo:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
       required:
         - "type"
         - "title"
@@ -12834,16 +12947,20 @@ components:
         channel:
           type: "string"
           const: "WXSUB"
+          description: "Delivery or collection channel used by this capability or route."
         available:
           type: "boolean"
+          description: "Whether this capability or preset is available in the current deployment."
         templateId:
           type:
             - "string"
             - "null"
+          description: "Messaging template identifier; null when the capability is not configured."
         reasonCode:
           type:
             - "string"
             - "null"
+          description: "Machine-readable reason this capability is unavailable; null when available."
       required:
         - "channel"
         - "available"
@@ -16834,11 +16951,13 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
       responses:
         "200":
           description: "OK"
@@ -16877,31 +16996,37 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
         - name: "type"
           in: "query"
           required: false
           schema:
             "$ref": "#/components/schemas/StoredValueType"
+            description: "Record, target or calculation classification used to interpret this object."
         - name: "startDate"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Inclusive first business date in YYYY-MM-DD format."
         - name: "endDate"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Inclusive final business date in YYYY-MM-DD format."
         - name: "focusDocumentNo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Human-facing document number to locate within the account's authorized records."
       responses:
         "200":
           description: "OK"

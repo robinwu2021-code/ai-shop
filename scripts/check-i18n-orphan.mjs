@@ -21,6 +21,7 @@
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { localeEntries } from "./lib/i18n-locale.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const APPS = [
@@ -31,47 +32,50 @@ const APPS = [
 const SHARED = ["packages/ui/src", "packages/shared/src"];
 const BASELINE = join(ROOT, "known-orphan-i18n.txt");
 
-/** 词条表里的全部 key（嵌套、值在下一行的都算） */
-function keysOf(file) {
-  const src = readFileSync(file, "utf8");
-  const out = new Set();
-  const stack = [];
-  let depth = 0;
-  for (const line of src.split("\n")) {
-    const clean = line.replace(/\/\/.*$/, "");
-    for (const m of clean.matchAll(/([A-Za-z_]\w*)\s*:\s*\{/g)) stack.push([depth, m[1]]);
-    for (const m of clean.matchAll(/([A-Za-z_]\w*)\s*:\s*(?!\{)(\S|$)/g)) {
-      const nxt = m[2] ?? "";
-      if (nxt === "" || `"'\``.includes(nxt) || clean.trimEnd().endsWith(":")) {
-        out.add([...stack.map(([, n]) => n), m[1]].join("."));
-      }
-    }
-    depth += (clean.match(/\{/g)?.length ?? 0) - (clean.match(/\}/g)?.length ?? 0);
-    while (stack.length && stack[stack.length - 1][0] >= depth) stack.pop();
+// These dotted strings belong to the server authorization contract, not the
+// locale namespace. Read the finite authoritative map; never exempt a prefix.
+function managementPermissions() {
+  const file = join(ROOT, "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/ManagementScopeServiceImpl.java");
+  if (!existsSync(file)) throw new Error("Authoritative management permission catalog is missing");
+  const map = readFileSync(file, "utf8").match(/\bPERMISSIONS\s*=\s*Map\.of\(([\s\S]*?)\);/);
+  const permissions = new Set([...(map?.[1] ?? "").matchAll(/"([a-zA-Z]\w*(?:\.[\w]+)+)"/g)].map(m => m[1]));
+  if (!map || !permissions.size) throw new Error("Cannot parse authoritative management permission catalog");
+  return permissions;
+}
+const PERMISSION_CODES = managementPermissions();
+
+/** Explicit translation contexts win even when a key equals a permission code. */
+function translationRefs(src) {
+  const keys = new Set();
+  for (const m of src.matchAll(TITLE_KEY)) keys.add(m[1]);
+  for (const attr of src.matchAll(/(?:^|[\s<]):?[\w-]*key\s*=\s*(["'])([\s\S]*?)\1/g)) {
+    if (/^[\w.]+$/.test(attr[2])) keys.add(attr[2]);
+    for (const m of attr[2].matchAll(LITERAL)) keys.add(m[1]);
   }
-  return out;
+  // Indirect UI labels and const labelKey declarations are translation contracts.
+  for (const m of src.matchAll(/\b\w*[Kk]ey\s*[:=]\s*["'`]([\w.]+)["'`]/g)) keys.add(m[1]);
+  for (const call of src.matchAll(/(?:^|[^\w$])\$?t\s*\(/g)) {
+    const start = call.index + call[0].length;
+    let depth = 1, quote = "", escaped = false, end = start;
+    for (; end < src.length && depth; end++) {
+      const ch = src[end];
+      if (quote) {
+        if (escaped) escaped = false;
+        else if (ch === "\\") escaped = true;
+        else if (ch === quote) quote = "";
+      } else if ('"\'`'.includes(ch)) quote = ch;
+      else if (ch === "(") depth++;
+      else if (ch === ")") depth--;
+    }
+    for (const m of src.slice(start, end).matchAll(LITERAL)) keys.add(m[1]);
+  }
+  return keys;
 }
 
-/**
- * 词条表里 key → 文案。**只收同一行就给出字符串值的**（`a: "x"`）——
- * 占位符检查只需要看得见文案的那些，值写在下一行的多行文案不带 `{}`。
- */
-function entriesOf(file) {
-  const src = readFileSync(file, "utf8");
-  const out = [];
-  const stack = [];
-  let depth = 0;
-  for (const line of src.split("\n")) {
-    const clean = line.replace(/\/\/.*$/, "");
-    for (const m of clean.matchAll(/([A-Za-z_]\w*)\s*:\s*\{/g)) stack.push([depth, m[1]]);
-    for (const m of clean.matchAll(/([A-Za-z_]\w*)\s*:\s*"((?:[^"\\]|\\.)*)"/g)) {
-      out.push([[...stack.map(([, n]) => n), m[1]].join("."), m[2]]);
-    }
-    depth += (clean.match(/\{/g)?.length ?? 0) - (clean.match(/\}/g)?.length ?? 0);
-    while (stack.length && stack[stack.length - 1][0] >= depth) stack.pop();
-  }
-  return out;
-}
+
+/** Parse quoted/unquoted locale keys and their exact interpolation strings alike. */
+function keysOf(file) { return new Set(localeEntries(file).keys()); }
+function entriesOf(file) { return [...localeEntries(file)]; }
 
 function sources(dirs) {
   const out = [];
@@ -113,6 +117,8 @@ function sources(dirs) {
 //（`store.*` 共 211 条）。那是真的动态取键，光看字符串分不出来 ——
 // 所以这道闸对那几个命名空间是瞎的，读它的「0」时要知道这一点。
 const DYNAMIC = /`([a-zA-Z][\w]*(?:\.[\w]*)+?)\$\{/g;
+// Concatenation is a dynamic prefix only inside an actual translation call.
+const CONCAT = /(?:^|[^\w$])\$?t\s*\(\s*(["'`])([a-zA-Z]\w*(?:\.[\w]*)+)\1\s*\+/g;
 const LITERAL = /["'`]([a-zA-Z][\w]*(?:\.[\w]+)+)["'`]/g;
 /*
  * 模板里怎么算「引用」，是这条闸最容易写错的地方，前后错了三次：
@@ -143,8 +149,11 @@ function stripComments(s) {
 function refsOf(files) {
   const keys = new Set();
   const prefixes = new Set();
+  const translations = new Set();
   for (const f of files) {
     const src = stripComments(readFileSync(f, "utf8"));
+    for (const key of translationRefs(src)) translations.add(key);
+    for (const m of src.matchAll(CONCAT)) prefixes.add(m[2]);
     let script = src;
     if (f.endsWith(".vue")) {
       const parts = [...src.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
@@ -158,7 +167,7 @@ function refsOf(files) {
     for (const m of script.matchAll(LITERAL)) keys.add(m[1]);
     for (const m of script.matchAll(DYNAMIC)) prefixes.add(m[1]);
   }
-  return { keys, prefixes };
+  return { keys, prefixes, translations };
 }
 
 const known = existsSync(BASELINE)
@@ -181,8 +190,9 @@ for (const { app, locale, src } of APPS) {
   // 「缺 key」只看本端自己的源码：两端共用的常量表里躺着对方的 key
   //（c-app 的 `tab.cart` 出现在 packages/shared，b-app 词条里当然没有），
   // 拿共用层去比会凭空报一堆缺失。共用组件那一侧由 i18n-keys-exist 盯着。
-  const own = refsOf(sources(src)).keys;
-  for (const k of own) {
+  const own = refsOf(sources(src));
+  for (const k of own.keys) {
+    if (PERMISSION_CODES.has(k) && !own.translations.has(k)) continue;
     // 只对「看起来像本端词条」的字面量下判断：命名空间必须在词条表里存在，
     // 否则会把 `api/goods.list`、`vue-i18n` 这类字符串一并算进来
     const ns = k.split(".")[0];

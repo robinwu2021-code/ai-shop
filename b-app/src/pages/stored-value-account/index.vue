@@ -18,6 +18,8 @@ const denied=computed(()=>(memberNo||scopeMemberNo)?(!merchant.can('biz:customer
 async function load(){
  const token=++seq;error.value='';
  try{
+  await merchant.ensureScope();
+  if(denied.value)return;
   if(!store){await merchant.ensureStores();store=originStore||merchant.storeNo;}
   if(store!==merchant.storeNo)throw Error(t('storedValue.leaveStore'));
   if(!memberNo&&!scopeMemberNo&&!refNo)throw Error(t('storedValue.chooseMember'));
@@ -33,12 +35,12 @@ watch(()=>merchant.storeNo,()=>{seq++;account.value=null;customer.value=null;rec
 onLoad(q=>{refNo=q?.accountRef||'';memberNo=q?.memberNo||'';scopeMemberNo=q?.scopeMemberNo||'';originStore=q?.storeNo||'';planNo=q?.planNo||'';void load();});
 onShow(()=>{if(store)void load();});
 </script>
-<template><sh-scaffold :title-suffix="merchant.multiStore?merchant.currentStore?.name:''" title-key="storedValue.accountDetail" :denied="denied" :failed="failed" :pending="!account&&!customer&&!failed" @retry="load">
+<template><sh-scaffold :title-suffix="merchant.multiStore?merchant.currentStore?.name:''" title-key="storedValue.accountDetail" :denied="!failed&&denied" :failed="failed" :pending="!account&&!customer&&!failed" @retry="load">
  <view v-if="account||customer" class="sh-card sv-card"><text class="txt-title">{{customer?.displayName||account?.maskedName}}</text><text class="sh-muted">{{customer?.phoneMasked||account?.maskedPhone}}</text><sh-kv v-if="account" :label="t('storedValue.balance')" between><text class="txt-price sh-num">{{money(account.availableMinor,account.currency)}}</text></sh-kv></view>
  <view v-if="account" class="sh-row sh-row--between"><text class="txt-strong">{{t('storedValue.recent')}}</text><view role="button" class="sh-link sh-hit" @tap="all=!all">{{t(all?'storedValue.recent':'storedValue.allRecords')}}</view></view>
  <sh-kv v-if="customer?.sourceStoreName" :label="t('storedValue.sourceStore')">{{customer.sourceStoreName}}</sh-kv>
  <StoredValueRecordList v-if="account" :key="account.accountRef" ref="recordList" :account-ref="account.accountRef" :compact="!all"/>
- <sh-empty v-else-if="customer" :text="t('storedValue.empty')" compact/>
+ <sh-empty :pending="!account&&!customer&&!failed" v-else-if="customer" :text="t('storedValue.empty')" compact/>
  <text v-if="error" class="sh-hint">{{error}}</text>
  <sh-actionbar v-if="(account||customer)&&merchant.can('pay:sv:recharge:create')"><view data-testid="detail-recharge" role="button" class="sh-btn sh-fill" @tap="rechargeVisible=true">{{t('storedValue.recharge')}}</view></sh-actionbar>
  <StoredValueRechargeSheet v-if="account||customer" :visible="rechargeVisible" :source="source" :plan-no="planNo" @close="rechargeVisible=false" @credited="load"/>

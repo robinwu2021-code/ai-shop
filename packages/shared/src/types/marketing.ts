@@ -56,6 +56,7 @@ export interface CouponBestResult {
 }
 
 export interface Coupon {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 券单号 */
   couponNo: string;
@@ -334,6 +335,7 @@ export type CampaignType =
   | "BUY_GIFT"; // 买赠：买 N 送 M
 export type CampaignStatus = "DRAFT" | "RUNNING" | "PAUSED" | "ENDED";
 export interface MarketingCampaign {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 活动单号 */
   campaignNo: string;
@@ -433,6 +435,8 @@ export interface ActivityConflict {
  * 就要改一次算价。
  */
 export interface MerchantCoupon {
+  /** Human-facing document number; absent for historical rows without a mapping. */
+  documentNo?: string | null;
   /** 券模板号 —— 一张券和它的模板是两个对象 */
   couponNo: string;
   /** 券名，买家在券包里看到的就是它 */
@@ -547,6 +551,7 @@ export interface MerchantCouponDraft {
  * 实发 25 张，只说「发放成功」的话，他会以为发出去 37 张 —— 直到某个顾客说没收到。
  */
 export interface CouponIssueBatch {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 这一批发放的编号 */
   issueNo: string;
@@ -675,6 +680,7 @@ export interface CouponRedeemResult {
  * 不给一个点进去说「暂无活动」的入口，那比没有入口更糟。
  */
 export interface MyFission {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 活动号。端上只用来回传，不显示 */
   fissionNo: string;

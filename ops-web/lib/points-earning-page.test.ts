@@ -25,7 +25,7 @@ beforeEach(()=>{
   host=document.createElement("div");document.body.append(host);root=createRoot(host);query=new QueryClient({defaultOptions:{queries:{retry:false}}});
 });
 afterEach(async()=>{await act(async()=>root.unmount());query.clear();host.remove();});
-async function render(){await act(async()=>root.render(h(QueryClientProvider,{client:query},h(PointsEarningRulesPanel,{canEdit:true}))));await act(async()=>{await new Promise(r=>setTimeout(r,25));});}
+async function render(){await act(async()=>root.render(h(QueryClientProvider,{client:query},h(PointsEarningRulesPanel,{canEdit:true}))));await vi.waitFor(async()=>{await act(async()=>{});expect(host.textContent).toContain("1.00%");});}
 it("shows independent published rules and opens category editing in a drawer",async()=>{
  await render();expect(host.textContent).toContain("1.00%");expect(host.textContent).toContain("消费积分");
  const add=[...host.querySelectorAll("button")].find(b=>b.textContent==="新增品类规则");expect(add).toBeDefined();await act(async()=>add!.click());

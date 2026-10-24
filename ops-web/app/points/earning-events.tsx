@@ -26,7 +26,7 @@ export function EarningEvents({typeCode,typeName,open,onOpenChange,canRetry}:{ty
    <label className="block space-y-2">{t("处理备注","Processing remark")}<Input name="remark" required maxLength={500}/></label><Button type="submit" disabled={retry.isPending}>{t("重新提交处理","Resubmit for processing")}</Button>
   </form>}
  </div>:<div className="space-y-4"><div className="flex justify-end"><Button variant="outline" onClick={()=>void query.refetch()}>{t("刷新","Refresh")}</Button></div>
- <DataTable rows={query.data?.rows??[]} loading={query.isPending} error={query.error} onRetry={()=>void query.refetch()} rowKey={r=>String(r.id)} columns={[
+ <DataTable empty={t("当前筛选下没有处理记录。可调整筛选或刷新查询。","No processing records match these filters. Adjust the filters or refresh.")} rows={query.data?.rows??[]} loading={query.isPending} error={query.error} onRetry={()=>void query.refetch()} rowKey={r=>String(r.id)} columns={[
   {header:t("事件号","Event number"),cell:(r:PointsEventView)=>r.eventNo},{header:t("类型","Kind"),cell:(r:PointsEventView)=>r.kind},{header:t("状态","Status"),cell:(r:PointsEventView)=>state(r.state)},
   {header:t("重试次数","Attempts"),cell:(r:PointsEventView)=>r.attempt,numeric:true},{header:t("失败原因","Failure reason"),cell:(r:PointsEventView)=>r.reason??"—"},
  ]} rowProps={r=>({role:"button",tabIndex:0,onClick:()=>{retry.reset();setSelected(r);},onKeyDown:e=>{if(e.key==="Enter")setSelected(r);}})}/>

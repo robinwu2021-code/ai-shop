@@ -1,4 +1,5 @@
 package ai.neargo.shop.marketing;
+
 import ai.neargo.shop.marketing.attribution.*;
 import ai.neargo.shop.marketing.attribution.entity.MktFissionCampaign;
 import ai.neargo.shop.marketing.attribution.impl.FissionServiceImpl;
@@ -11,7 +12,7 @@ import ai.neargo.shop.marketing.coupon.entity.MktCoupon;
 import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponMapper;
 import ai.neargo.shop.numbering.*;
 import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
-import ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers;
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.shop.spi.entitlement.LegacyCouponWriteFencePort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import java.util.*;
 import java.util.function.Supplier;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+
 class LegacyCampaignNumberingTest {
     private final DocumentNumberCoordinator coordinator = mock(DocumentNumberCoordinator.class);
     private final Map<DocumentSource,String> committed = new HashMap<>();

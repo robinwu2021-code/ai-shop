@@ -824,6 +824,7 @@ export interface RefundExecutionProgress {
   nextAttemptAt?: number | null;
 }
 export interface AfterSale {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /**
    * 售后单号。**售后是独立资源，不是订单上的一个字段** ——

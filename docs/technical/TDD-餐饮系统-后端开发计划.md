@@ -20,7 +20,7 @@
 
 **依据：** [完整需求](../requirements/餐饮系统-完整需求文档.md) · [业务功能清单](../requirements/餐饮系统-后端业务模块功能清单.md) · [数据库/API评审](./TDD-餐饮系统-数据库与API评审对齐.md) · [模块类清单](./design/餐饮系统-按业务模块代码清单.md) · [精确方法/入出参](./design/餐饮系统-Controller-Service-Mapper方法清单.md)。
 
-**阅读顺序：** §0看范围和交付次序；§1看全局约束；§2按模块领取任务；§5看测试与上线门槛；[任务对照索引](./design/餐饮系统-开发任务对照索引.md)查141个API、109项需求和精确文件路径。输入输出不另抄一份，以API及方法清单为权威。
+**阅读顺序：** §0看范围和交付次序；§1看全局约束；§2按模块领取任务；§5看测试与上线门槛；[按业务模块代码清单](./design/餐饮系统-按业务模块代码清单.md)查141个API、109项需求和精确文件路径。输入输出不另抄一份，以API及方法清单为权威。
 
 ## §0 现状与交付范围
 
@@ -116,7 +116,7 @@
 | `backend/shop-core/`及既有共享SPI提供模块 | CORE任务的权威扩展，实施前定位真实文件，不提前假定Port已存在 |
 | `backend/shop-report/`及共享打印模块 | 报表Row/DAO、共享打印模型；位置按平台已有实现核验后登记 |
 
-下表API编号省略`FOOD-API-`；每个编号只指定一个首次实施任务。无新增API的扩展任务复用已有入口，不意味着可以省略验收。精确文件、Controller和Service签名、Mapper锁/写分支以及Req/VO字段直接按[方法机器清单](./design/schema/food-method-inventory.json)与[类机器清单](./design/schema/food-module-code-inventory.json)中对应API读取；[任务索引](./design/餐饮系统-开发任务对照索引.md)给出任务到API和文件的入口。
+下表API编号省略`FOOD-API-`；每个编号只指定一个首次实施任务。无新增API的扩展任务复用已有入口，不意味着可以省略验收。精确文件、Controller和Service签名、Mapper锁/写分支以及Req/VO字段直接按[方法机器清单](./design/schema/food-method-inventory.json)与[类机器清单](./design/schema/food-module-code-inventory.json)中对应API读取；[按业务模块代码清单](./design/餐饮系统-按业务模块代码清单.md)给出任务到API和文件的入口。
 
 ### 2.2 每个任务统一的五步
 

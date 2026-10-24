@@ -41,7 +41,7 @@ export function PointsEarningRulesPanel({canEdit}:{canEdit:boolean}) {
   {context.data&&!types.some(type=>type.status==="ACTIVE")&&<Notice>{t("暂无已生效积分，请先在积分设置中生效积分类型。","Activate a points type in Settings before configuring new rewards.")}</Notice>}
   <Notice>{t("各积分类型独立配置；所有门店默认参与。新增类型的规则暂不自动接入订单赠送。","Each points type is configured independently. All stores participate. New types are not automatically connected to order rewards.")}</Notice>
   {save.error&&<Notice tone="warning">{save.error.message}</Notice>}
-  {context.data&&<DataTable rows={rules.data?.rows??[]} loading={rules.isPending} error={rules.error} onRetry={()=>void rules.refetch()} rowKey={r=>`${r.typeCode}:${r.scope}`}
+  {context.data&&<DataTable empty={t("当前积分类型尚无赠送规则。请新增品类规则或切换积分类型。","No reward rules match this points type. Add a category rule or select another type.")} rows={rules.data?.rows??[]} loading={rules.isPending} error={rules.error} onRetry={()=>void rules.refetch()} rowKey={r=>`${r.typeCode}:${r.scope}`}
    columns={[
     {header:t("适用范围","Scope"),cell:(r:EarningRule)=>r.scope==="DEFAULT"?t("默认","Default"):t("品类","Category")},
     {header:t("品类名称","Category name"),cell:name},

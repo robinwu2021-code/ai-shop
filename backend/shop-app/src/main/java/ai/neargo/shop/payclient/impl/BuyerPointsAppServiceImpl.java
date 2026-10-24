@@ -1,4 +1,6 @@
 package ai.neargo.shop.payclient.impl;
+import org.springframework.beans.factory.annotation.Autowired;
+
 
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService;
 import ai.neargo.shop.pay.points.admin.PointsInspectionService;
@@ -24,7 +26,7 @@ public class BuyerPointsAppServiceImpl implements BuyerPointsAppService {
     }
 
     private ai.neargo.shop.payclient.PointsOrderLinkService links;
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public void setOrderLinks(ai.neargo.shop.payclient.PointsOrderLinkService links) { this.links=links; }
 
     @Override

@@ -1,4 +1,4 @@
-package ai.neargo.shop.promotion.service;
+package ai.neargo.shop.numbering;
 
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.numbering.DocumentSource;

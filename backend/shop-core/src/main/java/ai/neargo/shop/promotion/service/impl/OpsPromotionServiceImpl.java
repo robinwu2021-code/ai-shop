@@ -1,5 +1,6 @@
 package ai.neargo.shop.promotion.service.impl;
 
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -17,14 +18,13 @@ import ai.neargo.shop.spi.user.MerchantQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class OpsPromotionServiceImpl implements OpsPromotionService {
     @org.springframework.beans.factory.annotation.Autowired
-    private ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers documentNumbers;
+    private CoreMarketingDocumentNumbers documentNumbers;
 
 
     private static final org.slf4j.Logger log =

@@ -1,4 +1,4 @@
-package ai.neargo.shop.promotion.service;
+package ai.neargo.shop.numbering;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.marketing.attribution.entity.MktFissionCampaign;

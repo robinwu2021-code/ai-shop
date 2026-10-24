@@ -1,6 +1,11 @@
 package ai.neargo.shop.arch;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
+import tools.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -71,7 +76,9 @@ class ArchitectureTest {
             "inventory",
             // logistics：物流（lgs_*，ADR-032）。**现在内嵌、将来可拆** —— 登记进来，
             // 订单域直接 import 运单实体这类越界当场就红，而不是等拆分那天编译不过才发现
-            "logistics"};
+            "logistics",
+            // printing owns prn_* configuration and delivery facts; guard it as a business domain.
+            "printing"};
 
     /** {@link #DOMAINS} 的 ArchUnit 包表达式形式（{@code ai.neargo.shop.x..}）。 */
     private static String[] domainPackages() {
@@ -335,11 +342,31 @@ class ArchitectureTest {
                 .check(classes);
     }
 
+    private static final DescribedPredicate<JavaClass> PERSISTENCE_MAPPER =
+            new DescribedPredicate<>("a database mapper, including first-party and MyBatis adapters") {
+                @Override
+                public boolean test(JavaClass candidate) {
+                    return candidate.isAssignableTo(BaseMapper.class)
+                            || candidate.isAnnotatedWith("org.apache.ibatis.annotations.Mapper")
+                            || (candidate.getPackageName().startsWith("ai.neargo.")
+                                    && candidate.getSimpleName().endsWith("Mapper"));
+                }
+            };
+
+    @Test
+    void databaseMapperClassificationKeepsSqlProtectionAndExcludesJsonCodecs() {
+        var examples = new ClassFileImporter().importClasses(
+                ObjectMapper.class, MchStoreMapper.class, BaseMapper.class);
+        assertThat(PERSISTENCE_MAPPER.test(examples.get(ObjectMapper.class))).isFalse();
+        assertThat(PERSISTENCE_MAPPER.test(examples.get(MchStoreMapper.class))).isTrue();
+        assertThat(PERSISTENCE_MAPPER.test(examples.get(BaseMapper.class))).isTrue();
+    }
+
     @Test
     @DisplayName("Controller 不得直接依赖 Mapper（必须经 Service）")
     void controllersMustNotTouchMappers() {
         noClasses().that().resideInAPackage("ai.neargo.shop.portal..")
-                .should().dependOnClassesThat().haveSimpleNameEndingWith("Mapper")
+                .should().dependOnClassesThat(PERSISTENCE_MAPPER)
                 .allowEmptyShould(true)
                 .because("Controller 直连 Mapper 等于把业务写进 web 层，数据域与状态机都会被绕过")
                 .check(classes);
@@ -451,6 +478,12 @@ class ArchitectureTest {
     void topLevelPackagesMustBeRegistered() {
         // 非业务域的顶层包：横切基础设施与装配层，各有专门规则管，不进 DOMAINS
         List<String> infra = List.of("common", "spi", "auth", "event", "idem", "portal", "config", "arch",
+                // Shared document identities and reservations, independent of business eligibility.
+                "numbering",
+                // App-level adapters compose existing merchant and member domains through their contracts.
+                "merchantbridge",
+                // App-level points orchestration selects embedded/remote PAY capability; no new ledger owner.
+                "points",
                 // payclient：controller 与支付域之间的那一层（app service）。
                 // **不是业务域**：它没有自己的表，做的是「解析数据域 → 校验 → 调支付域 → 拼 VO」。
                 // 支付域拆分后 controller 只做 HTTP 的事，业务动作落在这里；

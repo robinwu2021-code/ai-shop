@@ -118,8 +118,8 @@ class BizDashboardAndReviewFlowTest {
          * 所以这条用例刻意<b>只走真链路上的那个号</b>：撤掉 ReviewableOrderPortImpl
          * 的修复，它立刻红。
          */
-        assertThat(subOrderNo).as("C 端拿到的就是子单号（主单号 + 后缀，不是主单号本身）—— ADR-035 后子单号形如 O…-N")
-                .matches("^O\\d{12}-\\d+$");
+        assertThat(subOrderNo).as("C 端取得独立的 OS 子单号，并直接用该号发表评价")
+                .matches("^OS\\d{14}$");
 
         mvc().perform(post("/mp/review").header("Authorization", "Bearer " + buyer)
                         .contentType(MediaType.APPLICATION_JSON)

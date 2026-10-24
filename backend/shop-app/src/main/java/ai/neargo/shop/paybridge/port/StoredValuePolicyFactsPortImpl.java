@@ -1,8 +1,11 @@
-package ai.neargo.shop.paybridge;
+package ai.neargo.shop.paybridge.port;
+
 import ai.neargo.shop.merchant.brand.StoredValuePolicyAuthorityService;
 import ai.neargo.shop.promotion.service.StoredValueActivityJournal;
-import ai.neargo.shop.spi.storedvalue.*;
+import ai.neargo.shop.spi.storedvalue.StoredValuePolicies;
+import ai.neargo.shop.spi.storedvalue.StoredValuePolicyFactsPort;
 import org.springframework.stereotype.Component;
+
 @Component
 public class StoredValuePolicyFactsPortImpl implements StoredValuePolicyFactsPort {
  private final StoredValueActivityJournal journal;private final StoredValuePolicyAuthorityService authority;

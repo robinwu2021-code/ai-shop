@@ -15,7 +15,13 @@ let host: HTMLDivElement, root: Root, query: QueryClient;
 const voucher = { voucherNo: "V1", documentNo: "PV1", bizRef: "TEST1", createdAt: 1, currency: "CNY", ratePoints: 1, rateMinor: 1 };
 const row = { direction: "EARN", voucher, storeNo: "S1", userNo: "U1", pointsDelta: 20 };
 const flush = () => act(async () => { await new Promise(r => setTimeout(r, 20)); });
-async function render() { await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTransactionsPage)))); await flush(); }
+async function render() {
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTransactionsPage))));
+  await vi.waitFor(async () => {
+    await act(async () => {});
+    expect(host.querySelector('[role="button"]')).not.toBeNull();
+  });
+}
 beforeEach(() => {
   (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   vi.clearAllMocks(); mock.types.mockResolvedValue([{ typeCode: "HX", name: "平台积分" }]); mock.rows.mockResolvedValue({ rows: [row], hasMore: false });
@@ -25,6 +31,8 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => root.unmount()); query.clear(); host.remove(); });
 it("keeps statistics opt-in and splits ledger identity fields", async () => {
+  // Model a type lookup that completes after the former fixed 20ms render wait.
+  mock.types.mockImplementationOnce(async () => { await new Promise(resolve => setTimeout(resolve, 80)); return [{ typeCode: "HX", name: "平台积分" }]; });
   await render(); expect(mock.stats).not.toHaveBeenCalled();
   await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click()); await flush();
   expect(host.querySelector("aside")!.textContent).toContain("持有人编号"); expect(host.querySelector("aside")!.textContent).not.toContain("USER · U1");

@@ -1,4 +1,6 @@
 package ai.neargo.shop.portal.biz;
+import ai.neargo.shop.spi.entitlement.ContractChecks;
+
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.merchant.brand.StoredValuePolicyAuthorityService;
 import ai.neargo.shop.merchantbridge.ManagementAccess;
@@ -17,9 +19,9 @@ public class BizStoredValueActivityController {
  private final ActivityPresetService presets;private final ai.neargo.shop.paybridge.StoredValueActivityScheduleService schedules;
  private final ManagementAccess access;private final StoredValuePolicyAuthorityService authority;private final StoredValueActivityService activities;private final StoredValueActivityJournal journal;
  public BizStoredValueActivityController(ManagementAccess access,StoredValuePolicyAuthorityService authority,StoredValueActivityService activities,StoredValueActivityJournal journal,ActivityPresetService presets,ai.neargo.shop.paybridge.StoredValueActivityScheduleService schedules){this.presets=presets;this.schedules=schedules;this.access=access;this.authority=authority;this.activities=activities;this.journal=journal;}
- public record Draft(String managementNo,UnifiedActivityDefinition definition,Long expectedRevision) { public Draft{ai.neargo.shop.spi.entitlement.ContractChecks.id(managementNo);ai.neargo.shop.spi.entitlement.ContractChecks.present(definition);ai.neargo.shop.spi.entitlement.ContractChecks.require(expectedRevision==null||expectedRevision>=0);} }
- public record Command(String managementNo,String currency,long expectedRevision) {public Command{ai.neargo.shop.spi.entitlement.ContractChecks.id(managementNo);ai.neargo.shop.spi.entitlement.ContractChecks.currency(currency);ai.neargo.shop.spi.entitlement.ContractChecks.require(expectedRevision>=0);} }
- public record ApprovalDecision(String managementNo,Decision decision) {public ApprovalDecision{ai.neargo.shop.spi.entitlement.ContractChecks.id(managementNo);ai.neargo.shop.spi.entitlement.ContractChecks.present(decision);} }
+ public record Draft(String managementNo,UnifiedActivityDefinition definition,Long expectedRevision) { public Draft{ContractChecks.id(managementNo);ContractChecks.present(definition);ContractChecks.require(expectedRevision==null||expectedRevision>=0);} }
+ public record Command(String managementNo,String currency,long expectedRevision) {public Command{ContractChecks.id(managementNo);ContractChecks.currency(currency);ContractChecks.require(expectedRevision>=0);} }
+ public record ApprovalDecision(String managementNo,Decision decision) {public ApprovalDecision{ContractChecks.id(managementNo);ContractChecks.present(decision);} }
  private Scope scope(String management,String store,String currency,String permission){var a=authority.activity(access.actor(),management,store,currency,permission);return new Scope(a.policyScope(),a.entityNo(),a.actorNo(),a.principalNo(),a.authorityRevision());}
  public record ActivityContext(String currency,int currencyScale,String timeZone,boolean canManage,boolean canPublish) { }
  @GetMapping("/biz/stores/{storeNo}/stored-value/activity-context")

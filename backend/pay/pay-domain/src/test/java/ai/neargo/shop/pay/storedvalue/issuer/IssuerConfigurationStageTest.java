@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.storedvalue.issuer;
+import ai.neargo.shop.pay.storedvalue.issuer.impl.StoredValueStoreIssuerServiceImpl;
+
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.spi.storedvalue.StoredValueIssuers.*;
 import java.util.*;
@@ -25,7 +27,7 @@ class IssuerConfigurationStageTest {
  @Test void preparedStoreNeedsExplicitCutoverAndFenceDisablesEveryCapability()throws Exception{
   var helper=new IssuerCollectionRouteTest();var f=helper.fixture();
   var db=new IssuerRepository(new DataSourceTransactionManager(f.jdbc().getDataSource()),new ObjectMapper());
-  var stores=new StoredValueStoreIssuerService(db);
+  var stores=new StoredValueStoreIssuerServiceImpl(db);
   var prepared=stores.prepare(new StoreAuthority("MAIN","OWNER","E1","S1","Store",4));
   org.springframework.test.util.ReflectionTestUtils.setField(f.service(),"issuerMode",true);
   var query=new StoreQuery("MAIN","OPERATOR","E1","S1");
@@ -42,7 +44,7 @@ class IssuerConfigurationStageTest {
  }
  @Test void accessRefreshIsMonotonicDoesNotActivateAndCannotRunDuringMaintenance()throws Exception{
   var helper=new IssuerCollectionRouteTest();var f=helper.fixture();
-  var db=new IssuerRepository(new DataSourceTransactionManager(f.jdbc().getDataSource()),new ObjectMapper());var stores=new StoredValueStoreIssuerService(db);
+  var db=new IssuerRepository(new DataSourceTransactionManager(f.jdbc().getDataSource()),new ObjectMapper());var stores=new StoredValueStoreIssuerServiceImpl(db);
   stores.prepare(new StoreAuthority("MAIN","OWNER","E1","S1","Store",4));
   assertThat(stores.refresh(new StoreAuthority("MAIN","OWNER","E1","S1","Store",5)).status()).isEqualTo("DRAFT");
   assertThat(f.jdbc().queryForObject("SELECT source_revision FROM sv_issuer_store_access",Long.class)).isEqualTo(5);

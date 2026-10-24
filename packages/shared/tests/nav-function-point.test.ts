@@ -42,12 +42,13 @@ function seededPoints() {
     // 2026-08-29 实测：9 条「只在 nav 里」中有 4 条是这么来的假报。
     //
     // 所以这里不再用一条大正则啃整条语句，而是**先切出 INSERT 的值区，再逐元组扫**。
-    for (const head of sql.matchAll(/INSERT\s+(?:IGNORE\s+)?INTO sys_function_point\s*\([^)]*\)\s*(VALUES|SELECT)/g)) {
+    for (const head of sql.matchAll(/INSERT\s+(?:IGNORE\s+)?INTO sys_function_point\s*\(([^)]*)\)\s*(VALUES|SELECT)/g)) {
       const from = head.index! + head[0].length;
       const stmtEnd = sql.indexOf(";", from);
       const payload = sql.slice(from, stmtEnd < 0 ? sql.length : stmtEnd);
       // SELECT 形式只有一组值，且后面跟着 FROM DUAL WHERE …；截到 FROM 为止
-      const body = head[1] === "SELECT"
+      const columns = head[1].split(",").map((c) => c.trim());
+      const body = head[2] === "SELECT"
         ? "(" + payload.slice(0, payload.search(/\b(?:FROM|WHERE)\b/) < 0 ? payload.length
                                 : payload.search(/\b(?:FROM|WHERE)\b/)) + ")"
         : payload;
@@ -59,13 +60,17 @@ function seededPoints() {
         const cells = tuple[1].split(",").map((c) => c.trim());
         if (cells.length < 12) continue;   // 不是功能点那一组（列少了就不是）
         const lit = (v: string) => (v === "NULL" ? null : v.replace(/^'|'$/g, ""));
+        const cell = (name: string) => {
+          const i = columns.indexOf(name);
+          return i < 0 ? null : lit(cells[i]);
+        };
         out.push({
-          pointCode: lit(cells[0])!,
-          functionCode: lit(cells[1])!,
-          group: lit(cells[3]),
-          href: lit(cells[4]),
-          ui: lit(cells[5]),
-          type: lit(cells[10])!,
+          pointCode: cell("point_code")!,
+          functionCode: cell("function_code")!,
+          group: cell("group_name"),
+          href: cell("href"),
+          ui: cell("ui_perm_code"),
+          type: cell("point_type") ?? "MENU",
         });
       }
     }

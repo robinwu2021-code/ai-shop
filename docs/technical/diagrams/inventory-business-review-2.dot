@@ -1,0 +1,75 @@
+digraph G {
+graph [bgcolor="white", pad="0.3", nodesep="0.45", ranksep="0.7", fontname="Arial", label="库存下单及退货验收流程", labelloc=t, fontsize=20];
+node [shape=box, style="rounded,filled", fillcolor="#f3f7fc", color="#516781", fontname="Arial", fontsize=13, margin="0.18,0.12"];
+edge [fontname="Arial", fontsize=11, color="#516781", arrowsize=0.8];
+"New" [label="建品：选择是否管理实物库存",shape=box];
+"Managed" [label="纳入进销存?",shape=diamond];
+"Independent" [label="独立线上库存；不生成实物账",shape=box];
+"Map" [label="投影物料及库位映射",shape=box];
+"Align" [label="期初盘点/初始化预览与确认",shape=box];
+"Policy" [label="配置线上销售规则并启用同步",shape=box];
+"Buy" [label="下单：校验每日配额和线上额度",shape=box];
+"Hold" [label="锁定销售额度；管理库存商品锁定物理来源",shape=box];
+"Paid" [label="支付结果",shape=diamond];
+"Release" [label="释放两侧占用；记录结果",shape=box];
+"Allocate" [label="业务销售实扣；物理预留转已付款占用",shape=box];
+"Prepare" [label="备货：保留原库位与订单行关系",shape=box];
+"Handoff" [label="交接快递/自送交付/自提核销",shape=box];
+"Post" [label="核销对应预留；销售出库过账",shape=box];
+"Refresh" [label="事件更新线上额度及查询视图",shape=box];
+"Refund" [label="未出库退款：撤销占用及销售资源",shape=box];
+"AS" [label="已出库售后",shape=box];
+"Money" [label="仅退款：不入库",shape=box];
+"Return" [label="退货：收货验收",shape=box];
+"Inspect" [label="可再销售?",shape=diamond];
+"ReturnIn" [label="按实际验收数量退货入可售库位",shape=box];
+"Isolate" [label="入隔离/报损流程；不增加线上可售",shape=box];
+"New" -> "Managed" [label=""];
+"Managed" -> "Independent" [label="否"];
+"Managed" -> "Map" [label="是"];
+"Map" -> "Align" [label=""];
+"Align" -> "Policy" [label=""];
+"Policy" -> "Buy" [label=""];
+"Independent" -> "Buy" [label=""];
+"Buy" -> "Hold" [label=""];
+"Hold" -> "Paid" [label=""];
+"Paid" -> "Release" [label="取消或超时"];
+"Paid" -> "Allocate" [label="成功"];
+"Allocate" -> "Prepare" [label=""];
+"Prepare" -> "Handoff" [label=""];
+"Handoff" -> "Post" [label=""];
+"Post" -> "Refresh" [label=""];
+"Allocate" -> "Refund" [label=""];
+"Post" -> "AS" [label=""];
+"AS" -> "Money" [label=""];
+"AS" -> "Return" [label=""];
+"Return" -> "Inspect" [label=""];
+"Inspect" -> "ReturnIn" [label="是"];
+"Inspect" -> "Isolate" [label="否"];
+"ReturnIn" -> "Refresh" [label=""];
+}
+// Original diagram source, retained for provenance:
+// flowchart TD
+//   New[建品：选择是否管理实物库存] --> Managed{纳入进销存?}
+//   Managed -->|否| Independent[独立线上库存；不生成实物账]
+//   Managed -->|是| Map[投影物料及库位映射]
+//   Map --> Align[期初盘点/初始化预览与确认]
+//   Align --> Policy[配置线上销售规则并启用同步]
+//   Policy --> Buy[下单：校验每日配额和线上额度]
+//   Independent --> Buy
+//   Buy --> Hold[锁定销售额度；管理库存商品锁定物理来源]
+//   Hold --> Paid{支付结果}
+//   Paid -->|取消或超时| Release[释放两侧占用；记录结果]
+//   Paid -->|成功| Allocate[业务销售实扣；物理预留转已付款占用]
+//   Allocate --> Prepare[备货：保留原库位与订单行关系]
+//   Prepare --> Handoff[交接快递/自送交付/自提核销]
+//   Handoff --> Post[核销对应预留；销售出库过账]
+//   Post --> Refresh[事件更新线上额度及查询视图]
+//   Allocate --> Refund[未出库退款：撤销占用及销售资源]
+//   Post --> AS[已出库售后]
+//   AS --> Money[仅退款：不入库]
+//   AS --> Return[退货：收货验收]
+//   Return --> Inspect{可再销售?}
+//   Inspect -->|是| ReturnIn[按实际验收数量退货入可售库位]
+//   Inspect -->|否| Isolate[入隔离/报损流程；不增加线上可售]
+//   ReturnIn --> Refresh

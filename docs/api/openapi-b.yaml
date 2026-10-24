@@ -688,6 +688,53 @@ components:
         - "name"
       additionalProperties: false
       description: "一家承运方（`CarrierVO`）。**归履约域维护，进销存只读**。"
+    InventorySyncEventState:
+      type: "string"
+      enum:
+        - "COMPLETED"
+        - "PENDING"
+        - "FAILED"
+        - "WARNING"
+        - "SKIPPED"
+        - "ARCHIVED"
+      description: "Delivery state of an inventory/order synchronization event."
+    InventoryOutboxMode:
+      type: "string"
+      enum:
+        - "UNIFIED"
+        - "LEGACY"
+      description: "Outbox mechanism which persisted the synchronization event."
+    InventoryOnboardingState:
+      type: "string"
+      enum:
+        - "UNMANAGED"
+        - "INITIALIZING"
+        - "MAPPED"
+      description: "Inventory onboarding progression; MAPPED means a physical inventory mapping exists."
+    InventoryAccountingMode:
+      type: "string"
+      const: "PAYMENT_DEDUCT"
+      description: "Current backend accounting policy: inventory is deducted when payment completes."
+    StockSyncOperationState:
+      type: "string"
+      enum:
+        - "PROCESSING"
+        - "WAITING"
+        - "FAILED"
+        - "BLOCKED"
+        - "COMPLETED"
+      description: "Processing state of a persisted stock synchronization command."
+    StockAlignmentBatchState:
+      type: "string"
+      enum:
+        - "PREVIEW"
+        - "PROCESSING"
+        - "PARTIAL"
+        - "BLOCKED"
+        - "COMPLETED"
+        - "STALE"
+        - "EXPIRED"
+      description: "Preview and execution state of a stock alignment batch."
     StockOverview:
       type: "object"
       properties:
@@ -703,18 +750,11 @@ components:
             - "null"
           description: "Physical stock unit; null when the SKU has no configured unit."
         inventoryState:
-          type: "string"
-          enum:
-            - "UNMANAGED"
-            - "INITIALIZING"
-            - "MAPPED"
+          "$ref": "#/components/schemas/InventoryOnboardingState"
           description: "Inventory onboarding state: unmanaged, initializing or mapped."
         accountingMode:
-          type: "string"
-          enum:
-            - "PAYMENT_DEDUCT"
-            - "HANDOFF_DEDUCT"
-          description: "Point at which physical inventory is deducted: payment or handoff."
+          "$ref": "#/components/schemas/InventoryAccountingMode"
+          description: "Current accounting policy; the server only supports payment-time deduction."
         onHand:
           type:
             - "number"
@@ -1585,6 +1625,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         operationNo:
           type: "string"
           description: "Identifier of this stock synchronization operation."
@@ -1595,13 +1636,7 @@ components:
           type: "string"
           description: "Business reason recorded for the synchronization."
         status:
-          type: "string"
-          enum:
-            - "PROCESSING"
-            - "WAITING"
-            - "FAILED"
-            - "BLOCKED"
-            - "COMPLETED"
+          "$ref": "#/components/schemas/StockSyncOperationState"
           description: "Current processing state of the operation."
         result:
           anyOf:
@@ -1712,6 +1747,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         batchNo:
           type: "string"
           description: "Identifier of this inventory alignment batch."
@@ -1730,15 +1766,7 @@ components:
             - "null"
           description: "Expiry time in milliseconds; null when the preview has no expiry."
         status:
-          type: "string"
-          enum:
-            - "PREVIEW"
-            - "PROCESSING"
-            - "PARTIAL"
-            - "BLOCKED"
-            - "COMPLETED"
-            - "STALE"
-            - "EXPIRED"
+          "$ref": "#/components/schemas/StockAlignmentBatchState"
           description: "Current preview or execution state of the batch."
         completed:
           type: "number"
@@ -2001,6 +2029,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         couponNo:
           type: "string"
           description: "券单号"
@@ -2472,6 +2501,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         campaignNo:
           type: "string"
           description: "活动单号"
@@ -2613,6 +2643,11 @@ components:
     MerchantCoupon:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; absent for historical rows without a mapping."
         couponNo:
           type: "string"
           description: "券模板号 —— 一张券和它的模板是两个对象"
@@ -2834,6 +2869,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         issueNo:
           type: "string"
           description: "这一批发放的编号"
@@ -3075,6 +3111,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         fissionNo:
           type: "string"
           description: "活动号。端上只用来回传，不显示"
@@ -4023,6 +4060,39 @@ components:
         - "expiresAt"
       additionalProperties: false
       description: "商家扫码得到的短期顾客引用，只在原主体、门店和操作人范围内可用。"
+    OrderPointsEarningState:
+      type: "string"
+      enum:
+        - "NONE"
+        - "EXPECTED"
+        - "PROCESSING"
+        - "PENDING"
+        - "AVAILABLE"
+        - "RETRYABLE"
+        - "MANUAL"
+        - "SKIPPED"
+        - "RECLAIMED"
+      description: "Order reward processing projection; accepted work is not a posted account credit."
+    OrderPointsRedemptionState:
+      type: "string"
+      enum:
+        - "NONE"
+        - "PROCESSING"
+        - "HELD"
+        - "RELEASED"
+        - "CONSUMED"
+        - "REFUND_PROCESSING"
+        - "RETURNED"
+        - "PARTIALLY_RETURNED"
+      description: "Lifecycle of the order points hold and its subsequent returns."
+    OrderPointsRefundState:
+      type: "string"
+      enum:
+        - "NONE"
+        - "PROCESSING"
+        - "MANUAL"
+        - "COMPLETED"
+      description: "Processing state of the order points refund projection."
     StorePointTypeStatus:
       type: "string"
       enum:
@@ -4040,6 +4110,12 @@ components:
     StorePointType:
       type: "object"
       properties:
+        earningPaused:
+          type: "boolean"
+          description: "Whether new earning is paused; existing accounting obligations still complete."
+        orderDefault:
+          type: "boolean"
+          description: "Whether this type is the server-selected default for order rewards."
         name:
           type: "string"
           description: "积分名称"
@@ -5631,10 +5707,12 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing settlement batch number; absent for historical unmapped batches."
         documentNo:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         settleNo:
           type: "string"
           description: "结算单号"
@@ -5745,6 +5823,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         batchNo:
           type: "string"
           description: "批次号。**与结算单上的批次号是同一个** —— 商家照着单子来问的就是它"
@@ -6696,60 +6775,51 @@ components:
       properties:
         orderNo:
           type: "string"
+          description: "Parent order identifier for the reward inspection."
         typeCode:
           type: "string"
+          description: "Unique points-type code; separate points types never share balances or rules."
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         currency:
           type: "string"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         state:
-          type: "string"
-          enum:
-            - "NONE"
-            - "EXPECTED"
-            - "PROCESSING"
-            - "PENDING"
-            - "AVAILABLE"
-            - "RETRYABLE"
-            - "MANUAL"
-            - "SKIPPED"
-            - "RECLAIMED"
+          "$ref": "#/components/schemas/OrderPointsEarningState"
+          description: "Current processing projection for the submitted business operation."
         redemptionState:
-          type: "string"
-          enum:
-            - "NONE"
-            - "PROCESSING"
-            - "HELD"
-            - "RELEASED"
-            - "CONSUMED"
-            - "REFUND_PROCESSING"
-            - "RETURNED"
-            - "PARTIALLY_RETURNED"
+          "$ref": "#/components/schemas/OrderPointsRedemptionState"
+          description: "Processing state of the order's points hold, consumption and subsequent returns."
         usedPoints:
           type: "number"
+          description: "Points actually consumed by this order's completed redemption."
         refundState:
-          type: "string"
-          enum:
-            - "NONE"
-            - "PROCESSING"
-            - "MANUAL"
-            - "COMPLETED"
+          "$ref": "#/components/schemas/OrderPointsRefundState"
+          description: "Processing state of points returned for this order's refund."
         returnedPoints:
           type: "number"
+          description: "Points actually returned to the account by completed refund operations."
         expectedPoints:
           type: "number"
+          description: "Original expected reward points frozen when the order was accepted."
         grantedPoints:
           type: "number"
+          description: "Reward points actually posted to the account ledger."
         pendingPoints:
           type: "number"
+          description: "Granted points still awaiting conversion to an available balance."
         availablePoints:
           type: "number"
+          description: "Granted points that have become available for use."
         reclaimedPoints:
           type: "number"
+          description: "Previously granted points subsequently recovered by refunds or reversals."
         reason:
           type:
             - "string"
             - "null"
+          description: "Business reason recorded for the operation, rejection or manual recovery."
       required:
         - "orderNo"
         - "typeCode"
@@ -9860,6 +9930,11 @@ components:
     PlatformActivity:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; absent for historical rows without a mapping."
         activityNo:
           type: "string"
           description: "活动单号"
@@ -10748,6 +10823,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         afterSaleNo:
           type: "string"
           description: "售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。"
@@ -13011,22 +13087,31 @@ components:
       properties:
         actorNo:
           type: "string"
+          description: "Identity receiving the resource grant."
         resourceType:
           type: "string"
+          description: "Business resource category used to resolve resourceNo and enforce authorization."
         resourceNo:
           type: "string"
+          description: "Business identifier of the resource covered by the capability grant."
         permissionCode:
           type: "string"
+          description: "Capability code granted for the specified business resource."
         delegatable:
           type: "boolean"
+          description: "Whether the recipient may delegate this granted capability."
         validFrom:
           type: "string"
+          description: "Start of the grant's validity window; omitted to use the server default."
         validTo:
           type: "string"
+          description: "End of the grant's validity window; omitted for an unrestricted end."
         expectedRevision:
           type: "number"
+          description: "Previously observed resource revision; stale writes are rejected."
         reactivate:
           type: "boolean"
+          description: "Whether an existing revoked grant should be reactivated instead of duplicated."
       required:
         - "actorNo"
         - "resourceType"
@@ -13038,17 +13123,21 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         logo:
           type:
             - "string"
             - "null"
+          description: "Brand logo URL; null clears the configured logo."
         status:
           type: "string"
           enum:
             - "DRAFT"
             - "ACTIVE"
+          description: "Current server-owned lifecycle state of this resource."
       required:
         - "managementNo"
         - "name"
@@ -13058,12 +13147,15 @@ components:
       properties:
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         logo:
           type:
             - "string"
             - "null"
+          description: "Brand logo URL; null clears the configured logo."
         expectedRevision:
           type: "number"
+          description: "Previously observed resource revision; stale writes are rejected."
       required:
         - "name"
         - "expectedRevision"
@@ -13073,26 +13165,34 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         toBrandNo:
           type:
             - "string"
             - "null"
+          description: "Destination brand identifier; null removes the store's brand binding."
         checkToken:
           type: "string"
+          description: "Server-issued token binding submission to the validated change preview."
         expectedStoreRevision:
           type: "number"
+          description: "Previously observed store revision for the binding change."
         expectedScopeRevision:
           type: "number"
+          description: "Previously observed management-scope revision for the binding change."
         expectedFromBrandRevision:
           type:
             - "number"
             - "null"
+          description: "Previously observed source-brand revision; null when there was no source brand."
         expectedToBrandRevision:
           type:
             - "number"
             - "null"
+          description: "Previously observed destination-brand revision; null when removing the binding."
         reason:
           type: "string"
+          description: "Business reason recorded for the operation, rejection or manual recovery."
       required:
         - "managementNo"
         - "toBrandNo"
@@ -13108,8 +13208,10 @@ components:
       properties:
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         sourceAccountNo:
           type: "string"
+          description: "Authority-source account used to bootstrap the management space."
       required:
         - "name"
         - "sourceAccountNo"
@@ -13119,25 +13221,32 @@ components:
       properties:
         resourceType:
           type: "string"
+          description: "Business resource category used to resolve resourceNo and enforce authorization."
         view:
           type: "string"
           enum:
             - "EFFECTIVE"
             - "GRANTS"
+          description: "Whether to query effective resources or explicit capability grants."
         actorNo:
           type: "string"
+          description: "Identity receiving the resource grant."
         cursor:
           type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
       additionalProperties: false
     ManagementRevokeQuery:
       type: "object"
       properties:
         expectedRevision:
           type: "number"
+          description: "Previously observed resource revision; stale writes are rejected."
         reason:
           type: "string"
+          description: "Business reason recorded for the operation, rejection or manual recovery."
       required:
         - "expectedRevision"
         - "reason"
@@ -13147,30 +13256,39 @@ components:
       properties:
         cursor:
           type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
       additionalProperties: false
     ManagementStoresQuery:
       type: "object"
       properties:
         cursor:
           type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
         brandNo:
           type: "string"
+          description: "Brand identifier; null when the scope has no brand binding."
       additionalProperties: false
     ManagementMerchantsQuery:
       type: "object"
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         payChannel:
           type: "string"
+          description: "Payment channel used by this payment-merchant capability."
         payScene:
           type: "string"
+          description: "Payment scene used to select a compatible payment merchant."
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
       required:
         - "managementNo"
       additionalProperties: false
@@ -13179,14 +13297,19 @@ components:
       properties:
         cursor:
           type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         keyword:
           type: "string"
+          description: "Search text used to match resource names."
       required:
         - "managementNo"
       additionalProperties: false
@@ -13198,10 +13321,13 @@ components:
           enum:
             - "ACTIVE"
             - "INACTIVE"
+          description: "Requested lifecycle state; server checks permitted transitions."
         expectedRevision:
           type: "number"
+          description: "Previously observed resource revision; stale writes are rejected."
         reason:
           type: "string"
+          description: "Business reason recorded for the operation, rejection or manual recovery."
       required:
         - "targetStatus"
         - "expectedRevision"
@@ -13212,6 +13338,7 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
       required:
         - "managementNo"
       additionalProperties: false
@@ -13220,10 +13347,12 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         toBrandNo:
           type:
             - "string"
             - "null"
+          description: "Destination brand identifier; null removes the store's brand binding."
       required:
         - "managementNo"
         - "toBrandNo"
@@ -13236,10 +13365,13 @@ components:
           enum:
             - "APPROVE"
             - "REJECT"
+          description: "Approval or return decision submitted for the current revision."
         expectedRevision:
           type: "number"
+          description: "Previously observed resource revision; stale writes are rejected."
         reason:
           type: "string"
+          description: "Business reason recorded for the operation, rejection or manual recovery."
       required:
         - "decision"
         - "expectedRevision"
@@ -13250,14 +13382,19 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         paidAmountMinor:
           type: "number"
+          description: "Recharge principal paid by the customer, in minor currency units."
         bonusAmountMinor:
           type: "number"
+          description: "Gifted stored-value amount, in minor currency units."
       required:
         - "storeNo"
         - "name"
@@ -13270,12 +13407,16 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         customerRef:
           type: "string"
+          description: "Server-issued selected-customer reference; expires and must be reselected when stale."
         planNo:
           type: "string"
+          description: "Recharge plan identifier; null for operations without a recharge plan."
         versionNo:
           type: "string"
+          description: "Immutable version identifier frozen for the referenced plan or policy."
       required:
         - "storeNo"
         - "customerRef"
@@ -13287,15 +13428,19 @@ components:
       properties:
         expectedRevision:
           type: "number"
+          description: "Previously observed resource revision; stale writes are rejected."
         actualAmountMinor:
           type: "number"
+          description: "Amount actually collected, in the currency's smallest unit."
         collectionMethod:
           type: "string"
           enum:
             - "CASH"
             - "TRANSFER"
+          description: "Offline collection method: cash or bank transfer."
         receiptNo:
           type: "string"
+          description: "Operator-provided collection evidence reference used to confirm the same receipt."
       required:
         - "expectedRevision"
         - "actualAmountMinor"
@@ -13307,10 +13452,13 @@ components:
       properties:
         expectedRevision:
           type: "number"
+          description: "Previously observed resource revision; stale writes are rejected."
         receiptNo:
           type: "string"
+          description: "Operator-provided collection evidence reference used to confirm the same receipt."
         confirmationNote:
           type: "string"
+          description: "Operator's evidence note for the offline collection confirmation."
       required:
         - "expectedRevision"
         - "receiptNo"
@@ -13321,22 +13469,29 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         type:
           type: "string"
           enum:
             - "ALL"
             - "RECHARGE"
             - "REDEMPTION"
+          description: "Record, target or calculation classification used to interpret this object."
         startDate:
           type: "string"
+          description: "Inclusive first business date in YYYY-MM-DD format."
         endDate:
           type: "string"
+          description: "Inclusive final business date in YYYY-MM-DD format."
         accountRef:
           type: "string"
+          description: "Opaque stored-value account reference used for authorized queries."
         cursor:
           type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
       required:
         - "storeNo"
         - "type"
@@ -13346,10 +13501,13 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         phone:
           type: "string"
+          description: "Customer phone number submitted for server-authorized member lookup."
         keyword:
           type: "string"
+          description: "Search text used to match resource names."
       required:
         - "storeNo"
       additionalProperties: false
@@ -13358,8 +13516,10 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         source:
           "$ref": "#/components/schemas/SvSelectionSource"
+          description: "Member or existing-account selection source to resolve into a temporary customer reference."
       required:
         - "storeNo"
         - "source"
@@ -13371,11 +13531,14 @@ components:
             type:
               type: "string"
               const: "MEMBER"
+              description: "Record, target or calculation classification used to interpret this object."
             memberNo:
               type: "string"
+              description: "Member identifier; null when the candidate only has an existing account."
             memberScope:
               type: "string"
               const: "OPERATING"
+              description: "Membership namespace used to resolve the selected member."
           required:
             - "type"
             - "memberNo"
@@ -13385,8 +13548,10 @@ components:
             type:
               type: "string"
               const: "ACCOUNT"
+              description: "Record, target or calculation classification used to interpret this object."
             accountRef:
               type: "string"
+              description: "Opaque stored-value account reference used for authorized queries."
           required:
             - "type"
             - "accountRef"
@@ -13396,6 +13561,7 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
       required:
         - "storeNo"
       additionalProperties: false
@@ -13404,12 +13570,16 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         cursor:
           type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
       required:
         - "storeNo"
       additionalProperties: false
@@ -13418,12 +13588,16 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         keyword:
           type: "string"
+          description: "Search text used to match resource names."
         cursor:
           type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
       required:
         - "storeNo"
       additionalProperties: false
@@ -13432,10 +13606,13 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         expectedRevision:
           type: "number"
+          description: "Previously observed resource revision; stale writes are rejected."
       required:
         - "storeNo"
         - "status"
@@ -13446,8 +13623,10 @@ components:
       properties:
         expectedRevision:
           type: "number"
+          description: "Previously observed resource revision; stale writes are rejected."
         reason:
           type: "string"
+          description: "Business reason recorded for the operation, rejection or manual recovery."
       required:
         - "expectedRevision"
         - "reason"
@@ -13457,16 +13636,20 @@ components:
       properties:
         keyword:
           type: "string"
+          description: "Search text used to match resource names."
         cursor:
           type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
       additionalProperties: false
     ScopeSelectCustomerReq:
       type: "object"
       properties:
         source:
           "$ref": "#/components/schemas/ScopeSelectionSource"
+          description: "Member or existing-account selection source to resolve into a temporary customer reference."
       required:
         - "source"
       additionalProperties: false
@@ -13477,8 +13660,10 @@ components:
             type:
               type: "string"
               const: "MEMBER"
+              description: "Record, target or calculation classification used to interpret this object."
             memberNo:
               type: "string"
+              description: "Member identifier; null when the candidate only has an existing account."
           required:
             - "type"
             - "memberNo"
@@ -13488,8 +13673,10 @@ components:
             type:
               type: "string"
               const: "ACCOUNT"
+              description: "Record, target or calculation classification used to interpret this object."
             accountRef:
               type: "string"
+              description: "Opaque stored-value account reference used for authorized queries."
           required:
             - "type"
             - "accountRef"
@@ -13499,8 +13686,10 @@ components:
             type:
               type: "string"
               const: "MEMBER_CODE"
+              description: "Record, target or calculation classification used to interpret this object."
             code:
               type: "string"
+              description: "Business code supplied for the selected member or resource."
           required:
             - "type"
             - "code"
@@ -13510,12 +13699,15 @@ components:
       properties:
         phone:
           type: "string"
+          description: "Customer phone number submitted for server-authorized member lookup."
         remark:
           type: "string"
+          description: "Operator-supplied audit note explaining the submitted operation."
         tagNos:
           type: "array"
           items:
             type: "string"
+          description: "Member tag identifiers applied when recording the selected customer."
       required:
         - "phone"
       additionalProperties: false
@@ -13524,8 +13716,10 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         configuration:
           "$ref": "#/components/schemas/IssuerConfiguration"
+          description: "Versioned issuer configuration to validate or apply."
       required:
         - "managementNo"
         - "configuration"
@@ -13535,24 +13729,33 @@ components:
       properties:
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         settlementEntityNo:
           type: "string"
+          description: "Operating entity responsible for settling the issuer's liabilities."
         collectionMode:
           type: "string"
+          description: "Whether issuer collection is centralized or performed by individual stores."
         clearingMode:
           type: "string"
+          description: "Clearing policy used for liabilities under this issuer configuration."
         debitAllocationMode:
           type: "string"
+          description: "Policy for allocating redemption debits across funded balance components."
         currency:
           type: "string"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         marketZone:
           type: "string"
+          description: "IANA time zone used for this issuer's market and business dates."
         routes:
           type: "array"
           items:
             "$ref": "#/components/schemas/IssuerRoute"
+          description: "Collection routes assigned to this issuer configuration."
         expectedRevision:
           type: "number"
+          description: "Previously observed resource revision; stale writes are rejected."
       required:
         - "name"
         - "settlementEntityNo"
@@ -13571,16 +13774,21 @@ components:
           type:
             - "string"
             - "null"
+          description: "Payment merchant assigned to this collection route; null until configured."
         entityNo:
           type: "string"
+          description: "Operating entity identifier; authorization remains server-derived."
         storeNo:
           type:
             - "string"
             - "null"
+          description: "Store identifier scoping the requested operation or returned business record."
         channel:
           type: "string"
+          description: "Delivery or collection channel used by this capability or route."
         scene:
           type: "string"
+          description: "Business scene in which the route or activity is applicable."
       required:
         - "paymentMerchantNo"
         - "entityNo"
@@ -13593,6 +13801,7 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
       required:
         - "managementNo"
       additionalProperties: false
@@ -13601,13 +13810,16 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         scopeType:
           type: "string"
           enum:
             - "STORE"
             - "BRAND"
+          description: "Whether the issuer scope is a store or a brand."
         scopeNo:
           type: "string"
+          description: "Brand or store identifier selected by scopeType."
       required:
         - "managementNo"
         - "scopeType"
@@ -13618,10 +13830,13 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         payChannel:
           type: "string"
+          description: "Payment channel used by this payment-merchant capability."
         payScene:
           type: "string"
+          description: "Payment scene used to select a compatible payment merchant."
       required:
         - "managementNo"
       additionalProperties: false
@@ -13630,13 +13845,17 @@ components:
       properties:
         customerRef:
           type: "string"
+          description: "Server-issued selected-customer reference; expires and must be reselected when stale."
         scopeType:
           type: "string"
           const: "STORE"
+          description: "Whether the issuer scope is a store or a brand."
         cursor:
           type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
       required:
         - "customerRef"
       additionalProperties: false
@@ -13645,6 +13864,7 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
       required:
         - "managementNo"
       additionalProperties: false
@@ -13653,12 +13873,16 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         targetType:
           "$ref": "#/components/schemas/SvPolicyTarget"
+          description: "Whether the governance policy applies to a space, brand stores or a single store."
         targetNo:
           type: "string"
+          description: "Business identifier selected by the policy's targetType."
       required:
         - "managementNo"
         - "currency"
@@ -13674,14 +13898,19 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         targetType:
           "$ref": "#/components/schemas/SvPolicyTarget"
+          description: "Whether the governance policy applies to a space, brand stores or a single store."
         targetNo:
           type: "string"
+          description: "Business identifier selected by the policy's targetType."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         rules:
           "$ref": "#/components/schemas/SvPolicyRules"
+          description: "Effective stored-value issuance limits and approval requirements."
       required:
         - "managementNo"
         - "targetType"
@@ -13694,18 +13923,25 @@ components:
       properties:
         allowIssue:
           type: "boolean"
+          description: "Whether the policy permits new stored-value issuance."
         requireApproval:
           type: "boolean"
+          description: "Whether new activities under this policy require approval before publication."
         maxBonusBps:
           type: "number"
+          description: "Maximum bonus-to-paid ratio in basis points; 10000 means 100 percent."
         maxPaidMinor:
           type: "number"
+          description: "Maximum permitted recharge principal, in minor currency units."
         maxBonusMinor:
           type: "number"
+          description: "Maximum gifted amount per activity tier, in minor currency units."
         maxActiveDays:
           type: "number"
+          description: "Maximum permitted activity duration in days."
         maxOutstandingMinor:
           type: "number"
+          description: "Maximum permitted outstanding stored-value liability, in minor currency units."
       required:
         - "allowIssue"
         - "requireApproval"
@@ -13720,6 +13956,7 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         edit:
           type: "object"
           properties:
@@ -13731,6 +13968,7 @@ components:
             - "rules"
             - "expectedRevision"
           additionalProperties: false
+          description: "Proposed policy revision and its optimistic concurrency check."
       required:
         - "managementNo"
         - "edit"
@@ -13740,8 +13978,10 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
       required:
         - "managementNo"
         - "currency"
@@ -13751,13 +13991,16 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         intent:
           type: "string"
           enum:
             - "READ"
             - "MANAGE"
+          description: "Requested governance capability: read-only inspection or management."
       required:
         - "currency"
         - "intent"
@@ -13768,12 +14011,16 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         startDate:
           type: "string"
+          description: "Inclusive first business date in YYYY-MM-DD format."
         endDate:
           type: "string"
+          description: "Inclusive final business date in YYYY-MM-DD format."
       required:
         - "currency"
         - "endDate"
@@ -13785,12 +14032,16 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         page:
           type: "number"
+          description: "One-based page index for the returned or requested result."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
       additionalProperties: false
       required:
         - "currency"
@@ -13800,14 +14051,19 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         page:
           type: "number"
+          description: "One-based page index for the returned or requested result."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
       additionalProperties: false
       required:
         - "currency"
@@ -13817,10 +14073,13 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         definition:
           "$ref": "#/components/schemas/SvActivityDefinition"
+          description: "Versioned activity definition, including schedule, scope and recharge tiers."
         expectedRevision:
           type: "number"
+          description: "Previously observed resource revision; stale writes are rejected."
       required:
         - "managementNo"
         - "definition"
@@ -13830,54 +14089,69 @@ components:
       properties:
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         scene:
           type: "string"
           const: "RECHARGE"
+          description: "Business scene in which the route or activity is applicable."
         templateCode:
           type: "string"
+          description: "Activity preset code identifying the supported definition template."
         templateVersion:
           type: "number"
+          description: "Version of the selected activity preset."
         storeParticipationScope:
           type: "object"
           properties:
             mode:
               type: "string"
               const: "STORES"
+              description: "Calculation or scope mode determining how the associated value and references are interpreted."
             refs:
               type: "array"
               items:
                 type: "string"
+              description: "Business identifiers selected by the associated scope mode."
           required:
             - "mode"
             - "refs"
           additionalProperties: false
+          description: "Stores allowed to offer this recharge activity."
         audienceRef:
           type:
             - "string"
             - "null"
+          description: "Audience selection reference; null when no restricted audience is configured."
         schedule:
           type: "object"
           properties:
             type:
               type: "string"
+              description: "Record, target or calculation classification used to interpret this object."
             startAt:
               type: "string"
+              description: "Start of the configured activity window as a server timestamp."
             endAt:
               type: "string"
+              description: "End of the configured activity window as a server timestamp."
             zone:
               type: "string"
+              description: "IANA time zone used to interpret the activity schedule."
             weekdays:
               type: "array"
               items:
                 type: "number"
+              description: "Allowed weekdays for recurring participation in the activity's business zone."
             from:
               type:
                 - "string"
                 - "null"
+              description: "Start of the recurring local-time interval; null when the interval is not restricted."
             to:
               type:
                 - "string"
                 - "null"
+              description: "End of the recurring local-time interval; null when the interval is not restricted."
           required:
             - "type"
             - "startAt"
@@ -13887,29 +14161,36 @@ components:
             - "from"
             - "to"
           additionalProperties: false
+          description: "Activity calendar including zone, date window and recurring local-time intervals."
         rule:
           type: "object"
           properties:
             schemaVersion:
               type: "number"
+              description: "Version of the immutable rule or order snapshot format."
             trigger:
               type: "object"
               properties:
                 type:
                   type: "string"
+                  description: "Record, target or calculation classification used to interpret this object."
                 amountMinor:
                   type: "null"
+                  description: "Trigger amount in the currency's smallest unit; null when not applicable."
                 quantity:
                   type: "null"
+                  description: "Product quantity used by the snapshot or trigger; null when not applicable."
               required:
                 - "type"
                 - "amountMinor"
                 - "quantity"
               additionalProperties: false
+              description: "Eligibility condition applied before the activity's recharge benefit tiers."
             benefits:
               type: "array"
               items:
                 not: {}
+              description: "Additional benefit definitions; currently empty for tiered recharge activities."
             tiers:
               type: "array"
               items:
@@ -13917,48 +14198,60 @@ components:
                 properties:
                   tierNo:
                     type: "string"
+                    description: "Stable identifier of this recharge tier within the activity definition."
                   payAmountMinor:
                     type: "number"
+                    description: "Required paid principal for this recharge tier, in minor currency units."
                   bonusAmountMinor:
                     type: "number"
+                    description: "Gifted stored-value amount, in minor currency units."
                   redemptionScope:
                     type: "object"
                     properties:
                       mode:
                         type: "string"
                         const: "STORES"
+                        description: "Calculation or scope mode determining how the associated value and references are interpreted."
                       refs:
                         type: "array"
                         items:
                           type: "string"
+                        description: "Business identifiers selected by the associated scope mode."
                     required:
                       - "mode"
                       - "refs"
                     additionalProperties: false
+                    description: "Stores in which the gifted recharge component may later be redeemed."
                 required:
                   - "tierNo"
                   - "payAmountMinor"
                   - "bonusAmountMinor"
                   - "redemptionScope"
                 additionalProperties: false
+              description: "Recharge principal/bonus tiers offered by this activity."
           required:
             - "schemaVersion"
             - "trigger"
             - "benefits"
             - "tiers"
           additionalProperties: false
+          description: "Immutable calculation rule or versioned activity rule definition."
         quotaLimit:
           type:
             - "number"
             - "null"
+          description: "Maximum successful activity participations; null for no configured cap."
         budgetLimitMinor:
           type:
             - "number"
             - "null"
+          description: "Total activity budget limit in minor currency units; null for no configured cap."
         perUserLimit:
           type: "number"
+          description: "Maximum number of successful participations per customer."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
       required:
         - "name"
         - "scene"
@@ -13978,10 +14271,13 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         expectedRevision:
           type: "number"
+          description: "Previously observed resource revision; stale writes are rejected."
       required:
         - "currency"
         - "expectedRevision"
@@ -13992,12 +14288,16 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         cursor:
           type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
       required:
         - "managementNo"
       additionalProperties: false
@@ -14006,6 +14306,7 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         decision:
           type: "object"
           properties:
@@ -14014,6 +14315,7 @@ components:
               enum:
                 - "APPROVE"
                 - "RETURN"
+              description: "Approval or return decision submitted for the current revision."
             reason:
               type: "string"
             expectedRevision:
@@ -14023,6 +14325,7 @@ components:
             - "reason"
             - "expectedRevision"
           additionalProperties: false
+          description: "Approval or return decision submitted for the current revision."
       required:
         - "managementNo"
         - "decision"
@@ -14157,20 +14460,10 @@ components:
                 type: "string"
                 description: "System that requested or handled the synchronization."
               status:
-                type: "string"
-                enum:
-                  - "COMPLETED"
-                  - "PENDING"
-                  - "FAILED"
-                  - "WARNING"
-                  - "SKIPPED"
-                  - "ARCHIVED"
+                "$ref": "#/components/schemas/InventorySyncEventState"
                 description: "Delivery state of the synchronization event."
               outboxMode:
-                type: "string"
-                enum:
-                  - "UNIFIED"
-                  - "LEGACY"
+                "$ref": "#/components/schemas/InventoryOutboxMode"
                 description: "Outbox implementation that persisted the event."
             required:
               - "aggregateId"
@@ -14378,12 +14671,15 @@ components:
       properties:
         actorKey:
           type: "string"
+          description: "Authenticated operator identity recorded by the server."
         spaces:
           type: "array"
           items:
             "$ref": "#/components/schemas/ManagementSpace"
+          description: "Management spaces accessible to the authenticated operator."
         canBootstrap:
           type: "boolean"
+          description: "Whether the operator may create a management space from an available authority source."
         bootstrapSources:
           type: "array"
           items:
@@ -14391,10 +14687,13 @@ components:
             properties:
               accountNo:
                 type: "string"
+                description: "Account identifier used as the management-space authority source."
               entityNo:
                 type: "string"
+                description: "Operating entity identifier; authorization remains server-derived."
               entityName:
                 type: "string"
+                description: "Display name of the operating entity providing the authority source."
               stores:
                 type: "array"
                 items:
@@ -14402,12 +14701,15 @@ components:
                   properties:
                     storeNo:
                       type: "string"
+                      description: "Store identifier scoping the requested operation or returned business record."
                     name:
                       type: "string"
+                      description: "Human-readable name displayed for this business resource."
                   required:
                     - "storeNo"
                     - "name"
                   additionalProperties: false
+                description: "Stores accessible through this management authority source."
               paymentMerchants:
                 type: "array"
                 items:
@@ -14415,15 +14717,18 @@ components:
                   properties:
                     payMerchantNo:
                       type: "string"
+                      description: "Payment merchant identifier under the operating entity."
                   required:
                     - "payMerchantNo"
                   additionalProperties: false
+                description: "Payment merchants available under the authority-source account."
             required:
               - "accountNo"
               - "entityNo"
               - "stores"
               - "paymentMerchants"
             additionalProperties: false
+          description: "Accounts the operator may use to establish a management space."
       required:
         - "actorKey"
         - "spaces"
@@ -14435,32 +14740,45 @@ components:
       properties:
         canManageLegacy:
           type: "boolean"
+          description: "Whether the operator retains management access to legacy resources."
         canConfigureBrand:
           type: "boolean"
+          description: "Whether the operator may configure the resource's brand binding."
         resourceType:
           type: "string"
+          description: "Business resource category used to resolve resourceNo and enforce authorization."
         resourceNo:
           type: "string"
+          description: "Business identifier of the resource covered by the capability grant."
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         revision:
           type: "number"
+          description: "Current revision used for optimistic concurrency or snapshot traceability."
         brandNo:
           type: "string"
+          description: "Brand identifier; null when the scope has no brand binding."
         entityNo:
           type: "string"
+          description: "Operating entity identifier; authorization remains server-derived."
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         scopeRevision:
           type: "number"
+          description: "Current revision of the resource's management-scope bindings."
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         actions:
           type: "array"
           items:
             type: "string"
+          description: "Actions currently permitted by the server for this resource."
       required:
         - "actions"
         - "managementNo"
@@ -14473,28 +14791,39 @@ components:
       properties:
         actorLabel:
           type: "string"
+          description: "Display label of the operator or grant recipient."
         resourceName:
           type: "string"
+          description: "Display name of the business resource covered by the grant."
         grantNo:
           type: "string"
+          description: "Resource-capability grant identifier."
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         actorNo:
           type: "string"
+          description: "Identity receiving the resource grant."
         resourceType:
           type: "string"
+          description: "Business resource category used to resolve resourceNo and enforce authorization."
         resourceNo:
           type: "string"
+          description: "Business identifier of the resource covered by the capability grant."
         permissionCode:
           type: "string"
+          description: "Capability code granted for the specified business resource."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         delegatable:
           type:
             - "boolean"
             - "number"
+          description: "Whether the recipient may delegate this granted capability."
         revision:
           type: "number"
+          description: "Current revision used for optimistic concurrency or snapshot traceability."
       required:
         - "grantNo"
         - "managementNo"
@@ -14511,26 +14840,37 @@ components:
       properties:
         canManageLegacy:
           type: "boolean"
+          description: "Whether the operator retains management access to legacy resources."
         canConfigureBrand:
           type: "boolean"
+          description: "Whether the operator may configure the resource's brand binding."
         resourceType:
           type: "string"
+          description: "Business resource category used to resolve resourceNo and enforce authorization."
         resourceNo:
           type: "string"
+          description: "Business identifier of the resource covered by the capability grant."
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         revision:
           type: "number"
+          description: "Current revision used for optimistic concurrency or snapshot traceability."
         brandNo:
           type: "string"
+          description: "Brand identifier; null when the scope has no brand binding."
         entityNo:
           type: "string"
+          description: "Operating entity identifier; authorization remains server-derived."
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         scopeRevision:
           type: "number"
+          description: "Current revision of the resource's management-scope bindings."
       required:
         - "name"
         - "status"
@@ -14541,44 +14881,63 @@ components:
       properties:
         canManageLegacy:
           type: "boolean"
+          description: "Whether the operator retains management access to legacy resources."
         canConfigureBrand:
           type: "boolean"
+          description: "Whether the operator may configure the resource's brand binding."
         resourceType:
           type: "string"
+          description: "Business resource category used to resolve resourceNo and enforce authorization."
         resourceNo:
           type: "string"
+          description: "Business identifier of the resource covered by the capability grant."
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         revision:
           type: "number"
+          description: "Current revision used for optimistic concurrency or snapshot traceability."
         brandNo:
           type: "string"
+          description: "Brand identifier; null when the scope has no brand binding."
         entityNo:
           type: "string"
+          description: "Operating entity identifier; authorization remains server-derived."
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         scopeRevision:
           type: "number"
+          description: "Current revision of the resource's management-scope bindings."
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         logo:
           type: "string"
+          description: "Brand logo URL; null clears the configured logo."
         storeCount:
           type: "number"
+          description: "Number of stores currently bound to this brand."
         createdAt:
           type: "string"
+          description: "Resource creation time returned by the server."
         updatedAt:
           type: "string"
+          description: "Time the resource was last updated; null when it has never changed."
         createdByLabel:
           type: "string"
+          description: "Display label of the operator who created the resource."
         updatedByLabel:
           type: "string"
+          description: "Display label of the operator who last updated the resource."
         actions:
           type: "array"
           items:
             type: "string"
+          description: "Actions currently permitted by the server for this resource."
       required:
         - "brandNo"
         - "managementNo"
@@ -14592,26 +14951,34 @@ components:
       properties:
         allowed:
           type: "boolean"
+          description: "Whether the server permits this operation after checking all constraints."
         canDecide:
           type: "boolean"
+          description: "Whether the operator may approve or reject this checked change."
         blockers:
           type: "array"
           items:
             type: "string"
+          description: "Server-provided reasons preventing the requested operation."
         checkToken:
           type: "string"
+          description: "Server-issued token binding submission to the validated change preview."
         storeVersion:
           type: "number"
+          description: "Store revision validated by the impact check."
         bindingRevision:
           type: "number"
+          description: "Expected revision of the existing brand/store binding."
         fromRevision:
           type:
             - "number"
             - "null"
+          description: "Revision of the source brand validated by the impact check."
         toRevision:
           type:
             - "number"
             - "null"
+          description: "Destination-brand revision validated by the impact check."
       required:
         - "allowed"
         - "blockers"
@@ -14626,30 +14993,41 @@ components:
       properties:
         changeNo:
           type: "string"
+          description: "Identifier of the requested brand/store binding change."
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         fromBrandNo:
           type: "string"
+          description: "Previous brand identifier; absent when the store was unbranded."
         toBrandNo:
           type: "string"
+          description: "Destination brand identifier; null removes the store's brand binding."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         revision:
           type: "number"
+          description: "Current revision used for optimistic concurrency or snapshot traceability."
         applied:
           type: "boolean"
+          description: "Whether the accepted change has been applied to the store's current binding."
         blockers:
           type: "array"
           items:
             type: "string"
+          description: "Server-provided reasons preventing the requested operation."
         actions:
           type: "array"
           items:
             type: "string"
+          description: "Actions currently permitted by the server for this resource."
         reason:
           type: "string"
+          description: "Business reason recorded for the operation, rejection or manual recovery."
       required:
         - "changeNo"
         - "managementNo"
@@ -14663,52 +15041,67 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         entityNo:
           type: "string"
+          description: "Operating entity identifier; authorization remains server-derived."
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         revision:
           type: "number"
+          description: "Current revision used for optimistic concurrency or snapshot traceability."
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         brand:
           anyOf:
             - type: "object"
               properties:
                 brandNo:
                   type: "string"
+                  description: "Brand identifier; null when the scope has no brand binding."
                 name:
                   type: "string"
+                  description: "Human-readable name displayed for this business resource."
                 scopeRevision:
                   type: "number"
+                  description: "Current revision of the resource's management-scope bindings."
               required:
                 - "brandNo"
                 - "name"
                 - "scopeRevision"
               additionalProperties: false
             - type: "null"
+          description: "Current effective brand binding; null for an unbranded store."
         actions:
           type: "array"
           items:
             type: "string"
+          description: "Actions currently permitted by the server for this resource."
         pendingChange:
           anyOf:
             - type: "object"
               properties:
                 changeNo:
                   type: "string"
+                  description: "Identifier of the requested brand/store binding change."
                 status:
                   type: "string"
+                  description: "Current server-owned lifecycle state of this resource."
                 revision:
                   type: "number"
+                  description: "Current revision used for optimistic concurrency or snapshot traceability."
               required:
                 - "changeNo"
                 - "status"
                 - "revision"
               additionalProperties: false
             - type: "null"
+          description: "Unfinished store/brand binding change; null when none exists."
       required:
         - "storeNo"
         - "entityNo"
@@ -14724,18 +15117,24 @@ components:
       properties:
         payMerchantNo:
           type: "string"
+          description: "Payment merchant identifier under the operating entity."
         entityNo:
           type: "string"
+          description: "Operating entity identifier; authorization remains server-derived."
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         payChannel:
           type: "string"
+          description: "Payment channel used by this payment-merchant capability."
         applyStatus:
           type: "string"
+          description: "Payment merchant's onboarding application status."
         payMethods:
           type: "array"
           items:
             type: "string"
+          description: "Payment methods supported by the selected payment merchant."
       required:
         - "payMerchantNo"
         - "entityNo"
@@ -14749,10 +15148,13 @@ components:
       properties:
         action:
           type: "string"
+          description: "Operation recorded for this command or audit entry."
         actorKey:
           type: "string"
+          description: "Authenticated operator identity recorded by the server."
         occurredAt:
           type: "string"
+          description: "Time the server recorded the business operation."
       required:
         - "action"
         - "actorKey"
@@ -14763,8 +15165,10 @@ components:
       properties:
         actorNo:
           type: "string"
+          description: "Identity receiving the resource grant."
         displayName:
           type: "string"
+          description: "Display name of the selected customer or grant recipient."
       required:
         - "actorNo"
         - "displayName"
@@ -14782,10 +15186,13 @@ components:
       properties:
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         currencyScale:
           type: "number"
+          description: "Number of decimal places in the currency's major unit."
         timeZone:
           type: "string"
+          description: "IANA time zone used for business-date filtering and activity scheduling."
       required:
         - "currency"
         - "currencyScale"
@@ -14796,33 +15203,45 @@ components:
       properties:
         planNo:
           type: "string"
+          description: "Recharge plan identifier; null for operations without a recharge plan."
         versionNo:
           type: "string"
+          description: "Immutable version identifier frozen for the referenced plan or policy."
         revision:
           type: "number"
+          description: "Current revision used for optimistic concurrency or snapshot traceability."
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         paidAmountMinor:
           type: "number"
+          description: "Recharge principal paid by the customer, in minor currency units."
         bonusAmountMinor:
           type: "number"
+          description: "Gifted stored-value amount, in minor currency units."
         totalAmountMinor:
           type: "number"
+          description: "Total recharge credit, equal to principal plus bonus, in minor currency units."
         status:
           type: "string"
           enum:
             - "ACTIVE"
             - "INACTIVE"
+          description: "Current server-owned lifecycle state of this resource."
         createdAt:
           type: "string"
+          description: "Resource creation time returned by the server."
         updatedAt:
           type:
             - "string"
             - "null"
+          description: "Time the resource was last updated; null when it has never changed."
       required:
         - "planNo"
         - "versionNo"
@@ -14842,26 +15261,35 @@ components:
       properties:
         accountRef:
           type: "string"
+          description: "Opaque stored-value account reference used for authorized queries."
         maskedName:
           type: "string"
+          description: "Customer name masked for the current operator's access level."
         maskedPhone:
           type: "string"
+          description: "Customer phone number masked for the current operator's access level."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         balanceMinor:
           type: "number"
+          description: "Account balance including held funds, in minor currency units."
         heldMinor:
           type: "number"
+          description: "Stored-value amount reserved by unfinished operations, in minor currency units."
         availableMinor:
           type: "number"
+          description: "Stored-value amount currently spendable, excluding held funds, in minor units."
         lastOccurredAt:
           type:
             - "string"
             - "null"
+          description: "Time of the most recent account record; null when there are no records."
         lastRechargeAt:
           type:
             - "string"
             - "null"
+          description: "Time of the most recent completed recharge; null when none exists."
       required:
         - "accountRef"
         - "maskedName"
@@ -14879,53 +15307,71 @@ components:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         voucherDocumentNo:
           type:
             - "string"
             - "null"
+          description: "Human-facing accounting voucher number; absent for historical unmapped vouchers."
         recordNo:
           type: "string"
+          description: "Internal stored-value record reference; use documentNo for human display."
         maskedName:
           type: "string"
+          description: "Customer name masked for the current operator's access level."
         maskedPhone:
           type: "string"
+          description: "Customer phone number masked for the current operator's access level."
         type:
           type: "string"
           enum:
             - "RECHARGE"
             - "REDEMPTION"
+          description: "Record, target or calculation classification used to interpret this object."
         title:
           type: "string"
+          description: "Human-readable title of the stored-value business record."
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         storeName:
           type: "string"
+          description: "Store display name captured for the record or selection."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         signedAmountMinor:
           type: "number"
+          description: "Signed change in stored-value balance, in minor currency units."
         balanceAfterMinor:
           type: "number"
+          description: "Account balance after this record, in minor currency units."
         occurredAt:
           type: "string"
+          description: "Time the server recorded the business operation."
         businessNo:
           type: "string"
+          description: "Business operation identifier associated with this stored-value record."
         planNo:
           type:
             - "string"
             - "null"
+          description: "Recharge plan identifier; null for operations without a recharge plan."
         versionNo:
           type:
             - "string"
             - "null"
+          description: "Immutable version identifier frozen for the referenced plan or policy."
         paidAmountMinor:
           type:
             - "number"
             - "null"
+          description: "Recharge principal paid by the customer, in minor currency units."
         bonusAmountMinor:
           type:
             - "number"
             - "null"
+          description: "Gifted stored-value amount, in minor currency units."
       required:
         - "recordNo"
         - "maskedName"
@@ -14949,34 +15395,44 @@ components:
       properties:
         rechargeNo:
           type: "string"
+          description: "Recharge operation identifier used for status queries and recovery."
         documentNo:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         revision:
           type: "number"
+          description: "Current revision used for optimistic concurrency or snapshot traceability."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         paidAmountMinor:
           type:
             - "number"
             - "null"
+          description: "Recharge principal paid by the customer, in minor currency units."
         creditedTotalMinor:
           type:
             - "number"
             - "null"
+          description: "Total principal and bonus actually credited, in minor currency units."
         creditedAt:
           type:
             - "string"
             - "null"
+          description: "Time the recharge was credited; null before posting."
         receivedAt:
           type:
             - "string"
             - "null"
+          description: "Time offline collection was confirmed; null before confirmation."
       required:
         - "rechargeNo"
         - "revision"
@@ -14993,42 +15449,54 @@ components:
       properties:
         customerRef:
           type: "string"
+          description: "Server-issued selected-customer reference; expires and must be reselected when stale."
         expiresAt:
           type: "string"
+          description: "Expiry time of the server-issued selection or preview."
         pendingScope:
           type: "string"
+          description: "Membership scope that still requires confirmation before recharge."
         sourceStoreNo:
           type:
             - "string"
             - "null"
+          description: "Store identifier from which the customer relationship originated."
         sourceStoreName:
           type:
             - "string"
             - "null"
+          description: "Display name of the store from which the customer relationship originated."
         memberNo:
           type:
             - "string"
             - "null"
+          description: "Member identifier; null when the candidate only has an existing account."
         displayName:
           type: "string"
+          description: "Display name of the selected customer or grant recipient."
         phoneMasked:
           type: "string"
+          description: "Masked customer phone number for display and identity confirmation."
         account:
           anyOf:
             - type: "object"
               properties:
                 accountRef:
                   type: "string"
+                  description: "Opaque stored-value account reference used for authorized queries."
                 currency:
                   "$ref": "#/components/schemas/CurrencyCode"
+                  description: "ISO currency code determining the interpretation of monetary amounts."
                 availableMinor:
                   type: "number"
+                  description: "Stored-value amount currently spendable, excluding held funds, in minor units."
               required:
                 - "accountRef"
                 - "currency"
                 - "availableMinor"
               additionalProperties: false
             - type: "null"
+          description: "Selected stored-value account summary; null when no account exists."
       required:
         - "customerRef"
         - "expiresAt"
@@ -15041,34 +15509,44 @@ components:
       properties:
         memberNo:
           type: "string"
+          description: "Member identifier; null when the candidate only has an existing account."
         displayName:
           type: "string"
+          description: "Display name of the selected customer or grant recipient."
         phoneMasked:
           type: "string"
+          description: "Masked customer phone number for display and identity confirmation."
         memberStatus:
           type: "string"
+          description: "Current member lifecycle state used when checking recharge eligibility."
         canRecharge:
           type: "boolean"
+          description: "Whether the account and selected issuer currently permit recharging."
         unavailableReason:
           type:
             - "string"
             - "null"
+          description: "Server-provided explanation of why this account or issuer cannot be used."
         account:
           anyOf:
             - type: "object"
               properties:
                 accountRef:
                   type: "string"
+                  description: "Opaque stored-value account reference used for authorized queries."
                 currency:
                   "$ref": "#/components/schemas/CurrencyCode"
+                  description: "ISO currency code determining the interpretation of monetary amounts."
                 availableMinor:
                   type: "number"
+                  description: "Stored-value amount currently spendable, excluding held funds, in minor units."
               required:
                 - "accountRef"
                 - "currency"
                 - "availableMinor"
               additionalProperties: false
             - type: "null"
+          description: "Selected stored-value account summary; null when no account exists."
       required:
         - "memberNo"
         - "displayName"
@@ -15089,10 +15567,12 @@ components:
       properties:
         found:
           type: "boolean"
+          description: "Whether the original idempotent recharge creation command has been resolved."
         recharge:
           anyOf:
             - "$ref": "#/components/schemas/SvProgress"
             - type: "null"
+          description: "Original recharge result; null while no durable creation result exists."
       required:
         - "found"
         - "recharge"
@@ -15106,12 +15586,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/ScopeMemberCandidate"
+          description: "Records returned for the current continuation-cursor page."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque cursor for the next page; null when the result is exhausted."
         identityConflictCount:
           type: "number"
+          description: "Number of candidate identities that require manual conflict resolution."
       required:
         - "items"
         - "nextCursor"
@@ -15122,48 +15605,61 @@ components:
       properties:
         displayName:
           type: "string"
+          description: "Display name of the selected customer or grant recipient."
         phoneMasked:
           type: "string"
+          description: "Masked customer phone number for display and identity confirmation."
         memberStatus:
           type: "string"
+          description: "Current member lifecycle state used when checking recharge eligibility."
         canRecharge:
           type: "boolean"
+          description: "Whether the account and selected issuer currently permit recharging."
         unavailableReason:
           type:
             - "string"
             - "null"
+          description: "Server-provided explanation of why this account or issuer cannot be used."
         account:
           anyOf:
             - type: "object"
               properties:
                 accountRef:
                   type: "string"
+                  description: "Opaque stored-value account reference used for authorized queries."
                 currency:
                   "$ref": "#/components/schemas/CurrencyCode"
+                  description: "ISO currency code determining the interpretation of monetary amounts."
                 availableMinor:
                   type: "number"
+                  description: "Stored-value amount currently spendable, excluding held funds, in minor units."
               required:
                 - "accountRef"
                 - "currency"
                 - "availableMinor"
               additionalProperties: false
             - type: "null"
+          description: "Selected stored-value account summary; null when no account exists."
         memberNo:
           type:
             - "string"
             - "null"
+          description: "Member identifier; null when the candidate only has an existing account."
         sourceStoreNo:
           type:
             - "string"
             - "null"
+          description: "Store identifier from which the customer relationship originated."
         sourceStoreName:
           type:
             - "string"
             - "null"
+          description: "Display name of the store from which the customer relationship originated."
         lastRechargeAt:
           type:
             - "string"
             - "null"
+          description: "Time of the most recent completed recharge; null when none exists."
       required:
         - "account"
         - "canRecharge"
@@ -15180,14 +15676,17 @@ components:
       properties:
         selection:
           "$ref": "#/components/schemas/SvSelectedCustomer"
+          description: "Server-issued selected-customer data and its expiry."
         sourceStoreNo:
           type:
             - "string"
             - "null"
+          description: "Store identifier from which the customer relationship originated."
         sourceStoreName:
           type:
             - "string"
             - "null"
+          description: "Display name of the store from which the customer relationship originated."
       required:
         - "selection"
         - "sourceStoreNo"
@@ -15198,20 +15697,27 @@ components:
       properties:
         scopeMemberNo:
           type: "string"
+          description: "Membership identifier within the authorized operating scope."
         displayName:
           type: "string"
+          description: "Display name of the selected customer or grant recipient."
         phoneMasked:
           type: "string"
+          description: "Masked customer phone number for display and identity confirmation."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         sourceStoreNo:
           type: "string"
+          description: "Store identifier from which the customer relationship originated."
         sourceStoreName:
           type: "string"
+          description: "Display name of the store from which the customer relationship originated."
         remark:
           type:
             - "string"
             - "null"
+          description: "Operator-supplied audit note explaining the submitted operation."
       required:
         - "scopeMemberNo"
         - "displayName"
@@ -15226,37 +15732,51 @@ components:
       properties:
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         settlementEntityNo:
           type: "string"
+          description: "Operating entity responsible for settling the issuer's liabilities."
         collectionMode:
           type: "string"
+          description: "Whether issuer collection is centralized or performed by individual stores."
         clearingMode:
           type: "string"
+          description: "Clearing policy used for liabilities under this issuer configuration."
         debitAllocationMode:
           type: "string"
+          description: "Policy for allocating redemption debits across funded balance components."
         currency:
           type: "string"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         marketZone:
           type: "string"
+          description: "IANA time zone used for this issuer's market and business dates."
         routes:
           type: "array"
           items:
             "$ref": "#/components/schemas/IssuerRoute"
+          description: "Collection routes assigned to this issuer configuration."
         issuerNo:
           type: "string"
+          description: "Stored-value issuer identifier."
         issuerVersionNo:
           type: "string"
+          description: "Immutable issuer-configuration version used by subsequent operations."
         scopeType:
           type: "string"
           enum:
             - "STORE"
             - "BRAND"
+          description: "Whether the issuer scope is a store or a brand."
         scopeNo:
           type: "string"
+          description: "Brand or store identifier selected by scopeType."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         revision:
           type: "number"
+          description: "Current revision used for optimistic concurrency or snapshot traceability."
       required:
         - "clearingMode"
         - "collectionMode"
@@ -15278,14 +15798,18 @@ components:
       properties:
         allowed:
           type: "boolean"
+          description: "Whether the server permits this operation after checking all constraints."
         affectedAccountCount:
           type: "number"
+          description: "Number of existing accounts affected by the proposed issuer change."
         hasPending:
           type: "boolean"
+          description: "Whether pending operations prevent applying this issuer change."
         blockers:
           type: "array"
           items:
             type: "string"
+          description: "Server-provided reasons preventing the requested operation."
       required:
         - "allowed"
         - "affectedAccountCount"
@@ -15297,12 +15821,15 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         legacyMode:
           type: "boolean"
+          description: "Whether this store still uses the compatibility issuer arrangement."
         issuers:
           type: "array"
           items:
             "$ref": "#/components/schemas/StoreIssuerOption"
+          description: "Issuer options applicable to the current store."
       required:
         - "storeNo"
         - "legacyMode"
@@ -15313,27 +15840,37 @@ components:
       properties:
         issuerNo:
           type: "string"
+          description: "Stored-value issuer identifier."
         scopeType:
           type: "string"
           const: "STORE"
+          description: "Whether the issuer scope is a store or a brand."
         scopeNo:
           type: "string"
+          description: "Brand or store identifier selected by scopeType."
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         currency:
           type: "string"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         writeMode:
           type: "string"
+          description: "Issuer writing mode describing which stored-value commands are currently supported."
         canRecharge:
           type: "boolean"
+          description: "Whether the account and selected issuer currently permit recharging."
         canRedeem:
           type: "boolean"
+          description: "Whether the selected issuer currently permits stored-value redemption."
         unavailableReason:
           type:
             - "string"
             - "null"
+          description: "Server-provided explanation of why this account or issuer cannot be used."
       required:
         - "issuerNo"
         - "scopeType"
@@ -15353,6 +15890,7 @@ components:
           anyOf:
             - "$ref": "#/components/schemas/IssuerView"
             - type: "null"
+          description: "Current issuer configuration; null when none has been configured."
       required:
         - "issuer"
       additionalProperties: false
@@ -15361,12 +15899,16 @@ components:
       properties:
         entityNo:
           type: "string"
+          description: "Operating entity identifier; authorization remains server-derived."
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         accepted:
           type: "boolean"
+          description: "Whether the operating entity has accepted this issuer arrangement."
         canAccept:
           type: "boolean"
+          description: "Whether the current operator may accept this issuer arrangement."
       required:
         - "entityNo"
         - "name"
@@ -15378,8 +15920,10 @@ components:
       properties:
         issuerOptions:
           "$ref": "#/components/schemas/StoreIssuerOptions"
+          description: "Issuer choices and their current recharge/redemption availability."
         plans:
           "$ref": "#/components/schemas/SvPlanPage"
+          description: "Recharge plans available for the selected store and customer."
       required:
         - "issuerOptions"
         - "plans"
@@ -15389,12 +15933,16 @@ components:
       properties:
         issuerNo:
           type: "string"
+          description: "Stored-value issuer identifier."
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         sourceRevision:
           type: "number"
+          description: "Store/issuer source revision acknowledged by the access refresh."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
       required:
         - "issuerNo"
         - "storeNo"
@@ -15406,24 +15954,33 @@ components:
       properties:
         policyNo:
           type: "string"
+          description: "Stored-value governance policy identifier."
         versionNo:
           type: "string"
+          description: "Immutable version identifier frozen for the referenced plan or policy."
         revision:
           type: "number"
+          description: "Current revision used for optimistic concurrency or snapshot traceability."
         targetType:
           "$ref": "#/components/schemas/SvPolicyTarget"
+          description: "Whether the governance policy applies to a space, brand stores or a single store."
         targetNo:
           type: "string"
+          description: "Business identifier selected by the policy's targetType."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         rules:
           "$ref": "#/components/schemas/SvPolicyRules"
+          description: "Effective stored-value issuance limits and approval requirements."
         parentVersionRefs:
           type: "array"
           items:
             type: "string"
+          description: "Immutable parent-policy versions inherited by this policy revision."
         contentHash:
           type: "string"
+          description: "Hash of the immutable policy contents used to detect stale submissions."
       required:
         - "policyNo"
         - "versionNo"
@@ -15443,18 +16000,24 @@ components:
           properties:
             tenantNo:
               type: "string"
+              description: "Tenant namespace attached by the server to this policy snapshot."
             managementNo:
               type: "string"
+              description: "Management-space identifier under which the operation is authorized."
             storeNo:
               type: "string"
+              description: "Store identifier scoping the requested operation or returned business record."
             brandNo:
               type:
                 - "string"
                 - "null"
+              description: "Brand identifier; null when the scope has no brand binding."
             currency:
               "$ref": "#/components/schemas/CurrencyCode"
+              description: "ISO currency code determining the interpretation of monetary amounts."
             storeRevision:
               type: "number"
+              description: "Store revision included in the effective-policy snapshot."
           required:
             - "tenantNo"
             - "managementNo"
@@ -15463,16 +16026,21 @@ components:
             - "currency"
             - "storeRevision"
           additionalProperties: false
+          description: "Tenant, management space, store, brand and currency used to resolve this effective policy."
         rules:
           "$ref": "#/components/schemas/SvPolicyRules"
+          description: "Effective stored-value issuance limits and approval requirements."
         sources:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvPolicyVersion"
+          description: "Policy versions contributing to the resolved effective policy."
         hash:
           type: "string"
+          description: "Hash of the resolved effective policy and its authority sources."
         configured:
           type: "boolean"
+          description: "Whether an explicit effective policy has been configured."
       required:
         - "scope"
         - "rules"
@@ -15485,20 +16053,28 @@ components:
       properties:
         tenantNo:
           type: "string"
+          description: "Tenant namespace attached by the server to this policy snapshot."
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         policyNo:
           type: "string"
+          description: "Stored-value governance policy identifier."
         versionNo:
           type: "string"
+          description: "Immutable version identifier frozen for the referenced plan or policy."
         targetType:
           "$ref": "#/components/schemas/SvPolicyTarget"
+          description: "Whether the governance policy applies to a space, brand stores or a single store."
         targetNo:
           type: "string"
+          description: "Business identifier selected by the policy's targetType."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         rules:
           "$ref": "#/components/schemas/SvPolicyRules"
+          description: "Effective stored-value issuance limits and approval requirements."
       required:
         - "tenantNo"
         - "managementNo"
@@ -15514,20 +16090,26 @@ components:
       properties:
         activityNo:
           type: "string"
+          description: "Stored-value activity identifier."
         revision:
           type: "number"
+          description: "Current revision used for optimistic concurrency or snapshot traceability."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         currentVersionNo:
           type:
             - "string"
             - "null"
+          description: "Current published activity version; null before first publication."
         definition:
           "$ref": "#/components/schemas/SvActivityDefinition"
+          description: "Versioned activity definition, including schedule, scope and recharge tiers."
         documentNo:
           type:
             - "string"
             - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
       required:
         - "activityNo"
         - "revision"
@@ -15540,34 +16122,45 @@ components:
       properties:
         linkNo:
           type: "string"
+          description: "Durable link between a draft, its approval and eventual publication."
         activityNo:
           type: "string"
+          description: "Stored-value activity identifier."
         draftRevisionNo:
           type: "string"
+          description: "Immutable draft revision identifier linked to the submission."
         draftHash:
           type: "string"
+          description: "Hash of the exact activity draft submitted for validation or approval."
         state:
           type: "string"
+          description: "Current processing projection for the submitted business operation."
         releaseNo:
           type:
             - "string"
             - "null"
+          description: "Durable publication-release identifier; null before preparation."
         releaseHash:
           type:
             - "string"
             - "null"
+          description: "Hash of the published release; null before release preparation completes."
         policyHash:
           type: "string"
+          description: "Hash of the effective policy frozen when the draft was submitted."
         approvalRequired:
           type: "boolean"
+          description: "Whether publication must obtain a separate approval first."
         approvalNo:
           type:
             - "string"
             - "null"
+          description: "Approval request identifier; null when approval is not required or not yet created."
         activityVersionNo:
           type:
             - "string"
             - "null"
+          description: "Published activity-version identifier; null until publication completes."
       required:
         - "linkNo"
         - "activityNo"
@@ -15586,36 +16179,50 @@ components:
       properties:
         approvalNo:
           type: "string"
+          description: "Approval request identifier; null when approval is not required or not yet created."
         linkNo:
           type: "string"
+          description: "Durable link between a draft, its approval and eventual publication."
         activityNo:
           type: "string"
+          description: "Stored-value activity identifier."
         draftRevisionNo:
           type: "string"
+          description: "Immutable draft revision identifier linked to the submission."
         draftHash:
           type: "string"
+          description: "Hash of the exact activity draft submitted for validation or approval."
         storeNo:
           type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
         managementNo:
           type: "string"
+          description: "Management-space identifier under which the operation is authorized."
         status:
           type: "string"
+          description: "Current server-owned lifecycle state of this resource."
         policyHash:
           type: "string"
+          description: "Hash of the effective policy frozen when the draft was submitted."
         submittedBy:
           type: "string"
+          description: "Authenticated operator who submitted the approval request."
         decidedBy:
           type:
             - "string"
             - "null"
+          description: "Server-recorded decision operator; null while awaiting a decision."
         revision:
           type: "number"
+          description: "Current revision used for optimistic concurrency or snapshot traceability."
         reason:
           type:
             - "string"
             - "null"
+          description: "Business reason recorded for the operation, rejection or manual recovery."
         definition:
           "$ref": "#/components/schemas/SvActivityDefinition"
+          description: "Versioned activity definition, including schedule, scope and recharge tiers."
       required:
         - "approvalNo"
         - "linkNo"
@@ -15637,14 +16244,18 @@ components:
       properties:
         policy:
           "$ref": "#/components/schemas/SvEffectivePolicy"
+          description: "Resolved effective governance policy used by the activity validation."
         allowed:
           type: "boolean"
+          description: "Whether the server permits this operation after checking all constraints."
         approvalRequired:
           type: "boolean"
+          description: "Whether publication must obtain a separate approval first."
         blockers:
           type: "array"
           items:
             type: "string"
+          description: "Server-provided reasons preventing the requested operation."
       required:
         - "policy"
         - "allowed"
@@ -15656,8 +16267,10 @@ components:
       properties:
         protocol:
           type: "number"
+          description: "Capability protocol version supported by the current server."
         enabled:
           type: "boolean"
+          description: "Whether this feature or preset is enabled in the current deployment."
       required:
         - "protocol"
         - "enabled"
@@ -15667,6 +16280,7 @@ components:
       properties:
         prepared:
           type: "boolean"
+          description: "Whether the requested permission preparation has completed."
       required:
         - "prepared"
       additionalProperties: false
@@ -15675,10 +16289,12 @@ components:
       properties:
         activity:
           "$ref": "#/components/schemas/SvActivity"
+          description: "Stored-value activity and its current versioned definition."
         submission:
           anyOf:
             - "$ref": "#/components/schemas/SvSubmission"
             - type: "null"
+          description: "Durable activity submission state; null before any submission."
       required:
         - "activity"
         - "submission"
@@ -15690,12 +16306,16 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvActivity"
+          description: "Business records returned by the current query."
         total:
           type: "number"
+          description: "Total number of records matching the current query."
         page:
           type: "number"
+          description: "One-based page index for the returned or requested result."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
       required:
         - "records"
         - "total"
@@ -15709,12 +16329,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvApproval"
+          description: "Business records returned by the current query."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque cursor for the next page; null when the result is exhausted."
         hasMore:
           type: "boolean"
+          description: "Whether a further page is available using nextCursor."
       required:
         - "records"
         - "nextCursor"
@@ -15725,18 +16348,24 @@ components:
       properties:
         templateCode:
           type: "string"
+          description: "Activity preset code identifying the supported definition template."
         templateVersion:
           type: "number"
+          description: "Version of the selected activity preset."
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         enabled:
           type: "boolean"
+          description: "Whether this feature or preset is enabled in the current deployment."
         available:
           type: "boolean"
+          description: "Whether this capability or preset is available in the current deployment."
         missingCapabilities:
           type: "array"
           items:
             type: "string"
+          description: "Deployment capabilities missing for this preset to be usable."
       required:
         - "templateCode"
         - "templateVersion"
@@ -15752,12 +16381,16 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvGovernancePreset"
+          description: "Business records returned by the current query."
         total:
           type: "number"
+          description: "Total number of records matching the current query."
         page:
           type: "number"
+          description: "One-based page index for the returned or requested result."
         size:
           type: "number"
+          description: "Maximum records per page requested or returned by the server."
       required:
         - "records"
         - "total"
@@ -15769,14 +16402,19 @@ components:
       properties:
         startAt:
           type: "string"
+          description: "Start of the configured activity window as a server timestamp."
         endAt:
           type: "string"
+          description: "End of the configured activity window as a server timestamp."
         zone:
           type: "string"
+          description: "IANA time zone used to interpret the activity schedule."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         currencyScale:
           type: "number"
+          description: "Number of decimal places in the currency's major unit."
       required:
         - "startAt"
         - "endAt"
@@ -15789,12 +16427,16 @@ components:
       properties:
         type:
           "$ref": "#/components/schemas/SvPolicyTarget"
+          description: "Record, target or calculation classification used to interpret this object."
         no:
           type: "string"
+          description: "Business identifier of the selected policy target."
         name:
           type: "string"
+          description: "Human-readable name displayed for this business resource."
         canManage:
           type: "boolean"
+          description: "Whether the current operator may change this governance resource."
       required:
         - "type"
         - "no"
@@ -15806,14 +16448,19 @@ components:
       properties:
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
         currencyScale:
           type: "number"
+          description: "Number of decimal places in the currency's major unit."
         timeZone:
           type: "string"
+          description: "IANA time zone used for business-date filtering and activity scheduling."
         canManage:
           type: "boolean"
+          description: "Whether the current operator may change this governance resource."
         canPublish:
           type: "boolean"
+          description: "Whether the operator may publish activities under this effective policy."
       required:
         - "currency"
         - "currencyScale"
@@ -15864,10 +16511,12 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/ManagementGrant"
+          description: "Records returned for the current continuation-cursor page."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque cursor for the next page; null when the result is exhausted."
       required:
         - "items"
         - "nextCursor"
@@ -15879,10 +16528,12 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/ManagementResource"
+          description: "Records returned for the current continuation-cursor page."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque cursor for the next page; null when the result is exhausted."
       required:
         - "items"
         - "nextCursor"
@@ -15894,10 +16545,12 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/Brand"
+          description: "Records returned for the current continuation-cursor page."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque cursor for the next page; null when the result is exhausted."
       required:
         - "items"
         - "nextCursor"
@@ -15909,10 +16562,12 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/ManagementAudit"
+          description: "Records returned for the current continuation-cursor page."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque cursor for the next page; null when the result is exhausted."
       required:
         - "items"
         - "nextCursor"
@@ -15924,12 +16579,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvPlan"
+          description: "Business records returned by the current query."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque cursor for the next page; null when the result is exhausted."
         hasMore:
           type: "boolean"
+          description: "Whether a further page is available using nextCursor."
       required:
         - "records"
         - "nextCursor"
@@ -15942,12 +16600,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvAccount"
+          description: "Business records returned by the current query."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque cursor for the next page; null when the result is exhausted."
         hasMore:
           type: "boolean"
+          description: "Whether a further page is available using nextCursor."
       required:
         - "records"
         - "nextCursor"
@@ -15960,12 +16621,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvRecord"
+          description: "Business records returned by the current query."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque cursor for the next page; null when the result is exhausted."
         hasMore:
           type: "boolean"
+          description: "Whether a further page is available using nextCursor."
       required:
         - "records"
         - "nextCursor"
@@ -15978,10 +16642,12 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/ManagementRecipient"
+          description: "Records returned for the current continuation-cursor page."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque cursor for the next page; null when the result is exhausted."
       required:
         - "items"
         - "nextCursor"
@@ -16084,11 +16750,13 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
         - name: "currency"
           in: "query"
           required: true
           schema:
             "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code determining the interpretation of monetary amounts."
         - name: "intent"
           in: "query"
           required: true
@@ -16097,6 +16765,7 @@ paths:
             enum:
               - "READ"
               - "MANAGE"
+            description: "Requested governance capability: read-only inspection or management."
       responses:
         "200":
           description: "OK"
@@ -16135,21 +16804,25 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
         - name: "currency"
           in: "query"
           required: true
           schema:
             "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code determining the interpretation of monetary amounts."
         - name: "page"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "One-based page index for the returned or requested result."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
       responses:
         "200":
           description: "OK"
@@ -16188,21 +16861,25 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
         - name: "currency"
           in: "query"
           required: true
           schema:
             "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code determining the interpretation of monetary amounts."
         - name: "startDate"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Inclusive first business date in YYYY-MM-DD format."
         - name: "endDate"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Inclusive final business date in YYYY-MM-DD format."
       responses:
         "200":
           description: "OK"
@@ -16264,6 +16941,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
       responses:
         "200":
           description: "OK"
@@ -16299,21 +16977,25 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
         - name: "currency"
           in: "query"
           required: true
           schema:
             "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code determining the interpretation of monetary amounts."
         - name: "targetType"
           in: "query"
           required: false
           schema:
             "$ref": "#/components/schemas/SvPolicyTarget"
+            description: "Whether the governance policy applies to a space, brand stores or a single store."
         - name: "targetNo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Business identifier selected by the policy's targetType."
       responses:
         "200":
           description: "OK"
@@ -16426,11 +17108,13 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
         - name: "currency"
           in: "query"
           required: true
           schema:
             "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code determining the interpretation of monetary amounts."
       responses:
         "200":
           description: "OK"
@@ -16469,26 +17153,31 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
         - name: "currency"
           in: "query"
           required: true
           schema:
             "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code determining the interpretation of monetary amounts."
         - name: "status"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Current server-owned lifecycle state of this resource."
         - name: "page"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "One-based page index for the returned or requested result."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
       responses:
         "200":
           description: "OK"
@@ -16570,11 +17259,13 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
         - name: "currency"
           in: "query"
           required: true
           schema:
             "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code determining the interpretation of monetary amounts."
       responses:
         "200":
           description: "OK"
@@ -16784,21 +17475,25 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
         - name: "status"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Current server-owned lifecycle state of this resource."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
       responses:
         "200":
           description: "OK"
@@ -16837,6 +17532,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
       responses:
         "200":
           description: "OK"
@@ -16914,6 +17610,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
       responses:
         "200":
           description: "OK"
@@ -16990,6 +17687,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
       responses:
         "200":
           description: "OK"
@@ -17139,6 +17837,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
         - name: "scopeType"
           in: "query"
           required: true
@@ -17147,11 +17846,13 @@ paths:
             enum:
               - "STORE"
               - "BRAND"
+            description: "Whether the issuer scope is a store or a brand."
         - name: "scopeNo"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Brand or store identifier selected by scopeType."
       responses:
         "200":
           description: "OK"
@@ -17225,22 +17926,26 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Server-issued selected-customer reference; expires and must be reselected when stale."
         - name: "scopeType"
           in: "query"
           required: false
           schema:
             type: "string"
             const: "STORE"
+            description: "Whether the issuer scope is a store or a brand."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
       responses:
         "200":
           description: "OK"
@@ -17279,16 +17984,19 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
         - name: "payChannel"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Payment channel used by this payment-merchant capability."
         - name: "payScene"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Payment scene used to select a compatible payment merchant."
       responses:
         "200":
           description: "OK"
@@ -17489,16 +18197,19 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "Search text used to match resource names."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
       responses:
         "200":
           description: "OK"
@@ -17610,6 +18321,7 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "Business resource category used to resolve resourceNo and enforce authorization."
         - name: "view"
           in: "query"
           required: false
@@ -17618,21 +18330,25 @@ paths:
             enum:
               - "EFFECTIVE"
               - "GRANTS"
+            description: "Whether to query effective resources or explicit capability grants."
         - name: "actorNo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Identity receiving the resource grant."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
       responses:
         "200":
           description: "OK"
@@ -17733,6 +18449,7 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "Business resource category used to resolve resourceNo and enforce authorization."
         - name: "view"
           in: "query"
           required: false
@@ -17741,21 +18458,25 @@ paths:
             enum:
               - "EFFECTIVE"
               - "GRANTS"
+            description: "Whether to query effective resources or explicit capability grants."
         - name: "actorNo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Identity receiving the resource grant."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
       responses:
         "200":
           description: "OK"
@@ -17838,11 +18559,13 @@ paths:
           required: true
           schema:
             type: "number"
+            description: "Previously observed resource revision; stale writes are rejected."
         - name: "reason"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Business reason recorded for the operation, rejection or manual recovery."
       responses:
         "200":
           description: "OK"
@@ -17881,11 +18604,13 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
       responses:
         "200":
           description: "OK"
@@ -17924,16 +18649,19 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
         - name: "brandNo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Brand identifier; null when the scope has no brand binding."
       responses:
         "200":
           description: "OK"
@@ -17972,21 +18700,25 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
         - name: "payChannel"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Payment channel used by this payment-merchant capability."
         - name: "payScene"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Payment scene used to select a compatible payment merchant."
         - name: "storeNo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Store identifier scoping the requested operation or returned business record."
       responses:
         "200":
           description: "OK"
@@ -18022,26 +18754,31 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
         - name: "managementNo"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
         - name: "status"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Current server-owned lifecycle state of this resource."
         - name: "keyword"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Search text used to match resource names."
       responses:
         "200":
           description: "OK"
@@ -18223,11 +18960,13 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
       responses:
         "200":
           description: "OK"
@@ -18266,11 +19005,13 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
       responses:
         "200":
           description: "OK"
@@ -18309,6 +19050,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management-space identifier under which the operation is authorized."
       responses:
         "200":
           description: "OK"
@@ -18492,16 +19234,19 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Store identifier scoping the requested operation or returned business record."
         - name: "phone"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Customer phone number submitted for server-authorized member lookup."
         - name: "keyword"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Search text used to match resource names."
       responses:
         "200":
           description: "OK"
@@ -18624,6 +19369,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Store identifier scoping the requested operation or returned business record."
       responses:
         "200":
           description: "OK"
@@ -18657,21 +19403,25 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Store identifier scoping the requested operation or returned business record."
         - name: "status"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Current server-owned lifecycle state of this resource."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
       responses:
         "200":
           description: "OK"
@@ -18738,6 +19488,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Store identifier scoping the requested operation or returned business record."
       responses:
         "200":
           description: "OK"
@@ -18805,21 +19556,25 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Store identifier scoping the requested operation or returned business record."
         - name: "keyword"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Search text used to match resource names."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
       responses:
         "200":
           description: "OK"
@@ -18853,6 +19608,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Store identifier scoping the requested operation or returned business record."
       responses:
         "200":
           description: "OK"
@@ -18891,6 +19647,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Store identifier scoping the requested operation or returned business record."
         - name: "type"
           in: "query"
           required: true
@@ -18900,31 +19657,37 @@ paths:
               - "ALL"
               - "RECHARGE"
               - "REDEMPTION"
+            description: "Record, target or calculation classification used to interpret this object."
         - name: "startDate"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Inclusive first business date in YYYY-MM-DD format."
         - name: "endDate"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Inclusive final business date in YYYY-MM-DD format."
         - name: "accountRef"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque stored-value account reference used for authorized queries."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records per page requested or returned by the server."
       responses:
         "200":
           description: "OK"
@@ -18963,6 +19726,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Store identifier scoping the requested operation or returned business record."
       responses:
         "200":
           description: "OK"

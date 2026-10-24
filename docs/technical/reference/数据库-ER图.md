@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **365** 张表、**519** 条引用关系，分 **16** 个域。
+全库 **388** 张表、**679** 条引用关系，分 **16** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -14,20 +14,20 @@
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
 | 消费者账号 | `usr_*` | 11 | 17 |
-| 商家主体与门店 | `mch_*` | 36 | 16 |
+| 商家主体与门店 | `mch_*` | 36 | 17 |
 | 社区与自提点 | `cmt_*` | 3 | 7 |
-| 商品与类目 | `prd_*` | 33 | 8 |
+| 商品与类目 | `prd_*` | 34 | 8 |
 | 购物车 | `trd_*` | 2 | 0 |
-| 交易 | `ord_*` | 41 | 9 |
+| 交易 | `ord_*` | 46 | 9 |
 | 履约 | `ful_*` | 5 | 0 |
 | 营销与团购 | `mkt_*` | 17 | 4 |
-| 积分 | `pts_*` | 41 | 1 |
+| 积分 | `pts_*` | 41 | 0 |
 | 结算 | `stl_*` | 18 | 2 |
 | 评价 | `rvw_*` | 3 | 0 |
 | 消息与客服 | `msg_*` | 1 | 0 |
 | 内容 | `cnt_*` | 4 | 0 |
 | 会员 | `mbr_*` | 14 | 1 |
-| 券与活动 | `pmt_*` | 27 | 4 |
+| 券与活动 | `pmt_*` | 29 | 5 |
 | 系统 | `sys_*` | 30 | 5 |
 
 > `usr` 被 17 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
@@ -111,7 +111,7 @@
 
 **跨域引用**：`cmt_pickup_point.group_no` → `mkt_group_buy`、`cmt_community_apply.entity_no` → `mch_entity`
 
-### 商品与类目 `prd_*`（33 张）
+### 商品与类目 `prd_*`（34 张）
 
 ![商品与类目表关系](../diagrams/db-prd.svg)
 
@@ -150,8 +150,9 @@
 | `prd_stock_alignment_line` | Per-SKU stock alignment snapshot and resumable result |
 | `prd_entitlement_binding` | CARD商品SKU引用支付权益版本，不重复保存余次规则 |
 | `prd_ent_binding_command` | 商品权益绑定原命令与成功回执 |
+| `prd_sku_pricing_policy` | — |
 
-**跨域引用**：`prd_goods.entity_no` → `mch_entity`、`prd_goods.store_no` → `mch_store`、`prd_sku.entity_no` → `mch_entity`、`prd_spec_template.entity_no` → `mch_entity`、`prd_stock_lock.store_no` → `mch_store`、`prd_store_stock.store_no` → `mch_store`、`prd_store_stock.entity_no` → `mch_entity`、`prd_store_goods.store_no` → `mch_store`、`prd_store_goods.entity_no` → `mch_entity`、`prd_store_price.store_no` → `mch_store`、`prd_store_price.entity_no` → `mch_entity`、`prd_topic_goods.entity_no` → `mch_entity`、`prd_spec_dim.entity_no` → `mch_entity`、`prd_spec_value.entity_no` → `mch_entity`、`prd_merchant_spec.entity_no` → `mch_entity`、`prd_merchant_spec_value.entity_no` → `mch_entity`、`prd_merchant_spec_override.merchant_no` → `mch_entity`、`prd_goods_draft.entity_no` → `mch_entity`、`prd_goods_favorite.user_no` → `usr_account`、`prd_entity_category_inv.entity_no` → `mch_entity`、`prd_sell_rule.store_no` → `mch_store`、`prd_store_stock_sync.store_no` → `mch_store`、`prd_store_stock_sync.entity_no` → `mch_entity`、`prd_stock_sync_log.store_no` → `mch_store`、`prd_goods_revision.entity_no` → `mch_entity`、`prd_stock_sync_operation.entity_no` → `mch_entity`、`prd_stock_sync_operation.store_no` → `mch_store`、`prd_stock_alignment_batch.entity_no` → `mch_entity`、`prd_stock_alignment_batch.store_no` → `mch_store`
+**跨域引用**：`prd_goods.entity_no` → `mch_entity`、`prd_goods.store_no` → `mch_store`、`prd_sku.entity_no` → `mch_entity`、`prd_spec_template.entity_no` → `mch_entity`、`prd_stock_lock.store_no` → `mch_store`、`prd_store_stock.store_no` → `mch_store`、`prd_store_stock.entity_no` → `mch_entity`、`prd_store_goods.store_no` → `mch_store`、`prd_store_goods.entity_no` → `mch_entity`、`prd_store_price.store_no` → `mch_store`、`prd_store_price.entity_no` → `mch_entity`、`prd_topic_goods.entity_no` → `mch_entity`、`prd_spec_dim.entity_no` → `mch_entity`、`prd_spec_value.entity_no` → `mch_entity`、`prd_merchant_spec.entity_no` → `mch_entity`、`prd_merchant_spec_value.entity_no` → `mch_entity`、`prd_merchant_spec_override.merchant_no` → `mch_entity`、`prd_goods_draft.entity_no` → `mch_entity`、`prd_goods_favorite.user_no` → `usr_account`、`prd_entity_category_inv.entity_no` → `mch_entity`、`prd_sell_rule.store_no` → `mch_store`、`prd_store_stock_sync.store_no` → `mch_store`、`prd_store_stock_sync.entity_no` → `mch_entity`、`prd_stock_sync_log.store_no` → `mch_store`、`prd_goods_revision.entity_no` → `mch_entity`、`prd_stock_sync_operation.entity_no` → `mch_entity`、`prd_stock_sync_operation.store_no` → `mch_store`、`prd_stock_alignment_batch.entity_no` → `mch_entity`、`prd_stock_alignment_batch.store_no` → `mch_store`、`prd_entitlement_binding.template_version_no` → `ent_template_version`、`prd_sku_pricing_policy.entity_no` → `mch_entity`、`prd_sku_pricing_policy.store_no` → `mch_store`
 
 ### 购物车 `trd_*`（2 张）
 
@@ -164,7 +165,7 @@
 
 **跨域引用**：`trd_cart_item.user_no` → `usr_account`、`trd_cart_item.goods_no` → `prd_goods`、`trd_cart_item.sku_no` → `prd_sku`、`trd_shipping_upload.order_no` → `ord_order`、`trd_shipping_upload.out_trade_no` → `stl_payment`
 
-### 交易 `ord_*`（41 张）
+### 交易 `ord_*`（46 张）
 
 ![交易表关系](../diagrams/db-ord.svg)
 
@@ -211,8 +212,13 @@
 | `ord_price_quote` | — |
 | `ord_price_quote_line` | — |
 | `ord_price_quote_allocation` | — |
+| `ord_pricing_funding_source` | — |
+| `ord_industry_order_source` | — |
+| `ord_industry_fulfillment` | — |
+| `ord_manual_price_policy` | — |
+| `ord_manual_price_adjustment` | — |
 
-**跨域引用**：`ord_after_sale.user_no` → `usr_account`、`ord_after_sale.entity_no` → `mch_entity`、`ord_item.goods_no` → `prd_goods`、`ord_item.sku_no` → `prd_sku`、`ord_item.category_no` → `prd_category`、`ord_item.shipment_no` → `lgs_waybill`、`ord_order.user_no` → `usr_account`、`ord_order.community_no` → `cmt_community`、`ord_sub_order.user_no` → `usr_account`、`ord_sub_order.entity_no` → `mch_entity`、`ord_sub_order.pickup_no` → `cmt_pickup_point`、`ord_sub_order.group_no` → `mkt_group_buy`、`ord_sub_order.store_no` → `mch_store`、`ord_sub_order.community_no` → `cmt_community`、`ord_sub_order.period_no` → `pmt_period`、`ord_invoice_request.user_no` → `usr_account`、`ord_express_pickup.pickup_no` → `cmt_pickup_point`、`ord_express_pickup.entity_no` → `mch_entity`、`ord_express_pickup.store_no` → `mch_store`、`ord_shipment.shipment_no` → `lgs_waybill`、`ord_create_intent.user_no` → `usr_account`、`ord_payment_resolution.payment_no` → `stl_payment`、`ord_payment_resolution.user_no` → `usr_account`、`ord_refund_execution.origin_payment_no` → `stl_payment`、`ord_refund_execution.payment_no` → `stl_payment`、`ord_points_refund_execution.cash_payment_no` → `stl_payment`、`ord_points_integration_policy.store_no` → `mch_store`、`ord_points_binding.store_no` → `mch_store`、`ord_points_source_fact.event_no` → `sys_outbox`、`ord_points_source_fact.store_no` → `mch_store`、`ord_points_refund_binding.cash_payment_no` → `stl_payment`、`ord_refund_coupon_scope.coupon_no` → `mkt_coupon`、`ord_ent_authorization.user_no` → `usr_account`、`ord_ent_authorization.entity_no` → `mch_entity`、`ord_ent_authorization.store_no` → `mch_store`、`ord_ent_source_decision.user_no` → `usr_account`、`ord_ent_source_decision.entity_no` → `mch_entity`、`ord_ent_source_decision.store_no` → `mch_store`、`ord_card_sale_snapshot.user_no` → `usr_account`、`ord_card_sale_snapshot.entity_no` → `mch_entity`、`ord_card_sale_snapshot.store_no` → `mch_store`、`ord_card_sale_snapshot.goods_no` → `prd_goods`、`ord_card_sale_snapshot.sku_no` → `prd_sku`、`ord_ent_order_use.entity_no` → `mch_entity`、`ord_ent_order_use.user_no` → `usr_account`、`ord_ent_service_order.entity_no` → `mch_entity`、`ord_ent_service_order.store_no` → `mch_store`、`ord_ent_service_order.user_no` → `usr_account`、`ord_legacy_coupon_checkout.user_no` → `usr_account`、`ord_legacy_coupon_checkout.entity_no` → `mch_entity`、`ord_store_pricing_config.entity_no` → `mch_entity`、`ord_store_pricing_config.store_no` → `mch_store`、`ord_store_pricing_revision.entity_no` → `mch_entity`、`ord_store_pricing_revision.store_no` → `mch_store`、`ord_price_quote.quote_no` → `mkt_quote`、`ord_price_quote.entity_no` → `mch_entity`、`ord_price_quote.store_no` → `mch_store`、`ord_price_quote_line.quote_no` → `mkt_quote`、`ord_price_quote_line.goods_no` → `prd_goods`、`ord_price_quote_line.sku_no` → `prd_sku`、`ord_price_quote_allocation.quote_no` → `mkt_quote`
+**跨域引用**：`ord_after_sale.user_no` → `usr_account`、`ord_after_sale.entity_no` → `mch_entity`、`ord_item.goods_no` → `prd_goods`、`ord_item.sku_no` → `prd_sku`、`ord_item.category_no` → `prd_category`、`ord_item.shipment_no` → `lgs_waybill`、`ord_order.user_no` → `usr_account`、`ord_order.community_no` → `cmt_community`、`ord_sub_order.user_no` → `usr_account`、`ord_sub_order.entity_no` → `mch_entity`、`ord_sub_order.pickup_no` → `cmt_pickup_point`、`ord_sub_order.group_no` → `mkt_group_buy`、`ord_sub_order.store_no` → `mch_store`、`ord_sub_order.community_no` → `cmt_community`、`ord_sub_order.period_no` → `pmt_period`、`ord_invoice_request.user_no` → `usr_account`、`ord_express_pickup.pickup_no` → `cmt_pickup_point`、`ord_express_pickup.entity_no` → `mch_entity`、`ord_express_pickup.store_no` → `mch_store`、`ord_shipment.shipment_no` → `lgs_waybill`、`ord_create_intent.user_no` → `usr_account`、`ord_payment_resolution.payment_no` → `stl_payment`、`ord_payment_resolution.user_no` → `usr_account`、`ord_refund_execution.origin_payment_no` → `stl_payment`、`ord_refund_execution.payment_no` → `stl_payment`、`ord_points_refund_execution.cash_payment_no` → `stl_payment`、`ord_points_integration_policy.store_no` → `mch_store`、`ord_points_binding.store_no` → `mch_store`、`ord_points_source_fact.event_no` → `sys_outbox`、`ord_points_source_fact.store_no` → `mch_store`、`ord_points_refund_binding.cash_payment_no` → `stl_payment`、`ord_refund_coupon_scope.coupon_no` → `mkt_coupon`、`ord_ent_authorization.user_no` → `usr_account`、`ord_ent_authorization.entity_no` → `mch_entity`、`ord_ent_authorization.store_no` → `mch_store`、`ord_ent_source_decision.user_no` → `usr_account`、`ord_ent_source_decision.entity_no` → `mch_entity`、`ord_ent_source_decision.store_no` → `mch_store`、`ord_card_sale_snapshot.user_no` → `usr_account`、`ord_card_sale_snapshot.entity_no` → `mch_entity`、`ord_card_sale_snapshot.store_no` → `mch_store`、`ord_card_sale_snapshot.goods_no` → `prd_goods`、`ord_card_sale_snapshot.sku_no` → `prd_sku`、`ord_card_sale_snapshot.template_version_no` → `ent_template_version`、`ord_ent_order_use.entity_no` → `mch_entity`、`ord_ent_order_use.user_no` → `usr_account`、`ord_ent_service_order.entity_no` → `mch_entity`、`ord_ent_service_order.store_no` → `mch_store`、`ord_ent_service_order.user_no` → `usr_account`、`ord_legacy_coupon_checkout.user_no` → `usr_account`、`ord_legacy_coupon_checkout.entity_no` → `mch_entity`、`ord_store_pricing_config.entity_no` → `mch_entity`、`ord_store_pricing_config.store_no` → `mch_store`、`ord_store_pricing_revision.entity_no` → `mch_entity`、`ord_store_pricing_revision.store_no` → `mch_store`、`ord_price_quote.entity_no` → `mch_entity`、`ord_price_quote.store_no` → `mch_store`、`ord_price_quote_line.goods_no` → `prd_goods`、`ord_price_quote_line.sku_no` → `prd_sku`、`ord_pricing_funding_source.entity_no` → `mch_entity`、`ord_pricing_funding_source.store_no` → `mch_store`、`ord_pricing_funding_source.user_no` → `usr_account`、`ord_industry_order_source.entity_no` → `mch_entity`、`ord_industry_order_source.store_no` → `mch_store`、`ord_industry_fulfillment.entity_no` → `mch_entity`、`ord_industry_fulfillment.store_no` → `mch_store`、`ord_manual_price_policy.entity_no` → `mch_entity`、`ord_manual_price_policy.store_no` → `mch_store`、`ord_manual_price_adjustment.entity_no` → `mch_entity`、`ord_manual_price_adjustment.store_no` → `mch_store`
 
 ### 履约 `ful_*`（5 张）
 
@@ -385,9 +391,9 @@
 | `mbr_store_profile` | — |
 | `mbr_scope_legacy_link` | — |
 
-**跨域引用**：`mbr_setting.entity_no` → `mch_entity`、`mbr_member.entity_no` → `mch_entity`、`mbr_member.person_no` → `usr_person`、`mbr_member_store.entity_no` → `mch_entity`、`mbr_member_store.store_no` → `mch_store`、`mbr_member_source.entity_no` → `mch_entity`、`mbr_member_source.store_no` → `mch_store`、`mbr_member_source.activity_no` → `pmt_activity`、`mbr_tag.entity_no` → `mch_entity`、`mbr_member_tag.entity_no` → `mch_entity`、`mbr_tag_merge_log.entity_no` → `mch_entity`、`mbr_segment.entity_no` → `mch_entity`、`mbr_reach_log.entity_no` → `mch_entity`、`mbr_reach_log.task_no` → `notify_push_task`、`mbr_reach_task.task_no` → `notify_push_task`、`mbr_reach_task.entity_no` → `mch_entity`、`mbr_identity_ticket.user_no` → `usr_account`、`mbr_identity_ticket.entity_no` → `mch_entity`、`mbr_identity_ticket.store_no` → `mch_store`、`mbr_store_profile.store_no` → `mch_store`
+**跨域引用**：`mbr_setting.entity_no` → `mch_entity`、`mbr_member.entity_no` → `mch_entity`、`mbr_member.person_no` → `usr_person`、`mbr_member.first_store_no` → `mch_store`、`mbr_member_store.entity_no` → `mch_entity`、`mbr_member_store.store_no` → `mch_store`、`mbr_member_source.entity_no` → `mch_entity`、`mbr_member_source.store_no` → `mch_store`、`mbr_member_source.activity_no` → `pmt_activity`、`mbr_tag.entity_no` → `mch_entity`、`mbr_member_tag.entity_no` → `mch_entity`、`mbr_tag_merge_log.entity_no` → `mch_entity`、`mbr_segment.entity_no` → `mch_entity`、`mbr_reach_log.entity_no` → `mch_entity`、`mbr_reach_log.task_no` → `notify_push_task`、`mbr_reach_task.task_no` → `notify_push_task`、`mbr_reach_task.entity_no` → `mch_entity`、`mbr_identity_ticket.user_no` → `usr_account`、`mbr_identity_ticket.entity_no` → `mch_entity`、`mbr_identity_ticket.store_no` → `mch_store`、`mbr_identity_ticket.customer_no` → `sv_customer_identity`、`mbr_identity_ticket.issuer_no` → `sv_issuer`、`mbr_scope_member.customer_no` → `sv_customer_identity`、`mbr_scope_member.first_store_no` → `mch_store`、`mbr_store_profile.customer_no` → `sv_customer_identity`、`mbr_store_profile.store_no` → `mch_store`
 
-### 券与活动 `pmt_*`（27 张）
+### 券与活动 `pmt_*`（29 张）
 
 ![券与活动表关系](../diagrams/db-pmt.svg)
 
@@ -420,8 +426,10 @@
 | `pmt_migration_source` | 原模板到永久迁移决定的唯一绑定 |
 | `pmt_migration_return` | 迁入前旧券核销的真实退回决定及支付确认 |
 | `pmt_pay_coupon_projection` | 实际pay发券完成事实的core身份及券包投影，不是第二份权益账户 |
+| `pmt_sv_release_link` | — |
+| `pmt_sv_approval` | — |
 
-**跨域引用**：`pmt_coupon.coupon_no` → `mkt_coupon`、`pmt_coupon.entity_no` → `mch_entity`、`pmt_coupon_scope.coupon_no` → `mkt_coupon`、`pmt_user_coupon.coupon_no` → `mkt_coupon`、`pmt_user_coupon.user_no` → `usr_account`、`pmt_user_coupon.entity_no` → `mch_entity`、`pmt_user_coupon.order_no` → `ord_order`、`pmt_coupon_issue.coupon_no` → `mkt_coupon`、`pmt_coupon_issue.entity_no` → `mch_entity`、`pmt_coupon_issue.segment_no` → `mbr_segment`、`pmt_apply.user_no` → `usr_account`、`pmt_apply.entity_no` → `mch_entity`、`pmt_apply.store_no` → `mch_store`、`pmt_apply.order_no` → `ord_order`、`pmt_apply.sub_order_no` → `ord_sub_order`、`pmt_activity.entity_no` → `mch_entity`、`pmt_activity.store_no` → `mch_store`、`pmt_activity_audience.entity_no` → `mch_entity`、`pmt_activity_goods.entity_no` → `mch_entity`、`pmt_period.entity_no` → `mch_entity`、`pmt_enrollment.entity_no` → `mch_entity`、`pmt_enrollment_goods.goods_no` → `prd_goods`、`pmt_activity_participant.user_no` → `usr_account`、`pmt_activity_reservation.user_no` → `usr_account`、`pmt_activity_reservation.entity_no` → `mch_entity`、`pmt_activity_reservation.store_no` → `mch_store`、`pmt_effect_projection.entity_no` → `mch_entity`、`pmt_effect_projection.store_no` → `mch_store`、`pmt_benefit_intent.user_no` → `usr_account`、`pmt_recharge_intent.entity_no` → `mch_entity`、`pmt_migration_decision.entity_no` → `mch_entity`、`pmt_migration_return.entity_no` → `mch_entity`、`pmt_migration_return.order_no` → `ord_order`、`pmt_pay_coupon_projection.user_no` → `usr_account`、`pmt_pay_coupon_projection.entity_no` → `mch_entity`
+**跨域引用**：`pmt_coupon.coupon_no` → `mkt_coupon`、`pmt_coupon.entity_no` → `mch_entity`、`pmt_coupon_scope.coupon_no` → `mkt_coupon`、`pmt_user_coupon.coupon_no` → `mkt_coupon`、`pmt_user_coupon.user_no` → `usr_account`、`pmt_user_coupon.entity_no` → `mch_entity`、`pmt_user_coupon.order_no` → `ord_order`、`pmt_coupon_issue.coupon_no` → `mkt_coupon`、`pmt_coupon_issue.entity_no` → `mch_entity`、`pmt_coupon_issue.segment_no` → `mbr_segment`、`pmt_apply.user_no` → `usr_account`、`pmt_apply.entity_no` → `mch_entity`、`pmt_apply.store_no` → `mch_store`、`pmt_apply.order_no` → `ord_order`、`pmt_apply.sub_order_no` → `ord_sub_order`、`pmt_activity.entity_no` → `mch_entity`、`pmt_activity.store_no` → `mch_store`、`pmt_activity_audience.entity_no` → `mch_entity`、`pmt_activity_goods.entity_no` → `mch_entity`、`pmt_period.entity_no` → `mch_entity`、`pmt_enrollment.entity_no` → `mch_entity`、`pmt_enrollment_goods.goods_no` → `prd_goods`、`pmt_activity_participant.user_no` → `usr_account`、`pmt_activity_reservation.user_no` → `usr_account`、`pmt_activity_reservation.entity_no` → `mch_entity`、`pmt_activity_reservation.store_no` → `mch_store`、`pmt_effect_projection.entity_no` → `mch_entity`、`pmt_effect_projection.store_no` → `mch_store`、`pmt_benefit_intent.user_no` → `usr_account`、`pmt_recharge_intent.recharge_no` → `sv_recharge`、`pmt_recharge_intent.entity_no` → `mch_entity`、`pmt_migration_decision.plan_no` → `ent_migration_plan`、`pmt_migration_decision.entity_no` → `mch_entity`、`pmt_migration_return.entity_no` → `mch_entity`、`pmt_migration_return.order_no` → `ord_order`、`pmt_pay_coupon_projection.instance_no` → `ent_instance`、`pmt_pay_coupon_projection.user_no` → `usr_account`、`pmt_pay_coupon_projection.entity_no` → `mch_entity`、`pmt_pay_coupon_projection.target_template_no` → `ent_template`、`pmt_pay_coupon_projection.template_version_no` → `ent_template_version`、`pmt_pay_coupon_projection.grant_no` → `ent_grant`、`pmt_sv_release_link.management_no` → `mch_management_space`、`pmt_sv_release_link.store_no` → `mch_store`、`pmt_sv_release_link.entity_no` → `mch_entity`、`pmt_sv_release_link.issuer_no` → `sv_issuer`、`pmt_sv_release_link.release_no` → `sv_release`、`pmt_sv_approval.store_no` → `mch_store`、`pmt_sv_approval.management_no` → `mch_management_space`
 
 ### 系统 `sys_*`（30 张）
 
@@ -473,6 +481,27 @@ Markdown 里铺开会有近两千行，那不是给人读的。
 
 | 列 | 为什么 |
 |---|---|
+| `source_event_no` | 来源系统各自产生的事件号；必须结合source_system及原始来源，不能仅按同名跨系统关联。 |
+| `rule_no` | stl_fee_rule是结算费率规则；ord_price_quote_allocation保存本次试算规则标识，两套规则目录独立。 |
+| `subject_no` | 角色成员与报价/人工改价都使用主体多态编号；需同时核验各自subject_type，不能当成单一外键。 |
+| `link_no` | 会员来源、旧会员迁移关系与储值活动发布/审批各有独立关联记录；编号仅在对应关系族内有效。 |
+| `attempt_no` | 物流订阅尝试与打印投递尝试独立生成，不能混为同一次执行。 |
+| `entry_no` | pts_ledger_entry积分分录与ent_ledger权益分录是不同账本，不共用分录身份。 |
+| `binding_no` | 订单积分接线与品牌门店有效期绑定是不同聚合，不能按同名连接。 |
+| `adjustment_no` | 积分人工调整与订单人工改价分别有自己的命令/审计身份。 |
+| `line_no` | 库存对齐行与储值过账行只在各自父单据内编号，不能作为全局行身份。 |
+| `allocation_no` | 储值冻结批次分配与报价金额分摊有不同对象、数量和金额语义。 |
+| `target_no` | 权益所有者注册与储值发行政策的目标都是多态范围，必须结合target_type及所属域。 |
+| `document_no` | Core与Pay分别分配业务展示单号；通知保存来源单号，必须结合来源系统/单据类型，不能假定单一主表。 |
+| `active_revision_no` | 行业模板与门店配置各自引用自己的不可变发布版本，按源表指定目标。 |
+| `previous_revision_no` | 行业模板版本与门店配置版本各自形成历史链，不能跨版本族关联。 |
+| `draft_revision_no` | 储值发布和Core活动审批冻结对应活动的草稿标识，必须连同activity_no及来源版本解释，非全库通用版本键。 |
+| `policy_no` | SKU定价策略、储值发行管控、人工改价策略是独立政策族，不能按同名跨域关联。 |
+| `bridge_actor_no` | 打印桥接认证主体标识，需结合可信桥接凭证与租户核验；不是用户或运营账号表的通用外键。 |
+| `voucher_no` | 积分凭证与储值凭证是独立账本；须按来源表选择pts_voucher或sv_voucher，禁止跨账本按号猜关联。 |
+| `quote_no` | 营销报价与订单试算快照是独立报价族，须按来源表选择权威报价。 |
+| `plan_no` | 权益迁移计划与储值充值方案是独立计划族；同名不表示相同方案。 |
+| `grant_no` | 权益发放记录与经营管理授权是独立授权族，须按来源表解释。 |
 | `parent_no` | 不同层级树的父节点，必须结合所属树。 |
 | `provider_no` | 通道回执需结合通道、资金方向与原请求。 |
 | `scope_no` | 角色授权范围与积分开关统计范围，须按各自范围类型解释。 |

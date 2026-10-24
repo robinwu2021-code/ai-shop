@@ -60,7 +60,6 @@
 /biz/stored-value/plan-recharges/{rechargeNo}/submit  plan-recharges
 /biz/stored-value/plans/{planNo}  plans
 /biz/stored-value/plans/{planNo}/status  plans
-/biz/stored-value/records/{recordNo}  records
 ## These established ops actions use singular resource segments under the legacy
 ## permission/controller layout. Keep routes stable; pluralization requires matching
 ## controller, permission-matrix, and client migration with backward-compatible aliases.
@@ -77,9 +76,6 @@
 /biz/my-spec-dims/{dimNo}/archive  my-spec-dims
 /biz/my-spec-dims/{dimNo}/rename  my-spec-dims
 /biz/spec-dims/{dimNo}/values  spec-dims
-/biz/stores/{storeNo}/appointment-slots  stores
-/biz/stores/{storeNo}/fulfillment  stores
-/biz/stores/{storeNo}/fulfillment/{channel}/impact  stores
 /mp/my-memberships/{entityNo}/reach  my-memberships
 /ops/merchant/apply/{applyNo}/accept  apply
 /ops/merchant/apply/{applyNo}/audit  apply

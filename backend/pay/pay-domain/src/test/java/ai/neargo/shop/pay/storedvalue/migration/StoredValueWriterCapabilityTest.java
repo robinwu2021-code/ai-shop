@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.storedvalue.migration;
+import ai.neargo.shop.pay.storedvalue.migration.impl.StoredValueWriterCapabilityServiceImpl;
+
 
 import ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository;
 import ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Query;
@@ -15,7 +17,7 @@ class StoredValueWriterCapabilityTest {
     StoredValueWriterCapabilityService service(String sha,boolean enabled) {
         var props=new Properties();if(sha!=null)props.put("gitSha",sha);
         var beans=new StaticListableBeanFactory(Map.of("build",new BuildProperties(props)));
-        return new StoredValueWriterCapabilityService(db,beans.getBeanProvider(BuildProperties.class),"pay-svc",enabled,true);
+        return new StoredValueWriterCapabilityServiceImpl(db,beans.getBeanProvider(BuildProperties.class),"pay-svc",enabled,true);
     }
     @Test void nodeReportsItsActualBuildSwitchesAndDatabaseIdentityWithoutConnectionDetails(){
         when(db.one(StoredValueWriterCapabilityService.LEDGER_ID_SQL)).thenReturn(Map.of("ledger_fingerprint","b".repeat(64)));

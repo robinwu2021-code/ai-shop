@@ -1,0 +1,32 @@
+digraph G {
+graph [bgcolor="white", pad="0.3", nodesep="0.45", ranksep="0.7", fontname="Arial", label="权益义务恢复状态机", labelloc=t, fontsize=20];
+node [shape=box, style="rounded,filled", fillcolor="#f3f7fc", color="#516781", fontname="Arial", fontsize=13, margin="0.18,0.12"];
+edge [fontname="Arial", fontsize=11, color="#516781", arrowsize=0.8];
+"START" [label="START",shape=circle];
+"PENDING" [label="PENDING",shape=box];
+"PROCESSING" [label="PROCESSING",shape=box];
+"SUCCEEDED" [label="SUCCEEDED",shape=box];
+"UNKNOWN" [label="UNKNOWN",shape=box];
+"NOT_REQUIRED" [label="NOT_REQUIRED",shape=box];
+"END" [label="END",shape=doublecircle];
+"START" -> "PENDING" [label="创建应退权益义务"];
+"PENDING" -> "PROCESSING" [label="短事务领取"];
+"PROCESSING" -> "SUCCEEDED" [label="原权益权威确认"];
+"PROCESSING" -> "UNKNOWN" [label="超时或无法确认"];
+"UNKNOWN" -> "PROCESSING" [label="原业务号恢复"];
+"PROCESSING" -> "PROCESSING" [label="租约到期后恢复"];
+"START" -> "NOT_REQUIRED" [label="原影响集或政策证明无需返还"];
+"SUCCEEDED" -> "END" [label=""];
+"NOT_REQUIRED" -> "END" [label=""];
+}
+// Original diagram source, retained for provenance:
+// stateDiagram-v2
+//     [*] --> PENDING: 创建应退权益义务
+//     PENDING --> PROCESSING: 短事务领取
+//     PROCESSING --> SUCCEEDED: 原权益权威确认
+//     PROCESSING --> UNKNOWN: 超时或无法确认
+//     UNKNOWN --> PROCESSING: 原业务号恢复
+//     PROCESSING --> PROCESSING: 租约到期后恢复
+//     [*] --> NOT_REQUIRED: 原影响集或政策证明无需返还
+//     SUCCEEDED --> [*]
+//     NOT_REQUIRED --> [*]

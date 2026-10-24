@@ -1,4 +1,7 @@
 package ai.neargo.shop.merchant.brand;
+import ai.neargo.shop.spi.storedvalue.BrandChangeImpactPort;
+
+import ai.neargo.shop.merchant.brand.impl.BrandServiceImpl;
 import org.junit.jupiter.api.Test;
 import java.time.*;
 import static org.assertj.core.api.Assertions.*;
@@ -46,7 +49,7 @@ class BrandScopeAuthorizationTest {
  @Test void delegatedCreatorGetsOnlyNewBrandAuthority() throws Exception {
   var f=new BrandFixture();String m=f.no(f.space(),"managementNo");var staff=new ManagementModels.Actor("MAIN","MCH:MA3");
   for(String permission:new String[]{"management.enter","brand.manage"})f.scopes.grant(f.owner,m,new ManagementModels.GrantCommand(staff.actorKey(),"SPACE",m,permission,null,null,false,null,false));
-  var service=new BrandService(f.repo,f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",f.repo.json),(a,e,s)->new BrandChangeImpactPort.Impact(true,false,0,0,0,0),f.numbers());
+  var service=new BrandServiceImpl(f.repo,f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",f.repo.json),(a,e,s)->new BrandChangeImpactPort.Impact(true,false,0,0,0,0),f.numbers());
   var brand=service.create(staff,new ManagementModels.BrandCreate(m,"受托品牌",null,"ACTIVE"),"delegated-create");
   assertThat(f.scopes.can(staff,m,"BRAND",(String)brand.get("brandNo"),"brand.manage")).isTrue();
   assertThat(f.scopes.can(staff,m,"ENTITY","E1","entity.read")).isFalse();

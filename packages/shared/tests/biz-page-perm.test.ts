@@ -34,7 +34,8 @@ import { pages, clashes, ROLE_CN } from "../../../scripts/gen-biz-feature-perm-m
 const PAGES = join(import.meta.dirname, "../../../b-app/src/pages");
 
 const sourceOf = (dir: string) =>
-  readdirSync(join(PAGES, dir))
+  readdirSync(join(PAGES, dir), { recursive: true, encoding: "utf8" })
+    .filter((f) => /\.(vue|ts)$/.test(f) && !f.endsWith(".test.ts"))
     .map((f) => readFileSync(join(PAGES, dir, f), "utf8"))
     .join("\n");
 
@@ -56,6 +57,13 @@ const cutsBy = (src: string, code: string) =>
  * 「因为它是对的」不算理由。
  */
 const EXEMPT: Record<string, string> = {
+  "stored-value/pay:sv:account:read":
+    "load先ensureScope与ensureStores，账户和流水tab按account:read裁剪；CustomerAccountList无account:read时不请求mSvAccounts，仅保留有biz:customer与recharge:create的选客充值入口。",
+  "stored-value/pay:sv:plan:manage":
+    "PlanList只有merchant.can('pay:sv:plan:manage')时绘制新建方案按钮；只读及充值角色仍可查看允许的方案，互不强加管理码。",
+  "stored-value-account/pay:sv:account:read":
+    "load先ensureScope；独立账户入口由denied强制account:read，会员充值入口先selectStoredValueMember，只有can(account:read)才请求mSvAccount，未授权不展示账户与流水。",
+
   "messages/biz:aftersale":
     "消息归本人；load先ensureScope再can('biz:aftersale')查询待办，无售后权限不发请求、不展示待办入口；查询失败保留原消息并可重试。",
   "order/biz:aftersale":

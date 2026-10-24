@@ -583,6 +583,15 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.SELF, "user_no",
                 ScopeDim.MERCHANT, "entity_no"));
         registry.register("pmt_coupon_issue", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        // Pricing services authorize trusted owner contexts before their explicit scoped bypasses.
+        registry.register("ord_manual_price_adjustment", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("ord_manual_price_policy", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("ord_price_quote", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("ord_pricing_funding_source", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("ord_store_pricing_config", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("ord_store_pricing_revision", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("prd_sku_pricing_policy", Map.of(ScopeDim.MERCHANT, "entity_no"));
+
         registry.register("pmt_apply", Map.of(
                 ScopeDim.SELF, "user_no",
                 ScopeDim.MERCHANT, "entity_no"));

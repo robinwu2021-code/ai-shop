@@ -1,3 +1,20 @@
+/** Delivery state of an inventory/order synchronization event. */
+export type InventorySyncEventState = "COMPLETED" | "PENDING" | "FAILED" | "WARNING" | "SKIPPED" | "ARCHIVED";
+/** Outbox mechanism which persisted the synchronization event. */
+export type InventoryOutboxMode = "UNIFIED" | "LEGACY";
+
+/** Inventory onboarding progression; MAPPED means a physical inventory mapping exists. */
+export type InventoryOnboardingState = "UNMANAGED" | "INITIALIZING" | "MAPPED";
+
+/** Current backend accounting policy: inventory is deducted when payment completes. */
+export type InventoryAccountingMode = "PAYMENT_DEDUCT";
+
+/** Processing state of a persisted stock synchronization command. */
+export type StockSyncOperationState = "PROCESSING" | "WAITING" | "FAILED" | "BLOCKED" | "COMPLETED";
+
+/** Preview and execution state of a stock alignment batch. */
+export type StockAlignmentBatchState = "PREVIEW" | "PROCESSING" | "PARTIAL" | "BLOCKED" | "COMPLETED" | "STALE" | "EXPIRED";
+
 /** Merchant stock overview; matches InventoryOverviewQuery. Null physical values mean unknown, not zero. */
 export interface StockOverview {
   /** Merchant store identifier used to scope inventory values. */
@@ -7,9 +24,9 @@ export interface StockOverview {
   /** Physical stock unit; null when the SKU has no configured unit. */
   unit: string | null;
   /** Inventory onboarding state: unmanaged, initializing or mapped. */
-  inventoryState: "UNMANAGED" | "INITIALIZING" | "MAPPED";
-  /** Point at which physical inventory is deducted: payment or handoff. */
-  accountingMode: "PAYMENT_DEDUCT" | "HANDOFF_DEDUCT";
+  inventoryState: InventoryOnboardingState;
+  /** Current accounting policy; the server only supports payment-time deduction. */
+  accountingMode: InventoryAccountingMode;
   /** Physical on-hand quantity; null means the value is unknown. */
   onHand: number | null;
   /** Quantity reserved by open fulfillment work; null means unknown. */
@@ -517,6 +534,7 @@ export interface StockSyncState {
 }
 
 export interface StockSyncOperationRecord {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** Identifier of this stock synchronization operation. */
   operationNo: string;
@@ -525,7 +543,7 @@ export interface StockSyncOperationRecord {
   /** Business reason recorded for the synchronization. */
   reason: string;
   /** Current processing state of the operation. */
-  status: "PROCESSING" | "WAITING" | "FAILED" | "BLOCKED" | "COMPLETED";
+  status: StockSyncOperationState;
   /** Applied quantity change or skip details; null before processing finishes. */
   result: { applied: boolean; skipped: string | null; ruleType: string | null; available: number; before: number; after: number } | null;
   /** Time when this operation was last updated. */
@@ -559,6 +577,7 @@ export interface StockAlignRow {
 }
 
 export interface StockAlignmentBatch {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** Identifier of this inventory alignment batch. */
   batchNo: string;
@@ -571,7 +590,7 @@ export interface StockAlignmentBatch {
   /** Expiry time in milliseconds; null when the preview has no expiry. */
   expiresAt: number | null;
   /** Current preview or execution state of the batch. */
-  status: "PREVIEW" | "PROCESSING" | "PARTIAL" | "BLOCKED" | "COMPLETED" | "STALE" | "EXPIRED";
+  status: StockAlignmentBatchState;
   /** Number of rows aligned successfully. */
   completed: number;
   /** Number of rows blocked from alignment. */

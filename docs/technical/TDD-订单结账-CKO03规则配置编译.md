@@ -24,21 +24,7 @@ if (result.valid()) {
 
 代码片段为调用示意，verifiedCapabilities必须来自后端可信适配，不能从前端布尔值构造。前三行业的默认definition均取自[规则初始数据](./design/schema/pricing-initial-data.example.json)。整个种子文件不能直接作为template参数传入，传入的是industryTemplates中选定项的definition对象JSON。
 
-```mermaid
-classDiagram
-    PricingConfigCompiler --> SystemConstraints
-    PricingConfigCompiler --> PricingCapabilities
-    PricingConfigCompiler --> CompilationResult
-    SystemConstraints --> PricingRuleCatalog
-    PricingRuleCatalog --> RuleDefinition
-    CompilationResult --> EffectivePricingConfig
-    EffectivePricingConfig --> Definition
-    EffectivePricingConfig --> RuleDefinition
-    RuleDefinition --> Parameters
-    Parameters <|-- ForbiddenCombination
-    Parameters <|-- CountLimits
-    Parameters <|-- FixedPolicyParameters
-```
+![结账规则配置编译类关系](diagrams/checkout-config-compiler-1.svg)
 
 ## L3 编译与合同
 

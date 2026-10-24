@@ -51,6 +51,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -112,6 +113,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -173,6 +175,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -448,6 +451,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `couponNo` | `string` | 是 | 券单号 |
 | `title` | `string` | 是 | 券名，如「满 50 减 5」 |
 | `type` | [`CouponType`](#coupontype) | 是 | 类型 |
@@ -578,6 +582,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `fissionNo` | `string` | 是 | 活动号。端上只用来回传，不显示 |
 | `name` | `string` | 是 | 活动名，运营配的 |
 | `inviterCount` | `number` | 是 | 邀请人得几张 |
@@ -954,6 +959,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -1841,6 +1848,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -1922,6 +1931,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -1988,6 +1999,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -2049,6 +2061,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -2106,6 +2120,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -2206,6 +2222,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -2247,6 +2265,21 @@
 | `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
+#### GET `/mp/order/{orderNo}/points-earning`
+
+订单赠送积分进度　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`OrderPointsEarning`](#orderpointsearning)\[\]
+
+
 #### GET `/mp/order/{orderNo}/points-state`
 
 本人订单积分接线阶段　🔒
@@ -2260,6 +2293,11 @@
 **出参**（`data`）
 
 类型：[`PointsOrderState`](#pointsorderstate)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `phase` | [`PointsOrderStatePhase`](#pointsorderstatephase) | 是 | 源下单处理阶段 |
+| `reason` | `string,null` | 是 | 服务端不可用原因或操作审计原因 |
 
 
 #### POST `/mp/order/{orderNo}/reorder`
@@ -2341,6 +2379,27 @@
 
 类型：[`OrderPointsQuote`](#orderpointsquote)
 
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `state` | [`OrderPointsQuoteState`](#orderpointsquotestate) | 是 | 服务端处理状态 |
+| `reason` | `string,null` | 是 | 服务端不可用原因或操作审计原因 |
+| `pointsUsed` | `number` | 是 | 按服务端报价使用的积分数量 |
+| `deductMinor` | `number` | 是 | 积分抵扣金额，最小货币单位 |
+| `ratePoints` | `number` | 是 | 换算比例的积分数量 |
+| `rateMinor` | `number` | 是 | 换算比例的最小货币单位数量 |
+| `basePayMinor` | `number` | 是 | 积分抵扣前的应付金额，最小货币单位 |
+| `stores` | `object`（见下）\[\] | 是 | 按门店拆分的服务端报价 |
+
+`stores[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `merchantNo` | `string` | 是 | 门店归属主体编号，不作为积分隔离维度 |
+| `policyVersion` | `number` | 是 | 报价所绑定的门店策略版本 |
+| `pointsUsed` | `number` | 是 | 按服务端报价使用的积分数量 |
+| `deductMinor` | `number` | 是 | 积分抵扣金额，最小货币单位 |
+
 
 #### POST `/mp/order/preview`
 
@@ -2413,6 +2472,12 @@
 **出参**（`data`）
 
 类型：[`BuyerPointsEntryPage`](#buyerpointsentrypage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`BuyerPointsEntry`](#buyerpointsentry)\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
 
 
 ### push-token
@@ -2748,6 +2813,93 @@
 | `total` | `integer` | 是 | — |
 | `page` | `integer` | 是 | — |
 | `size` | `integer` | 是 | — |
+
+
+### stored-value
+
+#### GET `/mp/stored-value/notification-capability`
+
+储值消费微信通知能力　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`StoredValueNotificationCapability`](#storedvaluenotificationcapability)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `channel` | `string` | 是 | Delivery or collection channel used by this capability or route. |
+| `available` | `boolean` | 是 | Whether this capability or preset is available in the current deployment. |
+| `templateId` | `string,null` | 是 | Messaging template identifier; null when the capability is not configured. |
+| `reasonCode` | `string,null` | 是 | Machine-readable reason this capability is unavailable; null when available. |
+
+
+#### GET `/mp/stored-value/store/{storeNo}/records`
+
+本人门店储值与核销记录　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+| `type` | query | [`StoredValueType`](#storedvaluetype) | 否 | 类型筛选，取值见对应枚举 |
+| `startDate` | query | `string` | 否 | — |
+| `endDate` | query | `string` | 否 | — |
+| `focusDocumentNo` | query | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`StoredValueRecordsPage`](#storedvaluerecordspage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `store` | `object`（见下） | 是 | Authorized store identity and business time zone for the returned records. |
+| `filter` | `object`（见下） | 是 | Effective record filters after the server has normalized the request. |
+| `records` | [`StoredValueRecord`](#storedvaluerecord)\[\] | 是 | Business records returned by the current query. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
+| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+
+`store` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `storeName` | `string` | 是 | Store display name captured for the record or selection. |
+| `businessTimeZone` | `string` | 是 | IANA time zone used to interpret the store's business dates. |
+
+`filter` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | [`StoredValueType`](#storedvaluetype) | 是 | Record, target or calculation classification used to interpret this object. |
+| `startDate` | `string,null` | 是 | Inclusive first business date in YYYY-MM-DD format. |
+| `endDate` | `string,null` | 是 | Inclusive final business date in YYYY-MM-DD format. |
+
+
+#### GET `/mp/stored-value/stores`
+
+本人有储值记录的门店　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`StoredValueStoresPage`](#storedvaluestorespage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`StoredValueStore`](#storedvaluestore)\[\] | 是 | Business records returned by the current query. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
+| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
 
 
 ### track
@@ -3333,6 +3485,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -3483,6 +3636,70 @@
 | `corpId` | `string` | 是 | 企业微信 CorpID。**同主体还不够，必须在小程序后台绑过** —— 没绑的表现是 `errCode 6`，而界面上看着仍然只是「点了没反应」。 |
 | `url` | `string` | 是 | 客服接入链接（企微后台 → 应用管理 → 微信客服 → 客服账号详情） |
 
+### BuyerPointsAccount
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 积分名称 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `market` | `string` | 是 | 市场代码 |
+| `currency` | `string` | 是 | ISO 货币代码 |
+| `status` | [`BuyerPointsAccountStatus`](#buyerpointsaccountstatus) | 是 | 服务端业务状态 |
+| `balance` | `number` | 是 | 可用积分余额 |
+| `pendingBalance` | `number` | 是 | 待激活积分余额 |
+| `heldBalance` | `number` | 是 | 当前占用积分余额 |
+| `ratePoints` | `number` | 是 | 换算比例的积分数量 |
+| `rateMinor` | `number` | 是 | 换算比例的最小货币单位数量 |
+| `deductRatioBp` | `number` | 是 | 最大抵扣比例，万分比 |
+| `idleDays` | `number` | 是 | 账户无活动失效天数 |
+| `frozen` | `boolean` | 是 | 是否冻结该账户新增使用 |
+| `expireAt` | `number,null` | 是 | 服务端计算的过期时间，Unix 毫秒；无则为空 |
+
+### BuyerPointsAccountStatus
+
+BuyerPointsAccount 的 status 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `DRAFT`
+- `ACTIVE`
+- `DRAINING`
+- `RETIRED`
+
+### BuyerPointsEntry
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `voucherNo` | `string,null` | 否 | Internal accounting voucher identifier used for authorized ledger references. |
+| `voucherDocumentNo` | `string,null` | 否 | Human-facing accounting voucher number; absent for historical unmapped vouchers. |
+| `direction` | `string,null` | 否 | Accounting direction of the posted points entry. |
+| `businessRef` | `string,null` | 否 | Original business operation reference associated with the posted points entry. |
+| `orderNo` | `string,null` | 否 | Parent order identifier for the reward inspection. |
+| `entryNo` | `string` | 是 | 不可变积分分录编号 |
+| `bucket` | [`BuyerPointsEntryBucket`](#buyerpointsentrybucket) | 是 | 积分账本或资金池分桶 |
+| `points` | `number` | 是 | 积分数量 |
+| `balanceAfter` | `number` | 是 | 该分录完成后的账本余额 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+### BuyerPointsEntryBucket
+
+BuyerPointsEntry 的 bucket 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `AVAILABLE`
+- `PENDING`
+- `HELD`
+- `REFUND_RESERVED`
+
+### BuyerPointsEntryPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`BuyerPointsEntry`](#buyerpointsentry)\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
 ### CardSpec
 
 卡券属性（CARD）
@@ -3600,6 +3817,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `couponNo` | `string` | 是 | 券单号 |
 | `title` | `string` | 是 | 券名，如「满 50 减 5」 |
 | `type` | [`CouponType`](#coupontype) | 是 | 类型 |
@@ -3763,6 +3981,13 @@
 | `name` | `string` | 是 | 给人看的名字：活动名、券名。后端取不到名字时整条不下发，所以这里必有值 |
 | `amountMinor` | `number` | 是 | 这一条减了多少（最小货币单位，正数） |
 | `funder` | [`CouponFunder`](#couponfunder) \| `null` | 否 | 谁出的钱：本店让利 / 平台补贴（批 3）。**只有订单详情给**，预览为空。 B 端详情据此写出来 —— 商家对账要知道这 ¥5 是他让的还是平台补的 |
+
+### Exclude_StoredValueType_ALL
+
+枚举取值：
+
+- `RECHARGE`
+- `REDEMPTION`
 
 ### FrequentItem
 
@@ -4360,6 +4585,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `fissionNo` | `string` | 是 | 活动号。端上只用来回传，不显示 |
 | `name` | `string` | 是 | 活动名，运营配的 |
 | `inviterCount` | `number` | 是 | 邀请人得几张 |
@@ -4411,6 +4637,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -4486,6 +4714,102 @@
 | `limitReason` | [`LimitReason`](#limitreason) \| `null` | 否 | 是谁挡住了 `maxQty`。到顶时那句话要说对：库存等补货能买，限购补货也没用 |
 | `limitPerUser` | `number,null` | 否 | 每人限购（只在设了限购且平台开关开着时给） |
 | `boughtQty` | `number,null` | 否 | 该用户已买量（未取消、未退款的单里的件数）。与 `limitPerUser` 同时出现 |
+
+### OrderPointsEarning
+
+Server-projected earning for an authorized order; accepted work is not an account credit.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | Parent order identifier for the reward inspection. |
+| `typeCode` | `string` | 是 | Unique points-type code; separate points types never share balances or rules. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `currency` | `string` | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `state` | [`OrderPointsEarningState`](#orderpointsearningstate) | 是 | Current processing projection for the submitted business operation. |
+| `redemptionState` | [`OrderPointsRedemptionState`](#orderpointsredemptionstate) | 是 | Processing state of the order's points hold, consumption and subsequent returns. |
+| `usedPoints` | `number` | 是 | Points actually consumed by this order's completed redemption. |
+| `refundState` | [`OrderPointsRefundState`](#orderpointsrefundstate) | 是 | Processing state of points returned for this order's refund. |
+| `returnedPoints` | `number` | 是 | Points actually returned to the account by completed refund operations. |
+| `expectedPoints` | `number` | 是 | Original expected reward points frozen when the order was accepted. |
+| `grantedPoints` | `number` | 是 | Reward points actually posted to the account ledger. |
+| `pendingPoints` | `number` | 是 | Granted points still awaiting conversion to an available balance. |
+| `availablePoints` | `number` | 是 | Granted points that have become available for use. |
+| `reclaimedPoints` | `number` | 是 | Previously granted points subsequently recovered by refunds or reversals. |
+| `reason` | `string,null` | 是 | Business reason recorded for the operation, rejection or manual recovery. |
+
+### OrderPointsEarningState
+
+Order reward processing projection; accepted work is not a posted account credit.
+
+枚举取值：
+
+- `NONE`
+- `EXPECTED`
+- `PROCESSING`
+- `PENDING`
+- `AVAILABLE`
+- `RETRYABLE`
+- `MANUAL`
+- `SKIPPED`
+- `RECLAIMED`
+
+### OrderPointsQuote
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `state` | [`OrderPointsQuoteState`](#orderpointsquotestate) | 是 | 服务端处理状态 |
+| `reason` | `string,null` | 是 | 服务端不可用原因或操作审计原因 |
+| `pointsUsed` | `number` | 是 | 按服务端报价使用的积分数量 |
+| `deductMinor` | `number` | 是 | 积分抵扣金额，最小货币单位 |
+| `ratePoints` | `number` | 是 | 换算比例的积分数量 |
+| `rateMinor` | `number` | 是 | 换算比例的最小货币单位数量 |
+| `basePayMinor` | `number` | 是 | 积分抵扣前的应付金额，最小货币单位 |
+| `stores` | `object`（见下）\[\] | 是 | 按门店拆分的服务端报价 |
+
+`stores[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `merchantNo` | `string` | 是 | 门店归属主体编号，不作为积分隔离维度 |
+| `policyVersion` | `number` | 是 | 报价所绑定的门店策略版本 |
+| `pointsUsed` | `number` | 是 | 按服务端报价使用的积分数量 |
+| `deductMinor` | `number` | 是 | 积分抵扣金额，最小货币单位 |
+
+### OrderPointsQuoteState
+
+OrderPointsQuote 的 state 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `AVAILABLE`
+- `UNAVAILABLE`
+
+### OrderPointsRedemptionState
+
+Lifecycle of the order points hold and its subsequent returns.
+
+枚举取值：
+
+- `NONE`
+- `PROCESSING`
+- `HELD`
+- `RELEASED`
+- `CONSUMED`
+- `REFUND_PROCESSING`
+- `RETURNED`
+- `PARTIALLY_RETURNED`
+
+### OrderPointsRefundState
+
+Processing state of the order points refund projection.
+
+枚举取值：
+
+- `NONE`
+- `PROCESSING`
+- `MANUAL`
+- `COMPLETED`
 
 ### OrderPreview
 
@@ -4724,6 +5048,28 @@
 - `PLACE_DB`
 - `MAP`
 - `PLACE_DB_STALE`
+
+### PointsOrderState
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `phase` | [`PointsOrderStatePhase`](#pointsorderstatephase) | 是 | 源下单处理阶段 |
+| `reason` | `string,null` | 是 | 服务端不可用原因或操作审计原因 |
+
+### PointsOrderStatePhase
+
+PointsOrderState 的 phase 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `NONE`
+- `RAW`
+- `ADMITTED`
+- `UNKNOWN`
+- `READY`
+- `RECONFIRM`
+- `CANCEL_REQUESTED`
+- `CANCELLED`
 
 ### Promotion
 
@@ -5263,6 +5609,77 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 - `LIST`
 - `SEARCH`
 - `GOODS`
+
+### StoredValueNotificationCapability
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `channel` | `string` | 是 | Delivery or collection channel used by this capability or route. |
+| `available` | `boolean` | 是 | Whether this capability or preset is available in the current deployment. |
+| `templateId` | `string,null` | 是 | Messaging template identifier; null when the capability is not configured. |
+| `reasonCode` | `string,null` | 是 | Machine-readable reason this capability is unavailable; null when available. |
+
+### StoredValueRecord
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | [`Exclude_StoredValueType_ALL`](#exclude_storedvaluetype_all) | 是 | Record, target or calculation classification used to interpret this object. |
+| `title` | `string` | 是 | Human-readable title of the stored-value business record. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `signedAmountMinor` | `number` | 是 | Signed change in stored-value balance, in minor currency units. |
+| `occurredAt` | `string` | 是 | Time the server recorded the business operation. |
+| `documentNo` | `string,null` | 是 | Human-facing document number; null or absent for historical unmapped records. |
+
+### StoredValueRecordsPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `store` | `object`（见下） | 是 | Authorized store identity and business time zone for the returned records. |
+| `filter` | `object`（见下） | 是 | Effective record filters after the server has normalized the request. |
+| `records` | [`StoredValueRecord`](#storedvaluerecord)\[\] | 是 | Business records returned by the current query. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
+| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+
+`store` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `storeName` | `string` | 是 | Store display name captured for the record or selection. |
+| `businessTimeZone` | `string` | 是 | IANA time zone used to interpret the store's business dates. |
+
+`filter` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | [`StoredValueType`](#storedvaluetype) | 是 | Record, target or calculation classification used to interpret this object. |
+| `startDate` | `string,null` | 是 | Inclusive first business date in YYYY-MM-DD format. |
+| `endDate` | `string,null` | 是 | Inclusive final business date in YYYY-MM-DD format. |
+
+### StoredValueStore
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `storeName` | `string` | 是 | Store display name captured for the record or selection. |
+| `lastOccurredAt` | `string` | 是 | Time of the most recent account record; null when there are no records. |
+| `lastType` | [`Exclude_StoredValueType_ALL`](#exclude_storedvaluetype_all) | 是 | Type of the most recent stored-value record, excluding the ALL query filter. |
+
+### StoredValueStoresPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`StoredValueStore`](#storedvaluestore)\[\] | 是 | Business records returned by the current query. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
+| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+
+### StoredValueType
+
+枚举取值：
+
+- `ALL`
+- `RECHARGE`
+- `REDEMPTION`
 
 ### TraceDisplayMode
 

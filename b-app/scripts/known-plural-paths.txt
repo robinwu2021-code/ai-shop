@@ -25,75 +25,20 @@
 # ⚠️ **不是它的作者加的**：开这个端点的会话（c4f51800）已经结束，而这道闸
 # 挂在 pre-push 上 —— 它红着，整条分支谁都推不出去。所以由撞上它的人代记一行，
 # 判断依据就是上面 2026-08-30 那段。要整模块改成单数时，这一行跟着一起删。
-mAppointmentSlots	/biz/stores/:storeNo/appointment-slots
 mCountDetail	/biz/inventory/counts/:no
 mCountFill	/biz/inventory/counts/:no/lines
 mCountPost	/biz/inventory/counts/:no/post
 mCountVoid	/biz/inventory/counts/:no/void
-mFulfillmentImpact	/biz/stores/:storeNo/fulfillment/:channel/impact
 mInboundPost	/biz/inventory/inbounds/:no/post
 mInboundUpdate	/biz/inventory/inbounds/:no
 mInboundVoid	/biz/inventory/inbounds/:no/void
 mLocationSetSource	/biz/inventory/locations/:id/source
-mOpenAppointmentSlot	/biz/stores/:storeNo/appointment-slots
 mOutboundPost	/biz/inventory/outbounds/:no/post
 mOutboundVoid	/biz/inventory/outbounds/:no/void
-mSaveStoreFulfillment	/biz/stores/:storeNo/fulfillment
 mStockItem	/biz/inventory/items/:itemId
-mStoreFulfillment	/biz/stores/:storeNo/fulfillment
 mSupplierActive	/biz/inventory/suppliers/:no/active
 mSupplierUpdate	/biz/inventory/suppliers/:no
 mTransferDetail	/biz/inventory/transfers/:no
 mTransferReceive	/biz/inventory/transfers/:no/receive
 mTransferVoid	/biz/inventory/transfers/:no/void
 mTransferShip	/biz/inventory/transfers/:no/ship
-
-mManagementResources	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mManagementGrant	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mRevokeManagementGrant	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mManagementEntities	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mManagementStores	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mPaymentMerchantCandidates	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mBrand	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mEditBrand	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mBrandStatus	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mBrandStores	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mBrandAudit	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mStoreOperatingContext	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mCheckBrandChange	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mSubmitBrandChange	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mScopeCandidates	P2既定MB契约以当前门店为路径边界，与服务端保持一致
-mScopeSelectCustomer	P2既定MB契约以当前门店为路径边界，与服务端保持一致
-mScopeEnrollMember	P2既定MB契约以当前门店为路径边界，与服务端保持一致
-
-mSvIssuer	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvStoreIssuerConfiguration	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvConfigureIssuer	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvConfigureStoreIssuer	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvIssuerImpact	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvIssuerVersion	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvStoreIssuers	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvRechargeOptions	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvIssuerRoutes	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvPrepareIssuer	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvRefreshIssuer	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvIssuerRecharge	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvIssuerCancel	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvConfirmOffline	Approved P3 store-scoped original recharge contract.
-mSvResolveRecharge	Approved P3 store-scoped original recharge recovery contract.
-mSvCancelCreate	Approved P3 store-scoped original recharge cancellation contract.
-mSvRecords	Approved P3 unified issuer record contract.
-mSvRecord	Approved P3 store-scoped original record contract.
-mSvPolicyEdit	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvEffectivePolicy	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivities	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivity	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivitySave	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivityDraftEdit	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivityCheck	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivitySubmit	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivityStop	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivityCopy	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivityContext	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivityPresets	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivitySchedule	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.

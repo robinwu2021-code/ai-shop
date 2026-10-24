@@ -5,7 +5,10 @@ import ai.neargo.shop.trade.order.points.earning.PointsEarningRules;
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService;
 import ai.neargo.shop.pay.points.model.PointType;
 import ai.neargo.shop.spi.points.PointsEarnPort.*;
-import ai.neargo.shop.spi.points.PointsEarningRulePort;
+import ai.neargo.shop.spi.points.PointsEarningRulePort.Calculation;
+import ai.neargo.shop.spi.points.PointsEarningRulePort.PublishedRule;
+import ai.neargo.shop.spi.points.PointsEarningRulePort.Query;
+import ai.neargo.shop.spi.points.PointsEarningRulePort.Type;
 import ai.neargo.shop.spi.product.PointsEarningCatalogPort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,7 +17,7 @@ import java.util.List;
 /** Shared configuration and read/compute service; business consumers opt in explicitly. */
 @Service
 @Transactional("transactionManager")
-public class PointsEarningRuleService implements PointsEarningRulePort {
+public class PointsEarningRuleService {
     private final PointsEarningRules rules;
     private final PointsAdministrationService points;
     private final PointsEarningCatalogPort catalog;
@@ -36,15 +39,15 @@ public class PointsEarningRuleService implements PointsEarningRulePort {
             rules.ensureDefault(type.typeCode(),new EarnRule(legacy.mode(),legacy.value()),legacy.revision());
         } else if(type.status()==PointType.Status.ACTIVE) rules.ensureZeroDefault(type.typeCode());
     }
-    @Override public List<Type> availableTypes() {
+    public List<Type> availableTypes() {
         return points.types().stream().filter(t->t.status()==PointType.Status.ACTIVE).map(PointsEarningRuleService::describe).toList();
     }
-    @Override public List<PublishedRule> published(String typeCode) {
+    public List<PublishedRule> published(String typeCode) {
         var type=type(typeCode,false);initialize(type);
         return rules.all(typeCode).stream().filter(r->r.activeRevision()!=null)
                 .map(r->new PublishedRule(r.scope(),r.activeRevision(),r.activeMode(),r.activeValue())).toList();
     }
-    @Override public Calculation calculate(Query query) {
+    public Calculation calculate(Query query) {
         if(query==null||query.cashMinor()<0) throw new IllegalArgumentException("POINTS_EARN_INPUT_INVALID");
         var type=type(query.typeCode(),true);
         if(!type.currency().equals(query.currency())) throw new IllegalArgumentException("POINTS_EARN_CURRENCY_MISMATCH");

@@ -1,6 +1,8 @@
 package ai.neargo.shop.trade.order.points;
 
-import ai.neargo.shop.spi.points.*;
+import ai.neargo.shop.spi.points.PointsOperationsPort;
+import ai.neargo.shop.spi.points.PointsRefundPort;
+import ai.neargo.shop.trade.order.points.port.OrderPointsRefundPort;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
@@ -23,17 +25,6 @@ public class OrderPointsRefundRouting {
         if(frozen.schemaVersion()!=3)throw new IllegalArgumentException("POINTS_EARNING_SCHEMA_UNSUPPORTED");
         var port=operations.getIfAvailable();if(port==null)throw new IllegalArgumentException("POINTS_IMPLEMENTATION_REQUIRED");
         var command=refund.command();
-        return new PointsRefundPort() {
-            private PointsOperationsPort.Context context(String action) {
-                return new PointsOperationsPort.Context("TRADE:REFUND:"+action+":"+afterSale,
-                    new PointsOperationsPort.Operation(PointsOperationsPort.Source.TRADE,afterSale,"ORDER_REFUND_V3",command.typeCode()),command.currency());
-            }
-            public RefundPreparation prepare(RefundCommand c) {return port.prepareRefund(context("PREPARE"),c);}
-            public CashDecision authorizeCash(String no,String hash,long revision) {return port.authorizeRefund(context("AUTHORIZE"),new PointsOperationsPort.RefundAuthorization(no,hash,revision));}
-            public RefundOutcome confirm(RefundConfirmation c) {return port.confirmRefund(context("CONFIRM"),c);}
-            public void requestCompensation(RefundAbort c,long revision) {port.compensateRefund(context("COMPENSATE"),c,revision);}
-            public void abort(RefundAbort c) {port.abortRefund(context("ABORT"),c);}
-            public RefundRecoveryStatus recoveryStatus(String no,String hash) {return port.refundStatus(context("STATUS"),no,hash);}
-        };
+        return new OrderPointsRefundPort(port, afterSale, command);
     }
 }

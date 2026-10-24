@@ -1,3 +1,4 @@
+import { apiSurface } from "./helpers/api-surface";
 // 两套类型系统的词汇对齐。
 //
 // 现状：C/B 两端用 `packages/shared/src/types`，平台端有自己的 `ops-web/lib/types`。
@@ -152,28 +153,13 @@ describe("契约四件套：契约 / 端点表 / mock / http 必须一一对应"
   //   · mock 缺 → 开发期该页直接空白
   //   · http 缺 → 切到真后端才发现这个功能没接
   // 逐条比对是唯一可靠的办法 —— 46+60 个方法靠人眼看不出来。
-  const read = (app: string, f: string) =>
-    readFileSync(join(ROOT, app, "src/api", f), "utf8");
-
   for (const app of ["c-app", "b-app"]) {
     it(`${app}: 四处齐全`, () => {
-      const methods = new Set([...read(app, "contract.ts").matchAll(/^ {2}(\w+)\(/gm)].map((m) => m[1]!));
-      const eps = new Set([...read(app, "endpoints.ts").matchAll(/^ {2}(\w+): \{/gm)].map((m) => m[1]!));
-      /*
-       * B 端替身 2026-09-03 按域拆到了 `src/api/mocks/`（原文件 5240 行）。
-       * **目录优先**：只读 `mock.ts` 的话读到的是一份 `export` 门面，
-       * 228 个方法会全被判成「mock 缺」—— 这次是响的（它当场红了），
-       * 但反过来的少扫是哑的，所以这里按目录读，别再回到单文件。
-       */
-      const mockDir = join(ROOT, app, "src/api/mocks");
-      const mockSrc = existsSync(mockDir)
-        ? readdirSync(mockDir).filter((f) => f.endsWith(".ts"))
-          .map((f) => readFileSync(join(mockDir, f), "utf8")).join("\n")
-        : read(app, "mock.ts");
-      const mocks = new Set(
-        [...mockSrc.matchAll(/^ {2}(?:async )?(\w+)[(:]/gm)].map((m) => m[1]!),
-      );
-      const https = new Set([...read(app, "http.ts").matchAll(/^ {2}(\w+):/gm)].map((m) => m[1]!));
+      const apiDir = join(ROOT, app, "src/api");
+      const methods = apiSurface(join(apiDir, "contract.ts"), app === "b-app" ? "MerchantApi" : "ShopApi");
+      const eps = apiSurface(join(apiDir, "endpoints.ts"), "ENDPOINTS");
+      const mocks = apiSurface(join(apiDir, "mock.ts"), "mockApi");
+      const https = apiSurface(join(apiDir, "http.ts"), "httpApi");
 
       const gaps: string[] = [];
       for (const m of methods) {

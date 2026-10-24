@@ -1,4 +1,6 @@
 package ai.neargo.shop.portal.biz;
+import ai.neargo.shop.spi.entitlement.ContractChecks;
+
 
 import ai.neargo.shop.merchant.brand.IssuerAuthorityService;
 import ai.neargo.shop.merchantbridge.ManagementAccess;
@@ -18,7 +20,7 @@ public class BizStoredValueIssuerController {
     public BizStoredValueIssuerController(ManagementAccess access,IssuerAuthorityService authority,StoredValueIssuerAppService issuers) {
         this.access=access;this.authority=authority;this.issuers=issuers;
     }
-    public record ConfigureRequest(String managementNo,Config configuration) { public ConfigureRequest{ai.neargo.shop.spi.entitlement.ContractChecks.id(managementNo);ai.neargo.shop.spi.entitlement.ContractChecks.present(configuration);} }
+    public record ConfigureRequest(String managementNo,Config configuration) { public ConfigureRequest{ContractChecks.id(managementNo);ContractChecks.present(configuration);} }
     @GetMapping("/biz/management/brands/{brandNo}/stored-value/issuer")
     public Lookup brand(@PathVariable String brandNo,@RequestParam String managementNo) {
         return issuers.find(authority.readScope(access.actor(),managementNo,"BRAND",brandNo));
@@ -36,7 +38,7 @@ public class BizStoredValueIssuerController {
         if(issuers.find(scope).issuer()==null)issuers.prepareStore(authority.storePreparationScope(actor,storeNo));
         return issuers.configure(scope,request.configuration(),key);
     }
-    public record ManagementRequest(String managementNo){public ManagementRequest{ai.neargo.shop.spi.entitlement.ContractChecks.id(managementNo);}}
+    public record ManagementRequest(String managementNo){public ManagementRequest{ContractChecks.id(managementNo);}}
     @PostMapping("/biz/management/stores/{storeNo}/stored-value/issuer/prepare")
     public View prepare(@PathVariable String storeNo,@RequestBody ManagementRequest request){
         String managementNo=request.managementNo();

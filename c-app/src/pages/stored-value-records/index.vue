@@ -5,6 +5,7 @@ import { onLoad, onShow, onReachBottom, onUnload } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import type { StoredValueRecord, StoredValueRecordsQuery, StoredValueRecordsPage, StoredValueType, StoredValueNotificationCapability } from "@/api/contract";
 import { createStoredValuePager } from "@/shared/stored-value-pager";
+import { requestStoredValueSubscription } from "@/ports/stored-value-subscribe";
 import { reportStoredValueSubscription } from "@/shared/stored-value-subscription";
 import { money } from "@shared/utils/format";
 import { ROUTES } from "@shared/utils/constants";
@@ -75,10 +76,9 @@ function subscribe() {
   const current = capability.value;
   if (!nativeWechat || subscribing.value || !current?.available || current.channel !== "WXSUB" || !current.templateId) return;
   // 必须由这次点击同步调起原生授权，不能先await能力请求。
-  // #ifdef MP-WEIXIN
   const templateId = current.templateId;
   subscribing.value = true;
-  uni.requestSubscribeMessage({
+  const requested = requestStoredValueSubscription({
     tmplIds: [templateId],
     success: async result => {
       try {
@@ -89,7 +89,7 @@ function subscribe() {
     },
     fail: () => { subscribing.value = false; toast("storedValue.subscribeFailed"); },
   });
-  // #endif
+  if (!requested) { subscribing.value = false; toast("storedValue.subscribeFailed"); }
 }
 onLoad(query => {
   storeNo.value = typeof query?.storeNo === "string" ? query.storeNo : "";
@@ -121,7 +121,7 @@ onUnload(pager.invalidate);
         class="sh-card record" :class="{ 'record--focus': focusDocumentNo && record.documentNo === focusDocumentNo }">
         <view class="sh-row sh-row--between record__main">
           <view class="sh-fill"><text class="txt-strong block">{{ record.title }}</text><text class="txt-caption sh-muted block">{{ $t(typeKeys[record.type]) }}</text></view>
-          <text class="record__amount sh-num txt-strong" :class="{ 'txt-primary': record.signedAmountMinor > 0 }">{{ record.signedAmountMinor > 0 ? '+' : '−' }}{{ money(Math.abs(record.signedAmountMinor), record.currency) }}</text>
+          <text class="record__amount sh-num txt-strong txt-bold" :class="{ 'txt-primary': record.signedAmountMinor > 0 }">{{ record.signedAmountMinor > 0 ? '+' : '−' }}{{ money(Math.abs(record.signedAmountMinor), record.currency) }}</text>
         </view>
         <text class="txt-caption sh-muted block sh-num">{{ storedValueDateTime(record.occurredAt, state.page?.store.businessTimeZone || "UTC", false) }}</text>
         <text v-if="focusDocumentNo && record.documentNo === focusDocumentNo" class="txt-caption txt-primary block">{{ $t("storedValue.focused") }}</text>
@@ -153,7 +153,7 @@ onUnload(pager.invalidate);
 .filters { gap: 16rpx; margin-bottom: var(--sh-gap-block); }
 .dates { display: block; margin-bottom: var(--sh-gap-block); }
 .record__main { gap: 20rpx; }
-.record__amount { direction: ltr; flex-shrink: 0; font-weight: 700; }
+.record__amount { direction: ltr; flex-shrink: 0; }
 .record--focus { background: var(--sh-primary-tint); }
 .notify { display: block; margin-top: 16rpx; }
 .more { margin-top: var(--sh-gap-block); text-align: center; }

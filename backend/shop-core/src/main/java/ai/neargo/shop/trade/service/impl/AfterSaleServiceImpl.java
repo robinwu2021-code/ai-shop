@@ -1,8 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.shop.numbering.DocumentType;
-import ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers;
-
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.shop.trade.order.command.OrderActor;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
 import ai.neargo.shop.trade.order.refund.model.RefundLine;
@@ -21,7 +20,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.util.LinkedHashSet;
-
 import ai.neargo.shop.trade.service.AfterSaleRuleService;
 import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleContext;
 import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleEvent;
@@ -29,7 +27,6 @@ import ai.neargo.shop.trade.order.statemachine.Actor;
 import ai.neargo.shop.trade.order.policy.AfterSaleRules;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import ai.neargo.shop.trade.order.policy.FulfillStage;
-
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.trade.OrderEvents;
@@ -59,7 +56,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;

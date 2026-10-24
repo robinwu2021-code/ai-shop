@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.storedvalue.issuer;
+import ai.neargo.shop.pay.storedvalue.issuer.impl.StoredValueIssueQuotaServiceImpl;
+
 
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
@@ -24,7 +26,7 @@ class IssuerRechargeRecoveryTest {
         j.execute("CREATE TABLE sv_recharge(tenant_no varchar,recharge_no varchar,issuer_no varchar,store_no varchar,currency varchar,principal_minor bigint,bonus_minor bigint,status varchar,received_at timestamp,quota_reservation_no varchar,deleted int default 0,version bigint default 0,updated_at timestamp,updated_by varchar)");
         j.execute("CREATE TABLE sv_account(tenant_no varchar,account_no varchar,store_no varchar,currency varchar,deleted int default 0)");
         var db=new IssuerRepository(new DataSourceTransactionManager(ds),new ObjectMapper());
-        return new Fixture(j,db,new StoredValueIssueQuotaService(db));
+        return new Fixture(j,db,new StoredValueIssueQuotaServiceImpl(db));
     }
     void original(JdbcTemplate j,String no,long amount,String state) {
         j.update("INSERT INTO sv_recharge(tenant_no,recharge_no,issuer_no,store_no,currency,principal_minor,bonus_minor,status) VALUES('MAIN',?,'I1','S1','CNY',?,0,?)",no,amount,state);

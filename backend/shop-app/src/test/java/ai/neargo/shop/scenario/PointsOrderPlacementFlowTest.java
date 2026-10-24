@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.*;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.*;
@@ -43,6 +44,9 @@ class PointsOrderPlacementFlowTest {
 
     @BeforeAll
     void schema() {
+        var jdbc = new JdbcTemplate(data);
+        jdbc.execute("DROP TABLE IF EXISTS ord_points_earn_rule_revision");
+        jdbc.execute("DROP TABLE IF EXISTS ord_points_earn_rule");
         new ResourceDatabasePopulator(
                         new ClassPathResource("db/migration/V452__order_points_integration.sql"),
                         new ClassPathResource("db/migration/V453__order_points_binding.sql"),

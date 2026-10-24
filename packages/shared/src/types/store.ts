@@ -810,6 +810,8 @@ export interface PlatformEnrollment {
  * 出资写成**每单金额**（s28 的约定）：商家看的是「一单我出多少」。
  */
 export interface PlatformActivity {
+  /** Human-facing document number; absent for historical rows without a mapping. */
+  documentNo?: string | null;
   /** 活动单号 */
   activityNo: string;
   /** 名称 */

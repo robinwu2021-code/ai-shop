@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.pay.entity.StlBill;
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
 import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
 import ai.neargo.shop.pay.points.app.PointsPaidFactService;
 import ai.neargo.shop.pay.points.app.PointsSettlementHook;
@@ -162,6 +164,14 @@ class PointsPayoutPreparationTest {
     @Autowired private LostReplyFunds testFunds;
     private final ObjectMapper json = new ObjectMapper();
 
+    private void withReservedVouchers(int count, Runnable action) {
+        context.getBean("payDocumentNumberCoordinator", DocumentNumberCoordinator.class)
+                .withReservation(Map.of(DocumentType.POINTS_VOUCHER, count), () -> {
+                    action.run();
+                    return null;
+                });
+    }
+
     @BeforeAll
     void schema() {
         PointsPostingDatabaseTest.initializeSchema(dataSource);
@@ -244,7 +254,7 @@ class PointsPayoutPreparationTest {
     @Test
     void settlement_and_payout_intent_roll_back_in_the_same_pay_transaction() {
         PayoutCommand command = fixture(true);
-        new TransactionTemplate(txManager)
+        withReservedVouchers(1, () -> new TransactionTemplate(txManager)
                 .executeWithoutResult(
                         status -> {
                             StlBill bill = new StlBill();
@@ -255,7 +265,7 @@ class PointsPayoutPreparationTest {
                             bills.insert(bill);
                             begin(command);
                             status.setRollbackOnly();
-                        });
+                        }));
         assertThat(
                         jdbc().queryForObject(
                                         "SELECT COUNT(*) FROM stl_bill WHERE settle_no=?",
@@ -432,7 +442,7 @@ class PointsPayoutPreparationTest {
         PayoutTicket ticket = begin(command);
         perform(ticket.ticketNo());
         var result = perform(ticket.ticketNo());
-        new TransactionTemplate(txManager)
+        withReservedVouchers(1, () -> new TransactionTemplate(txManager)
                 .executeWithoutResult(
                         status -> {
                             StlBill bill = new StlBill();
@@ -443,7 +453,7 @@ class PointsPayoutPreparationTest {
                             bills.insert(bill);
                             context.getBean(PointsPayoutService.class).acceptResult(result);
                             status.setRollbackOnly();
-                        });
+                        }));
         assertThat(
                         jdbc().queryForObject(
                                         "SELECT COUNT(*) FROM stl_bill WHERE settle_no=?",
@@ -629,7 +639,7 @@ class PointsPayoutPreparationTest {
                 c.typeCode(),
                 "STORE",
                 "TEST",
-                "MP",
+                "ONLINE",
                 1,
                 List.of(
                         new PointsEarnPort.EarnLine(
@@ -655,6 +665,7 @@ class PointsPayoutPreparationTest {
                         null,
                         null,
                         context.getBeanProvider(Clock.class));
+        context.getAutowireCapableBeanFactory().autowireBean(inspection);
         assertThat(inspection.flows(c.typeCode(), 0, 50).rows())
                 .extracting(
                         ai.neargo.shop.pay.points.admin.PointsInspectionService.FlowView::bucket)
@@ -1490,7 +1501,9 @@ class PointsPayoutPreparationTest {
             var transaction=new TransactionTemplate(txManager);
             final java.util.concurrent.atomic.AtomicReference<java.util.concurrent.Future<
                     ai.neargo.shop.pay.points.statement.StatementBuildService.Build>> task=new java.util.concurrent.atomic.AtomicReference<>();
-            transaction.executeWithoutResult(status -> {
+            // One competing financial posting plus the fixture's A1 and A2 recipient heads.
+            int recipientHeads = 2;
+            withReservedVouchers(1 + recipientHeads, () -> transaction.executeWithoutResult(status -> {
                 context.getBean(ai.neargo.shop.pay.points.store.PointsConfigurationStore.class).lockTypeAndPool(c.typeCode());
                 task.set(executor.submit(() -> builds.advance(build.buildNo())));
                 try { assertThat(identityRead.await(10,java.util.concurrent.TimeUnit.SECONDS)).isTrue(); }
@@ -1505,7 +1518,7 @@ class PointsPayoutPreparationTest {
                         List.of(new FundMove(FundBucket.C,5)),List.of(),0,
                         List.of(new EvidenceRef(proof,"CNY",5)),"{}"));
                 assertThat(builds.advance(c.typeCode(),build.buildNo()).sourceCount()).isEqualTo(200);
-            });
+            }));
             waiting=task.get();
             assertThat(waiting.get(15,java.util.concurrent.TimeUnit.SECONDS).sourceCount()).isEqualTo(400);
             assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_store_statement WHERE type_code=?",
@@ -1754,12 +1767,12 @@ class PointsPayoutPreparationTest {
         var c = periodicStatementFixture();
         var statements = context.getBean(StoreStatementService.class);
         var draft = statements.draft(new Period(c.typeCode(), "STORE", 0, 4102444800000L), "OP");
-        new TransactionTemplate(txManager)
+        withReservedVouchers(1, () -> new TransactionTemplate(txManager)
                 .executeWithoutResult(
                         status -> {
                             statements.confirm(draft.statementNo(), 1, "REVIEWER");
                             status.setRollbackOnly();
-                        });
+                        }));
         assertThat(
                         jdbc().queryForObject(
                                         "SELECT state FROM pts_store_statement WHERE position_no=?",

@@ -67,6 +67,45 @@ const DOMAINS = [
  * 与 packages/shared/tests/schema-lineage.test.ts 的同名表保持一致（有断言校验）。
  */
 export const KEY_OWNERS = {
+  first_store_no: "mch_store",
+  execution_no: "ord_refund_execution",
+  customer_no: "sv_customer_identity",
+  issuer_no: "sv_issuer",
+  scope_member_no: "mbr_scope_member",
+  issuer_version_no: "sv_issuer_version",
+  plan_version_no: "sv_recharge_plan_version",
+  release_no: "sv_release",
+  collection_entity_no: "mch_entity",
+  settlement_entity_no: "mch_entity",
+  operating_entity_no: "mch_entity",
+  management_no: "mch_management_space",
+  brand_no: "mch_brand",
+  change_no: "mch_brand_change",
+  config_no: "ord_store_pricing_config",
+  template_revision_no: "ord_pricing_template_revision",
+  quota_no: "sv_issue_quota",
+  quote_line_no: "ord_price_quote_line",
+  device_no: "prn_device",
+  job_no: "prn_job",
+  tier_no: "pmt_recharge_tier",
+  grant_no: "ent_grant",
+  instance_no: "ent_instance",
+  usage_no: "ent_usage",
+  source_order_no: "ord_order",
+  recharge_no: "sv_recharge",
+  lot_no: "sv_lot",
+  exception_no: "pay_ent_exception",
+  recon_no: "pay_ent_recon_run",
+  stage_no: "ent_migration_stage",
+  alias_no: "ent_migration_alias",
+  checkout_no: "ord_legacy_coupon_checkout",
+  plan_no: "ent_migration_plan",
+  import_no: "ent_migration_import",
+  return_no: "pmt_migration_return",
+  target_template_no: "ent_template",
+  template_version_no: "ent_template_version",
+  activity_version_no: "pmt_activity_version",
+
   build_no: "pts_statement_build",
   payout_no: "stl_payout",
   voucher_no: "pts_voucher",
@@ -253,6 +292,28 @@ const TOPICS = [
  * 而守卫只查集合不查文档，漏了两天没人发现。
  */
 const NAME_COLLISIONS_WHY = {
+  source_event_no: "来源系统各自产生的事件号；必须结合source_system及原始来源，不能仅按同名跨系统关联。",
+  rule_no: "stl_fee_rule是结算费率规则；ord_price_quote_allocation保存本次试算规则标识，两套规则目录独立。",
+  subject_no: "角色成员与报价/人工改价都使用主体多态编号；需同时核验各自subject_type，不能当成单一外键。",
+  link_no: "会员来源、旧会员迁移关系与储值活动发布/审批各有独立关联记录；编号仅在对应关系族内有效。",
+  attempt_no: "物流订阅尝试与打印投递尝试独立生成，不能混为同一次执行。",
+  entry_no: "pts_ledger_entry积分分录与ent_ledger权益分录是不同账本，不共用分录身份。",
+  binding_no: "订单积分接线与品牌门店有效期绑定是不同聚合，不能按同名连接。",
+  adjustment_no: "积分人工调整与订单人工改价分别有自己的命令/审计身份。",
+  line_no: "库存对齐行与储值过账行只在各自父单据内编号，不能作为全局行身份。",
+  allocation_no: "储值冻结批次分配与报价金额分摊有不同对象、数量和金额语义。",
+  target_no: "权益所有者注册与储值发行政策的目标都是多态范围，必须结合target_type及所属域。",
+  document_no: "Core与Pay分别分配业务展示单号；通知保存来源单号，必须结合来源系统/单据类型，不能假定单一主表。",
+  active_revision_no: "行业模板与门店配置各自引用自己的不可变发布版本，按源表指定目标。",
+  previous_revision_no: "行业模板版本与门店配置版本各自形成历史链，不能跨版本族关联。",
+  draft_revision_no: "储值发布和Core活动审批冻结对应活动的草稿标识，必须连同activity_no及来源版本解释，非全库通用版本键。",
+  policy_no: "SKU定价策略、储值发行管控、人工改价策略是独立政策族，不能按同名跨域关联。",
+  bridge_actor_no: "打印桥接认证主体标识，需结合可信桥接凭证与租户核验；不是用户或运营账号表的通用外键。",
+  voucher_no: "积分凭证与储值凭证是独立账本；须按来源表选择pts_voucher或sv_voucher，禁止跨账本按号猜关联。",
+  quote_no: "营销报价与订单试算快照是独立报价族，须按来源表选择权威报价。",
+  plan_no: "权益迁移计划与储值充值方案是独立计划族；同名不表示相同方案。",
+  grant_no: "权益发放记录与经营管理授权是独立授权族，须按来源表解释。",
+
   parent_no: "不同层级树的父节点，必须结合所属树。",
   provider_no: "通道回执需结合通道、资金方向与原请求。",
   scope_no: "角色授权范围与积分开关统计范围，须按各自范围类型解释。",
@@ -266,6 +327,40 @@ const NAME_COLLISIONS_WHY = {
 };
 const NAME_COLLISIONS = new Set(Object.keys(NAME_COLLISIONS_WHY));
 
+export const SCOPED_KEY_OWNERS = {
+  "pts_ledger_entry.voucher_no": "pts_voucher",
+  "pts_pool_flow.voucher_no": "pts_voucher",
+  "sv_entry.voucher_no": "sv_voucher",
+  "sv_posting_line.voucher_no": "sv_voucher",
+  "sv_statement.voucher_no": "sv_voucher",
+  "ord_pricing_template.active_revision_no": "ord_pricing_template_revision",
+  "ord_store_pricing_config.active_revision_no": "ord_store_pricing_revision",
+  "ord_pricing_template_revision.previous_revision_no": "ord_pricing_template_revision",
+  "ord_store_pricing_revision.previous_revision_no": "ord_store_pricing_revision",
+  "ord_price_quote_line.quote_no": "ord_price_quote",
+  "ord_price_quote_allocation.quote_no": "ord_price_quote",
+  "sv_recharge_plan_version.plan_no": "sv_recharge_plan",
+  "sv_recharge.plan_no": "sv_recharge_plan",
+  "mch_management_grant.grant_no": "mch_management_grant",
+  "mkt_quote_revision.quote_no": "mkt_quote",
+  "ord_pricing_funding_source.quote_no": "ord_price_quote",
+  "ord_industry_order_source.quote_no": "ord_price_quote",
+  "pts_topup_plan.plan_no": "pts_topup_plan",
+  "pmt_migration_decision.plan_no": "ent_migration_plan",
+  "ent_migration_import.plan_no": "ent_migration_plan",
+  "sv_statement.plan_no": "sv_recharge_plan",
+  "ent_instance.grant_no": "ent_grant",
+  "ent_sale_reservation.grant_no": "ent_grant",
+  "pmt_pay_coupon_projection.grant_no": "ent_grant",
+  "sv_issue_policy_version.policy_no": "sv_issue_policy",
+  "ord_manual_price_adjustment.policy_no": "ord_manual_price_policy"
+};
+export function keyOwner(table, column) {
+  return SCOPED_KEY_OWNERS[`${table}.${column}`]
+    ?? (NAME_COLLISIONS.has(column) ? undefined : KEY_OWNERS[column]);
+}
+
+
 /** 每张表都有，画进图里只会挤满屏幕 */
 const AUDIT = new Set([
   "id", "tenant_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted",
@@ -277,8 +372,8 @@ function relations(tables) {
   const out = [];
   for (const [table, def] of tables) {
     for (const c of def.cols) {
-      if (AUDIT.has(c.name) || NAME_COLLISIONS.has(c.name)) continue;
-      const owner = KEY_OWNERS[c.name];
+      if (AUDIT.has(c.name)) continue;
+      const owner = keyOwner(table, c.name);
       if (!owner || owner === table || !tables.has(owner)) continue;
       out.push({ from: table, to: owner, col: c.name });
     }
@@ -456,7 +551,7 @@ for (const [prefix, label] of DOMAINS) {
         .map((c) => {
           const badge = def.uniques.has(c.name)
             ? '<i class="k uk">UK</i>'
-            : KEY_OWNERS[c.name] && KEY_OWNERS[c.name] !== t
+            : keyOwner(t, c.name) && keyOwner(t, c.name) !== t
               ? '<i class="k fk">FK</i>'
               : "";
           return `<tr><td class="cn"><code>${c.name}</code>${badge}</td>` +

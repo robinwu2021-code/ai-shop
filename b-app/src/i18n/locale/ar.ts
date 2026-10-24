@@ -1,5 +1,5 @@
 export default {
- svGov:{"copy":"نسخ كنشاط جديد","policies": "ضوابط الإصدار", "activities": "أنشطة شحن المتجر", "activityDetail": "نشاط الشحن", "approvals": "موافقات الأنشطة", "ratio": "أقصى نسبة للمكافأة", "outstanding": "حد الرصيد غير المستهلك", "paidCap": "حد الدفع لكل شحن", "bonusCap": "حد المكافأة لكل شحن", "daysCap": "أقصى مدة للنشاط بالأيام", "allow": "السماح بإصدار جديد", "disabled": "الإصدار مقيّد", "approvalRequired": "الموافقة مطلوبة", "noApproval": "لا تتطلب موافقة", "noPolicies": "لا توجد قواعد بعد", "addPolicy": "إضافة قاعدة", "chooseScope": "اختيار النطاق", "invalidRules": "أدخل حدودا صحيحة", "invalidActivity": "أكمل بيانات النشاط", "tooManyTargets": "نطاقات كثيرة. ضيّق الاختيار.", "unknown": "النتيجة غير مؤكدة. أعد العملية الأصلية.", "retry": "إعادة العملية الأصلية", "save": "حفظ", "saved": "تم الحفظ", "saveDraft": "حفظ المسودة", "submit": "إرسال للنشر", "stop": "إيقاف الإصدار الجديد", "give": "مكافأة", "more": "تحميل المزيد", "noActivities": "لا توجد أنشطة شحن", "createActivity": "إنشاء نشاط شحن", "name": "اسم النشاط", "template": "نوع النشاط", "chooseTemplate": "اختيار نوع النشاط", "noTemplates": "لا توجد أنواع أنشطة متاحة", "startDate": "تاريخ البدء", "endDate": "تاريخ الانتهاء", "tier": "فئة الشحن", "remove": "إزالة", "paid": "المبلغ المدفوع", "bonus": "مبلغ المكافأة", "addTier": "إضافة فئة", "noApprovals": "لا توجد سجلات موافقة", "reason": "ملاحظات القرار", "reasonRequired": "أدخل ملاحظات القرار", "return": "إرجاع", "approve": "موافقة", "targets": {"SPACE": "مساحة الإدارة", "BRAND_STORES": "متاجر العلامة", "STORE": "متجر محدد"}, "states": {"DRAFT": "مسودة", "PENDING": "بانتظار الموافقة", "PENDING_APPROVAL": "بانتظار الموافقة", "APPROVED": "تمت الموافقة", "RETURNED": "تم الإرجاع", "STALE": "تغير المحتوى", "BLOCKED_POLICY": "لا يطابق القواعد", "PREPARING": "بانتظار النشر", "PAY_READY": "بانتظار النشر", "ACTIVE": "منشور", "RUNNING": "جارٍ", "PAUSED": "متوقف مؤقتا", "ENDED": "منتهٍ", "STOP_REQUESTED": "جارٍ إيقاف الإصدار", "STOPPED": "الإصدار متوقف", "FAILED": "فشل النشر", "ALL": "الكل"}},
+ svGov:{"copy":"نسخ كنشاط جديد","policies": "ضوابط الإصدار", "activities": "أنشطة شحن المتجر", "activityDetail": "نشاط الشحن", "approvals": "موافقات الأنشطة", "ratio": "أقصى نسبة للمكافأة", "outstanding": "حد الرصيد غير المستهلك", "paidCap": "حد الدفع لكل شحن", "bonusCap": "حد المكافأة لكل شحن", "daysCap": "أقصى مدة للنشاط بالأيام", "allow": "السماح بإصدار جديد", "disabled": "الإصدار مقيّد", "approvalRequired": "الموافقة مطلوبة", "noApproval": "لا تتطلب موافقة", "noPolicies": "لا توجد قواعد بعد", "addPolicy": "إضافة قاعدة", "chooseScope": "اختيار النطاق", "invalidRules": "أدخل حدودا صحيحة", "invalidActivity": "أكمل بيانات النشاط", "unknown": "النتيجة غير مؤكدة. أعد العملية الأصلية.", "retry": "إعادة العملية الأصلية", "save": "حفظ", "saved": "تم الحفظ", "saveDraft": "حفظ المسودة", "submit": "إرسال للنشر", "stop": "إيقاف الإصدار الجديد", "give": "مكافأة", "more": "تحميل المزيد", "noActivities": "لا توجد أنشطة شحن", "createActivity": "إنشاء نشاط شحن", "name": "اسم النشاط", "template": "نوع النشاط", "chooseTemplate": "اختيار نوع النشاط", "noTemplates": "لا توجد أنواع أنشطة متاحة", "startDate": "تاريخ البدء", "endDate": "تاريخ الانتهاء", "tier": "فئة الشحن", "remove": "إزالة", "paid": "المبلغ المدفوع", "bonus": "مبلغ المكافأة", "addTier": "إضافة فئة", "noApprovals": "لا توجد سجلات موافقة", "reason": "ملاحظات القرار", "reasonRequired": "أدخل ملاحظات القرار", "return": "إرجاع", "approve": "موافقة", "targets": {"SPACE": "مساحة الإدارة", "BRAND_STORES": "متاجر العلامة", "STORE": "متجر محدد"}, "states": {"DRAFT": "مسودة", "PENDING": "بانتظار الموافقة", "PENDING_APPROVAL": "بانتظار الموافقة", "APPROVED": "تمت الموافقة", "RETURNED": "تم الإرجاع", "STALE": "تغير المحتوى", "BLOCKED_POLICY": "لا يطابق القواعد", "PREPARING": "بانتظار النشر", "PAY_READY": "بانتظار النشر", "ACTIVE": "منشور", "RUNNING": "جارٍ", "PAUSED": "متوقف مؤقتا", "ENDED": "منتهٍ", "STOP_REQUESTED": "جارٍ إيقاف الإصدار", "STOPPED": "الإصدار متوقف", "FAILED": "فشل النشر", "ALL": "الكل"}},
  issuer: {"prepareSettings":"إعداد جهة إصدار الرصيد","accepted":"مفوّض","acceptAndChoose":"تفويض واختيار","title": "إعدادات جهة الإصدار", "storeScope": "رصيد المتجر", "brandScope": "رصيد العلامة التجارية", "brandDraftOnly": "إصدار العلامة التجارية متاح كمسودة فقط", "name": "اسم جهة الإصدار", "settlementEntity": "جهة التسوية", "chooseEntity": "اختيار جهة التسوية", "routes": "طرق التحصيل", "addRoute": "إضافة طريقة تحصيل", "remove": "إزالة", "noRoutes": "لا توجد طرق تحصيل متاحة", "pendingSave": "نتيجة الحفظ غير معروفة. أعد المحاولة الأصلية.", "retrySave": "إعادة الحفظ", "states": {"DRAFT": "مسودة", "ACTIVE": "مفعّل", "ISSUE_STOPPED": "الإصدار متوقف"}, "channels": {"MERCHANT_OFFLINE": "تحصيل دون اتصال", "WECHAT": "وي تشات باي", "ALIPAY": "علي باي"}, "blockers": {"STALE_CONFIGURATION": "تم تحديث الإعدادات. يرجى التحديث.", "CURRENCY_IMMUTABLE": "لا يمكن تغيير العملة", "MAINTENANCE_IN_PROGRESS": "صيانة الرصيد", "LIABILITY_RULES_LOCKED": "الرصيد أو العمليات المعلقة تمنع هذا التغيير", "ISSUANCE_NOT_ENABLED": "الإصدار غير مفعّل"}},
  management: {
  "managePayment": "إعدادات التحصيل",
@@ -222,7 +222,7 @@ export default {
   "health": "حالة التشغيل",
   "notAssessed": "لم يتم الفحص",
   "initializing": "لم يتم إنشاء ربط المخزون",
-  "physical": "المخزون الفعلي"
+
 },
 
   trace: {
@@ -244,6 +244,7 @@ export default {
     at: "{t}",
   },
   common: {
+    delete: "حذف",
     loadFailed: "تعذّر التحميل",
     loadFailedTip: "الشبكة على الأرجح. تحقّق منها ثم أعد المحاولة.",
     remove: "إزالة", search: "بحث", yes: "نعم", no: "لا", back: "رجوع", confirm: "تأكيد", cancel: "إلغاء", done: "تم", save: "حفظ", loading: "جارٍ التحميل…", empty: "لا يوجد محتوى بعد", retry: "إعادة", saved: "تم الحفظ", all: "الكل",
@@ -463,7 +464,7 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
       buildOwnPropValue: "قيمة جديدة",
       adjustHint: "✕ لإزالة خيار، ＋ للاختيار من المنصة أو إضافة خيارك. إعادة التسمية تؤثر على متجرك فقط؛ تبقى المقارنة صالحة.",
       save: "حفظ",
-      delete: "حذف", cancel: "إلغاء", reset: "استعادة الافتراضي", saved: "تم الحفظ",
+      cancel: "إلغاء", reset: "استعادة الافتراضي", saved: "تم الحفظ",
       addableHere: "إعادة الإضافة",
       catAllRemoved: "أُزيلت كلها",
       catAllRemovedProps: "أُزيلت كلها",
@@ -1007,8 +1008,6 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     accountFrozen: "الحساب مجمد",
     accountExpiry: "تاريخ الانتهاء",
     posted: "تم القيد",
-    code: "رمز النقاط",
-    currency: "العملة",
     statementStateBuilding: "جارٍ الإنشاء",
     statementStateDraft: "بانتظار التأكيد",
     statementStateDisputed: "يوجد اعتراض",
@@ -1034,19 +1033,6 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     statementDisputeHint: "سيتوقف التأكيد التلقائي لهذا الإصدار بانتظار المراجعة.",
 
 
-    agreement: "اتفاقية نقاط المتجر",
-    activeAgreement: "الاتفاقية سارية",
-    terminate: "إنهاء الاتفاقية",
-    termsVersion: "إصدار الشروط",
-    signHint: "اختر قناة دفع مفعّلة وطريقة التسوية. يتحقق الخادم من المسار.",
-    perOrder: "لكل طلب",
-    periodic: "دورية",
-    acceptTerms: "قرأت هذه الشروط وأوافق عليها",
-    sign: "توقيع الاتفاقية",
-    noTerms: "لم تُنشر شروط لهذا النوع من النقاط",
-    signConfirm: "هل تؤكد توقيع اتفاقية النقاط للمتجر الحالي؟",
-    terminateConfirm: "هل تؤكد إنهاء اتفاقية هذا المتجر؟ تبقى التزامات النقاط السابقة قائمة.",
-    actionFailed: "فشلت العملية. حدّث الصفحة وأعد المحاولة.",
     storeLedger: "سجل نقاط المتجر",
     storeLedgerHint: "اعرض حسب المتجر الحالي ونوع النقاط. سجل الدفع هو المرجع المعتمد.",
     noTypes: "لا توجد أنواع نقاط بعد",
@@ -2772,6 +2758,11 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
     statusNONE: "غير مسجّل", statusAPPLYING: "قيد المراجعة", statusREJECTED: "مرفوض", statusACTIVE: "نشط", statusSUSPENDED: "موقوف",
   },
   perm: {
+    "biz:pricing:config:publish": "نشر قواعد الدفع للمتجر",
+    "biz:pricing:config:read": "عرض قواعد الدفع للمتجر",
+    "biz:pricing:config:update": "تعديل مسودة قواعد الدفع للمتجر",
+    "biz:pricing:tax:read": "عرض إعدادات ضرائب التاجر",
+    "biz:pricing:tax:update": "إدارة إعدادات ضرائب التاجر (مالك الكيان فقط)",
     "biz:receive": "استلام البضائع والفرز",
     "biz:verify": "تسليم الطلبات بالرمز",
     "biz:ship": "الشحن وتأكيد التسليم",

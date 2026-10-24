@@ -1,9 +1,9 @@
 package ai.neargo.shop.promotion.service.impl;
 
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.promotion.config.PromotionFeatureProperties;
 import ai.neargo.shop.promotion.dto.*;
@@ -51,7 +51,7 @@ class ActivityVersionManagementTest {
         when(coordinator.transaction(anyMap(), any())).thenAnswer(call -> ((Supplier<?>) call.getArgument(1)).get());
         when(coordinator.findAll(any(), anyCollection())).thenReturn(Map.of());
         when(coordinator.bind(any(), any())).thenReturn("PT20300101000001");
-        service.setDocumentNumbers(new ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers(coordinator));
+        service.setDocumentNumbers(new CoreMarketingDocumentNumbers(coordinator));
         return service;
     }
     private UnifiedActivityDefinition definition(String name, String scene) {

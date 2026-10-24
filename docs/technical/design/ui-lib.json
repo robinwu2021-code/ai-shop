@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 587,
+        "b-app": 590,
         "c-app": 102
       }
     },
@@ -296,7 +296,7 @@
       },
       "usage": {
         "b-app": 20,
-        "c-app": 11
+        "c-app": 12
       }
     },
     {
@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 128,
+        "b-app": 131,
         "c-app": 83
       }
     },
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 139,
+        "b-app": 144,
         "c-app": 35
       }
     },
@@ -635,7 +635,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 299,
+        "b-app": 308,
         "c-app": 97
       }
     },
@@ -677,7 +677,7 @@
         "padding": "12px var(--sh-pad-page, 14px)"
       },
       "usage": {
-        "b-app": 183,
+        "b-app": 190,
         "c-app": 34
       }
     },
@@ -827,7 +827,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 258,
+        "b-app": 272,
         "c-app": 90
       }
     },
@@ -939,7 +939,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 59,
+        "b-app": 66,
         "c-app": 12
       }
     },
@@ -979,7 +979,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 81,
+        "b-app": 82,
         "c-app": 24
       }
     },
@@ -1035,7 +1035,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 139,
+        "b-app": 146,
         "c-app": 28
       }
     },
@@ -1159,7 +1159,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 168,
+        "b-app": 171,
         "c-app": 58
       }
     },
@@ -1421,7 +1421,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 187,
+        "b-app": 192,
         "c-app": 95
       }
     },
@@ -1437,7 +1437,7 @@
         "position": "relative"
       },
       "usage": {
-        "b-app": 57,
+        "b-app": 61,
         "c-app": 16
       }
     },
@@ -1457,7 +1457,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 651,
+        "b-app": 664,
         "c-app": 218
       }
     },
@@ -1489,7 +1489,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 375,
+        "b-app": 387,
         "c-app": 110
       }
     },
@@ -1655,7 +1655,7 @@
         "margin-top": "10px"
       },
       "usage": {
-        "b-app": 51,
+        "b-app": 60,
         "c-app": 0
       }
     },
@@ -1733,7 +1733,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 83,
+        "b-app": 92,
         "c-app": 26
       }
     },
@@ -1755,7 +1755,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 67,
+        "b-app": 76,
         "c-app": 0
       }
     },
@@ -1897,7 +1897,7 @@
         "dock?: boolean"
       ],
       "usage": {
-        "b-app": 49,
+        "b-app": 52,
         "c-app": 19,
         "lib": 0
       },
@@ -1982,7 +1982,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 11,
+        "b-app": 14,
         "c-app": 5,
         "lib": 0
       },
@@ -2143,7 +2143,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 77,
+        "b-app": 81,
         "c-app": 43,
         "lib": 1
       },
@@ -2338,7 +2338,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 93,
+        "b-app": 100,
         "c-app": 0,
         "lib": 0
       },
@@ -2440,7 +2440,7 @@
       "name": "sh-points-earning",
       "file": "packages/ui/src/components/sh-points-earning.vue",
       "scope": "跨端",
-      "lines": 30,
+      "lines": 31,
       "props": [
         "rows: OrderPointsEarning[]",
         "failed?: boolean"
@@ -2450,7 +2450,7 @@
         "c-app": 0,
         "lib": 0
       },
-      "note": "—",
+      "note": "订单积分明细：按服务端快照展示预计、实发、待入账及退回积分，查询失败时提供重试",
       "why": "—",
       "uses": {
         "tiers": [
@@ -2594,7 +2594,7 @@
         "immersive?: boolean"
       ],
       "usage": {
-        "b-app": 106,
+        "b-app": 110,
         "c-app": 43,
         "lib": 1
       },
@@ -2681,7 +2681,7 @@
         "fit?: boolean"
       ],
       "usage": {
-        "b-app": 38,
+        "b-app": 42,
         "c-app": 13,
         "lib": 1
       },
@@ -2889,7 +2889,7 @@
         "line?: boolean"
       ],
       "usage": {
-        "b-app": 19,
+        "b-app": 20,
         "c-app": 15,
         "lib": 0
       },
@@ -3676,7 +3676,7 @@
         "sh-scaffold",
         "sh-stepper"
       ],
-      "libClassHits": 89,
+      "libClassHits": 91,
       "localSelectors": 19,
       "localCssLines": 59,
       "rolled": []
@@ -4180,7 +4180,7 @@
         "sh-scaffold",
         "sh-sheet"
       ],
-      "libClassHits": 39,
+      "libClassHits": 45,
       "localSelectors": 0,
       "localCssLines": 0,
       "rolled": []
@@ -4919,7 +4919,15 @@
       "libClassHits": 63,
       "localSelectors": 9,
       "localCssLines": 32,
-      "rolled": []
+      "rolled": [
+        {
+          "id": "semcolor",
+          "label": "语义色自写",
+          "lib": ".is-danger / .is-success / .is-warning",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "b-app",
@@ -5238,7 +5246,7 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 4,
+      "libClassHits": 8,
       "localSelectors": 0,
       "localCssLines": 0,
       "rolled": []
@@ -5255,6 +5263,56 @@
         "sh-scaffold"
       ],
       "libClassHits": 13,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stored-value-activity",
+      "key": "b-app/stored-value-activity",
+      "file": "b-app/src/pages/stored-value-activity/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-kv",
+        "sh-scaffold"
+      ],
+      "libClassHits": 10,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stored-value-activity-edit",
+      "key": "b-app/stored-value-activity-edit",
+      "file": "b-app/src/pages/stored-value-activity-edit/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-check",
+        "sh-empty",
+        "sh-scaffold",
+        "sh-sheet"
+      ],
+      "libClassHits": 42,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stored-value-approval",
+      "key": "b-app/stored-value-approval",
+      "file": "b-app/src/pages/stored-value-approval/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-sheet",
+        "sh-tabs"
+      ],
+      "libClassHits": 24,
       "localSelectors": 0,
       "localCssLines": 0,
       "rolled": []
@@ -5302,6 +5360,24 @@
         "sh-scaffold"
       ],
       "libClassHits": 26,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stored-value-policy",
+      "key": "b-app/stored-value-policy",
+      "file": "b-app/src/pages/stored-value-policy/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-check",
+        "sh-empty",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-sheet"
+      ],
+      "libClassHits": 32,
       "localSelectors": 0,
       "localCssLines": 0,
       "rolled": []
@@ -6015,7 +6091,7 @@
         "sh-sheet",
         "sh-tabs"
       ],
-      "libClassHits": 57,
+      "libClassHits": 58,
       "localSelectors": 13,
       "localCssLines": 13,
       "rolled": []
@@ -6565,6 +6641,16 @@
       ]
     },
     {
+      "id": "semcolor",
+      "label": "语义色自写",
+      "lib": ".is-danger / .is-success / .is-warning",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
+      "pages": [
+        "b-app/stock-check"
+      ]
+    },
+    {
       "id": "uploader",
       "label": "图片上传格",
       "lib": "sh-uploader",
@@ -6579,7 +6665,7 @@
     "tokens": 16,
     "blocks": 82,
     "components": 42,
-    "pages": 187,
+    "pages": 191,
     "gapKinds": 3
   }
 }

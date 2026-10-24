@@ -1,5 +1,6 @@
 package ai.neargo.shop.marketing.port;
 
+import ai.neargo.shop.numbering.InvitationDocumentNumberReservationAdvisor;
 import ai.neargo.shop.marketing.attribution.FissionInviteService;
 import ai.neargo.shop.marketing.attribution.FissionService;
 import ai.neargo.shop.spi.marketing.FissionPort;
@@ -32,8 +33,8 @@ public class FissionPortImpl implements FissionPort {
              * 运营端的设计是同一时间只跑一个邀请有礼（`enabledOnly` 那个开关），
              * 这里不去发明「按什么规则挑一个」，那是产品决定。
              */
-            if (ai.neargo.shop.promotion.service.InvitationDocumentNumberReservationAdvisor.hasSnapshot()) {
-                ai.neargo.shop.promotion.service.InvitationDocumentNumberReservationAdvisor.currentCampaign()
+            if (InvitationDocumentNumberReservationAdvisor.hasSnapshot()) {
+                InvitationDocumentNumberReservationAdvisor.currentCampaign()
                         .ifPresent(campaign -> inviteService.record(campaign.getFissionNo(), inviterNo,
                                 inviteeNo, deviceId, phoneTail));
                 return;

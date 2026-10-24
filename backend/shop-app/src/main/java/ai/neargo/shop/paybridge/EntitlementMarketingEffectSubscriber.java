@@ -1,4 +1,6 @@
 package ai.neargo.shop.paybridge;
+import org.springframework.beans.factory.annotation.Autowired;
+
 
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
@@ -40,7 +42,7 @@ public class EntitlementMarketingEffectSubscriber implements OutboxConsumer {
             EntitlementMarketingFactsPort pay,MarketingEffectProjector projection,ObjectMapper json) {
         this(recharges,benefits,pay,projection,json,null);
     }
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public EntitlementMarketingEffectSubscriber(RechargeIntentService recharges,ActivityBenefitIntentService benefits,
             EntitlementMarketingFactsPort pay,MarketingEffectProjector projection,ObjectMapper json,
             ai.neargo.shop.payclient.StoredValuePlanRechargeAppService direct){

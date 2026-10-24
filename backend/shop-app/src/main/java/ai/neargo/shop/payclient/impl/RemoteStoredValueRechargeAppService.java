@@ -1,4 +1,7 @@
 package ai.neargo.shop.payclient.impl;
+import ai.neargo.shop.spi.storedvalue.StoredValueCustomerBindingPort;
+import org.springframework.beans.factory.annotation.Autowired;
+
 
 import ai.neargo.shop.payclient.StoredValueRechargeAppService;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
@@ -25,8 +28,8 @@ import ai.neargo.shop.pay.client.PayStoredValueRequests;
 @Service
 @ConditionalOnProperty(name = "shop.pay.deployment", havingValue = "standalone")
 public class RemoteStoredValueRechargeAppService implements StoredValueRechargeAppService {
-    @org.springframework.beans.factory.annotation.Autowired
-    private ai.neargo.shop.spi.storedvalue.StoredValueCustomerBindingPort bindings;
+    @Autowired
+    private StoredValueCustomerBindingPort bindings;
     private final PayInternalApi pay;
     public RemoteStoredValueRechargeAppService(PayInternalApi pay) { this.pay = pay; }
     @Override public RechargeView create(EntitlementContext ctx, String entity, CreateRecharge c) {
