@@ -56,7 +56,7 @@ class PrintDeliveryTest {
                 +";MODE=MySQL;DB_CLOSE_DELAY=-1","sa","");
         jdbc=new JdbcTemplate(source);
         String schema=Files.readString(Path.of("../shop-app/src/main/resources/db/migration/"
-                +"V556__shared_print_delivery.sql"));
+                +"V567__shared_print_delivery.sql"));
         // H2 does not enforce MariaDB JSON_VALID; service parsing and real-MariaDB migration checks are separate.
         schema=schema.replace("JSON_VALID(capabilities)","capabilities IS NOT NULL")
                 .replace("JSON_VALID(match_rule)","match_rule IS NOT NULL")

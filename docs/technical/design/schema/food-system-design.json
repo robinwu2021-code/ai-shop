@@ -5408,7 +5408,7 @@
       "owner": "共享能力候选，非餐饮私有表",
       "implementationOwner": "shop-core / ai.neargo.shop.printing",
       "implementationStatus": "CODED_PENDING_VERIFICATION",
-      "sharedMigration": "V556__shared_print_delivery.sql"
+      "sharedMigration": "V567__shared_print_delivery.sql"
     },
     {
       "domain": "H",
@@ -5472,7 +5472,7 @@
       "owner": "共享能力候选，非餐饮私有表",
       "implementationOwner": "shop-core / ai.neargo.shop.printing",
       "implementationStatus": "CODED_PENDING_VERIFICATION",
-      "sharedMigration": "V556__shared_print_delivery.sql"
+      "sharedMigration": "V567__shared_print_delivery.sql"
     },
     {
       "domain": "H",
@@ -5545,7 +5545,7 @@
       "owner": "共享能力候选，非餐饮私有表",
       "implementationOwner": "shop-core / ai.neargo.shop.printing",
       "implementationStatus": "CODED_PENDING_VERIFICATION",
-      "sharedMigration": "V556__shared_print_delivery.sql"
+      "sharedMigration": "V567__shared_print_delivery.sql"
     },
     {
       "domain": "H",
@@ -5649,7 +5649,7 @@
       "owner": "共享能力候选，非餐饮私有表",
       "implementationOwner": "shop-core / ai.neargo.shop.printing",
       "implementationStatus": "CODED_PENDING_VERIFICATION",
-      "sharedMigration": "V556__shared_print_delivery.sql"
+      "sharedMigration": "V567__shared_print_delivery.sql"
     },
     {
       "domain": "H",
@@ -5726,7 +5726,7 @@
       "owner": "共享能力候选，非餐饮私有表",
       "implementationOwner": "shop-core / ai.neargo.shop.printing",
       "implementationStatus": "CODED_PENDING_VERIFICATION",
-      "sharedMigration": "V556__shared_print_delivery.sql"
+      "sharedMigration": "V567__shared_print_delivery.sql"
     },
     {
       "domain": "J",
@@ -12146,8 +12146,8 @@
       "fnb_queue_ticket"
     ],
     "coreMigrations": [
-      "V556__shared_print_delivery.sql",
-      "V557__industry_fulfillment_receipt.sql"
+      "V567__shared_print_delivery.sql",
+      "V568__industry_fulfillment_receipt.sql"
     ],
     "note": "本批实际非支付Controller/DTO与目标API并列对账。后端编码、编译、集中测试和双部署打包已执行，结果见verification及原TDD本轮收据。逐路由保留CODED_PENDING_VERIFICATION表示完整目标/营业验收未签收；路由或单元测试通过不代表所有DTO目标、审批、打印实机、原料库存计划或财务闭环已完成。",
     "implementedApis": [
@@ -25816,7 +25816,7 @@
     "note": "涉及29条当前业务路由，新增20条；本批后端编译及范围明确的测试已执行，逐接口完整目标/营业验收仍保留待办，见原TDD§2.14。",
     "sharedManualAdjustment": {
       "owner": "shop-core trade",
-      "migration": "CORE V558",
+      "migration": "CORE V569",
       "status": "BACKEND_TESTED_SCOPE_LIMITED",
       "arithmetic": "CouponCalculation + PricingEngine + TaxEngine",
       "authority": "BizIdentityResolver current store role + persistent merchant policy and distinct owner approval",

@@ -43,8 +43,8 @@ def main():
         core_dir = ROOT / 'backend/shop-app/src/main/resources/db/migration'
         core_sql = 'CREATE DATABASE food_nonpay_contract; USE food_nonpay_contract;\n' + '\n'.join(
             (core_dir / name).read_text() for name in [
-                'V556__shared_print_delivery.sql', 'V557__industry_fulfillment_receipt.sql',
-                'V558__manual_price_authority.sql'])
+                'V567__shared_print_delivery.sql', 'V568__industry_fulfillment_receipt.sql',
+                'V569__manual_price_authority.sql'])
         subprocess.run(['docker', 'exec', '-i', NAME, 'mysql', '-uroot'], input=core_sql,
                        text=True, check=True, stdout=subprocess.DEVNULL)
         physical = docker('exec', NAME, 'mysql', '-N', '-uroot', '--execute',
@@ -52,7 +52,7 @@ def main():
                           "AND table_name IN ('prn_device','prn_template','prn_route','prn_job','prn_attempt','ord_industry_fulfillment','ord_manual_price_policy','ord_manual_price_adjustment')")
         if physical != '8':
             raise RuntimeError('Native shared printing/original fulfillment migrations were not fully applied')
-        print('Native CORE V556/V557/V558: 8 real tables applied in disposable database')
+        print('Native CORE V567/V568/V569: 8 real tables applied in disposable database')
         env = os.environ.copy()
         env.update(FOOD_TEST_DISPOSABLE='true', FOOD_TEST_JDBC_URL='jdbc:mysql://' + binding + '/mysql')
         with tempfile.NamedTemporaryFile(prefix='food-primary-tests-', suffix='.log', delete=False) as log:
