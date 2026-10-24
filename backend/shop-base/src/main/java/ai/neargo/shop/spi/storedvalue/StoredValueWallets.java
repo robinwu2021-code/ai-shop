@@ -7,11 +7,12 @@ import java.util.List;
 public final class StoredValueWallets {
     private StoredValueWallets() { }
     public record ExecutionScope(String tenantNo,String actorNo,String managementNo,String entityNo,String storeNo,
-            long storeRevision,String brandNo,String brandBindingNo,long brandBindingRevision,String currency,long brandRevision) {
+            long storeRevision,String brandNo,String brandBindingNo,long brandBindingRevision,String currency,long brandRevision,@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_DEFAULT) int coreFinanceProtocol) {
+        public ExecutionScope(String tenantNo,String actorNo,String managementNo,String entityNo,String storeNo,long storeRevision,String brandNo,String brandBindingNo,long brandBindingRevision,String currency,long brandRevision){this(tenantNo,actorNo,managementNo,entityNo,storeNo,storeRevision,brandNo,brandBindingNo,brandBindingRevision,currency,brandRevision,0);}
         public ExecutionScope(String tenantNo,String actorNo,String managementNo,String entityNo,String storeNo,long storeRevision,String brandNo,String brandBindingNo,long brandBindingRevision,String currency){this(tenantNo,actorNo,managementNo,entityNo,storeNo,storeRevision,brandNo,brandBindingNo,brandBindingRevision,currency,brandNo==null?-1:0);}
         public ExecutionScope {
             for(String id:List.of(tenantNo,actorNo,entityNo,storeNo))ContractChecks.id(id);
-            ContractChecks.currency(currency);ContractChecks.require(storeRevision>=0);ContractChecks.optionalId(managementNo);
+            ContractChecks.currency(currency);ContractChecks.require(storeRevision>=0&&coreFinanceProtocol>=0);ContractChecks.optionalId(managementNo);
             ContractChecks.optionalId(brandNo);ContractChecks.optionalId(brandBindingNo);
             ContractChecks.require(brandNo==null?brandBindingNo==null&&brandBindingRevision==-1&&brandRevision==-1:managementNo!=null&&brandBindingNo!=null&&brandBindingRevision>=0&&brandRevision>=0);
         }

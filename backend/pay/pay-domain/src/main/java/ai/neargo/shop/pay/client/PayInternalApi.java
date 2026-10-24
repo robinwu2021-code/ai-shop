@@ -526,4 +526,53 @@ public interface PayInternalApi {
  CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueIssuerRecharges.FundedCustomer> svFundedCustomers(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueIssuerRecharges.FundedPage request);
  @PostExchange(PayInternalPaths.SV_WALLETS_RECORDS)
  CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueMerchantViews.Record> svWalletRecords(@RequestBody PayStoredValueWalletRequests.Records request);
+
+    @PostExchange(PayInternalPaths.SV_FINANCE_CAPABILITIES)
+    ai.neargo.shop.spi.storedvalue.StoredValueFinance.Capabilities svFinanceCapabilities();
+    @PostExchange(PayInternalPaths.SV_FINANCE_DIRECTORY)
+    java.util.List<ai.neargo.shop.spi.storedvalue.StoredValueFinance.Resource> svFinanceDirectory(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueFinance.Directory c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_SUMMARY)
+    ai.neargo.shop.spi.storedvalue.StoredValueReports.Summary svFinanceSummary(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueFinance.SummaryRequest c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_STORES)
+    ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueReports.StoreAttribution> svFinanceStores(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueReports.Query c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_ACTIVITIES)
+    ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueReports.ActivityAttribution> svFinanceActivities(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueReports.Query c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_LOCAL_ISSUERS)
+    ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueReports.Summary> svFinanceLocalIssuers(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueFinance.BatchReports c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_LOCATE)
+    ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Location svFinanceLocate(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Resource c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_BILLS)
+    ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Bill> svFinanceBills(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Query c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_DETAIL)
+    ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Bill svFinanceDetail(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueFinance.BillRead c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_ITEMS)
+    ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Item> svFinanceItems(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueFinance.BillRead c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_EVENTS)
+    ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Event> svFinanceEvents(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueFinance.BillRead c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_PAYMENTS)
+    ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Payment> svFinancePayments(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueFinance.BillRead c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_GENERATE)
+    ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Generated svFinanceGenerate(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Generation c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_RECONCILE)
+    ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Bill svFinanceReconcile(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Decision c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_DISPUTE)
+    ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Bill svFinanceDispute(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Decision c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_RESOLVE_DISPUTE)
+    ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Bill svFinanceResolveDispute(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Resolution c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_ADJUST)
+    ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Bill svFinanceAdjust(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Adjustment c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_REGISTER)
+    ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Payment svFinanceRegister(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Registration c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_CONFIRM)
+    ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Payment svFinanceConfirm(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Receipt c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_VOID_PAYMENT)
+    ai.neargo.shop.spi.storedvalue.StoredValueSettlements.Payment svFinanceVoidPayment(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueSettlements.VoidPayment c);
+    @PostExchange(PayInternalPaths.SV_FINANCE_RESOLVE_PAYMENT)
+    ai.neargo.shop.spi.storedvalue.StoredValueFinance.Resolution svFinanceResolvePayment(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueFinance.ResolvePayment c);
+ @org.springframework.web.service.annotation.PostExchange(PayInternalPaths.SV_FINANCE_MEMBERSHIP_TARGETS)
+ java.util.List<ai.neargo.shop.spi.storedvalue.StoredValueMembership.Target> svFinanceMembershipTargets(@org.springframework.web.bind.annotation.RequestBody ai.neargo.shop.spi.storedvalue.StoredValueMembership.Describe c);
+ @org.springframework.web.service.annotation.PostExchange(PayInternalPaths.SV_FINANCE_PREPARE_MEMBERSHIP)
+ ai.neargo.shop.spi.storedvalue.StoredValueMembership.Ack svFinancePrepareMembership(@org.springframework.web.bind.annotation.RequestBody ai.neargo.shop.spi.storedvalue.StoredValueMembership.Prepare c);
+ @org.springframework.web.service.annotation.PostExchange(PayInternalPaths.SV_FINANCE_COMMIT_MEMBERSHIP)
+ ai.neargo.shop.spi.storedvalue.StoredValueMembership.Ack svFinanceCommitMembership(@org.springframework.web.bind.annotation.RequestBody ai.neargo.shop.spi.storedvalue.StoredValueMembership.Commit c);
 }

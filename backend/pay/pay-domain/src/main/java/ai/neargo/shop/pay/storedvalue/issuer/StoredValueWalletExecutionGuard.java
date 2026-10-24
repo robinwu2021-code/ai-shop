@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class StoredValueWalletExecutionGuard {
     @org.springframework.beans.factory.annotation.Autowired private StoredValueIssueQuotaService quotas;
+    @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.pay.storedvalue.settlement.StoredValueCrossEntityReadiness financialReadiness;
     private final IssuerRepository db;private final boolean enabled;private final boolean crossEntity;
     public StoredValueWalletExecutionGuard(IssuerRepository db,@Value("${shop.pay.stored-value.brand-execution-enabled:false}")boolean enabled,@Value("${shop.pay.stored-value.cross-entity-enabled:false}")boolean crossEntity){this.db=db;this.enabled=enabled;this.crossEntity=crossEntity;}
     public boolean before(EntitlementContext ctx,UseCommand command,Proof proof,boolean finalizing){
@@ -26,7 +27,7 @@ public class StoredValueWalletExecutionGuard {
         if(issuer==null||!"ISSUER".equals(text(issuer,"write_mode"))||!Set.of("ACTIVE","ISSUE_STOPPED").contains(text(issuer,"status"))||!selected.scopeType().equals(text(issuer,"scope_type"))||!selected.scopeNo().equals(text(issuer,"scope_no")))conflict();
         var frozen=db.one("SELECT * FROM sv_issuer_version WHERE tenant_no=? AND issuer_no=? AND issuer_version_no=? AND deleted=0",ctx.tenantNo(),selected.issuerNo(),selected.issuerVersionNo());
         if(frozen==null||!command.currency().equals(text(frozen,"currency")))conflict();
-        if(!finalizing&&!crossEntity&&!command.entityNo().equals(text(frozen,"settlement_entity_no")))throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        if(!finalizing&&!command.entityNo().equals(text(frozen,"settlement_entity_no"))&&(!crossEntity||scope.coreFinanceProtocol()<2||financialReadiness==null||!financialReadiness.capability().ready()))throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         if(!finalizing){
             var access=db.one("SELECT * FROM sv_issuer_store_access WHERE tenant_no=? AND issuer_no=? AND store_no=? AND deleted=0 FOR UPDATE",ctx.tenantNo(),selected.issuerNo(),scope.storeNo());
             String binding=brand?scope.brandBindingNo():scope.storeNo();long revision=brand?scope.brandBindingRevision():scope.storeRevision();

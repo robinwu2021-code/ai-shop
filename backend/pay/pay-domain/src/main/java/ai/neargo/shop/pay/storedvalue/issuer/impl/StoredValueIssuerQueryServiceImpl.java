@@ -9,25 +9,33 @@ import ai.neargo.shop.pay.entitlement.service.EntitlementRecords;
 import ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository;
 import ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerQueryService;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueCursorCodec;
+import ai.neargo.shop.pay.storedvalue.settlement.StoredValueCrossEntityReadiness;
 import ai.neargo.shop.spi.entitlement.ContractChecks;
+import ai.neargo.shop.spi.storedvalue.StoredValueIssuerRecharges;
+import ai.neargo.shop.spi.storedvalue.StoredValueIssuers;
 import ai.neargo.shop.spi.storedvalue.StoredValueWallets.AvailableAccount;
 import ai.neargo.shop.spi.storedvalue.StoredValueWallets.Balance;
 import ai.neargo.shop.spi.storedvalue.StoredValueWallets.ExecutionScope;
 import ai.neargo.shop.spi.storedvalue.StoredValueWallets.Query;
 import ai.neargo.shop.spi.storedvalue.StoredValueWallets.Selected;
+import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /** Read-only issuer wallets. No fallback merging, account creation or amount aggregation across issuers. */
 @Service("storedValueIssuerQueryService")
 public class StoredValueIssuerQueryServiceImpl implements StoredValueIssuerQueryService {
+    @Autowired private StoredValueCrossEntityReadiness financialReadiness;
     private final IssuerRepository db;private final StoredValueCursorCodec refs;private final boolean enabled;private final boolean brandEnabled;private final boolean crossEntityEnabled;
     public StoredValueIssuerQueryServiceImpl(IssuerRepository db,StoredValueCursorCodec refs,
             @Value("${shop.pay.stored-value.issuer-mode:false}")boolean enabled,
@@ -37,10 +45,10 @@ public class StoredValueIssuerQueryServiceImpl implements StoredValueIssuerQuery
         requireEnabled();var scope=query.scope();var result=new ArrayList<AvailableAccount>();
         for(var issuer:issuers(scope))result.add(option(query,issuer));return List.copyOf(result);
     }
-    public ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreOptions storeOptions(ExecutionScope scope){
+    public StoredValueIssuers.StoreOptions storeOptions(ExecutionScope scope){
         requireEnabled();
-        return new ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreOptions(scope.storeNo(),false,issuers(scope).stream().map(i->
-            new ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreOption(text(i,"issuer_no"),text(i,"scope_type"),text(i,"scope_no"),text(i,"name"),text(i,"currency"),text(i,"status"),text(i,"write_mode"),unavailable(scope,i,true)==null,unavailable(scope,i,false)==null,unavailable(scope,i,true))).toList());
+        return new StoredValueIssuers.StoreOptions(scope.storeNo(),false,issuers(scope).stream().map(i->
+            new StoredValueIssuers.StoreOption(text(i,"issuer_no"),text(i,"scope_type"),text(i,"scope_no"),text(i,"name"),text(i,"currency"),text(i,"status"),text(i,"write_mode"),unavailable(scope,i,true)==null,unavailable(scope,i,false)==null,unavailable(scope,i,true))).toList());
     }
     public Selected select(Query query,String issuerRef,String accountRef){return selection(query,issuerRef,accountRef,true);}
     public Selected readSelection(Query query,String issuerRef,String accountRef){return selection(query,issuerRef,accountRef,false);}
@@ -55,16 +63,16 @@ public class StoredValueIssuerQueryServiceImpl implements StoredValueIssuerQuery
         if(forUse&&unavailable(query.scope(),issuer,false)!=null)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         return new Selected(text(issuer,"issuer_no"),text(issuer,"current_issuer_version_no"),text(issuer,"scope_type"),text(issuer,"scope_no"),text(account,"account_no"),query.customer().customerNo(),query.scope().currency(),number(account,"version"),text(issuer,"name"));
     }
-    public CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueIssuerRecharges.FundedCustomer> funded(ExecutionScope scope,String cursor,int size){
+    public CursorPage<StoredValueIssuerRecharges.FundedCustomer> funded(ExecutionScope scope,String cursor,int size){
         requireEnabled();ContractChecks.require(size>0&&size<=100);
         String filter=EntitlementRecords.digest(db.encode(Arrays.asList(scope.tenantNo(),scope.actorNo(),scope.entityNo(),scope.storeNo(),scope.storeRevision(),scope.brandNo(),scope.brandBindingNo(),scope.brandBindingRevision(),scope.currency())));
         var after=refs.decode(cursor,"SV_FUNDED_CUSTOMERS",scope.tenantNo(),scope.actorNo(),filter);
         var args=new ArrayList<Object>(Arrays.asList(scope.tenantNo(),scope.currency(),scope.storeNo(),scope.entityNo(),scope.brandNo()));
-        String having="";if(after!=null){having=" HAVING (MAX(r.credited_at)<? OR (MAX(r.credited_at)=? AND a.customer_no<?))";var at=java.sql.Timestamp.from(Instant.ofEpochMilli(after.occurredAtMillis()));args.add(at);args.add(at);args.add(after.sortKey());}args.add(size+1);
+        String having="";if(after!=null){having=" HAVING (MAX(r.credited_at)<? OR (MAX(r.credited_at)=? AND a.customer_no<?))";var at=Timestamp.from(Instant.ofEpochMilli(after.occurredAtMillis()));args.add(at);args.add(at);args.add(after.sortKey());}args.add(size+1);
         var rows=db.rows("SELECT a.customer_no,MAX(r.credited_at) AS last_recharge_at FROM sv_account a JOIN sv_lot l ON CAST(l.tenant_no AS BINARY(256))=CAST(a.tenant_no AS BINARY(256)) AND CAST(l.account_no AS BINARY(256))=CAST(a.account_no AS BINARY(256)) AND l.deleted=0 JOIN sv_recharge r ON CAST(r.tenant_no AS BINARY(256))=CAST(l.tenant_no AS BINARY(256)) AND CAST(r.recharge_no AS BINARY(256))=CAST(l.recharge_no AS BINARY(256)) AND r.status='CREDITED' AND r.deleted=0 LEFT JOIN sv_issuer i ON CAST(i.tenant_no AS BINARY(256))=CAST(a.tenant_no AS BINARY(256)) AND CAST(i.issuer_no AS BINARY(256))=CAST(a.issuer_no AS BINARY(256)) AND i.deleted=0 WHERE a.tenant_no=? AND a.currency=? AND a.deleted=0 AND a.customer_no IS NOT NULL AND ((a.store_no=? AND a.entity_no=? AND (i.issuer_no IS NULL OR i.scope_type='STORE')) OR (i.scope_type='BRAND' AND i.scope_no=? AND a.store_no IS NULL)) GROUP BY a.customer_no"+having+" ORDER BY last_recharge_at DESC,a.customer_no DESC LIMIT ?",args.toArray());
         boolean more=rows.size()>size;var shown=rows.subList(0,Math.min(rows.size(),size));String next=null;
         if(more){var last=shown.getLast();next=refs.encode("SV_FUNDED_CUSTOMERS",scope.tenantNo(),scope.actorNo(),filter,instant(last.get("last_recharge_at")).toEpochMilli(),text(last,"customer_no"));}
-        return new CursorPage<>(shown.stream().map(r->new ai.neargo.shop.spi.storedvalue.StoredValueIssuerRecharges.FundedCustomer(text(r,"customer_no"),instant(r.get("last_recharge_at")))).toList(),next);
+        return new CursorPage<>(shown.stream().map(r->new StoredValueIssuerRecharges.FundedCustomer(text(r,"customer_no"),instant(r.get("last_recharge_at")))).toList(),next);
     }
     private AvailableAccount option(Query query,Map<String,Object> issuer){
         var account=wallet(query,issuer);var s=query.scope();String no=text(issuer,"issuer_no");String filters=filter(query);long at=Instant.now().toEpochMilli();
@@ -89,7 +97,7 @@ public class StoredValueIssuerQueryServiceImpl implements StoredValueIssuerQuery
         if("BRAND".equals(type)&&!brandEnabled)return "BRAND_EXECUTION_DISABLED";
         if(!"ISSUER".equals(text(issuer,"write_mode")))return "ISSUER_NOT_READY";
         if(!(issue?"ACTIVE".equals(text(issuer,"status")):Set.of("ACTIVE","ISSUE_STOPPED").contains(text(issuer,"status"))))return "ISSUER_INACTIVE";
-        if(!crossEntityEnabled&&!s.entityNo().equals(text(issuer,"settlement_entity_no")))return "CROSS_ENTITY_SETTLEMENT_UNAVAILABLE";
+        if(!s.entityNo().equals(text(issuer,"settlement_entity_no"))&&(!crossEntityEnabled||s.coreFinanceProtocol()<2||financialReadiness==null||!financialReadiness.capability().ready()))return "CROSS_ENTITY_SETTLEMENT_UNAVAILABLE";
         var access=db.one("SELECT * FROM sv_issuer_store_access WHERE tenant_no=? AND issuer_no=? AND store_no=? AND deleted=0",s.tenantNo(),text(issuer,"issuer_no"),s.storeNo());
         if(access==null||!"ACTIVE".equals(text(access,"status"))||!s.entityNo().equals(text(access,"operating_entity_no"))||number(access,issue?"can_issue":"can_redeem")!=1)return "STORE_NOT_ACCEPTED";
         String binding="STORE".equals(type)?s.storeNo():s.brandBindingNo();long revision="STORE".equals(type)?s.storeRevision():s.brandBindingRevision();
@@ -99,7 +107,7 @@ public class StoredValueIssuerQueryServiceImpl implements StoredValueIssuerQuery
         return null;
     }
     private String filter(Query q){var s=q.scope();return EntitlementRecords.digest(db.encode(Arrays.asList(s.tenantNo(),s.managementNo(),s.entityNo(),s.storeNo(),s.storeRevision(),s.brandNo(),s.brandBindingNo(),s.brandBindingRevision(),s.currency(),q.customer().customerNo(),q.customer().userNo())));}
-    private static Instant instant(Object value){if(value==null)return null;if(value instanceof java.sql.Timestamp time)return time.toInstant();if(value instanceof java.time.LocalDateTime time)return time.toInstant(java.time.ZoneOffset.UTC);if(value instanceof Instant time)return time;throw new IllegalStateException("Unsupported Pay timestamp");}
+    private static Instant instant(Object value){if(value==null)return null;if(value instanceof Timestamp time)return time.toInstant();if(value instanceof LocalDateTime time)return time.toInstant(ZoneOffset.UTC);if(value instanceof Instant time)return time;throw new IllegalStateException("Unsupported Pay timestamp");}
     private void requireEnabled(){if(!enabled)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);}
     private static void notFound(){throw BizException.of(ErrorCode.NOT_FOUND);}
 }

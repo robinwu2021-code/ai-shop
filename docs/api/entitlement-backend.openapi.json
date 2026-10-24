@@ -300,6 +300,84 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.entitlement.EntitlementQueryPort$ActivationQuote"
       },
+      "ActivityAttribution_2e1299c728": {
+        "properties": {
+          "activityNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "consumedBonusMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "consumedPrincipalMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "creditedBonusMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "creditedPaidMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "customerCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rechargeCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "releaseNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "remainingMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "sourceKind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "usageCount": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueReports$ActivityAttribution"
+      },
       "ActivityView_976c03ce3f": {
         "properties": {
           "activityNo": {
@@ -359,6 +437,50 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.promotion.dto.UnifiedActivityViews$ActivityView"
+      },
+      "AdjustmentRequest_b454a06280": {
+        "properties": {
+          "clearingNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedRevision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "managementNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "payableDeltaMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueSettlementController$AdjustmentRequest"
       },
       "AllowanceView_b79b036036": {
         "properties": {
@@ -915,6 +1037,188 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.promotion.dto.UnifiedActivityDefinition$Benefit"
+      },
+      "Bill_e2a68c745f": {
+        "properties": {
+          "billKind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "billNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bonusMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "confirmedReceiptMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "disputeNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "issuerNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "payableMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "payeeEntityNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "payeeReconciledBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "payerEntityNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "payerReconciledBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "periodFrom": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "periodTo": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "principalMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "registeredPaymentMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "sourceCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "sourceWatermark": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueSettlements$Bill"
       },
       "BrandScope_62643c2254": {
         "properties": {
@@ -1828,6 +2132,38 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValuePlans$Create"
       },
+      "CursorPage_14bc16421b": {
+        "properties": {
+          "hasMore": {
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "records": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Item_27910b9126"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueSettlements$Item>"
+      },
       "CursorPage_14be5c49d7": {
         "properties": {
           "hasMore": {
@@ -1988,6 +2324,38 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValuePlans$View>"
       },
+      "CursorPage_28f323a6a1": {
+        "properties": {
+          "hasMore": {
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "records": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ActivityAttribution_2e1299c728"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueReports$ActivityAttribution>"
+      },
       "CursorPage_47cc766c65": {
         "properties": {
           "hasMore": {
@@ -2051,6 +2419,166 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.entitlement.EntitlementQueryPort$UsageItem>"
+      },
+      "CursorPage_6bc2365174": {
+        "properties": {
+          "hasMore": {
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "records": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StoreAttribution_e0264f81ad"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueReports$StoreAttribution>"
+      },
+      "CursorPage_6e12ae965e": {
+        "properties": {
+          "hasMore": {
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "records": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Bill_e2a68c745f"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueSettlements$Bill>"
+      },
+      "CursorPage_759025f9f2": {
+        "properties": {
+          "hasMore": {
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "records": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Event_649a8e101d"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueSettlements$Event>"
+      },
+      "CursorPage_7a0ddda51a": {
+        "properties": {
+          "hasMore": {
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "records": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Payment_5ace4cad3b"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueSettlements$Payment>"
+      },
+      "CursorPage_fd3618ac9b": {
+        "properties": {
+          "hasMore": {
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "records": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Summary_6d22377cfc"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.common.CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueReports$Summary>"
       },
       "CustomerReference_0a9cd90168": {
         "properties": {
@@ -2183,6 +2711,46 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.pay.entitlement.dto.ExceptionViews$DeadLetter"
+      },
+      "DecisionRequest_c3bf162619": {
+        "properties": {
+          "expectedRevision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "managementNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "side": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueSettlementController$DecisionRequest"
       },
       "DeliveryEvidence_86f5e63f74": {
         "properties": {
@@ -3009,6 +3577,67 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.entitlement.EntitlementQueryPort$EntitlementItem"
       },
+      "Event_649a8e101d": {
+        "properties": {
+          "actorNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "billRevision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "eventNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "occurredAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueSettlements$Event"
+      },
       "Evidence_3fa6c24df7": {
         "properties": {
           "delivery": {
@@ -3278,6 +3907,87 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.pay.entitlement.dto.LifecycleViews$FreezeView"
       },
+      "Generated_e7755cd392": {
+        "properties": {
+          "bills": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Bill_e2a68c745f"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceWatermark": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueSettlements$Generated"
+      },
+      "GenerationRequest_e9bb28a28f": {
+        "properties": {
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "issuerNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "managementNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "periodFrom": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "periodTo": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueSettlementController$GenerationRequest"
+      },
       "InAppLogVO_902265f2e5": {
         "properties": {
           "at": {
@@ -3545,6 +4255,109 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.pay.entitlement.dto.IssueBatchViews$Item"
+      },
+      "Item_27910b9126": {
+        "properties": {
+          "amountMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "bonusMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "carriedForward": {
+            "type": "boolean"
+          },
+          "clearingNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entryType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "itemNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "occurredAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "originalClearingNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "postedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "principalMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "rechargeStoreNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "redemptionStoreNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueSettlements$Item"
       },
       "Item_c3bc12262d": {
         "properties": {
@@ -4350,6 +5163,180 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.common.PageData<ai.neargo.shop.paybridge.dto.StoredValueCustomerViews$Candidate>"
       },
+      "PaymentRequest_01f1aca0c8": {
+        "properties": {
+          "amountMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "evidenceRefs": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedRevision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "managementNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "paidAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "receiptReference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueSettlementController$PaymentRequest"
+      },
+      "Payment_5ace4cad3b": {
+        "properties": {
+          "amountMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "billNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "paidAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "paymentNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "receivedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "receivedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "registeredBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueSettlements$Payment"
+      },
       "Payment_e2dd0dd6c5": {
         "properties": {
           "amountMinor": {
@@ -4399,6 +5386,34 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.paybridge.dto.EntitlementServiceViews$Payment"
+      },
+      "Period_f60d6a65af": {
+        "properties": {
+          "from": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueReports$Period"
       },
       "PolicyRequest_e33b6348d7": {
         "properties": {
@@ -5225,6 +6240,37 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.entitlement.EntitlementUsePort$QuoteView"
       },
+      "ReceiptRequest_68759fad4c": {
+        "properties": {
+          "expectedRevision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "managementNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "receivedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueSettlementController$ReceiptRequest"
+      },
       "ReceiveRequest_5e3b67ab7f": {
         "properties": {
           "confirmationNote": {
@@ -5758,6 +6804,75 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueMigrationController$Request"
       },
+      "ResolutionRequest_4bd63edc25": {
+        "properties": {
+          "decision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "disputeNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedRevision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "managementNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueSettlementController$ResolutionRequest"
+      },
+      "Resolution_bcc39e183b": {
+        "properties": {
+          "found": {
+            "type": "boolean"
+          },
+          "payment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Payment_5ace4cad3b"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueFinance$Resolution"
+      },
       "ResolveView_e64f88b202": {
         "properties": {
           "found": {
@@ -5776,6 +6891,72 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValuePlanRechargeController$ResolveView"
+      },
+      "Resource_6ac0f76da4": {
+        "properties": {
+          "businessTimeZone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "issuerNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scopeNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scopeType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueFinance$Resource"
       },
       "Route_2dd9a77067": {
         "properties": {
@@ -6751,6 +7932,60 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValuePlans$Status"
       },
+      "StoreAttribution_e0264f81ad": {
+        "properties": {
+          "consumedMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "creditedBonusMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "creditedPaidMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "customerCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "payableMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "rechargeCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "storeName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "storeNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "usageCount": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueReports$StoreAttribution"
+      },
       "StoreHeader_90b0bbcc79": {
         "properties": {
           "businessTimeZone": {
@@ -7469,6 +8704,121 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.portal.biz.BizEntitlementUseController$SubmitRequest"
+      },
+      "Summary_6d22377cfc": {
+        "properties": {
+          "asOf": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "closingMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "consumedMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "creditedBonusMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "creditedPaidMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "customerCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "heldMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "issuerNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "openingMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "payableMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Period_f60d6a65af"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rechargeCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "reversedMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "scopeType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceWatermark": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "usageCount": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueReports$Summary"
       },
       "Summary_c03e4bd8d8": {
         "properties": {
@@ -8728,6 +10078,36 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueIssuers$View"
+      },
+      "VoidRequest_ecea688502": {
+        "properties": {
+          "expectedRevision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "managementNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueSettlementController$VoidRequest"
       }
     },
     "securitySchemes": {
@@ -11600,6 +12980,435 @@
         "x-permission-expression": "@managementAccess.authenticated()"
       }
     },
+    "/biz/management/brands/{brandNo}/stored-value/store-breakdown": {
+      "get": {
+        "operationId": "BizStoredValueReportController_stores",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brandNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "managementNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "currency",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "startDate",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "activityNo",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/CursorPage_6bc2365174"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/brands/{brandNo}/stored-value/summary": {
+      "get": {
+        "operationId": "BizStoredValueReportController_brand",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brandNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "managementNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "currency",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "startDate",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "activityNo",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Summary_6d22377cfc"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/activities/{activityNo}/summary": {
+      "get": {
+        "operationId": "BizStoredValueReportController_activity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "activityNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "managementNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "issuerNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "currency",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "startDate",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/CursorPage_28f323a6a1"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/financial-resources": {
+      "get": {
+        "operationId": "BizStoredValueSettlementController_resources",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "managementNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scopeType",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "$ref": "#/components/schemas/Resource_6ac0f76da4"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
     "/biz/management/stored-value/issuers/{issuerNo}": {
       "get": {
         "operationId": "BizStoredValueIssuerController_issuer",
@@ -11872,6 +13681,1314 @@
                       "anyOf": [
                         {
                           "$ref": "#/components/schemas/MaintenanceResult_15d8775d82"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/settlement-bills": {
+      "get": {
+        "operationId": "BizStoredValueSettlementController_bills",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "managementNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scopeType",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "issuerNo",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "currency",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "periodFrom",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "periodTo",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/CursorPage_6e12ae965e"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/settlement-bills/generations": {
+      "post": {
+        "operationId": "BizStoredValueSettlementController_generate",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerationRequest_e9bb28a28f"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Generated_e7755cd392"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/settlement-bills/{billNo}": {
+      "get": {
+        "operationId": "BizStoredValueSettlementController_detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "billNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "managementNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Bill_e2a68c745f"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/settlement-bills/{billNo}/adjustments": {
+      "post": {
+        "operationId": "BizStoredValueSettlementController_adjust",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "billNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustmentRequest_b454a06280"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Bill_e2a68c745f"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/settlement-bills/{billNo}/dispute-resolutions": {
+      "post": {
+        "operationId": "BizStoredValueSettlementController_resolveDispute",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "billNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolutionRequest_4bd63edc25"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Bill_e2a68c745f"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/settlement-bills/{billNo}/disputes": {
+      "post": {
+        "operationId": "BizStoredValueSettlementController_dispute",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "billNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRequest_c3bf162619"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Bill_e2a68c745f"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/settlement-bills/{billNo}/events": {
+      "get": {
+        "operationId": "BizStoredValueSettlementController_events",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "billNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "managementNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/CursorPage_759025f9f2"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/settlement-bills/{billNo}/items": {
+      "get": {
+        "operationId": "BizStoredValueSettlementController_items",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "billNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "managementNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/CursorPage_14bc16421b"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/settlement-bills/{billNo}/payment-resolutions": {
+      "get": {
+        "operationId": "BizStoredValueSettlementController_resolvePayment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "billNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "managementNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "commandKey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Resolution_bcc39e183b"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/settlement-bills/{billNo}/payments": {
+      "get": {
+        "operationId": "BizStoredValueSettlementController_payments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "billNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "managementNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/CursorPage_7a0ddda51a"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      },
+      "post": {
+        "operationId": "BizStoredValueSettlementController_register",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "billNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentRequest_01f1aca0c8"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Payment_5ace4cad3b"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/settlement-bills/{billNo}/reconciliation-confirmations": {
+      "post": {
+        "operationId": "BizStoredValueSettlementController_reconcile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "billNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRequest_c3bf162619"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Bill_e2a68c745f"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/settlement-payments/{paymentNo}/receipt-confirmations": {
+      "post": {
+        "operationId": "BizStoredValueSettlementController_confirm",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "paymentNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptRequest_68759fad4c"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Payment_5ace4cad3b"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/settlement-payments/{paymentNo}/voids": {
+      "post": {
+        "operationId": "BizStoredValueSettlementController_voidPayment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "paymentNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoidRequest_ecea688502"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Payment_5ace4cad3b"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
+      }
+    },
+    "/biz/management/stored-value/store-issuer-summary": {
+      "get": {
+        "operationId": "BizStoredValueReportController_localIssuers",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "managementNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "currency",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "startDate",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/CursorPage_fd3618ac9b"
                         },
                         {
                           "type": "null"
@@ -14692,6 +17809,112 @@
           "biz"
         ],
         "x-permission-expression": "@perm.canBiz('pay:sv:account:read')"
+      }
+    },
+    "/biz/stores/{storeNo}/stored-value/store-summary": {
+      "get": {
+        "operationId": "BizStoredValueReportController_store",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "managementNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "currency",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "startDate",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "activityNo",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Summary_6d22377cfc"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@managementAccess.authenticated()"
       }
     },
     "/mp/entitlement-claims": {

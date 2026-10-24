@@ -19,6 +19,8 @@ public enum DocumentType {
     TRADE_INVOICE_REQUEST("IRQ", DocumentOwner.CORE), WITHDRAWAL("WD", DocumentOwner.PAY),
     SETTLEMENT_BATCH("STB", DocumentOwner.PAY), SETTLEMENT_BILL("STS", DocumentOwner.PAY),
     SETTLEMENT_INVOICE_REQUEST("SIR", DocumentOwner.PAY),
+    SV_SETTLEMENT_BILL("VSB", DocumentOwner.PAY), SV_SETTLEMENT_PAYMENT("VSP", DocumentOwner.PAY),
+    SV_SETTLEMENT_EVENT("VSE", DocumentOwner.PAY),
     BRAND_CHANGE("BRC", DocumentOwner.CORE);
 
     private final String prefix;
