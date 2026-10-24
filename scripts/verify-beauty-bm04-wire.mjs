@@ -32,7 +32,11 @@ const approved = {
       'openAliasRaceAcceptsEitherWinnerAndLegacyRowsStayOriginal'],
     ReceptionBusinessIT: [],
     ServiceSubmissionIT: ['absentFindAfterQuoteFencesKnownBindingTicketAndEndsLease',
-      'postCheckoutClaimedGuestAbsencePropagatesWithoutAvailabilityCompletion'],
+      'postCheckoutClaimedGuestAbsencePropagatesWithoutAvailabilityCompletion',
+      'concurrentSameEndpointKeyReplaysOneCommittedSubmission',
+      'concurrentChangedEndpointPayloadHasOneWinner',
+      'concurrentDerivedActionsShareOnePermanentEndpointKey',
+      'crossActionRaceRetainsEitherWinnersImmutableReceipt'],
     WorkOrderBillIT: ['ownerAuthorizationFailureIsNotPartialFinancialAvailability'],
     ServiceSourceObservationIT: []
   }

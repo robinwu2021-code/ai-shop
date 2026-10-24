@@ -7,6 +7,7 @@ import ai.neargo.shop.beauty.dto.AppointmentItemReq;
 import ai.neargo.shop.beauty.dto.ClaimGuestReq;
 import ai.neargo.shop.beauty.dto.OpenWorkOrderReq;
 import ai.neargo.shop.beauty.dto.RecoverSubmissionReq;
+import ai.neargo.shop.beauty.dto.ServiceSubmissionVO;
 import ai.neargo.shop.beauty.dto.SubmitServicesReq;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.service.GuestRegistrationService;
@@ -19,6 +20,7 @@ import ai.neargo.shop.beauty.service.impl.ServiceSourceObservation;
 import ai.neargo.shop.beauty.service.impl.ServiceSubmissionServiceImpl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.member.GuestRegistrationPort;
 import ai.neargo.shop.spi.trade.CheckoutPort;
 
@@ -26,6 +28,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.context.ApplicationContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -37,6 +40,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -303,7 +308,9 @@ class ServiceSubmissionIT extends SourceFixture {
                                                                                                     "A",
                                                                                                     "operator"));
                                                                             start.await();
-                                                                            String taskNo = root.taskNos().getFirst();
+                                                                            String taskNo =
+                                                                                    root.taskNos()
+                                                                                            .getFirst();
                                                                             try {
                                                                                 return service.submitForWorkOrder(
                                                                                                 "E",
@@ -798,113 +805,321 @@ class ServiceSubmissionIT extends SourceFixture {
         raceEndpointKey(true, false);
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void crossActionRaceRetainsEitherWinnersImmutableReceipt(boolean addWins) {
+        raceEndpointKey(true, true, addWins ? 1 : 0);
+    }
+
     private void raceEndpointKey(boolean changed, boolean added) {
-        business()
-                .run(
-                        context -> {
-                            var root = open(context, 2, "OPEN");
-                            var service = context.getBean(ServiceSubmissionService.class);
-                            var requests =
-                                    List.of(
-                                            selection(root, root.taskNos().getFirst()),
-                                            selection(
-                                                    root,
-                                                    changed
-                                                            ? root.taskNos().getLast()
-                                                            : root.taskNos().getFirst()));
-                            if (added) {
-                                String definition =
-                                        sql.queryForObject(
-                                                "SELECT definition_version_no FROM bty_service_task"
-                                                        + " LIMIT 1",
-                                                String.class);
-                                requests =
-                                        List.of(
-                                                requests.getFirst(),
-                                                new SubmitServicesReq(
-                                                        0,
-                                                        1,
-                                                        List.of(),
-                                                        List.of(
-                                                                new SubmitServicesReq.AddedItem(
-                                                                        "ADD",
-                                                                        "SKU",
-                                                                        definition,
-                                                                        1)),
-                                                        requests.getLast().source()));
-                            }
-                            var arrived = new CountDownLatch(2);
-                            var calls = new AtomicInteger();
-                            customerResolution =
-                                    () -> {
-                                        if (calls.incrementAndGet() > 2) {
-                                            return;
-                                        }
-                                        arrived.countDown();
-                                        try {
-                                            assertThat(arrived.await(10, TimeUnit.SECONDS))
-                                                    .isTrue();
-                                        } catch (InterruptedException failure) {
-                                            throw new AssertionError(failure);
-                                        }
-                                    };
-                            try (var executor = Executors.newFixedThreadPool(2)) {
-                                var futures =
-                                        requests.stream()
-                                                .map(
-                                                        request ->
-                                                                executor.submit(
-                                                                        () -> {
-                                                                            login(
-                                                                                    LoginUser
-                                                                                            .merchant(
-                                                                                                    "A",
-                                                                                                    "operator"));
-                                                                            try {
-                                                                                return service.submitForWorkOrder(
-                                                                                                "E",
-                                                                                                "S",
-                                                                                                "A",
-                                                                                                root
-                                                                                                        .workOrderNo(),
-                                                                                                request,
-                                                                                                "RACING")
-                                                                                        .submissionNo();
-                                                                            } catch (
-                                                                                    BizException
-                                                                                            conflict) {
-                                                                                return "CONFLICT";
-                                                                            } finally {
-                                                                                SecurityContextHolder
-                                                                                        .clearContext();
-                                                                            }
-                                                                        }))
-                                                .toList();
-                                var results = new ArrayList<String>();
-                                for (var future : futures) {
-                                    try {
-                                        results.add(future.get(25, TimeUnit.SECONDS));
-                                    } catch (Exception failure) {
-                                        throw new AssertionError(failure);
-                                    }
-                                }
-                                if (changed) {
-                                    assertThat(results.stream().filter("CONFLICT"::equals).count())
-                                            .isOne();
-                                } else {
-                                    assertThat(results).doesNotContain("CONFLICT");
-                                    assertThat(results.get(0)).isEqualTo(results.get(1));
-                                }
-                                assertThat(
-                                                sql.queryForObject(
-                                                        "SELECT COUNT(*) FROM"
-                                                                + " bty_service_submission WHERE"
-                                                                + " action='SUBMIT_SOURCE'",
-                                                        Integer.class))
-                                        .isOne();
-                                assertThat(prepares).hasValue(1);
-                            }
-                        });
+        raceEndpointKey(changed, added, -1);
+    }
+
+    private record RaceResult(int index, ServiceSubmissionVO receipt, BizException failure) {}
+
+    private void raceEndpointKey(boolean changed, boolean added, int firstRequest) {
+        business().run(context -> raceEndpointKey(context, changed, added, firstRequest));
+    }
+
+    /** Both arrivals race freely unless a directed case explicitly holds the second request. */
+    private void raceEndpointKey(
+            ApplicationContext context, boolean changed, boolean added, int firstRequest) {
+        var root = open(context, 2, "OPEN");
+        var service = context.getBean(ServiceSubmissionService.class);
+        var submit = selection(root, root.taskNos().getFirst());
+        var other = selection(root, changed ? root.taskNos().getLast() : root.taskNos().getFirst());
+        if (added) {
+            String definition =
+                    sql.queryForObject(
+                            "SELECT definition_version_no FROM bty_service_task LIMIT 1",
+                            String.class);
+            other =
+                    new SubmitServicesReq(
+                            0,
+                            1,
+                            List.of(),
+                            List.of(new SubmitServicesReq.AddedItem("ADD", "SKU", definition, 1)),
+                            other.source());
+        }
+        var requests = List.of(submit, other);
+        String namespace =
+                IdempotencyScope.requestHash(
+                        "BEAUTY_SUBMISSION_V1",
+                        "MAIN",
+                        "E",
+                        "S",
+                        "MERCHANT",
+                        "MCH",
+                        "A",
+                        "BAPI-056",
+                        IdempotencyScope.requestHash("RACING"));
+        var arrived = new CountDownLatch(2);
+        var accepted = new CountDownLatch(1);
+        var calls = new AtomicInteger();
+        var requestIndex = new ThreadLocal<Integer>();
+        customerResolution =
+                () -> {
+                    if (calls.incrementAndGet() > 2) {
+                        return;
+                    }
+                    arrived.countDown();
+                    awaitRace(arrived);
+                    if (firstRequest >= 0 && requestIndex.get() != firstRequest) {
+                        awaitRace(accepted);
+                    }
+                };
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var futures =
+                    List.of(0, 1).stream()
+                            .map(
+                                    index ->
+                                            executor.submit(
+                                                    () -> {
+                                                        login(LoginUser.merchant("A", "operator"));
+                                                        requestIndex.set(index);
+                                                        try {
+                                                            var receipt =
+                                                                    service.submitForWorkOrder(
+                                                                            "E",
+                                                                            "S",
+                                                                            "A",
+                                                                            root.workOrderNo(),
+                                                                            requests.get(index),
+                                                                            "RACING");
+                                                            return new RaceResult(
+                                                                    index, receipt, null);
+                                                        } catch (BizException failure) {
+                                                            return new RaceResult(
+                                                                    index, null, failure);
+                                                        } finally {
+                                                            if (index == firstRequest) {
+                                                                accepted.countDown();
+                                                            }
+                                                            requestIndex.remove();
+                                                            SecurityContextHolder.clearContext();
+                                                        }
+                                                    }))
+                            .toList();
+            var results = new ArrayList<RaceResult>();
+            for (var future : futures) {
+                try {
+                    results.add(future.get(25, TimeUnit.SECONDS));
+                } catch (Exception failure) {
+                    throw new AssertionError(failure);
+                }
+            }
+            var successes = results.stream().filter(result -> result.failure() == null).toList();
+            var failures = results.stream().filter(result -> result.failure() != null).toList();
+            assertThat(successes).hasSize(changed ? 1 : 2);
+            assertThat(failures).hasSize(changed ? 1 : 0);
+            failures.forEach(
+                    result ->
+                            assertThat(result.failure().errorCode()).isEqualTo(ErrorCode.CONFLICT));
+            var winner = successes.getFirst();
+            if (firstRequest >= 0) {
+                assertThat(winner.index()).isEqualTo(firstRequest);
+            }
+            var original = winner.receipt();
+            successes.forEach(
+                    result -> {
+                        assertThat(result.receipt().submissionNo())
+                                .isEqualTo(original.submissionNo());
+                        assertThat(result.receipt().action()).isEqualTo(original.action());
+                    });
+            var request = requests.get(winner.index());
+            String action = request.additions().isEmpty() ? "SUBMIT_SOURCE" : "ADD_SOURCE";
+            assertThat(original.action()).isEqualTo(action);
+            assertThat(original.workOrderNo()).isEqualTo(root.workOrderNo());
+            assertThat(original.originalScopeRevision()).isEqualTo(1);
+            assertThat(original.targetScopeRevision())
+                    .isEqualTo(action.equals("ADD_SOURCE") ? 2 : 1);
+            String payload =
+                    IdempotencyScope.requestHash(
+                            root.workOrderNo(), json.writeValueAsString(request));
+            var rows =
+                    sql.queryForList(
+                            "SELECT * FROM bty_service_submission WHERE entity_no='E' AND"
+                                    + " store_no='S' AND work_order_no=? AND request_key_hash=? AND"
+                                    + " action IN ('SUBMIT_SOURCE','ADD_SOURCE')",
+                            root.workOrderNo(),
+                            namespace);
+            assertThat(rows).hasSize(1);
+            var row = rows.getFirst();
+            assertThat(row)
+                    .containsEntry("submission_no", original.submissionNo())
+                    .containsEntry("action", action)
+                    .containsEntry("request_key_hash", namespace)
+                    .containsEntry("payload_hash", payload);
+            var receipts =
+                    sql.queryForList(
+                            "SELECT * FROM bty_action_log WHERE entity_no='E' AND store_no='S' AND"
+                                    + " action='SOURCE_SUBMITTED' AND request_ref=?",
+                            namespace);
+            assertThat(receipts).hasSize(1);
+            var receipt = receipts.getFirst();
+            assertThat(receipt)
+                    .containsEntry("aggregate_type", "BEAUTY_SOURCE_SUBMISSION")
+                    .containsEntry("aggregate_no", original.submissionNo())
+                    .containsEntry("operator_ref", "A")
+                    .containsEntry("action_no", "BTSK" + namespace.substring(0, 28));
+            assertThat(json.readTree((String) receipt.get("safe_snapshot")))
+                    .isEqualTo(
+                            json.valueToTree(
+                                    Map.of(
+                                            "schemaVersion",
+                                            1,
+                                            "namespace",
+                                            namespace,
+                                            "payload",
+                                            payload,
+                                            "workOrderNo",
+                                            root.workOrderNo(),
+                                            "submissionNo",
+                                            original.submissionNo())));
+            var command =
+                    json.readValue(
+                            (String) row.get("frozen_command"),
+                            ServiceSubmissionServiceImpl.Command.class);
+            assertThat(command.namespaceHash()).isEqualTo(namespace);
+            assertThat(command.keyHash()).isEqualTo(IdempotencyScope.requestHash("RACING"));
+            assertThat(command.tasks()).hasSize(1);
+            var task = command.tasks().getFirst();
+            assertThat(task.skuNo()).isEqualTo("SKU");
+            assertThat(task.qty()).isEqualByComparingTo("1");
+            assertThat(task.selectionRef())
+                    .isEqualTo(
+                            action.equals("ADD_SOURCE")
+                                    ? "ADD"
+                                    : request.tasks().getFirst().taskNo());
+            assertThat(original.tasks())
+                    .extracting(item -> item.taskNo())
+                    .containsExactly(task.taskNo());
+            if (action.equals("ADD_SOURCE")) {
+                assertThat(root.taskNos()).doesNotContain(task.taskNo());
+                assertThat(task.definitionVersionNo())
+                        .isEqualTo(request.additions().getFirst().definitionVersionNo());
+            } else {
+                assertThat(task.taskNo()).isEqualTo(request.tasks().getFirst().taskNo());
+            }
+            assertThat(
+                            sql.queryForObject(
+                                    "SELECT COUNT(*) FROM bty_service_task t JOIN bty_work_order w"
+                                        + " ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no"
+                                        + " AND w.work_order_no=t.work_order_no WHERE"
+                                        + " t.entity_no='E' AND w.store_no='S' AND"
+                                        + " t.work_order_no=?",
+                                    Integer.class,
+                                    root.workOrderNo()))
+                    .isEqualTo(action.equals("ADD_SOURCE") ? 3 : 2);
+            assertThat(prepares).hasValue(1);
+            assertThat(prepared.operation().operationNo()).isEqualTo(original.submissionNo());
+            assertThat(prepared.lines()).containsExactlyElementsOf(command.lines());
+            assertThat(prepared.lines()).hasSize(1);
+            assertThat(prepared.lines().getFirst().clientLineRef()).isEqualTo(task.clientLineRef());
+            assertThat(prepared.lines().getFirst().skuNo()).isEqualTo("SKU");
+            assertThat(prepared.lines().getFirst().quantity()).isOne();
+            assertThat(created).isEmpty();
+            assertThat(sourceFacts).isEmpty();
+            assertThat(quotes).containsOnlyKeys(original.checkoutOperationNo());
+            assertThat(original.quote()).isEqualTo(quotes.get(original.checkoutOperationNo()));
+            var preparedBefore = prepared;
+            var quotesBefore = Map.copyOf(quotes);
+            var sourcesBefore = Map.copyOf(sourceFacts);
+            var createdBefore = Set.copyOf(created);
+            var tasksBefore = sql.queryForList("SELECT * FROM bty_service_task ORDER BY task_no");
+            var submissionsBefore = immutableRaceSubmissions();
+            var observationsBefore =
+                    sql.queryForList("SELECT * FROM bty_source_observation ORDER BY id");
+            var bindingsBefore = sql.queryForList("SELECT * FROM bty_trade_binding ORDER BY id");
+            var allocationsBefore =
+                    sql.queryForList("SELECT * FROM bty_source_allocation_guard ORDER BY id");
+            assertThat(observationsBefore).isEmpty();
+            assertThat(bindingsBefore).isEmpty();
+            assertThat(allocationsBefore).isEmpty();
+            var logsBefore = sql.queryForList("SELECT * FROM bty_action_log ORDER BY action_no");
+            var replay =
+                    service.submitForWorkOrder(
+                            "E", "S", "A", root.workOrderNo(), request, "RACING");
+            var current = service.getSubmission("E", "S", "A", original.submissionNo());
+            assertThat(replay)
+                    .as("winner replay returns the complete current projection")
+                    .isEqualTo(current);
+            assertThat(replay)
+                    .as("only recovery lease revision may advance from the first projection")
+                    .usingRecursiveComparison()
+                    .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                    .ignoringFields("revision")
+                    .isEqualTo(original);
+            assertThat(replay.revision()).isGreaterThanOrEqualTo(original.revision());
+            if (changed) {
+                var loser = requests.get(failures.getFirst().index());
+                var conflict =
+                        Assertions.assertThrows(
+                                BizException.class,
+                                () ->
+                                        service.submitForWorkOrder(
+                                                "E",
+                                                "S",
+                                                "A",
+                                                root.workOrderNo(),
+                                                loser,
+                                                "RACING"));
+                assertThat(conflict.errorCode()).isEqualTo(ErrorCode.CONFLICT);
+            }
+            assertThat(prepares).hasValue(1);
+            assertThat(prepared).isEqualTo(preparedBefore);
+            assertThat(quotes).isEqualTo(quotesBefore);
+            assertThat(sourceFacts).isEqualTo(sourcesBefore);
+            assertThat(created).isEqualTo(createdBefore);
+            assertThat(sql.queryForList("SELECT * FROM bty_service_task ORDER BY task_no"))
+                    .isEqualTo(tasksBefore);
+            assertThat(immutableRaceSubmissions()).isEqualTo(submissionsBefore);
+            assertThat(sql.queryForList("SELECT * FROM bty_source_observation ORDER BY id"))
+                    .isEqualTo(observationsBefore);
+            assertThat(sql.queryForList("SELECT * FROM bty_trade_binding ORDER BY id"))
+                    .isEqualTo(bindingsBefore);
+            assertThat(sql.queryForList("SELECT * FROM bty_source_allocation_guard ORDER BY id"))
+                    .isEqualTo(allocationsBefore);
+            assertThat(
+                            sql.queryForList(
+                                    "SELECT * FROM bty_action_log WHERE entity_no='E' AND"
+                                            + " store_no='S' AND action='SOURCE_SUBMITTED' AND"
+                                            + " request_ref=?",
+                                    namespace))
+                    .as("winner original immutable acceptance receipt survives replay unchanged")
+                    .isEqualTo(receipts);
+            assertThat(sql.queryForList("SELECT * FROM bty_action_log ORDER BY action_no"))
+                    .isEqualTo(logsBefore);
+        } finally {
+            accepted.countDown();
+            executor.shutdownNow();
+            customerResolution = () -> {};
+            try {
+                assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+            } catch (InterruptedException failure) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(failure);
+            }
+        }
+    }
+
+    private static void awaitRace(CountDownLatch latch) {
+        try {
+            assertThat(latch.await(15, TimeUnit.SECONDS))
+                    .as("bounded submission race boundary")
+                    .isTrue();
+        } catch (InterruptedException failure) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(failure);
+        }
+    }
+
+    private List<Map<String, Object>> immutableRaceSubmissions() {
+        return sql.queryForList(
+                "SELECT entity_no, store_no, work_order_no, submission_no, action,"
+                    + " request_key_hash, payload_hash, frozen_command FROM bty_service_submission"
+                    + " ORDER BY submission_no");
     }
 
     @Test
@@ -1097,7 +1312,9 @@ class ServiceSubmissionIT extends SourceFixture {
                                                                                                     "A",
                                                                                                     "operator"));
                                                                             start.await();
-                                                                            String taskNo = root.taskNos().getFirst();
+                                                                            String taskNo =
+                                                                                    root.taskNos()
+                                                                                            .getFirst();
                                                                             try {
                                                                                 return service.submitForWorkOrder(
                                                                                                 "E",
@@ -1188,8 +1405,9 @@ class ServiceSubmissionIT extends SourceFixture {
                             assertThat(rejected.source().lastVerifiedRevision()).isEqualTo(1);
                             assertThat(
                                             sql.queryForObject(
-                                                    "SELECT next_retry_at FROM bty_service_submission"
-                                                        + " WHERE submission_no=?",
+                                                    "SELECT next_retry_at FROM"
+                                                            + " bty_service_submission WHERE"
+                                                            + " submission_no=?",
                                                     Object.class,
                                                     accepted.submissionNo()))
                                     .isNull();
@@ -1450,20 +1668,23 @@ class ServiceSubmissionIT extends SourceFixture {
                             assertThat(denied.errorCode()).isEqualTo(ErrorCode.NOT_FOUND);
                             assertThat(
                                             sql.queryForObject(
-                                                    "SELECT status FROM bty_service_submission WHERE submission_no=?",
+                                                    "SELECT status FROM bty_service_submission"
+                                                            + " WHERE submission_no=?",
                                                     String.class,
                                                     accepted.submissionNo()))
                                     .isEqualTo("RECOVERING");
                             assertThat(
                                             sql.queryForObject(
-                                                    "SELECT failure_code FROM bty_service_submission"
-                                                        + " WHERE submission_no=?",
+                                                    "SELECT failure_code FROM"
+                                                            + " bty_service_submission WHERE"
+                                                            + " submission_no=?",
                                                     String.class,
                                                     accepted.submissionNo()))
                                     .isEqualTo("AWAITING_CUSTOMER");
                             assertThat(
                                             sql.queryForObject(
-                                                    "SELECT version FROM bty_service_submission WHERE submission_no=?",
+                                                    "SELECT version FROM bty_service_submission"
+                                                            + " WHERE submission_no=?",
                                                     Long.class,
                                                     accepted.submissionNo()))
                                     .isEqualTo(accepted.revision() + 1);

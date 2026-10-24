@@ -90,3 +90,28 @@ test('owner mode rejects cross-mode and unknown methods before executable resolu
     assert.doesNotMatch(child.stderr, /ENOENT|docker|limactl/);
   }
 });
+
+const submissionRaces = [
+  'concurrentSameEndpointKeyReplaysOneCommittedSubmission',
+  'concurrentChangedEndpointPayloadHasOneWinner',
+  'concurrentDerivedActionsShareOnePermanentEndpointKey',
+  'crossActionRaceRetainsEitherWinnersImmutableReceipt'
+];
+
+test('submission races allow exact aliases selectors and reject prefixes and cross-mode CLI before resources', () => {
+  assert.deepEqual(validateSelection('aliases', 'ServiceSubmissionIT').selectors, ['ServiceSubmissionIT']);
+  for (const method of submissionRaces) {
+    const selected = 'ServiceSubmissionIT#' + method;
+    assert.deepEqual(validateSelection('aliases', selected).selectors, [selected]);
+    for (const [mode, invalid] of [['aliases', selected + 'Unknown'], ['aliases', selected.slice(0, -1)],
+      ['owners', selected], ['embedded', selected], ['standalone', selected]]) {
+      assert.throws(() => validateSelection(mode, invalid));
+      const child = spawnSync(process.execPath, ['scripts/verify-beauty-bm04-wire.mjs', '--mode=' + mode], {
+        encoding: 'utf8', env: {PATH: '', BEAUTY_BM04_TESTS: invalid}
+      });
+      assert.notEqual(child.status, 0);
+      assert.match(child.stderr, /invalid Task59 selector/);
+      assert.doesNotMatch(child.stderr, /ENOENT|docker|limactl/);
+    }
+  }
+});
