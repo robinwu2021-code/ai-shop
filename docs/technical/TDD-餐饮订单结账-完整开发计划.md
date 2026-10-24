@@ -981,6 +981,8 @@ P5合并兼容收尾收据：支付侧保留101个原P5方法体及全部公开�
 
 Mapper修复最终验证：真实配置解析＋Mapper注册启用/关闭2项通过（`/tmp/food-cloud-mapper-scan-fixed.log`），既有幂等7项通过。新增FoodEmbeddedStartupIT仅在显式disposable环境执行；一次性回环MySQL9.7导入P6仅表结构与Flyway元数据（无业务记录），干净24模块编译后1项真实完整宿主启动通过、0跳过，15个原始餐饮迁移全部执行，目录及唯一幂等Mapper断言通过（`/tmp/food-cloud-native-host-test.log`），仅本次容器已删除。宿主扫描、Mapper owner、自动配置与outbox延迟解析经独立只读审查无新明确阻断。此前空库重放暴露的旧迁移混合方言未扩范围修改；本次不宣称全新MySQL环境初始化兼容或全量业务回归通过。
 
+最终云端发布收据（2026-10-24）：后端运行提交`fe7160c9d2be15e3546d347992a9a47529fcaea3`，由统一分支干净副本以food-embedded打包，MD5 `0f2f623fdbeaaad86b3763dfc20d64d3`。首次迁移和切回validate模式后均核对health=UP及完整gitSha；CORE576、餐饮15个SQL迁移/V15、84张fnb表、同主库共484表，迁移失败记录0；实际JAR包含food-api/core/web三个模块和15个行业迁移。最终配置为enabled=true、deployment=embedded、migration.mode=validate，部署锁已释放。PAY进程PID1129197、启动时间及d4cdc5f49包指纹前后完全一致，受保护接口仍401，未部署或重启PAY；库存开关保留。原配置与完整数据库备份位于`/data/app/ai-shop/backups/food-release-20261024T082338Z-fe7160c9d`，gzip完整读取校验通过，权限受限；两次早期失败均已验证回滚恢复后再修复。实测日志：`/tmp/food-cloud-deploy-final.log`、`/tmp/food-cloud-live-migrated.json`、`/tmp/food-cloud-live-validated.json`、`/tmp/food-cloud-pay-before.txt`与`/tmp/food-cloud-pay-after.txt`。本次按用户要求只测修复相关部分，不宣称全量回归通过；真实收款、厨房打印硬件及门店营业验收不由部署健康检查替代。
+
 ## §3 任务边界及排期方式
 
 共享内核、配置发布、报价持久化、资金/库存合同、餐饮结账、经营凭证各自为可单独评审的工作包，但依上述合同连成一条主线。不要按Controller→Service→Mapper分批开发一堆不可验收空壳。
