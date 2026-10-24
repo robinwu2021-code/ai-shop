@@ -1,0 +1,18 @@
+{
+  "reportSha256": "f60f4520471e84a3823097d729e51863efaa5d6e74b645fdbee9838d0076f100",
+  "manifestSha256": "802ade5bef1eaf056c6449a2e1d7491c29a3df6401f0713407b239905ba6f8d5",
+  "productBytesVerified": 2,
+  "nodeFinal": "19/0/0/0",
+  "newCasesRED": "19tests/16pass/3fail",
+  "r1PrefixPreserved": true,
+  "preMainSourceIdentical": true,
+  "nativeInR2": false,
+  "nativeCheckpoint": "R1 only1/0/0/0; not finalR2 source native rerun",
+  "indexEmpty": true,
+  "productCommit": "15b7143192da05eb6ae3242dffe25049cf685815",
+  "productTree": "425d5e1a944a817baa6e7c33a609af8f0bc0a8a1",
+  "reviewR0Sha256": "fae9afa9595bbbc3b4a29c56a8d1620f6af8078d10a85f6742a9ae4eb6cb1807",
+  "reviewR1Sha256": "0a036bbf73d83f37c0d13fb99f01363ffaedcce8ceee6aeb2b33b2e3e92b1c13",
+  "reviewR2Sha256": "1d41b467b341df6631331bf15c6840380eef5b9a7ea4b69a63bd5914476d6110",
+  "scope": "A2 code phase only; all P1-P4 formal deployment deferred"
+}

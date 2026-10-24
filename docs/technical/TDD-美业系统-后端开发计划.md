@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
+> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
 > **执行方式：** 使用`superpowers:subagent-driven-development`逐任务实施及独立审查，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -788,10 +788,25 @@ A1/A1b产品`94aa791edb445b56bec9bcd348724ecff4ad803a`已通过独立审查；�
 | A2-2 | 每选类本轮fresh、非零零失败/错误/skip XML；每个显式方法与正确class实际出现 | stale/零/skip/错类/缺方法及非零Maven退出均不能假绿，最小消融与恢复 |
 | A2-3 | 密码env-only、同一串行锁、自有UUID创建前记attempt、丢创建响应仍finally清理 | fake effects验证argv不含秘密、只清本UUID及自己锁；安全unit通过后仅1个真实隔离MySQL9.7.2 source smoke |
 
-- [ ] 先安全CLI/受控effect RED，修复后Node GREEN，源方法来源复核。
-- [ ] 最小空值或XML防线消融应红，逐字恢复绿。
-- [ ] 一个既有实际native方法freshXML/归属cleanup验证；不重跑完整业务套件，不执行双进程部署。
-- [ ] 两文件精确差异、独立规格/质量审查与必要复审后提交；剩余60A片继续细化。
+- [x] 先安全CLI/受控effect RED，修复后Node GREEN，源方法来源复核。
+- [x] 最小空值或XML防线消融应红，逐字恢复绿。
+- [x] 一个既有实际native方法freshXML/归属cleanup验证；不重跑完整业务套件，不执行双进程部署。
+- [x] 两文件精确差异、独立规格/质量审查与必要复审后提交；剩余60A片继续细化。
+
+### 2.25 Task60A-A3：跨动作竞争与不可变回执（2026-10-24）
+
+A2代码验收后，按[60A设计A3](../../.superpowers/sdd/beauty-backend/task-60a-design.md)细化档位0测试修复。精确需求、文件、方法、命令与失败边界见[A3 brief](../../.superpowers/sdd/beauty-backend/task-60a-a3-brief.md)。只修改ServiceSubmissionIT及aliases runner/对应Node单测三文件；不改业务Java、公共商品/订单/支付、SQL或权限合同。
+
+| AC | 实施 | 验证 |
+|---|---|---|
+| A3-1 | 保存每个原请求与完整结果，按实际赢家核对SUBMIT_SOURCE或ADD_SOURCE唯一永久提交/参数摘要/原回执 | 原无偏向并发三场景保留；两种定向合法赢家均实际覆盖，输家冲突且无残留添加/来源 |
+| A3-2 | 原请求重放完整回执及不可变接受事实不变，prepare恰好一次 | 不能只比较submissionNo；篡改非编号观察字段必须触发真实比较失败 |
+| A3-3 | aliases仅增加原三race方法和新参数化赢家方法 | Node白名单/非法选择提前拒绝；有限ServiceSubmissionIT原生类，不跑其它业务类/正式部署 |
+
+- [ ] 先定向ADD赢家取得旧固定SUBMIT_SOURCE断言的真实RED，不依赖随机调度。
+- [ ] 最小修复后有限整类GREEN，fresh非零零失败/错误/skip；保留同请求重放和改参冲突。
+- [ ] 旧固定赢家断言及回执字段突变覆盖检查，逐字恢复同selectorGREEN；新改Java按统一规范。
+- [ ] 三文件精确diff、Node安全检查、独立spec+quality及必要复审后提交；部署仍统一后置。
 
 ## §3 数据层之后的业务任务与启动深化
 
@@ -2023,3 +2038,12 @@ V8 已在首次执行前由根独立核对实际文件：4582 字节，SHA256 c5
 产品`94aa791edb445b56bec9bcd348724ecff4ad803a`，17逻辑文件/19路径。JobLock配置同模块迁job.config、两个薄import、Ops正常PathVariable；beauty纳入DOMAINS实际业务域并启用显式presence测试。登记暴露的内部准备辅助类改名AppointmentPreparation，Bean名和业务体逐字保留，仅类型及真实接线/方法设计产物对齐；没有放宽旧规则、造接口或新增业务能力。
 
 HOST34/0失败/0错误/0跳过，含Architecture17、JobTarget7、Endpoint10；SERVER11/0/0/0，含独立关闭、唯一锁Bean/真实锁冲突及core装配。唯一beauty登记消融精确1项失败，逐字恢复同selector1项通过。store/core JAR目标与缓存一致、旧class为0，实际classpath已核；不是native/实际部署结论。独立spec+quality审查Approved，无阻塞，[报告](../../.superpowers/sdd/beauty-backend/task-60a-a1-report.md)/[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a1.md)保留警告与边界。下一片A2修复旧runner，60A整体、BM04统一部署和BM05仍未完成。
+
+
+### 32.11 60A-A2原生付款测试脚本代码验收（2026-10-24）
+
+产品`15b7143192da05eb6ae3242dffe25049cf685815`仅两文件。选择采用有限类/方法名单并保留合法多方法和付款多类语法，非法选择在任何资源effect前拒绝。XML只按真实结构统计用例，注释/CDATA和日志文字不能充当证据；每个选定方法、class、fresh水位与非零零skip均校验。密码经环境变量，串行锁及创建响应丢失后的清理只作用自有UUID。
+
+独立初审两项Important（XML文本假用例、保留报告含临时凭据）经两轮定向修复复审关闭。最终安全单测19/0失败/0错误/0跳过，真实RED与原字节恢复证据保留。报告处理先从streams及所有本次可归属产物收齐凭据，再统一脱敏、全部复读核验后才写证明；失败不虚报安全，保留警告。
+
+R1原生检查点仅指定BeautySourceCheckoutIT一个真实方法1/0/0/0，现场/归档XML及summary已脱敏、统计/用例不变，自有UUID/tmp/锁清理确认。R2只是纯凭据发现顺序修复，以生产main受控effects的19项测试验证，未重复native；不得把R1原生检查点说成最终R2源代码重跑。无Java/SQL/POM变化，也无正式部署。[报告](../../.superpowers/sdd/beauty-backend/task-60a-a2-report.md)、[初审](../../.superpowers/sdd/beauty-backend/review-task-60a-a2.md)、[R1复审](../../.superpowers/sdd/beauty-backend/review-task-60a-a2-r1.md)、[R2复审](../../.superpowers/sdd/beauty-backend/review-task-60a-a2-r2.md)记录边界；既有告警归A11，A3接续。60A整体、BM04部署、BM05及后续P2～P4尚未完成。

@@ -46,3 +46,5 @@ Read-only findings only; no product edits/test execution in this preparation. La
 ## 当前60A实施状态（2026-10-24）
 
 A1/A1b架构已由产品94aa791edb445b56bec9bcd348724ecff4ad803a和review-task-60a-a1.md关闭：HOST34、SERVER11、定向消融/恢复及构件卫生均有真实证据；旧store路径和辅助类名仅保留上文原审计历史。下一片A2仅旧checkout runner+新unit文件，精确要求见task-60a-a2-brief.md。selector/M1竞争、SQL解析/12表/插件SQL、CLAIMED真实REPLACE、权限词条/生成物、M1夹具和告警triage仍按后续片推进，未因A1完成而清零。实际60B统一部署仍最后。
+
+60A-A2 code phase accepted product 15b7143192da05eb6ae3242dffe25049cf685815 after R0/R1/R2 review closure. FinalNode19pass; R1nativeone1/0/0/0 earliercheckpoint; pureR2 discoveryfix no native rerun byrootruling. Own artifacts sanitized/structureunchanged andresourcescleaned. Exact2files/noJavaSQLPOM/deployment. Remaining60A-A3–A11 mustcontinue; main§2.25/A3briefnowreleasedbeforeimplementation.
