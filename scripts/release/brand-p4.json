@@ -13,6 +13,7 @@
   "b-app/src/i18n/locale/ar.ts",
   "b-app/src/i18n/locale/en.ts",
   "b-app/src/i18n/locale/zh-CN.ts",
+  "b-app/src/manifest.json",
   "b-app/src/pages.json",
   "b-app/src/pages/management-grants/index.vue",
   "b-app/src/pages/management/index.vue",
@@ -118,5 +119,6 @@
   "docs/technical/任务表-品牌与门店双线储值-P4开发准备.md",
   "scripts/release/brand-p4.json",
   "scripts/release/brand-p4.mjs",
-  "scripts/release/brand-p4.test.mjs"
+  "scripts/release/brand-p4.test.mjs",
+  "site/lib/site.config.ts"
 ]
