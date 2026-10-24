@@ -97,16 +97,6 @@
     {
       "app": "b-app",
       "method": "POST",
-      "path": "/biz/stored-value/consumptions"
-    },
-    {
-      "app": "b-app",
-      "method": "POST",
-      "path": "/biz/stored-value/consumptions/preview"
-    },
-    {
-      "app": "b-app",
-      "method": "POST",
       "path": "/biz/stored-value/recharges"
     },
     {
@@ -143,16 +133,6 @@
       "app": "c-app",
       "method": "GET",
       "path": "/mp/entitlement-claims/*"
-    },
-    {
-      "app": "c-app",
-      "method": "GET",
-      "path": "/mp/entitlement-service-orders"
-    },
-    {
-      "app": "c-app",
-      "method": "GET",
-      "path": "/mp/entitlement-service-orders/*"
     },
     {
       "app": "c-app",
@@ -208,11 +188,6 @@
       "app": "c-app",
       "method": "POST",
       "path": "/mp/entitlements/*/redeem-codes"
-    },
-    {
-      "app": "c-app",
-      "method": "POST",
-      "path": "/mp/orders/*/entitlement-authorizations"
     },
     {
       "app": "b-app",
