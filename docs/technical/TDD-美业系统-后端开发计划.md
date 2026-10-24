@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5已代码验收，A5b及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
+> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5已代码验收，A5b已按范围验收，A5c报价误连及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
 > **执行方式：** 使用`superpowers:subagent-driven-development`逐任务实施及独立审查，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -854,10 +854,27 @@ A4代码验收后，档位0守卫收尾。唯一产品文件为 packages/shared/
 
 Owned：新scripts/lib/schema-lineage.mjs、scripts/gen-erd.mjs、packages/shared/tests/schema-lineage.test.ts，及既有gen:erd实际改变的tracked db-*.svg和数据库-ER图.md。不是A4六文件的静态白名单；不得扩大DOMAINS/TOPICS或手改产物。测试不再import有生成副作用的CLI；不改A5文件、parser、SQL/known/package。现缺少sv/ent/pay详情域等旧限制保留，不宣称全库图完整。
 
-- [ ] 先记录旧lineage两个真实失败；旧逻辑纯提取后新增行为取得语义RED，不拿缺导出/模块当RED。
-- [ ] 最小实现与独立预期真实关系/字段标记检查；定向及combined entity+lineage GREEN。
-- [ ] voucher错误global、另一多态global、scope/target防线三类最小消融真实RED，逐字恢复最终GREEN。
-- [ ] source冻结后仅gen:erd生成/幂等和HTML检查；独立规格/质量审查及精确提交，无native/部署。
+- [x] 先记录旧lineage两个真实失败；旧逻辑纯提取后新增行为取得语义RED，不拿缺导出/模块当RED。
+- [x] 最小实现与独立预期真实关系/字段标记检查；定向及combined entity+lineage GREEN。
+- [x] voucher错误global、另一多态global、scope/target防线三类最小消融真实RED，逐字恢复最终GREEN。
+- [x] source冻结后仅gen:erd生成/幂等和HTML检查；独立规格/质量审查及精确提交，无native/部署。
+
+### 2.29 Task60A-A5c：报价命名空间血缘修复（2026-10-24）
+
+档位0，针对A5b审查确认的继承Important与同处Minor单独实施，精确要求见[A5c brief](../../.superpowers/sdd/beauty-backend/task-60a-a5c-brief.md)。不以A5b scoped PASS遮盖真实错边。根核对四个quote_no实际表与GroupService/CheckoutService生产写者：营销BizKey.QUOTE与结算CQ属于独立体系。
+
+| AC | 实施 | 验证 |
+|---|---|---|
+| A5c-1 | quote_no取消global，精确四成员/两family owner，未知第五表拒绝 | 实际两条family关系，无根/self/跨族边；toCol/tenant scope |
+| A5c-2 | 精确operation.current_quote_no→checkout quote根 | 实际alias正例；不代替业务冻结revision/hash/caller校验 |
+| A5c-3 | 生成器live54详情表数字移除或按实际派生 | 同一resolver/badge、生成文本/HTML实测、幂等及精确产物清单 |
+
+Owned仅纯lineage模块、原lineage测试、生成器live说明行和其实际变化的既有ER产物。Java/SQL/parser/known/A5登记/域图定义不改。全registry审计不扩入本片。
+
+- [ ] 新实际报价关系/未知成员行为先RED，缺模块等不算。
+- [ ] 最小限定修复后entity+lineage联合GREEN，A5登记SHA不变。
+- [ ] quote_no旧global消融真实RED，逐字恢复最终GREEN，不重复A5b无关消融。
+- [ ] 生成/幂等、实际HTML/文本检查、独立规格质量审查后精确提交；关闭继承Important再进入A6。
 
 ## §3 数据层之后的业务任务与启动深化
 
@@ -2123,3 +2140,13 @@ Node8项通过，最终受影响四selector共5例原生0失败/0错误/0跳过�
 实际旧守卫6项/1失败恰报12缺项；行为测试10项/5失败后最小修复10项通过。仅删sys_outbox_stream消融10项/3失败，逐字恢复同SHA后10项全过。独立规格和质量审查均PASS、无发现，根核对源码/登记差集/恢复/提交内容。初次Vite受限临时文件EPERM另列，后续明确cwd授权重试已解决，不算业务RED。[报告](../../.superpowers/sdd/beauty-backend/task-60a-a5-report.md)、[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a5.md)。
 
 本片不运行schema-lineage或生成器，两项血缘债按A5b精确方案继续，不声称shared整体已通过。无Java/数据库/部署，全部P1～P4后统一部署的顺序保持。
+
+### 32.15 60A-A5b血缘语义与生成物代码验收（2026-10-24）
+
+产品`44fa7f3ce3eed5e36ae2d80d9e7cc9dca345fc2d`抽取纯schema-lineage供真实守卫与ER生成器共用。凭证按积分/储值四条真实关系分开；计划、来源订单、grant、退款执行不再强设全局owner，catalog/tier及支付账号按实际作用域限定，buyer等角色保留真实目标列。审计歧义键的未知新表必须分类，graph/字段badge使用同一resolver，条件路径保留明确说明。
+
+原lineage16项/2失败；旧逻辑提取后的语义RED、修复后定向57项和最终combined67项均有实际输出。voucher全局回退、plan错连、scope剥离分别真实失败，逐字恢复后67项通过。生成器末次仅修Markdown多行/pipe转义，纯resolver与测试字节不变，保留原67证明，不虚称新跑67；生成器本身实际执行及幂等检查覆盖该格式改动。独立审查及根manifest/源码/生成结果核验见[报告](../../.superpowers/sdd/beauty-backend/task-60a-a5b-report.md)、[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a5b.md)。
+
+实际生成输出、精确计数/变更文件及边界以报告和root gate为准；未改DDL/业务Java/A5登记/known或扩大域图。既有DOMAINS缺sv/ent/pay详情等限制保留，关系集合与限定说明已受测试保护。本片不是数据库行完整性或实际部署验收；后续A6～A11、BM05及其余P1～P4继续，正式部署统一后置。
+
+A5b审查另确认继承Important：quote_no使结算报价误连到营销。本范围验收不关闭该问题，已在§2.29单独发布A5c必须修复；同处live54文案Minor同片处理。整体关口仍未准出。

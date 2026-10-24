@@ -1,0 +1,73 @@
+{
+  "base": "74a071a1bf3b345db3522ced15497a6ba74148fd",
+  "files": [
+    {
+      "path": "scripts/lib/schema-lineage.mjs",
+      "bytes": 26048,
+      "sha256": "4071d9e6c2c9e26d02c18c81c1391223754e8644af45f2f6defabc3cbcc6c9e8"
+    },
+    {
+      "path": "scripts/gen-erd.mjs",
+      "bytes": 23359,
+      "sha256": "3aed77acfd0b42da8621a139d3b90bd5327a93239a561bcd2f7dea7d79359e72"
+    },
+    {
+      "path": "packages/shared/tests/schema-lineage.test.ts",
+      "bytes": 18354,
+      "sha256": "3515082fb2a3f59f71225dc759e118199d46bf61750b2e178dc1349a97675d98"
+    },
+    {
+      "path": "docs/technical/diagrams/db-mbr.svg",
+      "bytes": 4924,
+      "sha256": "84352a1a636faea78b0c9e85d1a7b3a666e46dccdc4f27751e18d5be41a1f713"
+    },
+    {
+      "path": "docs/technical/diagrams/db-ord.svg",
+      "bytes": 15204,
+      "sha256": "7b6d6d9e8502e4858ad9537bba5d8da06159ec695bb8e047173b4ad89f237896"
+    },
+    {
+      "path": "docs/technical/diagrams/db-overview.svg",
+      "bytes": 5410,
+      "sha256": "5def814ba9859a2f72724769b19fabe0a17f629c04447ef270f79860dd02e6e6"
+    },
+    {
+      "path": "docs/technical/diagrams/db-pmt.svg",
+      "bytes": 10191,
+      "sha256": "6aad01847ef9d33c68e6762e8b9fc5f4f83af7a88f6af1be165dc1e483c04570"
+    },
+    {
+      "path": "docs/technical/diagrams/db-prd.svg",
+      "bytes": 15794,
+      "sha256": "cecde8491465c2c73528eb7aa7ecbf20ffadd8988236dbabcb6e20f0888e174b"
+    },
+    {
+      "path": "docs/technical/diagrams/db-stl.svg",
+      "bytes": 7935,
+      "sha256": "f51a0ddfe9b4b86f9d3e1bfdca4d8c40aae102171767433b78b7d8bdd60d9e40"
+    },
+    {
+      "path": "docs/technical/reference/\u6570\u636e\u5e93-ER\u56fe.md",
+      "bytes": 64142,
+      "sha256": "607483d5203fc9a4df5c8c5524cb5039982182422e94ebbebc1a0093036d71e0"
+    }
+  ],
+  "productsVerified": 10,
+  "sourceFiles": 3,
+  "generatedChanged": 7,
+  "frozenA5": true,
+  "finalCombined": "67passed on unchanged pure/test bytes before generator-only formatting",
+  "mutationsRestored": 3,
+  "idempotentOutputs": 23,
+  "ignoredHtmlVerified": true,
+  "manifestSha256": "27c6aeda70bb28dd5af1fbe5c6f2f4e56772a42ce3d85b1488cf66059bb6a074",
+  "reportSha256": "1075886580eaf5896283943747575df927b7402253c4863176e4f61166d9f239",
+  "diff": "/tmp/task60a-a5b-review-package-9c6ce011-492e-4ed6-8c9d-988eb3a896cc.diff",
+  "diffSha256": "509a217f4859ac934a08f59a304302d86e1772b426bfcbacc428512cdde87cd8",
+  "diffBytes": 230414,
+  "firstGenerationHashesActualVerified": 24,
+  "productCommit": "44fa7f3ce3eed5e36ae2d80d9e7cc9dca345fc2d",
+  "productTree": "6d4983e22ec8186e03b0ba7ea6ed0b3b303433e3",
+  "reviewSha256": "f3551ddc67ed521b85f40d6d0f8091a5ae8154de151059b83f14da44e09801f5",
+  "inheritedImportant": "OPEN quote_no; mandatory next A5c before wholebranchgate"
+}
