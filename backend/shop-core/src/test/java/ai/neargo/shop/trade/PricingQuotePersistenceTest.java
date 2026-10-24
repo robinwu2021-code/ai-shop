@@ -123,8 +123,8 @@ class PricingQuotePersistenceTest {
         var data = new DriverManagerDataSource(url + "_quote", "root", "");
         jdbc = new JdbcTemplate(data);
         assertThat(jdbc.queryForObject("SELECT VERSION()", String.class)).contains("MariaDB");
-        for (String file : List.of("V546__pricing_configuration_publication.sql", "V550__pricing_quote_snapshots.sql",
-                "V552__pricing_funding_source.sql", "V553__pricing_funding_basis.sql")) {
+        for (String file : List.of("V546__pricing_configuration_publication.sql", "V558__pricing_quote_snapshots.sql",
+                "V560__pricing_funding_source.sql", "V561__pricing_funding_basis.sql")) {
             for (String sql : Files.readString(Path.of("../shop-app/src/main/resources/db/migration/" + file))
                     .replaceAll("(?m)^--[^\\r\\n]*", "").split(";")) {
                 if (!sql.isBlank()) jdbc.execute(sql);

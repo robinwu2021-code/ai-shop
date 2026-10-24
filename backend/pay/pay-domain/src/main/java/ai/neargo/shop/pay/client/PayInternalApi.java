@@ -474,4 +474,24 @@ public interface PayInternalApi {
     StoredValuePort.RechargeView svPlanRechargeCancelCreation(@RequestBody PayStoredValuePlanRechargeRequests.Replay r);
     @PostExchange(PayInternalPaths.SV_ORGANIZATION_IMPACT)
     ai.neargo.shop.spi.storedvalue.StoredValueOrganizationImpactPort.Impact svOrganizationImpact(@RequestBody PayStoredValueMerchantRequests.OrganizationImpact request);
+    @PostExchange(PayInternalPaths.SV_POLICY_LOCATE)
+    ai.neargo.shop.spi.storedvalue.StoredValuePolicies.PolicyLocation svPolicyLocate(@RequestBody PayStoredValuePolicyRequests.Locate request);
+    @PostExchange(PayInternalPaths.SV_POLICY_LIST)
+    java.util.List<ai.neargo.shop.spi.storedvalue.StoredValuePolicies.PolicyView> svPolicyList(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValuePolicies.CatalogScope request);
+    @PostExchange(PayInternalPaths.SV_POLICY_EVALUATE)
+    ai.neargo.shop.spi.storedvalue.StoredValuePolicies.EffectivePolicy svPolicyEvaluate(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValuePolicies.StoreScope request);
+    @PostExchange(PayInternalPaths.SV_POLICY_CONFIGURE)
+    ai.neargo.shop.spi.storedvalue.StoredValuePolicies.PolicyView svPolicyConfigure(@RequestBody PayStoredValuePolicyRequests.Configure request);
+    @PostExchange(PayInternalPaths.SV_RELEASE_CHECK)
+    ai.neargo.shop.spi.storedvalue.StoredValueReleases.Check svReleaseCheck(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueReleases.Prepare request);
+    @PostExchange(PayInternalPaths.SV_RELEASE_PREPARE)
+    ai.neargo.shop.spi.storedvalue.StoredValueReleases.View svReleasePrepare(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueReleases.Prepare request);
+    @PostExchange(PayInternalPaths.SV_RELEASE_ACTIVATE)
+    ai.neargo.shop.spi.storedvalue.StoredValueReleases.View svReleaseActivate(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueReleases.Activate request);
+    @PostExchange(PayInternalPaths.SV_RELEASE_STOP)
+    ai.neargo.shop.spi.storedvalue.StoredValueReleases.View svReleaseStop(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueReleases.Stop request);
+    @PostExchange(PayInternalPaths.SV_POLICY_CAPABILITY)
+    ai.neargo.shop.spi.storedvalue.StoredValuePolicies.Capability svPolicyCapability();
+    @PostExchange(PayInternalPaths.SV_POLICY_PLAN_BINDING)
+    ai.neargo.shop.spi.storedvalue.StoredValuePolicies.PlanBinding svPolicyPlanBinding(@RequestBody PayStoredValuePolicyRequests.PlanBinding request);
 }

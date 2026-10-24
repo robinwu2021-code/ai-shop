@@ -6,6 +6,7 @@ import { useMerchantStore } from '@/stores/merchant';
 import { useStoredValueList } from '@/shared/use-stored-value-list';
 import { money } from '@shared/utils/money';
 import { datetime } from '@shared/utils/datetime';
+const props=defineProps<{governance?:boolean}>();
 const {t}=useI18n();const merchant=useMerchantStore();const status=ref('');
 const {records,cursor,loading,error,load}=useStoredValueList(()=>merchant.storeNo,c=>api.mSvPlans({storeNo:merchant.storeNo,status:status.value||undefined,cursor:c}));
 const statuses=computed(()=>[{key:'',label:t('storedValue.allPlans')},{key:'ACTIVE',label:t('storedValue.active')},{key:'INACTIVE',label:t('storedValue.inactive')}]);
@@ -27,7 +28,7 @@ function navigate(url:string){uni.navigateTo({url});}
   </view>
   <sh-empty v-if="!loading&&!error&&!records.length" :text="t('storedValue.empty')"/>
   <text v-if="loading" class="sh-muted">{{t('storedValue.loading')}}</text><button v-else-if="cursor" class="sh-btn sh-btn--muted" @tap="load(true)">{{t('storedValue.more')}}</button>
-  <sh-actionbar v-if="merchant.can('pay:sv:plan:manage')"><button class="sh-btn" @tap="navigate('/pages/stored-value-plan-edit/index')">{{t('storedValue.newPlan')}}</button></sh-actionbar>
+  <sh-actionbar v-if="!props.governance&&merchant.can('pay:sv:plan:manage')"><button class="sh-btn" @tap="navigate('/pages/stored-value-plan-edit/index')">{{t('storedValue.newPlan')}}</button></sh-actionbar>
  </view>
 </template>
 <style scoped>.sv-list{display:flex;flex-direction:column;gap:var(--sh-gap-block)}</style>

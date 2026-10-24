@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 106,
+      "count": 110,
       "domains": [
         {
           "name": "工作台",
@@ -714,6 +714,50 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/stored-value-issuer/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stored-value-policy/index",
+              "title": "储值管控",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stored-value-policy/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stored-value-approval/index",
+              "title": "储值活动审批",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stored-value-approval/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stored-value-activity/index",
+              "title": "本店储值活动",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stored-value-activity/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stored-value-activity-edit/index",
+              "title": "储值活动",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stored-value-activity-edit/index"
             }
           ]
         },
@@ -3682,5 +3726,5 @@
       ]
     }
   ],
-  "total": 293
+  "total": 297
 }

@@ -13640,6 +13640,393 @@ components:
       required:
         - "customerRef"
       additionalProperties: false
+    SvGovernanceManagement:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+      required:
+        - "managementNo"
+      additionalProperties: false
+    SvGovernancePolicyQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        targetType:
+          "$ref": "#/components/schemas/SvPolicyTarget"
+        targetNo:
+          type: "string"
+      required:
+        - "managementNo"
+        - "currency"
+      additionalProperties: false
+    SvPolicyTarget:
+      type: "string"
+      enum:
+        - "SPACE"
+        - "BRAND_STORES"
+        - "STORE"
+    SvGovernancePolicyCreate:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        targetType:
+          "$ref": "#/components/schemas/SvPolicyTarget"
+        targetNo:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        rules:
+          "$ref": "#/components/schemas/SvPolicyRules"
+      required:
+        - "managementNo"
+        - "targetType"
+        - "targetNo"
+        - "currency"
+        - "rules"
+      additionalProperties: false
+    SvPolicyRules:
+      type: "object"
+      properties:
+        allowIssue:
+          type: "boolean"
+        requireApproval:
+          type: "boolean"
+        maxBonusBps:
+          type: "number"
+        maxPaidMinor:
+          type: "number"
+        maxBonusMinor:
+          type: "number"
+        maxActiveDays:
+          type: "number"
+        maxOutstandingMinor:
+          type: "number"
+      required:
+        - "allowIssue"
+        - "requireApproval"
+        - "maxBonusBps"
+        - "maxPaidMinor"
+        - "maxBonusMinor"
+        - "maxActiveDays"
+        - "maxOutstandingMinor"
+      additionalProperties: false
+    SvGovernancePolicyEdit:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        edit:
+          type: "object"
+          properties:
+            rules:
+              "$ref": "#/components/schemas/SvPolicyRules"
+            expectedRevision:
+              type: "number"
+          required:
+            - "rules"
+            - "expectedRevision"
+          additionalProperties: false
+      required:
+        - "managementNo"
+        - "edit"
+      additionalProperties: false
+    SvGovernanceStoreQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+      required:
+        - "managementNo"
+        - "currency"
+      additionalProperties: false
+    SvGovernanceContextQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        intent:
+          type: "string"
+          enum:
+            - "READ"
+            - "MANAGE"
+      required:
+        - "currency"
+        - "intent"
+        - "managementNo"
+      additionalProperties: false
+    SvGovernanceScheduleQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        startDate:
+          type: "string"
+        endDate:
+          type: "string"
+      required:
+        - "currency"
+        - "endDate"
+        - "managementNo"
+        - "startDate"
+      additionalProperties: false
+    SvGovernancePresetQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        page:
+          type: "number"
+        size:
+          type: "number"
+      additionalProperties: false
+      required:
+        - "currency"
+        - "managementNo"
+    SvGovernanceActivityQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        status:
+          type: "string"
+        page:
+          type: "number"
+        size:
+          type: "number"
+      additionalProperties: false
+      required:
+        - "currency"
+        - "managementNo"
+    SvGovernanceDraft:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        definition:
+          "$ref": "#/components/schemas/SvActivityDefinition"
+        expectedRevision:
+          type: "number"
+      required:
+        - "managementNo"
+        - "definition"
+      additionalProperties: false
+    SvActivityDefinition:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        scene:
+          type: "string"
+          const: "RECHARGE"
+        templateCode:
+          type: "string"
+        templateVersion:
+          type: "number"
+        storeParticipationScope:
+          type: "object"
+          properties:
+            mode:
+              type: "string"
+              const: "STORES"
+            refs:
+              type: "array"
+              items:
+                type: "string"
+          required:
+            - "mode"
+            - "refs"
+          additionalProperties: false
+        audienceRef:
+          type:
+            - "string"
+            - "null"
+        schedule:
+          type: "object"
+          properties:
+            type:
+              type: "string"
+            startAt:
+              type: "string"
+            endAt:
+              type: "string"
+            zone:
+              type: "string"
+            weekdays:
+              type: "array"
+              items:
+                type: "number"
+            from:
+              type:
+                - "string"
+                - "null"
+            to:
+              type:
+                - "string"
+                - "null"
+          required:
+            - "type"
+            - "startAt"
+            - "endAt"
+            - "zone"
+            - "weekdays"
+            - "from"
+            - "to"
+          additionalProperties: false
+        rule:
+          type: "object"
+          properties:
+            schemaVersion:
+              type: "number"
+            trigger:
+              type: "object"
+              properties:
+                type:
+                  type: "string"
+                amountMinor:
+                  type: "null"
+                quantity:
+                  type: "null"
+              required:
+                - "type"
+                - "amountMinor"
+                - "quantity"
+              additionalProperties: false
+            benefits:
+              type: "array"
+              items:
+                not: {}
+            tiers:
+              type: "array"
+              items:
+                type: "object"
+                properties:
+                  tierNo:
+                    type: "string"
+                  payAmountMinor:
+                    type: "number"
+                  bonusAmountMinor:
+                    type: "number"
+                  redemptionScope:
+                    type: "object"
+                    properties:
+                      mode:
+                        type: "string"
+                        const: "STORES"
+                      refs:
+                        type: "array"
+                        items:
+                          type: "string"
+                    required:
+                      - "mode"
+                      - "refs"
+                    additionalProperties: false
+                required:
+                  - "tierNo"
+                  - "payAmountMinor"
+                  - "bonusAmountMinor"
+                  - "redemptionScope"
+                additionalProperties: false
+          required:
+            - "schemaVersion"
+            - "trigger"
+            - "benefits"
+            - "tiers"
+          additionalProperties: false
+        quotaLimit:
+          type:
+            - "number"
+            - "null"
+        budgetLimitMinor:
+          type:
+            - "number"
+            - "null"
+        perUserLimit:
+          type: "number"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+      required:
+        - "name"
+        - "scene"
+        - "templateCode"
+        - "templateVersion"
+        - "storeParticipationScope"
+        - "audienceRef"
+        - "schedule"
+        - "rule"
+        - "quotaLimit"
+        - "budgetLimitMinor"
+        - "perUserLimit"
+        - "currency"
+      additionalProperties: false
+    SvGovernanceCommand:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        expectedRevision:
+          type: "number"
+      required:
+        - "currency"
+        - "expectedRevision"
+        - "managementNo"
+      additionalProperties: false
+    SvGovernanceApprovalQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        status:
+          type: "string"
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+      required:
+        - "managementNo"
+      additionalProperties: false
+    SvGovernanceDecision:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        decision:
+          type: "object"
+          properties:
+            decision:
+              type: "string"
+              enum:
+                - "APPROVE"
+                - "RETURN"
+            reason:
+              type: "string"
+            expectedRevision:
+              type: "number"
+          required:
+            - "decision"
+            - "reason"
+            - "expectedRevision"
+          additionalProperties: false
+      required:
+        - "managementNo"
+        - "decision"
+      additionalProperties: false
     MerchantOrderActionKind:
       type: "string"
       enum:
@@ -15014,6 +15401,426 @@ components:
         - "sourceRevision"
         - "status"
       additionalProperties: false
+    SvPolicy:
+      type: "object"
+      properties:
+        policyNo:
+          type: "string"
+        versionNo:
+          type: "string"
+        revision:
+          type: "number"
+        targetType:
+          "$ref": "#/components/schemas/SvPolicyTarget"
+        targetNo:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        rules:
+          "$ref": "#/components/schemas/SvPolicyRules"
+        parentVersionRefs:
+          type: "array"
+          items:
+            type: "string"
+        contentHash:
+          type: "string"
+      required:
+        - "policyNo"
+        - "versionNo"
+        - "revision"
+        - "targetType"
+        - "targetNo"
+        - "currency"
+        - "rules"
+        - "parentVersionRefs"
+        - "contentHash"
+      additionalProperties: false
+    SvEffectivePolicy:
+      type: "object"
+      properties:
+        scope:
+          type: "object"
+          properties:
+            tenantNo:
+              type: "string"
+            managementNo:
+              type: "string"
+            storeNo:
+              type: "string"
+            brandNo:
+              type:
+                - "string"
+                - "null"
+            currency:
+              "$ref": "#/components/schemas/CurrencyCode"
+            storeRevision:
+              type: "number"
+          required:
+            - "tenantNo"
+            - "managementNo"
+            - "storeNo"
+            - "brandNo"
+            - "currency"
+            - "storeRevision"
+          additionalProperties: false
+        rules:
+          "$ref": "#/components/schemas/SvPolicyRules"
+        sources:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SvPolicyVersion"
+        hash:
+          type: "string"
+        configured:
+          type: "boolean"
+      required:
+        - "scope"
+        - "rules"
+        - "sources"
+        - "hash"
+        - "configured"
+      additionalProperties: false
+    SvPolicyVersion:
+      type: "object"
+      properties:
+        tenantNo:
+          type: "string"
+        managementNo:
+          type: "string"
+        policyNo:
+          type: "string"
+        versionNo:
+          type: "string"
+        targetType:
+          "$ref": "#/components/schemas/SvPolicyTarget"
+        targetNo:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        rules:
+          "$ref": "#/components/schemas/SvPolicyRules"
+      required:
+        - "tenantNo"
+        - "managementNo"
+        - "policyNo"
+        - "versionNo"
+        - "targetType"
+        - "targetNo"
+        - "currency"
+        - "rules"
+      additionalProperties: false
+    SvActivity:
+      type: "object"
+      properties:
+        activityNo:
+          type: "string"
+        revision:
+          type: "number"
+        status:
+          type: "string"
+        currentVersionNo:
+          type:
+            - "string"
+            - "null"
+        definition:
+          "$ref": "#/components/schemas/SvActivityDefinition"
+        documentNo:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "activityNo"
+        - "revision"
+        - "status"
+        - "currentVersionNo"
+        - "definition"
+      additionalProperties: false
+    SvSubmission:
+      type: "object"
+      properties:
+        linkNo:
+          type: "string"
+        activityNo:
+          type: "string"
+        draftRevisionNo:
+          type: "string"
+        draftHash:
+          type: "string"
+        state:
+          type: "string"
+        releaseNo:
+          type:
+            - "string"
+            - "null"
+        releaseHash:
+          type:
+            - "string"
+            - "null"
+        policyHash:
+          type: "string"
+        approvalRequired:
+          type: "boolean"
+        approvalNo:
+          type:
+            - "string"
+            - "null"
+        activityVersionNo:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "linkNo"
+        - "activityNo"
+        - "draftRevisionNo"
+        - "draftHash"
+        - "state"
+        - "releaseNo"
+        - "releaseHash"
+        - "policyHash"
+        - "approvalRequired"
+        - "approvalNo"
+        - "activityVersionNo"
+      additionalProperties: false
+    SvApproval:
+      type: "object"
+      properties:
+        approvalNo:
+          type: "string"
+        linkNo:
+          type: "string"
+        activityNo:
+          type: "string"
+        draftRevisionNo:
+          type: "string"
+        draftHash:
+          type: "string"
+        storeNo:
+          type: "string"
+        managementNo:
+          type: "string"
+        status:
+          type: "string"
+        policyHash:
+          type: "string"
+        submittedBy:
+          type: "string"
+        decidedBy:
+          type:
+            - "string"
+            - "null"
+        revision:
+          type: "number"
+        reason:
+          type:
+            - "string"
+            - "null"
+        definition:
+          "$ref": "#/components/schemas/SvActivityDefinition"
+      required:
+        - "approvalNo"
+        - "linkNo"
+        - "activityNo"
+        - "draftRevisionNo"
+        - "draftHash"
+        - "storeNo"
+        - "managementNo"
+        - "status"
+        - "policyHash"
+        - "submittedBy"
+        - "decidedBy"
+        - "revision"
+        - "reason"
+        - "definition"
+      additionalProperties: false
+    SvActivityCheck:
+      type: "object"
+      properties:
+        policy:
+          "$ref": "#/components/schemas/SvEffectivePolicy"
+        allowed:
+          type: "boolean"
+        approvalRequired:
+          type: "boolean"
+        blockers:
+          type: "array"
+          items:
+            type: "string"
+      required:
+        - "policy"
+        - "allowed"
+        - "approvalRequired"
+        - "blockers"
+      additionalProperties: false
+    SvGovernanceCapability:
+      type: "object"
+      properties:
+        protocol:
+          type: "number"
+        enabled:
+          type: "boolean"
+      required:
+        - "protocol"
+        - "enabled"
+      additionalProperties: false
+    SvGovernancePrepared:
+      type: "object"
+      properties:
+        prepared:
+          type: "boolean"
+      required:
+        - "prepared"
+      additionalProperties: false
+    SvGovernanceDetail:
+      type: "object"
+      properties:
+        activity:
+          "$ref": "#/components/schemas/SvActivity"
+        submission:
+          anyOf:
+            - "$ref": "#/components/schemas/SvSubmission"
+            - type: "null"
+      required:
+        - "activity"
+        - "submission"
+      additionalProperties: false
+    SvGovernanceActivitiesPage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SvActivity"
+        total:
+          type: "number"
+        page:
+          type: "number"
+        size:
+          type: "number"
+      required:
+        - "records"
+        - "total"
+        - "page"
+        - "size"
+      additionalProperties: false
+    SvGovernanceApprovalsPage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SvApproval"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+        hasMore:
+          type: "boolean"
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    SvGovernancePreset:
+      type: "object"
+      properties:
+        templateCode:
+          type: "string"
+        templateVersion:
+          type: "number"
+        name:
+          type: "string"
+        enabled:
+          type: "boolean"
+        available:
+          type: "boolean"
+        missingCapabilities:
+          type: "array"
+          items:
+            type: "string"
+      required:
+        - "templateCode"
+        - "templateVersion"
+        - "name"
+        - "enabled"
+        - "available"
+        - "missingCapabilities"
+      additionalProperties: false
+    SvGovernancePresetsPage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SvGovernancePreset"
+        total:
+          type: "number"
+        page:
+          type: "number"
+        size:
+          type: "number"
+      required:
+        - "records"
+        - "total"
+        - "page"
+        - "size"
+      additionalProperties: false
+    SvGovernanceSchedule:
+      type: "object"
+      properties:
+        startAt:
+          type: "string"
+        endAt:
+          type: "string"
+        zone:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        currencyScale:
+          type: "number"
+      required:
+        - "startAt"
+        - "endAt"
+        - "zone"
+        - "currency"
+        - "currencyScale"
+      additionalProperties: false
+    SvPolicyTargetOption:
+      type: "object"
+      properties:
+        type:
+          "$ref": "#/components/schemas/SvPolicyTarget"
+        no:
+          type: "string"
+        name:
+          type: "string"
+        canManage:
+          type: "boolean"
+      required:
+        - "type"
+        - "no"
+        - "name"
+        - "canManage"
+      additionalProperties: false
+    SvGovernanceContext:
+      type: "object"
+      properties:
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        currencyScale:
+          type: "number"
+        timeZone:
+          type: "string"
+        canManage:
+          type: "boolean"
+        canPublish:
+          type: "boolean"
+      required:
+        - "currency"
+        - "currencyScale"
+        - "timeZone"
+        - "canManage"
+        - "canPublish"
+      additionalProperties: false
     Record_Lang_string:
       type: "object"
       properties:
@@ -15180,6 +15987,914 @@ components:
         - "nextCursor"
       additionalProperties: false
 paths:
+  "/biz/stores/{store}/stored-value/activities/{no}/draft":
+    put:
+      operationId: "mSvActivityDraftEdit"
+      summary: "修订储值活动草稿"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvActivity"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGovernanceDraft"
+  "/biz/management/stored-value/policy-permissions/prepare":
+    post:
+      operationId: "mSvPreparePolicyPermissions"
+      summary: "准备已有管控权限的授权项"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvGovernancePrepared"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGovernanceManagement"
+  "/biz/stores/{store}/stored-value/activity-context":
+    get:
+      operationId: "mSvActivityContext"
+      summary: "储值活动门店市场上下文"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+        - name: "intent"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            enum:
+              - "READ"
+              - "MANAGE"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvGovernanceContext"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stores/{store}/stored-value/activity-presets":
+    get:
+      operationId: "mSvActivityPresets"
+      summary: "可用储值活动类型"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+        - name: "page"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvGovernancePresetsPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stores/{store}/stored-value/activity-schedules":
+    get:
+      operationId: "mSvActivitySchedule"
+      summary: "按门店时区换算活动日期"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+        - name: "startDate"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "endDate"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvGovernanceSchedule"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stored-value/governance-capability":
+    get:
+      operationId: "mSvGovernanceCapability"
+      summary: "储值管控能力"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvGovernanceCapability"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stored-value/policy-targets":
+    get:
+      operationId: "mSvPolicyTargets"
+      summary: "Authorized stored-value policy targets"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/SvPolicyTargetOption"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stored-value/policies":
+    get:
+      operationId: "mSvPolicies"
+      summary: "发行策略目录"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+        - name: "targetType"
+          in: "query"
+          required: false
+          schema:
+            "$ref": "#/components/schemas/SvPolicyTarget"
+        - name: "targetNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/SvPolicy"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    post:
+      operationId: "mSvPolicyCreate"
+      summary: "创建发行策略"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvPolicy"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGovernancePolicyCreate"
+  "/biz/management/stored-value/policies/{no}":
+    put:
+      operationId: "mSvPolicyEdit"
+      summary: "修订发行策略"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvPolicy"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGovernancePolicyEdit"
+  "/biz/stores/{store}/stored-value/effective-policy":
+    get:
+      operationId: "mSvEffectivePolicy"
+      summary: "门店有效策略"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvEffectivePolicy"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stores/{store}/stored-value/activities":
+    get:
+      operationId: "mSvActivities"
+      summary: "门店储值活动"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+        - name: "status"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "page"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvGovernanceActivitiesPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    post:
+      operationId: "mSvActivitySave"
+      summary: "保存储值活动草稿"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvActivity"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGovernanceDraft"
+  "/biz/stores/{store}/stored-value/activities/{no}":
+    get:
+      operationId: "mSvActivity"
+      summary: "储值活动详情"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvGovernanceDetail"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stores/{store}/stored-value/activities/{no}/checks":
+    post:
+      operationId: "mSvActivityCheck"
+      summary: "检查储值活动"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvActivityCheck"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGovernanceCommand"
+  "/biz/stores/{store}/stored-value/activities/{no}/submissions":
+    post:
+      operationId: "mSvActivitySubmit"
+      summary: "提交储值活动"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvSubmission"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGovernanceCommand"
+  "/biz/stores/{store}/stored-value/activities/{no}/stop-issuance":
+    post:
+      operationId: "mSvActivityStop"
+      summary: "停止新发行"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvSubmission"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGovernanceCommand"
+  "/biz/stores/{store}/stored-value/activities/{no}/copies":
+    post:
+      operationId: "mSvActivityCopy"
+      summary: "复制储值活动"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvActivity"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGovernanceCommand"
+  "/biz/management/stored-value/activity-approvals":
+    get:
+      operationId: "mSvApprovals"
+      summary: "储值活动审批列表"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "status"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvGovernanceApprovalsPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stored-value/activity-approvals/{no}":
+    get:
+      operationId: "mSvApproval"
+      summary: "储值活动审批详情"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvApproval"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stored-value/activity-approvals/{no}/decisions":
+    post:
+      operationId: "mSvApprovalDecide"
+      summary: "审批储值活动"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvApproval"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGovernanceDecision"
   "/biz/management/stores/{no}/stored-value/issuer":
     get:
       operationId: "mSvStoreIssuerConfiguration"

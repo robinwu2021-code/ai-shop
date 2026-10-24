@@ -55,6 +55,10 @@ import tools.jackson.databind.ObjectMapper;
 /** Published rules and participation budgets remain core facts, separate from pay issuance authorization. */
 @Service
 public class ActivityVersionServiceImpl implements ActivityVersionService {
+    @org.springframework.beans.factory.annotation.Value("${shop.pay.stored-value.governance-enabled:false}")
+    private boolean storedValueGovernance;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.promotion.service.StoredValueActivityJournal> storedValueJournal;
     private CoreMarketingDocumentNumbers documentNumbers;
     @org.springframework.beans.factory.annotation.Autowired
     public void setDocumentNumbers(CoreMarketingDocumentNumbers documentNumbers) {
@@ -159,6 +163,11 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
                     || !candidate.getDraftSnapshot().equals(row.getDraftSnapshot())) {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
+            if(storedValueGovernance && "RECHARGE".equals(definition.scene())) {
+                var journal=storedValueJournal.getIfAvailable();
+                if(journal==null)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+                journal.requirePublish(actor.tenantNo(),activityNo,expectedRevision,journal.hash(definition));
+            }
             var version = new PmtActivityVersion(); audit(version, actor);
             version.setVersionNo(BizKey.next(BizKey.ACTIVITY_VERSION));
             int versionIndex = versions.lastIndex(actor.tenantNo(), activityNo) + 1;
@@ -202,6 +211,7 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
         if (replay.isPresent()) return replay.get();
         var candidate = owned(actor, activityNo, false);
         boolean publishDraft = "DRAFT".equals(candidate.getStatus()) && "RUNNING".equals(status);
+        if(storedValueGovernance&&"RECHARGE".equals(candidate.getScene())&&!publishDraft)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         if (publishDraft) {
             // Same resource/transaction as explicit publish; the status command has its own stable reply.
             publish(actor, activityNo, expectedRevision, "PUB" + ActivityCommandDeduplicator.hash(requestKey).substring(0, 48));

@@ -1,3 +1,4 @@
+import type {CurrencyCode} from "@shared/types";
 // B 端请求类型（wire contract）—— **入参的唯一真源**。
 //
 // 为什么需要这一层（与 C 端 `api/requests.ts` 同一个理由）：
@@ -843,3 +844,18 @@ export interface SvIssuerManagementQuery {managementNo:string}
 export interface SvIssuerEntitiesQuery {managementNo:string;scopeType:'STORE'|'BRAND';scopeNo:string}
 export interface SvIssuerRouteQuery {managementNo:string;payChannel?:string;payScene?:string}
 export interface SvIssuerRechargeOptionsQuery {customerRef:string;scopeType?:'STORE';cursor?:string;size?:number}
+
+import type {SvPolicyRules,SvPolicyTarget,SvActivityDefinition} from './stored-value-governance';
+export interface SvGovernanceManagement {managementNo:string}
+export interface SvGovernancePolicyQuery {managementNo:string;currency:CurrencyCode;targetType?:SvPolicyTarget;targetNo?:string}
+export interface SvGovernancePolicyCreate {managementNo:string;targetType:SvPolicyTarget;targetNo:string;currency:CurrencyCode;rules:SvPolicyRules}
+export interface SvGovernancePolicyEdit {managementNo:string;edit:{rules:SvPolicyRules;expectedRevision:number}}
+export interface SvGovernanceStoreQuery {managementNo:string;currency:CurrencyCode}
+export interface SvGovernanceContextQuery extends SvGovernanceStoreQuery {intent:'READ'|'MANAGE'}
+export interface SvGovernanceScheduleQuery extends SvGovernanceStoreQuery {startDate:string;endDate:string}
+export interface SvGovernancePresetQuery extends SvGovernanceStoreQuery {page?:number;size?:number}
+export interface SvGovernanceActivityQuery extends SvGovernanceStoreQuery {status?:string;page?:number;size?:number}
+export interface SvGovernanceDraft {managementNo:string;definition:SvActivityDefinition;expectedRevision?:number}
+export interface SvGovernanceCommand extends SvGovernanceStoreQuery {expectedRevision:number}
+export interface SvGovernanceApprovalQuery {managementNo:string;status?:string;cursor?:string;size?:number}
+export interface SvGovernanceDecision {managementNo:string;decision:{decision:'APPROVE'|'RETURN';reason:string;expectedRevision:number}}

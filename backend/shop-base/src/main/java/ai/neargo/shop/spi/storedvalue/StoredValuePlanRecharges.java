@@ -7,7 +7,8 @@ import ai.neargo.shop.spi.storedvalue.StoredValuePort.RechargeView;
 public final class StoredValuePlanRecharges {
     private StoredValuePlanRecharges() { }
     /** Only trusted BFF resolves the customer reference and store display snapshot. */
-    public record Create(String userNo, String storeNo, String storeName, String planNo, String versionNo, String referenceHash, String customerNo) {
+    public record Create(String userNo, String storeNo, String storeName, String planNo, String versionNo, String referenceHash, String customerNo,StoredValuePolicies.StoreScope policyScope) {
+        public Create(String userNo,String storeNo,String storeName,String planNo,String versionNo,String referenceHash,String customerNo){this(userNo,storeNo,storeName,planNo,versionNo,referenceHash,customerNo,null);}
         public Create(String userNo,String storeNo,String storeName,String planNo,String versionNo,String referenceHash){this(userNo,storeNo,storeName,planNo,versionNo,referenceHash,userNo);}
         public Create {
             if(customerNo==null)customerNo=userNo;

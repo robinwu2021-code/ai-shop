@@ -15,6 +15,28 @@ export interface EndpointDef {
 
 /** key 与 MerchantApi 的方法名一一对应，缺一个就编译不过 */
 export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
+  mSvActivityDraftEdit:{method:"PUT",path:"/biz/stores/:store/stored-value/activities/:no/draft",auth:true,summary:"修订储值活动草稿"},
+  mSvPreparePolicyPermissions:{method:"POST",path:"/biz/management/stored-value/policy-permissions/prepare",auth:true,summary:"准备已有管控权限的授权项"},
+  mSvActivityContext:{method:"GET",path:"/biz/stores/:store/stored-value/activity-context",auth:true,summary:"储值活动门店市场上下文"},
+  mSvActivityPresets:{method:"GET",path:"/biz/stores/:store/stored-value/activity-presets",auth:true,summary:"可用储值活动类型"},
+  mSvActivitySchedule:{method:"GET",path:"/biz/stores/:store/stored-value/activity-schedules",auth:true,summary:"按门店时区换算活动日期"},
+  mSvGovernanceCapability:{method:"GET",path:"/biz/stored-value/governance-capability",auth:true,summary:"储值管控能力"},
+  mSvPolicyTargets:{method:"GET",path:"/biz/management/stored-value/policy-targets",auth:true,summary:"Authorized stored-value policy targets"},
+  mSvPolicies:{method:"GET",path:"/biz/management/stored-value/policies",auth:true,summary:"发行策略目录"},
+  mSvPolicyCreate:{method:"POST",path:"/biz/management/stored-value/policies",auth:true,summary:"创建发行策略"},
+  mSvPolicyEdit:{method:"PUT",path:"/biz/management/stored-value/policies/:no",auth:true,summary:"修订发行策略"},
+  mSvEffectivePolicy:{method:"GET",path:"/biz/stores/:store/stored-value/effective-policy",auth:true,summary:"门店有效策略"},
+  mSvActivities:{method:"GET",path:"/biz/stores/:store/stored-value/activities",auth:true,summary:"门店储值活动"},
+  mSvActivity:{method:"GET",path:"/biz/stores/:store/stored-value/activities/:no",auth:true,summary:"储值活动详情"},
+  mSvActivitySave:{method:"POST",path:"/biz/stores/:store/stored-value/activities",auth:true,summary:"保存储值活动草稿"},
+  mSvActivityCheck:{method:"POST",path:"/biz/stores/:store/stored-value/activities/:no/checks",auth:true,summary:"检查储值活动"},
+  mSvActivitySubmit:{method:"POST",path:"/biz/stores/:store/stored-value/activities/:no/submissions",auth:true,summary:"提交储值活动"},
+  mSvActivityStop:{method:"POST",path:"/biz/stores/:store/stored-value/activities/:no/stop-issuance",auth:true,summary:"停止新发行"},
+  mSvActivityCopy:{method:"POST",path:"/biz/stores/:store/stored-value/activities/:no/copies",auth:true,summary:"复制储值活动"},
+  mSvApprovals:{method:"GET",path:"/biz/management/stored-value/activity-approvals",auth:true,summary:"储值活动审批列表"},
+  mSvApproval:{method:"GET",path:"/biz/management/stored-value/activity-approvals/:no",auth:true,summary:"储值活动审批详情"},
+  mSvApprovalDecide:{method:"POST",path:"/biz/management/stored-value/activity-approvals/:no/decisions",auth:true,summary:"审批储值活动"},
+
   mSvStoreIssuerConfiguration:{method:"GET",path:"/biz/management/stores/:no/stored-value/issuer",auth:true,summary:"门店发行设置"},
   mSvConfigureStoreIssuer:{method:"POST",path:"/biz/management/stores/:no/stored-value/issuer",auth:true,summary:"保存门店发行配置"},
   mSvIssuer: {method:"GET",path:"/biz/management/brands/:no/stored-value/issuer",auth:true,summary:"品牌储值发行设置"},

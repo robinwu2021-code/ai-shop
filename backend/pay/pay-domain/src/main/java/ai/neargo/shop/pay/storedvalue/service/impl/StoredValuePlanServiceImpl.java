@@ -36,6 +36,9 @@ import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class StoredValuePlanServiceImpl implements StoredValuePlanService {
+    @org.springframework.beans.factory.annotation.Value("${shop.pay.stored-value.governance-enabled:false}")
+    private boolean governance;
+
     private final SvRechargePlanMapper plans;
     private final SvRechargePlanVersionMapper versions;
     private final EntitlementCommandDeduplicator commands;
@@ -55,6 +58,7 @@ public class StoredValuePlanServiceImpl implements StoredValuePlanService {
         merchant(scope); ContractChecks.id(key); features.requireStoredValue();
         String planNo = no("SP", List.of(scope.tenantNo(), scope.entityNo(), scope.actorNo(), key), json);
         return commands.execute(scope, "SV_PLAN_CREATE", key, c, planNo, View.class, () -> {
+            if(governance)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
             var at = LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS);
             var context = context(scope, key);
             var p = new SvRechargePlan(); audit(p, context, at);
@@ -85,6 +89,7 @@ public class StoredValuePlanServiceImpl implements StoredValuePlanService {
         var query = Wrappers.<SvRechargePlan>lambdaQuery().eq(SvRechargePlan::getTenantNo, scope.tenantNo())
                 .eq(SvRechargePlan::getEntityNo, scope.entityNo()).eq(SvRechargePlan::getStoreNo, store)
                 .eq(status != null, SvRechargePlan::getStatus, status);
+        if(governance)query.apply("EXISTS (SELECT 1 FROM sv_release r WHERE CAST(r.tenant_no AS BINARY(256))=CAST(sv_recharge_plan.tenant_no AS BINARY(256)) AND CAST(r.release_no AS BINARY(256))=CAST(sv_recharge_plan.migrated_release_no AS BINARY(256)) AND r.source_kind='V2_ACTIVITY')");
         if (after != null) {
             var at = LocalDateTime.ofInstant(Instant.ofEpochMilli(after.occurredAtMillis()), ZoneOffset.UTC);
             query.and(q -> q.lt(SvRechargePlan::getCreatedAt, at).or(x -> x.eq(SvRechargePlan::getCreatedAt, at)
@@ -107,6 +112,7 @@ public class StoredValuePlanServiceImpl implements StoredValuePlanService {
     public View status(CatalogScope scope, String planNo, Status c, String key) {
         merchant(scope); ContractChecks.id(key);
         return commands.execute(scope, "SV_PLAN_STATUS", key, List.of(planNo, c), planNo, View.class, () -> {
+            if(governance)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
             var p = owned(scope, c.storeNo(), planNo, true);
             if (p.getVersion() != c.expectedRevision()) throw BizException.of(ErrorCode.CONFLICT);
             if (plans.updateStatus(scope.tenantNo(), scope.entityNo(), c.storeNo(), planNo,

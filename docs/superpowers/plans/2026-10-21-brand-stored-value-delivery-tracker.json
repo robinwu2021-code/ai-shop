@@ -475,7 +475,35 @@
         "IN05"
       ],
       "planFile": "2026-10-21-brand-stored-value-activity-governance.md",
-      "status": "NOT_STARTED"
+      "status": "COMPATIBILITY_PUBLISHED_ENABLEMENT_BLOCKED_P3",
+      "implementationNotes": [
+        "Full P4 coding integrated; backend and B type compilation passed, H5 built",
+        "Focused acceptance in progress; 20 backend plus4 UI passed,5 release fixture failures under targeted retry, downstream/native unrun",
+        "No live deployment or enablement; original recharge deferred and P3 signoff remains prerequisite"
+      ],
+      "publication": {
+        "backendSha": "c8e3ea7b0eea2dbcb7057ca2e1fcc7ad87a6522c",
+        "bH5Sha": "c8e3ea7b0",
+        "appSourceSha": "4d0101f12fdba9054809e9d99a9a8237bd164cef",
+        "appVersion": "0.6.2",
+        "appVersionCode": 335,
+        "appMd5": "511edd8d1e4e027bdc3c574a73ce1380",
+        "governanceEnabled": false,
+        "writerGuardEnabled": false,
+        "schemaVersions": [
+          "564",
+          "565",
+          "566"
+        ],
+        "device": "NO_ADB_DEVICE"
+      },
+      "verification": {
+        "backendDistinctTests": 32,
+        "nativeMysqlTests": 5,
+        "frontendDistinctTests": 9,
+        "releaseGateTests": 2,
+        "review": "One whole-stage review; four important findings fixed; no deferred minors"
+      }
     },
     {
       "id": "P5",
@@ -824,6 +852,34 @@
     "remaining": [
       "Controlled online original-ledger mapping, key cutover and STORE resume; not executed",
       "P3 signoff after controlled rollout; P4-P6 remain separately planned"
-    ]
+    ],
+    "rolloutPreparation": {
+      "asOf": "2026-10-24",
+      "historicalRechargeDecision": "DEFER_POSTING_BY_USER; no replay, credit, cancellation or status edits",
+      "blockedAction": "Formal online cutover: RECHARGE_IN_FLIGHT",
+      "completed": [
+        "Read-only ledger/store/identity preflight",
+        "Running service candidate inventory",
+        "Job artifact classification: independent scheduling database, no Core/Pay business libraries",
+        "Source-aligned configuration, execution, recovery and stage-dependency runbook",
+        "Actual scheduler target matches local Core process and ledger (read-only capability probe)",
+        "Identified recharge/posting/redemption/event recovery paths use Pay issuer guards",
+        "P4 source reuse/gap inventory and full-stage execution table prepared"
+      ],
+      "remaining": [
+        "Final window inventory must cover all actual processes, external callbacks and indirect triggers; scheduler PLATFORM target verified",
+        "Resolve historical original only under explicit authorized handling",
+        "Fresh backup, owner issuer preparation, final process inventory and global approval",
+        "Formal audit/fence/map/key/dimension/resume and focused signoff"
+      ],
+      "runbook": "docs/technical/delivery/P3-储值切换执行清单.md"
+    }
+  },
+  "nextStagePreparation": {
+    "stage": "P5",
+    "status": "SOURCE_INVENTORY_IN_PROGRESS",
+    "planFile": "2026-10-21-brand-stored-value-brand-redemption.md",
+    "releaseDependsOn": "P3 controlled cutover signoff; P6 before cross-entity activation",
+    "testOrder": "All phase coding and compilation, then one focused chain; no unaffected reruns"
   }
 }

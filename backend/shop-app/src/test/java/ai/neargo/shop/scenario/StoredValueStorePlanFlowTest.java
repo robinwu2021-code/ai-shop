@@ -43,6 +43,9 @@ class StoredValueStorePlanFlowTest {
     @Autowired ai.neargo.shop.spi.user.PersonPort people;
 
     @Test void offlineConfirmationUsesFrozenAmountAndReplaysWithoutAnotherRecharge() {
+        // The deployed compatibility baseline includes the empty P3 source registry even with flags off.
+        jdbc.execute("CREATE TABLE IF NOT EXISTS sv_release(tenant_no VARCHAR(32),release_no VARCHAR(64),activity_version_no VARCHAR(64),source_kind VARCHAR(24),deleted INT DEFAULT 0)");
+        jdbc.execute("ALTER TABLE sv_recharge_plan ADD COLUMN IF NOT EXISTS migrated_release_no VARCHAR(64)");
         String entity=id(),store=id(),user=id();
         var plan=plans.create(new CatalogScope("MAIN",entity,"OWNER",false),new Create(store,"弹框充100送30","CNY",10000,3000),id());
         var ctx=new EntitlementContext("MAIN","OWNER",id(),"0".repeat(64));
