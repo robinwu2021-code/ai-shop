@@ -58,14 +58,14 @@ public final class ReceptionCoordinator {
     private final Clock clock;
     private final ReceptionReassignment reassignment;
     private final AppointmentMatching matching;
-    private final AppointmentPreparationService appointmentPreparation;
+    private final AppointmentPreparation appointmentPreparation;
     private final WorkOrderCoordinator workOrders;
     public ReceptionCoordinator(AppointmentPersistence db, AppointmentAccess access, ReceptionAccess receptionAccess,
             ReceptionIdentity identities, CustomerOwnership ownership, ReceptionPreparation preparations,
             AppointmentCoordinator appointments, BeautyMappers.ReceptionOperationMapper operations,
             BeautyMappers.ArrivalChallengeMapper challenges, OutboxPublisher publisher, Clock clock,
             ReceptionReassignment reassignment, AppointmentMatching matching,
-            AppointmentPreparationService appointmentPreparation, WorkOrderCoordinator workOrders) {
+            AppointmentPreparation appointmentPreparation, WorkOrderCoordinator workOrders) {
         this.db = db; this.access = access; this.receptionAccess = receptionAccess; this.identities = identities;
         this.ownership = ownership; this.preparations = preparations; this.appointments = appointments;
         this.operations = operations; this.challenges = challenges; this.publisher = publisher; this.clock = clock;
@@ -120,7 +120,7 @@ public final class ReceptionCoordinator {
             if (!future(payload)) { return walkInFailure(op, "ARRIVAL_REQUIRES_RESCHEDULE"); }
             if ("RECEIVED".equals(op.getPhase())) {
                 try { appointmentPreparation.prepareReception(entity, store, actor, op.getOperationNo()); }
-                catch (AppointmentPreparationService.ReceptionPlanExpired expired) {
+                catch (AppointmentPreparation.ReceptionPlanExpired expired) {
                     return walkInFailure(op, "ARRIVAL_REQUIRES_RESCHEDULE");
                 }
                 op = walkInOperation(entity, store, op.getOperationNo());

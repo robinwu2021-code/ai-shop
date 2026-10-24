@@ -1,6 +1,6 @@
 package ai.neargo.shop.config;
 
-import ai.neargo.shop.store.config.JobLockConfiguration;
+import ai.neargo.shop.job.config.JobLockConfiguration;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 

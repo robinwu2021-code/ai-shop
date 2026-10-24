@@ -1255,7 +1255,7 @@ MyWorkOrderVO WorkOrderService.getMyWorkOrder(String userNo,String workOrderNo)
 WorkOrderDetailVO WorkOrderQuery.detail(BtyWorkOrder authorizedRoot) [ServiceImpl current access then direct WorkOrderMapper SQL root authorization; projection only]
 PreparedWorkOrderScope WorkOrderPreparation.unassigned(String entity,String store,VerifiedIdentity identity,List<AppointmentItemReq> items) [real directory/P1 definition, no hold]
 BtyAppointmentOperation ReceptionReassignment.reassign(String entity,String store,String actor,String appointment,long revision,List<AppointmentAssignmentReq> assignments,OffsetDateTime startAt,String key,String receptionOperationNo) [single replacement implementation; old overload/delegate retained]
-BtyAppointmentOperation AppointmentPreparationService.prepareReception(BtyAppointmentPreparation preview,BtyAppointment target,long expected,String key,String hash,PreparedWorkOrderScope scope,WorkOrderPreparation frozen,String requestEvidence,String receptionOperationNo) [links original outer operation in existing root/fence/current short TX]
+BtyAppointmentOperation AppointmentPreparation.prepareReception(BtyAppointmentPreparation preview,BtyAppointment target,long expected,String key,String hash,PreparedWorkOrderScope scope,WorkOrderPreparation frozen,String requestEvidence,String receptionOperationNo) [links original outer operation in existing root/fence/current short TX]
 BtyWorkOrderContext WorkOrderContextMapper.selectScoped(String entityNo,String storeNo,String workOrderNo) [MAIN+active+complete scope]
 BtyReceptionOperation ReceptionOperationMapper.selectScopedForUpdate(String entityNo,String storeNo,String operationNo) [permanent original reception row lock]
 BtyReceptionOperation ReceptionOperationMapper.selectOpenedForWorkOrder(String entityNo,String storeNo,String workOrderNo,String operationNo) [SQL exact original context/root/canonical identity + OPEN_WORK_ORDER+BAPI-052/054 or RECEIVE_WALK_IN+BAPI-048, SUCCEEDED; no guessed success]
@@ -1265,7 +1265,7 @@ PreparedWorkOrderScope WorkOrderCoordinator.preparedForIdentity(BtyAppointment r
 WalkInVO ReceptionService.receiveWalkIn(String entityNo,String currentStoreNo,String actorNo,ReceiveWalkInReq req,String idempotencyKey)
 WalkInVO ReceptionCoordinator.recoverWalkIn(String entity,String store,String actor,String operationNo) [original verified identity and namespace; current employee]
 Matched AppointmentMatching.matchWalkIn(Scope scope,List<AppointmentItemReq> items,List<AppointmentAssignmentReq> assignments,OffsetDateTime requestedStartAt,Instant observedNow)
-BtyAppointmentOperation AppointmentPreparationService.prepareReception(String entity,String store,String actor,String receptionOperationNo) [atomic CREATE preview/root/fence/current/operation/outer link]
+BtyAppointmentOperation AppointmentPreparation.prepareReception(String entity,String store,String actor,String receptionOperationNo) [atomic CREATE preview/root/fence/current/operation/outer link]
 WorkOrderVO WorkOrderCoordinator.openReception(String entity,String store,String actor,String receptionOperationNo) [single C writer, typed WalkInVO result in same transaction]
 WorkOrderVO WorkOrderCoordinator.recover(String entity,String store,String actor,String receptionOperationNo)
 ResourceBookingPort.Hold AppointmentCoordinator.releasedHold(BtyAppointmentOperation release,String expectedHoldNo) [original release receipt/intent/current hold evidence]

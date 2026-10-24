@@ -9,6 +9,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import ai.neargo.shop.job.JobHandlerRegistry;
 import ai.neargo.shop.portal.internal.JobHandlerEndpoint;
+import net.javacrumbs.shedlock.core.LockProvider;
+import net.javacrumbs.shedlock.core.LockingTaskExecutor;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,6 +83,12 @@ class JobTargetProfileTest {
         // 这两个就是线上起不来的那对：端点要注册表，而注册表当时只在 worker 下存在
         assertThat(ctx.getBean(JobHandlerEndpoint.class)).isNotNull();
         assertThat(handlers.declarations()).isNotEmpty();
+    }
+
+    @Test
+    void hasExactlyOneLockProviderAndExecutor() {
+        assertThat(ctx.getBeansOfType(LockProvider.class)).hasSize(1);
+        assertThat(ctx.getBeansOfType(LockingTaskExecutor.class)).hasSize(1);
     }
 
     @Test

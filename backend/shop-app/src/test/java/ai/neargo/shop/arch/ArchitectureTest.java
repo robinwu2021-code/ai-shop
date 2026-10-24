@@ -13,6 +13,7 @@ import com.tngtech.archunit.lang.ArchRule;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
@@ -71,7 +72,9 @@ class ArchitectureTest {
             "inventory",
             // logistics：物流（lgs_*，ADR-032）。**现在内嵌、将来可拆** —— 登记进来，
             // 订单域直接 import 运单实体这类越界当场就红，而不是等拆分那天编译不过才发现
-            "logistics"};
+            "logistics",
+            // beauty：美业业务域，纳入相同的域间依赖与分层约束。
+            "beauty"};
 
     /** {@link #DOMAINS} 的 ArchUnit 包表达式形式（{@code ai.neargo.shop.x..}）。 */
     private static String[] domainPackages() {
@@ -85,6 +88,13 @@ class ArchitectureTest {
         classes = new ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages("ai.neargo.shop");
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "beauty.arch.required", matches = "true")
+    void embeddedBeautyClassesArePresentWhenRequested() {
+        assertThat(classes.stream().map(javaClass -> javaClass.getName()))
+                .contains("ai.neargo.shop.beauty.service.impl.WorkOrderServiceImpl");
     }
 
     @Test

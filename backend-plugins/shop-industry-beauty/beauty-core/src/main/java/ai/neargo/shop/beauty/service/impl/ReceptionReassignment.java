@@ -22,11 +22,11 @@ public final class ReceptionReassignment {
     private final ReceptionAccess receptionAccess;
     private final AppointmentCoordinator appointments;
     private final AppointmentMatching matching;
-    private final AppointmentPreparationService appointmentPreparations;
+    private final AppointmentPreparation appointmentPreparations;
     private final WorkOrderPreparation workOrders;
     public ReceptionReassignment(AppointmentPersistence db, AppointmentAccess access, ReceptionAccess receptionAccess,
             AppointmentCoordinator appointments, AppointmentMatching matching,
-            AppointmentPreparationService appointmentPreparations, WorkOrderPreparation workOrders) {
+            AppointmentPreparation appointmentPreparations, WorkOrderPreparation workOrders) {
         this.db = db; this.access = access; this.receptionAccess = receptionAccess; this.appointments = appointments;
         this.matching = matching; this.appointmentPreparations = appointmentPreparations; this.workOrders = workOrders;
     }

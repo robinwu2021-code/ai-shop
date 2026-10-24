@@ -12,7 +12,7 @@ import ai.neargo.shop.beauty.service.WorkOrderBillService;
 import ai.neargo.shop.beauty.service.impl.AppointmentCoordinator;
 import ai.neargo.shop.beauty.service.impl.AppointmentMatching;
 import ai.neargo.shop.beauty.service.impl.AppointmentPersistence;
-import ai.neargo.shop.beauty.service.impl.AppointmentPreparationService;
+import ai.neargo.shop.beauty.service.impl.AppointmentPreparation;
 import ai.neargo.shop.beauty.service.impl.GuestRegistrationServiceImpl;
 import ai.neargo.shop.beauty.service.impl.ReceptionCoordinator;
 import ai.neargo.shop.beauty.service.impl.ReceptionPreparation;
@@ -47,7 +47,7 @@ import java.time.Clock;
 @Import(BeautySourceConfiguration.class)
 public class BeautyReceptionConfiguration {
     @Bean ReceptionRecovery receptionRecovery(AppointmentPersistence db, AppointmentCoordinator appointments,
-            AppointmentPreparationService preparation, BeautyMappers.ReceptionOperationMapper rows,
+            AppointmentPreparation preparation, BeautyMappers.ReceptionOperationMapper rows,
             @Qualifier("beautyReceptionClock") Clock clock) {
         return new ReceptionRecovery(db, appointments, preparation, rows, clock);
     }
@@ -97,7 +97,7 @@ public class BeautyReceptionConfiguration {
     }
     @Bean ReceptionReassignment receptionReassignment(AppointmentPersistence db, AppointmentAccess access,
             ReceptionAccess receptionAccess, AppointmentCoordinator appointments, AppointmentMatching matching,
-            AppointmentPreparationService preparations, WorkOrderPreparation workOrders) {
+            AppointmentPreparation preparations, WorkOrderPreparation workOrders) {
         return new ReceptionReassignment(db, access, receptionAccess, appointments, matching, preparations, workOrders);
     }
     @Bean WorkOrderCoordinator workOrderCoordinator(AppointmentPersistence db, AppointmentAccess access,
@@ -155,7 +155,7 @@ public class BeautyReceptionConfiguration {
             BeautyMappers.ReceptionOperationMapper operations, BeautyMappers.ArrivalChallengeMapper challenges,
             @Qualifier("beautyOutboxPublisher") OutboxPublisher publisher,
             @Qualifier("beautyReceptionClock") Clock clock, ReceptionReassignment reassignment,
-            AppointmentMatching matching, AppointmentPreparationService appointmentPreparation,
+            AppointmentMatching matching, AppointmentPreparation appointmentPreparation,
             WorkOrderCoordinator workOrders) {
         return new ReceptionCoordinator(db, access, receptionAccess, identities, ownership, preparations,
                 appointments, operations, challenges, publisher, clock, reassignment,

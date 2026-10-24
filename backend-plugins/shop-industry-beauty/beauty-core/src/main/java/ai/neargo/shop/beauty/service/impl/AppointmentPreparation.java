@@ -31,7 +31,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DuplicateKeyException;
 
 /** Commits stable requests before acceptance so unknown network responses can never generate replacement commands. */
-public final class AppointmentPreparationService {
+public final class AppointmentPreparation {
     private final AppointmentPersistence db;
     private final AppointmentAccess access;
     private final ObjectProvider<CustomerIdentityPort> customers;
@@ -40,7 +40,7 @@ public final class AppointmentPreparationService {
     private final BeautyMappers.ReceptionOperationMapper receptions;
     private final WorkOrderPreparation workOrders;
     private final Clock clock;
-    public AppointmentPreparationService(AppointmentPersistence db, AppointmentAccess access,
+    public AppointmentPreparation(AppointmentPersistence db, AppointmentAccess access,
             ObjectProvider<CustomerIdentityPort> customers, ObjectProvider<ServiceCatalogFactsPort> products,
             ReceptionIdentity identities, BeautyMappers.ReceptionOperationMapper receptions,
             WorkOrderPreparation workOrders, Clock clock) {

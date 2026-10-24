@@ -2,7 +2,7 @@ package ai.neargo.shop.beauty.server.config;
 
 import ai.neargo.shop.beauty.config.ConditionalOnBeautyEnabled;
 import ai.neargo.shop.job.JobTargetConfiguration;
-import ai.neargo.shop.store.config.JobLockConfiguration;
+import ai.neargo.shop.job.config.JobLockConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;

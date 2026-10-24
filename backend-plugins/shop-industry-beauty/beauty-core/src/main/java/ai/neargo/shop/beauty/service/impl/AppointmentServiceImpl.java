@@ -50,12 +50,12 @@ public final class AppointmentServiceImpl implements AppointmentService {
     private final AppointmentPersistence db;
     private final AppointmentAccess access;
     private final AppointmentMatching matching;
-    private final AppointmentPreparationService preparations;
+    private final AppointmentPreparation preparations;
     private final AppointmentCoordinator coordinator;
     private final ReceptionAccess receptionAccess;
     private final WorkOrderCoordinator workOrders;
     public AppointmentServiceImpl(AppointmentPersistence db, AppointmentAccess access, AppointmentMatching matching,
-            AppointmentPreparationService preparations, AppointmentCoordinator coordinator,
+            AppointmentPreparation preparations, AppointmentCoordinator coordinator,
                     ReceptionAccess receptionAccess,
             WorkOrderCoordinator workOrders) {
         this.db = db; this.access = access; this.matching = matching;

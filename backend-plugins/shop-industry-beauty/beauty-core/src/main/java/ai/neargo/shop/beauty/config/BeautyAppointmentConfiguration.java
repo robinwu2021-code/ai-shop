@@ -15,7 +15,7 @@ import ai.neargo.shop.beauty.service.impl.AppointmentAvailabilityServiceImpl;
 import ai.neargo.shop.beauty.service.impl.AppointmentCoordinator;
 import ai.neargo.shop.beauty.service.impl.AppointmentMatching;
 import ai.neargo.shop.beauty.service.impl.AppointmentPersistence;
-import ai.neargo.shop.beauty.service.impl.AppointmentPreparationService;
+import ai.neargo.shop.beauty.service.impl.AppointmentPreparation;
 import ai.neargo.shop.beauty.service.impl.AppointmentRecovery;
 import ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl;
 import ai.neargo.shop.beauty.service.impl.AppointmentSourceAuthority;
@@ -77,11 +77,11 @@ public class BeautyAppointmentConfiguration {
         return new AppointmentMatching(catalog, stores, candidates, personnel, schedules, requirements);
     }
     @Bean
-    AppointmentPreparationService appointmentPreparationService(AppointmentPersistence db, AppointmentAccess access,
+    AppointmentPreparation appointmentPreparationService(AppointmentPersistence db, AppointmentAccess access,
             ObjectProvider<CustomerIdentityPort> customers, ObjectProvider<ServiceCatalogFactsPort> products,
             ReceptionIdentity identity, BeautyMappers.ReceptionOperationMapper receptions,
             WorkOrderPreparation workOrders, @Qualifier("beautyReceptionClock") Clock clock) {
-        return new AppointmentPreparationService(db, access, customers, products, identity, receptions, workOrders,
+        return new AppointmentPreparation(db, access, customers, products, identity, receptions, workOrders,
                 clock);
     }
 
@@ -105,7 +105,7 @@ public class BeautyAppointmentConfiguration {
     }
     @Bean
     AppointmentServiceImpl appointmentServiceImpl(AppointmentPersistence db, AppointmentAccess access,
-            AppointmentMatching matching, AppointmentPreparationService preparation, AppointmentCoordinator
+            AppointmentMatching matching, AppointmentPreparation preparation, AppointmentCoordinator
             coordinator, ReceptionAccess receptionAccess, WorkOrderCoordinator workOrders) {
         return new AppointmentServiceImpl(db, access, matching, preparation, coordinator, receptionAccess, workOrders);
     }

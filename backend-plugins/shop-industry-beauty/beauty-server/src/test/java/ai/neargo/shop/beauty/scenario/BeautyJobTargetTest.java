@@ -16,7 +16,11 @@ import ai.neargo.shop.beauty.server.config.BeautyJobTargetConfiguration;
 import ai.neargo.shop.beauty.server.config.BeautyServerConfiguration;
 import ai.neargo.shop.job.JobHandlerRegistry;
 import javax.sql.DataSource;
+import net.javacrumbs.shedlock.core.LockProvider;
+import net.javacrumbs.shedlock.core.LockingTaskExecutor;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,11 +36,45 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 
 /** Real HTTP mapping/security/registry/DB lock seam for a service without shop-app. */
 class BeautyJobTargetTest {
-    @Test void disabledServerDoesNotRequireDatabaseForAnInactiveJobTarget() {
-        new ApplicationContextRunner().withUserConfiguration(BeautyServerConfiguration.class,
-                        BeautyJobTargetConfiguration.class, BeautyJobHandlerEndpoint.class)
-                .withPropertyValues("shop.beauty.enabled=false", "shop.job.enabled=false")
-                .run(ctx -> assertThat(ctx).hasNotFailed().doesNotHaveBean(DataSource.class));
+    @ParameterizedTest
+    @CsvSource({"false,true", "true,false", "false,false"})
+    void disabledServerDoesNotRequireDatabaseForAnInactiveJobTarget(
+            boolean beautyEnabled, boolean jobEnabled) {
+        new ApplicationContextRunner()
+                .withUserConfiguration(
+                        BeautyServerConfiguration.class,
+                        BeautyJobTargetConfiguration.class,
+                        BeautyJobHandlerEndpoint.class)
+                .withPropertyValues(
+                        "shop.beauty.enabled=" + beautyEnabled,
+                        "shop.job.enabled=" + jobEnabled,
+                        "shop.beauty.deployment=standalone",
+                        "spring.profiles.active=api")
+                .run(
+                        ctx ->
+                                assertThat(ctx)
+                                        .hasNotFailed()
+                                        .doesNotHaveBean(DataSource.class)
+                                        .doesNotHaveBean(JobHandlerRegistry.class)
+                                        .doesNotHaveBean(BeautyJobHandlerEndpoint.class)
+                                        .doesNotHaveBean(LockProvider.class)
+                                        .doesNotHaveBean(LockingTaskExecutor.class));
+    }
+
+    @Test
+    void enabledServerHasOneLockProviderAndExecutor() {
+        try (var ctx = new AnnotationConfigWebApplicationContext()) {
+            ctx.setServletContext(new MockServletContext());
+            TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
+                    ctx,
+                    "shop.job.enabled=true",
+                    "shop.beauty.enabled=true",
+                    "spring.profiles.active=api");
+            ctx.register(Web.class, BeautyJobTargetConfiguration.class);
+            ctx.refresh();
+            assertThat(ctx.getBeansOfType(LockProvider.class)).hasSize(1);
+            assertThat(ctx.getBeansOfType(LockingTaskExecutor.class)).hasSize(1);
+        }
     }
 
     @Test void nonApiShapesDoNotExposeAnInertJobEndpoint() {

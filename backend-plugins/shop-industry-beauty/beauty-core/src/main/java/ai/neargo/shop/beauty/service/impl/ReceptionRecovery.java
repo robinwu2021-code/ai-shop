@@ -16,11 +16,11 @@ public final class ReceptionRecovery {
     private static final Logger LOG = LoggerFactory.getLogger(ReceptionRecovery.class);
     private final AppointmentPersistence db;
     private final AppointmentCoordinator appointments;
-    private final AppointmentPreparationService preparation;
+    private final AppointmentPreparation preparation;
     private final BeautyMappers.ReceptionOperationMapper rows;
     private final Clock clock;
     public ReceptionRecovery(AppointmentPersistence db, AppointmentCoordinator appointments,
-            AppointmentPreparationService preparation, BeautyMappers.ReceptionOperationMapper rows, Clock clock) {
+            AppointmentPreparation preparation, BeautyMappers.ReceptionOperationMapper rows, Clock clock) {
         this.db = db; this.appointments = appointments; this.preparation = preparation; this.rows = rows;
         this.clock = clock;
     }

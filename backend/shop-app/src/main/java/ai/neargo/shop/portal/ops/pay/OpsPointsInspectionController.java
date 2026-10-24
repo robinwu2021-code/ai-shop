@@ -28,6 +28,7 @@ import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -81,7 +82,7 @@ public class OpsPointsInspectionController {
     @GetMapping("/ops/points/transactions/{voucherNo}")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
     public TransactionDetail transaction(
-            @RequestParam String typeCode, @org.springframework.web.bind.annotation.PathVariable String voucherNo) {
+            @RequestParam String typeCode, @PathVariable String voucherNo) {
         return service.transaction(typeCode, voucherNo);
     }
 
