@@ -6,6 +6,8 @@ import ai.neargo.shop.food.config.FoodPersistenceConfiguration.PersistenceEnable
 import ai.neargo.shop.food.dto.BusinessCloseContracts.DayVO;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.ReportVO;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO;
+import ai.neargo.shop.food.dto.BusinessCloseContracts.ExceptionVO;
+import java.util.List;
 import ai.neargo.shop.food.dto.OperationVO;
 import ai.neargo.shop.food.service.BusinessCloseService;
 import ai.neargo.shop.food.spi.BusinessCloseInternalApi.OpenCommand;
@@ -14,7 +16,10 @@ import ai.neargo.shop.food.spi.BusinessCloseInternalApi.PreviewCommand;
 import ai.neargo.shop.food.spi.BusinessCloseInternalApi.GetQuery;
 import ai.neargo.shop.food.spi.BusinessCloseInternalApi.SignCommand;
 import ai.neargo.shop.food.spi.BusinessCloseInternalApi.AdjustCommand;
+import ai.neargo.shop.food.spi.BusinessCloseInternalApi.ProposeCarryCommand;
+import ai.neargo.shop.food.spi.BusinessCloseInternalApi.ApproveCarryCommand;
 import jakarta.validation.Valid;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,6 +29,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 /** Original internal security chain authenticates service calls before scope revalidation. */
 @RestController
+@Validated
 @ConditionalOnFoodEnabled
 @Conditional(PersistenceEnabled.class)
 public class InternalBusinessCloseController {
@@ -52,6 +58,19 @@ public class InternalBusinessCloseController {
     @PostMapping("/internal/food/business-close/adjust")
     public OperationVO adjust(@Valid @RequestBody AdjustCommand c) {
         return service.adjust(c.entity(),c.store(),c.actor(),c.request(),c.key());
+    }
+
+    @PostMapping("/internal/food/business-close/exceptions")
+    public List<ExceptionVO> exceptions(@Valid @RequestBody GetQuery c) {
+        return service.exceptions(c.entity(),c.store(),c.actor(),c.closeNo());
+    }
+    @PostMapping("/internal/food/business-close/propose-carry")
+    public ExceptionVO proposeCarry(@Valid @RequestBody ProposeCarryCommand c) {
+        return service.proposeCarry(c.entity(),c.store(),c.actor(),c.closeNo(),c.exceptionNo(),c.request(),c.key());
+    }
+    @PostMapping("/internal/food/business-close/approve-carry")
+    public ExceptionVO approveCarry(@Valid @RequestBody ApproveCarryCommand c) {
+        return service.approveCarry(c.entity(),c.store(),c.actor(),c.closeNo(),c.exceptionNo(),c.request(),c.key());
     }
 
     @ExceptionHandler(BizException.class)

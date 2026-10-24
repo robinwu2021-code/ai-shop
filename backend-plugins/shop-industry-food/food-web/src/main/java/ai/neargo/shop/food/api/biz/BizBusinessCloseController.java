@@ -12,6 +12,10 @@ import ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.PreviewReq;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.SignReq;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.AdjustmentReq;
+import ai.neargo.shop.food.dto.BusinessCloseContracts.ExceptionVO;
+import ai.neargo.shop.food.dto.BusinessCloseContracts.ProposeCarryReq;
+import ai.neargo.shop.food.dto.BusinessCloseContracts.ApproveCarryReq;
+import java.util.List;
 import ai.neargo.shop.food.dto.OperationVO;
 import ai.neargo.shop.food.service.BusinessCloseService;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
@@ -85,4 +89,30 @@ public class BizBusinessCloseController {
         var c=scope.current(request);
         return service.adjust(c.merchantNo(),c.currentStoreNo(),SecurityUtils.currentUserNo(),body,key);
     }
+    @GetMapping("/biz/x/food/closes/{closeNo}/exceptions")
+    @PreAuthorize("@perm.canBiz('"+BizPerms.ORDER_VIEW+"')")
+    public List<ExceptionVO> exceptions(@PathVariable @NotBlank @Size(max=32) String closeNo,
+            HttpServletRequest request) {
+        var c=scope.current(request);
+        return service.exceptions(c.merchantNo(),c.currentStoreNo(),SecurityUtils.currentUserNo(),closeNo);
+    }
+    @PostMapping("/biz/x/food/closes/{closeNo}/exceptions/{exceptionNo}:propose-carry")
+    @PreAuthorize("@perm.canBiz('"+BizPerms.FINANCE+"')")
+    public ExceptionVO proposeCarry(@PathVariable @NotBlank @Size(max=32) String closeNo,
+            @PathVariable @NotBlank @Size(max=32) String exceptionNo, @Valid @RequestBody ProposeCarryReq body,
+            @RequestHeader("Idempotency-Key") String key, HttpServletRequest request) {
+        var c=scope.current(request);
+        return service.proposeCarry(c.merchantNo(),c.currentStoreNo(),SecurityUtils.currentUserNo(),
+                closeNo,exceptionNo,body,key);
+    }
+    @PostMapping("/biz/x/food/closes/{closeNo}/exceptions/{exceptionNo}:approve-carry")
+    @PreAuthorize("@perm.canBiz('"+BizPerms.FINANCE+"')")
+    public ExceptionVO approveCarry(@PathVariable @NotBlank @Size(max=32) String closeNo,
+            @PathVariable @NotBlank @Size(max=32) String exceptionNo, @Valid @RequestBody ApproveCarryReq body,
+            @RequestHeader("Idempotency-Key") String key, HttpServletRequest request) {
+        var c=scope.current(request);
+        return service.approveCarry(c.merchantNo(),c.currentStoreNo(),SecurityUtils.currentUserNo(),
+                closeNo,exceptionNo,body,key);
+    }
+
 }

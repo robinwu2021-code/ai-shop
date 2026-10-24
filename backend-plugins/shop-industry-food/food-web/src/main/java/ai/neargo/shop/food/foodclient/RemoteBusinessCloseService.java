@@ -8,6 +8,10 @@ import ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.PreviewReq;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.SignReq;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.AdjustmentReq;
+import ai.neargo.shop.food.dto.BusinessCloseContracts.ExceptionVO;
+import ai.neargo.shop.food.dto.BusinessCloseContracts.ProposeCarryReq;
+import ai.neargo.shop.food.dto.BusinessCloseContracts.ApproveCarryReq;
+import java.util.List;
 import ai.neargo.shop.food.dto.OperationVO;
 import ai.neargo.shop.food.service.BusinessCloseService;
 import ai.neargo.shop.food.spi.BusinessCloseInternalApi;
@@ -17,6 +21,8 @@ import ai.neargo.shop.food.spi.BusinessCloseInternalApi.PreviewCommand;
 import ai.neargo.shop.food.spi.BusinessCloseInternalApi.GetQuery;
 import ai.neargo.shop.food.spi.BusinessCloseInternalApi.SignCommand;
 import ai.neargo.shop.food.spi.BusinessCloseInternalApi.AdjustCommand;
+import ai.neargo.shop.food.spi.BusinessCloseInternalApi.ProposeCarryCommand;
+import ai.neargo.shop.food.spi.BusinessCloseInternalApi.ApproveCarryCommand;
 import ai.neargo.shop.svc.ServiceName;
 import ai.neargo.svc.client.ServiceCallException;
 import ai.neargo.svc.client.ServiceCalls;
@@ -44,6 +50,17 @@ public class RemoteBusinessCloseService implements BusinessCloseService {
     }
     @Override public OperationVO adjust(String entity,String store,String actor,AdjustmentReq request,String key) {
         return call(() -> api.adjust(new AdjustCommand(entity,store,actor,request,key)));
+    }
+    @Override public List<ExceptionVO> exceptions(String entity,String store,String actor,String closeNo) {
+        return call(() -> api.exceptions(new GetQuery(entity,store,actor,closeNo)));
+    }
+    @Override public ExceptionVO proposeCarry(String entity,String store,String actor,String closeNo,
+            String exceptionNo,ProposeCarryReq request,String key) {
+        return call(() -> api.proposeCarry(new ProposeCarryCommand(entity,store,actor,closeNo,exceptionNo,request,key)));
+    }
+    @Override public ExceptionVO approveCarry(String entity,String store,String actor,String closeNo,
+            String exceptionNo,ApproveCarryReq request,String key) {
+        return call(() -> api.approveCarry(new ApproveCarryCommand(entity,store,actor,closeNo,exceptionNo,request,key)));
     }
     private <T> T call(Supplier<T> operation) {
         try { return ServiceCalls.call(ServiceName.FOOD,operation); }

@@ -37,7 +37,8 @@ class FoodEmbeddedWiringTest {
         assertThat(present("ai.neargo.shop.food.port.FoodPricingSourceFactsPortImpl"))
                 .isEqualTo(!SHAPE.equals("retail"));
         for(String service:new String[]{"DiningSession","Check","CheckCart","DiningPricingFacts","Reservation","Dish","OptionGroup","Recipe","Menu",
-                "DiningOrder","DiningCheckout","DiningReturn","KitchenTask","BusinessClose","FoodPrint",
+                "DiningOrder","DiningCheckout","DiningReturn","BusinessReturn","BusinessShare","DiningBatchQuery",
+                "KitchenTask","BusinessClose","FoodPrint",
                 "ProductionConsumption","KitchenReturn","Queue","DiningPickupVerification"}) {
             assertThat(present("ai.neargo.shop.food.service."+service+"Service")).isEqualTo(!SHAPE.equals("retail"));
             assertThat(present("ai.neargo.shop.food.foodclient.Remote"+service+"Service")).isEqualTo(!SHAPE.equals("retail"));

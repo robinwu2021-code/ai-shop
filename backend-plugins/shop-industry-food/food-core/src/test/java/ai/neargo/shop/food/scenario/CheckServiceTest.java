@@ -117,7 +117,7 @@ class CheckServiceTest extends FoodWriteGuardFixture {
             assertThat(s.openCheck("E","A","actor",noTable,"fast").check().tableNos()).isEmpty();
             DiningSessionTest.code(() -> s.openCheck("E","B","actor",open(t,2,"SHARED"),"foreign"),ErrorCode.NOT_FOUND);
             DiningSessionTest.code(() -> s.openCheck("E","A","actor",open(t,5,"SHARED"),"too-many"),ErrorCode.CONFLICT);
-            DiningSessionTest.code(() -> s.openCheck("E","A","actor",new OpenCheckReq(List.of(),1,"POSTPAY",null,List.of(),"EXCLUSIVE",List.of(),null),"postpay"),ErrorCode.FORBIDDEN);
+            DiningSessionTest.code(() -> s.openCheck("E","A","actor",new OpenCheckReq(List.of(),1,"POSTPAY",null,List.of(),"EXCLUSIVE",List.of(),null),"postpay"),ErrorCode.CONFLICT);
             DiningSessionTest.code(() -> s.openCheck("E","A","actor",new OpenCheckReq(List.of(),1,"PREPAY","reservation",List.of(),"EXCLUSIVE",List.of(),null),"res"),ErrorCode.FORBIDDEN);
         });
     }
@@ -183,7 +183,7 @@ class CheckServiceTest extends FoodWriteGuardFixture {
             assertThat(f.sql().queryForObject("SELECT turnover_state FROM fnb_table",String.class)).isEqualTo("IDLE");
         });
     }
-    @Test void tradeFactsAndDraftsBlockClearAndTopologyWithoutMutatingHistory() {
+    @Test void tradeFactsAndDraftsBlockClearAndSeatEditsWithoutMutatingHistory() {
         for(String fact:List.of("fnb_order_batch","fnb_check_batch_membership","fnb_settlement_item","fnb_return","fnb_dining_entitlement","fnb_check_cart")) {
             run(c -> {
                 var f=fixture(c);var t=table(c,"T1");var target=table(c,"T2");var s=c.getBean(CheckService.class);
@@ -192,8 +192,8 @@ class CheckServiceTest extends FoodWriteGuardFixture {
                 f.sql().update("INSERT INTO "+fact+"(entity_no,check_no"+(fact.equals("fnb_check_cart")?",status":"")+") VALUES('E',?"+(fact.equals("fnb_check_cart")?",'OPEN'":"")+")",check.checkNo());
                 DiningSessionTest.code(() -> s.clearCheck("E","A",check.checkNo(),"actor",
                         new ClearCheckReq(0L,"离店",null,List.of(occ.occupancyNo())),"clear"),ErrorCode.CONFLICT);
-                DiningSessionTest.code(() -> s.transferCheck("E","A",check.checkNo(),"actor",new TransferCheckReq(0L,"换台",null,
-                        List.of(target.tableNo()),List.of(new TableVersionReq(t.tableNo(),1L),new TableVersionReq(target.tableNo(),0L))),"move"),ErrorCode.CONFLICT);
+                DiningSessionTest.code(() -> s.saveSeats("E","A",check.checkNo(),"actor",
+                        new SaveCheckSeatsReq(0L,3,List.of(),"变更人数"),"seats"),ErrorCode.CONFLICT);
                 assertThat(s.getCheck("E","A",check.checkNo()).occupancies()).containsExactly(occ);
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_table_operation",Integer.class)).isZero();
             });

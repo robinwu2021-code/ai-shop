@@ -11,6 +11,8 @@ import ai.neargo.shop.food.config.ConditionalOnFoodWebEnabled;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration.PolicyEnabled;
 import ai.neargo.shop.food.dto.KitchenContracts.HandoverReq;
 import ai.neargo.shop.food.dto.KitchenContracts.HandoverVO;
+import ai.neargo.shop.food.dto.KitchenContracts.PackingReq;
+import ai.neargo.shop.food.dto.KitchenContracts.CustodyReceiptVO;
 import ai.neargo.shop.food.service.KitchenTaskService;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,6 +25,7 @@ import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,6 +52,21 @@ public class BizDiningHandoverController {
             @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) String key,HttpServletRequest request) {
         var c=BizContext.current(); requireStore(c.currentStoreNo(),request,Set.of());
         return service.handover(c.merchantNo(),c.currentStoreNo(),SecurityUtils.currentUserNo(),batchNo,req,key);
+    }
+    @PostMapping("/biz/x/food/batches/{batchNo}:confirm-packing")
+    @PreAuthorize("@perm.canBiz('"+BizPerms.RECEIVE+"')")
+    public CustodyReceiptVO confirmPacking(@PathVariable @NotBlank @Size(max=32) String batchNo,
+            @Valid @RequestBody PackingReq req,
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) String key,HttpServletRequest request) {
+        var c=BizContext.current(); requireStore(c.currentStoreNo(),request,Set.of());
+        return service.confirmPacking(c.merchantNo(),c.currentStoreNo(),SecurityUtils.currentUserNo(),batchNo,req,key);
+    }
+    @GetMapping("/biz/x/food/batches/{batchNo}/custody-receipts")
+    @PreAuthorize("@perm.canBiz('"+BizPerms.RECEIVE+"')")
+    public List<CustodyReceiptVO> custodyReceipts(@PathVariable @NotBlank @Size(max=32) String batchNo,
+            HttpServletRequest request) {
+        var c=BizContext.current(); requireStore(c.currentStoreNo(),request,Set.of());
+        return service.custodyReceipts(c.merchantNo(),c.currentStoreNo(),batchNo);
     }
     private BizContext requireStore(String store,HttpServletRequest request,Set<String> fields) {
         if (!fields.containsAll(request.getParameterMap().keySet())

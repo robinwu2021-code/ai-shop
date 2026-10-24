@@ -7,6 +7,7 @@ import ai.neargo.shop.food.dto.KitchenContracts.CourseVO;
 import ai.neargo.shop.food.dto.KitchenContracts.EventVO;
 import ai.neargo.shop.food.dto.KitchenContracts.FrozenRoutes;
 import ai.neargo.shop.food.dto.KitchenContracts.HandoverVO;
+import ai.neargo.shop.food.dto.KitchenContracts.CustodyReceiptVO;
 import ai.neargo.shop.food.dto.KitchenContracts.TaskVO;
 import ai.neargo.shop.food.dto.KitchenContracts.TicketVO;
 import ai.neargo.shop.food.service.KitchenTaskService;
@@ -68,6 +69,14 @@ public class InternalKitchenController {
     @PostMapping(KitchenInternalApi.HANDOVER_PATH)
     public HandoverVO handover(@Valid @RequestBody KitchenInternalApi.HandoverCommand c) {
         return service.handover(c.entityNo(),c.storeNo(),c.actorNo(),c.batchNo(),c.definition(),c.idempotencyKey());
+    }
+    @PostMapping(KitchenInternalApi.PACKING_PATH)
+    public CustodyReceiptVO confirmPacking(@Valid @RequestBody KitchenInternalApi.PackingCommand c) {
+        return service.confirmPacking(c.entityNo(),c.storeNo(),c.actorNo(),c.batchNo(),c.definition(),c.idempotencyKey());
+    }
+    @PostMapping(KitchenInternalApi.RECEIPTS_PATH)
+    public List<CustodyReceiptVO> custodyReceipts(@Valid @RequestBody KitchenInternalApi.ReceiptQuery c) {
+        return service.custodyReceipts(c.entityNo(),c.storeNo(),c.batchNo());
     }
     @ExceptionHandler(BizException.class)
     public ResponseEntity<Void> businessFailure(BizException failure) {

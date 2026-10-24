@@ -18,7 +18,7 @@ test('provided migrations are not represented as historical locally applied tabl
  for(const version of [6,7])assert(s.databaseInitialization.additionalMigrations.some(p=>p.includes('/V'+version+'__')));
  const p=inventory().persistence;
  assert.equal(p.filter(t=>t.schemaStatus==='CREATED_LOCAL').length,73);
- assert.equal(p.filter(t=>t.schemaStatus==='MIGRATION_AVAILABLE_NOT_APPLIED').length,8);
+ assert.equal(p.filter(t=>t.schemaStatus==='MIGRATION_AVAILABLE_NOT_APPLIED').length,10);
  assert.equal(p.filter(t=>t.schemaStatus==='PLANNED_NOT_CREATED').length,2);
 });
 test('menu sections and catalog preserve actual nullable authority and private read contracts',()=>{

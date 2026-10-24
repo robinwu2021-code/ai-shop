@@ -5,10 +5,10 @@ import {buildFoodModuleInventory} from '../lib/food-module-code-inventory.mjs';
 const read=n=>JSON.parse(fs.readFileSync(new URL('../../docs/technical/design/schema/'+n,import.meta.url)));
 const source=read('food-system-design.json'),inventory=read('food-code-inventory.json'),plan=read('food-code-plan.json'),baseline=read('food-code-baselines.json');
 const build=(s=source,p=plan)=>buildFoodModuleInventory(s,inventory,p,baseline);
-test('each of 165 APIs and89tables has one primary business module',()=>{
- const v=build();assert.equal(v.endpoints.length,165);assert.equal(v.persistence.length,89);
+test('each of 165 APIs and91tables has one primary business module',()=>{
+ const v=build();assert.equal(v.endpoints.length,165);assert.equal(v.persistence.length,91);
  assert.equal(new Set(v.modules.flatMap(m=>m.ownedApiIds)).size,165);
- assert.equal(new Set(v.modules.flatMap(m=>m.ownedTables)).size,89);
+ assert.equal(new Set(v.modules.flatMap(m=>m.ownedTables)).size,91);
  assert.equal(v.persistence.filter(p=>p.schemaStatus==='CREATED_LOCAL').length,73);
 });
 test('reject absent or invalid primary owner instead of silently falling back',()=>{
@@ -61,7 +61,7 @@ test('diff preserves every old API and table, with additions traced by stable ID
  const v=build();assert.equal(v.diffs.committed.filter(r=>r.status==='ADDED').length,74);
  assert(!v.diffs.committed.some(r=>r.status==='REMOVED'));
  assert(!v.diffs.previous.some(r=>r.status==='REMOVED'));
- assert.equal(v.tableDiffs.filter(r=>r.status==='ADDED').length,16);
+ assert.equal(v.tableDiffs.filter(r=>r.status==='ADDED').length,18);
 });
 test('shared class reuse has one owning module rather than duplicated source files',()=>{
  const v=build();const classes=v.modules.flatMap(m=>m.ownedControllerClasses);

@@ -30,6 +30,7 @@ import ai.neargo.shop.spi.trade.IndustryOrderPort.Mode;
 import ai.neargo.shop.spi.trade.IndustryOrderPort.Result;
 import ai.neargo.shop.spi.trade.PricingCheckoutPort;
 import ai.neargo.shop.spi.trade.PricingSourceFacts;
+import ai.neargo.shop.spi.trade.IndustryOrderCompositionFacts;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Kind;
 import ai.neargo.shop.spi.user.AdmissionPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
@@ -150,25 +151,39 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
 
     @Override public Result place(Command command, String key) {
         outside(); validate(command, key);
-        String hash = PricingSnapshotHash.of(command);
+        return placeOriginal(command, key, false, Fulfillments.STORE_PICKUP);
+    }
+    /** Staff source resolution never creates consumer credentials or grants payment consent. */
+    @Override public Result placeForStore(Command command, String key) {
+        outside(); validateStaff(command, key);
+        return placeOriginal(command, key, true, Fulfillments.STORE_PICKUP);
+    }
+    /** Dine-in retains the original command schema while giving its distinct fulfillment an immutable request identity. */
+    @Override public Result placeForDiningRoom(Command command, String key) {
+        outside(); validateStaff(command, key);
+        return placeOriginal(command, key, true, Fulfillments.DINE_IN);
+    }
+    private Result placeOriginal(Command command, String key, boolean staff, String fulfillment) {
+        String hash = Fulfillments.DINE_IN.equals(fulfillment)
+                ? PricingSnapshotHash.of(List.of("INDUSTRY_DINE_IN_PLACEMENT_V1", command))
+                : PricingSnapshotHash.of(command);
         var prior = intent(command.identity(), key);
         if (prior != null) {
             exact(prior, command.identity(), hash);
             var binding = binding(command.identity(), prior.getPayNo(), false);
             if ("ACCEPTED".equals(binding.getStatus())) return result(binding);
             if ("BOUND".equals(binding.getStatus())) return "POSTPAY".equals(binding.getOrderMode())
-                    ? acceptUnpaid(command.identity(),binding.getOrderNo()) : result(binding);
+                    ? acceptUnpaidOriginal(command.identity(), binding.getOrderNo()) : result(binding);
             if (!OrdCreateIntent.PREPARED.equals(prior.getStatus())) throw conflict();
         }
         if (!"INVENTORY".equals(stockAuthority)) throw unsupported();
         var inventory = inventory();
-        var prepared = preparations.customer(command.source(), command.credentials());
-        authorizedSource(command, prepared);
-        var quote = checkout.revalidateCustomer(command.source(), command.credentials(), command.quoteNo(),
-                command.confirmationDigest());
-        var guard = guards(command.identity(), prepared, quote, command.mode());
-        var current = preparations.confirmCustomer(command.source(), command.credentials(), prepared.preparationHash());
-        authorizedSource(command, current);
+        var prepared = prepareSource(command, staff);
+        authorizedSource(command, prepared, staff);
+        var quote = revalidate(command, staff);
+        var guard = guards(command.identity(), prepared, quote, command.mode(), fulfillment);
+        var current = confirmSource(command, prepared.preparationHash(), staff);
+        authorizedSource(command, current, staff);
         if (prior == null) prior = prepare(command, key, hash, prepared.source(), false);
         exact(prior, command.identity(), hash);
         final OrdCreateIntent claim = prior;
@@ -196,13 +211,16 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         if (!expected.stream().sorted(lineOrder).toList().equals(
                 reservation.originalLines().stream().sorted(lineOrder).toList())) throw conflict();
         // Source is frozen by the industry placement intent; verify again after stock's independent transaction.
-        checkout.revalidateCustomer(command.source(), command.credentials(), command.quoteNo(), command.confirmationDigest());
-        preparations.confirmCustomer(command.source(), command.credentials(), prepared.preparationHash());
-        Result created=transaction(() -> persist(command, hash, claim.getPayNo(), prepared, quote, guard));
-        return command.mode()==Mode.POSTPAY?acceptUnpaid(command.identity(),created.orderNo()):created;
+        revalidate(command, staff);
+        confirmSource(command, prepared.preparationHash(), staff);
+        Result created=transaction(() -> persist(command, hash, claim.getPayNo(), prepared, quote, guard, fulfillment));
+        return command.mode()==Mode.POSTPAY?acceptUnpaidOriginal(command.identity(), created.orderNo()):created;
     }
     @Override public Result acceptUnpaid(Identity identity,String orderNo) {
         outside(); identity(identity); PricingSourceFacts.key(orderNo);
+        return acceptUnpaidOriginal(identity, orderNo);
+    }
+    private Result acceptUnpaidOriginal(Identity identity, String orderNo) {
         var source=binding(identity,orderNo,false);
         if(!"POSTPAY".equals(source.getOrderMode())) throw unsupported();
         if("ACCEPTED".equals(source.getStatus())) return result(source);
@@ -261,14 +279,27 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
     }
     @Override public Result cancel(Command command, String key) {
         outside(); validate(command, key);
-        String hash = PricingSnapshotHash.of(command);
+        return cancelOriginal(command, key, false, Fulfillments.STORE_PICKUP);
+    }
+    @Override public Result cancelForStore(Command command, String key, String fulfillment) {
+        outside(); validateStaff(command, key);
+        if (!Set.of(Fulfillments.STORE_PICKUP, Fulfillments.DINE_IN).contains(
+                Objects.toString(fulfillment, ""))) throw unsupported();
+        return cancelOriginal(command, key, true, fulfillment);
+    }
+    private Result cancelOriginal(Command command, String key, boolean staff, String fulfillment) {
+        String hash = Fulfillments.DINE_IN.equals(fulfillment)
+                ? PricingSnapshotHash.of(List.of("INDUSTRY_DINE_IN_PLACEMENT_V1", command))
+                : PricingSnapshotHash.of(command);
         var intent = intent(command.identity(), key);
         if (intent == null) {
             // Authorize the actual source without demanding currently available rule/funding owners.
-            var snapshot = sources.customer(command.source(), command.credentials());
+            var snapshot = staff ? sources.cancellationForStore(command, key, fulfillment)
+                    : sources.customer(command.source(), command.credentials());
             PricingSourceFacts.validate(snapshot);
             var identity = command.identity();
-            if (!command.source().equals(snapshot.source()) || snapshot.subjectNo() == null
+            if (!command.source().equals(snapshot.source()) || !staff && snapshot.subjectNo() == null
+                    || staff && (snapshot.subjectNo() != null || !Set.of("POS", "WAITER").contains(snapshot.channel()))
                     || !identity.tenantNo().equals(snapshot.scope().tenantNo())
                     || !identity.entityNo().equals(snapshot.scope().entityNo())
                     || !identity.storeNo().equals(snapshot.scope().storeNo())) throw unsupported();
@@ -304,12 +335,20 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
     }
     @Override public Result query(Identity identity, String key) {
         outside(); identity(identity); key(key);
+        return queryOriginal(identity, key, false);
+    }
+    @Override public Result queryForStore(Identity identity, String key) {
+        outside(); staffIdentity(identity); key(key);
+        return queryOriginal(identity, key, true);
+    }
+    private Result queryOriginal(Identity identity, String key, boolean staff) {
         var intent = intent(identity, key);
         if (intent == null) throw BizException.of(ErrorCode.NOT_FOUND);
         var binding = binding(identity, intent.getPayNo(), false);
+        if (staff && !"POSTPAY".equals(binding.getOrderMode())) throw unsupported();
         if ("ACCEPTED".equals(binding.getStatus())) return result(binding);
         if ("BOUND".equals(binding.getStatus())) return "POSTPAY".equals(binding.getOrderMode())
-                ? acceptUnpaid(identity,binding.getOrderNo()):result(binding);
+                ? acceptUnpaidOriginal(identity, binding.getOrderNo()):result(binding);
         if (Set.of(OrdCreateIntent.PREPARED, OrdCreateIntent.RECOVERING).contains(intent.getStatus())
                 && intent.getNextAttemptAt() <= System.currentTimeMillis()) recover(identity, intent.getPayNo());
         return result(binding(identity, intent.getPayNo(), false));
@@ -356,7 +395,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         }
     }
     private Result persist(Command command, String hash, String orderNo, Prepared prepared,
-            PricingCheckoutPort.QuoteVO quote, Guard guard) {
+            PricingCheckoutPort.QuoteVO quote, Guard guard, String fulfillment) {
         var intent = intents.lock(orderNo);
         exact(intent, command.identity(), hash);
         var binding = binding(command.identity(), orderNo, true);
@@ -366,7 +405,8 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         var identity = command.identity();
         var order = new OrdOrder(); audit(order, identity);
         order.setOrderNo(orderNo); order.setUserNo(identity.buyerNo()); order.setCommunityNo(guard.communityNo());
-        order.setGoodsAmount(quote.totals().goodsMinor()); order.setFreightAmount(0L); order.setDiscountAmount(0L);
+        order.setGoodsAmount(quote.totals().goodsMinor()); order.setFreightAmount(0L);
+        order.setDiscountAmount(quote.totals().discountMinor());
         order.setPayAmount(quote.totals().receivableMinor()); order.setCurrency(quote.currency());
         order.setStatus(OrdOrder.WAIT_PAY); order.setPayScene(PayScenes.normalize(command.payScene()));
         order.setPointsIntegrated(false);
@@ -376,10 +416,11 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         var sub = new OrdSubOrder(); audit(sub, identity);
         sub.setOrderNo(orderNo); sub.setSubOrderNo(binding.getSubOrderNo()); sub.setUserNo(identity.buyerNo());
         sub.setEntityNo(identity.entityNo()); sub.setStoreNo(identity.storeNo()); sub.setEntityName(guard.entityName());
-        sub.setCommunityNo(guard.communityNo()); sub.setFulfillment(Fulfillments.STORE_PICKUP);
+        sub.setCommunityNo(guard.communityNo()); sub.setFulfillment(fulfillment);
         sub.setInventoryLifecycleVersion(command.mode()==Mode.POSTPAY?3:2); sub.setTrafficSource(guard.trafficSource());
-        sub.setGoodsAmount(order.getGoodsAmount()); sub.setFreightAmount(0L); sub.setDiscountAmount(0L);
-        sub.setDiscountPlatform(0L); sub.setDiscountMerchant(0L); sub.setPointsDeduct(0); sub.setPointsDeductMinor(0L);
+        sub.setGoodsAmount(order.getGoodsAmount()); sub.setFreightAmount(0L);
+        sub.setDiscountAmount(order.getDiscountAmount());
+        sub.setDiscountPlatform(0L); sub.setDiscountMerchant(order.getDiscountAmount()); sub.setPointsDeduct(0); sub.setPointsDeductMinor(0L);
         sub.setPayAmount(order.getPayAmount()); sub.setStatus(OrdSubOrder.WAIT_PAY);
         sub.setRequireBuyerConfirm(guard.buyerConfirm() ? 1 : 0); sub.setBuyerNickname(guard.buyerNickname());
         subOrders.insert(sub);
@@ -418,7 +459,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
                 order.getPayAmount(), command.source().sourceVersion(), command.mode()==Mode.POSTPAY?3:2, allocations,
                 command.mode().name(),sub.getStatus(),false);
     }
-    private Guard guards(Identity identity, Prepared prepared, PricingCheckoutPort.QuoteVO quote,Mode mode) {
+    private Guard guards(Identity identity, Prepared prepared, PricingCheckoutPort.QuoteVO quote,Mode mode,String fulfillment) {
         if (!ownerScopes.entityActive(identity.tenantNo(), identity.entityNo())
                 || !ownerScopes.storesOwned(identity.tenantNo(), identity.entityNo(), Set.of(identity.storeNo()))) throw unsupported();
         var card = stores.cards(List.of(identity.storeNo())).get(identity.storeNo());
@@ -434,7 +475,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
             int qty = quantity(unit.quantity()); var sku = snapshots.get(unit.skuNo());
             if (sku == null || !unit.goodsNo().equals(sku.goodsNo()) || !unit.skuNo().equals(sku.skuNo())
                     || !identity.entityNo().equals(sku.merchantNo()) || !identity.storeNo().equals(sku.storeNo())
-                    || !sku.onSale() || sku.fulfillments() == null || !sku.fulfillments().contains(Fulfillments.STORE_PICKUP)
+                    || !sku.onSale() || sku.fulfillments() == null || !sku.fulfillments().contains(fulfillment)
                     || sku.activityOnly() || !"STANDARD".equals(sku.categoryType())
                     || sku.saleMode() != null && !"NORMAL".equals(sku.saleMode())) throw unsupported();
             quantities.merge(unit.goodsNo(), qty, Math::addExact);
@@ -442,7 +483,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         }
         purchaseLimits.require(identity.buyerNo(), quantities, limits);
         admission.requireOrderAllowed(identity.entityNo(), quote.totals().receivableMinor(), () -> paidToday(identity));
-        boolean buyerConfirm = admission.requireFulfillmentAllowed(identity.entityNo(), Fulfillments.STORE_PICKUP, null);
+        boolean buyerConfirm = admission.requireFulfillmentAllowed(identity.entityNo(), fulfillment, null);
         if(mode==Mode.PREPAY) {
             var pay = merchants.payCapabilityOf(identity.entityNo(), identity.storeNo());
             if (pay == null || pay.payMethods() == null || pay.payMethods().isEmpty()) throw unsupported();
@@ -452,7 +493,9 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         if (minutes < CloseRuleService.MIN_UNPAID_MINUTES || minutes > CloseRuleService.MAX_UNPAID_MINUTES) throw unsupported();
         String traffic = attribution.resolveTrafficSource(identity.buyerNo(), identity.entityNo());
         if (!Set.of(OrdSubOrder.TRAFFIC_MERCHANT_OWNED, OrdSubOrder.TRAFFIC_PLATFORM).contains(traffic)) throw unsupported();
-        if (!"CNY".equals(quote.currency()) || quote.totals().discountMinor() != 0
+        if (!"CNY".equals(quote.currency()) || quote.totals().discountMinor() < 0
+                || quote.totals().discountMinor() > quote.totals().goodsMinor()
+                || mode == Mode.PREPAY && quote.totals().discountMinor() != 0
                 || quote.totals().receivableMinor() < 0 || quote.lines().size() != units.size()) throw unsupported();
         return new Guard(snapshots, merchant.merchantName(), buyer.nickname(), buyerConfirm, traffic,
                 userDetails.communityOf(identity.buyerNo()).orElse(null), minutes);
@@ -465,14 +508,15 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
                 .stream().filter(s -> !Integer.valueOf(3).equals(s.getInventoryLifecycleVersion()))
                 .mapToLong(s -> s.getPayAmount() == null ? 0 : s.getPayAmount()).reduce(0, Math::addExact);
     }
-    private void authorizedSource(Command command, Prepared prepared) {
+    private void authorizedSource(Command command, Prepared prepared, boolean staff) {
         var identity = command.identity(); var source = prepared.source();
         if (!command.source().equals(source.source()) || !identity.tenantNo().equals(source.scope().tenantNo())
                 || !identity.entityNo().equals(source.scope().entityNo()) || !identity.storeNo().equals(source.scope().storeNo())
-                || source.subjectNo() == null) throw unsupported();
-        if (source.composition().stream().anyMatch(c -> c.kind() != Kind.MAIN || c.unit().componentRef() == null
-                || !c.unit().componentRef().matches("[0-9a-f]{64}"))) throw unsupported();
-        source.prices().units().forEach(u -> quantity(u.quantity()));
+                || !staff && source.subjectNo() == null
+                || staff && (source.subjectNo() != null || !Set.of("POS", "WAITER").contains(source.channel()))) {
+            throw unsupported();
+        }
+        IndustryOrderCompositionFacts.require(source, command.mode());
     }
     private void recover(Identity identity, String orderNo) {
         boolean claim = transaction(() -> {
@@ -545,6 +589,42 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
     }
     private void update(OrdCreateIntent intent) { if (intents.updateById(intent) != 1) throw conflict(); }
     private void update(OrdIndustryOrderSource source) { if (bindings.updateById(source) != 1) throw conflict(); }
+    private Prepared prepareSource(Command command, boolean staff) {
+        return staff ? preparations.staff(scope(command.identity()), command.source())
+                : preparations.customer(command.source(), command.credentials());
+    }
+    private Prepared confirmSource(Command command, String hash, boolean staff) {
+        return staff ? preparations.confirmStaff(scope(command.identity()), command.source(), hash)
+                : preparations.confirmCustomer(command.source(), command.credentials(), hash);
+    }
+    private PricingCheckoutPort.QuoteVO revalidate(Command command, boolean staff) {
+        return staff ? checkout.revalidateStaff(scope(command.identity()), command.identity().actorNo(),
+                command.source(), command.quoteNo(), command.confirmationDigest())
+                : checkout.revalidateCustomer(command.source(), command.credentials(), command.quoteNo(),
+                        command.confirmationDigest());
+    }
+    private static Scope scope(Identity identity) {
+        return new Scope(identity.tenantNo(), identity.entityNo(), identity.storeNo());
+    }
+    private void validateStaff(Command command, String key) {
+        if (command == null) throw bad();
+        staffIdentity(command.identity()); key(key);
+        if (command.mode() != Mode.POSTPAY || command.credentials() != null || command.source() == null
+                || !"FOOD".equals(command.source().sourceSystem()) || !"CART".equals(command.source().sourceType())
+                || command.source().scopeNo() != null || command.source().scopeVersion() != null) throw unsupported();
+        PricingSourceFacts.key(command.quoteNo());
+        if (command.confirmationDigest() == null || !command.confirmationDigest().matches("[0-9a-f]{64}")) throw bad();
+    }
+    /** Scope and staff actor are resolved by the authenticated B gateway, never by a consumer request. */
+    private void staffIdentity(Identity value) {
+        if (value == null) throw bad();
+        try {
+            PricingSourceFacts.key(value.tenantNo()); PricingSourceFacts.key(value.entityNo());
+            PricingSourceFacts.key(value.storeNo()); PricingSourceFacts.key(value.buyerNo());
+            PricingSourceFacts.key(value.actorNo());
+        } catch (IllegalArgumentException invalid) { throw bad(); }
+        if (!"MAIN".equals(value.tenantNo())) throw unsupported();
+    }
     private static void validate(Command command, String key) {
         if (command == null) throw bad(); identity(command.identity()); key(key);
         if (command.mode() == null || command.credentials() == null || command.source() == null

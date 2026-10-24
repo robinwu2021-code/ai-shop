@@ -3322,7 +3322,19 @@
       "note": "资源hold与订金/预付款分别恢复；不伪造资源或资金成功。",
       "targetPublicRouteStatus": null,
       "targetDtoStatus": null,
-      "actualImplementations": [],
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/stores/{storeNo}/reservations",
+          "controller": "BizReservationController",
+          "responseType": "ai.neargo.shop.food.dto.ReservationContracts.DetailVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizReservationController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -3427,7 +3439,19 @@
       "note": "",
       "targetPublicRouteStatus": null,
       "targetDtoStatus": null,
-      "actualImplementations": [],
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/reservations/{reservationNo}:cancel",
+          "controller": "BizReservationController",
+          "responseType": "ai.neargo.shop.food.dto.ReservationContracts.DetailVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizReservationController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -3532,7 +3556,19 @@
       "note": "",
       "targetPublicRouteStatus": null,
       "targetDtoStatus": null,
-      "actualImplementations": [],
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/reservations/{reservationNo}:no-show",
+          "controller": "BizReservationController",
+          "responseType": "ai.neargo.shop.food.dto.ReservationContracts.DetailVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizReservationController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -3687,7 +3723,19 @@
       "note": "到店只生成一个台账，新占用失败保留原预约。",
       "targetPublicRouteStatus": null,
       "targetDtoStatus": null,
-      "actualImplementations": [],
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/reservations/{reservationNo}:arrive",
+          "controller": "BizReservationController",
+          "responseType": "ai.neargo.shop.food.dto.ReservationContracts.DetailVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizReservationController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -5621,7 +5669,30 @@
       "note": "意图与冻结源行本地提交后调用核心；UNKNOWN查同键；结果绑定再清理此次草稿，后付合同未齐禁用。",
       "targetPublicRouteStatus": null,
       "targetDtoStatus": null,
-      "actualImplementations": [],
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/stores/{storeNo}/batches",
+          "controller": "BizOrderBatchController",
+          "responseType": "ai.neargo.shop.food.dto.DiningOrderBatchVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizOrderBatchController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH_WITH_CONTROLLED_DTO",
+          "status": "CODED_PENDING_VERIFICATION"
+        },
+        {
+          "method": "POST",
+          "path": "/biz/x/food/stores/{storeNo}/batches",
+          "controller": "BizOrderBatchController",
+          "responseType": "ai.neargo.shop.food.dto.DiningOrderBatchVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizOrderBatchController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -5720,7 +5791,19 @@
       "note": "",
       "targetPublicRouteStatus": null,
       "targetDtoStatus": null,
-      "actualImplementations": [],
+      "actualImplementations": [
+        {
+          "method": "GET",
+          "path": "/biz/x/food/batches/{batchNo}",
+          "controller": "BizOrderBatchController",
+          "responseType": "ai.neargo.shop.food.dto.DiningOrderBatchVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizOrderBatchController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -7223,6 +7306,17 @@
       "targetPublicRouteStatus": null,
       "targetDtoStatus": null,
       "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/batches/{batchNo}:handover",
+          "controller": "BizDiningHandoverController",
+          "responseType": "ai.neargo.shop.food.dto.KitchenContracts.HandoverVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningHandoverController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningHandoverController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        },
         {
           "method": "POST",
           "path": "/biz/x/food/batches/{batchNo}:handover",
@@ -9232,6 +9326,17 @@
           "delegate": null,
           "mappingStatus": "PATH_AND_INPUT_CHANGED",
           "status": "CODED_PENDING_VERIFICATION"
+        },
+        {
+          "method": "POST",
+          "path": "/biz/x/food/closes:preview",
+          "controller": "BizBusinessCloseController",
+          "responseType": "ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+          "delegate": null,
+          "mappingStatus": "PATH_AND_INPUT_CHANGED",
+          "status": "CODED_PENDING_VERIFICATION"
         }
       ],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
@@ -9306,6 +9411,17 @@
       "targetPublicRouteStatus": null,
       "targetDtoStatus": null,
       "actualImplementations": [
+        {
+          "method": "GET",
+          "path": "/biz/x/food/closes/{closeNo}",
+          "controller": "BizBusinessCloseController",
+          "responseType": "ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        },
         {
           "method": "GET",
           "path": "/biz/x/food/closes/{closeNo}",
@@ -9593,6 +9709,17 @@
           "delegate": null,
           "mappingStatus": "PATH_AND_INPUT_CHANGED",
           "status": "CODED_PENDING_VERIFICATION"
+        },
+        {
+          "method": "POST",
+          "path": "/biz/x/food/closes:sign",
+          "controller": "BizBusinessCloseController",
+          "responseType": "ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+          "delegate": null,
+          "mappingStatus": "PATH_AND_INPUT_CHANGED",
+          "status": "CODED_PENDING_VERIFICATION"
         }
       ],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
@@ -9707,6 +9834,17 @@
       "targetPublicRouteStatus": null,
       "targetDtoStatus": null,
       "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/closes:adjust",
+          "controller": "BizBusinessCloseController",
+          "responseType": "ai.neargo.shop.food.dto.OperationVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+          "delegate": null,
+          "mappingStatus": "PATH_AND_INPUT_CHANGED",
+          "status": "CODED_PENDING_VERIFICATION"
+        },
         {
           "method": "POST",
           "path": "/biz/x/food/closes:adjust",
@@ -12835,7 +12973,19 @@
       "note": "",
       "targetPublicRouteStatus": null,
       "targetDtoStatus": null,
-      "actualImplementations": [],
+      "actualImplementations": [
+        {
+          "method": "GET",
+          "path": "/biz/x/food/stores/{storeNo}/reservations",
+          "controller": "BizReservationController",
+          "responseType": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.ReservationVO>",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizReservationController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -14303,7 +14453,19 @@
       "note": "",
       "targetPublicRouteStatus": null,
       "targetDtoStatus": null,
-      "actualImplementations": [],
+      "actualImplementations": [
+        {
+          "method": "GET",
+          "path": "/biz/x/food/stores/{storeNo}/batches",
+          "controller": "BizDiningBatchQueryController",
+          "responseType": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.DiningBatchSummaryVO>",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningBatchQueryController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningBatchQueryController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -14438,7 +14600,19 @@
       "note": "",
       "targetPublicRouteStatus": null,
       "targetDtoStatus": null,
-      "actualImplementations": [],
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/batches/{batchNo}:cancel",
+          "controller": "BizOrderBatchController",
+          "responseType": "ai.neargo.shop.food.dto.DiningOrderBatchVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizOrderBatchController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ],
       "transactionRule": "外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。",
       "implementationStatus": "TARGET_NOT_IMPLEMENTED"
     },
@@ -37367,6 +37541,232 @@
             }
           ],
           "signature": "int update(ai.neargo.shop.food.entity.FnbQueueTicket changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbQueueTicket> updateWrapper)",
+          "access": "WRITE",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        }
+      ]
+    },
+    {
+      "table": "fnb_reservation_table",
+      "className": "ai.neargo.shop.food.mapper.ReservationTableMapper",
+      "sourceFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/ReservationTableMapper.java",
+      "entityClass": "ai.neargo.shop.food.entity.FnbReservationTable",
+      "moduleId": "MOD-01",
+      "scopeColumns": [
+        "entity_no",
+        "store_no"
+      ],
+      "methods": [
+        {
+          "name": "selectOne",
+          "returnType": "ai.neargo.shop.food.entity.FnbReservationTable",
+          "parameters": [
+            {
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbReservationTable>",
+              "name": "queryWrapper",
+              "source": "SERVER_BUILT_SCOPED_WRAPPER"
+            }
+          ],
+          "signature": "ai.neargo.shop.food.entity.FnbReservationTable selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbReservationTable> queryWrapper)",
+          "access": "READ",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "name": "selectList",
+          "returnType": "java.util.List<ai.neargo.shop.food.entity.FnbReservationTable>",
+          "parameters": [
+            {
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbReservationTable>",
+              "name": "queryWrapper",
+              "source": "SERVER_BUILT_SCOPED_WRAPPER"
+            }
+          ],
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbReservationTable> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbReservationTable> queryWrapper)",
+          "access": "READ",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "name": "selectPage",
+          "returnType": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.food.entity.FnbReservationTable>",
+          "parameters": [
+            {
+              "type": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.food.entity.FnbReservationTable>",
+              "name": "page",
+              "source": "VALIDATED_PAGINATION"
+            },
+            {
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbReservationTable>",
+              "name": "queryWrapper",
+              "source": "SERVER_BUILT_SCOPED_WRAPPER"
+            }
+          ],
+          "signature": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.food.entity.FnbReservationTable> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.food.entity.FnbReservationTable> page, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbReservationTable> queryWrapper)",
+          "access": "READ",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "name": "selectCount",
+          "returnType": "Long",
+          "parameters": [
+            {
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbReservationTable>",
+              "name": "queryWrapper",
+              "source": "SERVER_BUILT_SCOPED_WRAPPER"
+            }
+          ],
+          "signature": "Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbReservationTable> queryWrapper)",
+          "access": "READ",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "name": "insert",
+          "returnType": "int",
+          "parameters": [
+            {
+              "type": "ai.neargo.shop.food.entity.FnbReservationTable",
+              "name": "row",
+              "source": "SERVER_BUILT_ENTITY"
+            }
+          ],
+          "signature": "int insert(ai.neargo.shop.food.entity.FnbReservationTable row)",
+          "access": "WRITE",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "name": "update",
+          "returnType": "int",
+          "parameters": [
+            {
+              "type": "ai.neargo.shop.food.entity.FnbReservationTable",
+              "name": "changes",
+              "source": "SERVER_BUILT_ENTITY"
+            },
+            {
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbReservationTable>",
+              "name": "updateWrapper",
+              "source": "SERVER_BUILT_SCOPE_VERSION_STATUS_WRAPPER"
+            }
+          ],
+          "signature": "int update(ai.neargo.shop.food.entity.FnbReservationTable changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbReservationTable> updateWrapper)",
+          "access": "WRITE",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        }
+      ]
+    },
+    {
+      "table": "fnb_business_share_plan",
+      "className": "ai.neargo.shop.food.mapper.BusinessSharePlanMapper",
+      "sourceFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/BusinessSharePlanMapper.java",
+      "entityClass": "ai.neargo.shop.food.entity.FnbBusinessSharePlan",
+      "moduleId": "MOD-05",
+      "scopeColumns": [
+        "entity_no",
+        "store_no"
+      ],
+      "methods": [
+        {
+          "name": "selectOne",
+          "returnType": "ai.neargo.shop.food.entity.FnbBusinessSharePlan",
+          "parameters": [
+            {
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbBusinessSharePlan>",
+              "name": "queryWrapper",
+              "source": "SERVER_BUILT_SCOPED_WRAPPER"
+            }
+          ],
+          "signature": "ai.neargo.shop.food.entity.FnbBusinessSharePlan selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbBusinessSharePlan> queryWrapper)",
+          "access": "READ",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "name": "selectList",
+          "returnType": "java.util.List<ai.neargo.shop.food.entity.FnbBusinessSharePlan>",
+          "parameters": [
+            {
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbBusinessSharePlan>",
+              "name": "queryWrapper",
+              "source": "SERVER_BUILT_SCOPED_WRAPPER"
+            }
+          ],
+          "signature": "java.util.List<ai.neargo.shop.food.entity.FnbBusinessSharePlan> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbBusinessSharePlan> queryWrapper)",
+          "access": "READ",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "name": "selectPage",
+          "returnType": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.food.entity.FnbBusinessSharePlan>",
+          "parameters": [
+            {
+              "type": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.food.entity.FnbBusinessSharePlan>",
+              "name": "page",
+              "source": "VALIDATED_PAGINATION"
+            },
+            {
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbBusinessSharePlan>",
+              "name": "queryWrapper",
+              "source": "SERVER_BUILT_SCOPED_WRAPPER"
+            }
+          ],
+          "signature": "com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.food.entity.FnbBusinessSharePlan> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<ai.neargo.shop.food.entity.FnbBusinessSharePlan> page, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbBusinessSharePlan> queryWrapper)",
+          "access": "READ",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "name": "selectCount",
+          "returnType": "Long",
+          "parameters": [
+            {
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbBusinessSharePlan>",
+              "name": "queryWrapper",
+              "source": "SERVER_BUILT_SCOPED_WRAPPER"
+            }
+          ],
+          "signature": "Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbBusinessSharePlan> queryWrapper)",
+          "access": "READ",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "name": "insert",
+          "returnType": "int",
+          "parameters": [
+            {
+              "type": "ai.neargo.shop.food.entity.FnbBusinessSharePlan",
+              "name": "row",
+              "source": "SERVER_BUILT_ENTITY"
+            }
+          ],
+          "signature": "int insert(ai.neargo.shop.food.entity.FnbBusinessSharePlan row)",
+          "access": "WRITE",
+          "inherited": true,
+          "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"
+        },
+        {
+          "name": "update",
+          "returnType": "int",
+          "parameters": [
+            {
+              "type": "ai.neargo.shop.food.entity.FnbBusinessSharePlan",
+              "name": "changes",
+              "source": "SERVER_BUILT_ENTITY"
+            },
+            {
+              "type": "com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbBusinessSharePlan>",
+              "name": "updateWrapper",
+              "source": "SERVER_BUILT_SCOPE_VERSION_STATUS_WRAPPER"
+            }
+          ],
+          "signature": "int update(ai.neargo.shop.food.entity.FnbBusinessSharePlan changes, com.baomidou.mybatisplus.core.conditions.Wrapper<ai.neargo.shop.food.entity.FnbBusinessSharePlan> updateWrapper)",
           "access": "WRITE",
           "inherited": true,
           "guard": "继承BaseMapper不重复声明；Wrapper只能服务端构建，必须包含主体、门店或已验证父对象、版本/状态条件；禁止直接传HTTP Entity。"

@@ -78,7 +78,7 @@ export function buildFoodModuleInventory(s,old,plan,baselines){
    targetPublicRouteStatus:a.domain==='H'?'PLANNED_SHARED_B_ENTRY_NOT_REGISTERED':null,
    targetDtoStatus:a.domain==='H'?'PLANNED_TRANSPORT_CONTRACT':null,
    dispatchServiceMethods:override.dispatchServiceMethods||[],contractStatus:a.implementation||'TARGET_NOT_IMPLEMENTED',
-   actualImplementations:(s.nonPaymentImplementation?.implementedApis||[]).filter(actual=>actual.targetApiId===a.id).map(actual=>({method:actual.method,path:actual.path,controller:actual.controller,responseType:actual.responseType,sourceFile:actual.sourceFile,controllerClass:domainRoot+'.api.biz.'+actual.controller,delegate:actual.controller==='BizPrintJobController'?(actual.handler==='enqueue'?'ai.neargo.shop.food.service.FoodPrintService.enqueue -> ai.neargo.shop.spi.printing.PrintPort.enqueue':'ai.neargo.shop.spi.printing.PrintPort.'+actual.handler):null,mappingStatus:actual.mappingStatus,status:actual.status}))};
+   actualImplementations:([...(s.nonPaymentImplementation?.implementedApis||[]),...(s.staffOrderingImplementation?.implementedApis||[]),...(s.businessCodingImplementation?.implementedApis||[])]).filter(actual=>actual.targetApiId===a.id).map(actual=>({method:actual.method,path:actual.path,controller:actual.controller,responseType:actual.responseType,sourceFile:actual.sourceFile,controllerClass:domainRoot+'.api.biz.'+actual.controller,delegate:actual.controller==='BizPrintJobController'?(actual.handler==='enqueue'?'ai.neargo.shop.food.service.FoodPrintService.enqueue -> ai.neargo.shop.spi.printing.PrintPort.enqueue':'ai.neargo.shop.spi.printing.PrintPort.'+actual.handler):null,mappingStatus:actual.mappingStatus,status:actual.status}))};
  });
  const endpoints=new Map(methods.map(e=>[e.apiId,e]));
  must(endpoints.size===s.apis.length,'API inventory missing or duplicate');
@@ -87,10 +87,10 @@ export function buildFoodModuleInventory(s,old,plan,baselines){
   const writeClass=p.owner==='shop-report'?p.mapperClass:(p.owner==='shared-print'?p.entityClass.split('.entity.')[0]:domainRoot)+'.service.'+owner.writeService;
   return {...p,primaryModuleId:owner.moduleId,writeOwnerClass:writeClass,writeOwnerKind:p.owner==='shop-report'?'REPORT_DAO':'SERVICE',
    entityFile:sourceFile(p.owner,p.entityClass),mapperFile:sourceFile(p.owner,p.mapperClass.split('.').slice(0,-1).join('.')+(p.owner==='shop-report'?'.'+p.mapperClass.split('.').at(-1):'')),
-   customMapperMethods:owner.customMapperMethods||[],schemaStatus:s.tables.find(t=>t.name===p.table)?.deployment==='PLANNED'?'PLANNED_NOT_CREATED':s.tables.find(t=>t.name===p.table)?.deployment?.startsWith('MIGRATION_')?'MIGRATION_AVAILABLE_NOT_APPLIED':p.table.startsWith('fnb_')?'CREATED_LOCAL':s.tables.find(t=>t.name===p.table)?.sharedMigration?'SHARED_MIGRATION_AVAILABLE_NOT_APPLIED':'SHARED_NOT_CREATED',implementationStatus:p.table==='fnb_queue_ticket'||s.tables.find(t=>t.name===p.table)?.sharedMigration?'CODED_PENDING_VERIFICATION':'TARGET_NOT_IMPLEMENTED'};
+   customMapperMethods:owner.customMapperMethods||[],schemaStatus:s.tables.find(t=>t.name===p.table)?.deployment==='PLANNED'?'PLANNED_NOT_CREATED':s.tables.find(t=>t.name===p.table)?.deployment?.startsWith('MIGRATION_')?'MIGRATION_AVAILABLE_NOT_APPLIED':p.table.startsWith('fnb_')?'CREATED_LOCAL':s.tables.find(t=>t.name===p.table)?.sharedMigration?'SHARED_MIGRATION_AVAILABLE_NOT_APPLIED':'SHARED_NOT_CREATED',implementationStatus:s.tables.find(t=>t.name===p.table)?.implementationStatus||(p.table==='fnb_queue_ticket'||s.tables.find(t=>t.name===p.table)?.sharedMigration?'CODED_PENDING_VERIFICATION':'TARGET_NOT_IMPLEMENTED')};
  });
  // Nested mapper interfaces share the collection source file, not independent Java files.
- for(const p of persistence)if(p.owner!=='shop-report')p.mapperFile=sourceFile(p.owner,p.mapperClass.split('.').slice(0,-1).join('.'));
+ for(const p of persistence)if(p.owner!=='shop-report')p.mapperFile=sourceFile(p.owner,plan.tableOwners[p.table]?.mapperClass?p.mapperClass:p.mapperClass.split('.').slice(0,-1).join('.'));
  const classOwners={};
  for(const p of persistence){
   classOwners[p.entityClass]=p.primaryModuleId;classOwners[p.mapperClass]=p.primaryModuleId;

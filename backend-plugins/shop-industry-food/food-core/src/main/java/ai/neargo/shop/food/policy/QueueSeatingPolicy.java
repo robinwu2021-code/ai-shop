@@ -14,7 +14,7 @@ public final class QueueSeatingPolicy {
     private QueueSeatingPolicy() { }
     public static OpenCheckReq normalize(OpenCheckReq request,int party) {
         if(request==null || request.partySize()==null || request.partySize()!=party
-                || !"PREPAY".equals(request.payMode()) || request.reservationNo()!=null
+                || (!"PREPAY".equals(request.payMode()) && !"POSTPAY".equals(request.payMode())) || request.reservationNo()!=null
                 || request.serviceEmployeeNo()!=null || request.sharingMode()==null || !Set.of("EXCLUSIVE","SHARED").contains(request.sharingMode())
                 || request.tableNos()==null || request.tableNos().isEmpty() || request.tableNos().size()>100
                 || request.tableVersions()==null || request.tableVersions().size()!=request.tableNos().size()
@@ -31,7 +31,7 @@ public final class QueueSeatingPolicy {
             if(seat==null || seat.seatNo()!=null || seat.guestRef()!=null || !key(seat.label(),32)
                     || !labels.add(seat.label().trim())) throw bad();
         }
-        return new OpenCheckReq(tables.stream().sorted().toList(),party,"PREPAY",null,
+        return new OpenCheckReq(tables.stream().sorted().toList(),party,request.payMode(),null,
                 request.tableVersions().stream().sorted(Comparator.comparing(TableVersionReq::tableNo)).toList(),
                 request.sharingMode(),request.seats().stream().map(s -> new SeatReq(null,s.label().trim(),null))
                         .sorted(Comparator.comparing(SeatReq::label)).toList(),null);

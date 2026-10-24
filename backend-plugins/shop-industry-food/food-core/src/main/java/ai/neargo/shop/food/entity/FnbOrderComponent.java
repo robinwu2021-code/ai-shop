@@ -15,6 +15,8 @@ public class FnbOrderComponent extends BaseEntity {
     private String componentNo;
     private String foodLineNo;
     private String choiceNo;
+    private String componentKind;
+    private String sourceComponentRef;
     private String skuNo;
     private BigDecimal qty;
     private String selectionSnapshot;

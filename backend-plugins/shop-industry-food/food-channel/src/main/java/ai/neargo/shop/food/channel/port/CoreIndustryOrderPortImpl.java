@@ -24,11 +24,24 @@ public class CoreIndustryOrderPortImpl implements IndustryOrderPort {
         }
         return result;
     }
+    @Override public Result cancelForStore(Command command, String key, String fulfillment) {
+        return invoke(() -> api.get().cancelForStore(
+                new IndustryOrderInternalApi.StoreCancel(command, key, fulfillment)), null);
+    }
     @Override public Result cancel(Command command, String key) {
         return invoke(() -> api.get().cancel(new IndustryOrderInternalApi.Place(command, key)), null);
     }
     @Override public Result getForStore(Scope scope, String actor, String order) {
         return invoke(() -> api.get().getForStore(new IndustryOrderInternalApi.StoreGet(scope, actor, order)), order);
+    }
+    @Override public Result placeForDiningRoom(Command command, String key) {
+        return invoke(() -> api.get().placeForDiningRoom(new IndustryOrderInternalApi.Place(command, key)), null);
+    }
+    @Override public Result placeForStore(Command command, String key) {
+        return invoke(() -> api.get().placeForStore(new IndustryOrderInternalApi.Place(command, key)), null);
+    }
+    @Override public Result queryForStore(Identity identity, String key) {
+        return invoke(() -> api.get().queryForStore(new IndustryOrderInternalApi.Query(identity, key)), null);
     }
     @Override public Result place(Command command, String key) {
         return invoke(() -> api.get().place(new IndustryOrderInternalApi.Place(command, key)), null);

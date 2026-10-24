@@ -2,15 +2,31 @@ package ai.neargo.shop.food.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.Issue;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.ReportVO;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.PreviewReq;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.SignReq;
+import ai.neargo.shop.food.dto.BusinessCloseContracts.AdjustmentReq;
+import ai.neargo.shop.food.dto.BusinessCloseContracts.ProposeCarryReq;
+import ai.neargo.shop.food.dto.BusinessCloseContracts.ApproveCarryReq;
+import ai.neargo.shop.food.entity.FnbCloseAdjustment;
+import ai.neargo.shop.food.entity.FnbCloseException;
 import ai.neargo.shop.food.entity.FnbOrderLine;
 import ai.neargo.shop.food.entity.FnbSettlement;
 import ai.neargo.shop.food.entity.FnbCloseRun;
@@ -42,10 +58,12 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Duration;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
 import org.springframework.transaction.support.DefaultTransactionStatus;
@@ -136,6 +154,133 @@ class BusinessCloseEvidenceTest {
         verify(f.runs,never()).updateById(any(FnbCloseRun.class));
     }
 
+    @Test void financialExceptionsCannotBeCarriedByLocalApproval() {
+        var f=new Fixture(); var run=f.run(f.service.report("E","S","A",f.query));
+        for(var kind:List.of("AR","PAY_UNKNOWN","REFUND","CASH_DIFF")) {
+            var issue=f.exception(kind);
+            assertThatThrownBy(() -> f.service.proposeCarry("E","S","MAKER",run.getCloseNo(),
+                    issue.getExceptionNo(),new ProposeCarryReq(0L,"OWNER","NEXT","Follow up"),"KEY"))
+                    .isInstanceOf(BizException.class);
+        }
+        verify(f.exceptions,never()).updateById(any(FnbCloseException.class));
+    }
+
+    @Test void carryApprovalRequiresAnotherActorAndMatchingVersion() {
+        var f=new Fixture(); f.run(f.service.report("E","S","A",f.query));
+        var issue=f.exception("SYNC"); issue.setStatus("ASSIGNED"); issue.setProposedBy("MAKER");
+        issue.setOwnerNo("OWNER"); issue.setNextDayNo("NEXT"); issue.setDispositionReason("Follow up");
+        assertThatThrownBy(() -> f.service.approveCarry("E","S","MAKER","C","X",new ApproveCarryReq(0L),"K"))
+                .isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> f.service.approveCarry("E","S","CHECKER","C","X",new ApproveCarryReq(1L),"K2"))
+                .isInstanceOf(BizException.class);
+        verify(f.exceptions,never()).updateById(any(FnbCloseException.class));
+    }
+
+    @Test void signedCloseRejectsExceptionEditsWithoutChangingSnapshot() {
+        var f=new Fixture(); var run=f.run(f.service.report("E","S","A",f.query)); run.setStatus("SIGNED");
+        String hash=run.getSnapshotHash(); f.exception("SYNC");
+        assertThatThrownBy(() -> f.service.proposeCarry("E","S","MAKER","C","X",
+                new ProposeCarryReq(0L,"OWNER","NEXT","Follow up"),"K"))
+                .isInstanceOf(BizException.class);
+        assertThat(run.getSnapshotHash()).isEqualTo(hash);
+        verify(f.exceptions,never()).updateById(any(FnbCloseException.class));
+    }
+
+    @Test void carryRejectsNonLaterTargetDay() {
+        var f=new Fixture(); f.run(f.service.report("E","S","A",f.query)); f.exception("SYNC");
+        assertThatThrownBy(() -> f.service.proposeCarry("E","S","MAKER","C","X",
+                new ProposeCarryReq(0L,"OWNER","D","Follow up"),"K"))
+                .isInstanceOf(BizException.class);
+        verify(f.exceptions,never()).updateById(any(FnbCloseException.class));
+    }
+
+    @Test void twoPersonCarrySignsOnlyOperationalSnapshotAndReplaysWithoutAnotherWrite() {
+        var f=new Fixture(); f.batch().setStatus("SYNC_UNKNOWN");
+        var report=f.service.report("E","S","A",f.query); var run=f.run(report);
+        String originalSnapshot=run.getSourceWatermark(); String originalHash=run.getSnapshotHash();
+        var issue=f.exception("SYNC");
+        var proposal=new ProposeCarryReq(0L,"OWNER","NEXT","Recover original sync intent");
+        assertThat(f.service.proposeCarry("E","S","MAKER","C","X",proposal,"P").status()).isEqualTo("ASSIGNED");
+        assertThat(issue.getVersion()).isEqualTo(1L);
+        var approved=f.service.approveCarry("E","S","CHECKER","C","X",new ApproveCarryReq(1L),"A");
+        assertThat(approved.status()).isEqualTo("CARRIED");
+        assertThat(approved.approvalRef()).startsWith("LOCAL_NONPAY:");
+        assertThat(approved.approvedBy()).isEqualTo("CHECKER");
+        assertThat(f.service.proposeCarry("E","S","MAKER","C","X",proposal,"P2").approvalRef())
+                .isEqualTo(approved.approvalRef());
+        assertThat(f.service.approveCarry("E","S","CHECKER","C","X",new ApproveCarryReq(1L),"A2").approvalRef())
+                .isEqualTo(approved.approvalRef());
+        verify(f.exceptions,times(2)).updateById(any(FnbCloseException.class));
+        var signed=f.service.sign("E","S","SIGNER",new SignReq("C",originalHash),"SIGN");
+        assertThat(signed.status()).isEqualTo("SIGNED");
+        assertThat(signed.report().issues()).containsExactly(new Issue("SYNC","B"));
+        assertThat(signed.report().settlementCompleteness()).isEqualTo("UNKNOWN");
+        assertThat(run.getSourceWatermark()).isEqualTo(originalSnapshot);
+        assertThat(run.getSnapshotHash()).isEqualTo(originalHash);
+        assertThat(f.day.getStatus()).isEqualTo("CLOSING");
+    }
+
+    @Test void signedCarryRemainsAnUnresolvedSourceOnTargetDayWithoutInventingRevenue() {
+        var f=new Fixture(); f.batch().setStatus("SYNC_UNKNOWN");
+        var run=f.run(f.service.report("E","S","A",f.query)); f.exception("SYNC");
+        f.service.proposeCarry("E","S","MAKER","C","X",new ProposeCarryReq(0L,"OWNER","NEXT","Follow up"),"P");
+        f.service.approveCarry("E","S","CHECKER","C","X",new ApproveCarryReq(1L),"A");
+        f.service.sign("E","S","SIGNER",new SignReq("C",run.getSnapshotHash()),"SIGN");
+        f.incomingVisible=true; when(f.batches.selectList(any())).thenReturn(List.of());
+        var target=f.service.report("E","S","READER",new PreviewReq(f.query.businessDate().plusDays(1),"CNY"));
+        assertThat(target.issues()).containsExactly(new Issue("SYNC","X"));
+        assertThat(target.batchCount()).isZero();
+        assertThat(target.requestedDueMinor()).isZero();
+        assertThat(target.settlementCompleteness()).isEqualTo("UNKNOWN");
+        assertThat(run.getStatus()).isEqualTo("SIGNED");
+    }
+
+    @Test void carryCannotTargetAlreadySignedCurrency() {
+        var f=new Fixture(); f.run(f.service.report("E","S","A",f.query)); f.exception("SYNC");
+        f.nextDay.setCurrentCloseRefs("{\"CNY\":\"FROZEN\"}");
+        assertThatThrownBy(() -> f.service.proposeCarry("E","S","MAKER","C","X",
+                new ProposeCarryReq(0L,"OWNER","NEXT","Follow up"),"K"))
+                .isInstanceOf(BizException.class);
+        verify(f.exceptions,never()).updateById(any(FnbCloseException.class));
+    }
+
+    @Test void targetSignedAfterApprovalBlocksSourceSignatureWithoutRewritingHistory() {
+        var f=new Fixture(); f.batch().setStatus("SYNC_UNKNOWN");
+        var run=f.run(f.service.report("E","S","A",f.query)); f.exception("SYNC");
+        f.service.proposeCarry("E","S","MAKER","C","X",new ProposeCarryReq(0L,"OWNER","NEXT","Follow up"),"P");
+        f.service.approveCarry("E","S","CHECKER","C","X",new ApproveCarryReq(1L),"A");
+        f.nextDay.setCurrentCloseRefs("{\"CNY\":\"FROZEN\"}");
+        assertThatThrownBy(() -> f.service.sign("E","S","SIGNER",new SignReq("C",run.getSnapshotHash()),"SIGN"))
+                .isInstanceOf(BizException.class);
+        verify(f.runs,never()).updateById(any(FnbCloseRun.class));
+    }
+
+    @Test void historicalCorrectionCannotBeAppendedIntoOriginalSignedDay() {
+        var f=new Fixture(); var run=f.run(f.service.report("E","S","A",f.query)); run.setStatus("SIGNED");
+        var req=new AdjustmentReq("C","D","ORIGINAL_CORE_REFERENCE","Correction reason","APPROVAL_REFERENCE");
+        assertThatThrownBy(() -> f.service.adjust("E","S","A",req,"CORRECTION")).isInstanceOf(BizException.class);
+        verify(f.adjustments,never()).insert(any(FnbCloseAdjustment.class));
+        verify(f.runs,never()).updateById(any(FnbCloseRun.class));
+    }
+
+    @Test void appendsCorrectionReferenceToCurrentDayWithoutRewritingSignedEvidence() {
+        var f=new Fixture(); var run=f.run(f.service.report("E","S","A",f.query)); run.setStatus("SIGNED");
+        String hash=run.getSnapshotHash(); String source=run.getSourceWatermark();
+        var now=LocalDateTime.now(ZoneOffset.UTC);
+        f.nextDay.setBusinessDate(now.toLocalDate()); f.nextDay.setStartsAt(now.minusHours(1));
+        f.nextDay.setEndsAt(now.plusHours(1));
+        when(f.adjustments.insert(any(FnbCloseAdjustment.class))).thenReturn(1);
+        var req=new AdjustmentReq("C","NEXT","ORIGINAL_CORE_REFERENCE","Correction reason","APPROVAL_REFERENCE");
+        f.service.adjust("E","S","A",req,"CORRECTION");
+        var row=ArgumentCaptor.forClass(FnbCloseAdjustment.class);
+        verify(f.adjustments).insert(row.capture());
+        assertThat(row.getValue().getOriginalCloseNo()).isEqualTo("C");
+        assertThat(row.getValue().getCurrentDayNo()).isEqualTo("NEXT");
+        assertThat(run.getSnapshotHash()).isEqualTo(hash);
+        assertThat(run.getSourceWatermark()).isEqualTo(source);
+        verify(f.runs,never()).updateById(any(FnbCloseRun.class));
+    }
+
     private static class Fixture {
         final BusinessDayMapper days=mock(BusinessDayMapper.class);
         final CloseRunMapper runs=mock(CloseRunMapper.class);
@@ -151,7 +296,13 @@ class BusinessCloseEvidenceTest {
         final ObjectMapper json=new ObjectMapper();
         final PreviewReq query=new PreviewReq(LocalDate.of(2026,10,1),"CNY");
         final BusinessCloseServiceImpl service;
+        final FnbBusinessDay day=new FnbBusinessDay();
+        final FnbBusinessDay nextDay=new FnbBusinessDay();
+        boolean incomingVisible;
         Fixture() {
+            var metadata=new MapperBuilderAssistant(new MybatisConfiguration(),"close-test");
+            TableInfoHelper.initTableInfo(metadata,FnbBusinessDay.class);
+            TableInfoHelper.initTableInfo(metadata,FnbCloseException.class);
             when(stores.cards(any())).thenReturn(Map.of("S",new StoreCard("S","Store","E",null,
                     "ACTIVE",true,null,null,null,null,0,0)));
             var idem=mock(IdempotencyService.class);
@@ -160,9 +311,36 @@ class BusinessCloseEvidenceTest {
             service=new BusinessCloseServiceImpl(days,runs,balances,exceptions,adjustments,mock(StorePolicyMapper.class),
                     batches,lines,settlements,items,bindings,mock(ReturnMapper.class),mock(KitchenTicketMapper.class),
                     mock(KitchenTaskMapper.class),mock(ServiceEventMapper.class),stores,idem,json,new TestTransactions());
-            var day=new FnbBusinessDay(); day.setDayNo("D"); day.setBusinessDate(query.businessDate());
+            day.setDayNo("D"); day.setBusinessDate(query.businessDate());
             day.setEndsAt(LocalDateTime.of(2026,10,2,0,0)); day.setCurrentCloseRefs("{}"); day.setVersion(0L);
-            when(days.selectList(any())).thenReturn(List.of(day));
+            day.setStartsAt(LocalDateTime.of(2026,10,1,0,0)); day.setStatus("OPEN");
+            nextDay.setDayNo("NEXT"); nextDay.setBusinessDate(query.businessDate().plusDays(1));
+            nextDay.setStartsAt(day.getEndsAt()); nextDay.setEndsAt(day.getEndsAt().plusDays(1));
+            nextDay.setCurrentCloseRefs("{}"); nextDay.setStatus("OPEN"); nextDay.setVersion(0L);
+            when(days.selectList(any())).thenAnswer(call -> {
+                LambdaQueryWrapper<FnbBusinessDay> wrapper=call.getArgument(0);
+                wrapper.getSqlSegment();
+                boolean target=wrapper.getParamNameValuePairs().containsValue("NEXT")
+                        || wrapper.getParamNameValuePairs().containsValue(query.businessDate().plusDays(1));
+                return List.of(target ? nextDay : day);
+            });
+            when(days.updateById(any(FnbBusinessDay.class))).thenReturn(1);
+            when(runs.updateById(any(FnbCloseRun.class))).thenReturn(1);
+            when(exceptions.updateById(any(FnbCloseException.class))).thenAnswer(call -> {
+                FnbCloseException row=call.getArgument(0); row.setVersion(row.getVersion()+1); return 1;
+            });
+        }
+        FnbCloseException exception(String kind) {
+            var row=new FnbCloseException(); row.setExceptionNo("X"); row.setCloseNo("C");
+            row.setEntityNo("E"); row.setKind(kind); row.setSourceRef("B"); row.setStatus("OPEN"); row.setVersion(0L);
+            doAnswer(call -> {
+                LambdaQueryWrapper<FnbCloseException> wrapper=call.getArgument(0);
+                if(wrapper.getSqlSegment().contains("next_day_no"))
+                    return incomingVisible && wrapper.getParamNameValuePairs().containsValue("NEXT")
+                            ? List.of(row) : List.of();
+                return List.of(row);
+            }).when(exceptions).selectList(any());
+            return row;
         }
         FnbOrderBatch batch() {
             var batch=new FnbOrderBatch(); batch.setBatchNo("B"); batch.setStatus("BOUND"); batch.setCheckNo("CHECK");

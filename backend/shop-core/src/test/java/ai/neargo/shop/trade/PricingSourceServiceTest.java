@@ -3,12 +3,14 @@ package ai.neargo.shop.trade;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.spi.trade.IndustryOrderPort;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.MoneyMinor;
 import ai.neargo.shop.common.pricing.PricingUnit;
@@ -37,6 +39,18 @@ class PricingSourceServiceTest {
     }
     private PricingSourceServiceImpl service() {
         when(owner.sourceSystem()).thenReturn("FOOD"); return new PricingSourceServiceImpl(List.of(owner));
+    }
+    @Test void pendingCancellationUsesDedicatedOriginalAuthorityWithoutLiveSaleabilityFallback() {
+        var service = service(); var frozen = receipt(null, 100);
+        var command = new IndustryOrderPort.Command(new IndustryOrderPort.Identity("MAIN", "E", "A", "U", "STAFF"),
+                source, null, "Q", "a".repeat(64), IndustryOrderPort.Mode.POSTPAY, null);
+        when(owner.cancellationForStore(command, "BATCH", "STORE_PICKUP")).thenReturn(frozen);
+        assertThat(service.cancellationForStore(command, "BATCH", "STORE_PICKUP")).isEqualTo(frozen);
+        verify(owner).cancellationForStore(command, "BATCH", "STORE_PICKUP");
+        verify(owner, never()).staff(scope, source);
+        when(owner.cancellationForStore(command, "BATCH", "STORE_PICKUP")).thenReturn(receipt("BUYER", 100));
+        assertThatThrownBy(() -> service.cancellationForStore(command, "BATCH", "STORE_PICKUP"))
+                .isInstanceOf(BizException.class);
     }
     @Test void routesStaffScopeAndFreshlyReauthorizesOnEveryConfirmation() {
         var service = service(); var snapshot = receipt(null, 100);

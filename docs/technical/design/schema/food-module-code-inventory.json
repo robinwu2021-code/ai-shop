@@ -103,7 +103,8 @@
         "fnb_table_area",
         "fnb_table_operation",
         "fnb_check_batch_membership",
-        "fnb_queue_ticket"
+        "fnb_queue_ticket",
+        "fnb_reservation_table"
       ],
       "referencedApiIds": [],
       "referencedTables": [],
@@ -1167,7 +1168,8 @@
       "ownedTables": [
         "fnb_settlement",
         "fnb_settlement_item",
-        "fnb_charge_intent"
+        "fnb_charge_intent",
+        "fnb_business_share_plan"
       ],
       "referencedApiIds": [
         "FOOD-API-068",
@@ -1186,10 +1188,12 @@
         "ai.neargo.shop.food.api.mp.MpDiningCheckoutController"
       ],
       "serviceClasses": [
-        "ai.neargo.shop.food.service.DiningCheckoutService"
+        "ai.neargo.shop.food.service.DiningCheckoutService",
+        "ai.neargo.shop.food.service.BusinessShareService"
       ],
       "serviceImplClasses": [
-        "ai.neargo.shop.food.service.impl.DiningCheckoutServiceImpl"
+        "ai.neargo.shop.food.service.impl.DiningCheckoutServiceImpl",
+        "ai.neargo.shop.food.service.impl.BusinessShareServiceImpl"
       ],
       "ownedControllerClasses": [
         "ai.neargo.shop.food.api.biz.BizDiningCheckoutController",
@@ -1198,7 +1202,8 @@
       ],
       "referencedControllerClasses": [],
       "ownedServiceClasses": [
-        "ai.neargo.shop.food.service.DiningCheckoutService"
+        "ai.neargo.shop.food.service.DiningCheckoutService",
+        "ai.neargo.shop.food.service.BusinessShareService"
       ],
       "referencedServiceClasses": [],
       "dtoClasses": [
@@ -4678,7 +4683,19 @@
       "targetDtoStatus": null,
       "dispatchServiceMethods": [],
       "contractStatus": "TARGET_NOT_IMPLEMENTED",
-      "actualImplementations": []
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/stores/{storeNo}/reservations",
+          "controller": "BizReservationController",
+          "responseType": "ai.neargo.shop.food.dto.ReservationContracts.DetailVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizReservationController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ]
     },
     {
       "apiId": "FOOD-API-028",
@@ -4734,7 +4751,19 @@
       "targetDtoStatus": null,
       "dispatchServiceMethods": [],
       "contractStatus": "TARGET_NOT_IMPLEMENTED",
-      "actualImplementations": []
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/reservations/{reservationNo}:cancel",
+          "controller": "BizReservationController",
+          "responseType": "ai.neargo.shop.food.dto.ReservationContracts.DetailVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizReservationController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ]
     },
     {
       "apiId": "FOOD-API-029",
@@ -4790,7 +4819,19 @@
       "targetDtoStatus": null,
       "dispatchServiceMethods": [],
       "contractStatus": "TARGET_NOT_IMPLEMENTED",
-      "actualImplementations": []
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/reservations/{reservationNo}:no-show",
+          "controller": "BizReservationController",
+          "responseType": "ai.neargo.shop.food.dto.ReservationContracts.DetailVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizReservationController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ]
     },
     {
       "apiId": "FOOD-API-030",
@@ -4870,7 +4911,19 @@
       "targetDtoStatus": null,
       "dispatchServiceMethods": [],
       "contractStatus": "TARGET_NOT_IMPLEMENTED",
-      "actualImplementations": []
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/reservations/{reservationNo}:arrive",
+          "controller": "BizReservationController",
+          "responseType": "ai.neargo.shop.food.dto.ReservationContracts.DetailVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizReservationController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ]
     },
     {
       "apiId": "FOOD-API-031",
@@ -5789,7 +5842,30 @@
       "targetDtoStatus": null,
       "dispatchServiceMethods": [],
       "contractStatus": "TARGET_NOT_IMPLEMENTED",
-      "actualImplementations": []
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/stores/{storeNo}/batches",
+          "controller": "BizOrderBatchController",
+          "responseType": "ai.neargo.shop.food.dto.DiningOrderBatchVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizOrderBatchController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH_WITH_CONTROLLED_DTO",
+          "status": "CODED_PENDING_VERIFICATION"
+        },
+        {
+          "method": "POST",
+          "path": "/biz/x/food/stores/{storeNo}/batches",
+          "controller": "BizOrderBatchController",
+          "responseType": "ai.neargo.shop.food.dto.DiningOrderBatchVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizOrderBatchController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ]
     },
     {
       "apiId": "FOOD-API-043",
@@ -5832,7 +5908,19 @@
       "targetDtoStatus": null,
       "dispatchServiceMethods": [],
       "contractStatus": "TARGET_NOT_IMPLEMENTED",
-      "actualImplementations": []
+      "actualImplementations": [
+        {
+          "method": "GET",
+          "path": "/biz/x/food/batches/{batchNo}",
+          "controller": "BizOrderBatchController",
+          "responseType": "ai.neargo.shop.food.dto.DiningOrderBatchVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizOrderBatchController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ]
     },
     {
       "apiId": "FOOD-API-044",
@@ -6793,6 +6881,17 @@
       "dispatchServiceMethods": [],
       "contractStatus": "TARGET_NOT_IMPLEMENTED",
       "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/batches/{batchNo}:handover",
+          "controller": "BizDiningHandoverController",
+          "responseType": "ai.neargo.shop.food.dto.KitchenContracts.HandoverVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningHandoverController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningHandoverController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        },
         {
           "method": "POST",
           "path": "/biz/x/food/batches/{batchNo}:handover",
@@ -8065,6 +8164,17 @@
           "delegate": null,
           "mappingStatus": "PATH_AND_INPUT_CHANGED",
           "status": "CODED_PENDING_VERIFICATION"
+        },
+        {
+          "method": "POST",
+          "path": "/biz/x/food/closes:preview",
+          "controller": "BizBusinessCloseController",
+          "responseType": "ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+          "delegate": null,
+          "mappingStatus": "PATH_AND_INPUT_CHANGED",
+          "status": "CODED_PENDING_VERIFICATION"
         }
       ]
     },
@@ -8110,6 +8220,17 @@
       "dispatchServiceMethods": [],
       "contractStatus": "TARGET_NOT_IMPLEMENTED",
       "actualImplementations": [
+        {
+          "method": "GET",
+          "path": "/biz/x/food/closes/{closeNo}",
+          "controller": "BizBusinessCloseController",
+          "responseType": "ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        },
         {
           "method": "GET",
           "path": "/biz/x/food/closes/{closeNo}",
@@ -8296,6 +8417,17 @@
           "delegate": null,
           "mappingStatus": "PATH_AND_INPUT_CHANGED",
           "status": "CODED_PENDING_VERIFICATION"
+        },
+        {
+          "method": "POST",
+          "path": "/biz/x/food/closes:sign",
+          "controller": "BizBusinessCloseController",
+          "responseType": "ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+          "delegate": null,
+          "mappingStatus": "PATH_AND_INPUT_CHANGED",
+          "status": "CODED_PENDING_VERIFICATION"
         }
       ]
     },
@@ -8378,6 +8510,17 @@
       "dispatchServiceMethods": [],
       "contractStatus": "TARGET_NOT_IMPLEMENTED",
       "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/closes:adjust",
+          "controller": "BizBusinessCloseController",
+          "responseType": "ai.neargo.shop.food.dto.OperationVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizBusinessCloseController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizBusinessCloseController",
+          "delegate": null,
+          "mappingStatus": "PATH_AND_INPUT_CHANGED",
+          "status": "CODED_PENDING_VERIFICATION"
+        },
         {
           "method": "POST",
           "path": "/biz/x/food/closes:adjust",
@@ -10719,7 +10862,19 @@
       "targetDtoStatus": null,
       "dispatchServiceMethods": [],
       "contractStatus": "TARGET_NOT_IMPLEMENTED",
-      "actualImplementations": []
+      "actualImplementations": [
+        {
+          "method": "GET",
+          "path": "/biz/x/food/stores/{storeNo}/reservations",
+          "controller": "BizReservationController",
+          "responseType": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.ReservationVO>",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizReservationController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizReservationController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ]
     },
     {
       "apiId": "FOOD-API-108",
@@ -11955,7 +12110,19 @@
       "targetDtoStatus": null,
       "dispatchServiceMethods": [],
       "contractStatus": "TARGET_NOT_IMPLEMENTED",
-      "actualImplementations": []
+      "actualImplementations": [
+        {
+          "method": "GET",
+          "path": "/biz/x/food/stores/{storeNo}/batches",
+          "controller": "BizDiningBatchQueryController",
+          "responseType": "ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.DiningBatchSummaryVO>",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningBatchQueryController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningBatchQueryController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ]
     },
     {
       "apiId": "FOOD-API-124",
@@ -12023,7 +12190,19 @@
       "targetDtoStatus": null,
       "dispatchServiceMethods": [],
       "contractStatus": "TARGET_NOT_IMPLEMENTED",
-      "actualImplementations": []
+      "actualImplementations": [
+        {
+          "method": "POST",
+          "path": "/biz/x/food/batches/{batchNo}:cancel",
+          "controller": "BizOrderBatchController",
+          "responseType": "ai.neargo.shop.food.dto.DiningOrderBatchVO",
+          "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizOrderBatchController.java",
+          "controllerClass": "ai.neargo.shop.food.api.biz.BizOrderBatchController",
+          "delegate": null,
+          "mappingStatus": "EXACT_PATH",
+          "status": "CODED_PENDING_VERIFICATION"
+        }
+      ]
     },
     {
       "apiId": "FOOD-API-125",
@@ -16327,6 +16506,38 @@
       "writeOwnerKind": "SERVICE",
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbQueueTicket.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodMappers.java",
+      "customMapperMethods": [],
+      "schemaStatus": "MIGRATION_AVAILABLE_NOT_APPLIED",
+      "implementationStatus": "CODED_PENDING_VERIFICATION"
+    },
+    {
+      "table": "fnb_reservation_table",
+      "entity": "FnbReservationTable",
+      "entityClass": "ai.neargo.shop.food.entity.FnbReservationTable",
+      "mapper": "ReservationTableMapper",
+      "mapperClass": "ai.neargo.shop.food.mapper.ReservationTableMapper",
+      "owner": "food-core",
+      "primaryModuleId": "MOD-01",
+      "writeOwnerClass": "ai.neargo.shop.food.service.ReservationService",
+      "writeOwnerKind": "SERVICE",
+      "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbReservationTable.java",
+      "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/ReservationTableMapper.java",
+      "customMapperMethods": [],
+      "schemaStatus": "MIGRATION_AVAILABLE_NOT_APPLIED",
+      "implementationStatus": "CODED_PENDING_VERIFICATION"
+    },
+    {
+      "table": "fnb_business_share_plan",
+      "entity": "FnbBusinessSharePlan",
+      "entityClass": "ai.neargo.shop.food.entity.FnbBusinessSharePlan",
+      "mapper": "BusinessSharePlanMapper",
+      "mapperClass": "ai.neargo.shop.food.mapper.BusinessSharePlanMapper",
+      "owner": "food-core",
+      "primaryModuleId": "MOD-05",
+      "writeOwnerClass": "ai.neargo.shop.food.service.BusinessShareService",
+      "writeOwnerKind": "SERVICE",
+      "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbBusinessSharePlan.java",
+      "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/BusinessSharePlanMapper.java",
       "customMapperMethods": [],
       "schemaStatus": "MIGRATION_AVAILABLE_NOT_APPLIED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
@@ -27167,6 +27378,11 @@
     "ai.neargo.shop.food.entity.FnbQueueTicket": "MOD-01",
     "ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper": "MOD-01",
     "ai.neargo.shop.food.service.QueueService": "MOD-01",
+    "ai.neargo.shop.food.entity.FnbReservationTable": "MOD-01",
+    "ai.neargo.shop.food.mapper.ReservationTableMapper": "MOD-01",
+    "ai.neargo.shop.food.entity.FnbBusinessSharePlan": "MOD-05",
+    "ai.neargo.shop.food.mapper.BusinessSharePlanMapper": "MOD-05",
+    "ai.neargo.shop.food.service.BusinessShareService": "MOD-05",
     "ai.neargo.shop.food.service.CatalogService": "MOD-02",
     "ai.neargo.shop.food.service.DiningCapabilityService": "MOD-13",
     "ai.neargo.shop.food.api.biz.BizStoreOperationPolicyController": "MOD-13",
@@ -31984,6 +32200,18 @@
     {
       "table": "fnb_queue_ticket",
       "moduleId": "MOD-01",
+      "status": "ADDED",
+      "classNamesUnchanged": true
+    },
+    {
+      "table": "fnb_reservation_table",
+      "moduleId": "MOD-01",
+      "status": "ADDED",
+      "classNamesUnchanged": true
+    },
+    {
+      "table": "fnb_business_share_plan",
+      "moduleId": "MOD-05",
       "status": "ADDED",
       "classNamesUnchanged": true
     }

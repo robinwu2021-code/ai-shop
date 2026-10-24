@@ -12,6 +12,8 @@ import lombok.Setter;
 @TableName("fnb_reservation")
 public class FnbReservation extends BaseEntity {
     private String entityNo;
+    private String requestKey;
+    private String requestHash;
     private String reservationNo;
     private String storeNo;
     private String resourceHoldNo;

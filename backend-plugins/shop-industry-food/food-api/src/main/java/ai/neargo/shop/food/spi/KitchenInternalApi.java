@@ -7,6 +7,8 @@ import ai.neargo.shop.food.dto.KitchenContracts.EventVO;
 import ai.neargo.shop.food.dto.KitchenContracts.FrozenRoutes;
 import ai.neargo.shop.food.dto.KitchenContracts.HandoverReq;
 import ai.neargo.shop.food.dto.KitchenContracts.HandoverVO;
+import ai.neargo.shop.food.dto.KitchenContracts.PackingReq;
+import ai.neargo.shop.food.dto.KitchenContracts.CustodyReceiptVO;
 import ai.neargo.shop.food.dto.KitchenContracts.RemakeReq;
 import ai.neargo.shop.food.dto.KitchenContracts.TaskActionReq;
 import ai.neargo.shop.food.dto.KitchenContracts.TaskVO;
@@ -20,6 +22,13 @@ import org.springframework.web.service.annotation.PostExchange;
 
 /** Internal FOOD protocol; caller scope is authenticated by the service-token boundary. */
 public interface KitchenInternalApi {
+    String PACKING_PATH="/internal/food/kitchen/packing";
+    @PostExchange(PACKING_PATH) CustodyReceiptVO confirmPacking(@RequestBody PackingCommand command);
+    String RECEIPTS_PATH="/internal/food/kitchen/custody-receipts";
+    @PostExchange(RECEIPTS_PATH) List<CustodyReceiptVO> custodyReceipts(@RequestBody ReceiptQuery query);
+    record PackingCommand(@NotBlank String entityNo,@NotBlank String storeNo,@NotBlank String actorNo,
+            @NotBlank String batchNo,@NotBlank String idempotencyKey,@Valid @NotNull PackingReq definition) { }
+    record ReceiptQuery(@NotBlank String entityNo,@NotBlank String storeNo,@NotBlank String batchNo) { }
     String HANDOVER_PATH="/internal/food/kitchen/handover";
     @PostExchange(HANDOVER_PATH) HandoverVO handover(@RequestBody HandoverCommand command);
     record HandoverCommand(@NotBlank String entityNo,@NotBlank String storeNo,@NotBlank String actorNo,

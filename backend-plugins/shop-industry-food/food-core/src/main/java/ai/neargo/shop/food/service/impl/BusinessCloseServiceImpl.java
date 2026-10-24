@@ -10,6 +10,9 @@ import ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.PreviewReq;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.SignReq;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.AdjustmentReq;
+import ai.neargo.shop.food.dto.BusinessCloseContracts.ExceptionVO;
+import ai.neargo.shop.food.dto.BusinessCloseContracts.ProposeCarryReq;
+import ai.neargo.shop.food.dto.BusinessCloseContracts.ApproveCarryReq;
 import ai.neargo.shop.food.dto.OperationVO;
 import ai.neargo.shop.food.entity.FnbOrderLine;
 import ai.neargo.shop.food.entity.FnbKitchenTask;
@@ -56,6 +59,7 @@ import java.time.DateTimeException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.HashMap;
 import java.util.Comparator;
 import java.util.Objects;
@@ -67,7 +71,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
-/** V1 day-close evidence. Serializability protects first-day insertion and fact-range reads. */
+/** Operational day-close evidence; signatures and local work review never assert financial completion. */
 public class BusinessCloseServiceImpl implements BusinessCloseService {
     private final BusinessDayMapper days;
     private final CloseRunMapper runs;
@@ -166,7 +170,16 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
             for(var issue:report.issues()) {
                 var row=new FnbCloseException(); row.setEntityNo(entity); row.setCloseNo(run.getCloseNo());
                 row.setExceptionNo(BizKey.next("FCEX")); row.setKind(issue.kind());
-                row.setSourceRef(issue.sourceRef()); row.setCreatedBy(actor); row.setUpdatedBy(actor); row.setStatus("OPEN"); exceptions.insert(row);
+                row.setSourceRef(issue.sourceRef());
+                if("SYNC".equals(issue.kind())) {
+                    var inherited=exceptions.selectList(Wrappers.<FnbCloseException>lambdaQuery()
+                            .eq(FnbCloseException::getEntityNo,entity)
+                            .eq(FnbCloseException::getExceptionNo,issue.sourceRef())
+                            .eq(FnbCloseException::getStatus,"CARRIED"));
+                    if(!inherited.isEmpty() && approvedCarry(inherited.getFirst()))
+                        row.setOwnerNo(inherited.getFirst().getOwnerNo());
+                }
+                row.setCreatedBy(actor); row.setUpdatedBy(actor); row.setStatus("OPEN"); exceptions.insert(row);
             }
             return close(run);
         });
@@ -182,8 +195,8 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
         if(req==null || req.snapshotHash()==null || !req.snapshotHash().matches("[a-f0-9]{64}")) bad();
         key(req.closeNo(),32);
         return write(entity,store,actor,key,"SIGN_CLOSE",json.writeValueAsString(req),CloseVO.class,() -> {
-            // Same store-day lock as preview, then the candidate. All close writers use this ordering.
-            var run=findRun(entity,store,req.closeNo());
+            // Lock source and carry target days in canonical order before freezing operational evidence.
+            var run=lockSignDays(entity,store,req.closeNo());
             var day=findDayNo(entity,store,run.getDayNo());
             if(!req.snapshotHash().equals(run.getSnapshotHash()) || !run.getSnapshotHash().equals(
                     snapshotHash(run.getDayNo(),run.getCurrency(),json.readValue(run.getSourceWatermark(),ReportVO.class)))) conflict();
@@ -193,11 +206,16 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
             if(actor.equals(run.getCreatedBy())) throw BizException.of(ErrorCode.FORBIDDEN);
             var report=json.readValue(run.getSourceWatermark(),ReportVO.class);
             var current=collect(entity,store,new PreviewReq(day.getBusinessDate(),run.getCurrency()));
-            if(!report.sourceHash().equals(current.sourceHash()) || !current.issues().isEmpty()) conflict();
-            // No carry/resolve escape hatch exists without the authoritative approval contract.
+            if(!report.sourceHash().equals(current.sourceHash())) conflict();
+            // Local work carry never clears financial uncertainty or changes the frozen source snapshot.
             var issues=exceptions.selectList(Wrappers.<FnbCloseException>lambdaQuery()
                     .eq(FnbCloseException::getEntityNo,entity).eq(FnbCloseException::getCloseNo,run.getCloseNo()));
-            if(issues.stream().anyMatch(i -> !"RESOLVED".equals(i.getStatus()))) conflict();
+            for(var issue:current.issues()) {
+                if(!"SYNC".equals(issue.kind()) || issues.stream().noneMatch(row ->
+                        issue.kind().equals(row.getKind()) && issue.sourceRef().equals(row.getSourceRef())
+                                && approvedCarry(row))) conflict();
+            }
+            if(issues.stream().anyMatch(i -> !approvedCarry(i))) conflict();
             var pointers=new TreeMap<String,String>();
             json.readTree(day.getCurrentCloseRefs()).properties()
                     .forEach(e -> pointers.put(e.getKey(),e.getValue().asText()));
@@ -209,6 +227,127 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
             day.setStatus("CLOSING"); day.setUpdatedBy(actor); if(days.updateById(day)!=1) conflict();
             return close(run);
         });
+    }
+
+    @Override public List<ExceptionVO> exceptions(String entity,String store,String actor,String closeNo) {
+        scope(entity,store,actor); key(closeNo,32);
+        return transaction(() -> {
+            findRun(entity,store,closeNo);
+            return exceptions.selectList(Wrappers.<FnbCloseException>lambdaQuery()
+                    .eq(FnbCloseException::getEntityNo,entity).eq(FnbCloseException::getCloseNo,closeNo)
+                    .orderByAsc(FnbCloseException::getExceptionNo)).stream().map(this::exception).toList();
+        });
+    }
+
+    @Override public ExceptionVO proposeCarry(String entity,String store,String actor,String closeNo,
+            String exceptionNo,ProposeCarryReq req,String key) {
+        scope(entity,store,actor); key(closeNo,32); key(exceptionNo,32);
+        if(req==null || req.version()==null || req.version()<0) bad();
+        key(req.ownerNo(),32); key(req.nextDayNo(),32); key(req.reason(),255);
+        return write(entity,store,actor,key,"PROPOSE_NONPAY_CARRY",
+                json.writeValueAsString(List.of(closeNo,exceptionNo,req)),ExceptionVO.class,() -> {
+            var run=lockCarryDays(entity,store,closeNo,req.nextDayNo());
+            if(!"REVIEW".equals(run.getStatus())) conflict();
+            var row=findException(entity,closeNo,exceptionNo);
+            if(!"SYNC".equals(row.getKind())) conflict();
+            if(!"OPEN".equals(row.getStatus())) {
+                if(actor.equals(row.getProposedBy()) && req.ownerNo().equals(row.getOwnerNo())
+                        && req.nextDayNo().equals(row.getNextDayNo()) && req.reason().equals(row.getDispositionReason())
+                        && ("ASSIGNED".equals(row.getStatus()) || approvedCarry(row))) return exception(row);
+                conflict();
+            }
+            if(!req.version().equals(row.getVersion())) conflict();
+            row.setStatus("ASSIGNED"); row.setOwnerNo(req.ownerNo()); row.setNextDayNo(req.nextDayNo());
+            row.setDispositionReason(req.reason()); row.setProposedBy(actor); row.setUpdatedBy(actor);
+            if(exceptions.updateById(row)!=1) conflict();
+            return exception(row);
+        });
+    }
+
+    @Override public ExceptionVO approveCarry(String entity,String store,String actor,String closeNo,
+            String exceptionNo,ApproveCarryReq req,String key) {
+        scope(entity,store,actor); key(closeNo,32); key(exceptionNo,32);
+        if(req==null || req.version()==null || req.version()<0) bad();
+        return write(entity,store,actor,key,"APPROVE_NONPAY_CARRY",
+                json.writeValueAsString(List.of(closeNo,exceptionNo,req)),ExceptionVO.class,() -> {
+            assertCloseStore(entity,store,closeNo);
+            var pending=findException(entity,closeNo,exceptionNo);
+            if(blank(pending.getNextDayNo())) conflict();
+            var run=lockCarryDays(entity,store,closeNo,pending.getNextDayNo());
+            if(!"REVIEW".equals(run.getStatus())) conflict();
+            var row=findException(entity,closeNo,exceptionNo);
+            if(approvedCarry(row) && actor.equals(row.getApprovedBy())) return exception(row);
+            if(!"SYNC".equals(row.getKind()) || !"ASSIGNED".equals(row.getStatus())
+                    || blank(row.getProposedBy()) || actor.equals(row.getProposedBy())
+                    || !req.version().equals(row.getVersion())) conflict();
+            row.setStatus("CARRIED"); row.setApprovedBy(actor); row.setApprovedAt(LocalDateTime.now(ZoneOffset.UTC));
+            row.setApprovalRef("LOCAL_NONPAY:"+BizKey.next("FCPA")); row.setUpdatedBy(actor);
+            if(exceptions.updateById(row)!=1) conflict();
+            return exception(row);
+        });
+    }
+
+    private FnbCloseRun lockSignDays(String entity,String store,String closeNo) {
+        var candidate=assertCloseStore(entity,store,closeNo);
+        if("SIGNED".equals(candidate.getStatus())) return findRun(entity,store,closeNo);
+        var rows=exceptions.selectList(Wrappers.<FnbCloseException>lambdaQuery()
+                .eq(FnbCloseException::getEntityNo,entity).eq(FnbCloseException::getCloseNo,closeNo));
+        var dayNos=new TreeSet<String>(); dayNos.add(candidate.getDayNo());
+        rows.stream().filter(this::approvedCarry).forEach(row -> dayNos.add(row.getNextDayNo()));
+        for(var dayNo:dayNos) findDayNo(entity,store,dayNo);
+        for(var row:rows) if(approvedCarry(row)) lockCarryDays(entity,store,closeNo,row.getNextDayNo());
+        return findRun(entity,store,closeNo);
+    }
+
+    private FnbCloseRun assertCloseStore(String entity,String store,String closeNo) {
+        var candidates=runs.selectList(Wrappers.<FnbCloseRun>lambdaQuery()
+                .eq(FnbCloseRun::getEntityNo,entity).eq(FnbCloseRun::getCloseNo,closeNo));
+        if(candidates.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
+        var scoped=days.selectList(Wrappers.<FnbBusinessDay>lambdaQuery()
+                .eq(FnbBusinessDay::getEntityNo,entity).eq(FnbBusinessDay::getStoreNo,store)
+                .eq(FnbBusinessDay::getDayNo,candidates.getFirst().getDayNo()));
+        if(scoped.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
+        return candidates.getFirst();
+    }
+
+    private FnbCloseRun lockCarryDays(String entity,String store,String closeNo,String nextDayNo) {
+        var candidates=runs.selectList(Wrappers.<FnbCloseRun>lambdaQuery()
+                .eq(FnbCloseRun::getEntityNo,entity).eq(FnbCloseRun::getCloseNo,closeNo));
+        if(candidates.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
+        String sourceDayNo=candidates.getFirst().getDayNo();
+        for(var dayNo:List.of(sourceDayNo,nextDayNo).stream().distinct().sorted().toList())
+            findDayNo(entity,store,dayNo);
+        var source=findDayNo(entity,store,sourceDayNo); var target=findDayNo(entity,store,nextDayNo);
+        if(!target.getBusinessDate().isAfter(source.getBusinessDate())
+                || "CLOSED".equals(target.getStatus())) conflict();
+        var run=findRun(entity,store,closeNo);
+        if(!"REVIEW".equals(run.getStatus())) conflict();
+        // A target currency already signed cannot receive late additions under its frozen snapshot.
+        if(json.readTree(target.getCurrentCloseRefs()).has(run.getCurrency())) conflict();
+        return run;
+    }
+
+    private FnbCloseException findException(String entity,String closeNo,String exceptionNo) {
+        var rows=exceptions.selectList(Wrappers.<FnbCloseException>lambdaQuery()
+                .eq(FnbCloseException::getEntityNo,entity).eq(FnbCloseException::getCloseNo,closeNo)
+                .eq(FnbCloseException::getExceptionNo,exceptionNo));
+        if(rows.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
+        return rows.getFirst();
+    }
+
+    private boolean approvedCarry(FnbCloseException row) {
+        return "SYNC".equals(row.getKind()) && "CARRIED".equals(row.getStatus())
+                && !blank(row.getProposedBy()) && !blank(row.getApprovedBy())
+                && !row.getProposedBy().equals(row.getApprovedBy()) && !blank(row.getOwnerNo())
+                && !blank(row.getNextDayNo()) && !blank(row.getDispositionReason())
+                && row.getApprovedAt()!=null && row.getApprovalRef()!=null
+                && row.getApprovalRef().startsWith("LOCAL_NONPAY:");
+    }
+
+    private ExceptionVO exception(FnbCloseException row) {
+        return new ExceptionVO(row.getExceptionNo(),row.getCloseNo(),row.getKind(),row.getSourceRef(),row.getStatus(),
+                row.getOwnerNo(),row.getNextDayNo(),row.getDispositionReason(),row.getProposedBy(),row.getApprovedBy(),
+                row.getApprovedAt(),row.getApprovalRef(),row.getVersion());
     }
 
     @Override public OperationVO adjust(String entity,String store,String actor,AdjustmentReq req,String key) {
@@ -236,10 +375,18 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
                         || !req.currentDayNo().equals(r.getCurrentDayNo())) conflict();
                 return new OperationVO(r.getAdjustmentNo(),"SUCCEEDED",r.getVersion(),r.getOriginalCloseNo());
             }
+            var originalDay=findDayNo(entity,store,original.getDayNo());
+            var currentDay=findDayNo(entity,store,req.currentDayNo());
+            var now=LocalDateTime.now(ZoneOffset.UTC);
+            if(!currentDay.getBusinessDate().isAfter(originalDay.getBusinessDate())
+                    || currentDay.getStartsAt().isAfter(now) || !currentDay.getEndsAt().isAfter(now)
+                    || "CLOSED".equals(currentDay.getStatus())
+                    || json.readTree(currentDay.getCurrentCloseRefs()).has(original.getCurrency())) conflict();
             var row=new FnbCloseAdjustment(); row.setEntityNo(entity); row.setAdjustmentNo(BizKey.next("FCAD"));
             row.setOriginalCloseNo(req.originalCloseNo()); row.setCurrentDayNo(req.currentDayNo());
             row.setCoreReference(req.coreReference()); row.setReason(req.reason()); row.setApprovalRef(req.approvalRef());
-            row.setCreatedBy(actor); row.setUpdatedBy(actor); row.setVersion(0L); adjustments.insert(row);
+            row.setCreatedBy(actor); row.setUpdatedBy(actor); row.setVersion(0L);
+            if(adjustments.insert(row)!=1) conflict();
             return new OperationVO(row.getAdjustmentNo(),"SUCCEEDED",0,original.getCloseNo());
         });
     }
@@ -326,14 +473,37 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
                             || ds.getFirst().getDayNo().equals(a.getCurrentDayNo()));
                 }).toList();
         for(var a:corrections) issues.add(new Issue("SYNC",a.getAdjustmentNo()));
+        var carried=new ArrayList<FnbCloseException>();
+        var reportDays=days.selectList(Wrappers.<FnbBusinessDay>lambdaQuery()
+                .eq(FnbBusinessDay::getEntityNo,entity).eq(FnbBusinessDay::getStoreNo,store)
+                .eq(FnbBusinessDay::getBusinessDate,req.businessDate()));
+        if(!reportDays.isEmpty()) {
+            var incoming=exceptions.selectList(Wrappers.<FnbCloseException>lambdaQuery()
+                    .eq(FnbCloseException::getEntityNo,entity)
+                    .eq(FnbCloseException::getNextDayNo,reportDays.getFirst().getDayNo())
+                    .eq(FnbCloseException::getStatus,"CARRIED").orderByAsc(FnbCloseException::getExceptionNo));
+            for(var row:incoming) {
+                if(!approvedCarry(row)) continue;
+                var original=runs.selectList(Wrappers.<FnbCloseRun>lambdaQuery()
+                        .eq(FnbCloseRun::getEntityNo,entity).eq(FnbCloseRun::getCloseNo,row.getCloseNo())
+                        .eq(FnbCloseRun::getCurrency,req.currency()).eq(FnbCloseRun::getStatus,"SIGNED"));
+                if(original.isEmpty() || !"SIGNED".equals(original.getFirst().getStatus())
+                        || !req.currency().equals(original.getFirst().getCurrency())) continue;
+                var originalDays=days.selectList(Wrappers.<FnbBusinessDay>lambdaQuery()
+                        .eq(FnbBusinessDay::getEntityNo,entity).eq(FnbBusinessDay::getStoreNo,store)
+                        .eq(FnbBusinessDay::getDayNo,original.getFirst().getDayNo()));
+                if(originalDays.isEmpty()) continue;
+                carried.add(row); issues.add(new Issue("SYNC",row.getExceptionNo()));
+            }
+        }
         var sorted=issues.stream().distinct().sorted(Comparator.comparing(Issue::kind).thenComparing(Issue::sourceRef)).toList();
         String hash=FoodCommandFingerprint.hash(json.writeValueAsString(batchRows),json.writeValueAsString(lineRows),
                 json.writeValueAsString(settlementRows),json.writeValueAsString(returnRows),json.writeValueAsString(corrections),
                 json.writeValueAsString(serviceRows),json.writeValueAsString(bindingRows),json.writeValueAsString(itemRows),
-                json.writeValueAsString(serviceQuantities));
+                json.writeValueAsString(serviceQuantities),json.writeValueAsString(carried));
         return new ReportVO(req.businessDate(),req.currency(),batchRows.size(),quantities,serviceQuantities,
                 "ORIGINAL_ORDER_BUSINESS_DATE",settlementRows.size(),requested,
-                returnRows.size(),"QUANTITY_ONLY",batchRows.isEmpty()?"EMPTY":"UNKNOWN",
+                returnRows.size(),"QUANTITY_ONLY",batchRows.isEmpty() && carried.isEmpty()?"EMPTY":"UNKNOWN",
                 returnRows.isEmpty()?"EMPTY":"UNKNOWN",sorted,hash);
     }
 

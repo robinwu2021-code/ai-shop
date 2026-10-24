@@ -2,6 +2,7 @@ package ai.neargo.shop.food.entity;
 
 import ai.neargo.shop.common.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
+import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -19,4 +20,8 @@ public class FnbCloseException extends BaseEntity {
     private String ownerNo;
     private String approvalRef;
     private String nextDayNo;
+    private String dispositionReason;
+    private String proposedBy;
+    private String approvedBy;
+    private LocalDateTime approvedAt;
 }

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,6 +21,9 @@ import ai.neargo.shop.food.dto.KitchenContracts.FrozenRoutes;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.food.dto.CartAccess;
+import ai.neargo.shop.food.dto.CancelDiningOrderReq;
+import ai.neargo.shop.food.entity.FnbActionLog;
+import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.dto.CartResultVO;
 import ai.neargo.shop.food.dto.CartVO;
 import ai.neargo.shop.food.dto.CatalogItemVO;
@@ -27,6 +31,7 @@ import ai.neargo.shop.food.dto.CatalogMenuVO;
 import ai.neargo.shop.food.dto.CatalogSkuVO;
 import ai.neargo.shop.food.dto.CatalogVO;
 import ai.neargo.shop.food.dto.CreateDiningOrderReq;
+import ai.neargo.shop.food.dto.CreateStaffDiningOrderReq;
 import ai.neargo.shop.food.dto.DiningPriceFacts;
 import ai.neargo.shop.food.dto.DishVO;
 import ai.neargo.shop.food.dto.MeasurementPolicy;
@@ -89,6 +94,7 @@ import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
+import org.mockito.stubbing.Answer;
 
 /**
  * Real FOOD transactions/quota/source allocations surround a durable external owner-document fixture.
@@ -101,20 +107,22 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-23T12:00:00Z"), ZoneOffset.UTC);
     private record Context(Fixture fixture, DiningOrderService service, Supplier<DiningOrderService> restart,
             DiningPricingFactsService facts, PricingCheckoutPort pricing, AtomicBoolean failBind,
-            AtomicBoolean timeout, AtomicInteger coreCalls, AtomicReference<IndustryOrderPort.Result> receipt) { }
+            AtomicBoolean timeout, AtomicInteger coreCalls, AtomicReference<IndustryOrderPort.Result> receipt, IndustryOrderPort core) { }
 
     private void run(Consumer<Context> test) { run(false,test); }
-    private void run(boolean postpay,Consumer<Context> test) {
+    private void run(boolean postpay,Consumer<Context> test) { run(postpay, false, test); }
+    private void run(boolean postpay, boolean staff, Consumer<Context> test) { run(postpay,staff,false,test); }
+    private void run(boolean postpay, boolean staff, boolean dineIn, Consumer<Context> test) {
         runner().run(context -> {
             Fixture f = prepare(context);
             SqlSessionTemplate sql = context.getBean(SqlSessionTemplate.class);
-            List<Class<?>> mapperTypes = List.of(CheckCartMapper.class, StorePolicyMapper.class,
+            List<Class<?>> mapperTypes = List.of(ActionLogMapper.class, CheckCartMapper.class, StorePolicyMapper.class,
                     OrderBatchMapper.class, CoreOrderBindingMapper.class, OrderLineMapper.class,
                     CoreLineAllocationMapper.class, SalesQuotaClaimMapper.class, SalesRestrictionMapper.class);
             for (Class<?> type : mapperTypes) {
                 if (!sql.getConfiguration().hasMapper(type)) sql.getConfiguration().addMapper(type);
             }
-            for (Class<?> type : List.of(FnbCheckCart.class,
+            for (Class<?> type : List.of(FnbActionLog.class, FnbCheckCart.class,
                     FnbStorePolicy.class, FnbOrderBatch.class,
                     FnbCoreOrderBinding.class, FnbOrderLine.class,
                     FnbCoreLineAllocation.class,
@@ -133,13 +141,15 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
             f.sql().update("INSERT INTO fnb_store_policy(entity_no,policy_no,store_no,timezone,cutover_minute,"
                     + "effective_from,pay_policy) VALUES('E','P','A','UTC',240,'2026-01-01 00:00:00','PREPAY')");
             if(postpay) f.sql().update("UPDATE fnb_store_policy SET pay_policy='POSTPAY'");
+            if(staff) f.sql().update("UPDATE fnb_check_cart SET order_source='POS',buyer_no=NULL");
             f.sql().update("INSERT INTO fnb_sales_restriction(entity_no,restriction_no,store_no,sku_no,mode,quota_qty,"
                     + "reserved_qty,consumed_qty,starts_at,status,reason) "
                     + "VALUES('E','R','A','SKU','QUOTA',10,0,0,'2026-01-01 00:00:00','ACTIVE','test')");
             ObjectMapper json = context.getBean(ObjectMapper.class);
-            DiningPriceFacts evidence = facts(json);
+            if(dineIn) f.sql().update("UPDATE fnb_check_cart SET fulfillment='DINE_IN',check_no='CHECK',session_no=NULL");
+            DiningPriceFacts evidence = facts(json, staff, dineIn);
             var source = new PricingSourceRef("FOOD", "CART", "C", 0, null, null);
-            var projection = DiningPricingSourcePolicy.project(evidence, null, source, "SESSION");
+            var projection = DiningPricingSourcePolicy.project(evidence, null, source, staff ? null : "SESSION");
             var quote = new PricingCheckoutPort.QuoteVO("Q", "CONFIRMED", "2026-10-23T13:00:00Z", 0,
                     projection.prices().sourceSnapshotHash(), "CNY", List.of(new PricingCheckoutPort.LineVO(
                             "SRC", COMPONENT, "SRC", "MAIN", "G", "SKU", BigDecimal.ZERO,
@@ -149,14 +159,25 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
             CartVO publicCart = new CartVO("C", "A", null, "SESSION", null, "OPEN", "H5", "PICKUP", null, 0L,
                     evidence.payload().cart().lines());
             when(carts.customerGetCart("C", BUYER)).thenReturn(new CartResultVO(publicCart));
+            when(carts.getCart("E", "A", "C")).thenReturn(new CartResultVO(evidence.payload().cart()));
+            var diningAuthority=new AtomicInteger();
+            doAnswer(call -> {
+                if(diningAuthority.incrementAndGet()==2)
+                    assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+                assertThat(dineIn).isTrue();
+                return null;
+            }).when(carts).requireDiningRoomCart("E","A","C");
             DiningPricingFactsService facts = mock(DiningPricingFactsService.class);
             when(facts.customer("C", BUYER, 0)).thenAnswer(call -> {
                 outside(); return evidence;
             });
+            when(facts.staff("E", "A", "C", 0)).thenAnswer(call -> { outside(); return evidence; });
             PricingCheckoutPort pricing = mock(PricingCheckoutPort.class);
             when(pricing.revalidateCustomer(any(), any(), anyString(), anyString())).thenAnswer(call -> {
                 outside(); return quote;
             });
+            when(pricing.revalidateStaff(any(), anyString(), any(), anyString(), anyString()))
+                    .thenAnswer(call -> { outside(); return quote; });
             StoreOperationService policies = mock(StoreOperationService.class);
             when(policies.getPolicy(anyString(), anyString(), any())).thenAnswer(call -> {
                 outside(); return new StoreOperationPolicyResultVO("P", "UTC", 240, postpay?"POSTPAY":"PREPAY", List.of(), 0);
@@ -167,10 +188,11 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
             AtomicInteger calls = new AtomicInteger();
             AtomicReference<IndustryOrderPort.Result> receipt = new AtomicReference<>(postpay?postpayReceipt(true):receipt(2, 1010));
             IndustryOrderPort core = mock(IndustryOrderPort.class);
-            when(core.place(any(), anyString())).thenAnswer(call -> {
+            Answer<IndustryOrderPort.Result> placement = call -> {
                 outside(); calls.incrementAndGet();
                 IndustryOrderPort.Command command = call.getArgument(0); String batch = call.getArgument(1);
-                assertThat(command.identity()).isEqualTo(new IndustryOrderPort.Identity("MAIN", "E", "A", "BUYER", "BUYER"));
+                assertThat(command.identity()).isEqualTo(new IndustryOrderPort.Identity(
+                        "MAIN", "E", "A", "BUYER", staff ? "STAFF" : "BUYER"));
                 assertThat(command.source()).isEqualTo(source);
                 assertThat(f.sql().queryForObject("SELECT batch_no FROM fnb_order_batch", String.class)).isEqualTo(batch);
                 assertThat(f.sql().queryForObject("SELECT frozen_request FROM fnb_order_batch", String.class)).isNotBlank();
@@ -186,11 +208,27 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
                 if (timeout.get()) throw new IllegalStateException("original-core-response-lost");
                 return json.readValue(f.sql().queryForObject("SELECT receipt FROM core_owner_document_fixture "
                         + "WHERE source_batch=?", String.class, batch), IndustryOrderPort.Result.class);
+            };
+            when(core.place(any(), anyString())).thenAnswer(placement);
+            when(core.placeForStore(any(), anyString())).thenAnswer(call -> {
+                assertThat(dineIn).isFalse(); return placement.answer(call);
             });
-            when(core.query(any(), anyString())).thenAnswer(call -> {
+            when(core.placeForDiningRoom(any(),anyString())).thenAnswer(call -> {
+                assertThat(dineIn).isTrue(); assertThat(diningAuthority).hasValue(2);
+                assertThat(f.sql().queryForObject("SELECT check_no FROM fnb_order_batch",String.class)).isEqualTo("CHECK");
+                assertThat(f.sql().queryForObject("SELECT fulfillment FROM fnb_order_batch",String.class)).isEqualTo("DINE_IN");
+                return placement.answer(call);
+            });
+            Answer<IndustryOrderPort.Result> query = call -> {
                 outside(); String batch = call.getArgument(1);
                 return json.readValue(f.sql().queryForObject("SELECT receipt FROM core_owner_document_fixture "
                         + "WHERE source_batch=?", String.class, batch), IndustryOrderPort.Result.class);
+            };
+            when(core.query(any(), anyString())).thenAnswer(query);
+            when(core.queryForStore(any(), anyString())).thenAnswer(call -> {
+                assertThat(call.getArgument(0, IndustryOrderPort.Identity.class))
+                        .isEqualTo(new IndustryOrderPort.Identity("MAIN", "E", "A", "BUYER", "STAFF"));
+                return query.answer(call);
             });
             when(core.get(any(), anyString())).thenAnswer(call -> {
                 outside(); String order = call.getArgument(1);
@@ -221,23 +259,116 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
                     sql.getMapper(CheckCartMapper.class), sql.getMapper(StorePolicyMapper.class),
                     sql.getMapper(OrderBatchMapper.class), sql.getMapper(CoreOrderBindingMapper.class),
                     sql.getMapper(OrderLineMapper.class), allocationRows, () -> core, () -> pricing, json, CLOCK,
-                    context.getBean(PlatformTransactionManager.class),postpay?kitchen:null,postpay?publisher:null);
-            test.accept(new Context(f, restart.get(), restart, facts, pricing, failBind, timeout, calls, receipt));
+                    context.getBean(PlatformTransactionManager.class),postpay?kitchen:null,postpay?publisher:null,
+                    null,null,sql.getMapper(ActionLogMapper.class));
+            test.accept(new Context(f, restart.get(), restart, facts, pricing, failBind, timeout, calls, receipt, core));
         });
     }
 
-    private static DiningPriceFacts facts(ObjectMapper json) {
+    @Test void pendingStaffCancellationSurvivesRestartAndReplaysTheOriginalOwnerKey() {
+        run(true, true, c -> {
+            c.receipt.set(new IndustryOrderPort.Result("ORDER", "SUB", "Q", "PREPARED", null, null,
+                    0, 3, List.of(), "POSTPAY", null, false));
+            c.timeout.set(true);
+            var request = new CreateStaffDiningOrderReq("BUYER", "C", 0, "Q", DIGEST, "POSTPAY");
+            assertThatThrownBy(() -> c.service.staffPlace("E", "A", "STAFF", request, "PLACE"))
+                    .isInstanceOf(IllegalStateException.class);
+            String number = c.fixture.sql().queryForObject("SELECT batch_no FROM fnb_order_batch", String.class);
+            long version = c.fixture.sql().queryForObject("SELECT version FROM fnb_order_batch", Long.class);
+            var released = new IndustryOrderPort.Result("ORDER", "SUB", "Q", "RELEASED", null, null,
+                    0, 3, List.of(), "POSTPAY", null, false);
+            // This batch now owns the full quota: live saleability is zero and must not block withdrawal.
+            c.fixture.sql().update("UPDATE fnb_sales_restriction SET quota_qty=2");
+            var cancelCalls = new AtomicInteger();
+            when(c.core.cancelForStore(any(), anyString(), anyString())).thenAnswer(call -> {
+                outside();
+                var command = call.getArgument(0, IndustryOrderPort.Command.class);
+                var frozen = c.service.authorizeCancellation(command, number, call.getArgument(2, String.class));
+                assertThat(frozen.prices().baseTotal().minor()).isEqualTo(1010);
+                assertThat(frozen.source().sourceVersion()).isZero();
+                assertThatThrownBy(() -> c.service.authorizeCancellation(command, number, "DINE_IN"))
+                        .isInstanceOf(BizException.class);
+                if (cancelCalls.incrementAndGet() == 1) throw new IllegalStateException("cancel response lost");
+                assertThat(call.getArgument(1, String.class)).isEqualTo(number);
+                assertThat(call.getArgument(0, IndustryOrderPort.Command.class).identity().actorNo())
+                        .isEqualTo("STAFF");
+                assertThat(c.fixture.sql().queryForObject("SELECT status FROM fnb_order_batch", String.class))
+                        .isEqualTo("CANCEL_PENDING");
+                return released;
+            });
+            var cancel = new CancelDiningOrderReq(version, "Guest withdrew before acceptance");
+            assertThatThrownBy(() -> c.service.staffCancel("E", "A", "SUPERVISOR", number, cancel, "CANCEL"))
+                    .isInstanceOf(IllegalStateException.class);
+            assertThat(c.fixture.sql().queryForObject("SELECT status FROM fnb_order_batch", String.class))
+                    .isEqualTo("CANCEL_PENDING");
+            assertThat(c.fixture.sql().queryForObject("SELECT reserved_qty FROM fnb_sales_restriction",
+                    BigDecimal.class)).isEqualByComparingTo("2");
+            var result = c.restart.get().staffCancel("E", "A", "SUPERVISOR", number, cancel, "CANCEL");
+            assertThat(result.status()).isEqualTo("CANCELLED");
+            assertThat(c.fixture.sql().queryForObject("SELECT reserved_qty FROM fnb_sales_restriction",
+                    BigDecimal.class)).isEqualByComparingTo("0");
+            assertThat(c.restart.get().staffCancel("E", "A", "SUPERVISOR", number, cancel, "CANCEL").status())
+                    .isEqualTo("CANCELLED");
+            assertThatThrownBy(() -> c.service.staffCancel("E", "A", "SUPERVISOR", number,
+                    new CancelDiningOrderReq(version, "changed reason"), "CANCEL")).isInstanceOf(BizException.class);
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log", Integer.class)).isOne();
+            assertThat(c.coreCalls).hasValue(1);
+            verify(c.facts, times(1)).staff("E", "A", "C", 0);
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM food_acceptance_outbox_fixture",
+                    Integer.class)).isZero();
+        });
+    }
+
+    @Test void originalCoreCommitWinsCancellationRaceWithoutDroppingDebtOrKitchenAcceptance() {
+        run(true, true, c -> {
+            c.timeout.set(true);
+            assertThatThrownBy(() -> c.service.staffPlace("E", "A", "STAFF",
+                    new CreateStaffDiningOrderReq("BUYER", "C", 0, "Q", DIGEST, "POSTPAY"), "PLACE"))
+                    .isInstanceOf(IllegalStateException.class);
+            String number = c.fixture.sql().queryForObject("SELECT batch_no FROM fnb_order_batch", String.class);
+            long version = c.fixture.sql().queryForObject("SELECT version FROM fnb_order_batch", Long.class);
+            when(c.core.cancelForStore(any(), anyString(), anyString()))
+                    .thenThrow(BizException.of(ErrorCode.CONFLICT));
+            var actual = c.service.staffCancel("E", "A", "STAFF", number,
+                    new CancelDiningOrderReq(version, "withdraw"), "CANCEL");
+            assertThat(actual.status()).isEqualTo("ACCEPTED");
+            assertThat(actual.coreStatus()).isEqualTo("WAIT_PAY");
+            assertThat(c.fixture.sql().queryForObject("SELECT consumed_qty FROM fnb_sales_restriction",
+                    BigDecimal.class)).isEqualByComparingTo("2");
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log WHERE "
+                    + "action='REJECT_CANCEL_PLACEMENT'", Integer.class)).isOne();
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM food_acceptance_outbox_fixture",
+                    Integer.class)).isOne();
+        });
+    }
+
+    @Test void acceptedStaffBatchCannotUsePendingCancellationToEraseItsOriginalOrder() {
+        run(true, true, c -> {
+            var placed = c.service.staffPlace("E", "A", "STAFF",
+                    new CreateStaffDiningOrderReq("BUYER", "C", 0, "Q", DIGEST, "POSTPAY"), "PLACE");
+            assertThatThrownBy(() -> c.service.staffCancel("E", "A", "STAFF", placed.batchNo(),
+                    new CancelDiningOrderReq(placed.version(), "cancel"), "CANCEL")).isInstanceOf(BizException.class);
+            assertThat(c.fixture.sql().queryForObject("SELECT status FROM fnb_order_batch", String.class))
+                    .isEqualTo("ACCEPTED");
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log", Integer.class)).isZero();
+        });
+    }
+
+    private static DiningPriceFacts facts(ObjectMapper json) { return facts(json, false); }
+    private static DiningPriceFacts facts(ObjectMapper json, boolean staff) { return facts(json,staff,false); }
+    private static DiningPriceFacts facts(ObjectMapper json, boolean staff, boolean dineIn) {
         OrderLineInput line = new OrderLineInput("SRC", "MENU", "ITEM", "REV", "G", "SKU",
                 new BigDecimal("2"), null, null, List.of(), List.of());
-        CartVO cart = new CartVO("C", "A", null, "SESSION", null, "OPEN", "H5", "PICKUP", null, 0L, List.of(line));
+        CartVO cart = new CartVO("C", "A", dineIn?"CHECK":null, dineIn?null:"SESSION", null, "OPEN",
+                staff ? "POS" : "H5", dineIn?"DINE_IN":"PICKUP", null, 0L, List.of(line));
         CatalogMenuVO menu = new CatalogMenuVO("MENU", "REV", 1L, "Menu", 0, null, List.of());
         CatalogItemVO item = new CatalogItemVO("MENU", "ITEM", "CAT", "Category", "G", "Dish", null,
                 new DishVO("G", "SINGLE", 0, null, new MeasurementPolicy("EA", "COUNT", 0, null), 0, 0),
                 List.of(), List.of(new CatalogSkuVO("SKU", null, null, 505L, "CNY", "KNOWN", 10,
                         "KNOWN", true, false, null, true, false, null)));
-        CatalogVO catalog = new CatalogVO("A", "H5", "PICKUP", null, List.of(menu), List.of(item));
+        CatalogVO catalog = new CatalogVO("A", staff ? "POS" : "H5", dineIn?"DINE_IN":"PICKUP", null, List.of(menu), List.of(item));
         Offer offer = new Offer("SKU", "G", "E", "A", 505L, "CNY", "KNOWN", 10, "KNOWN", true);
-        var payload = new DiningPriceFacts.Payload("E", "SESSION", cart, List.of(new DiningPriceFacts.MenuRef(
+        var payload = new DiningPriceFacts.Payload("E", staff ? null : "SESSION", cart, List.of(new DiningPriceFacts.MenuRef(
                 "MENU", "REV", 1, "a".repeat(64), List.of())), List.of(new SkuIdentityFact("SKU", "G", "E", "A", 0)),
                 List.of(offer), List.of(new DiningPriceFacts.Restriction("SKU", false, new BigDecimal("10"), true, List.of())),
                 DiningPriceSourcePolicy.compose(cart, catalog, Map.of("SKU", offer), json),
@@ -280,6 +411,102 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
         return new IndustryOrderPort.Result(original.orderNo(),original.subOrderNo(),original.quoteNo(),"WAIT_PAY",
                 original.currency(),original.payAmountMinor(),original.sourceVersion(),3,original.allocations(),
                 "POSTPAY",accepted?"WAIT_FULFILL":"WAIT_PAY",accepted);
+    }
+    private static CreateStaffDiningOrderReq staffRequest() {
+        return new CreateStaffDiningOrderReq("BUYER", "C", 0, "Q", DIGEST, "POSTPAY");
+    }
+    @Test void staffDineInUsesExplicitOwnerCapabilityAndRetainsOriginalCheckAndUnpaidBatch() {
+        run(true,true,true,c -> {
+            var result=c.service.staffPlace("E","A","STAFF",staffRequest(),"DINE-IN-1");
+            assertThat(result.status()).isEqualTo("ACCEPTED"); assertThat(result.coreStatus()).isEqualTo("WAIT_PAY");
+            assertThat(c.fixture.sql().queryForObject("SELECT check_no FROM fnb_order_batch",String.class)).isEqualTo("CHECK");
+            assertThat(c.fixture.sql().queryForObject("SELECT fulfillment FROM fnb_order_batch",String.class)).isEqualTo("DINE_IN");
+            assertThat(c.restart.get().staffPlace("E","A","STAFF",staffRequest(),"DINE-IN-1").batchNo())
+                    .isEqualTo(result.batchNo());
+            assertThat(c.coreCalls).hasValue(1);
+            assertThat(c.fixture.sql().queryForObject("SELECT status FROM fnb_check_cart",String.class)).isEqualTo("CLOSED");
+            assertThat(c.fixture.sql().queryForObject("SELECT version FROM fnb_check_cart",Long.class)).isEqualTo(1L);
+            assertThat(c.fixture.sql().queryForObject("SELECT check_no FROM fnb_check_cart",String.class)).isEqualTo("CHECK");
+            assertThat(c.fixture.sql().queryForObject("SELECT quote_ref FROM fnb_order_batch",String.class)).isEqualTo("Q");
+        });
+    }
+    @Test void tamperedFrozenDiningSourceNeverClosesUnknownCartOrCreatesLocalAcceptance() {
+        run(true,true,true,c -> {
+            c.timeout.set(true);
+            assertThatThrownBy(() -> c.service.staffPlace("E","A","STAFF",staffRequest(),"DINE-IN-LOST"))
+                    .isInstanceOf(IllegalStateException.class);
+            String batch=c.fixture.sql().queryForObject("SELECT batch_no FROM fnb_order_batch",String.class);
+            String frozen=c.fixture.sql().queryForObject("SELECT frozen_request FROM fnb_order_batch",String.class);
+            String changed=frozen.replace("\"checkNo\":\"CHECK\"","\"checkNo\":\"OTHER\"");
+            assertThat(changed).isNotEqualTo(frozen);
+            c.fixture.sql().update("UPDATE fnb_order_batch SET frozen_request=?",changed); c.timeout.set(false);
+            assertThatThrownBy(() -> c.restart.get().recoverOriginal("E","A",batch)).isInstanceOf(BizException.class);
+            assertThat(c.fixture.sql().queryForObject("SELECT status FROM fnb_check_cart",String.class)).isEqualTo("OPEN");
+            assertThat(c.fixture.sql().queryForObject("SELECT version FROM fnb_check_cart",Long.class)).isZero();
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM fnb_core_order_binding",Integer.class)).isZero();
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM food_acceptance_outbox_fixture",Integer.class)).isZero();
+        });
+    }
+    @Test void staffDineInWithoutOriginalCheckFailsBeforeIntentOrCore() {
+        run(true,true,true,c -> {
+            c.fixture.sql().update("UPDATE fnb_check_cart SET check_no=NULL");
+            assertThatThrownBy(() -> c.service.staffPlace("E","A","STAFF",staffRequest(),"DINE-IN-NO-CHECK"))
+                    .isInstanceOf(BizException.class);
+            assertThat(c.coreCalls).hasValue(0);
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM fnb_order_batch",Integer.class)).isZero();
+        });
+    }
+    @Test void staffPlacementPersistsRealBuyerAndEmployeeSeparatelyAndReplaysOriginalUnpaidOrder() {
+        run(true, true, c -> {
+            var result = c.service.staffPlace("E", "A", "STAFF", staffRequest(), "STAFF-1");
+            assertThat(result.status()).isEqualTo("ACCEPTED");
+            assertThat(result.coreStatus()).isEqualTo("WAIT_PAY");
+            assertThat(c.fixture.sql().queryForObject("SELECT buyer_no FROM fnb_order_batch", String.class))
+                    .isEqualTo("BUYER");
+            assertThat(c.fixture.sql().queryForObject("SELECT operator_no FROM fnb_order_batch", String.class))
+                    .isEqualTo("STAFF");
+            assertThat(c.fixture.sql().queryForObject("SELECT actor_realm FROM fnb_order_batch", String.class))
+                    .isEqualTo("MERCHANT");
+            var replay = c.restart.get().staffPlace("E", "A", "STAFF", staffRequest(), "STAFF-1");
+            assertThat(replay.batchNo()).isEqualTo(result.batchNo());
+            assertThat(c.coreCalls).hasValue(1);
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM food_acceptance_outbox_fixture",
+                    Integer.class)).isEqualTo(1);
+            var switched = new CreateStaffDiningOrderReq("OTHER", "C", 0, "Q", DIGEST, "POSTPAY");
+            assertThatThrownBy(() -> c.service.staffPlace("E", "A", "STAFF", switched, "STAFF-1"))
+                    .isInstanceOfSatisfying(BizException.class,
+                            failure -> assertThat(failure.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+        });
+    }
+    @Test void staffTimeoutRecoveryRetainsOriginalActorAndDoesNotPlaceOrConsumeTwice() {
+        run(true, true, c -> {
+            c.timeout.set(true);
+            assertThatThrownBy(() -> c.service.staffPlace("E", "A", "STAFF", staffRequest(), "STAFF-LOST"))
+                    .isInstanceOf(IllegalStateException.class);
+            String batch = c.fixture.sql().queryForObject("SELECT batch_no FROM fnb_order_batch", String.class);
+            assertThat(c.fixture.sql().queryForObject("SELECT status FROM fnb_order_batch", String.class))
+                    .isEqualTo("UNKNOWN");
+            c.timeout.set(false);
+            var recovered = c.restart.get().recoverOriginal("E", "A", batch);
+            assertThat(recovered.status()).isEqualTo("ACCEPTED");
+            assertThat(c.coreCalls).hasValue(1);
+            assertThat(c.fixture.sql().queryForObject("SELECT consumed_qty FROM fnb_sales_restriction",
+                    BigDecimal.class)).isEqualByComparingTo("2");
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM core_owner_document_fixture",
+                    Integer.class)).isEqualTo(1);
+        });
+    }
+    @Test void staffCrossStoreAndPrepayAreRejectedBeforeCorePlacement() {
+        run(true, true, c -> {
+            assertThatThrownBy(() -> c.service.staffPlace("E", "OTHER", "STAFF", staffRequest(), "CROSS"))
+                    .isInstanceOf(BizException.class);
+            var prepay = new CreateStaffDiningOrderReq("BUYER", "C", 0, "Q", DIGEST, "PREPAY");
+            assertThatThrownBy(() -> c.service.staffPlace("E", "A", "STAFF", prepay, "PREPAY"))
+                    .isInstanceOf(BizException.class);
+            assertThat(c.coreCalls).hasValue(0);
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM fnb_order_batch", Integer.class))
+                    .isZero();
+        });
     }
     @Test void postpayAcceptsRealUnpaidOwnerProofAndPublishesQuotaAndDispatchInOneTransaction() {
         run(true,c -> {

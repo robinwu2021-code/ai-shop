@@ -148,6 +148,28 @@ class DiningReturnServiceTest extends FoodWriteGuardFixture {
                 List.of(new DiningReturnApplyReq.Line("SRC", new BigDecimal(quantity))));
     }
 
+    @Test void businessClaimBlocksNewFinancialClaimAndAllLegacyEntryPoints() {
+        run(c -> {
+            c.fixture.sql().update("INSERT INTO fnb_return(entity_no,store_no,return_no,batch_no,buyer_no,"
+                    + "status,financial_status,kitchen_status,request_snapshot) VALUES('E','A','BUSINESS','B',"
+                    + "'BUYER','BUSINESS_REQUESTED','NOT_REQUESTED','PENDING','business-only')");
+            c.fixture.sql().update("INSERT INTO fnb_return_item(entity_no,return_item_no,return_no,food_line_no,"
+                    + "qty) VALUES('E','BI','BUSINESS','FL',1)");
+            assertThatThrownBy(() -> c.service.customerApply("A", BUYER, request("1", "reason"), "KEY"))
+                    .isInstanceOf(BizException.class);
+            assertThatThrownBy(() -> c.service.customerGet(BUYER, "BUSINESS")).isInstanceOf(BizException.class);
+            assertThatThrownBy(() -> c.service.customerCancel(BUYER, "BUSINESS")).isInstanceOf(BizException.class);
+            assertThatThrownBy(() -> c.service.staffGet("E", "A", "EMPLOYEE", "BUSINESS"))
+                    .isInstanceOf(BizException.class);
+            assertThatThrownBy(() -> c.service.recoverOriginal("E", "A", "BUSINESS"))
+                    .isInstanceOf(BizException.class);
+            verifyNoInteractions(c.authority);
+            assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM fnb_return", Integer.class)).isOne();
+            assertThat(c.fixture.sql().queryForObject("SELECT financial_status FROM fnb_return", String.class))
+                    .isEqualTo("NOT_REQUESTED");
+        });
+    }
+
     @Test void fullOriginalCaseRecoversAfterRestartWithoutInferringKitchenHandlingFromRefundCompletion() {
         run(c -> {
             c.timeout.set(true); c.result.set(coreResult("REFUNDING"));

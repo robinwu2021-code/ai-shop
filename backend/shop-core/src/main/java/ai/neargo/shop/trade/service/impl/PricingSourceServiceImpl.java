@@ -8,6 +8,7 @@ import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Credentials;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Snapshot;
 import ai.neargo.shop.spi.trade.PricingSourceRef;
+import ai.neargo.shop.spi.trade.IndustryOrderPort.Command;
 import ai.neargo.shop.trade.service.PricingSourceService;
 import java.util.List;
 import java.util.Objects;
@@ -23,6 +24,13 @@ public class PricingSourceServiceImpl implements PricingSourceService {
         if (scope == null) throw BizException.of(ErrorCode.BAD_REQUEST);
         var result = owner(source).staff(scope, source);
         return receipt(result, scope, source, null);
+    }
+    @Override public Snapshot cancellationForStore(Command command, String key, String fulfillment) {
+        if (command == null || command.identity() == null) throw BizException.of(ErrorCode.BAD_REQUEST);
+        var actor = command.identity();
+        var scope = new Scope(actor.tenantNo(), actor.entityNo(), actor.storeNo());
+        var result = owner(command.source()).cancellationForStore(command, key, fulfillment);
+        return receipt(result, scope, command.source(), null);
     }
     @Override public Snapshot customer(PricingSourceRef source, Credentials credentials) {
         if (credentials == null) throw BizException.of(ErrorCode.BAD_REQUEST);

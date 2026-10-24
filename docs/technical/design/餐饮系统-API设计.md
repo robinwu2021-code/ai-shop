@@ -1,6 +1,6 @@
 # 餐饮系统API设计
 
-> 状态：待评审 · 2026-10-21 · V1含73张fnb_业务表；当前目标83张，后续迁移可用至V10（含V9耗用及V10排队），另2张PLANNED；历史经营库执行证据仍V1/73；目标API不代表全部交付；共享打印V556可用，报表保持原共享owner，不声明生产已应用。
+> 状态：待评审 · 2026-10-21 · V1含73张fnb_业务表；当前目标85张，后续迁移可用至V15（含V9耗用、V10排队及V11～V15当前业务增量，均不表示经营库已应用），另2张PLANNED；历史经营库执行证据仍V1/73；目标API不代表全部交付；共享打印V556可用，报表保持原共享owner，不声明生产已应用。
 > 由 `node scripts/gen-food-system-design.mjs` 生成，勿手改；真源：[领域数据库API设计源](./schema/food-system-design.json)。生成依赖沿用 @viz-js/viz，可用 FOOD_ER_VIZ_MODULE 指定模块路径。
 > 业务入口：[后端业务模块功能清单](../../requirements/餐饮系统-后端业务模块功能清单.md) · [数据库与API评审对齐](../TDD-餐饮系统-数据库与API评审对齐.md)。按桌台→菜品→订单查阅，A–L仍保留为持久化分域编号。
 > 项目约束：[底座兼容对齐](./餐饮系统-项目底座兼容对齐.md)，账号、门店、营业时间、公共实体及协议冲突时优先按该对齐说明修订。
@@ -12,11 +12,11 @@
 
 | 模块 | 名称 | 需求数 | 关联表数 | 关联API数 |
 |---|---|---|---|---|
-| MOD-01 | 桌台与就餐管理 | 8 | 12 | 40 |
+| MOD-01 | 桌台与就餐管理 | 8 | 13 | 40 |
 | MOD-02 | 菜品与餐牌管理 | 12 | 27 | 41 |
 | MOD-03 | 点餐与订单管理 | 9 | 14 | 30 |
 | MOD-04 | 厨房与履约管理 | 10 | 10 | 17 |
-| MOD-05 | 收银与结账管理 | 11 | 6 | 13 |
+| MOD-05 | 收银与结账管理 | 11 | 7 | 13 |
 | MOD-06 | 退餐与售后管理 | 8 | 7 | 12 |
 | MOD-07 | 打印、通知与设备管理 | 8 | 5 | 3 |
 | MOD-08 | 班次与现金管理 | 4 | 5 | 5 |
@@ -8284,3 +8284,701 @@ DINING_ORDER_ACCEPTED先持久化/重放原MAKE票，再读取共享打印配置
 默认KDS只读真实ACCEPTED批次、未CLOSED票及非SERVED/VOIDED任务；显式batchNo可查原历史。MAKE/REMAKE及原票引用保持，轮询不提供SSE/推送送达证明。
 
 CorePrint回执历史审查保留为历史证据；当前修复登记为CODED_PENDING_VERIFICATION，覆盖显式空闲/缺失信封、最新attempt与规范状态/responseCode、key与UUID及晚到/重复原回执。测试源码：`backend-plugins/shop-industry-food/food-channel/src/test/java/ai/neargo/shop/food/channel/CorePrintPortTest.java`。这不替代硬件真回执或将全目标判定完成。
+
+## 十二、当前员工代客下单切片（本批后端编译及测试已执行）
+
+本节覆盖后续员工下单增量；前两节保留历史切片的原时点。实际状态为BACKEND_TESTED_SCOPE_LIMITED，不代表FOOD-API-042完整目标完成。当前支持POS/WAITER、POSTPAY、真实注册顾客、PICKUP或有有效台账的DINE_IN，以及完整整数MAIN及已支持ADDON；员工身份与顾客分开，禁止冒充消费者Credentials，不执行收款或资产消费。
+
+`POST /biz/x/food/stores/{storeNo}/batches` · BizOrderBatchController.place · biz:verify
+
+请求：`ai.neargo.shop.food.dto.CreateStaffDiningOrderReq`，Header：`Idempotency-Key`；输出data：`ai.neargo.shop.food.dto.DiningOrderBatchVO`。
+
+| 输入字段 | 类型 | 必填 | 含义 |
+|---|---|---|---|
+| buyerNo | String | 是 | 真实已注册顾客；非操作员工，不授予付款授权 |
+| cartNo | String | 是 | 原当前门店POS/WAITER完整购物车 |
+| version | long | 是 | 原车版本，与报价一致 |
+| quoteNo | String | 是 | 当前员工创建的staff报价 |
+| confirmationDigest | String | 是 | 原展示确认摘要，服务端重验 |
+| payMode | String | 是 | 当前只支持POSTPAY |
+
+守卫：FoodBizStoreScope.path + real registered buyer + authenticated staff; POS/WAITER POSTPAY PICKUP or DINE_IN integer MAIN/ADDON whole cart; DINE_IN live check/cart locks and original frozen hashes; quote authority and original identity recovery。剩余边界：匿名/设备、外送正式下单、堂食核心履约完成、套餐库存策略、小数成交、selectedLineRefs/splitByPerson；无新增支付/退款/资产执行。
+
+员工身份持久化复用原fnb批次、原核心订单及来源绑定，组件等结构增量见第十三节；buyer_no保存顾客，operator_no保存员工，actor_realm沿MERCHANT原枚举。内部合同：DiningOrderInternalApi.staffPlace、IndustryOrderPort.placeForStore、IndustryOrderPort.queryForStore、IndustryOrderPort.placeForDiningRoom、IndustryOrderInternalApi.placeForDiningRoom。恢复只查持久化原员工/顾客/批次键，不重开单。
+
+本批已完成记录范围的后端编译和集中测试；真实结果及跳过项见原TDD§2.14。未完成业务与目标合同差异仍保持待办。
+
+## 十三、连续业务编码的实际合同（本批后端编译及测试已执行）
+
+涉及29条实际路由，其中20条为相对原提交的新增公开路由；已有路由的DTO/业务扩展与新增分开展示。当前批次状态为BACKEND_TESTED_SCOPE_LIMITED，仅表示本批已记录的源码或测试范围；原50条非支付收据仍保留其历史时点，目标API与完整需求差异不自动消除。
+
+| 编码编号 | 方法与实际路径 | Java入口 | 请求 | data响应 | 新增路由 | 目标映射 |
+|---|---|---|---|---|---|---|
+| FOOD-BUSINESS-CODE-001 | `POST /biz/x/food/stores/{storeNo}/batches` | BizOrderBatchController.place | storeNo:String:path;body:CreateStaffDiningOrderReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.DiningOrderBatchVO | 是 | FOOD-API-042 / EXACT_PATH_WITH_DTO_DIFFERENCES |
+| FOOD-BUSINESS-CODE-002 | `POST /biz/x/food/batches/{batchNo}:cancel` | BizOrderBatchController.cancel | batchNo:String:path;body:CancelDiningOrderReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.DiningOrderBatchVO | 是 | FOOD-API-124 / EXACT_PATH_WITH_DTO_DIFFERENCES |
+| FOOD-BUSINESS-CODE-003 | `GET /biz/x/food/batches/{batchNo}` | BizOrderBatchController.get | batchNo:String:path | ai.neargo.shop.food.dto.DiningOrderBatchVO | 沿用/扩展 | FOOD-API-043 / EXACT_PATH_WITH_DTO_DIFFERENCES |
+| FOOD-BUSINESS-CODE-004 | `GET /biz/x/food/stores/{storeNo}/reservations` | BizReservationController.listReservations | storeNo:String:path;query:ListReservationsQuery:query-object | ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.ReservationVO> | 沿用/扩展 | FOOD-API-107 / EXACT_PATH_WITH_DTO_DIFFERENCES |
+| FOOD-BUSINESS-CODE-005 | `GET /biz/x/food/reservations/{reservationNo}` | BizReservationController.get | reservationNo:String:path | ai.neargo.shop.food.dto.ReservationContracts.DetailVO | 是 | 本次新增业务合同 / ADDED_PUBLIC_CONTRACT_NEEDS_TARGET_REGISTRATION |
+| FOOD-BUSINESS-CODE-006 | `POST /biz/x/food/stores/{storeNo}/reservations` | BizReservationController.create | storeNo:String:path;body:CreateReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.ReservationContracts.DetailVO | 沿用/扩展 | FOOD-API-027 / EXACT_PATH_WITH_DTO_DIFFERENCES |
+| FOOD-BUSINESS-CODE-007 | `POST /biz/x/food/reservations/{reservationNo}:change` | BizReservationController.change | reservationNo:String:path;body:ChangeReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.ReservationContracts.DetailVO | 是 | 本次新增业务合同 / ADDED_PUBLIC_CONTRACT_NEEDS_TARGET_REGISTRATION |
+| FOOD-BUSINESS-CODE-008 | `POST /biz/x/food/reservations/{reservationNo}:cancel` | BizReservationController.cancel | reservationNo:String:path;body:TransitionReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.ReservationContracts.DetailVO | 是 | FOOD-API-028 / EXACT_PATH_WITH_DTO_DIFFERENCES |
+| FOOD-BUSINESS-CODE-009 | `POST /biz/x/food/reservations/{reservationNo}:no-show` | BizReservationController.noShow | reservationNo:String:path;body:TransitionReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.ReservationContracts.DetailVO | 是 | FOOD-API-029 / EXACT_PATH_WITH_DTO_DIFFERENCES |
+| FOOD-BUSINESS-CODE-010 | `POST /biz/x/food/reservations/{reservationNo}:arrive` | BizReservationController.arrive | reservationNo:String:path;body:ArriveReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.ReservationContracts.DetailVO | 是 | FOOD-API-030 / EXACT_PATH_WITH_DTO_DIFFERENCES |
+| FOOD-BUSINESS-CODE-011 | `POST /biz/x/food/batches/{batchNo}:handover` | BizDiningHandoverController.handover | batchNo:String:path;req:HandoverReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.KitchenContracts.HandoverVO | 沿用/扩展 | FOOD-API-055 / EXACT_PATH_WITH_DTO_DIFFERENCES |
+| FOOD-BUSINESS-CODE-012 | `POST /biz/x/food/batches/{batchNo}:confirm-packing` | BizDiningHandoverController.confirmPacking | batchNo:String:path;req:PackingReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.KitchenContracts.CustodyReceiptVO | 是 | 本次新增业务合同 / ADDED_PUBLIC_CONTRACT_NEEDS_TARGET_REGISTRATION |
+| FOOD-BUSINESS-CODE-013 | `GET /biz/x/food/batches/{batchNo}/custody-receipts` | BizDiningHandoverController.custodyReceipts | batchNo:String:path | java.util.List<ai.neargo.shop.food.dto.KitchenContracts.CustodyReceiptVO> | 是 | 本次新增业务合同 / ADDED_PUBLIC_CONTRACT_NEEDS_TARGET_REGISTRATION |
+| FOOD-BUSINESS-CODE-014 | `POST /biz/x/food/business-days/{date}:open` | BizBusinessCloseController.open | date:LocalDate:path;Idempotency-Key:String:header | ai.neargo.shop.food.dto.BusinessCloseContracts.DayVO | 沿用/扩展 | 本次新增业务合同 / ADDED_PUBLIC_CONTRACT_NEEDS_TARGET_REGISTRATION |
+| FOOD-BUSINESS-CODE-016 | `POST /biz/x/food/closes:preview` | BizBusinessCloseController.preview | body:PreviewReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO | 沿用/扩展 | FOOD-API-072 / TARGET_RECONCILIATION_REQUIRED |
+| FOOD-BUSINESS-CODE-017 | `GET /biz/x/food/closes/{closeNo}` | BizBusinessCloseController.get | closeNo:String:path | ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO | 沿用/扩展 | FOOD-API-073 / EXACT_PATH_WITH_DTO_DIFFERENCES |
+| FOOD-BUSINESS-CODE-018 | `POST /biz/x/food/closes:sign` | BizBusinessCloseController.sign | body:SignReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO | 沿用/扩展 | FOOD-API-075 / TARGET_RECONCILIATION_REQUIRED |
+| FOOD-BUSINESS-CODE-019 | `POST /biz/x/food/closes:adjust` | BizBusinessCloseController.adjust | body:AdjustmentReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.OperationVO | 沿用/扩展 | FOOD-API-076 / TARGET_RECONCILIATION_REQUIRED |
+| FOOD-BUSINESS-CODE-020 | `GET /biz/x/food/closes/{closeNo}/exceptions` | BizBusinessCloseController.exceptions | closeNo:String:path | java.util.List<ai.neargo.shop.food.dto.BusinessCloseContracts.ExceptionVO> | 是 | 本次新增业务合同 / ADDED_PUBLIC_CONTRACT_NEEDS_TARGET_REGISTRATION |
+| FOOD-BUSINESS-CODE-021 | `POST /biz/x/food/closes/{closeNo}/exceptions/{exceptionNo}:propose-carry` | BizBusinessCloseController.proposeCarry | closeNo:String:path;exceptionNo:String:path;body:ProposeCarryReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.BusinessCloseContracts.ExceptionVO | 是 | 本次新增业务合同 / ADDED_PUBLIC_CONTRACT_NEEDS_TARGET_REGISTRATION |
+| FOOD-BUSINESS-CODE-022 | `POST /biz/x/food/closes/{closeNo}/exceptions/{exceptionNo}:approve-carry` | BizBusinessCloseController.approveCarry | closeNo:String:path;exceptionNo:String:path;body:ApproveCarryReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.BusinessCloseContracts.ExceptionVO | 是 | 本次新增业务合同 / ADDED_PUBLIC_CONTRACT_NEEDS_TARGET_REGISTRATION |
+| FOOD-BUSINESS-CODE-023 | `POST /biz/x/food/checks/{checkNo}/business-share-plans` | BizBusinessShareController.create | checkNo:String:path;request:CreateReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.BusinessShareContracts.PlanVO | 是 | 本次新增业务合同 / ADDED_PUBLIC_CONTRACT_NEEDS_TARGET_REGISTRATION |
+| FOOD-BUSINESS-CODE-024 | `GET /biz/x/food/checks/{checkNo}/business-share-plans/{planNo}` | BizBusinessShareController.get | checkNo:String:path;planNo:String:path | ai.neargo.shop.food.dto.BusinessShareContracts.PlanVO | 是 | 本次新增业务合同 / ADDED_PUBLIC_CONTRACT_NEEDS_TARGET_REGISTRATION |
+| FOOD-BUSINESS-CODE-025 | `POST /biz/x/food/checks/{checkNo}/business-share-plans/{planNo}:confirm` | BizBusinessShareController.confirm | checkNo:String:path;planNo:String:path;request:ConfirmReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.BusinessShareContracts.PlanVO | 是 | 本次新增业务合同 / ADDED_PUBLIC_CONTRACT_NEEDS_TARGET_REGISTRATION |
+| FOOD-BUSINESS-CODE-026 | `POST /biz/x/food/checks/{checkNo}/business-share-plans/{planNo}:cancel` | BizBusinessShareController.cancel | checkNo:String:path;planNo:String:path;request:CancelReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.BusinessShareContracts.PlanVO | 是 | 本次新增业务合同 / ADDED_PUBLIC_CONTRACT_NEEDS_TARGET_REGISTRATION |
+| FOOD-BUSINESS-CODE-027 | `GET /biz/x/food/stores/{storeNo}/batches` | BizDiningBatchQueryController.list | storeNo:String:path;query:ListDiningBatchesQuery:query-object | ai.neargo.shop.common.PageData<ai.neargo.shop.food.dto.DiningBatchSummaryVO> | 是 | FOOD-API-123 / EXACT_PATH_WITH_DTO_DIFFERENCES |
+| FOOD-BUSINESS-CODE-028 | `POST /biz/x/food/batches/{batchNo}/business-returns` | BizBusinessReturnController.create | batchNo:String:path;request:CreateReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.BusinessReturnContracts.ReturnVO | 是 | 本次新增业务合同 / ADDED_PUBLIC_CONTRACT_NEEDS_TARGET_REGISTRATION |
+| FOOD-BUSINESS-CODE-029 | `GET /biz/x/food/business-returns/{returnNo}` | BizBusinessReturnController.get | returnNo:String:path | ai.neargo.shop.food.dto.BusinessReturnContracts.ReturnVO | 是 | 本次新增业务合同 / ADDED_PUBLIC_CONTRACT_NEEDS_TARGET_REGISTRATION |
+| FOOD-BUSINESS-CODE-030 | `POST /biz/x/food/business-returns/{returnNo}:cancel` | BizBusinessReturnController.cancel | returnNo:String:path;request:CancelReq:body;Idempotency-Key:String:header | ai.neargo.shop.food.dto.BusinessReturnContracts.ReturnVO | 是 | 本次新增业务合同 / ADDED_PUBLIC_CONTRACT_NEEDS_TARGET_REGISTRATION |
+
+### 共享人工调价（shop-core）
+
+复用 CouponCalculation + PricingEngine + TaxEngine，真实门店策略与审批只授权让价，报价在下单时重新核验；不执行收款、退款或资产消费。员工自审限额固定0。
+
+| 方法 | 实际路径 | 输入 | 输出 |
+|---|---|---|---|
+| GET | /biz/pricing-manual-policies/{currency}/{reasonCode}/{kind} | currency/reasonCode/kind path | PolicyVO |
+| PUT | /biz/pricing-manual-policies/{currency}/{reasonCode}/{kind} | Save(expectedVersion,enabled,selfLimitMinor=0,maxLimitMinor,minPayableRateBp); Idempotency-Key | PolicyVO |
+| POST | /biz/pricing-manual-adjustments | Request(source,kind,amountMinor?,payableRateBp?,reasonCode,reason); Idempotency-Key | AdjustmentVO |
+| GET | /biz/pricing-manual-adjustments/{no} | no path | AdjustmentVO |
+| POST | /biz/pricing-manual-adjustments/{no}:approve | Approve(version); Idempotency-Key | AdjustmentVO |
+| POST | /biz/pricing-manual-adjustments/{no}:quote | no path; Idempotency-Key | PricingCheckoutPort.QuoteVO |
+
+阻断项：cash rounding；employee self-limit above zero without cumulative quota owner；bundles；unsupported tax basis；funds execution。
+
+### 处理中批次撤销
+
+仅MERCHANT POS/WAITER POSTPAY original batch with no local binding, PREPARED/PLACING/UNKNOWN only。CANCEL_PENDING表示已保存撤销意图，只有原核心RELEASED才能标取消（无原意图时写持久tombstone，有原预占时须原库存确认释放）；正式订单先创建则保留原债务并记录撤销拒绝。
+
+来源验证采用原批次冻结价格事实、完整原Command/履约/键及持久撤销审计，不重新检查当前菜单、剩余额度、库存、规则或税配置。缺能力默认拒绝，不回退实时可售接口。复用fnb_order_batch/fnb_action_log，无新表或迁移；已受理退餐、退款及返库不在该取消合同内。本批后端编译及测试结果见原TDD§2.14。
+
+### 实际DTO字段（当前源码）
+
+#### ai.neargo.shop.common.PageData
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| records | List<T> | 否 |  |
+| total | long | 是 |  |
+| page | long | 是 |  |
+| size | long | 是 |  |
+
+#### ai.neargo.shop.food.dto.BusinessCloseContracts.AdjustmentReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| originalCloseNo | String | 是 | @NotBlank @Size(max=32) |
+| currentDayNo | String | 是 | @NotBlank @Size(max=32) |
+| coreReference | String | 是 | @NotBlank @Size(max=64) |
+| reason | String | 是 | @NotBlank @Size(max=255) |
+| approvalRef | String | 是 | @NotBlank @Size(max=64) |
+
+#### ai.neargo.shop.food.dto.BusinessCloseContracts.ApproveCarryReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| version | Long | 是 | @NotNull @Min(0) |
+
+#### ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| closeNo | String | 否 |  |
+| dayNo | String | 否 |  |
+| currency | String | 否 |  |
+| revision | int | 是 |  |
+| status | String | 否 |  |
+| snapshotHash | String | 否 |  |
+| previousCloseNo | String | 否 |  |
+| signedBy | String | 否 |  |
+| signedAt | LocalDateTime | 否 |  |
+| report | ReportVO | 否 |  |
+| version | long | 是 |  |
+
+#### ai.neargo.shop.food.dto.BusinessCloseContracts.DayVO
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| dayNo | String | 否 |  |
+| businessDate | LocalDate | 否 |  |
+| policyNo | String | 否 |  |
+| startsAt | LocalDateTime | 否 |  |
+| endsAt | LocalDateTime | 否 |  |
+| status | String | 否 |  |
+| currentCloseRefs | String | 否 |  |
+| version | long | 是 |  |
+
+#### ai.neargo.shop.food.dto.BusinessCloseContracts.ExceptionVO
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| exceptionNo | String | 否 |  |
+| closeNo | String | 否 |  |
+| kind | String | 否 |  |
+| sourceRef | String | 否 |  |
+| status | String | 否 |  |
+| ownerNo | String | 否 |  |
+| nextDayNo | String | 否 |  |
+| reason | String | 否 |  |
+| proposedBy | String | 否 |  |
+| approvedBy | String | 否 |  |
+| approvedAt | LocalDateTime | 否 |  |
+| approvalRef | String | 否 |  |
+| version | long | 是 |  |
+
+#### ai.neargo.shop.food.dto.BusinessCloseContracts.Issue
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| kind | String | 否 |  |
+| sourceRef | String | 否 |  |
+
+#### ai.neargo.shop.food.dto.BusinessCloseContracts.PreviewReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| businessDate | LocalDate | 是 | @NotNull |
+| currency | String | 是 | @NotBlank @Pattern(regexp="[A-Z]{3}") |
+
+#### ai.neargo.shop.food.dto.BusinessCloseContracts.ProposeCarryReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| version | Long | 是 | @NotNull @Min(0) |
+| ownerNo | String | 是 | @NotBlank @Size(max=32) |
+| nextDayNo | String | 是 | @NotBlank @Size(max=32) |
+| reason | String | 是 | @NotBlank @Size(max=255) |
+
+#### ai.neargo.shop.food.dto.BusinessCloseContracts.ReportVO
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| businessDate | LocalDate | 否 |  |
+| currency | String | 否 |  |
+| batchCount | long | 是 |  |
+| quantitiesByUnit | Map<String, BigDecimal> | 否 |  |
+| originalOrderServiceQuantitiesByActionUnit | Map<String, BigDecimal> | 否 |  |
+| returnAndServiceScope | String | 否 |  |
+| settlementAttemptCount | long | 是 |  |
+| requestedDueMinor | long | 是 |  |
+| returnCount | long | 是 |  |
+| salesCompleteness | String | 否 |  |
+| settlementCompleteness | String | 否 |  |
+| refundCompleteness | String | 否 |  |
+| issues | List<Issue> | 否 |  |
+| sourceHash | String | 否 |  |
+
+#### ai.neargo.shop.food.dto.BusinessCloseContracts.SignReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| closeNo | String | 是 | @NotBlank @Size(max=32) |
+| snapshotHash | String | 是 | @NotBlank @Pattern(regexp="[a-f0-9]{64}") |
+
+#### ai.neargo.shop.food.dto.BusinessReturnContracts.CancelReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| version | Long | 是 | @JsonDeserialize(using=CatalogRevisionDeserializer.class) @NotNull |
+| reason | String | 是 | @NotBlank @Size(max=255) |
+
+#### ai.neargo.shop.food.dto.BusinessReturnContracts.ComponentSource
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| sourceComponentRef | String | 否 |  |
+| kind | String | 否 |  |
+| allocationNo | String | 否 |  |
+| orderItemId | Long | 否 |  |
+| originalQty | BigDecimal | 否 |  |
+| unit | String | 否 |  |
+| coreSnapshotHash | String | 否 |  |
+| allocationVersion | Long | 否 |  |
+| componentNo | String | 否 |  |
+| componentVersion | Long | 否 |  |
+
+#### ai.neargo.shop.food.dto.BusinessReturnContracts.CreateReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| batchVersion | Long | 是 | @JsonDeserialize(using=CatalogRevisionDeserializer.class) @NotNull |
+| lines | List< Line> | 是 | @NotNull @Size(min=1,max=256) @Valid |
+| reason | String | 是 | @NotBlank @Size(max=255) |
+
+#### ai.neargo.shop.food.dto.BusinessReturnContracts.Frozen
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| kind | String | 否 |  |
+| schema | int | 是 |  |
+| entityNo | String | 否 |  |
+| storeNo | String | 否 |  |
+| batchNo | String | 否 |  |
+| batchVersion | Long | 否 |  |
+| cartNo | String | 否 |  |
+| cartVersion | Long | 否 |  |
+| bindingNo | String | 否 |  |
+| bindingVersion | Long | 否 |  |
+| buyerNo | String | 否 |  |
+| actorNo | String | 否 |  |
+| reason | String | 否 |  |
+| sourceHash | String | 否 |  |
+| ownerRead | OwnerRead | 否 |  |
+| items | List<SourceItem> | 否 |  |
+
+#### ai.neargo.shop.food.dto.BusinessReturnContracts.ItemVO
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| returnItemNo | String | 否 |  |
+| foodLineNo | String | 否 |  |
+| sourceLineRef | String | 否 |  |
+| qty | BigDecimal | 否 |  |
+| kitchenDisposition | String | 否 |  |
+| mainAllocationNo | String | 否 |  |
+
+#### ai.neargo.shop.food.dto.BusinessReturnContracts.Line
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| foodLineNo | String | 是 | @NotBlank @Size(max=32) |
+| qty | BigDecimal | 是 | @JsonDeserialize(using=SalesRestrictionPolicy.DecimalDeserializer.class) @NotNull |
+
+#### ai.neargo.shop.food.dto.BusinessReturnContracts.OwnerRead
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| checkedAt | String | 否 |  |
+| original | Result | 否 |  |
+
+#### ai.neargo.shop.food.dto.BusinessReturnContracts.ReturnVO
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| returnNo | String | 否 |  |
+| batchNo | String | 否 |  |
+| storeNo | String | 否 |  |
+| version | long | 是 |  |
+| status | String | 否 |  |
+| financialStatus | String | 否 |  |
+| kitchenStatus | String | 否 |  |
+| coreCaseRef | String | 否 |  |
+| refundRequested | boolean | 是 |  |
+| originalPayableChanged | boolean | 是 |  |
+| reason | String | 否 |  |
+| actorNo | String | 否 |  |
+| items | List<ItemVO> | 否 |  |
+| source | Frozen | 否 |  |
+
+#### ai.neargo.shop.food.dto.BusinessReturnContracts.SourceItem
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| foodLineNo | String | 否 |  |
+| sourceLineRef | String | 否 |  |
+| mainAllocationNo | String | 否 |  |
+| mainOrderItemId | Long | 否 |  |
+| qty | BigDecimal | 否 |  |
+| originalQty | BigDecimal | 否 |  |
+| lineVersion | Long | 否 |  |
+| components | List<ComponentSource> | 否 |  |
+
+#### ai.neargo.shop.food.dto.BusinessShareContracts.AllocationSource
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| allocationNo | String | 否 |  |
+| batchNo | String | 否 |  |
+| foodLineNo | String | 否 |  |
+| sourceLineRef | String | 否 |  |
+| sourceComponentRef | String | 否 |  |
+| orderItemId | Long | 否 |  |
+| originalQty | BigDecimal | 否 |  |
+| unit | String | 否 |  |
+| coreSnapshotHash | String | 否 |  |
+| allocationVersion | Long | 否 |  |
+| lineVersion | Long | 否 |  |
+| selectionVersion | Long | 否 |  |
+| lineSnapshotHash | String | 否 |  |
+| currency | String | 否 |  |
+| originalAmountMinor | long | 是 |  |
+
+#### ai.neargo.shop.food.dto.BusinessShareContracts.BatchSource
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| batchNo | String | 否 |  |
+| originalCheckNo | String | 否 |  |
+| version | Long | 否 |  |
+| bindingNo | String | 否 |  |
+| bindingVersion | Long | 否 |  |
+| orderNo | String | 否 |  |
+| storeOrderNo | String | 否 |  |
+| frozenRequestHash | String | 否 |  |
+| memberships | List<MembershipScope> | 否 |  |
+
+#### ai.neargo.shop.food.dto.BusinessShareContracts.CancelReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| version | Long | 是 | @JsonDeserialize(using=CatalogRevisionDeserializer.class) @NotNull |
+| reason | String | 是 | @NotBlank @Size(max=255) |
+
+#### ai.neargo.shop.food.dto.BusinessShareContracts.ConfirmReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| version | Long | 是 | @JsonDeserialize(using=CatalogRevisionDeserializer.class) @NotNull |
+| sourceHash | String | 是 | @NotBlank @Size(min=64,max=64) |
+| planHash | String | 是 | @NotBlank @Size(min=64,max=64) |
+
+#### ai.neargo.shop.food.dto.BusinessShareContracts.CreateReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| checkVersion | Long | 是 | @JsonDeserialize(using=CatalogRevisionDeserializer.class) @NotNull |
+| mode | String | 是 | @NotBlank |
+| people | List< Person> | 是 | @NotNull @Size(min=1,max=50) @Valid |
+| lineWeights | List< LineWeight> | 否 | @Size(max=1000) @Valid |
+| reason | String | 是 | @NotBlank @Size(max=255) |
+
+#### ai.neargo.shop.food.dto.BusinessShareContracts.Division
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| people | List<PersonTotal> | 否 |  |
+| cells | List<ShareCell> | 否 |  |
+
+#### ai.neargo.shop.food.dto.BusinessShareContracts.LineWeight
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| foodLineNo | String | 是 | @NotBlank @Size(max=32) |
+| personNo | String | 是 | @NotBlank @Size(max=32) |
+| weight | Long | 是 | @JsonDeserialize(using=CatalogRevisionDeserializer.class) @NotNull |
+
+#### ai.neargo.shop.food.dto.BusinessShareContracts.MembershipScope
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| membershipNo | String | 否 |  |
+| checkNo | String | 否 |  |
+| batchNo | String | 否 |  |
+| version | Long | 否 |  |
+| attachedAt | LocalDateTime | 否 |  |
+| operationNo | String | 否 |  |
+
+#### ai.neargo.shop.food.dto.BusinessShareContracts.Person
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| personNo | String | 是 | @NotBlank @Size(max=32) |
+| amountMinor | Long | 否 | @JsonDeserialize(using=DishOfferFacts.MinorDeserializer.class) |
+
+#### ai.neargo.shop.food.dto.BusinessShareContracts.PersonTotal
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| personNo | String | 否 |  |
+| amountMinor | long | 是 |  |
+
+#### ai.neargo.shop.food.dto.BusinessShareContracts.PlanVO
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| planNo | String | 否 |  |
+| checkNo | String | 否 |  |
+| version | long | 是 |  |
+| status | String | 否 |  |
+| storedStatus | String | 否 |  |
+| mode | String | 否 |  |
+| currency | String | 否 |  |
+| originalAmountMinor | long | 是 |  |
+| sourceHash | String | 否 |  |
+| planHash | String | 否 |  |
+| localSourcesCurrent | boolean | 是 |  |
+| settlementEligible | boolean | 是 |  |
+| financialAuthorityPending | boolean | 是 |  |
+| source | SourceSnapshot | 否 |  |
+| division | Division | 否 |  |
+| definition | CreateReq | 否 |  |
+| reason | String | 否 |  |
+| createdBy | String | 否 |  |
+| confirmedBy | String | 否 |  |
+| cancelledBy | String | 否 |  |
+
+#### ai.neargo.shop.food.dto.BusinessShareContracts.ShareCell
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| allocationNo | String | 否 |  |
+| foodLineNo | String | 否 |  |
+| orderItemId | Long | 否 |  |
+| personNo | String | 否 |  |
+| amountMinor | long | 是 |  |
+
+#### ai.neargo.shop.food.dto.BusinessShareContracts.SourceSnapshot
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| entityNo | String | 否 |  |
+| storeNo | String | 否 |  |
+| checkNo | String | 否 |  |
+| checkVersion | Long | 否 |  |
+| currency | String | 否 |  |
+| originalAmountMinor | long | 是 |  |
+| batches | List<BatchSource> | 否 |  |
+| allocations | List<AllocationSource> | 否 |  |
+
+#### ai.neargo.shop.food.dto.CancelDiningOrderReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| version | Long | 是 | @NotNull @JsonDeserialize(using = CatalogRevisionDeserializer.class) |
+| reason | String | 是 | @NotBlank @Size(max = 255) @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) |
+
+#### ai.neargo.shop.food.dto.CreateStaffDiningOrderReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| buyerNo | String | 是 | @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) @NotBlank @Size(max = 32) |
+| cartNo | String | 是 | @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) @NotBlank @Size(max = 32) |
+| version | long | 是 | @JsonProperty(required = true) @JsonDeserialize(using = CatalogRevisionDeserializer.class) @Min(0) |
+| quoteNo | String | 是 | @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) @NotBlank @Size(max = 32) |
+| confirmationDigest | String | 是 | @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) @NotBlank @Pattern(regexp = "[0-9a-f]{64}") |
+| payMode | String | 是 | @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) @NotBlank @Pattern(regexp = "POSTPAY") |
+
+#### ai.neargo.shop.food.dto.DiningBatchSummaryVO
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| batchNo | String | 否 |  |
+| storeNo | String | 否 |  |
+| originalCheckNo | String | 否 |  |
+| currentCheckNos | List<String> | 否 |  |
+| membershipAuthoritative | boolean | 是 |  |
+| status | String | 否 |  |
+| orderSource | String | 否 |  |
+| businessDate | LocalDate | 否 |  |
+| fulfillment | String | 否 |  |
+| payMode | String | 否 |  |
+| quoteNo | String | 否 |  |
+| quoteHash | String | 否 |  |
+| createdAt | Instant | 否 |  |
+| acceptedAt | Instant | 否 |  |
+| scheduledAt | Instant | 否 |  |
+| version | long | 是 |  |
+| originalBindings | List<OriginalBindingVO> | 否 |  |
+
+#### ai.neargo.shop.food.dto.DiningOrderBatchVO
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| batchNo | String | 否 |  |
+| storeNo | String | 否 |  |
+| checkNo | String | 否 |  |
+| cartNo | String | 否 |  |
+| cartVersion | long | 是 |  |
+| quoteNo | String | 否 |  |
+| status | String | 否 |  |
+| payMode | String | 否 |  |
+| businessDate | LocalDate | 否 |  |
+| orderNo | String | 否 |  |
+| subOrderNo | String | 否 |  |
+| coreStatus | String | 否 |  |
+| currency | String | 否 |  |
+| amountMinor | Long | 否 |  |
+| version | long | 是 |  |
+
+#### ai.neargo.shop.food.dto.KitchenContracts.CoreLineScope
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| allocationNo | String | 否 |  |
+| orderItemId | Long | 否 |  |
+| sourceComponentRef | String | 否 |  |
+| originalQty | BigDecimal | 否 |  |
+| unit | String | 否 |  |
+| coreSnapshotHash | String | 否 |  |
+| version | Long | 否 |  |
+
+#### ai.neargo.shop.food.dto.KitchenContracts.CustodyReceiptVO
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| operationNo | String | 否 |  |
+| entityNo | String | 否 |  |
+| storeNo | String | 否 |  |
+| batchNo | String | 否 |  |
+| orderNo | String | 否 |  |
+| storeOrderNo | String | 否 |  |
+| bindingNo | String | 否 |  |
+| bindingVersion | Long | 否 |  |
+| batchVersion | Long | 否 |  |
+| frozenRequestHash | String | 否 |  |
+| action | String | 否 |  |
+| kind | String | 否 |  |
+| lines | List<HandoverLine> | 否 |  |
+| sources | List<CustodySourceLine> | 否 |  |
+| recipientNo | String | 否 |  |
+| recipientRef | String | 否 |  |
+| actorNo | String | 否 |  |
+| recordedAt | String | 否 |  |
+| complete | boolean | 是 |  |
+| coreDeliveryPending | boolean | 是 |  |
+
+#### ai.neargo.shop.food.dto.KitchenContracts.CustodySourceLine
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| foodLineNo | String | 否 |  |
+| sourceLineRef | String | 否 |  |
+| originalLines | List<CoreLineScope> | 否 |  |
+| tasks | List<KitchenTaskScope> | 否 |  |
+
+#### ai.neargo.shop.food.dto.KitchenContracts.HandoverLine
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| foodLineNo | String | 是 | @NotBlank |
+| qty | BigDecimal | 是 | @JsonDeserialize(using=SalesRestrictionPolicy.DecimalDeserializer.class) @NotNull |
+
+#### ai.neargo.shop.food.dto.KitchenContracts.HandoverReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| kind | String | 是 | @NotBlank |
+| lines | List<HandoverLine> | 是 | @NotNull |
+| reason | String | 是 | @NotBlank @Size(max=255) |
+| recipientNo | String | 否 | @Size(max=64) |
+| recipientRef | String | 否 | @Size(max=128) |
+
+#### ai.neargo.shop.food.dto.KitchenContracts.HandoverVO
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| operationNo | String | 否 |  |
+| batchNo | String | 否 |  |
+| status | String | 否 |  |
+| deliveryPending | boolean | 是 |  |
+| coreDeliveryRef | String | 否 |  |
+
+#### ai.neargo.shop.food.dto.KitchenContracts.KitchenTaskScope
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| taskNo | String | 否 |  |
+| componentNo | String | 否 |  |
+| stationNo | String | 否 |  |
+| taskRole | String | 否 |  |
+| routeVersion | long | 是 |  |
+| version | long | 是 |  |
+
+#### ai.neargo.shop.food.dto.KitchenContracts.PackingReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| lines | List<HandoverLine> | 是 | @NotNull |
+| reason | String | 是 | @NotBlank @Size(max=255) |
+
+#### ai.neargo.shop.food.dto.ListDiningBatchesQuery
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| page | Integer | 否 | @Min(1) @Max(10000) |
+| size | Integer | 否 | @Min(1) @Max(100) |
+| originalCheckNo | String | 否 | @Size(max=32) |
+| checkNo | String | 否 | @Size(max=32) |
+| status | String | 否 | @Size(max=24) |
+| businessDate | LocalDate | 否 | @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) |
+| orderSource | String | 否 | @Size(max=24) |
+
+#### ai.neargo.shop.food.dto.ListReservationsQuery
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| page | Integer | 否 | @Min(1) |
+| size | Integer | 否 | @Min(1) @Max(100) |
+| from | Instant | 是 | @NotNull |
+| to | Instant | 是 | @NotNull |
+| status | String | 否 |  |
+
+#### ai.neargo.shop.food.dto.OperationVO
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| operationNo | String | 否 |  |
+| status | String | 否 |  |
+| version | long | 是 |  |
+| resultRef | String | 否 |  |
+
+#### ai.neargo.shop.food.dto.ReservationContracts.ArriveReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| version | Long | 是 | @NotNull @Min(0) |
+| tables | List< TableVersionReq> | 是 | @NotNull @Size(min=1,max=100) @Valid |
+
+#### ai.neargo.shop.food.dto.ReservationContracts.ChangeReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| version | Long | 是 | @NotNull @Min(0) |
+| appointment | CreateReq | 是 | @NotNull @Valid |
+| reason | String | 是 | @NotBlank @Size(max=255) |
+
+#### ai.neargo.shop.food.dto.ReservationContracts.CreateReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| partySize | Integer | 是 | @NotNull @Min(1) |
+| startAt | Instant | 是 | @NotNull |
+| endAt | Instant | 是 | @NotNull |
+| contactRef | String | 是 | @NotBlank @Size(max=64) |
+| tables | List< TableVersionReq> | 是 | @NotNull @Size(min=1,max=100) @Valid |
+
+#### ai.neargo.shop.food.dto.ReservationContracts.DetailVO
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| reservation | ReservationVO | 否 |  |
+| tableNos | List<String> | 否 |  |
+
+#### ai.neargo.shop.food.dto.ReservationContracts.TransitionReq
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| version | Long | 是 | @NotNull @Min(0) |
+| reason | String | 是 | @NotBlank @Size(max=255) |
+
+#### ai.neargo.shop.food.dto.ReservationVO
+
+| 字段 | Java类型 | 必填 | 声明约束 |
+|---|---|---|---|
+| reservationNo | String | 否 |  |
+| partySize | int | 是 |  |
+| startAt | Instant | 否 |  |
+| endAt | Instant | 否 |  |
+| status | String | 否 |  |
+| depositRef | String | 否 |  |
+| checkNo | String | 否 |  |
+| version | long | 是 |  |
+
+### 当前边界
+
+预约为FOOD本地真实桌台时段分配，不冒充外部资源或已收订金；转桌/加桌只变同台账物理占位，不迁移原订单/资金；AA为原金额责任分摊，settlementEligible=false，不替代FOOD-API-140；包装/交接始终保留coreDeliveryPending，实物凭证不替代核心库存出库。营业日仅SYNC异常双人交接，AR/退款/支付未知不自动消除。批次查询不返回推断的当前欠款或资金终态。
+
+未完成：anonymous and device formal order principals；DELIVERY formal ordering and DINE_IN/DELIVERY core fulfillment completion；bundles with exclusive inventory leaf strategy；fractional original order/inventory quantities；actual recipe material posting/cost；funds execution；cross-check order merging and financial AA；complete terminal UI and offline operation；real vendor hardware/network validation；reports and Keeta actual integration。完整任务保持原TDD未完成状态，不用当前源码条目数量推断全部需求已交付。

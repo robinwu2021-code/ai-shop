@@ -692,6 +692,18 @@
       "moduleId": "MOD-01",
       "writeService": "QueueService",
       "customMapperMethods": []
+    },
+    "fnb_reservation_table": {
+      "moduleId": "MOD-01",
+      "writeService": "ReservationService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.ReservationTableMapper"
+    },
+    "fnb_business_share_plan": {
+      "moduleId": "MOD-05",
+      "writeService": "BusinessShareService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.BusinessSharePlanMapper"
     }
   },
   "methodOverrides": {

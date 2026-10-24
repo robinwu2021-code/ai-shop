@@ -1,6 +1,7 @@
 package ai.neargo.shop.food.service;
 
 import ai.neargo.shop.common.PageData;
+import java.time.Instant;
 import ai.neargo.shop.food.dto.ActionLogVO;
 import ai.neargo.shop.food.dto.CheckDetailVO;
 import ai.neargo.shop.food.dto.CheckResultVO;
@@ -22,6 +23,11 @@ public interface CheckService {
     /** Internal same-database queue command; implementations must join the queue owner's transaction. */
     default CheckResultVO openQueuedCheck(String entityNo,String storeNo,String actorNo,OpenCheckReq req,String idempotencyKey) {
         throw new UnsupportedOperationException("Atomic queue seating is unavailable");
+    }
+    /** Internal reservation arrival joins the reservation transaction and respects its original bounded window. */
+    default CheckResultVO openReservedCheck(String entity, String store, String actor, OpenCheckReq request,
+            String key, Instant reservedUntil) {
+        throw new UnsupportedOperationException("Atomic reservation arrival unavailable");
     }
     PageData<CheckVO> listChecks(String entityNo,String storeNo,ListChecksQuery query);
     CheckDetailVO getCheck(String entityNo,String storeNo,String checkNo);

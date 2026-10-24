@@ -1,5 +1,7 @@
 package ai.neargo.shop.spi.trade;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Credentials;
 import java.util.List;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope;
@@ -25,7 +27,23 @@ public interface IndustryOrderPort {
     }
     /** Advances original lifecycle-3 fulfillment only after the independent inventory owner confirms unpaid acceptance. */
     Result acceptUnpaid(Identity identity, String orderNo);
+    /** Trusted current-store gateway only; actor is staff, buyer remains a real customer, and no debit is granted. */
+    default Result placeForStore(Command command, String key) {
+        throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+    }
+    /** Explicit registered-buyer staff dine-in capability; existing command fingerprints remain unchanged. */
+    default Result placeForDiningRoom(Command command, String key) {
+        throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+    }
+    /** Replays only the persisted staff identity and original key; never creates a replacement intent. */
+    default Result queryForStore(Identity identity, String key) {
+        throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+    }
     Result place(Command command, String key);
+    /** Cancels only an uncommitted original staff intent; never cancels accepted service debt or refunds funds. */
+    default Result cancelForStore(Command command, String key, String fulfillment) {
+        throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+    }
     Result cancel(Command command, String key);
     Result query(Identity identity, String key);
     Result get(Identity identity, String orderNo);

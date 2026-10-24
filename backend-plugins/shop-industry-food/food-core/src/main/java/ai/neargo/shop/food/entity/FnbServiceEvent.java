@@ -19,4 +19,5 @@ public class FnbServiceEvent extends BaseEntity {
     private String operationKey;
     private String reason;
     private String inventoryDocNo;
+    private String custodySnapshot;
 }

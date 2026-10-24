@@ -33,6 +33,12 @@ import ai.neargo.shop.food.spi.DiningOrderInternalApi;
 import ai.neargo.shop.food.spi.DiningPricingInternalApi;
 import ai.neargo.shop.food.service.DiningPricingFactsService;
 import ai.neargo.shop.food.spi.PricingSourceInternalApi;
+import ai.neargo.shop.food.service.DiningBatchQueryService;
+import ai.neargo.shop.food.spi.DiningBatchQueryInternalApi;
+import ai.neargo.shop.food.service.BusinessShareService;
+import ai.neargo.shop.food.service.BusinessReturnService;
+import ai.neargo.shop.food.spi.BusinessReturnInternalApi;
+import ai.neargo.shop.food.spi.BusinessShareInternalApi;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.OptionGroupService;
@@ -87,6 +93,22 @@ import org.springframework.context.annotation.Profile;
 @Conditional(PolicyEnabled.class)
 @Profile({"api", "ops"})
 public class FoodClientConfiguration {
+    @Bean @ConditionalOnMissingBean(DiningBatchQueryService.class)
+    DiningBatchQueryService remoteDiningBatchQueryService(InternalHttp http) {
+        return new RemoteDiningBatchQueryService(http.client(ServiceName.FOOD,
+                DiningBatchQueryInternalApi.class, Duration.ofSeconds(5)));
+    }
+    @Bean @ConditionalOnMissingBean(BusinessReturnService.class)
+    BusinessReturnService remoteBusinessReturnService(InternalHttp http) {
+        return new RemoteBusinessReturnService(http.client(ServiceName.FOOD,
+                BusinessReturnInternalApi.class, Duration.ofSeconds(5)));
+    }
+    @Bean @ConditionalOnMissingBean(BusinessShareService.class)
+    BusinessShareService remoteBusinessShareService(InternalHttp http) {
+        return new RemoteBusinessShareService(http.client(ServiceName.FOOD,
+                BusinessShareInternalApi.class, Duration.ofSeconds(5)));
+    }
+
     @Bean @ConditionalOnMissingBean(QueueService.class)
     QueueService remoteQueueService(InternalHttp http) {
         return new RemoteQueueService(http.client(ServiceName.FOOD,QueueInternalApi.class,Duration.ofSeconds(5)));

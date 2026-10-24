@@ -1,5 +1,17 @@
 package ai.neargo.shop.food.scenario;
 
+import org.mockito.Mockito;
+import ai.neargo.shop.spi.user.StoreCardQueryPort;
+import ai.neargo.shop.event.outbox.OutboxPublisher;
+import ai.neargo.shop.food.mapper.ReservationTableMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.TableAreaMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.TableMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.TableOccupancyMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
+import ai.neargo.shop.food.service.CheckService;
+import ai.neargo.shop.food.service.StoreOperationService;
+import ai.neargo.shop.idem.IdempotencyService;
+import org.springframework.transaction.PlatformTransactionManager;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.neargo.shop.common.ErrorCode;
@@ -27,7 +39,7 @@ class ReservationServiceTest extends FoodWriteGuardFixture {
         var f=prepare(c);
         f.sql().execute("CREATE TABLE fnb_reservation(id BIGINT AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) DEFAULT 'MAIN',"
                 +"entity_no VARCHAR(32),created_at DATETIME(3),created_by VARCHAR(32),updated_at DATETIME(3),updated_by VARCHAR(32),"
-                +"version BIGINT DEFAULT 0,deleted INT DEFAULT 0,reservation_no VARCHAR(32) UNIQUE,store_no VARCHAR(32),"
+                +"version BIGINT DEFAULT 0,deleted INT DEFAULT 0,request_key VARCHAR(64),request_hash VARCHAR(64),reservation_no VARCHAR(32) UNIQUE,store_no VARCHAR(32),"
                 +"resource_hold_no VARCHAR(32),buyer_no VARCHAR(32),contact_ref VARCHAR(64),party_size INT,start_at DATETIME(3),"
                 +"end_at DATETIME(3),status VARCHAR(24),deposit_ref VARCHAR(64),check_no VARCHAR(32))");
         f.sql().update("INSERT INTO fnb_reservation(entity_no,store_no,reservation_no,party_size,start_at,end_at,status,buyer_no,contact_ref) VALUES"
@@ -77,7 +89,17 @@ class ReservationServiceTest extends FoodWriteGuardFixture {
         }
         @Bean
         ReservationService service(ReservationMapper mapper) {
-            return new ReservationServiceImpl(mapper);
+            return new ReservationServiceImpl(mapper,
+                    Mockito.mock(ReservationTableMapper.class),
+                    Mockito.mock(TableAreaMapper.class),
+                    Mockito.mock(TableMapper.class),
+                    Mockito.mock(TableOccupancyMapper.class),
+                    Mockito.mock(ActionLogMapper.class),
+                    Mockito.mock(CheckService.class),
+                    Mockito.mock(StoreOperationService.class),
+                    Mockito.mock(IdempotencyService.class),new ObjectMapper(),
+                    Mockito.mock(StoreCardQueryPort.class),Mockito.mock(OutboxPublisher.class),
+                    Mockito.mock(PlatformTransactionManager.class));
         }
     }
 }

@@ -25,6 +25,12 @@ public class InternalIndustryOrderEndpoint {
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
         return InternalServiceResponses.invoke(token,given,() -> orders.acceptUnpaid(request.identity(),request.orderNo()));
     }
+    @PostMapping(IndustryOrderInternalApi.ROOT + "/store/cancel")
+    public ResponseEntity<?> cancelForStore(@RequestBody IndustryOrderInternalApi.StoreCancel request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given,
+                () -> orders.cancelForStore(request.command(), request.key(), request.fulfillment()));
+    }
     @PostMapping(IndustryOrderInternalApi.ROOT + "/cancel")
     public ResponseEntity<?> cancel(@RequestBody IndustryOrderInternalApi.Place request,
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
@@ -35,6 +41,24 @@ public class InternalIndustryOrderEndpoint {
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
         return InternalServiceResponses.invoke(token, given,
                 () -> orders.getForStore(request.scope(), request.actorNo(), request.orderNo()));
+    }
+    @PostMapping(IndustryOrderInternalApi.ROOT + "/store/dining-room/place")
+    public ResponseEntity<?> placeForDiningRoom(@RequestBody IndustryOrderInternalApi.Place request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given,
+                () -> orders.placeForDiningRoom(request.command(), request.key()));
+    }
+    @PostMapping(IndustryOrderInternalApi.ROOT + "/store/place")
+    public ResponseEntity<?> placeForStore(@RequestBody IndustryOrderInternalApi.Place request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given,
+                () -> orders.placeForStore(request.command(), request.key()));
+    }
+    @PostMapping(IndustryOrderInternalApi.ROOT + "/store/query")
+    public ResponseEntity<?> queryForStore(@RequestBody IndustryOrderInternalApi.Query request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given,
+                () -> orders.queryForStore(request.identity(), request.key()));
     }
     @PostMapping(IndustryOrderInternalApi.ROOT + "/place")
     public ResponseEntity<?> place(@RequestBody IndustryOrderInternalApi.Place request,

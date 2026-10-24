@@ -1,6 +1,6 @@
 # 餐饮系统Controller、Service与Mapper方法清单
 
-> 状态：目标与已实现后端方法对照 · 2026-10-21。按165个目标与实际API逐项登记56个Controller、38个Service及对应Impl、89个持久化接口/DAO；已实现范围以逐项状态及CAT-ALL验收记录为准，未实现目标不等于运行能力。
+> 状态：目标与已实现后端方法对照 · 2026-10-21。按165个目标与实际API逐项登记56个Controller、38个Service及对应Impl、91个持久化接口/DAO；已实现范围以逐项状态及CAT-ALL验收记录为准，未实现目标不等于运行能力。
 > 由 `node scripts/gen-food-code-inventory.mjs` 统一生成；输入为[方法用例计划](./schema/food-method-plan.json)、[类清单](./schema/food-module-code-inventory.json)。[API参数](./餐饮系统-API设计.md) · [模块代码清单](./餐饮系统-按业务模块代码清单.md) · [方法机器清单](./schema/food-method-inventory.json)。
 
 ## 一、签名及调用边界
@@ -5293,6 +5293,48 @@ Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbQueueTicket
 int insert(FnbQueueTicket row);
 // inherited BaseMapper
 int update(FnbQueueTicket changes, com.baomidou.mybatisplus.core.conditions.Wrapper<FnbQueueTicket> updateWrapper);
+```
+
+
+
+### fnb_reservation_table
+
+`ai.neargo.shop.food.mapper.ReservationTableMapper`；文件：`backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/ReservationTableMapper.java`。
+
+```java
+// inherited BaseMapper
+FnbReservationTable selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbReservationTable> queryWrapper);
+// inherited BaseMapper
+List<FnbReservationTable> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbReservationTable> queryWrapper);
+// inherited BaseMapper
+com.baomidou.mybatisplus.core.metadata.IPage<FnbReservationTable> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<FnbReservationTable> page, com.baomidou.mybatisplus.core.conditions.Wrapper<FnbReservationTable> queryWrapper);
+// inherited BaseMapper
+Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbReservationTable> queryWrapper);
+// inherited BaseMapper
+int insert(FnbReservationTable row);
+// inherited BaseMapper
+int update(FnbReservationTable changes, com.baomidou.mybatisplus.core.conditions.Wrapper<FnbReservationTable> updateWrapper);
+```
+
+
+
+### fnb_business_share_plan
+
+`ai.neargo.shop.food.mapper.BusinessSharePlanMapper`；文件：`backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/BusinessSharePlanMapper.java`。
+
+```java
+// inherited BaseMapper
+FnbBusinessSharePlan selectOne(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbBusinessSharePlan> queryWrapper);
+// inherited BaseMapper
+List<FnbBusinessSharePlan> selectList(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbBusinessSharePlan> queryWrapper);
+// inherited BaseMapper
+com.baomidou.mybatisplus.core.metadata.IPage<FnbBusinessSharePlan> selectPage(com.baomidou.mybatisplus.core.metadata.IPage<FnbBusinessSharePlan> page, com.baomidou.mybatisplus.core.conditions.Wrapper<FnbBusinessSharePlan> queryWrapper);
+// inherited BaseMapper
+Long selectCount(com.baomidou.mybatisplus.core.conditions.Wrapper<FnbBusinessSharePlan> queryWrapper);
+// inherited BaseMapper
+int insert(FnbBusinessSharePlan row);
+// inherited BaseMapper
+int update(FnbBusinessSharePlan changes, com.baomidou.mybatisplus.core.conditions.Wrapper<FnbBusinessSharePlan> updateWrapper);
 ```
 
 

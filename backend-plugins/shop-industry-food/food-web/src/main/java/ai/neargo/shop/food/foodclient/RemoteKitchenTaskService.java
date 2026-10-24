@@ -9,6 +9,8 @@ import ai.neargo.shop.food.dto.KitchenContracts.EventVO;
 import ai.neargo.shop.food.dto.KitchenContracts.FrozenRoutes;
 import ai.neargo.shop.food.dto.KitchenContracts.HandoverReq;
 import ai.neargo.shop.food.dto.KitchenContracts.HandoverVO;
+import ai.neargo.shop.food.dto.KitchenContracts.PackingReq;
+import ai.neargo.shop.food.dto.KitchenContracts.CustodyReceiptVO;
 import ai.neargo.shop.food.dto.KitchenContracts.RemakeReq;
 import ai.neargo.shop.food.dto.KitchenContracts.TaskActionReq;
 import ai.neargo.shop.food.dto.KitchenContracts.TaskVO;
@@ -55,6 +57,13 @@ public class RemoteKitchenTaskService implements KitchenTaskService {
     @Override public HandoverVO handover(String entity,String store,String actor,String batch,HandoverReq req,
             String key) {
         return invoke(() -> api.handover(new KitchenInternalApi.HandoverCommand(entity,store,actor,batch,key,req)));
+    }
+    @Override public CustodyReceiptVO confirmPacking(String entity,String store,String actor,String batch,
+            PackingReq req,String key) {
+        return invoke(() -> api.confirmPacking(new KitchenInternalApi.PackingCommand(entity,store,actor,batch,key,req)));
+    }
+    @Override public List<CustodyReceiptVO> custodyReceipts(String entity,String store,String batch) {
+        return invoke(() -> api.custodyReceipts(new KitchenInternalApi.ReceiptQuery(entity,store,batch)));
     }
     private static <T> T invoke(Supplier<T> call) {
         try {

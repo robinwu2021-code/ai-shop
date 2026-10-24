@@ -1,6 +1,14 @@
 package ai.neargo.shop.food.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import ai.neargo.shop.food.dto.ReservationContracts.CreateReq;
+import ai.neargo.shop.food.dto.ReservationContracts.ArriveReq;
+import ai.neargo.shop.food.dto.ReservationContracts.TransitionReq;
+import ai.neargo.shop.food.dto.TableVersionReq;
+import ai.neargo.shop.food.foodclient.RemoteReservationService;
+import java.util.List;
 
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration;
 import ai.neargo.shop.food.dto.ListReservationsQuery;
@@ -19,6 +27,19 @@ import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 
 class RemoteReservationServiceTest {
+    @Test void commandsPreserveOwnerStoreActorVersionAndIdempotencyIdentity() {
+        var api=mock(ReservationInternalApi.class); var service=new RemoteReservationService(api);
+        Instant at=Instant.parse("2026-10-25T12:00:00Z");
+        var create=new CreateReq(2,at,at.plusSeconds(3600),"contact-ref",List.of(new TableVersionReq("T",3L)));
+        service.create("E","A","staff",create,"create-key");
+        verify(api).create(new ReservationInternalApi.CreateCommand("E","A","staff",create,"create-key"));
+        var cancel=new TransitionReq(4L,"guest cancelled");
+        service.cancel("E","A","staff","R",cancel,"cancel-key");
+        verify(api).cancel(new ReservationInternalApi.TransitionCommand("E","A","staff","R",cancel,"cancel-key"));
+        var arrive=new ArriveReq(4L,List.of(new TableVersionReq("T",3L)));
+        service.arrive("E","A","staff","R",arrive,"arrive-key");
+        verify(api).arrive(new ReservationInternalApi.ArriveCommand("E","A","staff","R",arrive,"arrive-key"));
+    }
     @Test void queryTravelsViaOriginalInternalClient() throws Exception {
         var count=new AtomicInteger();var server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
         server.createContext(ReservationInternalApi.LIST_PATH,ex -> {

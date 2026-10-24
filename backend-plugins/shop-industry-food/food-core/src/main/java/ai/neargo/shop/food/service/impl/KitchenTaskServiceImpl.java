@@ -15,6 +15,16 @@ import ai.neargo.shop.food.dto.KitchenContracts.FrozenRoute;
 import ai.neargo.shop.food.dto.KitchenContracts.FrozenRoutes;
 import ai.neargo.shop.food.dto.KitchenContracts.HandoverReq;
 import ai.neargo.shop.food.dto.KitchenContracts.HandoverVO;
+import ai.neargo.shop.food.dto.KitchenContracts.HandoverLine;
+import ai.neargo.shop.food.dto.KitchenContracts.PackingReq;
+import ai.neargo.shop.food.dto.KitchenContracts.CustodyReceiptVO;
+import ai.neargo.shop.food.dto.KitchenContracts.CustodySourceLine;
+import ai.neargo.shop.food.dto.KitchenContracts.CoreLineScope;
+import ai.neargo.shop.food.dto.KitchenContracts.KitchenTaskScope;
+import ai.neargo.shop.food.entity.FnbCoreOrderBinding;
+import ai.neargo.shop.food.entity.FnbCoreLineAllocation;
+import ai.neargo.shop.food.mapper.FoodMappers.CoreOrderBindingMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.CoreLineAllocationMapper;
 import ai.neargo.shop.food.dto.KitchenContracts.RemakeReq;
 import ai.neargo.shop.food.dto.KitchenContracts.TaskActionReq;
 import ai.neargo.shop.food.dto.KitchenContracts.TaskVO;
@@ -49,6 +59,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -61,6 +73,8 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Batch locks serialize task deltas and independent station operations without remote work under locks. */
 public class KitchenTaskServiceImpl implements KitchenTaskService {
+    private final CoreOrderBindingMapper bindings;
+    private final CoreLineAllocationMapper allocations;
     private final OrderBatchMapper batches;
     private final OrderLineMapper lines;
     private final OrderComponentMapper components;
@@ -79,6 +93,15 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
             ConfigRevisionMapper revisions, KitchenTicketMapper tickets, KitchenTaskMapper tasks,
             ServiceEventMapper events, CourseMapper courses, CheckMapper checks, IdempotencyService idem,
             ObjectMapper json, PlatformTransactionManager manager, OutboxPublisher outbox) {
+        this(batches,lines,components,revisions,tickets,tasks,events,courses,checks,idem,json,manager,outbox,null,null);
+    }
+
+    public KitchenTaskServiceImpl(OrderBatchMapper batches,OrderLineMapper lines,OrderComponentMapper components,
+            ConfigRevisionMapper revisions,KitchenTicketMapper tickets,KitchenTaskMapper tasks,
+            ServiceEventMapper events,CourseMapper courses,CheckMapper checks,IdempotencyService idem,
+            ObjectMapper json,PlatformTransactionManager manager,OutboxPublisher outbox,
+            CoreOrderBindingMapper bindings,CoreLineAllocationMapper allocations) {
+        this.bindings=bindings; this.allocations=allocations;
         this.batches=batches; this.lines=lines; this.components=components; this.revisions=revisions;
         this.tickets=tickets; this.tasks=tasks; this.events=events; this.courses=courses; this.checks=checks;
         this.idem=idem; this.json=json; this.outbox=outbox; write=new TransactionTemplate(manager);
@@ -134,8 +157,10 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                 // Persisted component quantities are the frozen executable units, never caller deltas.
                 if (parts.isEmpty()) addTasks(entity,head,line,null,line.getSkuNo(),line.getQty(),routes);
                 else {
+                    var makeRoutes=new FrozenRoutes(routes.routes().stream()
+                            .filter(r -> "MAKE".equals(r.taskRole())).toList());
                     for (var part:parts) addTasks(entity,head,line,part.getComponentNo(),part.getSkuNo(),
-                            part.getQty(),routes);
+                            part.getQty(),makeRoutes);
                     var parentRoutes=routes.routes().stream().filter(r -> r.skuNo().equals(line.getSkuNo())
                             && !"MAKE".equals(r.taskRole())).toList();
                     if (!parentRoutes.isEmpty()) addTasks(entity,head,line,null,line.getSkuNo(),line.getQty(),
@@ -354,79 +379,195 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
         });
     }
 
+    @Override public CustodyReceiptVO confirmPacking(String entity,String store,String actor,String batchNo,
+            PackingReq req,String key) {
+        context(entity,store); id(actor); id(batchNo); key(key);
+        if (req==null) throw bad();
+        validateCustodyLines(req.lines()); reason("HOLD",req.reason());
+        return command(entity,store,actor,key,"PACKING",batchNo,req,CustodyReceiptVO.class,
+                () -> recordCustody(entity,store,actor,batchNo,req.lines(),req.reason(),null,null,true,key));
+    }
+
     @Override public HandoverVO handover(String entity,String store,String actor,String batchNo,HandoverReq req,
             String key) {
         context(entity,store); id(actor); id(batchNo); key(key);
-        if (req==null || req.kind()==null || !Set.of("DINE_IN","PICKUP","DELIVERY").contains(req.kind())
-                || req.lines()==null || req.lines().isEmpty() || req.lines().size()>1000) throw bad();
-        reason("HOLD",req.reason());
+        if (req==null || req.kind()==null || !Set.of("DINE_IN","PICKUP","DELIVERY").contains(req.kind())) throw bad();
+        validateCustodyLines(req.lines()); reason("HOLD",req.reason());
+        if ("DELIVERY".equals(req.kind()) && (req.recipientNo()==null || req.recipientNo().isBlank()
+                || req.recipientRef()==null || req.recipientRef().isBlank())) throw bad();
+        if (req.recipientNo()!=null && (req.recipientNo().isBlank() || req.recipientNo().length()>64)
+                || req.recipientRef()!=null && (req.recipientRef().isBlank() || req.recipientRef().length()>128)) {
+            throw bad();
+        }
         return command(entity,store,actor,key,"HANDOVER",batchNo,req,HandoverVO.class,() -> {
             var batch=batch(entity,store,batchNo,true);
-            if (!"ACCEPTED".equals(batch.getStatus()) || !req.kind().equals(batch.getFulfillment())) throw conflict();
-            var original=tickets.selectOne(Wrappers.<FnbKitchenTicket>lambdaQuery()
-                    .eq(FnbKitchenTicket::getEntityNo,entity).eq(FnbKitchenTicket::getBatchNo,batchNo)
-                    .eq(FnbKitchenTicket::getKind,"MAKE"));
-            if (original==null) throw conflict();
-            var originalTasks=ticketTasks(entity,original.getTicketNo());
-            var requested=new HashMap<String,BigDecimal>();
-            for (var line:req.lines()) {
-                if (line==null) throw bad();
-                id(line.foodLineNo()); KitchenQuantityPolicy.positive(line.qty());
-                if (requested.put(line.foodLineNo(),line.qty())!=null) throw bad();
-            }
-            var orderLines=lines.selectList(Wrappers.<FnbOrderLine>lambdaQuery()
-                    .eq(FnbOrderLine::getEntityNo,entity).eq(FnbOrderLine::getBatchNo,batchNo));
-            int deliverable=0;
-            for (var line:orderLines) {
-                BigDecimal cancelled=tickets.cancelledMainQty(entity,line.getFoodLineNo());
-                if (cancelled==null) cancelled=BigDecimal.ZERO;
-                BigDecimal demand=line.getQty().subtract(cancelled);
-                if (demand.signum()==0) continue;
-                if (demand.signum()<0) throw conflict();
-                deliverable++;
-                // Exact remaining kitchen demand is derived from handled cancellation facts, never financial progress.
-                if (!requested.containsKey(line.getFoodLineNo())
-                        || requested.get(line.getFoodLineNo()).compareTo(demand)!=0) throw conflict();
-                var candidates=tasks.selectList(Wrappers.<FnbKitchenTask>lambdaQuery()
-                        .eq(FnbKitchenTask::getEntityNo,entity).eq(FnbKitchenTask::getFoodLineNo,line.getFoodLineNo()));
-                var lineTasks=originalTasks.stream().filter(t -> line.getFoodLineNo().equals(t.getFoodLineNo())).toList();
-                if (lineTasks.isEmpty() || !"DINE_IN".equals(req.kind())
-                        && lineTasks.stream().noneMatch(t -> "PACK".equals(t.getTaskRole()))) throw conflict();
-                for (var task:lineTasks) {
-                    if (effectiveReady(entity,task,candidates)
-                            .compareTo(task.getQty().subtract(task.getVoidQty()))<0) throw conflict();
-                    if (!events.selectList(Wrappers.<FnbServiceEvent>lambdaQuery()
-                            .eq(FnbServiceEvent::getEntityNo,entity).eq(FnbServiceEvent::getTaskNo,task.getTaskNo())
-                            .eq(FnbServiceEvent::getAction,"HANDOVER")).isEmpty()) throw conflict();
-                }
-            }
-            if (deliverable!=requested.size() || deliverable==0) throw conflict();
-            var handoverTickets=tickets.selectList(Wrappers.<FnbKitchenTicket>lambdaQuery()
-                    .eq(FnbKitchenTicket::getEntityNo,entity).eq(FnbKitchenTicket::getBatchNo,batchNo));
-            for (var localTicket:handoverTickets) {
-                for (var task:ticketTasks(entity,localTicket.getTicketNo())) {
-                    if (!requested.containsKey(task.getFoodLineNo())) continue;
-                    BigDecimal recordedLoss=loss(entity,task.getTaskNo());
-                    BigDecimal handing=task.getReadyQty().subtract(recordedLoss).subtract(task.getServedQty());
-                    if (handing.signum()>0) {
-                        KitchenQuantityPolicy.apply(task,"SERVE",handing,recordedLoss);
-                        stampUpdate(task,actor); if (tasks.updateById(task)!=1) throw conflict();
-                        append(entity,actor,task.getTaskNo(),"SERVE",handing,req.reason(),
-                                FoodCommandFingerprint.hash("handover-serve:v1",entity,store,batchNo,task.getTaskNo()));
-                    }
-                }
-                refreshTicket(entity,localTicket.getTicketNo(),actor);
-            }
-            String receipt=null;
-            for (var task:originalTasks) {
-                BigDecimal handing=task.getQty().subtract(task.getVoidQty()); if (handing.signum()==0) continue;
-                var event=append(entity,actor,task.getTaskNo(),"HANDOVER",handing,req.reason(),
-                        FoodCommandFingerprint.hash("handover-task:v1",entity,store,batchNo,task.getTaskNo()));
-                if (receipt==null) receipt=event.getEventNo();
-            }
-            // This is local service evidence. No suitable original industry delivery receipt contract exists.
-            return new HandoverVO(receipt,batchNo,"LOCAL_HANDOVER_RECORDED",true,null);
+            if (!req.kind().equals(batch.getFulfillment())) throw conflict();
+            var receipt=recordCustody(entity,store,actor,batchNo,req.lines(),req.reason(),
+                    req.recipientNo(),req.recipientRef(),false,key);
+            return new HandoverVO(receipt.operationNo(),batchNo,
+                    receipt.complete()?"LOCAL_HANDOVER_RECORDED":"PARTIAL_LOCAL_HANDOVER_RECORDED",true,null);
         });
+    }
+
+    @Override public List<CustodyReceiptVO> custodyReceipts(String entity,String store,String batchNo) {
+        context(entity,store); id(batchNo);
+        return DataScopeContext.executeWithoutScope(() -> {
+            batch(entity,store,batchNo,false);
+            var found=new LinkedHashMap<String,CustodyReceiptVO>();
+            for (var ticket:tickets.selectList(Wrappers.<FnbKitchenTicket>lambdaQuery()
+                    .eq(FnbKitchenTicket::getEntityNo,entity).eq(FnbKitchenTicket::getBatchNo,batchNo)
+                    .eq(FnbKitchenTicket::getKind,"MAKE"))) {
+                for (var task:ticketTasks(entity,ticket.getTicketNo())) for (var event:events.selectList(
+                        Wrappers.<FnbServiceEvent>lambdaQuery().eq(FnbServiceEvent::getEntityNo,entity)
+                        .eq(FnbServiceEvent::getTaskNo,task.getTaskNo()).isNotNull(FnbServiceEvent::getCustodySnapshot)
+                        .orderByAsc(FnbServiceEvent::getId))) {
+                    var receipt=json.readValue(event.getCustodySnapshot(),CustodyReceiptVO.class);
+                    if (!entity.equals(receipt.entityNo()) || !store.equals(receipt.storeNo())
+                            || !batchNo.equals(receipt.batchNo())) throw conflict();
+                    found.putIfAbsent(receipt.operationNo(),receipt);
+                }
+            }
+            return found.values().stream().sorted(Comparator.comparing(CustodyReceiptVO::recordedAt)
+                    .thenComparing(CustodyReceiptVO::operationNo)).toList();
+        });
+    }
+
+    private CustodyReceiptVO recordCustody(String entity,String store,String actor,String batchNo,
+            List<HandoverLine> requested,String reason,String recipient,String recipientRef,
+            boolean packing,String key) {
+        var batch=batch(entity,store,batchNo,true);
+        if (!"ACCEPTED".equals(batch.getStatus()) || bindings==null || allocations==null) throw conflict();
+        if (packing && !Set.of("PICKUP","DELIVERY").contains(batch.getFulfillment())) throw conflict();
+        var binding=bindings.selectOne(Wrappers.<FnbCoreOrderBinding>lambdaQuery()
+                .eq(FnbCoreOrderBinding::getEntityNo,entity).eq(FnbCoreOrderBinding::getBatchNo,batchNo)
+                .eq(FnbCoreOrderBinding::getStatus,"BOUND"));
+        if (binding==null) throw conflict();
+        var original=tickets.selectOne(Wrappers.<FnbKitchenTicket>lambdaQuery()
+                .eq(FnbKitchenTicket::getEntityNo,entity).eq(FnbKitchenTicket::getBatchNo,batchNo)
+                .eq(FnbKitchenTicket::getKind,"MAKE"));
+        if (original==null) throw conflict();
+        var originals=ticketTasks(entity,original.getTicketNo());
+        var orderLines=lines.selectList(Wrappers.<FnbOrderLine>lambdaQuery()
+                .eq(FnbOrderLine::getEntityNo,entity).eq(FnbOrderLine::getBatchNo,batchNo));
+        var deltas=new HashMap<String,BigDecimal>(); requested.forEach(l -> deltas.put(l.foodLineNo(),l.qty()));
+        var anchors=new HashMap<String,FnbKitchenTask>(); var sources=new ArrayList<CustodySourceLine>();
+        boolean complete=true; int matched=0;
+        for (var line:orderLines) {
+            BigDecimal cancelled=tickets.cancelledMainQty(entity,line.getFoodLineNo());
+            BigDecimal demand=line.getQty().subtract(cancelled==null?BigDecimal.ZERO:cancelled);
+            if (demand.signum()<0) throw conflict();
+            var lineTasks=originals.stream().filter(t -> line.getFoodLineNo().equals(t.getFoodLineNo())).toList();
+            if (demand.signum()==0) { if (deltas.containsKey(line.getFoodLineNo())) throw conflict(); continue; }
+            var anchor=lineTasks.stream().filter(t -> t.getComponentNo()==null && "PACK".equals(t.getTaskRole()))
+                    .findFirst().orElse("DINE_IN".equals(batch.getFulfillment()) && !lineTasks.isEmpty()
+                            ?lineTasks.getFirst():null);
+            if (anchor==null) throw conflict();
+            BigDecimal prior=factQty(entity,anchor.getTaskNo(),packing?"PACK_CONFIRMED":"CUSTODY_HANDOVER");
+            BigDecimal delta=deltas.getOrDefault(line.getFoodLineNo(),BigDecimal.ZERO);
+            if (prior.add(delta).compareTo(demand)>0) throw conflict();
+            if (prior.add(delta).compareTo(demand)<0) complete=false;
+            if (delta.signum()==0) continue;
+            matched++; anchors.put(line.getFoodLineNo(),anchor);
+            // Legacy whole handover receipts cannot be silently reused for partial custody.
+            for (var task:lineTasks) if (factQty(entity,task.getTaskNo(),"HANDOVER").signum()>0) throw conflict();
+            var candidates=tasks.selectList(Wrappers.<FnbKitchenTask>lambdaQuery()
+                    .eq(FnbKitchenTask::getEntityNo,entity).eq(FnbKitchenTask::getFoodLineNo,line.getFoodLineNo()));
+            if (!packing && !"DINE_IN".equals(batch.getFulfillment())
+                    && prior.add(delta).compareTo(factQty(entity,anchor.getTaskNo(),"PACK_CONFIRMED"))>0) {
+                throw conflict();
+            }
+            for (var task:lineTasks) {
+                BigDecimal required=KitchenReturnServiceImpl.quantity(delta,
+                        task.getQty().subtract(task.getVoidQty()),demand);
+                // Packing checks cumulative packed quantity against the still unhanded physical output.
+                BigDecimal checkQty=packing?KitchenReturnServiceImpl.quantity(prior.add(delta).subtract(
+                        factQty(entity,anchor.getTaskNo(),"CUSTODY_HANDOVER")),
+                        task.getQty().subtract(task.getVoidQty()),demand):required;
+                if (checkQty.compareTo(availableForCustody(entity,task,candidates))>0) throw conflict();
+                if (!packing) consumeCustody(entity,actor,task,candidates,required,reason,key);
+            }
+            var allocationRows=allocations.selectList(Wrappers.<FnbCoreLineAllocation>lambdaQuery()
+                    .eq(FnbCoreLineAllocation::getEntityNo,entity)
+                    .eq(FnbCoreLineAllocation::getFoodLineNo,line.getFoodLineNo()));
+            if (allocationRows.isEmpty()) throw conflict();
+            sources.add(new CustodySourceLine(line.getFoodLineNo(),line.getSourceLineRef(),allocationRows.stream()
+                    .map(a -> new CoreLineScope(a.getAllocationNo(),a.getOrderItemId(),a.getSourceComponentRef(),
+                            a.getQty(),a.getUnit(),a.getCoreSnapshotHash(),a.getVersion())).toList(),lineTasks.stream()
+                    .map(t -> new KitchenTaskScope(t.getTaskNo(),t.getComponentNo(),t.getStationNo(),t.getTaskRole(),
+                            t.getRouteVersion(),t.getVersion())).toList()));
+        }
+        if (matched!=requested.size()) throw conflict();
+        String action=packing?"PACK_CONFIRMED":"CUSTODY_HANDOVER";
+        var receipt=new CustodyReceiptVO(BizKey.next(packing?"FPCK":"FHOV"),entity,store,batchNo,
+                binding.getPaymentRootNo(),binding.getStoreOrderNo(),binding.getBindingNo(),
+                binding.getVersion(),batch.getVersion(),FoodCommandFingerprint.hash("custody-source:v1",batch.getFrozenRequest()),action,
+                batch.getFulfillment(),requested,sources,recipient,recipientRef,actor,
+                Instant.now().toString(),complete,true);
+        String snapshot=json.writeValueAsString(receipt);
+        for (var line:requested) {
+            var event=append(entity,actor,anchors.get(line.foodLineNo()).getTaskNo(),action,line.qty(),reason,
+                    FoodCommandFingerprint.hash("custody-line:v1",entity,store,action,key,line.foodLineNo()));
+            event.setCustodySnapshot(snapshot);
+            if (events.updateById(event)!=1) throw conflict();
+        }
+        // Preserve the existing complete original pickup boundary only when original demand is intact.
+        // A complete net/cancelled custody receipt must never stand in for original full-item verification.
+        boolean intact=originals.stream().allMatch(t -> t.getVoidQty().signum()==0);
+        for (var line:orderLines) {
+            var cancelled=tickets.cancelledMainQty(entity,line.getFoodLineNo());
+            if (cancelled!=null && cancelled.signum()!=0) intact=false;
+        }
+        if (!packing && complete && intact) for (var task:originals) {
+            append(entity,actor,task.getTaskNo(),"HANDOVER",task.getQty(),reason,
+                    FoodCommandFingerprint.hash("custody-complete:v1",entity,store,batchNo,task.getTaskNo()));
+        }
+        return receipt;
+    }
+
+    private BigDecimal factQty(String entity,String task,String action) {
+        return events.selectList(Wrappers.<FnbServiceEvent>lambdaQuery().eq(FnbServiceEvent::getEntityNo,entity)
+                .eq(FnbServiceEvent::getTaskNo,task).eq(FnbServiceEvent::getAction,action)).stream()
+                .map(FnbServiceEvent::getQty).reduce(BigDecimal.ZERO,BigDecimal::add);
+    }
+
+    private BigDecimal availableForCustody(String entity,FnbKitchenTask original,List<FnbKitchenTask> candidates) {
+        BigDecimal ready=original.getReadyQty().subtract(loss(entity,original.getTaskNo()))
+                .subtract(original.getServedQty());
+        for (var remake:candidates) if (original.getTaskNo().equals(remake.getTaskPartKey())
+                && "REMAKE".equals(head(entity,remake.getTicketNo()).getKind())) {
+            ready=ready.add(availableForCustody(entity,remake,candidates));
+        }
+        return ready;
+    }
+
+    private void consumeCustody(String entity,String actor,FnbKitchenTask original,List<FnbKitchenTask> candidates,
+            BigDecimal amount,String reason,String key) {
+        BigDecimal own=original.getReadyQty().subtract(loss(entity,original.getTaskNo()))
+                .subtract(original.getServedQty()).min(amount);
+        if (own.signum()>0) {
+            KitchenQuantityPolicy.apply(original,"SERVE",own,loss(entity,original.getTaskNo()));
+            stampUpdate(original,actor); if (tasks.updateById(original)!=1) throw conflict();
+            append(entity,actor,original.getTaskNo(),"SERVE",own,reason,
+                    FoodCommandFingerprint.hash("custody-serve:v1",entity,key,original.getTaskNo()));
+            refreshTicket(entity,original.getTicketNo(),actor);
+        }
+        BigDecimal remaining=amount.subtract(own);
+        for (var child:candidates) if (remaining.signum()>0 && original.getTaskNo().equals(child.getTaskPartKey())
+                && "REMAKE".equals(head(entity,child.getTicketNo()).getKind())) {
+            BigDecimal taking=remaining.min(availableForCustody(entity,child,candidates));
+            if (taking.signum()>0) consumeCustody(entity,actor,child,candidates,taking,reason,key);
+            remaining=remaining.subtract(taking);
+        }
+        if (remaining.signum()>0) throw conflict();
+    }
+
+    private static void validateCustodyLines(List<HandoverLine> lines) {
+        if (lines==null || lines.isEmpty() || lines.size()>1000) throw bad();
+        var seen=new HashSet<String>();
+        for (var line:lines) {
+            if (line==null) throw bad(); id(line.foodLineNo()); KitchenQuantityPolicy.positive(line.qty());
+            if (!seen.add(line.foodLineNo())) throw bad();
+        }
     }
 
     private void stageReady(String entity,FnbKitchenTask current,BigDecimal target) {

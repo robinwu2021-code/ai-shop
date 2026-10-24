@@ -302,13 +302,15 @@ class FoodServerPrimaryDatabaseTest {
                         tableCall(mvc,DiningSessionInternalApi.RESOLVE_PATH,new DiningSessionInternalApi.ResolveCommand(raw),json)
                                 .andExpect(status().isNotFound());
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_guest_session WHERE revoked_at IS NULL",Integer.class)).isZero();
-                        assertThat(context.getBean(FoodSchemaReady.class).version()).isEqualTo("10");
+                        assertThat(context.getBean(FoodSchemaReady.class).version()).isEqualTo("15");
                         var extraTables=new ArrayList<String>();
                         for(String code:List.of("T03","T04")) extraTables.add(json.readTree(tableCall(mvc,
                                 TableInternalApi.TABLE_CREATE_PATH,new TableInternalApi.TableCreateCommand("E","A",
                                         "trusted-actor","check-table-"+code,new CreateTableReq(areaNo,code,code,4,0,null)),json)
                                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
                                 .get("table").get("tableNo").asString());
+                        // The following legacy empty-check seat/clear flow requires PREPAY.
+                        sql.update("UPDATE fnb_store_policy SET pay_policy='PREPAY' WHERE policy_no='P1' AND entity_no='E' AND store_no='A'");
                         var checkOpen=new CheckInternalApi.OpenCommand("E","A","trusted-actor","check-open",
                                 new OpenCheckReq(List.of(diningTable),2,"PREPAY",null,
                                         List.of(new TableVersionReq(diningTable,2L)),"SHARED",List.of(new SeatReq(null,"1",null)),null));

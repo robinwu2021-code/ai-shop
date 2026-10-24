@@ -52,7 +52,8 @@ const persistence=s.tables.map(t=>{
  const report=t.name.startsWith('rpt_'),print=t.name.startsWith('prn_');
  const owner=print?'shared-print':report?'shop-report':'food-core';const pkg=print?'ai.neargo.shop.printing':report?'ai.neargo.shop.report':'ai.neargo.shop.food';
  const entity=report?'DailyFoodMetricRow':cap(t.name);const mapper=report?'ReportFoodMetricDailyDao':(print?'PrintMappers.':'FoodMappers.')+cap(t.name.replace(/^(fnb|prn|rpt)_/,''))+'Mapper';
- return {table:t.name,entity,entityClass:pkg+(report?'.dto.':'.entity.')+entity,mapper,mapperClass:pkg+(report?'.dao.':'.mapper.')+mapper,owner};
+ const actualMapper=codePlan.tableOwners[t.name]?.mapperClass;
+ return {table:t.name,entity,entityClass:pkg+(report?'.dto.':'.entity.')+entity,mapper:actualMapper?actualMapper.split('.').at(-1):mapper,mapperClass:actualMapper||pkg+(report?'.dao.':'.mapper.')+mapper,owner};
 });
 const moduleInventory=buildFoodModuleInventory(s,{methods:methods.map(a=>({apiId:a.id,controller:a.controller,controllerPackage:a.controllerPackage,controllerClass:a.controllerPackage+'.'+a.controller,method:a.method,service:a.svc,serviceClass:(a.domain==='H'?'ai.neargo.shop.printing':'ai.neargo.shop.food')+'.service.'+a.svc,request:a.input?a.request:null,response:a.vo,httpMethod:a.httpMethod,path:a.path})),persistence},codePlan,baselines);
 for(const a of methods){const item=moduleInventory.endpoints.find(e=>e.apiId===a.id);a.request=item.requestClass;a.vo=item.returnType;}

@@ -101,6 +101,8 @@ public class DiningTransactionRecoveryServiceImpl implements DiningTransactionRe
                             row.getSettlementNo(), row.getVersion(), row.getNextRecoveryAt(), row.getCreatedAt())));
             returns.selectList(Wrappers.<FnbReturn>lambdaQuery().eq(FnbReturn::getTenantNo, "MAIN")
                     .isNotNull(FnbReturn::getRequestSnapshot).notIn(FnbReturn::getStatus, "CLOSED", "REFUNDED")
+                    .and(q -> q.isNull(FnbReturn::getFinancialStatus)
+                            .or().ne(FnbReturn::getFinancialStatus, "NOT_REQUESTED"))
                     .and(q -> q.isNull(FnbReturn::getNextRecoveryAt).or().le(FnbReturn::getNextRecoveryAt, now))
                     .last("ORDER BY COALESCE(next_recovery_at,created_at),id LIMIT 200")).forEach(row ->
                     result.add(new Candidate(Kind.RETURN, row.getId(), row.getEntityNo(), row.getStoreNo(), row.getReturnNo(),
@@ -134,6 +136,8 @@ public class DiningTransactionRecoveryServiceImpl implements DiningTransactionRe
                     .eq(FnbReturn::getVersion, row.version())
                     .isNull(row.due() == null, FnbReturn::getNextRecoveryAt)
                     .eq(row.due() != null, FnbReturn::getNextRecoveryAt, row.due()).notIn(FnbReturn::getStatus, "CLOSED", "REFUNDED")
+                    .and(q -> q.isNull(FnbReturn::getFinancialStatus)
+                            .or().ne(FnbReturn::getFinancialStatus, "NOT_REQUESTED"))
                     .and(q -> q.isNull(FnbReturn::getNextRecoveryAt).or().le(FnbReturn::getNextRecoveryAt, now))
                     .set(FnbReturn::getNextRecoveryAt, lease).set(FnbReturn::getVersion, row.version() + 1)
                     .set(FnbReturn::getUpdatedAt, now).set(FnbReturn::getUpdatedBy, "SYSTEM")) == 1;

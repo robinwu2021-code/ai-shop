@@ -11,11 +11,18 @@ import org.springframework.web.service.annotation.PostExchange;
 public interface IndustryOrderInternalApi {
     String ROOT = "/internal/trade/industry-orders";
     @PostExchange(ROOT + "/accept-unpaid") Result acceptUnpaid(@RequestBody Get request);
+    @PostExchange(ROOT + "/store/dining-room/place") Result placeForDiningRoom(@RequestBody Place request);
+    @PostExchange(ROOT + "/store/place") Result placeForStore(@RequestBody Place request);
+    @PostExchange(ROOT + "/store/query") Result queryForStore(@RequestBody Query request);
     @PostExchange(ROOT + "/place") Result place(@RequestBody Place request);
     @PostExchange(ROOT + "/query") Result query(@RequestBody Query request);
     @PostExchange(ROOT + "/get") Result get(@RequestBody Get request);
     @PostExchange(ROOT + "/cancel") Result cancel(@RequestBody Place request);
     @PostExchange(ROOT + "/store/get") Result getForStore(@RequestBody StoreGet request);
+    @PostExchange(ROOT + "/store/cancel") Result cancelForStore(@RequestBody StoreCancel request);
+    record StoreCancel(Command command, String key, String fulfillment) {
+        @Override public String toString() { return "IndustryStoreCancel[REDACTED]"; }
+    }
     record StoreGet(Scope scope, String actorNo, String orderNo) { }
     record Place(Command command, String key) {
         @Override public String toString() { return "IndustryOrderPlace[REDACTED]"; }

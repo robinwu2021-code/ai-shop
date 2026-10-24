@@ -39,10 +39,32 @@ public final class KitchenContracts {
     public record HandoverLine(@NotBlank String foodLineNo,
             @JsonDeserialize(using=SalesRestrictionPolicy.DecimalDeserializer.class) @NotNull BigDecimal qty) { }
     public record HandoverReq(@NotBlank String kind, @NotNull List<HandoverLine> lines,
-            @NotBlank @Size(max=255) String reason) {
+            @NotBlank @Size(max=255) String reason, @Size(max=64) String recipientNo,
+            @Size(max=128) String recipientRef) {
+        public HandoverReq(String kind,List<HandoverLine> lines,String reason) {
+            this(kind,lines,reason,null,null);
+        }
         public HandoverReq { if (lines!=null) lines=List.copyOf(lines); }
         @JsonAnySetter public void unknown(String name,Object value) { throw new IllegalArgumentException(name); }
     }
+    public record PackingReq(@NotNull List<HandoverLine> lines,@NotBlank @Size(max=255) String reason) {
+        public PackingReq { if (lines!=null) lines=List.copyOf(lines); }
+        @JsonAnySetter public void unknown(String name,Object value) { throw new IllegalArgumentException(name); }
+    }
+    /** Immutable physical custody evidence; no field claims original core fulfillment completion. */
+    public record CustodyReceiptVO(String operationNo,String entityNo,String storeNo,String batchNo,
+            String orderNo,String storeOrderNo,String bindingNo,Long bindingVersion,Long batchVersion,
+            String frozenRequestHash,String action,String kind,
+            List<HandoverLine> lines,List<CustodySourceLine> sources,String recipientNo,
+            String recipientRef,String actorNo,String recordedAt,boolean complete,boolean coreDeliveryPending) {
+        public CustodyReceiptVO { lines=List.copyOf(lines); }
+    }
+    public record CustodySourceLine(String foodLineNo,String sourceLineRef,List<CoreLineScope> originalLines,
+            List<KitchenTaskScope> tasks) { }
+    public record CoreLineScope(String allocationNo,Long orderItemId,String sourceComponentRef,
+            BigDecimal originalQty,String unit,String coreSnapshotHash,Long version) { }
+    public record KitchenTaskScope(String taskNo,String componentNo,String stationNo,String taskRole,
+            long routeVersion,long version) { }
     public record HandoverVO(String operationNo,String batchNo,String status,boolean deliveryPending,
             String coreDeliveryRef) { }
     public record CourseReq(@NotBlank @Size(max=64) String name, @NotNull Integer sequenceNo) { }

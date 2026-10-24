@@ -57,6 +57,12 @@ import ai.neargo.shop.food.api.biz.BizOrderBatchController;
 import ai.neargo.shop.food.api.mp.MpOrderBatchController;
 import ai.neargo.shop.food.api.biz.BizDiningPricingController;
 import ai.neargo.shop.food.api.mp.MpDiningPricingController;
+import ai.neargo.shop.food.service.DiningBatchQueryService;
+import ai.neargo.shop.food.api.biz.BizDiningBatchQueryController;
+import ai.neargo.shop.food.service.BusinessShareService;
+import ai.neargo.shop.food.service.BusinessReturnService;
+import ai.neargo.shop.food.api.biz.BizBusinessReturnController;
+import ai.neargo.shop.food.api.biz.BizBusinessShareController;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.service.OptionGroupService;
@@ -106,6 +112,28 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @ConditionalOnFoodWebEnabled
 @Profile({"api", "ops"})
 public class FoodWebAutoConfiguration {
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({DiningBatchQueryService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizDiningBatchQueryController.class)
+    BizDiningBatchQueryController diningBatchQueryController(DiningBatchQueryService service,
+            StoreDirectoryPort stores, FoodRequestScopeValidator validator) {
+        return new BizDiningBatchQueryController(service, stores, validator);
+    }
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({BusinessReturnService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizBusinessReturnController.class)
+    BizBusinessReturnController businessReturnController(BusinessReturnService service,
+            StoreDirectoryPort stores, FoodRequestScopeValidator validator) {
+        return new BizBusinessReturnController(service, stores, validator);
+    }
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({BusinessShareService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizBusinessShareController.class)
+    BizBusinessShareController businessShareController(BusinessShareService service,
+            StoreDirectoryPort stores, FoodRequestScopeValidator validator) {
+        return new BizBusinessShareController(service, stores, validator);
+    }
+
     @Bean @Profile("api") @Conditional(PolicyEnabled.class)
     @ConditionalOnBean({QueueService.class,StoreDirectoryPort.class})
     @ConditionalOnMissingBean(BizQueueController.class)
@@ -254,8 +282,9 @@ public class FoodWebAutoConfiguration {
     @Conditional(PolicyEnabled.class)
     @ConditionalOnBean(DiningPricingFactsService.class)
     @ConditionalOnMissingBean(FoodPricingSourceFactsPortImpl.class)
-    FoodPricingSourceFactsPortImpl foodPricingSourceFactsPort(DiningPricingFactsService service) {
-        return new FoodPricingSourceFactsPortImpl(service);
+    FoodPricingSourceFactsPortImpl foodPricingSourceFactsPort(DiningPricingFactsService service,
+            ObjectProvider<DiningOrderService> orders) {
+        return new FoodPricingSourceFactsPortImpl(service, orders::getIfUnique);
     }
 
     @Bean

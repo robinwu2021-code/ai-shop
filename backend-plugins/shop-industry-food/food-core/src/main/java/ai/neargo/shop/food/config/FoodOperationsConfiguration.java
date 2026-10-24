@@ -44,9 +44,10 @@ public class FoodOperationsConfiguration {
             FoodMappers.KitchenTicketMapper tickets,FoodMappers.KitchenTaskMapper tasks,
             FoodMappers.ServiceEventMapper events,FoodMappers.CourseMapper courses,FoodMappers.CheckMapper checks,
             IdempotencyService idem,ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager,
-            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher) {
+            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
+            FoodMappers.CoreOrderBindingMapper bindings, FoodMappers.CoreLineAllocationMapper allocations) {
         return new KitchenTaskServiceImpl(batches,lines,components,revisions,tickets,tasks,events,courses,checks,
-                idem,json,manager,publisher);
+                idem,json,manager,publisher,bindings,allocations);
     }
     @Bean @ConditionalOnMissingBean(BusinessCloseService.class)
     BusinessCloseService businessCloseService(FoodMappers.BusinessDayMapper days,FoodMappers.CloseRunMapper runs,

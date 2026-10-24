@@ -35,6 +35,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -138,6 +139,7 @@ public class DiningReturnServiceImpl implements DiningReturnService {
                 .eq(FnbReturn::getTenantNo, "MAIN").eq(FnbReturn::getEntityNo, entity)
                 .eq(FnbReturn::getStoreNo, store).eq(FnbReturn::getReturnNo, number)));
         if (row == null) throw missing();
+        if ("NOT_REQUESTED".equals(row.getFinancialStatus())) throw unsupported();
         return view(row, null);
     }
 
@@ -147,6 +149,7 @@ public class DiningReturnServiceImpl implements DiningReturnService {
                 .eq(FnbReturn::getTenantNo, "MAIN").eq(FnbReturn::getEntityNo, entity)
                 .eq(FnbReturn::getStoreNo, store).eq(FnbReturn::getReturnNo, number)));
         if (original == null || original.getRequestSnapshot() == null) throw missing();
+        if ("NOT_REQUESTED".equals(original.getFinancialStatus())) throw unsupported();
         frozen(original); // Persisted buyer/binding/key are verified without creating a current security principal.
         return refresh(original, "CANCEL_PENDING".equals(original.getStatus()));
     }
@@ -177,6 +180,23 @@ public class DiningReturnServiceImpl implements DiningReturnService {
                 .containsAll(req.lines().stream().map(DiningReturnApplyReq.Line::sourceLineRef).toList())) {
             throw unsupported();
         }
+        // The original batch lock serializes this capacity fence with business-only return creation/cancellation.
+        // Until core owns one unified physical/financial capacity ledger, an active business claim blocks a new
+        // financial claim for that dish; replay of an existing original financial request remains above this guard.
+        var businessClaims = returns.selectList(Wrappers.<FnbReturn>lambdaQuery()
+                .eq(FnbReturn::getTenantNo, "MAIN").eq(FnbReturn::getEntityNo, batch.getEntityNo())
+                .eq(FnbReturn::getStoreNo, batch.getStoreNo()).eq(FnbReturn::getBatchNo, batch.getBatchNo())
+                .eq(FnbReturn::getFinancialStatus, "NOT_REQUESTED"));
+        var claimedDishNos = new HashSet<String>();
+        for (var claim : businessClaims) {
+            if (List.of("CANCELLED", "REJECTED").contains(claim.getStatus())
+                    && "PENDING".equals(claim.getKitchenStatus()) && claim.getCoreCaseRef() == null) continue;
+            var claimedItems = items.selectList(Wrappers.<FnbReturnItem>lambdaQuery()
+                    .eq(FnbReturnItem::getTenantNo, "MAIN").eq(FnbReturnItem::getEntityNo, batch.getEntityNo())
+                    .eq(FnbReturnItem::getReturnNo, claim.getReturnNo()));
+            if (claimedItems.isEmpty()) throw unsupported();
+            claimedItems.forEach(item -> claimedDishNos.add(item.getFoodLineNo()));
+        }
         Map<String, BigDecimal> requested = req.lines().stream().collect(Collectors.toMap(
                 DiningReturnApplyReq.Line::sourceLineRef, DiningReturnApplyReq.Line::quantity));
         List<SourceItem> originals = new ArrayList<>();
@@ -184,6 +204,7 @@ public class DiningReturnServiceImpl implements DiningReturnService {
         for (FnbOrderLine line : originalLines) {
             BigDecimal wanted = requested.get(line.getSourceLineRef());
             if (wanted == null) continue;
+            if (claimedDishNos.contains(line.getFoodLineNo())) throw unsupported();
             if (line.getQty() == null || wanted.compareTo(line.getQty()) > 0) throw BizException.of(ErrorCode.BAD_REQUEST);
             int whole;
             try { whole = wanted.intValueExact(); }
@@ -309,6 +330,7 @@ public class DiningReturnServiceImpl implements DiningReturnService {
                 .eq(FnbReturn::getTenantNo, "MAIN").eq(FnbReturn::getReturnNo, number)
                 .eq(FnbReturn::getBuyerNo, access.buyerNo())));
         if (row == null || row.getBatchNo() == null) throw missing();
+        if ("NOT_REQUESTED".equals(row.getFinancialStatus())) throw unsupported();
         var batch = authorizedBatch(access, row.getBatchNo());
         if (!row.getEntityNo().equals(batch.getEntityNo()) || !row.getStoreNo().equals(batch.getStoreNo())) throw forbidden();
         var originalSource = frozen(row).command().binding().source();

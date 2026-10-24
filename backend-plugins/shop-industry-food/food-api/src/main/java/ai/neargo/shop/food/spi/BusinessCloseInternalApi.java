@@ -6,6 +6,10 @@ import ai.neargo.shop.food.dto.BusinessCloseContracts.CloseVO;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.PreviewReq;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.SignReq;
 import ai.neargo.shop.food.dto.BusinessCloseContracts.AdjustmentReq;
+import ai.neargo.shop.food.dto.BusinessCloseContracts.ExceptionVO;
+import ai.neargo.shop.food.dto.BusinessCloseContracts.ProposeCarryReq;
+import ai.neargo.shop.food.dto.BusinessCloseContracts.ApproveCarryReq;
+import java.util.List;
 import ai.neargo.shop.food.dto.OperationVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -30,6 +34,21 @@ public interface BusinessCloseInternalApi {
     @PostExchange("/internal/food/business-close/adjust")
     OperationVO adjust(@RequestBody AdjustCommand command);
 
+    @PostExchange("/internal/food/business-close/exceptions")
+    List<ExceptionVO> exceptions(@RequestBody GetQuery command);
+    @PostExchange("/internal/food/business-close/propose-carry")
+    ExceptionVO proposeCarry(@RequestBody ProposeCarryCommand command);
+    @PostExchange("/internal/food/business-close/approve-carry")
+    ExceptionVO approveCarry(@RequestBody ApproveCarryCommand command);
+
+    record ProposeCarryCommand(@NotBlank @Size(max=32) String entity, @NotBlank @Size(max=32) String store,
+            @NotBlank @Size(max=32) String actor, @NotBlank @Size(max=32) String closeNo,
+            @NotBlank @Size(max=32) String exceptionNo, @NotNull @Valid ProposeCarryReq request,
+            @NotBlank @Size(max=128) String key) { }
+    record ApproveCarryCommand(@NotBlank @Size(max=32) String entity, @NotBlank @Size(max=32) String store,
+            @NotBlank @Size(max=32) String actor, @NotBlank @Size(max=32) String closeNo,
+            @NotBlank @Size(max=32) String exceptionNo, @NotNull @Valid ApproveCarryReq request,
+            @NotBlank @Size(max=128) String key) { }
     record OpenCommand(@NotBlank @Size(max=32) String entity, @NotBlank @Size(max=32) String store,
             @NotBlank @Size(max=32) String actor, @NotNull LocalDate date,
             @NotBlank @Size(max=128) String key) { }

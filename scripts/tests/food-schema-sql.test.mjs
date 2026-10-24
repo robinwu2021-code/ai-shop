@@ -7,9 +7,9 @@ import os from 'node:os';
 import {spawnSync} from 'node:child_process';
 import {renderFoodSchema,renderFoodV1,assertFrozenFoodV1,writeFrozenMigration} from '../lib/food-schema-sql.mjs';
 const s=JSON.parse(fs.readFileSync(new URL('../../docs/technical/design/schema/food-system-design.json',import.meta.url)));
-test('target design contains 83 food-owned tables while frozen V1 remains 73',()=>{
+test('target design contains 85 food-owned tables while frozen V1 remains 73',()=>{
  const sql=renderFoodSchema(s);const names=[...sql.matchAll(/CREATE TABLE `([^`]+)`/g)].map(m=>m[1]);
- assert.equal(names.length,83);assert.equal([...renderFoodV1(s).matchAll(/CREATE TABLE `/g)].length,73);assert(names.every(n=>n.startsWith('fnb_')));
+ assert.equal(names.length,85);assert.equal([...renderFoodV1(s).matchAll(/CREATE TABLE `/g)].length,73);assert(names.every(n=>n.startsWith('fnb_')));
  assert(!/\b(?:ALTER|DROP|TRUNCATE|INSERT|UPDATE|DELETE|CREATE DATABASE)\b/i.test(sql.replace(/--[^\n]*|'(?:[^']|'')*'/g,'')));
  assert(!/CREATE TABLE.*(?:prd_|ord_|pay_|prn_|rpt_)/.test(sql));
 });
@@ -90,14 +90,14 @@ test('V3 preserves spec64 without changing frozen V1 or V2',()=>{
  assert.match(renderFoodV1(s),/`spec_value_no` VARCHAR\(32\)/);
  const file=new URL('../../backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V3__option_spec_value_identity_width.sql',import.meta.url);
  assert.match(fs.readFileSync(file,'utf8'),/MODIFY COLUMN `spec_value_no` VARCHAR\(64\)/);
- assert.equal(s.databaseInitialization.targetSchemaVersion,10);
+ assert.equal(s.databaseInitialization.targetSchemaVersion,15);
 });
 
 test('V6 composes menu options and recipe variants without changing frozen migrations',async()=>{
  const {renderMenuCompositionV6}=await import('../lib/food-schema-sql.mjs');
  const file=new URL('../../backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V6__menu_composition.sql',import.meta.url);
  assert.equal(fs.readFileSync(file,'utf8'),renderMenuCompositionV6(s));
- assert.match(renderFoodSchema(s),/history: fnb_flyway_history; version: 10/);
+ assert.match(renderFoodSchema(s),/history: fnb_flyway_history; version: 15/);
  assertFrozenFoodV1(renderFoodV1(s));
 });
 
