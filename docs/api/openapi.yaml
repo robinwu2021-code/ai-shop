@@ -12492,6 +12492,497 @@ components:
         - "ALL"
         - "RECHARGE"
         - "REDEMPTION"
+    StoredValueLocateQuery:
+      type: "object"
+      properties:
+        focusDocumentNo:
+          type: "string"
+          description: "Human-facing document number to locate within the authorized issuer records."
+      required:
+        - "focusDocumentNo"
+      additionalProperties: false
+    StoredValueIssuerRecordsQuery:
+      type: "object"
+      properties:
+        issuerRef:
+          type: "string"
+          description: "Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier."
+        type:
+          type: "string"
+          enum:
+            - "ALL"
+            - "RECHARGE"
+            - "REDEMPTION"
+          description: "Requested stored-value record classification; ALL disables the classification filter."
+        startDate:
+          type: "string"
+          description: "Inclusive first business date in YYYY-MM-DD format."
+        endDate:
+          type: "string"
+          description: "Inclusive final business date in YYYY-MM-DD format."
+        focusDocumentNo:
+          type: "string"
+          description: "Human-facing document number to locate within the authorized issuer records."
+        cursor:
+          type: "string"
+          description: "Opaque continuation cursor; omit for the first page."
+        size:
+          type: "number"
+          description: "Maximum number of records requested in this page."
+      required:
+        - "issuerRef"
+      additionalProperties: false
+    StoredValueAuthorizeRequest:
+      type: "object"
+      properties:
+        orderRevision:
+          type: "number"
+          description: "Previously confirmed service order revision; stale submissions are rejected."
+        quoteRef:
+          type: "string"
+          description: "Server-issued reference to the immutable consumption quote."
+        selectionDigest:
+          type: "string"
+          description: "Digest binding confirmation to the exact selected wallet and service lines."
+        requestKey:
+          type: "string"
+          description: "Idempotency key binding retries to the original customer authorization."
+      required:
+        - "orderRevision"
+        - "quoteRef"
+        - "selectionDigest"
+        - "requestKey"
+      additionalProperties: false
+    StoredValueStore:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
+        storeName:
+          type: "string"
+          description: "Store display name captured for the record or selection."
+        lastOccurredAt:
+          type: "string"
+          description: "Time of the most recent account record; null when there are no records."
+        lastType:
+          "$ref": "#/components/schemas/Exclude_StoredValueType_ALL"
+          description: "Type of the most recent stored-value record, excluding the ALL query filter."
+      required:
+        - "storeNo"
+        - "storeName"
+        - "lastOccurredAt"
+        - "lastType"
+      additionalProperties: false
+    StoredValueStoresPage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/StoredValueStore"
+          description: "Business records returned by the current query."
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+          description: "Opaque cursor for the next page; null when the result is exhausted."
+        hasMore:
+          type: "boolean"
+          description: "Whether a further page is available using nextCursor."
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    StoredValueRecord:
+      type: "object"
+      properties:
+        type:
+          "$ref": "#/components/schemas/Exclude_StoredValueType_ALL"
+          description: "Record, target or calculation classification used to interpret this object."
+        title:
+          type: "string"
+          description: "Human-readable title of the stored-value business record."
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
+        signedAmountMinor:
+          type: "number"
+          description: "Signed change in stored-value balance, in minor currency units."
+        occurredAt:
+          type: "string"
+          description: "Time the server recorded the business operation."
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
+        storeNo:
+          type:
+            - "string"
+            - "null"
+          description: "Store identifier for the service or ledger record; null when no single store applies."
+        storeName:
+          type:
+            - "string"
+            - "null"
+          description: "Store display name attached to the service or record."
+      required:
+        - "type"
+        - "title"
+        - "currency"
+        - "signedAmountMinor"
+        - "occurredAt"
+        - "documentNo"
+      additionalProperties: false
+    StoredValueRecordsPage:
+      type: "object"
+      properties:
+        issuer:
+          "$ref": "#/components/schemas/StoredValueIssuer"
+          description: "Issuer identity and business context for the selected record collection."
+        store:
+          type: "object"
+          properties:
+            storeNo:
+              type: "string"
+              description: "Store identifier scoping the requested operation or returned business record."
+            storeName:
+              type: "string"
+              description: "Store display name captured for the record or selection."
+            businessTimeZone:
+              type: "string"
+              description: "IANA time zone used to interpret the store's business dates."
+          required:
+            - "storeNo"
+            - "storeName"
+            - "businessTimeZone"
+          additionalProperties: false
+          description: "Authorized store identity and business time zone for the returned records."
+        filter:
+          type: "object"
+          properties:
+            type:
+              "$ref": "#/components/schemas/StoredValueType"
+              description: "Record, target or calculation classification used to interpret this object."
+            startDate:
+              type:
+                - "string"
+                - "null"
+              description: "Inclusive first business date in YYYY-MM-DD format."
+            endDate:
+              type:
+                - "string"
+                - "null"
+              description: "Inclusive final business date in YYYY-MM-DD format."
+          required:
+            - "type"
+            - "startDate"
+            - "endDate"
+          additionalProperties: false
+          description: "Effective record filters after the server has normalized the request."
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/StoredValueRecord"
+          description: "Business records returned by the current query."
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+          description: "Opaque cursor for the next page; null when the result is exhausted."
+        hasMore:
+          type: "boolean"
+          description: "Whether a further page is available using nextCursor."
+      required:
+        - "store"
+        - "filter"
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    StoredValueIssuer:
+      type: "object"
+      properties:
+        issuerRef:
+          type: "string"
+          description: "Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier."
+        scopeType:
+          type: "string"
+          enum:
+            - "STORE"
+            - "BRAND"
+          description: "Whether the selected stored-value resource belongs to one store or a brand."
+        name:
+          type: "string"
+          description: "Display name of the selected stored-value issuer or wallet."
+        entityNo:
+          type: "string"
+          description: "Operating entity identifier associated with this issuer."
+        storeNo:
+          type:
+            - "string"
+            - "null"
+          description: "Store identifier for the service or ledger record; null when no single store applies."
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining monetary minor-unit interpretation."
+        businessTimeZone:
+          type:
+            - "string"
+            - "null"
+          description: "IANA business time zone; null when the issuer has no single-store zone."
+        lastType:
+          "$ref": "#/components/schemas/Exclude_StoredValueType_ALL"
+          description: "Type of the most recent record, excluding the ALL query filter."
+        lastOccurredAt:
+          type: "string"
+          description: "Timestamp of the most recent record for this issuer."
+      required:
+        - "issuerRef"
+        - "scopeType"
+        - "name"
+        - "entityNo"
+        - "storeNo"
+        - "currency"
+        - "businessTimeZone"
+        - "lastType"
+        - "lastOccurredAt"
+      additionalProperties: false
+    StoredValueNotificationCapability:
+      type: "object"
+      properties:
+        channel:
+          type: "string"
+          const: "WXSUB"
+          description: "Delivery or collection channel used by this capability or route."
+        available:
+          type: "boolean"
+          description: "Whether this capability or preset is available in the current deployment."
+        templateId:
+          type:
+            - "string"
+            - "null"
+          description: "Messaging template identifier; null when the capability is not configured."
+        reasonCode:
+          type:
+            - "string"
+            - "null"
+          description: "Machine-readable reason this capability is unavailable; null when available."
+      required:
+        - "channel"
+        - "available"
+        - "templateId"
+        - "reasonCode"
+      additionalProperties: false
+    StoredValueIssuersPage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/StoredValueIssuer"
+          description: "Records returned in this page under the current authorized selection."
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+          description: "Opaque cursor for the next page; null when all records have been returned."
+        hasMore:
+          type: "boolean"
+          description: "Whether another page is available using nextCursor."
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    StoredValueIssuerRecordsPage:
+      type: "object"
+      properties:
+        issuer:
+          "$ref": "#/components/schemas/StoredValueIssuer"
+          description: "Issuer identity and business context for the selected record collection."
+        filter:
+          type: "object"
+          properties:
+            type:
+              "$ref": "#/components/schemas/StoredValueType"
+              description: "Record, target or calculation classification used to interpret this object."
+            startDate:
+              type:
+                - "string"
+                - "null"
+              description: "Inclusive first business date in YYYY-MM-DD format."
+            endDate:
+              type:
+                - "string"
+                - "null"
+              description: "Inclusive final business date in YYYY-MM-DD format."
+          required:
+            - "type"
+            - "startDate"
+            - "endDate"
+          additionalProperties: false
+          description: "Effective record filters after server normalization."
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/StoredValueRecord"
+          description: "Records returned in this page under the current authorized selection."
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+          description: "Opaque cursor for the next page; null when all records have been returned."
+        hasMore:
+          type: "boolean"
+          description: "Whether another page is available using nextCursor."
+      required:
+        - "issuer"
+        - "filter"
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    StoredValueService:
+      type: "object"
+      properties:
+        serviceOrderNo:
+          type: "string"
+          description: "Identifier of the original stored-value consumption service order."
+        operationNo:
+          type: "string"
+          description: "Stable operation identifier used to recover the original execution."
+        status:
+          type: "string"
+          description: "Current server-owned lifecycle state of this operation or service."
+        storeNo:
+          type: "string"
+          description: "Store identifier for the service or ledger record; null when no single store applies."
+        storeName:
+          type: "string"
+          description: "Store display name attached to the service or record."
+        serviceStaffName:
+          type:
+            - "string"
+            - "null"
+          description: "Service staff display name; null when no staff member is assigned."
+        serviceAt:
+          type:
+            - "string"
+            - "null"
+          description: "Service completion timestamp; null before completion."
+        items:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              itemNo:
+                type: "string"
+                description: "Identifier of this service order line."
+              title:
+                type: "string"
+                description: "Human-readable service item title."
+              quantity:
+                type: "number"
+                description: "Positive quantity of the selected service item."
+            required:
+              - "itemNo"
+              - "title"
+              - "quantity"
+            additionalProperties: false
+          description: "Service order lines and their positive purchased quantities."
+        confirmation:
+          anyOf:
+            - type: "object"
+              properties:
+                orderRevision:
+                  type: "number"
+                  description: "Previously confirmed service order revision; stale submissions are rejected."
+                quoteRef:
+                  type: "string"
+                  description: "Server-issued reference to the immutable consumption quote."
+                selectionDigest:
+                  type: "string"
+                  description: "Digest binding confirmation to the exact selected wallet and service lines."
+                expiresAt:
+                  type: "string"
+                  description: "Server expiry timestamp after which the reference or confirmation must be refreshed."
+              required:
+                - "orderRevision"
+                - "quoteRef"
+                - "selectionDigest"
+                - "expiresAt"
+              additionalProperties: false
+            - type: "null"
+          description: "Immutable customer confirmation terms; null when confirmation is not available."
+        payment:
+          anyOf:
+            - type: "object"
+              properties:
+                assetKind:
+                  type: "string"
+                  description: "Asset kind selected for payment; stored-value services use STORED_VALUE."
+                currency:
+                  "$ref": "#/components/schemas/CurrencyCode"
+                  description: "ISO currency code determining monetary minor-unit interpretation."
+                amountMinor:
+                  type: "number"
+                  description: "Total service or payment amount in minor currency units."
+                scopeType:
+                  type: "string"
+                  enum:
+                    - "STORE"
+                    - "BRAND"
+                  description: "Whether the selected stored-value resource belongs to one store or a brand."
+                issuerName:
+                  type:
+                    - "string"
+                    - "null"
+                  description: "Issuer display name; null when no issuer is selected."
+              required:
+                - "assetKind"
+                - "currency"
+                - "amountMinor"
+                - "scopeType"
+                - "issuerName"
+              additionalProperties: false
+            - type: "null"
+          description: "Stored-value payment snapshot; null before payment terms are available."
+      required:
+        - "serviceOrderNo"
+        - "operationNo"
+        - "status"
+        - "storeNo"
+        - "storeName"
+        - "serviceStaffName"
+        - "serviceAt"
+        - "items"
+        - "confirmation"
+        - "payment"
+      additionalProperties: false
+    StoredValueAuthorization:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "Current server-owned lifecycle state of this operation or service."
+        operationNo:
+          type:
+            - "string"
+            - "null"
+          description: "Stable operation identifier used to recover the original execution."
+        useStatus:
+          type:
+            - "string"
+            - "null"
+          description: "Server-owned asset usage state; null before a usage exists."
+      required:
+        - "status"
+        - "operationNo"
+        - "useStatus"
+      additionalProperties: false
     PointsOrderStatePhase:
       type: "string"
       enum:
@@ -12804,168 +13295,6 @@ components:
         - "name"
         - "available"
         - "unavailableReason"
-      additionalProperties: false
-    StoredValueStoresPage:
-      type: "object"
-      properties:
-        records:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/StoredValueStore"
-          description: "Business records returned by the current query."
-        nextCursor:
-          type:
-            - "string"
-            - "null"
-          description: "Opaque cursor for the next page; null when the result is exhausted."
-        hasMore:
-          type: "boolean"
-          description: "Whether a further page is available using nextCursor."
-      required:
-        - "records"
-        - "nextCursor"
-        - "hasMore"
-      additionalProperties: false
-    StoredValueStore:
-      type: "object"
-      properties:
-        storeNo:
-          type: "string"
-          description: "Store identifier scoping the requested operation or returned business record."
-        storeName:
-          type: "string"
-          description: "Store display name captured for the record or selection."
-        lastOccurredAt:
-          type: "string"
-          description: "Time of the most recent account record; null when there are no records."
-        lastType:
-          "$ref": "#/components/schemas/Exclude_StoredValueType_ALL"
-          description: "Type of the most recent stored-value record, excluding the ALL query filter."
-      required:
-        - "storeNo"
-        - "storeName"
-        - "lastOccurredAt"
-        - "lastType"
-      additionalProperties: false
-    StoredValueRecordsPage:
-      type: "object"
-      properties:
-        store:
-          type: "object"
-          properties:
-            storeNo:
-              type: "string"
-              description: "Store identifier scoping the requested operation or returned business record."
-            storeName:
-              type: "string"
-              description: "Store display name captured for the record or selection."
-            businessTimeZone:
-              type: "string"
-              description: "IANA time zone used to interpret the store's business dates."
-          required:
-            - "storeNo"
-            - "storeName"
-            - "businessTimeZone"
-          additionalProperties: false
-          description: "Authorized store identity and business time zone for the returned records."
-        filter:
-          type: "object"
-          properties:
-            type:
-              "$ref": "#/components/schemas/StoredValueType"
-              description: "Record, target or calculation classification used to interpret this object."
-            startDate:
-              type:
-                - "string"
-                - "null"
-              description: "Inclusive first business date in YYYY-MM-DD format."
-            endDate:
-              type:
-                - "string"
-                - "null"
-              description: "Inclusive final business date in YYYY-MM-DD format."
-          required:
-            - "type"
-            - "startDate"
-            - "endDate"
-          additionalProperties: false
-          description: "Effective record filters after the server has normalized the request."
-        records:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/StoredValueRecord"
-          description: "Business records returned by the current query."
-        nextCursor:
-          type:
-            - "string"
-            - "null"
-          description: "Opaque cursor for the next page; null when the result is exhausted."
-        hasMore:
-          type: "boolean"
-          description: "Whether a further page is available using nextCursor."
-      required:
-        - "store"
-        - "filter"
-        - "records"
-        - "nextCursor"
-        - "hasMore"
-      additionalProperties: false
-    StoredValueRecord:
-      type: "object"
-      properties:
-        type:
-          "$ref": "#/components/schemas/Exclude_StoredValueType_ALL"
-          description: "Record, target or calculation classification used to interpret this object."
-        title:
-          type: "string"
-          description: "Human-readable title of the stored-value business record."
-        currency:
-          "$ref": "#/components/schemas/CurrencyCode"
-          description: "ISO currency code determining the interpretation of monetary amounts."
-        signedAmountMinor:
-          type: "number"
-          description: "Signed change in stored-value balance, in minor currency units."
-        occurredAt:
-          type: "string"
-          description: "Time the server recorded the business operation."
-        documentNo:
-          type:
-            - "string"
-            - "null"
-          description: "Human-facing document number; null or absent for historical unmapped records."
-      required:
-        - "type"
-        - "title"
-        - "currency"
-        - "signedAmountMinor"
-        - "occurredAt"
-        - "documentNo"
-      additionalProperties: false
-    StoredValueNotificationCapability:
-      type: "object"
-      properties:
-        channel:
-          type: "string"
-          const: "WXSUB"
-          description: "Delivery or collection channel used by this capability or route."
-        available:
-          type: "boolean"
-          description: "Whether this capability or preset is available in the current deployment."
-        templateId:
-          type:
-            - "string"
-            - "null"
-          description: "Messaging template identifier; null when the capability is not configured."
-        reasonCode:
-          type:
-            - "string"
-            - "null"
-          description: "Machine-readable reason this capability is unavailable; null when available."
-      required:
-        - "channel"
-        - "available"
-        - "templateId"
-        - "reasonCode"
       additionalProperties: false
     Record_Lang_string:
       type: "object"
@@ -16933,6 +17262,256 @@ paths:
                     type: "string"
                   data:
                     "$ref": "#/components/schemas/Review"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/entitlement-service-orders":
+    get:
+      operationId: "storedValuePendingServices"
+      summary: "My pending service confirmations"
+      tags:
+        - "entitlement-service-orders"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/StoredValueService"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/entitlement-service-orders/{orderNo}":
+    get:
+      operationId: "storedValueService"
+      summary: "My service confirmation"
+      tags:
+        - "entitlement-service-orders"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueService"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/orders/{orderNo}/entitlement-authorizations":
+    post:
+      operationId: "storedValueAuthorize"
+      summary: "Confirm frozen service and wallet"
+      tags:
+        - "orders"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueAuthorization"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/StoredValueAuthorizeRequest"
+  "/mp/stored-value/issuers":
+    get:
+      operationId: "storedValueIssuers"
+      summary: "Owned funded wallets"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            description: "Maximum records per page requested or returned by the server."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueIssuersPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/stored-value/records/locate":
+    get:
+      operationId: "storedValueLocateIssuer"
+      summary: "Locate owned wallet by durable document"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "focusDocumentNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "Human-facing document number to locate within the authorized issuer records."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueIssuer"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/stored-value/issuer-records":
+    get:
+      operationId: "storedValueIssuerRecords"
+      summary: "Owned issuer history"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "issuerRef"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier."
+        - name: "type"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - "ALL"
+              - "RECHARGE"
+              - "REDEMPTION"
+            description: "Requested stored-value record classification; ALL disables the classification filter."
+        - name: "startDate"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Inclusive first business date in YYYY-MM-DD format."
+        - name: "endDate"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Inclusive final business date in YYYY-MM-DD format."
+        - name: "focusDocumentNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Human-facing document number to locate within the authorized issuer records."
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Opaque continuation cursor; omit for the first page."
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            description: "Maximum number of records requested in this page."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueIssuerRecordsPage"
                 required:
                   - "code"
                   - "msg"

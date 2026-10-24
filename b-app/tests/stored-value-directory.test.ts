@@ -5,7 +5,7 @@ import {reactive} from 'vue';
 import './component-setup';
 const m=vi.hoisted(()=>({accounts:vi.fn(),candidates:vi.fn(),select:vi.fn(),account:vi.fn(),plans:vi.fn(),scope:vi.fn(),load:null as null|((q:Record<string,string>)=>void)}));
 vi.mock('@dcloudio/uni-app',()=>({onLoad:(f:typeof m.load)=>{m.load=f;},onShow:vi.fn(),onHide:vi.fn()}));
-vi.mock('@/api',()=>({api:{mSvAccounts:m.accounts,mScopeCandidates:m.candidates,mSvSelectCustomer:m.select,mSvAccount:m.account,mSvPlans:m.plans}}));
+vi.mock('@/api',()=>({api:{mManagementContext:async()=>({actorKey:"ACTOR"}),mSvWallets:async()=>[],mSvRechargeOptions:async()=>({issuerOptions:{legacyMode:true,issuers:[]},plans:{records:[],nextCursor:null}}),mSvAccounts:m.accounts,mScopeCandidates:m.candidates,mSvSelectCustomer:m.select,mSvAccount:m.account,mSvPlans:m.plans}}));
 const store=reactive({storeNo:'S1',profile:{merchantNo:'M1'},multiStore:false,can:()=>true,ensureStores:async()=>{},ensureScope:m.scope});
 vi.mock('@/stores/merchant',()=>({useMerchantStore:()=>store}));
 vi.mock('vue-i18n',()=>({useI18n:()=>({t:(k:string)=>k})}));
@@ -14,7 +14,7 @@ import Detail from '@/pages/stored-value-account/index.vue';
 const funded={accountRef:'A1',maskedName:'已储值会员',maskedPhone:'138****0002',currency:'CNY',balanceMinor:0,heldMinor:0,availableMinor:0,lastOccurredAt:null,lastRechargeAt:'2026-10-20T02:00:00Z'};
 const candidate={memberNo:'M2',displayName:'未储值会员',phoneMasked:'138****0001',memberStatus:'LEAD',canRecharge:true,unavailableReason:null,account:null};
 const selected={...candidate,customerRef:'REF',expiresAt:new Date(Date.now()+120000).toISOString()};
-beforeEach(()=>{vi.clearAllMocks();store.storeNo='S1';m.scope.mockResolvedValue(undefined);m.accounts.mockResolvedValue({records:[funded],nextCursor:null});m.candidates.mockResolvedValue({items:[candidate],nextCursor:null,identityConflictCount:0});m.select.mockResolvedValue(selected);m.plans.mockResolvedValue({records:[],nextCursor:null});});
+beforeEach(()=>{vi.clearAllMocks();store.storeNo='S1';m.scope.mockResolvedValue(undefined);m.accounts.mockResolvedValue({records:[funded],nextCursor:null});m.candidates.mockImplementation(async(_s,q)=>({items:q.keyword?[candidate]:[{...candidate,memberNo:null,displayName:funded.maskedName,phoneMasked:funded.maskedPhone,account:funded,lastRechargeAt:funded.lastRechargeAt}],nextCursor:null,identityConflictCount:0}));m.select.mockResolvedValue(selected);m.plans.mockResolvedValue({records:[],nextCursor:null});});
 it('searches members from the directory, opens detail without a balance, and clears back to funded members',async()=>{
  const w=mount(Directory);await flushPromises();expect(w.text()).toContain('已储值会员');
  await w.find('input').setValue('13800000001');await w.find('input').trigger('confirm');await flushPromises();
@@ -24,7 +24,7 @@ it('searches members from the directory, opens detail without a balance, and cle
  await w.find('input').setValue('');await flushPromises();expect(w.text()).toContain('已储值会员');w.unmount();
 });
 it('does not apply a member search after it is cleared or the store changes',async()=>{
- let resolve!:(r:unknown)=>void;m.candidates.mockImplementation(()=>new Promise(r=>{resolve=r;}));
+ let resolve!:(r:unknown)=>void;m.candidates.mockImplementation((_store,q)=>q.keyword?new Promise(r=>{resolve=r;}):Promise.resolve({items:[],nextCursor:null,identityConflictCount:0}));
  const w=mount(Directory);await flushPromises();await w.find('input').setValue('13800000001');await w.find('input').trigger('confirm');
  await w.find('input').setValue('');await flushPromises();store.storeNo='S2';await flushPromises();
  resolve({items:[candidate],nextCursor:null,identityConflictCount:0});await flushPromises();expect(w.text()).not.toContain('未储值会员');w.unmount();
@@ -38,7 +38,7 @@ it('opens the plan sheet only after the bottom recharge action on an unfunded me
 });
 
 it('debounces partial member suggestions and discards the old query after clearing',async()=>{
- vi.useFakeTimers();const w=mount(Directory);await flushPromises();
+ vi.useFakeTimers();const w=mount(Directory);await flushPromises();m.candidates.mockClear();
  await w.find('input').setValue('138');await vi.advanceTimersByTimeAsync(150);
  await w.find('input').setValue('1380');expect(m.candidates).not.toHaveBeenCalled();
  await vi.advanceTimersByTimeAsync(350);await flushPromises();expect(m.candidates).toHaveBeenCalledTimes(1);

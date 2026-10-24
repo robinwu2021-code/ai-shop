@@ -109,6 +109,11 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
                 () -> customers.resolveReference(ctx, new ReferenceQuery(entity, c.storeNo(), c.customerRef())).userNo());
     }
     @Override @Transactional
+    public ServiceOrderSnapshot createMonetarySelected(EntitlementContext ctx,String entity,ServiceOrderCreate c,String key,String walletFingerprint){
+        ai.neargo.shop.spi.entitlement.ContractChecks.hash(walletFingerprint);
+        return createInternal(ctx,entity,c.storeNo(),c.items(),key,hash(json.writeValueAsString(List.of("STORED_VALUE_SELECTED",c,walletFingerprint))),true,()->customers.resolveReference(ctx,new ReferenceQuery(entity,c.storeNo(),c.customerRef())).userNo());
+    }
+    @Override @Transactional
     public ServiceOrderSnapshot createIdentified(EntitlementContext ctx, String entity,
                                                  ServiceOrderIdentifiedCreate c, String key) {
         return createInternal(ctx, entity, c.storeNo(), c.items(), key, hash(json.writeValueAsString(c)), false,
@@ -233,7 +238,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         var expiry = quote.expiresAt().isBefore(view.deadline()) ? quote.expiresAt() : view.deadline();
         var bounded = new Quote(quote.quoteRef(), quote.sourceRef(), quote.accountNo(), quote.currency(),
                 quote.amountMinor(), quote.applicableMinor(), quote.redeemable(), quote.reason(), quote.assetRevision(),
-                quote.snapshotHash(), expiry);
+                quote.snapshotHash(), expiry,quote.walletProof());
         row.setPreviewSnapshot(json.writeValueAsString(new PreviewBinding(AssetKind.STORED_VALUE, null, null, bounded)));
         row.setPreviewExpiresAt(LocalDateTime.ofInstant(expiry, ZoneOffset.UTC));
         row.setStatus("PREVIEWED"); update(row, ctx.actorNo());

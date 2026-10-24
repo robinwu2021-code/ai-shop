@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed,ref,onMounted,watch } from 'vue';import { useI18n } from 'vue-i18n';import { api } from '@/api';import { useMerchantStore } from '@/stores/merchant';import { useStoredValueList } from '@/shared/use-stored-value-list';import { dateFilter } from '@/shared/stored-value-form';import { money } from '@shared/utils/money';import { datetime } from '@shared/utils/datetime';import type { SvRecordsQuery } from '@/api/stored-value-types';
-const props=defineProps<{accountRef?:string;compact?:boolean}>();const {t}=useI18n();const merchant=useMerchantStore();const type=ref<SvRecordsQuery['type']>('ALL');const dates=ref<{startDate?:string;endDate?:string}>({});const open=ref(false);const start=ref('');const end=ref('');const dateError=ref('');
-const {records,cursor,loading,error,load}=useStoredValueList(()=>merchant.storeNo,c=>api.mSvRecords({storeNo:merchant.storeNo,type:type.value,...dates.value,accountRef:props.accountRef,cursor:c,size:props.compact?3:20}));
+import { computed,ref,onMounted,watch } from 'vue';import { useI18n } from 'vue-i18n';import { api } from '@/api';import { useMerchantStore } from '@/stores/merchant';import { useStoredValueList } from '@/shared/use-stored-value-list';import { dateFilter } from '@/shared/stored-value-form';import { money } from '@shared/utils/money';import { datetime } from '@shared/utils/datetime';import type { SvRecordsQuery,SvWallet } from '@/api/stored-value-types';
+const props=defineProps<{accountRef?:string;compact?:boolean;wallet?:SvWallet;customerRef?:string}>();const {t}=useI18n();const merchant=useMerchantStore();const type=ref<SvRecordsQuery['type']>('ALL');const dates=ref<{startDate?:string;endDate?:string}>({});const open=ref(false);const start=ref('');const end=ref('');const dateError=ref('');
+const {records,cursor,loading,error,load}=useStoredValueList(()=>merchant.storeNo,c=>props.wallet?.accountRef&&props.customerRef?api.mSvWalletRecords(merchant.storeNo,props.customerRef,{issuerRef:props.wallet.issuerRef,accountRef:props.wallet.accountRef,type:type.value,...dates.value,cursor:c,size:props.compact?3:20}):api.mSvRecords({storeNo:merchant.storeNo,type:type.value,...dates.value,accountRef:props.accountRef,cursor:c,size:props.compact?3:20}));
 const displayed=computed(()=>props.compact?records.value.slice(0,3):records.value);
 const tabs=computed(()=>[{key:'ALL',label:t('storedValue.all')},{key:'RECHARGE',label:t('storedValue.recharge')},{key:'REDEMPTION',label:t('storedValue.redemption')}]);
 function select(k:string){type.value=k as SvRecordsQuery['type'];void load();}
 function time(){start.value=dates.value.startDate||'';end.value=dates.value.endDate||'';dateError.value='';open.value=true;}
 function apply(){try{dates.value=dateFilter(start.value,end.value);dateError.value='';open.value=false;void load();}catch{dateError.value=t('storedValue.invalidDate');}}
 function clear(){dates.value={};open.value=false;void load();}
-watch(()=>props.accountRef,()=>void load());onMounted(()=>void load());defineExpose({refresh:()=>load()});
+watch(()=>[props.accountRef,props.wallet?.accountRef,props.customerRef],()=>void load());onMounted(()=>void load());defineExpose({refresh:()=>load()});
 function navigate(url:string){uni.navigateTo({url});}
 </script>
 <template><view class="sv-list">

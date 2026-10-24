@@ -179,4 +179,20 @@ public final class PayInternalPaths {
     public static final String SV_RELEASE_STOP="/internal/pay/stored-value/releases/stop";
     public static final String SV_POLICY_CAPABILITY="/internal/pay/stored-value/policies/capability";
     public static final String SV_POLICY_PLAN_BINDING="/internal/pay/stored-value/policies/plan-binding";
+    public static final String SV_WALLETS_ACCOUNTS="/internal/pay/stored-value/wallets/accounts";
+    public static final String SV_WALLETS_SELECT="/internal/pay/stored-value/wallets/select";
+    public static final String SV_BRAND_CAPABILITY="/internal/pay/stored-value/brands/capability";
+    public static final String SV_BRAND_ACTIVATE="/internal/pay/stored-value/brands/activate";
+    public static final String SV_EXECUTION_ISSUERS="/internal/pay/stored-value/brand-operations/issuers";
+    public static final String SV_BRAND_RECHARGE_OPTIONS="/internal/pay/stored-value/brand-operations/recharge-options";
+    public static final String SV_BRAND_RECHARGE_CONFIRM="/internal/pay/stored-value/brand-operations/confirm-offline";
+    public static final String SV_BRAND_RECHARGE_RESUME="/internal/pay/stored-value/brand-operations/resume";
+    public static final String SV_BRAND_RECHARGE_REPLAY="/internal/pay/stored-value/brand-operations/replay";
+    public static final String SV_BRAND_RECHARGE_CANCEL_CREATE="/internal/pay/stored-value/brand-operations/cancel-create";
+    public static final String SV_CONSUMER_ISSUERS="/internal/pay/stored-value/consumer/issuers";
+    public static final String SV_CONSUMER_ISSUER="/internal/pay/stored-value/consumer/issuer";
+    public static final String SV_CONSUMER_LOCATE_ISSUER="/internal/pay/stored-value/consumer/locate-issuer";
+    public static final String SV_CONSUMER_ISSUER_RECORDS="/internal/pay/stored-value/consumer/issuer-records";
+ public static final String SV_FUNDED_CUSTOMERS="/internal/pay/stored-value/wallets/funded-customers";
+ public static final String SV_WALLETS_RECORDS="/internal/pay/stored-value/wallets/records";
 }

@@ -57,6 +57,10 @@ const cutsBy = (src: string, code: string) =>
  * 「因为它是对的」不算理由。
  */
 const EXEMPT: Record<string, string> = {
+  "stored-value/pay:sv:consume:create":
+    "消费浮层先ensureScope，再can(consume:create)；无权限不读商品或创建预览；独立详情入口也按该码裁消费按钮。列表/充值流程不强加消费权限。",
+  "stored-value/biz:stock":
+    "消费浮层选商品前先ensureScope，再can(biz:stock)；商品列表与新建预览仅在有库存查看权限时开放，原单恢复不依赖商品重查，所有API失败在浮层单独展示。",
   "stored-value/pay:sv:account:read":
     "load先ensureScope与ensureStores，账户和流水tab按account:read裁剪；CustomerAccountList无account:read时不请求mSvAccounts，仅保留有biz:customer与recharge:create的选客充值入口。",
   "stored-value/pay:sv:plan:manage":

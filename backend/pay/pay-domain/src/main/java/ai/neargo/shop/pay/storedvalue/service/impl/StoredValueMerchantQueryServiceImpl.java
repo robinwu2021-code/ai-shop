@@ -61,9 +61,12 @@ public class StoredValueMerchantQueryServiceImpl implements StoredValueMerchantQ
         return view(scope,a,null,null);
     }
     @Override public CursorPage<Record> records(CatalogScope scope,String store,String type,Instant from,Instant to,String ref,String cursor,int size){
+        return walletRecords(scope,store,type,from,to,ref==null?null:accountNo(scope,store,ref),cursor,size);
+    }
+    /** Only called after the issuer query has verified the customer-bound wallet reference. */
+    public CursorPage<Record> walletRecords(CatalogScope scope,String store,String type,Instant from,Instant to,String account,String cursor,int size){
         read(scope,store,size);ContractChecks.require(List.of("ALL","RECHARGE","REDEMPTION").contains(type));
         ContractChecks.require(from==null||to==null||from.isBefore(to));
-        String account=ref==null?null:accountNo(scope,store,ref);
         String filters=digest(List.of(scope.entityNo(),store,type,from==null?"":from.toString(),to==null?"":to.toString(),account==null?"":account),json);
         var after=cursors.decode(cursor,"SV_RECORDS",scope.tenantNo(),scope.actorNo(),filters);
         var q=Wrappers.<SvStatement>lambdaQuery().eq(SvStatement::getTenantNo,scope.tenantNo())

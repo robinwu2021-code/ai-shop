@@ -12,6 +12,12 @@ public interface IssuerAuthorityService {
     /** Resolve the owner-authorized store before issuer settings preparation. */
     StoreAuthority storePreparationScope(Actor actor,String storeNo);
 
+    /** Recheck configuration authority and reject a brand under financial activation. */
+    void requireConfigurationWritable(Actor actor,String management,String type,String no);
+
+    /** Resolve exact live configuration authority before issuer lookup. */
+    AuthorizedScope configurationLookup(Actor actor,String management,String type,String no);
+
     /** Resolve exact live issuer-read authority before crossing into Pay. */
     AuthorizedScope readScope(Actor actor, String management, String type, String no);
 

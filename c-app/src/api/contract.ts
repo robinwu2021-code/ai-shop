@@ -1,5 +1,5 @@
 import type { OrderPointsEarning } from "@shared/types";
-import type { StoredValueStoresQuery, StoredValueStoresPage, StoredValueRecordsQuery, StoredValueRecordsPage, StoredValueNotificationCapability } from "./stored-value-types";
+import type { StoredValueService,StoredValueAuthorization,StoredValueIssuer,StoredValueIssuersPage,StoredValueStoresQuery, StoredValueStoresPage, StoredValueRecordsQuery, StoredValueRecordsPage, StoredValueNotificationCapability } from "./stored-value-types";
 export type * from "./stored-value-types";
 import type { MemberCodeView } from "@shared/types";
 // 唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
@@ -713,6 +713,12 @@ export interface ShopApi {
   }): Promise<Review>;
 
   // ---- 本人门店储值记录（消费者白名单，只读）
+  storedValuePendingServices():Promise<StoredValueService[]>;
+  storedValueService(orderNo:string):Promise<StoredValueService>;
+  storedValueAuthorize(orderNo:string,body:{orderRevision:number;quoteRef:string;selectionDigest:string;requestKey:string}):Promise<StoredValueAuthorization>;
+  storedValueIssuers(query?:StoredValueStoresQuery):Promise<StoredValueIssuersPage>;
+  storedValueLocateIssuer(documentNo:string):Promise<StoredValueIssuer>;
+  storedValueIssuerRecords(issuerRef:string,query?:StoredValueRecordsQuery):Promise<StoredValueRecordsPage>;
   storedValueStores(query?: StoredValueStoresQuery): Promise<StoredValueStoresPage>;
   storedValueRecords(storeNo: string, query?: StoredValueRecordsQuery): Promise<StoredValueRecordsPage>;
   storedValueNotificationCapability(): Promise<StoredValueNotificationCapability>;

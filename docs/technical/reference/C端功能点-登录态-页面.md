@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**128 个功能点**，其中 **36 个游客可用**；**11 个没有任何页面调用**。
+统计：**128 个功能点**，其中 **36 个游客可用**；**12 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -27,6 +27,7 @@
 | `storeEnter` | POST | `/mp/store/:no/enter` | — |
 | `frequentItems` | GET | `/mp/store/:no/frequent` | — |
 | `storeGoods` | GET | `/mp/store/:no/goods` | — |
+| `storedValueStores` | GET | `/mp/stored-value/stores` | — |
 | `track` | GET | `/mp/track` | — |
 | `trackMine` | GET | `/mp/track/mine` | — |
 
@@ -137,7 +138,7 @@
 | `storeNearby` | `GET /mp/store/nearby` | 游客 | merchants · search | — |
 | `storedValueNotificationCapability` | `GET /mp/stored-value/notification-capability` | 是 | stored-value-records | — |
 | `storedValueRecords` | `GET /mp/stored-value/store/:storeNo/records` | 是 | stored-value-records | — |
-| `storedValueStores` | `GET /mp/stored-value/stores` | 是 | stored-value | — |
+| `storedValueStores` | `GET /mp/stored-value/stores` | 是 | **无** | — |
 | `track` | `GET /mp/track` | 游客 | **无** | — |
 | `trackMine` | `GET /mp/track/mine` | 是 | **无** | — |
 | `trackMiniLink` | `GET /mp/track/mini-link` | 游客 | track | — |

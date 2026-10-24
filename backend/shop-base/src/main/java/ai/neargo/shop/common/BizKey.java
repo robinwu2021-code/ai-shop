@@ -18,6 +18,7 @@ public final class BizKey {
     public static final String MANAGEMENT_SPACE = "MGS";
     public static final String MANAGEMENT_GRANT = "MGG";
     public static final String BRAND = "BR";
+    public static final String BRAND_FINANCIAL_ACTIVATION = "BRFA";
     public static final String BRAND_BINDING = "BRB";
 
     /** 前缀是语义的一部分：看到 {@code SUB} 就知道这是子订单，不用去查表。 */
@@ -50,6 +51,7 @@ public final class BizKey {
     public static final String STORED_VALUE_QUOTA = "SVQ";
     public static final String STORED_VALUE_QUOTA_RESERVATION = "SVQR";
     public static final String STORED_VALUE_HOLD_ALLOCATION = "SVHA";
+    public static final String STORED_VALUE_CLEARING = "SVCL";
     public static final String STORED_VALUE_RELEASE = "SVRL";
     public static final String STORED_VALUE_RELEASE_TIER = "SVRT";
     public static final String SCOPE_MEMBER = "MSM";

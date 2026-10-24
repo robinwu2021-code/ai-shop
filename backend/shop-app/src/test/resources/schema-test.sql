@@ -7378,14 +7378,17 @@ CREATE TABLE IF NOT EXISTS sv_recharge
     CHECK ((status='CREDITED' AND credited_at IS NOT NULL) OR (status<>'CREDITED' AND credited_at IS NULL)),
     CONSTRAINT ck_sv_cancel_facts CHECK ((status='CANCELLED' AND cancellation_reason IS NOT NULL AND cancelled_at IS NOT NULL)
         OR (status<>'CANCELLED' AND cancelled_at IS NULL)),
-    CONSTRAINT ck_sv_recharge_source CHECK (
- (source_kind='ACTIVITY' AND reservation_no IS NOT NULL AND activity_no IS NOT NULL AND activity_version_no IS NOT NULL AND plan_no IS NULL AND plan_version_no IS NULL)
- OR (source_kind='PLAN' AND reservation_no IS NULL AND activity_no IS NULL AND activity_version_no IS NULL AND plan_no IS NOT NULL AND plan_version_no IS NOT NULL)),
     CONSTRAINT ck_sv_collection_receipt CHECK (
     NOT (CASE status WHEN 'SUBMITTED' THEN TRUE WHEN 'RECEIVED' THEN TRUE WHEN 'CREDITED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) OR
     (collection_method IS NOT NULL AND actual_amount_minor IS NOT NULL
      AND (CASE collection_method WHEN 'CASH' THEN TRUE WHEN 'TRANSFER' THEN TRUE WHEN 'MERCHANT_OFFLINE' THEN TRUE ELSE CASE WHEN collection_method IS NULL THEN NULL ELSE FALSE END END)
      AND actual_amount_minor=principal_minor AND receipt_ref IS NOT NULL AND receipt_digest IS NOT NULL)
+),
+    CONSTRAINT ck_sv_recharge_source CHECK (
+ (source_kind='ACTIVITY' AND reservation_no IS NOT NULL AND activity_no IS NOT NULL AND activity_version_no IS NOT NULL AND plan_no IS NULL AND plan_version_no IS NULL)
+ OR (source_kind='PLAN' AND reservation_no IS NULL AND activity_no IS NULL AND activity_version_no IS NULL AND plan_no IS NOT NULL AND plan_version_no IS NOT NULL)
+ OR (source_kind='ISSUER_RELEASE' AND reservation_no IS NULL AND plan_no IS NULL AND plan_version_no IS NULL AND activity_no IS NOT NULL AND activity_version_no IS NOT NULL
+     AND customer_no IS NOT NULL AND issuer_no IS NOT NULL AND issuer_version_no IS NOT NULL AND release_no IS NOT NULL AND tier_no IS NOT NULL AND collection_entity_no IS NOT NULL AND settlement_entity_no IS NOT NULL)
 )
 );
 
@@ -8483,6 +8486,7 @@ CREATE TABLE IF NOT EXISTS mch_brand
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    stored_value_status VARCHAR(24) NOT NULL DEFAULT 'NONE',
     CONSTRAINT mch_brand_uk_1 UNIQUE (tenant_no,brand_no),
     CONSTRAINT mch_brand_uk_2 UNIQUE (tenant_no,management_no,name_key),
     CONSTRAINT mch_brand_uk_3 UNIQUE (tenant_no,management_no,create_key)
@@ -8858,7 +8862,7 @@ CREATE TABLE IF NOT EXISTS sv_release
     CONSTRAINT uk_4 UNIQUE (tenant_no,issuer_no,activity_no,release_index),
     CONSTRAINT uk_5 UNIQUE (tenant_no,legacy_plan_version_no),
     CONSTRAINT ck_sv_release_source CHECK (
- (source_kind='V2_ACTIVITY' AND activity_no IS NOT NULL AND draft_revision_no IS NOT NULL)
+ ((CASE source_kind WHEN 'V2_ACTIVITY' THEN TRUE WHEN 'V2_BRAND_ACTIVITY' THEN TRUE ELSE CASE WHEN source_kind IS NULL THEN NULL ELSE FALSE END END) AND activity_no IS NOT NULL AND draft_revision_no IS NOT NULL)
  OR (source_kind='LEGACY_PLAN' AND legacy_plan_version_no IS NOT NULL)
  OR (source_kind='LEGACY_ACTIVITY' AND activity_no IS NOT NULL AND legacy_activity_version_no IS NOT NULL AND activity_version_no IS NOT NULL AND activity_version_no=legacy_activity_version_no)
 )
@@ -8895,7 +8899,7 @@ CREATE TABLE IF NOT EXISTS sv_issue_quota
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
     quota_no VARCHAR(64) NOT NULL,
-    store_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NULL,
     currency VARCHAR(8) NOT NULL,
     outstanding_minor BIGINT NOT NULL,
     reserved_minor BIGINT NOT NULL,
@@ -8905,10 +8909,13 @@ CREATE TABLE IF NOT EXISTS sv_issue_quota
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NULL,
+    CONSTRAINT uk_sv_quota_issuer UNIQUE (tenant_no,issuer_no,currency),
     CONSTRAINT sv_issue_quota_uk_1 UNIQUE (tenant_no,quota_no),
     CONSTRAINT sv_issue_quota_uk_2 UNIQUE (tenant_no,store_no,currency),
     CHECK (outstanding_minor>=0 AND reserved_minor>=0),
-    CHECK (outstanding_minor<=9223372036854775807-reserved_minor)
+    CHECK (outstanding_minor<=9223372036854775807-reserved_minor),
+    CONSTRAINT ck_sv_quota_scope CHECK ((store_no IS NOT NULL AND issuer_no IS NULL) OR (store_no IS NULL AND issuer_no IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS sv_issue_quota_reservation
@@ -9304,7 +9311,7 @@ CREATE TABLE IF NOT EXISTS pmt_sv_release_link
     tenant_no VARCHAR(32) NOT NULL,
     link_no VARCHAR(64) NOT NULL,
     management_no VARCHAR(64) NOT NULL,
-    store_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NULL,
     entity_no VARCHAR(64) NOT NULL,
     activity_no VARCHAR(64) NOT NULL,
     draft_revision_no VARCHAR(64) NOT NULL,
@@ -9328,6 +9335,8 @@ CREATE TABLE IF NOT EXISTS pmt_sv_release_link
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    scope_type VARCHAR(24) NOT NULL DEFAULT 'STORE',
+    scope_no VARCHAR(64) NULL,
     CONSTRAINT uk_sv_link_no UNIQUE (tenant_no,link_no),
     CONSTRAINT uk_sv_link_draft UNIQUE (tenant_no,activity_no,draft_revision_no),
     CONSTRAINT uk_sv_link_version UNIQUE (tenant_no,activity_version_no),
@@ -9346,7 +9355,7 @@ CREATE TABLE IF NOT EXISTS pmt_sv_approval
     activity_no VARCHAR(64) NOT NULL,
     draft_revision_no VARCHAR(64) NOT NULL,
     draft_hash CHAR(64) NOT NULL,
-    store_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NULL,
     management_no VARCHAR(64) NOT NULL,
     submitted_by VARCHAR(64) NOT NULL,
     submitted_principal VARCHAR(64) NOT NULL,
@@ -9366,6 +9375,8 @@ CREATE TABLE IF NOT EXISTS pmt_sv_approval
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    scope_type VARCHAR(24) NOT NULL DEFAULT 'STORE',
+    scope_no VARCHAR(64) NULL,
     CONSTRAINT uk_sv_approval_no UNIQUE (tenant_no,approval_no),
     CONSTRAINT uk_sv_approval_draft UNIQUE (tenant_no,activity_no,draft_revision_no),
     CONSTRAINT ck_sv_approval_status CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'APPROVED' THEN TRUE WHEN 'RETURNED' THEN TRUE WHEN 'STALE' THEN TRUE WHEN 'BLOCKED_POLICY' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
@@ -9606,6 +9617,81 @@ CREATE TABLE IF NOT EXISTS ord_manual_price_adjustment
     CONSTRAINT uk_manual_adjustment_no UNIQUE (adjustment_no),
     CONSTRAINT uk_manual_adjustment_key UNIQUE (tenant_no,entity_no,store_no,operation_key),
     CHECK (discount_minor > 0)
+);
+
+CREATE TABLE IF NOT EXISTS sv_clearing_entry
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    clearing_no VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    usage_no VARCHAR(64) NOT NULL,
+    allocation_no VARCHAR(64) NOT NULL,
+    lot_no VARCHAR(64) NOT NULL,
+    release_no VARCHAR(64) NOT NULL,
+    issuer_version_no VARCHAR(64) NOT NULL,
+    recharge_store_no VARCHAR(64) NOT NULL,
+    redemption_store_no VARCHAR(64) NOT NULL,
+    payer_entity_no VARCHAR(64) NOT NULL,
+    payee_entity_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    principal_used_minor BIGINT NOT NULL,
+    bonus_used_minor BIGINT NOT NULL,
+    payable_minor BIGINT NOT NULL,
+    issuer_borne_minor BIGINT NOT NULL,
+    entry_type VARCHAR(24) NOT NULL,
+    original_clearing_no VARCHAR(64) NULL,
+    decision_no VARCHAR(64) NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    source_event_key CHAR(64) NOT NULL,
+    content_hash CHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_sv_clearing_no UNIQUE (tenant_no,clearing_no),
+    CONSTRAINT uk_sv_clearing_source UNIQUE (tenant_no,source_event_key),
+    CHECK ((CASE entry_type WHEN 'USE' THEN TRUE WHEN 'REVERSAL' THEN TRUE WHEN 'ADJUSTMENT' THEN TRUE ELSE CASE WHEN entry_type IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (entry_type<>'USE' OR (principal_used_minor>=0 AND bonus_used_minor>=0 AND principal_used_minor+bonus_used_minor>0 AND payable_minor>=0 AND payable_minor<=principal_used_minor AND issuer_borne_minor=bonus_used_minor AND original_clearing_no IS NULL AND decision_no IS NULL))
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_activity_owner
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    activity_no VARCHAR(64) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    brand_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_pmt_brand_activity UNIQUE (tenant_no,activity_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_brand_financial_activation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    activation_no VARCHAR(64) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    brand_no VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    source_revision BIGINT NOT NULL,
+    command_key VARCHAR(64) NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_brand_financial_activation UNIQUE (tenant_no,activation_no),
+    CONSTRAINT uk_brand_financial_subject UNIQUE (tenant_no,brand_no),
+    CHECK ((CASE status WHEN 'PREPARING' THEN TRUE WHEN 'ACTIVE' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 -- 种子数据
@@ -15136,3 +15222,5 @@ INSERT IGNORE INTO sys_function_point
      matrix_code,point_type,sort,created_at,updated_at)
 VALUES ('OPS_PRICING_TAX_UPDATE','OPS_SYSTEM','维护默认税配置','结账配置',NULL,
         'pricing:tax:update','pricing:tax:update','IMPLEMENTED',0,'P-4.2','ACTION',92,NOW(),NOW());
+UPDATE pmt_sv_release_link SET scope_no=store_no WHERE scope_type='STORE';
+UPDATE pmt_sv_approval SET scope_no=store_no WHERE scope_type='STORE';

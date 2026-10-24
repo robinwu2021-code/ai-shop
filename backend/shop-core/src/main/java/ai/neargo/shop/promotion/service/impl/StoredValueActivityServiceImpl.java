@@ -16,6 +16,7 @@ import ai.neargo.shop.promotion.service.StoredValueActivityJournal;
 import ai.neargo.shop.promotion.service.StoredValueActivityModels;
 import ai.neargo.shop.promotion.service.StoredValueActivityService;
 import ai.neargo.shop.spi.entitlement.ContractChecks;
+import ai.neargo.shop.spi.storedvalue.StoredValuePolicies.BrandScope;
 import ai.neargo.shop.spi.storedvalue.StoredValueReleases.Activate;
 import ai.neargo.shop.spi.storedvalue.StoredValueReleases.Check;
 import ai.neargo.shop.spi.storedvalue.StoredValueReleases.Prepare;
@@ -33,16 +34,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class StoredValueActivityServiceImpl implements StoredValueActivityService {
  private final ActivityVersionService activities;private final StoredValueActivityJournal journal;private final StoredValueActivityFinancePort pay;
  public StoredValueActivityServiceImpl(ActivityVersionService activities,StoredValueActivityJournal journal,StoredValueActivityFinancePort pay){this.activities=activities;this.journal=journal;this.pay=pay;}
- public ActivityView save(Scope scope,SaveDraft command,String key){validate(scope,command.definition());var saved=activities.saveDraft(scope.actor(),command,key);journal.invalidateOlder(scope,saved.activityNo());return saved;}
+ public ActivityView save(Scope scope,SaveDraft command,String key){validate(scope,command.definition());supportedProgram(command.definition());var saved=activities.saveDraft(scope.actor(),command,key);journal.invalidateOlder(scope,saved.activityNo());return saved;}
 
  public Detail detail(Scope scope,String activity){var value=get(scope,activity);return new Detail(value,journal.latest(scope,activity));}
  public ActivityView get(Scope scope,String activity){var view=activities.get(scope.actor(),activity);validate(scope,view.definition());return view;}
  public ai.neargo.shop.common.PageData<ActivityView> list(Scope scope,String status,long page,long size){return activities.list(scope.actor(),"RECHARGE",status,page,size);}
- public Check check(Scope scope,String activity,long revision){var draft=get(scope,activity);requireRevision(draft,revision);return pay.check(command(scope,draft,"SV_CHECK"));}
+ public Check check(Scope scope,String activity,long revision){var draft=get(scope,activity);requireRevision(draft,revision);supportedProgram(draft.definition());return pay.check(command(scope,draft,"SV_CHECK"));}
  public Submission submit(Scope scope,String activity,long revision,String key){
   var draft=get(scope,activity);var prior=journal.find(scope,activity,revision);
   if(prior!=null)return resume(scope,prior,draft);
-  requireRevision(draft,revision);var check=pay.check(command(scope,draft,"SV_CHECK"));if(!check.allowed())throw BizException.of(ErrorCode.CONFLICT);
+  requireRevision(draft,revision);supportedProgram(draft.definition());var check=pay.check(command(scope,draft,"SV_CHECK"));if(!check.allowed())throw BizException.of(ErrorCode.CONFLICT);
   var saved=journal.register(scope,draft,check.policy(),key);return resume(scope,saved,draft);
  }
  public Submission resume(Scope scope,Submission progress,ActivityView draft){
@@ -85,8 +86,12 @@ public class StoredValueActivityServiceImpl implements StoredValueActivityServic
   return new Prepare(scope.policyScope(),scope.entityNo(),scope.actorNo(),submittedBy,d.name(),draft.activityNo(),Long.toString(draft.revision()),journal.hash(d),d.schedule().startAt(),d.schedule().endAt(),d.schedule().zone(),d.rule().tiers().stream().map(t->new Tier(t.tierNo(),t.payAmountMinor(),t.bonusAmountMinor())).toList(),key);
  }
  private void validate(Scope scope,UnifiedActivityDefinition d){
-  ContractChecks.present(d);ContractChecks.require("RECHARGE".equals(d.scene())&&scope.policyScope().currency().equals(d.currency())&&d.storeParticipationScope()!=null&&"STORES".equals(d.storeParticipationScope().mode())&&List.of(scope.policyScope().storeNo()).equals(d.storeParticipationScope().refs())&&d.schedule()!=null&&d.schedule().startAt()!=null&&d.schedule().endAt()!=null&&d.rule()!=null&&!d.rule().tiers().isEmpty());
-  for(var tier:d.rule().tiers())ContractChecks.require(tier.redemptionScope()!=null&&"STORES".equals(tier.redemptionScope().mode())&&List.of(scope.policyScope().storeNo()).equals(tier.redemptionScope().refs()));
+  ContractChecks.present(d);ContractChecks.require("RECHARGE".equals(d.scene())&&scope.policyScope().currency().equals(d.currency())&&d.storeParticipationScope()!=null&&(scope.policyScope() instanceof BrandScope?"ALL".equals(d.storeParticipationScope().mode())&&d.storeParticipationScope().refs().isEmpty():"STORES".equals(d.storeParticipationScope().mode())&&List.of(scope.policyScope().storeNo()).equals(d.storeParticipationScope().refs()))&&d.schedule()!=null&&d.schedule().startAt()!=null&&d.schedule().endAt()!=null&&d.rule()!=null&&!d.rule().tiers().isEmpty());
+  for(var tier:d.rule().tiers())ContractChecks.require(tier.redemptionScope()!=null&&(scope.policyScope() instanceof BrandScope?"ALL".equals(tier.redemptionScope().mode())&&tier.redemptionScope().refs().isEmpty():"STORES".equals(tier.redemptionScope().mode())&&List.of(scope.policyScope().storeNo()).equals(tier.redemptionScope().refs())));
+ }
+ private void supportedProgram(UnifiedActivityDefinition d){
+  // These tier programs never silently ignore marketing audience/budget/quota promises.
+  if(d.audienceRef()!=null||d.quotaLimit()!=null||d.budgetLimitMinor()!=null||d.perUserLimit()!=Integer.MAX_VALUE||!d.rule().benefits().isEmpty())throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
  }
  private void requireRevision(ActivityView draft,long revision){if(draft.revision()!=revision||!"DRAFT".equals(draft.status()))throw BizException.of(ErrorCode.CONFLICT);}
 }

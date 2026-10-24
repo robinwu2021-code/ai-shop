@@ -95,7 +95,7 @@ public class BizStoredValueMerchantQueryController {
         return new AccountView(a.accountRef(),p==null?"顾客":p.maskedName(),p==null?"":p.maskedPhone(),a.currency(),
                 a.balanceMinor(),a.heldMinor(),a.availableMinor(),a.lastOccurredAt(),a.lastRechargeAt());
     }
-    private static RecordView record(StoredValueMerchantViews.Record r,StoredValueCustomerProfilePort.Profile p){
+    static RecordView record(StoredValueMerchantViews.Record r,StoredValueCustomerProfilePort.Profile p){
         return new RecordView(r.recordNo(),p==null?"顾客":p.maskedName(),p==null?"":p.maskedPhone(),r.type(),r.title(),r.storeNo(),r.storeName(),
                 r.currency(),r.signedAmountMinor(),r.balanceAfterMinor(),r.occurredAt(),r.businessNo(),r.planNo(),r.versionNo(),r.paidAmountMinor(),r.bonusAmountMinor(),r.documentNo(),r.voucherDocumentNo());
     }

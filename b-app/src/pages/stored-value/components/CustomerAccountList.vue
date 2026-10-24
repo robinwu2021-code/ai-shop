@@ -12,9 +12,9 @@ const props=defineProps<{planNo?:string}>();
 const {t}=useI18n();const merchant=useMerchantStore();const keyword=ref(''),query=ref(''),validation=ref('');
 interface CustomerRow {key:string;source:SvSelectionSource;name:string;phone:string;account:SvCandidate['account'];lastRechargeAt?:string|null;sourceStoreName?:string|null}
 const {records,cursor,loading,error,load,invalidate}=useStoredValueList<CustomerRow>(()=>merchant.storeNo,async c=>{
- if(query.value){
-  const page=await api.mScopeCandidates(merchant.storeNo,{keyword:query.value,cursor:c});identityConflicts.value=page.identityConflictCount;
-  return {records:page.items.flatMap(a=>a.memberNo?[{key:a.memberNo,source:{type:'MEMBER',memberNo:a.memberNo,memberScope:'OPERATING'} as SvSelectionSource,name:a.displayName,phone:a.phoneMasked,account:a.account,sourceStoreName:a.sourceStoreName}]:[]),nextCursor:page.nextCursor,hasMore:!!page.nextCursor};
+ if(query.value||merchant.can('biz:customer')){
+  const page=await api.mScopeCandidates(merchant.storeNo,{...(query.value?{keyword:query.value}:{}),cursor:c});identityConflicts.value=page.identityConflictCount;
+  return {records:page.items.flatMap<CustomerRow>(a=>a.memberNo?[{key:a.memberNo,source:{type:'MEMBER',memberNo:a.memberNo,memberScope:'OPERATING'} as SvSelectionSource,name:a.displayName,phone:a.phoneMasked,account:a.account,sourceStoreName:a.sourceStoreName,lastRechargeAt:a.lastRechargeAt}]:a.account?[{key:a.account.accountRef,source:{type:'ACCOUNT',accountRef:a.account.accountRef} as SvSelectionSource,name:a.displayName,phone:a.phoneMasked,account:a.account,lastRechargeAt:a.lastRechargeAt}]:[]),nextCursor:page.nextCursor,hasMore:!!page.nextCursor};
  }
  identityConflicts.value=0;
  if(!merchant.can('pay:sv:account:read'))return {records:[],nextCursor:null,hasMore:false};
@@ -38,9 +38,9 @@ watch(keyword,value=>{
  if(text.length>=(/^[0-9]+$/.test(text)?3:2)){typing.value=true;suggestTimer=setTimeout(search,350);}
 });
 onUnmounted(()=>clearTimeout(suggestTimer));
-function checkPending(){const scope=`${merchant.profile?.merchantNo}:${merchant.storeNo}`;pending.value=!!(uni.getStorageSync(`sv.recharge:${scope}`)||uni.getStorageSync(`sv.offline:${scope}`)||uni.getStorageSync(`sv.offline.v2:${scope}`));}
-function refresh(){checkPending();return load();}
-watch(()=>merchant.storeNo,()=>{keyword.value='';query.value='';validation.value='';identityConflicts.value=0;clearTimeout(suggestTimer);checkPending();},{flush:'sync'});
+async function checkPending(){const actor=await api.mManagementContext();const scope=`${merchant.profile?.merchantNo}:${merchant.storeNo}`;pending.value=!!uni.getStorageSync(`sv.offline.v3:${scope}:${actor.actorKey}`);}
+function refresh(){void checkPending().catch(()=>{pending.value=false});return load();}
+watch(()=>merchant.storeNo,()=>{keyword.value='';query.value='';validation.value='';identityConflicts.value=0;clearTimeout(suggestTimer);void checkPending().catch(()=>{pending.value=false});},{flush:'sync'});
 onMounted(()=>void refresh());defineExpose({refresh});
 </script>
 <template><view class="sv-list">

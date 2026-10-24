@@ -79,6 +79,7 @@ public class ManagementRepository {
  }
  public List<String> stringList(String value){return json.readValue(value,json.getTypeFactory().constructCollectionType(List.class,String.class));}
  public String encode(Object value){return json.writeValueAsString(value);}
+ public <T>T decode(String value,Class<T> type){return json.readValue(value,type);}
  @SuppressWarnings("unchecked") public Map<String,Object> decode(Object value){
   if(value instanceof Map<?,?> map)return (Map<String,Object>)map;
   if(value instanceof byte[] bytes)value=new String(bytes,StandardCharsets.UTF_8);

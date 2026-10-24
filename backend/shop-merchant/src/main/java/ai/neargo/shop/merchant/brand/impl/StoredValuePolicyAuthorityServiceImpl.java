@@ -97,6 +97,7 @@ public class StoredValuePolicyAuthorityServiceImpl implements StoredValuePolicyA
         scopes.resolve(actor,management);scopes.require(actor,management,"STORE",store,permission);
         return activityFacts(actor,management,store,currency);
     }
+    public boolean canApproval(Actor actor,String management){scopes.resolve(actor,management);return scopes.can(actor,management,"SPACE",management,"sv.store.activity.approve");}
     public void requireApproval(Actor actor,String management){scopes.resolve(actor,management);scopes.require(actor,management,"SPACE",management,"sv.store.activity.approve");}
     public ActivityAuthority approval(Actor actor,String management,String store,String currency){requireApproval(actor,management);return activityFacts(actor,management,store,currency);}
     private ActivityAuthority activityFacts(Actor actor,String management,String store,String currency){

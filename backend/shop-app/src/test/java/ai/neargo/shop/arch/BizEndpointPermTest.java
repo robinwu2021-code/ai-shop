@@ -561,6 +561,13 @@ class BizEndpointPermTest {
          */
         put("/biz/plan", BizPerms.STORE_ADMIN);
         put("/biz/plan/trial", BizPerms.STORE_ADMIN);
+        // P5 wallet reads and consumption recovery keep their existing scoped business permissions.
+        put("/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts", BizPerms.SV_ACCOUNT_READ);
+        put("/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records", BizPerms.SV_ACCOUNT_READ);
+        put("/biz/stored-value/consumptions/orders/{orderNo}", BizPerms.SV_CONSUME_CREATE);
+        put("/biz/stored-value/consumptions/orders/{orderNo}/cancel", BizPerms.SV_CONSUME_CREATE);
+        put("/biz/stored-value/consumptions/resolve", BizPerms.SV_CONSUME_CREATE);
+
 
         // The syntax parser also recognizes fully qualified mapping/permission annotations.
         put("/biz/stores/{storeNo}/fulfillment/{channel}/impact", BizPerms.STORE);

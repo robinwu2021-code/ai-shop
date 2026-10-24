@@ -599,7 +599,49 @@
         "MP02"
       ],
       "planFile": "2026-10-21-brand-stored-value-brand-redemption.md",
-      "status": "NOT_STARTED"
+      "status": "COMPATIBILITY_PUBLISHED_ENABLEMENT_BLOCKED_P3",
+      "publication": {
+        "sourceSha": "659e065f2585bdfca7aafbc66af5c3a7cab5df28",
+        "coreHealth": 200,
+        "coreShape": "food-embedded",
+        "paySourceSha": "659e065f2585bdfca7aafbc66af5c3a7cab5df28",
+        "bH5": "659e065f2",
+        "cH5": "659e065f2",
+        "site": "9f9f2fce1",
+        "migrationVersions": [
+          570,
+          571,
+          572,
+          573,
+          574
+        ],
+        "apkVersion": "0.6.3",
+        "apkCode": 336,
+        "apkMd5": "53242c87015efe33796a951553a76bce",
+        "apkBytes": 55535872,
+        "mpVersion": "0.1.152",
+        "mpSource": "5997a34f2",
+        "mpIncludesBiz": true,
+        "mpUploaded": true,
+        "mpPublicRelease": false,
+        "financialEnablement": false,
+        "historicalRecharge": "DEFERRED_UNCHANGED",
+        "balanceTotalMinor": 36000,
+        "receivedCount": 1,
+        "issuerCount": 0
+      },
+      "verification": {
+        "businessJavaCases": 37,
+        "contractAssertions": 3,
+        "bCases": 31,
+        "cCases": 10,
+        "nativeMysqlCases": 3,
+        "reviewFindingsFixed": 2,
+        "deferredMinors": 0,
+        "fullRegression": false,
+        "physicalDevice": "ADB_EMPTY",
+        "wechatRealSending": "TEMPLATE_UNCONFIGURED"
+      }
     },
     {
       "id": "P6",
@@ -706,7 +748,7 @@
         "CL12"
       ],
       "planFile": "2026-10-21-brand-stored-value-settlement-reporting.md",
-      "status": "NOT_STARTED"
+      "status": "PREPARING_IMPLEMENTATION"
     }
   ],
   "apiFirstDelivery": {
@@ -876,10 +918,11 @@
     }
   },
   "nextStagePreparation": {
-    "stage": "P5",
-    "status": "SOURCE_INVENTORY_IN_PROGRESS",
-    "planFile": "2026-10-21-brand-stored-value-brand-redemption.md",
-    "releaseDependsOn": "P3 controlled cutover signoff; P6 before cross-entity activation",
-    "testOrder": "All phase coding and compilation, then one focused chain; no unaffected reruns"
+    "stage": "P6",
+    "status": "PREPARING_IMPLEMENTATION",
+    "planFile": "2026-10-21-brand-stored-value-settlement-reporting.md",
+    "releaseDependsOn": "P5 compatibility published; actual financial opening remains blocked by P3 historical-original decision",
+    "testOrder": "Complete all phase coding and compilation, then one focused chain; no unrelated reruns",
+    "scope": "Reports, bills, disputes, payment registration/independent receipt, organization membership saga, cross-entity readiness"
   }
 }

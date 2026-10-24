@@ -132,6 +132,8 @@ const LINEAGE: Hop[] = [
 const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
   // Current merchant, stored-value, pricing and print migration ownership.
   first_store_no: { table: "mch_store", col: "store_no" },
+  // Original recharge store remains the same merchant-store identity in lots and clearing entries.
+  recharge_store_no: { table: "mch_store", col: "store_no" },
   execution_no: { table: "ord_refund_execution" },
   customer_no: { table: "sv_customer_identity" },
   issuer_no: { table: "sv_issuer" },

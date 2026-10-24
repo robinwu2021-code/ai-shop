@@ -136,3 +136,14 @@ describe("已发布资源命名空间边界", () => {
     expect(usesPluralCollections("/biz/stores/lookup/activities/{activity}")).toBe(false);
   });
 });
+
+describe("P5已发布URL兼容边界", () => {
+  it("精确兼容不放行陌生的同类订单路径", () => {
+    const known = new Set(readFileSync(join(ROOT, LIST), "utf8").split("\n").map(line => line.trim()));
+    for (const path of ["/biz/stored-value/consumptions/orders/{orderNo}/future-action", "/mp/entitlement-service-orders/{orderNo}/future-action", "/mp/orders/{orderNo}/new-authorizations"]) {
+      const bad = resourcePluralityOffenders(path);
+      expect(bad.length).toBeGreaterThan(0);
+      expect(bad.filter(segment => !known.has(`${path}  ${segment}`)).length).toBeGreaterThan(0);
+    }
+  });
+});

@@ -260,7 +260,9 @@ describe("小程序的块间缝：顶层组件也要在名单上", () => {
     // createCanvasContext 要求节点真在文档里 —— 所以宿主节点一直在，更不能给它外边距
     "biz-poster",
     // Stored-value recharge is rooted in sh-sheet; its host must not receive flow spacing.
-    "stored-value-recharge-sheet"]);
+    "stored-value-recharge-sheet",
+    // Consumer confirmation is also rooted in sh-sheet, outside document flow.
+    "stored-value-service-sheet"]);
 
   /** base.css 里**所有** `#ifdef MP-WEIXIN` 段拼起来 —— 不能只取第一段：
    *  2026-09-06 在块间缝那段之前又插了一段（button::after 重置），

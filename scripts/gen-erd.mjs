@@ -68,6 +68,7 @@ const DOMAINS = [
  */
 export const KEY_OWNERS = {
   first_store_no: "mch_store",
+  recharge_store_no: "mch_store",
   execution_no: "ord_refund_execution",
   customer_no: "sv_customer_identity",
   issuer_no: "sv_issuer",

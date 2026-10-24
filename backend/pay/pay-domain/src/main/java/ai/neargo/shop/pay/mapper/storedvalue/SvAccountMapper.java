@@ -31,7 +31,7 @@ public interface SvAccountMapper extends BaseMapper<SvAccount> {
     SvAccount lockAccount(@Param("tenant") String tenant,@Param("account") String account);
 
     @Select("SELECT COUNT(*)>0 FROM sv_account WHERE tenant_no=#{tenant} AND user_no=#{user} "
-            + "AND entity_no=#{entity} AND currency=#{currency} AND store_no IS NULL AND deleted=0")
+            + "AND entity_no=#{entity} AND currency=#{currency} AND store_no IS NULL AND issuer_no IS NULL AND deleted=0")
     boolean hasLegacyAccount(@Param("tenant") String tenant, @Param("user") String user,
             @Param("entity") String entity, @Param("currency") String currency);
 }

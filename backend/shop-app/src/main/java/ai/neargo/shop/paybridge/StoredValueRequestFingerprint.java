@@ -14,6 +14,8 @@ public class StoredValueRequestFingerprint {
         this.json = json;
     }
 
+    public String issuerOption(String optionRef) { return ActivityCommandDeduplicator.hash(json.writeValueAsString(optionRef)); }
+
     public String reference(String customerRef, String storeNo, String planNo, String versionNo) {
         return ActivityCommandDeduplicator.hash(
                 json.writeValueAsString(List.of(customerRef, storeNo, planNo, versionNo)));

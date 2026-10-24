@@ -977,81 +977,123 @@ export interface SvIssuerRechargeOptionsQuery {
 
 import type {SvPolicyRules,SvPolicyTarget,SvActivityDefinition} from './stored-value-governance';
 export interface SvGovernanceManagement {
-  /** Management-space identifier under which the operation is authorized. */
-  managementNo:string}
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string}
 export interface SvGovernancePolicyQuery {
-  /** Management-space identifier under which the operation is authorized. */
-  managementNo:string;
-  /** ISO currency code determining the interpretation of monetary amounts. */
-  currency:CurrencyCode;
-  /** Whether the governance policy applies to a space, brand stores or a single store. */
-  targetType?:SvPolicyTarget;
-  /** Business identifier selected by the policy's targetType. */
-  targetNo?:string}
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string;
+/** ISO currency code determining the interpretation of monetary amounts. */
+currency:CurrencyCode;
+/** Whether the governance policy applies to a space, brand stores or a single store. */
+targetType?:SvPolicyTarget;
+/** Business identifier selected by the policy's targetType. */
+targetNo?:string}
 export interface SvGovernancePolicyCreate {
-  /** Management-space identifier under which the operation is authorized. */
-  managementNo:string;
-  /** Whether the governance policy applies to a space, brand stores or a single store. */
-  targetType:SvPolicyTarget;
-  /** Business identifier selected by the policy's targetType. */
-  targetNo:string;
-  /** ISO currency code determining the interpretation of monetary amounts. */
-  currency:CurrencyCode;
-  /** Effective stored-value issuance limits and approval requirements. */
-  rules:SvPolicyRules}
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string;
+/** Whether the governance policy applies to a space, brand stores or a single store. */
+targetType:SvPolicyTarget;
+/** Business identifier selected by the policy's targetType. */
+targetNo:string;
+/** ISO currency code determining the interpretation of monetary amounts. */
+currency:CurrencyCode;
+/** Effective stored-value issuance limits and approval requirements. */
+rules:SvPolicyRules}
 export interface SvGovernancePolicyEdit {
-  /** Management-space identifier under which the operation is authorized. */
-  managementNo:string;
-  /** Proposed policy revision and its optimistic concurrency check. */
-  edit:{rules:SvPolicyRules;expectedRevision:number}}
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string;
+/** Proposed policy revision and its optimistic concurrency check. */
+edit:{
+/** Effective stored-value issuance limits and approval requirements. */
+rules:SvPolicyRules;
+/** Previously observed resource revision; stale writes are rejected. */
+expectedRevision:number}}
 export interface SvGovernanceStoreQuery {
-  /** Management-space identifier under which the operation is authorized. */
-  managementNo:string;
-  /** ISO currency code determining the interpretation of monetary amounts. */
-  currency:CurrencyCode}
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string;
+/** ISO currency code determining the interpretation of monetary amounts. */
+currency:CurrencyCode}
 export interface SvGovernanceContextQuery extends SvGovernanceStoreQuery {
-  /** Requested governance capability: read-only inspection or management. */
-  intent:'READ'|'MANAGE'}
+/** Requested governance capability: read-only inspection or management. */
+intent:'READ'|'MANAGE'}
 export interface SvGovernanceScheduleQuery extends SvGovernanceStoreQuery {
-  /** Inclusive first business date in YYYY-MM-DD format. */
-  startDate:string;
-  /** Inclusive final business date in YYYY-MM-DD format. */
-  endDate:string}
+/** Inclusive first business date in YYYY-MM-DD format. */
+startDate:string;
+/** Inclusive final business date in YYYY-MM-DD format. */
+endDate:string}
 export interface SvGovernancePresetQuery extends SvGovernanceStoreQuery {
-  /** One-based page index for the returned or requested result. */
-  page?:number;
-  /** Maximum records per page requested or returned by the server. */
-  size?:number}
+/** One-based page index for the returned or requested result. */
+page?:number;
+/** Maximum records per page requested or returned by the server. */
+size?:number}
 export interface SvGovernanceActivityQuery extends SvGovernanceStoreQuery {
-  /** Current server-owned lifecycle state of this resource. */
-  status?:string;
-  /** One-based page index for the returned or requested result. */
-  page?:number;
-  /** Maximum records per page requested or returned by the server. */
-  size?:number}
+/** Current server-owned lifecycle state of this resource. */
+status?:string;
+/** One-based page index for the returned or requested result. */
+page?:number;
+/** Maximum records per page requested or returned by the server. */
+size?:number}
 export interface SvGovernanceDraft {
-  /** Management-space identifier under which the operation is authorized. */
-  managementNo:string;
-  /** Versioned activity definition, including schedule, scope and recharge tiers. */
-  definition:SvActivityDefinition;
-  /** Previously observed resource revision; stale writes are rejected. */
-  expectedRevision?:number}
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string;
+/** Versioned activity definition, including schedule, scope and recharge tiers. */
+definition:SvActivityDefinition;
+/** Previously observed resource revision; stale writes are rejected. */
+expectedRevision?:number}
 export interface SvGovernanceCommand extends SvGovernanceStoreQuery {
-  /** Previously observed resource revision; stale writes are rejected. */
-  expectedRevision:number}
+/** Previously observed resource revision; stale writes are rejected. */
+expectedRevision:number}
 export interface SvGovernanceApprovalQuery {
-  /** Management-space identifier under which the operation is authorized. */
-  managementNo:string;
-  /** Current server-owned lifecycle state of this resource. */
-  status?:string;
-  /** Opaque continuation cursor from the preceding page; omit for the first page. */
-  cursor?:string;
-  /** Maximum records per page requested or returned by the server. */
-  size?:number}
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string;
+/** Current server-owned lifecycle state of this resource. */
+status?:string;
+/** Opaque continuation cursor from the preceding page; omit for the first page. */
+cursor?:string;
+/** Maximum records per page requested or returned by the server. */
+size?:number}
 export interface SvGovernanceDecision {
-  /** Management-space identifier under which the operation is authorized. */
-  managementNo:string;
-  /** Approval or return decision submitted for the current revision. */
-  decision:{
-  /** Approval or return decision submitted for the current revision. */
-  decision:'APPROVE'|'RETURN';reason:string;expectedRevision:number}}
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string;
+/** Approval or return decision submitted for the current revision. */
+decision:{
+/** Approval or return decision submitted for the current revision. */
+decision:'APPROVE'|'RETURN';
+/** Machine-readable eligibility or rejection reason for the quote. */
+reason:string;
+/** Previously observed resource revision; stale writes are rejected. */
+expectedRevision:number}}
+
+export type {SvConsumptionCreate} from './stored-value-types';
+export interface SvConsumptionStoreQuery {
+/** Store identifier for the service or ledger record; null when no single store applies. */
+storeNo:string}
+export interface SvConsumptionSubmit {
+/** Original service order identifier; retries keep this same order. */
+orderNo:string;
+/** Previously confirmed service order revision; stale submissions are rejected. */
+orderRevision:number;
+/** Server-issued selected-customer reference authorizing this operation. */
+customerRef:string;
+/** Reserved customer authorization reference; merchant submission currently requires null. */
+authorizationRef:null}
+export interface SvWalletRecordsQuery {
+/** Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier. */
+issuerRef:string;
+/** Opaque account selection reference bound to the selected customer and issuer. */
+accountRef:string;
+/** Requested stored-value record classification; ALL disables the classification filter. */
+type:'ALL'|'RECHARGE'|'REDEMPTION';
+/** Inclusive first business date in YYYY-MM-DD format. */
+startDate?:string;
+/** Inclusive final business date in YYYY-MM-DD format. */
+endDate?:string;
+/** Opaque continuation cursor; omit for the first page. */
+cursor?:string;
+/** Maximum number of records requested in this page. */
+size?:number}
+export interface SvBrandActivationRequest {
+/** Management-space identifier under which this action is authorized. */
+managementNo:string;
+/** Previously observed resource revision; stale writes are rejected. */
+expectedRevision:number}

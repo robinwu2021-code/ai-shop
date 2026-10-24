@@ -12,9 +12,14 @@ public final class StoredValueConsumerViews {
     public record StoreHeader(String storeNo, String storeName, String businessTimeZone) { }
     public record Filter(String type, LocalDate startDate, LocalDate endDate) { }
     public record Record(String type, String title, String currency, long signedAmountMinor,
-                         Instant occurredAt, String documentNo) { }
+                         Instant occurredAt, String documentNo,String storeNo,String storeName) {
+        public Record(String type,String title,String currency,long signedAmountMinor,Instant occurredAt,String documentNo){this(type,title,currency,signedAmountMinor,occurredAt,documentNo,null,null);}
+    }
     public record Records(StoreHeader store, Filter filter, List<Record> records, String nextCursor,
                           boolean hasMore) { }
+    public record Issuer(String issuerRef,String scopeType,String name,String entityNo,String storeNo,String currency,
+                         String businessTimeZone,String lastType,Instant lastOccurredAt) { }
+    public record IssuerRecords(Issuer issuer,Filter filter,List<Record> records,String nextCursor,boolean hasMore) { }
     /** Internal service-authenticated fact; never returned directly by the consumer controller. */
     public record NotificationFact(String usageNo, String userNo, String storeNo, String storeName,
                                    String title, String currency, long amountMinor, Instant occurredAt,

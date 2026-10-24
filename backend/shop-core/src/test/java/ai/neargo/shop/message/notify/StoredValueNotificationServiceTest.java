@@ -119,6 +119,6 @@ class StoredValueNotificationServiceTest {
     @Test
     void authenticatedPageUsesOnlyEncodedStoreAndDocumentArguments() {
         assertThat(StoredValueNotificationServiceImpl.page("S &1", "D/2"))
-                .isEqualTo("/pages/stored-value-records/index?storeNo=S+%261&focusDocumentNo=D%2F2");
+                .isEqualTo("/pages/stored-value-records/index?focusDocumentNo=D%2F2");
     }
 }

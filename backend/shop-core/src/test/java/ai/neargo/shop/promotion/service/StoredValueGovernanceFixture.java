@@ -18,11 +18,14 @@ class StoredValueGovernanceFixture {
  final Scope submitter=new Scope(policyScope,"E1","MCH:MA1","USER:P1",1),approver=new Scope(policyScope,"E1","MCH:MA2","USER:P2",1);
  final UnifiedActivityDefinition definition;
  StoredValueGovernanceFixture()throws Exception{
-  if(nativeMysql)for(String table:List.of("pmt_sv_approval","pmt_sv_release_link","pmt_activity"))jdbc.execute("DROP TABLE IF EXISTS "+table);
+  if(nativeMysql)for(String table:List.of("pmt_brand_activity_owner","pmt_sv_approval","pmt_sv_release_link","pmt_activity"))jdbc.execute("DROP TABLE IF EXISTS "+table);
   jdbc.execute("CREATE TABLE pmt_activity(tenant_no VARCHAR(32),entity_no VARCHAR(64),activity_no VARCHAR(64) PRIMARY KEY,version BIGINT,status VARCHAR(24),draft_snapshot "+(nativeMysql?"JSON":"VARCHAR(20000)")+",deleted INT DEFAULT 0)");
   var ddl=Files.readString(Path.of("../shop-app/src/main/resources/db/migration/V565__stored_value_activity_governance.sql"));ddl=ddl.substring(ddl.indexOf("CREATE TABLE pmt_sv_release_link"));if(!nativeMysql)ddl=h2Checks(ddl).replace(" JSON"," VARCHAR(20000)").replaceAll(" ENGINE=InnoDB[^;]*","");for(String sql:ddl.split(";"))if(!sql.isBlank())jdbc.execute(sql);
+  var brandDdl=Files.readString(Path.of("../shop-app/src/main/resources/db/migration/V571__stored_value_brand_activity_scope.sql"));
+  if(!nativeMysql)brandDdl=brandDdl.replaceAll(" ENGINE=InnoDB[^;]*","");
+  for(String sql:brandDdl.split(";"))if(!sql.isBlank())jdbc.execute(sql);
   var scope=new RedemptionScope("STORES",List.of("S1"));
-  definition=new UnifiedActivityDefinition("Offer","RECHARGE","AP008",1,scope,null,new UnifiedActivityDefinition.Schedule("ONE_OFF",Instant.now().minusSeconds(60),Instant.now().plusSeconds(86400),"Asia/Shanghai",List.of(),null,null),new UnifiedActivityDefinition.Rule(1,new UnifiedActivityDefinition.Trigger("NONE",null,null),List.of(),List.of(new UnifiedActivityDefinition.Tier("T1",10000,2000,scope))),null,null,10,"CNY");
+  definition=new UnifiedActivityDefinition("Offer","RECHARGE","AP008",1,scope,null,new UnifiedActivityDefinition.Schedule("ONE_OFF",Instant.now().minusSeconds(60),Instant.now().plusSeconds(86400),"Asia/Shanghai",List.of(),null,null),new UnifiedActivityDefinition.Rule(1,new UnifiedActivityDefinition.Trigger("NONE",null,null),List.of(),List.of(new UnifiedActivityDefinition.Tier("T1",10000,2000,scope))),null,null,Integer.MAX_VALUE,"CNY");
   jdbc.update("INSERT INTO pmt_activity VALUES('MAIN','E1','A1',0,'DRAFT',?,0)",json.writeValueAsString(definition));
  }
  ActivityView view(){var row=jdbc.queryForMap("SELECT version,status,draft_snapshot FROM pmt_activity WHERE activity_no='A1'");return new ActivityView("A1",((Number)row.get("version")).longValue(),row.get("status").toString(),"RUNNING".equals(row.get("status"))?"AV1":null,json.readValue(row.get("draft_snapshot").toString(),UnifiedActivityDefinition.class));}

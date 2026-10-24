@@ -5,7 +5,7 @@ import {mount,flushPromises} from '@vue/test-utils';
 import './component-setup';
 const m=vi.hoisted(()=>({load:(_:Record<string,string>)=>{},issuer:vi.fn(),entities:vi.fn(),configure:vi.fn(),impact:vi.fn(),version:vi.fn(),store:vi.fn(),get:vi.fn(),post:vi.fn(),prepare:vi.fn(),context:vi.fn(),resources:vi.fn(),grant:vi.fn()}));
 vi.mock('@dcloudio/uni-app',()=>({onLoad:(f:typeof m.load)=>{m.load=f;}}));
-vi.mock('@/api',()=>({api:{mSvIssuer:m.issuer,mSvIssuerEntities:m.entities,mSvConfigureIssuer:m.configure,mSvIssuerImpact:m.impact,mSvIssuerVersion:m.version,mSvStoreIssuers:m.store,mSvPrepareIssuer:m.prepare,mManagementContext:m.context,mManagementResources:m.resources,mManagementGrant:m.grant}}));
+vi.mock('@/api',()=>({api:{mSvBrandCapability:async()=>({protocol:1,ready:false,blockers:[]}),mSvIssuer:m.issuer,mSvIssuerEntities:m.entities,mSvConfigureIssuer:m.configure,mSvIssuerImpact:m.impact,mSvIssuerVersion:m.version,mSvStoreIssuers:m.store,mSvPrepareIssuer:m.prepare,mManagementContext:m.context,mManagementResources:m.resources,mManagementGrant:m.grant}}));
 vi.mock('@/stores/merchant',()=>({useMerchantStore:()=>({storeNo:'S1'})}));
 vi.mock('vue-i18n',()=>({useI18n:()=>({t:(s:string)=>s})}));
 vi.mock('@shared/net/http-client',async()=>{const actual=await vi.importActual('@shared/net/http-client');return {...actual,http:{get:m.get,post:m.post}};});
@@ -20,7 +20,7 @@ it('uses store and brand endpoints separately and scopes original lookup to the 
 });
 it('opens settlement choice in a bottom sheet and retries the exact unknown save command',async()=>{
  m.configure.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({...config,issuerNo:'I1',issuerVersionNo:'IV1',scopeType:'BRAND',scopeNo:'B1',status:'DRAFT',revision:0});
- const wrapper=mount(Page);m.load({m:'M1',b:'B1'});await flushPromises();
+ const wrapper=mount(Page,{global:{mocks:{$t:(key:string)=>key}}});m.load({m:'M1',b:'B1'});await flushPromises();
  expect(wrapper.find('select').exists()).toBe(false);
  await wrapper.find('[data-testid="issuer-entity"]').trigger('tap');await flushPromises();
  await wrapper.find('[data-testid="issuer-entity-choice"]').trigger('tap');await flushPromises();
@@ -29,31 +29,31 @@ it('opens settlement choice in a bottom sheet and retries the exact unknown save
  await wrapper.find('[data-testid="issuer-save"]').trigger('tap');await flushPromises();
  expect(m.configure).toHaveBeenCalledTimes(2);expect(m.configure.mock.calls[1]).toEqual(m.configure.mock.calls[0]);
  expect(m.configure.mock.calls[0][0]).toBe('BRAND');expect(m.configure.mock.calls[0][2].configuration.routes).toEqual(config.routes);
- expect(wrapper.text()).toContain('issuer.brandDraftOnly');wrapper.unmount();
+ expect(wrapper.text()).toContain('issuer.brandNotReady');wrapper.unmount();
 });
 it('local store view has no brand selector or financial activation action',async()=>{
- const wrapper=mount(Page);m.load({s:'S1',local:'1'});await flushPromises();
+ const wrapper=mount(Page,{global:{mocks:{$t:(key:string)=>key}}});m.load({s:'S1',local:'1'});await flushPromises();
  expect(m.store).toHaveBeenCalledWith('S1');expect(m.issuer).not.toHaveBeenCalled();
  expect(wrapper.find('[data-testid="issuer-save"]').exists()).toBe(false);expect(wrapper.text()).toContain('issuer.storeScope');wrapper.unmount();
 });
 it('blocked configuration never sends a version write',async()=>{
  m.issuer.mockResolvedValue({issuer:{...config,issuerNo:'I1',issuerVersionNo:'IV1',scopeType:'BRAND',scopeNo:'B1',status:'DRAFT',revision:0}});
  m.impact.mockResolvedValue({allowed:false,blockers:['LIABILITY_RULES_LOCKED'],affectedAccountCount:1,hasPending:false});
- const wrapper=mount(Page);m.load({m:'M1',b:'B1'});await flushPromises();
+ const wrapper=mount(Page,{global:{mocks:{$t:(key:string)=>key}}});m.load({m:'M1',b:'B1'});await flushPromises();
  await wrapper.find('[data-testid="issuer-save"]').trigger('tap');await flushPromises();
  expect(m.version).not.toHaveBeenCalled();expect(m.configure).not.toHaveBeenCalled();expect(wrapper.text()).toContain('issuer.blockers.LIABILITY_RULES_LOCKED');wrapper.unmount();
 });
 
 it('requires an explicit owner action before preparing store settings',async()=>{
  m.issuer.mockRejectedValueOnce(Object.assign(new Error('forbidden'),{code:10403})).mockResolvedValue({issuer:null});m.prepare.mockResolvedValue({});
- const wrapper=mount(Page);m.load({m:'M1',s:'S1',prepare:'1'});await flushPromises();
+ const wrapper=mount(Page,{global:{mocks:{$t:(key:string)=>key}}});m.load({m:'M1',s:'S1',prepare:'1'});await flushPromises();
  expect(m.prepare).not.toHaveBeenCalled();
  await wrapper.find('[data-testid="issuer-prepare"]').trigger('tap');await flushPromises();
  expect(m.prepare).toHaveBeenCalledWith('S1','M1');expect(wrapper.find('[data-testid="issuer-save"]').exists()).toBe(true);wrapper.unmount();
 });
 it('explicit settlement authorization precedes selection and financial configuration',async()=>{
  m.entities.mockResolvedValue([{entityNo:'E1',name:'Entity',accepted:false,canAccept:true}]);m.context.mockResolvedValue({actorKey:'USER:U1'});m.resources.mockResolvedValue({items:[],nextCursor:null});m.grant.mockResolvedValue({});
- const wrapper=mount(Page);m.load({m:'M1',b:'B1'});await flushPromises();
+ const wrapper=mount(Page,{global:{mocks:{$t:(key:string)=>key}}});m.load({m:'M1',b:'B1'});await flushPromises();
  expect(m.grant).not.toHaveBeenCalled();
  await wrapper.find('[data-testid="issuer-entity"]').trigger('tap');await wrapper.find('[data-testid="issuer-entity-choice"]').trigger('tap');await flushPromises();
  expect(m.grant).toHaveBeenCalledWith('M1',{actorNo:'USER:U1',resourceType:'ENTITY',resourceNo:'E1',permissionCode:'sv.issuer.settlement.authorize',delegatable:false});expect(m.configure).not.toHaveBeenCalled();wrapper.unmount();

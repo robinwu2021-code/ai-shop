@@ -6,7 +6,23 @@ const records: StoredValueRecord[] = [
   { type: "RECHARGE", title: "日常储值", currency: "CNY", signedAmountMinor: 13000, occurredAt: "2026-10-19T16:20:00Z", documentNo: "PR20261020000001" },
 ];
 function notFound(): never { throw Object.assign(new Error("Not found"), { code: 10404 }); }
-export const storedValueMock: Pick<ShopApi, "storedValueStores" | "storedValueRecords" | "storedValueNotificationCapability"> = {
+export const storedValueMock: Pick<ShopApi, "storedValuePendingServices"|"storedValueService"|"storedValueAuthorize"|"storedValueIssuers"|"storedValueLocateIssuer"|"storedValueIssuerRecords"|"storedValueStores" | "storedValueRecords" | "storedValueNotificationCapability"> = {
+  async storedValuePendingServices(){return [];},
+  async storedValueService(){return notFound();},
+  async storedValueAuthorize(){return notFound();},
+  async storedValueIssuers(query){
+    return {records:query?.cursor?[]:[{issuerRef:"DEMO_OWNED_ISSUER",scopeType:"STORE" as const,name:store.storeName,storeNo:store.storeNo,entityNo:"DEMO_ENTITY",currency:"CNY" as const,businessTimeZone:store.businessTimeZone,lastType:"REDEMPTION" as const,lastOccurredAt:records[0]!.occurredAt}],nextCursor:null,hasMore:false};
+  },
+  async storedValueLocateIssuer(documentNo){
+    if(!records.some(r=>r.documentNo===documentNo))notFound();
+    return (await storedValueMock.storedValueIssuers()).records[0]!;
+  },
+  async storedValueIssuerRecords(issuerRef,query){
+    if(issuerRef!=="DEMO_OWNED_ISSUER")notFound();
+    const issuer=(await storedValueMock.storedValueIssuers()).records[0]!;
+    const page=await storedValueMock.storedValueRecords(store.storeNo,query);
+    return {...page,issuer,records:page.records.map(r=>({...r,storeNo:store.storeNo,storeName:store.storeName}))};
+  },
   async storedValueStores(query) {
     return { records: query?.cursor ? [] : [{ storeNo: store.storeNo, storeName: store.storeName, lastOccurredAt: records[0]!.occurredAt, lastType: "REDEMPTION" }], nextCursor: null, hasMore: false };
   },

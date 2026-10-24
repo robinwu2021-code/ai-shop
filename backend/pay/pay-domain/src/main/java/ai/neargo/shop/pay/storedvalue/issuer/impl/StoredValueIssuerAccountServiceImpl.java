@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.storedvalue.issuer.impl;
 
+import static ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.text;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository;
@@ -15,21 +16,20 @@ import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import static ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.text;
 import tools.jackson.databind.ObjectMapper;
-
-
 
 /** Exact issuer/customer wallet selection. Never merges, binds identities or rewrites an existing wallet. */
 @Service("storedValueIssuerAccountService")
 public class StoredValueIssuerAccountServiceImpl implements StoredValueIssuerAccountService {
+
     private record Identity(String customer,String user) { }
     private final IssuerRepository db;private final ObjectMapper json;private final boolean enabled;
     public StoredValueIssuerAccountServiceImpl(IssuerRepository db,ObjectMapper json,@Value("${shop.pay.stored-value.issuer-mode:false}") boolean enabled){this.db=db;this.json=json;this.enabled=enabled;}
     public Lookup credit(EntitlementContext ctx,String rechargeNo) {
+        var original=db.one("SELECT * FROM sv_recharge WHERE tenant_no=? AND recharge_no=? AND deleted=0",ctx.tenantNo(),rechargeNo);
+        if(original!=null&&"ISSUER_RELEASE".equals(text(original,"source_kind")))return creditBrand(ctx,original);
         if(!enabled)return new Lookup(false,null);
         transaction();
-        var original=db.one("SELECT * FROM sv_recharge WHERE tenant_no=? AND recharge_no=? AND deleted=0",ctx.tenantNo(),rechargeNo);
         if(original==null)throw BizException.of(ErrorCode.NOT_FOUND);
         String entity=text(original,"entity_no"),store=text(original,"store_no"),currency=text(original,"currency"),no=text(original,"issuer_no");
         var issuer=storeIssuer(ctx.tenantNo(),store,true);
@@ -56,6 +56,22 @@ public class StoredValueIssuerAccountServiceImpl implements StoredValueIssuerAcc
             account=wallet(ctx.tenantNo(),no,person.customer(),currency,true);
         }
         verify(account,person,entity,store);
+        return new Lookup(true,text(account,"account_no"));
+    }
+    private Lookup creditBrand(EntitlementContext ctx,Map<String,Object> original){
+        if(!db.payTransactionActive())throw new IllegalStateException("Pay transaction required");
+        var f=db.decode(text(original,"permit_snapshot"),ai.neargo.shop.spi.storedvalue.StoredValueIssuerRecharges.Funding.class);
+        var issuer=db.one("SELECT * FROM sv_issuer WHERE tenant_no=? AND issuer_no=? AND scope_type='BRAND' AND deleted=0 FOR UPDATE",ctx.tenantNo(),f.issuerNo());
+        if(issuer==null||!"ISSUER".equals(text(issuer,"write_mode"))||!Set.of("ACTIVE","ISSUE_STOPPED").contains(text(issuer,"status"))||!Set.of("RECEIVED","CREDITED").contains(text(original,"status")))conflict();
+        var person=resolve(ctx.tenantNo(),f.customerNo(),f.userNo());var account=wallet(ctx.tenantNo(),f.issuerNo(),person.customer(),f.currency(),true);
+        var shadows=db.rows("SELECT account_no FROM sv_account WHERE tenant_no=? AND issuer_no=? AND currency=? AND (customer_no=? OR user_no=?) AND deleted=0 FOR UPDATE",ctx.tenantNo(),f.issuerNo(),f.currency(),person.customer(),person.user());
+        for(var shadow:shadows)if(account==null||!text(shadow,"account_no").equals(text(account,"account_no")))conflict();
+        if(account==null){
+            if("CREDITED".equals(text(original,"status")))conflict();String no=StoredValueFacts.no("SA",List.of(ctx.tenantNo(),f.issuerNo(),person.customer(),f.currency()),json);var now=Timestamp.from(Instant.now());
+            if(db.update("INSERT INTO sv_account(tenant_no,account_no,user_no,customer_no,entity_no,store_no,currency,status,issuer_no,issuer_version_no,principal_minor,bonus_minor,held_principal_minor,held_bonus_minor,account_seq,version,deleted,created_at,updated_at,created_by,updated_by) VALUES(?,?,?,?,?,NULL,?,'ACTIVE',?,?,0,0,0,0,0,0,0,?,?,?,?)",ctx.tenantNo(),no,person.user(),person.customer(),f.settlementEntityNo(),f.currency(),f.issuerNo(),f.issuerVersionNo(),now,now,ctx.actorNo(),ctx.actorNo())!=1)conflict();
+            account=wallet(ctx.tenantNo(),f.issuerNo(),person.customer(),f.currency(),true);
+        }
+        if(account==null||text(account,"store_no")!=null||!person.customer().equals(text(account,"customer_no"))||!f.settlementEntityNo().equals(text(account,"entity_no"))||text(account,"user_no")!=null&&person.user()!=null&&!person.user().equals(text(account,"user_no")))conflict();
         return new Lookup(true,text(account,"account_no"));
     }
     public Lookup lookup(String tenant,String entity,String store,String currency,String identity,boolean lock) {
@@ -90,11 +106,12 @@ public class StoredValueIssuerAccountServiceImpl implements StoredValueIssuerAcc
         return db.one("SELECT issuer_no,write_mode,status FROM sv_issuer WHERE tenant_no=? AND scope_type='STORE' AND scope_no=? AND deleted=0"+(lock?" FOR UPDATE":""),tenant,store);
     }
     private Map<String,Object> wallet(String tenant,String issuer,String customer,String currency,boolean lock){
-        var rows=db.rows("SELECT a.account_no,a.customer_no,a.user_no,a.entity_no,a.store_no FROM sv_account a JOIN sv_issuer_version v ON v.tenant_no=a.tenant_no AND v.issuer_no=a.issuer_no AND v.issuer_version_no=a.issuer_version_no AND v.currency=a.currency AND v.settlement_entity_no=a.entity_no AND v.deleted=0 WHERE a.tenant_no=? AND a.issuer_no=? AND a.customer_no=? AND a.currency=? AND a.deleted=0"+(lock?" FOR UPDATE":""),tenant,issuer,customer,currency);
+        var rows=db.rows("SELECT a.account_no,a.customer_no,a.user_no,a.entity_no,a.store_no FROM sv_account a JOIN sv_issuer_version v ON CAST(v.tenant_no AS BINARY(256))=CAST(a.tenant_no AS BINARY(256)) AND CAST(v.issuer_no AS BINARY(256))=CAST(a.issuer_no AS BINARY(256)) AND CAST(v.issuer_version_no AS BINARY(256))=CAST(a.issuer_version_no AS BINARY(256)) AND CAST(v.currency AS BINARY(256))=CAST(a.currency AS BINARY(256)) AND CAST(v.settlement_entity_no AS BINARY(256))=CAST(a.entity_no AS BINARY(256)) AND v.deleted=0 WHERE a.tenant_no=? AND a.issuer_no=? AND a.customer_no=? AND a.currency=? AND a.deleted=0"+(lock?" FOR UPDATE":""),tenant,issuer,customer,currency);
         if(rows.size()>1)conflict();return rows.isEmpty()?null:rows.getFirst();
     }
     private void rejectShadows(String tenant,String entity,String store,String currency,String identity,Identity person,Map<String,Object> account,boolean lock){
-        var rows=db.rows("SELECT account_no FROM sv_account WHERE tenant_no=? AND entity_no=? AND (store_no=? OR store_no IS NULL) AND currency=? AND (customer_no=? OR customer_no=? OR user_no=?) AND deleted=0"+(lock?" FOR UPDATE":""),tenant,entity,store,currency,person.customer(),identity,person.user());
+        var issuer=storeIssuer(tenant,store,false);
+        var rows=db.rows("SELECT account_no FROM sv_account WHERE tenant_no=? AND entity_no=? AND (store_no=? OR store_no IS NULL) AND currency=? AND (customer_no=? OR customer_no=? OR user_no=?) AND (issuer_no IS NULL OR issuer_no=?) AND deleted=0"+(lock?" FOR UPDATE":""),tenant,entity,store,currency,person.customer(),identity,person.user(),text(issuer,"issuer_no"));
         for(var row:rows)if(account==null||!text(account,"account_no").equals(text(row,"account_no")))conflict();
     }
     private void verify(Map<String,Object> account,Identity person,String entity,String store){

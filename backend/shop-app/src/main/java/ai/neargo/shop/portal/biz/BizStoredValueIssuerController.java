@@ -27,6 +27,7 @@ public class BizStoredValueIssuerController {
     }
     @PostMapping("/biz/management/brands/{brandNo}/stored-value/issuer")
     public View create(@PathVariable String brandNo,@RequestBody ConfigureRequest request,@RequestHeader("Idempotency-Key") String key) {
+        authority.requireConfigurationWritable(access.actor(),request.managementNo(),"BRAND",brandNo);
         return issuers.configure(authority.configureScope(access.actor(),request.managementNo(),"BRAND",brandNo,request.configuration()),request.configuration(),key);
     }
 
@@ -63,6 +64,7 @@ public class BizStoredValueIssuerController {
     @PostMapping("/biz/management/stored-value/issuers/{issuerNo}/configuration-versions")
     public View version(@PathVariable String issuerNo,@RequestBody ConfigureRequest request,@RequestHeader("Idempotency-Key")String key){
         var actor=access.actor();var scope=issuers.locate(actor.tenantNo(),issuerNo);
+        authority.requireConfigurationWritable(actor,request.managementNo(),scope.scopeType(),scope.scopeNo());
         return issuers.configure(authority.configureScope(actor,request.managementNo(),scope.scopeType(),scope.scopeNo(),request.configuration()),request.configuration(),key);
     }
     @GetMapping("/biz/management/stored-value/issuers/{issuerNo}/collection-routes")

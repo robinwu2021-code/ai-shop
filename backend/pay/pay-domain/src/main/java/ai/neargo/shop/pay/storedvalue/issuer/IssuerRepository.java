@@ -43,7 +43,7 @@ public class IssuerRepository {
     public int update(String sql, Object... args) { return jdbc.update(sql, args); }
 
     public void insert(String table, Map<String,Object> values) {
-        if (!Set.of("sv_issuer", "sv_issuer_version", "sv_issuer_store_access", "sv_release", "sv_release_tier", "sv_issue_quota", "sv_issue_quota_reservation", "sv_customer_issuer_index", "sv_issue_policy", "sv_issue_policy_version", "sv_recharge_plan", "sv_recharge_plan_version").contains(table))
+        if (!Set.of("sv_issuer", "sv_issuer_version", "sv_issuer_store_access", "sv_release", "sv_release_tier", "sv_issue_quota", "sv_issue_quota_reservation", "sv_customer_issuer_index", "sv_issue_policy", "sv_issue_policy_version", "sv_recharge_plan", "sv_recharge_plan_version", "sv_recharge", "sv_clearing_entry").contains(table))
             throw new IllegalArgumentException("Issuer table required");
         String columns = String.join(",", values.keySet());
         jdbc.update("INSERT INTO " + table + " (" + columns + ") VALUES ("

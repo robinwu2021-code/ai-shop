@@ -35,6 +35,11 @@ import static ai.neargo.shop.pay.entitlement.service.EntitlementRecords.instant;
 /** Reads only durable money facts, with member scope applied before alias lookup and pagination. */
 @Service
 public class StoredValueConsumerQueryServiceImpl implements StoredValueConsumerQueryService {
+    @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.pay.storedvalue.issuer.StoredValueConsumerIssuerService issuerReads;
+    @Override public CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews.Issuer> issuers(EntitlementContext c,String cursor,int size){return issuerReads.directory(c,cursor,size);}
+    @Override public ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews.Issuer issuer(EntitlementContext c,String ref){return issuerReads.issuer(c,ref);}
+    @Override public ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews.Issuer locateIssuer(EntitlementContext c,String document){return issuerReads.locate(c,document);}
+    @Override public CursorPage<Record> issuerRecords(EntitlementContext c,String ref,String type,Instant from,Instant to,String focus,String cursor,int size){return issuerReads.records(c,ref,type,from,to,focus,cursor,size);}
     private final SvUserStoreIndexMapper stores;
     private final SvConsumerStatementMapper statements;
     private final SvStatementMapper allStatements;
@@ -128,9 +133,9 @@ public class StoredValueConsumerQueryServiceImpl implements StoredValueConsumerQ
                 || Math.negateExact(s.getSignedAmountMinor())!=u.getAmountMinor())
             throw BizException.of(ErrorCode.NOT_FOUND);
         var a=accounts.selectOne(Wrappers.<SvAccount>lambdaQuery().eq(SvAccount::getTenantNo,ctx.tenantNo())
-                .eq(SvAccount::getAccountNo,s.getAccountNo()).eq(SvAccount::getStoreNo,s.getStoreNo())
-                .eq(SvAccount::getEntityNo,s.getEntityNo()));
+                .eq(SvAccount::getAccountNo,s.getAccountNo()));
         String user=a==null?null:a.getUserNo();
+        if(user!=null&&!user.equals(u.getUserNo()))throw BizException.of(ErrorCode.NOT_FOUND);
         return new NotificationFact(u.getUsageNo(),user,s.getStoreNo(),s.getStoreName(),s.getTitle(),s.getCurrency(),
                 Math.negateExact(s.getSignedAmountMinor()),instant(s.getOccurredAt()),
                 numbers.find(DocumentType.ENTITLEMENT_USAGE,ctx.tenantNo(),u.getUsageNo()));

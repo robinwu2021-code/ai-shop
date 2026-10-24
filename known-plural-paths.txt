@@ -117,3 +117,11 @@
 # 这两条它看不到；登进去反而会被它当成「已经修好、请删除」。
 /biz/goods/{goodsNo}/revisions/{revisionNo}  revisions
 /biz/goods/{goodsNo}/revisions/{revisionNo}/fork  revisions
+
+# Deployed P5 contracts from origin aa7796955, previously omitted from this registry.
+# B generator already froze the two original-service routes; C09 and the C generator
+# preserve customer confirmation routes. These are exact existing URLs, not a namespace rule.
+/biz/stored-value/consumptions/orders/{orderNo}  orders
+/biz/stored-value/consumptions/orders/{orderNo}/cancel  orders
+/mp/entitlement-service-orders/{orderNo}  entitlement-service-orders
+/mp/orders/{orderNo}/entitlement-authorizations  orders

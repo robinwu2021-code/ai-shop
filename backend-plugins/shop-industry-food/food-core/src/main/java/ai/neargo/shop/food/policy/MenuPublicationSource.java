@@ -39,12 +39,12 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Captures local definitions and immutable dependencies; the caller obtains original Goods authority separately. */
 public final class MenuPublicationSource {
-    private final MenuWorkingDefinitionPort working;
+    private final MenuWorkingDefinitionAccess working;
     private final DishMapper dishes;
     private final DishOptionGroupMapper dishGroups;
     private final MenuChannelBindingMapper bindings;
     private final ObjectMapper json;
-    public MenuPublicationSource(MenuWorkingDefinitionPort working,DishMapper dishes,DishOptionGroupMapper dishGroups,
+    public MenuPublicationSource(MenuWorkingDefinitionAccess working,DishMapper dishes,DishOptionGroupMapper dishGroups,
             OptionGroupMapper optionGroups,BundleMapper bundles,RecipeMapper recipes,
             MenuChannelBindingMapper bindings,ObjectMapper json) {
         this.working=working; this.dishes=dishes; this.dishGroups=dishGroups; this.bindings=bindings; this.json=json;

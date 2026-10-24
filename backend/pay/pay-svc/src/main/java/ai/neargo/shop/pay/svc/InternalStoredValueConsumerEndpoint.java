@@ -35,4 +35,12 @@ public class InternalStoredValueConsumerEndpoint {
             @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given) {
         return InternalServiceResponses.invoke(token,given,()->reads.notificationFact(r.context(),r.usageNo()));
     }
+    @PostMapping(PayInternalPaths.SV_CONSUMER_ISSUERS)
+    public ResponseEntity<?> issuers(@RequestBody PayStoredValueConsumerRequests.Issuers r,@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false)String given){return InternalServiceResponses.invoke(token,given,()->reads.issuers(r.context(),r.cursor(),r.size()));}
+    @PostMapping(PayInternalPaths.SV_CONSUMER_ISSUER)
+    public ResponseEntity<?> issuer(@RequestBody PayStoredValueConsumerRequests.Issuer r,@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false)String given){return InternalServiceResponses.invoke(token,given,()->reads.issuer(r.context(),r.issuerRef()));}
+    @PostMapping(PayInternalPaths.SV_CONSUMER_LOCATE_ISSUER)
+    public ResponseEntity<?> locateIssuer(@RequestBody PayStoredValueConsumerRequests.Locate r,@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false)String given){return InternalServiceResponses.invoke(token,given,()->reads.locateIssuer(r.context(),r.documentNo()));}
+    @PostMapping(PayInternalPaths.SV_CONSUMER_ISSUER_RECORDS)
+    public ResponseEntity<?> issuerRecords(@RequestBody PayStoredValueConsumerRequests.IssuerRecords r,@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false)String given){return InternalServiceResponses.invoke(token,given,()->reads.issuerRecords(r.context(),r.issuerRef(),r.type(),r.from(),r.to(),r.focus(),r.cursor(),r.size()));}
 }

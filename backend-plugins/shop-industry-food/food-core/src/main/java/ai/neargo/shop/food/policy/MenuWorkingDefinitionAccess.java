@@ -4,7 +4,7 @@ import ai.neargo.shop.food.dto.MenuConfigResultVO;
 import ai.neargo.shop.food.entity.FnbConfigRevision;
 
 /** Internal aggregate access; the caller owns the local read/write transaction and publication scope. */
-public interface MenuWorkingDefinitionPort {
+public interface MenuWorkingDefinitionAccess {
     MenuConfigResultVO capture(String entity, String store, String menu, boolean lock);
     default long currentVersion(String entity, String store, String menu, boolean lock) {
         return capture(entity, store, menu, lock).config().version();

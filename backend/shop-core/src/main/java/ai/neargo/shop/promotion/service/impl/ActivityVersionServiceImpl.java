@@ -56,6 +56,7 @@ import tools.jackson.databind.ObjectMapper;
 public class ActivityVersionServiceImpl implements ActivityVersionService {
     @org.springframework.beans.factory.annotation.Value("${shop.pay.stored-value.governance-enabled:false}")
     private boolean storedValueGovernance;
+    @org.springframework.beans.factory.annotation.Autowired private org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.promotion.service.BrandActivityOwnershipService> brandOwners;
     @org.springframework.beans.factory.annotation.Autowired
     private org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.promotion.service.StoredValueActivityJournal> storedValueJournal;
     private CoreMarketingDocumentNumbers documentNumbers;
@@ -102,7 +103,7 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
         if (command == null) throw BizException.of(ErrorCode.BAD_REQUEST);
         var replay = commands.replay(actor, "ACTIVITY_DRAFT", requestKey, command, ActivityView.class);
         if (replay.isPresent()) {
-            if (!visible(actor, replay.get().definition())) throw BizException.of(ErrorCode.NOT_FOUND);
+            owned(actor,replay.get().activityNo(),false);
             return replay.get();
         }
         var resolved = defaults(actor, command.definition());
@@ -117,7 +118,7 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
                     throw BizException.of(ErrorCode.CONFLICT);
                 }
                 row = new PmtActivity(); audit(row, actor);
-                row.setActivityNo(no); row.setEntityNo(actor.entityNo()); row.setOwner("MERCHANT");
+                row.setActivityNo(no); row.setEntityNo(actor.entityNo()); row.setOwner(actor.brandNo()==null?"MERCHANT":"BRAND");
                 row.setStatus("DRAFT"); row.setTriggerType("NONE"); row.setBenefitType("COMBO");
                 row.setQuotaUsed(0); row.setBudgetUsedMinor(0L);
             } else {
@@ -134,6 +135,7 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
             row.setUpdatedAt(now()); row.setUpdatedBy(actor.actorNo());
             if (command.activityNo() == null) changed(documentNumbers.bind(DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", row, row.getActivityNo(), heads::insert, PmtActivity::setDocumentNo));
             else persist(row);
+            if(command.activityNo()==null&&actor.brandNo()!=null){var owner=brandOwners.getIfAvailable();if(owner==null)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);owner.register(actor,no);}
             return view(row);
         });
     }
@@ -162,7 +164,7 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
                     || !candidate.getDraftSnapshot().equals(row.getDraftSnapshot())) {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
-            if(storedValueGovernance && "RECHARGE".equals(definition.scene())) {
+            if((storedValueGovernance||"BRAND".equals(row.getOwner()))&&"RECHARGE".equals(definition.scene())) {
                 var journal=storedValueJournal.getIfAvailable();
                 if(journal==null)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
                 journal.requirePublish(actor.tenantNo(),activityNo,expectedRevision,journal.hash(definition));
@@ -210,7 +212,7 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
         if (replay.isPresent()) return replay.get();
         var candidate = owned(actor, activityNo, false);
         boolean publishDraft = "DRAFT".equals(candidate.getStatus()) && "RUNNING".equals(status);
-        if(storedValueGovernance&&"RECHARGE".equals(candidate.getScene())&&!publishDraft)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        if((storedValueGovernance||"BRAND".equals(candidate.getOwner()))&&"RECHARGE".equals(candidate.getScene())&&!publishDraft)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         if (publishDraft) {
             // Same resource/transaction as explicit publish; the status command has its own stable reply.
             publish(actor, activityNo, expectedRevision, "PUB" + ActivityCommandDeduplicator.hash(requestKey).substring(0, 48));
@@ -253,7 +255,7 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
                 .eq(scene != null, PmtActivity::getScene, scene).eq(status != null, PmtActivity::getStatus, status)
                 .orderByDesc(PmtActivity::getId)), PmtActivity::getActivityNo, PmtActivity::setDocumentNo));
         List<ActivityView> visible = new ArrayList<>();
-        for (var row : rows) if (visible(actor, definition(row))) visible.add(view(row));
+        for (var row : rows) if (ownerVisible(actor,row)&&visible(actor,definition(row))) visible.add(view(row));
         int start = (int) Math.min((page - 1) * size, visible.size());
         int end = (int) Math.min(start + size, visible.size());
         return PageData.of(List.copyOf(visible.subList(start, end)), visible.size(), page, size);
@@ -264,11 +266,13 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
                 .eq(PmtActivity::getTenantNo, actor.tenantNo()).eq(PmtActivity::getEntityNo, actor.entityNo())
                 .eq(PmtActivity::getActivityNo, no).isNotNull(PmtActivity::getDraftSnapshot)
                 .isNull(PmtActivity::getArchivedAt).last(lock ? "FOR UPDATE" : "")), PmtActivity::getActivityNo, PmtActivity::setDocumentNo));
-        if (row == null || !visible(actor, definition(row))) throw BizException.of(ErrorCode.NOT_FOUND);
+        if (row == null || !ownerVisible(actor,row)||!visible(actor,definition(row))) throw BizException.of(ErrorCode.NOT_FOUND);
         return row;
     }
 
+    private boolean ownerVisible(ActivityActor actor,PmtActivity row){if(!"BRAND".equals(row.getOwner()))return actor.brandNo()==null;var owner=brandOwners.getIfAvailable();return owner!=null&&owner.visible(actor,row);}
     private boolean visible(ActivityActor actor, UnifiedActivityDefinition d) {
+        if(actor.brandNo()!=null)return "RECHARGE".equals(d.scene())&&"ALL".equals(d.storeParticipationScope().mode())&&d.rule().benefits().isEmpty()&&d.rule().tiers().stream().allMatch(t->"ALL".equals(t.redemptionScope().mode()));
         return actor.allowedStores() == null || ("STORES".equals(d.storeParticipationScope().mode())
                 && actor.allowedStores().containsAll(d.storeParticipationScope().refs()));
     }

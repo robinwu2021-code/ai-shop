@@ -42,3 +42,7 @@ mTransferDetail	/biz/inventory/transfers/:no
 mTransferReceive	/biz/inventory/transfers/:no/receive
 mTransferVoid	/biz/inventory/transfers/:no/void
 mTransferShip	/biz/inventory/transfers/:no/ship
+
+# Existing deployed P5 routes retained from aa7796955; namespace stays unchanged.
+mSvConsumptionCancel	P5 verified Java namespace retained for API compatibility.
+mSvConsumptionOrder	P5 verified Java namespace retained for API compatibility.

@@ -34,42 +34,54 @@ export interface StoredValueRecordsQuery extends StoredValueStoresQuery {
   focusDocumentNo?: string;
 }
 export interface StoredValueRecord {
-  /** Record, target or calculation classification used to interpret this object. */
-  type: Exclude<StoredValueType, "ALL">;
-  /** Human-readable title of the stored-value business record. */
-  title: string;
-  /** ISO currency code determining the interpretation of monetary amounts. */
-  currency: CurrencyCode;
-  /** Signed change in stored-value balance, in minor currency units. */
-  signedAmountMinor: number;
-  /** Time the server recorded the business operation. */
-  occurredAt: string;
-  /** Human-facing document number; null or absent for historical unmapped records. */
-  documentNo: string | null;
+
+/** Record, target or calculation classification used to interpret this object. */
+type: Exclude<StoredValueType, "ALL">;
+/** Human-readable title of the stored-value business record. */
+title: string;
+/** ISO currency code determining the interpretation of monetary amounts. */
+currency: CurrencyCode;
+
+/** Signed change in stored-value balance, in minor currency units. */
+signedAmountMinor: number;
+/** Time the server recorded the business operation. */
+occurredAt: string;
+/** Human-facing document number; null or absent for historical unmapped records. */
+documentNo: string | null;
+/** Store identifier for the service or ledger record; null when no single store applies. */
+storeNo?:string|null;
+/** Store display name attached to the service or record. */
+storeName?:string|null;
 }
 export interface StoredValueRecordsPage {
-  /** Authorized store identity and business time zone for the returned records. */
-  store: {
-  /** Store identifier scoping the requested operation or returned business record. */
-  storeNo: string;
-  /** Store display name captured for the record or selection. */
-  storeName: string;
-  /** IANA time zone used to interpret the store's business dates. */
-  businessTimeZone: string };
-  /** Effective record filters after the server has normalized the request. */
-  filter: {
-  /** Record, target or calculation classification used to interpret this object. */
-  type: StoredValueType;
-  /** Inclusive first business date in YYYY-MM-DD format. */
-  startDate: string | null;
-  /** Inclusive final business date in YYYY-MM-DD format. */
-  endDate: string | null };
-  /** Business records returned by the current query. */
-  records: StoredValueRecord[];
-  /** Opaque cursor for the next page; null when the result is exhausted. */
-  nextCursor: string | null;
-  /** Whether a further page is available using nextCursor. */
-  hasMore: boolean;
+
+/** Issuer identity and business context for the selected record collection. */
+issuer?:StoredValueIssuer;
+
+/** Authorized store identity and business time zone for the returned records. */
+store: {
+/** Store identifier scoping the requested operation or returned business record. */
+storeNo: string;
+/** Store display name captured for the record or selection. */
+storeName: string;
+/** IANA time zone used to interpret the store's business dates. */
+businessTimeZone: string };
+
+/** Effective record filters after the server has normalized the request. */
+filter: {
+/** Record, target or calculation classification used to interpret this object. */
+type: StoredValueType;
+/** Inclusive first business date in YYYY-MM-DD format. */
+startDate: string | null;
+/** Inclusive final business date in YYYY-MM-DD format. */
+endDate: string | null };
+
+/** Business records returned by the current query. */
+records: StoredValueRecord[];
+/** Opaque cursor for the next page; null when the result is exhausted. */
+nextCursor: string | null;
+/** Whether a further page is available using nextCursor. */
+hasMore: boolean;
 }
 export interface StoredValueNotificationCapability {
   /** Delivery or collection channel used by this capability or route. */
@@ -81,3 +93,99 @@ export interface StoredValueNotificationCapability {
   /** Machine-readable reason this capability is unavailable; null when available. */
   reasonCode: string | null;
 }
+
+export interface StoredValueIssuer {
+/** Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier. */
+issuerRef:string;
+/** Whether the selected stored-value resource belongs to one store or a brand. */
+scopeType:"STORE"|"BRAND";
+/** Display name of the selected stored-value issuer or wallet. */
+name:string;
+/** Operating entity identifier associated with this issuer. */
+entityNo:string;
+/** Store identifier for the service or ledger record; null when no single store applies. */
+storeNo:string|null;
+/** ISO currency code determining monetary minor-unit interpretation. */
+currency:CurrencyCode;
+/** IANA business time zone; null when the issuer has no single-store zone. */
+businessTimeZone:string|null;
+/** Type of the most recent record, excluding the ALL query filter. */
+lastType:Exclude<StoredValueType,"ALL">;
+/** Timestamp of the most recent record for this issuer. */
+lastOccurredAt:string}
+export interface StoredValueIssuersPage {
+/** Records returned in this page under the current authorized selection. */
+records:StoredValueIssuer[];
+/** Opaque cursor for the next page; null when all records have been returned. */
+nextCursor:string|null;
+/** Whether another page is available using nextCursor. */
+hasMore:boolean}
+export interface StoredValueIssuerRecordsPage {
+/** Issuer identity and business context for the selected record collection. */
+issuer:StoredValueIssuer;
+/** Effective record filters after server normalization. */
+filter:StoredValueRecordsPage["filter"];
+/** Records returned in this page under the current authorized selection. */
+records:StoredValueRecord[];
+/** Opaque cursor for the next page; null when all records have been returned. */
+nextCursor:string|null;
+/** Whether another page is available using nextCursor. */
+hasMore:boolean}
+
+export interface StoredValueService {
+
+/** Identifier of the original stored-value consumption service order. */
+serviceOrderNo:string;
+/** Stable operation identifier used to recover the original execution. */
+operationNo:string;
+/** Current server-owned lifecycle state of this operation or service. */
+status:string;
+/** Store identifier for the service or ledger record; null when no single store applies. */
+storeNo:string;
+/** Store display name attached to the service or record. */
+storeName:string;
+/** Service staff display name; null when no staff member is assigned. */
+serviceStaffName:string|null;
+/** Service completion timestamp; null before completion. */
+serviceAt:string|null;
+
+/** Service order lines and their positive purchased quantities. */
+items:Array<{
+/** Identifier of this service order line. */
+itemNo:string;
+/** Human-readable service item title. */
+title:string;
+/** Positive quantity of the selected service item. */
+quantity:number}>;
+
+/** Immutable customer confirmation terms; null when confirmation is not available. */
+confirmation:{
+/** Previously confirmed service order revision; stale submissions are rejected. */
+orderRevision:number;
+/** Server-issued reference to the immutable consumption quote. */
+quoteRef:string;
+/** Digest binding confirmation to the exact selected wallet and service lines. */
+selectionDigest:string;
+/** Server expiry timestamp after which the reference or confirmation must be refreshed. */
+expiresAt:string}|null;
+
+/** Stored-value payment snapshot; null before payment terms are available. */
+payment:{
+/** Asset kind selected for payment; stored-value services use STORED_VALUE. */
+assetKind:string;
+/** ISO currency code determining monetary minor-unit interpretation. */
+currency:CurrencyCode;
+/** Total service or payment amount in minor currency units. */
+amountMinor:number;
+/** Whether the selected stored-value resource belongs to one store or a brand. */
+scopeType:'STORE'|'BRAND';
+/** Issuer display name; null when no issuer is selected. */
+issuerName:string|null}|null;
+}
+export interface StoredValueAuthorization {
+/** Current server-owned lifecycle state of this operation or service. */
+status:string;
+/** Stable operation identifier used to recover the original execution. */
+operationNo:string|null;
+/** Server-owned asset usage state; null before a usage exists. */
+useStatus:string|null}

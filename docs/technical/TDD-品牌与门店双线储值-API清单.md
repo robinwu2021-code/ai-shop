@@ -1,6 +1,6 @@
 # 品牌与门店双线储值 · API清单与契约设计
 
-状态：评审草案，尚未实现。与34屏V2原型及[数据库设计](TDD-品牌与门店双线储值-数据库设计.md)配套。新接口为建议路径，不代表当前服务器已支持。
+状态：设计基线与分阶段实施记录。P1–P5 已有实现，P5 正在兼容发布；P6 结算仍为后续任务。下文 NEW 保留原设计分类，实际路径和 DTO 以末尾 P5 实施说明及生成的 Java 合同为准，不代表资金已开通。
 
 ## 1. 通用约定
 
@@ -209,7 +209,7 @@
 | 编号 | 方法与路径 | 模块 | 输入 | 输出 | 权限／原型 | 状态 |
 |---|---|---|---|---|---|---|
 | MP01 | `GET /mp/stored-value/issuers` | Pay/BFF | cursor,size | CursorPage<MyIssuer> | `consumer.self`；s17 | NEW |
-| MP02 | `GET /mp/stored-value/issuers/{issuerRef}/records` | Pay/BFF | type,startDate?,endDate?,focusDocumentNo?,cursor,size | MyIssuerRecords | `consumer.self`；s18 | NEW |
+| MP02 | `GET /mp/stored-value/issuer-records` | Pay/BFF | issuerRef,type,startDate?,endDate?,focusDocumentNo?,cursor,size | MyIssuerRecords | `consumer.self`；s18 | NEW |
 
 - MP01：品牌账户只出现一次，单店账户单列；只返回本人成功储值记录
 - MP02：无本金赠金拆分，无购买/退款；时区跟发行方，跨店记录带实际发生店
@@ -538,3 +538,15 @@ Approval details include the frozen draft for human review. Draft revision/hash 
 ### P4 审查补充接口（2026-10-24）
 
 GET /biz/management/stored-value/policy-targets?managementNo=... 返回按sv.policy.read/manage过滤的type/no/name/canManage，不依赖brand.read/store.read。activity-context追加canManage/canPublish；只读详情使用READ，不请求管理预置。所有写接口继续服务端验证。B端草稿保存后先checks，硬限制拒绝时允许修改；已发送提交、停发和审批只按持久原记录终态解除未知请求，不以业务错误码推断零写入。
+
+## P5 实施接口与调用规则（2026-10-24）
+
+本阶段实际 Java 路由及 DTO 已录入《TDD-活动卡券储值-API契约.md》P94–P112、C14–C16，并由真实 Spring 映射生成 docs/api/entitlement-backend.openapi.json；B/C 客户端规格为 openapi-b.yaml 与 openapi.yaml。设计编号 BA/MB/US/MP 保留业务索引，实际路径和字段以上述已验证合同为准。
+
+- Merchant 提供当前门店、经营主体和有效品牌绑定事实，BFF 检查当前资源权限；Pay 的签名 issuerRef/accountRef/optionRef 绑定当前操作人、会员、门店及版本。客户端不提交资金归属或核销金额。
+- 品牌活动沿品牌入口复用 Core 草稿、检查、审批及发布；本店活动沿门店入口。品牌运营权限不隐含结算主体授权。
+- 办理储值沿 confirm-offline；品牌提交签名档位及顾客引用。原键先查冻结原单，短期引用过期不影响已收款承诺恢复。新建、线下确认和入账在 Pay 本地事务完成。
+- 核销依次 preview → C 端原服务单确认 → consume。GET orders 读取原进度；POST resolve 用原请求/幂等键定位并验证原指纹；原单已创建但未绑定报价时可重试原 preview；cancel 只取消尚未完成的原服务，不提供线上退款。
+- C 端 issuers 只列本人有储值事实的独立账户；issuer-records 展示实际发生门店，records/locate 从持久通知业务号重新取得本人账户引用。视觉焦点和筛选变化不改变账户归属；通知不依赖永久有效的短期引用。
+
+品牌启用必须同时满足 Core 财务授权及完整成员快照、Pay 实际 P3 账户结构/维度/恢复回执、V570–V574 已执行和开关。关闭开关的兼容发布不代表资金开通。

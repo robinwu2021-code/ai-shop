@@ -32,7 +32,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.MenuChannelBindingMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.RecipeMapper;
 import ai.neargo.shop.food.policy.MenuPublicationSource;
-import ai.neargo.shop.food.policy.MenuWorkingDefinitionPort;
+import ai.neargo.shop.food.policy.MenuWorkingDefinitionAccess;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
@@ -46,7 +46,7 @@ class MenuPublicationSourceTest {
                 List.of(new MenuContextInput("POS","DINE_IN",null,null)));
     }
     @Test void replaceEmptyDoesNotInheritMutableGroupsAndFreezesExactDishMetadata() {
-        var working=mock(MenuWorkingDefinitionPort.class); var dishes=mock(DishMapper.class);
+        var working=mock(MenuWorkingDefinitionAccess.class); var dishes=mock(DishMapper.class);
         var links=mock(DishOptionGroupMapper.class); var json=new ObjectMapper();
         when(working.capture("E","A","M",true)).thenReturn(definition("REPLACE"));
         var dish=new FnbDish(); dish.setEntityNo("E"); dish.setGoodsNo("G"); dish.setStatus("ACTIVE");
@@ -70,7 +70,7 @@ class MenuPublicationSourceTest {
         assertThat(source.skuNos(captured)).containsExactly("S");
     }
     @Test void disabledDishAndMissingInheritedPublicationFailClosed() {
-        var working=mock(MenuWorkingDefinitionPort.class); var dishes=mock(DishMapper.class);
+        var working=mock(MenuWorkingDefinitionAccess.class); var dishes=mock(DishMapper.class);
         var links=mock(DishOptionGroupMapper.class); var json=new ObjectMapper();
         when(working.capture("E","A","M",false)).thenReturn(definition("INHERIT"));
         var dish=new FnbDish(); dish.setEntityNo("E"); dish.setGoodsNo("G"); dish.setStatus("DISABLED");
@@ -92,7 +92,7 @@ class MenuPublicationSourceTest {
     }
     record DishFixture(MenuPublicationSource source,FnbDish dish,ObjectMapper json) { }
     private DishFixture dishFixture() {
-        var working=mock(MenuWorkingDefinitionPort.class); var dishes=mock(DishMapper.class);
+        var working=mock(MenuWorkingDefinitionAccess.class); var dishes=mock(DishMapper.class);
         var links=mock(DishOptionGroupMapper.class); var json=new ObjectMapper();
         when(working.capture("E","A","M",false)).thenReturn(definition("REPLACE"));
         var dish=new FnbDish(); dish.setEntityNo("E"); dish.setGoodsNo("G"); dish.setStatus("DRAFT");
@@ -126,7 +126,7 @@ class MenuPublicationSourceTest {
                 .isInstanceOf(BizException.class);
     }
     @Test void inheritedGroupRetainsExactFrozenModifierRevisionAndEmbeddedSnapshot() {
-        var working=mock(MenuWorkingDefinitionPort.class); var dishes=mock(DishMapper.class);
+        var working=mock(MenuWorkingDefinitionAccess.class); var dishes=mock(DishMapper.class);
         var links=mock(DishOptionGroupMapper.class); var json=new ObjectMapper();
         when(working.capture("E","A","M",true)).thenReturn(definition("INHERIT"));
         var dish=new FnbDish(); dish.setEntityNo("E"); dish.setGoodsNo("G"); dish.setStatus("DRAFT");

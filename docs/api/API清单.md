@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1006 个接口**：后端已实现 877（87%）· 前端在调 925
+**合计 1032 个接口**：后端已实现 891（86%）· 前端在调 951
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **127** 个接口 ｜ 后端已实现 **126**（99%）｜ 前端在调 **127**
+共 **133** 个接口 ｜ 后端已实现 **131**（98%）｜ 前端在调 **133**
 
 ### after-sale（5）
 
@@ -64,6 +64,13 @@
 | POST | `/mp/coupon/{couponNo}/receive` | 领取优惠券 | — | `Coupon` | 🔒 | ✅ | ✅ |
 | POST | `/mp/coupon/best` | 最优券试算（含不可用原因） | — | `CouponBestResult` | 🔒 | ✅ | ✅ |
 | GET | `/mp/coupon/mine` | 我领到的券 | — | `数组` | 🔒 | ✅ | ✅ |
+
+### entitlement-service-orders（2）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/mp/entitlement-service-orders` | My pending service confirmations | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/mp/entitlement-service-orders/{orderNo}` | My service confirmation | — | `StoredValueService` | 🔒 | ⬜ | ✅ |
 
 ### favorite（4）
 
@@ -198,6 +205,12 @@
 | POST | `/mp/order/points-quote` | 按门店的积分抵扣报价 | — | `OrderPointsQuote` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/preview` | 订单预览（金额以后端为准） | — | `OrderPreview` | 🔒 | ✅ | ✅ |
 
+### orders（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| POST | `/mp/orders/{orderNo}/entitlement-authorizations` | Confirm frozen service and wallet | `StoredValueAuthorizeRequest` | `StoredValueAuthorization` | 🔒 | ✅ | ✅ |
+
 ### place（1）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
@@ -251,11 +264,14 @@
 | GET | `/mp/store/mine` | 我的店：买过的 + 近期逛过的门店 | — | `数组` | — | ✅ | ✅ |
 | GET | `/mp/store/nearby` | 附近的门店（去掉我的店） | — | `object` | — | ✅ | ✅ |
 
-### stored-value（3）
+### stored-value（6）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/mp/stored-value/issuer-records` | Owned issuer history | — | `StoredValueIssuerRecordsPage` | 🔒 | ✅ | ✅ |
+| GET | `/mp/stored-value/issuers` | Owned funded wallets | — | `StoredValueIssuersPage` | 🔒 | ✅ | ✅ |
 | GET | `/mp/stored-value/notification-capability` | 储值消费微信通知能力 | — | `StoredValueNotificationCapability` | 🔒 | ✅ | ✅ |
+| GET | `/mp/stored-value/records/locate` | Locate owned wallet by durable document | — | `StoredValueIssuer` | 🔒 | ✅ | ✅ |
 | GET | `/mp/stored-value/store/{storeNo}/records` | 本人门店储值与核销记录 | — | `StoredValueRecordsPage` | 🔒 | ✅ | ✅ |
 | GET | `/mp/stored-value/stores` | 本人有储值记录的门店 | — | `StoredValueStoresPage` | 🔒 | ✅ | ✅ |
 
@@ -300,7 +316,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **403** 个接口 ｜ 后端已实现 **341**（85%）｜ 前端在调 **402**
+共 **423** 个接口 ｜ 后端已实现 **350**（83%）｜ 前端在调 **422**
 
 ### activities（4）
 
@@ -561,7 +577,7 @@
 | POST | `/biz/inventory/transfers/{no}/ship` | 调拨发出 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/inventory/transfers/{no}/void` | 作废调拨草稿 | — | — | 🔒 | ✅ | ✅ |
 
-### management（36）
+### management（48）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -574,8 +590,20 @@
 | GET | `/biz/management/brands/{b}/audit-events` | 品牌操作记录 | — | `ManagementAuditPage` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/management/brands/{b}/status-changes` | 品牌启停 | `ManagementBrandStatusReq` | `Brand` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/management/brands/{b}/stores` | 品牌门店 | — | `ManagementResourcePage` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/brands/{brandNo}/stored-value/issuer/activation` | Activate original brand snapshot | `SvBrandActivationRequest` | `SvBrandActivation` | 🔒 | ✅ | ✅ |
 | GET | `/biz/management/brands/{no}/stored-value/issuer` | 品牌储值发行设置 | — | `SvIssuerLookup` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/management/brands/{no}/stored-value/issuer` | 保存品牌发行草稿 | `IssuerConfigureRequest` | `IssuerView` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands/{store}/stored-value/activities` | 门店储值活动 | — | `SvGovernanceActivitiesPage` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/brands/{store}/stored-value/activities` | 保存储值活动草稿 | `SvGovernanceDraft` | `SvActivity` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands/{store}/stored-value/activities/{no}` | 储值活动详情 | — | `SvGovernanceDetail` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/brands/{store}/stored-value/activities/{no}/checks` | 检查储值活动 | `SvGovernanceCommand` | `SvActivityCheck` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/brands/{store}/stored-value/activities/{no}/copies` | 复制储值活动 | `SvGovernanceCommand` | `SvActivity` | 🔒 | ⬜ | ✅ |
+| PUT | `/biz/management/brands/{store}/stored-value/activities/{no}/draft` | 修订储值活动草稿 | `SvGovernanceDraft` | `SvActivity` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/brands/{store}/stored-value/activities/{no}/stop-issuance` | 停止新发行 | `SvGovernanceCommand` | `SvSubmission` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/brands/{store}/stored-value/activities/{no}/submissions` | 提交储值活动 | `SvGovernanceCommand` | `SvSubmission` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands/{store}/stored-value/activity-context` | 储值活动门店市场上下文 | — | `SvGovernanceContext` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands/{store}/stored-value/activity-presets` | 可用储值活动类型 | — | `SvGovernancePresetsPage` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands/{store}/stored-value/activity-schedules` | 按门店时区换算活动日期 | — | `SvGovernanceSchedule` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/management/context` | 管理空间上下文 | — | `ManagementContext` | 🔒 | ✅ | ✅ |
 | GET | `/biz/management/entities/{e}/payment-merchants` | 支付商户候选 | — | `数组` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/management/spaces` | 创建管理空间 | `ManagementSpaceCreateReq` | `ManagementSpace` | 🔒 | ✅ | ✅ |
@@ -991,12 +1019,18 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/store-spec-dims` | 本店货架类目各自能用的规格 | — | `数组` | 🔒 | ✅ | ✅ |
 
-### stored-value（15）
+### stored-value（21）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/stored-value/account-directory` | 门店储值顾客 | — | `SvAccountPage` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stored-value/accounts/{accountRef}` | 门店储值账户 | — | `SvAccount` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stored-value/brand-capability` | Brand readiness | — | `SvBrandCapability` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stored-value/consumptions` | Consume using existing consumer confirmation | `SvConsumptionSubmit` | `SvOperation` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stored-value/consumptions/orders/{orderNo}` | Merchant original service status | — | `SvServiceView` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stored-value/consumptions/orders/{orderNo}/cancel` | Cancel original service without refund | `SvConsumptionStoreQuery` | `SvOperation` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stored-value/consumptions/preview` | Selected wallet service preview | `SvConsumptionCreate` | `SvConsumptionPreview` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stored-value/consumptions/resolve` | Resolve exact original preview without expired references | `SvConsumptionCreate` | `SvConsumptionResolution` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stored-value/context` | 储值上下文 | — | `SvContext` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stored-value/customer-candidates` | 查找可办理储值的会员 | — | `object` | 🔒 | ✅ | ✅ |
 | POST | `/biz/stored-value/customer-selections` | 选用储值顾客 | `SvSelectCustomerReq` | `SvSelectedCustomer` | 🔒 | ✅ | ✅ |
@@ -1011,7 +1045,7 @@
 | GET | `/biz/stored-value/plans/{planNo}` | 储值方案详情 | — | `SvPlan` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/stored-value/plans/{planNo}/status` | 启停门店储值方案 | `SvPlanStatusReq` | `SvPlan` | 🔒 | ✅ | ✅ |
 
-### stores（33）
+### stores（35）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1038,6 +1072,8 @@
 | GET | `/biz/stores/{storeNo}/fulfillment` | 门店送货方式 | — | `StoreFulfillment` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/stores/{storeNo}/fulfillment` | 保存门店送货方式 | — | `StoreFulfillment` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stores/{storeNo}/fulfillment/{channel}/impact` | 关掉这一路会影响的在售商品 | — | `数组` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts` | Separate local and brand wallets | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records` | Current store records of selected wallet | — | `SvRecordPage` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}` | 查询本店原储值进度 | — | `SvProgress` | 🔒 | ✅ | ✅ |
 | POST | `/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}/cancel` | 取消本店未收款储值 | `SvCancelReq` | `SvProgress` | 🔒 | ✅ | ✅ |
 | POST | `/biz/stores/{storeNo}/stored-value/issuer-recharges/cancel-create` | 取消未明确创建的原充值命令 | `SvRechargeCreate` | `SvProgress` | 🔒 | ✅ | ✅ |

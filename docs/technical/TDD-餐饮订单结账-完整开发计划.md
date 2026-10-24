@@ -958,6 +958,13 @@ Schema发布修复：按原生成器重建schema-test.sql，补齐已合并储�
 
 并发统一分支核对：远端已推进aa7796955，品牌储值P5已部署，实际云端gitSha为659e065f2585bdfca7aafbc66af5c3a7cab5df28、health=UP、CORE574、ai_shop393表且fnb0；PAY仍standalone，inventory仍true。此前c8e3ea7b0/CORE566/382表是前一次只读预检历史，不能再作为本次切换预期。先合并P5并重新完整验证；本次只新增餐饮私有15SQL/83业务表＋history，不重放已应用CORE567～574，不覆盖已上线品牌储值。备份/切换前再次验证实际版本，发生变化则先核对兼容。
 
+
+P5合并兼容收尾收据：支付侧保留101个原P5方法体及全部公开嵌套DTO，core/merchant八个服务方法组对账通过；新增服务沿原接口＋impl/port规范，bean身份、授权、SQL与金额体不变。支付、品牌钱包隔离、实际HTTP选择、公开合同、权限、审计、schema和Outbox合批55项通过（`/tmp/food-cloud-p5-final-merged-target.log`）。完整共享584项仅4项原基线、ops831/0，检查exit0；25生成器一致；B310、C633、双端类型及API语义检查通过。主failure基线未增长；共享路径兼容目录仅补4条已发布URL漏登记，并有陌生近似URL拒绝回归，B路径例外相对统一远端86→19。三个新增JDBC表登记真实owner/模型/SQL，不登记为无实体欠账；recharge_store_no在lot和clearing中明确指向mch_store.store_no。
+
+实际部署形态补验：food-api/core/channel/web/server五模块782项，0失败/错误，54条件跳过，含3项真实包装IT（`/tmp/food-cloud-p5-food-reactor-final.log`）；embedded主机架构19＋装配6＝25项，0失败/错误，1按构建形态条件跳过（`/tmp/food-cloud-final-embedded-shape.log`）。food登记真实业务域，独立行业SPI根保留在food-api；内部聚合访问改Access命名，9个惰性目录代理移至.port并保持23个原转发体/default行为。自包含food-web的API、真实自动装配、实现对应业务接口并依赖行业InternalApi的typed远程适配器按明确角色识别，领域service/policy/entity仍禁Web运行时，未知SPI/假配置/假适配器仍拒绝；独立正负例及复审通过。最终仍须在接下来冻结提交上正常全量推送门禁，不据专项通过宣称云端上线。
+
+后续文档质量待办（不改变已部署HTTP或此次代码行为）：独立生成器审查发现历史ManagementGrantReq→GrantCommand别名存在悬空OpenAPI引用，旧远端及本地修复前均有；需单独完善所有schema引用闭合校验。本次functions隐藏只删除3个不可序列化JS helper伪schema及精确未引用Never sentinel，引用sentinel时拒绝；577个数据DTO保持，实际数据不会因函数清理丢失。
+
 ## §3 任务边界及排期方式
 
 共享内核、配置发布、报价持久化、资金/库存合同、餐饮结账、经营凭证各自为可单独评审的工作包，但依上述合同连成一条主线。不要按Controller→Service→Mapper分批开发一堆不可验收空壳。

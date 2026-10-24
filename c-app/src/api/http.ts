@@ -1,6 +1,6 @@
 import { requirePointsNames } from "@shared/utils/points-name";
 import type { OrderPointsEarning } from "@shared/types";
-import type { StoredValueStoresQuery, StoredValueRecordsQuery } from "./stored-value-types";
+import type { StoredValueIssuerRecordsPage,StoredValueStoresQuery, StoredValueRecordsQuery } from "./stored-value-types";
 import type { MemberCodeView } from "@shared/types";
 // 真实后端实现 —— **不手写 URL**，全部从 endpoints.ts 的端点表取。
 //
@@ -339,6 +339,15 @@ export const httpApi: ShopApi = {
   toggleReviewLike: (reviewNo) => call<Review>("toggleReviewLike", { reviewNo }),
 
   // ---- 积分
+  storedValuePendingServices:()=>call("storedValuePendingServices"),
+  storedValueService:orderNo=>call("storedValueService",{orderNo}),
+  storedValueAuthorize:(orderNo,body)=>call("storedValueAuthorize",{orderNo},body),
+  storedValueIssuers:query=>call("storedValueIssuers",undefined,{...query}),
+  storedValueLocateIssuer:focusDocumentNo=>call("storedValueLocateIssuer",undefined,{focusDocumentNo}),
+  storedValueIssuerRecords:async(issuerRef,query)=>{
+    const page=await call<StoredValueIssuerRecordsPage>("storedValueIssuerRecords",undefined,{issuerRef,...query});
+    return {...page,store:{storeNo:page.issuer.storeNo||"",storeName:page.issuer.name,businessTimeZone:page.issuer.businessTimeZone||"UTC"}};
+  },
   storedValueStores: (query) => call("storedValueStores", undefined, { ...query } satisfies StoredValueStoresQuery),
   storedValueRecords: (storeNo, query) => call("storedValueRecords", { storeNo }, { ...query } satisfies StoredValueRecordsQuery),
   storedValueNotificationCapability: () => call("storedValueNotificationCapability"),

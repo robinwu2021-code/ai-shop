@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.storedvalue.issuer.impl;
 
+import static ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.number;
+import static ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.text;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -15,15 +17,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-import static ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.number;
-import static ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.text;
-
-
 
 /** Pay-local counters, never a payment channel or proof that an external collection succeeded. */
 @Service("storedValueIssueQuotaService")
 public class StoredValueIssueQuotaServiceImpl implements StoredValueIssueQuotaService {
+
     private final IssuerRepository db;
     public StoredValueIssueQuotaServiceImpl(IssuerRepository db) { this.db=db; }
 
@@ -90,22 +88,33 @@ public class StoredValueIssueQuotaServiceImpl implements StoredValueIssueQuotaSe
     }
     /** Called before any original receipt/account locks when the issuer write path is enabled. */
     public void lockForOriginal(EntitlementContext actor,String rechargeNo) {
-        if(!TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Pay transaction required");
+        if(!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Pay transaction required");
         lockQuota(actor,original(actor,rechargeNo,false));
     }
     public void lockForAccount(EntitlementContext actor,String accountNo) {
-        if(!TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Pay transaction required");
+        if(!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Pay transaction required");
         var account=db.one("SELECT * FROM sv_account WHERE tenant_no=? AND account_no=? AND deleted=0",actor.tenantNo(),accountNo);
         if(account==null||text(account,"issuer_no")==null)throw BizException.of(ErrorCode.CONFLICT);
         lockQuota(actor,account);
     }
     private Map<String,Object> lockQuota(EntitlementContext actor,Map<String,Object> original) {
+        if(text(original,"issuer_no")!=null){var issuer=db.one("SELECT scope_type FROM sv_issuer WHERE tenant_no=? AND issuer_no=? AND deleted=0",actor.tenantNo(),text(original,"issuer_no"));if(issuer==null)throw BizException.of(ErrorCode.CONFLICT);if("BRAND".equals(text(issuer,"scope_type")))return lockIssuerQuota(actor,text(original,"issuer_no"),text(original,"currency"));}
         var quota=db.one("SELECT * FROM sv_issue_quota WHERE tenant_no=? AND store_no=? AND currency=? AND deleted=0 FOR UPDATE",actor.tenantNo(),text(original,"store_no"),text(original,"currency"));
         if(quota==null) {
             if(!db.rows("SELECT account_no FROM sv_account WHERE tenant_no=? AND store_no=? AND currency=? AND deleted=0 LIMIT 1",actor.tenantNo(),text(original,"store_no"),text(original,"currency")).isEmpty())
                 throw BizException.of(ErrorCode.CONFLICT);
             var at=Timestamp.from(Instant.now());var row=base(actor,at);row.put("quota_no",BizKey.next(BizKey.STORED_VALUE_QUOTA));row.put("store_no",text(original,"store_no"));row.put("currency",text(original,"currency"));row.put("outstanding_minor",0);row.put("reserved_minor",0);db.insert("sv_issue_quota",row);
             quota=db.one("SELECT * FROM sv_issue_quota WHERE tenant_no=? AND store_no=? AND currency=? FOR UPDATE",actor.tenantNo(),text(original,"store_no"),text(original,"currency"));
+        }
+        return quota;
+    }
+    public Map<String,Object> lockIssuerQuota(EntitlementContext actor,String issuer,String currency){
+        if(!db.payTransactionActive())throw new IllegalStateException("Pay transaction required");
+        var quota=db.one("SELECT * FROM sv_issue_quota WHERE tenant_no=? AND issuer_no=? AND currency=? AND deleted=0 FOR UPDATE",actor.tenantNo(),issuer,currency);
+        if(quota==null){
+            if(!db.rows("SELECT account_no FROM sv_account WHERE tenant_no=? AND issuer_no=? AND currency=? AND deleted=0 LIMIT 1",actor.tenantNo(),issuer,currency).isEmpty())throw BizException.of(ErrorCode.CONFLICT);
+            var at=Timestamp.from(Instant.now());var row=base(actor,at);row.put("quota_no",BizKey.next(BizKey.STORED_VALUE_QUOTA));row.put("issuer_no",issuer);row.put("currency",currency);row.put("outstanding_minor",0);row.put("reserved_minor",0);db.insert("sv_issue_quota",row);
+            quota=db.one("SELECT * FROM sv_issue_quota WHERE tenant_no=? AND issuer_no=? AND currency=? AND deleted=0 FOR UPDATE",actor.tenantNo(),issuer,currency);
         }
         return quota;
     }

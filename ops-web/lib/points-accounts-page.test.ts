@@ -11,7 +11,13 @@ import PointsAccountsPage from "@/app/points/accounts/page";
 let host: HTMLDivElement, root: Root, query: QueryClient;
 const row = { exists: true, snapshot: { holderType: "USER", holderNo: "U1", typeCode: "HX", frozen: false, buckets: { AVAILABLE: 12, HELD: 3 } } };
 const flush = () => act(async () => { await new Promise(r => setTimeout(r, 20)); });
-async function render() { await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsAccountsPage)))); await flush(); }
+async function render() {
+  await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsAccountsPage))));
+  await vi.waitFor(async () => {
+    await act(async () => {});
+    expect(host.querySelector('[role="button"]')).not.toBeNull();
+  });
+}
 beforeEach(() => {
   (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   vi.clearAllMocks(); mock.types.mockResolvedValue([{ typeCode: "HX", name: "平台积分" }]);
@@ -20,6 +26,7 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => root.unmount()); query.clear(); host.remove(); });
 it("uses business balance labels and separate ledger identifiers", async () => {
+  mock.types.mockImplementationOnce(async () => { await new Promise(resolve => setTimeout(resolve, 80)); return [{ typeCode: "HX", name: "平台积分" }]; });
   await render(); expect(host.textContent).toContain("可用积分"); expect(host.textContent).not.toContain("AVAILABLE");
   await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click()); await flush();
   expect(host.querySelector("aside")!.textContent).toContain("凭证编号"); expect(host.querySelector("aside")!.textContent).toContain("分录编号");

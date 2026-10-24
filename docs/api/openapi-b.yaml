@@ -13403,26 +13403,60 @@ components:
         - "bonusAmountMinor"
       additionalProperties: false
     SvRechargeCreate:
-      type: "object"
-      properties:
-        storeNo:
-          type: "string"
-          description: "Store identifier scoping the requested operation or returned business record."
-        customerRef:
-          type: "string"
-          description: "Server-issued selected-customer reference; expires and must be reselected when stale."
-        planNo:
-          type: "string"
-          description: "Recharge plan identifier; null for operations without a recharge plan."
-        versionNo:
-          type: "string"
-          description: "Immutable version identifier frozen for the referenced plan or policy."
-      required:
-        - "storeNo"
-        - "customerRef"
-        - "planNo"
-        - "versionNo"
-      additionalProperties: false
+      anyOf:
+        - type: "object"
+          additionalProperties: false
+          properties:
+            scopeType:
+              type: "string"
+              const: "STORE"
+              description: "Whether the selected stored-value resource belongs to one store or a brand."
+            planNo:
+              type: "string"
+              description: "Recharge plan identifier; null for operations without a recharge plan."
+            versionNo:
+              type: "string"
+              description: "Immutable version identifier frozen for the referenced plan or policy."
+            storeNo:
+              type: "string"
+              description: "Store identifier scoping the requested operation or returned business record."
+            customerRef:
+              type: "string"
+              description: "Server-issued selected-customer reference; expires and must be reselected when stale."
+          required:
+            - "customerRef"
+            - "planNo"
+            - "storeNo"
+            - "versionNo"
+        - type: "object"
+          additionalProperties: false
+          properties:
+            scopeType:
+              type: "string"
+              const: "BRAND"
+              description: "Whether the selected stored-value resource belongs to one store or a brand."
+            planNo:
+              type: "null"
+              description: "Recharge plan identifier; null for operations without a recharge plan."
+            versionNo:
+              type: "null"
+              description: "Immutable version identifier frozen for the referenced plan or policy."
+            optionRef:
+              type: "string"
+              description: "Server-issued reference to a brand recharge offer, including its frozen activity terms."
+            storeNo:
+              type: "string"
+              description: "Store identifier scoping the requested operation or returned business record."
+            customerRef:
+              type: "string"
+              description: "Server-issued selected-customer reference; expires and must be reselected when stale."
+          required:
+            - "customerRef"
+            - "optionRef"
+            - "planNo"
+            - "scopeType"
+            - "storeNo"
+            - "versionNo"
     SvReceipt:
       type: "object"
       properties:
@@ -13962,8 +13996,10 @@ components:
           properties:
             rules:
               "$ref": "#/components/schemas/SvPolicyRules"
+              description: "Effective stored-value issuance limits and approval requirements."
             expectedRevision:
               type: "number"
+              description: "Previously observed resource revision; stale writes are rejected."
           required:
             - "rules"
             - "expectedRevision"
@@ -14105,7 +14141,9 @@ components:
           properties:
             mode:
               type: "string"
-              const: "STORES"
+              enum:
+                - "ALL"
+                - "STORES"
               description: "Calculation or scope mode determining how the associated value and references are interpreted."
             refs:
               type: "array"
@@ -14210,7 +14248,9 @@ components:
                     properties:
                       mode:
                         type: "string"
-                        const: "STORES"
+                        enum:
+                          - "ALL"
+                          - "STORES"
                         description: "Calculation or scope mode determining how the associated value and references are interpreted."
                       refs:
                         type: "array"
@@ -14318,8 +14358,10 @@ components:
               description: "Approval or return decision submitted for the current revision."
             reason:
               type: "string"
+              description: "Machine-readable eligibility or rejection reason for the quote."
             expectedRevision:
               type: "number"
+              description: "Previously observed resource revision; stale writes are rejected."
           required:
             - "decision"
             - "reason"
@@ -14329,6 +14371,120 @@ components:
       required:
         - "managementNo"
         - "decision"
+      additionalProperties: false
+    SvConsumptionCreate:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+          description: "Store identifier for the service or ledger record; null when no single store applies."
+        customerRef:
+          type: "string"
+          description: "Server-issued selected-customer reference authorizing this operation."
+        items:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              skuNo:
+                type: "string"
+                description: "Sellable service SKU identifier selected for consumption."
+              quantity:
+                type: "number"
+                description: "Positive quantity of the selected service item."
+            required:
+              - "skuNo"
+              - "quantity"
+            additionalProperties: false
+          description: "Service order lines and their positive purchased quantities."
+        issuerRef:
+          type: "string"
+          description: "Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier."
+        accountRef:
+          type: "string"
+          description: "Opaque account selection reference bound to the selected customer and issuer."
+      required:
+        - "storeNo"
+        - "customerRef"
+        - "items"
+        - "issuerRef"
+        - "accountRef"
+      additionalProperties: false
+    SvConsumptionStoreQuery:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+          description: "Store identifier for the service or ledger record; null when no single store applies."
+      required:
+        - "storeNo"
+      additionalProperties: false
+    SvConsumptionSubmit:
+      type: "object"
+      properties:
+        orderNo:
+          type: "string"
+          description: "Original service order identifier; retries keep this same order."
+        orderRevision:
+          type: "number"
+          description: "Previously confirmed service order revision; stale submissions are rejected."
+        customerRef:
+          type: "string"
+          description: "Server-issued selected-customer reference authorizing this operation."
+        authorizationRef:
+          type: "null"
+          description: "Reserved customer authorization reference; merchant submission currently requires null."
+      required:
+        - "orderNo"
+        - "orderRevision"
+        - "customerRef"
+        - "authorizationRef"
+      additionalProperties: false
+    SvWalletRecordsQuery:
+      type: "object"
+      properties:
+        issuerRef:
+          type: "string"
+          description: "Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier."
+        accountRef:
+          type: "string"
+          description: "Opaque account selection reference bound to the selected customer and issuer."
+        type:
+          type: "string"
+          enum:
+            - "ALL"
+            - "RECHARGE"
+            - "REDEMPTION"
+          description: "Requested stored-value record classification; ALL disables the classification filter."
+        startDate:
+          type: "string"
+          description: "Inclusive first business date in YYYY-MM-DD format."
+        endDate:
+          type: "string"
+          description: "Inclusive final business date in YYYY-MM-DD format."
+        cursor:
+          type: "string"
+          description: "Opaque continuation cursor; omit for the first page."
+        size:
+          type: "number"
+          description: "Maximum number of records requested in this page."
+      required:
+        - "issuerRef"
+        - "accountRef"
+        - "type"
+      additionalProperties: false
+    SvBrandActivationRequest:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+          description: "Management-space identifier under which this action is authorized."
+        expectedRevision:
+          type: "number"
+          description: "Previously observed resource revision; stale writes are rejected."
+      required:
+        - "managementNo"
+        - "expectedRevision"
       additionalProperties: false
     MerchantOrderActionKind:
       type: "string"
@@ -15843,7 +15999,9 @@ components:
           description: "Stored-value issuer identifier."
         scopeType:
           type: "string"
-          const: "STORE"
+          enum:
+            - "STORE"
+            - "BRAND"
           description: "Whether the issuer scope is a store or a brand."
         scopeNo:
           type: "string"
@@ -16193,8 +16351,19 @@ components:
           type: "string"
           description: "Hash of the exact activity draft submitted for validation or approval."
         storeNo:
-          type: "string"
+          type:
+            - "string"
+            - "null"
           description: "Store identifier scoping the requested operation or returned business record."
+        scopeType:
+          type: "string"
+          enum:
+            - "STORE"
+            - "BRAND"
+          description: "Whether the selected stored-value resource belongs to one store or a brand."
+        scopeNo:
+          type: "string"
+          description: "Business identifier of the store or brand selected by scopeType."
         managementNo:
           type: "string"
           description: "Management-space identifier under which the operation is authorized."
@@ -16468,6 +16637,361 @@ components:
         - "canManage"
         - "canPublish"
       additionalProperties: false
+    SvBrandOption:
+      type: "object"
+      properties:
+        optionRef:
+          type: "string"
+          description: "Server-issued reference to a brand recharge offer, including its frozen activity terms."
+        activityName:
+          type: "string"
+          description: "Display name of the brand recharge activity."
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining monetary minor-unit interpretation."
+        paidAmountMinor:
+          type: "number"
+          description: "Paid principal of the recharge offer in minor currency units."
+        bonusAmountMinor:
+          type: "number"
+          description: "Gifted stored-value amount of the offer in minor currency units."
+        totalAmountMinor:
+          type: "number"
+          description: "Total credited balance of the offer in minor currency units."
+      required:
+        - "optionRef"
+        - "activityName"
+        - "currency"
+        - "paidAmountMinor"
+        - "bonusAmountMinor"
+        - "totalAmountMinor"
+      additionalProperties: false
+    SvRechargeOffer:
+      anyOf:
+        - "$ref": "#/components/schemas/SvPlan"
+        - "$ref": "#/components/schemas/SvBrandOption"
+    SvWallet:
+      type: "object"
+      properties:
+        scopeType:
+          type: "string"
+          enum:
+            - "STORE"
+            - "BRAND"
+          description: "Whether the selected stored-value resource belongs to one store or a brand."
+        issuerRef:
+          type: "string"
+          description: "Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier."
+        name:
+          type: "string"
+          description: "Display name of the selected stored-value issuer or wallet."
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining monetary minor-unit interpretation."
+        accountRef:
+          type:
+            - "string"
+            - "null"
+          description: "Opaque account selection reference bound to the selected customer and issuer."
+        account:
+          anyOf:
+            - type: "object"
+              properties:
+                balanceMinor:
+                  type: "number"
+                  description: "Total posted account balance in minor currency units."
+                heldMinor:
+                  type: "number"
+                  description: "Balance reserved by pending operations in minor currency units."
+                availableMinor:
+                  type: "number"
+                  description: "Balance currently available for redemption in minor currency units."
+              required:
+                - "balanceMinor"
+                - "heldMinor"
+                - "availableMinor"
+              additionalProperties: false
+            - type: "null"
+          description: "Balance snapshot for this wallet; null when the customer has no account."
+        canRecharge:
+          type: "boolean"
+          description: "Whether this selected wallet currently permits new recharge operations."
+        canRedeem:
+          type: "boolean"
+          description: "Whether this selected wallet currently permits redemption."
+        unavailableReason:
+          type:
+            - "string"
+            - "null"
+          description: "Machine-readable reason this wallet is unavailable; null when available."
+      required:
+        - "scopeType"
+        - "issuerRef"
+        - "name"
+        - "currency"
+        - "accountRef"
+        - "account"
+        - "canRecharge"
+        - "canRedeem"
+        - "unavailableReason"
+      additionalProperties: false
+    SvCustomer:
+      type: "object"
+      properties:
+        customerRef:
+          type: "string"
+          description: "Server-issued selected-customer reference; expires and must be reselected when stale."
+        maskedName:
+          type: "string"
+          description: "Customer name masked for the current operator's access level."
+        expiresAt:
+          type: "string"
+          description: "Expiry time of the server-issued selection or preview."
+      required:
+        - "customerRef"
+        - "maskedName"
+        - "expiresAt"
+      additionalProperties: false
+    SvServiceView:
+      type: "object"
+      properties:
+        serviceOrderNo:
+          type: "string"
+          description: "Identifier of the original stored-value consumption service order."
+        operationNo:
+          type: "string"
+          description: "Stable operation identifier used to recover the original execution."
+        status:
+          type: "string"
+          description: "Current server-owned lifecycle state of this operation or service."
+        storeNo:
+          type: "string"
+          description: "Store identifier for the service or ledger record; null when no single store applies."
+        storeName:
+          type: "string"
+          description: "Store display name attached to the service or record."
+        serviceStaffName:
+          type:
+            - "string"
+            - "null"
+          description: "Service staff display name; null when no staff member is assigned."
+        items:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              itemNo:
+                type: "string"
+                description: "Identifier of this service order line."
+              title:
+                type: "string"
+                description: "Human-readable service item title."
+              quantity:
+                type: "number"
+                description: "Positive quantity of the selected service item."
+            required:
+              - "itemNo"
+              - "title"
+              - "quantity"
+            additionalProperties: false
+          description: "Service order lines and their positive purchased quantities."
+        serviceAt:
+          type:
+            - "string"
+            - "null"
+          description: "Service completion timestamp; null before completion."
+        confirmation:
+          anyOf:
+            - type: "object"
+              properties:
+                orderRevision:
+                  type: "number"
+                  description: "Previously confirmed service order revision; stale submissions are rejected."
+                quoteRef:
+                  type: "string"
+                  description: "Server-issued reference to the immutable consumption quote."
+                selectionDigest:
+                  type: "string"
+                  description: "Digest binding confirmation to the exact selected wallet and service lines."
+                expiresAt:
+                  type: "string"
+                  description: "Server expiry timestamp after which the reference or confirmation must be refreshed."
+              required:
+                - "orderRevision"
+                - "quoteRef"
+                - "selectionDigest"
+                - "expiresAt"
+              additionalProperties: false
+            - type: "null"
+          description: "Immutable customer confirmation terms; null when confirmation is not available."
+        payment:
+          anyOf:
+            - type: "object"
+              properties:
+                assetKind:
+                  type: "string"
+                  const: "STORED_VALUE"
+                  description: "Asset kind selected for payment; stored-value services use STORED_VALUE."
+                currency:
+                  "$ref": "#/components/schemas/CurrencyCode"
+                  description: "ISO currency code determining monetary minor-unit interpretation."
+                amountMinor:
+                  type: "number"
+                  description: "Total service or payment amount in minor currency units."
+                scopeType:
+                  type: "string"
+                  enum:
+                    - "STORE"
+                    - "BRAND"
+                  description: "Whether the selected stored-value resource belongs to one store or a brand."
+                issuerName:
+                  type:
+                    - "string"
+                    - "null"
+                  description: "Issuer display name; null when no issuer is selected."
+              required:
+                - "assetKind"
+                - "currency"
+                - "amountMinor"
+                - "scopeType"
+                - "issuerName"
+              additionalProperties: false
+            - type: "null"
+          description: "Stored-value payment snapshot; null before payment terms are available."
+      required:
+        - "serviceOrderNo"
+        - "operationNo"
+        - "status"
+        - "storeNo"
+        - "storeName"
+        - "serviceStaffName"
+        - "items"
+        - "serviceAt"
+        - "confirmation"
+        - "payment"
+      additionalProperties: false
+    SvConsumptionPreview:
+      type: "object"
+      properties:
+        service:
+          "$ref": "#/components/schemas/SvServiceView"
+          description: "Original stored-value service view; null when the operation has not produced a service."
+        quote:
+          type: "object"
+          properties:
+            amountMinor:
+              type: "number"
+              description: "Total service or payment amount in minor currency units."
+            applicableMinor:
+              type: "number"
+              description: "Stored-value amount applicable to this quoted service, in minor currency units."
+            currency:
+              "$ref": "#/components/schemas/CurrencyCode"
+              description: "ISO currency code determining monetary minor-unit interpretation."
+            redeemable:
+              type: "boolean"
+              description: "Whether the selected wallet is eligible to pay for this service."
+            reason:
+              type: "string"
+              description: "Machine-readable eligibility or rejection reason for the quote."
+            scopeType:
+              type: "string"
+              enum:
+                - "STORE"
+                - "BRAND"
+              description: "Whether the selected stored-value resource belongs to one store or a brand."
+            issuerName:
+              type:
+                - "string"
+                - "null"
+              description: "Issuer display name; null when no issuer is selected."
+            expiresAt:
+              type: "string"
+              description: "Server expiry timestamp after which the reference or confirmation must be refreshed."
+          required:
+            - "amountMinor"
+            - "applicableMinor"
+            - "currency"
+            - "redeemable"
+            - "reason"
+            - "scopeType"
+            - "issuerName"
+            - "expiresAt"
+          additionalProperties: false
+          description: "Immutable quote for the selected wallet and service items."
+      required:
+        - "service"
+        - "quote"
+      additionalProperties: false
+    SvOperation:
+      type: "object"
+      properties:
+        operationNo:
+          type: "string"
+          description: "Stable operation identifier used to recover the original execution."
+        status:
+          type: "string"
+          description: "Current server-owned lifecycle state of this operation or service."
+        usageNo:
+          type:
+            - "string"
+            - "null"
+          description: "Ledger usage identifier; null until consumption has produced a usage."
+      required:
+        - "operationNo"
+        - "status"
+        - "usageNo"
+      additionalProperties: false
+    IssuerApi:
+      type: "object"
+      additionalProperties: false
+    SvConsumptionResolution:
+      type: "object"
+      properties:
+        found:
+          type: "boolean"
+          description: "Whether the original idempotent consumption preview has been found."
+        service:
+          anyOf:
+            - "$ref": "#/components/schemas/SvServiceView"
+            - type: "null"
+          description: "Original stored-value service view; null when the operation has not produced a service."
+      required:
+        - "found"
+        - "service"
+      additionalProperties: false
+    SvBrandCapability:
+      type: "object"
+      properties:
+        protocol:
+          type: "number"
+          description: "Stored-value capability protocol version supported by the deployment."
+        ready:
+          type: "boolean"
+          description: "Whether all prerequisites for brand stored-value execution are satisfied."
+        blockers:
+          type: "array"
+          items:
+            type: "string"
+          description: "Machine-readable reasons that prevent brand execution readiness."
+      required:
+        - "protocol"
+        - "ready"
+        - "blockers"
+      additionalProperties: false
+    SvBrandActivation:
+      type: "object"
+      properties:
+        activationNo:
+          type: "string"
+          description: "Identifier of the original brand financial activation operation."
+        state:
+          type: "string"
+          description: "Current server-owned state of the brand financial activation."
+      required:
+        - "activationNo"
+        - "state"
+      additionalProperties: false
     Record_Lang_string:
       type: "object"
       properties:
@@ -16653,6 +17177,545 @@ components:
         - "nextCursor"
       additionalProperties: false
 paths:
+  "/biz/management/brands/{store}/stored-value/activity-context":
+    get:
+      operationId: "mSvBrandActivityContext"
+      summary: "储值活动门店市场上下文"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "Management-space identifier under which the operation is authorized."
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code determining the interpretation of monetary amounts."
+        - name: "intent"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            enum:
+              - "READ"
+              - "MANAGE"
+            description: "Requested governance capability: read-only inspection or management."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvGovernanceContext"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/brands/{store}/stored-value/activity-presets":
+    get:
+      operationId: "mSvBrandActivityPresets"
+      summary: "可用储值活动类型"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "Management-space identifier under which the operation is authorized."
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code determining the interpretation of monetary amounts."
+        - name: "page"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            description: "One-based page index for the returned or requested result."
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            description: "Maximum records per page requested or returned by the server."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvGovernancePresetsPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/brands/{store}/stored-value/activity-schedules":
+    get:
+      operationId: "mSvBrandActivitySchedule"
+      summary: "按门店时区换算活动日期"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "Management-space identifier under which the operation is authorized."
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code determining the interpretation of monetary amounts."
+        - name: "startDate"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "Inclusive first business date in YYYY-MM-DD format."
+        - name: "endDate"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "Inclusive final business date in YYYY-MM-DD format."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvGovernanceSchedule"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/brands/{store}/stored-value/activities":
+    get:
+      operationId: "mSvBrandActivities"
+      summary: "门店储值活动"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "Management-space identifier under which the operation is authorized."
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code determining the interpretation of monetary amounts."
+        - name: "status"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Current server-owned lifecycle state of this resource."
+        - name: "page"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            description: "One-based page index for the returned or requested result."
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            description: "Maximum records per page requested or returned by the server."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvGovernanceActivitiesPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    post:
+      operationId: "mSvBrandActivitySave"
+      summary: "保存储值活动草稿"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvActivity"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGovernanceDraft"
+  "/biz/management/brands/{store}/stored-value/activities/{no}":
+    get:
+      operationId: "mSvBrandActivity"
+      summary: "储值活动详情"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "Management-space identifier under which the operation is authorized."
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code determining the interpretation of monetary amounts."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvGovernanceDetail"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/brands/{store}/stored-value/activities/{no}/draft":
+    put:
+      operationId: "mSvBrandActivityDraftEdit"
+      summary: "修订储值活动草稿"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvActivity"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGovernanceDraft"
+  "/biz/management/brands/{store}/stored-value/activities/{no}/checks":
+    post:
+      operationId: "mSvBrandActivityCheck"
+      summary: "检查储值活动"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvActivityCheck"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGovernanceCommand"
+  "/biz/management/brands/{store}/stored-value/activities/{no}/submissions":
+    post:
+      operationId: "mSvBrandActivitySubmit"
+      summary: "提交储值活动"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvSubmission"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGovernanceCommand"
+  "/biz/management/brands/{store}/stored-value/activities/{no}/stop-issuance":
+    post:
+      operationId: "mSvBrandActivityStop"
+      summary: "停止新发行"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvSubmission"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGovernanceCommand"
+  "/biz/management/brands/{store}/stored-value/activities/{no}/copies":
+    post:
+      operationId: "mSvBrandActivityCopy"
+      summary: "复制储值活动"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvActivity"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGovernanceCommand"
   "/biz/stores/{store}/stored-value/activities/{no}/draft":
     put:
       operationId: "mSvActivityDraftEdit"
@@ -17591,6 +18654,377 @@ paths:
           "application/json":
             schema:
               "$ref": "#/components/schemas/SvGovernanceDecision"
+  "/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records":
+    get:
+      operationId: "mSvWalletRecords"
+      summary: "Current store records of selected wallet"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "customerRef"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "issuerRef"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier."
+        - name: "accountRef"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "Opaque account selection reference bound to the selected customer and issuer."
+        - name: "type"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            enum:
+              - "ALL"
+              - "RECHARGE"
+              - "REDEMPTION"
+            description: "Requested stored-value record classification; ALL disables the classification filter."
+        - name: "startDate"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Inclusive first business date in YYYY-MM-DD format."
+        - name: "endDate"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Inclusive final business date in YYYY-MM-DD format."
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Opaque continuation cursor; omit for the first page."
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            description: "Maximum number of records requested in this page."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvRecordPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stored-value/consumptions/orders/{orderNo}/cancel":
+    post:
+      operationId: "mSvConsumptionCancel"
+      summary: "Cancel original service without refund"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvConsumptionStoreQuery"
+  "/biz/stored-value/consumptions/resolve":
+    post:
+      operationId: "mSvConsumptionResolve"
+      summary: "Resolve exact original preview without expired references"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvConsumptionResolution"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvConsumptionCreate"
+  "/biz/stored-value/consumptions/preview":
+    post:
+      operationId: "mSvConsumptionPreview"
+      summary: "Selected wallet service preview"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvConsumptionPreview"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvConsumptionCreate"
+  "/biz/stored-value/consumptions/orders/{orderNo}":
+    get:
+      operationId: "mSvConsumptionOrder"
+      summary: "Merchant original service status"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "storeNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "Store identifier for the service or ledger record; null when no single store applies."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvServiceView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stored-value/consumptions":
+    post:
+      operationId: "mSvConsume"
+      summary: "Consume using existing consumer confirmation"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvConsumptionSubmit"
+  "/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts":
+    get:
+      operationId: "mSvWallets"
+      summary: "Separate local and brand wallets"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "customerRef"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/SvWallet"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stored-value/brand-capability":
+    get:
+      operationId: "mSvBrandCapability"
+      summary: "Brand readiness"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvBrandCapability"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/brands/{brandNo}/stored-value/issuer/activation":
+    post:
+      operationId: "mSvBrandActivate"
+      summary: "Activate original brand snapshot"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "brandNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvBrandActivation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvBrandActivationRequest"
   "/biz/management/stores/{no}/stored-value/issuer":
     get:
       operationId: "mSvStoreIssuerConfiguration"

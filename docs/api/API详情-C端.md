@@ -507,6 +507,55 @@
 类型：[`UserCoupon`](#usercoupon)\[\]
 
 
+### entitlement-service-orders
+
+#### GET `/mp/entitlement-service-orders`
+
+My pending service confirmations　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`StoredValueService`](#storedvalueservice)\[\]
+
+
+#### GET `/mp/entitlement-service-orders/{orderNo}`
+
+My service confirmation　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`StoredValueService`](#storedvalueservice)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `serviceOrderNo` | `string` | 是 | Identifier of the original stored-value consumption service order. |
+| `operationNo` | `string` | 是 | Stable operation identifier used to recover the original execution. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this operation or service. |
+| `storeNo` | `string` | 是 | Store identifier for the service or ledger record; null when no single store applies. |
+| `storeName` | `string` | 是 | Store display name attached to the service or record. |
+| `serviceStaffName` | `string,null` | 是 | Service staff display name; null when no staff member is assigned. |
+| `serviceAt` | `string,null` | 是 | Service completion timestamp; null before completion. |
+| `items` | `object`（见下）\[\] | 是 | Service order lines and their positive purchased quantities. |
+| `confirmation` | `object`（见下） \| `null` | 是 | Immutable customer confirmation terms; null when confirmation is not available. |
+| `payment` | `object`（见下） \| `null` | 是 | Stored-value payment snapshot; null before payment terms are available. |
+
+`items[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemNo` | `string` | 是 | Identifier of this service order line. |
+| `title` | `string` | 是 | Human-readable service item title. |
+| `quantity` | `number` | 是 | Positive quantity of the selected service item. |
+
+
 ### favorite
 
 #### GET `/mp/favorite/goods`
@@ -2437,6 +2486,38 @@
 | `pickupDistanceM` | `number,null` | 否 | 这个自提点离买家多远（米）。**点是后端按地址配的，买家没得挑** —— 不说距离的话，他要到取货那天才知道有多远。 `-1` = 这个点没标坐标（存量点是手填地址建的），**不是 0**： 0 会被显示成「0 米」，那是一句假话。预览之外为空。 |
 
 
+### orders
+
+#### POST `/mp/orders/{orderNo}/entitlement-authorizations`
+
+Confirm frozen service and wallet　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+请求体：[`StoredValueAuthorizeRequest`](#storedvalueauthorizerequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderRevision` | `number` | 是 | Previously confirmed service order revision; stale submissions are rejected. |
+| `quoteRef` | `string` | 是 | Server-issued reference to the immutable consumption quote. |
+| `selectionDigest` | `string` | 是 | Digest binding confirmation to the exact selected wallet and service lines. |
+| `requestKey` | `string` | 是 | Idempotency key binding retries to the original customer authorization. |
+
+**出参**（`data`）
+
+类型：[`StoredValueAuthorization`](#storedvalueauthorization)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `string` | 是 | Current server-owned lifecycle state of this operation or service. |
+| `operationNo` | `string,null` | 是 | Stable operation identifier used to recover the original execution. |
+| `useStatus` | `string,null` | 是 | Server-owned asset usage state; null before a usage exists. |
+
+
 ### place
 
 #### GET `/mp/place/search`
@@ -2817,6 +2898,65 @@
 
 ### stored-value
 
+#### GET `/mp/stored-value/issuer-records`
+
+Owned issuer history　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `issuerRef` | query | `string` | 是 | — |
+| `type` | query | `ALL` \| `RECHARGE` \| `REDEMPTION` | 否 | 类型筛选，取值见对应枚举 |
+| `startDate` | query | `string` | 否 | — |
+| `endDate` | query | `string` | 否 | — |
+| `focusDocumentNo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`StoredValueIssuerRecordsPage`](#storedvalueissuerrecordspage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuer` | [`StoredValueIssuer`](#storedvalueissuer) | 是 | Issuer identity and business context for the selected record collection. |
+| `filter` | `object`（见下） | 是 | Effective record filters after server normalization. |
+| `records` | [`StoredValueRecord`](#storedvaluerecord)\[\] | 是 | Records returned in this page under the current authorized selection. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when all records have been returned. |
+| `hasMore` | `boolean` | 是 | Whether another page is available using nextCursor. |
+
+`filter` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | [`StoredValueType`](#storedvaluetype) | 是 | Record, target or calculation classification used to interpret this object. |
+| `startDate` | `string,null` | 是 | Inclusive first business date in YYYY-MM-DD format. |
+| `endDate` | `string,null` | 是 | Inclusive final business date in YYYY-MM-DD format. |
+
+
+#### GET `/mp/stored-value/issuers`
+
+Owned funded wallets　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`StoredValueIssuersPage`](#storedvalueissuerspage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`StoredValueIssuer`](#storedvalueissuer)\[\] | 是 | Records returned in this page under the current authorized selection. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when all records have been returned. |
+| `hasMore` | `boolean` | 是 | Whether another page is available using nextCursor. |
+
+
 #### GET `/mp/stored-value/notification-capability`
 
 储值消费微信通知能力　🔒
@@ -2833,6 +2973,33 @@
 | `available` | `boolean` | 是 | Whether this capability or preset is available in the current deployment. |
 | `templateId` | `string,null` | 是 | Messaging template identifier; null when the capability is not configured. |
 | `reasonCode` | `string,null` | 是 | Machine-readable reason this capability is unavailable; null when available. |
+
+
+#### GET `/mp/stored-value/records/locate`
+
+Locate owned wallet by durable document　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `focusDocumentNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StoredValueIssuer`](#storedvalueissuer)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerRef` | `string` | 是 | Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier. |
+| `scopeType` | `STORE` \| `BRAND` | 是 | Whether the selected stored-value resource belongs to one store or a brand. |
+| `name` | `string` | 是 | Display name of the selected stored-value issuer or wallet. |
+| `entityNo` | `string` | 是 | Operating entity identifier associated with this issuer. |
+| `storeNo` | `string,null` | 是 | Store identifier for the service or ledger record; null when no single store applies. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining monetary minor-unit interpretation. |
+| `businessTimeZone` | `string,null` | 是 | IANA business time zone; null when the issuer has no single-store zone. |
+| `lastType` | [`Exclude_StoredValueType_ALL`](#exclude_storedvaluetype_all) | 是 | Type of the most recent record, excluding the ALL query filter. |
+| `lastOccurredAt` | `string` | 是 | Timestamp of the most recent record for this issuer. |
 
 
 #### GET `/mp/stored-value/store/{storeNo}/records`
@@ -2857,6 +3024,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `issuer` | [`StoredValueIssuer`](#storedvalueissuer) | 否 | Issuer identity and business context for the selected record collection. |
 | `store` | `object`（见下） | 是 | Authorized store identity and business time zone for the returned records. |
 | `filter` | `object`（见下） | 是 | Effective record filters after the server has normalized the request. |
 | `records` | [`StoredValueRecord`](#storedvaluerecord)\[\] | 是 | Business records returned by the current query. |
@@ -5610,6 +5778,63 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 - `SEARCH`
 - `GOODS`
 
+### StoredValueAuthorization
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `string` | 是 | Current server-owned lifecycle state of this operation or service. |
+| `operationNo` | `string,null` | 是 | Stable operation identifier used to recover the original execution. |
+| `useStatus` | `string,null` | 是 | Server-owned asset usage state; null before a usage exists. |
+
+### StoredValueAuthorizeRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderRevision` | `number` | 是 | Previously confirmed service order revision; stale submissions are rejected. |
+| `quoteRef` | `string` | 是 | Server-issued reference to the immutable consumption quote. |
+| `selectionDigest` | `string` | 是 | Digest binding confirmation to the exact selected wallet and service lines. |
+| `requestKey` | `string` | 是 | Idempotency key binding retries to the original customer authorization. |
+
+### StoredValueIssuer
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerRef` | `string` | 是 | Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier. |
+| `scopeType` | `STORE` \| `BRAND` | 是 | Whether the selected stored-value resource belongs to one store or a brand. |
+| `name` | `string` | 是 | Display name of the selected stored-value issuer or wallet. |
+| `entityNo` | `string` | 是 | Operating entity identifier associated with this issuer. |
+| `storeNo` | `string,null` | 是 | Store identifier for the service or ledger record; null when no single store applies. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining monetary minor-unit interpretation. |
+| `businessTimeZone` | `string,null` | 是 | IANA business time zone; null when the issuer has no single-store zone. |
+| `lastType` | [`Exclude_StoredValueType_ALL`](#exclude_storedvaluetype_all) | 是 | Type of the most recent record, excluding the ALL query filter. |
+| `lastOccurredAt` | `string` | 是 | Timestamp of the most recent record for this issuer. |
+
+### StoredValueIssuerRecordsPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuer` | [`StoredValueIssuer`](#storedvalueissuer) | 是 | Issuer identity and business context for the selected record collection. |
+| `filter` | `object`（见下） | 是 | Effective record filters after server normalization. |
+| `records` | [`StoredValueRecord`](#storedvaluerecord)\[\] | 是 | Records returned in this page under the current authorized selection. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when all records have been returned. |
+| `hasMore` | `boolean` | 是 | Whether another page is available using nextCursor. |
+
+`filter` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | [`StoredValueType`](#storedvaluetype) | 是 | Record, target or calculation classification used to interpret this object. |
+| `startDate` | `string,null` | 是 | Inclusive first business date in YYYY-MM-DD format. |
+| `endDate` | `string,null` | 是 | Inclusive final business date in YYYY-MM-DD format. |
+
+### StoredValueIssuersPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`StoredValueIssuer`](#storedvalueissuer)\[\] | 是 | Records returned in this page under the current authorized selection. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when all records have been returned. |
+| `hasMore` | `boolean` | 是 | Whether another page is available using nextCursor. |
+
 ### StoredValueNotificationCapability
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -5629,11 +5854,14 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 | `signedAmountMinor` | `number` | 是 | Signed change in stored-value balance, in minor currency units. |
 | `occurredAt` | `string` | 是 | Time the server recorded the business operation. |
 | `documentNo` | `string,null` | 是 | Human-facing document number; null or absent for historical unmapped records. |
+| `storeNo` | `string,null` | 否 | Store identifier for the service or ledger record; null when no single store applies. |
+| `storeName` | `string,null` | 否 | Store display name attached to the service or record. |
 
 ### StoredValueRecordsPage
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `issuer` | [`StoredValueIssuer`](#storedvalueissuer) | 否 | Issuer identity and business context for the selected record collection. |
 | `store` | `object`（见下） | 是 | Authorized store identity and business time zone for the returned records. |
 | `filter` | `object`（见下） | 是 | Effective record filters after the server has normalized the request. |
 | `records` | [`StoredValueRecord`](#storedvaluerecord)\[\] | 是 | Business records returned by the current query. |
@@ -5655,6 +5883,29 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 | `type` | [`StoredValueType`](#storedvaluetype) | 是 | Record, target or calculation classification used to interpret this object. |
 | `startDate` | `string,null` | 是 | Inclusive first business date in YYYY-MM-DD format. |
 | `endDate` | `string,null` | 是 | Inclusive final business date in YYYY-MM-DD format. |
+
+### StoredValueService
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `serviceOrderNo` | `string` | 是 | Identifier of the original stored-value consumption service order. |
+| `operationNo` | `string` | 是 | Stable operation identifier used to recover the original execution. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this operation or service. |
+| `storeNo` | `string` | 是 | Store identifier for the service or ledger record; null when no single store applies. |
+| `storeName` | `string` | 是 | Store display name attached to the service or record. |
+| `serviceStaffName` | `string,null` | 是 | Service staff display name; null when no staff member is assigned. |
+| `serviceAt` | `string,null` | 是 | Service completion timestamp; null before completion. |
+| `items` | `object`（见下）\[\] | 是 | Service order lines and their positive purchased quantities. |
+| `confirmation` | `object`（见下） \| `null` | 是 | Immutable customer confirmation terms; null when confirmation is not available. |
+| `payment` | `object`（见下） \| `null` | 是 | Stored-value payment snapshot; null before payment terms are available. |
+
+`items[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemNo` | `string` | 是 | Identifier of this service order line. |
+| `title` | `string` | 是 | Human-readable service item title. |
+| `quantity` | `number` | 是 | Positive quantity of the selected service item. |
 
 ### StoredValueStore
 

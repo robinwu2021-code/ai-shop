@@ -50,7 +50,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.policy.MenuDefinitionPolicy;
 import ai.neargo.shop.food.service.MenuService;
-import ai.neargo.shop.food.policy.MenuWorkingDefinitionPort;
+import ai.neargo.shop.food.policy.MenuWorkingDefinitionAccess;
 import ai.neargo.shop.food.entity.FnbConfigRevision;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.food.MenuChanged;
@@ -71,7 +71,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 /** Single-store editing cannot silently mutate shared menus or reinterpret their published snapshots. */
-public class MenuServiceImpl implements MenuService, MenuWorkingDefinitionPort {
+public class MenuServiceImpl implements MenuService, MenuWorkingDefinitionAccess {
     private final MenuContextMapper contexts;
     private final MenuChannelBindingMapper channels;
     private final Supplier<MenuChannelAuthorityPort> channelAuthority;

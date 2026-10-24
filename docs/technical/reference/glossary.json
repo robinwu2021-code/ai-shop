@@ -6262,6 +6262,12 @@
           "ar": "الخصم"
         },
         {
+          "key": "storedValue.accountLocalTime",
+          "zh-CN": "账户时区",
+          "en": "Account time zone",
+          "ar": "المنطقة الزمنية للحساب"
+        },
+        {
           "key": "storedValue.apply",
           "zh-CN": "确定",
           "en": "Apply",
@@ -6274,6 +6280,12 @@
           "ar": "العودة للمتاجر"
         },
         {
+          "key": "storedValue.brandScope",
+          "zh-CN": "品牌储值",
+          "en": "Brand balance",
+          "ar": "رصيد العلامة"
+        },
+        {
           "key": "storedValue.cancel",
           "zh-CN": "取消",
           "en": "Cancel",
@@ -6284,6 +6296,18 @@
           "zh-CN": "清除筛选",
           "en": "Clear filters",
           "ar": "مسح التصفية"
+        },
+        {
+          "key": "storedValue.confirmConsumption",
+          "zh-CN": "确认本次消费",
+          "en": "Confirm this service",
+          "ar": "تأكيد هذه الخدمة"
+        },
+        {
+          "key": "storedValue.consumeAmount",
+          "zh-CN": "消费金额",
+          "en": "Amount",
+          "ar": "المبلغ"
         },
         {
           "key": "storedValue.emptyFiltered",
@@ -6317,9 +6341,9 @@
         },
         {
           "key": "storedValue.entryHint",
-          "zh-CN": "查看门店收支",
-          "en": "View store activity",
-          "ar": "عرض معاملات المتجر"
+          "zh-CN": "查看储值与消费记录",
+          "en": "View top-ups and redemptions",
+          "ar": "عرض الشحن والاستخدام"
         },
         {
           "key": "storedValue.focused",
@@ -6388,16 +6412,64 @@
           "ar": "إشعارات الخصم"
         },
         {
+          "key": "storedValue.paymentWallet",
+          "zh-CN": "扣款账户",
+          "en": "Payment wallet",
+          "ar": "حساب الخصم"
+        },
+        {
           "key": "storedValue.recordsTitle",
           "zh-CN": "收支记录",
-          "en": "Store activity",
-          "ar": "معاملات المتجر"
+          "en": "Activity",
+          "ar": "سجل المعاملات"
+        },
+        {
+          "key": "storedValue.refreshConfirmation",
+          "zh-CN": "刷新消费状态",
+          "en": "Refresh service status",
+          "ar": "تحديث حالة الخدمة"
         },
         {
           "key": "storedValue.reset",
           "zh-CN": "重置",
           "en": "Reset",
           "ar": "إعادة تعيين"
+        },
+        {
+          "key": "storedValue.serviceState.CANCELLED",
+          "zh-CN": "本次消费已取消",
+          "en": "Service cancelled",
+          "ar": "تم إلغاء الخدمة"
+        },
+        {
+          "key": "storedValue.serviceState.COMMITTED",
+          "zh-CN": "核销成功",
+          "en": "Redeemed",
+          "ar": "تم الاستخدام"
+        },
+        {
+          "key": "storedValue.serviceState.EXPIRED",
+          "zh-CN": "确认已过期，请门店重新发起",
+          "en": "Confirmation expired. Ask the store to start again.",
+          "ar": "انتهت مهلة التأكيد. اطلب من المتجر إعادة الطلب."
+        },
+        {
+          "key": "storedValue.serviceState.PROCESSING",
+          "zh-CN": "正在核对消费结果",
+          "en": "Checking service result",
+          "ar": "جارٍ التحقق من نتيجة الخدمة"
+        },
+        {
+          "key": "storedValue.serviceState.RELEASED",
+          "zh-CN": "本次消费已取消",
+          "en": "Service cancelled",
+          "ar": "تم إلغاء الخدمة"
+        },
+        {
+          "key": "storedValue.serviceState.WAIT_SUBMIT",
+          "zh-CN": "已确认，等待门店核销",
+          "en": "Confirmed. Awaiting the store.",
+          "ar": "تم التأكيد، بانتظار المتجر"
         },
         {
           "key": "storedValue.startDate",
@@ -6412,10 +6484,16 @@
           "ar": "التوقيت المحلي للمتجر"
         },
         {
+          "key": "storedValue.storeScope",
+          "zh-CN": "本店储值",
+          "en": "Store balance",
+          "ar": "رصيد المتجر"
+        },
+        {
           "key": "storedValue.storesHint",
-          "zh-CN": "选择门店，查看已到账储值和已完成核销。",
-          "en": "Choose a store to view credited top-ups and completed redemptions.",
-          "ar": "اختر متجرًا لعرض عمليات الشحن المضافة والخصم المكتملة."
+          "zh-CN": "查看本店与品牌的储值、核销记录。",
+          "en": "View top-ups and redemptions for your store and brand wallets.",
+          "ar": "عرض شحن واستخدام رصيد المتجر والعلامة."
         },
         {
           "key": "storedValue.subscribe",
@@ -13268,10 +13346,34 @@
           "ar": "مفوّض"
         },
         {
+          "key": "issuer.activateBrand",
+          "zh-CN": "启用品牌储值",
+          "en": "Enable brand stored value",
+          "ar": "تفعيل رصيد العلامة"
+        },
+        {
           "key": "issuer.addRoute",
           "zh-CN": "添加收款方式",
           "en": "Add collection method",
           "ar": "إضافة طريقة تحصيل"
+        },
+        {
+          "key": "issuer.blockers.ACCOUNT_FROZEN",
+          "zh-CN": "账户已冻结",
+          "en": "Account frozen",
+          "ar": "الحساب مجمد"
+        },
+        {
+          "key": "issuer.blockers.BRAND_EXECUTION_DISABLED",
+          "zh-CN": "品牌储值尚未开通",
+          "en": "Brand stored value is not enabled",
+          "ar": "لم يتم تفعيل رصيد العلامة"
+        },
+        {
+          "key": "issuer.blockers.CROSS_ENTITY_SETTLEMENT_UNAVAILABLE",
+          "zh-CN": "跨主体结算尚未开通",
+          "en": "Cross-entity settlement is not enabled",
+          "ar": "لم يتم تفعيل التسوية بين الكيانات"
         },
         {
           "key": "issuer.blockers.CURRENCY_IMMUTABLE",
@@ -13286,6 +13388,18 @@
           "ar": "الإصدار غير مفعّل"
         },
         {
+          "key": "issuer.blockers.ISSUER_INACTIVE",
+          "zh-CN": "发行方已停用",
+          "en": "Issuer is inactive",
+          "ar": "جهة الإصدار غير نشطة"
+        },
+        {
+          "key": "issuer.blockers.ISSUER_NOT_READY",
+          "zh-CN": "发行方尚未就绪",
+          "en": "Issuer is not ready",
+          "ar": "جهة الإصدار غير جاهزة"
+        },
+        {
           "key": "issuer.blockers.LIABILITY_RULES_LOCKED",
           "zh-CN": "存在余额或未完成储值，暂不能修改资金规则",
           "en": "Outstanding balance or recharge prevents this change",
@@ -13298,16 +13412,34 @@
           "ar": "صيانة الرصيد"
         },
         {
+          "key": "issuer.blockers.NO_ACCOUNT",
+          "zh-CN": "暂无储值账户",
+          "en": "No stored-value account",
+          "ar": "لا يوجد حساب رصيد"
+        },
+        {
           "key": "issuer.blockers.STALE_CONFIGURATION",
           "zh-CN": "配置已更新，请刷新",
           "en": "Configuration changed. Refresh.",
           "ar": "تم تحديث الإعدادات. يرجى التحديث."
         },
         {
-          "key": "issuer.brandDraftOnly",
-          "zh-CN": "当前仅可配置品牌发行草稿",
-          "en": "Brand issuance is available as a draft only",
-          "ar": "إصدار العلامة التجارية متاح كمسودة فقط"
+          "key": "issuer.blockers.STORE_NOT_ACCEPTED",
+          "zh-CN": "本店暂不支持此账户",
+          "en": "This store does not accept this wallet",
+          "ar": "هذا المتجر لا يقبل هذا الحساب"
+        },
+        {
+          "key": "issuer.blockers.STORE_SCOPE_CHANGED",
+          "zh-CN": "门店配置已更新，请刷新",
+          "en": "Store configuration changed. Refresh.",
+          "ar": "تم تحديث إعداد المتجر. حدّث الصفحة."
+        },
+        {
+          "key": "issuer.brandNotReady",
+          "zh-CN": "品牌储值尚未开通",
+          "en": "Brand stored value is not enabled",
+          "ar": "لم يتم تفعيل رصيد العلامة"
         },
         {
           "key": "issuer.brandScope",
@@ -13368,6 +13500,12 @@
           "zh-CN": "移除",
           "en": "Remove",
           "ar": "إزالة"
+        },
+        {
+          "key": "issuer.retryActivation",
+          "zh-CN": "重试启用",
+          "en": "Retry activation",
+          "ar": "إعادة محاولة التفعيل"
         },
         {
           "key": "issuer.retrySave",
@@ -13986,6 +14124,30 @@
           "zh-CN": "查看门店",
           "en": "View store",
           "ar": "عرض المتجر"
+        },
+        {
+          "key": "management.permission.sv_brand_activity_approve",
+          "zh-CN": "审批品牌储值活动",
+          "en": "Approve brand recharge activities",
+          "ar": "اعتماد أنشطة رصيد العلامة"
+        },
+        {
+          "key": "management.permission.sv_brand_activity_manage",
+          "zh-CN": "管理品牌储值活动",
+          "en": "Manage brand recharge activities",
+          "ar": "إدارة أنشطة رصيد العلامة"
+        },
+        {
+          "key": "management.permission.sv_brand_activity_publish",
+          "zh-CN": "提交品牌储值活动",
+          "en": "Submit brand recharge activities",
+          "ar": "تقديم أنشطة رصيد العلامة"
+        },
+        {
+          "key": "management.permission.sv_brand_activity_read",
+          "zh-CN": "查看品牌储值活动",
+          "en": "View brand recharge activities",
+          "ar": "عرض أنشطة رصيد العلامة"
         },
         {
           "key": "management.permission.sv_issuer_configure",
@@ -24812,6 +24974,12 @@
           "ar": "جميع الحركات"
         },
         {
+          "key": "storedValue.askCustomerConfirm",
+          "zh-CN": "请顾客进入「储值记录」确认本次消费。",
+          "en": "Ask the customer to confirm this service in Stored value records.",
+          "ar": "اطلب من العميل تأكيد الخدمة في سجل الرصيد."
+        },
+        {
           "key": "storedValue.back",
           "zh-CN": "返回",
           "en": "Back",
@@ -24842,6 +25010,12 @@
           "ar": "إلغاء"
         },
         {
+          "key": "storedValue.cancelConsumption",
+          "zh-CN": "取消本次核销",
+          "en": "Cancel redemption",
+          "ar": "إلغاء الاستخدام"
+        },
+        {
           "key": "storedValue.cancelRecharge",
           "zh-CN": "取消办理",
           "en": "Cancel recharge",
@@ -24866,6 +25040,12 @@
           "ar": "اختر عضواً"
         },
         {
+          "key": "storedValue.completeRedemption",
+          "zh-CN": "完成核销",
+          "en": "Complete redemption",
+          "ar": "إتمام الاستخدام"
+        },
+        {
           "key": "storedValue.confirm",
           "zh-CN": "确定",
           "en": "Confirm",
@@ -24876,6 +25056,54 @@
           "zh-CN": "确认收款并入账",
           "en": "Confirm receipt and credit",
           "ar": "تأكيد الاستلام وإضافة الرصيد"
+        },
+        {
+          "key": "storedValue.consumeAmount",
+          "zh-CN": "核销金额",
+          "en": "Redemption amount",
+          "ar": "مبلغ الاستخدام"
+        },
+        {
+          "key": "storedValue.consumeState.CANCELLED",
+          "zh-CN": "已取消",
+          "en": "Cancelled",
+          "ar": "ملغى"
+        },
+        {
+          "key": "storedValue.consumeState.COMMITTED",
+          "zh-CN": "核销成功",
+          "en": "Redeemed",
+          "ar": "تم الاستخدام"
+        },
+        {
+          "key": "storedValue.consumeState.EXPIRED",
+          "zh-CN": "已过期",
+          "en": "Expired",
+          "ar": "منتهي الصلاحية"
+        },
+        {
+          "key": "storedValue.consumeState.PROCESSING",
+          "zh-CN": "正在核对核销结果",
+          "en": "Checking redemption result",
+          "ar": "جارٍ التحقق من النتيجة"
+        },
+        {
+          "key": "storedValue.consumeState.RELEASED",
+          "zh-CN": "已取消",
+          "en": "Cancelled",
+          "ar": "ملغى"
+        },
+        {
+          "key": "storedValue.consumeState.WAIT_AUTH",
+          "zh-CN": "待顾客确认",
+          "en": "Awaiting customer confirmation",
+          "ar": "بانتظار تأكيد العميل"
+        },
+        {
+          "key": "storedValue.consumeState.WAIT_SUBMIT",
+          "zh-CN": "顾客已确认",
+          "en": "Customer confirmed",
+          "ar": "تم تأكيد العميل"
         },
         {
           "key": "storedValue.create",
@@ -24980,6 +25208,12 @@
           "ar": "متوقفة"
         },
         {
+          "key": "storedValue.insufficientWallet",
+          "zh-CN": "所选账户可用余额不足",
+          "en": "The selected wallet has insufficient available funds",
+          "ar": "الرصيد المتاح في الحساب المحدد غير كافٍ"
+        },
+        {
           "key": "storedValue.invalidAmount",
           "zh-CN": "请输入有效金额",
           "en": "Enter a valid amount",
@@ -25082,6 +25316,18 @@
           "ar": "ليست لديك صلاحية"
         },
         {
+          "key": "storedValue.noServices",
+          "zh-CN": "暂无可核销服务",
+          "en": "No redeemable services",
+          "ar": "لا توجد خدمات قابلة للاستخدام"
+        },
+        {
+          "key": "storedValue.noWallet",
+          "zh-CN": "暂无储值账户",
+          "en": "No stored-value account",
+          "ar": "لا يوجد حساب رصيد"
+        },
+        {
           "key": "storedValue.notFunded",
           "zh-CN": "未储值",
           "en": "No top-ups yet",
@@ -25128,6 +25374,12 @@
           "zh-CN": "储值方案",
           "en": "Plans",
           "ar": "خطط الشحن"
+        },
+        {
+          "key": "storedValue.previewConsumption",
+          "zh-CN": "发起核销",
+          "en": "Request redemption",
+          "ar": "طلب استخدام الرصيد"
         },
         {
           "key": "storedValue.processing",
@@ -25744,7 +25996,7 @@
         {
           "key": "svGov.activities",
           "zh-CN": "本店储值活动",
-          "en": "Store recharge activities",
+          "en": "Recharge activities",
           "ar": "أنشطة شحن المتجر"
         },
         {
@@ -33645,6 +33897,13 @@
       },
       {
         "host": "BizKey",
+        "name": "BRAND_FINANCIAL_ACTIVATION",
+        "value": "BRFA",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
         "name": "BRAND_BINDING",
         "value": "BRB",
         "zh": "",
@@ -33794,6 +34053,13 @@
         "host": "BizKey",
         "name": "STORED_VALUE_HOLD_ALLOCATION",
         "value": "SVHA",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_CLEARING",
+        "value": "SVCL",
         "zh": "",
         "module": "shop-base"
       },
@@ -46439,6 +46705,134 @@
       "name": "SV_POLICY_PLAN_BINDING",
       "type": "String",
       "value": "\"/internal/pay/stored-value/policies/plan-binding\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_WALLETS_ACCOUNTS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/wallets/accounts\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_WALLETS_SELECT",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/wallets/select\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_BRAND_CAPABILITY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/brands/capability\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_BRAND_ACTIVATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/brands/activate\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_EXECUTION_ISSUERS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/brand-operations/issuers\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_BRAND_RECHARGE_OPTIONS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/brand-operations/recharge-options\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_BRAND_RECHARGE_CONFIRM",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/brand-operations/confirm-offline\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_BRAND_RECHARGE_RESUME",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/brand-operations/resume\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_BRAND_RECHARGE_REPLAY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/brand-operations/replay\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_BRAND_RECHARGE_CANCEL_CREATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/brand-operations/cancel-create\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CONSUMER_ISSUERS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/consumer/issuers\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CONSUMER_ISSUER",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/consumer/issuer\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CONSUMER_LOCATE_ISSUER",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/consumer/locate-issuer\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CONSUMER_ISSUER_RECORDS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/consumer/issuer-records\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FUNDED_CUSTOMERS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/wallets/funded-customers\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_WALLETS_RECORDS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/wallets/records\"",
       "zh": "",
       "module": "pay/pay-domain"
     },

@@ -117,5 +117,16 @@ class BizEndpointSourceTest {
         assertThat(mutated).isNotEqualTo(source);
         var missing = BizEndpointSource.parse(mutated).methods().stream().filter(m -> m.name().equals("scope")).findFirst().orElseThrow();
         assertThat(BizResourceAuthorization.methodMatches(missing, evidence.calls())).isFalse();
+
+        var brandEvidence = BizResourceAuthorization.EVIDENCE.get("BrandStoredValueActivityAuthority#require/4");
+        String brandSource = Files.readString(Path.of("../..").resolve(brandEvidence.source()));
+        var brandGuard = BizEndpointSource.parse(brandSource).methods().stream()
+                .filter(m -> m.name().equals("require") && m.parameterCount() == 4).findFirst().orElseThrow();
+        assertThat(BizResourceAuthorization.methodMatches(brandGuard, brandEvidence.calls())).isTrue();
+        String unguardedBrand = brandSource.replace("scopes.require(actor,management,\"BRAND\",brand,permission);", "");
+        assertThat(unguardedBrand).isNotEqualTo(brandSource);
+        var missingBrand = BizEndpointSource.parse(unguardedBrand).methods().stream()
+                .filter(m -> m.name().equals("require") && m.parameterCount() == 4).findFirst().orElseThrow();
+        assertThat(BizResourceAuthorization.methodMatches(missingBrand, brandEvidence.calls())).isFalse();
     }
 }

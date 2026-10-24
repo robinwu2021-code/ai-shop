@@ -10,4 +10,8 @@ public final class PayStoredValueConsumerRequests {
     public record Records(EntitlementContext context, String storeNo, String type, Instant from, Instant to,
                           String focusDocumentNo, String cursor, int size) { }
     public record Fact(EntitlementContext context, String usageNo) { }
+    public record Issuers(EntitlementContext context,String cursor,int size) { }
+    public record Issuer(EntitlementContext context,String issuerRef) { }
+    public record Locate(EntitlementContext context,String documentNo) { }
+    public record IssuerRecords(EntitlementContext context,String issuerRef,String type,Instant from,Instant to,String focus,String cursor,int size) { }
 }

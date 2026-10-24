@@ -1,24 +1,24 @@
 package ai.neargo.shop.pay.storedvalue.policy;
 
+import ai.neargo.shop.spi.storedvalue.StoredValuePolicies.IssueScope;
+
 import ai.neargo.shop.spi.storedvalue.StoredValuePolicies.CatalogScope;
 import ai.neargo.shop.spi.storedvalue.StoredValuePolicies.EffectivePolicy;
 import ai.neargo.shop.spi.storedvalue.StoredValuePolicies.PlanBinding;
 import ai.neargo.shop.spi.storedvalue.StoredValuePolicies.PolicyLocation;
 import ai.neargo.shop.spi.storedvalue.StoredValuePolicies.PolicyView;
-import ai.neargo.shop.spi.storedvalue.StoredValuePolicies.StoreScope;
-import java.util.List;
 
-/** Reads effective issuance policies and their store authority. */
+/** Stable PAY business contract; original owner checks and transaction boundaries remain in its implementation. */
 public interface StoredValueIssuePolicyService {
-    EffectivePolicy evaluate(StoreScope scope);
+    EffectivePolicy evaluate(IssueScope scope);
 
-    EffectivePolicy evaluateLocked(StoreScope scope);
+    EffectivePolicy evaluateLocked(IssueScope scope);
 
-    PolicyLocation locate(String tenant, String policyNo);
+    ai.neargo.shop.spi.storedvalue.StoredValuePolicies.PolicyLocation locate(String tenant, String policyNo);
 
-    PlanBinding planBinding(String tenant, String entity, String store, String version);
+    PlanBinding planBinding(String tenant,String entity,String store,String version);
 
-    List<PolicyView> list(CatalogScope scope);
+    java.util.List<PolicyView> list(CatalogScope scope);
 
-    void requireStoreAccess(StoreScope scope, String entity, String issuer);
+    void requireStoreAccess(IssueScope scope,String entity,String issuer);
 }

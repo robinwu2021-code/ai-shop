@@ -15,7 +15,8 @@ public interface EntitlementUseSourcePort {
                          String currency, List<UseItem> items, String orderSnapshotHash,
                          String storeName, String serviceStaffName, LocalDate serviceDay, long freightMinor,
                          Map<String, List<String>> categoryRefsByLine, Instant serviceAt,
-                         String stagedOperationNo) {
+                         String stagedOperationNo,@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) ai.neargo.shop.spi.storedvalue.StoredValueWallets.Proof walletProof) {
+        public UseSourceFact(String tenantNo,SourceRef source,String userNo,String entityNo,String storeNo,String currency,List<UseItem> items,String orderSnapshotHash,String storeName,String serviceStaffName,LocalDate serviceDay,long freightMinor,Map<String,List<String>> categoryRefsByLine,Instant serviceAt,String stagedOperationNo){this(tenantNo,source,userNo,entityNo,storeNo,currency,items,orderSnapshotHash,storeName,serviceStaffName,serviceDay,freightMinor,categoryRefsByLine,serviceAt,stagedOperationNo,null);}
         /** Compatibility for ordinary source owners: only SERVICE_USE currently requires an explicit staged operation. */
         public UseSourceFact(String tenantNo, SourceRef source, String userNo, String entityNo, String storeNo,
                 String currency, List<UseItem> items, String orderSnapshotHash, String storeName,
@@ -39,6 +40,7 @@ public interface EntitlementUseSourcePort {
         }
         public UseSourceFact {
             ContractChecks.id(tenantNo);
+            if(walletProof!=null)ContractChecks.require(tenantNo.equals(walletProof.scope().tenantNo())&&userNo.equals(walletProof.userNo())&&entityNo.equals(walletProof.scope().entityNo())&&storeNo.equals(walletProof.scope().storeNo())&&currency.equals(walletProof.scope().currency()));
             ContractChecks.optionalId(stagedOperationNo);
             ContractChecks.present(source);
             ContractChecks.id(userNo);

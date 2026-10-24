@@ -288,5 +288,26 @@
     "rowShape": "MAPPED_ROW",
     "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/StoredValueActivityJournal.java",
     "modelSymbol": "Map<String,Object>"
+  },
+  "sv_clearing_entry": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/clearing/impl/StoredValueClearingServiceImpl.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/clearing/impl/StoredValueClearingServiceImpl.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "pmt_brand_activity_owner": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/impl/BrandActivityOwnershipServiceImpl.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/impl/BrandActivityOwnershipServiceImpl.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/dto/ActivityActor.java",
+    "modelSymbol": "ActivityActor"
+  },
+  "mch_brand_financial_activation": {
+    "owner": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementRepository.java",
+    "querySource": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/BrandFinancialActivationServiceImpl.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/BrandFinancialActivationService.java",
+    "modelSymbol": "Pending"
   }
 }

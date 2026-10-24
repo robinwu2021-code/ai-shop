@@ -30,6 +30,9 @@ public interface StoredValuePolicyAuthorityService {
     /** Resolve activity authority for the exact store, currency and capability. */
     ActivityAuthority activity(Actor actor,String management,String store,String currency,String permission);
 
+    /** Check the current management-space store-activity approval capability. */
+    boolean canApproval(Actor actor,String management);
+
     /** Reject decisions without the management-space approval capability. */
     void requireApproval(Actor actor,String management);
 

@@ -12,6 +12,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import javax.tools.ToolProvider;
+import org.junit.jupiter.api.io.TempDir;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
@@ -79,7 +82,9 @@ class ArchitectureTest {
             // 订单域直接 import 运单实体这类越界当场就红，而不是等拆分那天编译不过才发现
             "logistics",
             // printing owns prn_* configuration and delivery facts; guard it as a business domain.
-            "printing"};
+            "printing",
+            // food is an independently packaged industry domain, not shared infrastructure.
+            "food"};
 
     /** {@link #DOMAINS} 的 ArchUnit 包表达式形式（{@code ai.neargo.shop.x..}）。 */
     private static String[] domainPackages() {
@@ -301,12 +306,17 @@ class ArchitectureTest {
     void serviceMustBeInterface() {
         // 只约束业务域：common 里的横切服务（IdempotencyService 等）没有多实现的可能，
         // 强行拆接口只会多一层无意义的间接
-        classes().that().resideInAnyPackage(domainPackages())
+        domainServiceRule().check(classes);
+    }
+
+    private static ArchRule domainServiceRule() {
+        return classes().that().resideInAnyPackage(domainPackages())
+                .and(DescribedPredicate.describe("not a typed food remote service adapter",
+                        type -> !isFoodRemoteServiceAdapter(type)))
                 .and().haveSimpleNameEndingWith("Service").and().areNotInterfaces()
                 .should().haveSimpleNameEndingWith("ServiceImpl")
                 .allowEmptyShould(true)
-                .because("Service 统一 interface + impl（powerbank 早期具体类后来都要回填规整）")
-                .check(classes);
+                .because("Service 统一 interface + impl（powerbank 早期具体类后来都要回填规整）");
     }
 
     @Test
@@ -337,17 +347,24 @@ class ArchitectureTest {
          * CommunityServiceImpl / UserServiceImpl）**整整齐齐地绕过了这条规则**。
          * 类名是可以随便起的，实现关系不是。
          */
-        classes().that().areAssignableTo(
-                        com.tngtech.archunit.base.DescribedPredicate.describe("任一 Port 接口",
-                                (com.tngtech.archunit.core.domain.JavaClass c) ->
-                                        c.getPackageName().startsWith("ai.neargo.shop.spi")
-                                                && c.getSimpleName().endsWith("Port")))
+        portImplementationRule().check(classes);
+    }
+
+    // food-api owns this industry contract root; arbitrary domain-local spi packages remain illegal.
+    private static final String[] PORT_CONTRACT_PACKAGES = {
+            "ai.neargo.shop.spi..", "ai.neargo.shop.food.spi.."};
+
+    private static ArchRule portImplementationRule() {
+        return classes().that().areAssignableTo(
+                        DescribedPredicate.describe("registered SPI Port interface", c ->
+                                c.isInterface() && c.getSimpleName().endsWith("Port")
+                                        && (inPackageTree(c, "ai.neargo.shop.spi")
+                                            || inPackageTree(c, "ai.neargo.shop.food.spi"))))
                 .and().areNotInterfaces()
                 .should().resideInAPackage("..port..")
                 .allowEmptyShould(true)
                 .because("Port 实现集中在各域的 .port 包 —— Service 兼任会让本域逻辑的改动"
-                        + "不知不觉改掉跨域契约的行为，且两拨受众看到的能力范围不同")
-                .check(classes);
+                        + "不知不觉改掉跨域契约的行为，且两拨受众看到的能力范围不同");
     }
 
     private static final DescribedPredicate<JavaClass> PERSISTENCE_MAPPER =
@@ -405,26 +422,144 @@ class ArchitectureTest {
     @Test
     @DisplayName("领域层不得出现 Web 运行时类型（HttpServletRequest 等）")
     void domainsMustNotTouchWebRuntime() {
-        noClasses().that().resideInAnyPackage(domainPackages())
+        domainWebRuntimeRule().check(classes);
+    }
+
+    private static ArchRule domainWebRuntimeRule() {
+        return noClasses().that().resideInAnyPackage(domainPackages())
+                .and(DescribedPredicate.describe("domain logic, excluding food presentation/transport/assembly",
+                        type -> !isFoodWebAdapter(type)))
                 .should().dependOnClassesThat().resideInAnyPackage(
                         "jakarta.servlet..", "org.springframework.web.context..",
                         "org.springframework.web.servlet..")
                 .allowEmptyShould(true)
-                .because("领域逻辑一旦读 request，就只能在 HTTP 线程里跑——"
-                        + "定时任务（worker profile）和事件消费都调不动它。"
-                        + "S7 把 Controller 搬进业务工程后，这条是防止 web 语义渗进领域的唯一屏障")
-                .check(classes);
+                .because("领域 service/policy/entity 不得依赖 Web；独立 food-web 的 presentation、typed transport 与装配不属于领域逻辑");
+    }
+
+    private static boolean isFoodRemoteServiceAdapter(JavaClass type) {
+        if (!inPackageTree(type, "ai.neargo.shop.food.foodclient")
+                || !type.getSimpleName().startsWith("Remote") || !type.getSimpleName().endsWith("Service")) {
+            return false;
+        }
+        String contract = "ai.neargo.shop.food.service." + type.getSimpleName().substring("Remote".length());
+        return type.getAllRawInterfaces().stream().anyMatch(candidate -> candidate.getName().equals(contract))
+                && type.getDirectDependenciesFromSelf().stream().anyMatch(dependency ->
+                        inPackageTree(dependency.getTargetClass(), "ai.neargo.shop.food.spi")
+                                && dependency.getTargetClass().getSimpleName().endsWith("InternalApi"));
+    }
+
+    private static boolean isFoodWebAdapter(JavaClass type) {
+        if (inPackageTree(type, "ai.neargo.shop.food.api") || isFoodRemoteServiceAdapter(type)) {
+            return true;
+        }
+        if (!inPackageTree(type, "ai.neargo.shop.food.config")) {
+            return false;
+        }
+        // Anonymous WebMvcConfigurer implementations inherit the enclosing assembly's role.
+        for (JavaClass enclosing = type; enclosing != null;
+                enclosing = enclosing.getEnclosingClass().orElse(null)) {
+            if (enclosing.isAnnotatedWith("org.springframework.boot.autoconfigure.AutoConfiguration")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean inPackageTree(JavaClass type, String root) {
+        return type.getPackageName().equals(root) || type.getPackageName().startsWith(root + ".");
+    }
+
+    private static ArchRule portContractRule() {
+        return classes().that().haveSimpleNameEndingWith("Port").and().areInterfaces()
+                .should().resideInAnyPackage(PORT_CONTRACT_PACKAGES)
+                .allowEmptyShould(true)
+                .because("跨域契约只能定义在 core SPI 或已登记的独立行业 API SPI，不能藏在域内 policy 包");
     }
 
     @Test
-    @DisplayName("Port 接口只能定义在 spi 包")
+    @DisplayName("Port 接口只能定义在已登记的独立 SPI 包")
     void portInterfacesOnlyInSpi() {
-        classes().that().haveSimpleNameEndingWith("Port").and().areInterfaces()
-                .should().resideInAPackage("ai.neargo.shop.spi..")
-                .allowEmptyShould(true)
-                .because("Port 是跨域契约。定义在某个域里，等于让调用方 import 那个域——"
-                        + "本来要解耦，结果反而建立了依赖")
-                .check(classes);
+        portContractRule().check(classes);
+    }
+
+    @Test
+    void industrySpiKeepsContractAndImplementationBoundaries(@TempDir Path temporary) throws IOException {
+        // Compile isolated package examples so the regression exercises the actual ArchUnit rules,
+        // without introducing deliberately invalid contracts into the application's domain graph.
+        var examples = Map.of(
+                "ai.neargo.shop.spi.example.CorePort", "public interface CorePort {}",
+                "ai.neargo.shop.food.spi.IndustryPort", "public interface IndustryPort {}",
+                "ai.neargo.shop.food.policy.PolicyPort", "public interface PolicyPort {}",
+                "ai.neargo.shop.food.policy.spi.HiddenPort", "public interface HiddenPort {}",
+                "ai.neargo.shop.food.spiExtra.LookalikePort", "public interface LookalikePort {}",
+                "ai.neargo.shop.unregistered.spi.OtherPort", "public interface OtherPort {}",
+                "ai.neargo.shop.food.port.ValidAdapter", "public class ValidAdapter implements ai.neargo.shop.food.spi.IndustryPort {}",
+                "ai.neargo.shop.food.policy.InvalidAdapter", "public class InvalidAdapter implements ai.neargo.shop.food.spi.IndustryPort {}");
+        var imported = compileArchitectureExamples(temporary, examples);
+        var contractFailures = portContractRule().evaluate(imported).getFailureReport().getDetails();
+        assertThat(contractFailures).hasSize(4);
+        for (String invalid : List.of("food.policy.PolicyPort", "food.policy.spi.HiddenPort",
+                "food.spiExtra.LookalikePort", "unregistered.spi.OtherPort")) {
+            assertThat(contractFailures).anyMatch(detail -> detail.contains("ai.neargo.shop." + invalid + ">"));
+        }
+        var implementationFailures = portImplementationRule().evaluate(imported).getFailureReport().getDetails();
+        assertThat(implementationFailures).hasSize(1);
+        assertThat(implementationFailures.getFirst()).contains("ai.neargo.shop.food.policy.InvalidAdapter");
+    }
+
+    private static JavaClasses compileArchitectureExamples(Path temporary, Map<String, String> examples) throws IOException {
+        var arguments = new ArrayList<String>(List.of("-proc:none", "-classpath", System.getProperty("java.class.path"),
+                "-d", temporary.toString()));
+        for (var example : examples.entrySet()) {
+            int separator = example.getKey().lastIndexOf('.');
+            Path source = temporary.resolve(example.getKey().replace('.', '/') + ".java");
+            Files.createDirectories(source.getParent());
+            Files.writeString(source, "package " + example.getKey().substring(0, separator) + ";\n" + example.getValue());
+            arguments.add(source.toString());
+        }
+        assertThat(ToolProvider.getSystemJavaCompiler().run(null, null, null, arguments.toArray(String[]::new))).isZero();
+        return new ClassFileImporter().importPath(temporary);
+    }
+
+    @Test
+    void foodWebLayersKeepBusinessLogicProtected(@TempDir Path temporary) throws IOException {
+        String webField = "public jakarta.servlet.http.HttpServletRequest request;";
+        var examples = Map.ofEntries(
+                Map.entry("ai.neargo.shop.food.api.biz.ExampleController", "public class ExampleController {" + webField + "}"),
+                Map.entry("ai.neargo.shop.food.apiExtra.FalsePresentation", "public class FalsePresentation {" + webField + "}"),
+                Map.entry("ai.neargo.shop.trade.api.OtherController", "public class OtherController {" + webField + "}"),
+                Map.entry("ai.neargo.shop.food.service.BadService", "public class BadService {" + webField + "}"),
+                Map.entry("ai.neargo.shop.food.policy.BadPolicy", "public class BadPolicy {" + webField + "}"),
+                Map.entry("ai.neargo.shop.food.entity.BadEntity", "public class BadEntity {" + webField + "}"),
+                Map.entry("ai.neargo.shop.food.config.WebAssembly", "@org.springframework.boot.autoconfigure.AutoConfiguration public class WebAssembly { public static class Nested {" + webField + "} }"),
+                Map.entry("ai.neargo.shop.food.config.FalseAssembly", "public class FalseAssembly {" + webField + "}"),
+                Map.entry("ai.neargo.shop.food.service.CatalogService", "public interface CatalogService {}"),
+                Map.entry("ai.neargo.shop.food.spi.CatalogInternalApi", "public interface CatalogInternalApi {}"),
+                Map.entry("ai.neargo.shop.food.foodclient.RemoteCatalogService", "public class RemoteCatalogService implements ai.neargo.shop.food.service.CatalogService { public ai.neargo.shop.food.spi.CatalogInternalApi api; " + webField + "}"),
+                Map.entry("ai.neargo.shop.food.foodclient.RemoteFakeService", "public class RemoteFakeService {" + webField + "}"),
+                Map.entry("ai.neargo.shop.food.service.BareService", "public interface BareService {}"),
+                Map.entry("ai.neargo.shop.food.foodclient.RemoteBareService", "public class RemoteBareService implements ai.neargo.shop.food.service.BareService {" + webField + "}"),
+                Map.entry("ai.neargo.shop.food.service.RemoteCatalogService", "public class RemoteCatalogService implements CatalogService { public ai.neargo.shop.food.spi.CatalogInternalApi api; " + webField + "}"));
+        var imported = compileArchitectureExamples(temporary, examples);
+        for (String valid : List.of("food.api.biz.ExampleController", "food.config.WebAssembly$Nested",
+                "food.foodclient.RemoteCatalogService")) {
+            var selection = imported.that(DescribedPredicate.describe(valid, type -> type.getName().equals("ai.neargo.shop." + valid)));
+            assertThat(selection).hasSize(1);
+            assertThat(domainWebRuntimeRule().evaluate(selection).hasViolation()).as(valid).isFalse();
+        }
+        for (String invalid : List.of("food.apiExtra.FalsePresentation", "trade.api.OtherController", "food.service.BadService",
+                "food.policy.BadPolicy", "food.entity.BadEntity", "food.config.FalseAssembly", "food.foodclient.RemoteFakeService",
+                "food.foodclient.RemoteBareService", "food.service.RemoteCatalogService")) {
+            var selection = imported.that(DescribedPredicate.describe(invalid, type -> type.getName().equals("ai.neargo.shop." + invalid)));
+            assertThat(selection).hasSize(1);
+            assertThat(domainWebRuntimeRule().evaluate(selection).hasViolation()).as(invalid).isTrue();
+        }
+        var serviceFailures = domainServiceRule().evaluate(imported).getFailureReport().getDetails();
+        assertThat(serviceFailures).hasSize(4);
+        for (String invalid : List.of("food.service.BadService", "food.foodclient.RemoteFakeService",
+                "food.foodclient.RemoteBareService", "food.service.RemoteCatalogService")) {
+            assertThat(serviceFailures).anyMatch(detail -> detail.contains("ai.neargo.shop." + invalid + ">"));
+        }
     }
 
     @Test

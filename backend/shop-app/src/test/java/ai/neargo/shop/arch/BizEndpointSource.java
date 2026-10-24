@@ -38,7 +38,7 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 
 /** Parse declarations rather than annotation-looking comments, strings or adjacent methods. */
 final class BizEndpointSource {
-    record Method(String owner, String name, Map<String, String> annotations, List<String> calls) {
+    record Method(String owner, String name, Map<String, String> annotations, List<String> calls, int parameterCount) {
         boolean calls(String invocation) { return calls.contains(compact(invocation)); }
         boolean bizGuard() {
             return authorizationRequires(annotations.get("PreAuthorize"), "perm", Set.of("canBiz", "canAnyBiz"));
@@ -75,7 +75,7 @@ final class BizEndpointSource {
                                 return super.visitMethodInvocation(call, ignored);
                             }
                         }.scan(method.getBody(), null);
-                        var parsed = new Method(type.getSimpleName().toString(), method.getName().toString(), Map.copyOf(all), List.copyOf(calls));
+                        var parsed = new Method(type.getSimpleName().toString(), method.getName().toString(), Map.copyOf(all), List.copyOf(calls), method.getParameters().size());
                         methods.add(parsed);
                         for (String mapping : List.of("GetMapping", "PostMapping", "PutMapping", "PatchMapping", "DeleteMapping", "RequestMapping")) {
                             for (String path : paths(method.getModifiers().getAnnotations(), mapping)) {

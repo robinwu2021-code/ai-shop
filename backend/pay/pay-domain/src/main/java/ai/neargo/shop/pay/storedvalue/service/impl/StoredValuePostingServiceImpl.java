@@ -89,7 +89,7 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
         var recharge = recharges.lock(ctx.tenantNo(), c.rechargeNo());
         var permit = requireReceived(recharge, c, json);
         if (account == null || (!selected.issuerScoped() && !recharge.customerIdentity().equals(account.customerIdentity()) && !(recharge.getUserNo()!=null && recharge.getUserNo().equals(account.getUserNo())))
-                || !recharge.getEntityNo().equals(account.getEntityNo())
+                || !("ISSUER_RELEASE".equals(recharge.getSourceKind())?json.readValue(recharge.getPermitSnapshot(),ai.neargo.shop.spi.storedvalue.StoredValueIssuerRecharges.Funding.class).settlementEntityNo():recharge.getEntityNo()).equals(account.getEntityNo())
                 || !recharge.getCurrency().equals(account.getCurrency())) conflict();
         String payload = digest(List.of(c, recharge.getPayloadHash(), recharge.getReceiptDigest(),
                 recharge.getCurrency(), recharge.getPrincipalMinor(), recharge.getBonusMinor()), json);
