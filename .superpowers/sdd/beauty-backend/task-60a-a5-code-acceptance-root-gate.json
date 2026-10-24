@@ -1,0 +1,33 @@
+{
+  "base": "6744b462ee13006d08f43216266a79f1bd4d482a",
+  "path": "packages/shared/tests/entity-alignment.test.ts",
+  "sourceSha256": "2756d20054045dcc8cd6443130fa53d223ac4d84a602f402f4eda411180e06ea",
+  "oldKeys": 57,
+  "newKeys": 69,
+  "exactAdded12": [
+    "inv_event_consumed",
+    "inv_outbox_delivery",
+    "inv_outbox_operation",
+    "inv_outbox_stream",
+    "ord_refund_coupon_scope",
+    "ord_refund_obligation",
+    "prd_stock_alignment_batch",
+    "prd_stock_alignment_line",
+    "prd_stock_sync_operation",
+    "sys_outbox_delivery",
+    "sys_outbox_operation",
+    "sys_outbox_stream"
+  ],
+  "oldValuesPreserved": true,
+  "ignoreUnchanged": true,
+  "exactRestored": true,
+  "finalTests": "10 passed",
+  "ablation": "3 failed/7 passed",
+  "diff": "/tmp/task60a-a5-review-package-dfb570c9-9d3f-494f-b264-933696e146d8.diff",
+  "diffSha256": "c3bb47cb23b6eab2344e24a0fe3e7cddd7b6b37c068a99f5c96fc1f14f5a3cfc",
+  "manifestSha256": "5dd6131f2286c6864606b77b8c6d1d13d30d1104d9593d255082583f8e5611ce",
+  "reportSha256": "9e0bb382f479b1f23a0e1b2efe53c99595e586aca05825c8081828d5d594bb46",
+  "productCommit": "4a0fa71dda6b7fa522e486da1811a54ccb83b450",
+  "productTree": "85ee9b9d838acd51becb692a642282eff92f33b6",
+  "reviewSha256": "01f6ce5671e951d6daaa4d962e6760ed8095343a574c4f6d114b917b2193d33e"
+}

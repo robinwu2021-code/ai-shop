@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
+> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5已代码验收，A5b及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
 > **执行方式：** 使用`superpowers:subagent-driven-development`逐任务实施及独立审查，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -835,10 +835,29 @@ A4代码验收后，档位0守卫收尾。唯一产品文件为 packages/shared/
 | A5-2 | 真实表守卫与负例共用unregisteredBusinessTables；仅own登记键有效 | 真实schema/实体/登记加入未知probe只返回probe；删除一个真实新登记同时返回两者 |
 | A5-3 | 保留实体列、ghost与stale登记守卫及精确anchored IGNORE | entity-alignment单文件RED/GREEN及删登记消融；不重跑有生成副作用的schema-lineage |
 
-- [ ] 真实旧守卫取得12missing行为RED；不把缺helper/环境错误算RED。
-- [ ] 补12精确登记、抽共用分类函数及行为负例，已有points/logistics与新表同路分类。
-- [ ] 最小删登记消融RED，逐字恢复GREEN，记录实际命令/版本/计数和唯一文件SHA。
-- [ ] 独立规格/质量审查后精确提交；A5b血缘语义债另片，不声称整个共享套件通过。
+- [x] 真实旧守卫取得12missing行为RED；不把缺helper/环境错误算RED。
+- [x] 补12精确登记、抽共用分类函数及行为负例，已有points/logistics与新表同路分类。
+- [x] 最小删登记消融RED，逐字恢复GREEN，记录实际命令/版本/计数和唯一文件SHA。
+- [x] 独立规格/质量审查后精确提交；A5b血缘语义债另片，不声称整个共享套件通过。
+
+### 2.28 Task60A-A5b：血缘语义与ER产物一致性（2026-10-24）
+
+档位0。A4旧/新解析器均为363张表且九键成员相同，A5表登记已修复，剩余两项血缘失败须按实际所有者修复。源审计核对迁移唯一键、生产写者及消费者，精确需求和接口见[A5b brief](../../.superpowers/sdd/beauty-backend/task-60a-a5b-brief.md)，[审计](../../.superpowers/sdd/beauty-backend/task-60a-a5b-semantic-audit.md)。
+
+选择一份纯schema-lineage模块供生成器和守卫共用；继续维护两份map会重复覆盖voucher且丢失角色目标列。不是照抄18缺项：plan/source_order/grant/execution等含独立命名空间或条件路径，tier/catalog还必须保留复合作用域。仅已证明关系出edge，条件路径说明保留；不改SQL/Java/业务契约。
+
+| AC | 实施 | 验证 |
+|---|---|---|
+| A5b-1 | 纯registry/resolver/relations/classifier及badge，共用同一关系结果 | 实际表四条voucher、buyer别名、限定plan/actor/catalog/tier、11普通/3角色owner；target列/scope完整 |
+| A5b-2 | 审计歧义键精确成员，拒绝未知新表；错误global不得生成edge/FK | 第七voucher表、跨族/根/self、receipt/sourceevent/entry/line/退款/历史grant/source负例 |
+| A5b-3 | 生成器消费同一resolver且描述含目标列/作用域 | fixture缺目标/scope不出edge或FK；实际CLI生成并验证幂等，精确输出manifest |
+
+Owned：新scripts/lib/schema-lineage.mjs、scripts/gen-erd.mjs、packages/shared/tests/schema-lineage.test.ts，及既有gen:erd实际改变的tracked db-*.svg和数据库-ER图.md。不是A4六文件的静态白名单；不得扩大DOMAINS/TOPICS或手改产物。测试不再import有生成副作用的CLI；不改A5文件、parser、SQL/known/package。现缺少sv/ent/pay详情域等旧限制保留，不宣称全库图完整。
+
+- [ ] 先记录旧lineage两个真实失败；旧逻辑纯提取后新增行为取得语义RED，不拿缺导出/模块当RED。
+- [ ] 最小实现与独立预期真实关系/字段标记检查；定向及combined entity+lineage GREEN。
+- [ ] voucher错误global、另一多态global、scope/target防线三类最小消融真实RED，逐字恢复最终GREEN。
+- [ ] source冻结后仅gen:erd生成/幂等和HTML检查；独立规格/质量审查及精确提交，无native/部署。
 
 ## §3 数据层之后的业务任务与启动深化
 
@@ -2096,3 +2115,11 @@ Node8项通过，最终受影响四selector共5例原生0失败/0错误/0跳过�
 初轮Node7项、Java6项均零失败/错误/跳过，最小分隔消融真实RED后五文件逐字恢复。独立审查I1发现合法ALTER注释分号被原正则截断；R1修复完整语句与下游子句边界，新增三项真实回归，最终Node10项全部通过。三Java源码与初轮验证时完全相同，保留六项XML证据，无重复Maven执行。独立复审I1已关闭、无新增重要问题。详见[报告](../../.superpowers/sdd/beauty-backend/task-60a-a4-report.md)及[R1复审](../../.superpowers/sdd/beauty-backend/review-task-60a-a4-r1.md)。
 
 553冻结源保持不变；共享套件实际22项/19通过/3失败仍明确归A5和A5b，未改名单掩盖。编译诊断归A11；本片无native/部署，H2仅证明fixture可加载。60A整体、BM04和全部P1～P4尚未验收，正式部署继续统一后置。
+
+### 32.14 60A-A5精确非ORM登记代码验收（2026-10-24）
+
+产品`4a0fa71dda6b7fa522e486da1811a54ccb83b450`只修改entity-alignment.test.ts。精确补12个真实JDBC/SQL Mapper表理由，原57登记值和anchored IGNORE保持，真实守卫及负例共用own-key分类函数；未知probe和继承键仍拒绝，列/ghost/stale检查未减弱。
+
+实际旧守卫6项/1失败恰报12缺项；行为测试10项/5失败后最小修复10项通过。仅删sys_outbox_stream消融10项/3失败，逐字恢复同SHA后10项全过。独立规格和质量审查均PASS、无发现，根核对源码/登记差集/恢复/提交内容。初次Vite受限临时文件EPERM另列，后续明确cwd授权重试已解决，不算业务RED。[报告](../../.superpowers/sdd/beauty-backend/task-60a-a5-report.md)、[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a5.md)。
+
+本片不运行schema-lineage或生成器，两项血缘债按A5b精确方案继续，不声称shared整体已通过。无Java/数据库/部署，全部P1～P4后统一部署的顺序保持。
