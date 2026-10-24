@@ -92,7 +92,6 @@ export const KEY_OWNERS = {
   sku_no: { table: "prd_sku" },
   category_no: { table: "prd_category" },
   coupon_no: { table: "mkt_coupon" },
-  quote_no: { table: "mkt_quote" },
   group_no: { table: "mkt_group_buy" },
   // 社区集单的期（V335）：ord_sub_order.period_no 指向 pmt_period
   period_no: { table: "pmt_period" },
@@ -249,6 +248,7 @@ export const NAME_COLLISIONS = {
     "mch_staff_log.log_no 是员工操作日志的流水号；\n" +
     "  pay_risk_shadow_log.log_no 是支付风控影子模式拦截记录的流水号（只记录、不真拦）。\n" +
     "  两者都是各自表的唯一业务键，所属域完全不同 —— 按名字 join 会把员工操作连到风控影子记录上。",
+  quote_no: "营销 mkt_quote 与结算 ord_checkout_quote 独立发号；仅营销 revision 与结算 confirmation 分别引用 tenant 内同族报价根。operation.current_quote_no 仅标识当前结算报价，不能代替业务 revision/hash/caller 校验。",
   voucher_no: "积分 pts_voucher 与储值 sv_voucher 独立发号；仅登记四条同族引用，禁止根互连或跨族关联。",
   plan_no: "pts_topup_plan 按 (plan_no,period_key) 定义独立计划；仅 pmt_migration_decision 与 ent_migration_import 引用 tenant 内 ent_migration_plan。",
   source_order_no: "来源协议决定根：ent_usage 的 SERVICE_USE 指向服务单，ORDER_USE/STORE_USE 指向 ord_sub_order.sub_order_no；不能无条件连接 ord_order。仅 ent_legacy_coupon_operation 引用 tenant 内 ord_order.order_no。",
@@ -265,6 +265,12 @@ export const NAME_COLLISIONS = {
 
 // Exact source-audited memberships; new tables require explicit review.
 export const COLLISION_MEMBERS = {
+  "quote_no": [
+    "mkt_quote",
+    "mkt_quote_revision",
+    "ord_checkout_quote",
+    "ord_checkout_confirmation"
+  ],
   "receipt_no": [
     "stl_payment",
     "ent_migration_return"
@@ -326,6 +332,25 @@ export const COLLISION_MEMBERS = {
 
 // Source-table exceptions take precedence over global collision suppression.
 export const TABLE_KEY_OWNERS = {
+  "mkt_quote_revision": {
+    "quote_no": {
+      "table": "mkt_quote",
+      "scope": tenant
+    }
+  },
+  "ord_checkout_confirmation": {
+    "quote_no": {
+      "table": "ord_checkout_quote",
+      "scope": tenant
+    }
+  },
+  "ord_checkout_operation": {
+    "current_quote_no": {
+      "table": "ord_checkout_quote",
+      "col": "quote_no",
+      "scope": tenant
+    }
+  },
   "pts_ledger_entry": {
     "voucher_no": {
       "table": "pts_voucher"

@@ -35,9 +35,11 @@
 <path class="ar" d="M420 494 L420 116 L100 116 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M580 494 L580 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M244 610 L244 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M148 958 L148 324 L580 324 L580 309" marker-end="url(#a)"/>
 <path class="ar" d="M148 958 L148 672 L436 672 L436 657" marker-end="url(#a)"/>
 <path class="ar" d="M148 958 L148 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M148 958 L148 440 L100 440 L100 425" marker-end="url(#a)"/>
+<path class="ar" d="M436 610 L436 324 L580 324 L580 309" marker-end="url(#a)"/>
 <path class="ar" d="M436 610 L436 104 L100 104 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M340 958 L340 452 L100 452 L100 425" marker-end="url(#a)"/>
 <path class="ar" d="M532 958 L532 104 L100 104 L100 77" marker-end="url(#a)"/>
@@ -184,9 +186,11 @@
 <text class="l" x="260" y="112" text-anchor="middle">order_no</text>
 <text class="l" x="340" y="88" text-anchor="middle">order_no</text>
 <text class="l" x="172" y="88" text-anchor="middle">order_no</text>
+<text class="l" x="364" y="320" text-anchor="middle">current_quote_no</text>
 <text class="l" x="292" y="668" text-anchor="middle">confirmation_no</text>
 <text class="l" x="124" y="88" text-anchor="middle">order_no</text>
 <text class="l" x="124" y="436" text-anchor="middle">sub_order_no</text>
+<text class="l" x="508" y="320" text-anchor="middle">quote_no</text>
 <text class="l" x="268" y="100" text-anchor="middle">order_no</text>
 <text class="l" x="220" y="448" text-anchor="middle">sub_order_no</text>
 <text class="l" x="316" y="100" text-anchor="middle">order_no</text>

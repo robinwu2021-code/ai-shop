@@ -221,6 +221,52 @@ describe("对账血缘", () => {
   const ref = (from: string, col: string, to: string, toCol = col, scope = tenant) => ({ from, col, to, toCol, scope });
   const byColumn = (col: string) => relations(tables).filter((r: any) => r.col === col);
 
+  // A global marketing owner would fabricate checkout edges and lose tenant scope.
+  it("quote_no 精确两条 tenant 内同族关系", () => {
+    expect(byColumn("quote_no")).toEqual([
+      ref("mkt_quote_revision", "quote_no", "mkt_quote"),
+      ref("ord_checkout_confirmation", "quote_no", "ord_checkout_quote"),
+    ]);
+  });
+
+  it("quote_no 两根不连自身或跨族，结算确认不连营销报价", () => {
+    for (const root of ["mkt_quote", "ord_checkout_quote"]) {
+      expect(schema.get(root)?.has("quote_no")).toBe(true);
+      expect(resolveReference(tables, root, "quote_no"), root).toBeNull();
+      expect(byColumn("quote_no").filter((r: any) => r.from === root)).toEqual([]);
+      expect(columnBadge(tables, root, "quote_no")).not.toContain('fk');
+    }
+    expect(byColumn("quote_no").filter((r: any) =>
+      (r.from.startsWith("ord_checkout_") && r.to === "mkt_quote") ||
+      (r.from.startsWith("mkt_") && r.to === "ord_checkout_quote")
+    )).toEqual([]);
+  });
+
+  it("仅 operation.current_quote_no 引用 tenant 内结算报价", () => {
+    const expected = ref("ord_checkout_operation", "current_quote_no", "ord_checkout_quote", "quote_no");
+    expect(byColumn("current_quote_no")).toEqual([expected]);
+    expect(resolveReference(tables, "ord_checkout_operation", "current_quote_no")).toEqual(expected);
+    expect(columnBadge(tables, "ord_checkout_operation", "current_quote_no")).toBe('<i class="k fk">FK</i>');
+    const extended = new Map(tables);
+    extended.set("unreviewed_operation", { cols: [{ name: "current_quote_no" }, { name: "tenant_no" }], uniques: new Set() });
+    expect(resolveReference(extended, "unreviewed_operation", "current_quote_no")).toBeNull();
+    expect(columnBadge(extended, "unreviewed_operation", "current_quote_no")).toBe("");
+  });
+
+  it("quote_no 未知第五表拒绝分类和 FK，保留 UK 优先", () => {
+    const extended = new Map(tables);
+    extended.set("unreviewed_quote", { cols: [{ name: "quote_no" }, { name: "tenant_no" }], uniques: new Set() });
+    expect(resolveReference(extended, "unreviewed_quote", "quote_no")).toBeNull();
+    expect(relations(extended).filter((r: any) => r.from === "unreviewed_quote")).toEqual([]);
+    expect(columnBadge(extended, "unreviewed_quote", "quote_no")).toBe("");
+    expect(unclassifiedBusinessKeys(extended).filter((x: string) => x.startsWith("quote_no（"))).toEqual([
+      "quote_no（出现在 mkt_quote、mkt_quote_revision、ord_checkout_quote、ord_checkout_confirmation、unreviewed_quote）",
+    ]);
+    extended.get("unreviewed_quote").uniques.add("quote_no");
+    expect(columnBadge(extended, "unreviewed_quote", "quote_no")).toBe('<i class="k uk">UK</i>');
+    expect(resolveReference(extended, "unreviewed_quote", "quote_no")).toBeNull();
+  });
+
   it("voucher_no 精确四条同族关系且不跨族、不连根、不 self", () => {
     expect(byColumn("voucher_no").some((r: any) => r.from.startsWith("sv_") && r.to === "pts_voucher"), "stored-value must never reference points voucher").toBe(false);
     expect(byColumn("voucher_no").some((r: any) => r.from.startsWith("pts_") && r.to === "sv_voucher"), "points must never reference stored-value voucher").toBe(false);
