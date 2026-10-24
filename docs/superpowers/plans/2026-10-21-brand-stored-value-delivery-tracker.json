@@ -824,6 +824,34 @@
     "remaining": [
       "Controlled online original-ledger mapping, key cutover and STORE resume; not executed",
       "P3 signoff after controlled rollout; P4-P6 remain separately planned"
-    ]
+    ],
+    "rolloutPreparation": {
+      "asOf": "2026-10-24",
+      "historicalRechargeDecision": "DEFER_POSTING_BY_USER; no replay, credit, cancellation or status edits",
+      "blockedAction": "Formal online cutover: RECHARGE_IN_FLIGHT",
+      "completed": [
+        "Read-only ledger/store/identity preflight",
+        "Running service candidate inventory",
+        "Job artifact classification: independent scheduling database, no Core/Pay business libraries",
+        "Source-aligned configuration, execution, recovery and stage-dependency runbook",
+        "Actual scheduler target matches local Core process and ledger (read-only capability probe)",
+        "Identified recharge/posting/redemption/event recovery paths use Pay issuer guards",
+        "P4 source reuse/gap inventory and full-stage execution table prepared"
+      ],
+      "remaining": [
+        "Final window inventory must cover all actual processes, external callbacks and indirect triggers; scheduler PLATFORM target verified",
+        "Resolve historical original only under explicit authorized handling",
+        "Fresh backup, owner issuer preparation, final process inventory and global approval",
+        "Formal audit/fence/map/key/dimension/resume and focused signoff"
+      ],
+      "runbook": "docs/technical/delivery/P3-储值切换执行清单.md"
+    }
+  },
+  "nextStagePreparation": {
+    "stage": "P4",
+    "status": "SOURCE_INVENTORY_COMPLETE_NOT_IMPLEMENTED",
+    "taskTable": "docs/technical/任务表-品牌与门店双线储值-P4开发准备.md",
+    "releaseDependsOn": "P3 controlled cutover signoff",
+    "testOrder": "All stage coding and compilation, then focused chain; no unaffected reruns"
   }
 }
