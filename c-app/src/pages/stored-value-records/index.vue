@@ -13,7 +13,7 @@ import { readStoredValueWithSession } from "@/shared/stored-value-session";
 import { canNativeShare } from "@shared/ports/share";
 const { t } = useI18n();
 const storeNo = ref("");const issuerRef=ref("");const locating=ref(false),locationFailed=ref(false);let loadEpoch=0;
-const focusDocumentNo = ref("");
+const focusDocumentNo = ref("");const locatorDocumentNo=ref("");
 const type = ref<StoredValueType>("ALL");
 const startDate = ref(""); const endDate = ref("");
 const draftStart = ref(""); const draftEnd = ref("");
@@ -38,10 +38,10 @@ function recordsPath() {
   return focusDocumentNo.value?`${ROUTES.storedValueRecords}?focusDocumentNo=${encodeURIComponent(focusDocumentNo.value)}`:`${ROUTES.storedValueRecords}?${issuerRef.value?'issuerRef='+encodeURIComponent(issuerRef.value):'storeNo='+encodeURIComponent(storeNo.value)}`;
 }
 async function load() {
-  const epoch=++loadEpoch;locationFailed.value=false;
-  if(focusDocumentNo.value&&!issuerRef.value){
+  const epoch=++loadEpoch;pager.invalidate();locationFailed.value=false;
+  if(locatorDocumentNo.value){
     locating.value=true;
-    try{const issuer=await readStoredValueWithSession(()=>api.storedValueLocateIssuer(focusDocumentNo.value),recordsPath);if(epoch!==loadEpoch)return;issuerRef.value=issuer.issuerRef;}
+    try{const issuer=await readStoredValueWithSession(()=>api.storedValueLocateIssuer(locatorDocumentNo.value),recordsPath);if(epoch!==loadEpoch)return;issuerRef.value=issuer.issuerRef;}
     catch{if(epoch===loadEpoch)locationFailed.value=true;return;}
     finally{if(epoch===loadEpoch)locating.value=false;}
   }
@@ -50,6 +50,7 @@ async function load() {
     ...(endDate.value ? { endDate: endDate.value } : {}),
     ...(focusDocumentNo.value ? { focusDocumentNo: focusDocumentNo.value } : {}),
   }).then(() => {
+    if(epoch!==loadEpoch)return;
     const applied = state.page?.filter;
     if (applied) { type.value = applied.type; startDate.value = applied.startDate || ""; endDate.value = applied.endDate || ""; }
   });
@@ -101,7 +102,7 @@ function subscribe() {
 onLoad(query => {
   issuerRef.value = typeof query?.issuerRef === "string" ? query.issuerRef : "";
   storeNo.value = typeof query?.storeNo === "string" ? query.storeNo : "";
-  focusDocumentNo.value = typeof query?.focusDocumentNo === "string" ? query.focusDocumentNo : "";
+  focusDocumentNo.value = typeof query?.focusDocumentNo === "string" ? query.focusDocumentNo : "";locatorDocumentNo.value=focusDocumentNo.value;
 });
 onShow(() => { load(); void loadCapability(); });
 onReachBottom(() => void pager.more());

@@ -35,7 +35,7 @@ class BrandStoredValueHttpSelectionTest extends BrandStoredValueRedemptionTest {
   var reply=send(mvc,"/biz/stored-value/consumptions/preview",b,f.b(),body,key);assertThat(reply.path("code").asInt()).as(reply.toString()).isZero();
   var service=reply.path("data").path("service");String order=service.path("serviceOrderNo").asString();var confirm=service.path("confirmation");
   var command=Map.of("orderNo",order,"orderRevision",confirm.path("orderRevision").asLong(),"customerRef",ref);
-  assertThat(send(mvc,"/biz/stored-value/consumptions",b,f.b(),command,id()).path("code").asInt()).isNotZero();assertThat(balance(f.issuer())).isEqualTo(13000);
+  var waiting=send(mvc,"/biz/stored-value/consumptions",b,f.b(),command,id());assertThat(waiting.path("data").path("status").asString()).as(waiting.toString()).isEqualTo("WAIT_AUTH");assertThat(balance(f.issuer())).isEqualTo(13000);
   var tampered=new HashMap<>(body);tampered.put("accountRef","OTHER");assertThat(send(mvc,"/biz/stored-value/consumptions/resolve",b,f.b(),tampered,key).path("code").asInt()).isNotZero();
   var badConsent=Map.of("orderRevision",confirm.path("orderRevision").asLong(),"quoteRef",confirm.path("quoteRef").asString(),"selectionDigest","0".repeat(64),"requestKey",id());
   assertThat(send(mvc,"/mp/orders/"+order+"/entitlement-authorizations",c,f.b(),badConsent,id()).path("code").asInt()).isNotZero();

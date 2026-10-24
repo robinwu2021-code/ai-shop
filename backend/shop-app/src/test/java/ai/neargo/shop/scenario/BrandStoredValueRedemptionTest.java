@@ -44,16 +44,18 @@ class BrandStoredValueRedemptionTest {
  static String id(){return UUID.randomUUID().toString().replace("-","");}
  @BeforeEach void schema()throws Exception{
   if(installed)return;
+  if(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_name='sv_issuer'",Long.class)==0){
   ddl(file("V548__stored_value_issuer_foundation.sql"));
   String dimensions=file("V549__stored_value_issuer_ledger_dimensions.sql").replace("source_kind='V2_ACTIVITY'","source_kind IN ('V2_ACTIVITY','V2_BRAND_ACTIVITY')");
   ddl(dimensions);
   ddl("ALTER TABLE sv_release ADD COLUMN legacy_activity_version_no VARCHAR(64);ALTER TABLE sv_release_tier ADD COLUMN legacy_tier_key VARCHAR(128);");
   ddl(file("V564__stored_value_issue_policy.sql"));ddl(file("V565__stored_value_activity_governance.sql"));ddl(file("V566__stored_value_governed_plan_projection.sql").replace(" STORED",""));
+  }
   ddl(file("V570__stored_value_clearing_entries.sql"));ddl(file("V572__stored_value_brand_quota_scope.sql"));
   jdbc.execute("ALTER TABLE sv_account DROP CONSTRAINT uk_sv_owner");jdbc.execute("ALTER TABLE sv_account DROP CONSTRAINT uk_sv_customer_owner");
   jdbc.execute("CREATE UNIQUE INDEX uk_sv_issuer_customer ON sv_account(tenant_no,issuer_no,customer_no,currency)");
-  jdbc.execute("ALTER TABLE sv_recharge DROP CONSTRAINT ck_sv_recharge_source");
-  String provenance=file("V574__stored_value_brand_release_provenance.sql");ddl(provenance.substring(provenance.indexOf("ALTER TABLE sv_recharge ADD")));
+
+  String provenance=file("V574__stored_value_brand_release_provenance.sql");ddl(provenance);
   installed=true;
  }
  record F(String entity,String a,String b,String brand,String issuer,String user,String actor,String person,String refA,String refB,Query qa,Query qb,StoredValueIssuerRecharges.Create create,EntitlementContext ctx){}
@@ -141,7 +143,7 @@ class BrandStoredValueRedemptionTest {
  }
  String file(String name)throws Exception{return Files.readString(Path.of("src/main/resources/db/migration",name));}
  void ddl(String ddl){
-  ddl=ddl.replaceAll("(?m)^--.*$","").replace(" JSON"," VARCHAR(30000)").replaceAll(" ENGINE=InnoDB[^;]*","");
+  ddl=ddl.replace(" DROP CHECK "," DROP CONSTRAINT ").replaceAll("(?m)^--.*$","").replace(" JSON"," VARCHAR(30000)").replaceAll(" ENGINE=InnoDB[^;]*","");
   var in=java.util.regex.Pattern.compile("([a-z_]+) IN \\(([^()]*)\\)").matcher(ddl);var out=new StringBuffer();
   while(in.find()){String expression="CASE "+in.group(1);for(String item:in.group(2).split(","))expression+=" WHEN "+item.trim()+" THEN TRUE";expression+=" ELSE FALSE END";in.appendReplacement(out,java.util.regex.Matcher.quoteReplacement(expression));}in.appendTail(out);
   for(String part:out.toString().split(";"))if(!part.isBlank()){var m=java.util.regex.Pattern.compile("CREATE TABLE ([a-z_]+)").matcher(part);if(m.find())part=part.replaceAll("KEY ((?:uk|ix)_[0-9]+)\\b","KEY "+m.group(1)+"_$1");jdbc.execute(part);}

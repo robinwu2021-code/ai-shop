@@ -24,7 +24,7 @@ onUnload(pager.invalidate);
 </script>
 <template>
   <sh-scaffold title-key="storedValue.title">
-    <view v-for="service in pendingServices" :key="service.serviceOrderNo" class="sh-card store" role="button" @tap="confirmOrder=service.serviceOrderNo"><text class="txt-strong">{{service.storeName}}</text><text class="txt-caption sh-muted store__last">{{$t(service.status==='WAIT_AUTH'?'storedValue.confirmConsumption':'storedValue.waitingMerchant')}}</text></view>
+    <view v-for="service in pendingServices" :key="service.serviceOrderNo" class="sh-card store" role="button" @tap="confirmOrder=service.serviceOrderNo"><text class="txt-strong">{{service.storeName}}</text><text class="txt-caption sh-muted store__last">{{$t(service.status==='WAIT_AUTH'?'storedValue.confirmConsumption':'storedValue.serviceState.'+service.status)}}</text></view>
     <view v-if="servicesFailed" role="button" class="sh-btn sh-btn--muted store" @tap="services">{{$t('storedValue.refreshConfirmation')}}</view>
     <StoredValueServiceSheet :order-no="confirmOrder" @close="confirmOrder=''" @confirmed="services"/>
     <text class="sh-hint intro">{{ $t("storedValue.storesHint") }}</text>

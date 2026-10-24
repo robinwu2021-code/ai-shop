@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
-const mocks = vi.hoisted(() => ({ records: vi.fn(), capability: vi.fn(), report: vi.fn(), native: false, load: {} as Record<string, string> }));
-vi.mock("@/api", () => ({ api: { storedValueLocateIssuer:async()=>({issuerRef:"S1"}),storedValueIssuerRecords:mocks.records,storedValueRecords: mocks.records, storedValueNotificationCapability: mocks.capability, subscribeReport: mocks.report } }));
+const mocks = vi.hoisted(() => ({ locate:vi.fn(),show:undefined as undefined|(()=>void),records: vi.fn(), capability: vi.fn(), report: vi.fn(), native: false, load: {} as Record<string, string> }));
+vi.mock("@/api", () => ({ api: { storedValueLocateIssuer:mocks.locate,storedValueIssuerRecords:mocks.records,storedValueRecords: mocks.records, storedValueNotificationCapability: mocks.capability, subscribeReport: mocks.report } }));
 vi.mock("@/stores/user", () => ({ useUserStore: () => ({ token: "session", silentLogin: async () => false }) }));
 vi.mock("@shared/ports/share", () => ({ canNativeShare: () => mocks.native }));
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock("@dcloudio/uni-app", () => ({
   onLoad: (fn: (query: Record<string, string>) => void) => fn(mocks.load),
-  onShow: (fn: () => void) => fn(), onReachBottom: vi.fn(), onUnload: vi.fn(),
+  onShow: (fn: () => void) => {mocks.show=fn;fn();}, onReachBottom: vi.fn(), onUnload: vi.fn(),
 }));
 import { uniMock } from "./setup";
 import RecordsPage from "@/pages/stored-value-records/index.vue";
@@ -24,7 +24,7 @@ async function tapText(w: ReturnType<typeof render>, text: string) {
   expect(target, text).toBeTruthy(); await target!.trigger("tap"); await flushPromises();
 }
 beforeEach(() => {
-  vi.clearAllMocks(); mocks.native = false; mocks.report.mockResolvedValue(undefined); mocks.load = { storeNo: "S1", focusDocumentNo: "EU1" };
+  vi.clearAllMocks();mocks.locate.mockResolvedValue({issuerRef:"S1"}); mocks.native = false; mocks.report.mockResolvedValue(undefined); mocks.load = { storeNo: "S1", focusDocumentNo: "EU1" };
   mocks.capability.mockResolvedValue({ channel: "WXSUB", available: true, templateId: "real", reasonCode: null });
   mocks.records.mockImplementation(async (_store, query) => ({
     store: { storeNo: "S1", storeName: "My Store", businessTimeZone: "Asia/Shanghai" },
@@ -96,4 +96,12 @@ describe("储值账单交互", () => {
     expect(w.text()).toContain("storedValue.backStores");
     expect(w.text()).not.toContain("storedValue.emptyRecords");
   });
+});
+
+it('renews the durable notification locator when returning after the issuer reference expired',async()=>{
+ mocks.locate.mockResolvedValueOnce({issuerRef:'FIRST'}).mockResolvedValue({issuerRef:'RENEWED'});
+ const w=render();await flushPromises();expect(mocks.records.mock.calls.at(-1)?.[0]).toBe('FIRST');
+ mocks.show!();await flushPromises();expect(mocks.locate).toHaveBeenCalledTimes(2);expect(mocks.records.mock.calls.at(-1)?.[0]).toBe('RENEWED');
+ await w.findComponent({name:'sh-tabs'}).vm.$emit('change','RECHARGE');await flushPromises();
+ expect(mocks.locate).toHaveBeenCalledTimes(3);expect(mocks.records.mock.calls.at(-1)?.[1]).not.toHaveProperty('focusDocumentNo');w.unmount();
 });

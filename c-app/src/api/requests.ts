@@ -504,3 +504,7 @@ export interface PointsEntriesQuery {
 export type { WxPhoneLoginReq } from "@shared/types";
 
 export type { StoredValueStoresQuery, StoredValueRecordsQuery } from "./stored-value-types";
+
+export interface StoredValueLocateQuery {focusDocumentNo:string}
+export interface StoredValueIssuerRecordsQuery {issuerRef:string;type?:'ALL'|'RECHARGE'|'REDEMPTION';startDate?:string;endDate?:string;focusDocumentNo?:string;cursor?:string;size?:number}
+export interface StoredValueAuthorizeRequest {orderRevision:number;quoteRef:string;selectionDigest:string;requestKey:string}

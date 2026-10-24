@@ -12408,6 +12408,409 @@ components:
         - "ALL"
         - "RECHARGE"
         - "REDEMPTION"
+    StoredValueLocateQuery:
+      type: "object"
+      properties:
+        focusDocumentNo:
+          type: "string"
+      required:
+        - "focusDocumentNo"
+      additionalProperties: false
+    StoredValueIssuerRecordsQuery:
+      type: "object"
+      properties:
+        issuerRef:
+          type: "string"
+        type:
+          type: "string"
+          enum:
+            - "ALL"
+            - "RECHARGE"
+            - "REDEMPTION"
+        startDate:
+          type: "string"
+        endDate:
+          type: "string"
+        focusDocumentNo:
+          type: "string"
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+      required:
+        - "issuerRef"
+      additionalProperties: false
+    StoredValueAuthorizeRequest:
+      type: "object"
+      properties:
+        orderRevision:
+          type: "number"
+        quoteRef:
+          type: "string"
+        selectionDigest:
+          type: "string"
+        requestKey:
+          type: "string"
+      required:
+        - "orderRevision"
+        - "quoteRef"
+        - "selectionDigest"
+        - "requestKey"
+      additionalProperties: false
+    StoredValueStore:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+        storeName:
+          type: "string"
+        lastOccurredAt:
+          type: "string"
+        lastType:
+          "$ref": "#/components/schemas/Exclude_StoredValueType_ALL"
+      required:
+        - "storeNo"
+        - "storeName"
+        - "lastOccurredAt"
+        - "lastType"
+      additionalProperties: false
+    StoredValueStoresPage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/StoredValueStore"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+        hasMore:
+          type: "boolean"
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    StoredValueRecord:
+      type: "object"
+      properties:
+        type:
+          "$ref": "#/components/schemas/Exclude_StoredValueType_ALL"
+        title:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        signedAmountMinor:
+          type: "number"
+        occurredAt:
+          type: "string"
+        documentNo:
+          type:
+            - "string"
+            - "null"
+        storeNo:
+          type:
+            - "string"
+            - "null"
+        storeName:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "type"
+        - "title"
+        - "currency"
+        - "signedAmountMinor"
+        - "occurredAt"
+        - "documentNo"
+      additionalProperties: false
+    StoredValueRecordsPage:
+      type: "object"
+      properties:
+        issuer:
+          "$ref": "#/components/schemas/StoredValueIssuer"
+        store:
+          type: "object"
+          properties:
+            storeNo:
+              type: "string"
+            storeName:
+              type: "string"
+            businessTimeZone:
+              type: "string"
+          required:
+            - "storeNo"
+            - "storeName"
+            - "businessTimeZone"
+          additionalProperties: false
+        filter:
+          type: "object"
+          properties:
+            type:
+              "$ref": "#/components/schemas/StoredValueType"
+            startDate:
+              type:
+                - "string"
+                - "null"
+            endDate:
+              type:
+                - "string"
+                - "null"
+          required:
+            - "type"
+            - "startDate"
+            - "endDate"
+          additionalProperties: false
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/StoredValueRecord"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+        hasMore:
+          type: "boolean"
+      required:
+        - "store"
+        - "filter"
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    StoredValueIssuer:
+      type: "object"
+      properties:
+        issuerRef:
+          type: "string"
+        scopeType:
+          type: "string"
+          enum:
+            - "STORE"
+            - "BRAND"
+        name:
+          type: "string"
+        entityNo:
+          type: "string"
+        storeNo:
+          type:
+            - "string"
+            - "null"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        businessTimeZone:
+          type:
+            - "string"
+            - "null"
+        lastType:
+          "$ref": "#/components/schemas/Exclude_StoredValueType_ALL"
+        lastOccurredAt:
+          type: "string"
+      required:
+        - "issuerRef"
+        - "scopeType"
+        - "name"
+        - "entityNo"
+        - "storeNo"
+        - "currency"
+        - "businessTimeZone"
+        - "lastType"
+        - "lastOccurredAt"
+      additionalProperties: false
+    StoredValueNotificationCapability:
+      type: "object"
+      properties:
+        channel:
+          type: "string"
+          const: "WXSUB"
+        available:
+          type: "boolean"
+        templateId:
+          type:
+            - "string"
+            - "null"
+        reasonCode:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "channel"
+        - "available"
+        - "templateId"
+        - "reasonCode"
+      additionalProperties: false
+    StoredValueIssuersPage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/StoredValueIssuer"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+        hasMore:
+          type: "boolean"
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    StoredValueIssuerRecordsPage:
+      type: "object"
+      properties:
+        issuer:
+          "$ref": "#/components/schemas/StoredValueIssuer"
+        filter:
+          type: "object"
+          properties:
+            type:
+              "$ref": "#/components/schemas/StoredValueType"
+            startDate:
+              type:
+                - "string"
+                - "null"
+            endDate:
+              type:
+                - "string"
+                - "null"
+          required:
+            - "type"
+            - "startDate"
+            - "endDate"
+          additionalProperties: false
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/StoredValueRecord"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+        hasMore:
+          type: "boolean"
+      required:
+        - "issuer"
+        - "filter"
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    StoredValueService:
+      type: "object"
+      properties:
+        serviceOrderNo:
+          type: "string"
+        operationNo:
+          type: "string"
+        status:
+          type: "string"
+        storeNo:
+          type: "string"
+        storeName:
+          type: "string"
+        serviceStaffName:
+          type:
+            - "string"
+            - "null"
+        serviceAt:
+          type:
+            - "string"
+            - "null"
+        items:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              itemNo:
+                type: "string"
+              title:
+                type: "string"
+              quantity:
+                type: "number"
+            required:
+              - "itemNo"
+              - "title"
+              - "quantity"
+            additionalProperties: false
+        confirmation:
+          anyOf:
+            - type: "object"
+              properties:
+                orderRevision:
+                  type: "number"
+                quoteRef:
+                  type: "string"
+                selectionDigest:
+                  type: "string"
+                expiresAt:
+                  type: "string"
+              required:
+                - "orderRevision"
+                - "quoteRef"
+                - "selectionDigest"
+                - "expiresAt"
+              additionalProperties: false
+            - type: "null"
+        payment:
+          anyOf:
+            - type: "object"
+              properties:
+                assetKind:
+                  type: "string"
+                currency:
+                  "$ref": "#/components/schemas/CurrencyCode"
+                amountMinor:
+                  type: "number"
+                scopeType:
+                  type: "string"
+                  enum:
+                    - "STORE"
+                    - "BRAND"
+                issuerName:
+                  type:
+                    - "string"
+                    - "null"
+              required:
+                - "assetKind"
+                - "currency"
+                - "amountMinor"
+                - "scopeType"
+                - "issuerName"
+              additionalProperties: false
+            - type: "null"
+      required:
+        - "serviceOrderNo"
+        - "operationNo"
+        - "status"
+        - "storeNo"
+        - "storeName"
+        - "serviceStaffName"
+        - "serviceAt"
+        - "items"
+        - "confirmation"
+        - "payment"
+      additionalProperties: false
+    StoredValueAuthorization:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+        operationNo:
+          type:
+            - "string"
+            - "null"
+        useStatus:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "status"
+        - "operationNo"
+        - "useStatus"
+      additionalProperties: false
     PointsOrderStatePhase:
       type: "string"
       enum:
@@ -12715,140 +13118,6 @@ components:
         - "name"
         - "available"
         - "unavailableReason"
-      additionalProperties: false
-    StoredValueStoresPage:
-      type: "object"
-      properties:
-        records:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/StoredValueStore"
-        nextCursor:
-          type:
-            - "string"
-            - "null"
-        hasMore:
-          type: "boolean"
-      required:
-        - "records"
-        - "nextCursor"
-        - "hasMore"
-      additionalProperties: false
-    StoredValueStore:
-      type: "object"
-      properties:
-        storeNo:
-          type: "string"
-        storeName:
-          type: "string"
-        lastOccurredAt:
-          type: "string"
-        lastType:
-          "$ref": "#/components/schemas/Exclude_StoredValueType_ALL"
-      required:
-        - "storeNo"
-        - "storeName"
-        - "lastOccurredAt"
-        - "lastType"
-      additionalProperties: false
-    StoredValueRecordsPage:
-      type: "object"
-      properties:
-        store:
-          type: "object"
-          properties:
-            storeNo:
-              type: "string"
-            storeName:
-              type: "string"
-            businessTimeZone:
-              type: "string"
-          required:
-            - "storeNo"
-            - "storeName"
-            - "businessTimeZone"
-          additionalProperties: false
-        filter:
-          type: "object"
-          properties:
-            type:
-              "$ref": "#/components/schemas/StoredValueType"
-            startDate:
-              type:
-                - "string"
-                - "null"
-            endDate:
-              type:
-                - "string"
-                - "null"
-          required:
-            - "type"
-            - "startDate"
-            - "endDate"
-          additionalProperties: false
-        records:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/StoredValueRecord"
-        nextCursor:
-          type:
-            - "string"
-            - "null"
-        hasMore:
-          type: "boolean"
-      required:
-        - "store"
-        - "filter"
-        - "records"
-        - "nextCursor"
-        - "hasMore"
-      additionalProperties: false
-    StoredValueRecord:
-      type: "object"
-      properties:
-        type:
-          "$ref": "#/components/schemas/Exclude_StoredValueType_ALL"
-        title:
-          type: "string"
-        currency:
-          "$ref": "#/components/schemas/CurrencyCode"
-        signedAmountMinor:
-          type: "number"
-        occurredAt:
-          type: "string"
-        documentNo:
-          type:
-            - "string"
-            - "null"
-      required:
-        - "type"
-        - "title"
-        - "currency"
-        - "signedAmountMinor"
-        - "occurredAt"
-        - "documentNo"
-      additionalProperties: false
-    StoredValueNotificationCapability:
-      type: "object"
-      properties:
-        channel:
-          type: "string"
-          const: "WXSUB"
-        available:
-          type: "boolean"
-        templateId:
-          type:
-            - "string"
-            - "null"
-        reasonCode:
-          type:
-            - "string"
-            - "null"
-      required:
-        - "channel"
-        - "available"
-        - "templateId"
-        - "reasonCode"
       additionalProperties: false
     Record_Lang_string:
       type: "object"
@@ -16816,6 +17085,246 @@ paths:
                     type: "string"
                   data:
                     "$ref": "#/components/schemas/Review"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/entitlement-service-orders":
+    get:
+      operationId: "storedValuePendingServices"
+      summary: "My pending service confirmations"
+      tags:
+        - "entitlement-service-orders"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/StoredValueService"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/entitlement-service-orders/{orderNo}":
+    get:
+      operationId: "storedValueService"
+      summary: "My service confirmation"
+      tags:
+        - "entitlement-service-orders"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueService"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/orders/{orderNo}/entitlement-authorizations":
+    post:
+      operationId: "storedValueAuthorize"
+      summary: "Confirm frozen service and wallet"
+      tags:
+        - "orders"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueAuthorization"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/StoredValueAuthorizeRequest"
+  "/mp/stored-value/issuers":
+    get:
+      operationId: "storedValueIssuers"
+      summary: "Owned funded wallets"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueIssuersPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/stored-value/records/locate":
+    get:
+      operationId: "storedValueLocateIssuer"
+      summary: "Locate owned wallet by durable document"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "focusDocumentNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueIssuer"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/stored-value/issuer-records":
+    get:
+      operationId: "storedValueIssuerRecords"
+      summary: "Owned issuer history"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "issuerRef"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "type"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - "ALL"
+              - "RECHARGE"
+              - "REDEMPTION"
+        - name: "startDate"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "endDate"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "focusDocumentNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueIssuerRecordsPage"
                 required:
                   - "code"
                   - "msg"

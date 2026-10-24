@@ -45,3 +45,10 @@ it('unlocks selections on a definitive rejection with no original',async()=>{
  m.preview.mockRejectedValue(Object.assign(new Error('refused'),{code:40040}));m.resolve.mockResolvedValue({found:false});const w=await open();await foot(w);
  expect(uni.removeStorageSync).toHaveBeenCalled();expect(w.findAll('[role="button"]').some(x=>x.text()==='+')).toBe(true);w.unmount();
 });
+
+it('resumes the exact preview if Core created the original before quote binding failed',async()=>{
+ m.preview.mockRejectedValueOnce(new Error('quote lookup lost')).mockResolvedValue({service,quote:{redeemable:true,amountMinor:5000,currency:'CNY'}});
+ const unbound={...service,confirmation:null,payment:null};m.resolve.mockResolvedValue({found:true,service:unbound});m.query.mockReset().mockResolvedValue(unbound);
+ const w=await open();await foot(w);expect(m.preview).toHaveBeenCalledTimes(1);await foot(w);
+ expect(m.preview).toHaveBeenCalledTimes(2);expect(m.preview.mock.calls[1]).toEqual(m.preview.mock.calls[0]);expect(w.text()).toContain('storedValue.askCustomerConfirm');expect(m.consume).not.toHaveBeenCalled();w.unmount();
+});

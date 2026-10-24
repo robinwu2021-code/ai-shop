@@ -113,7 +113,7 @@ function collectAll(file) {
   return gen.createSchema("*").definitions ?? {};
 }
 
-let schemas = { ...collectAll(typesFile), ...collectAll(reqFile), ...collectAll(responseFile) };
+let schemas = { ...collectAll(typesFile), ...collectAll(reqFile), ...collectAll(responseFile), ...collectAll(path.resolve(root,"src/api/stored-value-types.ts")), ...collectAll(path.resolve(root,"src/api/stored-value-issuers.ts")) };
 if (!Object.keys(schemas).length) {
   console.error("没有抽出任何 schema，检查类型文件路径");
   process.exit(1);
@@ -152,6 +152,26 @@ if (Object.keys(renamed).length) {
 
 /** 契约方法 → 响应类型名 */
 const RESPONSE_TYPES = {
+  mSvBrandActivities: "SvGovernanceActivitiesPage",
+  mSvBrandActivity: "SvGovernanceDetail",
+  mSvBrandActivitySave: "SvActivity",
+  mSvBrandActivityDraftEdit: "SvActivity",
+  mSvBrandActivityCheck: "SvActivityCheck",
+  mSvBrandActivitySubmit: "SvSubmission",
+  mSvBrandActivityStop: "SvSubmission",
+  mSvBrandActivityCopy: "SvActivity",
+  mSvBrandActivityContext: "SvGovernanceContext",
+  mSvBrandActivityPresets: "SvGovernancePresetsPage",
+  mSvBrandActivitySchedule: "SvGovernanceSchedule",
+  mSvConsumptionCancel:"SvOperation",
+  mSvConsumptionResolve:"SvConsumptionResolution",
+  mSvConsumptionPreview:"SvConsumptionPreview",
+  mSvConsumptionOrder:"SvServiceView",
+  mSvConsume:"SvOperation",
+  mSvWallets:"SvWallet[]",
+  mSvWalletRecords:"SvRecordPage",
+  mSvBrandCapability:"SvBrandCapability",
+  mSvBrandActivate:"SvBrandActivation",
   mSvGovernanceCapability: "SvGovernanceCapability",
   mSvPreparePolicyPermissions: "SvGovernancePrepared",
   mSvPolicyTargets: "SvPolicyTargetOption[]",
@@ -589,6 +609,24 @@ const RESPONSE_TYPES = {
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+  mSvBrandActivities: "SvGovernanceActivityQuery",
+  mSvBrandActivity: "SvGovernanceStoreQuery",
+  mSvBrandActivitySave: "SvGovernanceDraft",
+  mSvBrandActivityDraftEdit: "SvGovernanceDraft",
+  mSvBrandActivityCheck: "SvGovernanceCommand",
+  mSvBrandActivitySubmit: "SvGovernanceCommand",
+  mSvBrandActivityStop: "SvGovernanceCommand",
+  mSvBrandActivityCopy: "SvGovernanceCommand",
+  mSvBrandActivityContext: "SvGovernanceContextQuery",
+  mSvBrandActivityPresets: "SvGovernancePresetQuery",
+  mSvBrandActivitySchedule: "SvGovernanceScheduleQuery",
+  mSvConsumptionCancel:"SvConsumptionStoreQuery",
+  mSvConsumptionResolve:"SvConsumptionCreate",
+  mSvConsumptionPreview:"SvConsumptionCreate",
+  mSvConsumptionOrder:"SvConsumptionStoreQuery",
+  mSvConsume:"SvConsumptionSubmit",
+  mSvWalletRecords:"SvWalletRecordsQuery",
+  mSvBrandActivate:"SvBrandActivationRequest",
   mSvPreparePolicyPermissions: "SvGovernanceManagement",
   mSvPolicyTargets: "SvGovernanceManagement",
   mSvPolicies: "SvGovernancePolicyQuery",

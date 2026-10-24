@@ -877,13 +877,21 @@
   },
   "nextStagePreparation": {
     "stage": "P5",
-    "status": "COMPILED_FOCUSED_ACCEPTANCE_IN_PROGRESS",
+    "status": "ACCEPTED_COMPATIBILITY_PUBLICATION_PENDING",
     "planFile": "2026-10-21-brand-stored-value-brand-redemption.md",
     "releaseDependsOn": "P3 controlled cutover signoff; P6 before cross-entity activation",
     "testOrder": "All phase coding and compilation, then one focused chain; no unaffected reruns",
     "taskTable": "docs/technical/任务表-品牌与门店双线储值-P5执行.md",
     "backendCompile": "PASS Java21 food-embedded Core + standalone Pay test-compile",
     "frontendCompile": "PASS B and C type-check",
-    "focusedAcceptance": "27 Java + 24 B + 6 C passed; integrated money fixture and native MySQL pending"
+    "focusedAcceptance": "37 distinct business Java +3 contract assertions +31 B +10 C PASS; review2 fixes RED->GREEN; no full regression",
+    "remoteBase": "848476276659a8b49e7e428f8262760d38d6edf6",
+    "migrationVersions": [
+      570,
+      571,
+      572,
+      573,
+      574
+    ]
   }
 }

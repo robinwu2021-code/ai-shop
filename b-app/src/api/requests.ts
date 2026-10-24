@@ -859,3 +859,9 @@ export interface SvGovernanceDraft {managementNo:string;definition:SvActivityDef
 export interface SvGovernanceCommand extends SvGovernanceStoreQuery {expectedRevision:number}
 export interface SvGovernanceApprovalQuery {managementNo:string;status?:string;cursor?:string;size?:number}
 export interface SvGovernanceDecision {managementNo:string;decision:{decision:'APPROVE'|'RETURN';reason:string;expectedRevision:number}}
+
+export type {SvConsumptionCreate} from './stored-value-types';
+export interface SvConsumptionStoreQuery {storeNo:string}
+export interface SvConsumptionSubmit {orderNo:string;orderRevision:number;customerRef:string;authorizationRef:null}
+export interface SvWalletRecordsQuery {issuerRef:string;accountRef:string;type:'ALL'|'RECHARGE'|'REDEMPTION';startDate?:string;endDate?:string;cursor?:string;size?:number}
+export interface SvBrandActivationRequest {managementNo:string;expectedRevision:number}

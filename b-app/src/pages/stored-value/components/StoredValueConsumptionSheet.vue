@@ -72,6 +72,10 @@ async function preview(){
 async function refresh(){
  const p=original.value;const no=p?.serviceOrderNo||p?.preview?.service.serviceOrderNo;if(!p||!no||busy.value||store!==merchant.storeNo)return;const token=generation;busy.value=true;
  try{let value=await api.mSvConsumptionOrder(no,store);
+  if(live(token)&&value.status==='WAIT_AUTH'&&!value.confirmation&&!value.payment){
+   // Core may have committed creation before quote lookup failed. Resume the frozen preview, not a new order.
+   accept(value);busy.value=false;await preview();return;
+  }
   if(live(token)&&value.status==='PROCESSING'&&value.confirmation){
    // The original command is already staged. Retry that command, never create another quote/use.
    await api.mSvConsume({orderNo:value.serviceOrderNo,orderRevision:value.confirmation.orderRevision,customerRef:p.body.customerRef,authorizationRef:null});

@@ -97,3 +97,20 @@ mSvActivityCopy	Approved P4 store-scoped governance resource namespace; matches 
 mSvActivityContext	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
 mSvActivityPresets	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
 mSvActivitySchedule	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
+
+mSvBrandActivityContext	P5 verified Java namespace retained for API compatibility.
+mSvBrandActivityPresets	P5 verified Java namespace retained for API compatibility.
+mSvBrandActivitySchedule	P5 verified Java namespace retained for API compatibility.
+mSvBrandActivities	P5 verified Java namespace retained for API compatibility.
+mSvBrandActivity	P5 verified Java namespace retained for API compatibility.
+mSvBrandActivitySave	P5 verified Java namespace retained for API compatibility.
+mSvBrandActivityDraftEdit	P5 verified Java namespace retained for API compatibility.
+mSvBrandActivityCheck	P5 verified Java namespace retained for API compatibility.
+mSvBrandActivitySubmit	P5 verified Java namespace retained for API compatibility.
+mSvBrandActivityStop	P5 verified Java namespace retained for API compatibility.
+mSvBrandActivityCopy	P5 verified Java namespace retained for API compatibility.
+mSvWalletRecords	P5 verified Java namespace retained for API compatibility.
+mSvConsumptionCancel	P5 verified Java namespace retained for API compatibility.
+mSvConsumptionOrder	P5 verified Java namespace retained for API compatibility.
+mSvWallets	P5 verified Java namespace retained for API compatibility.
+mSvBrandActivate	P5 verified Java namespace retained for API compatibility.
