@@ -35,3 +35,11 @@ Status: IMPLEMENTATION_APPROVED. Root technical gate passed the complete design/
 Accepted baseline is fixed above. This brief releases design only; implementation requires a separate root IMPLEMENTATION_BASE after concrete signature/Bean/transport verification. Do not modify root-owned brief/main TDD/progress/ADR/reviews/pins.
 
 Root implementation release approves the exact optional safe-error header/client metadata surface and minimal canonical OPEN correction. No new platform session/nonce, C/cash machine authority, database migration, source ledger or Task60 debt repair. Approved detailed design is binding over abbreviated historical preparation wording. New DDL still requires a separate actual-file execution gate.
+
+## 2026-10-24 用户执行顺序调整与代码阶段关口
+
+用户明确范围为P1及P2～P4全部规划后端功能，并要求先完成全部代码开发和编译，再统一部署验证。主TDD §0.2为当前执行顺序，覆盖旧逐模块部署前置。Task59必须完成生产接线、双进程夹具/父HTTP测试/脚本代码及各形态编译；实际embedded/standalone双子JVM与真实构件部署执行后置，报告和审查须区分代码阶段验证与待执行部署证据。必要单元、TCP/全局Advice、隔离真实MySQL/owner、有限回归、消融与独立spec+quality审查继续执行；后置用例不得标记PASS。
+
+已裁定的最小测试落点补充：默认shop-app不新增beauty-channel依赖，HOST CheckoutBoundOwnerTransportTest通过共享typed API测四路，beauty-channel/src/test/java/ai/neargo/shop/beauty/port/RemoteCheckoutPortTest测实际适配器。Task59现有runner可加精确owners模式，仅CheckoutCashPermissionFlowTest、BeautySourceCheckoutIT及源码核定方法，用同一env-secret/串行自有MySQL/严格fresh XML验证必要集成；不执行或改写旧密码argv runner，不清旧M1债，不新增产品/DDL。记录V538结构夹具+正式539/540的真实范围。
+
+本次独立审查判断Task59代码和当前获准执行验证的合规性，评估未执行夹具代码的正确性并明确剩余验证；BM04整体及全范围部署结论仍待最终统一关口。代码审查通过后进入60A代码质量收尾，再按主计划继续后续模块编码，不能把该代码阶段关口标为部署完成。

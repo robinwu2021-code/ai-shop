@@ -245,3 +245,12 @@ standalone HOST只含web/channel，无core；SERVER独立私有schema只有23项
 
 
 Task54增量安全规则：独立V538扩展原member ticket的actor realm/kind，保留V537冻结字节；guest只接受当前完整namespace绑定的cr1，旧无namespace票据仅保持旧解析接口兼容。登记contact请求指纹改用显式owner key和独立用途域的HmacSHA256。已提交claim的精确原请求可在cr1过期后读回持久结果，仍须当前CUSTOMER权限、原claim完整身份、原secret及活动用户；不将重放当新授权或改绑入口。
+
+
+## BM04 Task59：公开接待与双向协议（代码阶段验收，2026-10-24）
+
+已提交`c9d951879`：18个公开映射、19个typed内部方法、4个反向B交易接口，覆盖临客/认领、到店签到/直客、工单、来源提交、账单/trace及原号恢复。embedded使用本地业务，standalone HOST不带beauty-core，私有SERVER维护行业事实；普通商品、订单、资金和人员资源仍归共用所有者。机器接口不授C购买或支付权限。
+
+11个公开资源path在委派前校验非空白及32字符上限；B/C详情核对根工单与实际任务清单。两项审查问题经R1修复和独立复审通过，定向65项无失败/错误/跳过，插件与HOST两形态夹具编译通过。完整证据见[Task59报告](../../.superpowers/sdd/beauty-backend/task-59-report.md)和[修复复审](../../.superpowers/sdd/beauty-backend/review-task-59-r1.md)。
+
+当前继续60A架构/测试脚本/SQL/权限词条和文档收尾，再开发BM05及后续P2～P4。按用户最新顺序，实际双进程及全链路部署统一后置，未计通过；BM04整体尚未部署准出，作业开工/履约与完整任务日历仍未交付。新隔离MySQL验证沿当前cached9.7.2/DISK64M规则，前文旧模块的版本与结果是历史记录。
