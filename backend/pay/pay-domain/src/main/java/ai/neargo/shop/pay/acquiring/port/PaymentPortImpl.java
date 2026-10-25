@@ -42,12 +42,28 @@ public class PaymentPortImpl implements PaymentPort {
     }
 
     @Override
-    public PaymentHandle queryPayment(String payOrderNo) {
+    public PaymentHandle queryPayment(String bizType, String payOrderNo) {
         if (!enabled) {
             return null;
         }
         PayOrder o = payments.find(payOrderNo);
-        return o == null ? null : handle(payments.query(callers.system(appOf(o.getBizType()), o.getStoreId()), payOrderNo));
+        if (o == null || !appOf(bizType).equals(appOf(o.getBizType()))) {
+            // 别的内部调用方的单当作没有：餐饮查不到商城的支付单
+            return null;
+        }
+        return handle(payments.query(callers.system(appOf(bizType), o.getStoreId()), payOrderNo));
+    }
+
+    @Override
+    public PaymentHandle closePayment(String bizType, String outOrderNo, String reason) {
+        if (!enabled) {
+            return null;
+        }
+        PayOrder o = payments.findByOutOrderNo(callers.appId(appOf(bizType)), outOrderNo);
+        if (o == null) {
+            return null;
+        }
+        return handle(payments.close(callers.system(appOf(bizType), o.getStoreId()), o.getPayOrderNo(), reason));
     }
 
     @Override

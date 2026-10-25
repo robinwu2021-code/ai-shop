@@ -58,6 +58,9 @@ public class ReconServiceImpl implements ReconService {
      * 那种单查一次纯属浪费，还会与关单任务抢同一行。
      */
     private final int staleMinutes;
+    /** 关单后观察窗（小时）：这段时间内关掉的收款尝试仍随掉单巡检回查（I3 S7） */
+    @Value("${shop.pay.recon.closed-watch-hours:26}")
+    private long closedWatchHours = 26;
 
     public ReconServiceImpl(SettleMappers.PaymentMapper paymentMapper,
                             SettleMappers.ReconDiffMapper diffMapper,
@@ -105,6 +108,10 @@ public class ReconServiceImpl implements ReconService {
                 paymentMapper.selectList(Wrappers.<StlPayment>lambdaQuery()
                     .and(q -> q.eq(StlPayment::getDirection,StlPayment.PAY)
                             .in(StlPayment::getStatus,StlPayment.INIT,StlPayment.PENDING)
+                        // 关单后的观察窗（I3 S7）：关单关到了尝试这一层，而渠道没有关单接口、用户仍可能付成；
+                        // 回调又丢了的话只能靠这里查到。窗口有界 —— 待查集合不会再只增不减（R18）
+                        .or(c -> c.eq(StlPayment::getDirection,StlPayment.PAY).eq(StlPayment::getStatus,StlPayment.CLOSED)
+                            .ge(StlPayment::getClosedAt, now - closedWatchHours * 3_600_000L))
                         .or(r -> r.eq(StlPayment::getDirection,StlPayment.REFUND)
                             .and(t -> t.in(StlPayment::getStatus,StlPayment.INIT,StlPayment.PENDING)
                                 .or(u -> u.eq(StlPayment::getStatus,StlPayment.FAILED)

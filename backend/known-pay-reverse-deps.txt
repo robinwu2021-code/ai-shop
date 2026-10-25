@@ -49,7 +49,9 @@ PickupQueryPort	4
 RefundSplitBackPort	8
 # 2026-10-25 53 → 56：支付 I1 F07 / F08 —— DirectAccounts 与 PaymentLedgerServiceImpl#reuse 的参数类型是
 # SettlePort.PaymentOpen（支付请求快照的记录类型），import + 两处签名。与上一条同为嵌套记录引用，不是调用。
-SettlePort	56
+# 2026-10-25 56 → 58：支付 I3 S7 关单「关前必查单」查到已付时按结果入口入账，入参是收款账本现成的
+# SettlePort.PaymentSettled 记录（import + 一处构造）。同为嵌套记录引用，不是新的跨域调用。
+SettlePort	58
 SourceFactsPort	3
 StatementNoticePort	5
 StoreDirectoryPort	4

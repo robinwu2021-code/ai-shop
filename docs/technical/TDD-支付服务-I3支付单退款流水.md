@@ -92,6 +92,18 @@
 - 接入现有执行器（不改它的「先落库 → 抢发送权 → 不明只查不重发」）：`RefundPaymentStore#prepare` 落行后 `attachExecution`（超额整笔回滚）；`RefundExecutionServiceImpl#request` 在抢发送权前问 `dispatchAllowed`（待复核返回 UNKNOWN `REFUND_REVIEW_PENDING`、可重试）、抢到后 `dispatched`；`confirmCurrent` / `completeZero` / `result` 在行第一次进终态时调结果入口。复核驳回经 `RefundPaymentStore#reject` 把执行行判失败（售后侧据此知道没退成）。
 - R21：删掉 `SettlePort` / `SettleService` 的三参 `refund`（合成 `AS-{子单号}`）—— 生产无调用方，测试改用真实售后单号；编译器保证不会再有人用回去。
 
+### S7 · 关单
+- `spi.pay.PaymentPort#closePayment(bizType, outOrderNo, reason)`（交易域手里是订单号）→ `PaymentServiceImpl#close`：权限 → 未终态尝试逐笔**查单（事务外）**：渠道说已付 → `PaymentLedgerService#settle`（经结果入口入账）、不关、返回 SUCCEEDED；否则一个事务里关尝试（`PaymentLedgerService#close`）+ 支付单 CLOSED + `closed_at`。查不通也关 —— 之后到账走 LATE_PAYMENT（S4），不会再堆积（R18）。
+- 掉单巡检的关单后观察窗：`ReconServiceImpl#checkStalePayments` 另扫 `shop.pay.recon.closed-watch-hours`（默认 26 小时，与已付订单补偿的回看窗一致）内关掉的收款尝试 —— 渠道没有关单接口，关单后用户仍可能付成，回调又丢了时只能靠它查到；窗口有界，待查集合不会再只增不减。
+- 交易域：`OrderServiceImpl#closeOne`（超时关单 `closeExpiredOrders` 与对账关单 `closeUnpaid` 都经它）在订单关单成功后 `AfterCommit` 调 `closePayment`（商城 MALL_ORDER，行业单 FOOD_CHECK）—— **提交之后再关**：订单关单回滚而支付单已关，下一次付款会被当成关单后到账。
+
+### S8 · 独立形态
+- 端点（pay-svc，`/internal/pay/v1` 前缀）：`POST /payments`（建单）· `POST /payments/query` · `POST /payments/close` · `POST /refunds`；同一个 `PaymentPortImpl`。与旧的共享令牌端点分开放。
+- `InternalCallerFilter`（只挂 `/internal/pay/v1/**`）+ `InternalCallerRegistry` / `ConfigInternalCallerRegistry`（⏸ 过渡：`shop.pay.internal-callers.<app>=<凭据 SHA-256>`，常量时间比对，没配一律 401）。端点只放行调用方自己的业务类型（MALL ↔ MALL_ORDER，FOOD ↔ FOOD_CHECK），越权 403。
+- 业务拒绝不用 HTTP 状态：应答一律 `PortResult(value | errorCode + args)` —— 客户端的统一状态处理会丢掉应答体，错误码过不了边界，内嵌与独立就不一致了。
+- 客户端：`pay.client.PaymentInternalApi`（调用方与凭据逐次放头里：同一进程替商城与餐饮各调各的）· `pay.client.port.RemotePaymentPort`（错误码还原成同一个 `BizException`）；shop-app `PayClientConfig` 在 `standalone` 下装它，凭据 `shop.pay.internal-caller-credentials.<app>`。
+- SPI 调整：`PaymentPort#queryPayment(bizType, payOrderNo)` —— 独立形态要知道以谁的身份查；内嵌实现对别的调用方的单返回空。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
@@ -102,6 +114,9 @@
 | AC5 | `LedgerVoucherTest`（4 条：不平、混账、非正金额 / 单行、平衡）· `LedgerFlowTest`（4 条：AGGREGATED 回执两次一张凭证且分录正确、业务日按上海；DIRECT 只记备查账；Q7 = 0；同一幂等键记两次一张 + 冲正追加反向凭证）· `LedgerAppendOnlyTest`（2 条） | ✅ | ① 成功不记账 → 两条红 ② 去掉幂等 + DIRECT 记进平台账户 → 幂等那条撞唯一键、DIRECT 那条被凭证自身的混账校验拦下 ✅ |
 | AC6 | `RefundOrderFlowTest`（4 条：`refundReservesThenBooks` 占用 → 确认 → 已退 / 占用归零 / 部分退款 / 反向凭证；`inFlightReservationCountsAgainstRefundable`；`refundWithoutOperatorRejected`；`afterSaleRefundAlsoHasRefundOrderAndFailureReleases` 现有售后路径同样有退款单）· `RefundReachesChannelTest#secondAfterSaleOnSameSubOrderRefundsAgain`（R21：先用三参签名跑出红 —— 第二笔被当成重复；删签名后全部改真实售后单号，5 条绿） | ✅ | ① 不查可退余额 → `inFlight…` 红 ② 成功不结退款单 → `refundReservesThenBooks` 红 ✅ |
 | AC7 | `RefundReviewPolicyTest`（4 条：无 ACTIVE 规则复核、门槛为或、门店级优先 + 强制、无关规则不算）· `RefundReviewFlowTest`（2 条，`shop.pay.refund.review=true`：待复核不发渠道 → 申请人自审被拒 → A 通过 → A 再审被拒 → B 通过 → 再调即执行；驳回 → 退款单 REJECTED、执行行 FAILED、占用释放） | ✅ | ③ 不拦待复核 → 「复核期间退款不发渠道」红 ④ 去掉同一人判定 → 被表的 CHECK 拦下（第二道） ✅ |
+| AC8 | `PayCloseFlowTest`（3 条：`closeUnpaid` 支付单与尝试都 CLOSED；`closeFindsPaid` 关前查到已付 → 不关、入账成功；`orderCloseClosesPayOrderAndLatePaymentIsAnException` 订单关单 → 提交后关支付单 → 之后到账 LATE_PAYMENT、支付单仍 CLOSED） | ✅ | ① 关前不查单 + 订单关单不关支付单 → 两条红 ② 不关尝试 → 两条红 ✅ |
+| AC8′ | `OrderPaymentRecoveryWiringFlowTest#queryOfClosedOrderRetainsCashAndOneRecoverableResolution`（受影响回归抓到：关单关到尝试后，巡检不再扫它，丢回调的关单后到账没人发现 → 加观察窗后绿；该类 6 条改为按单号作答，见偏差 12） | ✅ | 去掉观察窗 → 红 ✅ |
+| AC9 | `PaymentPortLocalRemoteParityTest`（3 条，真 HTTP：建单与退款两种实现结果相同；可退余额不足 / 没有操作员原样过边界（错误码与参数）；餐饮凭据调商城退款 403、凭据错或没带 401）· `InternalTokenComparisonTest` 仍绿（新代码无 `equals` 比令牌） | ✅ | ① 端点不限业务类型 + 远程吞错误码 → 两条红 ② 凭据不比 → 鉴权那条红 ✅ |
 | AC1 | `MapperSmokeTest`（新 9 个 mapper 各查自己的表）· `SchemaDriftTest` · `PayMigrationTest` · 本机 MySQL 9.7 临时库执行 V7–V9（种子落库、CHECK 生效） | ✅ | — |
 
 ## §6 对账二 · 设计 → 实现
@@ -118,4 +133,9 @@
 6. **现有售后路径的退款单没有操作员**：普通售后经 `RefundRequest(执行号…)` 进支付，这条记录里没有商家操作员；退款单 `requested_by` 记 `AFTER_SALE:{售后单号}` 以便追溯。「必须有操作员」只在新入口 `PaymentPort#requestRefund` 上强制；售后改走新入口、把审批人一路带进来随 I5 商户端退款一起做。积分售后（`SettleServiceImpl#prepareRefund / dispatchRefund`）不经这个执行器，I3 不挂退款单。
 7. **复核开关默认关**：种子只有一条 DRAFT 规则，开关一开即「全部复核」—— 上线即卡住所有售后退款。运营按两人规则把 CN 规则生效后再开（`shop.pay.refund.review=true`）。
 8. **受影响回归抓到的三处（S6 一并改）**：① 免单成功也去记凭证，零金额分录被凭证自身拒绝 → 只在金额 > 0 时记（S5 提交时只跑了新测试，没跑受影响回归）；② 零元退款去建退款单，被 `amount_minor > 0` 拒 → 零元退款不建；③ 可选依赖用 `@Lazy` 注入时，切片测试里拿到的是代理、一调就抛 → 收款账本、退款执行器、退款存储的挂钩一律改 `ObjectProvider`，调用时取不到就跳过。
+9. **支付事件与消费者推迟**：开发计划把「`PaymentSucceededEvent` / `PaymentClosedEvent` 经 Outbox → `PaymentSucceededConsumer` 调 `markPaid`」放在 I3。今天回调、补查、巡检在入账后各自直调 `markPaid`，且交易域的支付异常处置（`ord_payment_resolution`）依赖这条同步链路；改成事件驱动要同时改五处调用方与 I8 补偿，而支付单这一层的唯一写入点（S4）已经就位、不依赖它。随 I5 `BizNotifier`（内部事件通道与 webhook 同一个通知器）一起做；`OrderPaidReconciler` 改为重放事件同步推迟。
+10. **`PaymentPort#startPayment` 推迟到 I4**：选方式 → 选路由 → 冻结快照要 `PayMerchantQueryPort`（I4）；今天通道下单仍经原发起流程，开出的尝试由 S3 挂到支付单上。
+11. **按业务类型授权而非路径前缀**：代码清单写的是「按路径前缀授权」，而商城与餐饮共用同一组端点、区别只在请求体的业务类型；按调用方 ↔ 业务类型限定，效果相同（餐饮调不了商城的退款）且不必为每个调用方复制一组路径。
+12. **测试替身按单号作答**：`FakePayQueryPort` 的全局答案会把同一个渠道交易号发给待查集合里的每一笔；观察窗让巡检扫到同类其他用例关掉的尝试，撞 `(pay_channel, trade_no)` 唯一键。加 `answerForTrade(outTradeNo, …)`（优先级最高），`OrderPaymentRecoveryWiringFlowTest` 的 4 处改用它 —— 真渠道本来就逐笔给各自的交易号。
+13. **反向依赖预算 SettlePort 56 → 58**：关前查到已付时用收款账本现成的入参 `SettlePort.PaymentSettled`（import + 一处构造），同为嵌套记录引用，已登记 `known-pay-reverse-deps.txt`。
 0. **I2 收尾的启动校验在切片测试里装不起来**：`PayDataSourceConfig#channelProductCoverageCheck` 硬依赖渠道注册表，只装了部分支付配置的切片测试（`RefundBackingTest` 等 6 个类）上下文起不来 —— I2 收尾时只复跑了被点名的那 65 条，没再跑全量。S3 的受影响回归抓到，改为 `ObjectProvider`，没有注册表就跳过。

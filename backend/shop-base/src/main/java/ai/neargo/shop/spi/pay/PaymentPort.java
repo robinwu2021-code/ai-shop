@@ -14,8 +14,15 @@ public interface PaymentPort {
     /** 建单（幂等）。返回 {@code null} = 支付单未启用 */
     PaymentHandle createPayment(InternalCreatePaymentCmd cmd);
 
-    /** 按支付单号查；查无此单返回 {@code null} */
-    PaymentHandle queryPayment(String payOrderNo);
+    /** 按支付单号查；查无此单返回 {@code null}。{@code bizType} 决定以哪个内部调用方的身份查（独立形态按它授权） */
+    PaymentHandle queryPayment(String bizType, String payOrderNo);
+
+    /**
+     * 关单（S7）：<b>关前必查单</b>。渠道说已付 → 不关、按结果入口入账（返回 SUCCEEDED）；没付 / 没有这笔 / 查不通 →
+     * 关支付单与未终态的尝试（之后到账走 LATE_PAYMENT）。调用方应在自己的事务<b>提交之后</b>调：订单关单回滚而支付单已关，
+     * 下一次付款会被当成关单后到账。按调用方单号定位（交易域手里是订单号）；没有支付单返回 {@code null}。
+     */
+    PaymentHandle closePayment(String bizType, String outOrderNo, String reason);
 
     /**
      * 退款（S6）。<b>必须带商家操作员</b>：内部系统不能以系统身份退款 —— 商城售后、餐饮 POS 的退款按钮背后是商户操作员。

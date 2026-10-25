@@ -2975,6 +2975,14 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             pointsPlacement.recordCancellation(order.getOrderNo());
             eventBus.publish(new ai.neargo.shop.spi.points.OrderPointsPlacementWakeEvent(order.getOrderNo()));
         }
+        if (paymentPort != null) {
+            // 关到支付这一层（R18 · TDD-支付服务-I3支付单退款流水 S7）：提交之后再关 —— 关单回滚而支付单已关的话，
+            // 下一次付款会被当成关单后到账。支付侧关前必查单，查到已付就不关
+            String orderNo = order.getOrderNo();
+            String bizType = industryOwned(order) ? PaymentPort.FOOD_CHECK : PaymentPort.MALL_ORDER;
+            AfterCommit.run("关支付单 orderNo=" + orderNo,
+                    () -> paymentPort.closePayment(bizType, orderNo, reason));
+        }
         return true;
     }
 

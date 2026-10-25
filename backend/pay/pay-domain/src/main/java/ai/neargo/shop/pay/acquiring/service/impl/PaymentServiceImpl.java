@@ -26,7 +26,11 @@ import java.time.ZoneOffset;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
+import ai.neargo.shop.pay.service.PaymentLedgerService;
+import ai.neargo.shop.spi.pay.PayQueryPort;
+import ai.neargo.shop.spi.settle.SettlePort;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -42,13 +46,18 @@ public class PaymentServiceImpl implements PaymentService {
     private final PayOrderMapper orders;
     private final PaymentMapper attempts;
     private final TransactionTemplate tx;
+    private final PayQueryPort channels;
+    private final PaymentLedgerService ledger;
 
     public PaymentServiceImpl(CallerPolicy policy, PayOrderMapper orders, PaymentMapper attempts,
-                              @Qualifier("payTxManager") PlatformTransactionManager payTxManager) {
+                              @Qualifier("payTxManager") PlatformTransactionManager payTxManager,
+                              @Lazy PayQueryPort channels, @Lazy PaymentLedgerService ledger) {
         this.policy = policy;
         this.orders = orders;
         this.attempts = attempts;
         this.tx = new TransactionTemplate(payTxManager);
+        this.channels = channels;
+        this.ledger = ledger;
     }
 
     @Override
@@ -109,6 +118,49 @@ public class PaymentServiceImpl implements PaymentService {
         }
         policy.check(caller, PayAction.QUERY, o.getStoreId());
         return o;
+    }
+
+    @Override
+    public PayOrder findByOutOrderNo(Long appId, String outOrderNo) {
+        return byOutOrderNo(appId, outOrderNo);
+    }
+
+    @Override
+    public PayOrder close(PayCaller caller, String payOrderNo, String reason) {
+        PayOrder o = query(caller, payOrderNo);
+        policy.check(caller, PayAction.CLOSE, o.getStoreId());
+        if (PayOrderStatus.valueOf(o.getStatus()).terminal()) {
+            return o;
+        }
+        List<StlPayment> open = DataScopeContext.executeWithoutScope(() -> attempts.selectList(
+                Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getPayOrderId, o.getId())
+                        .eq(StlPayment::getDirection, StlPayment.PAY)
+                        .notIn(StlPayment::getStatus, StlPayment.SUCCESS, StlPayment.CLOSED, StlPayment.FAILED)));
+        // 关前必查单（R18），渠道调用在事务外：查到已付就按结果入口入账，不关
+        for (StlPayment a : open) {
+            PayQueryPort.Result r = channels.query(a.getPayChannel(), a.getOutTradeNo());
+            if (r != null && r.ok() && r.found() && r.paid() && r.tradeNo() != null) {
+                ledger.settle(new SettlePort.PaymentSettled(a.getOutTradeNo(), a.getPayChannel(), r.tradeNo(),
+                        r.amountMinor(), System.currentTimeMillis(), r.currency() == null ? a.getCurrency() : r.currency()));
+                return find(payOrderNo);
+            }
+        }
+        tx.executeWithoutResult(s -> {
+            PayOrder locked = orders.lockById(o.getId());
+            PayOrderStatus from = PayOrderStatus.valueOf(locked.getStatus());
+            if (!PayOrderStateMachine.allows(from, PayOrderEvent.CLOSED)) {
+                return;
+            }
+            for (StlPayment a : open) {
+                ledger.close(a.getOutTradeNo(), reason);
+            }
+            PayOrder patch = new PayOrder();
+            patch.setId(locked.getId());
+            patch.setStatus(PayOrderStateMachine.next(from, PayOrderEvent.CLOSED).name());
+            patch.setClosedAt(LocalDateTime.now(ZoneOffset.UTC));
+            DataScopeContext.executeWithoutScope(() -> orders.updateById(patch));
+        });
+        return find(payOrderNo);
     }
 
     @Override

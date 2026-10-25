@@ -19,6 +19,12 @@ public interface PaymentService {
     /** 按支付单号查，只能查自己范围内的 */
     PayOrder query(PayCaller caller, String payOrderNo);
 
+    /** 按内部 app 与调用方单号取（不做调用方判定）；没有为空 */
+    PayOrder findByOutOrderNo(Long appId, String outOrderNo);
+
+    /** 关单（关前必查单）。返回关单后的支付单（查到已付则是 SUCCEEDED） */
+    PayOrder close(PayCaller caller, String payOrderNo, String reason);
+
     /**
      * 通道尝试开出时挂到支付单上：写 {@code stl_payment.pay_order_id} 与市场，支付单进入 AWAITING_PAYMENT。
      * 由收款账本在开尝试的同一事务里调；找不到支付单（开关关、存量单）什么都不做。
