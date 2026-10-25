@@ -1,0 +1,118 @@
+{
+  "base": "16b182ad536e730ec2c6bf30e9c30d38dad1cac1",
+  "priorReviewHead": "9e01eb6b1ba07b05f7bb28669e6e49228b60eb51",
+  "products": [
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/CheckoutServiceImpl.java",
+      "baseSha256": "1115677fc265910eae09bacb5b89c11f6216267b350bd8ee240078b475981332",
+      "finalSha256": "d8c13a71b874469abbfa8237fc6ac15dda45a5e14daf5610efc9575f2ad3d672",
+      "diffSha256": "ed5180733f9bcf84ad8f8101e69317f7c545bf6bba3d1e1e871f0f9f3fd2a65e",
+      "sourceBytes": 69673
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/CheckoutPlaceAuthorityFlowTest.java",
+      "baseSha256": null,
+      "finalSha256": "b34576b6e9f0fc1a64747246e4137f3f13f896578cd10a2c674d4cc8a812eb28",
+      "diffSha256": "fc63719273a105ddf6beef4fe28729e150104d0fd56b218f4daff75885c2c355",
+      "sourceBytes": 18105
+    },
+    {
+      "path": "scripts/verify-checkout-payment.mjs",
+      "baseSha256": "8740b40ed548a17dd8533e1b84c690c961f1fa67870f8fbd21124fae58f131ab",
+      "finalSha256": "3e7d0b567cc714559707073e066a948f3d520e20467bac2338045955083c42af",
+      "diffSha256": "0540bd05da3c05537e435c0de8e0374da5691e24dba4af77c4c91b309ade32f5",
+      "sourceBytes": 32307
+    },
+    {
+      "path": "scripts/tests/checkout-payment-runner.test.mjs",
+      "baseSha256": "f5988b7b5a8a241c5f0f75120e0486b5f71634177535c219b7ffc83ce9598ffa",
+      "finalSha256": "df965ff4663edb210cafb601af022edce189cc394dc9f792879bb9384971c929",
+      "diffSha256": "9b9174d425fb9ca3a1df62a0dafe7feaa15027286d387655ecf47308292269ed",
+      "sourceBytes": 40154
+    }
+  ],
+  "reportSHA256": "48e4a6a5d6cfd1ea28c431dec800818a4937e01d7f18f6ffb2b9ebb16773be21",
+  "evidenceFilesChecked": 64,
+  "actualXML": {
+    "behavior-red": {
+      "counts": [
+        3,
+        3,
+        0,
+        0
+      ],
+      "methods": [
+        "revokedDuringPlacePreflightCannotClaimOrCreateOrder",
+        "revokedAfterPlaceClaimCannotReachWriterAndOriginalKeyRecovers",
+        "disabledDuringPlacePreflightCannotClaimOrCreateOrder"
+      ],
+      "exit": 1
+    },
+    "first-green": {
+      "counts": [
+        3,
+        0,
+        0,
+        0
+      ],
+      "methods": [
+        "revokedDuringPlacePreflightCannotClaimOrCreateOrder",
+        "revokedAfterPlaceClaimCannotReachWriterAndOriginalKeyRecovers",
+        "disabledDuringPlacePreflightCannotClaimOrCreateOrder"
+      ],
+      "exit": 0
+    },
+    "ablate-first": {
+      "counts": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "methods": [
+        "revokedDuringPlacePreflightCannotClaimOrCreateOrder"
+      ],
+      "exit": 1
+    },
+    "ablate-final": {
+      "counts": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "methods": [
+        "revokedAfterPlaceClaimCannotReachWriterAndOriginalKeyRecovers"
+      ],
+      "exit": 1
+    },
+    "final-green": {
+      "counts": [
+        3,
+        0,
+        0,
+        0
+      ],
+      "methods": [
+        "revokedDuringPlacePreflightCannotClaimOrCreateOrder",
+        "revokedAfterPlaceClaimCannotReachWriterAndOriginalKeyRecovers",
+        "disabledDuringPlacePreflightCannotClaimOrCreateOrder"
+      ],
+      "exit": 0
+    }
+  },
+  "currentAllFinalCompiledHashesMatch": true,
+  "firstFinalMainClassEqual": true,
+  "exactTwoSeparateGuardAblationsRestored": true,
+  "nativeOwnedCleaned": 6,
+  "Node21pass": true,
+  "currentDefaultCompile": true,
+  "reviewPackage": "/tmp/bm04-module-r1-review-package-58fc06ae-d67f-4986-8233-619ced2e8db2.diff",
+  "reviewPackageSHA256": "8277758ec5ca02fb810720e76bfcd4a4b55101953d796f74cfb8785e79c7c29d",
+  "deployment": "UNEXECUTED60B",
+  "productCommit": "3ae7fd31b89eb06e01d9661b2be22e76a28910b7",
+  "reviewSHA256": "e95532a45e8057a7a172a3b08afcd05ae4d8f3a71d3a3042047a448e87fa207c",
+  "I1": "ADDRESSED",
+  "spec": "PASS",
+  "quality": "APPROVED"
+}
