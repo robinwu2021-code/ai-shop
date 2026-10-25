@@ -49,7 +49,7 @@ class StorePriceFlowTest {
     @Test
     @DisplayName("★★ 定了本店价，下单就按本店价扣 —— 展示与扣款是同一个数")
     void storePriceReachesCheckout() throws Exception {
-        String biz = merchant("12600151001", "门店定价·总店");
+        String biz = merchant("12609151001", "门店定价·总店");
         String goodsNo = saveGoods(biz, 1000);
         String skuNo = firstSku(goodsNo);
         approveGoods(goodsNo);
@@ -58,27 +58,27 @@ class StorePriceFlowTest {
         // 本店价 ¥7.00（主体价 ¥10.00）
         setStorePrice(biz, goodsNo, skuNo, "700");
 
-        long amount = buyOnce("12600151002", goodsNo, skuNo, "sp-1");
+        long amount = buyOnce("12609151002", goodsNo, skuNo, "sp-1");
         assertThat(amount).as("按本店价扣，不是主体价").isEqualTo(700);
     }
 
     @Test
     @DisplayName("★ 没定过本店价的店按主体价卖 —— 回退方向与库存相反，视为 0 就是白送")
     void withoutStorePriceFallsBackToEntityPrice() throws Exception {
-        String biz = merchant("12600151003", "门店定价·未定价");
+        String biz = merchant("12609151003", "门店定价·未定价");
         String goodsNo = saveGoods(biz, 1000);
         String skuNo = firstSku(goodsNo);
         approveGoods(goodsNo);
         publish(biz, goodsNo);
 
-        long amount = buyOnce("12600151004", goodsNo, skuNo, "sp-2");
+        long amount = buyOnce("12609151004", goodsNo, skuNo, "sp-2");
         assertThat(amount).as("回退主体价，而不是 0").isEqualTo(1000);
     }
 
     @Test
     @DisplayName("★ 传空 = 取消本店单独定价 —— 没有这条，定过价就再也回不到主体价")
     void clearingStorePriceGoesBack() throws Exception {
-        String biz = merchant("12600151005", "门店定价·撤回");
+        String biz = merchant("12609151005", "门店定价·撤回");
         String goodsNo = saveGoods(biz, 1000);
         String skuNo = firstSku(goodsNo);
         approveGoods(goodsNo);
@@ -91,7 +91,7 @@ class StorePriceFlowTest {
         setStorePrice(biz, goodsNo, skuNo, "null");
         assertThat(storePriceOf(biz, goodsNo, skuNo)).as("空 = 同主体价，不是 0").isNull();
 
-        long amount = buyOnce("12600151006", goodsNo, skuNo, "sp-3");
+        long amount = buyOnce("12609151006", goodsNo, skuNo, "sp-3");
         assertThat(amount).isEqualTo(1000);
     }
 

@@ -238,7 +238,7 @@ class Phase1MasterDataTest {
         assertThat(find(tree(), "CAT400")).as("停用的类目还在 C 端树里的话，用户点进去是空列表").isNull();
 
         String ops = opsLogin("goods", "goods123");
-        String body = mvc().perform(get("/ops/categories")
+        String body = mvc().perform(get("/ops/categories").param("size", "1000")
                         .param("showArchived", "true")
                         .header("Authorization", "Bearer " + ops))
                 .andReturn().getResponse().getContentAsString();
@@ -468,7 +468,7 @@ class Phase1MasterDataTest {
     }
 
     private JsonNode listCategories(String opsToken) throws Exception {
-        String body = mvc().perform(get("/ops/categories")
+        String body = mvc().perform(get("/ops/categories").param("size", "1000")
                         .param("size", "200")
                         .header("Authorization", "Bearer " + opsToken))
                 .andReturn().getResponse().getContentAsString();
