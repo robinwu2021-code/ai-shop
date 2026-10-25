@@ -74,6 +74,14 @@ class TableHasProducerTest {
         NO_PRODUCER.put("pay_refund_review_rule", "db/pay V8 种子；运营维护入口随 I5");
         NO_PRODUCER.put("pay_app", "db/pay V7 种子 MALL / FOOD；第三方接入方入口随 I5");
         NO_PRODUCER.put("pay_checkout_session", "收银会话随 I5 开放 API / 收银台");
+        // 支付服务 I4（TDD-支付服务-I4进件与收款商户）：表先建、写入逐片落地，落地一片删一行
+        NO_PRODUCER.put("pay_merchant", "I4 回填 B1–B2 / 双写");
+        NO_PRODUCER.put("pay_merchant_binding", "I4 回填 B3 / 绑定服务");
+        NO_PRODUCER.put("pay_merchant_product", "I4 回填 B4");
+        NO_PRODUCER.put("pay_merchant_status_log", "I4 收款商户生命周期");
+        NO_PRODUCER.put("pay_onboarding", "I4 回填 B2 / 进件服务");
+        NO_PRODUCER.put("pay_onboarding_version", "I4 回填 B2 / 进件服务");
+        NO_PRODUCER.put("pay_onboarding_material", "I4 进件服务");
         NO_PRODUCER.put("pts_user_account", "积分 V3 已下线旧余额入口，生产使用 pts_account");
         NO_PRODUCER.put("pts_user_ledger", "积分 V3 已下线旧流水入口，生产使用 pts_voucher/pts_entry");
         NO_PRODUCER.put("stl_points_pool", "积分 V3 废除商家返分费入池，生产使用 pts_fund_pool");

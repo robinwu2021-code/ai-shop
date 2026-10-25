@@ -10641,6 +10641,196 @@ CREATE TABLE IF NOT EXISTS pay_ledger_entry
     CONSTRAINT ck_pay_ledger_entry_2 CHECK ((CASE direction WHEN 'DR' THEN TRUE WHEN 'CR' THEN TRUE ELSE CASE WHEN direction IS NULL THEN NULL ELSE FALSE END END))
 );
 
+CREATE TABLE IF NOT EXISTS pay_onboarding
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    onboarding_no VARCHAR(64) NOT NULL,
+    store_id BIGINT NOT NULL,
+    pay_channel VARCHAR(32) NOT NULL,
+    market VARCHAR(8) NOT NULL,
+    access_mode VARCHAR(24) NOT NULL,
+    funds_path VARCHAR(24) NOT NULL,
+    parent_pay_merchant_id BIGINT NULL,
+    legal_form VARCHAR(24) NULL,
+    current_version INT NOT NULL DEFAULT 1,
+    status VARCHAR(24) NOT NULL,
+    channel_apply_no VARCHAR(64) NULL,
+    sign_url VARCHAR(512) NULL,
+    reject_reason VARCHAR(512) NULL,
+    pay_merchant_id BIGINT NULL,
+    entity_name_snapshot VARCHAR(128) NOT NULL,
+    store_name_snapshot VARCHAR(128) NOT NULL,
+    initiator_type VARCHAR(24) NOT NULL,
+    initiator_no VARCHAR(64) NOT NULL,
+    submitted_at DATETIME(3) NULL,
+    decided_at DATETIME(3) NULL,
+    inflight_key VARCHAR(100) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_onboarding_1 UNIQUE (onboarding_no),
+    CONSTRAINT uk_pay_onboarding_2 UNIQUE (inflight_key)
+);
+
+CREATE TABLE IF NOT EXISTS pay_onboarding_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_onboarding_id BIGINT NOT NULL,
+    version_index INT NOT NULL,
+    out_request_no VARCHAR(64) NOT NULL,
+    materials_sha256 CHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    channel_apply_no VARCHAR(64) NULL,
+    result_code VARCHAR(64) NULL,
+    reject_reason VARCHAR(512) NULL,
+    submitted_by VARCHAR(64) NULL,
+    submitted_at DATETIME(3) NULL,
+    decided_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_onboarding_version_1 UNIQUE (pay_onboarding_id,version_index),
+    CONSTRAINT uk_pay_onboarding_version_2 UNIQUE (out_request_no)
+);
+
+CREATE TABLE IF NOT EXISTS pay_onboarding_material
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_onboarding_version_id BIGINT NOT NULL,
+    field_code VARCHAR(64) NOT NULL,
+    field_kind VARCHAR(24) NOT NULL,
+    value_text VARCHAR(1024) NULL,
+    value_masked VARCHAR(255) NULL,
+    sec_secret_blob_id BIGINT NULL,
+    file_ref VARCHAR(255) NULL,
+    file_sha256 CHAR(64) NULL,
+    channel_media_id VARCHAR(255) NULL,
+    channel_media_expire_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_onboarding_material_1 UNIQUE (pay_onboarding_version_id,field_code),
+    CONSTRAINT ck_pay_onboarding_material_1 CHECK (field_kind <> 'SENSITIVE' OR (sec_secret_blob_id IS NOT NULL AND value_text IS NULL)),
+    CONSTRAINT ck_pay_onboarding_material_2 CHECK (field_kind <> 'FILE' OR file_ref IS NOT NULL)
+);
+
+CREATE TABLE IF NOT EXISTS pay_merchant
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_merchant_no VARCHAR(64) NOT NULL,
+    owner_type VARCHAR(24) NOT NULL,
+    store_id BIGINT NULL,
+    pay_channel VARCHAR(32) NOT NULL,
+    market VARCHAR(8) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    access_mode VARCHAR(24) NOT NULL,
+    funds_path VARCHAR(24) NOT NULL,
+    channel_merchant_id VARCHAR(64) NOT NULL,
+    sub_merchant_id VARCHAR(64) NOT NULL DEFAULT '',
+    parent_pay_merchant_id BIGINT NULL,
+    pay_onboarding_id BIGINT NULL,
+    sec_key_id BIGINT NULL,
+    sec_key_version INT NOT NULL DEFAULT 0,
+    status VARCHAR(24) NOT NULL,
+    legal_form VARCHAR(24) NULL,
+    invoice_capable TINYINT(1) NOT NULL DEFAULT 0,
+    settle_account_type VARCHAR(24) NULL,
+    settle_account_masked VARCHAR(64) NULL,
+    settle_cycle VARCHAR(24) NULL,
+    fee_bearer VARCHAR(24) NULL,
+    split_reversible TINYINT(1) NULL,
+    priority INT NOT NULL DEFAULT 100,
+    entity_name_snapshot VARCHAR(128) NULL,
+    activated_at DATETIME(3) NULL,
+    activated_by VARCHAR(64) NULL,
+    refund_only_at DATETIME(3) NULL,
+    closed_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_merchant_1 UNIQUE (pay_merchant_no),
+    CONSTRAINT uk_pay_merchant_2 UNIQUE (pay_channel,channel_merchant_id,sub_merchant_id),
+    CONSTRAINT ck_pay_merchant_1 CHECK (owner_type = 'PLATFORM' OR store_id IS NOT NULL),
+    CONSTRAINT ck_pay_merchant_3 CHECK (access_mode = 'MERCHANT_OWN' OR parent_pay_merchant_id IS NOT NULL)
+);
+
+CREATE TABLE IF NOT EXISTS pay_merchant_binding
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    store_id BIGINT NOT NULL,
+    pay_channel VARCHAR(32) NOT NULL,
+    pay_merchant_id BIGINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    active_key VARCHAR(64) NULL,
+    bound_by VARCHAR(64) NOT NULL,
+    bound_at DATETIME(3) NOT NULL,
+    unbound_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_merchant_binding_1 UNIQUE (active_key)
+);
+
+CREATE TABLE IF NOT EXISTS pay_merchant_product
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_merchant_id BIGINT NOT NULL,
+    pay_channel_product_id BIGINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    source VARCHAR(24) NOT NULL,
+    quota_limit_minor BIGINT NOT NULL DEFAULT 0,
+    quota_period VARCHAR(16) NULL,
+    quota_used_minor BIGINT NOT NULL DEFAULT 0,
+    opened_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_merchant_product_1 UNIQUE (pay_merchant_id,pay_channel_product_id)
+);
+
+CREATE TABLE IF NOT EXISTS pay_merchant_status_log
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_merchant_id BIGINT NOT NULL,
+    from_status VARCHAR(24) NOT NULL,
+    to_status VARCHAR(24) NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    pay_approval_id BIGINT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    changed_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
