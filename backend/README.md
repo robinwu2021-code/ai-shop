@@ -5,13 +5,15 @@
 
 ## 构建
 
-**必须用 JDK 21**（`neargo-parent` 的 enforcer 锁 `[21,22)`；本机默认 JDK 可能是 17 或 26）：
+**必须用 JDK 21**（`neargo-build-parent` 的 enforcer 锁 `[21,22)`；本机默认 JDK 可能是 17 或 26）：
 
 ```bash
 JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home mvn -f backend/pom.xml test
 ```
 
-依赖 `ai.neargo:neargo-parent` 与 `neargo-common-*`，从本机 `~/.m2` 解析（与 powerbank 同一地基）。
+继承 `ai.neargo:neargo-build-parent:2.0.0-SNAPSHOT`，由其继承的 `neargo-bom:2.0.0-SNAPSHOT` 统一管理框架依赖。`neargo-common-*` 等 `ai.neargo` 构件只允许 `2.0.0-SNAPSHOT`，包含传递依赖；项目自身的 `ai.neargo.shop` 模块版本保持独立。
+
+首次构建前，构建环境需已安装或能从配置仓库解析 neargo-framework 的 `2.0.0-SNAPSHOT` 构件（BOM、构建父 POM、框架聚合 POM及公共模块）。项目不再使用旧 `neargo-parent:1.0.0-SNAPSHOT`。不要通过命令行或模块 POM 覆盖回 1.x，Maven Enforcer 会拒绝。
 
 ## 模块
 
