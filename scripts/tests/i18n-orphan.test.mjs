@@ -36,6 +36,18 @@ test("authoritative server permission literals are not translation references", 
   assert.equal(result.status, 0, result.stdout + result.stderr);
 });
 
+test("finite settlement action aliases are permissions while real translations stay checked", () => {
+  const catalog = 'private static final Map<String,Set<String>> PERMISSIONS=Map.of("ENTITY",Set.of("sv.settlement.payment.register","sv.settlement.payment.void"));';
+  const result = check({catalog, template: `<view v-if="can('payment.register','PAYER') || can('payment.void','PAYER')" />`});
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const translation = check({catalog, script: `t('payment.void');`});
+  assert.equal(translation.status, 1);
+  assert.match(translation.stdout, /缺 b-app payment.void/);
+  const unknown = check({catalog, script: `const label = 'payment.typo';`});
+  assert.equal(unknown.status, 1);
+  assert.match(unknown.stdout, /缺 b-app payment.typo/);
+});
+
 for (const source of [
   { script: `t('store.read');` },
   { script: `t(ok ? 'store.read' : 'store.title');` },

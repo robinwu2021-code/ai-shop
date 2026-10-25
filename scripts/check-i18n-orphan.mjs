@@ -40,6 +40,11 @@ function managementPermissions() {
   const map = readFileSync(file, "utf8").match(/\bPERMISSIONS\s*=\s*Map\.of\(([\s\S]*?)\);/);
   const permissions = new Set([...(map?.[1] ?? "").matchAll(/"([a-zA-Z]\w*(?:\.[\w]+)+)"/g)].map(m => m[1]));
   if (!map || !permissions.size) throw new Error("Cannot parse authoritative management permission catalog");
+  // Settlement's can(action, party) prepends this namespace. Its finite action
+  // aliases are authorization values too; actual t()/label-key references still win.
+  for (const permission of [...permissions]) {
+    if (permission.startsWith("sv.settlement.")) permissions.add(permission.slice("sv.settlement.".length));
+  }
   return permissions;
 }
 const PERMISSION_CODES = managementPermissions();
