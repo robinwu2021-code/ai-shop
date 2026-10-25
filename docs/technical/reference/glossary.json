@@ -40100,6 +40100,16 @@
     ],
     "javaEnums": [
       {
+        "name": "AccessRole",
+        "values": [
+          "READER",
+          "WRITER",
+          "MIGRATOR"
+        ],
+        "zh": "",
+        "module": "shop-report"
+      },
+      {
         "name": "Action",
         "values": [
           "TOPUP_U",
@@ -40283,6 +40293,17 @@
         "module": "shop-core"
       },
       {
+        "name": "Aggregation",
+        "values": [
+          "SUM",
+          "LAST",
+          "DISTINCT",
+          "DERIVED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "Algorithm",
         "values": [
           "SHARED_COUPON_V1",
@@ -40329,6 +40350,16 @@
           "EXHAUSTED",
           "EXPIRED",
           "REVOKED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Attribution",
+        "values": [
+          "ORIGINAL_ORDER",
+          "OCCURRENCE",
+          "SCHEDULED_SERVICE"
         ],
         "zh": "",
         "module": "shop-base"
@@ -40384,6 +40415,19 @@
         ],
         "zh": "Separates spendable points, outstanding promises, and refund-protected receiving points.",
         "module": "pay/pay-domain"
+      },
+      {
+        "name": "BuildStatus",
+        "values": [
+          "QUEUED",
+          "RUNNING",
+          "VALIDATING",
+          "PUBLISHED",
+          "FAILED",
+          "CANCELLED"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "CallOutcome",
@@ -40452,6 +40496,26 @@
         "values": [
           "SINGLE",
           "MULTI"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Coverage",
+        "values": [
+          "COMPLETE",
+          "EMPTY_VERIFIED",
+          "PARTIAL",
+          "UNKNOWN"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "DayKind",
+        "values": [
+          "FROZEN_BUSINESS_DAY",
+          "POLICY_INTERVAL"
         ],
         "zh": "",
         "module": "shop-base"
@@ -40857,6 +40921,18 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "FailureKind",
+        "values": [
+          "NONE",
+          "TEMPORARY",
+          "MISCONFIGURED",
+          "SCHEMA_NOT_READY",
+          "MIGRATION_FAILED"
+        ],
+        "zh": "",
+        "module": "shop-report"
       },
       {
         "name": "Family",
@@ -41307,6 +41383,19 @@
       {
         "name": "Mode",
         "values": [
+          "DAILY",
+          "PERIOD",
+          "RANKING",
+          "WEEKLY",
+          "MONTHLY",
+          "HEALTH"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Mode",
+        "values": [
           "PREPAY",
           "POSTPAY"
         ],
@@ -41443,6 +41532,19 @@
           "DISJOINT",
           "BEST_ONE",
           "STACK"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Owner",
+        "values": [
+          "CORE",
+          "FOOD",
+          "PAY",
+          "INVENTORY",
+          "EXPENSE",
+          "REPORT"
         ],
         "zh": "",
         "module": "shop-base"
@@ -42062,6 +42164,18 @@
       {
         "name": "Status",
         "values": [
+          "QUEUED",
+          "RUNNING",
+          "SUCCEEDED",
+          "FAILED",
+          "EXPIRED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Status",
+        "values": [
           "SUPPORTED",
           "TENANT_UNSUPPORTED",
           "SOURCE_UNSUPPORTED",
@@ -42231,6 +42345,17 @@
         ],
         "zh": "",
         "module": "pay/pay-domain"
+      },
+      {
+        "name": "ValueType",
+        "values": [
+          "COUNT",
+          "QUANTITY",
+          "MONEY",
+          "DURATION"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "ZeroCashReason",
@@ -47727,6 +47852,14 @@
     },
     {
       "host": "BizPerms",
+      "name": "REPORT_EXPORT",
+      "type": "String",
+      "value": "\"biz:report:export\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
       "name": "GOODS",
       "type": "String",
       "value": "\"biz:goods\"",
@@ -47905,7 +48038,7 @@
       "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(REPORT_EXPORT, \"导出经营报表\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },
@@ -49468,6 +49601,46 @@
       "value": "java.util.Set.of(MANAGER, CLERK, PICKER, COURIER, CS)",
       "zh": "预置的可授予角色。",
       "module": "shop-merchant"
+    },
+    {
+      "host": "ReportCsvWriter",
+      "name": "MAX_BYTES",
+      "type": "int",
+      "value": "1048576",
+      "zh": "",
+      "module": "shop-report"
+    },
+    {
+      "host": "ReportProfitCalculator",
+      "name": "GROSS",
+      "type": "String",
+      "value": "\"GOODS_GROSS_PROFIT_AMOUNT\",GROSS_RATE=\"GOODS_GROSS_PROFIT_RATE\"",
+      "zh": "",
+      "module": "shop-report"
+    },
+    {
+      "host": "ReportProfitCalculator",
+      "name": "NET",
+      "type": "String",
+      "value": "\"OPERATING_NET_PROFIT_AMOUNT\",NET_RATE=\"OPERATING_NET_PROFIT_RATE\"",
+      "zh": "",
+      "module": "shop-report"
+    },
+    {
+      "host": "ReportProfitCalculator",
+      "name": "OUTPUTS",
+      "type": "Set<String>",
+      "value": "Set.of(GROSS,GROSS_RATE,NET,NET_RATE)",
+      "zh": "",
+      "module": "shop-report"
+    },
+    {
+      "host": "ReportProfitCalculator",
+      "name": "INPUTS",
+      "type": "List<String>",
+      "value": "List.of(\"GOODS_TRANSACTED_NET_AMOUNT\",\"GOODS_SALES_COST_AMOUNT\", \"OPERATING_OTHER_INCOME_AMOUNT\",\"PAYMENT_ALLOCATED_FEE_COST_AMOUNT\",\"DELIVERY_FEE_COST_AMOUNT\", \"PLATFORM_COMMISSION_AMOUNT\",\"OPERATING_EXPENSE_AMOUNT\",\"OPERATING_UNALLOCATED_LOSS_AMOUNT\")",
+      "zh": "",
+      "module": "shop-report"
     },
     {
       "host": "OutboxDispatcher",
