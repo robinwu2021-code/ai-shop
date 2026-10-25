@@ -881,9 +881,9 @@ class InventoryFlowTest {
         } while (cursor != null);
         // 完整的搬运 = 余额 + 在途预留（fb690c847）。只搬余额时，库里只要有别的用例下单留下的锁，
         // 平台 held>0 而进销存 reserved=0，对差就永远不干净 —— 那不是本条要测的东西。
-        while (backfill.migrateHeldLocks(200) > 0) {
-            // 搬到一笔都不剩
-        }
+        // 一次搬完：它按 status=LOCKED 选、平台侧状态不变，重复调用会反复选中同一批（幂等地「再搬」一次），
+        // 所以不能写成「搬到返回 0 为止」的循环 —— 那是死循环。
+        backfill.migrateHeldLocks(10_000);
 
         InventoryBackfillService.Report diff = backfill.diffOnly(5000);
 
