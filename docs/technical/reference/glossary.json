@@ -5074,12 +5074,6 @@
           "ar": "تعذر تحميل أسماء النقاط. اضغط لإعادة المحاولة."
         },
         {
-          "key": "points.notActive",
-          "zh-CN": "当前类型非正常开放状态，使用以结算页报价为准",
-          "en": "This type is not fully active; check the checkout quote for availability",
-          "ar": "هذا النوع غير نشط بالكامل؛ تحقق من عرض السعر عند الدفع"
-        },
-        {
           "key": "points.orderEarning",
           "zh-CN": "订单积分",
           "en": "Order points",
@@ -5204,6 +5198,48 @@
           "zh-CN": "{n} 种积分类型",
           "en": "{n} points types",
           "ar": "{n} أنواع من النقاط"
+        },
+        {
+          "key": "points.typeStateActive",
+          "zh-CN": "生效中",
+          "en": "Active",
+          "ar": "نشط"
+        },
+        {
+          "key": "points.typeStateDraft",
+          "zh-CN": "草稿",
+          "en": "Draft",
+          "ar": "مسودة"
+        },
+        {
+          "key": "points.typeStateDraining",
+          "zh-CN": "清偿中",
+          "en": "Settling outstanding points",
+          "ar": "قيد التسوية"
+        },
+        {
+          "key": "points.typeStateEarningPaused",
+          "zh-CN": "已暂停新增赠送",
+          "en": "New earning paused",
+          "ar": "منح نقاط جديدة متوقف"
+        },
+        {
+          "key": "points.typeStateRetired",
+          "zh-CN": "已终止",
+          "en": "Retired",
+          "ar": "تم إنهاؤه"
+        },
+        {
+          "key": "points.typeStateUnknown",
+          "zh-CN": "状态待核实",
+          "en": "Status to be verified",
+          "ar": "الحالة بحاجة للتحقق"
+        },
+        {
+          "key": "points.typeStatus",
+          "zh-CN": "积分状态",
+          "en": "Points status",
+          "ar": "حالة النقاط"
         },
         {
           "key": "points.viewLedger",
@@ -19040,6 +19076,12 @@
           "ar": "قيد المعالجة"
         },
         {
+          "key": "points.earningPausedHint",
+          "zh-CN": "已暂停新增赠送，已有余额使用以结算页报价为准。",
+          "en": "New earning is paused. Use of existing balances depends on the checkout quote.",
+          "ar": "توقف منح نقاط جديدة؛ يخضع استخدام الرصيد الحالي لعرض السعر عند الدفع."
+        },
+        {
           "key": "points.earningRECLAIMED",
           "zh-CN": "已追回",
           "en": "Reclaimed",
@@ -19368,6 +19410,48 @@
           "zh-CN": "积分类型",
           "en": "Points type",
           "ar": "نوع النقاط"
+        },
+        {
+          "key": "points.typeStateActive",
+          "zh-CN": "生效中",
+          "en": "Active",
+          "ar": "نشط"
+        },
+        {
+          "key": "points.typeStateDraft",
+          "zh-CN": "草稿",
+          "en": "Draft",
+          "ar": "مسودة"
+        },
+        {
+          "key": "points.typeStateDraining",
+          "zh-CN": "清偿中",
+          "en": "Settling outstanding points",
+          "ar": "قيد التسوية"
+        },
+        {
+          "key": "points.typeStateEarningPaused",
+          "zh-CN": "已暂停新增赠送",
+          "en": "New earning paused",
+          "ar": "منح نقاط جديدة متوقف"
+        },
+        {
+          "key": "points.typeStateRetired",
+          "zh-CN": "已终止",
+          "en": "Retired",
+          "ar": "تم إنهاؤه"
+        },
+        {
+          "key": "points.typeStateUnknown",
+          "zh-CN": "状态待核实",
+          "en": "Status to be verified",
+          "ar": "الحالة بحاجة للتحقق"
+        },
+        {
+          "key": "points.typeStatus",
+          "zh-CN": "积分状态",
+          "en": "Points status",
+          "ar": "حالة النقاط"
         },
         {
           "key": "points.viewOrder",

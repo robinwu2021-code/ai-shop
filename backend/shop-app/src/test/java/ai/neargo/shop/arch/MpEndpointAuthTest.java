@@ -107,8 +107,16 @@ class MpEndpointAuthTest {
             "GET /mp/order/{orderNo}/pay-result",
             // 收银台的支付方式列表（C-1）：要登录 —— 它按下单的商家算，是这个人的单
             "GET /mp/order/{orderNo}/pay-method",
-            "GET /mp/points/account",
-            "GET /mp/points/records",
+            // Current buyer-owned points contract; the retired singular endpoints have no handlers.
+            "GET /mp/points/accounts",
+            "GET /mp/points/entries",
+            "GET /mp/order/{orderNo}/points-earning",
+            "GET /mp/order/{orderNo}/points-state",
+            "POST /mp/order/points-quote",
+            "GET /mp/stored-value/issuers",
+            "GET /mp/stored-value/issuer-records",
+            "GET /mp/stored-value/records/locate",
+            "GET /mp/stored-value/notification-capability",
             "GET /mp/store/{no}/frequent",
             "GET /mp/ticket",
             "GET /mp/ticket/{ticketNo}",
@@ -517,6 +525,8 @@ class MpEndpointAuthTest {
         }
         try {
             if (endpoint.equals("GET /mp/points/entries")) req.param("typeCode", "TYPE");
+            if (endpoint.equals("GET /mp/stored-value/records/locate")) req.param("focusDocumentNo", "PROBE-DOCUMENT");
+            if (endpoint.equals("GET /mp/stored-value/issuer-records")) req.param("issuerRef", "PROBE-ISSUER");
             return mvc().perform(req.header("Idempotency-Key", "AUTH-PROBE").contentType(MediaType.APPLICATION_JSON)
                             .content(PROBE_BODY.getOrDefault(endpoint, "{}")))
                     .andReturn().getResponse().getStatus();

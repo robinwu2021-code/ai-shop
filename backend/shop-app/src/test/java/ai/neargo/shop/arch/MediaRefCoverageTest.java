@@ -9,6 +9,9 @@ import org.springframework.context.annotation.ClassPathScanningCandidateComponen
 import org.springframework.core.type.filter.AssignableTypeFilter;
 
 import java.io.IOException;
+import javax.sql.DataSource;
+import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
+import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -70,6 +73,8 @@ class MediaRefCoverageTest {
                     + "不是说这一列装着图片地址"));
 
     static {
+        NOT_MEDIA.put("prn_template.content", "PrintDocumentPolicy.template/render只允许{{document}}与{{reprint}}的纯文本替换；内容打印为文本，不渲染上传图片");
+        NOT_MEDIA.put("ord_print_fact.receipt_intent_key", "OrderPrintFactRecorder将RECEIPT+身份+子单做SHA256，用于收据scene幂等；注释中的意图不是图片");
         NOT_MEDIA.put("sv_voucher.biz_no","储值凭证关联的业务号，注释中的意图是业务意图，不是图片");
         NOT_MEDIA.put("ent_use_allocation.operation_no","核销操作编号，关联使用意图，不是图片地址");
         NOT_MEDIA.put("ent_usage.operation_no","核销操作编号，关联使用意图，不是图片地址");
@@ -91,10 +96,19 @@ class MediaRefCoverageTest {
     @DisplayName("schema 里的图片列必须都被 MediaRefSource 声明，否则那批图会被判成孤儿")
     void everyImageColumnIsClaimed() throws Exception {
         Set<String> declared = new LinkedHashSet<>();
-        for (MediaRefSource source : sources()) {
-            for (MediaRefColumn c : source.columns()) {
-                declared.add(c.table() + "." + c.column());
+        // Optional sources inspect real table metadata; supply the migrated test schema,
+        // without starting the application or assuming every SPI has a no-argument constructor.
+        var database = new EmbeddedDatabaseBuilder()
+                .setName("media-ref-" + java.util.UUID.randomUUID() + ";MODE=MySQL;DATABASE_TO_LOWER=TRUE")
+                .setType(EmbeddedDatabaseType.H2).addScript("schema-test.sql").build();
+        try {
+            for (MediaRefSource source : sources(database)) {
+                for (MediaRefColumn c : source.columns()) {
+                    declared.add(c.table() + "." + c.column());
+                }
             }
+        } finally {
+            database.shutdown();
         }
 
         List<String> unclaimed = new ArrayList<>();
@@ -123,6 +137,23 @@ class MediaRefCoverageTest {
                 .as("这些豁免项在 schema 里已经找不到了。留着它们只会让下一个人以为"
                         + "「这一列检查过了」——而它根本不存在。删掉")
                 .isEmpty();
+    }
+
+    @Test
+    void optionalFoodReferencesFollowActualDatabaseTables() {
+        var database = new EmbeddedDatabaseBuilder().generateUniqueName(true)
+                .setType(EmbeddedDatabaseType.H2).build();
+        try {
+            var source = new ai.neargo.shop.media.FoodPresentationMediaRefs(database);
+            assertThat(source.columns()).isEmpty();
+            var jdbc = new org.springframework.jdbc.core.JdbcTemplate(database);
+            jdbc.execute("CREATE TABLE fnb_dish (goods_no VARCHAR(64), presentation TEXT)");
+            jdbc.execute("CREATE TABLE fnb_config_revision (revision_no VARCHAR(64), definition_snapshot TEXT)");
+            assertThat(source.columns().stream().map(c -> c.table() + "." + c.column()))
+                    .containsExactly("fnb_dish.presentation", "fnb_config_revision.definition_snapshot");
+        } finally {
+            database.shutdown();
+        }
     }
 
     /** 扫迁移 SQL，挑出「看着像装图片地址」的列。 */
@@ -164,7 +195,7 @@ class MediaRefCoverageTest {
      * 找出所有实现。<b>不注入 Spring 容器</b>：这是一条构建期的结构规则，
      * 不该为它启一个应用上下文 —— 也不该因为某个域的 bean 起不来就顺带失效。
      */
-    private static List<MediaRefSource> sources() throws Exception {
+    private static List<MediaRefSource> sources(DataSource database) throws Exception {
         var scanner = new ClassPathScanningCandidateComponentProvider(false);
         scanner.addIncludeFilter(new AssignableTypeFilter(MediaRefSource.class));
         List<MediaRefSource> found = new ArrayList<>();
@@ -173,7 +204,13 @@ class MediaRefCoverageTest {
             if (type.isInterface()) {
                 continue;
             }
-            found.add((MediaRefSource) type.getDeclaredConstructor().newInstance());
+            if (java.util.Arrays.stream(type.getDeclaredConstructors())
+                    .anyMatch(c -> java.util.Arrays.equals(c.getParameterTypes(), new Class<?>[]{DataSource.class}))) {
+                found.add((MediaRefSource) type.getDeclaredConstructor(DataSource.class).newInstance(database));
+            } else {
+                // Unexpected new dependencies still fail rather than silently skipping a source.
+                found.add((MediaRefSource) type.getDeclaredConstructor().newInstance());
+            }
         }
         assertThat(found).as("一个 MediaRefSource 实现都没扫到，这条守卫等于没跑").isNotEmpty();
         return found;

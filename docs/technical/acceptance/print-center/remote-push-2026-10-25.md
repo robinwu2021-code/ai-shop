@@ -52,3 +52,9 @@ e8171d925正常闸门在3153项、25模块处停止于D–F批次：权益订单
 G–L的GroupOrder商品页团排名失败，由GroupAudit及GroupOrder遗留的OPEN团挤占前三名造成。仅运行两来源/受害类即可重现19项中1失败；按本类精确活动号、团号清理成员、团和活动后，同命令19项全部通过。生产排序与所有断言保持，见remote-push-group-isolation-results.json。
 
 GoodsActivityOnly测试留下4笔成功创建但未支付订单，导致后续InventoryFlow全库对账出现SK0003平台占用4、库存占用0；组合命令已复现。现在逐笔保留本类订单号与原买家token，通过认证取消接口释放自身占用，并在finally恢复自身活动和商品模式，不直接改库存或放宽clean判据。TTL探针改用有效ACTIVE业主，正常900秒必须由缺货拒绝STOCK_SHORT_ITEMS，超长一年仍必须由TTL上限精确拒绝BAD_REQUEST。包含打印64字符操作人链路在内，同6类66项全部通过，见remote-push-actor-inventory-results.json。独立复核确认未修改库存算法、金额、业务授权或原对账断言。
+
+## 后续批次的契约守卫
+
+M–N/O批次另有4条守卫失败。媒体引用SPI已有依赖DataSource并按真实表元数据工作的实现，旧反射测试仍假定所有实现均有无参构造；改为提供隔离H2 schema，并增加食品表存在/缺失回归，未知依赖仍失败。随后实际扫描发现品牌logo漏声明，已补CoreMediaRefs的mch_brand.logo真实引用，独立复核V544表列、brand_no业务键和品牌服务写入链。模板纯文本与打印事实SHA256业务意图键则逐项登记非媒体语义证据，不扩大启发式豁免。
+
+C端鉴权测试删除已无Handler的两个旧积分路径，将9个当前积分/储值路径登记为必须登录，补齐必填参数和合法探针请求，匿名仍须真实401，不进入待定清单。孤儿模块检查解析真实pom模块声明及标准源码根，承认食品插件实际reactor/profile归属，不豁免backend-plugins目录。媒体3、鉴权7、模块2与打印策略5共17项通过，见remote-push-architecture-results.json。原断言、known清单和生产鉴权未放宽。
