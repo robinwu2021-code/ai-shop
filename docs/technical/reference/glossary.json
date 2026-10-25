@@ -40558,6 +40558,9 @@
           "SETTLEMENT_BATCH",
           "SETTLEMENT_BILL",
           "SETTLEMENT_INVOICE_REQUEST",
+          "SV_SETTLEMENT_BILL",
+          "SV_SETTLEMENT_PAYMENT",
+          "SV_SETTLEMENT_EVENT",
           "BRAND_CHANGE"
         ],
         "zh": "Human-facing document namespace。",
@@ -41133,6 +41136,18 @@
       {
         "name": "Kind",
         "values": [
+          "TEA",
+          "HOTPOT",
+          "PACKAGING",
+          "SERVICE",
+          "MINIMUM"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Kind",
+        "values": [
           "MAIN",
           "ADDON",
           "BUNDLE_INCLUDED",
@@ -41226,6 +41241,17 @@
           "AMOUNT",
           "WAIVER",
           "ROUNDING"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Method",
+        "values": [
+          "PER_QUANTITY",
+          "FIXED",
+          "PERCENT",
+          "MINIMUM"
         ],
         "zh": "",
         "module": "shop-base"
@@ -41599,6 +41625,16 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "ReductionColumn",
+        "values": [
+          "QUANTITY",
+          "PHYSICAL",
+          "CANCEL"
+        ],
+        "zh": "",
+        "module": "shop-core"
       },
       {
         "name": "RefundProgress",
@@ -46837,6 +46873,198 @@
       "module": "pay/pay-domain"
     },
     {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_CAPABILITIES",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/capabilities\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_DIRECTORY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/directory\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_SUMMARY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/summary\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_STORES",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/stores\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_ACTIVITIES",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/activities\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_LOCAL_ISSUERS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/local-issuers\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_LOCATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/locate\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_BILLS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/bills\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_DETAIL",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/detail\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_ITEMS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/items\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_EVENTS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/events\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_PAYMENTS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/payments\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_GENERATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/generate\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_RECONCILE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/reconcile\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_DISPUTE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/dispute\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_RESOLVE_DISPUTE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/resolve-dispute\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_ADJUST",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/adjust\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_REGISTER",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/register\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_CONFIRM",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/confirm\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_VOID_PAYMENT",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/void-payment\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_RESOLVE_PAYMENT",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/resolve-payment\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_MEMBERSHIP_TARGETS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/membership-targets\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_PREPARE_MEMBERSHIP",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/prepare-membership\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_COMMIT_MEMBERSHIP",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/commit-membership\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
       "host": "CouponQuotePolicy",
       "name": "FREIGHT_LINE",
       "type": "String",
@@ -46898,6 +47126,38 @@
       "type": "long",
       "value": "4500L",
       "zh": "税率硬上限（万分比）。",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "StoredValueSummaryQuery",
+      "name": "JOIN",
+      "type": "String",
+      "value": "\" FROM sv_entry e JOIN sv_voucher v ON CAST(v.tenant_no AS BINARY(256))=CAST(e.tenant_no AS BINARY(256)) AND CAST(v.voucher_no AS BINARY(256))=CAST(e.voucher_no AS BINARY(256)) JOIN sv_lot l ON CAST(l.tenant_no AS BINARY(256))=CAST(e.tenant_no AS BINARY(256)) AND CAST(l.lot_no AS BINARY(256))=CAST(e.lot_no AS BINARY(256)) JOIN sv_account a ON CAST(a.tenant_no AS BINARY(256))=CAST(l.tenant_no AS BINARY(256)) AND CAST(a.account_no AS BINARY(256))=CAST(l.account_no AS BINARY(256)) JOIN sv_recharge r ON CAST(r.tenant_no AS BINARY(256))=CAST(l.tenant_no AS BINARY(256)) AND CAST(r.recharge_no AS BINARY(256))=CAST(l.recharge_no AS BINARY(256)) LEFT JOIN sv_statement s ON CAST(s.tenant_no AS BINARY(256))=CAST(v.tenant_no AS BINARY(256)) AND CAST(s.voucher_no AS BINARY(256))=CAST(v.voucher_no AS BINARY(256)) AND s.deleted=0\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "StoredValueSummaryQuery",
+      "name": "BOUNDS",
+      "type": "String",
+      "value": "\" CROSS JOIN(SELECT CAST(? AS DATETIME(3)) AS start_at,CAST(? AS DATETIME(3)) AS end_at) period_scope\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "StoredValueSummaryQuery",
+      "name": "WINDOW",
+      "type": "String",
+      "value": "\"v.occurred_at>=period_scope.start_at AND v.occurred_at<period_scope.end_at\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "StoredValueSummaryQuery",
+      "name": "TOTALS",
+      "type": "String",
+      "value": "\"COALESCE(SUM(CASE WHEN v.occurred_at<period_scope.start_at THEN \"+DELTA+\" ELSE 0 END),0) AS opening,COALESCE(SUM(CASE WHEN \"+WINDOW+\" AND v.biz_type='RECHARGE' THEN e.principal_delta ELSE 0 END),0) AS paid,COALESCE(SUM(CASE WHEN \"+WINDOW+\" AND v.biz_type='RECHARGE' THEN e.bonus_delta ELSE 0 END),0) AS bonus,COALESCE(SUM(CASE WHEN \"+WINDOW+\" AND v.biz_type='CONSUME' THEN -\"+DELTA+\" ELSE 0 END),0) AS consumed,COALESCE(SUM(CASE WHEN \"+WINDOW+\" AND v.biz_type NOT IN ('RECHARGE','CONSUME') THEN \"+DELTA+\" ELSE 0 END),0) AS reversed,COALESCE(SUM(CASE WHEN v.occurred_at<period_scope.end_at THEN \"+DELTA+\" ELSE 0 END),0) AS closing,COUNT(DISTINCT CASE WHEN \"+WINDOW+\" AND v.biz_type='RECHARGE' THEN v.voucher_no END) AS recharges,COUNT(DISTINCT CASE WHEN \"+WINDOW+\" AND v.biz_type='CONSUME' THEN v.voucher_no END) AS uses,COUNT(DISTINCT CASE WHEN \"+WINDOW+\" THEN a.customer_no END) AS customers,COALESCE(MAX(e.id),0) AS watermark,COALESCE(SUM(CASE WHEN s.voucher_no IS NULL OR s.store_no IS NULL OR l.issuer_no IS NULL OR r.issuer_no IS NULL OR l.release_no IS NULL OR CAST(l.issuer_no AS BINARY(256))<>CAST(a.issuer_no AS BINARY(256)) OR CAST(r.issuer_no AS BINARY(256))<>CAST(a.issuer_no AS BINARY(256)) THEN 1 ELSE 0 END),0) AS missing\"",
+      "zh": "",
       "module": "pay/pay-domain"
     },
     {
@@ -47306,6 +47566,14 @@
       "type": "String",
       "value": "\"/internal/core/promotion/participation\"",
       "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "StoredValueMembership",
+      "name": "COORDINATION_IMPLEMENTATION_PROTOCOL",
+      "type": "int",
+      "value": "0",
+      "zh": "Build-level capability, raised only when the Core saga and central-collection proof are implemented and verified.",
       "module": "shop-base"
     },
     {
@@ -48807,16 +49075,16 @@
     {
       "host": "OrdSubOrder",
       "name": "PAID",
-      "type": "java.util.Set<String>",
-      "value": "java.util.Set.of(WAIT_FULFILL, FULFILLING, COMPLETED)",
+      "type": "Set<String>",
+      "value": "Set.of(WAIT_FULFILL, FULFILLING, COMPLETED)",
       "zh": "成交口径的唯一定义处。",
       "module": "shop-core"
     },
     {
       "host": "OrdSubOrder",
       "name": "TRANSACTED",
-      "type": "java.util.Set<String>",
-      "value": "java.util.Set.of(WAIT_FULFILL, FULFILLING, COMPLETED, REFUNDED)",
+      "type": "Set<String>",
+      "value": "Set.of(WAIT_FULFILL, FULFILLING, COMPLETED, REFUNDED)",
       "zh": "成交口径 + 已退款：GMV 是毛成交额，退款单要留在里面。",
       "module": "shop-core"
     },
@@ -48824,7 +49092,7 @@
       "host": "OrdSubOrder",
       "name": "STORE_PICKUP",
       "type": "String",
-      "value": "ai.neargo.shop.common.Fulfillments.STORE_PICKUP",
+      "value": "Fulfillments.STORE_PICKUP",
       "zh": "fulfillment 列的取值域。",
       "module": "shop-core"
     },
@@ -48832,7 +49100,7 @@
       "host": "OrdSubOrder",
       "name": "NEIGHBOR_PICKUP",
       "type": "String",
-      "value": "ai.neargo.shop.common.Fulfillments.NEIGHBOR_PICKUP",
+      "value": "Fulfillments.NEIGHBOR_PICKUP",
       "zh": "",
       "module": "shop-core"
     },
@@ -48840,7 +49108,7 @@
       "host": "OrdSubOrder",
       "name": "MERCHANT_DELIVERY",
       "type": "String",
-      "value": "ai.neargo.shop.common.Fulfillments.MERCHANT_DELIVERY",
+      "value": "Fulfillments.MERCHANT_DELIVERY",
       "zh": "",
       "module": "shop-core"
     },
@@ -48848,7 +49116,7 @@
       "host": "OrdSubOrder",
       "name": "EXPRESS",
       "type": "String",
-      "value": "ai.neargo.shop.common.Fulfillments.EXPRESS",
+      "value": "Fulfillments.EXPRESS",
       "zh": "",
       "module": "shop-core"
     },
@@ -48856,7 +49124,7 @@
       "host": "OrdSubOrder",
       "name": "STORE_VERIFY",
       "type": "String",
-      "value": "ai.neargo.shop.common.Fulfillments.STORE_VERIFY",
+      "value": "Fulfillments.STORE_VERIFY",
       "zh": "到店核销（服务品类）。",
       "module": "shop-core"
     },
@@ -49090,6 +49358,14 @@
       "type": "Set<String>",
       "value": "Set.of( \"s\", \"c\", \"b\", \"dl\", \"api\", \"ops\", \"ops-web\", \"admin\", \"login\", \"download\", \"static\", \"assets\", \"media\", \"uploads\", \"internal\")",
       "zh": "保留词。",
+      "module": "shop-merchant"
+    },
+    {
+      "host": "StoredValueFinancialAuthorityService",
+      "name": "FINANCIAL",
+      "type": "Set<String>",
+      "value": "Set.of(\"sv.settlement.read\",\"sv.settlement.generate\",\"sv.settlement.reconcile\",\"sv.settlement.dispute\",\"sv.settlement.dispute.resolve\",\"sv.settlement.adjust\",\"sv.settlement.payment.register\",\"sv.settlement.receipt.confirm\",\"sv.settlement.payment.void\",\"sv.settlement.audit\",\"sv.issuer.collection.confirm\")",
+      "zh": "",
       "module": "shop-merchant"
     },
     {
