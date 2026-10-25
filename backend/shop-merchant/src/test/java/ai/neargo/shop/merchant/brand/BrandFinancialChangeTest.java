@@ -1,4 +1,5 @@
 package ai.neargo.shop.merchant.brand;
+import ai.neargo.shop.merchant.brand.impl.BrandFinancialChangeServiceImpl;
 import static ai.neargo.shop.merchant.brand.ManagementModels.*;
 import ai.neargo.shop.spi.storedvalue.BrandChangeImpactPort;
 import ai.neargo.shop.common.BizException;
@@ -13,7 +14,7 @@ class BrandFinancialChangeTest {
   var f=new BrandFixture();String sql=Files.readString(Path.of("../shop-app/src/main/resources/db/migration/V576__stored_value_financial_membership_saga.sql"));sql=sql.substring(0,sql.indexOf("CREATE TABLE sv_financial_membership_change")).replaceAll("(?m)^--.*$","").replaceAll(" ENGINE=InnoDB[^;]*","").replace(" JSON"," VARCHAR(30000)").replace(" STORED","").replace("status IN ('PREPARING','PAY_PREPARED')","CASE status WHEN 'PREPARING' THEN TRUE WHEN 'PAY_PREPARED' THEN TRUE ELSE FALSE END").replace("status IN ('PREPARING','PAY_PREPARED','COMPLETED','REJECTED')","CASE status WHEN 'PREPARING' THEN TRUE WHEN 'PAY_PREPARED' THEN TRUE WHEN 'COMPLETED' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE FALSE END");for(var part:sql.split(";"))if(!part.isBlank())f.jdbc.execute(part);
   String m=f.no(f.space(),"managementNo");var brands=new ai.neargo.shop.merchant.brand.impl.BrandServiceImpl(f.repo,f.scopes,new ManagementTokenCodec("financial-change-secret-long-enough-for-tests",f.repo.json),(a,e,s)->new BrandChangeImpactPort.Impact(true,false,0,0,0,0),f.numbers());String b=f.no(brands.create(f.owner,new BrandCreate(m,"Brand",null,"ACTIVE"),"CREATE"),"brandNo");
   for(String permission:List.of("store.read","store.brand.change"))f.scopes.grant(f.owner,m,new GrantCommand(f.owner.actorKey(),"STORE","S1",permission,null,null,false,null,false));
-  return new F(f,m,b,new BrandFinancialChangeService(f.repo,f.scopes,f.numbers()));
+  return new F(f,m,b,new BrandFinancialChangeServiceImpl(f.repo,f.scopes,f.numbers()));
  }
  BrandFinancialChangeService.Pending register(F f){return f.journal.register(f.f.owner,f.management,"S1",f.brand,0,"join brand","JOIN",List.of(new Target("I1","IV1",f.brand,"E1","CNY",null,-1,null)));}
  Ack ack(F f,BrandFinancialChangeService.Pending p){return new Ack(p.changeNo(),f.journal.expectedPayHash(p.command()),"PREPARED",List.of("I1"));}

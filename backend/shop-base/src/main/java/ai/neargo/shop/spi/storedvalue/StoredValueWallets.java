@@ -2,12 +2,17 @@ package ai.neargo.shop.spi.storedvalue;
 
 import ai.neargo.shop.spi.entitlement.ContractChecks;
 import java.util.List;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 /** Trusted Core facts, never accepted verbatim from a public request. Wallet references bind this execution scope. */
 public final class StoredValueWallets {
     private StoredValueWallets() { }
     public record ExecutionScope(String tenantNo,String actorNo,String managementNo,String entityNo,String storeNo,
-            long storeRevision,String brandNo,String brandBindingNo,long brandBindingRevision,String currency,long brandRevision,@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_DEFAULT) int coreFinanceProtocol) {
+            long storeRevision,String brandNo,String brandBindingNo,long brandBindingRevision,String currency,long brandRevision,@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_DEFAULT) @JsonDeserialize(using = FinanceProtocolDeserializer.class) int coreFinanceProtocol) {
         public ExecutionScope(String tenantNo,String actorNo,String managementNo,String entityNo,String storeNo,long storeRevision,String brandNo,String brandBindingNo,long brandBindingRevision,String currency,long brandRevision){this(tenantNo,actorNo,managementNo,entityNo,storeNo,storeRevision,brandNo,brandBindingNo,brandBindingRevision,currency,brandRevision,0);}
         public ExecutionScope(String tenantNo,String actorNo,String managementNo,String entityNo,String storeNo,long storeRevision,String brandNo,String brandBindingNo,long brandBindingRevision,String currency){this(tenantNo,actorNo,managementNo,entityNo,storeNo,storeRevision,brandNo,brandBindingNo,brandBindingRevision,currency,brandNo==null?-1:0);}
         public ExecutionScope {
@@ -15,6 +20,21 @@ public final class StoredValueWallets {
             ContractChecks.currency(currency);ContractChecks.require(storeRevision>=0&&coreFinanceProtocol>=0);ContractChecks.optionalId(managementNo);
             ContractChecks.optionalId(brandNo);ContractChecks.optionalId(brandBindingNo);
             ContractChecks.require(brandNo==null?brandBindingNo==null&&brandBindingRevision==-1&&brandRevision==-1:managementNo!=null&&brandBindingNo!=null&&brandBindingRevision>=0&&brandRevision>=0);
+        }
+    }
+    /** Missing protocol is a legacy fact, never evidence that financial coordination is installed. */
+    public static final class FinanceProtocolDeserializer extends ValueDeserializer<Integer> {
+        @Override public Integer deserialize(JsonParser parser, DeserializationContext context) {
+            if (parser.currentToken() != JsonToken.VALUE_NUMBER_INT) {
+                return context.reportInputMismatch(Integer.class, "Core finance protocol must be an integer token");
+            }
+            int protocol = parser.getIntValue();
+            if (protocol < 0) return context.reportInputMismatch(Integer.class, "Core finance protocol must be nonnegative");
+            return protocol;
+        }
+        @Override public Object getAbsentValue(DeserializationContext context) { return 0; }
+        @Override public Object getNullValue(DeserializationContext context) {
+            return context.reportInputMismatch(Integer.class, "Core finance protocol cannot be null");
         }
     }
     /** A canonical platform person already resolved from a scoped member selection, not a phone number. */

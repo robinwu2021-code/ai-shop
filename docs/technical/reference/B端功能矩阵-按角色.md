@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 42 个权限点 × 380 个受控端点**。
+统计：**6 个角色 × 42 个权限点 × 384 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -16,7 +16,7 @@
 
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
-| `STOCK` | 改库存（含门店库存） | 50 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `STOCK` | 改库存（含门店库存） | 51 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 38 | ✅ | ✅ | — | — | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 35 | ✅ | ✅ | — | — | — | — |
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 32 | ✅ | — | — | — | — | — |
@@ -33,11 +33,11 @@
 | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 7 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 7 | ✅ | — | — | — | — | — |
 | `PRINT_DEVICE` | 角色 → 权限码 | 6 | ✅ | ✅ | — | — | — | — |
+| `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read, draf | 5 | ✅ | — | — | — | — | — |
 | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
+| `PRICING_CONFIG_READ` | Shared pricing configuration: read, draf | 4 | ✅ | — | — | — | — | — |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
-| `PRICING_CONFIG_READ` | Shared pricing configuration: read, draf | 3 | ✅ | — | — | — | — | — |
-| `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read, draf | 3 | ✅ | — | — | — | — | — |
 | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
 | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `PRINT_EXPORT` | 角色 → 权限码 | 3 | ✅ | ✅ | ✅ | — | — | — |
@@ -59,7 +59,7 @@
 | `REPORT_EXPORT` | 改库存（含门店库存） | 0 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 
-**只有 OWNER 能碰的 22 项**：`FINANCE`、`STORE_ADMIN`、`SV_RECHARGE_CREATE`、`SV_ACCOUNT_READ`、`SV_CONSUME_CREATE`、`ENT_READ`、`PRICING_CONFIG_READ`、`PRICING_CONFIG_PUBLISH`、`ENT_USE`、`PRICING_TAX_UPDATE`、`PRICING_CONFIG_UPDATE`、`SV_PLAN_READ`、`SV_PLAN_MANAGE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`PRICING_TAX_READ`、`REPORT_EXPORT`、`ENT_TEMPLATE_READ`
+**只有 OWNER 能碰的 22 项**：`FINANCE`、`STORE_ADMIN`、`SV_RECHARGE_CREATE`、`SV_ACCOUNT_READ`、`PRICING_CONFIG_PUBLISH`、`SV_CONSUME_CREATE`、`PRICING_CONFIG_READ`、`ENT_READ`、`ENT_USE`、`PRICING_TAX_UPDATE`、`PRICING_CONFIG_UPDATE`、`SV_PLAN_READ`、`SV_PLAN_MANAGE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`PRICING_TAX_READ`、`REPORT_EXPORT`、`ENT_TEMPLATE_READ`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点
@@ -90,6 +90,7 @@
 - `/biz/inventory/item-by-sku`
 - `/biz/inventory/items/by-barcode`
 - `/biz/inventory/items/{itemId}`
+- `/biz/inventory/items/{item}/valuation`
 - `/biz/inventory/ledger`
 - `/biz/inventory/locations`
 - `/biz/inventory/outbounds`
@@ -443,6 +444,14 @@
 - `/biz/print/printers/{printerNo}/status-changes`
 - `/biz/print/printers/{printerNo}/test-jobs`
 
+### `PRICING_CONFIG_PUBLISH`　（OWNER）
+
+- `/biz/pricing-configs/initialize`
+- `/biz/pricing-configs/{no}/publish`
+- `/biz/pricing-configs/{no}/rollback`
+- `/biz/pricing/fee-rules/{ruleNo}`
+- `/biz/pricing/fee-scopes/{scopeNo}/adjustments/{applicationNo}:apply`
+
 ### `SV_CONSUME_CREATE`　（OWNER）
 
 - `/biz/stored-value/consumptions`
@@ -450,6 +459,13 @@
 - `/biz/stored-value/consumptions/orders/{orderNo}/cancel`
 - `/biz/stored-value/consumptions/preview`
 - `/biz/stored-value/consumptions/resolve`
+
+### `PRICING_CONFIG_READ`　（OWNER）
+
+- `/biz/pricing-configs/{no}/draft`
+- `/biz/pricing-configs/{no}/preview`
+- `/biz/pricing-configs/{no}/revisions/{revisionNo}`
+- `/biz/pricing/fee-scopes/{scopeNo}/adjustments`
 
 ### `RECEIVE`　（OWNER、MANAGER、CLERK、PICKER）
 
@@ -464,18 +480,6 @@
 - `/biz/entitlement-usage`
 - `/biz/entitlement-uses/{operationNo}`
 - `/biz/entitlements/{instanceNo}`
-
-### `PRICING_CONFIG_READ`　（OWNER）
-
-- `/biz/pricing-configs/{no}/draft`
-- `/biz/pricing-configs/{no}/preview`
-- `/biz/pricing-configs/{no}/revisions/{revisionNo}`
-
-### `PRICING_CONFIG_PUBLISH`　（OWNER）
-
-- `/biz/pricing-configs/initialize`
-- `/biz/pricing-configs/{no}/publish`
-- `/biz/pricing-configs/{no}/rollback`
 
 ### `REVIEW`　（OWNER、MANAGER、CS）
 

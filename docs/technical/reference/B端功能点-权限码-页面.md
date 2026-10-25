@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**42 个权限码 × 6 个角色 × 379 个受控功能点**
+统计：**42 个权限码 × 6 个角色 × 383 个受控功能点**
 （另有 39 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -21,7 +21,7 @@
 
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
-| `biz:stock` | `STOCK` | 改库存（含门店库存） | 50 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `biz:stock` | `STOCK` | 改库存（含门店库存） | 51 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 38 | ✅ | ✅ | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 35 | ✅ | ✅ | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 31 | ✅ | — | — | — | — | — |
@@ -38,11 +38,11 @@
 | `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 7 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `pay:sv:account:read` | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 7 | ✅ | — | — | — | — | — |
 | `biz:print:device` | `PRINT_DEVICE` | 角色 → 权限码 | 6 | ✅ | ✅ | — | — | — | — |
+| `biz:pricing:config:publish` | `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read | 5 | ✅ | — | — | — | — | — |
 | `pay:sv:consume:create` | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
+| `biz:pricing:config:read` | `PRICING_CONFIG_READ` | Shared pricing configuration: read | 4 | ✅ | — | — | — | — | — |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `pay:ent:read` | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
-| `biz:pricing:config:read` | `PRICING_CONFIG_READ` | Shared pricing configuration: read | 3 | ✅ | — | — | — | — | — |
-| `biz:pricing:config:publish` | `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read | 3 | ✅ | — | — | — | — | — |
 | `biz:review` | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
 | `pay:ent:use` | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `biz:print:export` | `PRINT_EXPORT` | 角色 → 权限码 | 3 | ✅ | ✅ | ✅ | — | — | — |
@@ -129,6 +129,7 @@
 | 库存同步操作记录 | GET | `/biz/store/:storeNo/stock-reconcile/records` | `mStockSyncRecords` | stock-sync-records |
 | 本店库存同步状态 | GET | `/biz/store/:storeNo/stock-sync` | `mStockSync` | goods-edit、stock-settings |
 | 开 / 关本店库存同步（要先期初对齐） | PUT | `/biz/store/:storeNo/stock-sync` | `mSetStockSync` | stock-settings |
+| —（b-app 未接） | — | `/biz/inventory/items/{}/valuation` | — | — |
 | —（b-app 未接） | — | `/biz/store/{}/stock-reconcile/{}` | — | — |
 | —（b-app 未接） | — | `/biz/goods/{}/skus/{}/pricing-policy` | — | — |
 
@@ -546,6 +547,18 @@
 | —（b-app 未接） | — | `/biz/print/printers/{}/status-changes` | — | — |
 | —（b-app 未接） | — | `/biz/print/printers/{}/test-jobs` | — | — |
 
+### `biz:pricing:config:publish`　Shared pricing configuration: read, draft edit and publication are independent grants.
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/pricing/fee-rules/{}` | — | — |
+| —（b-app 未接） | — | `/biz/pricing/fee-scopes/{}/adjustments/{}{}` | — | — |
+| —（b-app 未接） | — | `/biz/pricing-configs/initialize` | — | — |
+| —（b-app 未接） | — | `/biz/pricing-configs/{}/publish` | — | — |
+| —（b-app 未接） | — | `/biz/pricing-configs/{}/rollback` | — | — |
+
 ### `pay:sv:consume:create`　查看主体级权益目录，不授予变更能力
 
 **可用角色**：老板
@@ -557,6 +570,17 @@
 | Cancel original service without refund | POST | `/biz/stored-value/consumptions/orders/:orderNo/cancel` | `mSvConsumptionCancel` | stored-value |
 | Selected wallet service preview | POST | `/biz/stored-value/consumptions/preview` | `mSvConsumptionPreview` | stored-value |
 | Resolve exact original preview without expired references | POST | `/biz/stored-value/consumptions/resolve` | `mSvConsumptionResolve` | stored-value |
+
+### `biz:pricing:config:read`　Shared pricing configuration: read, draft edit and publication are independent grants.
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/pricing/fee-scopes/{}/adjustments` | — | — |
+| —（b-app 未接） | — | `/biz/pricing-configs/{}/draft` | — | — |
+| —（b-app 未接） | — | `/biz/pricing-configs/{}/preview` | — | — |
+| —（b-app 未接） | — | `/biz/pricing-configs/{}/revisions/{}` | — | — |
 
 ### `biz:receive`　到货登记、分拣单、短少上报
 
@@ -579,26 +603,6 @@
 | —（b-app 未接） | — | `/biz/entitlement-uses/{}` | — | — |
 | —（b-app 未接） | — | `/biz/entitlement-usage` | — | — |
 | —（b-app 未接） | — | `/biz/entitlements/{}` | — | — |
-
-### `biz:pricing:config:read`　Shared pricing configuration: read, draft edit and publication are independent grants.
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| —（b-app 未接） | — | `/biz/pricing-configs/{}/draft` | — | — |
-| —（b-app 未接） | — | `/biz/pricing-configs/{}/preview` | — | — |
-| —（b-app 未接） | — | `/biz/pricing-configs/{}/revisions/{}` | — | — |
-
-### `biz:pricing:config:publish`　Shared pricing configuration: read, draft edit and publication are independent grants.
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| —（b-app 未接） | — | `/biz/pricing-configs/initialize` | — | — |
-| —（b-app 未接） | — | `/biz/pricing-configs/{}/publish` | — | — |
-| —（b-app 未接） | — | `/biz/pricing-configs/{}/rollback` | — | — |
 
 ### `biz:review`　评价回复、差评申诉
 
@@ -880,6 +884,7 @@
 | `/biz/entitlements/{}` | `pay:ent:read` | 老板 |
 | `/biz/goods/{}/skus/{}/pricing-policy` | `biz:stock` | 老板、店长、店员、理货员 |
 | `/biz/inventory/export` | `biz:customer` | 老板、店长 |
+| `/biz/inventory/items/{}/valuation` | `biz:stock` | 老板、店长、店员、理货员 |
 | `/biz/marketing-summary` | `biz:campaign` | 老板、店长 |
 | `/biz/pricing-configs/initialize` | `biz:pricing:config:publish` | 老板 |
 | `/biz/pricing-configs/{}/draft` | `biz:pricing:config:read` | 老板 |
@@ -895,6 +900,9 @@
 | `/biz/pricing-manual-policies/{}/{}/{}` | `biz:finance` | 老板 |
 | `/biz/pricing-tax-settings` | `biz:pricing:tax:update` | 老板 |
 | `/biz/pricing-tax-settings/reset` | `biz:pricing:tax:update` | 老板 |
+| `/biz/pricing/fee-rules/{}` | `biz:pricing:config:publish` | 老板 |
+| `/biz/pricing/fee-scopes/{}/adjustments` | `biz:pricing:config:read` | 老板 |
+| `/biz/pricing/fee-scopes/{}/adjustments/{}{}` | `biz:pricing:config:publish` | 老板 |
 | `/biz/print/action-logs` | `biz:print:resolve` | 老板、店长 |
 | `/biz/print/adapters` | `biz:print:read` | 老板、店长、店员 |
 | `/biz/print/agents` | `biz:print:device` | 老板、店长 |

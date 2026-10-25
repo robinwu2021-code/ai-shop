@@ -1,4 +1,6 @@
 package ai.neargo.shop.portal.biz;
+import ai.neargo.shop.merchantbridge.StoredValueCollectionContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.paybridge.*;
@@ -16,7 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 @Component
 public class BrandStoredValueRechargeSupport {
- @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.merchantbridge.StoredValueCollectionContext collection;
+ @Autowired private StoredValueCollectionContext collection;
  private final StoredValueIssuerRechargeAppService pay;private final EntitlementScopeResolver stores;private final StoredValueExecutionScopePort facts;
  private final CustomerIdentityPort customers;private final MerchantQueryPort merchants;private final MarketPort markets;private final StoreDirectoryPort directory;
  private final StoredValueRequestFingerprint fingerprints;private final boolean enabled;

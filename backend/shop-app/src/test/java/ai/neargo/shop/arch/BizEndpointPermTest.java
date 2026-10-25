@@ -114,6 +114,11 @@ class BizEndpointPermTest {
      * {@code docs/requirements/三端角色权限功能对齐清单.md} §4。
      */
     private static final Map<String, String> REQUIRED = new LinkedHashMap<>() {{
+        // Method-specific pricing read/publish guards remain on each handler.
+        put("/biz/inventory/items/{item}/valuation", BizPerms.STOCK);
+        put("/biz/pricing/fee-rules/{ruleNo}", BizPerms.PRICING_CONFIG_PUBLISH);
+        put("/biz/pricing/fee-scopes/{scopeNo}/adjustments", BizPerms.PRICING_CONFIG_READ);
+        put("/biz/pricing/fee-scopes/{scopeNo}/adjustments/{applicationNo}:apply", BizPerms.PRICING_CONFIG_PUBLISH);
         // These sensitive print operations additionally require PRINT_DEVICE in their annotations.
         put("/biz/print/agents/{agentNo}/credential-rotations", BizPerms.PRINT_RESOLVE);
         put("/biz/print/agents/{agentNo}/revocations", BizPerms.PRINT_RESOLVE);

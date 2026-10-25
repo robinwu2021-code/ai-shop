@@ -1,4 +1,5 @@
 package ai.neargo.shop.portal.biz;
+import ai.neargo.shop.spi.entitlement.ContractChecks;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.merchantbridge.StoredValueFinanceContext;
 import ai.neargo.shop.payclient.StoredValueFinanceAppService;
@@ -22,7 +23,7 @@ public class BizStoredValueSettlementController {
  }
  public record ReceiptRequest(String managementNo,long expectedRevision,Instant receivedAt){}
  public record VoidRequest(String managementNo,long expectedRevision,String reason){}
- public record PermissionRequest(String managementNo){public PermissionRequest{ai.neargo.shop.spi.entitlement.ContractChecks.id(managementNo);}}
+ public record PermissionRequest(String managementNo){public PermissionRequest{ContractChecks.id(managementNo);}}
  @PostMapping("/biz/management/entities/{entityNo}/stored-value/financial-permissions")
  public Map<String,Object> preparePermissions(@PathVariable String entityNo,@RequestBody PermissionRequest c){return context.prepare(c.managementNo(),entityNo);}
  public record FinancialResource(String issuerNo,String scopeType,String scopeNo,String name,String currency,String businessTimeZone,boolean canGenerate){}

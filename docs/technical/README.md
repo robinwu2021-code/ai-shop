@@ -552,6 +552,7 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [餐饮订单结账完整开发计划](./TDD-餐饮订单结账-完整开发计划.md) | — |
 | [小票紧凑排版 V2 验收记录](./acceptance/print-center/compact-v2.md) | — |
 | [打印模块合入集成线核对](./acceptance/print-center/integration-2026-10-23.md) | 按用户最新要求先保存独立分支 `codex/order-printing`；暂不合入集成线。全量验收尚未完成。 |
+| [统一打印分支正常推送记录 · 2026-10-25](./acceptance/print-center/remote-push-2026-10-25.md) | 推送阻断修复和定向回归完成，等待正常全量推送闸门；未绕过检查、未强制推送。 |
 | [订单支付打印软件闭环 · 2026-10-25](./acceptance/print-center/software-closure-2026-10-25.md) | — |
 | [打印模块合入统一分支核对 · 2026-10-25](./acceptance/print-center/unified-merge-2026-10-25.md) | 统一域适配及集中专项验收完成，形成包含最新统一基线的合并候选。本记录不包含远端推送，未执行生产迁移。 |
 | [P1 经营组织与品牌管理交付记录](./delivery/P1-经营组织与品牌管理-交付记录.md) | 已上线并完成阶段验收（2026-10-22）。目标分支 codex/ai-shop-codex；功能分支 codex/store-stored-value。 |
