@@ -82,7 +82,7 @@ class ApplymentPollFlowTest {
         return stub.submit(new PayApplymentGateway.SubmitCommand(
                 ENTITY, "轮询测试店", "INDIVIDUAL",
                 "张三", "13800138000", List.of(),
-                "PERSONAL_BANK", "6222000000000000"));
+                "PERSONAL_BANK", "6222000000000000", "", ENTITY + "-E-1"));
     }
 
     @Test

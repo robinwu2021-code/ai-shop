@@ -73,7 +73,8 @@ public class StubApplymentGateway implements PayApplymentGateway {
 
     @Override
     public String submit(SubmitCommand cmd) {
-        String applyNo = "STUB-APPLY-" + cmd.entityNo();
+        // 按外部单号而不是主体编号：同主体的主体级与门店级进件各是一张单（F04 · R04）
+        String applyNo = "STUB-APPLY-" + (cmd.requestNo() == null ? cmd.entityNo() : cmd.requestNo());
         submitted.put(applyNo, cmd.entityName() == null ? "" : cmd.entityName());
         // **不打印结算账号** —— 明文账号只在这一次调用里存在，落日志等于落库
         log.info("[stub] 进件提交 entity={} legalForm={} settleType={} apply={}",

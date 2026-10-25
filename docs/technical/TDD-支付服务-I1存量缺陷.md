@@ -51,12 +51,17 @@
 - `StoreAdminServiceImpl#setPayment`：在原「本主体 ACTIVE」校验之外，号若是某家门店的专属号（`store_no` 非空），只能绑给那家店。
 - 渠道维度不校验：`mch_store.pay_merchant_no` 一店一列、不分渠道，绑定时没有目标渠道可比（按渠道取号由 F01 在解析侧保证）。
 
+### F04 · 进件外部单号每单唯一
+- **契约**：`PayApplymentGateway.SubmitCommand` 加 `storeNo`、`requestNo`。`requestNo = 主体 + 门店（主体级记 E）+ 提交时刻`，由进件服务生成，重提也换新号。
+- 微信 `out_request_no`、支付宝 `out_biz_no` 改用 `requestNo`；缺了直接抛 `ChannelException`，不退回主体编号。stub 的申请单号同样按 `requestNo`（原先也按主体编号，同一类撞单）。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
 | F01 | `StoreSettleFlowTest#resolvesByChannel` · `#fallbackNeverBorrowsAnotherStoresAccount` · `#offlineKeepsEntityDefaultDeterministically` | ✅ 11/11 | 先红：旧实现问微信号返回了支付宝号（无排序）、A 店取到 B 店专属号。消融去渠道过滤 / 去门店过滤 → 前两条红 ✅ |
 | F03 | `StoreSettleFlowTest#cannotBindAnotherStoresAccount` | ✅ 12/12 | 先红：B 店专属号绑给 A 店 code=0；撤掉新校验即回到该状态 ✅ |
+| F04 | `ApplymentGatewayTest#outRequestNoIsPerApplyment` | ✅ 9/9 | 先红：字段已加、网关仍发主体编号时 `expected "E-1-E-100" but was "E-1"` ✅ |
 | F05 | `MerchantPaymentFlowTest#stubDoesNotImpersonateUnlistedChannel` · `#inFlightCannotResubmit` · `#resubmitClearsRejectReason` | ✅ 10/10 | 先红：PAYBY 进件 code=0、在途重提 code=0、旧原因仍在。消融恢复回落 / 去在途拦截 / 去显式清空 → 三条红 ✅。注：`resubmitClearsRejectReason` 初版在旧代码上是绿的（stub 同步出结果，走了已修好的回查路径），加 `keepApplyingFor` 后才量到 submit 本身 |
 
 ## §6 对账二 · 设计 → 实现

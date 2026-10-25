@@ -195,10 +195,14 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
         }
 
         PayApplymentGateway gateway = gateway(cmd.payChannel());
+        String storeKey = row.getStoreNo() == null ? MchPaymentMerchant.ENTITY_LEVEL : row.getStoreNo();
+        long submittedAt = System.currentTimeMillis();
+        // 外部单号：主体 + 门店（主体级记 E）+ 提交时刻 —— 每张进件单、每次重提都不同（F04 · Review R04）
+        String requestNo = merchantNo + "-" + (storeKey.isEmpty() ? "E" : storeKey) + "-" + submittedAt;
         String channelApplyNo = gateway.submit(new PayApplymentGateway.SubmitCommand(
                 merchantNo, entity.getName(), row.getLegalForm(),
                 cmd.contactName(), cmd.contactPhone(), cmd.licenses(),
-                settleType, cmd.settleAccount()));
+                settleType, cmd.settleAccount(), storeKey, requestNo));
 
         row.setChannelApplyNo(channelApplyNo);
         row.setSettleAccountType(settleType);
@@ -208,7 +212,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
          */
         row.setSettleAccountMasked(mask(cmd.settleAccount()));
         row.setApplyStatus(MchPaymentMerchant.APPLYING);
-        row.setAppliedAt(System.currentTimeMillis());
+        row.setAppliedAt(submittedAt);
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(row));
         // 重提时清掉上一次的拒因：留着的话商家改完资料还看见旧原因，会以为没提交成功。
         // 必须显式 set(null) —— updateById 跳过 null 字段（F05 · Review R23；回查路径早已这么做）

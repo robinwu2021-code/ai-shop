@@ -67,7 +67,8 @@ public class AlipayApplymentGateway extends AbstractApplymentGateway {
                     "认不出的法律形态：" + cmd.legalForm() + "（不猜，猜错会按错误的商户类型入驻）", false);
         }
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("out_biz_no", cmd.entityNo());
+        // 每张进件单、每次提交唯一（F04 · R04）
+        body.put("out_biz_no", WechatApplymentGateway.requireRequestNo(cmd));
         body.put("name", cmd.entityName());
         body.put("alias_name", cmd.entityName());
         body.put("merchant_type", type);
