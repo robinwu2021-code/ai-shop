@@ -20,9 +20,9 @@ class StoredValueOfflineCreditResultTest {
         var json=mock(ObjectMapper.class);
         var service=spy(new StoredValuePlanRechargeServiceImpl(null,recharges,null,null,null,credits,null,null,json,null));
         org.springframework.test.util.ReflectionTestUtils.setField(service,"issuerLedger",
-                // P5 起 beforeOriginal 先读原始充值行（判品牌账本）再看开关；给一个查不到行的仓储，走开关关闭的旧路径
+                // P5 起 beforeOriginal 先读原始充值行（判品牌账本）再看开关；给一个查不到行的仓储（默认应答是空 Map，会被当成「查到了但不属于本主体」），走开关关闭的旧路径
                 new ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerLedgerBridge(
-                        mock(ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.class),null,null,false));
+                        mock(ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.class, invocation -> null),null,null,false));
         var ctx=new EntitlementContext("MAIN","OWNER","retry","0".repeat(64));
         var command=mock(Create.class);var old=mock(RechargeView.class);var credited=mock(RechargeView.class);
         when(old.status()).thenReturn(RechargeState.RECEIVED);when(old.rechargeNo()).thenReturn("R1");
