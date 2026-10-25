@@ -224,6 +224,7 @@
     "backend/shop-app/src/main/resources/db/migration/V582__unified_print_capabilities.sql",
     "backend/shop-app/src/main/resources/db/migration/V583__order_print_fact.sql",
     "backend/shop-app/src/main/resources/db/migration/V584__print_permissions.sql",
+    "backend/shop-app/src/main/resources/db/migration/V585__print_owner_identity_width.sql",
     "backend/shop-app/src/test/java/ai/neargo/shop/printbridge/PrintActorFactoryScopeTest.java",
     "backend/shop-app/src/test/java/ai/neargo/shop/printbridge/PrintNotifyOutboxRegistrationTest.java",
     "backend/shop-app/src/test/java/ai/neargo/shop/printbridge/PrintRecoveryConfigurationTest.java",

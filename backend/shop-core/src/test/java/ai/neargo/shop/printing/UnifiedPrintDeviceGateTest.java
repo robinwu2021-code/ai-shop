@@ -183,6 +183,29 @@ class UnifiedPrintDeviceGateTest {
         verifyNoInteractions(printers, runtimes, richJobs, richAttempts, requests);
     }
 
+    @Test void canonicalGateKeepsSixtyFourCharacterOwnerIdentityAcrossBothEntrypoints() {
+        String entity = "E".repeat(64), store = "S".repeat(64);
+        for (String table : List.of("prn_device", "prn_template", "prn_route", "prn_job", "prn_attempt"))
+            fixture.jdbc.update("UPDATE " + table + " SET entity_no=?,store_no=?", entity, store);
+        var owner = new Scope(entity, store, "OPERATOR");
+        var bridge = new Scope(entity, store, "BRIDGE");
+        var scope = new PrintScope("MAIN", entity, store);
+        fixture.service.heartbeat(bridge, "DEVICE", true);
+        String job = fixture.service.enqueue(owner, new Enqueue("LONG_OWNER", null, "PART", DOCUMENT))
+                .getFirst().jobNo();
+        var claimed = fixture.service.claim(bridge, "DEVICE");
+        assertThat(claimed.jobNo()).isEqualTo(job);
+        assertThat(gate.lock(scope, "DEVICE").getEntityNo()).isEqualTo(entity);
+        assertThat(gate.lock(scope, "DEVICE").getStoreNo()).isEqualTo(store);
+        assertThat(center.prepare(scope, "DEVICE", "WORKER")).isNull();
+        fixture.clock.advance(61);
+        fixture.service.heartbeat(bridge, "DEVICE", true);
+        assertThat(fixture.service.get(owner, job).status()).isEqualTo("UNKNOWN");
+        assertThat(center.prepare(scope, "DEVICE", "WORKER")).isNull();
+        assertThat(gate.lock(scope, "DEVICE").getActiveAttemptNo()).isEqualTo(claimed.attemptNo());
+        verifyNoInteractions(printers, runtimes, richJobs, richAttempts, requests);
+    }
+
     private String enqueue(String event) {
         return fixture.service.enqueue(OWNER, new Enqueue(event, null, "PART", DOCUMENT)).getFirst().jobNo();
     }

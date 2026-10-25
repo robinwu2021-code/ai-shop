@@ -6,12 +6,21 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.printing.policy.PrintDocumentPolicy;
 import ai.neargo.shop.spi.printing.PrintPort.Document;
+import ai.neargo.shop.spi.printing.PrintPort.Scope;
 import ai.neargo.shop.spi.printing.PrintPort.Line;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Text protocol rejects executable templates and raw printer-control bytes before a job exists. */
 class PrintDocumentPolicyTest {
+    @Test void ownerScopeKeepsCanonicalSixtyFourCharacterKeysWithoutExpandingPrintKeys() {
+        PrintDocumentPolicy.scope(new Scope(
+                "E".repeat(64), "S".repeat(64), "ACTOR"));
+        assertThatThrownBy(() -> PrintDocumentPolicy.scope(new Scope(
+                "E".repeat(65), "S", "ACTOR"))).isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> PrintDocumentPolicy.key("D".repeat(33))).isInstanceOf(BizException.class);
+    }
+
     @Test void rejectExpressionAndPrinterCommandInjection() {
         assertThatThrownBy(() -> PrintDocumentPolicy.template("{{document}} ${runtime.exec('x')}"))
                 .isInstanceOf(BizException.class);

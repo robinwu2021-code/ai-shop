@@ -214,6 +214,32 @@ class PrintOrderSoftwareFlowTest {
     }
 
     @Test
+    void canonicalLongOrderIdentitiesRemainExactInFactsReplayAndRequestProjection() {
+        var owner = new Owner("", "E".repeat(64), "S".repeat(64));
+        String order = "O".repeat(60); // The fixture's -SUB suffix reaches the owner's 64-character limit.
+        seedPaidOrder(order, owner);
+        var tx = new TransactionTemplate(transactions);
+        PrintFactRef ref = tx.execute(s -> facts.recordPaid(order, new ConfirmedPayment("WECHAT", "LONG-PAY")))
+                .getFirst();
+        assertEquals(owner.entity(), ref.entityNo());
+        assertEquals(owner.store(), ref.storeNo());
+        assertEquals(order, facts.snapshot(ref).orderNo());
+        assertEquals(order + "-SUB", facts.snapshot(ref).subOrderNo());
+        assertEquals(List.of(ref), facts.referencesByOrder(new PrintScope("MAIN", owner.entity(), owner.store()), order));
+        assertEquals(List.of(ref), tx.execute(s -> facts.recordPaid(order, new ConfirmedPayment("WECHAT", "LONG-PAY"))));
+        var event = jdbc.queryForMap("select * from sys_outbox where event_type='ORDER_PRINT_FACT_READY' and aggregate_id=?", order);
+        var row = new SysOutbox();
+        row.setEventType("ORDER_PRINT_FACT_READY"); row.setAggregateId(order);
+        row.setPayload(event.get("payload").toString());
+        factConsumer.consume(row); factConsumer.consume(row);
+        assertEquals(1L, count("ord_print_fact", "order_no", order));
+        assertEquals(1L, count("prn_request", "order_no", order));
+        assertEquals(owner.entity(), jdbc.queryForObject("select entity_no from prn_request where order_no=?", String.class, order));
+        assertEquals(owner.store(), jdbc.queryForObject("select store_no from prn_request where order_no=?", String.class, order));
+        assertEquals(order + "-SUB", jdbc.queryForObject("select sub_order_no from prn_request where order_no=?", String.class, order));
+    }
+
+    @Test
     void rolledBackSourceTransactionDoesNotLeavePrintFactsOrReadyEvents() {
         var owner = new Owner("", "PRINT-ROLLBACK-ENTITY", "PRINT-ROLLBACK-STORE");
         String order = "PRINT-ROLLBACK-ORDER";

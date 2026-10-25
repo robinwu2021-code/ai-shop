@@ -32,3 +32,13 @@
 两个内部Controller按既有包约束移动至portal.internal，仍保留原模块；URL、类名、Bean名、DTO、条件装配和认证方法体均不变，不修改wrapper或断言。Architecture、CommonPackageIsolation和InternalMaterialCatalogApi三类26项通过，见`remote-push-internal-package-results.json`。
 
 优惠失败已精确定位到CampaignDiscountFlowTest最后用例留下的满减800分活动。三个受害测试类独立10项通过，连同来源类执行28项则完整复现原4个失败；仅为原有限前缀清理方法补上AfterEach后，同命令28项全部通过。所有金额断言与生产算法保持不变，见`remote-push-campaign-isolation-results.json`。随后重新执行正常全量推送闸门。
+
+## 订单身份合同与权限目录复核
+
+e8171d925正常闸门在3153项、25模块处停止于D–F批次：权益订单写入打印事实时，新增打印列仅32字符，而V1原有商户、门店、订单和子订单标识允许64字符。V585以追加迁移扩展对应关联列，并同步API/策略校验和生成夹具；模板作用域键容纳前缀，打印自身生成的编号保持原合同。不缩短测试数据，不改旧迁移，不截断或重映射真实身份。
+
+另一个失败来自FunctionPoint守卫仍把迁出ai-hxkey的六个权限常量计作本仓端点，V528已正式撤销对应菜单和授权。移除过期的外部常量注入，保留真实Controller扫描、双向权限断言与既有欠账清单；不重新授予已退役权限。
+
+8类47项定向验收通过，覆盖原权益HTTP/协调失败、权限守卫、64字符订单打印事实重复合并与消费投影、新旧设备UNKNOWN门控、文档策略及数据库验收，见remote-push-owner-width-results.json。MySQL 9.7.2一次性隔离库8组通过，新增校验字段属性保持、64字符身份/门控原样读回及65字符拒绝；仍是打印迁移专项，不代表整仓Flyway或实机验收。
+
+旧e817快照另以failure-ignore仅收集所有后续批次故障，不用其退出码或结果作为验收；最终仍须原始严格推送闸门通过。

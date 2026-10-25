@@ -32,9 +32,13 @@ public final class PrintDocumentPolicy {
         if (value == null) {
             invalid();
         }
-        key(value.entityNo());
-        key(value.storeNo());
+        ownerKey(value.entityNo());
+        ownerKey(value.storeNo());
         key(value.actorNo());
+    }
+
+    private static void ownerKey(String value) {
+        if (value == null || !value.matches("[A-Za-z0-9_.:-]{1,64}")) invalid();
     }
 
     public static void key(String value) {

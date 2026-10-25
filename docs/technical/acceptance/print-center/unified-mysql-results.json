@@ -6,7 +6,8 @@
     "V579__print_device_revocation_epoch.sql",
     "V582__unified_print_capabilities.sql",
     "V583__order_print_fact.sql",
-    "V584__print_permissions.sql"
+    "V584__print_permissions.sql",
+    "V585__print_owner_identity_width.sql"
   ],
   "checks": [
     "empty-printing-install",
@@ -14,7 +15,9 @@
     "legacy-uncertainty-gate-and-revocation-epoch-backfill",
     "applied-migration-hashes-frozen",
     "permission-append-idempotent",
-    "custom-role-unchanged"
+    "custom-role-unchanged",
+    "owner-identity-column-contract-preserved",
+    "64-character-owner-identities-and-uncertainty-gates"
   ],
   "limits": [
     "Focused printing migrations with minimal role fixtures; not full application Flyway acceptance.",

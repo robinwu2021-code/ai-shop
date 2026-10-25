@@ -46,6 +46,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * Executes real mapper transactions and durable attempt history; physical printing is deliberately
@@ -103,6 +104,12 @@ class PrintDeliveryTest {
         applyCanonicalPrintColumns(jdbc);
         // Runtime is a secondary projection of the canonical gate, including when the center is disabled.
         jdbc.execute("CREATE TABLE prn_printer_runtime (tenant_no VARCHAR(32), entity_no VARCHAR(32), printer_no VARCHAR(32), active_job_no VARCHAR(32), active_attempt_no VARCHAR(32), lease_owner VARCHAR(64), lease_token_hash VARCHAR(64), lease_until TIMESTAMP, blocked_reason VARCHAR(64), updated_at TIMESTAMP, revision BIGINT DEFAULT 0)");
+        // Replay the actual compatibility widening for this legacy-only fixture subset.
+        String ownerWidths = Files.readString(Path.of("../shop-app/src/main/resources/db/migration/"
+                + "V585__print_owner_identity_width.sql"));
+        var widthChanges = Pattern.compile(
+                "ALTER TABLE (prn_device|prn_template|prn_route|prn_job|prn_attempt|prn_printer_runtime) MODIFY COLUMN (entity_no|store_no) VARCHAR\\(64\\) (?:NOT NULL|NULL);").matcher(ownerWidths);
+        while (widthChanges.find()) jdbc.execute(widthChanges.group());
         var config = new MybatisConfiguration();
         config.setMapUnderscoreToCamelCase(true);
         var plugins = new MybatisPlusInterceptor();
@@ -360,7 +367,7 @@ class PrintDeliveryTest {
     static void applyCanonicalPrintColumns(JdbcTemplate jdbc) throws Exception {
         String migration = Files.readString(Path.of("../shop-app/src/main/resources/db/migration/"
                 + "V582__unified_print_capabilities.sql"));
-        var statements = java.util.regex.Pattern.compile(
+        var statements = Pattern.compile(
                 "ALTER\\s+TABLE\\s+(prn_job|prn_attempt|prn_device)\\s+(.+?);(?=\\s*(?:\\r?\\n|$))",
                 java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL).matcher(migration);
         while (statements.find()) {

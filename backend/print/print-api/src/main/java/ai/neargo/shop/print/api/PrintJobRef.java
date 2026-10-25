@@ -9,9 +9,9 @@ public record PrintJobRef(
     public PrintJobRef {
         if (tenantNo == null || tenantNo.isBlank() || tenantNo.length() > 32)
             throw new IllegalArgumentException("tenantNo");
-        if (entityNo == null || entityNo.isBlank() || entityNo.length() > 32)
+        if (entityNo == null || entityNo.isBlank() || entityNo.length() > 64)
             throw new IllegalArgumentException("entityNo");
-        if (storeNo == null || storeNo.isBlank() || storeNo.length() > 32)
+        if (storeNo == null || storeNo.isBlank() || storeNo.length() > 64)
             throw new IllegalArgumentException("storeNo");
     }
 }
