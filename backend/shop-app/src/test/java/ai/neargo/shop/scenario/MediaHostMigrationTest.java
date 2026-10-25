@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.DisplayName;
@@ -21,6 +22,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * V347：图片地址从 COS 公网域名迁到规范地址 img.hxmall.top（ADR-026，TDD-图片走服务器与流量切换 T5）。
@@ -50,7 +52,8 @@ class MediaHostMigrationTest {
     /** 主迁移 + 各条补充。新增图片列时在这里加上它那条 —— 漏了的话覆盖面断言当场变红 */
     private static final List<String> MIGRATIONS = List.of(
             "V347__media_host_img.sql",
-            "V369__media_host_store_banner.sql");
+            "V369__media_host_store_banner.sql",
+            "V586__media_host_brand_logo.sql");
 
     @Autowired ApplicationContext ctx;
     @Autowired JdbcTemplate jdbc;
@@ -93,6 +96,36 @@ class MediaHostMigrationTest {
 
         assertThat(registered).as("登记表本身不能是空的 —— 空集会让下面这条断言恒真").hasSizeGreaterThan(20);
         assertThat(migrated).isEqualTo(registered);
+    }
+
+    @Test
+    @Transactional // 真实 UPDATE 扫整表；其他已有品牌即使带旧地址也随测试回滚。
+    @DisplayName("品牌单值标识图换规范域名，NULL、规范地址与相似域名不变")
+    void migratesBrandLogoWithoutChangingOtherHostsOrNull() throws Exception {
+        String brandNo = "MEDIA_HOST_" + UUID.randomUUID().toString().replace("-", "");
+        String where = " WHERE tenant_no = ? AND brand_no = ?";
+        try {
+            jdbc.update("INSERT INTO mch_brand (tenant_no,brand_no,management_no,name,logo,status,"
+                            + "scope_revision,name_key,create_key,create_hash,created_at,updated_at,created_by,updated_by)"
+                            + " VALUES ('MAIN',?,?,'Media host fixture',?,'DRAFT',0,'Media host fixture',?, ?,"
+                            + "CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'TEST','TEST')",
+                    brandNo, brandNo, OLD + "brand/logo.png", brandNo, "0".repeat(64));
+            String migration = statements().get("mch_brand.logo");
+            assertThat(migration).as("品牌标识图必须有独立补充迁移").isNotNull();
+            jdbc.execute(migration);
+            assertThat(jdbc.queryForObject("SELECT logo FROM mch_brand" + where, String.class, "MAIN", brandNo))
+                    .isEqualTo(NEW + "brand/logo.png");
+
+            String similar = "https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.comx/brand/logo.png";
+            for (String untouched : new String[] {NEW + "brand/logo.png", similar, null}) {
+                jdbc.update("UPDATE mch_brand SET logo = ?" + where, untouched, "MAIN", brandNo);
+                jdbc.execute(migration);
+                assertThat(jdbc.queryForObject("SELECT logo FROM mch_brand" + where, String.class, "MAIN", brandNo))
+                        .as("规范地址、相似域名和 NULL 必须保持原值").isEqualTo(untouched);
+            }
+        } finally {
+            jdbc.update("DELETE FROM mch_brand" + where, "MAIN", brandNo);
+        }
     }
 
     @Test
