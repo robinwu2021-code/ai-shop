@@ -1,6 +1,6 @@
 # TDD-支付服务-I0地基
 
-状态：草稿
+状态：已实现（2026-10-25 · `e1caec533` + `c57a25d90`）
 档位：2 · 依据：[开发计划 · 支付服务](./开发计划-支付服务.md) §5 I0 · [完整设计方案](./TDD-支付服务-完整设计方案.md) D1–D3 · ADR-041 · ADR-042
 关联需求：[PRD-支付域](../requirements/PRD-支付域.md)（新市场与开放接口部分见完整设计方案 §1 AC 表）
 创建：2026-10-25 · 最后更新：2026-10-25
@@ -139,10 +139,58 @@ ArchitectureTest                 Tests run: 20, Failures: 2   ← 均为基线�
 
 ## §6 对账二 · 设计 → 实现
 
-（实现后填）
+`git show --stat e1caec533 c57a25d90`（摘要；`e1caec533` 是 `FundsPath` 搬家，19 个文件只换 import）：
+
+```
+e1caec533 refactor(pay): FundsPath 提到 spi.pay，积分改引用
+ .../main/java/ai/neargo/shop/spi/pay/FundsPath.java | 20 +++
+ （积分主代码 5 个、pay-domain 测试 1 个、shop-app 控制器 1 个、shop-app 测试 11 个，各 1–4 行 import）
+ 19 files changed, 57 insertions(+), 33 deletions(-)
+
+c57a25d90 feat(pay): I0 地基
+ backend/known-pay-reverse-deps.txt                    |  17 +
+ pay-domain/.../pay/entity/PayBaseEntity.java          |  49 +
+ pay-domain/src/main/resources/db/pay/README.md        |  11 +
+ pay-domain/src/test/.../entity/PayBaseEntityTest.java | 107 +
+ pay-portal/pom.xml                                    |  35 +
+ pay-portal/.../pay/api/PortalFace.java                |  56 +
+ pay-portal/.../pay/api/PortalRouteRules.java          |  51 +
+ pay-portal/.../pay/api/auth/PortalAuthenticator.java  |  20 +
+ pay-portal/.../pay/api/auth/PortalPrincipal.java      |  25 +
+ pay-portal/src/test/.../PortalRouteRulesTest.java     |  92 +
+ pay-svc/src/test/.../PayApplicationBootTest.java      |  21 +
+ backend/pay/pom.xml                                   |   4 +-
+ backend/shop-app/pom.xml                              |   6 +
+ shop-app/.../config/PayDataSourceConfig.java          |  46 +-
+ shop-app/src/test/.../arch/ArchitectureTest.java      |  34 +-
+ shop-app/src/test/.../arch/PayHasNoControllerTest.java|  91 +-
+ shop-app/src/test/.../arch/PayMapperPackageTest.java  |  80 +
+ shop-app/src/test/.../arch/PayReverseDependencyBudgetTest.java | 90 +
+ shop-app/src/test/.../config/PayMigrationTest.java    |  76 +
+ shop-app/src/test/resources/application-h2db.yml      |   4 +
+ shop-app/src/test/resources/db/pay-fixture/V1__pay_fixture.sql | 5 +
+ shop-base/.../numbering/DocumentType.java             |   3 +
+ docs/technical/ADR/ADR-041 · ADR-042 · TDD-支付服务-I0地基.md
+ docs/technical/reference/{glossary.json, 中英文对照, 依赖清单, 静态常量清单}.md
+ 29 files changed, 1159 insertions(+), 48 deletions(-)
+```
+
+| 差异 | 说明 |
+|---|---|
+| TDD 里没有、实际改了的文件 | `docs/technical/reference/` 四份生成物 —— `gen-glossary.mjs` 重新生成（新增模块、实体、枚举、常量），差异逐行核过只含本次内容 |
+| TDD 列了、实际没动的文件 | 无 |
+
+### 偏差说明
+
+1. **支付 Flyway 挂在 shop-app 的 `PayDataSourceConfig`，不在 pay-domain 自带配置类**：pay-svc 没有 Flyway 依赖、迁移关着（与 shop-app 共库，迁移一直由 shop-app 执行）。迁移文件仍在 pay-domain 的 `db/pay`，随模块走（§3 已记）。
+2. **包名 `pay.api..` 而非设计稿的 `pay.portal..`**：`ArchitectureTest#controllersInDomainApiOrPortal` 只认 `..api..` 与 `shop.portal..`（ADR-042 §2-2）。
+3. **独立形态启动类推迟到 I5**：今天模块里零 controller、零 Remote 实现，放一个 `@SpringBootApplication` 进被 shop-app 扫描的 jar 反而会触发二次组件扫描。
+4. **`ControllerNamingTest` 登记 `Open` / `Terminal` / `Checkout` 前缀**：仓库里没有这条守卫（命名规则只在 java.md §七）；入口归属已由 `PortalRouteRules` 按包 + 前缀判，命名守卫随 I5 第一个 controller 一起立。
+5. **消融时发现 AC4 的判据漏认全限定注解**（`@org.springframework...RestController`），当场补上并加反例 —— 这正是消融这一列存在的理由。
 
 ## §7 确认与完成
 
 | 日期 | 事件 |
 |---|---|
 | 2026-10-25 | 用户「按照规划实施」；P1–P6 按推荐项；开始实现 |
+| 2026-10-25 | 已实现。定向守卫全绿（ArchitectureTest 2 条为基线既有）；全量 `mvn test` 3983 条、0 次 OOM（配合 `3b6d57a88`），失败 43 条均与 I0 无关：与基线相比新出现的 7 条在基线时因 OOM 未跑到，其中 6 条单独跑全绿（顺序串扰），`StoredValueOfflineCreditResultTest` 去掉 I0 改动照样红（储值存量）。扫描面：`backend/pay/**`、`shop-base/.../spi/**`、`shop-app` 主代码与测试 |
