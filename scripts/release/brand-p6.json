@@ -121,5 +121,6 @@
   "scripts/release/brand-p6.json",
   "scripts/release/brand-p6.mjs",
   "scripts/release/brand-p6.test.mjs",
-  "site/lib/site.config.ts"
+  "site/lib/site.config.ts",
+  "b-app/src/shared/management.ts"
 ]
