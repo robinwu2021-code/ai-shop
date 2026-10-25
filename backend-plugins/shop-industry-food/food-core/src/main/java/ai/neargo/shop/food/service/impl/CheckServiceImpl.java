@@ -491,7 +491,7 @@ public class CheckServiceImpl implements CheckService {
                 OperationVO.class,
                 () -> {
                     var check = locked(entity, store, number, req.version());
-                    noTrade(check);
+                    noTradeFacts(check);
                     var before = view(check);
                     var active = active(check);
                     var chosen =
@@ -853,7 +853,13 @@ public class CheckServiceImpl implements CheckService {
     }
 
     private void noTrade(FnbCheck row) {
-        if (!"PREPAY".equals(row.getPayMode())
+        if (!"PREPAY".equals(row.getPayMode())) throw BizException.of(ErrorCode.CONFLICT);
+        noTradeFacts(row);
+    }
+
+    /** Empty POSTPAY reception has no receivable; any original trade/unknown fact still blocks release. */
+    private void noTradeFacts(FnbCheck row) {
+        if (!("PREPAY".equals(row.getPayMode()) || "POSTPAY".equals(row.getPayMode()))
                 || checks.tradeFacts(row.getEntityNo(), row.getCheckNo()) > 0
                 || operations.externalOrPendingForCheck(row.getEntityNo(), row.getCheckNo()) > 0)
             throw BizException.of(ErrorCode.CONFLICT);

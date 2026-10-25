@@ -63,7 +63,8 @@ class CheckServiceTest extends FoodWriteGuardFixture {
         runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class,TableServiceTest.Areas.class,
                 DiningSessionTest.Sessions.class,Checks.class).run(test);
     }
-    Fixture fixture(AssertableApplicationContext c) {
+    Fixture fixture(AssertableApplicationContext c) { return fixture(c,"PREPAY"); }
+    Fixture fixture(AssertableApplicationContext c,String payMode) {
         var f=new DiningSessionTest().fixture(c);
         String common="id BIGINT AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) DEFAULT 'MAIN',entity_no VARCHAR(32),"
                 +"created_at DATETIME(3),created_by VARCHAR(32),updated_at DATETIME(3),updated_by VARCHAR(32),"
@@ -85,7 +86,7 @@ class CheckServiceTest extends FoodWriteGuardFixture {
             f.sql().execute("CREATE TABLE "+name+" (entity_no VARCHAR(32),check_no VARCHAR(32),deleted INT DEFAULT 0)");
         f.sql().execute("CREATE TABLE fnb_check_cart(entity_no VARCHAR(32),check_no VARCHAR(32),status VARCHAR(16))");
         c.getBean(StoreOperationService.class).createPolicy("E","A","actor",new CreatePolicyReq("UTC",0,
-                Instant.parse("2026-01-01T00:00:00Z"),"PREPAY",List.of(),null,0L),"policy");
+                Instant.parse("2026-01-01T00:00:00Z"),payMode,List.of(),null,0L),"policy");
         return f;
     }
     TableVO table(AssertableApplicationContext c,String code) {
@@ -184,10 +185,11 @@ class CheckServiceTest extends FoodWriteGuardFixture {
         });
     }
     @Test void tradeFactsAndDraftsBlockClearAndSeatEditsWithoutMutatingHistory() {
+        for(String payMode:List.of("PREPAY","POSTPAY"))
         for(String fact:List.of("fnb_order_batch","fnb_check_batch_membership","fnb_settlement_item","fnb_return","fnb_dining_entitlement","fnb_check_cart")) {
             run(c -> {
-                var f=fixture(c);var t=table(c,"T1");var target=table(c,"T2");var s=c.getBean(CheckService.class);
-                var check=s.openCheck("E","A","actor",open(t,2,"EXCLUSIVE"),"open").check();
+                var f=fixture(c,payMode);var t=table(c,"T1");var target=table(c,"T2");var s=c.getBean(CheckService.class);
+                var check=s.openCheck("E","A","actor",new OpenCheckReq(List.of(t.tableNo()),2,payMode,null,List.of(new TableVersionReq(t.tableNo(),t.version())),"EXCLUSIVE",List.of(),null),"open").check();
                 var occ=s.getCheck("E","A",check.checkNo()).occupancies().getFirst();
                 f.sql().update("INSERT INTO "+fact+"(entity_no,check_no"+(fact.equals("fnb_check_cart")?",status":"")+") VALUES('E',?"+(fact.equals("fnb_check_cart")?",'OPEN'":"")+")",check.checkNo());
                 DiningSessionTest.code(() -> s.clearCheck("E","A",check.checkNo(),"actor",

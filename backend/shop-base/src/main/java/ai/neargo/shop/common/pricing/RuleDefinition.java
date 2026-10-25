@@ -1,6 +1,8 @@
 package ai.neargo.shop.common.pricing;
 
 import java.util.Set;
+import java.util.EnumSet;
+import java.util.Collections;
 
 /** Closed compiled rule vocabulary. No raw JSON, class names, scripts, or reflection paths are executable. */
 public record RuleDefinition(String ruleNo, int ruleVersion, EvaluatorType evaluatorType, Parameters parameters) {
@@ -30,16 +32,23 @@ public record RuleDefinition(String ruleNo, int ruleVersion, EvaluatorType evalu
             Set<BenefitKind> leftKinds, Set<BenefitKind> rightKinds, boolean actuallyAppliedOnly)
             implements Parameters {
         public ForbiddenCombination {
-            leftKinds = Set.copyOf(leftKinds);
-            rightKinds = Set.copyOf(rightKinds);
+            leftKinds = ordered(leftKinds, BenefitKind.class);
+            rightKinds = ordered(rightKinds, BenefitKind.class);
         }
     }
 
     public record CountLimits(Set<BenefitKind> kinds, Set<LimitPath> limits) implements Parameters {
         public CountLimits {
-            kinds = Set.copyOf(kinds);
-            limits = Set.copyOf(limits);
+            kinds = ordered(kinds, BenefitKind.class);
+            limits = ordered(limits, LimitPath.class);
         }
+    }
+
+    /** Enum declaration order is stable across JVMs; Set.copyOf iteration is deliberately randomized. */
+    private static <E extends Enum<E>> Set<E> ordered(Set<E> source, Class<E> type) {
+        var result = EnumSet.noneOf(type);
+        result.addAll(source);
+        return Collections.unmodifiableSet(result);
     }
 
     /** Remaining mandatory policies have code-owned semantics, rather than mutable generic parameters. */

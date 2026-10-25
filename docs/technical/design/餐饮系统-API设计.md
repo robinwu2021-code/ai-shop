@@ -1,6 +1,16 @@
 # 餐饮系统API设计
 
-> 源码核对：2026-10-25；云端基线 FOOD V15（83张业务表＋历史表＝84张），当前源码目标 FOOD V25 / CORE V581 / INVENTORY V14。交付核验状态：DEPLOYED_EMBEDDED_VERIFIED；独立适配/原生专项及发布进展见交付验证记录，历史 V1/73 仅为当时初始化记录。PLANNED 对象保留为目标，不代表实现。
+## 当前交付证据
+
+记录日期：2026-10-25。生产已核验提交：`fef7f00982c978819645a527d26b819d343d8aab`（`fef7f0098`），餐饮集成部署；迁移基线 FOOD V25 / CORE V581 / INVENTORY V14来自既有迁移核验记录，本节不代表持续在线监测。
+
+状态分开阅读：代码已交付；专项验证见验收矩阵；生产部署已核验；终端、真实设备和跨owner完整营业验收仍待完成。报表生产未启用，本批未发布支付资金能力。后文V15、H5/PICKUP及CODED_PENDING_VERIFICATION保留为历史切片/完整目标验收状态，不表示当前所有后端尚未编译测试，也不表示所有完整目标均已交付。
+
+本地新增修复尚未提交或部署；待发布迁移 CORE V587 / INVENTORY V15。旧规则目录失配须显式新发布，不能静默放宽。见[本轮原生记录](../餐饮非支付原生链路验收记录.md)。
+
+证据：[验收执行及发布记录](../TDD-餐饮功能验收与接口测试.md) · [逐项验收矩阵](./餐饮功能验收标准与证据矩阵.md) · [实际公开API](./餐饮系统-实际公开API对照.md) · [BIZ迁移及交付记录](../TDD-餐饮系统-BIZ01-12-交付验证.md)。
+
+> 历史与源码发现口径： 源码核对：2026-10-25；云端基线 FOOD V15（83张业务表＋历史表＝84张），源码迁移目标 FOOD V25 / CORE V587 / INVENTORY V15（仅源码发现，不代表已部署）。交付核验状态：DEPLOYED_EMBEDDED_VERIFIED；独立适配/原生专项及发布进展见交付验证记录，历史 V1/73 仅为当时初始化记录。PLANNED 对象保留为目标，不代表实现。
 > 由 `node scripts/gen-food-system-design.mjs` 生成；真源：[设计源](./schema/food-system-design.json)。实际 API、方法与迁移从原源码发现；不执行迁移。
 
 ## 当前源码实现清单（交付核验见记录）
@@ -119,6 +129,13 @@
 | biz | PUT | /biz/x/food/menus/{menuNo}/definition | ai.neargo.shop.food.api.biz.BizMenuController.replaceDefinition | @PathVariable("menuNo") @NotBlank @Size(max=32) String number; @Valid @RequestBody MenuDefinitionCommand req; @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) String key; HttpServletRequest request | Object | @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')") |
 | biz | PUT | /biz/x/food/modifiers/{modifierNo} | ai.neargo.shop.food.api.biz.BizModifierController.updateModifier | @PathVariable("modifierNo") @NotBlank @Size(max=32) String modifierNo; @Valid @RequestBody UpdateModifierReq req; @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) String key; HttpServletRequest request | ModifierMutationVO | @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')") |
 | biz | POST | /biz/x/food/modifiers/{modifierNo}:publish | ai.neargo.shop.food.api.biz.BizConfigRevisionController.publishModifier | @PathVariable("modifierNo") @NotBlank @Size(max=32) String modifierNo; @Valid @RequestBody PublishConfigReq req; @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) String key; HttpServletRequest request | PublishConfigResultVO | @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')") |
+| biz | GET | /biz/x/food/operating-reports/{view:daily\|period\|trend\|payments\|discounts\|refunds\|profit\|rankings\|inventory\|health} | ai.neargo.shop.food.api.biz.BizDiningReportController.query | @PathVariable String view; @RequestParam(required=false) LocalDate from; @RequestParam(required=false) LocalDate to; @RequestParam(required=false) LocalDate businessDate; @RequestParam(defaultValue="DAY") Granularity granularity; @RequestParam(defaultValue="BALANCE") InventoryView inventoryView; @RequestParam(required=false) String unit; @RequestParam(required=false) String currency; @RequestParam(required=false) List<String> storeNos; @RequestParam(required=false) Integer metricVersion; @RequestParam(required=false) Set<String> metricCodes; @RequestParam(defaultValue="1000") int limit; HttpServletRequest request | Result | @PreAuthorize("@perm.canBiz('"+BizPerms.FINANCE+"')") |
+| biz | POST | /biz/x/food/operating-reports/exports | ai.neargo.shop.food.api.biz.BizDiningReportExportController.create | @Valid @RequestBody DiningReportExportReq body; @RequestHeader("Idempotency-Key") String key; HttpServletRequest request | ReportExportPort.Task | @PreAuthorize("@perm.canBiz('"+BizPerms.FINANCE+"') and @perm.canBiz('"+BizPerms.REPORT_EXPORT+"')") |
+| biz | GET | /biz/x/food/operating-reports/exports/{exportNo} | ai.neargo.shop.food.api.biz.BizDiningReportExportController.get | @PathVariable @Pattern(regexp="[A-Za-z0-9_-]{1,32}") String exportNo; HttpServletRequest request | ReportExportPort.Task | @PreAuthorize("@perm.canBiz('"+BizPerms.FINANCE+"') and @perm.canBiz('"+BizPerms.REPORT_EXPORT+"')") |
+| biz | GET | /biz/x/food/operating-reports/exports/{exportNo}/download | ai.neargo.shop.food.api.biz.BizDiningReportExportController.download | @PathVariable @Pattern(regexp="[A-Za-z0-9_-]{1,32}") String exportNo; HttpServletRequest request | ResponseEntity<ByteArrayResource> | @PreAuthorize("@perm.canBiz('"+BizPerms.FINANCE+"') and @perm.canBiz('"+BizPerms.REPORT_EXPORT+"')") |
+| biz | GET | /biz/x/food/operating-reports/inventory/realtime | ai.neargo.shop.food.api.biz.BizDiningReportController.inventoryRealtime | @RequestParam(defaultValue="1") int metricVersion; HttpServletRequest request | ReportRealtimePort.Result | @PreAuthorize("@perm.canBiz('"+BizPerms.FINANCE+"') and @perm.canBiz('"+BizPerms.STOCK+"')") |
+| biz | GET | /biz/x/food/operating-reports/metrics | ai.neargo.shop.food.api.biz.BizDiningReportController.metrics | HttpServletRequest request | List<MetricDefinition> | @PreAuthorize("@perm.canBiz('"+BizPerms.FINANCE+"')") |
+| biz | GET | /biz/x/food/operating-reports/realtime | ai.neargo.shop.food.api.biz.BizDiningReportController.realtime | @RequestParam(defaultValue="1") int metricVersion; HttpServletRequest request | ReportRealtimePort.Result | @PreAuthorize("@perm.canBiz('"+BizPerms.FINANCE+"')") |
 | biz | PUT | /biz/x/food/option-groups/{groupNo}/items | ai.neargo.shop.food.api.biz.BizOptionGroupController.replaceOptionGroupItems | @PathVariable("groupNo") @NotBlank @Size(max=32) String groupNo; @Valid @RequestBody ReplaceOptionGroupItemsReq req; @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) String key; HttpServletRequest request | OptionGroupMutationVO | @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')") |
 | biz | POST | /biz/x/food/parties | ai.neargo.shop.food.api.biz.BizDiningIdentityController.createParty | @Valid @RequestBody StaffPartyReq req; @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 128) String key; HttpServletRequest request | SessionCredentialVO | @PreAuthorize("@perm.canBiz('" + BizPerms.VERIFY + "')") |
 | biz | GET | /biz/x/food/parties/{sessionNo} | ai.neargo.shop.food.api.biz.BizDiningIdentityController.party | @PathVariable @NotBlank @Size(max = 32) String sessionNo; HttpServletRequest request | PartyVO | @PreAuthorize("@perm.canBiz('" + BizPerms.ORDER_VIEW + "')") |
@@ -386,6 +403,16 @@
 | internal | POST | /internal/food/modifiers/create | ai.neargo.shop.food.server.api.InternalModifierController.createModifier | @Valid @RequestBody ModifierInternalApi.CreateCommand c | CreateModifierResultVO |  |
 | internal | POST | /internal/food/modifiers/list | ai.neargo.shop.food.server.api.InternalModifierController.listModifiers | @Valid @RequestBody ModifierInternalApi.Lookup c | PageData<ModifierConfigVO> |  |
 | internal | POST | /internal/food/modifiers/update | ai.neargo.shop.food.server.api.InternalModifierController.updateModifier | @Valid @RequestBody ModifierInternalApi.UpdateCommand c | ModifierMutationVO |  |
+| internal | POST | /internal/food/operating-report/affected-days | ai.neargo.shop.food.server.api.InternalDiningReportController.affectedDays | @RequestBody ReportAffectedDaysPort.Change change | List<ReportAffectedDaysPort.AffectedDay> |  |
+| internal | POST | /internal/food/operating-report/current-day | ai.neargo.shop.food.server.api.InternalDiningReportController.currentDay | @RequestBody Scope scope | OperatingDay |  |
+| internal | POST | /internal/food/operating-report/day | ai.neargo.shop.food.server.api.InternalDiningReportController.day | @RequestBody DayQuery q | DayEvidence |  |
+| internal | POST | /internal/food/operating-report/export | ai.neargo.shop.food.server.api.InternalDiningReportController.export | @RequestBody ExportQuery command | ReportExportPort.Task |  |
+| internal | POST | /internal/food/operating-report/export-download | ai.neargo.shop.food.server.api.InternalDiningReportController.exportDownload | @RequestBody ExportReference ref | ReportExportPort.Download |  |
+| internal | POST | /internal/food/operating-report/export-status | ai.neargo.shop.food.server.api.InternalDiningReportController.exportStatus | @RequestBody ExportReference ref | ReportExportPort.Task |  |
+| internal | POST | /internal/food/operating-report/facts | ai.neargo.shop.food.server.api.InternalDiningReportController.facts | @RequestBody SourceQuery q | SourceSnapshot |  |
+| internal | POST | /internal/food/operating-report/metrics | ai.neargo.shop.food.server.api.InternalDiningReportController.metrics |  | List<MetricDefinition> |  |
+| internal | POST | /internal/food/operating-report/query | ai.neargo.shop.food.server.api.InternalDiningReportController.query | @RequestBody Query q | Result |  |
+| internal | POST | /internal/food/operating-report/realtime | ai.neargo.shop.food.server.api.InternalDiningReportController.realtime | @RequestBody RealtimeQuery q | ReportRealtimePort.Result |  |
 | internal | POST | /internal/food/option-groups/create | ai.neargo.shop.food.server.api.InternalOptionGroupController.createOptionGroup | @Valid @RequestBody OptionGroupInternalApi.CreateCommand c | CreateOptionGroupResultVO |  |
 | internal | POST | /internal/food/option-groups/get | ai.neargo.shop.food.server.api.InternalOptionGroupController.getOptionGroup | @Valid @RequestBody OptionGroupInternalApi.Identity query | OptionGroupResultVO |  |
 | internal | POST | /internal/food/option-groups/list | ai.neargo.shop.food.server.api.InternalOptionGroupController.listOptionGroups | @Valid @RequestBody OptionGroupInternalApi.Lookup query | PageData<OptionGroupConfigVO> |  |
@@ -498,6 +525,7 @@
 | internal | POST | /internal/printing/bindDevice | ai.neargo.shop.printing.api.internal.InternalPrintController.bindDevice | @RequestBody PrintInternalApi.DeviceCommand request; @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given | ResponseEntity<?> |  |
 | internal | POST | /internal/printing/claim | ai.neargo.shop.printing.api.internal.InternalPrintController.claim | @RequestBody PrintInternalApi.DeviceQuery request; @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given | ResponseEntity<?> |  |
 | internal | POST | /internal/printing/configuration | ai.neargo.shop.printing.api.internal.InternalPrintController.configuration | @RequestBody Scope scope; @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given | ResponseEntity<?> |  |
+| internal | POST | /internal/printing/deviceRecovery | ai.neargo.shop.printing.api.internal.InternalPrintController.deviceRecovery | @RequestBody RecoveryQuery request; @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given | ResponseEntity<?> |  |
 | internal | POST | /internal/printing/enqueue | ai.neargo.shop.printing.api.internal.InternalPrintController.enqueue | @RequestBody PrintInternalApi.EnqueueCommand request; @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given | ResponseEntity<?> |  |
 | internal | POST | /internal/printing/get | ai.neargo.shop.printing.api.internal.InternalPrintController.get | @RequestBody PrintInternalApi.JobQuery request; @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given | ResponseEntity<?> |  |
 | internal | POST | /internal/printing/heartbeat | ai.neargo.shop.printing.api.internal.InternalPrintController.heartbeat | @RequestBody PrintInternalApi.HeartbeatCommand request; @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given | ResponseEntity<?> |  |
@@ -505,6 +533,7 @@
 | internal | POST | /internal/printing/publishTemplate | ai.neargo.shop.printing.api.internal.InternalPrintController.publishTemplate | @RequestBody PrintInternalApi.TemplateCommand request; @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given | ResponseEntity<?> |  |
 | internal | POST | /internal/printing/putRoute | ai.neargo.shop.printing.api.internal.InternalPrintController.putRoute | @RequestBody PrintInternalApi.RouteCommand request; @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given | ResponseEntity<?> |  |
 | internal | POST | /internal/printing/reprint | ai.neargo.shop.printing.api.internal.InternalPrintController.reprint | @RequestBody PrintInternalApi.ReprintCommand request; @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given | ResponseEntity<?> |  |
+| internal | POST | /internal/printing/resolveDeviceUncertainty | ai.neargo.shop.printing.api.internal.InternalPrintController.resolveDeviceUncertainty | @RequestBody ResolveDeviceCommand request; @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given | ResponseEntity<?> |  |
 | internal | POST | /internal/printing/retry | ai.neargo.shop.printing.api.internal.InternalPrintController.retry | @RequestBody PrintInternalApi.JobQuery request; @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given | ResponseEntity<?> |  |
 | internal | POST | /internal/printing/revokeDevice | ai.neargo.shop.printing.api.internal.InternalPrintController.revokeDevice | @RequestBody PrintInternalApi.RevokeDeviceCommand request; @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given | ResponseEntity<?> |  |
 | internal | POST | /internal/trade/industry-after-sales/apply | ai.neargo.shop.portal.internal.InternalIndustryAfterSaleController.apply | @RequestBody IndustryAfterSalePort.Apply request; @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given | ResponseEntity<?> |  |
@@ -670,6 +699,7 @@
 | ai.neargo.shop.food.dto.DiningPriceFacts | Restriction | @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) String skuNo<br>@JsonDeserialize(using = StoreCardFacts.BooleanDeserializer.class) Boolean blocked<br>@JsonDeserialize(using = SalesRestrictionPolicy.DecimalDeserializer.class) BigDecimal remainingQuota<br>@JsonDeserialize(using = StoreCardFacts.BooleanDeserializer.class) Boolean originalStockKnown<br>List<SalesRestrictionVO> rules |
 | ai.neargo.shop.food.dto.DiningQuoteConfirmReq | DiningQuoteConfirmReq | @NotBlank @Size(max = 32) String cartNo<br>@JsonProperty(required = true) @JsonDeserialize(using = CatalogRevisionDeserializer.class) @Min(0) long version<br>@NotBlank @Pattern(regexp = "[0-9a-f]{64}") String confirmationDigest |
 | ai.neargo.shop.food.dto.DiningQuoteReq | DiningQuoteReq | @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) @NotBlank @Size(max = 32) String cartNo<br>@JsonProperty(required = true) @JsonDeserialize(using = CatalogRevisionDeserializer.class) @Min(0) long version<br>@Valid Selection selection |
+| ai.neargo.shop.food.dto.DiningReportExportReq | DiningReportExportReq | @NotNull View view<br>LocalDate from<br>LocalDate to<br>LocalDate businessDate<br>@Size(max=30) List<String> storeNos<br>Integer metricVersion<br>@Size(max=64) Set<String> metricCodes<br>Integer limit<br>MeasureFilter measure |
 | ai.neargo.shop.food.dto.DiningReturnApplyReq | DiningReturnApplyReq | @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) String batchNo<br>@JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) String type<br>@JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) String reason<br>@JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) String reasonCode<br>@JsonDeserialize(contentUsing = MaterialCatalogFacts.TextDeserializer.class) List<String> images<br>List<Line> lines |
 | ai.neargo.shop.food.dto.DiningReturnApplyReq | Line | @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) String sourceLineRef<br>@JsonDeserialize(using = SalesRestrictionPolicy.DecimalDeserializer.class) BigDecimal quantity |
 | ai.neargo.shop.food.dto.DiningReturnVO | DiningReturnVO | String returnNo<br>String batchNo<br>String storeNo<br>String status<br>String financialStatus<br>String kitchenStatus<br>String coreCaseRef<br>String reason<br>List<Line> lines<br>IndustryAfterSalePort.Result financialCase |
@@ -1007,6 +1037,11 @@
 | ai.neargo.shop.food.spi.DiningPricingInternalApi | CustomerQuote | String store<br>CartAccess access<br>DiningQuoteReq request<br>String key |
 | ai.neargo.shop.food.spi.DiningPricingInternalApi | CustomerGet | CartAccess access<br>String cart<br>long version<br>String quote |
 | ai.neargo.shop.food.spi.DiningPricingInternalApi | CustomerConfirm | CartAccess access<br>String quote<br>DiningQuoteConfirmReq request |
+| ai.neargo.shop.food.spi.DiningReportInternalApi | RealtimeQuery | String entity<br>String store<br>String actor<br>int version<br>boolean inventory |
+| ai.neargo.shop.food.spi.DiningReportInternalApi | ExportQuery | Query query<br>String key |
+| ai.neargo.shop.food.spi.DiningReportInternalApi | ExportReference | String entity<br>String actor<br>String exportNo |
+| ai.neargo.shop.food.spi.DiningReportInternalApi | Query | String entity<br>List<String> stores<br>String actor<br>View view<br>LocalDate from<br>LocalDate to<br>Integer version<br>Set<String> metricCodes<br>int limit<br>MeasureFilter measure |
+| ai.neargo.shop.food.spi.DiningReportInternalApi | DayQuery | Scope scope<br>LocalDate date |
 | ai.neargo.shop.food.spi.DiningReturnInternalApi | CustomerApply | String store<br>CartAccess access<br>DiningReturnApplyReq request<br>String key |
 | ai.neargo.shop.food.spi.DiningReturnInternalApi | CustomerReference | CartAccess access<br>String returnNo |
 | ai.neargo.shop.food.spi.DiningReturnInternalApi | StaffReference | String entity<br>String store<br>String actor<br>String returnNo |
@@ -1217,6 +1252,8 @@
 | ai.neargo.shop.food.api.biz.BizPrintDeviceController | HeartbeatReq | boolean online |
 | ai.neargo.shop.food.api.biz.BizPrintJobController | ReprintReq | @NotBlank @Size(max=256) String reason |
 | ai.neargo.shop.portal.biz.BizPricingFeeScopeController | ApplyReq | long expectedSubVersion<br>String sourceHash<br>String reason |
+| ai.neargo.shop.printing.api.internal.InternalPrintController | ResolveDeviceCommand | Scope scope<br>PrintService.DeviceResolution resolution |
+| ai.neargo.shop.printing.api.internal.InternalPrintController | RecoveryQuery | Scope scope<br>String deviceNo |
 | ai.neargo.shop.common.pricing.PricingFeeTaxEngine | Result | Map<PricingPortion, Long> fees<br>Map<PricingPortion, Long> taxes |
 | ai.neargo.shop.spi.inventory.InventoryDemandPlanInternalApi | Reserve | Plan plan<br>long ttlSeconds<br>int lifecycleVersion |
 | ai.neargo.shop.spi.inventory.InventoryDemandPlanInternalApi | Reference | Scope scope |
@@ -1317,7 +1354,25 @@
 | ai.neargo.shop.spi.trade.PricingFeeScopeInternalApi | OriginalQuery | @Valid @NotNull Scope scope<br>@NotBlank String applicationNo |
 | ai.neargo.shop.spi.trade.PricingFeeScopePort | AdjustmentAuthority | String applicationNo<br>String orderNo<br>String subOrderNo<br>String currency<br>long currentFeeMinor<br>long targetFeeMinor<br>String sourceHash |
 | ai.neargo.shop.platform.dto.IndustryVO | IndustryVO | String industry<br>String name<br>int sort<br>boolean enabled<br>boolean wechatMicroAllowed<br>boolean alipayMicroAllowed<br>boolean pointsForced<br>String remark<br>long merchantCount |
+| ai.neargo.shop.printing.center.dispatch.PrintStateModels | PrintStateSnapshot | PrintJobStatus status<br>boolean cancelRequested<br>boolean partialOutput<br>int retryCount<br>int maxRetries |
+| ai.neargo.shop.printing.center.dispatch.PrintStateModels | PrintObservation | ObservedPrintStatus status<br>PrintEvidenceLevel evidence<br>boolean queueTerminated<br>boolean partialOutput |
+| ai.neargo.shop.printing.center.dispatch.PrintStateModels | PrintTransition | PrintJobStatus status<br>boolean releaseGate<br>boolean safeToRetry<br>String reason |
+| ai.neargo.shop.printing.center.dispatch.PrintStateModels | PreparedPrintAttempt | PrintDispatch dispatch<br>String connectionType<br>String leaseToken<br>Instant leaseUntil |
+| ai.neargo.shop.printing.center.dispatch.PrintStateModels | ReceiptAck | String receiptNo<br>String status |
+| ai.neargo.shop.printing.center.dispatch.PrintStateModels | PrintIncidentCommand | PrintScope scope<br>String type<br>String targetType<br>String targetNo<br>String severity<br>FrozenJson details |
+| ai.neargo.shop.printing.center.dispatch.PrintStateModels | PrintAction | String operationNo<br>String targetType<br>String targetNo<br>String action<br>String actorType<br>String actorNo<br>Long beforeRevision<br>Long afterRevision<br>String beforeStatus<br>String afterStatus<br>String reason<br>FrozenJson safeDetails |
+| ai.neargo.shop.printing.center.dispatch.PrintStateModels | PrintJobSnapshot | PrintJobStatus status<br>boolean required<br>boolean replacementResolved |
+| ai.neargo.shop.printing.center.dispatch.PrintStateModels | BatchCounts | int expected<br>int confirmed<br>int failed<br>int unknown<br>int cancelled<br>int resolved<br>PrintBatchStatus status |
+| ai.neargo.shop.printing.center.simulation.SimulationModels | SimulationDispatch | String documentKey<br>SimulationFixtureCode code<br>int queryIndex |
+| ai.neargo.shop.printing.center.simulation.SimulationModels | SimulationStep | long virtualMillis<br>String eventNo<br>PrintObservation observation |
+| ai.neargo.shop.printing.center.simulation.SimulationModels | SimulationFixture | SimulationFixtureCode code<br>String version<br>List<SimulationStep> steps<br>PrintJobStatus expectedStatus |
+| ai.neargo.shop.printing.center.simulation.SimulationModels | SimulationInput | List<PrintLayout> layouts<br>Set<String> requiredDataScopes |
+| ai.neargo.shop.printing.center.template.PrintSceneRegistry | SceneDefinition | String code<br>JsonNode definition<br>JsonNode example<br>Map<String, JsonNode> templates |
+| ai.neargo.shop.printing.service.PrintService | DeviceResolution | String deviceNo<br>long expectedVersion<br>String activeAttemptNo<br>String reason<br>String evidenceRef<br>boolean oldExecutorStopped<br>String requestKey |
+| ai.neargo.shop.printing.service.PrintService | PendingExecution | String jobNo<br>String attemptNo<br>String status |
+| ai.neargo.shop.printing.service.PrintService | DeviceRecovery | String deviceNo<br>long version<br>String activeAttemptNo<br>List<PendingExecution> pending |
 | ai.neargo.shop.printing.service.impl.PrintServiceImpl | RevokeAudit | String key<br>String actor<br>String reason<br>DeviceVO response |
+| ai.neargo.shop.printing.service.impl.PrintServiceImpl | ResolutionAudit | String key<br>String actor<br>String attempt<br>String reason<br>String evidence<br>DeviceVO response |
 | ai.neargo.shop.trade.mapper.IndustryOrderAmendmentRows | Journal | Long id<br>String tenantNo<br>String entityNo<br>String storeNo<br>String orderNo<br>String subOrderNo<br>String amendmentNo<br>String operationKey<br>String requestHash<br>String kind<br>String sourceReturnNo<br>String sourceHash<br>String commandSnapshot<br>String evidenceSnapshot<br>String inventorySnapshot<br>String status<br>String actorNo<br>long expectedSubVersion<br>String currency<br>long receivableDeltaMinor<br>String replacementCartNo<br>Long netDeltaMinor<br>Long taxDeltaMinor |
 | ai.neargo.shop.trade.mapper.IndustryOrderAmendmentRows | Line | Long orderItemId<br>String sourceComponentRef<br>BigDecimal quantity<br>BigDecimal physicalReductionQty<br>BigDecimal cancelQty<br>String unit<br>String disposition<br>long receivableReductionMinor<br>long netReductionMinor<br>long taxReductionMinor |
 | ai.neargo.shop.trade.mapper.IndustryOrderAmendmentRows | FeeApplication | String quoteNo<br>String ruleNo<br>String revisionNo<br>String scopeNo<br>long feeMinor |
@@ -7906,7 +7961,7 @@ Keeta：首批规划渠道，按用户决定暂不接入；不注册真实适配
 
 50条实际公开biz路由，均为 **CODED_PENDING_VERIFICATION**。该标记是逐接口完整目标/营业验收状态，后端批次编译及测试结果独立记录在verification和原TDD收据。此处逐项记录现有Controller/DTO/权限，与前文目标API并列；目标路径相同不表示DTO或完整业务验收一致。原始接口编号、表及历史V1迁移哈希保留。
 
-当前差异：POSTPAY仅沿真实已登录H5/PICKUP身份和门店POSTPAY策略，采用原库存lifecycle3接受未付款履约；父单WAIT_PAY、paidAt为空。额度消费、FOOD ACCEPTED及厨房出站事实同本域事务，不代表收款。
+历史早期差异（后续已扩展员工及匿名/设备POSTPAY，当前入口见实际公开API对照）：该切片POSTPAY仅沿真实已登录H5/PICKUP身份和门店POSTPAY策略，采用原库存lifecycle3接受未付款履约；父单WAIT_PAY、paidAt为空。额度消费、FOOD ACCEPTED及厨房出站事实同本域事务，不代表收款。
 
 - No actual printer hardware implementation
 - No KDS/SSE/push subscription or notification delivery proof from polling APIs

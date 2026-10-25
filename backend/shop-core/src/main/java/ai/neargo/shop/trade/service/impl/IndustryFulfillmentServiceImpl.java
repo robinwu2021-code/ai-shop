@@ -409,9 +409,8 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
             IndustryFulfillmentPort.ItemTarget target,
             InventoryDemandPlanPort.Plan plan) {
         var allocations =
-                json.readValue(
-                        f.source().getAllocationsJson(),
-                        new TypeReference<List<IndustryOrderPort.Allocation>>() {});
+                ai.neargo.shop.trade.policy.IndustryOrderAllocationPolicy.read(
+                        json, f.source().getAllocationsJson());
         var parent =
                 allocations.stream()
                         .filter(

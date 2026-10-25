@@ -31,7 +31,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
@@ -333,7 +332,7 @@ public class PricingFeeRuleServiceImpl
             IndustryFulfillmentPort.Reference ref, String amendment, String sourceHash) {
         var evidence = one(mapper.amendmentSource(ref, amendment, sourceHash));
         List<Allocation> allocations =
-                json.readValue((String) evidence.get("allocations_json"), new TypeReference<>() {});
+                ai.neargo.shop.trade.policy.IndustryOrderAllocationPolicy.read(json, (String) evidence.get("allocations_json"));
         var reductions = mapper.confirmedReductions(ref);
         for (var application : mapper.orderApplications(ref)) {
             String app = (String) application.get("application_no");

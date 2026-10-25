@@ -997,7 +997,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
                     || sku.fulfillments() == null
                     || !sku.fulfillments().contains(fulfillment)
                     || sku.activityOnly()
-                    || !Set.of("STANDARD", "FRESH")
+                    || !Set.of("NORMAL", "FRESH")
                             .contains(Objects.toString(sku.categoryType(), ""))
                     || sku.saleMode() != null && !"NORMAL".equals(sku.saleMode()))
                 throw unsupported();

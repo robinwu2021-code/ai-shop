@@ -321,16 +321,45 @@ public class PricingFeeRuleMapper {
     }
 
     public List<PricingFeeEvidenceRow> orderApplications(Reference ref) {
-        return rows(
-                "SELECT a.*,q.result_snapshot FROM ord_pricing_fee_application a JOIN"
-                    + " ord_price_quote q ON q.tenant_no=a.tenant_no AND q.entity_no=a.entity_no"
-                    + " AND q.store_no=a.store_no AND q.quote_no=a.quote_no WHERE a.entity_no=? AND"
-                    + " a.store_no=? AND a.order_no=? AND a.sub_order_no=? ORDER BY"
-                    + " a.scope_no,a.rule_no,a.id",
-                ref.scope().entityNo(),
-                ref.scope().storeNo(),
-                ref.orderNo(),
-                ref.subOrderNo());
+        var applications =
+                db.queryForList(
+                        "SELECT * FROM ord_pricing_fee_application WHERE tenant_no=? AND"
+                            + " entity_no=? AND store_no=? AND order_no=? AND sub_order_no=? ORDER"
+                            + " BY scope_no,rule_no,id",
+                        ref.scope().tenantNo(),
+                        ref.scope().entityNo(),
+                        ref.scope().storeNo(),
+                        ref.orderNo(),
+                        ref.subOrderNo());
+        if (applications.isEmpty()) return List.of();
+        // Quote tables pin unicode_ci while fee tables inherit the database collation.
+        // Resolve both indexed scopes with parameters rather than comparing incompatible columns.
+        var quoteNos = applications.stream().map(a -> a.get("quote_no")).distinct().toList();
+        var args =
+                new java.util.ArrayList<Object>(
+                        List.of(
+                                ref.scope().tenantNo(),
+                                ref.scope().entityNo(),
+                                ref.scope().storeNo()));
+        args.addAll(quoteNos);
+        var snapshots = new java.util.HashMap<Object, Object>();
+        for (var quote :
+                db.queryForList(
+                        "SELECT quote_no,result_snapshot FROM ord_price_quote WHERE tenant_no=? AND"
+                            + " entity_no=? AND store_no=? AND quote_no IN ("
+                                + String.join(
+                                        ",", java.util.Collections.nCopies(quoteNos.size(), "?"))
+                                + ")",
+                        args.toArray()))
+            snapshots.put(quote.get("quote_no"), quote.get("result_snapshot"));
+        return applications.stream()
+                .filter(a -> snapshots.containsKey(a.get("quote_no")))
+                .map(
+                        a -> {
+                            a.put("result_snapshot", snapshots.get(a.get("quote_no")));
+                            return new PricingFeeEvidenceRow(a);
+                        })
+                .toList();
     }
 
     public List<PricingFeeEvidenceRow> confirmedReductions(Reference ref) {

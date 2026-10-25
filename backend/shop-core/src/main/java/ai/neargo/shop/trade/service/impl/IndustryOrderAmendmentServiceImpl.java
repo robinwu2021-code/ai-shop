@@ -1073,7 +1073,8 @@ public class IndustryOrderAmendmentServiceImpl implements IndustryOrderAmendment
     }
 
     private List<IndustryOrderPort.Allocation> allocations(Facts f) {
-        return json.readValue(f.source().getAllocationsJson(), new TypeReference<>() {});
+        return ai.neargo.shop.trade.policy.IndustryOrderAllocationPolicy.read(
+                json, f.source().getAllocationsJson());
     }
 
     private BigDecimal reduced(Reference ref, Long item, ReductionColumn column) {

@@ -327,8 +327,7 @@ public class PricingPublicationPolicy {
     private RevisionVO append(Context c, Head head, CompilationResult compilation, String templateRevision,
             String patch, String reason, String rollback, boolean template) {
         String previous = head.draft().activeRevisionNo();
-        long number = previous == null ? 1 : Math.addExact(revision(c, head.draft().no(), previous, template)
-                    .revision(), 1);
+        long number = previous == null ? 1 : Math.addExact(previousRevisionNumber(c, head, previous, template), 1);
         String no = BizKey.next("PR");
         String effective = compilation.config().canonicalJson();
         String hash = template ? digest(effective) : compilation.config().configHash();
@@ -450,6 +449,16 @@ public class PricingPublicationPolicy {
                         .equals(row.getEngineSpecVersion())
                 || !digest(canonical(definition.config().rules())).equals(row.getRuleCatalogVersion())) throw bad();
         return row;
+    }
+
+    /** A new authorized publication needs the previous sequence, never permission to execute old rules. */
+    private long previousRevisionNumber(Context c, Head head, String no, boolean template) {
+        if (!template) return revision(c, head.draft().no(), no, false).revision();
+        var row = templateRevisions.selectOne(new QueryWrapper<OrdPricingTemplateRevision>()
+                .eq("tenant_no", c.tenantNo()).eq("template_no", head.draft().no())
+                .eq("revision_no", no).eq("industry_code", head.draft().industryCode()).eq("deleted", 0));
+        if (row == null || row.getRevision() == null || row.getRevision() < 1) throw missing();
+        return row.getRevision();
     }
 
     private RevisionVO revision(Context c, String parent, String no, boolean template) {
