@@ -64,6 +64,12 @@ public final class ReportDailyServiceImpl implements ReportDailyService {
             for (var dirty:storage.pendingDirty(scope,version,Math.max(1,budget))) {
                 if (budget<=0) break;
                 if (clock.instant().isBefore(dirty.readyAfter())) { deferred++; continue; }
+                // readyAfter is the event time; an open business day is still not rebuildable.
+                // Defer it like the planning loop does instead of letting rebuild() count a failure.
+                try {
+                    var day=days.day(dirty.partition().scope(),dirty.partition().businessDate());
+                    if (clock.instant().isBefore(day.endsAt().plusSeconds(props.getBufferMinutes()*60L))) { deferred++; continue; }
+                } catch (RuntimeException ex) { failed++; continue; }
                 budget--;
                 try {
                     rebuild(request(dirty.partition(),"DIRTY:"+version+":"+dirty.partition().businessDate()+":"+dirty.generation(),
