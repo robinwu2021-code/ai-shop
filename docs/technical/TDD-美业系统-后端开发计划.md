@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-25 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5已代码验收，A5b已按范围验收，A5c报价误连已修复验收，A6已代码验收，A7真实身份及资源组合已代码验收，A8词条已按范围验收，A8b会员码客户端补齐并通过B端类型检查，A9及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
+> 状态：实施中 · 2026-10-25 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5已代码验收，A5b已按范围验收，A5c报价误连已修复验收，A6已代码验收，A7真实身份及资源组合已代码验收，A8词条已按范围验收，A8b会员码客户端补齐并通过B端类型检查，A9权限及生成契约已代码验收，A10/A11其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
 > **执行方式：** 使用`superpowers:subagent-driven-development`逐任务实施及独立审查，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -950,21 +950,45 @@ Owned仅b-app/src/api/contract.ts、requests.ts、http.ts及新tests/member-code
 
 ### 2.34 Task60A-A9：权限登记与生成契约对账（2026-10-25）
 
-档位1；60A AC7其余部分及A8b已有会员码请求的生成契约收口。精确十一文件、命令、隔离副本及异常生成物处置见[A9 brief](../../.superpowers/sdd/beauty-backend/task-60a-a9-brief.md)。不新增端点或权限授予；复用真实注解、角色、原REQUIRED、原OpenAPI生成器和已存在ResolveMemberCodeReq/CustomerReference。
+档位1；60A AC7其余部分及A8b已有会员码请求的生成契约收口。原十一项及已核验六项派生输出、命令、隔离副本及异常生成物处置见[A9 brief](../../.superpowers/sdd/beauty-backend/task-60a-a9-brief.md)。不新增端点或权限授予；复用真实注解、角色、原REQUIRED、原OpenAPI生成器和已存在ResolveMemberCodeReq/CustomerReference。
 
 | AC | 实施 | 验证 |
 |---|---|---|
-| A9-1 | REQUIRED补人员assignments/account-links/status-changes→STORE_ADMIN、store-sales-catalog/versions→GOODS四路径 | 原四个权限守卫实际RED→GREEN；删一登记消融RED/恢复；不改PUBLIC/ANY_OF/ROLE_PERMS或runtimeauth |
+| A9-1 | REQUIRED补人员assignments/account-links/status-changes→STORE_ADMIN、store-sales-catalog/versions→GOODS四路径 | 原四个权限守卫及同方法注解前后顺序/邻方法不借权测试实际RED→GREEN；删一登记消融RED/恢复；不改PUBLIC/ANY_OF/ROLE_PERMS或runtimeauth |
 | A9-2 | 真实角色/注解重生B功能/角色/三域矩阵及Ops JSON/md，当前技术索引同步 | 四个Ops GET×FINANCE/SUPER_ADMIN八行按源对账；人员账号关联/停用仍须真实ownerOnly，不由登记放开 |
 | A9-3 | 现有B端生成器REQUEST_TYPES补mResolveMemberCode映射，原Req两字段补说明，重生OpenAPI | 新实际YAML测试验证必填两字段请求体、原response/auth；旧文档缺body真实RED，映射消融及恢复 |
 | A9-4 | 生成幂等及全局文档守卫 | 两次真实生成SHA一致；全局check在自有/tmp源码副本执行，保留真实结果；额外产物先逐路径报根再批准 |
 
+已确认权限守卫只向上找注解，四个真实Controller将PreAuthorize放在Mapping之后；允许同一测试文件提取供真实守卫复用的同方法注解块识别，并补前后顺序/多行/邻方法不借权反例，不移动生产注解或放开权限。Ops生成md中五角色退役elec码清理按当前未变Perms真源保留。
+
+根另核对三个OpsEntitlement真实Controller及Perms：target registry遗漏四个points和十三个既有权益端点，共17项。增列原perm-endpoint-map.mjs及原ops-perm-matrix.test.ts两个源路径，只按真实method/path/权限码精确登记并补正反例；不扩大运行时授权。当前允许19路径，实际未变生成物只登记无差异。
+
+隔离副本首次全局checker真实exit1，根逐份核对313行diff，额外允许API清单/API详情-B端、数据库表清单及词条/实体字典/glossary.json六份派生物：分别来自本次requestBody、已验收结构解析的两表列数、已验收三语/错误码/realm枚举。原生成器不改；17项允许路径中未变的三域矩阵只记实际无差异，不制造修改。snapshot中的ui-lib.page.html副产物不纳入产品。
+
 本片产品：BizEndpointPermTest、一份Ops fixture、五份生成md（Ops/B功能/B角色/三域/技术README）、原B OpenAPI生成器、原requests字段注释、实际openapi-b.yaml及新member-code-spec.test，共十一文件。其它源/生成物不因全局checker运行自动获准提交。后端用JDK21离线缓存；不跑native/正式部署；A8b未变的B端完整编译/242项和shared8不重复为本片制造证据。
 
-- [ ] 真实四路径登记缺口和实际OpenAPI缺请求体均有行为RED，再最小修复。
-- [ ] 权限四方法与新增YAML测试实际通过，两个必要消融失败且精确恢复。
-- [ ] 真源生成、精确差异及幂等、隔离副本全局checker状态明确；非范围问题不静默批量收录。
-- [ ] 独立规格/质量审查及精确提交后继续A10，BM04正式部署保持后置。
+- [x] 真实四路径登记缺口和实际OpenAPI缺请求体均有行为RED，再最小修复。
+- [x] 权限四方法与新增YAML测试实际通过，两个必要消融失败且精确恢复。
+- [x] 真源生成、精确差异及幂等、隔离副本全局checker状态明确；非范围问题不静默批量收录。
+- [x] 独立规格/质量审查及精确提交后继续A10，BM04正式部署保持后置。
+
+### 2.35 Task60A-A10：有效确认请求与错误身份域断言（2026-10-25）
+
+档位0，Task59 M1测试夹具收尾，不改变生产鉴权。精确两文件及测试见[A10 brief](../../.superpowers/sdd/beauty-backend/task-60a-a10-brief.md)：仅BeautyBm04EmbeddedHttpIT及新BeautyBm04ConfirmationFixtureTest。普通单测与编译先执行，真实embedded/standalone子进程拓扑及权限消融仍留60B最终统一部署。
+
+| AC | 实施 | 验证 |
+|---|---|---|
+| A10-1 | 共用confirmationBody(quote)，完整quoteNo/quoteRevision/quoteHash | 普通validConfirmationUsesPreparedQuoteEvidence逐字段证明；两条真实身份请求使用同一有效body |
+| A10-2 | 错MERCHANT realm必须HTTP401且10401，前后同商家会话仍可读合法B资源 | 普通wrongRealmAssertionRequiresExactAuthorityFailure及RejectsMalformedBodyFailure；拒绝过期10402/任意业务失败 |
+| A10-3 | 错误请求前后确认/checkout指针与订单支付效果不变；随后同body真实C确认下单 | 实际SQL只读观测及现有业务fixture代码；此次仅编译，执行证据明确留60B |
+| A10-4 | 保留独立无效body覆盖与有限消融 | 实际校验失败合同HTTP200/10400，不误当HTTP400；普通三方法RED/GREEN/精确恢复，embedded test-compile |
+
+身份异常依据requireCurrentBuyer→SecurityUtils.requireUser→GlobalExceptionHandler.onUnauthorized，未被C过滤器接受的商家会话无身份，返回401/10401；onInvalid按现有信封返回200/10400。两类错误不能互相冒充。Helper在外层package-private static，普通测试不能构造依赖环境的Fixture或开启deployment属性。无后台进程/容器/数据库，不修改生产文件。
+
+- [ ] 先在真实共用helper路径补行为断言取得RED，不以缺类/编译失败记业务RED。
+- [ ] helper三方法实际零fail/error/skip，有限错误接受消融RED并逐字恢复GREEN。
+- [ ] 有效body、真实会话前后检查及零经济副作用断言代码编译通过；真实HTTP执行仍未验。
+- [ ] 独立规格/质量审查及精确提交，继续A11，不能据普通helper测试宣布M1部署验证通过。
 
 ## §3 数据层之后的业务任务与启动深化
 
@@ -2280,3 +2304,13 @@ Node真实19通过/1失败到最终20通过；正常原生三方法3/0失败/0�
 真实缺方法RED三失败→三项GREEN；完整B端vue-tsc exit0无诊断，B端实际43文件242项通过，shared字段守卫8项通过。字段值对调消融得到一项断言失败，finally精确恢复后新三项再次通过；完整套件不为恢复再跑。初次shared配置后缀错误作为setup保留，不计行为RED。独立规格PASS/质量APPROVED，无发现，[报告](../../.superpowers/sdd/beauty-backend/task-60a-a8b-report.md)、[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a8b.md)。根核验四源码、只读owner/endpoint/mock/shared和A8九产品、实际日志、恢复及精确提交父树通过；A8继承类型Important关闭。
 
 审查CannotVerify：真实HTTP权限/到期语义由未变所有者及后续统一部署验证；生成OpenAPI已有response但缺REQUEST_TYPES/body是确认缺口，已列A9必须收口，不能以客户端编译通过宣称文档完整。无后端/native/正式部署重复运行，A9后继续A10/A11及BM05～P4。
+
+### 32.21 60A-A9权限与生成契约代码验收（2026-10-25）
+
+产品`c07890c3fc9e691f5101d12cd5dc744709a84153`实际18文件（19允许路径，三域矩阵重生成无差异）。补四项REQUIRED，测试守卫改用JDK21方法AST正确识别注解前后/多行/FQ且不借邻方法/注释，损坏源码明确失败；新增有效反例和保留原四方法，最终Java10/0失败/0错误/0跳过。
+
+已有会员码生成合同补required两字段body及说明，实际YAML3通过；Ops目标登记按真实注解精确补17项，完整37通过，删除一项消融失败、恢复后有限31通过（六旧项未选）。Ops角色JSON仅FINANCE/SUPER_ADMIN各四项新增，无其他增删；运行时权限未变。正常13份实际输出两代SHA一致；六项派生文档逐份核对来源后生成，root不是批量接纳未知diff。
+
+根核验全部106证据SHA、19路径/18变更、25项只读源、六阶段JavaXML、真实恢复及两代输出；独立新鲜snapshot输入7792文件、checker后7793，唯一新增ui-lib.page.html副产物保留在/tmp不入产品。全局25生成器实际exit0。独立规格PASS/质量APPROVED，无重要问题，[报告](../../.superpowers/sdd/beauty-backend/task-60a-a9-report.md)、[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a9.md)。Java登记消融发生在AST扩展之前，后续最终10项已真实运行，不虚称最终源码重复消融。
+
+Minor为既有glossary加载TS词条的MODULE_TYPELESS_PACKAGE_JSON输出，保留A11归因/最终分支审查，不改package元数据或静默压制。CannotVerify真源/快照/来源完整性由根实际hash、源码读取和106证据核验闭合；运行时ownerOnly及正式部署保持既有验证边界。无运行时授权/DDL/POM/known变更，未重复未变B242/typecheck/shared8或native。下一片A10，之后A11和BM05～P4继续。

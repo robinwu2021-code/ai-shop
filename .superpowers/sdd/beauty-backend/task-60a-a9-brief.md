@@ -30,3 +30,35 @@ A8b completed realBAPI; rootread existing OpenAPI shows this route response/auth
 
 ## Report / gate
 Write .superpowers/sdd/beauty-backend/task-60a-a9-report.md/evidence; exactmanifest11orrootamendedpaths+completeBASEdiff+generatordiff/effects, everycommand/exit andfreshXML, source-backedpermissions, twoRED/restoreproof, idempotence/outputboundary and globalcheckactualstatus. Do not claim globalgateGREEN ifanydrift/unrelatedfailurepersists. Freezeproductfiles then independent spec+quality review before commit. A8b closesprior typecheck; A9 closesrequiredpermission/generatedcontract debt, notBM04deployment/BM05. Continue without newuserpermission; technicalscopequestionsgive rootfacts.
+
+## Root ruling A9 annotation-order false negative (2026-10-25)
+Root inspected current scanGuardedEndpoints: only preceding annotation lines are searched, while all four actual controllers put PreAuthorize after PostMapping. After exact four REQUIRED entries the real legacy decisionsAreActuallyEnforced fails, so this is a confirmed guard defect. Same already-owned BizEndpointPermTest may extract a testable method-local annotation-block scanner used by the REAL directory guard, recognizing valid PreAuthorize canBiz/canAnyBiz before OR after mapping. No fixed line distance and no borrowing another method's guard; preserve root/prefix/endpoint scanning and existing before-order behavior. Add focused behavioral fixtures in same class: before/after order, multiline annotations, unguarded neighbor cannot inherit prior/following authorization. No second independent parser used only by tests, no empty assertions, no production annotation relocation/PUBLIC exemption. Capture real RED and final fresh whole class XML including four legacy and new cases, plus delete-one-required mutation/restore. Counts must reflect actual added cases, no fixed4passed fiction. Scope paths unchanged; update report exact methods/design deviation.
+Generated Ops Markdown source role cleanup for BD/ELEC_ADMIN/GOODS_OPS/RISK/SUPPORT is accepted only to match actual unchanged Perms ROLE_PERMS (root confirmed ELEC_ADMIN dashboard-only and retired elec role policy). This is existing owner truth, no runtime role change. Preserve source-backed diff/evidence, do not hand-clip generated output. Root is separately assessing exact four newly unclassified target registry routes and six extra generated paths; no write authorization for additional source/output paths yet.
+
+## Root ruling A9 six exact derived outputs (2026-10-25)
+Root fully read /tmp/task60a-a9/attribution-*.diff (313 total lines) and approves exactly these SIX additional generated product paths, no generator source changes:
+- docs/api/API清单.md and docs/api/API详情-B端.md: actual member-code ResolveMemberCodeReq requestBody/schema only.
+- docs/technical/reference/数据库表清单.md: frozen V533 mch_resource19→17 and V517 ent_migration_alias24→23 column-count corrections inherited from accepted structural parser.
+- docs/technical/reference/中英文对照-词条.md, docs/technical/reference/中英文对照-实体与字典.md, docs/technical/reference/glossary.json: accepted A8 locale labels/two-stock-slots; existing BEAUTY_SOURCE_CUSTOMER_REQUIRED/BEAUTY_DEPENDENCY_UNAVAILABLE and BoundDelegatedCalls.Mode values from unchanged accepted Java.
+Use actual existing gen-api-index/gen-api-detail/gen-table-inventory/gen-glossary sources; do not hand-edit outputs or widen source. Current allowed product paths total17, actual changed paths may be fewer: explicitly record unchanged generated domain matrix instead of manufacturing a diff. Snapshot-only ui-lib.page.html remains untracked sideeffect evidence, not product. Recreate/overlay snapshot with exact authorized current sources/outputs, then actual --check; hash/idempotence checks cover all actual approved generated outputs. Four points plus thirteen existing entitlement target-registry mappings still under root source audit, NOT yet permission to modify registry or its tests.
+
+## Root ruling A9 exact Ops target-registry closure (2026-10-25)
+Root read all three real OpsEntitlement controllers plus actual Perms constants and existing ops-perm-matrix guard. The generated target section's17 unclassified entries are real missing codeOf registrations: exact four points GET routes above plus13 entitlement routes below. Approve exactly TWO additional source/test paths: scripts/perm-endpoint-map.mjs and packages/shared/tests/ops-perm-matrix.test.ts. Allowedpaths19 total. Add only exact anchored method+path mappings (same placeholder syntax as real route declarations), no broadprefix/PUBLIC/role/runtimepermission changes. Four points GET map finance:settle:read. Thirteen current-authority mappings:
+
+| Route | Real constant | Exact code |
+|---|---|---|
+| GET /ops/pay/entitlement-dead-letters | ENT_EXCEPTION_READ | ops:pay:ent:read |
+| GET /ops/pay/entitlement-exceptions | ENT_EXCEPTION_READ | ops:pay:ent:read |
+| GET /ops/pay/entitlement-exceptions/{exceptionNo} | ENT_EXCEPTION_READ | ops:pay:ent:read |
+| GET /ops/pay/entitlement-exceptions/{exceptionNo}/actions | ENT_EXCEPTION_READ | ops:pay:ent:read |
+| POST /ops/pay/entitlement-exceptions/{exceptionNo}/query-source | ENT_EXCEPTION_VERIFY | ops:pay:ent:verify |
+| POST /ops/pay/entitlement-exceptions/{exceptionNo}/retry-event | ENT_EXCEPTION_RECOVER | ops:pay:ent:recover |
+| POST /ops/pay/entitlement-exceptions/{exceptionNo}/retry-grant | ENT_EXCEPTION_RECOVER | ops:pay:ent:recover |
+| GET /ops/pay/entitlement-reconciliations | ENT_EXCEPTION_READ | ops:pay:ent:read |
+| POST /ops/pay/entitlement-reconciliations | ENT_EXCEPTION_VERIFY | ops:pay:ent:verify |
+| GET /ops/pay/entitlement-reconciliations/{reconNo} | ENT_EXCEPTION_READ | ops:pay:ent:read |
+| GET /ops/pay/entitlement-reconciliations/{reconNo}/differences | ENT_EXCEPTION_READ | ops:pay:ent:read |
+| POST /ops/pay/entitlements/{instanceNo}/freeze | ENT_FREEZE | ops:pay:ent:freeze |
+| GET /ops/pay/entitlements/{instanceNo}/lifecycle | ENT_EXCEPTION_READ | ops:pay:ent:read |
+
+Use existing real codeOf/RULES module and actual existing Ops matrix tests. Add focused source-backed positive cases for all17 and wrongverb/lookalike/suffix negative cases; capture genuine oldregistry RED, add exactentries then GREEN. Existing full ops-perm-matrix suite must run once for affected registration/real matrix semantics, no baseline weakening. A minimal deletion of one new exact mapping must fail relevant new test, finally restore exactbytes and finite affectedGREEN; do not rerun wholeJava/native for this JS mutation. Regenerate owned Ops MD and related actual outputs, preserving JSON matrix change solely the originaleightrole-endpoint additions. Unrelated deadrules/mapping gaps if found require exactrootfacts before morechanges. Archive currentauthority JSON with report; no handwritten output patches. This is target-registry/doc truth alignment of existing protected APIs, not implementation of P2 entitlement operations or new grants.
