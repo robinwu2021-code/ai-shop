@@ -14,6 +14,9 @@ import tools.jackson.databind.annotation.JsonDeserialize;
 
 /** Original FOOD service-token transport keeps staff scope and guest bearer resolution separate. */
 public interface CatalogInternalApi {
+    String SCHEDULED_PATH = "/internal/food/catalog/scheduled-cart";
+    @PostExchange(SCHEDULED_PATH) CatalogVO scheduledCart(@RequestBody ScheduledQuery query);
+    record ScheduledQuery(String entityNo, String storeNo, String cartNo) { }
     String READ_PATH = "/internal/food/catalog/read";
     String PUBLIC_PATH = "/internal/food/catalog/public";
     String GUEST_PATH = "/internal/food/catalog/guest";

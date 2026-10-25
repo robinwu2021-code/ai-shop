@@ -3,10 +3,10 @@ import {beforeEach,expect,it,vi} from 'vitest';
 import {mount,flushPromises} from '@vue/test-utils';
 import {reactive} from 'vue';
 import './component-setup';
-const m=vi.hoisted(()=>({accounts:vi.fn(),candidates:vi.fn(),select:vi.fn(),account:vi.fn(),plans:vi.fn(),load:null as null|((q:Record<string,string>)=>void)}));
+const m=vi.hoisted(()=>({accounts:vi.fn(),candidates:vi.fn(),select:vi.fn(),account:vi.fn(),plans:vi.fn(),scope:vi.fn(),load:null as null|((q:Record<string,string>)=>void)}));
 vi.mock('@dcloudio/uni-app',()=>({onLoad:(f:typeof m.load)=>{m.load=f;},onShow:vi.fn(),onHide:vi.fn()}));
 vi.mock('@/api',()=>({api:{mManagementContext:async()=>({actorKey:"ACTOR"}),mSvWallets:async()=>[],mSvRechargeOptions:async()=>({issuerOptions:{legacyMode:true,issuers:[]},plans:{records:[],nextCursor:null}}),mSvAccounts:m.accounts,mScopeCandidates:m.candidates,mSvSelectCustomer:m.select,mSvAccount:m.account,mSvPlans:m.plans}}));
-const store=reactive({storeNo:'S1',profile:{merchantNo:'M1'},multiStore:false,can:()=>true,ensureStores:async()=>{}});
+const store=reactive({storeNo:'S1',profile:{merchantNo:'M1'},multiStore:false,can:()=>true,ensureStores:async()=>{},ensureScope:m.scope});
 vi.mock('@/stores/merchant',()=>({useMerchantStore:()=>store}));
 vi.mock('vue-i18n',()=>({useI18n:()=>({t:(k:string)=>k})}));
 import Directory from '@/pages/stored-value/components/CustomerAccountList.vue';
@@ -14,7 +14,7 @@ import Detail from '@/pages/stored-value-account/index.vue';
 const funded={accountRef:'A1',maskedName:'已储值会员',maskedPhone:'138****0002',currency:'CNY',balanceMinor:0,heldMinor:0,availableMinor:0,lastOccurredAt:null,lastRechargeAt:'2026-10-20T02:00:00Z'};
 const candidate={memberNo:'M2',displayName:'未储值会员',phoneMasked:'138****0001',memberStatus:'LEAD',canRecharge:true,unavailableReason:null,account:null};
 const selected={...candidate,customerRef:'REF',expiresAt:new Date(Date.now()+120000).toISOString()};
-beforeEach(()=>{vi.clearAllMocks();store.storeNo='S1';m.accounts.mockResolvedValue({records:[funded],nextCursor:null});m.candidates.mockImplementation(async(_s,q)=>({items:q.keyword?[candidate]:[{...candidate,memberNo:null,displayName:funded.maskedName,phoneMasked:funded.maskedPhone,account:funded,lastRechargeAt:funded.lastRechargeAt}],nextCursor:null,identityConflictCount:0}));m.select.mockResolvedValue(selected);m.plans.mockResolvedValue({records:[],nextCursor:null});});
+beforeEach(()=>{vi.clearAllMocks();store.storeNo='S1';m.scope.mockResolvedValue(undefined);m.accounts.mockResolvedValue({records:[funded],nextCursor:null});m.candidates.mockImplementation(async(_s,q)=>({items:q.keyword?[candidate]:[{...candidate,memberNo:null,displayName:funded.maskedName,phoneMasked:funded.maskedPhone,account:funded,lastRechargeAt:funded.lastRechargeAt}],nextCursor:null,identityConflictCount:0}));m.select.mockResolvedValue(selected);m.plans.mockResolvedValue({records:[],nextCursor:null});});
 it('searches members from the directory, opens detail without a balance, and clears back to funded members',async()=>{
  const w=mount(Directory);await flushPromises();expect(w.text()).toContain('已储值会员');
  await w.find('input').setValue('13800000001');await w.find('input').trigger('confirm');await flushPromises();
@@ -30,7 +30,7 @@ it('does not apply a member search after it is cleared or the store changes',asy
  resolve({items:[candidate],nextCursor:null,identityConflictCount:0});await flushPromises();expect(w.text()).not.toContain('未储值会员');w.unmount();
 });
 it('opens the plan sheet only after the bottom recharge action on an unfunded member detail',async()=>{
- const w=mount(Detail,{global:{stubs:{'sh-scaffold':{template:'<div><slot/></div>'}}}});m.load?.({memberNo:'M2',storeNo:'S1'});await flushPromises();
+ const w=mount(Detail,{global:{mocks:{$t:(key:string)=>key},stubs:{'sh-scaffold':{template:'<div><slot/></div>'}}}});m.load?.({memberNo:'M2',storeNo:'S1'});await flushPromises();
  expect(w.text()).toContain('未储值会员');expect(w.text()).not.toContain('storedValue.balance');
  expect(w.find('[data-testid="confirm-offline"]').exists()).toBe(false);
  await w.find('[data-testid="detail-recharge"]').trigger('tap');await flushPromises();
@@ -44,4 +44,12 @@ it('debounces partial member suggestions and discards the old query after cleari
  await vi.advanceTimersByTimeAsync(350);await flushPromises();expect(m.candidates).toHaveBeenCalledTimes(1);
  expect(m.candidates).toHaveBeenCalledWith('S1',{keyword:'1380',cursor:undefined});
  expect(w.text()).toContain('未储值会员');w.unmount();vi.useRealTimers();
+});
+
+it('does not fetch customer funds when authority scope cannot be refreshed',async()=>{
+ m.scope.mockRejectedValueOnce(new Error('scope unavailable'));
+ const w=mount(Detail,{global:{mocks:{$t:(key:string)=>key},stubs:{'sh-scaffold':{template:'<div><slot/></div>'}}}});
+ m.load?.({memberNo:'M2',storeNo:'S1'});await flushPromises();
+ expect(m.select).not.toHaveBeenCalled();expect(m.account).not.toHaveBeenCalled();
+ expect(w.text()).toContain('scope unavailable');w.unmount();
 });

@@ -67,6 +67,33 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  * 不当作缺陷报。**同物异名与「后端未实现」危害完全不同**，混在一起就没法自动判定。
  */
 export const FIELDS = [
+  // JDBC-backed business domains; current client DTOs use open strings, so no finite client parity is claimed.
+  {"concept": "inv_return_receipt.quality（数据库取值域）", "field": "inv_return_receipt.quality", "backend": {"ddl": ["inv_return_receipt", "quality"]}, "clients": []},
+  {"concept": "mbr_scope_legacy_link.status（数据库取值域）", "field": "mbr_scope_legacy_link.status", "backend": {"ddl": ["mbr_scope_legacy_link", "status"]}, "clients": []},
+  {"concept": "mbr_scope_member.scope_type（数据库取值域）", "field": "mbr_scope_member.scope_type", "backend": {"ddl": ["mbr_scope_member", "scope_type"]}, "clients": []},
+  {"concept": "mbr_scope_member.status（数据库取值域）", "field": "mbr_scope_member.status", "backend": {"ddl": ["mbr_scope_member", "status"]}, "clients": []},
+  {"concept": "mch_brand.status（数据库取值域）", "field": "mch_brand.status", "backend": {"ddl": ["mch_brand", "status"]}, "clients": []},
+  {"concept": "mch_brand_change.decision（数据库取值域）", "field": "mch_brand_change.decision", "backend": {"ddl": ["mch_brand_change", "decision"]}, "clients": []},
+  {"concept": "mch_brand_change.status（数据库取值域）", "field": "mch_brand_change.status", "backend": {"ddl": ["mch_brand_change", "status"]}, "clients": []},
+  {"concept": "mch_brand_store_binding.status（数据库取值域）", "field": "mch_brand_store_binding.status", "backend": {"ddl": ["mch_brand_store_binding", "status"]}, "clients": []},
+  {"concept": "mch_management_grant.authority_source_type（数据库取值域）", "field": "mch_management_grant.authority_source_type", "backend": {"ddl": ["mch_management_grant", "authority_source_type"]}, "clients": []},
+  {"concept": "mch_management_grant.resource_type（数据库取值域）", "field": "mch_management_grant.resource_type", "backend": {"ddl": ["mch_management_grant", "resource_type"]}, "clients": []},
+  {"concept": "mch_management_grant.status（数据库取值域）", "field": "mch_management_grant.status", "backend": {"ddl": ["mch_management_grant", "status"]}, "clients": []},
+  {"concept": "mch_management_space.status（数据库取值域）", "field": "mch_management_space.status", "backend": {"ddl": ["mch_management_space", "status"]}, "clients": []},
+  {"concept": "prd_stock_alignment_batch.status（数据库取值域）", "field": "prd_stock_alignment_batch.status", "backend": {"ddl": ["prd_stock_alignment_batch", "status"]}, "clients": []},
+  {"concept": "prd_stock_alignment_line.status（数据库取值域）", "field": "prd_stock_alignment_line.status", "backend": {"ddl": ["prd_stock_alignment_line", "status"]}, "clients": []},
+  {"concept": "prd_stock_sync_operation.status（数据库取值域）", "field": "prd_stock_sync_operation.status", "backend": {"ddl": ["prd_stock_sync_operation", "status"]}, "clients": []},
+  {"concept": "sv_issue_quota_reservation.status（数据库取值域）", "field": "sv_issue_quota_reservation.status", "backend": {"ddl": ["sv_issue_quota_reservation", "status"]}, "clients": []},
+  {"concept": "sv_issuer.scope_type（数据库取值域）", "field": "sv_issuer.scope_type", "backend": {"ddl": ["sv_issuer", "scope_type"]}, "clients": []},
+  {"concept": "sv_issuer.status（数据库取值域）", "field": "sv_issuer.status", "backend": {"ddl": ["sv_issuer", "status"]}, "clients": []},
+  {"concept": "sv_issuer_store_access.status（数据库取值域）", "field": "sv_issuer_store_access.status", "backend": {"ddl": ["sv_issuer_store_access", "status"]}, "clients": []},
+  {"concept": "sv_issuer_version.clearing_mode（数据库取值域）", "field": "sv_issuer_version.clearing_mode", "backend": {"ddl": ["sv_issuer_version", "clearing_mode"]}, "clients": []},
+  {"concept": "sv_issuer_version.collection_mode（数据库取值域）", "field": "sv_issuer_version.collection_mode", "backend": {"ddl": ["sv_issuer_version", "collection_mode"]}, "clients": []},
+  {"concept": "sv_issuer_version.debit_allocation_mode（数据库取值域）", "field": "sv_issuer_version.debit_allocation_mode", "backend": {"ddl": ["sv_issuer_version", "debit_allocation_mode"]}, "clients": []},
+  {"concept": "sv_recharge.source_kind（数据库取值域）", "field": "sv_recharge.source_kind", "backend": {"ddl": ["sv_recharge", "source_kind"]}, "clients": []},
+  {"concept": "sv_release.redemption_scope_mode（数据库取值域）", "field": "sv_release.redemption_scope_mode", "backend": {"ddl": ["sv_release", "redemption_scope_mode"]}, "clients": []},
+  {"concept": "sv_release.source_kind（数据库取值域）", "field": "sv_release.source_kind", "backend": {"ddl": ["sv_release", "source_kind"]}, "clients": []},
+  {"concept": "sv_release.state（数据库取值域）", "field": "sv_release.state", "backend": {"ddl": ["sv_release", "state"]}, "clients": []},
   // 活动/权益后端已判定字段。新版端上页面后置；生成DTO仍保留Java实际string/enum形状。
   // clients为空表示尚无独立页面枚举，不是驳回取值域；接入页面时须在此绑定其声明。
   {"concept": "ent_code_token · status（数据库取值域）", "field": "ent_code_token.status", "backend": {"ddl": ["ent_code_token", "status"]}, "clients": []},
@@ -811,6 +838,8 @@ function plannedValues(src, name, ownerConst) {
  * 那是 §3 待业务拍板的第 4 条（驳回理由谁把关）。
  */
 export const DISMISSED = [
+  { key: "sv_release.activity_no", why: "Core活动业务编号；注释中的V2、PLAN、NULL说明来源与历史可空性，不是有限取值域。" },
+  { key: "sv_release.draft_revision_no", why: "活动草稿修订业务编号；注释中的V2、PLAN、NULL说明来源与历史可空性，不是有限取值域。" },
   { key: "pmt_preset_template.template_code", why: "AP/EP是活动/付费产品编号前缀，实际AP001等为业务键，不是二值枚举。" },
   {
     key: "ord_shipment.status",

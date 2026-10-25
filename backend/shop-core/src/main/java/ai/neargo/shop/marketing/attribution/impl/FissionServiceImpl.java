@@ -1,8 +1,7 @@
 package ai.neargo.shop.marketing.attribution.impl;
 
 import ai.neargo.shop.numbering.DocumentType;
-import ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers;
-
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -16,7 +15,6 @@ import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 
 /** {@link FissionService} 实现。 */

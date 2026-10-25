@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.storedvalue.migration;
+import ai.neargo.shop.pay.storedvalue.migration.impl.StoredValueMigrationResumeServiceImpl;
+
 
 import ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository;
 import ai.neargo.shop.spi.storedvalue.StoredValueMigrationReadiness.Proof;
@@ -107,7 +109,7 @@ class StoredValueAccountKeyMysqlTest {
         var authorization=approved();var keys=new StoredValueAccountKeyCutover(db,authorization,inspector,ddl);
         keys.step("OPERATOR","DBONLY",null);keys.step("OPERATOR","DBONLY",null);
         var dimensions=new StoredValueAccountDimensionGuard(db,authorization,inspector,ddl);
-        var resume=new StoredValueMigrationResumeService(db,authorization,inspector,dimensions,ddl);
+        var resume=new StoredValueMigrationResumeServiceImpl(db,authorization,inspector,dimensions,ddl);
         assertThatThrownBy(()->resume.resume("OPERATOR","DBONLY",null)).isInstanceOf(ai.neargo.shop.common.BizException.class);
         assertThat(jdbc.queryForObject("SELECT write_mode FROM sv_issuer WHERE issuer_no='I1'",String.class)).isEqualTo("FENCED");
         String guard=dimensions.install("OPERATOR","DBONLY",null);assertThat(dimensions.install("OPERATOR","DBONLY",null)).isEqualTo(guard);

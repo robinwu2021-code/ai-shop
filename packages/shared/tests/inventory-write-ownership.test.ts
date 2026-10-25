@@ -33,10 +33,14 @@ function javaFiles(dir: string, out: string[] = []): string[] {
 
 const rel = (p: string) => p.slice(ROOT.length + 1);
 const outsiders = javaFiles(BACKEND).filter((f) => !f.startsWith(OWNER));
+// Isolated datasource fixtures seed inventory facts to test read-only ports; production ownership is enforced below.
+const productionSqlSources = outsiders.filter((f) => f.includes("/src/main/"));
 
 describe("进销存表的写权", () => {
   it("有东西可查", () => {
     expect(outsiders.length).toBeGreaterThan(100);
+    expect(productionSqlSources.length).toBeGreaterThan(100);
+    expect(productionSqlSources.every((f) => f.includes("/src/main/") && !f.includes("/src/test/"))).toBe(true);
   });
 
   /*
@@ -97,7 +101,7 @@ describe("进销存表的写权", () => {
   it("★★★ shop-inventory 之外的 SQL 注解里不许出现 inv_ 表的写语句", () => {
     const bad: string[] = [];
     const sqlWrite = /(UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+inv_[a-z_]+/i;
-    for (const f of outsiders) {
+    for (const f of productionSqlSources) {
       const src = readFileSync(f, "utf8");
       if (!/inv_[a-z_]+/.test(src)) continue;
       for (const [i, line] of src.split("\n").entries()) {

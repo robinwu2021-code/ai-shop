@@ -1,20 +1,23 @@
 package ai.neargo.shop.trade.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import lombok.Getter;
 import lombok.Setter;
 
 /**
  * 主订单：**用户视角**——一次支付、一个支付单号（ADR-002 / E3）。
  *
- * <p>钱在主单，货在子单。这条分界线决定了后面所有事：
- * 支付、退款走主单；分账、发货、核销、售后走子单。
+ * <p>钱在主单，货在子单。这条分界线决定了后面所有事： 支付、退款走主单；分账、发货、核销、售后走子单。
  */
 @Getter
 @Setter
 @TableName("ord_order")
 public class OrdOrder extends BaseEntity {
+    /** Shared industry business fee, unrelated to platform commission. */
+    private Long feeMinor;
 
     public static final String WAIT_PAY = "WAIT_PAY";
     public static final String POINTS_PENDING = "POINTS_PENDING";
@@ -23,14 +26,13 @@ public class OrdOrder extends BaseEntity {
     /**
      * 选了线下支付、等商家确认收款。
      *
-     * <p><b>只有主单有这个状态，子单没有</b>：确认收款前子单保持 {@code WAIT_PAY}，
-     * 与线上单一致。给子单也加一个状态的话，商家的待办列表、售后入口、
+     * <p><b>只有主单有这个状态，子单没有</b>：确认收款前子单保持 {@code WAIT_PAY}， 与线上单一致。给子单也加一个状态的话，商家的待办列表、售后入口、
      * 履约台三处都要各判一次「这个新状态算不算已付」——而它们判的是同一件事。
      *
-     * <p>它与 {@code WAIT_PAY} 的差别只在**谁来推进**：线上是支付回调，
-     * 线下是商家在 b 端点「确认收款」。两者最终都走同一个 {@code markPaid}。
+     * <p>它与 {@code WAIT_PAY} 的差别只在**谁来推进**：线上是支付回调， 线下是商家在 b 端点「确认收款」。两者最终都走同一个 {@code markPaid}。
      */
     public static final String WAIT_OFFLINE_PAY = "WAIT_OFFLINE_PAY";
+
     public static final String CANCELLED = "CANCELLED";
     public static final String CLOSED = "CLOSED";
 
@@ -66,17 +68,14 @@ public class OrdOrder extends BaseEntity {
     private String cancelReason;
 
     /**
-     * 下单端 MP_WECHAT/MP_ALIPAY/IOS/ANDROID/H5。取值域见 {@link ai.neargo.shop.common.PayScenes}。
-     * <b>与 payChannel 不是一回事</b> —— App 两个通道都能走。
+     * 下单端 MP_WECHAT/MP_ALIPAY/IOS/ANDROID/H5。取值域见 {@link ai.neargo.shop.common.PayScenes}。 <b>与
+     * payChannel 不是一回事</b> —— App 两个通道都能走。
      *
-     * <p><b>积分发放的端判定读的是这一列，不是当前请求的端。</b>
-     * 发放时机是订单完成时，而那一刻用户可能已经换了端，
-     * <b>更常见的是根本没有用户在场</b>（超时自动确认收货是系统动作）。
-     * 读当前端会让同一笔订单发不发积分取决于谁在哪个端点的确认、
-     * 甚至取决于是不是定时任务跑的 —— 不可复现、无法解释、也无法对账。
+     * <p><b>积分发放的端判定读的是这一列，不是当前请求的端。</b> 发放时机是订单完成时，而那一刻用户可能已经换了端，
+     * <b>更常见的是根本没有用户在场</b>（超时自动确认收货是系统动作）。 读当前端会让同一笔订单发不发积分取决于谁在哪个端点的确认、 甚至取决于是不是定时任务跑的 ——
+     * 不可复现、无法解释、也无法对账。
      *
-     * <p>⚠️ 值来自客户端请求头，<b>天然可伪造</b>：只能用于平台策略判定，
-     * 绝不能用于权限或资金判定。
+     * <p>⚠️ 值来自客户端请求头，<b>天然可伪造</b>：只能用于平台策略判定， 绝不能用于权限或资金判定。
      */
     private String payScene;
 
@@ -86,8 +85,7 @@ public class OrdOrder extends BaseEntity {
     /**
      * 线下收款的确认人（B 端操作员）。
      *
-     * <p>平台不碰这笔钱，所以出纠纷时平台能提供的只有这条留痕 ——
-     * 缺了它，争议就变成两边各执一词。
+     * <p>平台不碰这笔钱，所以出纠纷时平台能提供的只有这条留痕 —— 缺了它，争议就变成两边各执一词。
      */
     private String offlineConfirmedBy;
 

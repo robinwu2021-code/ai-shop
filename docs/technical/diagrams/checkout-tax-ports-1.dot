@@ -1,0 +1,35 @@
+digraph G {
+graph [bgcolor="white", pad="0.3", nodesep="0.45", ranksep="0.7", fontname="Arial", label="税配置及计算端口类关系", labelloc=t, fontsize=20];
+node [shape=box, style="rounded,filled", fillcolor="#f3f7fc", color="#516781", fontname="Arial", fontsize=13, margin="0.18,0.12"];
+edge [fontname="Arial", fontsize=11, color="#516781", arrowsize=0.8];
+"PricingTaxSettingPort" [label="PricingTaxSettingPort",shape=box];
+"PricingTaxSettingPortImpl" [label="PricingTaxSettingPortImpl",shape=box];
+"PricingTaxCalculationPort" [label="PricingTaxCalculationPort",shape=box];
+"PricingTaxCalculationPortImpl" [label="PricingTaxCalculationPort\nImpl",shape=box];
+"PricingTaxSettingService" [label="PricingTaxSettingService",shape=box];
+"StoreDirectoryPort" [label="StoreDirectoryPort",shape=box];
+"PricingTaxCalculationService" [label="PricingTaxCalculationServ\nice",shape=box];
+"PricingTaxCalculationServiceImpl" [label="PricingTaxCalculationServ\niceImpl",shape=box];
+"TaxEngine" [label="TaxEngine",shape=box];
+"MerchantTaxSnapshot" [label="MerchantTaxSnapshot",shape=box];
+"PricingTaxSettingPortImpl" -> "PricingTaxSettingPort" [label="", arrowhead=empty,style=dashed];
+"PricingTaxCalculationPortImpl" -> "PricingTaxCalculationPort" [label="", arrowhead=empty,style=dashed];
+"PricingTaxSettingPortImpl" -> "PricingTaxSettingService" [label=""];
+"PricingTaxSettingPortImpl" -> "StoreDirectoryPort" [label=""];
+"PricingTaxCalculationPortImpl" -> "PricingTaxCalculationService" [label=""];
+"PricingTaxCalculationServiceImpl" -> "PricingTaxCalculationService" [label="", arrowhead=empty,style=dashed];
+"PricingTaxCalculationServiceImpl" -> "PricingTaxSettingPort" [label=""];
+"PricingTaxCalculationServiceImpl" -> "TaxEngine" [label=""];
+"TaxEngine" -> "MerchantTaxSnapshot" [label=""];
+}
+// Original diagram source, retained for provenance:
+// classDiagram
+//     PricingTaxSettingPort <|.. PricingTaxSettingPortImpl
+//     PricingTaxCalculationPort <|.. PricingTaxCalculationPortImpl
+//     PricingTaxSettingPortImpl --> PricingTaxSettingService
+//     PricingTaxSettingPortImpl --> StoreDirectoryPort
+//     PricingTaxCalculationPortImpl --> PricingTaxCalculationService
+//     PricingTaxCalculationServiceImpl ..|> PricingTaxCalculationService
+//     PricingTaxCalculationServiceImpl --> PricingTaxSettingPort
+//     PricingTaxCalculationServiceImpl --> TaxEngine
+//     TaxEngine --> MerchantTaxSnapshot

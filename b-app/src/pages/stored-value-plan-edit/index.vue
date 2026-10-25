@@ -11,8 +11,8 @@ watch(()=>merchant.storeNo,()=>{context.value=null;error.value=t('storedValue.le
 <template><sh-scaffold :title-suffix="merchant.multiStore ? merchant.currentStore?.name : ''" title-key="storedValue.newPlan" :denied="!merchant.can('pay:sv:plan:manage')" :failed="failed" :pending="!context&&!failed" @retry="load">
  <view v-if="context&&!review" class="sh-card sv-card">
   <view class="field"><text class="field__label">{{t('storedValue.planName')}}</text><input v-model="name" class="field__input" :disabled="locked" maxlength="100"/></view>
-  <view class="field"><text class="field__label">{{t('storedValue.paid')}} · {{context.currency}}</text><input v-model="paid" class="field__input sh-num" type="digit" :disabled="locked"/></view>
-  <view class="field"><text class="field__label">{{t('storedValue.bonus')}} · {{context.currency}}</text><input v-model="bonus" class="field__input sh-num" type="digit" :disabled="locked"/></view>
+  <view class="field"><text class="field__label">{{t('storedValue.paid')}} · {{context.currency}}</text><input maxlength="10" v-model="paid" class="field__input sh-num" type="digit" :disabled="locked"/></view>
+  <view class="field"><text class="field__label">{{t('storedValue.bonus')}} · {{context.currency}}</text><input maxlength="10" v-model="bonus" class="field__input sh-num" type="digit" :disabled="locked"/></view>
   <sh-kv :label="t('storedValue.total')" between><text class="txt-price sh-num">{{total}}</text></sh-kv>
  </view>
  <view v-if="review&&context" class="sh-card sv-card"><text class="txt-title">{{name}}</text><sh-kv :label="t('storedValue.paid')" between>{{money(pending?.body.paidAmountMinor??fixedMinor(paid,context.currencyScale),context.currency)}}</sh-kv><sh-kv :label="t('storedValue.bonus')" between>{{money(pending?.body.bonusAmountMinor??fixedMinor(bonus,context.currencyScale),context.currency)}}</sh-kv><sh-kv :label="t('storedValue.total')" between><text class="txt-price sh-num">{{total}}</text></sh-kv></view>

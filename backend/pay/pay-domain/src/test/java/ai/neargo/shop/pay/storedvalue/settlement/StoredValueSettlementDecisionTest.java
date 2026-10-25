@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.storedvalue.settlement;
+import ai.neargo.shop.pay.storedvalue.settlement.impl.StoredValueSettlementDecisionServiceImpl;
+
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.spi.storedvalue.StoredValueSettlements.*;
 import ai.neargo.shop.spi.storedvalue.StoredValueReports.Period;
@@ -7,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 class StoredValueSettlementDecisionTest {
  private static final Period PERIOD=new Period(Instant.parse("2026-09-01T00:00:00Z"),Instant.parse("2026-10-01T00:00:00Z"));
- private StoredValueSettlementDecisionService decisions(StoredValueSettlementFixture f){return new StoredValueSettlementDecisionService(f.repo,f.audit,f.numbers,f.commands);}
+ private StoredValueSettlementDecisionService decisions(StoredValueSettlementFixture f){return new StoredValueSettlementDecisionServiceImpl(f.repo,f.audit,f.numbers,f.commands);}
  private Bill bill(StoredValueSettlementFixture f){f.clearing("C1","E2",1000,300,1000,"2026-09-10T00:00:00Z","2026-09-10T00:00:00Z");return f.bills.generate(new Generation(f.payer(),"I1",PERIOD,"CNY","GEN")).bills().getFirst();}
  @Test void bothPartiesMustReconcileAndRepeatedKeyDoesNotDuplicateEvent()throws Exception{
   var f=new StoredValueSettlementFixture();var d=decisions(f);var b=bill(f);

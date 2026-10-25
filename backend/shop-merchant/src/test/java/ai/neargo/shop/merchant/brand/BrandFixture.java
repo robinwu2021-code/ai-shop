@@ -1,5 +1,7 @@
 package ai.neargo.shop.merchant.brand;
 
+import ai.neargo.shop.merchant.brand.impl.ManagementScopeServiceImpl;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
@@ -42,7 +44,7 @@ class BrandFixture {
             jdbc.update("INSERT INTO sys_outbox(event_no,source_system,source_event_no,aggregate_type,aggregate_id,event_type,payload,status,created_at) VALUES(?,?,?,?,?,?,?,'SENT',CURRENT_TIMESTAMP)",e.eventNo(),e.sourceSystem(),e.sourceEventNo(),e.aggregateType(),e.aggregateId(),e.eventType(),e.payload());
             return new ai.neargo.shop.event.outbox.PublishReceipt(e.eventNo(),true);
         });
-        scopes = new ManagementScopeService(repo);
+        scopes = new ManagementScopeServiceImpl(repo);
     }
     ai.neargo.shop.numbering.store.DocumentNumberCoordinator numbers() {
         jdbc.execute("CREATE TABLE IF NOT EXISTS sys_sequence(seq_name varchar(64) primary key,next_value bigint default 0,updated_at timestamp default CURRENT_TIMESTAMP)");

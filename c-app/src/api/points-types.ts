@@ -79,10 +79,15 @@ export interface BuyerPointsAccount {
 }
 
 export interface BuyerPointsEntry {
+  /** Internal accounting voucher identifier used for authorized ledger references. */
   voucherNo?: string | null;
+  /** Human-facing accounting voucher number; absent for historical unmapped vouchers. */
   voucherDocumentNo?: string | null;
+  /** Accounting direction of the posted points entry. */
   direction?: string | null;
+  /** Original business operation reference associated with the posted points entry. */
   businessRef?: string | null;
+  /** Parent order identifier for the reward inspection. */
   orderNo?: string | null;
   /** 不可变积分分录编号 */
   entryNo: string;

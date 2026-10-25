@@ -1,6 +1,8 @@
 package ai.neargo.shop.food.config;
 
 import ai.neargo.shop.event.outbox.OutboxPublisher;
+import ai.neargo.shop.food.port.LazyGoodsCatalogQueryPortImpl;
+import ai.neargo.shop.food.port.LazyGoodsMetadataQueryPortImpl;
 import ai.neargo.shop.food.service.KitchenTaskService;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.ReservationTableMapper;
@@ -98,7 +100,7 @@ import ai.neargo.shop.food.service.MenuService;
 import ai.neargo.shop.food.service.impl.MenuServiceImpl;
 import ai.neargo.shop.food.policy.MenuPublicationSource;
 import ai.neargo.shop.food.policy.StationPublicationSource;
-import ai.neargo.shop.food.policy.MenuWorkingDefinitionPort;
+import ai.neargo.shop.food.policy.MenuWorkingDefinitionAccess;
 import ai.neargo.shop.food.dto.MenuConfigResultVO;
 import ai.neargo.shop.food.entity.FnbConfigRevision;
 import ai.neargo.shop.food.policy.MenuCompositionSource;
@@ -154,17 +156,7 @@ import tools.jackson.databind.ObjectMapper;
 @EnableConfigurationProperties(FoodProperties.class)
 public class FoodAutoConfiguration {
     private static GoodsCatalogQueryPort lazyGoods(ObjectProvider<GoodsCatalogQueryPort> provider) {
-        return new GoodsCatalogQueryPort() {
-            @Override public SkuIdentityFact getSku(String entity, String store, String sku) {
-                return provider.getObject().getSku(entity, store, sku);
-            }
-            @Override public GoodsFact getGoods(String entity, String store, String number) {
-                return provider.getObject().getGoods(entity, store, number);
-            }
-            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
-                return provider.getObject().getGoodsBatch(entity, store, numbers);
-            }
-        };
+        return new LazyGoodsCatalogQueryPortImpl(provider);
     }
 
     @Bean
@@ -181,22 +173,12 @@ public class FoodAutoConfiguration {
             RecipeMapper recipeHeads, RecipeLineMapper recipeLines, RecipeAdjustmentMapper recipeAdjustments,
             DishOptionGroupMapper recipeBindings, ObjectProvider<MaterialCatalogQueryPort> materialCatalog,
             @Value("${shop.food.recipe-publication-enabled:false}") boolean recipePublicationEnabled,
-            ObjectProvider<MenuWorkingDefinitionPort> workingMenus, DishMapper dishes,
+            ObjectProvider<MenuWorkingDefinitionAccess> workingMenus, DishMapper dishes,
             MenuChannelBindingMapper channelBindings, StationMapper stationHeads, SkuStationMapper stationRoutes,
             ObjectProvider<MenuChannelAuthorityPort> channelAuthority,
             @Value("${shop.food.menu-publication-enabled:false}") boolean menuPublicationEnabled,
             @Value("${shop.food.station-publication-enabled:false}") boolean stationPublicationEnabled) {
-        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
-            @Override public SkuIdentityFact getSku(String entity, String store, String sku) {
-                return goods.getObject().getSku(entity, store, sku);
-            }
-            @Override public GoodsFact getGoods(String entity, String store, String number) {
-                return goods.getObject().getGoods(entity, store, number);
-            }
-            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
-                return goods.getObject().getGoodsBatch(entity, store, numbers);
-            }
-        };
+        GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(goods);
         return new ConfigRevisionServiceImpl(revisions, modifiers, components, groups, items, actions, idem,
                 publisher, json, manager, catalog, (entity, numbers) -> specs.getObject().getValues(entity, numbers),
                 Clock.systemUTC(), new BundlePublicationSource(bundles, bundleGroups, bundleChoices,
@@ -204,7 +186,7 @@ public class FoodAutoConfiguration {
                 new RecipePublicationSource(recipeHeads, recipeLines, recipeAdjustments, items, groups,
                         recipeBindings, () -> recipePublicationEnabled, json),
                 (entity, numbers) -> materialCatalog.getObject().getMaterials(entity, numbers),
-                menuPublicationEnabled ? new MenuPublicationSource(new MenuWorkingDefinitionPort() {
+                menuPublicationEnabled ? new MenuPublicationSource(new MenuWorkingDefinitionAccess() {
                     @Override
                     public MenuConfigResultVO capture(String entity, String store, String menu, boolean lock) {
                         return workingMenus.getObject().capture(entity, store, menu, lock);
@@ -230,14 +212,7 @@ public class FoodAutoConfiguration {
             SalesRestrictionService restrictions, ObjectProvider<StoreCardQueryPort> stores,
             ObjectProvider<GoodsCatalogQueryPort> goods, ObjectProvider<DishOfferQueryPort> offers, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
-        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
-            @Override public GoodsFact getGoods(String entity, String store, String number) {
-                return goods.getObject().getGoods(entity, store, number);
-            }
-            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
-                return goods.getObject().getGoodsBatch(entity, store, numbers);
-            }
-        };
+        GoodsCatalogQueryPort catalog = new LazyGoodsMetadataQueryPortImpl(goods);
         return new CatalogServiceImpl(menus, bindings, calendars, sessions, revisions, operation, restrictions,
                 numbers -> stores.getObject().cards(numbers), catalog,
                 (entity, store, numbers) -> offers.getObject().getOffers(entity, store, numbers),
@@ -292,15 +267,7 @@ public class FoodAutoConfiguration {
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new MenuServiceImpl(heads, bindings, policies, actions, idem, publisher, json, manager,
                 Clock.systemUTC(), weeks, exceptions, new MenuCompositionSource(categories, items, skus, itemGroups,
-                        new GoodsCatalogQueryPort() {
-                            @Override public GoodsFact getGoods(String entity, String store, String number) {
-                                return goods.getObject().getGoods(entity, store, number);
-                            }
-                            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store,
-                                    List<String> numbers) {
-                return goods.getObject().getGoodsBatch(entity, store, numbers);
-            }
-                        }), contexts, channels, channelAuthority::getIfAvailable);
+                        new LazyGoodsMetadataQueryPortImpl(goods)), contexts, channels, channelAuthority::getIfAvailable);
     }
 
     @Bean
@@ -311,17 +278,7 @@ public class FoodAutoConfiguration {
             IdempotencyService idem, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectProvider<GoodsCatalogQueryPort> catalogs, ObjectProvider<MaterialCatalogQueryPort> materials) {
-        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
-            @Override public SkuIdentityFact getSku(String entity, String store, String sku) {
-                return catalogs.getObject().getSku(entity, store, sku);
-            }
-            @Override public GoodsFact getGoods(String entity, String store, String goods) {
-                return catalogs.getObject().getGoods(entity, store, goods);
-            }
-            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
-                return catalogs.getObject().getGoodsBatch(entity, store, numbers);
-            }
-        };
+        GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(catalogs);
         return new RecipeServiceImpl(heads, lines, actions, idem, publisher, json, manager, catalog,
                 (entity, ids) -> materials.getObject().getMaterials(entity, ids),
                 adjustments, optionItems, optionGroups);
@@ -335,17 +292,7 @@ public class FoodAutoConfiguration {
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectProvider<GoodsCatalogQueryPort> catalogs) {
-        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
-            @Override public SkuIdentityFact getSku(String entity, String store, String sku) {
-                return catalogs.getObject().getSku(entity, store, sku);
-            }
-            @Override public GoodsFact getGoods(String entity, String store, String goods) {
-                return catalogs.getObject().getGoods(entity, store, goods);
-            }
-            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
-                return catalogs.getObject().getGoodsBatch(entity, store, numbers);
-            }
-        };
+        GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(catalogs);
         return new BundleServiceImpl(heads, groups, choices, actions, idem, publisher, json, manager, catalog);
     }
 
@@ -357,17 +304,7 @@ public class FoodAutoConfiguration {
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectProvider<GoodsCatalogQueryPort> catalogs) {
-        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
-            @Override public SkuIdentityFact getSku(String entity, String store, String sku) {
-                return catalogs.getObject().getSku(entity, store, sku);
-            }
-            @Override public GoodsFact getGoods(String entity, String store, String goods) {
-                return catalogs.getObject().getGoods(entity, store, goods);
-            }
-            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
-                return catalogs.getObject().getGoodsBatch(entity, store, numbers);
-            }
-        };
+        GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(catalogs);
         return new ModifierServiceImpl(heads, components, actions, idem, publisher, json, manager, catalog);
     }
 
@@ -380,14 +317,7 @@ public class FoodAutoConfiguration {
             @Qualifier("transactionManager") PlatformTransactionManager manager, DishMapper dishes,
             DishOptionGroupMapper bindings, ModifierMapper modifiers, ObjectProvider<GoodsCatalogQueryPort> catalogs,
             ObjectProvider<SpecValueCatalogQueryPort> specs) {
-        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
-            @Override public GoodsFact getGoods(String entity, String store, String goods) {
-                return catalogs.getObject().getGoods(entity, store, goods);
-            }
-            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
-                return catalogs.getObject().getGoodsBatch(entity, store, numbers);
-            }
-        };
+        GoodsCatalogQueryPort catalog = new LazyGoodsMetadataQueryPortImpl(catalogs);
         return new OptionGroupServiceImpl(groups, items, actions, idem, publisher, json, manager,
                 dishes, bindings, modifiers, catalog,
                 (entity, numbers) -> specs.getObject().getValues(entity, numbers));
@@ -402,14 +332,7 @@ public class FoodAutoConfiguration {
             ObjectProvider<GoodsCatalogQueryPort> catalogs, DishOptionGroupMapper bindings,
             OptionGroupMapper groups, OptionGroupItemMapper items, ObjectProvider<MediaAssetQueryPort> media) {
         // Resolve on invocation so optional food-off/remote-client assembly never substitutes catalog facts.
-        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
-            @Override public GoodsFact getGoods(String entity, String store, String goods) {
-                return catalogs.getObject().getGoods(entity, store, goods);
-            }
-            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
-                return catalogs.getObject().getGoodsBatch(entity, store, numbers);
-            }
-        };
+        GoodsCatalogQueryPort catalog = new LazyGoodsMetadataQueryPortImpl(catalogs);
         return new DishServiceImpl(dishes, actions, idem, publisher, json, manager, catalog, bindings, groups, items,
                 (entity, store, keys) -> media.getObject().getAssets(entity, store, keys));
     }

@@ -296,7 +296,7 @@
       },
       "usage": {
         "b-app": 20,
-        "c-app": 11
+        "c-app": 12
       }
     },
     {
@@ -1489,7 +1489,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 389,
+        "b-app": 391,
         "c-app": 110
       }
     },
@@ -2299,7 +2299,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 133,
+        "b-app": 135,
         "c-app": 29,
         "lib": 13
       },
@@ -2440,7 +2440,7 @@
       "name": "sh-points-earning",
       "file": "packages/ui/src/components/sh-points-earning.vue",
       "scope": "跨端",
-      "lines": 30,
+      "lines": 31,
       "props": [
         "rows: OrderPointsEarning[]",
         "failed?: boolean"
@@ -2450,7 +2450,7 @@
         "c-app": 0,
         "lib": 0
       },
-      "note": "—",
+      "note": "订单积分明细：按服务端快照展示预计、实发、待入账及退回积分，查询失败时提供重试",
       "why": "—",
       "uses": {
         "tiers": [
@@ -3676,7 +3676,7 @@
         "sh-scaffold",
         "sh-stepper"
       ],
-      "libClassHits": 89,
+      "libClassHits": 91,
       "localSelectors": 19,
       "localCssLines": 59,
       "rolled": []
@@ -4917,8 +4917,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 63,
-      "localSelectors": 9,
-      "localCssLines": 32,
+      "localSelectors": 8,
+      "localCssLines": 29,
       "rolled": []
     },
     {
@@ -5206,6 +5206,7 @@
       "file": "b-app/src/pages/stored-value/components/StoredValueConsumptionSheet.vue",
       "components": [
         "sh-empty",
+        "sh-icon",
         "sh-kv",
         "sh-sheet"
       ],
@@ -6114,7 +6115,7 @@
         "sh-sheet",
         "sh-tabs"
       ],
-      "libClassHits": 59,
+      "libClassHits": 60,
       "localSelectors": 13,
       "localCssLines": 13,
       "rolled": []

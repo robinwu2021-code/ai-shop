@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.storedvalue.clearing;
 
+import ai.neargo.shop.pay.storedvalue.clearing.impl.StoredValueClearingServiceImpl;
+
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
@@ -14,7 +16,7 @@ import static org.assertj.core.api.Assertions.*;
 class StoredValueClearingEntryTest {
     static class Fixture {
         final DriverManagerDataSource ds=new DriverManagerDataSource("jdbc:h2:mem:p5-clearing-"+UUID.randomUUID()+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1","sa","");
-        final JdbcTemplate jdbc=new JdbcTemplate(ds);final IssuerRepository db=new IssuerRepository(new DataSourceTransactionManager(ds),new ObjectMapper());final StoredValueClearingService service=new StoredValueClearingService(db,true);
+        final JdbcTemplate jdbc=new JdbcTemplate(ds);final IssuerRepository db=new IssuerRepository(new DataSourceTransactionManager(ds),new ObjectMapper());final StoredValueClearingService service=new StoredValueClearingServiceImpl(db,true);
         final EntitlementContext ctx=new EntitlementContext("MAIN","CLERK","CLEARING_TEST","0".repeat(64));
         Fixture()throws Exception{
             jdbc.execute("CREATE TABLE ent_usage(tenant_no VARCHAR(32),usage_no VARCHAR(64),operation_no VARCHAR(64),asset_kind VARCHAR(24),status VARCHAR(24),entity_no VARCHAR(64),store_no VARCHAR(64),amount_minor BIGINT,deleted INT DEFAULT 0)");

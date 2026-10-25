@@ -1,11 +1,14 @@
 package ai.neargo.shop.food.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+
 import com.baomidou.mybatisplus.annotation.TableName;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+
 import lombok.Getter;
 import lombok.Setter;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /** Original restaurant transaction table; monetary authority remains in core and PAY. */
 @Getter
@@ -21,6 +24,7 @@ public class FnbOrderBatch extends BaseEntity {
     private String requestHash;
     private String source;
     private String buyerNo;
+    private String partyNo;
     private String operatorNo;
     private String status;
     private String frozenRequest;

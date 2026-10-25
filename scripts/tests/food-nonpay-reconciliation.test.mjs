@@ -5,7 +5,7 @@ const read=name=>JSON.parse(fs.readFileSync(new URL('../../docs/technical/design
 const s=read('food-system-design.json'),n=s.nonPaymentImplementation;
 const routes=n.implementedApis;
 test('nonpayment audit preserves all targets and records real registered routes as pending verification',()=>{
- assert.equal(s.apis.length,165);assert.equal(s.tables.length,91);
+ assert.equal(s.apis.length,165);assert.equal(s.tables.length,119);
  assert.equal(routes.length,50);assert.equal(new Set(routes.map(a=>a.method+' '+a.path)).size,50);
  assert.equal(n.paymentExecutionExcluded,true);assert.equal(s.checkoutImplementation.historicalSlice,true);
  for(const a of routes){

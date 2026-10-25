@@ -6,9 +6,15 @@ import org.springframework.web.service.annotation.PostExchange;
 /** Internal transport preserves the full source command for exact original-event replay. */
 public interface InventoryProductionInternalApi {
     String CONSUME = "/internal/inventory/production/consume";
+    String REVERSE = "/internal/inventory/production/reverse";
     String QUERY = "/internal/inventory/production/query";
+
     @PostExchange(CONSUME)
     InventoryProductionPort.Receipt consume(@RequestBody InventoryProductionPort.Command command);
+
+    @PostExchange(REVERSE)
+    InventoryProductionPort.Receipt reverse(@RequestBody InventoryProductionPort.Reverse command);
+
     @PostExchange(QUERY)
     InventoryProductionPort.Receipt query(@RequestBody InventoryProductionPort.Command command);
 }

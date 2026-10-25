@@ -130,7 +130,7 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
     const indexes = [];
     // 索引名 → 列规格。**DROP INDEX 是按名字删的**，不记名字就删不掉
     const indexNames = new Map();
-    for (const raw of body.split("\n")) {
+    for (const raw of splitTopLevel(body)) {
       const line = raw.trim();
       const u = line.match(/^UNIQUE KEY (\w+) \(([^)]*)\)/i);
       if (u) {
@@ -231,9 +231,11 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
   // 而那几列明明写在同一条 ALTER 里（V60 就是这么被报出来的）。
   // 先把多子句拆成多条单子句语句，正则那边就不用动。
   const flatSql = sql.replace(/ALTER TABLE\s+(\w+)\s+([\s\S]*?);/gi, (full, table, body) => {
-    const parts = splitTopLevel(body);
-    return parts.length <= 1 ? full
-      : parts.map((c) => `ALTER TABLE ${table} ${c.trim()};`).join("\n");
+    const parts = splitTopLevel(body).map((part) => part.replace(
+      new RegExp(`^(ADD|MODIFY)\\s+(?!COLUMN\\b)(\\w+)\\s+(${COL_TYPES})(?=[\\s(]|$)`, "i"),
+      "$1 COLUMN $2 $3",
+    ));
+    return parts.map((c) => `ALTER TABLE ${table} ${c.trim()};`).join("\n");
   });
 
   for (const m of flatSql.matchAll(
@@ -309,7 +311,20 @@ function splitTopLevel(body) {
   let buf = "";
   let depth = 0;
   let quoted = false;
-  for (const ch of body) {
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i];
+    if (!quoted && ch === "-" && body[i + 1] === "-" && /\s/.test(body[i + 2] ?? "")) {
+      while (i < body.length && body[i] !== "\n") i++;
+      buf += "\n";
+      continue;
+    }
+    if (!quoted && ch === "/" && body[i + 1] === "*") {
+      const end = body.indexOf("*/", i + 2);
+      if (end < 0) throw new Error("Unterminated SQL comment");
+      i = end + 1;
+      buf += " ";
+      continue;
+    }
     if (quoted) {
       buf += ch;
       if (ch === "'") quoted = false;

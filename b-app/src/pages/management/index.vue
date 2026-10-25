@@ -32,7 +32,7 @@ onShow(load);
  </view>
  <view v-if="current&&context.canBootstrap" class="sh-card"><view class="sh-btn sh-btn--soft" @tap="sources=true">{{t('management.importResources')}}</view></view>
  <view v-if="!current&&context.canBootstrap" class="sh-card"><view class="field"><text class="field__label">{{t('management.spaceName')}}</text><input v-model="name" class="field__input" maxlength="64"/></view><view class="sh-btn" @tap="sources=true">{{t('management.createSpace')}}</view></view>
- <sh-empty v-if="!current&&!context.canBootstrap" :text="t('management.noAccess')"/>
+ <sh-empty :pending="!context" v-if="!current&&!context.canBootstrap" :text="t('management.noAccess')"/>
  <sh-sheet :visible="choosing" :title="t('management.chooseSpace')" @close="choosing=false"><view v-for="space in context.spaces" :key="space.managementNo" class="sh-cell sh-row sh-row--between" @tap="select(space)"><text>{{space.name}}</text><sh-check :model-value="current?.managementNo===space.managementNo" round/></view></sh-sheet>
  <sh-sheet :visible="sources" :title="t('management.chooseEntity')" @close="sources=false"><view v-for="source in context.bootstrapSources" :key="source.accountNo" class="sh-cell" @tap="current?importSource(source):create(source.accountNo)">{{source.entityName||t('management.ownedEntity')}}</view><view v-if="busy" class="txt-sub sh-muted">{{t('management.loading')}}</view></sh-sheet>
  </template></sh-scaffold></template>

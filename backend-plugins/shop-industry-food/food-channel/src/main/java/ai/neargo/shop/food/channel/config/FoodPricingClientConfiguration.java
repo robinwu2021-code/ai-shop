@@ -10,6 +10,9 @@ import ai.neargo.shop.spi.trade.IndustryCheckoutPort;
 import ai.neargo.shop.food.channel.port.CoreIndustryOrderPortImpl;
 import ai.neargo.shop.spi.trade.IndustryOrderInternalApi;
 import ai.neargo.shop.spi.trade.IndustryOrderPort;
+import ai.neargo.shop.spi.trade.IndustryOrderAmendmentInternalApi;
+import ai.neargo.shop.spi.trade.IndustryOrderAmendmentPort;
+import ai.neargo.shop.food.channel.port.CoreIndustryOrderAmendmentPortImpl;
 import ai.neargo.shop.spi.trade.PricingCheckoutInternalApi;
 import ai.neargo.shop.spi.trade.PricingCheckoutPort;
 import ai.neargo.shop.svc.InternalHttp;
@@ -24,6 +27,14 @@ import org.springframework.context.annotation.Lazy;
 /** Explicit food-server import; embedded deployments retain the local core port. */
 @Configuration(proxyBeanMethods = false)
 public class FoodPricingClientConfiguration {
+    @Bean @Lazy
+    IndustryOrderAmendmentInternalApi industryOrderAmendmentInternalApi(InternalHttp http) {
+        return http.client(ServiceName.PLATFORM, IndustryOrderAmendmentInternalApi.class, Duration.ofSeconds(5));
+    }
+    @Bean @ConditionalOnMissingBean(IndustryOrderAmendmentPort.class)
+    IndustryOrderAmendmentPort coreIndustryOrderAmendmentPort(ObjectProvider<IndustryOrderAmendmentInternalApi> api) {
+        return new CoreIndustryOrderAmendmentPortImpl(api::getObject);
+    }
     @Bean @Lazy
     IndustryFulfillmentInternalApi industryFulfillmentInternalApi(InternalHttp http) {
         return http.client(ServiceName.PLATFORM,IndustryFulfillmentInternalApi.class,Duration.ofSeconds(5));

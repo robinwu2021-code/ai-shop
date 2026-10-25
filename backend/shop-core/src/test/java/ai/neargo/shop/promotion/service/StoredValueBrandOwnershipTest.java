@@ -1,4 +1,5 @@
 package ai.neargo.shop.promotion.service;
+import ai.neargo.shop.promotion.service.impl.BrandActivityOwnershipServiceImpl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.promotion.dto.ActivityActor;
 import ai.neargo.shop.promotion.entity.PmtActivity;
@@ -25,7 +26,7 @@ class StoredValueBrandOwnershipTest {
   assertThat(f.journal.approvalPage("MAIN","M1",null,null,20,false,List.of("OTHER")).records()).isEmpty();
  }
  @Test void activityOwnershipUsesBothManagementAndBrandAndIsWrittenInTheCoreTransaction()throws Exception{
-  var f=new StoredValueGovernanceFixture();var owner=new BrandActivityOwnershipService(new DataSourceTransactionManager(f.ds));
+  var f=new StoredValueGovernanceFixture();var owner=new BrandActivityOwnershipServiceImpl(new DataSourceTransactionManager(f.ds));
   var actor=new ActivityActor("MAIN","E1","ACTOR",null,"M1","B1");
   var row=new PmtActivity();row.setActivityNo("A1");row.setOwner("BRAND");row.setTenantNo("MAIN");row.setEntityNo("E1");
   assertThatThrownBy(()->owner.register(actor,"A1")).isInstanceOf(IllegalStateException.class);

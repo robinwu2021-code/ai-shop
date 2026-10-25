@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.storedvalue.settlement;
+import ai.neargo.shop.pay.storedvalue.report.impl.StoredValueSummaryServiceImpl;
+
 import ai.neargo.shop.pay.storedvalue.report.StoredValueSummaryService;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueCursorCodec;
 import ai.neargo.shop.spi.storedvalue.StoredValueReports.*;
@@ -25,7 +27,7 @@ class StoredValueSummaryTest {
  private void voucher(StoredValueSettlementFixture f,String no,String type,String store){f.jdbc.update("INSERT INTO sv_voucher VALUES('MAIN',?,?,'2026-09-15 01:00:00',0)",no,type);f.jdbc.update("INSERT INTO sv_statement VALUES('MAIN',?,?,?,0)",no,store,store);}
  private Scope scope(String activity){return new Scope("MAIN","MCH:OWNER","M1","I1","BRAND","B1","CNY",activity,null);}
  private Period period(){return new Period(Instant.parse("2026-09-01T00:00:00Z"),Instant.parse("2026-10-01T00:00:00Z"));}
- private StoredValueSummaryService service(StoredValueSettlementFixture f){return new StoredValueSummaryService(f.db,new StoredValueCursorCodec("p6-summary-test-secret-32-characters",f.json));}
+ private StoredValueSummaryService service(StoredValueSettlementFixture f){return new StoredValueSummaryServiceImpl(f.db,new StoredValueCursorCodec("p6-summary-test-secret-32-characters",f.json));}
  @Test void amountsReconcileWithoutCountingOneMultiLotUseTwiceOrMixingIssuers()throws Exception{
   var f=fixture();var s=service(f).summarize(scope(null),period());assertEquals(1500,s.creditedPaidMinor());assertEquals(300,s.creditedBonusMinor());assertEquals(360,s.consumedMinor());assertEquals(1440,s.closingMinor());assertEquals(2,s.rechargeCount());assertEquals(1,s.usageCount());assertEquals(1,s.customerCount());assertEquals(s.openingMinor()+s.creditedPaidMinor()+s.creditedBonusMinor()-s.consumedMinor()+s.reversedMinor(),s.closingMinor());
  }

@@ -967,14 +967,16 @@
   },
   "nextStagePreparation": {
     "stage": "P6",
-    "status": "BUSINESS_CLOSURE_REVIEW_PENDING_CANONICAL_ARCHITECTURE_MERGE",
+    "status": "BUSINESS_CLOSURE_VERIFIED_PENDING_COMPATIBILITY_PUBLICATION",
     "planFile": "2026-10-21-brand-stored-value-settlement-reporting.md",
     "releaseDependsOn": "P5 compatibility published; actual financial opening remains blocked by P3 historical-original decision",
     "testOrder": "Complete all phase coding and compilation, then one focused chain; no unrelated reruns",
     "scope": "Reports, bills, disputes, payment registration/independent receipt, organization membership saga, cross-entity readiness",
-    "currentBatch": "Core/Pay saga, central collection, foreign funding and B finance pages coded; focused H2/MySQL/HTTP/UI verification passed; one review and merge adaptation pending",
+    "currentBatch": "Merged canonical architecture; Core/Pay compile and 43 affected seam cases passed; explicit release scope verified; no global regression",
     "legacyCutoverInScope": false,
     "canonicalTarget": "99d3fa516",
-    "legacyCutover": "OUT_OF_SCOPE_NO_HISTORICAL_POSTING"
+    "legacyCutover": "OUT_OF_SCOPE_NO_HISTORICAL_POSTING",
+    "implementationProtocol": 2,
+    "onlineFinancialOpening": "CLOSED_UNCHANGED_P3_FOUNDATION_REQUIRED"
   }
 }

@@ -34,6 +34,7 @@ export const COUPON_TRANSITIONS: Record<CouponStatus, CouponStatus[]> = {
 };
 
 export interface Coupon extends Archivable {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 券模板单号 */
   couponNo: string;
@@ -122,6 +123,7 @@ export interface CouponSaveReq {
 export type IssueTarget = "ALL" | "NEW_USER" | "COMMUNITY" | "SINGLE_USER";
 
 export interface CouponIssue {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 发放记录单号 */
   issueNo: string;
@@ -206,6 +208,7 @@ export interface PlatformSlot extends Archivable {
  * 曾经被一根 HTTP 路径连着，见 `docs/technical/运营端营销列表契约错配.md`。
  */
 export interface MerchantCampaign extends Archivable {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 活动号。跨端唯一，平台治理与商家自己看到的是同一个 */
   campaignNo: string;

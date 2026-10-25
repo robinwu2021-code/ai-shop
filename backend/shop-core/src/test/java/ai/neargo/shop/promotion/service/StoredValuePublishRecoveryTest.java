@@ -1,4 +1,7 @@
 package ai.neargo.shop.promotion.service;
+import ai.neargo.shop.spi.storedvalue.StoredValueActivityFinancePort;
+
+import ai.neargo.shop.promotion.service.impl.StoredValueActivityServiceImpl;
 import ai.neargo.shop.promotion.dto.UnifiedActivityViews.VersionView;
 import ai.neargo.shop.spi.storedvalue.StoredValueReleases.*;
 import java.time.Instant;
@@ -19,7 +22,7 @@ class StoredValuePublishRecoveryTest {
   when(finance.prepare(any())).thenReturn(new View("R1","I1","PREPARED","d".repeat(64),policy.hash(),false,null,tiers));
   var activated=new AtomicBoolean();var committed=new AtomicInteger();
   when(finance.activate(any())).thenAnswer(i->{if(activated.compareAndSet(false,true)){committed.incrementAndGet();throw new IllegalStateException("Simulated lost acknowledgement");}return new View("R1","I1","ACTIVE","d".repeat(64),policy.hash(),false,"AV1",tiers);});
-  var service=new StoredValueActivityService(activities,f.journal,finance);
+  var service=new StoredValueActivityServiceImpl(activities,f.journal,finance);
   assertThatThrownBy(()->service.submit(f.submitter,"A1",0,"SUBMIT")).isInstanceOf(IllegalStateException.class);
   assertThat(f.journal.find(f.submitter,"A1",0).state()).isEqualTo("PAY_READY");
   var result=service.submit(f.submitter,"A1",0,"SUBMIT");

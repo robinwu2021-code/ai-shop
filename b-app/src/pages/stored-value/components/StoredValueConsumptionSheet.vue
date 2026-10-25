@@ -18,13 +18,14 @@ const loading=ref(false),busy=ref(false),error=ref(''),page=ref(1),more=ref(fals
 let generation=0,store='',storage='',foreground=true,timer:ReturnType<typeof setTimeout>|undefined;
 const terminal=computed(()=>!!order.value&&['COMMITTED','CANCELLED','RELEASED','EXPIRED'].includes(order.value.status));
 const lines=computed(()=>Object.entries(counts.value).filter(([,quantity])=>quantity>0).map(([skuNo,quantity])=>({skuNo,quantity})));
-const canSubmit=computed(()=>order.value?.status==='WAIT_SUBMIT'&&!!order.value.confirmation);
+const canConsume=computed(()=>merchant.can('pay:sv:consume:create'));
+const canSubmit=computed(()=>canConsume.value&&order.value?.status==='WAIT_SUBMIT'&&!!order.value.confirmation);
 function live(token:number){return props.visible&&foreground&&token===generation&&store===merchant.storeNo;}
 function persist(){if(original.value)uni.setStorageSync(storage,JSON.stringify(original.value));}
 function accept(value:SvServiceView){order.value=value;if(terminal.value){uni.removeStorageSync(storage);if(value.status==='COMMITTED')emit('consumed');}}
 function schedule(){clearTimeout(timer);if(props.visible&&foreground&&(original.value?.preview||original.value?.serviceOrderNo)&&!terminal.value)timer=setTimeout(()=>void refresh(),3000);}
 async function products(append=false){
- if(loading.value||busy.value)return;const token=generation;loading.value=true;error.value='';
+ if(loading.value||busy.value||!merchant.can('biz:stock'))return;const token=generation;loading.value=true;error.value='';
  try{const next=append?page.value+1:1;const list=await api.mGoodsList({status:'ON_SALE',page:next,size:20});if(!live(token))return;
   goods.value=append?[...goods.value,...list.records.filter(g=>g.type==='SERVICE')]:list.records.filter(g=>g.type==='SERVICE');page.value=next;more.value=list.page*list.size<list.total;
  }catch(e){if(live(token))error.value=(e as Error).message;}finally{if(token===generation)loading.value=false;}
@@ -32,6 +33,8 @@ async function products(append=false){
 async function load(){
  const token=++generation;clearTimeout(timer);busy.value=false;store=merchant.storeNo;goods.value=[];counts.value={};original.value=null;order.value=null;error.value='';loading.value=true;
  try{
+  await merchant.ensureScope();
+  if(!canConsume.value)throw Error(t('storedValue.noPermission'));
   const actor=await api.mManagementContext();if(!live(token))return;
   storage=['sv.consume.v1',actor.actorKey,merchant.profile?.merchantNo,store,props.customer.pendingScope||props.customer.memberNo,props.wallet.scopeType].map(v=>encodeURIComponent(String(v||''))).join(':');
   const saved=uni.getStorageSync(storage);if(saved){const p=JSON.parse(String(saved)) as Original;if(p.body.storeNo!==store)throw Error(t('storedValue.leaveStore'));original.value=p;}
@@ -48,7 +51,7 @@ async function currentReference(){
  return fresh.customerRef;
 }
 async function preview(){
- if(busy.value||loading.value||store!==merchant.storeNo||!props.wallet.canRedeem||!props.wallet.accountRef)return;
+ if(!canConsume.value||(!original.value&&!merchant.can('biz:stock'))||busy.value||loading.value||store!==merchant.storeNo||!props.wallet.canRedeem||!props.wallet.accountRef)return;
  if(!original.value&&!lines.value.length)return;const token=generation;busy.value=true;error.value='';
  try{
   if(!original.value){const reference=await currentReference();if(!live(token))return;original.value={key:idempotencyKey(),body:{storeNo:store,customerRef:reference,issuerRef:props.wallet.issuerRef,accountRef:props.wallet.accountRef,items:lines.value},preview:null};persist();}
@@ -103,12 +106,12 @@ onHide(()=>{foreground=false;clearTimeout(timer);});onShow(()=>{const returning=
   <view class="sh-row sh-row--between"><text class="txt-strong">{{customer.displayName}}</text><text>{{t(wallet.scopeType==='BRAND'?'issuer.brandScope':'issuer.storeScope')}}</text></view>
   <text class="sh-muted">{{wallet.name}}</text>
   <sh-empty v-if="loading" pending compact/>
-  <template v-if="!original">
+  <template v-if="!original&&merchant.can('biz:stock')">
    <view v-for="good in goods" :key="good.goodsNo" class="sh-card">
     <text class="txt-strong">{{good.title}}</text>
     <view v-for="sku in good.skus" :key="sku.skuNo" class="sh-cell sh-row sh-row--between">
      <view class="sh-fill"><text>{{sku.spec}}</text><text class="sh-num">{{money(sku.price,wallet.currency)}}</text></view>
-     <view class="sh-row"><view role="button" class="sh-link sh-hit" @tap="quantity(sku.skuNo,-1)">−</view><text class="sh-num">{{counts[sku.skuNo]||0}}</text><view role="button" class="sh-link sh-hit" @tap="quantity(sku.skuNo,1)">+</view></view>
+     <view class="sh-row"><view role="button" class="sh-link sh-hit" data-testid="consume-decrease" @tap="quantity(sku.skuNo,-1)"><sh-icon name="minus" :size="32"/></view><text class="sh-num">{{counts[sku.skuNo]||0}}</text><view role="button" class="sh-link sh-hit" data-testid="consume-increase" @tap="quantity(sku.skuNo,1)"><sh-icon name="plus" :size="32"/></view></view>
     </view>
    </view>
    <sh-empty v-if="!loading&&!goods.length" :text="t('storedValue.noServices')" compact/>

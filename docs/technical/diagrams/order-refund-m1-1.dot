@@ -1,0 +1,80 @@
+digraph G {
+graph [bgcolor="white", pad="0.3", nodesep="0.45", ranksep="0.7", fontname="Arial", label="退款及权益结清流程", labelloc=t, fontsize=20];
+node [shape=box, style="rounded,filled", fillcolor="#f3f7fc", color="#516781", fontname="Arial", fontsize=13, margin="0.18,0.12"];
+edge [fontname="Arial", fontsize=11, color="#516781", arrowsize=0.8];
+"A" [label="申请全子单退款",shape=box];
+"B" [label="完整数量和金额合法?",shape=diamond];
+"X" [label="拒绝，保留原状态",shape=box];
+"C" [label="商家审批或既有合法例外",shape=box];
+"D" [label="退货退款?",shape=diamond];
+"E" [label="WAIT_RETURN 等待寄回",shape=box];
+"F" [label="RETURNING 等待商家收妥",shape=box];
+"G" [label="REFUNDING 冻结原退款执行",shape=box];
+"H" [label="货物在途?",shape=diamond];
+"I" [label="WAIT_RECEIPT 等待确认",shape=box];
+"J" [label="实际应退现金大于零?",shape=diamond];
+"K" [label="按原指令执行或查询现金退款",shape=box];
+"L" [label="持久化资金成功与业务退款账",shape=box];
+"M" [label="核验既有积分或零现金完成凭据",shape=box];
+"N" [label="同事务保存权益义务与独立库存任务",shape=box];
+"O" [label="应退消费者权益已结清?",shape=diamond];
+"P" [label="保持 REFUNDING，仅恢复原权益",shape=box];
+"Q" [label="A13 REFUND_SUCCEEDED",shape=box];
+"R" [label="A22 BENEFITS_SETTLED",shape=box];
+"S" [label="售后 REFUNDED，重新判定子单终态",shape=box];
+"T" [label="独立库存恢复，不阻断消费者结清",shape=box];
+"A" -> "B" [label=""];
+"B" -> "X" [label="否"];
+"B" -> "C" [label="是"];
+"C" -> "D" [label=""];
+"D" -> "E" [label="是"];
+"E" -> "F" [label=""];
+"F" -> "G" [label=""];
+"D" -> "H" [label="否"];
+"H" -> "I" [label="是"];
+"I" -> "G" [label="商家明确确认"];
+"H" -> "G" [label="否"];
+"G" -> "J" [label=""];
+"J" -> "K" [label="是"];
+"K" -> "G" [label="未知或失败"];
+"K" -> "L" [label="核验成功"];
+"J" -> "M" [label="否"];
+"M" -> "L" [label=""];
+"L" -> "N" [label=""];
+"N" -> "O" [label=""];
+"O" -> "P" [label="否"];
+"P" -> "O" [label=""];
+"O" -> "Q" [label="是，非零现金"];
+"O" -> "R" [label="是，零现金"];
+"Q" -> "S" [label=""];
+"R" -> "S" [label=""];
+"N" -> "T" [label=""];
+}
+// Original diagram source, retained for provenance:
+// flowchart TD
+//     A[申请全子单退款] --> B{完整数量和金额合法?}
+//     B -->|否| X[拒绝，保留原状态]
+//     B -->|是| C[商家审批或既有合法例外]
+//     C --> D{退货退款?}
+//     D -->|是| E[WAIT_RETURN 等待寄回]
+//     E --> F[RETURNING 等待商家收妥]
+//     F --> G[REFUNDING 冻结原退款执行]
+//     D -->|否| H{货物在途?}
+//     H -->|是| I[WAIT_RECEIPT 等待确认]
+//     I -->|商家明确确认| G
+//     H -->|否| G
+//     G --> J{实际应退现金大于零?}
+//     J -->|是| K[按原指令执行或查询现金退款]
+//     K -->|未知或失败| G
+//     K -->|核验成功| L[持久化资金成功与业务退款账]
+//     J -->|否| M[核验既有积分或零现金完成凭据]
+//     M --> L
+//     L --> N[同事务保存权益义务与独立库存任务]
+//     N --> O{应退消费者权益已结清?}
+//     O -->|否| P[保持 REFUNDING，仅恢复原权益]
+//     P --> O
+//     O -->|是，非零现金| Q[A13 REFUND_SUCCEEDED]
+//     O -->|是，零现金| R[A22 BENEFITS_SETTLED]
+//     Q --> S[售后 REFUNDED，重新判定子单终态]
+//     R --> S
+//     N --> T[独立库存恢复，不阻断消费者结清]

@@ -890,7 +890,7 @@ function mdDeps(mvn, npm) {
     "这类漂移不报错，它表现为「本机跑得起来、换台机器行为不同」。"));
 
   L.push("\n## 一、Maven\n");
-  L.push(`父 POM \`${mvn.parentRel}\` 继承 \`ai.neargo:neargo-parent\`（Java 21 + Spring Boot 4.0.x + MyBatis-Plus BOM）。`);
+  L.push(`父 POM \`${mvn.parentRel}\` 继承 \`ai.neargo:neargo-build-parent:2.0.0-SNAPSHOT\`（Java 21 + Spring Boot 4.0.x + MyBatis-Plus BOM）。`);
   L.push("绝大多数版本由它与 Spring Boot 的 BOM 管着 —— 下面只列**本仓库自己声明版本**的那些。\n");
 
   L.push("### 1.1 父 POM 管着的版本\n");

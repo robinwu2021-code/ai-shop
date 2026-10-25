@@ -1,4 +1,12 @@
 package ai.neargo.shop.pay.storedvalue.issuer;
+
+import ai.neargo.shop.pay.storedvalue.policy.impl.StoredValueReleasePlanProjectionServiceImpl;
+import ai.neargo.shop.pay.storedvalue.issuer.impl.StoredValueIssuerServiceImpl;
+import ai.neargo.shop.pay.storedvalue.policy.impl.StoredValuePolicyConfigurationServiceImpl;
+
+import ai.neargo.shop.pay.storedvalue.issuer.impl.StoredValueIssueQuotaServiceImpl;
+import ai.neargo.shop.pay.storedvalue.policy.impl.StoredValueIssuePolicyServiceImpl;
+import ai.neargo.shop.pay.storedvalue.policy.impl.StoredValueReleaseServiceImpl;
 import static ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.*;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.pay.storedvalue.migration.StoredValueAccountDimensionGuard;
@@ -48,13 +56,13 @@ class StoredValueBrandMysqlTest {
   jdbc.update("INSERT INTO flyway_schema_history VALUES('570',1),('571',1),('572',1),('573',1),('574',1)");
   jdbc.update("INSERT INTO pay_ent_command_dedup(tenant_no,operation_kind,request_key,result_status,response_snapshot) VALUES('__LEDGER__','SV_SCHEMA_RESUME','READY','COMPLETED',?)",json.writeValueAsString(Map.of("state","ISSUER_WRITERS_RESUMED")));
   readiness=new StoredValueBrandRuntimeReadiness(db,new StoredValueAccountDimensionGuard(db,null,null,null),true,true);
-  evaluator=new StoredValueIssuePolicyEvaluator();policies=new StoredValueIssuePolicyService(db,evaluator);quotas=new StoredValueIssueQuotaService(db);
-  releases=new StoredValueReleaseService(db,policies,evaluator,new StoredValueReleasePlanProjectionService(db));ReflectionTestUtils.setField(releases,"brandExecution",true);
+  evaluator=new StoredValueIssuePolicyEvaluator();policies=new StoredValueIssuePolicyServiceImpl(db,evaluator);quotas=new StoredValueIssueQuotaServiceImpl(db);
+  releases=new StoredValueReleaseServiceImpl(db,policies,evaluator,new StoredValueReleasePlanProjectionServiceImpl(db));ReflectionTestUtils.setField(releases,"brandExecution",true);
   var route=new Route(null,"E1",null,"MERCHANT_OFFLINE","OFFLINE");
-  var configured=new StoredValueIssuerService(db).configure(new AuthorizedScope("MAIN","OWNER","M1","BRAND","B1",0,null,Set.of("E1"),List.of(route)),new Config("Brand","E1","CENTRALIZED","PRINCIPAL_COMPONENT","PRO_RATA","CNY","Asia/Shanghai",List.of(route),0),"CONFIG");
+  var configured=new StoredValueIssuerServiceImpl(db).configure(new AuthorizedScope("MAIN","OWNER","M1","BRAND","B1",0,null,Set.of("E1"),List.of(route)),new Config("Brand","E1","CENTRALIZED","PRINCIPAL_COMPONENT","PRO_RATA","CNY","Asia/Shanghai",List.of(route),0),"CONFIG");
   issuer=configured.issuerNo();jdbc.update("UPDATE sv_issuer SET status='ACTIVE',write_mode='ISSUER' WHERE issuer_no=?",issuer);
   jdbc.update("INSERT INTO sv_issuer_store_access(tenant_no,access_no,issuer_no,store_no,operating_entity_no,source_binding_no,source_revision,can_issue,can_redeem,status,effective_from,created_at,updated_at,created_by,updated_by) VALUES('MAIN','ACCESS',?,'S1','E1','BINDING',0,1,1,'ACTIVE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'OWNER','OWNER')",issuer);
-  new StoredValuePolicyConfigurationService(db,evaluator).configure(new PolicyAuthority("MAIN","OWNER","M1","SPACE","M1",null,"CNY",0),new PolicyEdit(new Rules(true,false,3000,100000,30000,365,20000),0),"POLICY");
+  new StoredValuePolicyConfigurationServiceImpl(db,evaluator).configure(new PolicyAuthority("MAIN","OWNER","M1","SPACE","M1",null,"CNY",0),new PolicyEdit(new Rules(true,false,3000,100000,30000,365,20000),0),"POLICY");
   brand=new BrandScope("MAIN","M1","B1",issuer,"CNY",0);query=new Query(new ExecutionScope("MAIN","OWNER","M1","E1","S1",0,"B1","BINDING",0,"CNY"),new Customer("PERSON",null));
  }
  @Test void readinessRequiresRealKeyGuardAndEachNewAppliedMigration(){

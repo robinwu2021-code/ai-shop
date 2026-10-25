@@ -1,4 +1,6 @@
 package ai.neargo.shop.portal.biz;
+import org.springframework.beans.factory.annotation.Autowired;
+
 
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
@@ -32,7 +34,7 @@ import org.springframework.web.bind.annotation.*;
 @Profile("api")
 @RestController
 public class BizStoredValuePlanRechargeController {
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     private ai.neargo.shop.paybridge.StoredValuePlanGovernanceBinding governanceBinding;
     private final StoredValuePlanRechargeAppService direct;
     private final StoredValueRechargeAppService receipts;

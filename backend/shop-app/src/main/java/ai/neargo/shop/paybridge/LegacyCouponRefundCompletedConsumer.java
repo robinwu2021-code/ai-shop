@@ -15,6 +15,10 @@ import tools.jackson.databind.ObjectMapper;
 /** Read a fresh core snapshot after refund commit, so concurrent sibling refunds cannot leave the coupon stranded. */
 @Component
 public class LegacyCouponRefundCompletedConsumer implements OutboxConsumer {
+    @Override public String handlerId() { return "legacy-coupon-refund-completed"; }
+    // Original owner/action ledgers provide replay safety across PAY calls and independent core writes.
+    @Override public boolean externalWorkflow() { return true; }
+
     private final LegacyCouponCheckoutJournal journal;
     private final ObjectMapper json;
     @Autowired private LegacyCouponHistoricalReturnService historical;

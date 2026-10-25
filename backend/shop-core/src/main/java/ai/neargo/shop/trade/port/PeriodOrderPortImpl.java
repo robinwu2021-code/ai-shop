@@ -1,8 +1,7 @@
 package ai.neargo.shop.trade.port;
 
 import ai.neargo.shop.numbering.DocumentType;
-import ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers;
-
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.trade.PeriodOrderPort;
 import ai.neargo.shop.trade.entity.OrdItem;
@@ -14,7 +13,6 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;

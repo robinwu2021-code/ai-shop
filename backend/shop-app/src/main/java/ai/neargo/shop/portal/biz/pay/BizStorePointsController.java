@@ -1,4 +1,6 @@
 package ai.neargo.shop.portal.biz.pay;
+import org.springframework.beans.factory.annotation.Autowired;
+
 
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
@@ -35,7 +37,7 @@ public class BizStorePointsController {
   }
 
   private ai.neargo.shop.payclient.PointsOrderLinkService links;
-  @org.springframework.beans.factory.annotation.Autowired
+  @Autowired
   public void setOrderLinks(ai.neargo.shop.payclient.PointsOrderLinkService links) { this.links=links; }
 
   @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")

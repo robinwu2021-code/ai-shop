@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.storedvalue.issuer;
+
+import ai.neargo.shop.pay.storedvalue.issuer.impl.StoredValueConsumerIssuerServiceImpl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueCursorCodec;
@@ -15,7 +17,7 @@ class StoredValueIssuerNotificationTest {
   final DriverManagerDataSource ds=new DriverManagerDataSource("jdbc:h2:mem:p5-c-"+UUID.randomUUID()+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1","sa","");
   final JdbcTemplate jdbc=new JdbcTemplate(ds);final ObjectMapper json=new ObjectMapper();
   final PayRightsDocumentNumbers numbers=mock(PayRightsDocumentNumbers.class);
-  final StoredValueConsumerIssuerService service=new StoredValueConsumerIssuerService(new IssuerRepository(new DataSourceTransactionManager(ds),json),new StoredValueCursorCodec("p5-c-owned-issuer-references-key-more-than-thirty-two-characters",json),numbers);
+  final StoredValueConsumerIssuerService service=new StoredValueConsumerIssuerServiceImpl(new IssuerRepository(new DataSourceTransactionManager(ds),json),new StoredValueCursorCodec("p5-c-owned-issuer-references-key-more-than-thirty-two-characters",json),numbers);
   Fixture(){
    jdbc.execute("CREATE TABLE sv_account(tenant_no VARCHAR(32),account_no VARCHAR(64),entity_no VARCHAR(64),store_no VARCHAR(64),currency VARCHAR(8),issuer_no VARCHAR(64),customer_no VARCHAR(64),user_no VARCHAR(64),deleted INT DEFAULT 0)");
    jdbc.execute("CREATE TABLE sv_statement(tenant_no VARCHAR(32),account_no VARCHAR(64),record_no VARCHAR(64),business_no VARCHAR(64),store_no VARCHAR(64),store_name VARCHAR(100),title VARCHAR(100),currency VARCHAR(8),signed_amount_minor BIGINT,occurred_at TIMESTAMP,type VARCHAR(24),deleted INT DEFAULT 0)");

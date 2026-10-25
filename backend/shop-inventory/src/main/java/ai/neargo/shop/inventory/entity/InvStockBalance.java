@@ -1,9 +1,12 @@
 package ai.neargo.shop.inventory.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /** 库存余额：available = on_hand - reserved，派生不落库 */
@@ -20,10 +23,30 @@ public class InvStockBalance extends InvMutableEntity {
     private String locationId;
 
     /** 实存。只有单据过账能改；不允许为负 —— 让错误停在录入处，而不是流进报表 */
-    private Integer onHand;
+    @TableField("on_hand")
+    private BigDecimal onHandQuantity;
+
+    /** Legacy whole-unit access rejects fractions and overflow instead of truncating. */
+    public Integer getOnHand() {
+        return onHandQuantity == null ? null : onHandQuantity.intValueExact();
+    }
+
+    public void setOnHand(Integer value) {
+        onHandQuantity = value == null ? null : BigDecimal.valueOf(value);
+    }
 
     /** 已预留未出库。只有预留能改 */
-    private Integer reserved;
+    @TableField("reserved")
+    private BigDecimal reservedQuantity;
+
+    /** Legacy whole-unit access rejects fractions and overflow instead of truncating. */
+    public Integer getReserved() {
+        return reservedQuantity == null ? null : reservedQuantity.intValueExact();
+    }
+
+    public void setReserved(Integer value) {
+        reservedQuantity = value == null ? null : BigDecimal.valueOf(value);
+    }
 
     /** 本库位阈值覆盖；空 = 用 inv_item.safety_stock。城西店与仓库的安全线不可能一样 */
     private Integer safetyStock;
@@ -33,5 +56,4 @@ public class InvStockBalance extends InvMutableEntity {
 
     /** 乐观锁 */
     private Long version;
-
 }

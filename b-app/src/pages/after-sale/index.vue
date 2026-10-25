@@ -320,8 +320,8 @@ onShow(() => { if (!targetAfterSaleNo.value || loaded.value) void load(); });
         <view class="return-inspection sh-mt-sm">
           <text class="txt-strong">退货验收（按实收件数与质检结果入库）</text>
           <view v-for="item in (r.as.returnItems ?? [])" :key="item.itemId" class="return-inspection__item">
-            <view class="sh-row sh-between"><text>{{ item.title }}</text><text class="sh-muted">申请 {{ item.requestedQty }} 件</text></view>
-            <view class="sh-row sh-between sh-mt-xs">
+            <view class="sh-row sh-row--between"><text>{{ item.title }}</text><text class="sh-muted">申请 {{ item.requestedQty }} 件</text></view>
+            <view class="sh-row sh-row--between sh-mt-xs">
               <text>实收件数</text>
               <sh-stepper :model-value="receiptQty[`${r.as.afterSaleNo}:${item.itemId}`] ?? 0" :min="0" :max="item.requestedQty" :disabled="busy" @update:model-value="receiptQty[`${r.as.afterSaleNo}:${item.itemId}`] = $event" />
             </view>
@@ -371,8 +371,8 @@ onShow(() => { if (!targetAfterSaleNo.value || loaded.value) void load(); });
 </template>
 
 <style scoped>
-.return-inspection { padding: 20rpx; border-radius: 12rpx; background: #f7f8fa; }
-.return-inspection__item { padding: 16rpx 0; border-bottom: 1rpx solid #e8e8e8; }
+.return-inspection { padding: 20rpx; border-radius: 16rpx; background: var(--sh-bg); }
+.return-inspection__item { padding: 16rpx 0; border-bottom: var(--sh-hairline); }
 .return-inspection__qualities { gap: 12rpx; }
 .tabs {
   gap: 16rpx;

@@ -1,5 +1,6 @@
 package ai.neargo.shop.inventory.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -15,8 +16,7 @@ public interface InboundService {
     /**
      * 过账。
      *
-     * <p>顺带把成本带进来：{@code PURCHASE} 且行上有单价时，
-     * 按 {@code cost_method} 更新物料的当前成本（{@code LATEST} 取最新进价）。
+     * <p>顺带把成本带进来：{@code PURCHASE} 且行上有单价时， 按 {@code cost_method} 更新物料的当前成本（{@code LATEST} 取最新进价）。
      * <b>不做移动加权</b> —— 漏录一次之后所有历史毛利全错且不报警。
      */
     void post(String ownerId, String inboundNo, String operator);
@@ -24,28 +24,40 @@ public interface InboundService {
     /** 作废：写反向流水，原单置 VOIDED。 */
     void voidOrder(String ownerId, String inboundNo, String operator);
 
-    /**
-     * 系统直接开一张并过账（退货入库 / 盘盈 / 调拨入都走它）。
-     * 这些场景没有「草稿」这一步 —— 事情已经发生了，不存在改了再提交。
-     */
+    /** 系统直接开一张并过账（退货入库 / 盘盈 / 调拨入都走它）。 这些场景没有「草稿」这一步 —— 事情已经发生了，不存在改了再提交。 */
     String postDirectly(Draft draft, String operator);
 
     /**
      * @param sourceType 见 {@code InvEnums.InboundSource}
-     * @param occurredAt <b>业务发生时间，可回填</b>：商家周一补录上周五的进货，
-     *                   报表按它归期 —— 按录入时间算会把上周的货算进本周
+     * @param occurredAt <b>业务发生时间，可回填</b>：商家周一补录上周五的进货， 报表按它归期 —— 按录入时间算会把上周的货算进本周
      */
     /**
-     * @param supplierNo   指向 {@code inv_supplier}；可空（老单、或商家没建档就直接写了名字）
-     * @param supplierName <b>下单当时的名字快照</b>，与 {@code supplierNo} 并存不是冗余 ——
-     *                     供应商三个月后改名，历史单该显示当时那个名字
+     * @param supplierNo 指向 {@code inv_supplier}；可空（老单、或商家没建档就直接写了名字）
+     * @param supplierName <b>下单当时的名字快照</b>，与 {@code supplierNo} 并存不是冗余 —— 供应商三个月后改名，历史单该显示当时那个名字
      */
-    record Draft(String ownerId, String locationId, String sourceType, String sourceRef,
-                 String supplierNo, String supplierName,
-                 LocalDateTime occurredAt, String remark, List<Line> lines) {
-    }
+    record Draft(
+            String ownerId,
+            String locationId,
+            String sourceType,
+            String sourceRef,
+            String supplierNo,
+            String supplierName,
+            LocalDateTime occurredAt,
+            String remark,
+            List<Line> lines) {}
 
-    /** @param unitCostMinor 进货单价。{@code PURCHASE} <b>必填</b>：空的话最新进价会读到 null，毛利静默变成等于售价 */
-    record Line(String itemId, int qty, String uom, Long unitCostMinor) {
+    /**
+     * @param unitCostMinor 进货单价。{@code PURCHASE} <b>必填</b>：空的话最新进价会读到 null，毛利静默变成等于售价
+     */
+    record Line(
+            String itemId,
+            int qty,
+            String uom,
+            Long unitCostMinor,
+            String batchNo,
+            LocalDate expireAt) {
+        public Line(String itemId, int qty, String uom, Long unitCostMinor) {
+            this(itemId, qty, uom, unitCostMinor, null, null);
+        }
     }
 }

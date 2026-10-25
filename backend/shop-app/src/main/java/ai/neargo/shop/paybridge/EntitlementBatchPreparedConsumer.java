@@ -13,6 +13,10 @@ import tools.jackson.databind.ObjectMapper;
 /** Bounded work uses original pay cursor; retrying the event cannot select a fresh audience or reserve more capacity. */
 @Component
 public class EntitlementBatchPreparedConsumer implements OutboxConsumer {
+    @Override public String handlerId() { return "entitlement-batch-prepared"; }
+    // Original owner/action ledgers provide replay safety across PAY calls and independent core writes.
+    @Override public boolean externalWorkflow() { return true; }
+
     private final EntitlementBatchAppService batches;
     private final ObjectMapper json;
     public EntitlementBatchPreparedConsumer(EntitlementBatchAppService batches, ObjectMapper json) {

@@ -1,0 +1,474 @@
+{
+  "sys_outbox_stream": {
+    "owner": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "querySource": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-base/src/main/java/ai/neargo/shop/event/outbox/OutboxEnvelope.java",
+    "modelSymbol": "OutboxEnvelope",
+    "dynamic": {
+      "prefix": "sys",
+      "suffix": "_outbox_stream"
+    }
+  },
+  "sys_outbox_delivery": {
+    "owner": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "querySource": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-base/src/main/java/ai/neargo/shop/event/outbox/OutboxEnvelope.java",
+    "modelSymbol": "OutboxEnvelope",
+    "dynamic": {
+      "prefix": "sys",
+      "suffix": "_outbox_delivery"
+    }
+  },
+  "sys_outbox_operation": {
+    "owner": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "querySource": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-base/src/main/java/ai/neargo/shop/event/outbox/OutboxEnvelope.java",
+    "modelSymbol": "OutboxEnvelope",
+    "dynamic": {
+      "prefix": "sys",
+      "suffix": "_outbox_operation"
+    }
+  },
+  "inv_outbox_stream": {
+    "owner": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "querySource": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-base/src/main/java/ai/neargo/shop/event/outbox/OutboxEnvelope.java",
+    "modelSymbol": "OutboxEnvelope",
+    "dynamic": {
+      "prefix": "inv",
+      "suffix": "_outbox_stream"
+    }
+  },
+  "inv_outbox_delivery": {
+    "owner": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "querySource": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-base/src/main/java/ai/neargo/shop/event/outbox/OutboxEnvelope.java",
+    "modelSymbol": "OutboxEnvelope",
+    "dynamic": {
+      "prefix": "inv",
+      "suffix": "_outbox_delivery"
+    }
+  },
+  "inv_outbox_operation": {
+    "owner": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "querySource": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-base/src/main/java/ai/neargo/shop/event/outbox/OutboxEnvelope.java",
+    "modelSymbol": "OutboxEnvelope",
+    "dynamic": {
+      "prefix": "inv",
+      "suffix": "_outbox_operation"
+    }
+  },
+  "inv_event_consumed": {
+    "owner": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/TransactionalOutboxHandler.java",
+    "querySource": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/TransactionalOutboxHandler.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-base/src/main/java/ai/neargo/shop/event/outbox/OutboxEnvelope.java",
+    "modelSymbol": "OutboxEnvelope"
+  },
+  "prd_stock_sync_operation": {
+    "owner": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
+    "querySource": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
+    "modelSymbol": "Stored"
+  },
+  "prd_stock_alignment_batch": {
+    "owner": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+    "querySource": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+    "modelSymbol": "Batch"
+  },
+  "prd_stock_alignment_line": {
+    "owner": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+    "querySource": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+    "modelSymbol": "StoredLine"
+  },
+  "ord_refund_coupon_scope": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundObligationMapper.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundObligationMapper.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundObligationMapper.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "ord_refund_obligation": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundObligationMapper.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundObligationMapper.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundObligationMapper.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "sv_customer_identity": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/mapper/storedvalue/SvCustomerIdentityMapper.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/mapper/storedvalue/SvCustomerIdentityMapper.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/mapper/storedvalue/SvCustomerIdentityMapper.java",
+    "modelSymbol": "Binding"
+  },
+  "ord_points_earn_rule": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/points/earning/PointsEarningRules.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/points/earning/PointsEarningRules.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/points/earning/PointsEarningRules.java",
+    "modelSymbol": "Rule"
+  },
+  "ord_points_earn_rule_revision": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/points/earning/PointsEarningRules.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/points/earning/PointsEarningRules.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/points/earning/PointsEarningRules.java",
+    "modelSymbol": "Rule"
+  },
+  "pay_document_sequence": {
+    "owner": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/numbering/store/JdbcDocumentNumberRepository.java",
+    "querySource": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/numbering/store/JdbcDocumentNumberRepository.java",
+    "rowShape": "ENUM",
+    "modelSource": "backend/shop-base/src/main/java/ai/neargo/shop/numbering/DocumentOwner.java",
+    "modelSymbol": "DocumentOwner"
+  },
+  "core_document_number": {
+    "owner": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/numbering/store/JdbcDocumentNumberRepository.java",
+    "querySource": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/numbering/store/JdbcDocumentNumberRepository.java",
+    "rowShape": "ENUM",
+    "modelSource": "backend/shop-base/src/main/java/ai/neargo/shop/numbering/DocumentOwner.java",
+    "modelSymbol": "DocumentOwner"
+  },
+  "pay_document_number": {
+    "owner": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/numbering/store/JdbcDocumentNumberRepository.java",
+    "querySource": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/numbering/store/JdbcDocumentNumberRepository.java",
+    "rowShape": "ENUM",
+    "modelSource": "backend/shop-base/src/main/java/ai/neargo/shop/numbering/DocumentOwner.java",
+    "modelSymbol": "DocumentOwner"
+  },
+  "mch_management_space": {
+    "owner": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementRepository.java",
+    "querySource": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementRepository.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "mch_management_grant": {
+    "owner": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementRepository.java",
+    "querySource": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/ManagementScopeServiceImpl.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "mch_brand": {
+    "owner": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementRepository.java",
+    "querySource": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/BrandServiceImpl.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "mch_brand_store_binding": {
+    "owner": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementRepository.java",
+    "querySource": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/BrandServiceImpl.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "mch_brand_change": {
+    "owner": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementRepository.java",
+    "querySource": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/BrandServiceImpl.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "mbr_scope_member": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/MemberScopeRepository.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/impl/MemberScopeServiceImpl.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/MemberScopeModels.java",
+    "modelSymbol": "ScopeMember"
+  },
+  "mbr_store_profile": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/MemberScopeRepository.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/impl/MemberScopeServiceImpl.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/MemberScopeModels.java",
+    "modelSymbol": "ScopeMember"
+  },
+  "mbr_scope_legacy_link": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/MemberScopeRepository.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/impl/MemberScopeServiceImpl.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/MemberScopeModels.java",
+    "modelSymbol": "ScopeMember"
+  },
+  "sv_issuer": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "sv_issuer_version": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "sv_issuer_store_access": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "sv_release": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "sv_release_tier": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "sv_issue_quota": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "sv_issue_quota_reservation": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "sv_customer_issuer_index": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "sv_issue_policy": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "sv_issue_policy_version": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "pmt_sv_release_link": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/StoredValueActivityJournal.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/StoredValueActivityJournal.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/StoredValueActivityJournal.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "pmt_sv_approval": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/StoredValueActivityJournal.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/StoredValueActivityJournal.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/StoredValueActivityJournal.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "sv_clearing_entry": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/clearing/impl/StoredValueClearingServiceImpl.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/clearing/impl/StoredValueClearingServiceImpl.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "pmt_brand_activity_owner": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/impl/BrandActivityOwnershipServiceImpl.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/impl/BrandActivityOwnershipServiceImpl.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/dto/ActivityActor.java",
+    "modelSymbol": "ActivityActor"
+  },
+  "mch_brand_financial_activation": {
+    "owner": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementRepository.java",
+    "querySource": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/BrandFinancialActivationServiceImpl.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/BrandFinancialActivationService.java",
+    "modelSymbol": "Pending"
+  },
+  "sv_settlement_bill": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/settlement/StoredValueSettlementRepository.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/settlement/StoredValueSettlementRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "sv_settlement_bill_item": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/settlement/StoredValueSettlementRepository.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/settlement/StoredValueSettlementRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "sv_settlement_payment": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/settlement/StoredValueSettlementRepository.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/settlement/StoredValueSettlementRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "sv_settlement_event": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/settlement/StoredValueSettlementRepository.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/settlement/StoredValueSettlementRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "sv_activity_daily_summary": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/settlement/StoredValueSettlementRepository.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/settlement/StoredValueSettlementRepository.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "sv_financial_membership_change": {
+    "owner": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/IssuerRepository.java",
+    "querySource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/impl/StoredValueFinancialMembershipServiceImpl.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/issuer/impl/StoredValueFinancialMembershipServiceImpl.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "ord_industry_fulfillment_progress": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/IndustryPartialFulfillmentMapper.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/IndustryPartialFulfillmentMapper.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/IndustryFulfillmentPort.java",
+    "modelSymbol": "FulfilledLine"
+  },
+  "ord_industry_amendment": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/IndustryOrderAmendmentMapper.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/IndustryOrderAmendmentMapper.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/IndustryOrderAmendmentRows.java",
+    "modelSymbol": "Journal"
+  },
+  "ord_industry_amendment_line": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/IndustryOrderAmendmentMapper.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/IndustryOrderAmendmentMapper.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/IndustryOrderAmendmentRows.java",
+    "modelSymbol": "Line"
+  },
+  "ord_industry_receivable_adjustment": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/IndustryOrderAmendmentMapper.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/IndustryOrderAmendmentMapper.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/IndustryOrderAmendmentRows.java",
+    "modelSymbol": "Debt"
+  },
+  "ord_industry_fee_line_adjustment": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/IndustryOrderAmendmentMapper.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/IndustryOrderAmendmentMapper.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/IndustryOrderAmendmentRows.java",
+    "modelSymbol": "FeeLine"
+  },
+  "ord_pricing_fee_rule": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/PricingFeeRuleMapper.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/PricingFeeRuleMapper.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/PricingFeeEvidenceRow.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "ord_pricing_fee_revision": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/PricingFeeRuleMapper.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/PricingFeeRuleMapper.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/PricingFeeEvidenceRow.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "ord_pricing_fee_scope": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/PricingFeeRuleMapper.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/PricingFeeRuleMapper.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/PricingFeeEvidenceRow.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "ord_pricing_fee_application": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/PricingFeeRuleMapper.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/PricingFeeRuleMapper.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/PricingFeeEvidenceRow.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "ord_pricing_fee_advice": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/PricingFeeRuleMapper.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/PricingFeeRuleMapper.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/PricingFeeEvidenceRow.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "ord_pricing_fee_reconciliation": {
+    "owner": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/PricingFeeRuleMapper.java",
+    "querySource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/PricingFeeRuleMapper.java",
+    "rowShape": "MAPPED_ROW",
+    "modelSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/PricingFeeEvidenceRow.java",
+    "modelSymbol": "Map<String,Object>"
+  },
+  "inv_demand_plan": {
+    "owner": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "querySource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "modelSymbol": "Head"
+  },
+  "inv_demand_leaf": {
+    "owner": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "querySource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "modelSymbol": "Leaf"
+  },
+  "inv_demand_operation": {
+    "owner": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "querySource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "modelSymbol": "Operation"
+  },
+  "inv_stock_lot": {
+    "owner": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "querySource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "modelSymbol": "Lot"
+  },
+  "inv_production_operation": {
+    "owner": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryProductionMapper.java",
+    "querySource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryProductionMapper.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryProductionMapper.java",
+    "modelSymbol": "Operation"
+  },
+  "inv_item_valuation_history": {
+    "owner": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryExactSupportMapper.java",
+    "querySource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryExactSupportMapper.java",
+    "rowShape": "RECORD",
+    "modelSource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryExactSupportMapper.java",
+    "modelSymbol": "HistoryRow"
+  }
+}

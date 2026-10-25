@@ -1,4 +1,7 @@
 package ai.neargo.shop.member.scope;
+
+import ai.neargo.shop.member.service.impl.MemberScopeQueryServiceImpl;
+import ai.neargo.shop.member.service.impl.MemberScopeServiceImpl;
 import ai.neargo.shop.member.service.*;
 import ai.neargo.shop.spi.member.MemberOperatingScopePort;
 import ai.neargo.shop.spi.user.MemberIdentityFactsPort;
@@ -28,6 +31,6 @@ class ScopeFixture {
   when(org.stores(any())).thenAnswer(a->{var s=(MemberOperatingScopePort.Scope)a.getArgument(0);return s.scopeNo().equals("B1")?List.of(org.resolve("MAIN","E1","S1"),org.resolve("MAIN","E2","S2")):List.of(s);});
   when(identities.find(eq("MAIN"),anyString())).thenAnswer(a->Optional.of(new MemberIdentityFactsPort.Identity(a.getArgument(1),null,"138****8000",true)));
   when(identities.match(eq("MAIN"),anyList(),anyString())).thenAnswer(a->((List<String>)a.getArgument(1)).stream().map(id->new MemberIdentityFactsPort.Identity(id,null,"138****8000",true)).toList());
-  var repo=new MemberScopeRepository(jdbc,new DataSourceTransactionManager(ds),new ObjectMapper());members=new MemberScopeService(repo,org,identities);query=new MemberScopeQueryService(repo,members,identities,"0123456789abcdefghijklmnopqrstuvwxyz-secret");
+  var repo=new MemberScopeRepository(jdbc,new DataSourceTransactionManager(ds),new ObjectMapper());members=new MemberScopeServiceImpl(repo,org,identities);query=new MemberScopeQueryServiceImpl(repo,members,identities,"0123456789abcdefghijklmnopqrstuvwxyz-secret");
  }
 }

@@ -15,6 +15,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.math.BigDecimal;
 
 /**
  * 每人限购（待办设计 P1）。
@@ -92,6 +93,31 @@ public class PurchaseLimitGuard {
      * @param wanted 商品号 → 这一次的件数
      * @param limits 商品号 → 每人限购（只放设了限购的）
      */
+    /** Exact physical-quantity variant includes old integral rows without truncating measured history. */
+    public void requireMeasured(String userNo, Map<String, BigDecimal> wanted, Map<String, Integer> limits) {
+        if (limits.isEmpty() || !enforced()) return;
+        var subNos = DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(
+                Wrappers.<OrdSubOrder>lambdaQuery().select(OrdSubOrder::getSubOrderNo)
+                        .eq(OrdSubOrder::getUserNo, userNo)
+                        .notIn(OrdSubOrder::getStatus, OrdSubOrder.CANCELLED, OrdSubOrder.REFUNDED)))
+                .stream().map(OrdSubOrder::getSubOrderNo).toList();
+        var bought = new HashMap<String, BigDecimal>();
+        if (!subNos.isEmpty()) {
+            var rows = DataScopeContext.executeWithoutScope(() -> itemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
+                    .in(OrdItem::getSubOrderNo, subNos).in(OrdItem::getGoodsNo, limits.keySet())));
+            for (var row : rows) if (!Boolean.TRUE.equals(row.getIsGift())) {
+                var quantity = row.getSaleQuantity() != null ? row.getSaleQuantity()
+                        : row.getQty() == null ? BigDecimal.ZERO : BigDecimal.valueOf(row.getQty());
+                bought.merge(row.getGoodsNo(), quantity, BigDecimal::add);
+            }
+        }
+        for (var limit : limits.entrySet()) {
+            var remaining = BigDecimal.valueOf(limit.getValue()).subtract(bought.getOrDefault(limit.getKey(), BigDecimal.ZERO));
+            if (wanted.getOrDefault(limit.getKey(), BigDecimal.ZERO).compareTo(remaining) > 0) {
+                throw BizException.of(ErrorCode.PURCHASE_LIMIT_EXCEEDED, remaining.max(BigDecimal.ZERO));
+            }
+        }
+    }
     public void require(String userNo, Map<String, Integer> wanted, Map<String, Integer> limits) {
         if (limits.isEmpty() || !enforced()) {
             return;

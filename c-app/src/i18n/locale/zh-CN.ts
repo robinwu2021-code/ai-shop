@@ -1,5 +1,5 @@
 export default {
-  storedValue: {"accountLocalTime": "账户时区", "serviceState": {"WAIT_SUBMIT": "已确认，等待门店核销", "PROCESSING": "正在核对消费结果", "COMMITTED": "核销成功", "EXPIRED": "确认已过期，请门店重新发起", "CANCELLED": "本次消费已取消", "RELEASED": "本次消费已取消"},"brandScope": "品牌储值", "storeScope": "本店储值", "confirmConsumption": "确认本次消费", "paymentWallet": "扣款账户", "consumeAmount": "消费金额", "waitingMerchant": "已确认，等待门店完成核销", "refreshConfirmation": "刷新消费状态",
+  storedValue: {"accountLocalTime": "账户时区", "serviceState": {"WAIT_SUBMIT": "已确认，等待门店核销", "PROCESSING": "正在核对消费结果", "COMMITTED": "核销成功", "EXPIRED": "确认已过期，请门店重新发起", "CANCELLED": "本次消费已取消", "RELEASED": "本次消费已取消"},"brandScope": "品牌储值", "storeScope": "本店储值", "confirmConsumption": "确认本次消费", "paymentWallet": "扣款账户", "consumeAmount": "消费金额", "refreshConfirmation": "刷新消费状态",
     "storeLocalTime": "门店当地时间",
     "title": "储值记录",
     "entryHint": "查看储值与消费记录",
@@ -1262,10 +1262,6 @@ export default {
     directionREDEEM: "核销",
     directionREVERSAL: "冲正 / 退回",
     directionOTHER: "账务变动",
-    historyTerms: "历史条款（只读）",
-    noHistoryTerms: "暂无历史条款",
-    accountFrozen: "账户已冻结",
-    accountExpiry: "到期时间",
     posted: "已记账",
     code: "积分代码",
     currency: "币种",

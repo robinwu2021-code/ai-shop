@@ -44,8 +44,12 @@ class DiningBatchQueryServiceTest extends FoodWriteGuardFixture {
                 +"entity_no VARCHAR(32),store_no VARCHAR(32),deleted INT DEFAULT 0,batch_no VARCHAR(32) UNIQUE,check_no VARCHAR(32),"
                 +"status VARCHAR(24),source VARCHAR(24),business_date DATE,fulfillment VARCHAR(16),pay_mode VARCHAR(16),"
                 +"quote_ref VARCHAR(64),quote_hash VARCHAR(64),created_at DATETIME(3),accepted_at DATETIME(3),"
-                +"scheduled_at DATETIME(3),version BIGINT DEFAULT 0,frozen_request VARCHAR(10000),buyer_no VARCHAR(32),"
+                +"scheduled_at DATETIME(3),version BIGINT DEFAULT 0,frozen_request VARCHAR(10000),buyer_no VARCHAR(32),party_no VARCHAR(32),"
                 +"operator_no VARCHAR(32),payer_ref VARCHAR(64))");
+        f.sql().execute("CREATE TABLE fnb_order_line(tenant_no VARCHAR(32) DEFAULT 'MAIN',entity_no VARCHAR(32),"
+                + "batch_no VARCHAR(32),food_line_no VARCHAR(32),deleted INT DEFAULT 0)");
+        f.sql().execute("CREATE TABLE fnb_check_line_membership(tenant_no VARCHAR(32) DEFAULT 'MAIN',"
+                + "entity_no VARCHAR(32),batch_no VARCHAR(32),check_no VARCHAR(32),active_line_no VARCHAR(32),deleted INT DEFAULT 0)");
         f.sql().execute("CREATE TABLE fnb_check(tenant_no VARCHAR(32) DEFAULT 'MAIN',entity_no VARCHAR(32),"
                 +"store_no VARCHAR(32),check_no VARCHAR(32),deleted INT DEFAULT 0)");
         f.sql().execute("CREATE TABLE fnb_check_batch_membership(tenant_no VARCHAR(32) DEFAULT 'MAIN',entity_no VARCHAR(32),"
@@ -63,6 +67,7 @@ class DiningBatchQueryServiceTest extends FoodWriteGuardFixture {
                 +"VALUES('E','A',?,?,'BOUND','POS',?,'DINE_IN','POSTPAY','ORIGINAL_QUOTE','original-hash',?,"
                 +"'frozen-private','buyer-private','operator-private','payer-private')",number,check,DATE,
                 Timestamp.from(Instant.parse("2026-10-24T10:00:00Z")));
+        f.sql().update("INSERT INTO fnb_order_line(entity_no,batch_no,food_line_no) VALUES('E',?,?)", number, number+"-LINE");
     }
     void membership(Fixture f,String number,String check,String tenant,String entity,boolean detached,int deleted) {
         f.sql().update("INSERT INTO fnb_check_batch_membership(tenant_no,entity_no,batch_no,check_no,attached_at,detached_at,deleted) "

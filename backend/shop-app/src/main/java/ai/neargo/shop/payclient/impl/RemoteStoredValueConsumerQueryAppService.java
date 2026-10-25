@@ -1,5 +1,7 @@
 package ai.neargo.shop.payclient.impl;
 
+import ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews;
+
 import ai.neargo.shop.common.CursorPage;
 import ai.neargo.shop.pay.client.PayInternalApi;
 import ai.neargo.shop.pay.client.PayStoredValueConsumerRequests;
@@ -30,8 +32,8 @@ public class RemoteStoredValueConsumerQueryAppService implements StoredValueCons
     @Override public NotificationFact notificationFact(EntitlementContext c,String usageNo) {
         return RemoteEntitlementCalls.call(()->reads.svNotificationFact(new PayStoredValueConsumerRequests.Fact(c,usageNo)));
     }
-    @Override public CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews.Issuer> issuers(EntitlementContext c,String cursor,int size){return RemoteEntitlementCalls.call(()->reads.svConsumerIssuers(new PayStoredValueConsumerRequests.Issuers(c,cursor,size)));}
-    @Override public ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews.Issuer issuer(EntitlementContext c,String ref){return RemoteEntitlementCalls.call(()->reads.svConsumerIssuer(new PayStoredValueConsumerRequests.Issuer(c,ref)));}
-    @Override public ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews.Issuer locateIssuer(EntitlementContext c,String document){return RemoteEntitlementCalls.call(()->reads.svConsumerLocateIssuer(new PayStoredValueConsumerRequests.Locate(c,document)));}
+    @Override public CursorPage<StoredValueConsumerViews.Issuer> issuers(EntitlementContext c,String cursor,int size){return RemoteEntitlementCalls.call(()->reads.svConsumerIssuers(new PayStoredValueConsumerRequests.Issuers(c,cursor,size)));}
+    @Override public StoredValueConsumerViews.Issuer issuer(EntitlementContext c,String ref){return RemoteEntitlementCalls.call(()->reads.svConsumerIssuer(new PayStoredValueConsumerRequests.Issuer(c,ref)));}
+    @Override public StoredValueConsumerViews.Issuer locateIssuer(EntitlementContext c,String document){return RemoteEntitlementCalls.call(()->reads.svConsumerLocateIssuer(new PayStoredValueConsumerRequests.Locate(c,document)));}
     @Override public CursorPage<Record> issuerRecords(EntitlementContext c,String ref,String type,Instant from,Instant to,String focus,String cursor,int size){return RemoteEntitlementCalls.call(()->reads.svConsumerIssuerRecords(new PayStoredValueConsumerRequests.IssuerRecords(c,ref,type,from,to,focus,cursor,size)));}
 }

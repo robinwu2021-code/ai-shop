@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
 import ai.neargo.shop.pay.points.app.PointsSettlementHook;
 import ai.neargo.shop.pay.points.app.PointsSettlementHook.PayoutCommand;
 import ai.neargo.shop.pay.points.earn.EarnService;
@@ -74,6 +76,8 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -92,6 +96,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import javax.sql.DataSource;
 
@@ -130,6 +135,10 @@ class PointsRefundPreparationTest {
     @Autowired
     @Qualifier("payTxManager")
     private PlatformTransactionManager payTransactions;
+
+    @Autowired
+    @Qualifier("payDocumentNumberCoordinator")
+    private DocumentNumberCoordinator payNumbers;
 
     @Autowired
     @Qualifier("payDataSource")
@@ -1121,7 +1130,7 @@ class PointsRefundPreparationTest {
                     (Callable<PointsRefundCashDecisionService.Decision>)
                             () -> {
                                 try {
-                                    return transaction.execute(
+                                    return reservedPayResult(transaction,
                                             status -> {
                                                 assertThat(refundState(prepared))
                                                         .isEqualTo("PREPARED");
@@ -1141,7 +1150,7 @@ class PointsRefundPreparationTest {
                                     if (!serializationConflict(serializationConflict)) {
                                         throw serializationConflict;
                                     }
-                                    return transaction.execute(
+                                    return reservedPayResult(transaction,
                                             status ->
                                                     cashDecisions.authorize(
                                                             prepared.preparationNo(),
@@ -1185,7 +1194,7 @@ class PointsRefundPreparationTest {
             var failure =
                     catchThrowable(
                             () ->
-                                    transaction.executeWithoutResult(
+                                    reservedPayRun(transaction,
                                             status -> {
                                                 assertThat(refundState(prepared))
                                                         .isEqualTo("CASH_AUTHORIZED");
@@ -1450,8 +1459,7 @@ class PointsRefundPreparationTest {
         var fact = zeroFact(type, prepared, 0, ZeroCashReason.NO_CASH_DUE);
         assertThatThrownBy(
                         () ->
-                                new TransactionTemplate(payTransactions)
-                                        .executeWithoutResult(
+                                reservedPayRun(new TransactionTemplate(payTransactions),
                                                 status -> {
                                                     zeroCash.accept(fact);
                                                     throw new IllegalStateException(
@@ -1864,7 +1872,7 @@ class PointsRefundPreparationTest {
         var tx = new TransactionTemplate(payTransactions);
         assertThatThrownBy(
                         () ->
-                                tx.execute(
+                                reservedPayResult(tx,
                                         status -> {
                                             compensations.accept(prepared.preparationNo(), result);
                                             throw new IllegalStateException("TEST_PAY_ROLLBACK");
@@ -1890,6 +1898,22 @@ class PointsRefundPreparationTest {
         aborts.abort(abort);
         assertThat(balance(type, "available_points")).isEqualTo(5);
         assertThat(pool(type, "u_minor")).isEqualTo(80);
+    }
+
+    // Test-owned transaction boundaries obey the same numbering contract as production entry points.
+    // Reserve per invocation/thread before entering even an intentionally rolled-back transaction.
+    private <T> T reservedPayResult(TransactionTemplate transaction, TransactionCallback<T> action) {
+        return payNumbers.withReservation(
+                Map.of(DocumentType.POINTS_VOUCHER, 1), () -> transaction.execute(action));
+    }
+
+    private void reservedPayRun(TransactionTemplate transaction, Consumer<TransactionStatus> action) {
+        payNumbers.withReservation(
+                Map.of(DocumentType.POINTS_VOUCHER, 1),
+                () -> {
+                    transaction.executeWithoutResult(action);
+                    return null;
+                });
     }
 
     private String partlySpentGrant() {

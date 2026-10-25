@@ -31,6 +31,9 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.time.Duration;
+import java.time.ZoneId;
+import ai.neargo.shop.event.outbox.runtime.OutboxRunner;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,7 +53,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>每个用例一家新店（单店主体，商城库存是主体级那一档）。
  */
-@SpringBootTest
+@SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:stock-writeback;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
+        "shop.inventory.datasource.url=jdbc:h2:mem:stock-writeback-inventory;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"
+})
 @ActiveProfiles("test")
 class StockSyncWritebackTest {
 
@@ -77,6 +83,8 @@ class StockSyncWritebackTest {
     private List<InventoryEventSink> sinks;
     @Autowired
     private StockSyncService stockSync;
+    @Autowired
+    private OutboxRunner unifiedRunner;
     @Autowired
     private StockSyncLogMapper syncLog;
     @Autowired
@@ -481,19 +489,22 @@ class StockSyncWritebackTest {
     }
 
     /** 推两段 outbox 到清空：inv_outbox → sink（与 InvOutboxDispatchJob 同一动作），再平台 outbox → 消费者 */
-    private void pump() {
+    private void pump() throws InterruptedException {
         for (int round = 0; round < 10; round++) {
             List<InvOutbox> pending = invOutbox.selectList(Wrappers.<InvOutbox>lambdaQuery()
                     .eq(InvOutbox::getStatus, "PENDING").orderByAsc(InvOutbox::getId));
             for (InvOutbox e : pending) {
                 boolean ok = sinks.stream().allMatch(k -> k.deliver(e.getEventNo(), e.getOwnerId(),
-                        e.getEventType(), e.getPayload()));
+                        e.getEventType(), e.getPayload(), e.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant()));
                 if (ok) {
                     e.setStatus("SENT");
                     invOutbox.updateById(e);
                 }
             }
             int sent = dispatcher.dispatchPending();
+            unifiedRunner.recoverDue();
+            assertThat(unifiedRunner.awaitIdle(Duration.ofSeconds(5)))
+                    .as("Canonical outbox handlers must finish before observing writeback").isTrue();
             if (pending.isEmpty() && sent == 0) {
                 return;
             }

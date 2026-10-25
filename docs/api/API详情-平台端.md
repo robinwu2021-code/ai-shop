@@ -62,6 +62,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原资金执行与独立资源恢复进度。 |
 | `afterSaleNo` | `string` | 是 | 售后单号 |
 | `subOrderNo` | `string` | 是 | 关联的子订单 |
@@ -99,6 +100,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原资金执行与独立资源恢复进度。 |
 | `afterSaleNo` | `string` | 是 | 售后单号 |
 | `subOrderNo` | `string` | 是 | 关联的子订单 |
@@ -1669,6 +1671,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `invoiceNo` | `string` | 是 | 开票申请单号 |
 | `merchantNo` | `string` | 是 | 申请商家 |
 | `merchantName` | `string` | 是 | 商家名快照 |
@@ -1703,6 +1706,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `invoiceNo` | `string` | 是 | 开票申请单号 |
 | `merchantNo` | `string` | 是 | 申请商家 |
 | `merchantName` | `string` | 是 | 商家名快照 |
@@ -1790,6 +1794,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `requestNo` | `string` | 是 | 开票申请号 |
 | `orderNo` | `string` | 是 | 针对哪一单 |
 | `titleType` | `string` | 是 | PERSONAL / COMPANY |
@@ -1822,6 +1827,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `requestNo` | `string` | 是 | 开票申请号 |
 | `orderNo` | `string` | 是 | 针对哪一单 |
 | `titleType` | `string` | 是 | PERSONAL / COMPANY |
@@ -1867,6 +1873,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `settleNo` | `string` | 是 | 结算单号 |
 | `subOrderNo` | `string` | 是 | 对应的子订单，**一条 = 一个子订单** |
 | `orderNo` | `string` | 是 | 所属主单 |
@@ -1909,6 +1916,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `settleNo` | `string` | 是 | 结算单号 |
 | `subOrderNo` | `string` | 是 | 对应的子订单，**一条 = 一个子订单** |
 | `orderNo` | `string` | 是 | 所属主单 |
@@ -1951,6 +1959,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `settleNo` | `string` | 是 | 结算单号 |
 | `subOrderNo` | `string` | 是 | 对应的子订单，**一条 = 一个子订单** |
 | `orderNo` | `string` | 是 | 所属主单 |
@@ -2213,6 +2222,19 @@ _无字段_
 | `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
 
 
+#### GET `/ops/points/accounts`
+
+pointsAccounts
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### POST `/ops/points/adjustment-review`
 
 reviewPointsAdjustment
@@ -2278,6 +2300,133 @@ pointsAgreements
 | `agreement` | [`PointsAgreement`](#pointsagreement) | 是 | 服务端冻结的门店协议快照 |
 | `state` | `string` | 是 | 服务端处理状态 |
 | `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+
+
+#### GET `/ops/points/earning-context`
+
+pointsEarningContext
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`EarningContext`](#earningcontext)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | [`PointsTypeConfig`](#pointstypeconfig) \| `null` | 是 | Order-default points type; null when no default type is active. |
+| `categories` | [`EarningCategory`](#earningcategory)\[\] | 是 | Selectable product categories with their hierarchy and display paths. |
+| `types` | [`PointsTypeConfig`](#pointstypeconfig)\[\] | 是 | Points types available for independent rule configuration. |
+
+
+#### POST `/ops/points/earning-preview`
+
+previewPointsEarning
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`EarningCalculation`](#earningcalculation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | `object`（见下） | 是 | Points identity, currency precision and exchange ratio used for this calculation. |
+| `matched` | `object`（见下） | 是 | Published reward rule and revision selected for this calculation. |
+| `cashMinor` | `number` | 是 | Cash amount used for the reward calculation, in minor currency units. |
+| `points` | `number` | 是 | Calculated reward points after applying the published rule and exchange rate. |
+
+`type` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | Unique points-type code; separate points types never share balances or rules. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `market` | `string` | 是 | Market code whose currency and business calendar apply. |
+| `currency` | `string` | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `scale` | `number` | 是 | Currency decimal precision used to convert displayed money to minor units. |
+| `ratePoints` | `number` | 是 | Points component of the points conversion ratio. |
+| `rateMinor` | `number` | 是 | Minor-currency-unit component of the points conversion ratio. |
+
+`matched` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scope` | `string` | 是 | DEFAULT or a category identifier selecting the reward rule's applicability. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `rule` | `object`（见下） | 是 | Immutable calculation rule or versioned activity rule definition. |
+
+`matched.rule` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mode` | [`EarningRewardMode`](#earningrewardmode) | 是 | Calculation or scope mode determining how the associated value and references are interpreted. |
+| `value` | `number` | 是 | Reward value interpreted by its mode: basis points for RATIO, points per item for FIXED. |
+
+
+#### GET `/ops/points/earning-rule-history`
+
+pointsEarningHistory
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`EarningRule`](#earningrule)\[\]
+
+
+#### GET `/ops/points/earning-rules`
+
+pointsEarningRules
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`EarningRulePage`](#earningrulepage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`EarningRule`](#earningrule)\[\] | 是 | Records returned for the current indexed page. |
+| `total` | `number` | 是 | Total number of records matching the current query. |
+| `page` | `number` | 是 | One-based page index for the returned or requested result. |
+| `size` | `number` | 是 | Maximum records per page requested or returned by the server. |
+
+
+#### POST `/ops/points/earning-rules`
+
+changePointsEarningRule
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`EarningRule`](#earningrule)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | Unique points-type code; separate points types never share balances or rules. |
+| `scope` | `string` | 是 | DEFAULT or a category identifier selecting the reward rule's applicability. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `activeRevision` | `number,null` | 是 | Published rule revision; null when no revision is active. |
+| `mode` | [`EarningRewardMode`](#earningrewardmode) | 是 | Calculation or scope mode determining how the associated value and references are interpreted. |
+| `value` | `number` | 是 | Reward value interpreted by its mode: basis points for RATIO, points per item for FIXED. |
+| `activeMode` | [`EarningRewardMode`](#earningrewardmode) \| `null` | 是 | Published reward calculation mode; null before publication. |
+| `activeValue` | `number,null` | 是 | Published reward value interpreted using activeMode. |
+| `actor` | `string` | 是 | Server-recorded operator responsible for the rule revision. |
+| `remark` | `string` | 是 | Operator-supplied audit note explaining the submitted operation. |
+| `at` | `number` | 是 | Time the operation was recorded, as epoch milliseconds. |
+| `action` | [`EarningRuleAction`](#earningruleaction) | 否 | Operation recorded for this command or audit entry. |
 
 
 #### GET `/ops/points/entries`
@@ -2426,6 +2575,63 @@ _无字段_
 |---|---|:---:|---|
 | `reference` | `string` | 是 | 原业务引用编号 |
 | `status` | [`PointsExecutionStatus`](#pointsexecutionstatus) | 是 | 服务端业务状态 |
+
+
+#### GET `/ops/points/order-earning`
+
+pointsOrderEarning
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`OrderEarningInspection`](#orderearninginspection)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | Parent order identifier for the reward inspection. |
+| `subOrderNo` | `string` | 是 | Suborder identifier whose reward facts are being inspected. |
+| `typeCode` | `string` | 是 | Unique points-type code; separate points types never share balances or rules. |
+| `currency` | `string` | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `snapshot` | `object`（见下） | 是 | Immutable order reward inputs and matched rule traces. |
+| `ledger` | `object`（见下） \| `null` | 是 | Posted reward accounting projection; null before a grant is recorded. |
+
+`snapshot` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `schemaVersion` | `number` | 是 | Version of the immutable rule or order snapshot format. |
+| `ruleTraces` | `object`（见下）\[\] | 是 | Per-line matched rule scopes and revisions captured when the order was accepted. |
+| `lines` | `object`（见下）\[\] | 是 | Product lines with their immutable reward-calculation inputs. |
+
+`snapshot.ruleTraces[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `string` | 是 | Order-line identifier used to correlate the reward snapshot and rule trace. |
+| `categoryNo` | `string,null` | 是 | Product category identifier; null when no category was assigned. |
+| `matchedScope` | `string` | 是 | Category identifier or DEFAULT identifying the matched reward rule. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+
+`snapshot.lines[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `string` | 是 | Order-line identifier used to correlate the reward snapshot and rule trace. |
+| `goodsNo` | `string` | 是 | Product identifier captured in the order's reward snapshot. |
+| `categoryNo` | `string,null` | 是 | Product category identifier; null when no category was assigned. |
+| `quantity` | `number` | 是 | Product quantity used by the snapshot or trigger; null when not applicable. |
+| `goodsCashMinor` | `number` | 是 | Cash actually paid for this product line, in minor currency units. |
+| `rule` | `object`（见下） | 是 | Immutable calculation rule or versioned activity rule definition. |
+
+`snapshot.lines[].rule` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mode` | [`EarningRewardMode`](#earningrewardmode) | 是 | Calculation or scope mode determining how the associated value and references are interpreted. |
+| `value` | `number` | 是 | Reward value interpreted by its mode: basis points for RATIO, points per item for FIXED. |
 
 
 #### GET `/ops/points/order-integration`
@@ -3030,6 +3236,28 @@ pointsStats
 类型：`object`
 
 
+#### GET `/ops/points/stats-period`
+
+pointsPeriodStats
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsStatsPeriod`](#pointsstatsperiod)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码。 |
+| `from` | `string` | 是 | 统计周期起始日期，YYYY-MM-DD。 |
+| `to` | `string` | 是 | 统计周期结束日期，YYYY-MM-DD。 |
+| `metrics` | [`Record<string,number>`](#recordstringnumber) | 是 | 周期内由服务端聚合的指标。 |
+| `availableDays` | `number` | 是 | 统计数据可用的日期数量。 |
+| `missingDays` | `number` | 是 | 统计数据缺失的日期数量。 |
+
+
 #### POST `/ops/points/stats-rebuild`
 
 rebuildPointsStats
@@ -3106,6 +3334,56 @@ pointsTerms
 #### POST `/ops/points/terms`
 
 publishPointsTerms
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsChangeResult`](#pointschangeresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `action` | `string` | 是 | 请求执行的业务动作 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/transactions`
+
+pointsTransactions
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/points/transactions/{voucherNo}`
+
+pointsTransaction
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `voucherNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/points/type-name`
+
+renamePointsType
 
 **入参**
 
@@ -3240,6 +3518,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `settleDocumentNos` | `string`\[\] | 否 | Human-facing settlement document numbers linked to this record. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `invoiceNo` | `string` | 是 | 平台侧的进项票记录号（不是发票上印的号） |
 | `entityNo` | `string` | 是 | 哪家商家的票 |
 | `period` | `string` | 是 | 所属账期 yyyyMM |
@@ -3277,6 +3557,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `settleDocumentNos` | `string`\[\] | 否 | Human-facing settlement document numbers linked to this record. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `invoiceNo` | `string` | 是 | 平台侧的进项票记录号（不是发票上印的号） |
 | `entityNo` | `string` | 是 | 哪家商家的票 |
 | `period` | `string` | 是 | 所属账期 yyyyMM |
@@ -3327,6 +3609,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原资金执行与独立资源恢复进度。 |
 | `afterSaleNo` | `string` | 是 | 售后单号 |
 | `subOrderNo` | `string` | 是 | 关联的子订单 |
@@ -3377,6 +3660,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `batchNo` | `string` | 是 | 批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话 |
 | `entityNo` | `string` | 是 | 收款主体号 |
 | `payChannel` | `string` | 是 | 支付通道码。**不同通道账期不同，所以不能合批** |
@@ -3418,6 +3702,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `batchNo` | `string` | 是 | 批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话 |
 | `entityNo` | `string` | 是 | 收款主体号 |
 | `payChannel` | `string` | 是 | 支付通道码。**不同通道账期不同，所以不能合批** |
@@ -4404,6 +4689,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `fissionNo` | `string` | 是 | 活动单号 |
 | `name` | `string` | 是 | 活动名 |
 | `rewardType` | [`RewardType`](#rewardtype) | 是 | 奖励类型。**只能是券** —— 发现金会让职业薅羊毛立刻回来 |
@@ -4434,6 +4720,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `fissionNo` | `string` | 是 | 活动单号 |
 | `name` | `string` | 是 | 活动名 |
 | `rewardType` | [`RewardType`](#rewardtype) | 是 | 奖励类型。**只能是券** —— 发现金会让职业薅羊毛立刻回来 |
@@ -5307,6 +5594,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `campaignNo` | `string` | 是 | 活动号。跨端唯一，平台治理与商家自己看到的是同一个 |
 | `merchantNo` | `string` | 是 | 所属商家（主体号）。平台视角要按它归堆 |
 | `name` | `string` | 是 | 活动名，商家自己填的。C 端会原样展示，平台治理时也按它认人 |
@@ -5336,6 +5624,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `campaignNo` | `string` | 是 | 活动号。跨端唯一，平台治理与商家自己看到的是同一个 |
 | `merchantNo` | `string` | 是 | 所属商家（主体号）。平台视角要按它归堆 |
 | `name` | `string` | 是 | 活动名，商家自己填的。C 端会原样展示，平台治理时也按它认人 |
@@ -5365,6 +5654,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `campaignNo` | `string` | 是 | 活动号。跨端唯一，平台治理与商家自己看到的是同一个 |
 | `merchantNo` | `string` | 是 | 所属商家（主体号）。平台视角要按它归堆 |
 | `name` | `string` | 是 | 活动名，商家自己填的。C 端会原样展示，平台治理时也按它认人 |
@@ -5596,6 +5886,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `couponNo` | `string` | 是 | 券模板单号 |
 | `name` | `string` | 是 | 券名，展示给用户 |
 | `type` | [`CouponType`](#coupontype) | 是 | 券类型，决定 `value` 的口径 |
@@ -5632,6 +5923,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `issueNo` | `string` | 是 | 发放记录单号 |
 | `couponNo` | `string` | 是 | 发放的券模板 |
 | `couponName` | `string` | 是 | 券名快照 |
@@ -5662,6 +5954,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `couponNo` | `string` | 是 | 券模板单号 |
 | `name` | `string` | 是 | 券名，展示给用户 |
 | `type` | [`CouponType`](#coupontype) | 是 | 券类型，决定 `value` 的口径 |
@@ -5699,6 +5992,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `couponNo` | `string` | 是 | 券模板单号 |
 | `name` | `string` | 是 | 券名，展示给用户 |
 | `type` | [`CouponType`](#coupontype) | 是 | 券类型，决定 `value` 的口径 |
@@ -5736,6 +6030,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `couponNo` | `string` | 是 | 券模板单号 |
 | `name` | `string` | 是 | 券名，展示给用户 |
 | `type` | [`CouponType`](#coupontype) | 是 | 券类型，决定 `value` 的口径 |
@@ -5773,6 +6068,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `couponNo` | `string` | 是 | 券模板单号 |
 | `name` | `string` | 是 | 券名，展示给用户 |
 | `type` | [`CouponType`](#coupontype) | 是 | 券类型，决定 `value` 的口径 |
@@ -6164,6 +6460,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `activityNo` | `string` | 是 | 活动号 |
 | `name` | `string` | 是 | 名称 |
 | `triggerType` | `string` | 是 | 触发：NONE 立减 / AMOUNT 满额 / QTY 满件 |
@@ -10901,6 +11198,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原资金执行与独立资源恢复进度。 |
 | `afterSaleNo` | `string` | 是 | 售后单号 |
 | `subOrderNo` | `string` | 是 | 关联的子订单 |
@@ -11200,6 +11498,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `requestNo` | `string` | 是 | 开票申请号 |
 | `orderNo` | `string` | 是 | 针对哪一单 |
 | `titleType` | `string` | 是 | PERSONAL / COMPANY |
@@ -11509,6 +11808,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `couponNo` | `string` | 是 | 券模板单号 |
 | `name` | `string` | 是 | 券名，展示给用户 |
 | `type` | [`CouponType`](#coupontype) | 是 | 券类型，决定 `value` 的口径 |
@@ -11530,6 +11830,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `issueNo` | `string` | 是 | 发放记录单号 |
 | `couponNo` | `string` | 是 | 发放的券模板 |
 | `couponName` | `string` | 是 | 券名快照 |
@@ -11750,6 +12051,105 @@ KPI 卡（金额为最小货币单位整数）。
 - `SAME_NAME`
 - `NEARBY`
 
+### EarningCalculation
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | `object`（见下） | 是 | Points identity, currency precision and exchange ratio used for this calculation. |
+| `matched` | `object`（见下） | 是 | Published reward rule and revision selected for this calculation. |
+| `cashMinor` | `number` | 是 | Cash amount used for the reward calculation, in minor currency units. |
+| `points` | `number` | 是 | Calculated reward points after applying the published rule and exchange rate. |
+
+`type` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | Unique points-type code; separate points types never share balances or rules. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `market` | `string` | 是 | Market code whose currency and business calendar apply. |
+| `currency` | `string` | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `scale` | `number` | 是 | Currency decimal precision used to convert displayed money to minor units. |
+| `ratePoints` | `number` | 是 | Points component of the points conversion ratio. |
+| `rateMinor` | `number` | 是 | Minor-currency-unit component of the points conversion ratio. |
+
+`matched` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scope` | `string` | 是 | DEFAULT or a category identifier selecting the reward rule's applicability. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `rule` | `object`（见下） | 是 | Immutable calculation rule or versioned activity rule definition. |
+
+`matched.rule` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mode` | [`EarningRewardMode`](#earningrewardmode) | 是 | Calculation or scope mode determining how the associated value and references are interpreted. |
+| `value` | `number` | 是 | Reward value interpreted by its mode: basis points for RATIO, points per item for FIXED. |
+
+### EarningCategory
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `categoryNo` | `string` | 是 | Product category identifier; null when no category was assigned. |
+| `parentNo` | `string,null` | 是 | Parent category identifier; null for a root category. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `path` | `string` | 是 | Human-readable category hierarchy from its root to this category. |
+
+### EarningContext
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | [`PointsTypeConfig`](#pointstypeconfig) \| `null` | 是 | Order-default points type; null when no default type is active. |
+| `categories` | [`EarningCategory`](#earningcategory)\[\] | 是 | Selectable product categories with their hierarchy and display paths. |
+| `types` | [`PointsTypeConfig`](#pointstypeconfig)\[\] | 是 | Points types available for independent rule configuration. |
+
+### EarningRewardMode
+
+Reward calculation mode; historical fixed rewards remain readable.
+
+枚举取值：
+
+- `RATIO`
+- `FIXED`
+
+### EarningRule
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | Unique points-type code; separate points types never share balances or rules. |
+| `scope` | `string` | 是 | DEFAULT or a category identifier selecting the reward rule's applicability. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `activeRevision` | `number,null` | 是 | Published rule revision; null when no revision is active. |
+| `mode` | [`EarningRewardMode`](#earningrewardmode) | 是 | Calculation or scope mode determining how the associated value and references are interpreted. |
+| `value` | `number` | 是 | Reward value interpreted by its mode: basis points for RATIO, points per item for FIXED. |
+| `activeMode` | [`EarningRewardMode`](#earningrewardmode) \| `null` | 是 | Published reward calculation mode; null before publication. |
+| `activeValue` | `number,null` | 是 | Published reward value interpreted using activeMode. |
+| `actor` | `string` | 是 | Server-recorded operator responsible for the rule revision. |
+| `remark` | `string` | 是 | Operator-supplied audit note explaining the submitted operation. |
+| `at` | `number` | 是 | Time the operation was recorded, as epoch milliseconds. |
+| `action` | [`EarningRuleAction`](#earningruleaction) | 否 | Operation recorded for this command or audit entry. |
+
+### EarningRuleAction
+
+Reward rule history includes imported legacy revisions.
+
+枚举取值：
+
+- `IMPORT`
+- `SAVE`
+- `PUBLISH`
+- `DISABLE`
+
+### EarningRulePage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`EarningRule`](#earningrule)\[\] | 是 | Records returned for the current indexed page. |
+| `total` | `number` | 是 | Total number of records matching the current query. |
+| `page` | `number` | 是 | One-based page index for the returned or requested result. |
+| `size` | `number` | 是 | Maximum records per page requested or returned by the server. |
+
 ### EffectiveFeeRates
 
 某时刻实际生效的费率表，键为 `${businessMode}\|${trafficSource}`。
@@ -11848,6 +12248,7 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `fissionNo` | `string` | 是 | 活动单号 |
 | `name` | `string` | 是 | 活动名 |
 | `rewardType` | [`RewardType`](#rewardtype) | 是 | 奖励类型。**只能是券** —— 发现金会让职业薅羊毛立刻回来 |
@@ -12423,13 +12824,36 @@ Order-to-inventory audit chain; all quantities and source locations come from du
 | `aggregateId` | `string` | 是 | Identifier of the event aggregate that produced this synchronization. |
 | `eventType` | `string` | 是 | Event type emitted by the inventory or order lifecycle. |
 | `source` | `string` | 是 | System that requested or handled the synchronization. |
-| `status` | `COMPLETED` \| `PENDING` \| `FAILED` \| `WARNING` \| `SKIPPED` \| `ARCHIVED` | 是 | Delivery state of the synchronization event. |
-| `outboxMode` | `UNIFIED` \| `LEGACY` | 是 | Outbox implementation that persisted the event. |
+| `status` | [`InventorySyncEventState`](#inventorysynceventstate) | 是 | Delivery state of the synchronization event. |
+| `outboxMode` | [`InventoryOutboxMode`](#inventoryoutboxmode) | 是 | Outbox implementation that persisted the event. |
+
+### InventoryOutboxMode
+
+Outbox mechanism which persisted the synchronization event.
+
+枚举取值：
+
+- `UNIFIED`
+- `LEGACY`
+
+### InventorySyncEventState
+
+Delivery state of an inventory/order synchronization event.
+
+枚举取值：
+
+- `COMPLETED`
+- `PENDING`
+- `FAILED`
+- `WARNING`
+- `SKIPPED`
+- `ARCHIVED`
 
 ### InvoiceRequest
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `invoiceNo` | `string` | 是 | 开票申请单号 |
 | `merchantNo` | `string` | 是 | 申请商家 |
 | `merchantName` | `string` | 是 | 商家名快照 |
@@ -12930,6 +13354,7 @@ Order-to-inventory audit chain; all quantities and source locations come from du
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `campaignNo` | `string` | 是 | 活动号。跨端唯一，平台治理与商家自己看到的是同一个 |
 | `merchantNo` | `string` | 是 | 所属商家（主体号）。平台视角要按它归堆 |
 | `name` | `string` | 是 | 活动名，商家自己填的。C 端会原样展示，平台治理时也按它认人 |
@@ -13376,6 +13801,7 @@ Order-to-inventory audit chain; all quantities and source locations come from du
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `activityNo` | `string` | 是 | 活动号 |
 | `name` | `string` | 是 | 名称 |
 | `triggerType` | `string` | 是 | 触发：NONE 立减 / AMOUNT 满额 / QTY 满件 |
@@ -13460,6 +13886,52 @@ Order-to-inventory audit chain; all quantities and source locations come from du
 | `createdAt` | `string` | 是 | 下单时间（ISO 8601 字符串） |
 | `paidAt` | `string,null` | 否 | 支付时间。未支付为 null |
 | `statusAt` | `string` | 否 | 进入**当前状态**的时刻。异常单的"卡了多久"从这里算，不是从 createdAt 算 |
+
+### OrderEarningInspection
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | Parent order identifier for the reward inspection. |
+| `subOrderNo` | `string` | 是 | Suborder identifier whose reward facts are being inspected. |
+| `typeCode` | `string` | 是 | Unique points-type code; separate points types never share balances or rules. |
+| `currency` | `string` | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `snapshot` | `object`（见下） | 是 | Immutable order reward inputs and matched rule traces. |
+| `ledger` | `object`（见下） \| `null` | 是 | Posted reward accounting projection; null before a grant is recorded. |
+
+`snapshot` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `schemaVersion` | `number` | 是 | Version of the immutable rule or order snapshot format. |
+| `ruleTraces` | `object`（见下）\[\] | 是 | Per-line matched rule scopes and revisions captured when the order was accepted. |
+| `lines` | `object`（见下）\[\] | 是 | Product lines with their immutable reward-calculation inputs. |
+
+`snapshot.ruleTraces[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `string` | 是 | Order-line identifier used to correlate the reward snapshot and rule trace. |
+| `categoryNo` | `string,null` | 是 | Product category identifier; null when no category was assigned. |
+| `matchedScope` | `string` | 是 | Category identifier or DEFAULT identifying the matched reward rule. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+
+`snapshot.lines[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `string` | 是 | Order-line identifier used to correlate the reward snapshot and rule trace. |
+| `goodsNo` | `string` | 是 | Product identifier captured in the order's reward snapshot. |
+| `categoryNo` | `string,null` | 是 | Product category identifier; null when no category was assigned. |
+| `quantity` | `number` | 是 | Product quantity used by the snapshot or trigger; null when not applicable. |
+| `goodsCashMinor` | `number` | 是 | Cash actually paid for this product line, in minor currency units. |
+| `rule` | `object`（见下） | 是 | Immutable calculation rule or versioned activity rule definition. |
+
+`snapshot.lines[].rule` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mode` | [`EarningRewardMode`](#earningrewardmode) | 是 | Calculation or scope mode determining how the associated value and references are interpreted. |
+| `value` | `number` | 是 | Reward value interpreted by its mode: basis points for RATIO, points per item for FIXED. |
 
 ### OrderException
 
@@ -13812,6 +14284,7 @@ OrderPointsIntegrationQ 的 scene 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `settleDocumentNos` | `string`\[\] | 否 | Human-facing settlement document numbers linked to this record. |
 | `payoutNo` | `string,null` | 否 | 放款单号（V391）。**有号的按号回填凭证**（`payPayout`）， 没号的是存量老路（逐张 `payPayable`）。两条路并存到存量清零。 |
 | `entityNo` | `string` | 是 | 供应商主体号 |
 | `merchantName` | `string` | 是 | 商家名。查不到时回落成主体号 |
@@ -14028,6 +14501,8 @@ PENDING/REJECTED（P1）：商家自建点的审核态 —— 先审后用，地
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `subOrderNo` | `string,null` | 否 | Suborder identifier whose reward facts are being inspected. |
+| `reason` | `string,null` | 否 | Business reason recorded for the operation, rejection or manual recovery. |
 | `id` | `number` | 是 | 持久记录主键 |
 | `eventNo` | `string` | 是 | 源事实事件编号 |
 | `kind` | `string` | 是 | 原业务持仓或事件种类 |
@@ -14369,6 +14844,17 @@ Explicit receivable fields; no original bank instructions or posting payloads.
 | `sourceVersion` | `number` | 是 | 引用的原持仓版本 |
 | `points` | `number` | 是 | 积分数量 |
 
+### PointsStatsPeriod
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码。 |
+| `from` | `string` | 是 | 统计周期起始日期，YYYY-MM-DD。 |
+| `to` | `string` | 是 | 统计周期结束日期，YYYY-MM-DD。 |
+| `metrics` | [`Record<string,number>`](#recordstringnumber) | 是 | 周期内由服务端聚合的指标。 |
+| `availableDays` | `number` | 是 | 统计数据可用的日期数量。 |
+| `missingDays` | `number` | 是 | 统计数据缺失的日期数量。 |
+
 ### PointsSwitchPage
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -14398,6 +14884,7 @@ Points configuration commands carry stable intent IDs; identity and time come fr
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `name` | `string` | 是 | 积分名称，运营端展示名称 |
 | `market` | `string` | 是 | 市场代码 |
 | `currency` | `string` | 是 | ISO 货币代码 |
 | `scale` | `number` | 是 | 货币最小单位精度 |
@@ -14405,6 +14892,8 @@ Points configuration commands carry stable intent IDs; identity and time come fr
 | `deductRatioBp` | `number` | 是 | 最大抵扣比例，万分比 |
 | `idleDays` | `number` | 是 | 账户无活动失效天数 |
 | `status` | [`PointsTypeConfigStatus`](#pointstypeconfigstatus) | 是 | 服务端业务状态 |
+| `earningPaused` | `boolean` | 否 | Whether new earning is paused; existing promised work remains recoverable. |
+| `orderDefault` | `boolean` | 否 | Whether this is the server-selected points type for order rewards. |
 
 `rate` 的字段：
 
@@ -14525,6 +15014,8 @@ PointsTypeConfig 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `settleDocumentNos` | `string`\[\] | 否 | Human-facing settlement document numbers linked to this record. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `invoiceNo` | `string` | 是 | 平台侧的进项票记录号（不是发票上印的号） |
 | `entityNo` | `string` | 是 | 哪家商家的票 |
 | `period` | `string` | 是 | 所属账期 yyyyMM |
@@ -15082,6 +15573,7 @@ PointsTypeConfig 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `batchNo` | `string` | 是 | 批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话 |
 | `entityNo` | `string` | 是 | 收款主体号 |
 | `payChannel` | `string` | 是 | 支付通道码。**不同通道账期不同，所以不能合批** |
@@ -15154,6 +15646,7 @@ PointsTypeConfig 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `settleNo` | `string` | 是 | 结算单号 |
 | `subOrderNo` | `string` | 是 | 对应的子订单，**一条 = 一个子订单** |
 | `orderNo` | `string` | 是 | 所属主单 |
@@ -15382,6 +15875,7 @@ REJECTED 不是终态：商家改完可以重新提审。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `settleNo` | `string` | 是 | 所属结算单 |
 | `subOrderNo` | `string` | 是 | 对应的子订单 |
 | `splitAction` | `string` | 是 | SPLIT / REVERSE / SUBSIDY / SUBSIDY_RETURN |

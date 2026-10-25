@@ -1,4 +1,9 @@
 package ai.neargo.shop.portal.biz;
+
+import ai.neargo.shop.pay.client.PayStoredValueWalletRequests;
+import ai.neargo.shop.spi.storedvalue.StoredValueMerchantViews;
+import ai.neargo.shop.spi.user.StoredValueCustomerProfilePort;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.paybridge.EntitlementScopeResolver;
@@ -17,8 +22,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 @Profile("api") @RestController
 public class BizStoredValueWalletController {
-    @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.spi.user.StoredValueCustomerProfilePort profiles;
-    @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.merchantbridge.StoredValueCollectionContext collection;
+    @Autowired private StoredValueCustomerProfilePort profiles;
+    @Autowired private ai.neargo.shop.merchantbridge.StoredValueCollectionContext collection;
     private final StoredValueWalletAppService wallets;private final CustomerIdentityPort customers;private final EntitlementScopeResolver stores;private final StoredValueExecutionScopePort facts;private final MerchantQueryPort merchants;private final MarketPort markets;
     public BizStoredValueWalletController(StoredValueWalletAppService wallets,CustomerIdentityPort customers,EntitlementScopeResolver stores,StoredValueExecutionScopePort facts,MerchantQueryPort merchants,MarketPort markets){this.wallets=wallets;this.customers=customers;this.stores=stores;this.facts=facts;this.merchants=merchants;this.markets=markets;}
     @PreAuthorize("@perm.canBiz('pay:sv:account:read')")
@@ -33,7 +38,7 @@ public class BizStoredValueWalletController {
         var context=new EntitlementContext(user.tenantNo(),user.userNo(),"wallet-query","0".repeat(64));
         var customer=customers.resolveReference(context,new CustomerIdentityPort.ReferenceQuery(store.entityNo(),storeNo,customerRef));
         var scope=facts.current(user.tenantNo(),user.userNo(),store.entityNo(),storeNo,market.currency());
-        return collection==null?new Query(scope,new Customer(customer.customerNo(),customer.userNo())):collection.query(scope,new Customer(customer.customerNo(),customer.userNo()));
+        return collection.query(scope,new Customer(customer.customerNo(),customer.userNo()));
     }
     @PreAuthorize("@perm.canBiz('pay:sv:account:read')")
     @GetMapping("/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records")
@@ -43,8 +48,8 @@ public class BizStoredValueWalletController {
             @RequestParam(required=false)String cursor,@RequestParam(defaultValue="20")int size){
         var query=query(storeNo,customerRef);var s=query.scope();
         var market=markets.find(merchants.marketOf(s.entityNo())).orElseThrow(()->BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE));var zone=java.time.ZoneId.of(market.timeZone());
-        var page=wallets.records(new ai.neargo.shop.pay.client.PayStoredValueWalletRequests.Records(new ai.neargo.shop.pay.client.PayStoredValueWalletRequests.Select(query,issuerRef,accountRef),type,startDate==null?null:startDate.atStartOfDay(zone).toInstant(),endDate==null?null:endDate.plusDays(1).atStartOfDay(zone).toInstant(),cursor,size));
-        var names=profiles.profiles(s.tenantNo(),s.entityNo(),storeNo,page.records().stream().map(ai.neargo.shop.spi.storedvalue.StoredValueMerchantViews.Record::identityNo).distinct().toList());
+        var page=wallets.records(new PayStoredValueWalletRequests.Records(new PayStoredValueWalletRequests.Select(query,issuerRef,accountRef),type,startDate==null?null:startDate.atStartOfDay(zone).toInstant(),endDate==null?null:endDate.plusDays(1).atStartOfDay(zone).toInstant(),cursor,size));
+        var names=profiles.profiles(s.tenantNo(),s.entityNo(),storeNo,page.records().stream().map(StoredValueMerchantViews.Record::identityNo).distinct().toList());
         return new CursorPage<>(page.records().stream().map(r->BizStoredValueMerchantQueryController.record(r,names.get(r.identityNo()))).toList(),page.nextCursor());
     }
 }

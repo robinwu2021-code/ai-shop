@@ -992,6 +992,8 @@ uni-page-wrapper[style*="--window-bottom"] {
 .sh-scaffold > swiper,
 .sh-scaffold > form,
 /* 在文档流里的组件（宿主节点在小程序里是真节点，见上面那段） */
+.sh-scaffold > sh-points-earning,
+.sh-scaffold > stored-value-record-list,
 .sh-scaffold > sh-empty,
 .sh-scaffold > sh-tabs,
 .sh-scaffold > sh-section,
@@ -1030,6 +1032,8 @@ uni-page-wrapper[style*="--window-bottom"] {
 .sh-scaffold > navigator:first-child,
 .sh-scaffold > swiper:first-child,
 .sh-scaffold > form:first-child,
+.sh-scaffold > sh-points-earning:first-child,
+.sh-scaffold > stored-value-record-list:first-child,
 .sh-scaffold > sh-empty:first-child,
 .sh-scaffold > sh-tabs:first-child,
 .sh-scaffold > sh-section:first-child,

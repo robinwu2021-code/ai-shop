@@ -26,6 +26,9 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { backendModules } from "./backend-modules";
 
+// @ts-expect-error -- shared ES module scanner
+import { readScopeRegistrations } from "../../../scripts/lib/data-scope-registrations.mjs";
+
 const ROOT = join(import.meta.dirname, "../../..");
 const BACKEND = join(ROOT, "backend");
 const MODULES = backendModules(BACKEND);
@@ -463,6 +466,34 @@ const OWNER_COLUMNS = [
 ];
 
 const ANCHOR_WAIVED: Record<string, string> = {
+  "ord_industry_fulfillment:COMMUNITY": "行业订单来源与履约投影按经营主体授权；只持社区或自提点域的运营直接查询应为空，必须经原订单主体授权入口，不能把行业来源按地点公开。",
+  "ord_industry_fulfillment:PICKUP": "行业订单来源与履约投影按经营主体授权；只持社区或自提点域的运营直接查询应为空，必须经原订单主体授权入口，不能把行业来源按地点公开。",
+  "ord_industry_order_source:COMMUNITY": "行业订单来源与履约投影按经营主体授权；只持社区或自提点域的运营直接查询应为空，必须经原订单主体授权入口，不能把行业来源按地点公开。",
+  "ord_industry_order_source:PICKUP": "行业订单来源与履约投影按经营主体授权；只持社区或自提点域的运营直接查询应为空，必须经原订单主体授权入口，不能把行业来源按地点公开。",
+  "ord_manual_price_adjustment:COMMUNITY": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_manual_price_adjustment:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_manual_price_policy:COMMUNITY": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_manual_price_policy:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_price_quote:COMMUNITY": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_price_quote:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_pricing_funding_source:COMMUNITY": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_pricing_funding_source:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_store_pricing_config:COMMUNITY": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_store_pricing_config:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_store_pricing_revision:COMMUNITY": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_store_pricing_revision:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "prd_sku_pricing_policy:COMMUNITY": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "prd_sku_pricing_policy:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "prn_attempt:COMMUNITY": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_attempt:PICKUP": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_device:COMMUNITY": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_device:PICKUP": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_job:COMMUNITY": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_job:PICKUP": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_route:COMMUNITY": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_route:PICKUP": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_template:COMMUNITY": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_template:PICKUP": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
   "ent_code_token:COMMUNITY": "身份凭证或订单权益协调记录不按社区/自提点公开；仅该维度运营查询应为空，须用实际主体权限入口，不得查看他人凭证。",
   "ent_code_token:PICKUP": "身份凭证或订单权益协调记录不按社区/自提点公开；仅该维度运营查询应为空，须用实际主体权限入口，不得查看他人凭证。",
   "ord_ent_order_use:COMMUNITY": "身份凭证或订单权益协调记录不按社区/自提点公开；仅该维度运营查询应为空，须用实际主体权限入口，不得查看他人凭证。",
@@ -1017,14 +1048,7 @@ function opsEndpoints() {
 
 /** DataScopeRegistration.java → 表名 → { 维度: 锚点列 } */
 function registeredTables(): Map<string, Record<string, string>> {
-  const src = readFileSync(REGISTRATION, "utf8");
-  const out = new Map<string, Record<string, string>>();
-  for (const m of src.matchAll(/registry\.register\(\s*"(\w+)"\s*,\s*Map\.of\(([\s\S]*?)\)\s*\)\s*;/g)) {
-    const anchors: Record<string, string> = {};
-    for (const a of m[2]!.matchAll(/ScopeDim\.(\w+)\s*,\s*"(\w+)"/g)) anchors[a[1]!] = a[2]!;
-    out.set(m[1]!, anchors);
-  }
-  return out;
+  return readScopeRegistrations(ROOT);
 }
 
 /** schema-test.sql → 表名 → 列名集合。**逐表切块**，不做全局 grep ——
@@ -1045,6 +1069,45 @@ function schemaColumns(): Map<string, Set<string>> {
   return out;
 }
 
+/** Branch proof for the scanner's context-insensitive calls: ops passes literal true. */
+function templateBranchSafe(accessBody: string, callerBody: string, taxBody = ""): boolean {
+  const start = accessBody.indexOf("if (template)");
+  if (start < 0) return false;
+  const open = accessBody.indexOf("{", start);
+  const close = matchClose(accessBody, open, "{", "}");
+  const branch = accessBody.slice(open, close + 1);
+  const rest = accessBody.slice(close + 1);
+  return /user\.realm\(\) != Realm\.OPERATOR/.test(branch)
+    && /user\.subjectKind\(\) != SubjectKind\.OPS/.test(branch)
+    && /throw BizException\.of\(ErrorCode\.FORBIDDEN\)/.test(branch)
+    && !/stores\./.test(branch)
+    && /^\s*else\s*\{/.test(rest)
+    && /user\.realm\(\) != Realm\.MERCHANT/.test(rest)
+    && /stores\.cards\(/.test(rest)
+    && (/access\.draft\(true\)/.test(callerBody)
+      || (/access\.platform\(\)/.test(callerBody) && /return pricing\.draft\(true\)/.test(taxBody)));
+}
+
+function invoiceEnrichmentSafe(selector: string, enrichment: string): boolean {
+  return selector.includes("purchaseInvoiceMapper.selectList(") && !selector.includes("executeWithoutScope")
+    && selector.includes("return invoiceViews(rows)")
+    && enrichment.includes("invoices.stream().map(StlPurchaseInvoice::getInvoiceNo).toList()")
+    && enrichment.includes(".in(StlBill::getPurchaseInvoiceNo, ids)");
+}
+
+function provenBypass(endpoint: {path:string;cls:string;method:string}, site: string): boolean {
+  if (site === "SettleServiceImpl#invoiceViews" && endpoint.path === "/ops/purchase-invoices") {
+    return invoiceEnrichmentSafe((classes.get("SettleServiceImpl")?.methods.get("opsInvoices") ?? []).join("\n"),
+      (classes.get("SettleServiceImpl")?.methods.get("invoiceViews") ?? []).join("\n"));
+  }
+  if (!["StoreDirectoryPortImpl#activeEntities", "StoreDirectoryPortImpl#cards"].includes(site)) return false;
+  if (!["/ops/pricing-tax-settings", "/ops/pricing-templates/{no}/draft",
+      "/ops/pricing-templates/{no}/revisions/{revisionNo}"].includes(endpoint.path)) return false;
+  return templateBranchSafe((classes.get("PricingAccessPolicy")?.methods.get("draft") ?? []).join("\n"),
+    (classes.get(endpoint.cls)?.methods.get(endpoint.method) ?? []).join("\n"),
+    (classes.get("PricingTaxAccessPolicy")?.methods.get("platform") ?? []).join("\n"));
+}
+
 // ────────────────────────────────────────────────── 守卫
 
 describe("运营端数据域接入", () => {
@@ -1053,6 +1116,18 @@ describe("运营端数据域接入", () => {
   const schema = schemaColumns();
   const endpoints = opsEndpoints();
   const gets = endpoints.filter((e) => e.verb === "GET");
+
+  it("branch and row-enrichment evidence fails when original authorization is removed", () => {
+    const access = (classes.get("PricingAccessPolicy")?.methods.get("draft") ?? []).join("\n");
+    expect(templateBranchSafe(access, "access.draft(true)")).toBe(true);
+    expect(templateBranchSafe(access.replace("user.realm() != Realm.OPERATOR", "false"), "access.draft(true)")).toBe(false);
+    expect(templateBranchSafe(access, "access.draft(false)")).toBe(false);
+    const selector = (classes.get("SettleServiceImpl")?.methods.get("opsInvoices") ?? []).join("\n");
+    const enrich = (classes.get("SettleServiceImpl")?.methods.get("invoiceViews") ?? []).join("\n");
+    expect(invoiceEnrichmentSafe(selector, enrich)).toBe(true);
+    expect(invoiceEnrichmentSafe("executeWithoutScope " + selector, enrich)).toBe(false);
+    expect(invoiceEnrichmentSafe(selector, enrich.replace(".in(StlBill::getPurchaseInvoiceNo, ids)", ""))).toBe(false);
+  });
 
   it("解析没失效 —— 扫不到东西时不能静默通过", () => {
     expect(classes.size, "一个 Java 类都没扫到，目录结构变了？").toBeGreaterThan(300);
@@ -1071,7 +1146,7 @@ describe("运营端数据域接入", () => {
     const offenders: string[] = [];
     for (const e of gets) {
       for (const [site, tables] of bypassSites(e.cls, e.method, registered)) {
-        if (site in SCOPE_BYPASS_OK) continue;
+        if (site in SCOPE_BYPASS_OK || provenBypass(e, site)) continue;
         offenders.push(`GET ${e.path} → ${site}（${tables.join("/")}）`);
       }
     }

@@ -1,5 +1,11 @@
 package ai.neargo.shop.portal.biz;
 
+import ai.neargo.shop.spi.storedvalue.StoredValueExecutionScopePort;
+import ai.neargo.shop.spi.storedvalue.StoredValueWallets;
+import ai.neargo.shop.trade.dto.ServiceOrderSnapshot;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.Realm;
@@ -50,8 +56,8 @@ public class BizStoredValueController {
     private final EntitlementServiceOrderService serviceOrders;
     private final EntitlementServiceUseCoordinator serviceUses;
     private final StoredValueUseQuotePort useQuotes;
-    @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.spi.storedvalue.StoredValueExecutionScopePort walletScopes;
-    @org.springframework.beans.factory.annotation.Value("${shop.pay.stored-value.brand-execution-enabled:false}") private boolean walletSelectionEnabled;
+    @Autowired private StoredValueExecutionScopePort walletScopes;
+    @Value("${shop.pay.stored-value.brand-execution-enabled:false}") private boolean walletSelectionEnabled;
     public BizStoredValueController(StoredValueRechargeCoordinator recharges, RechargeIntentService intents,
             StoredValueRechargeAppService storedValue, CustomerIdentityPort customers,
             EntitlementServiceOrderService serviceOrders, EntitlementServiceUseCoordinator serviceUses,
@@ -176,11 +182,11 @@ public class BizStoredValueController {
         return new ConsumptionResolution(true,EntitlementServiceViews.consumer(original));
     }
     public record ConsumptionResolution(boolean found,EntitlementServiceViews.ServiceView service){}
-    private StoredValueUseQuotePort.Quote selectedQuote(EntitlementContext ctx,String entity,ConsumptionPreviewRequest command,ai.neargo.shop.trade.dto.ServiceOrderSnapshot order){
+    private StoredValueUseQuotePort.Quote selectedQuote(EntitlementContext ctx,String entity,ConsumptionPreviewRequest command,ServiceOrderSnapshot order){
         var customer=customers.resolveReference(ctx,new ReferenceQuery(entity,command.storeNo(),command.customerRef()));
         var scope=walletScopes.current(ctx.tenantNo(),ctx.actorNo(),entity,command.storeNo(),order.fact().currency());
-        var query=new ai.neargo.shop.spi.storedvalue.StoredValueWallets.Query(scope,new ai.neargo.shop.spi.storedvalue.StoredValueWallets.Customer(customer.customerNo(),customer.userNo()));
-        return useQuotes.quote(ctx,order.fact().source(),new ai.neargo.shop.spi.storedvalue.StoredValueWallets.Choice(query,command.issuerRef(),command.accountRef()));
+        var query=new StoredValueWallets.Query(scope,new StoredValueWallets.Customer(customer.customerNo(),customer.userNo()));
+        return useQuotes.quote(ctx,order.fact().source(),new StoredValueWallets.Choice(query,command.issuerRef(),command.accountRef()));
     }
     private void requireOriginalStore(EntitlementContext ctx, String entity, String no, String permission) {
         var p = intents.byRechargeNo(ctx.tenantNo(), no);

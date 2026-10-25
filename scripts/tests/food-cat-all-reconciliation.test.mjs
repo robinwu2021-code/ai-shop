@@ -17,9 +17,9 @@ test('provided migrations are not represented as historical locally applied tabl
  assert.equal(s.databaseInitialization.version,'1');assert.equal(s.databaseInitialization.businessTableCount,73);
  for(const version of [6,7])assert(s.databaseInitialization.additionalMigrations.some(p=>p.includes('/V'+version+'__')));
  const p=inventory().persistence;
- assert.equal(p.filter(t=>t.schemaStatus==='CREATED_LOCAL').length,73);
- assert.equal(p.filter(t=>t.schemaStatus==='MIGRATION_AVAILABLE_NOT_APPLIED').length,10);
- assert.equal(p.filter(t=>t.schemaStatus==='PLANNED_NOT_CREATED').length,2);
+ assert.equal(p.filter(t=>t.schemaStatus==='CLOUD_BASELINE_V15').length,83);
+ assert.equal(p.filter(t=>t.schemaStatus===(s.deliveryVerification?.status==='DEPLOYED_EMBEDDED_VERIFIED'?'SOURCE_MIGRATION_DEPLOYED':'SOURCE_MIGRATION_PENDING_DEPLOYMENT')).length,28);
+ assert.equal(p.filter(t=>t.schemaStatus==='PLANNED_NOT_CREATED').length,3);
 });
 test('menu sections and catalog preserve actual nullable authority and private read contracts',()=>{
  const api=id=>s.apis.find(a=>a.id===id);

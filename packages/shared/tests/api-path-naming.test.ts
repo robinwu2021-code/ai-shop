@@ -1,3 +1,4 @@
+import { resourcePluralityOffenders, usesPluralCollections } from "../../../scripts/api-path-convention.mjs";
 /**
  * 端点路径里「资源段 + {id}」的单复数，**按域各自一致**。
  *
@@ -26,9 +27,6 @@ import { join } from "node:path";
 
 const ROOT = join(__dirname, "../../..");
 
-/** 天然不可数或本来就以 s 结尾的段，两边都不算 */
-const EXEMPT = new Set(["goods", "address", "business", "status", "express", "news"]);
-
 const SPECS = [
   ["docs/api/openapi.yaml", "C 端"],
   ["docs/api/openapi-b.yaml", "B 端"],
@@ -42,25 +40,12 @@ function paths(file: string): string[] {
   return [...s.slice(i).matchAll(/^ {2}"?(\/[^"\s:]+)"?:\s*$/gm)].map((m) => m[1]);
 }
 
-/**
- * 看着像复数吗。`ss` 结尾（address / business）不算；`alias` 结尾（header-alias）也不算 ——
- * 它是单数，复数是 aliases。2026-09-30 `/elec/ops/header-alias/{id}` 被误判成复数
- */
-const looksPlural = (seg: string) => /^[a-z][a-z-]*s$/.test(seg) && !seg.endsWith("ss") && !seg.endsWith("alias");
-
 /** 「资源段 + {id}」的所有出现，连同它该是单数还是复数 */
 function offenders(): string[] {
   const out: string[] = [];
   for (const [file] of SPECS) {
     for (const p of paths(file)) {
-      const segs = p.split("/");
-      const wantPlural = segs[1] === "ops"; // 平台端用复数，其余单数
-      for (let i = 0; i < segs.length - 1; i++) {
-        const seg = segs[i];
-        if (!seg || seg.startsWith("{") || EXEMPT.has(seg)) continue;
-        if (!segs[i + 1].startsWith("{")) continue;
-        if (looksPlural(seg) !== wantPlural) out.push(`${p}  ${seg}`);
-      }
+      for (const segment of resourcePluralityOffenders(p)) out.push(`${p}  ${segment}`);
     }
   }
   return [...new Set(out)].sort();
@@ -92,7 +77,7 @@ const LIST_LABEL = `<仓库根>/${LIST}`;
 const OTHER_LIST = "b-app/scripts/known-plural-paths.txt（同名，另一道闸，判据是「复数+id」）";
 
 describe("端点路径：资源段的单复数按域一致", () => {
-  it("★★ 新端点必须跟随本域的约定（/mp /biz 单数 · /ops 复数）", () => {
+  it("★★ 新端点必须跟随本域的约定（按已发布的资源命名空间）", () => {
     const known = new Set(
       readFileSync(join(ROOT, LIST), "utf8")
         .split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")),
@@ -101,7 +86,7 @@ describe("端点路径：资源段的单复数按域一致", () => {
     const fresh = now.filter((x) => !known.has(x));
     expect(
       fresh,
-      `这些新端点与本域约定不符（/mp /biz 要单数、/ops 要复数）：\n  ${fresh.join("\n  ")}\n`
+      `这些新端点与本域约定不符（传统 /mp、/biz 单数；/ops 与已发布管理和门店集合命名空间复数）：\n  ${fresh.join("\n  ")}\n`
         + `\n  要破例就登记进 ${LIST_LABEL}（读它的是本文件 api-path-naming.test.ts）。`
         + `\n  ⚠️ 另有一份 ${OTHER_LIST} —— 登记一份不够，两道闸各读各的。`,
     ).toEqual([]);
@@ -121,5 +106,44 @@ describe("端点路径：资源段的单复数按域一致", () => {
       `这几条已经改好了，从 ${LIST_LABEL} 里删掉：\n  ${stale.join("\n  ")}\n`
         + `\n  ⚠️ 别删错文件：另有一份 ${OTHER_LIST}。`,
     ).toEqual([]);
+  });
+});
+
+
+describe("已发布资源命名空间边界", () => {
+  it("保持管理和门店集合的复数，同时保留传统域的单数", () => {
+    for (const path of [
+      "/biz/management/spaces/{space}/grants/{grant}",
+      "/biz/management/brands/:brand/stored-value/issuer",
+      "/biz/stores/{store}/stored-value/activities/{activity}",
+      "/biz/stores/:store/stored-value/issuer-recharges/:recharge",
+      "/biz/stores/{store}/fulfillment/{channel}/impact",
+      "/biz/coupon/{coupon}", "/mp/order/{order}", "/ops/orders/{order}",
+    ]) expect(resourcePluralityOffenders(path), path).toEqual([]);
+  });
+  it("同一命名空间不能混入反向拼写，也不能放宽相似前缀", () => {
+    for (const [path, bad] of [
+      ["/biz/management/store/{store}", "store"],
+      ["/biz/stores/{store}/stored-value/activity/{activity}", "activity"],
+      ["/biz/coupons/{coupon}", "coupons"],
+      ["/biz/stores/{store}/fulfillment/{id}", "fulfillment"],
+      ["/mp/orders/{order}", "orders"],
+      ["/ops/order/{order}", "order"],
+      ["/biz/stores-extra/{store}/activities/{activity}", "activities"],
+      ["/biz/management-extra/brands/{brand}", "brands"],
+    ]) expect(resourcePluralityOffenders(path), path).toContain(bad);
+    expect(usesPluralCollections("/biz/stores-extra/{store}")).toBe(false);
+    expect(usesPluralCollections("/biz/stores/lookup/activities/{activity}")).toBe(false);
+  });
+});
+
+describe("P5已发布URL兼容边界", () => {
+  it("精确兼容不放行陌生的同类订单路径", () => {
+    const known = new Set(readFileSync(join(ROOT, LIST), "utf8").split("\n").map(line => line.trim()));
+    for (const path of ["/biz/stored-value/consumptions/orders/{orderNo}/future-action", "/mp/entitlement-service-orders/{orderNo}/future-action", "/mp/orders/{orderNo}/new-authorizations"]) {
+      const bad = resourcePluralityOffenders(path);
+      expect(bad.length).toBeGreaterThan(0);
+      expect(bad.filter(segment => !known.has(`${path}  ${segment}`)).length).toBeGreaterThan(0);
+    }
   });
 });

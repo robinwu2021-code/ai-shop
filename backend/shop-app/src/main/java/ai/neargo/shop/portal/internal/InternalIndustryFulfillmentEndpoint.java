@@ -18,6 +18,11 @@ public class InternalIndustryFulfillmentEndpoint {
     private final String token;
     public InternalIndustryFulfillmentEndpoint(IndustryFulfillmentPort owner,
             @Value("${shop.services.internal-token:}") String token) { this.owner=owner; this.token=token; }
+    @PostMapping(IndustryFulfillmentInternalApi.ROOT+"/fulfill")
+    public ResponseEntity<?> fulfill(@RequestBody IndustryFulfillmentInternalApi.Partial c,
+            @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given) {
+        return InternalServiceResponses.invoke(token,given,()->owner.fulfill(c.command(),c.key()));
+    }
     @PostMapping(IndustryFulfillmentInternalApi.ROOT+"/pickup/verify")
     public ResponseEntity<?> verify(@RequestBody IndustryFulfillmentInternalApi.Verify c,
             @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given) {

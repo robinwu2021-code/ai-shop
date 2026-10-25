@@ -1,11 +1,9 @@
 package ai.neargo.shop.promotion.service.impl;
 
 import ai.neargo.shop.numbering.DocumentType;
-import ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers;
-
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService;
 import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
-
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -27,9 +25,9 @@ import ai.neargo.shop.spi.member.MemberQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 新模型券的实现。
@@ -543,11 +541,16 @@ public class PmtCouponServiceImpl implements CouponService {
     public CouponIssueVO issue(String entityNo, String couponNo, String segmentNo,
                                List<MemberQueryPort.AudienceItem> audiences, String operatorNo) {
         // Authorize the original template before resolving its remote audience.
-        PmtCoupon candidate = require(entityNo, couponNo);
-        sourceFence.requireWritable(candidate.getTenantNo(), SourceSystem.PMT, candidate.getCouponNo(), false);
-        if (!PmtCoupon.ACTIVE.equals(candidate.getStatus())) {
-            throw BizException.of(ErrorCode.COUPON_NOT_ACTIVE);
-        }
+        // Release the preflight source lock before remote audience resolution and number reservation.
+        // issueNumbered rechecks the same source under the final write transaction.
+        documentNumbers.transaction(Map.of(), () -> {
+            PmtCoupon candidate = require(entityNo, couponNo);
+            sourceFence.requireWritable(candidate.getTenantNo(), SourceSystem.PMT, candidate.getCouponNo(), false);
+            if (!PmtCoupon.ACTIVE.equals(candidate.getStatus())) {
+                throw BizException.of(ErrorCode.COUPON_NOT_ACTIVE);
+            }
+            return null;
+        });
         boolean byItems = audiences != null && !audiences.isEmpty();
         MemberQueryPort.SegmentAudience audience = byItems
                 ? toSegmentAudience(memberPort.resolve(entityNo, audiences, null))

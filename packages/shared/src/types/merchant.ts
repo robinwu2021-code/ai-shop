@@ -1,3 +1,12 @@
+/** Order reward processing projection; accepted work is not a posted account credit. */
+export type OrderPointsEarningState = "NONE" | "EXPECTED" | "PROCESSING" | "PENDING" | "AVAILABLE" | "RETRYABLE" | "MANUAL" | "SKIPPED" | "RECLAIMED";
+
+/** Lifecycle of the order points hold and its subsequent returns. */
+export type OrderPointsRedemptionState = "NONE" | "PROCESSING" | "HELD" | "RELEASED" | "CONSUMED" | "REFUND_PROCESSING" | "RETURNED" | "PARTIALLY_RETURNED";
+
+/** Processing state of the order points refund projection. */
+export type OrderPointsRefundState = "NONE" | "PROCESSING" | "MANUAL" | "COMPLETED";
+
 /** StorePointType 的 status 取值域，按服务端契约校验。 */
 export type StorePointTypeStatus = "DRAFT" | "ACTIVE" | "DRAINING" | "RETIRED";
 
@@ -21,6 +30,10 @@ import type { AfterSaleStatus, AfterSaleType, Order } from "./trade";
 
 /** Pay ledger views are scoped to the authenticated current store and one points type. */
 export interface StorePointType {
+  /** Whether new earning is paused; existing accounting obligations still complete. */
+  earningPaused?: boolean;
+  /** Whether this type is the server-selected default for order rewards. */
+  orderDefault?: boolean;
   /** 积分名称 */
   name: string;
   /** 最大抵扣比例，万分比 */
@@ -1173,7 +1186,9 @@ export interface PermOption {
  * > 连真后端会整片 undefined。与本轮反复撞到的「单看任一端都完整，断在两端之间」同形状。
  */
 export interface SettleBill {
+  /** Human-facing settlement batch number; absent for historical unmapped batches. */
   batchDocumentNo?: string | null;
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 结算单号 */
   settleNo: string;
@@ -1294,6 +1309,7 @@ export type SettleBatchStatus =
  * 我的账期批次。**商家问的是「这一批什么时候放、卡在哪」**。
  */
 export interface MySettleBatch {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 批次号。**与结算单上的批次号是同一个** —— 商家照着单子来问的就是它 */
   batchNo: string;
@@ -1775,7 +1791,6 @@ export interface MerchantApplyStatus {
   //
   // 为什么整份带回来而不是只给状态：驳回往往只缺一张执照，
   // 让人从头重填一遍是把「补交」变成「重来」—— 而重来的人有相当一部分就不回来了。
-
   /** 联系人姓名 */
   contactName: string;
   /** 联系手机号。这是申请人自己填的联系号码，**不是登录号**，不脱敏 */
@@ -1822,7 +1837,6 @@ export interface MerchantApplyStatus {
    * 所以商家勾了这一项、通过后却还没看到履约台，是正常的中间状态而不是故障。
    */
   asPickupPoint?: boolean;
-
   /**
    * <b>这张单是运营代填的</b>（三期）。
    *
@@ -1928,19 +1942,34 @@ export interface StorePointStatementReceipt {
 
 /** Server-projected earning for an authorized order; accepted work is not an account credit. */
 export interface OrderPointsEarning {
+  /** Parent order identifier for the reward inspection. */
   orderNo: string;
+  /** Unique points-type code; separate points types never share balances or rules. */
   typeCode: string;
+  /** Human-readable name displayed for this business resource. */
   name: string;
+  /** ISO currency code determining the interpretation of monetary amounts. */
   currency: string;
-  state: "NONE" | "EXPECTED" | "PROCESSING" | "PENDING" | "AVAILABLE" | "RETRYABLE" | "MANUAL" | "SKIPPED" | "RECLAIMED";
-  redemptionState: "NONE" | "PROCESSING" | "HELD" | "RELEASED" | "CONSUMED" | "REFUND_PROCESSING" | "RETURNED" | "PARTIALLY_RETURNED";
+  /** Current processing projection for the submitted business operation. */
+  state: OrderPointsEarningState;
+  /** Processing state of the order's points hold, consumption and subsequent returns. */
+  redemptionState: OrderPointsRedemptionState;
+  /** Points actually consumed by this order's completed redemption. */
   usedPoints: number;
-  refundState: "NONE" | "PROCESSING" | "MANUAL" | "COMPLETED";
+  /** Processing state of points returned for this order's refund. */
+  refundState: OrderPointsRefundState;
+  /** Points actually returned to the account by completed refund operations. */
   returnedPoints: number;
+  /** Original expected reward points frozen when the order was accepted. */
   expectedPoints: number;
+  /** Reward points actually posted to the account ledger. */
   grantedPoints: number;
+  /** Granted points still awaiting conversion to an available balance. */
   pendingPoints: number;
+  /** Granted points that have become available for use. */
   availablePoints: number;
+  /** Previously granted points subsequently recovered by refunds or reversals. */
   reclaimedPoints: number;
+  /** Business reason recorded for the operation, rejection or manual recovery. */
   reason: string | null;
 }

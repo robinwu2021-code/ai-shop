@@ -28,6 +28,8 @@ shop:
     targets:
       PLATFORM: ${PLATFORM_API_BASE_URL:}
   pay:
+    report-facts:
+      enabled: ${PAY_REPORT_FACTS_ENABLED:true}
     entitlement:
       # Stable shared random secret (>=32 characters) for scoped query cursors; no development fallback.
       # Original ORDER-coupon compatibility stays opt-in until core checkout/import acceptance.

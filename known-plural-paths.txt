@@ -60,7 +60,6 @@
 /biz/stored-value/plan-recharges/{rechargeNo}/submit  plan-recharges
 /biz/stored-value/plans/{planNo}  plans
 /biz/stored-value/plans/{planNo}/status  plans
-/biz/stored-value/records/{recordNo}  records
 ## These established ops actions use singular resource segments under the legacy
 ## permission/controller layout. Keep routes stable; pluralization requires matching
 ## controller, permission-matrix, and client migration with backward-compatible aliases.
@@ -77,9 +76,6 @@
 /biz/my-spec-dims/{dimNo}/archive  my-spec-dims
 /biz/my-spec-dims/{dimNo}/rename  my-spec-dims
 /biz/spec-dims/{dimNo}/values  spec-dims
-/biz/stores/{storeNo}/appointment-slots  stores
-/biz/stores/{storeNo}/fulfillment  stores
-/biz/stores/{storeNo}/fulfillment/{channel}/impact  stores
 /mp/my-memberships/{entityNo}/reach  my-memberships
 /ops/merchant/apply/{applyNo}/accept  apply
 /ops/merchant/apply/{applyNo}/audit  apply
@@ -121,3 +117,11 @@
 # 这两条它看不到；登进去反而会被它当成「已经修好、请删除」。
 /biz/goods/{goodsNo}/revisions/{revisionNo}  revisions
 /biz/goods/{goodsNo}/revisions/{revisionNo}/fork  revisions
+
+# Deployed P5 contracts from origin aa7796955, previously omitted from this registry.
+# B generator already froze the two original-service routes; C09 and the C generator
+# preserve customer confirmation routes. These are exact existing URLs, not a namespace rule.
+/biz/stored-value/consumptions/orders/{orderNo}  orders
+/biz/stored-value/consumptions/orders/{orderNo}/cancel  orders
+/mp/entitlement-service-orders/{orderNo}  entitlement-service-orders
+/mp/orders/{orderNo}/entitlement-authorizations  orders

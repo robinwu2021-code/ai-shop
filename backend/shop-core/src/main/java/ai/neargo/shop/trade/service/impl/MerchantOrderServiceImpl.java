@@ -651,7 +651,8 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                         i.getPrice() == null ? 0L : i.getPrice(),
                         i.getQty() == null ? 0 : i.getQty(),
                         i.getAmount() == null ? 0L : i.getAmount(), i.getCategoryType(),
-                        Boolean.TRUE.equals(i.getIsGift())))
+                        Boolean.TRUE.equals(i.getIsGift())).withPhysicalQuantity(i.getSaleQuantity(),
+                                i.getQuantityUnit(), i.getSourceComponentRef()))
                 .toList();
 
         // paidAt 只在主单上（子单没有这一列），同 toOpsVO 的做法 join 回去取

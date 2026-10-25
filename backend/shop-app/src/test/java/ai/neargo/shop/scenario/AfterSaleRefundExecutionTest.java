@@ -16,6 +16,7 @@ import ai.neargo.shop.spi.settle.SettlePort.PaymentStore;
 import ai.neargo.shop.spi.user.MerchantQueryPort.PaymentRoute;
 import ai.neargo.shop.trade.order.points.*;
 import java.time.Instant;
+import tools.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.util.UUID;
@@ -54,6 +55,11 @@ class AfterSaleRefundExecutionTest {
     @MockitoBean private OrderPointsBindingService pointsBindings;
     @MockitoBean private OrderPointsOutboxConsumer pointsDelivery;
     @MockitoBean private OrderPointsClosureFlowService pointsClosure;
+
+    private String earningRuleSnapshot() {
+        return new ObjectMapper().writeValueAsString(
+                new PointsOrderPlacementCoordinator.EarningSnapshot(2, 1, List.of()));
+    }
 
     private void freezeEmptyScope(String order) {
         new org.springframework.transaction.support.TransactionTemplate(transactions)
@@ -94,7 +100,7 @@ class AfterSaleRefundExecutionTest {
         doReturn(java.util.Optional.of(proof)).when(pointsPayments).verified(f.sub());
         var payment=new PointsRefundPort.PaymentSnapshot("DIRECT","TEST","MERCHANT","STORE",
                 "PM:1","SM","TRADE","OUT:"+f.sub(),110);
-        var snapshot=new OrderPointsBindingService.Snapshot(100,0,0,1,1,"{}","{}",payment,
+        var snapshot=new OrderPointsBindingService.Snapshot(100,0,0,1,1,earningRuleSnapshot(),"{}",payment,
                 List.of(new PointsRedeemPort.Item(String.valueOf(f.item()),100)));
         var admission=new OrderPointsBindingService.Admission("REQ",f.sub(),f.sub(),"USER","MERCHANT",
                 "STORE","TYPE","CNY","ONLINE",0,true,true,snapshot);
@@ -109,10 +115,12 @@ class AfterSaleRefundExecutionTest {
         doReturn(new PointsRefundPort.RefundOutcome(prep.preparationNo(),"CONFIRMED",0,0,0,0,0,
                 null,false)).when(pointsRefunds).confirm(any());
         afterSales.approve("MERCHANT",f.as(),"approved",null,"CASH");
-        afterSales.resumeRefund(f.as(),"SYSTEM");
+        // Approval's real after-commit recovery already prepares and dispatches the original cash attempt.
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE after_sale_no=?",
+                Long.class, f.as())).isEqualTo(1L);
         doReturn(new PointsRefundPort.RefundRecoveryStatus(prep.preparationNo(), f.as(), f.sub(),
                 "CONFIRMED", 50, jdbc.queryForObject(
-                        "SELECT payment_no FROM stl_payment WHERE after_sale_no=?", String.class, f.as()), false))
+                        "SELECT payment_no FROM stl_payment WHERE after_sale_no=?", String.class, f.as()), false, false))
                 .when(pointsRefunds).recoveryStatus(prep.preparationNo(), prep.inputHash());
         assertThat(refunded(f.sub())).isZero();
         assertThat(jdbc.queryForObject("SELECT amount_minor FROM stl_payment WHERE after_sale_no=?",
@@ -177,7 +185,7 @@ class AfterSaleRefundExecutionTest {
         doReturn(java.util.Optional.of(proof)).when(pointsPayments).verified(f.sub());
         var payment=new PointsRefundPort.PaymentSnapshot("DIRECT","TEST","MERCHANT","STORE",
                 "PM:1","SM","TRADE","OUT:"+f.sub(),110);
-        var snapshot=new OrderPointsBindingService.Snapshot(100,0,0,1,1,"{}","{}",payment,
+        var snapshot=new OrderPointsBindingService.Snapshot(100,0,0,1,1,earningRuleSnapshot(),"{}",payment,
                 List.of(new PointsRedeemPort.Item(String.valueOf(f.item()),100)));
         var admission=new OrderPointsBindingService.Admission("REQ",f.sub(),f.sub(),"USER","MERCHANT",
                 "STORE","TYPE","CNY","ONLINE",0,true,true,snapshot);
@@ -213,7 +221,7 @@ class AfterSaleRefundExecutionTest {
         doReturn(java.util.Optional.of(proof)).when(pointsPayments).verified(f.sub());
         var payment = new PointsRefundPort.PaymentSnapshot("DIRECT", "TEST", "MERCHANT", "STORE",
                 "PM:1", "SM", "TRADE", "OUT:" + f.sub(), 110);
-        var snapshot = new OrderPointsBindingService.Snapshot(100, 0, 0, 1, 1, "{}", "{}", payment,
+        var snapshot = new OrderPointsBindingService.Snapshot(100, 0, 0, 1, 1, earningRuleSnapshot(), "{}", payment,
                 List.of(new PointsRedeemPort.Item(String.valueOf(f.item()), 100)));
         var admission = new OrderPointsBindingService.Admission("REQ", f.sub(), f.sub(), "USER", "MERCHANT",
                 "STORE", "TYPE", "CNY", "ONLINE", 0, true, true, snapshot);
@@ -233,10 +241,12 @@ class AfterSaleRefundExecutionTest {
             return null;
         }).when(pointsDelivery).deliver("ORDER:REFUND_CONFIRM:" + f.as(), f.sub());
         afterSales.approve("MERCHANT", f.as(), "approved", null, "CASH");
-        afterSales.resumeRefund(f.as(), "SYSTEM");
+        // Approval's real after-commit recovery already prepares and dispatches the original cash attempt.
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE after_sale_no=?",
+                Long.class, f.as())).isEqualTo(1L);
         doReturn(new PointsRefundPort.RefundRecoveryStatus(prep.preparationNo(), f.as(), f.sub(),
                 "CONFIRMED", 50, jdbc.queryForObject(
-                        "SELECT payment_no FROM stl_payment WHERE after_sale_no=?", String.class, f.as()), false))
+                        "SELECT payment_no FROM stl_payment WHERE after_sale_no=?", String.class, f.as()), false, false))
                 .when(pointsRefunds).recoveryStatus(prep.preparationNo(), prep.inputHash());
         assertThatThrownBy(() -> afterSales.resumeRefund(f.as(), "SYSTEM"))
                 .hasMessage("POINTS_EVENT_DELIVERY_FAILED");
@@ -381,7 +391,7 @@ class AfterSaleRefundExecutionTest {
         doReturn(java.util.Optional.of(proof)).when(pointsPayments).verified(f.sub());
         var payment=new PointsRefundPort.PaymentSnapshot("DIRECT","TEST","MERCHANT","STORE",
                 "PM:1","SM","TRADE","OUT:"+f.sub(),110);
-        var snapshot=new OrderPointsBindingService.Snapshot(100,0,0,1,1,"{}","{}",payment,
+        var snapshot=new OrderPointsBindingService.Snapshot(100,0,0,1,1,earningRuleSnapshot(),"{}",payment,
                 List.of(new PointsRedeemPort.Item(String.valueOf(f.item()),100)));
         var admission=new OrderPointsBindingService.Admission("REQ",f.sub(),f.sub(),"USER","MERCHANT",
                 "STORE","TYPE","CNY","ONLINE",0,true,true,snapshot);
@@ -397,7 +407,9 @@ class AfterSaleRefundExecutionTest {
                 : ai.neargo.shop.pay.channel.PayGateway.Result.rejected("rejected"))
                 .when(channel).refund(any(),anyLong(),anyString(),anyString());
         afterSales.approve("MERCHANT",f.as(),"approved",null,"CASH");
-        afterSales.resumeRefund(f.as(),"SYSTEM");
+        // Approval's real after-commit recovery already prepares and dispatches the original cash attempt.
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE after_sale_no=?",
+                Long.class, f.as())).isEqualTo(1L);
         if (unknown) return f;
         if (!collected) doReturn(new PointsRefundPort.RefundRecoveryStatus(prep.preparationNo(), f.as(), f.sub(),
                 "ABORTED", 50, jdbc.queryForObject(

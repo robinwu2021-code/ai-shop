@@ -296,8 +296,8 @@ class PerOrderSettlementTest {
         String type="T:"+no;
         String sub="S:"+no;
         JdbcTemplate jdbc=new JdbcTemplate(payDataSource);
-        jdbc.update("INSERT INTO pts_point_type(type_code,market,currency,rate_points,rate_minor,status)"
-                + " VALUES(?,'CN','CNY',1,1,'ACTIVE')",type);
+        jdbc.update("INSERT INTO pts_point_type(type_code,name,market,currency,rate_points,rate_minor,status)"
+                + " VALUES(?,?,'CN','CNY',1,1,'ACTIVE')",type,type);
         jdbc.update("INSERT INTO pts_fund_pool(type_code,currency) VALUES(?,'CNY')",type);
         posting.recordEvidence(new EvidenceRef("E:"+no,"CNY",200));
         posting.post(new Voucher("F:"+no,type,"CNY",new RedeemRate(1,1),List.of(

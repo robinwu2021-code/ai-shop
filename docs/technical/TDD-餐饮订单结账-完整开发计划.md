@@ -2,6 +2,8 @@
 
 > **税配置最新口径（2026-10-23）：** 平台统一默认、商家自主覆盖，支持EXCLUSIVE额外加税/INCLUSIVE含税倒推，无平台审核；普通订单不再以前置税登记核验阻断。原税档审核/登记来源计划由[CKO-09 C2新口径](./TDD-订单结账-CKO09种子与配置API.md#c2新口径平台默认商家自主设置2026-10-23设计待实现)取代。首版同商家门店共用配置，历史订单冻结原税配置；新合同、内部存储、管理API及共享税计算/复核Port已实现；无权益受控报价和原单接线已完成，完整权益及扩展场景仍待开发。
 
+> **下一批执行入口（2026-10-24）：** 见§2.17：以已上线`fe7160c9d`为基线，补齐BIZ-01～12非支付后端业务；全部编码后统一编译生产及测试源码，测试后续集中执行。BIZ-01～12本批非支付范围已完成编码、双部署编译、集中专项验证、正常推送及云端集成上线（运行cd1b6d4da），见《TDD-餐饮系统-BIZ01-12-交付验证》。
+
 > 执行者：使用superpowers:executing-plans按任务顺序实施；按用户最新确认的节奏先完成当前范围全部编码，再完成统一编译，最后进入一次集中测试阶段、独立评审及范围明确的提交。不得仅因本计划存在就启动编码或声称能力已交付。
 >
 > **当前执行状态：** §2.7～2.13已新增员工堂食后付、整数加料、预约/转桌、厨房交接、业务AA、异常结转、人工调价、批次查询、非支付退餐及员工处理中撤销源码；本批输入边界已收口。本批后端统一编译及范围明确的集中测试已执行通过，真实收据、跳过项及限制见§2.14；§2.7～2.13内“未编译/测试”保留为编码时点历史。逐接口完整目标及营业验收仍按§2.3待办，不因测试通过而自动完成。
@@ -895,6 +897,180 @@ Schema发布修复：按原生成器重建schema-test.sql，补齐已合并储�
 发布阻断收据：合并后45b7c907e干净HEAD编译通过；正式全量门禁1874项，支付域两项不在零失败基线内：PayRightsReadProjectionTest.existingPlanCancellationInsideOriginalTransactionNeedsNoReservation；StoredValueMigrationReadinessTest.oldBuildWrongLedgerDisabledGuardAndStaleRepliesCannotAuthorizeCutover。两项在远端原分支45ae343f8隔离副本同样复现（7项中1失败1错误），因此不是本批餐饮引入；未据此放宽门禁或known清单。日志/tmp/food-cloud-head-gate.log、/tmp/food-cloud-payment-baseline.log。人工调价公开合同6项测试及反向API守卫已通过。云端c8e3ea7b0仍健康，本轮未切包、未改配置或经营库。后续远端同步仅作为已获授权的代码备份，不代表允许跳过发布门禁上线。
 
 顺序：核实云端真实数据库历史和餐饮开关→新迁移编号及引用对齐→合并结果干净HEAD编译/相关回归与完整发布门禁→推送统一分支→按部署脚本的锁、版本校验和回滚流程上线→核对health、gitSha及餐饮schema。不将前次“仅远端备份跳过检查”的授权用于部署门禁。若真实发布门禁失败，保留原因，不静默绕过或扩大known基线。不得覆盖云端已有储值功能或执行真实收退款。
+
+### 2.16 发布阻断修复与上线执行计划（用户已确认，2026-10-24）
+
+用户明确选择“修复发布阻断后上线”，范围扩至本次完整门禁暴露的真实缺陷、过期测试夹具和守卫误报；资金、来源锁、确认回执、权限以及known零失败门禁不放宽。档位1（包含三语i18n词条删除）；沿原业务合同，不建立新域或新支付流程。
+
+- 优惠券发放事务：当前外层issue在无事务时调用MANDATORY来源锁。仅给整个issue加事务会把外部受众解析/编号预留包入锁；删掉来源检查会丢失迁移屏障，均不采用。复用CoreMarketingDocumentNumbers.transaction(emptyMap)运行短前检事务，结束后解析受众和预留编号，原issueNumbered事务再次锁源并执行库存/预算/写单；不改来源锁MANDATORY合同。AC：前检与最终检查均在原事务管理器下，受众解析及编号预留在事务外，来源在两阶段之间冻结则最终拒绝且不写券。
+- 前端i18n：补齐与BizPerms.LABELS一致的5个结账规则/税配置权限码中英阿文案；依据真实后端管理权限目录区分权限字符串与词条；显式t/title-key/labelKey引用仍必须校验，目录解析失败不能静默放行。确认无动态/外部引用后删除19条废弃points词条的中英阿版本，不添加假引用或扩大known清单。AC：三个权限字面量不误报；实际缺失翻译仍报错；孤儿对账无新增。
+- 自动收货扫描：原每子单REQUIRES_NEW完成不应被扫描调用者回滚。延期动作advice目前先拒绝外层事务，导致原隔离合同失效；只对OrderService.autoConfirmReceipt入口用原core事务管理器NOT_SUPPORTED悬挂调用者，再开启延期动作范围，逐单提交与回调均在调用者事务外；其他业务入口仍拒绝不干净边界。
+- 持久化元数据：非MyBatis JDBC仓库登记真实SQL owner、实际Map/record行模型及可验证表引用；数据域登记同时说明具体查询方法/tenant/entity/store条件或平台授权分支，不伪装成MyBatis拦截保护。未知表、owner移除或证据失效必须继续失败。
+- 路径兼容：保留已发布/线上management与按store作用域的复数资源命名空间，新增同域资源仍需一致；旧B/MP单数和ops复数规则保留。共享命名分类器增加反例，不逐端点扩充例外；已冻结的stored-value兼容例外可复用并只缩减失效行。
+- 既有夹具：应收支付确认必须补真实匹配的原SUCCESS账本，不直接调用markPaid绕过支付；履约枚举补DINE_IN且保持非PHYSICAL；退款切片装配真实单据编号owner；已取消的门店积分策略仍拒绝变更，测试沿实际全局协调器验证未知/未清债务门禁。
+- 元数据与界面守卫：依据真实JDBC/MyBatis映射补齐归属、实体字段、校验及权限登记；修复DDL解析器漏读合法语法。不得扩大known清单，JDBC等非实体持久化须有实际owner证据。修复现有后台表格错误/重试/空态/页头、本地化mock错误及前端契约解析器的继承/紧凑声明支持；过期文档按真实来源重新生成或校正链接/SVG语义/状态，不删除有效设计。
+- 完整回归：所有修复先用对应失败测试验证，再在干净最终提交执行正式全量门禁、餐饮集成构建与必要范围回归；同步正常推送门禁结果。后端上线不发布前端产物，但前端守卫问题仍如实治理记录。
+- 云端：合并包含当前线上储值能力的统一分支；备份真实经营库与配置；按既有部署锁/版本校验执行food-embedded构建，首次显式迁移餐饮V1～V15及CORE V567～V569，之后回到validate；核实health=UP、gitSha、fnb私有历史和表数。失败时恢复原包/配置并验证健康，不删除增量表或伪造迁移历史。
+
+本轮真实失败补充：库存写回消费者由旧投递器的逐事件事务调用，库存对账又要求事务外预留单号，二者冲突；沿现有积分消费者方案，在写回消费入口暂停外层核心事务，对账继续使用自身短事务与原幂等键，成功后投递状态独立提交，失败按既有退避重投。验收保留真实进货、离线销售及重复投递断言。权益事件回滚夹具改以聚合类型/意图号制造真实数据库失败，避免猜测已变更的事件传输编号；消息场景使用独立核心测试库避免其他测试留下的失败队列污染。
+
+架构实测补充：独立进程调用原ArchitectureTest已复现26个具体Service不符合接口约定，以及printing/numbering/merchantbridge/points四个顶层包未登记。按现有规范拆为原Service接口与impl包实现，保留公开嵌套合同、事务、Spring bean身份和已有单号advice；同时实现跨域Port的服务改为独立port薄转发，不让服务同时承担两种角色。printing登记为真实业务域，加强跨域规则；其余三个按实际基础设施/装配职责登记，不扩大业务依赖基线。变更不修改SQL、金额或资金规则，需重新编译并跑原架构与业务回归。
+
+架构后续原始门禁四项：跨域使用的编号协调器/预留advice移至现有numbering基础设施包；业务Service与SPI Port分离为薄适配器，原退款匿名Port提为port包具名对象；两份域内跨域Port合同移到shop-base SPI。Controller禁止数据库Mapper的规则原用名称后缀把Jackson ObjectMapper误当数据库映射器，改为识别第一方Mapper、MyBatis标记及BaseMapper，并用真实门店Mapper/框架BaseMapper正例和JSON编解码器反例验证，继续禁止数据库直连。无依赖白名单或基线增长。
+
+本轮集中修复收据（2026-10-24，尚未切换云端）：
+
+| 范围 | 实测结果 | 日志 |
+| --- | --- | --- |
+| 原干净3cd7ef6be完整门禁 | 编译通过；4224项识别，102项失败/错误，后段发生Java heap space，不能当作完整有效回归；没有扩大零失败基线 | `/tmp/food-cloud-head-gate-fixed.log`、`head-test.KIdIeL` |
+| 库存/权益事件/结算/消息/评价目标回归 | 98项中91通过，积分运营7项暴露旧表结构及费率夹具，后续已修复复验 | `/tmp/food-cloud-backend-blockers-third.log` |
+| 服务拆分后目标回归 | 168项中154通过；剩余售后10项和架构4项继续修复，不用这轮冒充全部通过 | `/tmp/food-cloud-backend-blockers-fourth-constructor.log` |
+| 最后架构/售后/打印/人工调价/品牌回归 | CORE31＋APP32＝63项全部通过，无跳过；包括原架构17、售后14和打印替代装配2 | `/tmp/food-cloud-backend-blockers-fifth.log` |
+| 当前餐饮五模块install及包装IT | 782项、0失败/错误、54条件跳过、728实际通过；3项可执行包IT实际执行 | `/tmp/food-cloud-current-food-reactor.log` |
+| 当前嵌入式主机装配 | 6项、0失败/错误、1条件跳过，5实际通过；独立入口互斥条件在embedded形态按设计跳过 | `/tmp/food-cloud-current-embedded-host.log` |
+| 前端与类型/构建 | B298、C629、ops831通过；B/C类型检查通过；C的H5与小程序实际构建通过 | `/tmp/food-frontend-release-report.json` |
+| 最终产物与共享门禁 | 25生成器一致；共享583项仅4项既有基线债务，ops831/0，门禁exit0；i18n缺失0、孤儿56等于只缩减的基线；16项回归通过 | `/tmp/food-portmove-generators-green.log`、`/tmp/food-portmove-shared-green.log` |
+
+补充：原全量进程因默认堆内存耗尽拖慢并产生上下文连带失败；后续验证进程独立使用`JAVA_TOOL_OPTIONS=-Xmx6g`，不修改测试集合、业务配置或失败容忍。17个PAY服务拆分及事务修复另经独立只读审查，未发现Important/Critical问题；审查不代替上述实际运行。最终发布仍须在提交后执行干净HEAD完整门禁，成功前不标记上线。云端只读预检为9.7.2、ai_shop382表、CORE历史566、原gitSha c8e3ea7b0健康；此次尚未改经营库、配置或包。
+
+正常推送补充收据：f80f99b54的干净前置门禁发现库存界面清单stock-detail缺一项；同步发现原Python词条解析器漏读带引号键，不能只补空白中文表格。改为复用现有规范localeEntries读取实际词条，3项回归先红后绿（中文/URL与转义/非法目录拒绝），14屏文档已重生成并对账。盘点超期提示沿用is-danger公共组件类，删除等值局部颜色声明；无界面功能或语义变化。完整27项前端/静态检查、B298/C629、双类型、ops831与实际eslint均通过，25生成器一致，未增长基线。日志`/tmp/food-final-chain-results.json`、`/tmp/food-inv-ui-locale-red.log`、`/tmp/food-inv-ui-locale-green.log`。本段不代替最终干净HEAD后端门禁或云端上线回执。
+
+
+晚段回归修复收据（尚未上线）：正式4607073a4全量运行已越过原OOM位置，发现的后段失败继续归因，不把部分通过当完整通过。H2 2.4.240常量集合IN比较器引用已关闭建表连接（23514/90098），造成合法会员归属写入和种子重放失败；测试库生成器仅将完整简单列＋非NULL常量列表转换为保留三值逻辑的CASE，复杂操作数/引号标识符保持原SQL，生产迁移不变。旧schema跨连接重放实测失败，新schema通过；100条SQL真值比较一致；词法边界独立审查发现并修复初版尾部误匹配，最终Python14项通过。SchemaSeedReplayTest恢复真实多物理连接，不再用单连接规避根因。日志`/tmp/food-h2-full-cross-connection-before.log`、`/tmp/food-h2-full-cross-connection-replay.log`、`/tmp/food-h2-check-truth-table.log`、`/tmp/food-cloud-final-generator-parent.log`。
+
+其他后段修复：积分发帖夹具补唯一名称，配置切片按实际V537升级，退款并发/回滚测试在业务事务外预留真实编号；Issuer HTTP测试复用正式完整schema，删除重复重放旧DDL。通知事件补真实持久化订单归属及实际支付台账，并按本事件SENT/零重试验证，避免全队列污染或事件被拒绝造成假成功。运营权限保持V556/V557五项API-only权限不自动赋给角色，比较精确集合；补录已存在的治理能力API合同。支付发起失败沿现有PAY-01保留原意图，原键重放只有一笔流水；通道查询使用实际PayQueryPortImpl，不受共享FakePayQueryPort默认NOT_FOUND影响。
+
+| 后段目标批次 | 实测 | 日志 |
+| --- | --- | --- |
+| 积分发帖fixture | 4项通过 | `/tmp/food-cloud-posting-fixture-target-fixed.log` |
+| 权限／事件隔离／API合同 | 36项通过 | `/tmp/food-cloud-late-contract-permissions-test.log` |
+| 退款／物流／评分／通知／积分 | 98项通过 | `/tmp/food-cloud-late-schema-events-points-test.log` |
+| 跨连接schema／结算／跨店／团期／售后 | 41项通过 | `/tmp/food-cloud-cross-connection-final-target.log` |
+| 活动／复购／支付初次补验 | 36项中35通过；支付missing-channel被共享fake误判为NOT_FOUND，已改为真实查询端口 | `/tmp/food-cloud-late-payment-campaign-test.log` |
+| 真实通道查询与原支付意图 | 4项通过 | `/tmp/food-cloud-real-query-gateway-test.log` |
+
+4607073a4正式门禁本轮结束：21个有测试模块合计5716项（72失败、27错误、132条件跳过），末尾ArchitectureTest导入完整类图再次Java heap space；即使5716项已识别也不能当完整有效回归。日志`/tmp/food-cloud-final-normal-push-2.log`、完整保留`/tmp/food-cloud-final-head-test.log`。共26个失败类已归因；后续还须修测试资源安排并在干净新HEAD重跑，不以增大失败容忍或手写gate回执替代。
+
+统一Outbox补12个真实稳定处理器ID；11个跨PAY/独立恢复流程维持自有短事务，纯本地异常通知仍与platform inbox同事务。通用权益通知显式调用代理@Transactional pushTo写入，避免外部流程中自调用丢事务；未知结果不标SENT。真实H2事务、原键恢复、通知幂等、统一注册及离线结算合批33项通过（`/tmp/food-cloud-unified-outbox-final-target.log`），独立只读事务分类复审已完成。完整B端权限登记及审计守卫仍在修复；未跳过正常推送门禁，未切换云端。
+
+
+后段专项收尾：统一Outbox/通知/离线结算33项通过；架构17＋物流边界3＋真实Outbox边界1＋审计守卫3＋双部署迁移审计2＝26项通过（`/tmp/food-cloud-final-architecture-audit-target.log`）。两种部署迁移六入口补成功访问/执行AuditLogPort记录，保留原owner不可变操作回执；只记录操作者及业务引用，不记录proof/token/原始快照。B端守卫改用真实Java/SpEL AST，逐method核对canBiz或具体管理资源授权，不将management接口放入PUBLIC；伪字符串/OR true/同路径未登记handler/未调用嵌套类等负例及独立复审完成，最终B权限／源码反例／审计／迁移留痕Maven19项全部通过（`/tmp/food-cloud-final-permission-audit-test.log`）。
+
+完整测试资源安排：同一Surefire执行改为alphabetical，架构扫描优先；ArchitectureTest和LogisticsBoundaryTest在@AfterAll释放静态完整类图。未改测试选择、基线、堆/Fork、失败容忍或部署门禁，内存改善须以接下来完整回归证明。
+
+并发统一分支核对：远端已推进aa7796955，品牌储值P5已部署，实际云端gitSha为659e065f2585bdfca7aafbc66af5c3a7cab5df28、health=UP、CORE574、ai_shop393表且fnb0；PAY仍standalone，inventory仍true。此前c8e3ea7b0/CORE566/382表是前一次只读预检历史，不能再作为本次切换预期。先合并P5并重新完整验证；本次只新增餐饮私有15SQL/83业务表＋history，不重放已应用CORE567～574，不覆盖已上线品牌储值。备份/切换前再次验证实际版本，发生变化则先核对兼容。
+
+
+P5合并兼容收尾收据：支付侧保留101个原P5方法体及全部公开嵌套DTO，core/merchant八个服务方法组对账通过；新增服务沿原接口＋impl/port规范，bean身份、授权、SQL与金额体不变。支付、品牌钱包隔离、实际HTTP选择、公开合同、权限、审计、schema和Outbox合批55项通过（`/tmp/food-cloud-p5-final-merged-target.log`）。完整共享584项仅4项原基线、ops831/0，检查exit0；25生成器一致；B310、C633、双端类型及API语义检查通过。主failure基线未增长；共享路径兼容目录仅补4条已发布URL漏登记，并有陌生近似URL拒绝回归，B路径例外相对统一远端86→19。三个新增JDBC表登记真实owner/模型/SQL，不登记为无实体欠账；recharge_store_no在lot和clearing中明确指向mch_store.store_no。
+
+实际部署形态补验：food-api/core/channel/web/server五模块782项，0失败/错误，54条件跳过，含3项真实包装IT（`/tmp/food-cloud-p5-food-reactor-final.log`）；embedded主机架构19＋装配6＝25项，0失败/错误，1按构建形态条件跳过（`/tmp/food-cloud-final-embedded-shape.log`）。food登记真实业务域，独立行业SPI根保留在food-api；内部聚合访问改Access命名，9个惰性目录代理移至.port并保持23个原转发体/default行为。自包含food-web的API、真实自动装配、实现对应业务接口并依赖行业InternalApi的typed远程适配器按明确角色识别，领域service/policy/entity仍禁Web运行时，未知SPI/假配置/假适配器仍拒绝；独立正负例及复审通过。最终仍须在接下来冻结提交上正常全量推送门禁，不据专项通过宣称云端上线。
+
+后续文档质量待办（不改变已部署HTTP或此次代码行为）：独立生成器审查发现历史ManagementGrantReq→GrantCommand别名存在悬空OpenAPI引用，旧远端及本地修复前均有；需单独完善所有schema引用闭合校验。本次functions隐藏只删除3个不可序列化JS helper伪schema及精确未引用Never sentinel，引用sentinel时拒绝；577个数据DTO保持，实际数据不会因函数清理丢失。
+
+
+正常门禁bc3d9adf4上游阶段补验：活动版本重放测试原仅mock旧回执却无当前活动归属记录，发行额度恢复测试只有quota表却缺发行主体；CORE/PAY两个模块因此失败，下游APP被Maven跳过，不能当完整回归。仅对齐夹具：重放补合法当前owner/过期已变更快照，仍返回原回执且不重写，未知/跨owner拒绝；quota复用正式V548主体及V572范围合同，原恢复/释放/溢出/回滚场景覆盖STORE和BRAND两种真实池。Maven14项全部通过（`/tmp/food-cloud-upstream-fixtures-final.log`），生产逻辑及安全锁不变。另正常推送前置交付检查发现P5五条已接API出口仍在延期清单，已移出并同步前端任务说明，双端交付8项回归及反向出口检查通过；不据出口存在宣称全部前端业务验收完成。下一次仍从干净提交重跑所有门禁。
+
+
+发布验证策略调整（用户指示，2026-10-24）：不再每次重复全量测试，只验证修复直接影响的部分；本条覆盖本节此前“下一次重跑所有门禁”的安排。已停止本会话仍在运行的全量推送检查，保留实际日志及此前专项收据，不写入或冒充完整 gate-verified-sha。此次远端 P6 已部署到 d4cdc5f49，CORE 历史576、400表、餐饮表0；合并保留新增结算合同/权限/迁移，只对冲突服务和新服务做既有接口＋impl规范对齐，方法体与远端逐项对账。补验范围为P6结算/会员/汇总、管理范围权限、相关Service架构规则与embedded装配；餐饮源码未因本次合并改变的测试不重复运行。发布仍须干净提交构建、数据库/配置备份、部署锁、精确版本及健康/迁移核对；只部署shop-app，不重启独立PAY。推送与部署采用本次定向验证策略，不宣称全量门禁通过。
+
+本次合并定向实测：24模块依赖编译成功，所选55项中50通过、5条件跳过，0失败/错误（`/tmp/food-cloud-p6-focused-test.log`）；跳过为4个需原生数据库的PAY测试及1个standalone专属装配场景。PAY 94个方法体与远端P6逐项一致，merchant 29组方法/权限集合对账通过；SQL及既有CORE迁移均未改变。不将条件跳过计为实际通过。
+
+首次云端启动发现真实宿主根扫描与餐饮独立自动装配重叠，mpCatalogController与零售重名；已立即恢复原P6包与配置并验证UP。专项回归FoodHostConfigurationParsingTest已复现相同异常（`/tmp/food-cloud-bean-scan-red.log`）。修复只调整宿主扫描边界：food由原AutoConfiguration按开关装配，保留Spring Boot原两项扫描过滤器；餐饮目录factory使用独立bean名，不改任何HTTP路径、业务或表。之后仅跑该真实配置解析及既有装配测试，不重跑全量。
+
+扫描边界修复验证：真实宿主扫描启用/关闭2项全部通过（`/tmp/food-cloud-bean-scan-final.log`），解析真实application.yml、API+OPS且禁止bean覆盖；原嵌入装配6项中5通过、1standalone条件跳过（`/tmp/food-cloud-bean-scan-fixed.log`）。红例与线上异常一致；仅变更扫描边界和一个Bean名，未修改业务金额、权限、数据库SQL。
+
+第二次启动在MyBatis注册阶段发现幂等Mapper兜底早于平台MapperScan执行，已恢复并核对原P6健康。扩充同一回归真实执行MapperScannerConfigurer后，启用餐饮场景复现sysIdempotentMapper同名冲突、关闭场景通过（`/tmp/food-cloud-mapper-scan-red.log`）。修复让兜底同时识别已注册的平台扫描配置owner，继续保留独立部署的原兜底及已有Mapper优先逻辑，不改幂等业务或SQL。
+
+Mapper修复最终验证：真实配置解析＋Mapper注册启用/关闭2项通过（`/tmp/food-cloud-mapper-scan-fixed.log`），既有幂等7项通过。新增FoodEmbeddedStartupIT仅在显式disposable环境执行；一次性回环MySQL9.7导入P6仅表结构与Flyway元数据（无业务记录），干净24模块编译后1项真实完整宿主启动通过、0跳过，15个原始餐饮迁移全部执行，目录及唯一幂等Mapper断言通过（`/tmp/food-cloud-native-host-test.log`），仅本次容器已删除。宿主扫描、Mapper owner、自动配置与outbox延迟解析经独立只读审查无新明确阻断。此前空库重放暴露的旧迁移混合方言未扩范围修改；本次不宣称全新MySQL环境初始化兼容或全量业务回归通过。
+
+最终云端发布收据（2026-10-24）：后端运行提交`fe7160c9d2be15e3546d347992a9a47529fcaea3`，由统一分支干净副本以food-embedded打包，MD5 `0f2f623fdbeaaad86b3763dfc20d64d3`。首次迁移和切回validate模式后均核对health=UP及完整gitSha；CORE576、餐饮15个SQL迁移/V15、84张fnb表、同主库共484表，迁移失败记录0；实际JAR包含food-api/core/web三个模块和15个行业迁移。最终配置为enabled=true、deployment=embedded、migration.mode=validate，部署锁已释放。PAY进程PID1129197、启动时间及d4cdc5f49包指纹前后完全一致，受保护接口仍401，未部署或重启PAY；库存开关保留。原配置与完整数据库备份位于`/data/app/ai-shop/backups/food-release-20261024T082338Z-fe7160c9d`，gzip完整读取校验通过，权限受限；两次早期失败均已验证回滚恢复后再修复。实测日志：`/tmp/food-cloud-deploy-final.log`、`/tmp/food-cloud-live-migrated.json`、`/tmp/food-cloud-live-validated.json`、`/tmp/food-cloud-pay-before.txt`与`/tmp/food-cloud-pay-after.txt`。本次按用户要求只测修复相关部分，不宣称全量回归通过；真实收款、厨房打印硬件及门店营业验收不由部署健康检查替代。
+
+### 2.17 下一批非支付业务：一次性编码、统一编译、后续集中测试（2026-10-24）
+
+**本节为当前执行入口。** 用户要求先整理任务，再按“全部业务编码→全部编译成功→后续集中测试”执行；当前已执行完整编码、编译及集中专项测试，发布进展见本批交付验证记录。上线业务基线为`fe7160c9d`，发布记录提交`c69661f0a`；§2.3保留完整需求，§2.7～2.13的旧“未编译/测试”文字及旧待办勾选按其历史时点理解，不重复开发已交付切片。本文不因计划存在提前标记任何剩余目标完成。
+
+#### 范围与共同约束
+
+- 当前批次为后端非支付业务：公共合同、业务实现、必要增量表/索引、三端API、恢复任务、审计、双部署及测试源码。前端页面、真实设备和门店营业验收另行交付；后端提供对应真实合同，不以页面缺失省略业务接口。
+- 保持food-api接口/DTO、food-core实现/Mapper、food-web三端Controller、food-channel内部合同、food-server独立宿主的现有分工；沿原Service接口＋impl、Entity/Mapper、包与类命名。原账号、主体、商户、门店、营业时间、商品、订单、共享定价/税/调价、打印和库存优先复用。
+- 核心订单/数量/履约及独立库存所缺的非资金合同列入本批对应任务，由原能力归属模块补齐；餐饮不能跨域直接写表，不能永久用BLOCKED占位替代本批应完成的合同。确需外部供应商、设备或资金资格的依赖单列，不返回模拟成功。
+- 不开发新收退款、现金收支/找零、混合支付、订金收退、券/储值/积分实际扣减；保留既有先付状态门禁，后付仍为真实未付，应收调整不代表实收。Keeta真实适配、离线写入/收款、跨行业推广及报表仍后置。
+- 所有条目共同包含：认证身份与门店范围、原键幂等、版本/并发锁、金额/数量守恒、UNKNOWN原键恢复、真实来源快照、必要事件与审计。迁移只追加，已发布CORE V576/FOOD V15以前脚本冻结；新编号须与统一分支核对，不在本编码批次执行经营库迁移。
+
+#### 本批实施裁决（用户已确认先全量编码，2026-10-24）
+
+当前阶段进入CODING；先写测试源码，执行/消融推迟至全部编码和编译之后。独立模块按路径所有权并行编码，核心合同由主线整合，集中复审，不逐模块运行测试。身份：匿名/设备使用真实餐饮party/session来源，核心单另存partyNo及来源快照，buyerNo为空表示没有注册账号、不授予资产或支付权限。数量：原零售qty保留计价单位计数，新增saleQuantity/quantityUnit保存精确物理量；非整数行明确作为一个计价行携带真实量，不由旧qty推库存，库存只能按冻结需求计划执行。成品与配方叶子排他选择、按制作/交付阶段防双扣；核心源绑定及餐饮冻结请求都保存相同plan/hash。迁移预留CORE577/578/579及FOOD16/17/18/19，旧迁移冻结，最终与远端重新核号。
+
+#### 编码任务清单（同一交付批次，按依赖顺序连续推进）
+
+下表编号为§2.3原任务的本批执行分解，不建立第二份独立需求总账。每项均同步API输入输出、数据库、权限及原代码/方法清单，编写对应测试源码但暂不运行。
+
+| 编号/原需求 | 本批需要补齐的代码 | 原实现/能力落点 | 依赖与交付边界 |
+|---|---|---|---|
+| BIZ-01 身份；CKO-11/14/27 | 匿名顾客、桌码会话、设备身份和员工代客的统一来源；区分操作人、就餐人、已注册顾客与未来付款人；失效/撤权/跨店控制；完善报价、下单、查询与原键恢复 | DiningSessionService、DiningOrderService及Impl；food-web的B/C入口与设备接入；CORE IndustryOrderService、原账号/会话能力 | 复用已交付注册顾客POS/WAITER路径；真实guest/device身份合同由原owner补充，不伪造注册账号、不用员工号冒充顾客或付款授权 |
+| BIZ-02 成交组件；P3、CKO-11/13/14 | 时段/渠道价格与配料覆盖进入成交；固定/自选套餐、多级小料组合的有效选择、加价/替换、组件树、份数和原行分配；价格/配方/税/版本冻结及重新确认 | Catalog/DiningPricingFacts/DiningPricing/DiningOrder服务、原组件与allocation模型；CORE PricingPreparation及统一计算内核 | 接BIZ-01；复用已支持整数MAIN/ADDON，不重做餐牌配置；与BIZ-03共同交付，父子价格与数量只能按唯一计划计算 |
+| BIZ-03 精确数量与库存合同；P3/P4 | 小数/称重数量、单位精度/换算及库存需求来源；成品SKU与配方叶子二选一的排他计划；预占/释放/部分履约引用、原键查询与恢复 | 原CORE IndustryOrder/IndustryFulfillment服务与SPI；独立库存ReservationService、InventoryProductionPortImpl及typed内部API | 是BIZ-02/05/07/08共同前置；沿原数量/金额类型和精度方案扩展，拒绝静默截断，不在餐饮直接扣库存 |
+| BIZ-04 多场景订单；CKO-14/16/18 | 堂食/自提已有路径补齐复杂组件；线上线下自营外送订单、地址/服务范围/配送费用与时间快照；同桌多轮加菜、各批次恢复与统一业务状态 | DiningOrderService、CheckCartService、DiningBatchQueryService、CORE原单合同；原配送/服务范围能力 | 接BIZ-01～03；复用已交付堂食POSTPAY和多轮整数下单；既有先付未获权威成功仍不得派工，新增场景不触发支付 |
+| BIZ-05 改单与退餐；CKO-23、RET/GAP | 已绑定/已受理原单的有效加减菜、部分取消、换赠菜、称重补差、套餐配料退量；原新行关联、申请/审核/厨房处置及应收变更 | BusinessReturnService、DiningReturnService、DiningOrderService、CORE原行/应收/履约与售后合同 | 接BIZ-02～04；复用已交付处理中取消和非支付退餐申请；并发校验原量/活动申请/已履约量，金额变更由CORE确认，资金只保留待处理事实 |
+| BIZ-06 带单拼拆桌；CKO-19/TBL | 跨check业务合并/拆分、座位/批次/原行责任关联、按人/菜/金额业务份额及变更失效；结账冻结/加菜/转拼拆互锁、清台条件 | CheckService、BusinessShareService、原桌台锁/占位、批次与原单关联模型 | 接BIZ-04/05；同check物理转台/加桌及现有业务AA不重做；保留原核心订单和已付事实，不把业务份额确认写成资金结清 |
+| BIZ-07 厨房与交付；KIT-01～04 | 套餐/小料跨工位制作、父级装配与齐套包装、道次及部分数量联动；部分自取核销、骑手领取/交接、撤菜重做与原履约同步 | KitchenTaskService、DiningPickupVerificationService、原厨房事件；CORE IndustryFulfillment及原库存来源 | 接BIZ-02～05；复用已交付包装/实物交接记录，补原订单真实部分履约闭环，避免厨房记录代替库存或订单权威完成 |
+| BIZ-08 实际耗用；P4 | 制作领耗、补料、重做、报损及必要冲销；排他需求树实际执行、数量/单位/批次/历史估值回执、事件重放与不确定恢复 | ProductionConsumptionService、RecipeService、KitchenReturnService；独立库存生产出库/估值能力 | 接BIZ-03/07；从现有理论耗用扩展到真实库存事实，不把理论量标实耗，未知成本保留未知；不开发成本报表 |
+| BIZ-09 预约与专项；GAP/SPEC | 预点截止、到店转单、取消释放、排队通知、预售餐段与产能；茶位/锅底/包材/服务费/低消及自助/宴会/企业订单等非资金业务规则与来源 | Reservation/Queue服务、原桌台分配/营业日/餐牌、CORE收费行与税合同 | 接BIZ-02/04；已有预约桌台预占不重做；企业信用授信、挂账收款、订金等资金动作仍不纳入；供应商短信推送可用性据实列外部验收 |
+| BIZ-10 打印/KDS业务；CKO-24/PRN | 厨房/加撤菜/标签/预结等模板与路由、转台及改菜通知、设备绑定/撤权、KDS授权订阅和断线回放、任务状态/补打原因/UNKNOWN恢复 | FoodPrintService、共享PrintPort/打印任务/桥接合同、厨房与业务事件 | 接BIZ-04～07；不重建打印账本；按现有设备桥接协议完成代码，指定厂家SDK和物理出纸归实机阶段，不伪造设备成功 |
+| BIZ-11 营业运营；CLOSE/SHIFT非资金部分 | 日切归属、业务异常分类/处置/结转/历史更正、非资金责任交接、源事实复核、统一恢复查询和审计操作 | BusinessCloseService、原close/day/run/exception、恢复及审计能力 | 接BIZ-04～10；复用已交付SYNC双人结转；非资金交接不冒充现金班次，资金UNKNOWN不能标结清；不依赖报表库 |
+| BIZ-12 接线与工程收口；CKO-27/31 | 上述功能的C/B/平台支持API、DTO校验、范围权限、门店开关、本地/typed远端实现、事件处理、健康/迁移装配、原生成清单及升级说明 | food五模块；CORE/库存各原owner；原API/OpenAPI/数据库/类/方法清单 | 随各模块同步写入，最后合并收口；平台保留基础支持与授权，不恢复税档审核；前端页面和真实设备联验另列，不把接口存在视为终端已落地 |
+
+#### 编码完成的交付物
+
+- [x] BIZ-01～12生产代码及跨域实际调用完整；未实施子项明确列出，禁止以空方法/模拟成功/永远关闭的本批占位算完成。
+- [x] 必要的增量迁移、Entity/Mapper、Service/Impl、Controller、请求/响应、typed SPI/远程适配、恢复/审计和双部署装配同步；每个新API给出输入输出及错误语义。
+- [x] 原需求/数据库/API/代码/方法真源和生成物一致；在同一清单记录“已编码／已编译／待测试”，不得提前写测试通过。
+- [x] 编写测试源码：身份隔离/撤权；套餐父子及小数精度；原量/库存并发守恒；跨check来源与冻结；UNKNOWN原键恢复和新旧装配。编码阶段不执行测试。
+- [x] 输出外部依赖清单：供应商/设备、真实消息投递与营业验收；仅这些外部证据允许留待验收，本批内部CORE/库存合同缺口须完成代码或如实记未完成。
+
+#### 统一编译阶段（已执行，2026-10-25）
+
+所有Maven命令串行执行，使用Java21及离线构建；清理旧target，防止历史改号迁移残留。编译生产与测试源码并打包，但不运行单元、集成、原生数据库、HTTP启动或全量门禁测试。采用`-DskipTests`，不使用`-Dmaven.test.skip=true`跳过测试源码编译。
+
+1. 先安装本批公共基础/CORE/商户/库存及宿主依赖：`mvn -o -f backend/pom.xml -pl shop-app -am clean install -DskipTests`。
+2. 安装餐饮五模块：`mvn -o -f backend-plugins/shop-industry-food/pom.xml clean install -DskipTests`。
+3. 编译独立接入形态宿主：`mvn -o -f backend/pom.xml -Pfood-standalone -pl shop-app -am clean package -DskipTests`。
+4. 编译嵌入形态宿主：`mvn -o -f backend/pom.xml -Pfood-embedded -pl shop-app -am clean package -DskipTests`；分别保留双形态产物/源码SHA和日志，不能用最后一个target包冒充两个形态。
+5. 如本批新增运行在独立服务内的CORE/库存提供方入口，同时编译其原发布入口；不部署或重启独立PAY/库存。任何命令非0均回到代码修复，全部编译通过后统一交付“代码完成、编译通过、测试待执行”。不在本阶段推送触发全量测试的钩子，也不自动上线。
+
+#### 后续集中测试与延期项
+
+集中测试覆盖本批新功能、公共合同及直接影响的旧零售路径；针对修复只重跑相关用例，不每次重跑全仓。真实宿主启动/迁移/双部署、并发恢复、原生数据库、设备与各端联验放在此阶段，分别记录通过/失败/跳过及外部等待；未验证前不部署本批代码。
+
+前端页面另按收银平板→服务员→顾客H5/点餐机→KDS→商家/老板/平台支持端接入已有API。资金与权益、Keeta真实对接、离线营业、跨行业推广沿§2.3 C专项保留。全部当前业务完成后才进入§2.3 E报表：独立统计库、按营业日每日汇总、J01～J13任务、经营/销售/耗用分析及异步导出；不提前建报表空表或执行汇总任务。
+
+
+#### BIZ12 设计与源码清单对账（2026-10-25，仅代码与生成产物）
+
+原 `food-system-design.json`、原代码/方法归属计划及原生成器已对齐本批追加迁移和实际 Java 源码；没有新增并行规格。云端 FOOD 基线为 V15，83 张业务表加 `fnb_flyway_history` 共84张；当前源码目标 FOOD V25、CORE V581、INVENTORY V14，本批均尚未部署。
+
+- 原165个目标 API 和 PLANNED 对象继续保留；实际 food-web 三端、food-server 内部入口、typed 合同、Service/Impl、DTO record 和 Mapper 源码清单置于原文档前部。路径、方法、参数、校验与权限声明来自静态读取，不能替代运行鉴权验收。
+- FOOD V16～V25、CORE V577～V581、库存 V14 的表/列和引入版本回填原设计；共享订单、定价、库存和打印表仍归原 owner。JDBC 表按实际物理列与复合主键展示，不虚构 BaseEntity/Entity。
+- 原生成器泛化迁移版本发现，重复版本直接拒绝；原数据库/API/代码/方法清单与分域 ER 图同步生成。冻结 V1 内存投影 SHA-256 仍为 `215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9`；未改写 V1～V15 SQL。
+- 平台端新增真实只读 `OpsFoodSupportController`：`GET /ops/x/food/support/readiness|cases|source`。分别沿 `SYSTEM_INDUSTRY_READ` / `MERCHANT_READ`，先校验OPERATOR、实际MERCHANT数据域与门店原owner；不支持的维度或缺失数据域拒绝。`FoodSupportService` 在嵌入形态读取原Schema凭证与唯一typed provider，在独立形态经相同typed契约读取；异常与原来源状态委托原BusinessOperationsService，不执行恢复写操作。测试源码已写，未运行。
+- 此记录仅表示源码及可重复文档产物完成。未运行 Maven、编译或测试，未执行经营库迁移、提交或部署；BIZ01～BIZ12 的最终业务验收仍须按本节统一编译和后续集中测试执行。
+
+
+### 2.18 报表阶段启动（2026-10-25）
+
+BIZ-01～12非支付后端交付后，继续原§2.3 E及《TDD-B端报表库与日结》§9。首批S1-A已完成隔离初始化、VALIDATOR按需验证、J13及就绪访问保护；默认与餐饮集成宿主编译通过，报表15项与宿主/任务5项定向测试通过，一项独立审阅问题已消融复现并修复。用户随后授权推送并部署，2026-10-25云端集成发布9b2b52798并核验health UP；原配置保持不变，未启用ISOLATED，发布收据见报表TDD§10.7。
+
+下一步S1-B：实际统计库身份及账号权限隔离、六张控制/指标表与分区发布；随后S2/S3营业日每日汇总、补偿质量，S4历史查询与导出。生产启用必须先完成S3，不提前把初始化代码作为报表可用。支付、Keeta、离线、前端/实机继续后置。详细代码和验收收据见[报表TDD§10](./design/TDD-B端报表库与日结.md#10-s1-a-隔离初始化实施记录2026-10-25代码验证完成)。
+
+### 2.19 下一阶段S1-B清单及Review（2026-10-25，仅方案）
+
+执行方式最新收敛见报表TDD§17：只新增一个每日任务，人工补算/导出按需；旧J编号仅作能力标识，不逐项注册任务。2026-10-25经营主线review见报表TDD§14：优先订单/成交额/优惠退款/支付渠道、毛利净利来源及实时汇总，库存补收发存。资金只读来源前置，资金执行仍摘除；先做来源缺口review，不能把毛利当纯利。日报任务、日事实aggregationSet、日报/趋势/TopN及物理表清单见报表TDD§13；首版保存完整日分组，期间查询聚合后取TopN，不存截断榜单。S1B-01先依据[报表TDD§12维度指标目录](./design/TDD-B端报表库与日结.md#12-统计维度与指标目录2026-10-25方案待实施)逐项核验真实来源并冻结最小集合。S1-A已集成上线，下一阶段固定为独立统计库与整日版本发布，清单为S1B-01合同/真源、02实际库与权限隔离、03初始化恢复、04六表/DAO、05领取重试暂存、06原子发布/读取/dirty、07测试源码、08串行编译与集中专项验证。详细Review十项、候选字段/内部方法及验收矩阵见[报表TDD§11](./design/TDD-B端报表库与日结.md#11-s1-b-任务清单与方案-review2026-10-25待实施)。
+
+先证明真实分库再DDL；逻辑build号保持稳定，attempt和fence隔离失败重试；复用原营业日UTC边界；现有fnb报表表不做第二套发布控制。该方案不开放统计查询、不执行生产迁移，S2/S3后再满足真实统计上线条件。本轮没有启动编码或测试。
+
+### 2.20 精简报表开发计划（2026-10-25，待执行）
+
+实施入口为[经营报表TDD§2](./TDD-餐饮经营报表-数据库任务与API.md#2-开发计划2026-10-25已启动)：DEV-01来源/合同、02独立存储、03只读事实及计算、04一个每日任务/按需补算、05历史/实时API、06按需导出、07统一串行编译、08集中专项验证及整批review。前六项先完成代码与测试源码，不逐模块测试/上线；后两项集中收口。费用/历史销售成本缺真实owner时不能宣称经营净利完成。当前已启动整批执行，代码/编译/专项验证及未具备的真实来源见经营报表TDD§3。
 
 ## §3 任务边界及排期方式
 

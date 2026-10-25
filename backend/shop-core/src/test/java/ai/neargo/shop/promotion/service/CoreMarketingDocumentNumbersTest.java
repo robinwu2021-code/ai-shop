@@ -1,5 +1,6 @@
 package ai.neargo.shop.promotion.service;
 
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.shop.numbering.*;
 import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
 import ai.neargo.shop.promotion.entity.PmtCoupon;

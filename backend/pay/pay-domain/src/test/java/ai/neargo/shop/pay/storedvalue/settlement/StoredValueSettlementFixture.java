@@ -1,4 +1,7 @@
 package ai.neargo.shop.pay.storedvalue.settlement;
+import ai.neargo.shop.pay.storedvalue.settlement.impl.StoredValueSettlementServiceImpl;
+import ai.neargo.shop.pay.storedvalue.settlement.impl.StoredValueSettlementPaymentServiceImpl;
+
 import ai.neargo.shop.numbering.*;
 import ai.neargo.shop.numbering.store.*;
 import ai.neargo.shop.pay.entitlement.service.*;
@@ -40,7 +43,7 @@ class StoredValueSettlementFixture {
   jdbc.execute("CREATE TABLE pay_document_number(document_no VARCHAR(32) PRIMARY KEY,tenant_no VARCHAR(64),document_type VARCHAR(40),source_system VARCHAR(32),source_resource_type VARCHAR(64),source_no VARCHAR(128),business_date DATE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,UNIQUE(tenant_no,document_type,source_system,source_resource_type,source_no))");
   var nr=new JdbcDocumentNumberRepository(DocumentOwner.PAY,manager);numbers=new DocumentNumberCoordinator(nr,new SegmentDocumentNumberGenerator(nr,new DocumentNumberProperties(ZoneId.of("Asia/Shanghai"),3)),manager);
   var configuration=new MybatisConfiguration();configuration.setMapUnderscoreToCamelCase(true);configuration.addMapper(PayEntCommandDedupMapper.class);var factory=new MybatisSqlSessionFactoryBean();factory.setDataSource(ds);factory.setConfiguration(configuration);factory.afterPropertiesSet();
-  commands=new EntitlementCommandDeduplicator(new SqlSessionTemplate(factory.getObject()).getMapper(PayEntCommandDedupMapper.class),json);audit=new StoredValueSettlementAudit(repo,numbers);payments=new StoredValueSettlementPaymentService(repo,audit,cipher,commands,numbers,readiness);bills=new StoredValueSettlementService(repo,audit,numbers,commands,readiness);
+  commands=new EntitlementCommandDeduplicator(new SqlSessionTemplate(factory.getObject()).getMapper(PayEntCommandDedupMapper.class),json);audit=new StoredValueSettlementAudit(repo,numbers);payments=new StoredValueSettlementPaymentServiceImpl(repo,audit,cipher,commands,numbers,readiness);bills=new StoredValueSettlementServiceImpl(repo,audit,numbers,commands,readiness);
  }
  static final Set<String> ALL=Set.of("sv.settlement.read","sv.settlement.generate","sv.settlement.reconcile","sv.settlement.dispute","sv.settlement.dispute.resolve","sv.settlement.adjust","sv.settlement.payment.register","sv.settlement.receipt.confirm","sv.settlement.payment.void","sv.settlement.audit");
  Authority actor(String actor,String principal,String entity){return new Authority("MAIN",actor,principal,"M1",List.of(new IssuerGrant("I1","BRAND","B1")),Map.of(entity,ALL),Set.of());}

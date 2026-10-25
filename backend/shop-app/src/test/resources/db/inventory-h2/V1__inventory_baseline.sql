@@ -100,6 +100,8 @@ CREATE TABLE IF NOT EXISTS inv_item
     source_on_sale TINYINT DEFAULT NULL,
     retired_at DATETIME DEFAULT NULL,
     succeeded_by VARCHAR(40) DEFAULT NULL,
+    cost_currency VARCHAR(3) NULL,
+    valuation_version BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_item UNIQUE (owner_id, item_id),
     CONSTRAINT uk_item_code UNIQUE (owner_id, item_code)
@@ -124,8 +126,8 @@ CREATE TABLE IF NOT EXISTS inv_stock_balance
     owner_id      VARCHAR(32) NOT NULL,
     item_id       VARCHAR(32) NOT NULL,
     location_id   VARCHAR(32) NOT NULL,
-    on_hand       INT         NOT NULL DEFAULT 0,
-    reserved      INT         NOT NULL DEFAULT 0,
+    on_hand DECIMAL(24,6) NOT NULL DEFAULT 0,
+    reserved DECIMAL(24,6) NOT NULL DEFAULT 0,
     safety_stock  INT         DEFAULT NULL,
     last_moved_at DATETIME    DEFAULT NULL,
     version       BIGINT      NOT NULL DEFAULT 0,
@@ -147,13 +149,16 @@ CREATE TABLE IF NOT EXISTS inv_ledger
     doc_no          VARCHAR(32) NOT NULL,
     line_no         INT         NOT NULL,
     reason_code     VARCHAR(16) NOT NULL,
-    qty_delta       INT         NOT NULL,
-    balance_after   INT         NOT NULL,
+    qty_delta DECIMAL(24,6) NOT NULL,
+    balance_after DECIMAL(24,6) NOT NULL,
     unit_cost_minor BIGINT      DEFAULT NULL,
     occurred_at     DATETIME    NOT NULL,
     created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     operator        VARCHAR(64) DEFAULT NULL,
     created_by      VARCHAR(64) DEFAULT NULL,
+    cost_currency VARCHAR(3) NULL,
+    batch_no VARCHAR(32) NULL,
+    lot_ref VARCHAR(32) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_doc_line UNIQUE (doc_no, line_no)
 );
@@ -211,8 +216,8 @@ CREATE TABLE IF NOT EXISTS inv_inbound_order
     source_ref       VARCHAR(64)  DEFAULT NULL,
     supplier_name    VARCHAR(64)  DEFAULT NULL,
     status           VARCHAR(16)  NOT NULL DEFAULT 'DRAFT',
-    total_qty        INT          NOT NULL DEFAULT 0,
-    total_cost_minor BIGINT       NOT NULL DEFAULT 0,
+    total_qty DECIMAL(24,6) NOT NULL,
+    total_cost_minor BIGINT NULL,
     occurred_at      DATETIME     NOT NULL,
     posted_at        DATETIME     DEFAULT NULL,
     voided_at        DATETIME     DEFAULT NULL,
@@ -234,7 +239,7 @@ CREATE TABLE IF NOT EXISTS inv_inbound_line
     line_no         INT         NOT NULL,
     owner_id        VARCHAR(32) NOT NULL,
     item_id         VARCHAR(32) NOT NULL,
-    qty             INT         NOT NULL,
+    qty DECIMAL(24,6) NOT NULL,
     uom             VARCHAR(16) NOT NULL,
     unit_cost_minor BIGINT      DEFAULT NULL,
     batch_no        VARCHAR(32) DEFAULT NULL,
@@ -258,8 +263,8 @@ CREATE TABLE IF NOT EXISTS inv_outbound_order
     reservation_id   VARCHAR(32)  DEFAULT NULL,
     reason_code      VARCHAR(16)  DEFAULT NULL,
     status           VARCHAR(16)  NOT NULL DEFAULT 'DRAFT',
-    total_qty        INT          NOT NULL DEFAULT 0,
-    total_cost_minor BIGINT       NOT NULL DEFAULT 0,
+    total_qty DECIMAL(24,6) NOT NULL,
+    total_cost_minor BIGINT NULL,
     occurred_at      DATETIME     NOT NULL,
     posted_at        DATETIME     DEFAULT NULL,
     voided_at        DATETIME     DEFAULT NULL,
@@ -283,7 +288,7 @@ CREATE TABLE IF NOT EXISTS inv_outbound_line
     line_no         INT         NOT NULL,
     owner_id        VARCHAR(32) NOT NULL,
     item_id         VARCHAR(32) NOT NULL,
-    qty             INT         NOT NULL,
+    qty DECIMAL(24,6) NOT NULL,
     uom             VARCHAR(16) NOT NULL,
     unit_cost_minor BIGINT      DEFAULT NULL,
     batch_no        VARCHAR(32) DEFAULT NULL,
@@ -563,6 +568,65 @@ CREATE TABLE IF NOT EXISTS inv_return_receipt
     created_by VARCHAR(64) NOT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_inv_return_receipt_line UNIQUE (receipt_no, line_no)
+);
+
+CREATE TABLE IF NOT EXISTS inv_demand_plan
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, owner_id VARCHAR(32) NOT NULL,
+    external_ref VARCHAR(64) NOT NULL, plan_no VARCHAR(32) NOT NULL, plan_hash VARCHAR(64) NOT NULL,
+    plan_snapshot TEXT NOT NULL, lifecycle_version INT NOT NULL, status VARCHAR(24) NOT NULL,
+    expires_at DATETIME NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uk_demand_scope UNIQUE (owner_id,external_ref), UNIQUE KEY uk_demand_no(owner_id,plan_no)
+);
+
+CREATE TABLE IF NOT EXISTS inv_demand_leaf
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, owner_id VARCHAR(32) NOT NULL, plan_no VARCHAR(32) NOT NULL,
+    leaf_ref VARCHAR(64) NOT NULL, component_ref VARCHAR(64) NOT NULL, fulfillment_ref VARCHAR(64) NOT NULL,
+    branch_kind VARCHAR(24) NOT NULL, item_id VARCHAR(32) NOT NULL, location_id VARCHAR(32) NOT NULL,
+    qty DECIMAL(24,6) NOT NULL, issued_qty DECIMAL(24,6) NOT NULL DEFAULT 0,
+    released_qty DECIMAL(24,6) NOT NULL DEFAULT 0, unit VARCHAR(16) NOT NULL, definition_hash VARCHAR(64) NOT NULL,
+    document_no VARCHAR(32) NULL, ledger_ref VARCHAR(32) NULL, cost_minor BIGINT NULL, currency VARCHAR(3) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, created_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_demand_leaf UNIQUE (owner_id,plan_no,leaf_ref)
+);
+
+CREATE TABLE IF NOT EXISTS inv_demand_operation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, owner_id VARCHAR(32) NOT NULL, plan_no VARCHAR(32) NOT NULL,
+    operation_ref VARCHAR(64) NOT NULL, request_hash VARCHAR(64) NOT NULL, kind VARCHAR(24) NOT NULL,
+    original_operation_ref VARCHAR(64) NULL, receipt_snapshot TEXT NOT NULL, delta_snapshot TEXT NOT NULL,
+    reversed TINYINT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL, UNIQUE KEY uk_demand_operation(owner_id,operation_ref)
+);
+
+CREATE TABLE IF NOT EXISTS inv_production_operation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, owner_id VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL, event_no VARCHAR(32) NOT NULL, request_hash VARCHAR(64) NOT NULL,
+    plan_no VARCHAR(32) NOT NULL, operation_ref VARCHAR(64) NOT NULL,
+    receipt_snapshot TEXT NOT NULL, reverse_event_no VARCHAR(32) NULL, reverse_hash VARCHAR(64) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, created_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_production_event UNIQUE (owner_id,store_no,event_no), UNIQUE KEY uk_production_reverse(owner_id,store_no,reverse_event_no)
+);
+
+CREATE TABLE IF NOT EXISTS inv_stock_lot
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, lot_ref VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,item_id VARCHAR(32) NOT NULL,location_id VARCHAR(32) NOT NULL,
+    batch_no VARCHAR(32) NOT NULL,qty DECIMAL(24,6) NOT NULL,unit_cost_minor BIGINT NULL,currency VARCHAR(3) NULL,
+    expire_at DATE NULL,source_doc_no VARCHAR(32) NOT NULL,source_line_no INT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,created_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_stock_lot UNIQUE (owner_id,lot_ref),UNIQUE KEY uk_stock_lot_source(owner_id,source_doc_no,source_line_no)
+);
+
+CREATE TABLE IF NOT EXISTS inv_item_valuation_history
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,owner_id VARCHAR(32) NOT NULL,item_id VARCHAR(32) NOT NULL,
+    operation_key VARCHAR(64) NOT NULL,request_hash VARCHAR(64) NOT NULL,before_snapshot TEXT NOT NULL,
+    after_snapshot TEXT NOT NULL,actor_no VARCHAR(32) NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL,UNIQUE KEY uk_item_valuation_operation(owner_id,operation_key)
 );
 
 -- 种子数据

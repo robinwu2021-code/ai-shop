@@ -22,7 +22,9 @@ import tools.jackson.databind.ObjectMapper;
 @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
 public class FoodWriteGuardConfiguration {
     @Bean
-    @ConditionalOnMissingBean(SysIdempotentMapper.class)
+    // Platform MapperScan runs after configuration conditions; its configuration already owns this mapper.
+    @ConditionalOnMissingBean(value = SysIdempotentMapper.class,
+            type = "ai.neargo.shop.config.MybatisPlusConfig")
     MapperFactoryBean<SysIdempotentMapper> sysIdempotentMapper(
             @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate template) {
         var mapper = new MapperFactoryBean<>(SysIdempotentMapper.class);

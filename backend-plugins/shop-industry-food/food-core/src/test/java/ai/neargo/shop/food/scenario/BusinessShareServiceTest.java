@@ -122,6 +122,11 @@ class BusinessShareServiceTest {
         service=new BusinessShareServiceImpl(plans,checks,batches,lines,bindings,allocations,idem,json,manager);
     }
 
+    @Test void actualPlacementSchemaTwoSupportsBusinessAa() {
+        batch.setFrozenRequest(batch.getFrozenRequest().replace("\"schema\":1", "\"schema\":2"));
+        var plan = create("schema-two");
+        assertThat(plan.originalAmountMinor()).isEqualTo(100);
+    }
     @Test void createsOnlyBusinessResponsibilityUsingOriginalAllocationAmounts() {
         var plan=create("original-key");
         assertThat(plan.originalAmountMinor()).isEqualTo(100);assertThat(plan.currency()).isEqualTo("CNY");

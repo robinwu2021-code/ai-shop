@@ -15,6 +15,13 @@ public class OrdIndustryOrderSource extends BaseEntity {
     private String entityNo;
     private String storeNo;
     private String buyerNo;
+    /** Non-account dining party; empty buyerNo has no consumer-account access or asset authority. */
+    private String partyNo;
+    private String deliverySnapshot;
+    private String partySnapshot;
+    private String demandPlanNo;
+    private String demandPlanHash;
+    private String demandPlanSnapshot;
     private String actorNo;
     private String sourceSystem;
     private String sourceType;

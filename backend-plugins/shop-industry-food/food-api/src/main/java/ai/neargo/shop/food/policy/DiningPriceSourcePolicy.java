@@ -12,21 +12,30 @@ import ai.neargo.shop.food.dto.CatalogMenuVO;
 import ai.neargo.shop.food.dto.CatalogVO;
 import ai.neargo.shop.food.dto.DiningPriceFacts.Unit;
 import ai.neargo.shop.spi.product.DishOfferQueryPort.Offer;
+
+import tools.jackson.databind.ObjectMapper;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import tools.jackson.databind.ObjectMapper;
 
-/** Industry price composition over frozen selections; common math owns quantity rounding and nonnegative topups. */
+/**
+ * Industry price composition over frozen selections; common math owns quantity rounding and
+ * nonnegative topups.
+ */
 public final class DiningPriceSourcePolicy {
-    private DiningPriceSourcePolicy() { }
+    private DiningPriceSourcePolicy() {}
 
     public static List<String> requiredSkus(CartVO cart, CatalogVO catalog, ObjectMapper json) {
-        if (cart == null || cart.lines() == null || cart.lines().isEmpty() || cart.lines().size() > 512
-                || !"OPEN".equals(cart.status()) || cart.scheduledAt() != null) throw blocked();
-        if (catalog == null || !cart.storeNo().equals(catalog.storeNo())
+        if (cart == null
+                || cart.lines() == null
+                || cart.lines().isEmpty()
+                || cart.lines().size() > 512
+                || !"OPEN".equals(cart.status())) throw blocked();
+        if (catalog == null
+                || !cart.storeNo().equals(catalog.storeNo())
                 || !cart.orderSource().equals(catalog.orderSource())
                 || !cart.fulfillment().equals(catalog.fulfillment())) throw blocked();
         var numbers = new HashSet<String>();
@@ -47,13 +56,18 @@ public final class DiningPriceSourcePolicy {
                 var bundle = dependency(menu, "BUNDLE", line.skuNo()).bundle();
                 if (bundle == null || bundle.data() == null) throw blocked();
                 for (var selected : line.bundleChoices()) {
-                    var choice = bundle.data().choices().stream().filter(c -> c.choiceNo().equals(selected.choiceNo()))
-                            .findFirst().orElseThrow(DiningPriceSourcePolicy::blocked);
+                    var choice =
+                            bundle.data().choices().stream()
+                                    .filter(c -> c.choiceNo().equals(selected.choiceNo()))
+                                    .findFirst()
+                                    .orElseThrow(DiningPriceSourcePolicy::blocked);
                     numbers.add(choice.skuNo());
                     if ("DIFF_BASE".equals(choice.priceMode())) {
-                        var group = bundle.data().groups().stream()
-                                    .filter(g -> g.groupNo().equals(choice.groupNo()))
-                                .findFirst().orElseThrow(DiningPriceSourcePolicy::blocked);
+                        var group =
+                                bundle.data().groups().stream()
+                                        .filter(g -> g.groupNo().equals(choice.groupNo()))
+                                        .findFirst()
+                                        .orElseThrow(DiningPriceSourcePolicy::blocked);
                         if (group.baseSkuNo() == null) throw blocked();
                         numbers.add(group.baseSkuNo());
                     }
@@ -64,58 +78,136 @@ public final class DiningPriceSourcePolicy {
         return numbers.stream().sorted().toList();
     }
 
-    public static List<Unit> compose(CartVO cart, CatalogVO catalog, Map<String, Offer> offers, ObjectMapper json) {
+    public static List<Unit> compose(
+            CartVO cart, CatalogVO catalog, Map<String, Offer> offers, ObjectMapper json) {
+        return compose(cart, catalog, offers, json, true);
+    }
+
+    /** Only frozen schema-1 documents may use the original unscoped component identity. */
+    public static List<Unit> legacyCompose(
+            CartVO cart, CatalogVO catalog, Map<String, Offer> offers, ObjectMapper json) {
+        return compose(cart, catalog, offers, json, false);
+    }
+
+    private static List<Unit> compose(
+            CartVO cart,
+            CatalogVO catalog,
+            Map<String, Offer> offers,
+            ObjectMapper json,
+            boolean scopedRefs) {
         requiredSkus(cart, catalog, json);
         var units = new ArrayList<Unit>();
         for (var line : cart.lines()) {
             var menu = menu(catalog, line.menuNo());
-            var item = catalog.items().stream().filter(i -> line.menuNo().equals(i.menuNo())
-                    && line.menuItemNo().equals(i.menuItemNo())).findFirst()
-                    .orElseThrow(DiningPriceSourcePolicy::blocked);
-            var display = item.skus().stream().filter(s -> line.skuNo().equals(s.skuNo()))
-                    .findFirst().orElseThrow(DiningPriceSourcePolicy::blocked);
+            var item =
+                    catalog.items().stream()
+                            .filter(
+                                    i ->
+                                            line.menuNo().equals(i.menuNo())
+                                                    && line.menuItemNo().equals(i.menuItemNo()))
+                            .findFirst()
+                            .orElseThrow(DiningPriceSourcePolicy::blocked);
+            var display =
+                    item.skus().stream()
+                            .filter(s -> line.skuNo().equals(s.skuNo()))
+                            .findFirst()
+                            .orElseThrow(DiningPriceSourcePolicy::blocked);
             var main = offer(offers, line.skuNo());
-            if (!line.goodsNo().equals(main.goodsNo()) || !main.priceMinor().equals(display.priceMinor())
+            var mainPrice = MenuPricePolicy.price(item.skuPrices(), main.skuNo(), money(main));
+            if (!line.goodsNo().equals(main.goodsNo())
+                    || mainPrice.minor() != display.priceMinor()
                     || !main.currency().equals(display.currency())) throw conflict();
-            units.add(unit(line.sourceLineRef(), List.of("MAIN", line.skuNo()), "MAIN", main,
-                    money(main), line.qty(), List.of(menu.revisionNo(), line.skuNo())));
+            units.add(
+                    unit(
+                            line.sourceLineRef(),
+                            List.of("MAIN", line.skuNo()),
+                            "MAIN",
+                            main,
+                            mainPrice,
+                            line.qty(),
+                            List.of(menu.revisionNo(), line.skuNo()),
+                            scopedRefs));
             for (var selected : line.selections()) {
                 if ("SPEC_VALUE".equals(selected.sourceKind())) continue;
                 var dependency = dependency(menu, "MODIFIER", selected.sourceNo());
                 var modifier = dependency.modifier();
                 var addon = offer(offers, modifier.salesSkuNo());
-                if (modifier.salesOffer() == null || !addon.priceMinor().equals(modifier.salesOffer().priceMinor())
+                if (modifier.salesOffer() == null
+                        || !addon.priceMinor().equals(modifier.salesOffer().priceMinor())
                         || !addon.currency().equals(modifier.salesOffer().currency())
                         || !Boolean.TRUE.equals(modifier.salesOffer().onSale())
-                        || !Boolean.FALSE.equals(modifier.salesOffer().restricted())) throw blocked();
-                units.add(unit(line.sourceLineRef(), List.of("OPTION", selected.groupNo(), selected.sourceNo()),
-                        "ADDON", addon, money(addon), line.qty().multiply(selected.qty()),
-                        List.of(menu.revisionNo(), dependency.revisionNo())));
+                        || !Boolean.FALSE.equals(modifier.salesOffer().restricted()))
+                    throw blocked();
+                units.add(
+                        unit(
+                                line.sourceLineRef(),
+                                List.of("OPTION", selected.groupNo(), selected.sourceNo()),
+                                "ADDON",
+                                addon,
+                                MenuPricePolicy.price(
+                                        item.skuPrices(), addon.skuNo(), money(addon)),
+                                line.qty().multiply(selected.qty()),
+                                List.of(menu.revisionNo(), dependency.revisionNo()),
+                                scopedRefs));
             }
             if (!line.bundleChoices().isEmpty()) {
                 var dependency = dependency(menu, "BUNDLE", line.skuNo());
                 BundleConfigVO bundle = dependency.bundle();
                 for (var selected : line.bundleChoices()) {
-                    var choice = bundle.data().choices().stream().filter(c -> c.choiceNo().equals(selected.choiceNo()))
-                            .findFirst().orElseThrow(DiningPriceSourcePolicy::blocked);
+                    var choice =
+                            bundle.data().choices().stream()
+                                    .filter(c -> c.choiceNo().equals(selected.choiceNo()))
+                                    .findFirst()
+                                    .orElseThrow(DiningPriceSourcePolicy::blocked);
                     var chosen = offer(offers, choice.skuNo());
                     MoneyMinor price;
                     String kind;
                     switch (choice.priceMode()) {
-                        case "INCLUDED" -> { price = new MoneyMinor(chosen.currency(), 0); kind = "BUNDLE_INCLUDED"; }
-                        case "ADD_SKU" -> { price = money(chosen); kind = "BUNDLE_ADD"; }
+                        case "INCLUDED" -> {
+                            price = new MoneyMinor(chosen.currency(), 0);
+                            kind = "BUNDLE_INCLUDED";
+                        }
+                        case "ADD_SKU" -> {
+                            price =
+                                    MenuPricePolicy.price(
+                                            item.skuPrices(), chosen.skuNo(), money(chosen));
+                            kind = "BUNDLE_ADD";
+                        }
                         case "DIFF_BASE" -> {
-                            var group = bundle.data().groups().stream()
-                                    .filter(g -> g.groupNo().equals(choice.groupNo()))
-                                    .findFirst().orElseThrow(DiningPriceSourcePolicy::blocked);
-                            price = SourcePriceMath.topup(money(chosen), money(offer(offers, group.baseSkuNo())));
+                            var group =
+                                    bundle.data().groups().stream()
+                                            .filter(g -> g.groupNo().equals(choice.groupNo()))
+                                            .findFirst()
+                                            .orElseThrow(DiningPriceSourcePolicy::blocked);
+                            price =
+                                    SourcePriceMath.topup(
+                                            MenuPricePolicy.price(
+                                                    item.skuPrices(),
+                                                    chosen.skuNo(),
+                                                    money(chosen)),
+                                            MenuPricePolicy.price(
+                                                    item.skuPrices(),
+                                                    group.baseSkuNo(),
+                                                    money(offer(offers, group.baseSkuNo()))));
                             kind = "BUNDLE_DIFFERENCE";
                         }
                         default -> throw blocked();
                     }
-                    units.add(unit(line.sourceLineRef(), List.of("BUNDLE", selected.choiceNo()), kind, chosen, price,
-                            line.qty().multiply(selected.qty()).multiply(choice.unitsPerPick()),
-                            List.of(menu.revisionNo(), dependency.revisionNo(), choice.priceMode())));
+                    units.add(
+                            unit(
+                                    line.sourceLineRef(),
+                                    List.of("BUNDLE", selected.choiceNo()),
+                                    kind,
+                                    chosen,
+                                    price,
+                                    line.qty()
+                                            .multiply(selected.qty())
+                                            .multiply(choice.unitsPerPick()),
+                                    List.of(
+                                            menu.revisionNo(),
+                                            dependency.revisionNo(),
+                                            choice.priceMode()),
+                                    scopedRefs));
                 }
             }
         }
@@ -123,31 +215,90 @@ public final class DiningPriceSourcePolicy {
         return List.copyOf(units);
     }
 
-    private static Unit unit(String root, List<String> component, String kind, Offer offer, MoneyMinor price,
-            BigDecimal quantity, List<String> revision) {
-        quantity = SourcePriceMath.quantity(quantity);
-        String priceRevision = PricingSnapshotHash.of(List.of(offer.entityNo(), offer.storeNo(), offer.skuNo(),
-                price, revision));
-        return new Unit(root, PricingSnapshotHash.of(component), kind, offer.goodsNo(), offer.skuNo(), priceRevision,
-                quantity, price.minor(), SourcePriceMath.extend(price, quantity).minor());
+    public static boolean finishedStock(String skuNo, List<Unit> units, List<CatalogMenuVO> menus) {
+        boolean containerOnly =
+                units.stream()
+                        .filter(u -> skuNo.equals(u.skuNo()))
+                        .allMatch(
+                                u ->
+                                        "MAIN".equals(u.kind())
+                                                && units.stream()
+                                                        .anyMatch(
+                                                                other ->
+                                                                        u.sourceLineNo()
+                                                                                        .equals(
+                                                                                                other
+                                                                                                        .sourceLineNo())
+                                                                                && other.kind()
+                                                                                        .startsWith(
+                                                                                                "BUNDLE_")));
+        boolean recipe =
+                menus.stream()
+                        .flatMap(m -> m.dependencies().stream())
+                        .anyMatch(d -> d.recipe() != null && skuNo.equals(d.recipe().skuNo()));
+        return !containerOnly && !recipe;
     }
-    private static MoneyMinor money(Offer offer) { return new MoneyMinor(offer.currency(), offer.priceMinor()); }
+
+    private static Unit unit(
+            String root,
+            List<String> component,
+            String kind,
+            Offer offer,
+            MoneyMinor price,
+            BigDecimal quantity,
+            List<String> revision,
+            boolean scopedRefs) {
+        quantity = SourcePriceMath.quantity(quantity);
+        String priceRevision =
+                PricingSnapshotHash.of(
+                        List.of(offer.entityNo(), offer.storeNo(), offer.skuNo(), price, revision));
+        return new Unit(
+                root,
+                PricingSnapshotHash.of(scopedRefs ? List.of(root, component) : component),
+                kind,
+                offer.goodsNo(),
+                offer.skuNo(),
+                priceRevision,
+                quantity,
+                price.minor(),
+                SourcePriceMath.extend(price, quantity).minor());
+    }
+
+    private static MoneyMinor money(Offer offer) {
+        return new MoneyMinor(offer.currency(), offer.priceMinor());
+    }
+
     private static Offer offer(Map<String, Offer> offers, String number) {
         var offer = offers.get(number);
-        if (offer == null || offer.priceMinor() == null || !"KNOWN".equals(offer.pricingStatus())
-                || !"CNY".equals(offer.currency()) || !offer.onSale()) throw blocked();
+        if (offer == null
+                || offer.priceMinor() == null
+                || !"KNOWN".equals(offer.pricingStatus())
+                || !"CNY".equals(offer.currency())
+                || !offer.onSale()) throw blocked();
         return offer;
     }
+
     private static CatalogMenuVO menu(CatalogVO catalog, String number) {
-        return catalog.menus().stream().filter(m -> number.equals(m.menuNo())).findFirst()
+        return catalog.menus().stream()
+                .filter(m -> number.equals(m.menuNo()))
+                .findFirst()
                 .orElseThrow(DiningPriceSourcePolicy::blocked);
     }
+
     private static CatalogDependencyVO dependency(CatalogMenuVO menu, String kind, String number) {
-        var values = menu.dependencies().stream().filter(d -> kind.equals(d.configKind())
-                && number.equals(d.configNo())).toList();
+        var values =
+                menu.dependencies().stream()
+                        .filter(d -> kind.equals(d.configKind()) && number.equals(d.configNo()))
+                        .toList();
         if (values.size() != 1) throw blocked();
         return values.getFirst();
     }
-    private static BizException blocked() { return BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED); }
-    private static BizException conflict() { return BizException.of(ErrorCode.CONFLICT); }
+
+    private static BizException blocked() {
+        return BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+    }
+
+    private static BizException conflict() {
+        return BizException.of(ErrorCode.CONFLICT);
+    }
 }

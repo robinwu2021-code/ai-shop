@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.storedvalue.policy;
+
+import ai.neargo.shop.pay.storedvalue.policy.impl.StoredValueGovernanceCapabilityServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import static org.assertj.core.api.Assertions.*;
@@ -18,7 +20,7 @@ class StoredValueGovernanceMysqlTest {
   assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM sv_recharge",Long.class)).isEqualTo(1);assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM sv_issue_quota_reservation",Long.class)).isEqualTo(1);assertThat(f.jdbc.queryForObject("SELECT reserved_minor FROM sv_issue_quota",Long.class)).isEqualTo(3000);
  }
  @Test void readinessNeedsAppliedMigrationsNotOnlyReachableTables()throws Exception{
-  var f=new StoredValuePolicyFixture();var readiness=new StoredValueGovernanceCapabilityService(f.db,true);assertThat(readiness.capability().enabled()).isFalse();
+  var f=new StoredValuePolicyFixture();var readiness=new StoredValueGovernanceCapabilityServiceImpl(f.db,true);assertThat(readiness.capability().enabled()).isFalse();
   f.jdbc.execute("CREATE TABLE flyway_schema_history(version VARCHAR(64),success TINYINT NOT NULL)");f.jdbc.update("INSERT INTO flyway_schema_history VALUES('564',1),('565',1),('566',1)");assertThat(readiness.capability().enabled()).isTrue();
   f.jdbc.update("UPDATE flyway_schema_history SET success=0 WHERE version='565'");assertThat(readiness.capability().enabled()).isFalse();
  }

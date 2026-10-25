@@ -78,17 +78,22 @@ public final class OrderLogisticsFixture {
     }
 
     public static String seed(JdbcTemplate jdbc, PaymentLedgerService ledger, boolean paidLedger) {
+        return seed(jdbc, ledger, paidLedger, "LG-BUYER", "EXPRESS");
+    }
+
+    public static String seed(JdbcTemplate jdbc, PaymentLedgerService ledger, boolean paidLedger,
+                              String buyer, String fulfillment) {
         String sub = "LG" + UUID.randomUUID().toString().replace("-", "");
         jdbc.update("INSERT INTO ord_order (order_no,user_no,status,pay_amount,created_at,updated_at) "
-                + "VALUES (?,?,'PAID',1000,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", "O-" + sub, "LG-BUYER");
+                + "VALUES (?,?,'PAID',1000,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", "O-" + sub, buyer);
         jdbc.update("INSERT INTO ord_sub_order (sub_order_no,order_no,user_no,entity_no,store_no,fulfillment,"
                 + "status,pay_amount,receiver_phone,created_at,updated_at) "
-                + "VALUES (?,?,?,?,?,'EXPRESS','WAIT_FULFILL',1000,'13900000099',"
-                + "CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", sub, "O-" + sub, "LG-BUYER", "LG-MERCHANT", "LG-STORE");
+                + "VALUES (?,?,?,?,?,?,'WAIT_FULFILL',1000,'13900000099',"
+                + "CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", sub, "O-" + sub, buyer, "LG-MERCHANT", "LG-STORE", fulfillment);
         jdbc.update("INSERT INTO ord_item (sub_order_no,order_no,goods_no,sku_no,title,qty,created_at,updated_at) "
                 + "VALUES (?,?,'LG-GOODS','LG-SKU','物流商品',1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", sub, "O-" + sub);
         if (paidLedger) {
-            String out = ledger.open(new SettlePort.PaymentOpen("O-" + sub, "LG-BUYER", "LG-MERCHANT",
+            String out = ledger.open(new SettlePort.PaymentOpen("O-" + sub, buyer, "LG-MERCHANT",
                     "TEST", 1000L, "物流测试"));
             ledger.settle(new SettlePort.PaymentSettled(out, "TEST", "TX-" + out, 1000L,
                     System.currentTimeMillis()));

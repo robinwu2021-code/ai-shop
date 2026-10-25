@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.storedvalue.issuer;
 
+import ai.neargo.shop.pay.storedvalue.issuer.impl.StoredValueIssuerQueryServiceImpl;
+
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueCursorCodec;
 import ai.neargo.shop.spi.storedvalue.StoredValueWallets.*;
@@ -14,7 +16,7 @@ class DualIssuerAccountIsolationTest {
     static class Fixture {
         final DriverManagerDataSource ds=new DriverManagerDataSource("jdbc:h2:mem:p5-wallet-"+UUID.randomUUID()+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1","sa","");
         final JdbcTemplate jdbc=new JdbcTemplate(ds);final ObjectMapper json=new ObjectMapper();final IssuerRepository db=new IssuerRepository(new DataSourceTransactionManager(ds),json);
-        final StoredValueIssuerQueryService query=new StoredValueIssuerQueryService(db,new StoredValueCursorCodec("p5-test-reference-key-longer-than-32-characters",json),true,true,false);
+        final StoredValueIssuerQueryService query=new StoredValueIssuerQueryServiceImpl(db,new StoredValueCursorCodec("p5-test-reference-key-longer-than-32-characters",json),true,true,false);
         Fixture(){
             jdbc.execute("CREATE TABLE sv_issuer(tenant_no VARCHAR(32),issuer_no VARCHAR(64),scope_type VARCHAR(24),scope_no VARCHAR(64),name VARCHAR(64),status VARCHAR(24),write_mode VARCHAR(32),current_issuer_version_no VARCHAR(64),deleted INT DEFAULT 0)");
             jdbc.execute("CREATE TABLE sv_issuer_version(tenant_no VARCHAR(32),issuer_no VARCHAR(64),issuer_version_no VARCHAR(64),settlement_entity_no VARCHAR(64),currency VARCHAR(8),deleted INT DEFAULT 0)");

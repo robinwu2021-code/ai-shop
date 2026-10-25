@@ -52,7 +52,7 @@ class DiningReturnServiceTest extends FoodWriteGuardFixture {
                     + "created_at DATETIME(3),created_by VARCHAR(32),updated_at DATETIME(3),updated_by VARCHAR(32),"
                     + "version BIGINT DEFAULT 0,deleted INT DEFAULT 0,";
             f.sql().execute("CREATE TABLE fnb_order_batch (" + common + "batch_no VARCHAR(32),store_no VARCHAR(32),"
-                    + "check_no VARCHAR(32),request_key VARCHAR(64),request_hash VARCHAR(64),source VARCHAR(32),buyer_no VARCHAR(32),"
+                    + "check_no VARCHAR(32),request_key VARCHAR(64),request_hash VARCHAR(64),source VARCHAR(32),buyer_no VARCHAR(32),party_no VARCHAR(32),"
                     + "operator_no VARCHAR(32),status VARCHAR(24),frozen_request TEXT,accepted_at DATETIME(3),cart_no VARCHAR(32),"
                     + "cart_version BIGINT,quote_ref VARCHAR(32),quote_hash VARCHAR(64),business_date DATE,policy_no VARCHAR(32),"
                     + "fulfillment VARCHAR(32),pay_mode VARCHAR(16),scheduled_at DATETIME(3),actor_realm VARCHAR(32),"
@@ -68,7 +68,7 @@ class DiningReturnServiceTest extends FoodWriteGuardFixture {
             f.sql().execute("CREATE TABLE fnb_return (" + common + "return_no VARCHAR(32) UNIQUE,store_no VARCHAR(32),"
                     + "check_no VARCHAR(32),reason VARCHAR(255),approval_ref VARCHAR(64),status VARCHAR(24),"
                     + "financial_status VARCHAR(24),core_case_ref VARCHAR(64),kitchen_status VARCHAR(24),batch_no VARCHAR(32),"
-                    + "buyer_no VARCHAR(32),request_key VARCHAR(64),request_hash VARCHAR(64),request_snapshot TEXT,"
+                    + "buyer_no VARCHAR(32),party_no VARCHAR(32),request_key VARCHAR(64),request_hash VARCHAR(64),request_snapshot TEXT,"
                     + "next_recovery_at DATETIME(3),"
                     + "UNIQUE(entity_no,store_no,request_key))");
             f.sql().execute("CREATE TABLE fnb_return_item (" + common + "return_item_no VARCHAR(32) UNIQUE,"
@@ -76,6 +76,7 @@ class DiningReturnServiceTest extends FoodWriteGuardFixture {
                     + "kitchen_disposition VARCHAR(16),core_line_allocation_ref VARCHAR(64))");
             f.sql().update("INSERT INTO fnb_order_batch(entity_no,batch_no,store_no,buyer_no,status,cart_no,cart_version,"
                     + "actor_realm,source,fulfillment,pay_mode) VALUES('E','B','A','BUYER','BOUND','C',7,'CONSUMER','H5','PICKUP','PREPAY')");
+            f.sql().update("UPDATE fnb_order_batch SET frozen_request='{}'");
             f.sql().update("INSERT INTO fnb_order_line(entity_no,food_line_no,batch_no,goods_no,sku_no,qty,source_line_ref,unit) "
                     + "VALUES('E','FL','B','G','SKU',2,'SRC','EA')");
             f.sql().update("INSERT INTO fnb_core_order_binding(entity_no,binding_no,batch_no,payment_root_no,store_order_no,status) "

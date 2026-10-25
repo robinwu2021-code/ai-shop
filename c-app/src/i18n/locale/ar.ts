@@ -1,5 +1,5 @@
 export default {
-  storedValue: {"accountLocalTime": "المنطقة الزمنية للحساب", "serviceState": {"WAIT_SUBMIT": "تم التأكيد، بانتظار المتجر", "PROCESSING": "جارٍ التحقق من نتيجة الخدمة", "COMMITTED": "تم الاستخدام", "EXPIRED": "انتهت مهلة التأكيد. اطلب من المتجر إعادة الطلب.", "CANCELLED": "تم إلغاء الخدمة", "RELEASED": "تم إلغاء الخدمة"},"brandScope": "رصيد العلامة", "storeScope": "رصيد المتجر", "confirmConsumption": "تأكيد هذه الخدمة", "paymentWallet": "حساب الخصم", "consumeAmount": "المبلغ", "waitingMerchant": "تم التأكيد، بانتظار المتجر", "refreshConfirmation": "تحديث حالة الخدمة",
+  storedValue: {"accountLocalTime": "المنطقة الزمنية للحساب", "serviceState": {"WAIT_SUBMIT": "تم التأكيد، بانتظار المتجر", "PROCESSING": "جارٍ التحقق من نتيجة الخدمة", "COMMITTED": "تم الاستخدام", "EXPIRED": "انتهت مهلة التأكيد. اطلب من المتجر إعادة الطلب.", "CANCELLED": "تم إلغاء الخدمة", "RELEASED": "تم إلغاء الخدمة"},"brandScope": "رصيد العلامة", "storeScope": "رصيد المتجر", "confirmConsumption": "تأكيد هذه الخدمة", "paymentWallet": "حساب الخصم", "consumeAmount": "المبلغ", "refreshConfirmation": "تحديث حالة الخدمة",
     "storeLocalTime": "التوقيت المحلي للمتجر",
     "title": "سجل الرصيد المخزن",
     "entryHint": "عرض الشحن والاستخدام",
@@ -1176,10 +1176,6 @@ export default {
     directionREDEEM: "استخدام",
     directionREVERSAL: "عكس / إرجاع",
     directionOTHER: "تغيير محاسبي",
-    historyTerms: "الشروط السابقة (للقراءة فقط)",
-    noHistoryTerms: "لا توجد شروط سابقة",
-    accountFrozen: "الحساب مجمد",
-    accountExpiry: "تاريخ الانتهاء",
     posted: "تم القيد",
     code: "رمز النقاط",
     currency: "العملة",

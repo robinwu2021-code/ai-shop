@@ -1,4 +1,6 @@
 package ai.neargo.shop.portal.ops.pay;
+import ai.neargo.shop.spi.points.PointsEarningRulePort;
+
 
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
@@ -29,7 +31,7 @@ public class OpsPointsEarningRulesController {
     }
     public record Context(PointType type, List<PointsEarningCatalogPort.Category> categories, List<PointType> types) {}
     public record Preview(String categoryNo, long cashMinor, String typeCode, String currency) {}
-    public record Calculation(Matched matched, long cashMinor, long points, ai.neargo.shop.spi.points.PointsEarningRulePort.Type type) {}
+    public record Calculation(Matched matched, long cashMinor, long points, PointsEarningRulePort.Type type) {}
     @GetMapping("/ops/points/earning-context")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
     public Context context() {
@@ -73,7 +75,7 @@ public class OpsPointsEarningRulesController {
         return PointsOpsErrors.call(() -> {
             if (request == null || request.cashMinor()<0) throw new IllegalArgumentException("POINTS_EARN_INPUT_INVALID");
             var type=selectedType(request.typeCode(),true);
-            var result=service.calculate(new ai.neargo.shop.spi.points.PointsEarningRulePort.Query(type.typeCode(),request.currency()==null?type.currency():request.currency(),request.categoryNo(),request.cashMinor()));
+            var result=service.calculate(new PointsEarningRulePort.Query(type.typeCode(),request.currency()==null?type.currency():request.currency(),request.categoryNo(),request.cashMinor()));
             return new Calculation(new Matched(result.matchedScope(),result.revision(),new EarnRule(RuleMode.RATIO,result.ratioBp())),result.cashMinor(),result.points(),result.type());
         });
     }

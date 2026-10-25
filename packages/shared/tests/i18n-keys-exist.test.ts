@@ -23,27 +23,10 @@ import { describe, expect, it } from "vitest";
 const ROOT = join(import.meta.dirname, "../../..");
 const APPS = ["b-app", "c-app"];
 
-/** 词条文件里的全部 key（含嵌套、含值写在下一行的） */
+// @ts-expect-error -- the pure Node locale reader is shared with release guards.
+import { localeEntries } from "../../../scripts/lib/i18n-locale.mjs";
 function keysOf(file: string): Set<string> {
-  let src = readFileSync(file, "utf8")
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/^\s*\/\/.*$/gm, "");
-  const out = new Set<string>();
-  const stack: Array<[number, string]> = [];
-  let depth = 0;
-  for (const line of src.split("\n")) {
-    for (const m of line.matchAll(/([A-Za-z_]\w*)\s*:\s*\{/g)) stack.push([depth, m[1]!]);
-    for (const m of line.matchAll(/([A-Za-z_]\w*)\s*:\s*(?!\{)(\S|$)/g)) {
-      const nxt = m[2] ?? "";
-      // 值同行（引号开头），或本行以 `:` 结尾（值在下一行）
-      if (nxt === "" || `"'\``.includes(nxt) || line.trimEnd().endsWith(":")) {
-        out.add([...stack.map(([, n]) => n), m[1]!].join("."));
-      }
-    }
-    depth += (line.match(/\{/g)?.length ?? 0) - (line.match(/\}/g)?.length ?? 0);
-    while (stack.length && stack[stack.length - 1]![0] >= depth) stack.pop();
-  }
-  return out;
+  return new Set(localeEntries(file).keys());
 }
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -64,7 +47,7 @@ describe("词条引用", () => {
       for (const dir of ["src/pages", "src/components"]) {
         for (const f of walk(join(ROOT, app, dir))) {
           const src = readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
-          for (const m of src.matchAll(/\$?t\(\s*["']([a-zA-Z]\w*\.[\w.]+)["']/g)) {
+          for (const m of src.matchAll(/\$?t\(\s*["']([a-zA-Z]\w*(?:\.\w+)+)["']\s*[,)]/g)) {
             if (!known.has(m[1]!)) {
               const line = src.slice(0, m.index).split("\n").length;
               bad.push(`${relative(ROOT, f)}:${line}  t("${m[1]}")`);

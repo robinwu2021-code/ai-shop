@@ -17,6 +17,9 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+// @ts-expect-error -- shared ES module scanner
+import { readScopeRegistrations } from "../../../scripts/lib/data-scope-registrations.mjs";
+
 const ROOT = join(import.meta.dirname, "../../..");
 const MIGRATION_DIR = join(ROOT, "backend/shop-app/src/main/resources/db/migration");
 const REGISTRATION = join(
@@ -348,11 +351,7 @@ function tableColumns(): Map<string, Set<string>> {
 
 /** 已登记进表册的表名 */
 function registered(): Set<string> {
-  if (!existsSync(REGISTRATION)) return new Set();
-  const src = readFileSync(REGISTRATION, "utf8");
-  return new Set(
-    [...src.matchAll(/registry\.register\(\s*"(\w+)"/g)].map((m) => m[1]!),
-  );
+  return new Set(readScopeRegistrations(ROOT).keys());
 }
 
 describe("数据域表册覆盖", () => {

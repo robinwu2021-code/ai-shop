@@ -22,6 +22,7 @@ import ai.neargo.shop.food.dto.DishVO;
 import ai.neargo.shop.food.dto.MeasurementPolicy;
 import ai.neargo.shop.food.dto.OptionGroupConfigVO;
 import ai.neargo.shop.food.dto.OrderLineInput;
+import ai.neargo.shop.food.dto.MenuSkuPriceInput;
 import ai.neargo.shop.food.policy.DiningPriceFactsPolicy;
 import ai.neargo.shop.food.policy.DiningPriceSourcePolicy;
 import ai.neargo.shop.food.policy.DiningPricingSourcePolicy;
@@ -59,6 +60,35 @@ class DiningPriceSourcePolicyTest {
         return new CartVO("C", "A", "CHECK", null, null, "OPEN", "POS", "DINE_IN", null, 4L,
                 List.of(new OrderLineInput("L", "M", "I", "R", "G", "S", new BigDecimal("2"),
                         null, null, selections, choices)));
+    }
+    @Test void sameSkuOnDifferentRootLinesKeepsGloballyDistinctComponentIdentities() {
+        var first = cart(List.of(), List.of());
+        var original = first.lines().getFirst();
+        var second = new OrderLineInput("L2", original.menuNo(), original.menuItemNo(), original.menuRevisionNo(),
+                original.goodsNo(), original.skuNo(), original.qty(), null, null, List.of(), List.of());
+        var repeated = new CartVO(first.cartNo(), first.storeNo(), first.checkNo(), null, null, "OPEN", "POS",
+                "DINE_IN", null, first.version(), List.of(original, second));
+        var units = DiningPriceSourcePolicy.compose(repeated, catalog(List.of(), List.of(), "SINGLE"),
+                Map.of("S", offer("S", 1000)), json);
+        assertThat(units).hasSize(2);
+        assertThat(units.stream().map(unit -> unit.componentRef())).doesNotHaveDuplicates();
+    }
+    @Test void publishedMenuOverrideChangesChargeWithoutChangingOriginalSkuOffer() {
+        var original = catalog(List.of(), List.of(), "SINGLE");
+        var item = original.items().getFirst();
+        var display = new CatalogSkuVO("S", null, null, 1250L, "CNY", "KNOWN", null, "UNKNOWN", true, false,
+                null, true, false, null);
+        var pricedItem = new CatalogItemVO(item.menuNo(), item.menuItemNo(), item.categoryNo(), item.categoryName(),
+                item.goodsNo(), item.title(), item.cover(), item.dish(), item.optionGroupNos(), List.of(display),
+                List.of(new MenuSkuPriceInput("S", 1250L, "CNY")));
+        var menu = new CatalogVO(original.storeNo(), original.orderSource(), original.fulfillment(), original.asOf(),
+                original.menus(), List.of(pricedItem));
+        var offers = Map.of("S", offer("S", 1000));
+        var units = DiningPriceSourcePolicy.compose(cart(List.of(), List.of()), menu, offers, json);
+        assertThat(units.getFirst().amountMinor()).isEqualTo(2500);
+        assertThat(offers.get("S").priceMinor()).isEqualTo(1000);
+        var snapshot = facts(cart(List.of(), List.of()), menu, offers, units);
+        assertThat(DiningPriceFactsPolicy.validate(snapshot, "E", "A", "C", 4, null)).isEqualTo(snapshot);
     }
     @Test void baseDishUsesActualSkuPriceAndCartQuantity() {
         var units = DiningPriceSourcePolicy.compose(cart(List.of(), List.of()), catalog(List.of(), List.of(), "SINGLE"),

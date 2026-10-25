@@ -25,7 +25,7 @@ export function OrderEarningDetails({subOrderNo}:{subOrderNo:string}){
     {ledger?.reason&&<><dt>{t("处理原因","Reason")}</dt><dd>{ledger.reason}</dd></>}
    </dl>
    {!ledger&&<Notice>{t("尚无发放记账结果，请核对订单事件处理记录。","No grant has been posted. Check the order event processing records.")}</Notice>}
-   <DataTable rows={data.snapshot.lines} rowKey={r=>r.itemId} columns={[
+   <DataTable error={query.error} onRetry={()=>void query.refetch()} empty={t("订单没有赠送商品明细。请核对下单时保存的赠送规则快照。","This order has no reward line items. Check the reward rule snapshot saved at checkout.")} rows={data.snapshot.lines} rowKey={r=>r.itemId} columns={[
     {header:t("商品代码","Product code"),cell:r=>r.goodsNo},
     {header:t("品类代码","Category code"),cell:r=>r.categoryNo??"—"},
     {header:t("商品现金实付","Cash paid for goods"),cell:r=>`${r.goodsCashMinor} ${t("最小货币单位","minor units")} (${data.currency})`,numeric:true},

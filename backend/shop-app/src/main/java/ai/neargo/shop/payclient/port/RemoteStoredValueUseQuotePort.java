@@ -1,5 +1,7 @@
 package ai.neargo.shop.payclient.port;
 
+import ai.neargo.shop.spi.storedvalue.StoredValueWallets;
+
 import ai.neargo.shop.pay.client.PayInternalApi;
 import ai.neargo.shop.pay.client.PayStoredValueRequests;
 import ai.neargo.shop.payclient.RemoteEntitlementCalls;
@@ -23,5 +25,5 @@ public class RemoteStoredValueUseQuotePort implements StoredValueUseQuotePort {
     public Quote quote(EntitlementContext context, SourceRef source) {
         return RemoteEntitlementCalls.call(() -> pay.svUseQuote(new PayStoredValueRequests.UseQuote(context, source)));
     }
-    @Override public Quote quote(EntitlementContext context,SourceRef source,ai.neargo.shop.spi.storedvalue.StoredValueWallets.Choice choice){return RemoteEntitlementCalls.call(()->pay.svUseQuote(new PayStoredValueRequests.UseQuote(context,source,choice)));}
+    @Override public Quote quote(EntitlementContext context,SourceRef source,StoredValueWallets.Choice choice){return RemoteEntitlementCalls.call(()->pay.svUseQuote(new PayStoredValueRequests.UseQuote(context,source,choice)));}
 }

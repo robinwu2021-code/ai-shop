@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.numbering;
+import ai.neargo.shop.pay.numbering.impl.StoredValueNumberedPlanRechargeServiceImpl;
+
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -34,7 +36,7 @@ class StoredValueNumberedPlanRechargeServiceTest {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();return reserved.value();});
         var original=new RechargeView("internal",RechargeState.CREDITED,"USER","ENTITY","STORE","CNY",100L,100L,null,null,1);
         when(direct.confirmOffline(ctx,"ENTITY",command)).thenReturn(original);
-        var service=new StoredValueNumberedPlanRechargeService(direct,rows,generator,numbers,
+        var service=new StoredValueNumberedPlanRechargeServiceImpl(direct,rows,generator,numbers,
             new DataSourceTransactionManager(new DriverManagerDataSource("jdbc:h2:mem:numbered-facade;MODE=MySQL","sa","")),new ObjectMapper(),reservations());
         assertThat(service.confirmOffline(ctx,"ENTITY",command).documentNo()).isEqualTo(reserved.value());
         verify(numbers).bind(eq(DocumentType.SV_RECHARGE),any(),eq(reserved));
@@ -46,7 +48,7 @@ class StoredValueNumberedPlanRechargeServiceTest {
         var original=new RechargeView("old",RechargeState.CREDITED,"USER","ENTITY","STORE","CNY",100L,100L,null,null,1);
         when(direct.query(ctx,"ENTITY","old")).thenReturn(original);
         when(numbers.findBySource(eq(DocumentType.SV_RECHARGE),any())).thenReturn(Optional.empty());
-        var service=new StoredValueNumberedPlanRechargeService(direct,rows,generator,numbers,
+        var service=new StoredValueNumberedPlanRechargeServiceImpl(direct,rows,generator,numbers,
             new DataSourceTransactionManager(new DriverManagerDataSource("jdbc:h2:mem:history-facade","sa","")),new ObjectMapper(),reservations());
         assertThat(service.query(ctx,"ENTITY","old").documentNo()).isNull();
         verifyNoInteractions(generator);verify(numbers,never()).bind(any(),any(),any());
@@ -64,7 +66,7 @@ class StoredValueNumberedPlanRechargeServiceTest {
         when(numbers.findBySource(DocumentType.SV_RECHARGE,source)).thenReturn(Optional.of(number));
         when(direct.query(ctx,"ENTITY","internal")).thenReturn(new RechargeView("internal",RechargeState.CREDITED,
             "USER","ENTITY","STORE","CNY",100L,100L,null,null,1));
-        var service=new StoredValueNumberedPlanRechargeService(direct,rows,generator,numbers,
+        var service=new StoredValueNumberedPlanRechargeServiceImpl(direct,rows,generator,numbers,
             new DataSourceTransactionManager(new DriverManagerDataSource("jdbc:h2:mem:query-facade","sa","")),new ObjectMapper(),reservations());
         var result=service.query(ctx,"ENTITY",number);
         verify(direct).query(ctx,"ENTITY","internal");

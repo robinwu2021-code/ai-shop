@@ -44,8 +44,8 @@ class PointsOrderSourceBootTest {
                 == 0) {
             paySql.update(
                     "INSERT INTO"
-                        + " pts_point_type(type_code,market,currency,rate_points,rate_minor,status,deduct_ratio_bp,idle_days)"
-                        + " VALUES('TYPE','CN','CNY',2,1,'DRAFT',2000,30)");
+                        + " pts_point_type(type_code,name,market,currency,rate_points,rate_minor,status,deduct_ratio_bp,idle_days)"
+                        + " VALUES('TYPE','Source test points','CN','CNY',2,1,'DRAFT',2000,30)");
             paySql.update("INSERT INTO pts_fund_pool(type_code,currency) VALUES('TYPE','CNY')");
         }
         var draft = fixture.draft(UUID.randomUUID().toString());

@@ -1,0 +1,63 @@
+digraph G {
+graph [bgcolor="white", pad="0.3", nodesep="0.45", ranksep="0.7", fontname="Arial", label="退款冻结及结算修复流程", labelloc=t, fontsize=20];
+node [shape=box, style="rounded,filled", fillcolor="#f3f7fc", color="#516781", fontname="Arial", fontsize=13, margin="0.18,0.12"];
+edge [fontname="Arial", fontsize=11, color="#516781", arrowsize=0.8];
+"A" [label="原售后单与冻结退款命令",shape=box];
+"B" [label="结算路径",shape=diamond];
+"C" [label="创建 PENDING hold 并阻断放款",shape=box];
+"D" [label="创建 hold 并保留原付款事实",shape=box];
+"E" [label="持久化原账户及回退指令",shape=box];
+"F" [label="事务外提交一次分账回退",shape=box];
+"G" [label="保持 hold；后续只查原指令",shape=box];
+"H" [label="只记录实际 reversed_minor",shape=box];
+"I" [label="现金和积分退款均确认",shape=box];
+"J" [label="结算路径",shape=diamond];
+"K" [label="按原始基数扣应付；剩余金额重新对账",shape=box];
+"L" [label="保留 PAID / paid_at / payme\nnt_ref；记录供应商待追偿",shape=box];
+"M" [label="追加商品退款进度；不重复记银行回退",shape=box];
+"N" [label="hold CONFIRMED",shape=box];
+"O" [label="保留实际银行回退；结算转 MANUAL",shape=box];
+"P" [label="hold CANCELLED；释放原退款容量",shape=box];
+"A" -> "B" [label=""];
+"B" -> "C" [label="未付款"];
+"B" -> "D" [label="已付款"];
+"B" -> "E" [label="已分账"];
+"E" -> "F" [label=""];
+"F" -> "G" [label="结果未知"];
+"G" -> "H" [label="确认成功"];
+"F" -> "H" [label="确认成功"];
+"C" -> "I" [label=""];
+"D" -> "I" [label=""];
+"H" -> "I" [label=""];
+"I" -> "J" [label=""];
+"J" -> "K" [label="未付款"];
+"J" -> "L" [label="已付款"];
+"J" -> "M" [label="已分账"];
+"K" -> "N" [label=""];
+"L" -> "N" [label=""];
+"M" -> "N" [label=""];
+"H" -> "O" [label="现金明确失败且积分已安全中止"];
+"O" -> "P" [label=""];
+}
+// Original diagram source, retained for provenance:
+// flowchart TD
+//     A[原售后单与冻结退款命令] --> B{结算路径}
+//     B -->|未付款| C[创建 PENDING hold 并阻断放款]
+//     B -->|已付款| D[创建 hold 并保留原付款事实]
+//     B -->|已分账| E[持久化原账户及回退指令]
+//     E --> F[事务外提交一次分账回退]
+//     F -->|结果未知| G[保持 hold；后续只查原指令]
+//     G -->|确认成功| H[只记录实际 reversed_minor]
+//     F -->|确认成功| H
+//     C --> I[现金和积分退款均确认]
+//     D --> I
+//     H --> I
+//     I --> J{结算路径}
+//     J -->|未付款| K[按原始基数扣应付；剩余金额重新对账]
+//     J -->|已付款| L[保留 PAID / paid_at / payment_ref；记录供应商待追偿]
+//     J -->|已分账| M[追加商品退款进度；不重复记银行回退]
+//     K --> N[hold CONFIRMED]
+//     L --> N
+//     M --> N
+//     H -->|现金明确失败且积分已安全中止| O[保留实际银行回退；结算转 MANUAL]
+//     O --> P[hold CANCELLED；释放原退款容量]

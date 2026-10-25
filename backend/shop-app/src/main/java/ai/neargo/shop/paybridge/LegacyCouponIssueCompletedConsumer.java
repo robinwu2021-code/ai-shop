@@ -7,6 +7,10 @@ import org.springframework.transaction.annotation.*;
 import tools.jackson.databind.ObjectMapper;
 @Component
 public class LegacyCouponIssueCompletedConsumer implements OutboxConsumer {
+    @Override public String handlerId() { return "legacy-coupon-issue-completed"; }
+    // Original owner/action ledgers provide replay safety across PAY calls and independent core writes.
+    @Override public boolean externalWorkflow() { return true; }
+
     private final LegacyCouponIssueCoordinator coordinator;
     private final ObjectMapper json;
     public LegacyCouponIssueCompletedConsumer(LegacyCouponIssueCoordinator coordinator,ObjectMapper json) {this.coordinator=coordinator;this.json=json;}

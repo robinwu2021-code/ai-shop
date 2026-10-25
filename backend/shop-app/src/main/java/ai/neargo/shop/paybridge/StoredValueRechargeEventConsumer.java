@@ -18,6 +18,10 @@ import tools.jackson.databind.ObjectMapper;
 /** Original-operation recovery. Deadlines and absence never permit release of funds or marketing budget. */
 @Component
 public class StoredValueRechargeEventConsumer implements OutboxConsumer {
+    @Override public String handlerId() { return "stored-value-recharge-recovery"; }
+    // Original owner/action ledgers provide replay safety across PAY calls and independent core writes.
+    @Override public boolean externalWorkflow() { return true; }
+
     private final StoredValueRechargeCoordinator coordinator;
     private final RechargeIntentService intents;
     private final ObjectMapper json;

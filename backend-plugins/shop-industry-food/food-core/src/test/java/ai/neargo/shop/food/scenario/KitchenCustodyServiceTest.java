@@ -72,7 +72,7 @@ class KitchenCustodyServiceTest {
         when(idem.execute(anyString(),anyString(),anyString(),anyString(),any(),any()))
                 .thenAnswer(i -> ((Supplier<?>)i.getArgument(5)).get());
         var batch=new FnbOrderBatch(); batch.setEntityNo("E"); batch.setStoreNo("S"); batch.setBatchNo("B");
-        batch.setStatus("ACCEPTED"); batch.setFulfillment("DELIVERY"); batch.setFrozenRequest("frozen-source");
+        batch.setStatus("ACCEPTED"); batch.setFulfillment("DELIVERY"); batch.setFrozenRequest("{}");
         when(batches.selectOne(any())).thenReturn(batch);
         var binding=new FnbCoreOrderBinding(); binding.setPaymentRootNo("ROOT"); binding.setStoreOrderNo("STORE_ORDER");
         when(bindings.selectOne(any())).thenReturn(binding);

@@ -68,8 +68,14 @@ class FoodPrimaryDatabaseTest {
                 .baselineOnMigrate(true).baselineVersion("0").load().migrate();
     }
     private ApplicationContextRunner runner() {
-        return new ApplicationContextRunner().withConfiguration(AutoConfigurations.of(FoodAutoConfiguration.class))
+        return new ApplicationContextRunner().withConfiguration(AutoConfigurations.of(FoodAutoConfiguration.class, ai.neargo.shop.food.config.DiningDeliveryAutoConfiguration.class))
                 .withUserConfiguration(PrimaryPersistenceConfiguration.class)
+                .withBean(ai.neargo.shop.food.assembler.FoodEventPrintDocumentAssembler.class,
+                        () -> new ai.neargo.shop.food.assembler.FoodEventPrintDocumentAssembler(
+                                new ai.neargo.shop.food.mapper.FoodKdsMapper(new JdbcTemplate(source)),new ObjectMapper()))
+                .withBean(ai.neargo.shop.food.service.CheckBusinessGuardService.class,
+                        () -> new ai.neargo.shop.food.service.impl.CheckBusinessGuardServiceImpl(
+                                new ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper(source)))
                 .withBean(AuditMetaObjectHandler.class)
                 .withBean(ObjectMapper.class, ObjectMapper::new)
                 .withPropertyValues("shop.food.enabled=true", "spring.datasource.url=" + ((DriverManagerDataSource)source).getUrl(),
@@ -107,6 +113,8 @@ class FoodPrimaryDatabaseTest {
             sql.update("INSERT INTO fnb_order_line(entity_no,created_at,created_by,updated_at,updated_by,"
                     +"food_line_no,batch_no,goods_no,sku_no,qty,selection_version,display_snapshot,source_line_ref,"
                     +"config_revision_nos,unit) VALUES('E',NOW(),'A',NOW(),'A','L','B','GOODS','SKU',2,1,'{}','SRC','[]','EA')");
+            sql.update("INSERT INTO fnb_station(entity_no,created_at,created_by,updated_at,updated_by,"
+                    + "station_no,store_no,name,station_type,enabled) VALUES('E',NOW(),'A',NOW(),'A','STATION','S','Kitchen','HOT',true)");
             var kitchen=c.getBean(ai.neargo.shop.food.service.KitchenTaskService.class);
             var ticket=kitchen.accepted("E","S","B","OUTBOX_ORIGINAL");
             assertThat(kitchen.accepted("E","S","B","REDELIVERY").ticketNo()).isEqualTo(ticket.ticketNo());
@@ -116,7 +124,7 @@ class FoodPrimaryDatabaseTest {
             var event=kitchen.act("E","S","A",task.taskNo(),start,"START_1");
             assertThat(kitchen.act("E","S","A",task.taskNo(),start,"START_1").eventNo()).isEqualTo(event.eventNo());
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_service_event",Integer.class)).isOne();
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery",Integer.class)).isOne();
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery",Integer.class)).isEqualTo(2);
             assertThatThrownBy(() -> kitchen.act("E","S","A",task.taskNo(),start,"STALE_NEW_KEY"))
                     .isInstanceOf(ai.neargo.shop.common.BizException.class);
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_service_event",Integer.class)).isOne();
@@ -126,12 +134,22 @@ class FoodPrimaryDatabaseTest {
             var ready=kitchen.queue("E","S",null,"B").getFirst();
             assertThat(ready.readyQty()).isEqualByComparingTo("1");
             assertThat(ready.makingQty()).isEqualByComparingTo("1");
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery",Integer.class)).isEqualTo(2);
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery",Integer.class)).isEqualTo(4);
         });
     }
 
     @org.springframework.context.annotation.Configuration(proxyBeanMethods=false)
     static class RealFoodProducer {
+        @org.springframework.context.annotation.Bean
+        ai.neargo.shop.food.service.FoodStationRuntimeService stationRuntime(DataSource source,
+                PlatformTransactionManager manager,ObjectMapper json,
+                @org.springframework.beans.factory.annotation.Qualifier("foodOutboxPublisher") ai.neargo.shop.event.outbox.OutboxPublisher outbox) {
+            return new ai.neargo.shop.food.service.impl.FoodStationRuntimeServiceImpl(
+                    new ai.neargo.shop.food.mapper.FoodStationRuntimeMapper(new JdbcTemplate(source)),
+                    new ai.neargo.shop.food.mapper.FoodKdsMapper(new JdbcTemplate(source)),null,null,
+                    outbox,manager,java.time.Clock.systemUTC(),json);
+        }
+
         @org.springframework.context.annotation.Bean
         ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade foodProducer(DataSource source,
                 PlatformTransactionManager transactionManager,ObjectMapper json) {
@@ -152,7 +170,7 @@ class FoodPrimaryDatabaseTest {
         sql.update("INSERT INTO fnb_option_group_item(entity_no,created_at,created_by,updated_at,updated_by,"
                 + "option_item_no,group_no,source_kind,spec_value_no,min_qty,max_qty,default_qty,sort_no) "
                 + "VALUES('E',NOW(),'SYSTEM',NOW(),'SYSTEM','OLD','OG','SPEC_VALUE','OLD_VALUE',0,1,0,0)");
-        assertThat(validator.initialize(source, FoodProperties.MigrationMode.MIGRATE).version()).isEqualTo("15");
+        assertThat(validator.initialize(source, FoodProperties.MigrationMode.MIGRATE).version()).isEqualTo("25");
         assertThat(sql.queryForObject("SELECT spec_value_no FROM fnb_option_group_item", String.class))
                 .isEqualTo("OLD_VALUE");
         sql.update("UPDATE fnb_option_group_item SET spec_value_no=?", "V".repeat(64));
@@ -179,7 +197,7 @@ class FoodPrimaryDatabaseTest {
                 +"occupancy_no,table_no,check_no,seats,started_at) VALUES('E',NOW(),'SYSTEM',NOW(),'SYSTEM',"
                 +"'OLD_OCC','OLD_TABLE','OLD_CHECK',4,NOW())");
         var result=validator.initialize(source,FoodProperties.MigrationMode.MIGRATE);
-        assertThat(result.version()).isEqualTo("15");
+        assertThat(result.version()).isEqualTo("25");
         assertThat(sql.queryForObject("SELECT sharing_mode FROM fnb_table_occupancy",String.class)).isEqualTo("EXCLUSIVE");
         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_flyway_history WHERE version IN ('1','2') AND success=1",Integer.class)).isEqualTo(2);
     }
@@ -194,7 +212,7 @@ class FoodPrimaryDatabaseTest {
     @Test void explicitPublishMigratesOnlyFood() {
         assertThat(validator.initialize(source, FoodProperties.MigrationMode.MIGRATE).ready()).isTrue();
         assertThat(sql.queryForObject("SELECT COUNT(*) FROM information_schema.tables "
-                + "WHERE table_schema=DATABASE() AND table_name LIKE 'fnb\\_%'", Integer.class)).isEqualTo(84);
+                + "WHERE table_schema=DATABASE() AND table_name LIKE 'fnb\\_%'", Integer.class)).isEqualTo(112);
         assertThat(tableExists("fnb_recipe")).isTrue();
         assertThat(tableExists("fnb_recipe_line")).isTrue();
         assertThat(tableExists("fnb_reservation_table")).isTrue();

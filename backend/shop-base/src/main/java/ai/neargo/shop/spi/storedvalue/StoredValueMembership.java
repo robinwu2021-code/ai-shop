@@ -5,7 +5,7 @@ import java.util.*;
 public final class StoredValueMembership {
  private StoredValueMembership(){}
  /** Build-level capability, raised only when the Core saga and central-collection proof are implemented and verified. */
- public static final int COORDINATION_IMPLEMENTATION_PROTOCOL=0;
+ public static final int COORDINATION_IMPLEMENTATION_PROTOCOL=2;
  public record Describe(String tenantNo,String actorNo,String managementNo,String storeNo,String operatingEntityNo,List<String> brandNos){public Describe{for(var s:List.of(tenantNo,actorNo,managementNo,storeNo,operatingEntityNo))ContractChecks.id(s);brandNos=List.copyOf(brandNos);ContractChecks.require(!brandNos.isEmpty()&&brandNos.size()<=2&&brandNos.stream().distinct().count()==brandNos.size());for(var b:brandNos)ContractChecks.id(b);}}
  public record Target(String issuerNo,String issuerVersionNo,String brandNo,String settlementEntityNo,String currency,String bindingNo,long bindingRevision,String accessStatus){}
  public record Side(String issuerNo,String issuerVersionNo,String brandNo,String direction,String oldBindingNo,String newBindingNo,long oldRevision,long newRevision){public Side{for(var s:List.of(issuerNo,issuerVersionNo,brandNo))ContractChecks.id(s);ContractChecks.optionalId(oldBindingNo);ContractChecks.optionalId(newBindingNo);ContractChecks.require(Set.of("LEAVE","JOIN").contains(direction)&&newRevision>oldRevision&&oldRevision>=-1);ContractChecks.require("JOIN".equals(direction)?newBindingNo!=null:oldBindingNo!=null);}}

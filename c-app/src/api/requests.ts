@@ -505,6 +505,30 @@ export type { WxPhoneLoginReq } from "@shared/types";
 
 export type { StoredValueStoresQuery, StoredValueRecordsQuery } from "./stored-value-types";
 
-export interface StoredValueLocateQuery {focusDocumentNo:string}
-export interface StoredValueIssuerRecordsQuery {issuerRef:string;type?:'ALL'|'RECHARGE'|'REDEMPTION';startDate?:string;endDate?:string;focusDocumentNo?:string;cursor?:string;size?:number}
-export interface StoredValueAuthorizeRequest {orderRevision:number;quoteRef:string;selectionDigest:string;requestKey:string}
+export interface StoredValueLocateQuery {
+/** Human-facing document number to locate within the authorized issuer records. */
+focusDocumentNo:string}
+export interface StoredValueIssuerRecordsQuery {
+/** Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier. */
+issuerRef:string;
+/** Requested stored-value record classification; ALL disables the classification filter. */
+type?:'ALL'|'RECHARGE'|'REDEMPTION';
+/** Inclusive first business date in YYYY-MM-DD format. */
+startDate?:string;
+/** Inclusive final business date in YYYY-MM-DD format. */
+endDate?:string;
+/** Human-facing document number to locate within the authorized issuer records. */
+focusDocumentNo?:string;
+/** Opaque continuation cursor; omit for the first page. */
+cursor?:string;
+/** Maximum number of records requested in this page. */
+size?:number}
+export interface StoredValueAuthorizeRequest {
+/** Previously confirmed service order revision; stale submissions are rejected. */
+orderRevision:number;
+/** Server-issued reference to the immutable consumption quote. */
+quoteRef:string;
+/** Digest binding confirmation to the exact selected wallet and service lines. */
+selectionDigest:string;
+/** Idempotency key binding retries to the original customer authorization. */
+requestKey:string}

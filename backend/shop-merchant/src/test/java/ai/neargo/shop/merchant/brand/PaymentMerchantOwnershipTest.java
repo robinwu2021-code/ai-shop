@@ -1,4 +1,6 @@
 package ai.neargo.shop.merchant.brand;
+
+import ai.neargo.shop.merchant.brand.impl.PaymentMerchantScopeServiceImpl;
 import static ai.neargo.shop.merchant.brand.ManagementModels.*;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.jupiter.api.Test;
@@ -9,7 +11,7 @@ class PaymentMerchantOwnershipTest {
   f.scopes.grant(f.owner,m,new GrantCommand("MCH:MA1","ENTITY","E1","entity.read",null,null,false,null,false));
   f.scopes.grant(f.owner,m,new GrantCommand("MCH:MA1","ENTITY","E1","payment.merchant.read",null,null,false,null,false));
   f.scopes.grant(f.owner,m,new GrantCommand("MCH:MA1","PAYMENT_MERCHANT","PM1","payment.merchant.read",null,null,false,null,false));
-  var service=new PaymentMerchantScopeService(f.repo,f.scopes);
+  var service=new PaymentMerchantScopeServiceImpl(f.repo,f.scopes);
   assertThat(service.candidates(f.owner,m,"E1","WECHAT","JSAPI",null)).extracting(x->x.get("payMerchantNo")).containsExactly("PM1");
   assertThat(service.candidates(f.owner,m,"E1","WECHAT","APP",null)).isEmpty();
   assertThat(service.candidates(f.owner,m,"E1","ALIPAY",null,null)).isEmpty();
@@ -21,6 +23,6 @@ class PaymentMerchantOwnershipTest {
   for(String p:new String[]{"entity.read","payment.merchant.read"})f.scopes.grant(f.owner,m,new GrantCommand("MCH:MA1","ENTITY","E1",p,null,null,false,null,false));
   f.scopes.grant(f.owner,m,new GrantCommand("MCH:MA1","PAYMENT_MERCHANT","PM1","payment.merchant.read",null,null,false,null,false));
   f.scopes.grant(f.owner,m,new GrantCommand("MCH:MA1","STORE","S1","store.read",null,null,false,null,false));
-  assertThat(new PaymentMerchantScopeService(f.repo,f.scopes).candidates(f.owner,m,"E1",null,null,"S1")).isEmpty();
+  assertThat(new PaymentMerchantScopeServiceImpl(f.repo,f.scopes).candidates(f.owner,m,"E1",null,null,"S1")).isEmpty();
  }
 }

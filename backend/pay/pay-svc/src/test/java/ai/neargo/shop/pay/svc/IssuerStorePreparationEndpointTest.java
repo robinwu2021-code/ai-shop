@@ -1,4 +1,7 @@
 package ai.neargo.shop.pay.svc;
+import ai.neargo.shop.pay.storedvalue.issuer.impl.StoredValueStoreIssuerServiceImpl;
+import ai.neargo.shop.pay.storedvalue.issuer.impl.StoredValueIssuerServiceImpl;
+
 
 import ai.neargo.shop.pay.client.PayStoredValueIssuerRequests;
 import ai.neargo.shop.pay.storedvalue.issuer.*;
@@ -23,7 +26,7 @@ class IssuerStorePreparationEndpointTest {
             if(m.find())part=part.replace("KEY uk_","KEY "+m.group(1)+"_uk_").replace("KEY ix_","KEY "+m.group(1)+"_ix_");j.execute(part);
         }
         var db=new IssuerRepository(new DataSourceTransactionManager(ds),new ObjectMapper());
-        var endpoint=new InternalStoredValueIssuerEndpoint(new StoredValueIssuerService(db),new StoredValueStoreIssuerService(db),"issuer-prepare-test-token");
+        var endpoint=new InternalStoredValueIssuerEndpoint(new StoredValueIssuerServiceImpl(db),new StoredValueStoreIssuerServiceImpl(db),"issuer-prepare-test-token");
         var request=new PayStoredValueIssuerRequests.PrepareStore(new StoreAuthority("MAIN","OWNER","E1","S1","测试店",3));
         assertThat(endpoint.prepareStore(request,null).getStatusCode().value()).isEqualTo(401);
         assertThat(endpoint.prepareStore(request,"wrong").getStatusCode().value()).isEqualTo(401);

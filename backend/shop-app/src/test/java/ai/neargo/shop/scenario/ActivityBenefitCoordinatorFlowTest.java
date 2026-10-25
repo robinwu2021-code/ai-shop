@@ -252,9 +252,9 @@ class ActivityBenefitCoordinatorFlowTest {
         var context = new EntitlementContext("MAIN", owner[0], id(), "a".repeat(64));
         var plan = intents.begin(context, new BenefitClaimCommand(version, null, null, owner[1], owner[2]), "event");
         var child = plan.grants().getFirst(); pay.prepare(context, child);
-        String eventNo = "BE" + plan.parentSource().grantKey().substring(0, 60);
-        jdbc.execute("ALTER TABLE sys_outbox ADD CONSTRAINT ck_benefit_outbox_failure CHECK(event_no <> '"
-                + eventNo + "')");
+        jdbc.execute("ALTER TABLE sys_outbox ADD CONSTRAINT ck_benefit_outbox_failure "
+                + "CHECK(aggregate_type <> 'ACTIVITY_BENEFIT_INTENT' OR aggregate_id <> '"
+                + plan.intentNo() + "')");
         try {
             assertThatThrownBy(() -> intents.decide(context, plan.intentNo(), true))
                     .isInstanceOf(RuntimeException.class);
@@ -263,6 +263,9 @@ class ActivityBenefitCoordinatorFlowTest {
                     .isEqualTo(EntitlementGrantPort.State.PREPARED);
         } finally { jdbc.execute("ALTER TABLE sys_outbox DROP CONSTRAINT ck_benefit_outbox_failure"); }
         intents.decide(context, plan.intentNo(), true);
+        String eventNo = jdbc.queryForObject("SELECT event_no FROM sys_outbox "
+                + "WHERE aggregate_type='ACTIVITY_BENEFIT_INTENT' AND aggregate_id=? "
+                + "AND event_type='ACTIVITY_BENEFIT_DECIDED'", String.class, plan.intentNo());
         var event = new SysOutbox(); event.setEventNo(eventNo);
         event.setPayload(jdbc.queryForObject("SELECT payload FROM sys_outbox WHERE event_no=?", String.class, eventNo));
         consumer.consume(event); consumer.consume(event);

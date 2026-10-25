@@ -5,7 +5,7 @@ import { httpApi } from '@/api/http';
 beforeEach(()=>vi.clearAllMocks());
 it('binds reads to the selected store and keeps type/date filters',async()=>{
  await httpApi.mSvRecords({storeNo:'S1',type:'REDEMPTION',startDate:'2026-10-20',endDate:'2026-10-20'});
- expect(get).toHaveBeenCalledWith('/biz/stored-value/records',{storeNo:'S1',type:'REDEMPTION',startDate:'2026-10-20',endDate:'2026-10-20'});
+ expect(get).toHaveBeenCalledWith('/biz/stores/S1/stored-value/issuer-records',{storeNo:'S1',type:'REDEMPTION',startDate:'2026-10-20',endDate:'2026-10-20'});
  await httpApi.mSvAccount('a.b/c','S1');expect(get).toHaveBeenLastCalledWith('/biz/stored-value/accounts/a.b%2Fc',{storeNo:'S1'});
 });
 it('sends immutable plan creation and status commands with original keys and revisions',async()=>{

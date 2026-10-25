@@ -19,6 +19,9 @@ import ai.neargo.shop.food.api.biz.BizProductionConsumptionController;
 import ai.neargo.shop.food.api.biz.BizKitchenReturnController;
 import ai.neargo.shop.food.event.DiningProductionConsumer;
 import ai.neargo.shop.food.service.BusinessCloseService;
+import ai.neargo.shop.food.service.DiningReportService;
+import ai.neargo.shop.food.api.biz.BizDiningReportController;
+import ai.neargo.shop.food.api.biz.BizDiningReportExportController;
 import ai.neargo.shop.food.service.FoodPrintService;
 import ai.neargo.shop.spi.printing.PrintPort;
 import tools.jackson.databind.ObjectMapper;
@@ -42,6 +45,9 @@ import ai.neargo.shop.food.api.mp.MpCartController;
 import ai.neargo.shop.food.api.mp.MpDiningSessionController;
 import ai.neargo.shop.food.foodclient.FoodClientConfiguration;
 import ai.neargo.shop.food.service.DiningPricingFactsService;
+import ai.neargo.shop.food.service.DiningOrderAuthorityService;
+import ai.neargo.shop.food.service.BusinessReturnApprovalService;
+import ai.neargo.shop.food.api.biz.BizBusinessReturnApprovalController;
 import ai.neargo.shop.food.port.FoodPricingSourceFactsPortImpl;
 import ai.neargo.shop.food.service.CheckCartService;
 import ai.neargo.shop.food.service.DiningPricingService;
@@ -95,6 +101,7 @@ import ai.neargo.shop.spi.user.StoreDirectoryPort;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Condition;
@@ -107,11 +114,23 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /** 餐饮模块装配入口。 */
-@AutoConfiguration(afterName = "ai.neargo.shop.food.config.FoodAutoConfiguration")
-@Import({FoodClientConfiguration.class, DiningTransactionRecoveryJob.class})
+@AutoConfiguration(afterName = {"ai.neargo.shop.food.config.FoodAutoConfiguration",
+        "ai.neargo.shop.food.config.FoodBusinessAmendmentConfiguration",
+        "ai.neargo.shop.food.config.FoodBusinessOperationsConfiguration",
+        "ai.neargo.shop.food.config.DiningIdentityAutoConfiguration",
+        "ai.neargo.shop.food.config.DiningDeliveryAutoConfiguration",
+        "ai.neargo.shop.food.config.FoodOrderAuthorityConfiguration"})
+@Import({FoodClientConfiguration.class, DiningTransactionRecoveryJob.class, FoodBusinessOperationsWebConfiguration.class})
 @ConditionalOnFoodWebEnabled
 @Profile({"api", "ops"})
 public class FoodWebAutoConfiguration {
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({BusinessReturnApprovalService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizBusinessReturnApprovalController.class)
+    BizBusinessReturnApprovalController bizBusinessReturnApprovalController(BusinessReturnApprovalService service,
+            StoreDirectoryPort stores, FoodRequestScopeValidator validator) {
+        return new BizBusinessReturnApprovalController(service, stores, validator);
+    }
     @Bean @Profile("api") @Conditional(PolicyEnabled.class)
     @ConditionalOnBean({DiningBatchQueryService.class, StoreDirectoryPort.class})
     @ConditionalOnMissingBean(BizDiningBatchQueryController.class)
@@ -173,6 +192,20 @@ public class FoodWebAutoConfiguration {
     @ConditionalOnMissingBean(BizKitchenTaskController.class)
     BizKitchenTaskController bizKitchenTaskController(KitchenTaskService service,StoreDirectoryPort stores,
             FoodRequestScopeValidator scope) { return new BizKitchenTaskController(service,stores,scope); }
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnProperty(name="shop.report.food.enabled",havingValue="true")
+    @ConditionalOnBean({DiningReportService.class,StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizDiningReportController.class)
+    BizDiningReportController bizDiningReportController(DiningReportService service,StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizDiningReportController(service,stores,scope); }
+
+    @Bean @Profile("api") @Conditional(PolicyEnabled.class)
+    @ConditionalOnProperty(name={"shop.report.food.enabled","shop.report.export.enabled"},havingValue="true")
+    @ConditionalOnBean({DiningReportService.class,StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizDiningReportExportController.class)
+    BizDiningReportExportController bizDiningReportExportController(DiningReportService service,StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) { return new BizDiningReportExportController(service,stores,scope); }
+
     @Bean @Profile("api") @Conditional(PolicyEnabled.class)
     @ConditionalOnBean({KitchenTaskService.class,StoreDirectoryPort.class})
     @ConditionalOnMissingBean(BizCourseController.class)
@@ -283,8 +316,8 @@ public class FoodWebAutoConfiguration {
     @ConditionalOnBean(DiningPricingFactsService.class)
     @ConditionalOnMissingBean(FoodPricingSourceFactsPortImpl.class)
     FoodPricingSourceFactsPortImpl foodPricingSourceFactsPort(DiningPricingFactsService service,
-            ObjectProvider<DiningOrderService> orders) {
-        return new FoodPricingSourceFactsPortImpl(service, orders::getIfUnique);
+            ObjectProvider<DiningOrderService> orders, ObjectProvider<DiningOrderAuthorityService> authority) {
+        return new FoodPricingSourceFactsPortImpl(service, orders::getIfUnique, authority::getIfUnique);
     }
 
     @Bean
@@ -310,7 +343,7 @@ public class FoodWebAutoConfiguration {
     @Conditional(PolicyEnabled.class)
     @ConditionalOnBean(CatalogService.class)
     @ConditionalOnMissingBean(MpCatalogController.class)
-    MpCatalogController mpCatalogController(CatalogService service) { return new MpCatalogController(service); }
+    MpCatalogController foodMpCatalogController(CatalogService service) { return new MpCatalogController(service); }
 
     @Bean
     @Profile("api")

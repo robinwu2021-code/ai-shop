@@ -60,6 +60,12 @@ public class InternalIndustryOrderEndpoint {
         return InternalServiceResponses.invoke(token, given,
                 () -> orders.queryForStore(request.identity(), request.key()));
     }
+    @PostMapping(IndustryOrderInternalApi.ROOT + "/service/place")
+    public ResponseEntity<?> placeForService(@RequestBody IndustryOrderInternalApi.ServicePlace request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given, () -> orders.placeForService(
+                request.command(), request.key(), request.fulfillment(), request.staff()));
+    }
     @PostMapping(IndustryOrderInternalApi.ROOT + "/place")
     public ResponseEntity<?> place(@RequestBody IndustryOrderInternalApi.Place request,
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {

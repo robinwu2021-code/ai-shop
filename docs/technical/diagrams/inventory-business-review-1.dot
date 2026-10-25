@@ -1,0 +1,55 @@
+digraph G {
+graph [bgcolor="white", pad="0.3", nodesep="0.45", ranksep="0.7", fontname="Arial", label="库存领域边界及读写投影", labelloc=t, fontsize=20];
+node [shape=box, style="rounded,filled", fillcolor="#f3f7fc", color="#516781", fontname="Arial", fontsize=13, margin="0.18,0.12"];
+edge [fontname="Arial", fontsize=11, color="#516781", arrowsize=0.8];
+rankdir=LR;
+"Catalog" [label="商品域：SKU与管理策略",shape=box];
+"ACL" [label="防腐层：SKU物料及门店库位映射",shape=box];
+"Order" [label="订单域：销售承诺",shape=box];
+"Sales" [label="交易库存：额度与锁定",shape=box];
+"Router" [label="库存应用编排：按商品路由",shape=box];
+"Reservation" [label="进销存：预留聚合",shape=box];
+"Fulfill" [label="履约域：实际交接与交付",shape=box];
+"AfterSale" [label="售后域：退款与验收",shape=box];
+"Balance" [label="余额与单据过账",shape=box];
+"Purchase" [label="采购/盘点/调拨",shape=box];
+"Ledger" [label="不可变流水",shape=box];
+"Outbox" [label="统一Outbox：本地事务事件",shape=box];
+"Sync" [label="库存同步编排与销售规则",shape=box];
+"Read" [label="库存聚合查询模型",shape=box];
+"UI" [label="B端/运营端/C端裁剪视图",shape=box];
+"Catalog" -> "ACL" [label=""];
+"Order" -> "Sales" [label=""];
+"Sales" -> "Router" [label=""];
+"Router" -> "Reservation" [label=""];
+"Fulfill" -> "Router" [label=""];
+"AfterSale" -> "Router" [label=""];
+"Reservation" -> "Balance" [label=""];
+"Purchase" -> "Balance" [label=""];
+"ACL" -> "Router" [label=""];
+"Balance" -> "Ledger" [label=""];
+"Balance" -> "Outbox" [label=""];
+"Outbox" -> "Sync" [label=""];
+"Sync" -> "Sales" [label=""];
+"Sales" -> "Read" [label=""];
+"Balance" -> "Read" [label=""];
+"Read" -> "UI" [label=""];
+}
+// Original diagram source, retained for provenance:
+// flowchart LR
+//   Catalog[商品域：SKU与管理策略] --> ACL[防腐层：SKU物料及门店库位映射]
+//   Order[订单域：销售承诺] --> Sales[交易库存：额度与锁定]
+//   Sales --> Router[库存应用编排：按商品路由]
+//   Router --> Reservation[进销存：预留聚合]
+//   Fulfill[履约域：实际交接与交付] --> Router
+//   AfterSale[售后域：退款与验收] --> Router
+//   Reservation --> Balance[余额与单据过账]
+//   Purchase[采购/盘点/调拨] --> Balance
+//   ACL --> Router
+//   Balance --> Ledger[不可变流水]
+//   Balance --> Outbox[统一Outbox：本地事务事件]
+//   Outbox --> Sync[库存同步编排与销售规则]
+//   Sync --> Sales
+//   Sales --> Read[库存聚合查询模型]
+//   Balance --> Read
+//   Read --> UI[B端/运营端/C端裁剪视图]

@@ -32,10 +32,10 @@ onLoad(q=>{management.value=q?.m||'';void load()});
  <sh-sheet :visible="editing" :title="target?.name||t('svGov.policies')" @close="!locked&&(editing=false)"><view class="sh-card">
  <sh-kv :label="t('svGov.allow')" between><sh-check :model-value="allow" :disabled="locked" @update:model-value="!locked&&(allow=$event)"/></sh-kv>
  <sh-kv :label="t('svGov.approvalRequired')" between><sh-check :model-value="approval" :disabled="locked" @update:model-value="!locked&&(approval=$event)"/></sh-kv>
- <view class="field"><text class="field__label">{{t('svGov.ratio')}} (%)</text><input v-model="ratio" class="field__input" type="digit" :disabled="locked"/></view>
- <view class="field"><text class="field__label">{{t('svGov.paidCap')}} · {{currency}}</text><input v-model="paid" class="field__input" type="digit" :disabled="locked"/></view>
- <view class="field"><text class="field__label">{{t('svGov.bonusCap')}} · {{currency}}</text><input v-model="bonus" class="field__input" type="digit" :disabled="locked"/></view>
- <view class="field"><text class="field__label">{{t('svGov.daysCap')}}</text><input v-model="days" class="field__input" type="number" :disabled="locked"/></view>
- <view class="field"><text class="field__label">{{t('svGov.outstanding')}} · {{currency}}</text><input v-model="outstanding" class="field__input" type="digit" :disabled="locked"/></view>
+ <view class="field"><text class="field__label">{{t('svGov.ratio')}} (%)</text><input maxlength="6" v-model="ratio" class="field__input" type="digit" :disabled="locked"/></view>
+ <view class="field"><text class="field__label">{{t('svGov.paidCap')}} · {{currency}}</text><input maxlength="10" v-model="paid" class="field__input" type="digit" :disabled="locked"/></view>
+ <view class="field"><text class="field__label">{{t('svGov.bonusCap')}} · {{currency}}</text><input maxlength="10" v-model="bonus" class="field__input" type="digit" :disabled="locked"/></view>
+ <view class="field"><text class="field__label">{{t('svGov.daysCap')}}</text><input maxlength="4" v-model="days" class="field__input" type="number" :disabled="locked"/></view>
+ <view class="field"><text class="field__label">{{t('svGov.outstanding')}} · {{currency}}</text><input maxlength="10" v-model="outstanding" class="field__input" type="digit" :disabled="locked"/></view>
  </view><text v-if="pending" class="sh-hint">{{t('svGov.unknown')}}</text><text v-if="error" class="sh-hint">{{error}}</text><view data-testid="policy-save" class="sh-btn" role="button" :class="{'is-disabled':busy}" @tap="save">{{t(pending?'svGov.retry':'svGov.save')}}</view></sh-sheet>
  </sh-scaffold></template>

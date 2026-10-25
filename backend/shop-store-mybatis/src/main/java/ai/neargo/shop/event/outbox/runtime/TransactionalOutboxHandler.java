@@ -74,6 +74,7 @@ public final class TransactionalOutboxHandler implements OutboxHandler {
         row.setSourceSystem(e.sourceSystem()); row.setSourceEventNo(e.sourceEventNo());
         row.setSchemaVersion(e.schemaVersion()); row.setStreamKey(e.streamKey());
         row.setStreamSequence(e.streamSequence()); row.setStatus(SysOutbox.PENDING);
+        row.setOccurredAt(java.time.LocalDateTime.ofInstant(e.occurredAt(),java.time.ZoneOffset.UTC));
         return row;
     }
 }

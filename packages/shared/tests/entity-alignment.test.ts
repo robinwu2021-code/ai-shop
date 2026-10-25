@@ -20,6 +20,9 @@ import { describe, expect, it } from "vitest";
 // @ts-expect-error -- 生成器是 .mjs，没有类型声明；它是 DDL 解析的唯一真源
 import { readSchema, AUDIT, MIGRATION_DIR, INVENTORY_MIGRATION_DIR } from "../../../scripts/lib/ddl.mjs";
 
+// @ts-expect-error -- shared evidence validator is an ES module without declarations
+import { persistenceOwners } from "../../../scripts/lib/persistence-owners.mjs";
+
 const ROOT = join(import.meta.dirname, "../../..");
 const BACKEND = join(ROOT, "backend");
 
@@ -38,6 +41,7 @@ const camel = (s: string) =>
  * 删不掉说明还没做完。
  */
 const NO_ENTITY_YET: Record<string, string> = {
+  mch_brand_financial_change: "既有P6预留品牌财务变更投影；当前没有独立生产读写入口，P6完整阶段仍待交付，不作为本批餐饮数据来源。",
   pts_statement_final_fact: "可信终局发生时间与首次就绪序列投影，由PointsConfigurationMapper维护，按积分SQL mapper设计无ORM实体。",
   pts_statement_build: "大账单构建状态及高水位由PointsConfigurationMapper与MybatisStatementBuildStore与不可变record维护，按积分SQL mapper设计无ORM实体。",
   pts_statement_source_history: "大账单来源版本的只增历史由PointsConfigurationMapper与MybatisStatementBuildStore维护，用于分页重建旧修订，不设独立ORM实体。",
@@ -154,6 +158,10 @@ const schema: Map<string, { cols: { name: string }[] }> = existsSync(BACKEND)
   ? readSchema(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR])
   : new Map();
 const entities = existsSync(BACKEND) ? scanEntities(BACKEND) : new Map();
+const sqlOwners = persistenceOwners(ROOT, JSON.parse(readFileSync(join(ROOT, "scripts/lib/persistence-owners.json"), "utf8")));
+for (const table of sqlOwners) {
+  if (!schema.has(table)) throw new Error(`Persistence owner names a missing table: ${table}`);
+}
 
 /** 库里的业务列（去掉 BaseEntity 那八列），转成 camelCase */
 const businessCols = (table: string) =>
@@ -253,7 +261,7 @@ const DELIBERATELY_UNMAPPED: Record<string, Record<string, string>> = {
     const IGNORE = new RegExp("^(flyway_schema_history|sys_idempotent|sys_outbox|shedlock"
       + "|(usr|mch|ops)_(session|login_log))$");
     const naked = [...schema.keys()]
-      .filter((t) => !IGNORE.test(t) && !entities.has(t) && !(t in NO_ENTITY_YET));
+      .filter((t) => !IGNORE.test(t) && !entities.has(t) && !sqlOwners.has(t) && !(t in NO_ENTITY_YET));
     expect(
       naked,
       "这些表没有 Java 实体，也没登记原因：\n  " +

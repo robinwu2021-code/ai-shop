@@ -64,13 +64,15 @@ function declared(tpl: string): { name: string; unwired: string | null }[] {
 function grepAll(pattern: string, dirs: string[]): string[] {
   try {
     return execFileSync(
-      "grep",
-      ["-rIohE", "--exclude-dir=node_modules", "--exclude-dir=dist", "--exclude-dir=.next",
-       "--exclude=*.example", pattern, ...dirs.map((d) => join(ROOT, d))],
+      "rg",
+      ["--no-ignore", "--hidden", "--only-matching", "--no-filename",
+       "--glob", "!**/node_modules/**", "--glob", "!**/dist/**", "--glob", "!**/.next/**",
+       "--glob", "!*.example", pattern, ...dirs.map((d) => join(ROOT, d))],
       { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
     ).split("\n").filter(Boolean);
-  } catch {
-    return []; // grep 没命中时退出码 1
+  } catch (error) {
+    if ((error as { status?: number }).status === 1) return []; // rg: no matches
+    throw error; // A broken scan must not masquerade as an empty consumer set.
   }
 }
 

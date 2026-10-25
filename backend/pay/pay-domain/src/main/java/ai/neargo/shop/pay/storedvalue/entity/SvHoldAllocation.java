@@ -9,6 +9,10 @@ import lombok.Setter;
 @Setter
 @TableName("sv_hold_allocation")
 public class SvHoldAllocation extends BaseEntity {
+    private String issuerNo;
+    private String allocationNo;
+    private String releaseNo;
+
     private String operationNo;
     private String lotNo;
     private Long principalMinor;

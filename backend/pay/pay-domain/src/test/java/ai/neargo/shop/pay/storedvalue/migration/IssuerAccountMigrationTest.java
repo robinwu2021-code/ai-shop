@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.storedvalue.migration;
+import ai.neargo.shop.pay.storedvalue.migration.impl.StoredValueIssuerMigrationServiceImpl;
+
 
 import ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository;
 import java.util.*;
@@ -27,7 +29,7 @@ class IssuerAccountMigrationTest {
         j.update("INSERT INTO sv_issuer VALUES('MAIN','I1','STORE','S1','IV1','DRAFT',0)");
         j.update("INSERT INTO sv_issuer_version VALUES('MAIN','I1','IV1','E1','CNY',0)");
         var db=new IssuerRepository(new DataSourceTransactionManager(ds),new ObjectMapper());
-        return new Fixture(j,new StoredValueIssuerMigrationService(db),db);
+        return new Fixture(j,new StoredValueIssuerMigrationServiceImpl(db),db);
     }
     StoredValueIssuerMigrationService.Batch batch() {
         return new StoredValueIssuerMigrationService.Batch("MAIN","AUDITOR",List.of(new StoredValueIssuerMigrationService.StoreMapping("S1","E1","I1")),List.of(new StoredValueIssuerMigrationService.IdentityEvidence("P1","U1")));

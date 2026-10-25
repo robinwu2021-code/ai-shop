@@ -3,6 +3,8 @@ package ai.neargo.shop.scenario;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.event.OutboxDispatcher;
 import ai.neargo.shop.event.OutboxEventBus;
+import ai.neargo.shop.event.SysOutbox;
+import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper;
 import ai.neargo.shop.message.entity.MsgMessage;
@@ -55,6 +57,8 @@ class WeComOrderAlertFlowTest {
     private OutboxEventBus eventBus;
     @Autowired
     private OutboxDispatcher dispatcher;
+    @Autowired
+    private SysOutboxMapper outboxMapper;
     @Autowired
     private MerchantNotifyRecipients recipients;
     @Autowired
@@ -115,17 +119,18 @@ class WeComOrderAlertFlowTest {
         configureGroup("ST-" + entityNo, GROUP);
         botSender.failNext(); // 企微那条炸了（限流、URL 失效、网络不通都长这样）
 
-        eventBus.publish(new OrderEvents.SubOrderPaid("SUB-WCA-3", "SO-WCA-3", entityNo,
+        String eventNo = "EVT-WCA-3-PAID";
+        eventBus.publish(eventNo, new OrderEvents.SubOrderPaid("SUB-WCA-3", "SO-WCA-3", entityNo,
                 "ST-" + entityNo, "U-BUYER-WCA-3", 900L));
         drainOutbox();
 
-        /*
-         * **这一条才是真正的量具**：站内信与推送在 weComOrderAlert 之前就发完了，
-         * 所以光断言它们在，拆掉 WeComOrderAlert 的 try/catch 也不会红 ——
-         * 异常冒到 outbox 消费者那里，事件会被判失败并留在待投里重投，
-         * 于是站内信迟早被发第二遍。pendingCount 才看得见这件事。
-         */
-        assertThat(dispatcher.pendingCount()).as("群发炸了不该让这条事件重投").isZero();
+        // Inspect this delivery, since unrelated scenario events can remain in retry backoff.
+        // SENT and zero retries fail if the webhook exception escapes the notification consumer.
+        SysOutbox delivered = outboxMapper.findByEventNo(eventNo);
+        assertThat(delivered).as("来单事件必须真正落库并投递").isNotNull();
+        assertThat(delivered.getStatus()).as("群发炸了不该让这条事件重投").isEqualTo(SysOutbox.SENT);
+        assertThat(delivered.getRetryCount()).as("群发失败不得增加事件重试次数").isZero();
+        assertThat(delivered.getLastError()).isNull();
         assertThat(inbox(o.userNo())).as("站内信该照样进来").isNotEmpty();
         assertThat(pushStub.sent().stream()
                 .anyMatch(p -> "cid-wca-3".equals(p.clientId())))

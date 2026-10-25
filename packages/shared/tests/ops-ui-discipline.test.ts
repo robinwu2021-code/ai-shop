@@ -1,3 +1,4 @@
+import ts from "typescript";
 // 运营端的界面纪律：把**此刻已经干净**的那几条钉住。
 //
 // 2026-08-28 第一次给 ops-web 做界面盘点（此前它一直不在 `gen-ui-lib.py` 的判据里，
@@ -164,10 +165,63 @@ function pages(): string[] {
   return globSync(`${OPS}/app/**/page.tsx`, { cwd: ROOT });
 }
 
+/** Redirect shells render no business controls; they must not acquire fake UI imports. */
+function redirectOnlyPage(source: string): boolean {
+  const file = ts.createSourceFile("page.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const redirects = new Set<string>();
+  const routers = new Set<string>();
+  const routerVariables = new Set<string>();
+  const nullComponents = new Set<string>();
+  for (const statement of file.statements) {
+    if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)
+        && statement.moduleSpecifier.text === "next/navigation") {
+      const bindings = statement.importClause?.namedBindings;
+      if (bindings && ts.isNamedImports(bindings)) for (const binding of bindings.elements) {
+        const imported = binding.propertyName?.text ?? binding.name.text;
+        if (imported === "redirect") redirects.add(binding.name.text);
+        if (imported === "useRouter") routers.add(binding.name.text);
+      }
+    }
+    if (ts.isFunctionDeclaration(statement) && statement.name && statement.body) {
+      const returns = statement.body.statements.filter(ts.isReturnStatement);
+      if (returns.length && returns.every(r => r.expression?.kind === ts.SyntaxKind.NullKeyword)) {
+        nullComponents.add(statement.name.text);
+      }
+    }
+  }
+  let navigation = false;
+  let renderedControls = false;
+  function visit(node: ts.Node) {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer
+        && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression)
+        && routers.has(node.initializer.expression.text)) routerVariables.add(node.name.text);
+    if (ts.isCallExpression(node)) {
+      const expression = node.expression;
+      if (ts.isIdentifier(expression) && redirects.has(expression.text)) navigation = true;
+      if (ts.isPropertyAccessExpression(expression) && ts.isIdentifier(expression.expression)
+          && routerVariables.has(expression.expression.text) && expression.name.text === "replace") navigation = true;
+    }
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const name = node.tagName.getText(file);
+      if (name !== "Suspense" && !nullComponents.has(name)) renderedControls = true;
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(file);
+  return navigation && !renderedControls;
+}
+
+function hiddenInput(tag: string, attrs: string): boolean {
+  return tag === "input" && /\btype\s*=\s*(?:["']hidden["']|\{\s*["']hidden["']\s*\})/.test(attrs);
+}
+
 describe("运营端界面纪律", () => {
   it("★ 每个页面都从 ui 层取件，不自己从零搭", () => {
     const bad = pages().filter(
-      (f) => !/components\/ui/.test(readFileSync(join(ROOT, f), "utf8")),
+      (f) => {
+        const source = readFileSync(join(ROOT, f), "utf8");
+        return !/components\/ui/.test(source) && !redirectOnlyPage(source);
+      },
     );
     expect(bad, `这些页面一个 ui 层的件都没用上：\n${bad.join("\n")}`).toEqual([]);
   });
@@ -212,6 +266,7 @@ describe("运营端界面纪律", () => {
       if (CATALOG.test(f) || f.includes("node_modules")) continue;
       for (const el of jsxElements(readFileSync(join(ROOT, f), "utf8"), FOCUSABLE_TAGS)) {
         if (el.tag === "a" && !/\bhref\b/.test(el.attrs)) continue;
+        if (hiddenInput(el.tag, el.attrs)) continue;
         // `<Link>` 渲染成 <a>，同样可聚焦。第一版漏了它，浏览器里还剩 33 个无环
         if (el.attrs.includes("data-audit-skip")) continue;
         if (HAS_RING.test(effectiveClass(classAttr(el.attrs)))) continue;
@@ -238,4 +293,17 @@ describe("运营端界面纪律", () => {
     ];
     expect(bad, `写死的时长/控件高：\n  ${bad.join("\n  ")}`).toEqual([]);
   });
+});
+
+
+it("redirect-only shells are excluded, rendered controls still require UI components", () => {
+  expect(redirectOnlyPage('import {redirect} from "next/navigation"; export default function Page(){redirect("/settings")}')).toBe(true);
+  expect(redirectOnlyPage('import {redirect} from "next/navigation"; export default function Page(){redirect("/settings");return <button>Retry</button>}')).toBe(false);
+  expect(redirectOnlyPage('export default function Page(){return null}')).toBe(false);
+});
+it("hidden fields cannot receive keyboard focus; visible inputs remain audited", () => {
+  expect(hiddenInput("input", ' type="hidden" name="scope"')).toBe(true);
+  expect(hiddenInput("input", ' type={"hidden"} name="scope"')).toBe(true);
+  expect(hiddenInput("input", ' type="text" name="scope"')).toBe(false);
+  expect(hiddenInput("button", ' type="hidden"')).toBe(false);
 });

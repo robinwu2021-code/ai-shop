@@ -1,13 +1,10 @@
 package ai.neargo.shop.marketing.coupon.impl;
 
 import ai.neargo.shop.numbering.DocumentType;
-import ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers;
-
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.shop.spi.entitlement.LegacyCouponWriteFencePort;
 import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
-
 import ai.neargo.shop.marketing.coupon.CouponService;
-
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.auth.SecurityUtils;
@@ -24,7 +21,6 @@ import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.UserCouponMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

@@ -13,6 +13,10 @@ import tools.jackson.databind.ObjectMapper;
 /** Acknowledge paid delivery only after every frozen right is issued; failures use existing outbox retries. */
 @Component
 public class CardSaleEventConsumer implements OutboxConsumer {
+    @Override public String handlerId() { return "card-sale-recovery"; }
+    // Original owner/action ledgers provide replay safety across PAY calls and independent core writes.
+    @Override public boolean externalWorkflow() { return true; }
+
     private final CardSaleCoordinator coordinator;
     private final ObjectMapper json;
     public CardSaleEventConsumer(CardSaleCoordinator coordinator,ObjectMapper json) {

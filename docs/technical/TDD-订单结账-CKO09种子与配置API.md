@@ -299,18 +299,7 @@ SettingVO={version,custom,effective}；effective允许null用于管理界面显�
 
 #### L3 来源及对象关系
 
-```mermaid
-classDiagram
-    PricingTaxSettingPort <|.. PricingTaxSettingPortImpl
-    PricingTaxCalculationPort <|.. PricingTaxCalculationPortImpl
-    PricingTaxSettingPortImpl --> PricingTaxSettingService
-    PricingTaxSettingPortImpl --> StoreDirectoryPort
-    PricingTaxCalculationPortImpl --> PricingTaxCalculationService
-    PricingTaxCalculationServiceImpl ..|> PricingTaxCalculationService
-    PricingTaxCalculationServiceImpl --> PricingTaxSettingPort
-    PricingTaxCalculationServiceImpl --> TaxEngine
-    TaxEngine --> MerchantTaxSnapshot
-```
+![税配置及计算端口类关系](diagrams/checkout-tax-ports-1.svg)
 
 PricingTaxSettingPort.resolve(Scope{tenantNo,entityNo,storeNo})只允许现有MAIN，校验实际StoreDirectory归属，然后读取真实sys_setting版本。调用方先验证其订单/购物车可访问性；本Port不把传入标识当成用户授权。输出MerchantTaxSnapshot包含tenant/entity/store、managedVersion、source、owner、sourceVersion、rate、mode、contentHash，结构构造会核对来源hash与值的一致性；hash只作一致性证据，不是身份令牌。
 

@@ -91,6 +91,7 @@ export interface RefundExecutionProgress {
 }
 
 export interface AfterSale {
+  /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 原资金执行与独立资源恢复进度。 */
   refundExecution?: RefundExecutionProgress | null;

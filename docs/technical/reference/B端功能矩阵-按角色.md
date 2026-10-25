@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 32 个权限点 × 299 个受控端点**。
+统计：**6 个角色 × 33 个权限点 × 321 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -16,40 +16,41 @@
 
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
-| `STOCK` | 改库存（含门店库存） | 49 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `STOCK` | 改库存（含门店库存） | 50 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 38 | ✅ | ✅ | — | — | — | — |
-| `CAMPAIGN` | 营销活动、开团、报价 | 32 | ✅ | ✅ | — | — | — | — |
-| `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 30 | ✅ | — | — | — | — | — |
+| `CAMPAIGN` | 营销活动、开团、报价 | 35 | ✅ | ✅ | — | — | — | — |
+| `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 32 | ✅ | — | — | — | — | — |
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 24 | ✅ | — | — | — | — | — |
-| `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
+| `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 23 | ✅ | ✅ | — | — | — | — |
 | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
+| `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 9 | ✅ | — | — | — | — | — |
 | `AFTERSALE` | 售后同意/驳回/收货 | 8 | ✅ | ✅ | — | — | — | ✅ |
-| `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 8 | ✅ | — | — | — | — | — |
 | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
-| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 6 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
-| `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
+| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 7 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
+| `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 7 | ✅ | — | — | — | — | — |
+| `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
+| `PRICING_CONFIG_READ` | Shared pricing configuration: read, draf | 3 | ✅ | — | — | — | — | — |
+| `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read, draf | 3 | ✅ | — | — | — | — | — |
 | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
 | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `PRICING_TAX_UPDATE` | 修改全主体所有门店的税配置，仅主体属主，不可按门店委派 | 2 | ✅ | — | — | — | — | — |
+| `PRICING_CONFIG_UPDATE` | Shared pricing configuration: read, draf | 2 | ✅ | — | — | — | — | — |
 | `SV_PLAN_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `SV_PLAN_MANAGE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
-| `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 2 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
 | `PRICING_TAX_READ` | 查看当前授权商家的有效税配置 | 0 | ✅ | — | — | — | — | — |
-| `PRICING_CONFIG_READ` | Shared pricing configuration: read, draf | 0 | ✅ | — | — | — | — | — |
-| `PRICING_CONFIG_UPDATE` | Shared pricing configuration: read, draf | 0 | ✅ | — | — | — | — | — |
-| `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read, draf | 0 | ✅ | — | — | — | — | — |
+| `REPORT_EXPORT` | 改库存（含门店库存） | 0 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 
-**只有 OWNER 能碰的 21 项**：`FINANCE`、`STORE_ADMIN`、`SV_RECHARGE_CREATE`、`SV_ACCOUNT_READ`、`ENT_READ`、`ENT_USE`、`PRICING_TAX_UPDATE`、`SV_PLAN_READ`、`SV_PLAN_MANAGE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`SV_CONSUME_CREATE`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`PRICING_TAX_READ`、`PRICING_CONFIG_READ`、`PRICING_CONFIG_UPDATE`、`PRICING_CONFIG_PUBLISH`、`ENT_TEMPLATE_READ`
+**只有 OWNER 能碰的 22 项**：`FINANCE`、`STORE_ADMIN`、`SV_RECHARGE_CREATE`、`SV_ACCOUNT_READ`、`SV_CONSUME_CREATE`、`ENT_READ`、`PRICING_CONFIG_READ`、`PRICING_CONFIG_PUBLISH`、`ENT_USE`、`PRICING_TAX_UPDATE`、`PRICING_CONFIG_UPDATE`、`SV_PLAN_READ`、`SV_PLAN_MANAGE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`PRICING_TAX_READ`、`REPORT_EXPORT`、`ENT_TEMPLATE_READ`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点
@@ -60,6 +61,7 @@
 - `/biz/goods`
 - `/biz/goods/inv-mode`
 - `/biz/goods/{goodsNo}`
+- `/biz/goods/{goodsNo}/skus/{skuNo}/pricing-policy`
 - `/biz/goods/{goodsNo}/stock`
 - `/biz/goods/{goodsNo}/store-stock`
 - `/biz/inventory/adjust`
@@ -180,6 +182,9 @@
 - `/biz/platform-activity/{activityNo}`
 - `/biz/platform-activity/{activityNo}/enrollment`
 - `/biz/platform-activity/{activityNo}/withdraw`
+- `/biz/pricing-manual-adjustments`
+- `/biz/pricing-manual-adjustments/{no}`
+- `/biz/pricing-manual-adjustments/{no}:quote`
 - `/biz/quote/{quoteNo}/revise`
 
 ### `FINANCE`　（OWNER）
@@ -204,6 +209,8 @@
 - `/biz/points/store-statements`
 - `/biz/points/store-terms`
 - `/biz/points/store-types`
+- `/biz/pricing-manual-adjustments/{no}:approve`
+- `/biz/pricing-manual-policies/{currency}/{reasonCode}/{kind}`
 - `/biz/settle/batch`
 - `/biz/settle/bills`
 - `/biz/settle/bills/{settleNo}`
@@ -297,6 +304,7 @@
 - `/biz/store/{storeNo}/ship-setting`
 - `/biz/stores/{storeNo}/appointment-slots`
 - `/biz/stores/{storeNo}/fulfillment`
+- `/biz/stores/{storeNo}/fulfillment/{channel}/impact`
 
 ### `SHIP`　（OWNER、MANAGER、CLERK、COURIER）
 
@@ -311,6 +319,18 @@
 - `/biz/order/{subOrderNo}/ship/precheck`
 - `/biz/order/{subOrderNo}/waybill`
 
+### `SV_RECHARGE_CREATE`　（OWNER）
+
+- `/biz/stored-value/plan-recharges`
+- `/biz/stored-value/plan-recharges/cancel-create`
+- `/biz/stored-value/plan-recharges/confirm-offline`
+- `/biz/stored-value/plan-recharges/resolve`
+- `/biz/stored-value/plan-recharges/{rechargeNo}/cancel`
+- `/biz/stored-value/plan-recharges/{rechargeNo}/submit`
+- `/biz/stored-value/recharges`
+- `/biz/stored-value/recharges/{rechargeNo}/cancel`
+- `/biz/stored-value/recharges/{rechargeNo}/submit`
+
 ### `AFTERSALE`　（OWNER、MANAGER、CS）
 
 - `/biz/after-sale`
@@ -321,17 +341,6 @@
 - `/biz/after-sale/{afterSaleNo}/confirm-refund`
 - `/biz/after-sale/{afterSaleNo}/receive`
 - `/biz/after-sale/{afterSaleNo}/reject`
-
-### `SV_RECHARGE_CREATE`　（OWNER）
-
-- `/biz/stored-value/plan-recharges`
-- `/biz/stored-value/plan-recharges/cancel-create`
-- `/biz/stored-value/plan-recharges/resolve`
-- `/biz/stored-value/plan-recharges/{rechargeNo}/cancel`
-- `/biz/stored-value/plan-recharges/{rechargeNo}/submit`
-- `/biz/stored-value/recharges`
-- `/biz/stored-value/recharges/{rechargeNo}/cancel`
-- `/biz/stored-value/recharges/{rechargeNo}/submit`
 
 ### `VERIFY`　（OWNER、MANAGER、CLERK）
 
@@ -347,6 +356,7 @@
 
 - `/biz/order`
 - `/biz/order/worklist`
+- `/biz/order/{orderNo}/points-earning`
 - `/biz/order/{subOrderNo}`
 - `/biz/order/{subOrderNo}/inventory-trace`
 - `/biz/order/{subOrderNo}/logistics-updates`
@@ -359,6 +369,16 @@
 - `/biz/stored-value/accounts/{accountRef}`
 - `/biz/stored-value/records`
 - `/biz/stored-value/records/{recordNo}`
+- `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts`
+- `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records`
+
+### `SV_CONSUME_CREATE`　（OWNER）
+
+- `/biz/stored-value/consumptions`
+- `/biz/stored-value/consumptions/orders/{orderNo}`
+- `/biz/stored-value/consumptions/orders/{orderNo}/cancel`
+- `/biz/stored-value/consumptions/preview`
+- `/biz/stored-value/consumptions/resolve`
 
 ### `RECEIVE`　（OWNER、MANAGER、CLERK、PICKER）
 
@@ -373,6 +393,18 @@
 - `/biz/entitlement-usage`
 - `/biz/entitlement-uses/{operationNo}`
 - `/biz/entitlements/{instanceNo}`
+
+### `PRICING_CONFIG_READ`　（OWNER）
+
+- `/biz/pricing-configs/{no}/draft`
+- `/biz/pricing-configs/{no}/preview`
+- `/biz/pricing-configs/{no}/revisions/{revisionNo}`
+
+### `PRICING_CONFIG_PUBLISH`　（OWNER）
+
+- `/biz/pricing-configs/initialize`
+- `/biz/pricing-configs/{no}/publish`
+- `/biz/pricing-configs/{no}/rollback`
 
 ### `REVIEW`　（OWNER、MANAGER、CS）
 
@@ -390,6 +422,11 @@
 
 - `/biz/pricing-tax-settings`
 - `/biz/pricing-tax-settings/reset`
+
+### `PRICING_CONFIG_UPDATE`　（OWNER）
+
+- `/biz/pricing-configs/{no}/reset`
+- `/biz/pricing-configs/{no}/upgrade`
 
 ### `SV_PLAN_READ`　（OWNER）
 
@@ -410,11 +447,6 @@
 
 - `/biz/stored-value/plan-recharges/{rechargeNo}`
 - `/biz/stored-value/recharges/{rechargeNo}`
-
-### `SV_CONSUME_CREATE`　（OWNER）
-
-- `/biz/stored-value/consumptions`
-- `/biz/stored-value/consumptions/preview`
 
 ### `ENT_TEMPLATE_WRITE`　（OWNER）
 

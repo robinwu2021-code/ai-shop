@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.storedvalue.migration;
+import ai.neargo.shop.pay.storedvalue.migration.impl.StoredValueMigrationExecutionServiceImpl;
+
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.spi.storedvalue.StoredValueMigrationPlans.*;
@@ -21,7 +23,7 @@ class StoredValueMigrationExecutionTest {
     }
     StoredValueMigrationExecutionService service(StoredValueMigrationManifestTest.Fixture f,boolean enabled){
         doAnswer(i->cap(((Query)i.getArgument(0)).challenge())).when(writer).capability(any());
-        return new StoredValueMigrationExecutionService(f.data().db(),f.service(),writer,enabled);
+        return new StoredValueMigrationExecutionServiceImpl(f.data().db(),f.service(),writer,enabled);
     }
     @Test void freshReadinessPauseAndLinkedApplyAreDurableAndNeverActivateWriting() throws Exception {
         var f=new StoredValueMigrationManifestTest().fixture(true,true);var manifest=f.service().prepare(f.evidence(),"P1");var s=service(f,true);
@@ -73,7 +75,7 @@ class StoredValueMigrationExecutionTest {
         var now=new java.util.concurrent.atomic.AtomicReference<>(Instant.now());var clock=mock(java.time.Clock.class);when(clock.instant()).thenAnswer(i->now.get());
         var target=spy(f.service());
         doAnswer(i->{var result=i.callRealMethod();now.set(now.get().plusSeconds(31));return result;}).when(target).apply(any(),eq(manifest.manifestNo()),any());
-        var delayed=new StoredValueMigrationExecutionService(f.data().db(),target,writer,true,clock);
+        var delayed=new StoredValueMigrationExecutionServiceImpl(f.data().db(),target,writer,true,clock);
         assertThatThrownBy(()->delayed.apply(input(f),manifest.manifestNo(),pause.receiptNo(),"A1",fresh)).isInstanceOf(BizException.class);
         assertThat(f.data().jdbc().queryForObject("SELECT write_mode FROM sv_issuer",String.class)).isEqualTo("FENCED");
         assertThat(f.data().jdbc().queryForObject("SELECT issuer_no FROM sv_account",String.class)).isNull();

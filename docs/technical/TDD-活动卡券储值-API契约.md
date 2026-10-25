@@ -1130,7 +1130,7 @@ Command包含精确模板Reference、TARGETED/CENTER及人群/标签选择条件
 
 | P111 | POST | /biz/stored-value/consumptions/resolve | Original PreviewRequest + Idempotency-Key | ResolveView | pay:sv:consume:create | Locate the owned original without expired references; no new quote or debit |
 
-| P112 | GET | /biz/stored-value/governance-capability | - | Capability | management login | Both Core and Pay governance flags must be enabled |
+| P112 | GET | /biz/stored-value/governance-capability | 无 | Capability(protocol,enabled) | 管理空间认证 | 只读治理能力探测；Core与Pay治理开关及协议1都就绪才enabled=true，不授予维护权限 |
 
 ## P6 兼容发布接口（功能仍按能力与资源权限限制）
 

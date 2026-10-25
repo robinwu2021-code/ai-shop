@@ -4,13 +4,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- 站在 neargo 地基上（TDD-backend §2）：继承 neargo-parent → Java 21 + Spring Boot 4.0.x
+    <!-- 站在 neargo 地基上（TDD-backend §2）：继承 neargo-build-parent → Java 21 + Spring Boot 4.0.x
          + maven-enforcer(锁 JDK21) + MyBatis-Plus BOM + neargo commons 版本管理。
          relativePath 留空 → 从本机 ~/.m2 解析。 -->
     <parent>
         <groupId>ai.neargo</groupId>
-        <artifactId>neargo-parent</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <artifactId>neargo-build-parent</artifactId>
+        <version>2.0.0-SNAPSHOT</version>
         <relativePath/>
     </parent>
 
@@ -69,7 +69,7 @@
 
     <!-- 第三方版本的三条规矩（2026-09-06 复核后改写，此前这段话有三处与事实相反）：
 
-         1. **Spring Boot BOM 已管的，这里不写。** 继承链 shop-parent → neargo-parent →
+         1. **Spring Boot BOM 已管的，这里不写。** 继承链 shop-parent → neargo-build-parent → neargo-bom →
             spring-boot-starter-parent 把 BOM 的 dependencyManagement 一路带下来：ehcache（含
             jakarta classifier）、jakarta.mail、angus-mail、flyway 都在里面，模块只写 g:a，
             版本随 Boot 走。真要偏离 BOM，用 BOM **自己的属性名**覆盖（如 ehcache3.version）
@@ -159,7 +159,7 @@
 
     <build>
         <plugins>
-            <!-- 与 neargo-parent 的 enforce-build-env（锁 JDK/Maven 版本）并列的第二条执行。
+            <!-- 与 neargo-build-parent 的 enforce-build-env（锁 JDK/Maven 版本）并列的第二条执行。
                  dependencyConvergence：同一个 classpath 上一个 g:a 只许解析出一个版本，
                  传递依赖带进来的也算 —— 「两处各写一份版本」的真正后果在这里报，
                  而不是靠人读 pom。冲突了就在上面的 dependencyManagement 钉一条，
@@ -176,6 +176,18 @@
                         <configuration>
                             <rules>
                                 <dependencyConvergence/>
+                                <!-- 框架公共包只允许 2.0.0-SNAPSHOT；同时检查传递依赖。 -->
+                                <requireProperty>
+                                    <property>neargo.version</property>
+                                    <regex>2\.0\.0-SNAPSHOT</regex>
+                                    <regexMessage>neargo 框架依赖必须统一为 2.0.0-SNAPSHOT。</regexMessage>
+                                </requireProperty>
+                                <bannedDependencies>
+                                    <searchTransitive>true</searchTransitive>
+                                    <excludes><exclude>ai.neargo:*</exclude></excludes>
+                                    <includes><include>ai.neargo:*:[2.0.0-SNAPSHOT]</include></includes>
+                                    <message>neargo 框架依赖只允许 ai.neargo:*:2.0.0-SNAPSHOT。</message>
+                                </bannedDependencies>
                             </rules>
                         </configuration>
                     </execution>

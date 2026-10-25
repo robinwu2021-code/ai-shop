@@ -246,7 +246,7 @@ onShow(load);
 
       <sh-stat
         :items="[
-          { value: detail.onHand, label: String($t(overview?.accountingMode === 'HANDOFF_DEDUCT' ? 'stockOverview.physical' : 'stockOverview.book')) },
+          { value: detail.onHand, label: String($t('stockOverview.book')) },
           { value: detail.reserved, label: String($t('stockDetail.reserved')), tone: 'warn' },
           { value: detail.available, label: String($t('stockDetail.available')) },
         ]"

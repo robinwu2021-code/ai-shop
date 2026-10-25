@@ -1,4 +1,6 @@
 package ai.neargo.shop.paybridge;
+import org.springframework.beans.factory.annotation.Autowired;
+
 
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
@@ -30,6 +32,10 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 @Transactional(propagation=Propagation.NOT_SUPPORTED)
 public class EntitlementMarketingEffectSubscriber implements OutboxConsumer {
+    @Override public String handlerId() { return "entitlement-marketing-effect"; }
+    // Original owner/action ledgers provide replay safety across PAY calls and independent core writes.
+    @Override public boolean externalWorkflow() { return true; }
+
     private final ai.neargo.shop.payclient.StoredValuePlanRechargeAppService direct;
     private final RechargeIntentService recharges;
     private final ActivityBenefitIntentService benefits;
@@ -40,7 +46,7 @@ public class EntitlementMarketingEffectSubscriber implements OutboxConsumer {
             EntitlementMarketingFactsPort pay,MarketingEffectProjector projection,ObjectMapper json) {
         this(recharges,benefits,pay,projection,json,null);
     }
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public EntitlementMarketingEffectSubscriber(RechargeIntentService recharges,ActivityBenefitIntentService benefits,
             EntitlementMarketingFactsPort pay,MarketingEffectProjector projection,ObjectMapper json,
             ai.neargo.shop.payclient.StoredValuePlanRechargeAppService direct){

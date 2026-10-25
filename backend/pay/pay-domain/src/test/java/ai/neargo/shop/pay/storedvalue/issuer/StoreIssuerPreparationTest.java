@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.storedvalue.issuer;
+import ai.neargo.shop.pay.storedvalue.issuer.impl.StoredValueStoreIssuerServiceImpl;
+
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreAuthority;
@@ -26,7 +28,7 @@ class StoreIssuerPreparationTest {
         j.execute("ALTER TABLE sv_issuer ADD COLUMN write_mode varchar DEFAULT 'LEGACY' NOT NULL");
         j.execute("CREATE TABLE sv_account(account_no varchar,principal_minor bigint,bonus_minor bigint)");
         j.update("INSERT INTO sv_account VALUES('ORIGINAL',5000,1000)");
-        return new Fixture(j,new StoredValueStoreIssuerService(new IssuerRepository(new DataSourceTransactionManager(ds),new ObjectMapper())));
+        return new Fixture(j,new StoredValueStoreIssuerServiceImpl(new IssuerRepository(new DataSourceTransactionManager(ds),new ObjectMapper())));
     }
     StoreAuthority scope(String store,String entity){return new StoreAuthority("MAIN","OWNER",entity,store,"本店",4);}
     @Test void preparationIsIdempotentAndDoesNotActivateOrRewriteOldMoney() throws Exception {

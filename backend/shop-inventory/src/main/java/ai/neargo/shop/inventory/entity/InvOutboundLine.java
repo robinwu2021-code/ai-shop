@@ -1,8 +1,12 @@
 package ai.neargo.shop.inventory.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import lombok.Getter;
 import lombok.Setter;
+
+import java.math.BigDecimal;
 
 /** 出库单行 */
 @Getter
@@ -18,7 +22,17 @@ public class InvOutboundLine extends InvMutableEntity {
 
     private String itemId;
 
-    private Integer qty;
+    @TableField("qty")
+    private BigDecimal qtyQuantity;
+
+    /** Legacy whole-unit access rejects fractions and overflow instead of truncating. */
+    public Integer getQty() {
+        return qtyQuantity == null ? null : qtyQuantity.intValueExact();
+    }
+
+    public void setQty(Integer value) {
+        qtyQuantity = value == null ? null : BigDecimal.valueOf(value);
+    }
 
     private String uom;
 
@@ -27,5 +41,4 @@ public class InvOutboundLine extends InvMutableEntity {
 
     /** 留位 */
     private String batchNo;
-
 }

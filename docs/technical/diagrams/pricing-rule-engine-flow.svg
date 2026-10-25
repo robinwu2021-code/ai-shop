@@ -6,6 +6,8 @@
 <!-- Title: G Pages: 1 -->
 <svg width="813pt" height="797pt"
  viewBox="0.00 0.00 813.00 797.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<title>统一试算规则引擎执行流程</title>
+<desc>规则配置编译后按阶段进入试算引擎，输出价格结果、规则轨迹和拒绝原因。</desc>
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(21.6 775.6)">
 <title>G</title>
 <polygon fill="white" stroke="none" points="-21.6,21.6 -21.6,-775.6 791.84,-775.6 791.84,21.6 -21.6,21.6"/>

@@ -130,6 +130,39 @@ const LINEAGE: Hop[] = [
  * 例如「发放方商家」`issuer_merchant_no` 指向 `usr_merchant.merchant_no`。
  */
 const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
+  active_store_no: { table: "mch_store", col: "store_no" },
+  from_brand_no: { table: "mch_brand", col: "brand_no" },
+  to_brand_no: { table: "mch_brand", col: "brand_no" },
+  clearing_no: { table: "sv_clearing_entry" },
+  payer_entity_no: { table: "mch_entity", col: "entity_no" },
+  payee_entity_no: { table: "mch_entity", col: "entity_no" },
+  bill_no: { table: "sv_settlement_bill" },
+  amendment_no: { table: "ord_industry_amendment" },
+  application_no: { table: "ord_pricing_fee_application" },
+  // Current merchant, stored-value, pricing and print migration ownership.
+  first_store_no: { table: "mch_store", col: "store_no" },
+  // Original recharge store remains the same merchant-store identity in lots and clearing entries.
+  recharge_store_no: { table: "mch_store", col: "store_no" },
+  execution_no: { table: "ord_refund_execution" },
+  customer_no: { table: "sv_customer_identity" },
+  issuer_no: { table: "sv_issuer" },
+  scope_member_no: { table: "mbr_scope_member" },
+  issuer_version_no: { table: "sv_issuer_version" },
+  plan_version_no: { table: "sv_recharge_plan_version", col: "version_no" },
+  release_no: { table: "sv_release" },
+  collection_entity_no: { table: "mch_entity", col: "entity_no" },
+  settlement_entity_no: { table: "mch_entity", col: "entity_no" },
+  operating_entity_no: { table: "mch_entity", col: "entity_no" },
+  management_no: { table: "mch_management_space" },
+  brand_no: { table: "mch_brand" },
+  change_no: { table: "mch_brand_change" },
+  config_no: { table: "ord_store_pricing_config" },
+  template_revision_no: { table: "ord_pricing_template_revision", col: "revision_no" },
+  quota_no: { table: "sv_issue_quota" },
+  quote_line_no: { table: "ord_price_quote_line" },
+  device_no: { table: "prn_device" },
+  job_no: { table: "prn_job" },
+
   build_no: { table: "pts_statement_build" },
   voucher_no: { table: "pts_voucher" },
   evidence_no: { table: "pts_fund_evidence" },
@@ -145,7 +178,6 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
   source_order_no: { table: "ord_order", col: "order_no" },
   recharge_no: { table: "sv_recharge" },
   lot_no: { table: "sv_lot" },
-  voucher_no: { table: "sv_voucher" },
   exception_no: { table: "pay_ent_exception" },
   recon_no: { table: "pay_ent_recon_run" },
   stage_no: { table: "ent_migration_stage" },
@@ -260,6 +292,28 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  * 我们自己就连错过一次。
  */
 const NAME_COLLISIONS: Record<string, string> = {
+  source_event_no: "来源系统各自产生的事件号；必须结合source_system及原始来源，不能仅按同名跨系统关联。",
+  rule_no: "stl_fee_rule是结算费率规则；ord_price_quote_allocation保存本次试算规则标识，两套规则目录独立。",
+  subject_no: "角色成员与报价/人工改价都使用主体多态编号；需同时核验各自subject_type，不能当成单一外键。",
+  link_no: "会员来源、旧会员迁移关系与储值活动发布/审批各有独立关联记录；编号仅在对应关系族内有效。",
+  attempt_no: "物流订阅尝试与打印投递尝试独立生成，不能混为同一次执行。",
+  entry_no: "pts_ledger_entry积分分录与ent_ledger权益分录是不同账本，不共用分录身份。",
+  binding_no: "订单积分接线与品牌门店有效期绑定是不同聚合，不能按同名连接。",
+  adjustment_no: "积分人工调整与订单人工改价分别有自己的命令/审计身份。",
+  line_no: "库存对齐行与储值过账行只在各自父单据内编号，不能作为全局行身份。",
+  allocation_no: "储值冻结批次分配与报价金额分摊有不同对象、数量和金额语义。",
+  target_no: "权益所有者注册与储值发行政策的目标都是多态范围，必须结合target_type及所属域。",
+  document_no: "Core与Pay分别分配业务展示单号；通知保存来源单号，必须结合来源系统/单据类型，不能假定单一主表。",
+  active_revision_no: "行业模板与门店配置各自引用自己的不可变发布版本，按源表指定目标。",
+  previous_revision_no: "行业模板版本与门店配置版本各自形成历史链，不能跨版本族关联。",
+  draft_revision_no: "储值发布和Core活动审批冻结对应活动的草稿标识，必须连同activity_no及来源版本解释，非全库通用版本键。",
+  policy_no: "SKU定价策略、储值发行管控、人工改价策略是独立政策族，不能按同名跨域关联。",
+  bridge_actor_no: "打印桥接认证主体标识，需结合可信桥接凭证与租户核验；不是用户或运营账号表的通用外键。",
+  voucher_no: "积分凭证与储值凭证是独立账本；须按来源表选择pts_voucher或sv_voucher，禁止跨账本按号猜关联。",
+  quote_no: "营销报价与订单试算快照是独立报价族，须按来源表选择权威报价。",
+  plan_no: "权益迁移计划与储值充值方案是独立计划族；同名不表示相同方案。",
+  grant_no: "权益发放记录与经营管理授权是独立授权族，须按来源表解释。",
+
   trade_no: "stl_payment 与 ord_payment_resolution 保存渠道交易号快照；该号仅在 pay_channel 范围内唯一，不能脱离渠道直接关联。",
   source_shipment_no:
     "lgs_waybill 与 lgs_channel_subscription 保存同一个上游发货身份的快照；更新订阅必须同时匹配 source_shipment_version，不能把历史订阅行当作当前运单主记录。",
@@ -378,6 +432,35 @@ const NAME_COLLISIONS: Record<string, string> = {
     "mch_staff_log.log_no 是员工操作日志的流水号；\n" +
     "  pay_risk_shadow_log.log_no 是支付风控影子模式拦截记录的流水号（只记录、不真拦）。\n" +
     "  两者都是各自表的唯一业务键，所属域完全不同 —— 按名字 join 会把员工操作连到风控影子记录上。",
+};
+
+const SCOPED_KEY_OWNERS = {
+  "pts_ledger_entry.voucher_no": "pts_voucher",
+  "pts_pool_flow.voucher_no": "pts_voucher",
+  "sv_entry.voucher_no": "sv_voucher",
+  "sv_posting_line.voucher_no": "sv_voucher",
+  "sv_statement.voucher_no": "sv_voucher",
+  "ord_pricing_template.active_revision_no": "ord_pricing_template_revision",
+  "ord_store_pricing_config.active_revision_no": "ord_store_pricing_revision",
+  "ord_pricing_template_revision.previous_revision_no": "ord_pricing_template_revision",
+  "ord_store_pricing_revision.previous_revision_no": "ord_store_pricing_revision",
+  "ord_price_quote_line.quote_no": "ord_price_quote",
+  "ord_price_quote_allocation.quote_no": "ord_price_quote",
+  "sv_recharge_plan_version.plan_no": "sv_recharge_plan",
+  "sv_recharge.plan_no": "sv_recharge_plan",
+  "mch_management_grant.grant_no": "mch_management_grant",
+  "mkt_quote_revision.quote_no": "mkt_quote",
+  "ord_pricing_funding_source.quote_no": "ord_price_quote",
+  "ord_industry_order_source.quote_no": "ord_price_quote",
+  "pts_topup_plan.plan_no": "pts_topup_plan",
+  "pmt_migration_decision.plan_no": "ent_migration_plan",
+  "ent_migration_import.plan_no": "ent_migration_plan",
+  "sv_statement.plan_no": "sv_recharge_plan",
+  "ent_instance.grant_no": "ent_grant",
+  "ent_sale_reservation.grant_no": "ent_grant",
+  "pmt_pay_coupon_projection.grant_no": "ent_grant",
+  "sv_issue_policy_version.policy_no": "sv_issue_policy",
+  "ord_manual_price_adjustment.policy_no": "ord_manual_price_policy"
 };
 
 describe("对账血缘", () => {

@@ -6,6 +6,8 @@
 <!-- Title: G Pages: 1 -->
 <svg width="2206pt" height="791pt"
  viewBox="0.00 0.00 2206.00 791.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<title>统一试算引擎类模型</title>
+<desc>展示试算上下文、配置、规则定义、规则执行及结果之间的结构与依赖。</desc>
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(25.2 765.6)">
 <title>G</title>
 <polygon fill="white" stroke="none" points="-25.2,25.2 -25.2,-765.6 2180.44,-765.6 2180.44,25.2 -25.2,25.2"/>

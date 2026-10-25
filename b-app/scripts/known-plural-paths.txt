@@ -5,42 +5,32 @@
 # **ops-web 98 条**（它的生成器压根没有这条规矩）。也就是说 126 个**线上活着的**
 # 端点是复数，而规矩只活在两个生成器里 —— 其中 b-app 那个因此**一次都跑不起来**，
 # `openapi-b.yaml` 从那天起就停在原地，且没有任何东西会报。
-#
 # 改成棘轮而不是删掉：**新写的仍然按 ADR-007 拒**，存量记在这儿。
 # 要不要把 ADR-007 改成承认复数，是另一件事 —— 那要动 126 条线上路径或改约定本身，
 # 不该由一个文档生成器顺手决定。
-#
 # 一行一个 `端点键<TAB>路径`。修好一条就删一行。
-#
 # 2026-08-30 新增 mSupplierUpdate / mSupplierActive：**进销存整个模块都是复数**
 # （inbounds / outbounds / counts / locations / items / balances，本表已登记 13 条）。
 # 单独把 suppliers 改成单数，它会成为模块里唯一那个 —— 而「同一件事在这儿长得
 # 不一样」比「不合 ADR-007」更容易让人写错。要改就整模块一起改，不是一条一条改。
-#
 # 2026-09-17 新增 mCountVoid：与上面那条**同一个判断**，而且更直白 ——
 # 它是 `counts/:no/void`，而本表里早就有一条一模一样形状的 `mInboundVoid`
 # （`inbounds/:no/void`），同资源的另外三条（Detail / Fill / Post）也都在册。
 # 单独把 void 这一条改成单数，counts 这个资源会自己和自己不一致。
-#
 # ⚠️ **不是它的作者加的**：开这个端点的会话（c4f51800）已经结束，而这道闸
 # 挂在 pre-push 上 —— 它红着，整条分支谁都推不出去。所以由撞上它的人代记一行，
 # 判断依据就是上面 2026-08-30 那段。要整模块改成单数时，这一行跟着一起删。
-mAppointmentSlots	/biz/stores/:storeNo/appointment-slots
 mCountDetail	/biz/inventory/counts/:no
 mCountFill	/biz/inventory/counts/:no/lines
 mCountPost	/biz/inventory/counts/:no/post
 mCountVoid	/biz/inventory/counts/:no/void
-mFulfillmentImpact	/biz/stores/:storeNo/fulfillment/:channel/impact
 mInboundPost	/biz/inventory/inbounds/:no/post
 mInboundUpdate	/biz/inventory/inbounds/:no
 mInboundVoid	/biz/inventory/inbounds/:no/void
 mLocationSetSource	/biz/inventory/locations/:id/source
-mOpenAppointmentSlot	/biz/stores/:storeNo/appointment-slots
 mOutboundPost	/biz/inventory/outbounds/:no/post
 mOutboundVoid	/biz/inventory/outbounds/:no/void
-mSaveStoreFulfillment	/biz/stores/:storeNo/fulfillment
 mStockItem	/biz/inventory/items/:itemId
-mStoreFulfillment	/biz/stores/:storeNo/fulfillment
 mSupplierActive	/biz/inventory/suppliers/:no/active
 mSupplierUpdate	/biz/inventory/suppliers/:no
 mTransferDetail	/biz/inventory/transfers/:no
@@ -48,78 +38,7 @@ mTransferReceive	/biz/inventory/transfers/:no/receive
 mTransferVoid	/biz/inventory/transfers/:no/void
 mTransferShip	/biz/inventory/transfers/:no/ship
 
-mManagementResources	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mManagementGrant	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mRevokeManagementGrant	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mManagementEntities	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mManagementStores	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mPaymentMerchantCandidates	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mBrand	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mEditBrand	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mBrandStatus	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mBrandStores	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mBrandAudit	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mStoreOperatingContext	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mCheckBrandChange	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mSubmitBrandChange	P1已冻结组织API契约；品牌/空间下的嵌套资源，与服务端及阶段设计保持一致
-mScopeCandidates	P2既定MB契约以当前门店为路径边界，与服务端保持一致
-mScopeSelectCustomer	P2既定MB契约以当前门店为路径边界，与服务端保持一致
-mScopeEnrollMember	P2既定MB契约以当前门店为路径边界，与服务端保持一致
-
-mSvIssuer	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvStoreIssuerConfiguration	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvConfigureIssuer	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvConfigureStoreIssuer	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvIssuerImpact	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvIssuerVersion	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvStoreIssuers	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvRechargeOptions	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvIssuerRoutes	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvPrepareIssuer	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvRefreshIssuer	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvIssuerRecharge	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvIssuerCancel	Approved P3 issuer/store-scoped API contract; preserves the existing /biz/stores and management resource namespaces.
-mSvConfirmOffline	Approved P3 store-scoped original recharge contract.
-mSvResolveRecharge	Approved P3 store-scoped original recharge recovery contract.
-mSvCancelCreate	Approved P3 store-scoped original recharge cancellation contract.
-mSvRecords	Approved P3 unified issuer record contract.
-mSvRecord	Approved P3 store-scoped original record contract.
-mSvPolicyEdit	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvEffectivePolicy	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivities	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivity	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivitySave	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivityDraftEdit	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivityCheck	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivitySubmit	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivityStop	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivityCopy	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivityContext	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivityPresets	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-mSvActivitySchedule	Approved P4 store-scoped governance resource namespace; matches existing Core/Pay contract.
-
-mSvBrandActivityContext	P5 verified Java namespace retained for API compatibility.
-mSvBrandActivityPresets	P5 verified Java namespace retained for API compatibility.
-mSvBrandActivitySchedule	P5 verified Java namespace retained for API compatibility.
-mSvBrandActivities	P5 verified Java namespace retained for API compatibility.
-mSvBrandActivity	P5 verified Java namespace retained for API compatibility.
-mSvBrandActivitySave	P5 verified Java namespace retained for API compatibility.
-mSvBrandActivityDraftEdit	P5 verified Java namespace retained for API compatibility.
-mSvBrandActivityCheck	P5 verified Java namespace retained for API compatibility.
-mSvBrandActivitySubmit	P5 verified Java namespace retained for API compatibility.
-mSvBrandActivityStop	P5 verified Java namespace retained for API compatibility.
-mSvBrandActivityCopy	P5 verified Java namespace retained for API compatibility.
-mSvWalletRecords	P5 verified Java namespace retained for API compatibility.
+# Existing deployed P5 routes retained from aa7796955; namespace stays unchanged.
 mSvConsumptionCancel	P5 verified Java namespace retained for API compatibility.
 mSvConsumptionOrder	P5 verified Java namespace retained for API compatibility.
-mSvWallets	P5 verified Java namespace retained for API compatibility.
-mSvBrandActivate	P5 verified Java namespace retained for API compatibility.
-
 # P6: align published Java resource paths; no alternate aliases.
-mSvBrandSummary	/biz/management/brands/:no/stored-value/summary
-mSvStoreSummary	/biz/stores/:no/stored-value/store-summary
-mSvBrandStoreBreakdown	/biz/management/brands/:no/stored-value/store-breakdown
-mSvActivitySummary	/biz/management/stored-value/activities/:no/summary
-mSvFinancialBrandStart	/biz/management/stores/:store/stored-value/financial-brand-changes
-mSvPrepareFinancePermissions	/biz/management/entities/:entity/stored-value/financial-permissions
-mSvFinancialBrandOriginal	/biz/management/stores/:store/stored-value/financial-brand-change-original

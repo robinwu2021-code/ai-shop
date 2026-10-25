@@ -1,9 +1,12 @@
 package ai.neargo.shop.food.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import lombok.Getter;
 import lombok.Setter;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -21,6 +24,9 @@ public class FnbProductionConsumption extends BaseEntity {
     private String status;
     private String inventoryOperationRef;
     private String originalConsumptionNo;
+    private String reversalEventNo;
+    private String reversalHash;
+    private String reversalSnapshot;
     private String requestSnapshot;
     private String receiptSnapshot;
     private LocalDate businessDate;

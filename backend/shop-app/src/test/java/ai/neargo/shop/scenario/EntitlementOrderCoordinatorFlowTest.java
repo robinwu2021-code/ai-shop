@@ -5,6 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.pay.channel.TestPayGateway;
+import ai.neargo.shop.pay.service.PaymentLedgerService;
+import ai.neargo.shop.support.RefundScenarioPayments;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.LoginUser;
@@ -50,6 +54,9 @@ class EntitlementOrderCoordinatorFlowTest {
     @Autowired EntitlementRecoveryService recovery;
     @Autowired EntitlementOrderUseService orderUses;
     @Autowired OrderService orderService;
+    @Autowired PaymentLedgerService ledger;
+    @Autowired SettlePort settlement;
+    @Autowired TestPayGateway paymentChannel;
     @Autowired EntitlementAuthorizationService authorizations;
     @MockitoSpyBean EntitlementUsePort uses;
     @Autowired EntitlementUseSourcePort sources;
@@ -138,7 +145,8 @@ class EntitlementOrderCoordinatorFlowTest {
         assertThat(jdbc.queryForObject("SELECT paid_share_minor FROM ord_item WHERE order_no=?", Long.class, order))
                 .isEqualTo(800);
         assertThat(orderUses.sealForPayment("MAIN", order).getPayAmount()).isEqualTo(800);
-        orderService.markPaid(order, "WX", "TX" + UUID.randomUUID());
+        String trade = RefundScenarioPayments.receivedForOrder(jdbc, ledger, paymentChannel, order);
+        orderService.markPaid(order, "TEST", trade);
         String payload = jdbc.queryForObject("SELECT payload FROM sys_outbox WHERE aggregate_id=? "
                 + "AND event_type='ENTITLEMENT_ORDER_USE_DECIDED'", String.class, c.operationNo());
         var event = new SysOutbox(); event.setPayload(payload);
@@ -150,10 +158,11 @@ class EntitlementOrderCoordinatorFlowTest {
     @Test void failedTerminalOutboxRollsBackTheCorePaidDecisionWithoutReleasingThePayHold() {
         var c = command();
         coordinator.prepare(context, c);
+        String trade = RefundScenarioPayments.receivedForOrder(jdbc, ledger, paymentChannel, order);
         jdbc.execute("ALTER TABLE sys_outbox ADD CONSTRAINT reject_ent_decision "
                 + "CHECK (aggregate_id<>'" + c.operationNo() + "' OR event_type<>'ENTITLEMENT_ORDER_USE_DECIDED')");
         try {
-            assertThatThrownBy(() -> orderService.markPaid(order, "WX", "TX-failed"))
+            assertThatThrownBy(() -> orderService.markPaid(order, "TEST", trade))
                     .isInstanceOf(RuntimeException.class);
         } finally { jdbc.execute("ALTER TABLE sys_outbox DROP CONSTRAINT reject_ent_decision"); }
         assertThat(jdbc.queryForObject("SELECT status FROM ord_order WHERE order_no=?", String.class, order))
@@ -161,7 +170,7 @@ class EntitlementOrderCoordinatorFlowTest {
         assertThat(jdbc.queryForObject("SELECT status FROM ord_ent_order_use WHERE operation_no=?", String.class,
                 c.operationNo())).isEqualTo("APPLIED");
         assertThat(uses.query(context, entity, c.operationNo()).status()).isEqualTo(State.HELD);
-        orderService.markPaid(order, "WX", "TX-retry");
+        orderService.markPaid(order, "TEST", trade);
         assertThat(coordinator.recover(context, entity, c.operationNo()).status()).isEqualTo(State.COMMITTED);
     }
     @AfterEach void clearAuthentication() { SecurityContextHolder.clearContext(); }
@@ -180,7 +189,13 @@ class EntitlementOrderCoordinatorFlowTest {
         assertThat(jdbc.queryForObject("SELECT status FROM ord_order WHERE order_no=?", String.class, order))
                 .isEqualTo("WAIT_PAY");
         assertThat(uses.query(context, entity, c.operationNo()).status()).isEqualTo(State.HELD);
-        assertThat(orderService.pay(order, null).settled()).isTrue();
+        // The zero-cash receipt survived the failed core projection: retry that receipt, not collection.
+        var receipt = settlement.successPayment(order);
+        assertThat(receipt).isNotNull();
+        assertThat(receipt.payChannel()).isEqualTo("FREE");
+        assertThat(receipt.amountMinor()).isZero();
+        assertThatThrownBy(() -> orderService.pay(order, null)).isInstanceOf(BizException.class);
+        orderService.markPaid(order, receipt.payChannel(), receipt.tradeNo());
         assertThat(coordinator.recover(context, entity, c.operationNo()).status()).isEqualTo(State.COMMITTED);
     }
     @Test void scopedCouponPreservesTheFrozenPerLineDiscountInsteadOfRedistributingIt() {

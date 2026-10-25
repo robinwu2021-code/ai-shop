@@ -2,8 +2,8 @@
 // 同一笔订单两端说法不同，强行共用一套词条只会互相将就。
 export default {
  svFinance:{"operatorChanged":"账号已切换，请重新打开账单","preparePermissions":"配置储值结算权限","summary": "储值汇总", "settlement": "储值结算", "billDetail": "结算账单", "chooseIssuer": "选择发行方", "period": "统计周期", "endExclusive": "结束日期（不含）", "query": "查询", "empty": "暂无结算账单", "generate": "生成账单", "openingMinor": "期初余额", "creditedPaidMinor": "储值实收", "creditedBonusMinor": "储值赠送", "consumedMinor": "核销金额", "reversedMinor": "核销冲回", "closingMinor": "期末余额", "heldMinor": "预占金额", "payableMinor": "应结金额", "rechargeCount": "储值笔数", "usageCount": "核销笔数", "customerCount": "顾客人数", "asOf": "数据更新至", "registered": "已登记付款", "confirmed": "已确认收款", "payer": "付款主体", "payee": "收款主体", "items": "账单明细", "payments": "付款记录", "events": "操作记录", "internal": "同主体内部对账", "rechargeStore": "储值门店", "redemptionStore": "核销门店", "carriedForward": "结转明细", "noPayments": "暂无付款记录", "reconcilePayer": "付款方对账", "reconcilePayee": "收款方对账", "dispute": "提出争议", "resolve": "处理争议", "adjust": "调整应结金额", "register": "登记付款", "receipt": "确认收款", "void": "撤销付款登记", "amount": "付款金额", "receiptReference": "收款凭据编号", "adjustmentAmount": "调整金额（增加为正，减少为负）", "reason": "原因", "receiptHint": "请核对线下实际到账金额", "submit": "提交", "invalidPeriod": "请选择有效账期", "invalidAmount": "请填写有效金额", "invalidPayment": "请填写付款金额和凭据编号", "reasonRequired": "请填写原因", "unavailable": "当前操作不可用，请刷新", "reenterReceipt": "请重新填写原收款凭据编号", "states": {"ALL": "全部", "DRAFT": "待对账", "RECONCILED": "已对账", "DISPUTED": "争议中", "SETTLED": "已结清", "INTERNAL_RECONCILED": "内部对账完成", "WAIT_RECEIPT": "待确认收款", "PART_PAID": "部分到账", "REGISTERED": "已登记", "RECEIPT_CONFIRMED": "已收款", "VOIDED": "已撤销"}, "eventTypes": {"GENERATED": "生成账单", "RECON_CONFIRM": "确认对账", "DISPUTE": "提出争议", "DISPUTE_RESOLVE": "处理争议", "ADJUST": "调整应结", "PAYMENT": "登记付款", "RECEIPT": "确认收款", "PAYMENT_VOID": "撤销付款"}, "methods": {"TRANSFER": "转账", "CASH": "现金", "OTHER": "其他"}, "decisions": {"ACCEPT": "认可争议", "REJECT": "驳回争议"}, "operation": {"reconcile": "付款方对账", "dispute": "提出争议", "resolve": "处理争议", "adjust": "调整应结金额", "register": "登记付款", "receipt": "确认收款", "void": "撤销付款登记"}},
- svGov:{"copy":"复制为新活动","policies": "储值管控", "activities": "本店储值活动", "activityDetail": "储值活动", "approvals": "活动审批", "ratio": "赠送比例上限", "outstanding": "未消费余额上限", "paidCap": "单笔实收上限", "bonusCap": "单笔赠送上限", "daysCap": "活动天数上限", "allow": "允许新发行", "disabled": "已限制发行", "approvalRequired": "需要审批", "noApproval": "无需审批", "noPolicies": "暂无管控规则", "addPolicy": "新增规则", "chooseScope": "选择作用范围", "invalidRules": "请填写有效的管控规则", "invalidActivity": "请完善活动信息", "tooManyTargets": "可选范围过多，请缩小查询范围", "unknown": "结果待核对，请重试原操作", "retry": "重试原操作", "save": "保存", "saved": "已保存", "saveDraft": "保存草稿", "submit": "提交发布", "stop": "停止新发行", "give": "赠送", "more": "加载更多", "noActivities": "暂无储值活动", "createActivity": "新建储值活动", "name": "活动名称", "template": "活动类型", "chooseTemplate": "选择活动类型", "noTemplates": "暂无可用活动类型", "startDate": "开始日期", "endDate": "结束日期", "tier": "储值档位", "remove": "移除", "paid": "实收金额", "bonus": "赠送金额", "addTier": "添加档位", "noApprovals": "暂无审批记录", "reason": "审批意见", "reasonRequired": "请填写审批意见", "return": "退回", "approve": "批准", "targets": {"SPACE": "经营空间", "BRAND_STORES": "品牌下门店", "STORE": "指定门店"}, "states": {"DRAFT": "草稿", "PENDING": "待审批", "PENDING_APPROVAL": "待审批", "APPROVED": "审批通过", "RETURNED": "已退回", "STALE": "内容已变更", "BLOCKED_POLICY": "规则不符", "PREPARING": "待发布", "PAY_READY": "待发布", "ACTIVE": "已发布", "RUNNING": "进行中", "PAUSED": "已暂停", "ENDED": "已结束", "STOP_REQUESTED": "停发中", "STOPPED": "已停发", "FAILED": "发布失败", "ALL": "全部"}},
- issuer: {"brandNotReady": "品牌储值尚未开通", "activateBrand": "启用品牌储值", "retryActivation": "重试启用","prepareSettings":"开通储值设置","accepted":"已授权","acceptAndChoose":"授权并选择","title": "储值发行设置", "storeScope": "本店储值", "brandScope": "品牌储值", "brandDraftOnly": "当前仅可配置品牌发行草稿", "name": "发行名称", "settlementEntity": "结算主体", "chooseEntity": "选择结算主体", "routes": "收款配置", "addRoute": "添加收款方式", "remove": "移除", "noRoutes": "暂无可用收款方式", "pendingSave": "保存结果待核对，请重试原操作", "retrySave": "重试保存", "states": {"DRAFT": "草稿", "ACTIVE": "已启用", "ISSUE_STOPPED": "已停发"}, "channels": {"MERCHANT_OFFLINE": "线下收款", "WECHAT": "微信支付", "ALIPAY": "支付宝"}, "blockers": {"COLLECTION_CONFIRMATION_REQUIRED":"请先取得结算主体的集中收款授权","BRAND_EXECUTION_DISABLED": "品牌储值尚未开通", "ISSUER_NOT_READY": "发行方尚未就绪", "ISSUER_INACTIVE": "发行方已停用", "CROSS_ENTITY_SETTLEMENT_UNAVAILABLE": "跨主体结算尚未开通", "STORE_NOT_ACCEPTED": "本店暂不支持此账户", "STORE_SCOPE_CHANGED": "门店配置已更新，请刷新", "NO_ACCOUNT": "暂无储值账户", "ACCOUNT_FROZEN": "账户已冻结","STALE_CONFIGURATION": "配置已更新，请刷新", "CURRENCY_IMMUTABLE": "币种不可修改", "MAINTENANCE_IN_PROGRESS": "储值维护中", "LIABILITY_RULES_LOCKED": "存在余额或未完成储值，暂不能修改资金规则", "ISSUANCE_NOT_ENABLED": "尚未开通储值发行"}},
+ svGov:{"copy":"复制为新活动","policies": "储值管控", "activities": "本店储值活动", "activityDetail": "储值活动", "approvals": "活动审批", "ratio": "赠送比例上限", "outstanding": "未消费余额上限", "paidCap": "单笔实收上限", "bonusCap": "单笔赠送上限", "daysCap": "活动天数上限", "allow": "允许新发行", "disabled": "已限制发行", "approvalRequired": "需要审批", "noApproval": "无需审批", "noPolicies": "暂无管控规则", "addPolicy": "新增规则", "chooseScope": "选择作用范围", "invalidRules": "请填写有效的管控规则", "invalidActivity": "请完善活动信息", "unknown": "结果待核对，请重试原操作", "retry": "重试原操作", "save": "保存", "saved": "已保存", "saveDraft": "保存草稿", "submit": "提交发布", "stop": "停止新发行", "give": "赠送", "more": "加载更多", "noActivities": "暂无储值活动", "createActivity": "新建储值活动", "name": "活动名称", "template": "活动类型", "chooseTemplate": "选择活动类型", "noTemplates": "暂无可用活动类型", "startDate": "开始日期", "endDate": "结束日期", "tier": "储值档位", "remove": "移除", "paid": "实收金额", "bonus": "赠送金额", "addTier": "添加档位", "noApprovals": "暂无审批记录", "reason": "审批意见", "reasonRequired": "请填写审批意见", "return": "退回", "approve": "批准", "targets": {"SPACE": "经营空间", "BRAND_STORES": "品牌下门店", "STORE": "指定门店"}, "states": {"DRAFT": "草稿", "PENDING": "待审批", "PENDING_APPROVAL": "待审批", "APPROVED": "审批通过", "RETURNED": "已退回", "STALE": "内容已变更", "BLOCKED_POLICY": "规则不符", "PREPARING": "待发布", "PAY_READY": "待发布", "ACTIVE": "已发布", "RUNNING": "进行中", "PAUSED": "已暂停", "ENDED": "已结束", "STOP_REQUESTED": "停发中", "STOPPED": "已停发", "FAILED": "发布失败", "ALL": "全部"}},
+ issuer: {"brandNotReady": "品牌储值尚未开通", "activateBrand": "启用品牌储值", "retryActivation": "重试启用","prepareSettings":"开通储值设置","accepted":"已授权","acceptAndChoose":"授权并选择","title": "储值发行设置", "storeScope": "本店储值", "brandScope": "品牌储值", "name": "发行名称", "settlementEntity": "结算主体", "chooseEntity": "选择结算主体", "routes": "收款配置", "addRoute": "添加收款方式", "remove": "移除", "noRoutes": "暂无可用收款方式", "pendingSave": "保存结果待核对，请重试原操作", "retrySave": "重试保存", "states": {"DRAFT": "草稿", "ACTIVE": "已启用", "ISSUE_STOPPED": "已停发"}, "channels": {"MERCHANT_OFFLINE": "线下收款", "WECHAT": "微信支付", "ALIPAY": "支付宝"}, "blockers": {"COLLECTION_CONFIRMATION_REQUIRED":"请先取得结算主体的集中收款授权","BRAND_EXECUTION_DISABLED": "品牌储值尚未开通", "ISSUER_NOT_READY": "发行方尚未就绪", "ISSUER_INACTIVE": "发行方已停用", "CROSS_ENTITY_SETTLEMENT_UNAVAILABLE": "跨主体结算尚未开通", "STORE_NOT_ACCEPTED": "本店暂不支持此账户", "STORE_SCOPE_CHANGED": "门店配置已更新，请刷新", "NO_ACCOUNT": "暂无储值账户", "ACCOUNT_FROZEN": "账户已冻结","STALE_CONFIGURATION": "配置已更新，请刷新", "CURRENCY_IMMUTABLE": "币种不可修改", "MAINTENANCE_IN_PROGRESS": "储值维护中", "LIABILITY_RULES_LOCKED": "存在余额或未完成储值，暂不能修改资金规则", "ISSUANCE_NOT_ENABLED": "尚未开通储值发行"}},
  management: {
  "managePayment": "收款配置",
  "createEntity": "新增经营主体",
@@ -225,7 +225,7 @@ export default {
   "health": "运行情况",
   "notAssessed": "尚未检查",
   "initializing": "尚未建立库存映射",
-  "physical": "实物库存"
+
 },
 
   trace: {
@@ -1173,8 +1173,6 @@ export default {
     accountFrozen: "账户已冻结",
     accountExpiry: "到期时间",
     posted: "已记账",
-    code: "积分代码",
-    currency: "币种",
     statementStateBuilding: "生成中",
     statementStateDraft: "待确认",
     statementStateDisputed: "有异议",
@@ -1200,19 +1198,6 @@ export default {
     statementDisputeHint: "提交后本修订停止自动确认，等待运营核查。",
 
 
-    agreement: "门店积分协议",
-    activeAgreement: "协议已生效",
-    terminate: "终止协议",
-    termsVersion: "条款版本",
-    signHint: "请选择当前门店已开通的收款通道与结算方式；最终路由由服务端核验。",
-    perOrder: "随单结算",
-    periodic: "定期结算",
-    acceptTerms: "我已阅读并同意以上条款",
-    sign: "签署协议",
-    noTerms: "平台尚未发布此类型的协议条款",
-    signConfirm: "确认以当前门店签署这份积分协议？",
-    terminateConfirm: "确认终止此门店协议？存量积分义务仍需继续处理。",
-    actionFailed: "操作失败，请刷新后重试",
     storeLedger: "门店积分账本",
     storeLedgerHint: "按当前门店与积分类型查看，金额和积分以支付账本为准。",
     noTypes: "暂无积分类型",
@@ -3084,6 +3069,12 @@ entryHint: "谁在买 · 谁不来了",
   // 后端也带了一份中文（BizPerms.LABELS），这里这份多了英文/阿语；
   // 两份对不上时以后端为准（它是判权那份），但界面优先用这里的本地化。
   perm: {
+    "biz:report:export": "导出经营报表",
+    "biz:pricing:config:publish": "发布门店结账规则",
+    "biz:pricing:config:read": "查看门店结账规则",
+    "biz:pricing:config:update": "编辑门店结账规则草稿",
+    "biz:pricing:tax:read": "查看商家税配置",
+    "biz:pricing:tax:update": "维护商家税配置（仅主体属主）",
     "biz:receive": "到货登记与分拣",
     "biz:verify": "核销取货",
     "biz:ship": "发货与标记送达",

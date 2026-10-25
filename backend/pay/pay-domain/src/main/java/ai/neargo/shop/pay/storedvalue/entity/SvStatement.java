@@ -10,6 +10,13 @@ import lombok.Setter;
 @Setter
 @TableName("sv_statement")
 public class SvStatement extends BaseEntity {
+    private String issuerNo;
+    private String scopeNo;
+    private String releaseNo;
+    private String operatingEntityNo;
+    private String settlementEntityNo;
+    private String scopeType;
+
     private String recordNo;
     private String voucherNo;
     private String accountNo;

@@ -22,6 +22,8 @@ const denied=computed(()=>(memberNo||scopeMemberNo)?(!merchant.can('biz:customer
 async function load(){
  const token=++seq;error.value='';
  try{
+  await merchant.ensureScope();
+  if(denied.value)return;
   if(!store){await merchant.ensureStores();store=originStore||merchant.storeNo;}
   if(store!==merchant.storeNo)throw Error(t('storedValue.leaveStore'));
   if(!memberNo&&!scopeMemberNo&&!refNo)throw Error(t('storedValue.chooseMember'));
@@ -42,7 +44,7 @@ watch(()=>merchant.storeNo,()=>{seq++;account.value=null;customer.value=null;wal
 onLoad(q=>{refNo=q?.accountRef||'';memberNo=q?.memberNo||'';scopeMemberNo=q?.scopeMemberNo||'';originStore=q?.storeNo||'';planNo=q?.planNo||'';void load();});
 onShow(()=>{if(store)void load();});
 </script>
-<template><sh-scaffold :title-suffix="merchant.multiStore?merchant.currentStore?.name:''" title-key="storedValue.accountDetail" :denied="denied" :failed="failed" :pending="!account&&!customer&&!failed" @retry="load">
+<template><sh-scaffold :title-suffix="merchant.multiStore?merchant.currentStore?.name:''" title-key="storedValue.accountDetail" :denied="!failed&&denied" :failed="failed" :pending="!account&&!customer&&!failed" @retry="load">
  <view v-if="account||customer" class="sh-card sv-card"><text class="txt-title">{{customer?.displayName||account?.maskedName}}</text><text class="sh-muted">{{customer?.phoneMasked||account?.maskedPhone}}</text><sh-kv v-if="account&&!wallets.length" :label="t('storedValue.balance')" between><text class="txt-price sh-num">{{money(account.availableMinor,account.currency)}}</text></sh-kv></view>
  <view v-for="wallet in wallets" :key="wallet.scopeType" role="radio" :aria-checked="activeScope===wallet.scopeType" class="sh-card sv-card" :class="{'sv-wallet--selected':activeScope===wallet.scopeType}" @tap="activeScope=wallet.scopeType">
   <view class="sh-row sh-row--between"><text class="txt-strong">{{t(wallet.scopeType==='BRAND'?'issuer.brandScope':'issuer.storeScope')}}</text><text class="sh-muted">{{wallet.name}}</text></view>
@@ -52,7 +54,7 @@ onShow(()=>{if(store)void load();});
  <view v-if="account||activeWallet" class="sh-row sh-row--between"><text class="txt-strong">{{t('storedValue.recent')}}</text><view role="button" class="sh-link sh-hit" @tap="all=!all">{{t(all?'storedValue.recent':'storedValue.allRecords')}}</view></view>
  <sh-kv v-if="customer?.sourceStoreName" :label="t('storedValue.sourceStore')">{{customer.sourceStoreName}}</sh-kv>
  <StoredValueRecordList v-if="activeWallet||account&&!wallets.length" :key="activeWallet?.accountRef||account?.accountRef" ref="recordList" :account-ref="account?.accountRef" :customer-ref="customer?.customerRef" :wallet="activeWallet" :compact="!all"/>
- <sh-empty v-else-if="customer" :text="t('storedValue.empty')" compact/>
+ <sh-empty :pending="!account&&!customer&&!failed" v-else-if="customer" :text="t('storedValue.empty')" compact/>
  <text v-if="error" class="sh-hint">{{error}}</text>
  <sh-actionbar v-if="(account||customer)&&(merchant.can('pay:sv:recharge:create')||merchant.can('pay:sv:consume:create'))"><view class="sh-row"><view v-if="customer&&activeWallet?.canRedeem&&merchant.can('pay:sv:consume:create')" role="button" class="sh-btn sh-btn--soft sh-fill" @tap="consumeVisible=true">{{t('storedValue.redemption')}}</view><view v-if="merchant.can('pay:sv:recharge:create')" data-testid="detail-recharge" role="button" class="sh-btn sh-fill" @tap="rechargeVisible=true">{{t('storedValue.recharge')}}</view></view></sh-actionbar>
  <StoredValueConsumptionSheet v-if="customer&&activeWallet" :visible="consumeVisible" :customer="customer" :wallet="activeWallet" :source="source" @close="consumeVisible=false" @consumed="consumed"/>

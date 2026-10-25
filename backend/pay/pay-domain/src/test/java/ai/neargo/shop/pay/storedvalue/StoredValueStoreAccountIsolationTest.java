@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.pay.mapper.storedvalue.SvAccountMapper;
+import ai.neargo.shop.pay.storedvalue.issuer.impl.StoredValueIssuerAccountServiceImpl;
+import org.springframework.test.util.ReflectionTestUtils;
 import ai.neargo.shop.pay.storedvalue.entity.SvAccount;
 import ai.neargo.shop.pay.storedvalue.service.impl.StoredValueQueryServiceImpl;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
@@ -25,7 +27,7 @@ class StoredValueStoreAccountIsolationTest {
                     return account;
                 });
         var service = new StoredValueQueryServiceImpl(accounts, null, null, null, null);
-        org.springframework.test.util.ReflectionTestUtils.setField(service,"issuerAccounts",new ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerAccountService(null,null,false));
+        ReflectionTestUtils.setField(service, "issuerAccounts", new StoredValueIssuerAccountServiceImpl(null, null, false));
         var context = new EntitlementContext("MAIN", "OPERATOR", "req", "0".repeat(64));
         assertThat(service.balance(context, new BalanceQuery("USER", "MERCHANT", "CNY", "STORE_A"))
                 .availableMinor()).isEqualTo(5000L);

@@ -1,5 +1,8 @@
 package ai.neargo.shop.portal.biz;
 
+import ai.neargo.shop.spi.storedvalue.StoredValueIssuerRecharges;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.paybridge.*;
@@ -20,7 +23,7 @@ import org.springframework.web.bind.annotation.*;
 @Profile("api")
 @RestController
 public class BizStoredValueIssuerOperationsController {
- @org.springframework.beans.factory.annotation.Autowired private BrandStoredValueRechargeSupport brand;
+ @Autowired private BrandStoredValueRechargeSupport brand;
  private final StoredValueIssuerAppService issuers;private final EntitlementScopeResolver scopes;private final CustomerIdentityPort customers;
  private final BizStoredValuePlanController plans;private final BizStoredValuePlanRechargeController recharge;private final BizStoredValueMerchantQueryController records;
  public BizStoredValueIssuerOperationsController(StoredValueIssuerAppService issuers,EntitlementScopeResolver scopes,CustomerIdentityPort customers,BizStoredValuePlanController plans,BizStoredValuePlanRechargeController recharge,BizStoredValueMerchantQueryController records){this.issuers=issuers;this.scopes=scopes;this.customers=customers;this.plans=plans;this.recharge=recharge;this.records=records;}
@@ -32,7 +35,7 @@ public class BizStoredValueIssuerOperationsController {
   if(!actor.can(BizPerms.SV_ACCOUNT_READ)&&!actor.can(BizPerms.SV_RECHARGE_CREATE)&&!actor.can(BizPerms.SV_PLAN_MANAGE)&&!actor.can(BizPerms.SV_PLAN_READ))throw BizException.of(ErrorCode.FORBIDDEN);
   return brand.enabled()?brand.issuers(storeNo):issuers.storeOptions(new StoreQuery(s.tenantNo(),s.actorNo(),s.entityNo(),storeNo));
  }
- public record RechargeOptions(StoreOptions issuerOptions,CursorPage<StoredValuePlans.View> plans,CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueIssuerRecharges.Option> brandOptions){public RechargeOptions(StoreOptions issuers,CursorPage<StoredValuePlans.View> plans){this(issuers,plans,null);}}
+ public record RechargeOptions(StoreOptions issuerOptions,CursorPage<StoredValuePlans.View> plans,CursorPage<StoredValueIssuerRecharges.Option> brandOptions){public RechargeOptions(StoreOptions issuers,CursorPage<StoredValuePlans.View> plans){this(issuers,plans,null);}}
  @GetMapping("/biz/stores/{storeNo}/stored-value/recharge-options")
  @PreAuthorize("@perm.canBiz('pay:sv:recharge:create')")
  public RechargeOptions options(@PathVariable String storeNo,@RequestParam String customerRef,@RequestParam(defaultValue="STORE")String scopeType,@RequestParam(required=false)String cursor,@RequestParam(defaultValue="20")int size){

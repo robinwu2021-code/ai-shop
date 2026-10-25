@@ -34,6 +34,8 @@ import java.util.UUID;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
 import javax.sql.DataSource;
 
@@ -59,6 +61,16 @@ class PointsOpsInspectionTest {
     @BeforeAll
     void schema() {
         PointsPostingDatabaseTest.initializeSchema(data);
+        // This isolated PAY slice must include the same named-type contract as the production mapper.
+        try (var connection = data.getConnection();
+                var columns = connection.getMetaData().getColumns(connection.getCatalog(), null, "pts_point_type", null)) {
+            boolean named = false;
+            while (columns.next()) named |= "name".equalsIgnoreCase(columns.getString("COLUMN_NAME"));
+            if (!named) new ResourceDatabasePopulator(new ClassPathResource(
+                    "db/migration/V537__points_type_name_unique.sql")).execute(data);
+        } catch (java.sql.SQLException failure) {
+            throw new IllegalStateException("Points inspection schema fixture failed", failure);
+        }
     }
 
     @Test
@@ -323,7 +335,7 @@ class PointsOpsInspectionTest {
         admin.create(
                 new PointsAdministrationService.Create(
                         "CREATE:" + type,
-                        new CreateType(type, "CN", new RedeemRate(2, 1), 2000, 365),
+                        new CreateType(type, type, "CNY", new RedeemRate(2, 1)),
                         "TEST"),
                 "OPS");
         var evidence = new EvidenceRef("SYNTHETIC:" + type, "CNY", 100);

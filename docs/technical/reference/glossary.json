@@ -4816,18 +4816,6 @@
           "ar": "سجّل الدخول للمتابعة"
         },
         {
-          "key": "points.accountExpiry",
-          "zh-CN": "到期时间",
-          "en": "Expires at",
-          "ar": "تاريخ الانتهاء"
-        },
-        {
-          "key": "points.accountFrozen",
-          "zh-CN": "账户已冻结",
-          "en": "Account frozen",
-          "ar": "الحساب مجمد"
-        },
-        {
           "key": "points.after",
           "zh-CN": "余 {n}",
           "en": "bal {n}",
@@ -5062,12 +5050,6 @@
           "ar": "{n} نقطة محجوزة"
         },
         {
-          "key": "points.historyTerms",
-          "zh-CN": "历史条款（只读）",
-          "en": "Historical terms (read only)",
-          "ar": "الشروط السابقة (للقراءة فقط)"
-        },
-        {
           "key": "points.idleRule",
           "zh-CN": "连续 {n} 天无积分变动后到期",
           "en": "Expires after {n} days without points activity",
@@ -5090,12 +5072,6 @@
           "zh-CN": "积分名称加载失败，点击重试",
           "en": "Points names failed to load. Tap to retry.",
           "ar": "تعذر تحميل أسماء النقاط. اضغط لإعادة المحاولة."
-        },
-        {
-          "key": "points.noHistoryTerms",
-          "zh-CN": "暂无历史条款",
-          "en": "No historical terms",
-          "ar": "لا توجد شروط سابقة"
         },
         {
           "key": "points.notActive",
@@ -6286,6 +6262,12 @@
           "ar": "الخصم"
         },
         {
+          "key": "storedValue.accountLocalTime",
+          "zh-CN": "账户时区",
+          "en": "Account time zone",
+          "ar": "المنطقة الزمنية للحساب"
+        },
+        {
           "key": "storedValue.apply",
           "zh-CN": "确定",
           "en": "Apply",
@@ -6298,6 +6280,12 @@
           "ar": "العودة للمتاجر"
         },
         {
+          "key": "storedValue.brandScope",
+          "zh-CN": "品牌储值",
+          "en": "Brand balance",
+          "ar": "رصيد العلامة"
+        },
+        {
           "key": "storedValue.cancel",
           "zh-CN": "取消",
           "en": "Cancel",
@@ -6308,6 +6296,18 @@
           "zh-CN": "清除筛选",
           "en": "Clear filters",
           "ar": "مسح التصفية"
+        },
+        {
+          "key": "storedValue.confirmConsumption",
+          "zh-CN": "确认本次消费",
+          "en": "Confirm this service",
+          "ar": "تأكيد هذه الخدمة"
+        },
+        {
+          "key": "storedValue.consumeAmount",
+          "zh-CN": "消费金额",
+          "en": "Amount",
+          "ar": "المبلغ"
         },
         {
           "key": "storedValue.emptyFiltered",
@@ -6341,9 +6341,9 @@
         },
         {
           "key": "storedValue.entryHint",
-          "zh-CN": "查看门店收支",
-          "en": "View store activity",
-          "ar": "عرض معاملات المتجر"
+          "zh-CN": "查看储值与消费记录",
+          "en": "View top-ups and redemptions",
+          "ar": "عرض الشحن والاستخدام"
         },
         {
           "key": "storedValue.focused",
@@ -6412,16 +6412,64 @@
           "ar": "إشعارات الخصم"
         },
         {
+          "key": "storedValue.paymentWallet",
+          "zh-CN": "扣款账户",
+          "en": "Payment wallet",
+          "ar": "حساب الخصم"
+        },
+        {
           "key": "storedValue.recordsTitle",
           "zh-CN": "收支记录",
-          "en": "Store activity",
-          "ar": "معاملات المتجر"
+          "en": "Activity",
+          "ar": "سجل المعاملات"
+        },
+        {
+          "key": "storedValue.refreshConfirmation",
+          "zh-CN": "刷新消费状态",
+          "en": "Refresh service status",
+          "ar": "تحديث حالة الخدمة"
         },
         {
           "key": "storedValue.reset",
           "zh-CN": "重置",
           "en": "Reset",
           "ar": "إعادة تعيين"
+        },
+        {
+          "key": "storedValue.serviceState.CANCELLED",
+          "zh-CN": "本次消费已取消",
+          "en": "Service cancelled",
+          "ar": "تم إلغاء الخدمة"
+        },
+        {
+          "key": "storedValue.serviceState.COMMITTED",
+          "zh-CN": "核销成功",
+          "en": "Redeemed",
+          "ar": "تم الاستخدام"
+        },
+        {
+          "key": "storedValue.serviceState.EXPIRED",
+          "zh-CN": "确认已过期，请门店重新发起",
+          "en": "Confirmation expired. Ask the store to start again.",
+          "ar": "انتهت مهلة التأكيد. اطلب من المتجر إعادة الطلب."
+        },
+        {
+          "key": "storedValue.serviceState.PROCESSING",
+          "zh-CN": "正在核对消费结果",
+          "en": "Checking service result",
+          "ar": "جارٍ التحقق من نتيجة الخدمة"
+        },
+        {
+          "key": "storedValue.serviceState.RELEASED",
+          "zh-CN": "本次消费已取消",
+          "en": "Service cancelled",
+          "ar": "تم إلغاء الخدمة"
+        },
+        {
+          "key": "storedValue.serviceState.WAIT_SUBMIT",
+          "zh-CN": "已确认，等待门店核销",
+          "en": "Confirmed. Awaiting the store.",
+          "ar": "تم التأكيد، بانتظار المتجر"
         },
         {
           "key": "storedValue.startDate",
@@ -6436,10 +6484,16 @@
           "ar": "التوقيت المحلي للمتجر"
         },
         {
+          "key": "storedValue.storeScope",
+          "zh-CN": "本店储值",
+          "en": "Store balance",
+          "ar": "رصيد المتجر"
+        },
+        {
           "key": "storedValue.storesHint",
-          "zh-CN": "选择门店，查看已到账储值和已完成核销。",
-          "en": "Choose a store to view credited top-ups and completed redemptions.",
-          "ar": "اختر متجرًا لعرض عمليات الشحن المضافة والخصم المكتملة."
+          "zh-CN": "查看本店与品牌的储值、核销记录。",
+          "en": "View top-ups and redemptions for your store and brand wallets.",
+          "ar": "عرض شحن واستخدام رصيد المتجر والعلامة."
         },
         {
           "key": "storedValue.subscribe",
@@ -8722,8 +8776,8 @@
         {
           "key": "common.delete",
           "zh-CN": "删除",
-          "en": null,
-          "ar": null
+          "en": "Delete",
+          "ar": "حذف"
         },
         {
           "key": "common.done",
@@ -13280,6 +13334,228 @@
           "ar": "اسم المُصدِر"
         },
         {
+          "key": "issuer.acceptAndChoose",
+          "zh-CN": "授权并选择",
+          "en": "Authorize and select",
+          "ar": "تفويض واختيار"
+        },
+        {
+          "key": "issuer.accepted",
+          "zh-CN": "已授权",
+          "en": "Authorized",
+          "ar": "مفوّض"
+        },
+        {
+          "key": "issuer.activateBrand",
+          "zh-CN": "启用品牌储值",
+          "en": "Enable brand stored value",
+          "ar": "تفعيل رصيد العلامة"
+        },
+        {
+          "key": "issuer.addRoute",
+          "zh-CN": "添加收款方式",
+          "en": "Add collection method",
+          "ar": "إضافة طريقة تحصيل"
+        },
+        {
+          "key": "issuer.blockers.ACCOUNT_FROZEN",
+          "zh-CN": "账户已冻结",
+          "en": "Account frozen",
+          "ar": "الحساب مجمد"
+        },
+        {
+          "key": "issuer.blockers.BRAND_EXECUTION_DISABLED",
+          "zh-CN": "品牌储值尚未开通",
+          "en": "Brand stored value is not enabled",
+          "ar": "لم يتم تفعيل رصيد العلامة"
+        },
+        {
+          "key": "issuer.blockers.CROSS_ENTITY_SETTLEMENT_UNAVAILABLE",
+          "zh-CN": "跨主体结算尚未开通",
+          "en": "Cross-entity settlement is not enabled",
+          "ar": "لم يتم تفعيل التسوية بين الكيانات"
+        },
+        {
+          "key": "issuer.blockers.CURRENCY_IMMUTABLE",
+          "zh-CN": "币种不可修改",
+          "en": "Currency cannot be changed",
+          "ar": "لا يمكن تغيير العملة"
+        },
+        {
+          "key": "issuer.blockers.ISSUANCE_NOT_ENABLED",
+          "zh-CN": "尚未开通储值发行",
+          "en": "Issuance is not enabled",
+          "ar": "الإصدار غير مفعّل"
+        },
+        {
+          "key": "issuer.blockers.ISSUER_INACTIVE",
+          "zh-CN": "发行方已停用",
+          "en": "Issuer is inactive",
+          "ar": "جهة الإصدار غير نشطة"
+        },
+        {
+          "key": "issuer.blockers.ISSUER_NOT_READY",
+          "zh-CN": "发行方尚未就绪",
+          "en": "Issuer is not ready",
+          "ar": "جهة الإصدار غير جاهزة"
+        },
+        {
+          "key": "issuer.blockers.LIABILITY_RULES_LOCKED",
+          "zh-CN": "存在余额或未完成储值，暂不能修改资金规则",
+          "en": "Outstanding balance or recharge prevents this change",
+          "ar": "الرصيد أو العمليات المعلقة تمنع هذا التغيير"
+        },
+        {
+          "key": "issuer.blockers.MAINTENANCE_IN_PROGRESS",
+          "zh-CN": "储值维护中",
+          "en": "Stored-value maintenance",
+          "ar": "صيانة الرصيد"
+        },
+        {
+          "key": "issuer.blockers.NO_ACCOUNT",
+          "zh-CN": "暂无储值账户",
+          "en": "No stored-value account",
+          "ar": "لا يوجد حساب رصيد"
+        },
+        {
+          "key": "issuer.blockers.STALE_CONFIGURATION",
+          "zh-CN": "配置已更新，请刷新",
+          "en": "Configuration changed. Refresh.",
+          "ar": "تم تحديث الإعدادات. يرجى التحديث."
+        },
+        {
+          "key": "issuer.blockers.STORE_NOT_ACCEPTED",
+          "zh-CN": "本店暂不支持此账户",
+          "en": "This store does not accept this wallet",
+          "ar": "هذا المتجر لا يقبل هذا الحساب"
+        },
+        {
+          "key": "issuer.blockers.STORE_SCOPE_CHANGED",
+          "zh-CN": "门店配置已更新，请刷新",
+          "en": "Store configuration changed. Refresh.",
+          "ar": "تم تحديث إعداد المتجر. حدّث الصفحة."
+        },
+        {
+          "key": "issuer.brandNotReady",
+          "zh-CN": "品牌储值尚未开通",
+          "en": "Brand stored value is not enabled",
+          "ar": "لم يتم تفعيل رصيد العلامة"
+        },
+        {
+          "key": "issuer.brandScope",
+          "zh-CN": "品牌储值",
+          "en": "Brand balance",
+          "ar": "رصيد العلامة التجارية"
+        },
+        {
+          "key": "issuer.channels.ALIPAY",
+          "zh-CN": "支付宝",
+          "en": "Alipay",
+          "ar": "علي باي"
+        },
+        {
+          "key": "issuer.channels.MERCHANT_OFFLINE",
+          "zh-CN": "线下收款",
+          "en": "Offline collection",
+          "ar": "تحصيل دون اتصال"
+        },
+        {
+          "key": "issuer.channels.WECHAT",
+          "zh-CN": "微信支付",
+          "en": "WeChat Pay",
+          "ar": "وي تشات باي"
+        },
+        {
+          "key": "issuer.chooseEntity",
+          "zh-CN": "选择结算主体",
+          "en": "Select settlement entity",
+          "ar": "اختيار جهة التسوية"
+        },
+        {
+          "key": "issuer.name",
+          "zh-CN": "发行名称",
+          "en": "Issuer name",
+          "ar": "اسم جهة الإصدار"
+        },
+        {
+          "key": "issuer.noRoutes",
+          "zh-CN": "暂无可用收款方式",
+          "en": "No available collection methods",
+          "ar": "لا توجد طرق تحصيل متاحة"
+        },
+        {
+          "key": "issuer.pendingSave",
+          "zh-CN": "保存结果待核对，请重试原操作",
+          "en": "Save result is unknown. Retry the original request.",
+          "ar": "نتيجة الحفظ غير معروفة. أعد المحاولة الأصلية."
+        },
+        {
+          "key": "issuer.prepareSettings",
+          "zh-CN": "开通储值设置",
+          "en": "Set up stored-value issuer",
+          "ar": "إعداد جهة إصدار الرصيد"
+        },
+        {
+          "key": "issuer.remove",
+          "zh-CN": "移除",
+          "en": "Remove",
+          "ar": "إزالة"
+        },
+        {
+          "key": "issuer.retryActivation",
+          "zh-CN": "重试启用",
+          "en": "Retry activation",
+          "ar": "إعادة محاولة التفعيل"
+        },
+        {
+          "key": "issuer.retrySave",
+          "zh-CN": "重试保存",
+          "en": "Retry save",
+          "ar": "إعادة الحفظ"
+        },
+        {
+          "key": "issuer.routes",
+          "zh-CN": "收款配置",
+          "en": "Collection methods",
+          "ar": "طرق التحصيل"
+        },
+        {
+          "key": "issuer.settlementEntity",
+          "zh-CN": "结算主体",
+          "en": "Settlement entity",
+          "ar": "جهة التسوية"
+        },
+        {
+          "key": "issuer.states.ACTIVE",
+          "zh-CN": "已启用",
+          "en": "Active",
+          "ar": "مفعّل"
+        },
+        {
+          "key": "issuer.states.DRAFT",
+          "zh-CN": "草稿",
+          "en": "Draft",
+          "ar": "مسودة"
+        },
+        {
+          "key": "issuer.states.ISSUE_STOPPED",
+          "zh-CN": "已停发",
+          "en": "Issuance stopped",
+          "ar": "الإصدار متوقف"
+        },
+        {
+          "key": "issuer.storeScope",
+          "zh-CN": "本店储值",
+          "en": "Store balance",
+          "ar": "رصيد المتجر"
+        },
+        {
+          "key": "issuer.title",
+          "zh-CN": "储值发行设置",
+          "en": "Stored-value issuer",
+          "ar": "إعدادات جهة الإصدار"
+        },
+        {
           "key": "locations.add",
           "zh-CN": "新建仓库",
           "en": "Add a warehouse",
@@ -13848,6 +14124,84 @@
           "zh-CN": "查看门店",
           "en": "View store",
           "ar": "عرض المتجر"
+        },
+        {
+          "key": "management.permission.sv_brand_activity_approve",
+          "zh-CN": "审批品牌储值活动",
+          "en": "Approve brand recharge activities",
+          "ar": "اعتماد أنشطة رصيد العلامة"
+        },
+        {
+          "key": "management.permission.sv_brand_activity_manage",
+          "zh-CN": "管理品牌储值活动",
+          "en": "Manage brand recharge activities",
+          "ar": "إدارة أنشطة رصيد العلامة"
+        },
+        {
+          "key": "management.permission.sv_brand_activity_publish",
+          "zh-CN": "提交品牌储值活动",
+          "en": "Submit brand recharge activities",
+          "ar": "تقديم أنشطة رصيد العلامة"
+        },
+        {
+          "key": "management.permission.sv_brand_activity_read",
+          "zh-CN": "查看品牌储值活动",
+          "en": "View brand recharge activities",
+          "ar": "عرض أنشطة رصيد العلامة"
+        },
+        {
+          "key": "management.permission.sv_issuer_configure",
+          "zh-CN": "配置储值发行方",
+          "en": "Configure stored-value issuer",
+          "ar": "إعداد جهة الإصدار"
+        },
+        {
+          "key": "management.permission.sv_issuer_read",
+          "zh-CN": "查看储值发行设置",
+          "en": "View issuer settings",
+          "ar": "عرض إعدادات الإصدار"
+        },
+        {
+          "key": "management.permission.sv_issuer_settlement_authorize",
+          "zh-CN": "授权储值结算主体",
+          "en": "Authorize settlement entity",
+          "ar": "تفويض جهة التسوية"
+        },
+        {
+          "key": "management.permission.sv_policy_manage",
+          "zh-CN": "配置储值规则",
+          "en": "Configure issuance policies",
+          "ar": "إعداد قواعد الإصدار"
+        },
+        {
+          "key": "management.permission.sv_policy_read",
+          "zh-CN": "查看储值规则",
+          "en": "View issuance policies",
+          "ar": "عرض قواعد الإصدار"
+        },
+        {
+          "key": "management.permission.sv_store_activity_approve",
+          "zh-CN": "审批储值活动",
+          "en": "Approve recharge activities",
+          "ar": "الموافقة على أنشطة الشحن"
+        },
+        {
+          "key": "management.permission.sv_store_activity_manage",
+          "zh-CN": "管理储值活动",
+          "en": "Manage recharge activities",
+          "ar": "إدارة أنشطة الشحن"
+        },
+        {
+          "key": "management.permission.sv_store_activity_publish",
+          "zh-CN": "提交储值活动",
+          "en": "Submit recharge activities",
+          "ar": "إرسال أنشطة الشحن"
+        },
+        {
+          "key": "management.permission.sv_store_activity_read",
+          "zh-CN": "查看储值活动",
+          "en": "View recharge activities",
+          "ar": "عرض أنشطة الشحن"
         },
         {
           "key": "management.reason",
@@ -17576,10 +17930,46 @@
           "ar": "عرض الطلبات والمبالغ"
         },
         {
+          "key": "perm.biz:pricing:config:publish",
+          "zh-CN": "发布门店结账规则",
+          "en": "Publish store checkout rules",
+          "ar": "نشر قواعد الدفع للمتجر"
+        },
+        {
+          "key": "perm.biz:pricing:config:read",
+          "zh-CN": "查看门店结账规则",
+          "en": "View store checkout rules",
+          "ar": "عرض قواعد الدفع للمتجر"
+        },
+        {
+          "key": "perm.biz:pricing:config:update",
+          "zh-CN": "编辑门店结账规则草稿",
+          "en": "Edit draft store checkout rules",
+          "ar": "تعديل مسودة قواعد الدفع للمتجر"
+        },
+        {
+          "key": "perm.biz:pricing:tax:read",
+          "zh-CN": "查看商家税配置",
+          "en": "View merchant tax configuration",
+          "ar": "عرض إعدادات ضرائب التاجر"
+        },
+        {
+          "key": "perm.biz:pricing:tax:update",
+          "zh-CN": "维护商家税配置（仅主体属主）",
+          "en": "Maintain merchant tax configuration (entity owner only)",
+          "ar": "إدارة إعدادات ضرائب التاجر (مالك الكيان فقط)"
+        },
+        {
           "key": "perm.biz:receive",
           "zh-CN": "到货登记与分拣",
           "en": "Goods-in and picking",
           "ar": "استلام البضائع والفرز"
+        },
+        {
+          "key": "perm.biz:report:export",
+          "zh-CN": "导出经营报表",
+          "en": "Export business reports",
+          "ar": "تصدير تقارير الأعمال"
         },
         {
           "key": "perm.biz:review",
@@ -18308,12 +18698,6 @@
           "ar": "سعر خاص"
         },
         {
-          "key": "points.acceptTerms",
-          "zh-CN": "我已阅读并同意以上条款",
-          "en": "I have read and accept these terms",
-          "ar": "قرأت هذه الشروط وأوافق عليها"
-        },
-        {
           "key": "points.accountBuckets",
           "zh-CN": "账户分桶",
           "en": "Account buckets",
@@ -18330,24 +18714,6 @@
           "zh-CN": "账户已冻结",
           "en": "Account frozen",
           "ar": "الحساب مجمد"
-        },
-        {
-          "key": "points.actionFailed",
-          "zh-CN": "操作失败，请刷新后重试",
-          "en": "Action failed. Refresh and retry.",
-          "ar": "فشلت العملية. حدّث الصفحة وأعد المحاولة."
-        },
-        {
-          "key": "points.activeAgreement",
-          "zh-CN": "协议已生效",
-          "en": "Agreement active",
-          "ar": "الاتفاقية سارية"
-        },
-        {
-          "key": "points.agreement",
-          "zh-CN": "门店积分协议",
-          "en": "Store points agreement",
-          "ar": "اتفاقية نقاط المتجر"
         },
         {
           "key": "points.balanceAfter",
@@ -18396,18 +18762,6 @@
           "zh-CN": "退款预留积分",
           "en": "Refund reserved points",
           "ar": "نقاط محجوزة للاسترداد"
-        },
-        {
-          "key": "points.code",
-          "zh-CN": "积分代码",
-          "en": "Points code",
-          "ar": "رمز النقاط"
-        },
-        {
-          "key": "points.currency",
-          "zh-CN": "币种",
-          "en": "Currency",
-          "ar": "العملة"
         },
         {
           "key": "points.directionEARN",
@@ -18584,12 +18938,6 @@
           "ar": "لا توجد كشوف"
         },
         {
-          "key": "points.noTerms",
-          "zh-CN": "平台尚未发布此类型的协议条款",
-          "en": "No terms published for this points type",
-          "ar": "لم تُنشر شروط لهذا النوع من النقاط"
-        },
-        {
           "key": "points.noTypes",
           "zh-CN": "暂无积分类型",
           "en": "No points types yet",
@@ -18600,18 +18948,6 @@
           "zh-CN": "订单积分",
           "en": "Order points",
           "ar": "نقاط الطلب"
-        },
-        {
-          "key": "points.perOrder",
-          "zh-CN": "随单结算",
-          "en": "Per order",
-          "ar": "لكل طلب"
-        },
-        {
-          "key": "points.periodic",
-          "zh-CN": "定期结算",
-          "en": "Periodic",
-          "ar": "دورية"
         },
         {
           "key": "points.pointsUnit",
@@ -18714,24 +19050,6 @@
           "zh-CN": "累计退回积分",
           "en": "Total points returned",
           "ar": "إجمالي النقاط المعادة"
-        },
-        {
-          "key": "points.sign",
-          "zh-CN": "签署协议",
-          "en": "Sign agreement",
-          "ar": "توقيع الاتفاقية"
-        },
-        {
-          "key": "points.signConfirm",
-          "zh-CN": "确认以当前门店签署这份积分协议？",
-          "en": "Sign this points agreement for the current store?",
-          "ar": "هل تؤكد توقيع اتفاقية النقاط للمتجر الحالي؟"
-        },
-        {
-          "key": "points.signHint",
-          "zh-CN": "请选择当前门店已开通的收款通道与结算方式；最终路由由服务端核验。",
-          "en": "Select an active payment channel and settlement mode. The server verifies the route.",
-          "ar": "اختر قناة دفع مفعّلة وطريقة التسوية. يتحقق الخادم من المسار."
         },
         {
           "key": "points.statementChecked",
@@ -18870,24 +19188,6 @@
           "zh-CN": "按当前门店与积分类型查看，金额和积分以支付账本为准。",
           "en": "View by current store and points type. The payment ledger is authoritative.",
           "ar": "اعرض حسب المتجر الحالي ونوع النقاط. سجل الدفع هو المرجع المعتمد."
-        },
-        {
-          "key": "points.terminate",
-          "zh-CN": "终止协议",
-          "en": "Terminate agreement",
-          "ar": "إنهاء الاتفاقية"
-        },
-        {
-          "key": "points.terminateConfirm",
-          "zh-CN": "确认终止此门店协议？存量积分义务仍需继续处理。",
-          "en": "Terminate this store agreement? Existing points obligations still apply.",
-          "ar": "هل تؤكد إنهاء اتفاقية هذا المتجر؟ تبقى التزامات النقاط السابقة قائمة."
-        },
-        {
-          "key": "points.termsVersion",
-          "zh-CN": "条款版本",
-          "en": "Terms version",
-          "ar": "إصدار الشروط"
         },
         {
           "key": "points.title",
@@ -22514,12 +22814,6 @@
           "ar": "المتاح عبر الإنترنت: {n} {unit}"
         },
         {
-          "key": "stockOverview.physical",
-          "zh-CN": "实物库存",
-          "en": "Physical stock",
-          "ar": "المخزون الفعلي"
-        },
-        {
           "key": "stockOverview.rule",
           "zh-CN": "有效规则",
           "en": "Effective rule",
@@ -24686,6 +24980,12 @@
           "ar": "جميع الحركات"
         },
         {
+          "key": "storedValue.askCustomerConfirm",
+          "zh-CN": "请顾客进入「储值记录」确认本次消费。",
+          "en": "Ask the customer to confirm this service in Stored value records.",
+          "ar": "اطلب من العميل تأكيد الخدمة في سجل الرصيد."
+        },
+        {
           "key": "storedValue.back",
           "zh-CN": "返回",
           "en": "Back",
@@ -24716,6 +25016,12 @@
           "ar": "إلغاء"
         },
         {
+          "key": "storedValue.cancelConsumption",
+          "zh-CN": "取消本次核销",
+          "en": "Cancel redemption",
+          "ar": "إلغاء الاستخدام"
+        },
+        {
           "key": "storedValue.cancelRecharge",
           "zh-CN": "取消办理",
           "en": "Cancel recharge",
@@ -24740,6 +25046,12 @@
           "ar": "اختر عضواً"
         },
         {
+          "key": "storedValue.completeRedemption",
+          "zh-CN": "完成核销",
+          "en": "Complete redemption",
+          "ar": "إتمام الاستخدام"
+        },
+        {
           "key": "storedValue.confirm",
           "zh-CN": "确定",
           "en": "Confirm",
@@ -24750,6 +25062,54 @@
           "zh-CN": "确认收款并入账",
           "en": "Confirm receipt and credit",
           "ar": "تأكيد الاستلام وإضافة الرصيد"
+        },
+        {
+          "key": "storedValue.consumeAmount",
+          "zh-CN": "核销金额",
+          "en": "Redemption amount",
+          "ar": "مبلغ الاستخدام"
+        },
+        {
+          "key": "storedValue.consumeState.CANCELLED",
+          "zh-CN": "已取消",
+          "en": "Cancelled",
+          "ar": "ملغى"
+        },
+        {
+          "key": "storedValue.consumeState.COMMITTED",
+          "zh-CN": "核销成功",
+          "en": "Redeemed",
+          "ar": "تم الاستخدام"
+        },
+        {
+          "key": "storedValue.consumeState.EXPIRED",
+          "zh-CN": "已过期",
+          "en": "Expired",
+          "ar": "منتهي الصلاحية"
+        },
+        {
+          "key": "storedValue.consumeState.PROCESSING",
+          "zh-CN": "正在核对核销结果",
+          "en": "Checking redemption result",
+          "ar": "جارٍ التحقق من النتيجة"
+        },
+        {
+          "key": "storedValue.consumeState.RELEASED",
+          "zh-CN": "已取消",
+          "en": "Cancelled",
+          "ar": "ملغى"
+        },
+        {
+          "key": "storedValue.consumeState.WAIT_AUTH",
+          "zh-CN": "待顾客确认",
+          "en": "Awaiting customer confirmation",
+          "ar": "بانتظار تأكيد العميل"
+        },
+        {
+          "key": "storedValue.consumeState.WAIT_SUBMIT",
+          "zh-CN": "顾客已确认",
+          "en": "Customer confirmed",
+          "ar": "تم تأكيد العميل"
         },
         {
           "key": "storedValue.create",
@@ -24854,6 +25214,12 @@
           "ar": "متوقفة"
         },
         {
+          "key": "storedValue.insufficientWallet",
+          "zh-CN": "所选账户可用余额不足",
+          "en": "The selected wallet has insufficient available funds",
+          "ar": "الرصيد المتاح في الحساب المحدد غير كافٍ"
+        },
+        {
           "key": "storedValue.invalidAmount",
           "zh-CN": "请输入有效金额",
           "en": "Enter a valid amount",
@@ -24956,6 +25322,18 @@
           "ar": "ليست لديك صلاحية"
         },
         {
+          "key": "storedValue.noServices",
+          "zh-CN": "暂无可核销服务",
+          "en": "No redeemable services",
+          "ar": "لا توجد خدمات قابلة للاستخدام"
+        },
+        {
+          "key": "storedValue.noWallet",
+          "zh-CN": "暂无储值账户",
+          "en": "No stored-value account",
+          "ar": "لا يوجد حساب رصيد"
+        },
+        {
           "key": "storedValue.notFunded",
           "zh-CN": "未储值",
           "en": "No top-ups yet",
@@ -25002,6 +25380,12 @@
           "zh-CN": "储值方案",
           "en": "Plans",
           "ar": "خطط الشحن"
+        },
+        {
+          "key": "storedValue.previewConsumption",
+          "zh-CN": "发起核销",
+          "en": "Request redemption",
+          "ar": "طلب استخدام الرصيد"
         },
         {
           "key": "storedValue.processing",
@@ -25614,6 +25998,402 @@
           "zh-CN": "供应商",
           "en": "Suppliers",
           "ar": "المورّدون"
+        },
+        {
+          "key": "svGov.activities",
+          "zh-CN": "本店储值活动",
+          "en": "Recharge activities",
+          "ar": "أنشطة شحن المتجر"
+        },
+        {
+          "key": "svGov.activityDetail",
+          "zh-CN": "储值活动",
+          "en": "Recharge activity",
+          "ar": "نشاط الشحن"
+        },
+        {
+          "key": "svGov.addPolicy",
+          "zh-CN": "新增规则",
+          "en": "Add policy",
+          "ar": "إضافة قاعدة"
+        },
+        {
+          "key": "svGov.addTier",
+          "zh-CN": "添加档位",
+          "en": "Add tier",
+          "ar": "إضافة فئة"
+        },
+        {
+          "key": "svGov.allow",
+          "zh-CN": "允许新发行",
+          "en": "Allow new issuance",
+          "ar": "السماح بإصدار جديد"
+        },
+        {
+          "key": "svGov.approvalRequired",
+          "zh-CN": "需要审批",
+          "en": "Approval required",
+          "ar": "الموافقة مطلوبة"
+        },
+        {
+          "key": "svGov.approvals",
+          "zh-CN": "活动审批",
+          "en": "Activity approvals",
+          "ar": "موافقات الأنشطة"
+        },
+        {
+          "key": "svGov.approve",
+          "zh-CN": "批准",
+          "en": "Approve",
+          "ar": "موافقة"
+        },
+        {
+          "key": "svGov.bonus",
+          "zh-CN": "赠送金额",
+          "en": "Bonus amount",
+          "ar": "مبلغ المكافأة"
+        },
+        {
+          "key": "svGov.bonusCap",
+          "zh-CN": "单笔赠送上限",
+          "en": "Bonus limit per recharge",
+          "ar": "حد المكافأة لكل شحن"
+        },
+        {
+          "key": "svGov.chooseScope",
+          "zh-CN": "选择作用范围",
+          "en": "Select scope",
+          "ar": "اختيار النطاق"
+        },
+        {
+          "key": "svGov.chooseTemplate",
+          "zh-CN": "选择活动类型",
+          "en": "Select activity type",
+          "ar": "اختيار نوع النشاط"
+        },
+        {
+          "key": "svGov.copy",
+          "zh-CN": "复制为新活动",
+          "en": "Copy as new activity",
+          "ar": "نسخ كنشاط جديد"
+        },
+        {
+          "key": "svGov.createActivity",
+          "zh-CN": "新建储值活动",
+          "en": "Create recharge activity",
+          "ar": "إنشاء نشاط شحن"
+        },
+        {
+          "key": "svGov.daysCap",
+          "zh-CN": "活动天数上限",
+          "en": "Maximum activity days",
+          "ar": "أقصى مدة للنشاط بالأيام"
+        },
+        {
+          "key": "svGov.disabled",
+          "zh-CN": "已限制发行",
+          "en": "Issuance restricted",
+          "ar": "الإصدار مقيّد"
+        },
+        {
+          "key": "svGov.endDate",
+          "zh-CN": "结束日期",
+          "en": "End date",
+          "ar": "تاريخ الانتهاء"
+        },
+        {
+          "key": "svGov.give",
+          "zh-CN": "赠送",
+          "en": "Bonus",
+          "ar": "مكافأة"
+        },
+        {
+          "key": "svGov.invalidActivity",
+          "zh-CN": "请完善活动信息",
+          "en": "Complete the activity details",
+          "ar": "أكمل بيانات النشاط"
+        },
+        {
+          "key": "svGov.invalidRules",
+          "zh-CN": "请填写有效的管控规则",
+          "en": "Enter valid policy limits",
+          "ar": "أدخل حدودا صحيحة"
+        },
+        {
+          "key": "svGov.more",
+          "zh-CN": "加载更多",
+          "en": "Load more",
+          "ar": "تحميل المزيد"
+        },
+        {
+          "key": "svGov.name",
+          "zh-CN": "活动名称",
+          "en": "Activity name",
+          "ar": "اسم النشاط"
+        },
+        {
+          "key": "svGov.noActivities",
+          "zh-CN": "暂无储值活动",
+          "en": "No recharge activities",
+          "ar": "لا توجد أنشطة شحن"
+        },
+        {
+          "key": "svGov.noApproval",
+          "zh-CN": "无需审批",
+          "en": "No approval required",
+          "ar": "لا تتطلب موافقة"
+        },
+        {
+          "key": "svGov.noApprovals",
+          "zh-CN": "暂无审批记录",
+          "en": "No approval records",
+          "ar": "لا توجد سجلات موافقة"
+        },
+        {
+          "key": "svGov.noPolicies",
+          "zh-CN": "暂无管控规则",
+          "en": "No policies yet",
+          "ar": "لا توجد قواعد بعد"
+        },
+        {
+          "key": "svGov.noTemplates",
+          "zh-CN": "暂无可用活动类型",
+          "en": "No available activity types",
+          "ar": "لا توجد أنواع أنشطة متاحة"
+        },
+        {
+          "key": "svGov.outstanding",
+          "zh-CN": "未消费余额上限",
+          "en": "Outstanding balance limit",
+          "ar": "حد الرصيد غير المستهلك"
+        },
+        {
+          "key": "svGov.paid",
+          "zh-CN": "实收金额",
+          "en": "Payment amount",
+          "ar": "المبلغ المدفوع"
+        },
+        {
+          "key": "svGov.paidCap",
+          "zh-CN": "单笔实收上限",
+          "en": "Payment limit per recharge",
+          "ar": "حد الدفع لكل شحن"
+        },
+        {
+          "key": "svGov.policies",
+          "zh-CN": "储值管控",
+          "en": "Issuance controls",
+          "ar": "ضوابط الإصدار"
+        },
+        {
+          "key": "svGov.ratio",
+          "zh-CN": "赠送比例上限",
+          "en": "Maximum bonus rate",
+          "ar": "أقصى نسبة للمكافأة"
+        },
+        {
+          "key": "svGov.reason",
+          "zh-CN": "审批意见",
+          "en": "Decision notes",
+          "ar": "ملاحظات القرار"
+        },
+        {
+          "key": "svGov.reasonRequired",
+          "zh-CN": "请填写审批意见",
+          "en": "Enter decision notes",
+          "ar": "أدخل ملاحظات القرار"
+        },
+        {
+          "key": "svGov.remove",
+          "zh-CN": "移除",
+          "en": "Remove",
+          "ar": "إزالة"
+        },
+        {
+          "key": "svGov.retry",
+          "zh-CN": "重试原操作",
+          "en": "Retry original operation",
+          "ar": "إعادة العملية الأصلية"
+        },
+        {
+          "key": "svGov.return",
+          "zh-CN": "退回",
+          "en": "Return",
+          "ar": "إرجاع"
+        },
+        {
+          "key": "svGov.save",
+          "zh-CN": "保存",
+          "en": "Save",
+          "ar": "حفظ"
+        },
+        {
+          "key": "svGov.saveDraft",
+          "zh-CN": "保存草稿",
+          "en": "Save draft",
+          "ar": "حفظ المسودة"
+        },
+        {
+          "key": "svGov.saved",
+          "zh-CN": "已保存",
+          "en": "Saved",
+          "ar": "تم الحفظ"
+        },
+        {
+          "key": "svGov.startDate",
+          "zh-CN": "开始日期",
+          "en": "Start date",
+          "ar": "تاريخ البدء"
+        },
+        {
+          "key": "svGov.states.ACTIVE",
+          "zh-CN": "已发布",
+          "en": "Published",
+          "ar": "منشور"
+        },
+        {
+          "key": "svGov.states.ALL",
+          "zh-CN": "全部",
+          "en": "All",
+          "ar": "الكل"
+        },
+        {
+          "key": "svGov.states.APPROVED",
+          "zh-CN": "审批通过",
+          "en": "Approved",
+          "ar": "تمت الموافقة"
+        },
+        {
+          "key": "svGov.states.BLOCKED_POLICY",
+          "zh-CN": "规则不符",
+          "en": "Policy blocked",
+          "ar": "لا يطابق القواعد"
+        },
+        {
+          "key": "svGov.states.DRAFT",
+          "zh-CN": "草稿",
+          "en": "Draft",
+          "ar": "مسودة"
+        },
+        {
+          "key": "svGov.states.ENDED",
+          "zh-CN": "已结束",
+          "en": "Ended",
+          "ar": "منتهٍ"
+        },
+        {
+          "key": "svGov.states.FAILED",
+          "zh-CN": "发布失败",
+          "en": "Publication failed",
+          "ar": "فشل النشر"
+        },
+        {
+          "key": "svGov.states.PAUSED",
+          "zh-CN": "已暂停",
+          "en": "Paused",
+          "ar": "متوقف مؤقتا"
+        },
+        {
+          "key": "svGov.states.PAY_READY",
+          "zh-CN": "待发布",
+          "en": "Awaiting publication",
+          "ar": "بانتظار النشر"
+        },
+        {
+          "key": "svGov.states.PENDING",
+          "zh-CN": "待审批",
+          "en": "Awaiting approval",
+          "ar": "بانتظار الموافقة"
+        },
+        {
+          "key": "svGov.states.PENDING_APPROVAL",
+          "zh-CN": "待审批",
+          "en": "Awaiting approval",
+          "ar": "بانتظار الموافقة"
+        },
+        {
+          "key": "svGov.states.PREPARING",
+          "zh-CN": "待发布",
+          "en": "Awaiting publication",
+          "ar": "بانتظار النشر"
+        },
+        {
+          "key": "svGov.states.RETURNED",
+          "zh-CN": "已退回",
+          "en": "Returned",
+          "ar": "تم الإرجاع"
+        },
+        {
+          "key": "svGov.states.RUNNING",
+          "zh-CN": "进行中",
+          "en": "Running",
+          "ar": "جارٍ"
+        },
+        {
+          "key": "svGov.states.STALE",
+          "zh-CN": "内容已变更",
+          "en": "Content changed",
+          "ar": "تغير المحتوى"
+        },
+        {
+          "key": "svGov.states.STOPPED",
+          "zh-CN": "已停发",
+          "en": "Issuance stopped",
+          "ar": "الإصدار متوقف"
+        },
+        {
+          "key": "svGov.states.STOP_REQUESTED",
+          "zh-CN": "停发中",
+          "en": "Stopping issuance",
+          "ar": "جارٍ إيقاف الإصدار"
+        },
+        {
+          "key": "svGov.stop",
+          "zh-CN": "停止新发行",
+          "en": "Stop new issuance",
+          "ar": "إيقاف الإصدار الجديد"
+        },
+        {
+          "key": "svGov.submit",
+          "zh-CN": "提交发布",
+          "en": "Submit for publication",
+          "ar": "إرسال للنشر"
+        },
+        {
+          "key": "svGov.targets.BRAND_STORES",
+          "zh-CN": "品牌下门店",
+          "en": "Brand stores",
+          "ar": "متاجر العلامة"
+        },
+        {
+          "key": "svGov.targets.SPACE",
+          "zh-CN": "经营空间",
+          "en": "Management space",
+          "ar": "مساحة الإدارة"
+        },
+        {
+          "key": "svGov.targets.STORE",
+          "zh-CN": "指定门店",
+          "en": "Specific store",
+          "ar": "متجر محدد"
+        },
+        {
+          "key": "svGov.template",
+          "zh-CN": "活动类型",
+          "en": "Activity type",
+          "ar": "نوع النشاط"
+        },
+        {
+          "key": "svGov.tier",
+          "zh-CN": "储值档位",
+          "en": "Recharge tier",
+          "ar": "فئة الشحن"
+        },
+        {
+          "key": "svGov.unknown",
+          "zh-CN": "结果待核对，请重试原操作",
+          "en": "Result unknown. Retry the original operation.",
+          "ar": "النتيجة غير مؤكدة. أعد العملية الأصلية."
         },
         {
           "key": "tab.goods",
@@ -28510,9 +29290,9 @@
         },
         {
           "key": "err.inventory.shared_source",
-          "zh-CN": "该门店与门店 {1} 共用发货库存，暂不支持分别同步全部库存，请先配置独立发货库位",
-          "en": "This store shares its stock source with store {1}. Configure independent stock locations before enabling stock sync.",
-          "ar": "يشترك هذا المتجر في مصدر المخزون مع المتجر {1}. يرجى إعداد مواقع مخزون مستقلة قبل تفعيل المزامنة."
+          "zh-CN": "门店 {0} 与门店 {1} 共用发货库存，暂不支持分别同步全部库存，请先配置独立发货库位",
+          "en": "Store {0} shares its stock source with store {1}. Configure independent stock locations before enabling stock sync.",
+          "ar": "يشترك المتجر {0} في مصدر المخزون مع المتجر {1}. يرجى إعداد مواقع مخزون مستقلة قبل تفعيل المزامنة."
         },
         {
           "key": "err.inventory.sync_not_aligned",
@@ -30648,6 +31428,20 @@
       "package": "ai.neargo.shop.trade.entity"
     },
     {
+      "table": "ord_industry_fulfillment",
+      "class": "OrdIndustryFulfillment",
+      "zh": "Original-source fulfillment metadata; no payment state or inventory ledger is duplicated.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_industry_order_source",
+      "class": "OrdIndustryOrderSource",
+      "zh": "Source-to-original-order binding metadata; monetary truth remains in the original order and quote tables.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
       "table": "ord_invoice_request",
       "class": "OrdInvoiceRequest",
       "zh": "开票申请：**平台开给消费者**的销项票（ADR-017 §3.4 条件 2）。",
@@ -30667,6 +31461,20 @@
       "zh": "",
       "module": "shop-core",
       "package": "ai.neargo.shop.trade.entitlement.entity"
+    },
+    {
+      "table": "ord_manual_price_adjustment",
+      "class": "OrdManualPriceAdjustment",
+      "zh": "Versioned source-bound staff intent and real policy/owner review; no fund consumption occurs here.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_manual_price_policy",
+      "class": "OrdManualPricePolicy",
+      "zh": "Explicit owner-managed concession limits; absence is denial, never a default grant.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
     },
     {
       "table": "ord_order",
@@ -31234,6 +32042,41 @@
       "zh": "主题 × 商品，多对多。",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
+    },
+    {
+      "table": "prn_attempt",
+      "class": "PrnAttempt",
+      "zh": "Shared printing persistence; business identifiers alone cross the API boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.printing.entity"
+    },
+    {
+      "table": "prn_device",
+      "class": "PrnDevice",
+      "zh": "Shared printing persistence; business identifiers alone cross the API boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.printing.entity"
+    },
+    {
+      "table": "prn_job",
+      "class": "PrnJob",
+      "zh": "Shared printing persistence; business identifiers alone cross the API boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.printing.entity"
+    },
+    {
+      "table": "prn_route",
+      "class": "PrnRoute",
+      "zh": "Shared printing persistence; business identifiers alone cross the API boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.printing.entity"
+    },
+    {
+      "table": "prn_template",
+      "class": "PrnTemplate",
+      "zh": "Shared printing persistence; business identifiers alone cross the API boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.printing.entity"
     },
     {
       "table": "pts_user_account",
@@ -33060,6 +33903,13 @@
       },
       {
         "host": "BizKey",
+        "name": "BRAND_FINANCIAL_ACTIVATION",
+        "value": "BRFA",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
         "name": "BRAND_BINDING",
         "value": "BRB",
         "zh": "",
@@ -33119,6 +33969,118 @@
         "name": "MEMBER",
         "value": "MB",
         "zh": "会员：一个人 × 一家主体的关系。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_PLAN",
+        "value": "SVP",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_PLAN_VERSION",
+        "value": "SVNV",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_RELEASE_LINK",
+        "value": "SVLK",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_ACTIVITY_APPROVAL",
+        "value": "SVAP",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_ISSUE_POLICY",
+        "value": "SVIP",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_POLICY_VERSION",
+        "value": "SVPV",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_ISSUER",
+        "value": "SVI",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_ISSUER_VERSION",
+        "value": "SIV",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_ISSUER_ACCESS",
+        "value": "SIA",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_MIGRATION",
+        "value": "SVM",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_QUOTA",
+        "value": "SVQ",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_QUOTA_RESERVATION",
+        "value": "SVQR",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_HOLD_ALLOCATION",
+        "value": "SVHA",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_CLEARING",
+        "value": "SVCL",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_RELEASE",
+        "value": "SVRL",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "STORED_VALUE_RELEASE_TIER",
+        "value": "SVRT",
+        "zh": "",
         "module": "shop-base"
       },
       {
@@ -33714,6 +34676,13 @@
         "name": "STORE_PICKUP",
         "value": "STORE_PICKUP",
         "zh": "到商家自有门店自取。",
+        "module": "shop-base"
+      },
+      {
+        "host": "Fulfillments",
+        "name": "DINE_IN",
+        "value": "DINE_IN",
+        "zh": "员工正式堂食订单。",
         "module": "shop-base"
       },
       {
@@ -37763,6 +38732,13 @@
         "module": "shop-core"
       },
       {
+        "host": "PricingManualPlanCompiler",
+        "name": "OWNER",
+        "value": "SHOP_MANUAL",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "IdentityType",
         "name": "PHONE",
         "value": "PHONE",
@@ -38109,6 +39085,27 @@
         "host": "ReservationStatus",
         "name": "HELD",
         "value": "HELD",
+        "zh": "",
+        "module": "shop-inventory"
+      },
+      {
+        "host": "ReservationStatus",
+        "name": "ACCEPTED_UNPAID",
+        "value": "ACCEPTED_UNPAID",
+        "zh": "Accepted credit order; no payment has been acknowledged.",
+        "module": "shop-inventory"
+      },
+      {
+        "host": "ReservationStatus",
+        "name": "PARTIAL_UNPAID",
+        "value": "PARTIAL_UNPAID",
+        "zh": "",
+        "module": "shop-inventory"
+      },
+      {
+        "host": "ReservationStatus",
+        "name": "ISSUED_UNPAID",
+        "value": "ISSUED_UNPAID",
         "zh": "",
         "module": "shop-inventory"
       },
@@ -39109,6 +40106,16 @@
     ],
     "javaEnums": [
       {
+        "name": "AccessRole",
+        "values": [
+          "READER",
+          "WRITER",
+          "MIGRATOR"
+        ],
+        "zh": "",
+        "module": "shop-report"
+      },
+      {
         "name": "Action",
         "values": [
           "TOPUP_U",
@@ -39292,6 +40299,17 @@
         "module": "shop-core"
       },
       {
+        "name": "Aggregation",
+        "values": [
+          "SUM",
+          "LAST",
+          "DISTINCT",
+          "DERIVED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "Algorithm",
         "values": [
           "SHARED_COUPON_V1",
@@ -39338,6 +40356,16 @@
           "EXHAUSTED",
           "EXPIRED",
           "REVOKED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Attribution",
+        "values": [
+          "ORIGINAL_ORDER",
+          "OCCURRENCE",
+          "SCHEDULED_SERVICE"
         ],
         "zh": "",
         "module": "shop-base"
@@ -39395,6 +40423,19 @@
         "module": "pay/pay-domain"
       },
       {
+        "name": "BuildStatus",
+        "values": [
+          "QUEUED",
+          "RUNNING",
+          "VALIDATING",
+          "PUBLISHED",
+          "FAILED",
+          "CANCELLED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "CallOutcome",
         "values": [
           "OK",
@@ -39427,6 +40468,17 @@
         "module": "shop-merchant"
       },
       {
+        "name": "ChannelStatus",
+        "values": [
+          "UNKNOWN",
+          "NOT_FOUND",
+          "UNPAID",
+          "PAID"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "CollectionMethod",
         "values": [
           "CASH",
@@ -39450,6 +40502,26 @@
         "values": [
           "SINGLE",
           "MULTI"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Coverage",
+        "values": [
+          "COMPLETE",
+          "EMPTY_VERIFIED",
+          "PARTIAL",
+          "UNKNOWN"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "DayKind",
+        "values": [
+          "FROZEN_BUSINESS_DAY",
+          "POLICY_INTERVAL"
         ],
         "zh": "",
         "module": "shop-base"
@@ -39556,6 +40628,9 @@
           "SETTLEMENT_BATCH",
           "SETTLEMENT_BILL",
           "SETTLEMENT_INVOICE_REQUEST",
+          "SV_SETTLEMENT_BILL",
+          "SV_SETTLEMENT_PAYMENT",
+          "SV_SETTLEMENT_EVENT",
           "BRAND_CHANGE"
         ],
         "zh": "Human-facing document namespace。",
@@ -39854,6 +40929,18 @@
         "module": "shop-base"
       },
       {
+        "name": "FailureKind",
+        "values": [
+          "NONE",
+          "TEMPORARY",
+          "MISCONFIGURED",
+          "SCHEMA_NOT_READY",
+          "MIGRATION_FAILED"
+        ],
+        "zh": "",
+        "module": "shop-report"
+      },
+      {
         "name": "Family",
         "values": [
           "ORDER_COUPON",
@@ -40032,6 +41119,24 @@
         "module": "shop-base"
       },
       {
+        "name": "InitializationMode",
+        "values": [
+          "STRICT",
+          "ISOLATED"
+        ],
+        "zh": "",
+        "module": "shop-report"
+      },
+      {
+        "name": "InitializationRole",
+        "values": [
+          "VALIDATOR",
+          "MIGRATOR"
+        ],
+        "zh": "",
+        "module": "shop-report"
+      },
+      {
         "name": "IntentKind",
         "values": [
           "QUOTE_ONLY",
@@ -40131,6 +41236,18 @@
       {
         "name": "Kind",
         "values": [
+          "TEA",
+          "HOTPOT",
+          "PACKAGING",
+          "SERVICE",
+          "MINIMUM"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Kind",
+        "values": [
           "MAIN",
           "ADDON",
           "BUNDLE_INCLUDED",
@@ -40218,6 +41335,28 @@
         "module": "shop-auth-store"
       },
       {
+        "name": "ManualKind",
+        "values": [
+          "PERCENT",
+          "AMOUNT",
+          "WAIVER",
+          "ROUNDING"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Method",
+        "values": [
+          "PER_QUANTITY",
+          "FIXED",
+          "PERCENT",
+          "MINIMUM"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "MigrationState",
         "values": [
           "PREPARING",
@@ -40243,6 +41382,28 @@
           "EXPLICIT",
           "CANDIDATE_POOL",
           "AUTO_BEST"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Mode",
+        "values": [
+          "DAILY",
+          "PERIOD",
+          "RANKING",
+          "WEEKLY",
+          "MONTHLY",
+          "HEALTH"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Mode",
+        "values": [
+          "PREPAY",
+          "POSTPAY"
         ],
         "zh": "",
         "module": "shop-base"
@@ -40377,6 +41538,19 @@
           "DISJOINT",
           "BEST_ONE",
           "STACK"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Owner",
+        "values": [
+          "CORE",
+          "FOOD",
+          "PAY",
+          "INVENTORY",
+          "EXPENSE",
+          "REPORT"
         ],
         "zh": "",
         "module": "shop-base"
@@ -40577,6 +41751,16 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "ReductionColumn",
+        "values": [
+          "QUANTITY",
+          "PHYSICAL",
+          "CANCEL"
+        ],
+        "zh": "",
+        "module": "shop-core"
       },
       {
         "name": "RefundProgress",
@@ -40834,6 +42018,24 @@
       {
         "name": "State",
         "values": [
+          "ABSENT",
+          "HELD",
+          "ACCEPTED_UNPAID",
+          "PARTIAL_UNPAID",
+          "ISSUED_UNPAID",
+          "ALLOCATED",
+          "PARTIALLY_COMMITTED",
+          "COMMITTED",
+          "PARTIAL_RELEASED",
+          "RELEASED",
+          "EXPIRED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
           "UNKNOWN",
           "COMMITTED",
           "ABORTED"
@@ -40863,6 +42065,17 @@
         ],
         "zh": "",
         "module": "shop-core"
+      },
+      {
+        "name": "State",
+        "values": [
+          "NOT_READY",
+          "INITIALIZING",
+          "READY",
+          "FAILED"
+        ],
+        "zh": "",
+        "module": "shop-report"
       },
       {
         "name": "StatementAction",
@@ -40957,6 +42170,18 @@
       {
         "name": "Status",
         "values": [
+          "QUEUED",
+          "RUNNING",
+          "SUCCEEDED",
+          "FAILED",
+          "EXPIRED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Status",
+        "values": [
           "SUPPORTED",
           "TENANT_UNSUPPORTED",
           "SOURCE_UNSUPPORTED",
@@ -40975,6 +42200,23 @@
         ],
         "zh": "",
         "module": "shop-core"
+      },
+      {
+        "name": "Status",
+        "values": [
+          "HELD",
+          "ACCEPTED_UNPAID",
+          "PARTIAL_UNPAID",
+          "ISSUED_UNPAID",
+          "ALLOCATED",
+          "PARTIALLY_COMMITTED",
+          "COMMITTED",
+          "PARTIAL_RELEASED",
+          "RELEASED",
+          "EXPIRED"
+        ],
+        "zh": "Typed inventory lifecycle states, including partial fulfillment and partial cancellation.",
+        "module": "shop-inventory"
       },
       {
         "name": "StoreActivityType",
@@ -41109,6 +42351,17 @@
         ],
         "zh": "",
         "module": "pay/pay-domain"
+      },
+      {
+        "name": "ValueType",
+        "values": [
+          "COUNT",
+          "QUANTITY",
+          "MONEY",
+          "DURATION"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "ZeroCashReason",
@@ -41617,6 +42870,26 @@
         "zh": "判重的依据。"
       },
       {
+        "name": "EarningRewardMode",
+        "client": "ops-web",
+        "values": [
+          "RATIO",
+          "FIXED"
+        ],
+        "zh": "Reward calculation mode; historical fixed rewards remain readable."
+      },
+      {
+        "name": "EarningRuleAction",
+        "client": "ops-web",
+        "values": [
+          "IMPORT",
+          "SAVE",
+          "PUBLISH",
+          "DISABLE"
+        ],
+        "zh": "Reward rule history includes imported legacy revisions."
+      },
+      {
         "name": "EnrollmentStatus",
         "client": "shared",
         "values": [
@@ -41940,6 +43213,46 @@
           "NEEDS_CONFIRM"
         ],
         "zh": "切换的结果。"
+      },
+      {
+        "name": "InventoryAccountingMode",
+        "client": "shared",
+        "values": [
+          "PAYMENT_DEDUCT"
+        ],
+        "zh": "Current backend accounting policy: inventory is deducted when payment completes."
+      },
+      {
+        "name": "InventoryOnboardingState",
+        "client": "shared",
+        "values": [
+          "UNMANAGED",
+          "INITIALIZING",
+          "MAPPED"
+        ],
+        "zh": "Inventory onboarding progression; MAPPED means a physical inventory mapping exists."
+      },
+      {
+        "name": "InventoryOutboxMode",
+        "client": "shared",
+        "values": [
+          "UNIFIED",
+          "LEGACY"
+        ],
+        "zh": "Outbox mechanism which persisted the synchronization event."
+      },
+      {
+        "name": "InventorySyncEventState",
+        "client": "shared",
+        "values": [
+          "COMPLETED",
+          "PENDING",
+          "FAILED",
+          "WARNING",
+          "SKIPPED",
+          "ARCHIVED"
+        ],
+        "zh": "Delivery state of an inventory/order synchronization event."
       },
       {
         "name": "InvoiceRequestStatus",
@@ -42338,6 +43651,22 @@
         "zh": "进件（收款开户）状态：占位 / 审核中 / 已开通 / 被拒 / 冻结。"
       },
       {
+        "name": "OrderPointsEarningState",
+        "client": "shared",
+        "values": [
+          "NONE",
+          "EXPECTED",
+          "PROCESSING",
+          "PENDING",
+          "AVAILABLE",
+          "RETRYABLE",
+          "MANUAL",
+          "SKIPPED",
+          "RECLAIMED"
+        ],
+        "zh": "Order reward processing projection; accepted work is not a posted account credit."
+      },
+      {
         "name": "OrderPointsIntegrationPolicyMode",
         "client": "ops-web",
         "values": [
@@ -42364,6 +43693,32 @@
           "UNAVAILABLE"
         ],
         "zh": "OrderPointsQuote 的 state 取值域，按服务端契约校验。"
+      },
+      {
+        "name": "OrderPointsRedemptionState",
+        "client": "shared",
+        "values": [
+          "NONE",
+          "PROCESSING",
+          "HELD",
+          "RELEASED",
+          "CONSUMED",
+          "REFUND_PROCESSING",
+          "RETURNED",
+          "PARTIALLY_RETURNED"
+        ],
+        "zh": "Lifecycle of the order points hold and its subsequent returns."
+      },
+      {
+        "name": "OrderPointsRefundState",
+        "client": "shared",
+        "values": [
+          "NONE",
+          "PROCESSING",
+          "MANUAL",
+          "COMPLETED"
+        ],
+        "zh": "Processing state of the order points refund projection."
       },
       {
         "name": "OutOfRangeAction",
@@ -42947,6 +44302,11 @@
         "name": "ROUTES",
         "client": "b-app",
         "values": [
+          "/pages/stored-value-policy/index",
+          "/pages/stored-value-approval/index",
+          "/pages/stored-value-activity/index",
+          "/pages/stored-value-activity-edit/index",
+          "/pages/stored-value-issuer/index",
           "/pages/management/index",
           "/pages/brand-list/index",
           "/pages/brand-edit/index",
@@ -43587,6 +44947,20 @@
         "zh": "对齐清单一行的提示。"
       },
       {
+        "name": "StockAlignmentBatchState",
+        "client": "shared",
+        "values": [
+          "PREVIEW",
+          "PROCESSING",
+          "PARTIAL",
+          "BLOCKED",
+          "COMPLETED",
+          "STALE",
+          "EXPIRED"
+        ],
+        "zh": "Preview and execution state of a stock alignment batch."
+      },
+      {
         "name": "StockDocKind",
         "client": "shared",
         "values": [
@@ -43594,6 +44968,18 @@
           "OUT"
         ],
         "zh": "库存台账的方向。"
+      },
+      {
+        "name": "StockSyncOperationState",
+        "client": "shared",
+        "values": [
+          "PROCESSING",
+          "WAITING",
+          "FAILED",
+          "BLOCKED",
+          "COMPLETED"
+        ],
+        "zh": "Processing state of a persisted stock synchronization command."
       },
       {
         "name": "StockSyncStatus",
@@ -44228,6 +45614,190 @@
       "type": "String",
       "value": "\"T+1\"",
       "zh": "次日结。",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ORDINARY_REFUND_REQUEST",
+      "type": "String",
+      "value": "\"/internal/pay/refunds/request\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ORDINARY_REFUND_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/refunds/query\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ORDINARY_PAYMENT_INITIATE",
+      "type": "String",
+      "value": "\"/internal/pay/payments/initiate\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ORDINARY_PAYMENT_OPEN",
+      "type": "String",
+      "value": "\"/internal/pay/payments/open\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ORDINARY_PAYMENT_REFRESH",
+      "type": "String",
+      "value": "\"/internal/pay/payments/refresh\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ORDINARY_PAYMENT_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/payments/query\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ORDINARY_PAYMENT_SUCCESS",
+      "type": "String",
+      "value": "\"/internal/pay/payments/success\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ORDINARY_PAYMENT_CHANNEL_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/payments/channel-query\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MIGRATION_SOURCES",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/migrations/sources\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_ISSUER_LOCATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/issuers/locate\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_ISSUER_CHECK",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/issuers/check\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_ISSUER_OPTIONS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/issuers/options\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_ISSUER_REFRESH",
+      "type": "String",
+      "value": "\"/internal/stored-value/issuers/access-revisions\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MIGRATION_OPERATOR",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/migrations/operator\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MIGRATION_COMMAND",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/migrations/command\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MIGRATION_CAPABILITY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/migrations/capability\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MIGRATION_PAUSE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/migrations/pause\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MIGRATION_APPLY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/migrations/apply\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MIGRATION_PROBE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/migrations/probe\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_MIGRATION_PREPARE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/migrations/prepare\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_ISSUER_PREPARE_STORE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/issuers/prepare-store\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_ISSUER_FIND",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/issuers/find\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_ISSUER_CONFIGURE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/issuers/configure\"",
+      "zh": "",
       "module": "pay/pay-domain"
     },
     {
@@ -45255,6 +46825,406 @@
       "module": "pay/pay-domain"
     },
     {
+      "host": "PayInternalPaths",
+      "name": "SV_POLICY_LOCATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/policies/locate\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_POLICY_LIST",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/policies/list\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_POLICY_EVALUATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/policies/evaluate\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_POLICY_CONFIGURE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/policies/configure\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_RELEASE_CHECK",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/releases/check\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_RELEASE_PREPARE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/releases/prepare\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_RELEASE_ACTIVATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/releases/activate\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_RELEASE_STOP",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/releases/stop\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_POLICY_CAPABILITY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/policies/capability\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_POLICY_PLAN_BINDING",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/policies/plan-binding\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_WALLETS_ACCOUNTS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/wallets/accounts\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_WALLETS_SELECT",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/wallets/select\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_BRAND_CAPABILITY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/brands/capability\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_BRAND_ACTIVATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/brands/activate\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_EXECUTION_ISSUERS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/brand-operations/issuers\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_BRAND_RECHARGE_OPTIONS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/brand-operations/recharge-options\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_BRAND_RECHARGE_CONFIRM",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/brand-operations/confirm-offline\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_BRAND_RECHARGE_RESUME",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/brand-operations/resume\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_BRAND_RECHARGE_REPLAY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/brand-operations/replay\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_BRAND_RECHARGE_CANCEL_CREATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/brand-operations/cancel-create\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CONSUMER_ISSUERS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/consumer/issuers\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CONSUMER_ISSUER",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/consumer/issuer\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CONSUMER_LOCATE_ISSUER",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/consumer/locate-issuer\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CONSUMER_ISSUER_RECORDS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/consumer/issuer-records\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FUNDED_CUSTOMERS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/wallets/funded-customers\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_WALLETS_RECORDS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/wallets/records\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_CAPABILITIES",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/capabilities\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_DIRECTORY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/directory\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_SUMMARY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/summary\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_STORES",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/stores\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_ACTIVITIES",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/activities\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_LOCAL_ISSUERS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/local-issuers\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_LOCATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/locate\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_BILLS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/bills\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_DETAIL",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/detail\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_ITEMS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/items\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_EVENTS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/events\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_PAYMENTS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/payments\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_GENERATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/generate\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_RECONCILE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/reconcile\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_DISPUTE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/dispute\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_RESOLVE_DISPUTE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/resolve-dispute\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_ADJUST",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/adjust\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_REGISTER",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/register\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_CONFIRM",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/confirm\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_VOID_PAYMENT",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/void-payment\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_RESOLVE_PAYMENT",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/resolve-payment\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_MEMBERSHIP_TARGETS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/membership-targets\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_PREPARE_MEMBERSHIP",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/prepare-membership\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_COMMIT_MEMBERSHIP",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/commit-membership\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
       "host": "CouponQuotePolicy",
       "name": "FREIGHT_LINE",
       "type": "String",
@@ -45316,6 +47286,38 @@
       "type": "long",
       "value": "4500L",
       "zh": "税率硬上限（万分比）。",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "StoredValueSummaryQuery",
+      "name": "JOIN",
+      "type": "String",
+      "value": "\" FROM sv_entry e JOIN sv_voucher v ON CAST(v.tenant_no AS BINARY(256))=CAST(e.tenant_no AS BINARY(256)) AND CAST(v.voucher_no AS BINARY(256))=CAST(e.voucher_no AS BINARY(256)) JOIN sv_lot l ON CAST(l.tenant_no AS BINARY(256))=CAST(e.tenant_no AS BINARY(256)) AND CAST(l.lot_no AS BINARY(256))=CAST(e.lot_no AS BINARY(256)) JOIN sv_account a ON CAST(a.tenant_no AS BINARY(256))=CAST(l.tenant_no AS BINARY(256)) AND CAST(a.account_no AS BINARY(256))=CAST(l.account_no AS BINARY(256)) JOIN sv_recharge r ON CAST(r.tenant_no AS BINARY(256))=CAST(l.tenant_no AS BINARY(256)) AND CAST(r.recharge_no AS BINARY(256))=CAST(l.recharge_no AS BINARY(256)) LEFT JOIN sv_statement s ON CAST(s.tenant_no AS BINARY(256))=CAST(v.tenant_no AS BINARY(256)) AND CAST(s.voucher_no AS BINARY(256))=CAST(v.voucher_no AS BINARY(256)) AND s.deleted=0\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "StoredValueSummaryQuery",
+      "name": "BOUNDS",
+      "type": "String",
+      "value": "\" CROSS JOIN(SELECT CAST(? AS DATETIME(3)) AS start_at,CAST(? AS DATETIME(3)) AS end_at) period_scope\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "StoredValueSummaryQuery",
+      "name": "WINDOW",
+      "type": "String",
+      "value": "\"v.occurred_at>=period_scope.start_at AND v.occurred_at<period_scope.end_at\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "StoredValueSummaryQuery",
+      "name": "TOTALS",
+      "type": "String",
+      "value": "\"COALESCE(SUM(CASE WHEN v.occurred_at<period_scope.start_at THEN \"+DELTA+\" ELSE 0 END),0) AS opening,COALESCE(SUM(CASE WHEN \"+WINDOW+\" AND v.biz_type='RECHARGE' THEN e.principal_delta ELSE 0 END),0) AS paid,COALESCE(SUM(CASE WHEN \"+WINDOW+\" AND v.biz_type='RECHARGE' THEN e.bonus_delta ELSE 0 END),0) AS bonus,COALESCE(SUM(CASE WHEN \"+WINDOW+\" AND v.biz_type='CONSUME' THEN -\"+DELTA+\" ELSE 0 END),0) AS consumed,COALESCE(SUM(CASE WHEN \"+WINDOW+\" AND v.biz_type NOT IN ('RECHARGE','CONSUME') THEN \"+DELTA+\" ELSE 0 END),0) AS reversed,COALESCE(SUM(CASE WHEN v.occurred_at<period_scope.end_at THEN \"+DELTA+\" ELSE 0 END),0) AS closing,COUNT(DISTINCT CASE WHEN \"+WINDOW+\" AND v.biz_type='RECHARGE' THEN v.voucher_no END) AS recharges,COUNT(DISTINCT CASE WHEN \"+WINDOW+\" AND v.biz_type='CONSUME' THEN v.voucher_no END) AS uses,COUNT(DISTINCT CASE WHEN \"+WINDOW+\" THEN a.customer_no END) AS customers,COALESCE(MAX(e.id),0) AS watermark,COALESCE(SUM(CASE WHEN s.voucher_no IS NULL OR s.store_no IS NULL OR l.issuer_no IS NULL OR r.issuer_no IS NULL OR l.release_no IS NULL OR CAST(l.issuer_no AS BINARY(256))<>CAST(a.issuer_no AS BINARY(256)) OR CAST(r.issuer_no AS BINARY(256))<>CAST(a.issuer_no AS BINARY(256)) THEN 1 ELSE 0 END),0) AS missing\"",
+      "zh": "",
       "module": "pay/pay-domain"
     },
     {
@@ -45402,7 +47404,7 @@
       "host": "Fulfillments",
       "name": "ALL",
       "type": "Set<String>",
-      "value": "Set.of( STORE_PICKUP, NEIGHBOR_PICKUP, MERCHANT_DELIVERY, EXPRESS, STORE_VERIFY, APPOINTMENT)",
+      "value": "Set.of( STORE_PICKUP, NEIGHBOR_PICKUP, MERCHANT_DELIVERY, EXPRESS, STORE_VERIFY, APPOINTMENT, DINE_IN)",
       "zh": "",
       "module": "shop-base"
     },
@@ -45727,6 +47729,22 @@
       "module": "shop-base"
     },
     {
+      "host": "StoredValueMembership",
+      "name": "COORDINATION_IMPLEMENTATION_PROTOCOL",
+      "type": "int",
+      "value": "0",
+      "zh": "Build-level capability, raised only when the Core saga and central-collection proof are implemented and verified.",
+      "module": "shop-base"
+    },
+    {
+      "host": "StoredValuePolicies",
+      "name": "TARGET_TYPES",
+      "type": "Set<String>",
+      "value": "Set.of(\"SPACE\", \"BRAND_STORES\", \"STORE\")",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
       "host": "InternalHttp",
       "name": "TOKEN_HEADER",
       "type": "String",
@@ -45836,6 +47854,14 @@
       "type": "String",
       "value": "\"biz:stock\"",
       "zh": "改库存（含门店库存）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "REPORT_EXPORT",
+      "type": "String",
+      "value": "\"biz:report:export\"",
+      "zh": "",
       "module": "shop-base-auth"
     },
     {
@@ -46018,7 +48044,7 @@
       "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(REPORT_EXPORT, \"导出经营报表\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },
@@ -47217,16 +49243,16 @@
     {
       "host": "OrdSubOrder",
       "name": "PAID",
-      "type": "java.util.Set<String>",
-      "value": "java.util.Set.of(WAIT_FULFILL, FULFILLING, COMPLETED)",
+      "type": "Set<String>",
+      "value": "Set.of(WAIT_FULFILL, FULFILLING, COMPLETED)",
       "zh": "成交口径的唯一定义处。",
       "module": "shop-core"
     },
     {
       "host": "OrdSubOrder",
       "name": "TRANSACTED",
-      "type": "java.util.Set<String>",
-      "value": "java.util.Set.of(WAIT_FULFILL, FULFILLING, COMPLETED, REFUNDED)",
+      "type": "Set<String>",
+      "value": "Set.of(WAIT_FULFILL, FULFILLING, COMPLETED, REFUNDED)",
       "zh": "成交口径 + 已退款：GMV 是毛成交额，退款单要留在里面。",
       "module": "shop-core"
     },
@@ -47234,7 +49260,7 @@
       "host": "OrdSubOrder",
       "name": "STORE_PICKUP",
       "type": "String",
-      "value": "ai.neargo.shop.common.Fulfillments.STORE_PICKUP",
+      "value": "Fulfillments.STORE_PICKUP",
       "zh": "fulfillment 列的取值域。",
       "module": "shop-core"
     },
@@ -47242,7 +49268,7 @@
       "host": "OrdSubOrder",
       "name": "NEIGHBOR_PICKUP",
       "type": "String",
-      "value": "ai.neargo.shop.common.Fulfillments.NEIGHBOR_PICKUP",
+      "value": "Fulfillments.NEIGHBOR_PICKUP",
       "zh": "",
       "module": "shop-core"
     },
@@ -47250,7 +49276,7 @@
       "host": "OrdSubOrder",
       "name": "MERCHANT_DELIVERY",
       "type": "String",
-      "value": "ai.neargo.shop.common.Fulfillments.MERCHANT_DELIVERY",
+      "value": "Fulfillments.MERCHANT_DELIVERY",
       "zh": "",
       "module": "shop-core"
     },
@@ -47258,7 +49284,7 @@
       "host": "OrdSubOrder",
       "name": "EXPRESS",
       "type": "String",
-      "value": "ai.neargo.shop.common.Fulfillments.EXPRESS",
+      "value": "Fulfillments.EXPRESS",
       "zh": "",
       "module": "shop-core"
     },
@@ -47266,7 +49292,7 @@
       "host": "OrdSubOrder",
       "name": "STORE_VERIFY",
       "type": "String",
-      "value": "ai.neargo.shop.common.Fulfillments.STORE_VERIFY",
+      "value": "Fulfillments.STORE_VERIFY",
       "zh": "到店核销（服务品类）。",
       "module": "shop-core"
     },
@@ -47503,6 +49529,14 @@
       "module": "shop-merchant"
     },
     {
+      "host": "StoredValueFinancialAuthorityService",
+      "name": "FINANCIAL",
+      "type": "Set<String>",
+      "value": "Set.of(\"sv.settlement.read\",\"sv.settlement.generate\",\"sv.settlement.reconcile\",\"sv.settlement.dispute\",\"sv.settlement.dispute.resolve\",\"sv.settlement.adjust\",\"sv.settlement.payment.register\",\"sv.settlement.receipt.confirm\",\"sv.settlement.payment.void\",\"sv.settlement.audit\",\"sv.issuer.collection.confirm\")",
+      "zh": "",
+      "module": "shop-merchant"
+    },
+    {
       "host": "MchAdmissionPolicy",
       "name": "UNLIMITED",
       "type": "long",
@@ -47573,6 +49607,46 @@
       "value": "java.util.Set.of(MANAGER, CLERK, PICKER, COURIER, CS)",
       "zh": "预置的可授予角色。",
       "module": "shop-merchant"
+    },
+    {
+      "host": "ReportCsvWriter",
+      "name": "MAX_BYTES",
+      "type": "int",
+      "value": "1048576",
+      "zh": "",
+      "module": "shop-report"
+    },
+    {
+      "host": "ReportProfitCalculator",
+      "name": "GROSS",
+      "type": "String",
+      "value": "\"GOODS_GROSS_PROFIT_AMOUNT\",GROSS_RATE=\"GOODS_GROSS_PROFIT_RATE\"",
+      "zh": "",
+      "module": "shop-report"
+    },
+    {
+      "host": "ReportProfitCalculator",
+      "name": "NET",
+      "type": "String",
+      "value": "\"OPERATING_NET_PROFIT_AMOUNT\",NET_RATE=\"OPERATING_NET_PROFIT_RATE\"",
+      "zh": "",
+      "module": "shop-report"
+    },
+    {
+      "host": "ReportProfitCalculator",
+      "name": "OUTPUTS",
+      "type": "Set<String>",
+      "value": "Set.of(GROSS,GROSS_RATE,NET,NET_RATE)",
+      "zh": "",
+      "module": "shop-report"
+    },
+    {
+      "host": "ReportProfitCalculator",
+      "name": "INPUTS",
+      "type": "List<String>",
+      "value": "List.of(\"GOODS_TRANSACTED_NET_AMOUNT\",\"GOODS_SALES_COST_AMOUNT\", \"OPERATING_OTHER_INCOME_AMOUNT\",\"PAYMENT_ALLOCATED_FEE_COST_AMOUNT\",\"DELIVERY_FEE_COST_AMOUNT\", \"PLATFORM_COMMISSION_AMOUNT\",\"OPERATING_EXPENSE_AMOUNT\",\"OPERATING_UNALLOCATED_LOSS_AMOUNT\")",
+      "zh": "",
+      "module": "shop-report"
     },
     {
       "host": "OutboxDispatcher",

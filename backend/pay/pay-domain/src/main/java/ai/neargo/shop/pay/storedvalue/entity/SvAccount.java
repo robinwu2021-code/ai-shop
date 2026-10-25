@@ -9,6 +9,9 @@ import lombok.Setter;
 @Setter
 @TableName("sv_account")
 public class SvAccount extends BaseEntity {
+    private String issuerNo;
+    private String issuerVersionNo;
+
     private String accountNo;
     private String userNo;
     private String customerNo;

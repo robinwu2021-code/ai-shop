@@ -1,4 +1,7 @@
 package ai.neargo.shop.payclient.impl;
+import ai.neargo.shop.spi.storedvalue.StoredValueCustomerBindingPort;
+import org.springframework.beans.factory.annotation.Autowired;
+
 
 import ai.neargo.shop.payclient.StoredValueRechargeAppService;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
@@ -24,8 +27,8 @@ import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.UsageItem;
 @Service
 @ConditionalOnProperty(name = "shop.pay.deployment", havingValue = "embedded", matchIfMissing = true)
 public class StoredValueRechargeAppServiceImpl implements StoredValueRechargeAppService {
-    @org.springframework.beans.factory.annotation.Autowired
-    private ai.neargo.shop.spi.storedvalue.StoredValueCustomerBindingPort bindings;
+    @Autowired
+    private StoredValueCustomerBindingPort bindings;
     private final StoredValueRechargeService recharges;
     private final StoredValueCreditService credits;
     private final StoredValueQueryService queries;

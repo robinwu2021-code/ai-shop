@@ -165,6 +165,7 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     // ---------------------------------------------------------------- ② 入批
 
     @Override
+    @Transactional("payTxManager")
     public int collectIntoBatches() {
         return collectIntoBatches(null);
     }

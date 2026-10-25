@@ -11,6 +11,8 @@ import ai.neargo.shop.printing.mapper.PrintMappers.JobMapper;
 import ai.neargo.shop.printing.mapper.PrintMappers.RouteMapper;
 import ai.neargo.shop.printing.mapper.PrintMappers.TemplateMapper;
 import ai.neargo.shop.printing.service.PrintService;
+import ai.neargo.shop.printing.port.PrintPortImpl;
+import ai.neargo.shop.spi.printing.PrintPort;
 import ai.neargo.shop.printing.service.impl.PrintServiceImpl;
 import java.time.Clock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -36,6 +38,10 @@ public class PrintingConfiguration {
     }
 
     @Bean PrintDataScopeRegistration printDataScopeRegistration() { return new PrintDataScopeRegistration(); }
+
+    @Bean
+    @ConditionalOnMissingBean(PrintPort.class)
+    PrintPort printPort(PrintService service) { return new PrintPortImpl(service); }
 
     @Bean
     @ConditionalOnMissingBean(PrintService.class)

@@ -14,7 +14,7 @@ import { traceStatusKey } from "@shared/strategies/trace-step";
 import { api } from "@/api";
 import { ApiError } from "@/api";
 import { ROUTES } from "@shared/utils/constants";
-import { useUserStore } from "@/stores/user";
+import { loadRecipientTracking, supportsRecipientMiniLink, openRecipientMiniLink } from "@/ports/recipient-track";
 import { openWxWaybillTracking } from "@/ports/wx-logistics";
 import type { TrackView } from "@shared/types";
 
@@ -39,22 +39,9 @@ async function load() {
   miniLink.value = "";
   miniLinkLoaded.value = false;
   try {
-    // #ifdef MP-WEIXIN
-    // 小程序：进来先绑手机号（走登录页），再按「本人」校验看件（TDD §3）。
-    const user = useUserStore();
-    if (!user.isPhoneLogin) {
-      loaded.value = true;
-      uni.redirectTo({
-        url: `${ROUTES.login}?redirect=${encodeURIComponent(ROUTES.track + "?t=" + token.value)}`,
-      });
-      return;
-    }
-    view.value = token.value ? await api.trackMine(token.value) : null;
-    // #endif
-    // #ifndef MP-WEIXIN
-    // H5：免登录收窄视图，谁都能看一眼
-    view.value = token.value ? await api.track(token.value) : null;
-    // #endif
+    const result = await loadRecipientTracking(token.value);
+    if (result.redirected) return;
+    view.value = result.view;
   } catch (e) {
     // 403 = 登录号与收货号不一致（非本人）；其余当失效
     if (e instanceof ApiError && e.code === 80103) {
@@ -70,10 +57,11 @@ async function load() {
 }
 
 // H5 用微信 URL Link 唤起小程序；微信拒绝生成时说明可留在本页查看。
+const miniLinkSupported = supportsRecipientMiniLink();
 const miniLink = ref("");
 const miniLinkLoaded = ref(false);
 async function loadMiniLink() {
-  // #ifdef H5
+  if (!miniLinkSupported) return;
   try {
     const r = token.value ? await api.trackMiniLink(token.value) : null;
     miniLink.value = r?.url ?? "";
@@ -82,14 +70,9 @@ async function loadMiniLink() {
   } finally {
     miniLinkLoaded.value = true;
   }
-  // #endif
 }
 function openInMini() {
-  // #ifdef H5
-  if (miniLink.value) {
-    window.location.href = miniLink.value;
-  }
-  // #endif
+  openRecipientMiniLink(miniLink.value);
 }
 
 function goHome() {
@@ -142,13 +125,13 @@ onShareAppMessage(() => ({
         <text v-if="view.buyerNickname" class="txt-caption sh-muted">
           {{ $t("track.orderedBy") }}：{{ view.buyerNickname }}
         </text>
-        <!-- #ifdef H5 -->
+        <template v-if="miniLinkSupported">
         <view v-if="miniLink" class="sh-btn sh-btn--sm trk-mini" @tap="openInMini">
           {{ $t("track.openInMini") }}
         </view>
         <text v-if="miniLink" class="txt-caption sh-muted trk-mini-hint">{{ $t("track.miniJumpHint") }}</text>
         <text v-else-if="miniLinkLoaded" class="txt-caption sh-muted trk-mini-hint">{{ $t("track.miniUnavailable") }}</text>
-        <!-- #endif -->
+        </template>
       </view>
 
       <!-- 物流状态 + 轨迹 -->

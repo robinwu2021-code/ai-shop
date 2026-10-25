@@ -125,6 +125,6 @@ public class StoredValueSchemaAuthorization {
         if(!receipt.equals(result.receiptNo())||!manifest.equals(result.manifestNo())||!inventory.equals(result.inventoryHash())
                 ||!state.equals(result.state())||issuers!=result.issuerCount()||accounts!=result.accountCount())conflict();
     }
-    static String hash(String s){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(s.getBytes(StandardCharsets.UTF_8)));}catch(NoSuchAlgorithmException impossible){throw new IllegalStateException(impossible);}}
+    public static String hash(String s){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(s.getBytes(StandardCharsets.UTF_8)));}catch(NoSuchAlgorithmException impossible){throw new IllegalStateException(impossible);}}
     private static void conflict(){throw BizException.of(ErrorCode.CONFLICT);}
 }

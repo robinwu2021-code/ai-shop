@@ -1,4 +1,6 @@
 package ai.neargo.shop.payclient;
+import org.springframework.beans.factory.annotation.Autowired;
+
 
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService;
 import ai.neargo.shop.pay.points.admin.PointsInspectionService;
@@ -34,7 +36,7 @@ public class OrderPointsEarningViewService {
     }
     private OrderPointsRefundCoordinator refunds;
     private ai.neargo.shop.trade.order.mapper.OrderPointsRefundBindingMapper refundRows;
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public void setRefundProgress(OrderPointsRefundCoordinator refunds,ai.neargo.shop.trade.order.mapper.OrderPointsRefundBindingMapper rows) {this.refunds=refunds;this.refundRows=rows;}
     private View decorate(View v,OrderPointsBindingService.Admission a) {
         String redemption="NONE",refund="NONE";long returned=0;

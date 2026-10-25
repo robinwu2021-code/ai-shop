@@ -140,49 +140,56 @@
           "type": "varchar(32)",
           "label": "基础商品 Product",
           "ref": "prd_goods.goods_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "dish_kind",
           "type": "varchar(16)",
           "label": "类型 SINGLE / BUNDLE / ADDON",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "prep_seconds",
           "type": "int",
           "label": "建议制作秒数 Prep seconds",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "status",
           "type": "varchar(16)",
           "label": "配置状态 Status",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "presentation",
           "type": "json",
           "label": "餐饮别名/多语言/标签/过敏展示覆盖；基础图文仍引用商品",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "measurement_policy",
           "type": "json",
           "label": "单位及称重允差，成交计量须核心支持",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "config_version",
           "type": "bigint",
           "label": "餐饮属性规则版本",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -191,7 +198,27 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_dish",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbDish",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbDish.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.DishMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.DishService",
+          "ai.neargo.shop.food.service.OptionGroupService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_bundle",
@@ -203,28 +230,32 @@
           "type": "varchar(32)",
           "label": "套餐规格 Bundle SKU",
           "ref": "prd_sku.sku_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "config_version",
           "type": "bigint",
           "label": "配置版本 Version",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "status",
           "type": "varchar(16)",
           "label": "状态 Status",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "published_revision_no",
           "type": "varchar(32)",
           "label": "当前已生效配置快照",
           "ref": "fnb_config_revision.revision_no",
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -233,7 +264,26 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_bundle",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbBundle",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbBundle.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.BundleMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.BundleService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_bundle_group",
@@ -245,49 +295,56 @@
           "type": "varchar(32)",
           "label": "选购组编号 Group ID",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "bundle_sku_no",
           "type": "varchar(32)",
           "label": "所属套餐 Bundle",
           "ref": "fnb_bundle.sku_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "name",
           "type": "varchar(64)",
           "label": "组名 Group name",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "min_qty",
           "type": "decimal(18,6)",
           "label": "最少选几份 Minimum",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "max_qty",
           "type": "decimal(18,6)",
           "label": "最多选几份 Maximum",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "base_sku_no",
           "type": "varchar(32)",
           "label": "差价基准 SKU",
           "ref": "prd_sku.sku_no",
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V1"
         },
         {
           "name": "sort_no",
           "type": "int",
           "label": "展示顺序 Sort",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -296,7 +353,26 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_bundle_group",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbBundleGroup",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbBundleGroup.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.BundleGroupMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.BundleService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_bundle_choice",
@@ -308,63 +384,72 @@
           "type": "varchar(32)",
           "label": "选项编号 Choice ID",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "group_no",
           "type": "varchar(32)",
           "label": "所属组 Group",
           "ref": "fnb_bundle_group.group_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "sku_no",
           "type": "varchar(32)",
           "label": "成员规格 Member SKU",
           "ref": "prd_sku.sku_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "units_per_pick",
           "type": "decimal(12,3)",
           "label": "每次选择份数 Units",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "min_qty",
           "type": "decimal(18,6)",
           "label": "单项最少选择 Min picks",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "max_qty",
           "type": "decimal(18,6)",
           "label": "单项最多选择 Max picks",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "default_qty",
           "type": "decimal(18,6)",
           "label": "默认选择 Default picks",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "price_mode",
           "type": "varchar(24)",
           "label": "计价 INCLUDED / ADD_SKU / DIFF_BASE",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "sort_no",
           "type": "int",
           "label": "顺序 Sort",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -377,7 +462,26 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_bundle_choice",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbBundleChoice",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbBundleChoice.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.BundleChoiceMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.BundleService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_modifier",
@@ -389,42 +493,48 @@
           "type": "varchar(32)",
           "label": "配料编号 Modifier ID",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "name",
           "type": "varchar(64)",
           "label": "名称 Name",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "kind",
           "type": "varchar(16)",
           "label": "类型 ADDON / COMBO；免费口味复用SPEC_VALUE",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "sales_sku_no",
           "type": "varchar(32)",
           "label": "计价规格 Pricing SKU",
           "ref": "prd_sku.sku_no",
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V1"
         },
         {
           "name": "status",
           "type": "varchar(16)",
           "label": "状态 Status",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "published_revision_no",
           "type": "varchar(32)",
           "label": "当前已生效配置快照",
           "ref": "fnb_config_revision.revision_no",
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -433,7 +543,28 @@
         ]
       ],
       "domain": "B",
-      "rules": "kind仅ADDON/COMBO；收费对象引用sales_sku_no；口味值复用prd_spec_value，不另建字典。"
+      "rules": "kind仅ADDON/COMBO；收费对象引用sales_sku_no；口味值复用prd_spec_value，不另建字典。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_modifier",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbModifier",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbModifier.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.ModifierMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.ConfigRevisionService",
+          "ai.neargo.shop.food.service.ModifierService",
+          "ai.neargo.shop.food.service.OptionGroupService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_modifier_component",
@@ -445,28 +576,32 @@
           "type": "varchar(32)",
           "label": "组合明细编号 Component ID",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "combo_no",
           "type": "varchar(32)",
           "label": "组合配料 Combo",
           "ref": "fnb_modifier.modifier_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "member_no",
           "type": "varchar(32)",
           "label": "单项配料 Member",
           "ref": "fnb_modifier.modifier_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "quantity",
           "type": "decimal(12,3)",
           "label": "每组合用量 Quantity",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -479,7 +614,27 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_modifier_component",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbModifierComponent",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbModifierComponent.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.ModifierComponentMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.ConfigRevisionService",
+          "ai.neargo.shop.food.service.ModifierService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_option_group",
@@ -491,49 +646,56 @@
           "type": "varchar(32)",
           "label": "组编号 Group ID",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "name",
           "type": "varchar(64)",
           "label": "组名",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "min_qty",
           "type": "decimal(18,6)",
           "label": "最少总选择量",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "max_qty",
           "type": "decimal(18,6)",
           "label": "最多总选择量",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "published_revision_no",
           "type": "varchar(32)",
           "label": "当前已生效配置快照",
           "ref": "fnb_config_revision.revision_no",
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V1"
         },
         {
           "name": "status",
           "type": "varchar(16)",
           "label": "DRAFT / ACTIVE / DISABLED",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "selection_rules",
           "type": "json",
           "label": "有schema的互斥/依赖约束，按选项号引用",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -542,7 +704,29 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_option_group",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOptionGroup",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbOptionGroup.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.ConfigRevisionService",
+          "ai.neargo.shop.food.service.DishService",
+          "ai.neargo.shop.food.service.OptionGroupService",
+          "ai.neargo.shop.food.service.RecipeService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_option_group_item",
@@ -554,63 +738,73 @@
           "type": "varchar(32)",
           "label": "选项编号",
           "nullable": false,
-          "ref": null
+          "ref": null,
+          "introducedIn": "V1"
         },
         {
           "name": "group_no",
           "type": "varchar(32)",
           "label": "选择组",
           "nullable": false,
-          "ref": "fnb_option_group.group_no"
+          "ref": "fnb_option_group.group_no",
+          "introducedIn": "V1"
         },
         {
           "name": "source_kind",
           "type": "varchar(16)",
           "label": "SPEC_VALUE/MODIFIER",
           "nullable": false,
-          "ref": null
+          "ref": null,
+          "introducedIn": "V1"
         },
         {
           "name": "spec_value_no",
           "type": "varchar(64)",
           "label": "基础口味值",
           "nullable": true,
-          "ref": "prd_spec_value.value_no"
+          "ref": "prd_spec_value.value_no",
+          "introducedIn": "V1",
+          "modifiedIn": "V3"
         },
         {
           "name": "modifier_no",
           "type": "varchar(32)",
           "label": "餐饮配料",
           "nullable": true,
-          "ref": "fnb_modifier.modifier_no"
+          "ref": "fnb_modifier.modifier_no",
+          "introducedIn": "V1"
         },
         {
           "name": "max_qty",
           "type": "decimal(18,6)",
           "label": "单项上限",
           "nullable": false,
-          "ref": null
+          "ref": null,
+          "introducedIn": "V1"
         },
         {
           "name": "default_qty",
           "type": "decimal(18,6)",
           "label": "默认数量",
           "nullable": false,
-          "ref": null
+          "ref": null,
+          "introducedIn": "V1"
         },
         {
           "name": "sort_no",
           "type": "int",
           "label": "排序",
           "nullable": false,
-          "ref": null
+          "ref": null,
+          "introducedIn": "V1"
         },
         {
           "name": "min_qty",
           "type": "decimal(18,6)",
           "label": "本选项最小选择量",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -627,7 +821,29 @@
         ]
       ],
       "domain": "B",
-      "rules": "source_kind决定且仅允许一个引用非空；SPEC_VALUE须经prd_spec_dim语义及组绑定校验；不直接用PROP描述值作为顾客选择授权。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
+      "rules": "source_kind决定且仅允许一个引用非空；SPEC_VALUE须经prd_spec_dim语义及组绑定校验；不直接用PROP描述值作为顾客选择授权。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_option_group_item",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOptionGroupItem",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbOptionGroupItem.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.ConfigRevisionService",
+          "ai.neargo.shop.food.service.DishService",
+          "ai.neargo.shop.food.service.OptionGroupService",
+          "ai.neargo.shop.food.service.RecipeService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_dish_option_group",
@@ -639,21 +855,24 @@
           "type": "varchar(32)",
           "label": "菜品 Product",
           "ref": "fnb_dish.goods_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "group_no",
           "type": "varchar(32)",
           "label": "选配组 Group",
           "ref": "fnb_option_group.group_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "sort_no",
           "type": "int",
           "label": "顺序 Sort",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -663,7 +882,27 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_dish_option_group",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbDishOptionGroup",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbDishOptionGroup.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.DishOptionGroupMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.DishService",
+          "ai.neargo.shop.food.service.OptionGroupService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_menu",
@@ -675,77 +914,88 @@
           "type": "varchar(32)",
           "label": "餐牌编号 Menu ID",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "name",
           "type": "varchar(64)",
           "label": "名称 Name",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "menu_type",
           "type": "varchar(16)",
           "label": "类型 STANDARD / TIME / SEASON / EVENT",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "timezone",
           "type": "varchar(64)",
           "label": "时区 Time zone",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "valid_from",
           "type": "date",
           "label": "生效日 Valid from",
           "ref": null,
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V1"
         },
         {
           "name": "valid_to",
           "type": "date",
           "label": "结束日 Valid to",
           "ref": null,
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V1"
         },
         {
           "name": "priority",
           "type": "int",
           "label": "互斥组内优先级 Priority",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "exclusive_group",
           "type": "varchar(32)",
           "label": "互斥餐牌组 Exclusive group",
           "ref": null,
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V1"
         },
         {
           "name": "status",
           "type": "varchar(16)",
           "label": "DRAFT / PUBLISHED / DISABLED",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "config_version",
           "type": "bigint",
           "label": "配置版本 Version",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "published_revision_no",
           "type": "varchar(32)",
           "label": "当前已生效配置快照",
           "ref": "fnb_config_revision.revision_no",
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -754,7 +1004,28 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_menu",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenu",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbMenu.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.MenuMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.CatalogService",
+          "ai.neargo.shop.food.service.MenuChannelBindingService",
+          "ai.neargo.shop.food.service.MenuService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_menu_store",
@@ -766,21 +1037,24 @@
           "type": "varchar(32)",
           "label": "餐牌 Menu",
           "ref": "fnb_menu.menu_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "store_no",
           "type": "varchar(32)",
           "label": "门店 Store",
           "ref": "mch_store.store_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "override_revision_no",
           "type": "varchar(32)",
           "label": "获准门店差异快照",
           "ref": "fnb_config_revision.revision_no",
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -790,7 +1064,28 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_menu_store",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuStore",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbMenuStore.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.MenuStoreMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.CatalogService",
+          "ai.neargo.shop.food.service.MenuChannelBindingService",
+          "ai.neargo.shop.food.service.MenuService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_menu_context",
@@ -802,49 +1097,56 @@
           "type": "varchar(32)",
           "label": "范围编号 Context ID",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "menu_no",
           "type": "varchar(32)",
           "label": "餐牌 Menu",
           "ref": "fnb_menu.menu_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "order_source",
           "type": "varchar(24)",
           "label": "下单来源 Source",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "fulfillment",
           "type": "varchar(24)",
           "label": "履约方式 Fulfillment",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "channel_binding_no",
           "type": "varchar(32)",
           "label": "外送绑定；本地为空",
           "ref": "fnb_menu_channel_binding.binding_no",
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V7"
         },
         {
           "name": "channel_scope_key",
           "type": "varchar(32)",
           "label": "服务端归一为LOCAL或绑定号",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V7"
         },
         {
           "name": "price_policy_ref",
           "type": "varchar(64)",
           "label": "报价权威价格策略引用",
           "ref": null,
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V7"
         }
       ],
       "unique": [
@@ -859,7 +1161,26 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。；channel_scope_key不接受客户端设置，LOCAL与绑定号归一；外送不得回退堂食价，策略未受权核验保持草稿。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。；channel_scope_key不接受客户端设置，LOCAL与绑定号归一；外送不得回退堂食价，策略未受权核验保持草稿。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_menu_context",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuContext",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbMenuContext.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.MenuContextMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.MenuService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_menu_schedule",
@@ -871,42 +1192,48 @@
           "type": "varchar(32)",
           "label": "时段编号 Schedule ID",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "menu_no",
           "type": "varchar(32)",
           "label": "餐牌 Menu",
           "ref": "fnb_menu.menu_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "weekday",
           "type": "tinyint",
           "label": "周一至周日 1-7",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "start_time",
           "type": "time",
           "label": "开始时间 Start",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "end_time",
           "type": "time",
           "label": "结束时间 End",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "end_day_offset",
           "type": "tinyint",
           "label": "跨日偏移 0 / 1",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -915,7 +1242,26 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_menu_schedule",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuSchedule",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbMenuSchedule.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.MenuScheduleMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.MenuService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_menu_exception",
@@ -927,49 +1273,56 @@
           "type": "varchar(32)",
           "label": "例外编号 Exception ID",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "menu_no",
           "type": "varchar(32)",
           "label": "餐牌 Menu",
           "ref": "fnb_menu.menu_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "local_date",
           "type": "date",
           "label": "本地日期 Local date",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "mode",
           "type": "varchar(16)",
           "label": "CLOSED / OPEN",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "start_time",
           "type": "time",
           "label": "营业开始 Start",
           "ref": null,
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V1"
         },
         {
           "name": "end_time",
           "type": "time",
           "label": "营业结束 End",
           "ref": null,
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V1"
         },
         {
           "name": "end_day_offset",
           "type": "tinyint",
           "label": "跨日偏移 Offset",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -982,7 +1335,26 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_menu_exception",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuException",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbMenuException.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.MenuExceptionMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.MenuService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_menu_category",
@@ -994,28 +1366,32 @@
           "type": "varchar(32)",
           "label": "分类编号 Category ID",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "menu_no",
           "type": "varchar(32)",
           "label": "所属餐牌 Menu",
           "ref": "fnb_menu.menu_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "name",
           "type": "varchar(64)",
           "label": "名称 Name",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "sort_no",
           "type": "int",
           "label": "顺序 Sort",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -1024,7 +1400,24 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_menu_category",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuCategory",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbMenuCategory.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.MenuCategoryMapper"
+        ],
+        "serviceClasses": [],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_menu_item",
@@ -1036,49 +1429,65 @@
           "type": "varchar(32)",
           "label": "条目编号 Item ID",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "category_no",
           "type": "varchar(32)",
           "label": "所属分类 Category",
           "ref": "fnb_menu_category.category_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "goods_no",
           "type": "varchar(32)",
           "label": "基础商品 Product",
           "ref": "prd_goods.goods_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "sort_no",
           "type": "int",
           "label": "顺序 Sort",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "enabled",
           "type": "boolean",
           "label": "是否启用 Enabled",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "sku_scope",
           "type": "varchar(16)",
           "label": "ALL / EXPLICIT；EXPLICIT必须非空",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "option_mode",
           "type": "varchar(16)",
           "label": "INHERIT / REPLACE；REPLACE空组禁选",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V6"
+        },
+        {
+          "name": "price_overrides",
+          "type": "json",
+          "label": "Published restaurant menu SKU price overrides; no native product price mutation",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V25",
+          "sqlDeclaration": "price_overrides JSON NULL COMMENT 'Published restaurant menu SKU price overrides; no native product price mutation'"
         }
       ],
       "unique": [
@@ -1091,7 +1500,24 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_menu_item",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuItem",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbMenuItem.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.MenuItemMapper"
+        ],
+        "serviceClasses": [],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_menu_item_sku",
@@ -1103,28 +1529,32 @@
           "type": "varchar(32)",
           "label": "餐牌条目 Menu item",
           "ref": "fnb_menu_item.menu_item_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "sku_no",
           "type": "varchar(32)",
           "label": "可售规格 SKU",
           "ref": "prd_sku.sku_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "selection_mode",
           "type": "varchar(16)",
           "label": "EXPLICIT；空白名单语义存父项",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "recipe_no",
           "type": "varchar(32)",
           "label": "同SKU配方变体引用",
           "ref": "fnb_recipe.recipe_no",
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V6"
         }
       ],
       "unique": [
@@ -1134,7 +1564,24 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_menu_item_sku",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuItemSku",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbMenuItemSku.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.MenuItemSkuMapper"
+        ],
+        "serviceClasses": [],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_station",
@@ -1146,42 +1593,48 @@
           "type": "varchar(32)",
           "label": "工位编号 Station ID",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "store_no",
           "type": "varchar(32)",
           "label": "所属门店 Store",
           "ref": "mch_store.store_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "name",
           "type": "varchar(64)",
           "label": "名称 Name",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "station_type",
           "type": "varchar(24)",
           "label": "HOT / COLD / BAR / PACK",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "enabled",
           "type": "boolean",
           "label": "启用 Enabled",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "published_revision_no",
           "type": "varchar(32)",
           "label": "当前已生效配置快照",
           "ref": "fnb_config_revision.revision_no",
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -1190,7 +1643,28 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_station",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbStation",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbStation.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.StationMapper",
+          "ai.neargo.shop.food.mapper.FoodStationRuntimeMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.FoodStationRuntimeService",
+          "ai.neargo.shop.food.service.StationService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_sku_station",
@@ -1202,35 +1676,40 @@
           "type": "varchar(32)",
           "label": "菜品或配料规格 SKU",
           "ref": "prd_sku.sku_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "station_no",
           "type": "varchar(32)",
           "label": "制作工位 Station",
           "ref": "fnb_station.station_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "task_role",
           "type": "varchar(16)",
           "label": "MAKE / ASSEMBLE / PACK",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "route_version",
           "type": "bigint",
           "label": "路由版本 Version",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "store_no",
           "type": "varchar(32)",
           "label": "路由适用门店",
           "ref": "mch_store.store_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -1242,175 +1721,372 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。；派工时按受理瞬间route_version冻结路由到ticket/task，即使当前头被改也不能重算旧任务目标。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。；派工时按受理瞬间route_version冻结路由到ticket/task，即使当前头被改也不能重算旧任务目标。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_sku_station",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbSkuStation",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbSkuStation.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.SkuStationMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.StationService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
+      "domain": "D",
       "name": "fnb_order_line",
-      "label": "餐饮点单行 Food order line",
-      "existing": false,
+      "label": "餐饮源行快照",
       "fields": [
         {
           "name": "food_line_no",
           "type": "varchar(32)",
-          "label": "餐饮源行 Food line ID",
-          "key": "PK",
+          "label": "源行",
+          "nullable": false,
           "ref": null,
-          "nullable": false
+          "introducedIn": "V1"
         },
         {
-          "name": "order_item_id",
-          "type": "bigint",
-          "label": "基础成交行 Core item",
-          "key": "FK",
-          "ref": "ord_item.id",
-          "nullable": false
+          "name": "batch_no",
+          "type": "varchar(32)",
+          "label": "批次",
+          "nullable": false,
+          "ref": "fnb_order_batch.batch_no",
+          "introducedIn": "V1"
+        },
+        {
+          "name": "goods_no",
+          "type": "varchar(32)",
+          "label": "商品",
+          "nullable": false,
+          "ref": "prd_goods.goods_no",
+          "introducedIn": "V1"
         },
         {
           "name": "sku_no",
           "type": "varchar(32)",
-          "label": "成交规格 Sales SKU",
-          "key": "FK",
+          "label": "SKU",
+          "nullable": false,
           "ref": "prd_sku.sku_no",
-          "nullable": false
+          "introducedIn": "V1"
         },
         {
           "name": "qty",
-          "type": "int",
-          "label": "成交份数 Quantity",
-          "key": "",
+          "type": "decimal(18,6)",
+          "label": "数量",
+          "nullable": false,
           "ref": null,
-          "nullable": false
+          "introducedIn": "V1"
         },
         {
-          "name": "config_version",
+          "name": "seat_no",
+          "type": "varchar(32)",
+          "label": "座位",
+          "nullable": true,
+          "ref": "fnb_seat.seat_no",
+          "introducedIn": "V1"
+        },
+        {
+          "name": "course_no",
+          "type": "varchar(32)",
+          "label": "道次",
+          "nullable": true,
+          "ref": "fnb_course.course_no",
+          "introducedIn": "V1"
+        },
+        {
+          "name": "selection_version",
           "type": "bigint",
-          "label": "配置版本 Version",
-          "key": "",
+          "label": "配置版本",
+          "nullable": false,
           "ref": null,
-          "nullable": false
+          "introducedIn": "V1"
         },
         {
-          "name": "menu_snapshot",
+          "name": "display_snapshot",
           "type": "json",
-          "label": "餐牌来源快照 Menu snapshot",
-          "key": "",
+          "label": "名称菜单单位等历史展示",
+          "nullable": false,
           "ref": null,
-          "nullable": false
+          "introducedIn": "V1"
+        },
+        {
+          "name": "source_line_ref",
+          "type": "varchar(64)",
+          "label": "提交源行号",
+          "ref": null,
+          "nullable": false,
+          "introducedIn": "V1"
+        },
+        {
+          "name": "config_revision_nos",
+          "type": "json",
+          "label": "口味/套餐/餐牌冻结版本号",
+          "ref": null,
+          "nullable": false,
+          "introducedIn": "V1"
+        },
+        {
+          "name": "unit",
+          "type": "varchar(16)",
+          "label": "成交计量单位",
+          "ref": null,
+          "nullable": false,
+          "introducedIn": "V1"
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "food_line_no"
+        ],
+        [
+          "batch_no",
+          "source_line_ref"
+        ]
+      ],
+      "rules": "源行与核心行经分配表关联不按SKU取第一行",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_order_line",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOrderLine",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbOrderLine.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.BusinessSharePlanMapper",
+          "ai.neargo.shop.food.mapper.DiningBatchQueryMapper",
+          "ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper",
+          "ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper",
+          "ai.neargo.shop.food.mapper.ServiceFormMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.BusinessCloseService",
+          "ai.neargo.shop.food.service.BusinessOperationsService",
+          "ai.neargo.shop.food.service.BusinessReturnService",
+          "ai.neargo.shop.food.service.BusinessShareService",
+          "ai.neargo.shop.food.service.CheckBusinessGuardService",
+          "ai.neargo.shop.food.service.CheckCollaborationService",
+          "ai.neargo.shop.food.service.DiningBatchQueryService",
+          "ai.neargo.shop.food.service.DiningOrderService",
+          "ai.neargo.shop.food.service.DiningPickupVerificationService",
+          "ai.neargo.shop.food.service.DiningReturnService",
+          "ai.neargo.shop.food.service.FoodFeeSourceService",
+          "ai.neargo.shop.food.service.KitchenReturnService",
+          "ai.neargo.shop.food.service.KitchenTaskService",
+          "ai.neargo.shop.food.service.ProductionConsumptionService",
+          "ai.neargo.shop.food.service.QueueNotificationService",
+          "ai.neargo.shop.food.service.ReservationPreorderService",
+          "ai.neargo.shop.food.service.ScheduledDiningDispatchService",
+          "ai.neargo.shop.food.service.ServiceFormService",
+          "ai.neargo.shop.food.service.ServiceSlotService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
+      "domain": "D",
       "name": "fnb_order_component",
-      "label": "套餐选择快照 Bundle selection",
-      "existing": false,
+      "label": "套餐组件快照",
       "fields": [
         {
           "name": "component_no",
           "type": "varchar(32)",
-          "label": "成员行编号 Component ID",
-          "key": "PK",
+          "label": "组件号",
+          "nullable": false,
           "ref": null,
-          "nullable": false
+          "introducedIn": "V1"
         },
         {
           "name": "food_line_no",
           "type": "varchar(32)",
-          "label": "餐饮源行 Food line",
-          "key": "FK",
+          "label": "父行",
+          "nullable": false,
           "ref": "fnb_order_line.food_line_no",
-          "nullable": false
+          "introducedIn": "V1"
         },
         {
           "name": "choice_no",
           "type": "varchar(32)",
-          "label": "原套餐选项 Choice",
-          "key": "FK",
-          "ref": "fnb_bundle_choice.choice_no",
-          "nullable": false
+          "label": "套餐配置引用",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V1",
+          "modifiedIn": "V15"
         },
         {
           "name": "sku_no",
           "type": "varchar(32)",
-          "label": "成员规格 SKU",
-          "key": "FK",
+          "label": "组件SKU",
+          "nullable": false,
           "ref": "prd_sku.sku_no",
-          "nullable": false
+          "introducedIn": "V1"
         },
         {
-          "name": "quantity",
-          "type": "decimal(12,3)",
-          "label": "成员数量 Quantity",
-          "key": "",
+          "name": "qty",
+          "type": "decimal(18,6)",
+          "label": "展开数量",
+          "nullable": false,
           "ref": null,
-          "nullable": false
+          "introducedIn": "V1"
         },
         {
           "name": "selection_snapshot",
           "type": "json",
-          "label": "名称计价快照 Selection snapshot",
-          "key": "",
+          "label": "选择与单位快照",
+          "nullable": false,
           "ref": null,
-          "nullable": false
+          "introducedIn": "V1"
+        },
+        {
+          "name": "component_kind",
+          "type": "varchar(24)",
+          "label": "component kind",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V15"
+        },
+        {
+          "name": "source_component_ref",
+          "type": "varchar(64)",
+          "label": "source component ref",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V15"
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "component_no"
+        ]
+      ],
+      "rules": "",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_order_component",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOrderComponent",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbOrderComponent.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.OrderComponentMapper",
+          "ai.neargo.shop.food.mapper.FoodProductionEvidenceMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.BusinessReturnService",
+          "ai.neargo.shop.food.service.DiningOrderService",
+          "ai.neargo.shop.food.service.DiningPickupVerificationService",
+          "ai.neargo.shop.food.service.KitchenReturnService",
+          "ai.neargo.shop.food.service.KitchenTaskService",
+          "ai.neargo.shop.food.service.ProductionConsumptionService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
+      "domain": "D",
       "name": "fnb_order_modifier",
-      "label": "实际选配快照 Modifier selection",
-      "existing": false,
+      "label": "口味配料快照",
       "fields": [
         {
           "name": "selection_no",
           "type": "varchar(32)",
-          "label": "选择编号 Selection ID",
-          "key": "PK",
+          "label": "选择号",
+          "nullable": false,
           "ref": null,
-          "nullable": false
+          "introducedIn": "V1"
         },
         {
           "name": "food_line_no",
           "type": "varchar(32)",
-          "label": "餐饮源行 Food line",
-          "key": "FK",
+          "label": "父行",
+          "nullable": false,
           "ref": "fnb_order_line.food_line_no",
-          "nullable": false
+          "introducedIn": "V1"
         },
         {
           "name": "component_no",
           "type": "varchar(32)",
-          "label": "套餐成员范围 Component",
-          "key": "FK",
+          "label": "组件",
+          "nullable": true,
           "ref": "fnb_order_component.component_no",
-          "nullable": true
+          "introducedIn": "V1"
         },
         {
-          "name": "modifier_no",
-          "type": "varchar(32)",
-          "label": "原配料 Modifier",
-          "key": "FK",
-          "ref": "fnb_modifier.modifier_no",
-          "nullable": false
-        },
-        {
-          "name": "quantity",
-          "type": "decimal(12,3)",
-          "label": "选择数量 Quantity",
-          "key": "",
+          "name": "source_kind",
+          "type": "varchar(16)",
+          "label": "SPEC_VALUE/MODIFIER",
+          "nullable": false,
           "ref": null,
-          "nullable": false
+          "introducedIn": "V1"
         },
         {
-          "name": "modifier_snapshot",
+          "name": "source_no",
+          "type": "varchar(64)",
+          "label": "源编号",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V1",
+          "modifiedIn": "V15"
+        },
+        {
+          "name": "qty",
+          "type": "decimal(18,6)",
+          "label": "选择量",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V1"
+        },
+        {
+          "name": "selection_snapshot",
           "type": "json",
-          "label": "口味配料及展开快照 Snapshot",
-          "key": "",
+          "label": "名称组合与原规则快照",
+          "nullable": false,
           "ref": null,
-          "nullable": false
+          "introducedIn": "V1"
         }
       ],
-      "unique": []
+      "unique": [
+        [
+          "selection_no"
+        ]
+      ],
+      "rules": "互斥引用由source_kind和源字典校验，不能从JSON重算应收",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_order_modifier",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbOrderModifier",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbOrderModifier.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.OrderModifierMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.DiningOrderService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_menu_channel_binding",
@@ -1422,49 +2098,56 @@
           "type": "varchar(32)",
           "label": "渠道绑定 Binding",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V7"
         },
         {
           "name": "menu_no",
           "type": "varchar(32)",
           "label": "餐牌 Menu",
           "ref": "fnb_menu.menu_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V7"
         },
         {
           "name": "store_no",
           "type": "varchar(32)",
           "label": "门店 Store",
           "ref": "mch_store.store_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V7"
         },
         {
           "name": "provider",
           "type": "varchar(32)",
           "label": "渠道提供方 Provider",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V7"
         },
         {
           "name": "channel_account_ref",
           "type": "varchar(64)",
           "label": "已有渠道账号引用 Account reference",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V7"
         },
         {
           "name": "external_store_ref",
           "type": "varchar(64)",
           "label": "外部门店 External store",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V7"
         },
         {
           "name": "status",
           "type": "varchar(16)",
-          "label": "ACTIVE / DISABLED",
+          "label": "DRAFT / ACTIVE / DISABLED；ACTIVE必须权威验真",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V7"
         }
       ],
       "unique": [
@@ -1479,7 +2162,28 @@
         ]
       ],
       "rules": "账号和门店必须归当前主体；只存已验真的外部引用，不存密钥；Keeta仅规划，当前不能上传或宣称已联通。",
-      "deployment": "PLANNED"
+      "deployment": "MIGRATION_V7",
+      "introducedIn": "V7",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V7__menu_context_channels.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_menu_channel_binding",
+        "introducedIn": "V7",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V7__menu_context_channels.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuChannelBinding",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbMenuChannelBinding.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.MenuChannelBindingMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.ConfigRevisionService",
+          "ai.neargo.shop.food.service.MenuChannelBindingService",
+          "ai.neargo.shop.food.service.MenuService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_menu_item_option_group",
@@ -1491,21 +2195,24 @@
           "type": "varchar(32)",
           "label": "餐牌菜项 Item",
           "ref": "fnb_menu_item.menu_item_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V6"
         },
         {
           "name": "group_no",
           "type": "varchar(32)",
           "label": "选配组 Group",
           "ref": "fnb_option_group.group_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V6"
         },
         {
           "name": "sort_no",
           "type": "int",
           "label": "顺序 Sort",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V6"
         }
       ],
       "unique": [
@@ -1515,7 +2222,24 @@
         ]
       ],
       "rules": "INHERIT读取商品默认组；REPLACE只读取本项显式组，空组即禁选，不回退；发布冻结组修订。",
-      "deployment": "PLANNED"
+      "deployment": "MIGRATION_V6",
+      "introducedIn": "V6",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V6__menu_composition.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_menu_item_option_group",
+        "introducedIn": "V6",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V6__menu_composition.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbMenuItemOptionGroup",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbMenuItemOptionGroup.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.MenuItemOptionGroupMapper"
+        ],
+        "serviceClasses": [],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_recipe",
@@ -1527,63 +2251,72 @@
           "type": "varchar(32)",
           "label": "配方编号 Recipe",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V4"
         },
         {
           "name": "store_no",
           "type": "varchar(32)",
           "label": "门店 Store",
           "ref": "mch_store.store_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V4"
         },
         {
           "name": "sku_no",
           "type": "varchar(32)",
           "label": "销售规格 SKU",
           "ref": "prd_sku.sku_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V4"
         },
         {
           "name": "recipe_code",
           "type": "varchar(32)",
           "label": "DEFAULT或受控配方变体 Variant",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V4"
         },
         {
           "name": "yield_qty",
           "type": "decimal(18,6)",
           "label": "基准产出 Positive yield",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V4"
         },
         {
           "name": "yield_unit",
           "type": "varchar(16)",
           "label": "产出单位 Controlled unit",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V4"
         },
         {
           "name": "config_version",
           "type": "bigint",
           "label": "配方内容版本 Configuration version",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V4"
         },
         {
           "name": "published_revision_no",
           "type": "varchar(32)",
           "label": "冻结修订 Published revision",
           "ref": "fnb_config_revision.revision_no",
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V4"
         },
         {
           "name": "status",
           "type": "varchar(16)",
           "label": "DRAFT / ACTIVE / DISABLED",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V4"
         }
       ],
       "unique": [
@@ -1597,7 +2330,26 @@
         ]
       ],
       "rules": "同门店SKU只有一个DEFAULT；变体经菜单SKU显式引用；历史内容冻结在ConfigRevision，不从当前工作头回算旧单。 RECIPE-01A只维护DRAFT；yield_unit=EA表示SKU配置份数，不是物理单位权威；选配调整与发布待后续。",
-      "deployment": "MIGRATION_V4"
+      "deployment": "MIGRATION_V4",
+      "introducedIn": "V4",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V4__recipe_draft_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_recipe",
+        "introducedIn": "V4",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V4__recipe_draft_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbRecipe",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbRecipe.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.RecipeMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.RecipeService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_recipe_line",
@@ -1609,63 +2361,72 @@
           "type": "varchar(32)",
           "label": "物料行编号 Recipe line",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V4"
         },
         {
           "name": "recipe_no",
           "type": "varchar(32)",
           "label": "配方 Recipe",
           "ref": "fnb_recipe.recipe_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V4"
         },
         {
           "name": "item_ref",
           "type": "varchar(32)",
           "label": "进销存物料引用 Inventory item",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V4"
         },
         {
           "name": "qty",
           "type": "decimal(18,6)",
           "label": "每基准产出净用量 Net requirement",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V4"
         },
         {
           "name": "unit",
           "type": "varchar(16)",
           "label": "权威物料单位 Material unit",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V4"
         },
         {
           "name": "conversion_ref",
           "type": "varchar(64)",
           "label": "保留真实换算引用；本批NULL Reserved true conversion reference",
           "ref": null,
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V4"
         },
         {
           "name": "loss_rate",
           "type": "decimal(12,6)",
           "label": "投入损失比例 0<=rate<1",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V4"
         },
         {
           "name": "material_definition_hash",
           "type": "varchar(64)",
           "label": "物料定义内容摘要 Material definition hash (not CAS/conversion)",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V4"
         },
         {
           "name": "sort_no",
           "type": "int",
           "label": "草稿行顺序 Draft line order",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V4"
         }
       ],
       "unique": [
@@ -1678,7 +2439,26 @@
         ]
       ],
       "rules": "qty为净用量，毛需求=净需求/(1-loss_rate)；损失不混用加成比例；单位/精度归进销存，不能截断；物料不是另建销售商品。 RECIPE-01A仅baseUom，definitionHash独立保存不是换算修订，conversion_ref为NULL；小数草稿不代表整数库存可扣料。",
-      "deployment": "MIGRATION_V4"
+      "deployment": "MIGRATION_V4",
+      "introducedIn": "V4",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V4__recipe_draft_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_recipe_line",
+        "introducedIn": "V4",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V4__recipe_draft_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbRecipeLine",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbRecipeLine.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.RecipeLineMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.RecipeService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_recipe_adjustment",
@@ -1690,63 +2470,72 @@
           "type": "varchar(32)",
           "label": "调整编号 Adjustment",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V5"
         },
         {
           "name": "recipe_no",
           "type": "varchar(32)",
           "label": "配方 Recipe",
           "ref": "fnb_recipe.recipe_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V5"
         },
         {
           "name": "option_item_no",
           "type": "varchar(32)",
           "label": "触发选项 Selection",
           "ref": "fnb_option_group_item.option_item_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V5"
         },
         {
           "name": "target_line_no",
           "type": "varchar(32)",
           "label": "目标物料行 Material line",
           "ref": "fnb_recipe_line.line_no",
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V5"
         },
         {
           "name": "action",
           "type": "varchar(16)",
           "label": "SET / ADD / REMOVE",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V5"
         },
         {
           "name": "qty",
           "type": "decimal(18,6)",
           "label": "SET/ADD非负量，REMOVE为空",
           "ref": null,
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V5"
         },
         {
           "name": "unit",
           "type": "varchar(16)",
           "label": "与目标物料一致 Unit",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V5"
         },
         {
           "name": "sort_no",
           "type": "int",
           "label": "草稿调整顺序 Draft adjustment order",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V5"
         },
         {
           "name": "option_identity_hash",
           "type": "varchar(64)",
           "label": "选项来源语义身份摘要 Option semantic identity hash (not CAS)",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V5"
         }
       ],
       "unique": [
@@ -1760,7 +2549,26 @@
         ]
       ],
       "rules": "先唯一SET或原值再合计ADD；REMOVE与其他同目标调整互斥；不允许负需求，不能猜少糖等于50%。 RECIPE-01B仅维护工作配置；省略/null保留，[]清空；同主体有效工作选项及本配方行，编号不可重绑。跨选项冲突在实际选择求值时处理，不提前误判互斥口味。 既有调整保留option_identity_hash，不允许选项删后同号换来源；新来源需新调整号。",
-      "deployment": "MIGRATION_V5"
+      "deployment": "MIGRATION_V5",
+      "introducedIn": "V5",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V5__recipe_adjustment_table.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_recipe_adjustment",
+        "introducedIn": "V5",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V5__recipe_adjustment_table.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbRecipeAdjustment",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbRecipeAdjustment.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.RecipeAdjustmentMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.RecipeService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "fnb_config_revision",
@@ -1773,77 +2581,88 @@
           "type": "varchar(32)",
           "label": "快照业务号",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "config_kind",
           "type": "varchar(24)",
           "label": "MENU / BUNDLE / OPTION_GROUP / MODIFIER / STATION / RECIPE",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "config_no",
           "type": "varchar(32)",
           "label": "配置业务号或SKU，按kind引用",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "revision",
           "type": "bigint",
           "label": "单配置单调发布修订号",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "content_schema",
           "type": "int",
           "label": "冻结文档结构版本",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "definition_snapshot",
           "type": "json",
           "label": "完整聚合定义及引用发布版本，不存资金真源",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "content_hash",
           "type": "char(64)",
           "label": "规范内容摘要",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "effective_at",
           "type": "datetime(3)",
           "label": "计划生效",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "status",
           "type": "varchar(16)",
           "label": "SCHEDULED / EFFECTIVE / CANCELLED",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         },
         {
           "name": "previous_revision_no",
           "type": "varchar(32)",
           "label": "前修订",
           "ref": "fnb_config_revision.revision_no",
-          "nullable": true
+          "nullable": true,
+          "introducedIn": "V1"
         },
         {
           "name": "scope_store_nos",
           "type": "json",
           "label": "冻结的授权适用门店集合，配置头归主体",
           "ref": null,
-          "nullable": false
+          "nullable": false,
+          "introducedIn": "V1"
         }
       ],
       "unique": [
@@ -1857,7 +2676,26 @@
           "revision"
         ]
       ],
-      "rules": "关系表保存当前草稿/头；发布事务校验完整聚合并冻结子表及依赖快照版本。可售目录按时点解析已发布快照，不读取可变草稿；下单保存revision_no。已发布内容不可改，回滚以旧内容发布新修订；暂停是门控，不篡改快照。"
+      "rules": "关系表保存当前草稿/头；发布事务校验完整聚合并冻结子表及依赖快照版本。可售目录按时点解析已发布快照，不读取可变草稿；下单保存revision_no。已发布内容不可改，回滚以旧内容发布新修订；暂停是门控，不篡改快照。",
+      "introducedIn": "V1",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "sourceImplementation": {
+        "table": "fnb_config_revision",
+        "introducedIn": "V1",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbConfigRevision",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbConfigRevision.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.ServiceFormMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.service.ServiceFormService"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      }
     },
     {
       "name": "prd_spec_value",

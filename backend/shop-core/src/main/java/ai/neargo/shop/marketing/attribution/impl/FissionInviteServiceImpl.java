@@ -1,8 +1,8 @@
 package ai.neargo.shop.marketing.attribution.impl;
 
+import ai.neargo.shop.numbering.InvitationDocumentNumberReservationAdvisor;
 import ai.neargo.shop.numbering.DocumentType;
-import ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers;
-
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.marketing.attribution.FissionInviteService;
 import ai.neargo.shop.marketing.attribution.entity.MktFissionCampaign;
@@ -17,7 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 import java.util.Set;
 
@@ -58,8 +57,8 @@ public class FissionInviteServiceImpl implements FissionInviteService {
         if (blank(fissionNo) || blank(inviterNo) || blank(inviteeNo)) {
             return;
         }
-        MktFissionCampaign campaign = ai.neargo.shop.promotion.service.InvitationDocumentNumberReservationAdvisor.hasSnapshot()
-                ? ai.neargo.shop.promotion.service.InvitationDocumentNumberReservationAdvisor.currentCampaign()
+        MktFissionCampaign campaign = InvitationDocumentNumberReservationAdvisor.hasSnapshot()
+                ? InvitationDocumentNumberReservationAdvisor.currentCampaign()
                         .filter(selected -> fissionNo.equals(selected.getFissionNo())).orElse(null)
                 : DataScopeContext.executeWithoutScope(() ->
                 campaignMapper.selectOne(Wrappers.<MktFissionCampaign>lambdaQuery()

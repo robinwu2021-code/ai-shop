@@ -1,1 +1,15 @@
 ai.neargo.shop.food.config.FoodAutoConfiguration
+ai.neargo.shop.food.config.FoodKdsAutoConfiguration
+
+ai.neargo.shop.food.config.FoodOrderAuthorityConfiguration
+ai.neargo.shop.food.config.DiningIdentityAutoConfiguration
+
+ai.neargo.shop.food.config.FoodProductionRecoveryConfiguration
+ai.neargo.shop.food.config.DiningDeliveryAutoConfiguration
+
+ai.neargo.shop.food.config.FoodBusinessOperationsConfiguration
+ai.neargo.shop.food.config.FoodSupportAutoConfiguration
+
+ai.neargo.shop.food.config.FoodBusinessAmendmentConfiguration
+
+ai.neargo.shop.food.config.DiningReportFactsConfiguration

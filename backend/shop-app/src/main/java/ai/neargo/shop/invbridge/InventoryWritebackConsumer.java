@@ -7,6 +7,8 @@ import ai.neargo.shop.inventory.support.InvEnums;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -48,7 +50,9 @@ public class InventoryWritebackConsumer implements OutboxConsumer {
     }
 
     @Override
+    @Transactional(value = "transactionManager", propagation = Propagation.NOT_SUPPORTED)
     public void consume(SysOutbox event) {
+        // Reconciliation reserves its document before its own short transaction; delivery may retry independently.
         JsonNode p = json.readTree(event.getPayload());
         /*
          * **单号在内层。** PlatformInventoryEventSink 把进销存的事件包成

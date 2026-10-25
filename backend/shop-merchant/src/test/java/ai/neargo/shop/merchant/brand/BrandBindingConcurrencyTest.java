@@ -1,4 +1,7 @@
 package ai.neargo.shop.merchant.brand;
+import ai.neargo.shop.spi.storedvalue.BrandChangeImpactPort;
+
+import ai.neargo.shop.merchant.brand.impl.BrandServiceImpl;
 import org.junit.jupiter.api.Test;
 import static ai.neargo.shop.merchant.brand.ManagementModels.*;
 import static org.assertj.core.api.Assertions.*;
@@ -10,7 +13,7 @@ class BrandBindingConcurrencyTest {
   var f=new BrandFixture();var m=f.no(f.space(),"managementNo");
   f.scopes.grant(f.owner,m,new GrantCommand("MCH:MA1","STORE","S1","store.read",null,null,false,null,false));
   f.scopes.grant(f.owner,m,new GrantCommand("MCH:MA1","STORE","S1","store.brand.change",null,null,false,null,false));
-  var brands=new BrandService(f.repo,f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",f.repo.json),
+  var brands=new BrandServiceImpl(f.repo,f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",f.repo.json),
     (a,e,s)->new BrandChangeImpactPort.Impact(true,false,0,0,0,0),f.numbers());
   var b=brands.create(f.owner,new BrandCreate(m,"示例品牌",null,"ACTIVE"),"brand-create");return new Setup(f,brands,m,f.no(b,"brandNo"));
  }
@@ -41,7 +44,7 @@ class BrandBindingConcurrencyTest {
  @Test void staleTokenAndUnknownOrFinancialImpactsNeverApply() throws Exception {
   var s=setup();var c=command(s);s.f.jdbc.update("UPDATE mch_store SET version=1 WHERE store_no='S1'");
   assertThatThrownBy(()->s.brands.submit(s.f.owner,"S1",c,"stale")).isInstanceOf(ai.neargo.shop.common.BizException.class);
-  var unknown=new BrandService(s.f.repo,s.f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",s.f.repo.json),
+  var unknown=new BrandServiceImpl(s.f.repo,s.f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",s.f.repo.json),
     (a,e,st)->new BrandChangeImpactPort.Impact(false,false,0,0,0,0),s.f.numbers());
   assertThat(unknown.check(s.f.owner,"S1",new ChangeCheck(s.management,s.brand))).containsEntry("allowed",false);
   assertThat(s.f.jdbc.queryForObject("SELECT count(*) FROM mch_brand_store_binding",Long.class)).isZero();
@@ -50,7 +53,7 @@ class BrandBindingConcurrencyTest {
   var s=setup();var c=command(s);var original=s.brands.submit(s.f.owner,"S1",c,"original");var no=s.f.no(original,"changeNo");
   var decision=new ChangeDecision("APPROVE",0,"确认");s.brands.decide(s.f.owner,no,decision,"approved");
   assertThat(s.brands.submit(s.f.owner,"S1",c,"original")).containsEntry("changeNo",no);
-  var unavailable=new BrandService(s.f.repo,s.f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",s.f.repo.json),(a,e,st)->{throw new IllegalStateException("Pay unavailable");},s.f.numbers());
+  var unavailable=new BrandServiceImpl(s.f.repo,s.f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",s.f.repo.json),(a,e,st)->{throw new IllegalStateException("Pay unavailable");},s.f.numbers());
   assertThat(unavailable.decide(s.f.owner,no,decision,"approved")).containsEntry("status","COMPLETED");
  }
 
@@ -61,7 +64,7 @@ class BrandBindingConcurrencyTest {
  }
  @Test void approvalBlockerSurvivesReload() throws Exception {
   var s=setup();var c=command(s);var original=s.brands.submit(s.f.owner,"S1",c,"before-debt");String no=s.f.no(original,"changeNo");
-  var indebted=new BrandService(s.f.repo,s.f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",s.f.repo.json),(a,e,st)->new BrandChangeImpactPort.Impact(true,false,1,0,0,0),s.f.numbers());
+  var indebted=new BrandServiceImpl(s.f.repo,s.f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",s.f.repo.json),(a,e,st)->new BrandChangeImpactPort.Impact(true,false,1,0,0,0),s.f.numbers());
   indebted.decide(s.f.owner,no,new ChangeDecision("APPROVE",0,"确认"),"after-debt");
   assertThat(indebted.change(s.f.owner,no).get("blockers")).asList().containsExactly("STORED_VALUE_UNRESOLVED");
  }

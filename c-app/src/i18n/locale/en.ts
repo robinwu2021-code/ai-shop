@@ -1,5 +1,5 @@
 export default {
-  storedValue: {"accountLocalTime": "Account time zone", "serviceState": {"WAIT_SUBMIT": "Confirmed. Awaiting the store.", "PROCESSING": "Checking service result", "COMMITTED": "Redeemed", "EXPIRED": "Confirmation expired. Ask the store to start again.", "CANCELLED": "Service cancelled", "RELEASED": "Service cancelled"},"brandScope": "Brand balance", "storeScope": "Store balance", "confirmConsumption": "Confirm this service", "paymentWallet": "Payment wallet", "consumeAmount": "Amount", "waitingMerchant": "Confirmed. Awaiting the store.", "refreshConfirmation": "Refresh service status",
+  storedValue: {"accountLocalTime": "Account time zone", "serviceState": {"WAIT_SUBMIT": "Confirmed. Awaiting the store.", "PROCESSING": "Checking service result", "COMMITTED": "Redeemed", "EXPIRED": "Confirmation expired. Ask the store to start again.", "CANCELLED": "Service cancelled", "RELEASED": "Service cancelled"},"brandScope": "Brand balance", "storeScope": "Store balance", "confirmConsumption": "Confirm this service", "paymentWallet": "Payment wallet", "consumeAmount": "Amount", "refreshConfirmation": "Refresh service status",
     "storeLocalTime": "Store local time",
     "title": "Stored value records",
     "entryHint": "View top-ups and redemptions",
@@ -1176,10 +1176,6 @@ export default {
     directionREDEEM: "Redemption",
     directionREVERSAL: "Reversal / return",
     directionOTHER: "Ledger adjustment",
-    historyTerms: "Historical terms (read only)",
-    noHistoryTerms: "No historical terms",
-    accountFrozen: "Account frozen",
-    accountExpiry: "Expires at",
     posted: "Posted",
     code: "Points code",
     currency: "Currency",

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 public class IndustryFulfillmentPortImpl implements IndustryFulfillmentPort {
     private final IndustryFulfillmentService service;
     public IndustryFulfillmentPortImpl(IndustryFulfillmentService service) { this.service=service; }
+    @Override public Receipt fulfill(Fulfill command,String key) {return service.fulfill(command,key);}
     @Override public Receipt verifyPickup(VerifyPickup command,String key) { return service.verifyPickup(command,key); }
     @Override public Receipt query(Reference reference,String actor,String key) { return service.query(reference,actor,key); }
 }

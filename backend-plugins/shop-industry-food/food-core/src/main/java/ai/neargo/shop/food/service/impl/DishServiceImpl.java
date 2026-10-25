@@ -22,6 +22,7 @@ import ai.neargo.shop.food.dto.DishPresentation.LocalizedName;
 import ai.neargo.shop.food.dto.DishResultVO;
 import ai.neargo.shop.food.dto.DishVO;
 import ai.neargo.shop.food.dto.MeasurementPolicy;
+import ai.neargo.shop.food.policy.DiningMeasurementPolicy;
 import ai.neargo.shop.food.dto.SaveDishReq;
 import ai.neargo.shop.food.entity.FnbActionLog;
 import ai.neargo.shop.food.entity.FnbDish;
@@ -304,12 +305,9 @@ public class DishServiceImpl implements DishService {
         var presentation = new DishPresentation(name, names, imageRefs, texts(p.tags(), 20, 32),
                 texts(p.allergenNotes(), 20, 255));
         var m = req.measurement();
-        if (!"COUNT".equals(m.mode()) || !"EA".equals(m.unit()) || !Integer.valueOf(0).equals(m.scale())
-                || m.allowedDeviation() != null && m.allowedDeviation().signum() != 0) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
+        DiningMeasurementPolicy.require(m);
         return new SaveDishReq(req.dishKind(), req.prepSeconds(), presentation,
-                new MeasurementPolicy("EA", "COUNT", 0, null), req.version());
+                m, req.version());
     }
 
     private static List<String> texts(List<String> values, int count, int length) {

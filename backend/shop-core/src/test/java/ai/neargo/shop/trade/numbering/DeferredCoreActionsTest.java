@@ -20,6 +20,7 @@ class DeferredCoreActionsTest {
     private static final Object RESOURCE = new Object();
     @Test void nestedMarkPaidWaitsForTheOuterOfflineConfirmationTransactionToCleanUp() {
         var completed = new AtomicInteger();
+        var transactions = new LocalTransactions();
         var orderTarget = mock(OrderServiceImpl.class);
         doAnswer(call -> {
             assertTrue(TransactionSynchronizationManager.isActualTransactionActive());
@@ -30,10 +31,9 @@ class DeferredCoreActionsTest {
             return null;
         }).when(orderTarget).markPaid(anyString(), anyString(), anyString());
         var orderFactory = new ProxyFactory(orderTarget); orderFactory.setProxyTargetClass(true);
-        orderFactory.addAdvisor(new DeferredCoreActions());
+        orderFactory.addAdvisor(new DeferredCoreActions(transactions));
         var orderProxy = (OrderServiceImpl) orderFactory.getProxy();
         var merchantTarget = mock(MerchantOrderServiceImpl.class);
-        var transactions = new LocalTransactions();
         when(merchantTarget.confirmOfflinePay(anyString(), anyString(), anyString(), anyString())).thenAnswer(call -> {
             new TransactionTemplate(transactions).execute(status -> {
                 orderProxy.markPaid("ROOT", "OFFLINE", "PROOF"); assertEquals(0, completed.get()); return null;
@@ -41,7 +41,7 @@ class DeferredCoreActionsTest {
             assertEquals(0, completed.get()); return null;
         });
         var transaction = new DefaultPointcutAdvisor(new TransactionInterceptor(transactions, new AnnotationTransactionAttributeSource()));
-        var advisors = new ArrayList<>(List.of(transaction, new DeferredCoreActions())); AnnotationAwareOrderComparator.sort(advisors);
+        var advisors = new ArrayList<>(List.of(transaction, new DeferredCoreActions(transactions))); AnnotationAwareOrderComparator.sort(advisors);
         var merchantFactory = new ProxyFactory(merchantTarget); merchantFactory.setProxyTargetClass(true); advisors.forEach(merchantFactory::addAdvisor);
         ((MerchantOrderServiceImpl) merchantFactory.getProxy()).confirmOfflinePay("M", "S", "CHILD", "OP");
         assertEquals(1, completed.get());

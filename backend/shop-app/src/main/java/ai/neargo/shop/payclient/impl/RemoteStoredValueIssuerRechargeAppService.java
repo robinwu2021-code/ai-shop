@@ -1,4 +1,6 @@
 package ai.neargo.shop.payclient.impl;
+
+import ai.neargo.shop.spi.storedvalue.StoredValueIssuerRecharges;
 import ai.neargo.shop.common.CursorPage;
 import ai.neargo.shop.pay.client.*;
 import ai.neargo.shop.payclient.*;
@@ -14,7 +16,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 public class RemoteStoredValueIssuerRechargeAppService implements StoredValueIssuerRechargeAppService {
  private final PayInternalApi service;
  public RemoteStoredValueIssuerRechargeAppService(PayInternalApi service){this.service=service;}
- public CursorPage<FundedCustomer> funded(ExecutionScope s,String cursor,int size){return RemoteEntitlementCalls.call(()->service.svFundedCustomers(new ai.neargo.shop.spi.storedvalue.StoredValueIssuerRecharges.FundedPage(s,cursor,size)));}
+ public CursorPage<FundedCustomer> funded(ExecutionScope s,String cursor,int size){return RemoteEntitlementCalls.call(()->service.svFundedCustomers(new StoredValueIssuerRecharges.FundedPage(s,cursor,size)));}
  public StoreOptions issuers(ExecutionScope s){return RemoteEntitlementCalls.call(()->service.svExecutionIssuers(s));}
  public CursorPage<Option> options(Query q,String cursor,int size){return RemoteEntitlementCalls.call(()->service.svBrandRechargeOptions(new PayStoredValueIssuerRechargeRequests.Options(q,cursor,size)));}
  public RechargeView confirm(EntitlementContext c,String e,Create v){return RemoteEntitlementCalls.call(()->service.svBrandRechargeConfirm(new PayStoredValueIssuerRechargeRequests.Confirm(c,e,v)));}

@@ -1,4 +1,6 @@
 package ai.neargo.shop.payclient.port;
+import org.springframework.beans.factory.annotation.Autowired;
+
 
 import ai.neargo.shop.spi.points.*;
 
@@ -14,7 +16,7 @@ public class OrderPointsSourcePortAdapter implements SourceFactsPort {
     }
 
     private org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.trade.order.points.OrderPointsOutboxConsumer> delivery;
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public void setDelivery(org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.trade.order.points.OrderPointsOutboxConsumer> delivery) { this.delivery = delivery; }
     @Override public boolean deliver(Fact fact) {
         String event = fact.lifecycle()!=null?fact.lifecycle().eventNo():fact.earning()!=null?fact.earning().eventNo():fact.closure()!=null?fact.closure().eventNo():fact.zeroCash()!=null?fact.zeroCash().eventNo():fact.refund().eventNo();

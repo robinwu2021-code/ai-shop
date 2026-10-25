@@ -1,12 +1,15 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.message.NotifyScene;
+import ai.neargo.shop.pay.service.PaymentLedgerService;
+import ai.neargo.shop.support.OrderLogisticsFixture;
 import ai.neargo.shop.spi.trade.OrderEvents;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
@@ -34,6 +37,11 @@ class ShipNotifyFlowTest {
     private ai.neargo.shop.event.OutboxDispatcher dispatcher;
     @Autowired
     private ai.neargo.shop.message.mapper.MessageMappers.MessageMapper messageMapper;
+
+    @Autowired
+    private JdbcTemplate jdbc;
+    @Autowired
+    private PaymentLedgerService ledger;
 
     private static final String USER = "U-SHIPNOTIFY";
 
@@ -106,16 +114,31 @@ class ShipNotifyFlowTest {
 
     // ------------------------------------------------------------------ helpers
 
-    private void publishShipped(String subNo, String fulfillment, String company, String no) {
-        eventBus.publish(new OrderEvents.SubOrderShipped(
-                subNo, "SO-SHIPNOTIFY", "M-SHIPNOTIFY", USER, fulfillment, company, no));
+    private void publishShipped(String fixtureKey, String fulfillment, String company, String no) {
+        String subNo = OrderLogisticsFixture.seed(jdbc, ledger, true, USER, fulfillment);
+        jdbc.update("UPDATE ord_sub_order SET status='FULFILLING' WHERE sub_order_no=?", subNo);
+        String eventNo = fixtureKey + ":" + subNo;
+        eventBus.publish(eventNo, new OrderEvents.SubOrderShipped(
+                subNo, "O-" + subNo, "LG-MERCHANT", USER, fulfillment, company, no));
         drainOnce();
+        assertEventSent(eventNo);
     }
 
-    private void publishCompleted(String subNo, String fulfillment) {
-        eventBus.publish(new OrderEvents.SubOrderCompleted(
-                subNo, "SO-SHIPNOTIFY", "M-SHIPNOTIFY", USER, fulfillment));
+    private void publishCompleted(String fixtureKey, String fulfillment) {
+        String subNo = OrderLogisticsFixture.seed(jdbc, ledger, true, USER, fulfillment);
+        jdbc.update("UPDATE ord_sub_order SET status='COMPLETED' WHERE sub_order_no=?", subNo);
+        String eventNo = fixtureKey + ":" + subNo;
+        eventBus.publish(eventNo, new OrderEvents.SubOrderCompleted(
+                subNo, "O-" + subNo, "LG-MERCHANT", USER, fulfillment));
         drainOnce();
+        assertEventSent(eventNo);
+    }
+
+    private void assertEventSent(String eventNo) {
+        assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE event_no=?",
+                String.class, eventNo)).isEqualTo("SENT");
+        assertThat(jdbc.queryForObject("SELECT retry_count FROM sys_outbox WHERE event_no=?",
+                Integer.class, eventNo)).isZero();
     }
 
     private void drainOnce() {
