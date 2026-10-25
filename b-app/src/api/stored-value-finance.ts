@@ -2,7 +2,9 @@ import type {CurrencyCode} from '@shared/types';
 import type {SvPage} from './stored-value-types';
 export interface SvFinanceQuery {managementNo:string;scopeType?:'STORE'|'BRAND';issuerNo?:string;currency?:string;status?:string;periodFrom?:string;periodTo?:string;cursor?:string;size?:number}
 export interface SvReportQuery {managementNo:string;currency:CurrencyCode;startDate:string;endDate:string;activityNo?:string;cursor?:string;size?:number}
-export interface SvFinanceResource {issuerNo:string;scopeType:'STORE'|'BRAND';scopeNo:string;name:string;currency:CurrencyCode;businessTimeZone:string}
+export interface SvFinanceResource {issuerNo:string;scopeType:'STORE'|'BRAND';scopeNo:string;name:string;currency:CurrencyCode;businessTimeZone:string;
+/** Current server-verified generate permission for this issuer; absent values fail closed. */
+canGenerate:boolean}
 export interface SvFinanceCapability {protocol:number;reportsReady:boolean;settlementReady:boolean;crossEntityReady:boolean;receiptAttachmentsSupported:boolean;blockers:string[]}
 export interface SvSummary {issuerNo:string;scopeType:string;name:string;currency:CurrencyCode;period:{from:string;to:string};asOf:string;sourceWatermark:number;openingMinor:number;creditedPaidMinor:number;creditedBonusMinor:number;consumedMinor:number;reversedMinor:number;closingMinor:number;heldMinor:number;rechargeCount:number;usageCount:number;customerCount:number;payableMinor:number}
 export interface SvStoreAttribution {storeNo:string;storeName:string;creditedPaidMinor:number;creditedBonusMinor:number;consumedMinor:number;payableMinor:number;rechargeCount:number;usageCount:number;customerCount:number;asOf:string;sourceWatermark:number}

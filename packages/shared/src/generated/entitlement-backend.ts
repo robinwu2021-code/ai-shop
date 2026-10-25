@@ -159,6 +159,8 @@ export type ExceptionView_32cdf5b5f3 = { "bizNo"?: string | null; "documentNo"?:
 
 export type Filter_9bcdb949eb = { "endDate"?: string | null; "startDate"?: string | null; "type"?: string | null; };
 
+export type FinancialResource_ff4442b9a4 = { "businessTimeZone"?: string | null; "canGenerate"?: boolean; "currency"?: string | null; "issuerNo"?: string | null; "name"?: string | null; "scopeNo"?: string | null; "scopeType"?: string | null; };
+
 export type FreezeCommand_ce62c49cc0 = { "action"?: string | null; "expectedAssetRevision"?: number; "reason"?: string | null; };
 
 export type FreezeView_8318909750 = { "instanceNo"?: string | null; "remainingUnits"?: number | null; "reservedUnits"?: number; "revision"?: number; "status"?: string | null; };
@@ -290,8 +292,6 @@ export type ResolutionRequest_4bd63edc25 = { "decision"?: string | null; "disput
 export type Resolution_bcc39e183b = { "found"?: boolean; "payment"?: Payment_5ace4cad3b | null; };
 
 export type ResolveView_e64f88b202 = { "found"?: boolean; "recharge"?: StoredValueRechargeProgress_ba849030ea | null; };
-
-export type Resource_6ac0f76da4 = { "businessTimeZone"?: string | null; "currency"?: string | null; "issuerNo"?: string | null; "name"?: string | null; "scopeNo"?: string | null; "scopeType"?: string | null; };
 
 export type Resume_1f73943f97 = { "managementNo"?: string | null; };
 
@@ -750,7 +750,7 @@ export interface EntitlementBackendOperations {
     query: { "managementNo": string; "scopeType"?: string; };
     headers: Record<string, never>;
     pathParams: Record<string, never>;
-    response: { "code": number; "data"?: Array<Resource_6ac0f76da4> | null; "msg": string; };
+    response: { "code": number; "data"?: Array<FinancialResource_ff4442b9a4> | null; "msg": string; };
   };
   "BizStoredValueIssuerController_issuer": {
     method: "GET";

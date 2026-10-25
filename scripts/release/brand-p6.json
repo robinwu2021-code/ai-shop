@@ -126,5 +126,6 @@
   "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/IssuerAuthorityServiceImpl.java",
   "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/brand/IssuerAuthorityTest.java",
   "b-app/src/pages/stored-value-issuer/index.vue",
-  "b-app/tests/stored-value-issuer-context.test.ts"
+  "b-app/tests/stored-value-issuer-context.test.ts",
+  "docs/technical/delivery/P6-结算联调数据与权限清单.md"
 ]

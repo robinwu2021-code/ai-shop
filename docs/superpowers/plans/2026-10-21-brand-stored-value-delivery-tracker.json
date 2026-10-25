@@ -882,6 +882,26 @@
         "existingConfigurationDeviceVerified": false,
         "financeEntryVisible": false,
         "settlementDeviceVerified": false
+      },
+      "financeViewFollowup": {
+        "status": "CODE_VERIFIED_PUBLICATION_PENDING",
+        "resourcePreflight": {
+          "management": "ACTIVE",
+          "brand": "INACTIVE",
+          "settlementReadGrant": "ABSENT",
+          "settlementAuditGrant": "ABSENT",
+          "brandIssuer": "ABSENT",
+          "brandBill": "ABSENT"
+        },
+        "checklist": "docs/technical/delivery/P6-结算联调数据与权限清单.md",
+        "javaCases": 2,
+        "pageCases": 5,
+        "contractCases": 1,
+        "reviewFindings": 0,
+        "apiChange": "Additive canGenerate; readable issuer directory",
+        "databaseMigration": false,
+        "financialWrite": false,
+        "positiveDeviceAcceptance": false
       }
     }
   ],
@@ -1058,7 +1078,7 @@
     "releaseDependsOn": "P5 compatibility published; actual financial opening remains blocked by P3 historical-original decision",
     "testOrder": "Complete all phase coding and compilation, then one focused chain; no unrelated reruns",
     "scope": "Reports, bills, disputes, payment registration/independent receipt, organization membership saga, cross-entity readiness",
-    "currentBatch": "340 installed and inactive/unconfigured brand issuer read-only UI verified; settlement entry absent under current resources and not accepted; no code or financial changes",
+    "currentBatch": "Settlement resource read/generate permission fixes verified; 341 publication pending, positive device cases depend on isolated roles and bills",
     "legacyCutoverInScope": false,
     "canonicalTarget": "895024b18a0d6d5a7e4b96462e6ea0f188ba1f68",
     "legacyCutover": "OUT_OF_SCOPE_NO_HISTORICAL_POSTING",
