@@ -13442,6 +13442,12 @@
           "ar": "تم تحديث إعداد المتجر. حدّث الصفحة."
         },
         {
+          "key": "issuer.brandInactive",
+          "zh-CN": "品牌已停用，仅可查看",
+          "en": "Brand inactive. View only.",
+          "ar": "العلامة التجارية موقوفة. للعرض فقط."
+        },
+        {
           "key": "issuer.brandNotReady",
           "zh-CN": "品牌储值尚未开通",
           "en": "Brand stored value is not enabled",
@@ -13482,6 +13488,12 @@
           "zh-CN": "发行名称",
           "en": "Issuer name",
           "ar": "اسم جهة الإصدار"
+        },
+        {
+          "key": "issuer.noConfiguration",
+          "zh-CN": "尚未配置储值发行",
+          "en": "No stored-value issuer configured",
+          "ar": "لم يتم إعداد جهة إصدار الرصيد المخزن"
         },
         {
           "key": "issuer.noRoutes",

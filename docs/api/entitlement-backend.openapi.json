@@ -3916,6 +3916,75 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews$Filter"
       },
+      "FinancialResource_ff4442b9a4": {
+        "properties": {
+          "businessTimeZone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "canGenerate": {
+            "type": "boolean"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "issuerNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scopeNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scopeType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueSettlementController$FinancialResource"
+      },
       "FreezeCommand_ce62c49cc0": {
         "properties": {
           "action": {
@@ -7007,72 +7076,6 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValuePlanRechargeController$ResolveView"
-      },
-      "Resource_6ac0f76da4": {
-        "properties": {
-          "businessTimeZone": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "currency": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "issuerNo": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "scopeNo": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "scopeType": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValueFinance$Resource"
       },
       "Resume_1f73943f97": {
         "properties": {
@@ -13859,7 +13862,7 @@
                       "anyOf": [
                         {
                           "items": {
-                            "$ref": "#/components/schemas/Resource_6ac0f76da4"
+                            "$ref": "#/components/schemas/FinancialResource_ff4442b9a4"
                           },
                           "type": "array"
                         },

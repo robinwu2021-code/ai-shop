@@ -95,6 +95,7 @@ class PrintDeliveryTest {
             }
         }
         jdbc.execute("ALTER TABLE prn_device ADD authorization_version BIGINT NOT NULL DEFAULT 0");
+        // H2 supports one ADD clause per ALTER; retain all production revocation columns.
         jdbc.execute("ALTER TABLE prn_device ADD revoke_reason VARCHAR(255)");
         jdbc.execute("ALTER TABLE prn_device ADD revoked_by VARCHAR(32)");
         jdbc.execute("ALTER TABLE prn_device ADD revoke_key VARCHAR(128)");

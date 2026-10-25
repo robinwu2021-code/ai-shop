@@ -16984,6 +16984,9 @@ components:
           "$ref": "#/components/schemas/CurrencyCode"
         businessTimeZone:
           type: "string"
+        canGenerate:
+          type: "boolean"
+          description: "Current server-verified generate permission for this issuer; absent values fail closed."
       required:
         - "issuerNo"
         - "scopeType"
@@ -16991,6 +16994,7 @@ components:
         - "name"
         - "currency"
         - "businessTimeZone"
+        - "canGenerate"
       additionalProperties: false
     SvSummary:
       type: "object"

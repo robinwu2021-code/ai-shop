@@ -1035,7 +1035,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 157,
+        "b-app": 158,
         "c-app": 30
       }
     },
@@ -2143,7 +2143,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 86,
+        "b-app": 87,
         "c-app": 44,
         "lib": 1
       },
@@ -5378,7 +5378,7 @@
         "sh-scaffold",
         "sh-sheet"
       ],
-      "libClassHits": 47,
+      "libClassHits": 48,
       "localSelectors": 0,
       "localCssLines": 0,
       "rolled": []

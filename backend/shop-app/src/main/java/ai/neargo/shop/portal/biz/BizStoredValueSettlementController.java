@@ -25,6 +25,7 @@ public class BizStoredValueSettlementController {
  public record PermissionRequest(String managementNo){public PermissionRequest{ai.neargo.shop.spi.entitlement.ContractChecks.id(managementNo);}}
  @PostMapping("/biz/management/entities/{entityNo}/stored-value/financial-permissions")
  public Map<String,Object> preparePermissions(@PathVariable String entityNo,@RequestBody PermissionRequest c){return context.prepare(c.managementNo(),entityNo);}
+ public record FinancialResource(String issuerNo,String scopeType,String scopeNo,String name,String currency,String businessTimeZone,boolean canGenerate){}
  public record BillAccess(Set<String> payerActions,Set<String> payeeActions){}
  @GetMapping("/biz/management/stored-value/financial-capability")
  public StoredValueFinance.Capabilities capability(){return finance.capabilities();}
@@ -34,7 +35,7 @@ public class BizStoredValueSettlementController {
   return new BillAccess(authority.entityPermissions().getOrDefault(bill.payerEntityNo(),Set.of()),authority.entityPermissions().getOrDefault(bill.payeeEntityNo(),Set.of()));
  }
  @GetMapping("/biz/management/stored-value/financial-resources")
- public List<StoredValueFinance.Resource> resources(@RequestParam String managementNo,@RequestParam(required=false)String scopeType){return context.directory(managementNo,scopeType);}
+ public List<FinancialResource> resources(@RequestParam String managementNo,@RequestParam(required=false)String scopeType){return context.readableDirectory(managementNo,scopeType).stream().map(v->{var r=v.resource();return new FinancialResource(r.issuerNo(),r.scopeType(),r.scopeNo(),r.name(),r.currency(),r.businessTimeZone(),v.canGenerate());}).toList();}
  @GetMapping("/biz/management/stored-value/settlement-bills")
  public CursorPage<Bill> bills(@RequestParam String managementNo,@RequestParam(required=false)String scopeType,@RequestParam(required=false)String issuerNo,@RequestParam(required=false)String status,@RequestParam(required=false)String currency,@RequestParam(required=false)Instant periodFrom,@RequestParam(required=false)Instant periodTo,@RequestParam(required=false)String cursor,@RequestParam(defaultValue="20")int size){if((periodFrom==null)!=(periodTo==null))throw BizException.of(ErrorCode.BAD_REQUEST);if(scopeType!=null&&!Set.of("STORE","BRAND").contains(scopeType))throw BizException.of(ErrorCode.BAD_REQUEST);return finance.bills(new Query(context.allFinancial(managementNo,scopeType,issuerNo),status,periodFrom==null?null:new StoredValueReports.Period(periodFrom,periodTo),cursor,size,currency));}
  @PostMapping("/biz/management/stored-value/settlement-bills/generations")

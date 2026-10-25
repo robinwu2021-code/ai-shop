@@ -17176,6 +17176,7 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `name` | `string` | 是 | — |
 | `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
 | `businessTimeZone` | `string` | 是 | — |
+| `canGenerate` | `boolean` | 是 | Current server-verified generate permission for this issuer; absent values fail closed. |
 
 ### SvFinanceStorePage
 

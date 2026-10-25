@@ -1,6 +1,6 @@
 # 打印模块合入统一分支核对 · 2026-10-25
 
-状态：统一域适配及集中专项验收完成，正在整合最新目标。未更新本地或远端 `codex/ai-shop-codex`。
+状态：统一域适配及集中专项验收完成，形成包含最新统一基线的合并候选。本记录不包含远端推送，未执行生产迁移。
 
 - 目标基线：远端 `codex/ai-shop-codex`，`d0e1b93ee`，已 fetch 核对。
 - 待合入：`codex/order-printing`，`98632ce4c`。
@@ -38,7 +38,7 @@
 
 专项验收完成，全仓既有失败单独列明，未声明全仓通过。
 
-- MySQL 9.7.2隔离临时实例：空打印域安装、V567/V579历史升级、冻结内容/租约/多未决任务门控、权限追加及幂等6组验证通过；最终SQL稳定后复跑。该验证不是全仓全部Flyway迁移验收。
+- MySQL 9.7.2隔离临时实例：空打印域安装、V567/V579历史升级、冻结内容/租约/多未决任务门控、权限追加及幂等6组验证通过，最终SQL已复跑。该验证不是全仓全部Flyway迁移验收。
 - 共享全量测试发现8项统一基线原有失败，已在真实HEAD归档副本重跑确认，未以扩基线或删除断言处理。日志`/tmp/print-shared-head-evidence.log`。
 - 后端集中专项144项分轮通过：规范任务/门控27、模板与状态7、布局/DB/PDF45、agent6、宿主应用及权限33、餐饮调用26。包含物理身份接管、旧UNKNOWN门控、rich租约同步释放、feature关闭时治理。恢复组装夹具修正后单项补跑通过。
 - 后端架构/权限目录额外24项中20通过、4失败：既有定价Port实现位置、品牌Service命名、储值FQN、非打印接口权限目录。10份相关源码与d0e1b93ee逐字相等，见同目录unified-backend-baseline-evidence.json。未放宽守卫。
@@ -70,3 +70,11 @@ mvn -o -f /tmp/print-unified-reactor-pom.xml -P '!food-embedded' \
 ```
 
 前端与元数据命令：`npm run test -w ai-shop-b-app`、`npm run type-check -w ai-shop-b-app`、`npm run test -w @ai-shop/shared`、`node --test scripts/tests/backend-ui-delivery.test.mjs scripts/tests/print-schema-generation.test.mjs`、`node scripts/check-generated-docs.mjs`。共享全量退出1，原因是上述8项已确认基线失败。
+
+## 最新统一基线交叉验证
+
+打印整合提交为`260674ffa`（父提交d0e1b93ee及98632ce4c）。随后合入统一基线快照`47c0aaed0`，包含并行推进的储值和积分提交，自动合并无文本冲突。新增迁移版本没有冲突，打印owner源码未被这些提交修改。
+
+该快照上重新验证：后端10类37项全部通过、BUILD SUCCESS；商家端341项及类型检查通过；共享581通过、8项既有失败；25生成器重建及新鲜度检查通过。后端包含主体授权、储值财务访问、积分任务/恢复，以及打印装配、订单、通知、数据域和恢复治理。结果见`unified-latest-backend-results.json`；日志`/tmp/print-unified-latest-*.log`。
+
+原统一工作区的22份已修改或未跟踪文件在操作前另存原文和SHA256于临时目录`/private/tmp/print-unified-target-preservation`；仅对与本次同样修正的PrintDeliveryTest做必要的临时保存与恢复，其余餐饮和异常处理文件不参与本次提交。

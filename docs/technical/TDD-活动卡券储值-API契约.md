@@ -1141,7 +1141,7 @@ Command包含精确模板Reference、TARGETED/CENTER及人群/标签选择条件
 | P115 | GET | /biz/management/stored-value/store-issuer-summary | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
 | P116 | GET | /biz/stores/{storeNo}/stored-value/store-summary | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
 | P117 | GET | /biz/management/stored-value/activities/{activityNo}/summary | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
-| P118 | GET | /biz/management/stored-value/financial-resources | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P118 | GET | /biz/management/stored-value/financial-resources | 仅实际有 read 权限的发行方；保留原字段，增加同一发行方 canGenerate | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
 | P119 | GET | /biz/management/stored-value/settlement-bills | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
 | P120 | POST | /biz/management/stored-value/settlement-bills/generations | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
 | P121 | GET | /biz/management/stored-value/settlement-bills/{billNo} | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
