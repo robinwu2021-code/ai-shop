@@ -4,6 +4,7 @@ import ai.neargo.shop.pay.channel.api.ChannelAccountContext;
 import ai.neargo.shop.pay.channel.api.ChannelGateway;
 import ai.neargo.shop.pay.channel.api.ChannelKey;
 import ai.neargo.shop.pay.channel.api.ChannelResult;
+import ai.neargo.shop.pay.channel.api.PayErrorCode;
 import ai.neargo.shop.pay.channel.api.command.ChannelCommand;
 import ai.neargo.shop.pay.channel.handler.ChannelHandler;
 import ai.neargo.shop.pay.channel.handler.ChannelHandlerRegistry;
@@ -12,6 +13,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 
 /**
  * 执行器：解析处理器、建单次调用、走固定顺序的管线（渠道接入统一封装设计 §5.1）。
@@ -22,9 +24,20 @@ public final class ChannelInvoker implements ChannelGateway {
     private final ChannelHandlerRegistry registry;
     private final List<ChannelInterceptor> chain;
     private final List<InvocationListener> listeners;
+    private final BooleanSupplier admission;
 
     public ChannelInvoker(ChannelHandlerRegistry registry, List<ChannelInterceptor> interceptors,
                           List<InvocationListener> listeners) {
+        this(registry, interceptors, listeners, () -> true);
+    }
+
+    /**
+     * @param admission 还收不收新调用。关闭排空时为 false：新调用直接明确失败（没发出去，调用方可另行重试），
+     *                  不进管线、不留调用记录
+     */
+    public ChannelInvoker(ChannelHandlerRegistry registry, List<ChannelInterceptor> interceptors,
+                          List<InvocationListener> listeners, BooleanSupplier admission) {
+        this.admission = admission;
         this.registry = registry;
         List<ChannelInterceptor> sorted = new ArrayList<>(interceptors);
         sorted.sort(Comparator.comparingInt(ChannelInterceptor::order));
@@ -44,6 +57,9 @@ public final class ChannelInvoker implements ChannelGateway {
     public ChannelResult execute(ChannelAccountContext account, ChannelCommand command) {
         ChannelKey key = new ChannelKey(account.market(), account.payChannel(), account.accessMode(),
                 command.scene(), command.operation());
+        if (!admission.getAsBoolean()) {
+            return new ChannelResult.Failed(PayErrorCode.CHANNEL_UNAVAILABLE, null, "服务正在关闭，不再发起渠道调用", true);
+        }
         ChannelHandler handler = registry.resolve(key);
         Invocation inv = Invocation.start(key, account, command);
         listeners.forEach(inv::addListener);

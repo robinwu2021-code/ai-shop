@@ -87,6 +87,11 @@
 - `channel.followup.MybatisFollowUpStore`：独立事务（同调用记录）；调用坐标（地区、接入模式、币种）从原调用记录取。
 - 应用层 `paybridge`：`PaymentFollowUpResolver`（`SettlePort.settlePayment` → `OrderRepairPort.markPaid`，与渠道回调同序同幂等键）· `ChannelFollowUpJob`（每分钟，`shop.job.enabled` 守卫，ShedLock）· `ChannelFollowUpConfiguration`。
 
+### S6 · 生命周期与关闭排空
+- `channel.lifecycle.ChannelLifecycleManager`（`SmartLifecycle` + 监听者 + 准入）：按首次发送登记在途、调用结束移除；`stop()` 停收新调用 → 等在途（`shop.pay.channel.drain-timeout`，默认 20s）→ 等不完的以 `Unknown("SHUTDOWN_DRAIN_TIMEOUT")` 通知补查登记后放行。相位 `DEFAULT_PHASE - 1536`：排在 Web 优雅关闭之后。
+- `ChannelInvoker` 加准入：不收时直接 `Failed(CHANNEL_UNAVAILABLE, retryable)`，不进管线、不留调用记录（没发出去）。
+- `pay_channel_lifecycle_log`：`ACTIVE→DRAINING`、`DRAINING→STOPPED` 两行，原因里带在途数与超时清单；渠道码记 `*`（应用级）。写失败只记日志（关闭期库可能已断）。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
@@ -101,6 +106,7 @@
 | AC7 | `ChannelRecordingTest`（6 条：11 环顺序；`amountTrace`；`sourceTrace`；`retryRowPerAttempt`；`recordingFailureDoesNotBlock`；`succeededRefundIsNotResent`） | ✅ | 去掉重试开新行 / 金额不按精度 / 关幂等 / 记录失败抛出 → 4 条各自红 ✅ |
 | AC8 | `ChannelCallLogFlowTest#payQueryRefundEachLeaveACallLogRow`（TEST 渠道 CNY 12.34：收款 PENDING、查单 SUCCEEDED、退款 3.00 PENDING 各一行；接入模式 PLATFORM_SUB、金额字符串 `12.34`、来源 INTERNAL、三个追踪号） | ✅ | 去掉 `LegacyChannelBridge` 的 `@Bean`（调用点退回直调原网关）→ 红：`PAY … 应有且只有一行调用记录 Expected size: 1 but was: 0` ✅ |
 | AC9 | `ChannelFollowUpFlowTest`（2 条：`unknownPrepayIsFollowedUpAndBooked` 下单超时 → 登记 → 用户付款后补查独自转已支付、查单沿用原追踪号；`followUpRacingCallbackBooksOnce` 补查与 stub 回调并发 → 一笔成功流水、订单只转一次、补查结案）· `ChannelFollowUpServiceTest`（5 条：已付入账、没有这笔结案、退避与封顶、12 次转人工、一条进行中、多实例只领一次） | ✅ | ① 去掉补查登记 → 两条红（`EmptyResultDataAccess`）② 解析器不入账 → `unknownPrepay…` 红（订单仍待支付）③ 订单转已支付去掉「已支付即返回」→ `followUpRacing…` 红（落败一方抛错、补查未结案）✅ |
+| AC10 | `LifecycleDrainTest`（2 条：`drainsInFlightBeforeStopping` 在途未完不放行、新调用 `CHANNEL_UNAVAILABLE`、完成后结果照常不登记补查；`drainTimeoutRegistersFollowUp` 200ms 超时 → 收款登记补查、日志列出 `WECHAT PAY OD1`） | ✅ | ① 准入恒放行 + 超时不通知补查 → 两条红 ② 不等在途（第一轮即跳出）→ `drainsInFlight…` 红「在途没跑完，不能放行关闭」✅ |
 | AC1 | `MapperSmokeTest`（每个 Mapper 查自己的表）· `SchemaDriftTest` · `PayBaseEntityTest` · 本机 MySQL 启动执行 V4–V6 | ✅ | 把 `PayChannelCallLog.invocationNo` 改名 → `MapperSmokeTest` 红（`Column "invocation_no_x" not found`）✅ |
 
 S2 是新组件、无旧行为可先红：一次性消融 5 处（重试、熔断粒度、未登记码、精度、可用性范围）→ 7 条测试变红，还原后 pay-channel 84 / 84 绿。
@@ -119,3 +125,4 @@ S2 是新组件、无旧行为可先红：一次性消融 5 处（重试、熔�
 4. **改了未发布的 V4**：地区种子原为 `INSERT … SELECT`，H2 生成器按「回填」丢弃，测试库里产品全都「未开通地区」。补 `NOT EXISTS` 幂等闸后生成器认作种子。V4 只在本机库执行过（已改 `pay_flyway_history` 校验和），未进任何共享库。
 5. **管线判出的明确失败在退款上译为「明确拒绝」**：管线里的 Failed 只有两种来源 —— 渠道明确拒绝，或根本没发出去（校验、熔断开、产品停用）—— 两者都可据以判失败；未发出的那种由售后重新发起。
 6. **补查只跟收款**：退款「未知」已有 `RefundExecutionService.query` 与退款坐标恢复两条收口，且它要的是五态退款查询（偏差 3）；随 I3 退款单拆分接入。转人工今天只记 ERROR 日志、`pay_exception_id` 留空 —— `pay_exception` 表在 I5。`open_key` 用「操作|渠道|单号」而非表设计的「操作|stl_payment_id|pay_refund_id」：两个 id 要到 I3 才进调用元数据。
+7. **生命周期先做应用级排空**：设计里「渠道 × 收款商户」实例的七态（含熔断带来的 DEGRADED / SUSPENDED）要等 `pay_merchant`（I4）；今天日志只记应用关闭这一种变化，渠道码记 `*`。

@@ -29,6 +29,8 @@ import ai.neargo.shop.pay.channel.invoke.interceptor.ValidationInterceptor;
 import ai.neargo.shop.pay.channel.invoke.record.CallLogStore;
 import ai.neargo.shop.pay.channel.invoke.record.ChannelCallRecorder;
 import ai.neargo.shop.pay.channel.invoke.record.MybatisCallLogStore;
+import ai.neargo.shop.pay.channel.lifecycle.ChannelLifecycleManager;
+import ai.neargo.shop.pay.channel.lifecycle.MybatisLifecycleLogStore;
 import ai.neargo.shop.pay.channel.legacy.LegacyAccessModes;
 import ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge;
 import ai.neargo.shop.pay.channel.legacy.LegacyGatewayHandler;
@@ -36,13 +38,16 @@ import ai.neargo.shop.pay.channel.log.JsonPayLogger;
 import ai.neargo.shop.pay.channel.log.PayLogger;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelCallLogMapper;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelFollowupMapper;
+import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelLifecycleLogMapper;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelProductMapper;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelProductMarketMapper;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -82,6 +87,19 @@ public class ChannelPipelineConfiguration {
     }
 
     @Bean
+    FollowUpScheduler channelFollowUpScheduler(FollowUpStore store) {
+        return new FollowUpScheduler(store, Clock.systemUTC());
+    }
+
+    @Bean
+    ChannelLifecycleManager channelLifecycleManager(FollowUpScheduler followUps, PayChannelLifecycleLogMapper mapper,
+                                                    @Qualifier("payTxManager") PlatformTransactionManager payTxManager,
+                                                    @Value("${shop.pay.channel.drain-timeout:20s}") Duration drainTimeout) {
+        return new ChannelLifecycleManager(List.of(followUps), new MybatisLifecycleLogStore(mapper, payTxManager),
+                drainTimeout);
+    }
+
+    @Bean
     PayLogger payLogger() {
         return new JsonPayLogger();
     }
@@ -105,13 +123,14 @@ public class ChannelPipelineConfiguration {
     @Bean
     ChannelGateway channelGateway(ChannelHandlerRegistry registry, ChannelProductCatalog catalog,
                                   FaultPolicyRegistry policies, ChannelCallRecorder recorder, CallLogStore store,
-                                  PayLogger logger, List<ChannelErrorMapper> errorMappers, FollowUpStore followUps) {
+                                  PayLogger logger, List<ChannelErrorMapper> errorMappers, FollowUpScheduler followUps,
+                                  ChannelLifecycleManager lifecycle) {
         List<ChannelInterceptor> chain = List.of(new TraceInterceptor(), new ValidationInterceptor(),
                 new AvailabilityInterceptor(catalog), new RecordingInterceptor(recorder), new LoggingInterceptor(logger),
                 new IdempotencyInterceptor(store), new CircuitBreakerInterceptor(policies),
                 new BulkheadInterceptor(policies), new RetryInterceptor(policies), new TimeoutInterceptor(policies),
                 new ClassifyInterceptor(new OutcomeClassifier(errorMappers)));
-        return new ChannelInvoker(registry, chain, List.of(new FollowUpScheduler(followUps, Clock.systemUTC())));
+        return new ChannelInvoker(registry, chain, List.of(followUps, lifecycle), lifecycle);
     }
 
     @Bean
