@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-25 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5已代码验收，A5b已按范围验收，A5c报价误连已修复验收，A6已代码验收，A7真实身份及资源组合已代码验收，A8词条已按范围验收，A8b会员码客户端补齐并通过B端类型检查，A9权限及生成契约已代码验收，A10/A11其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
+> 状态：实施中 · 2026-10-25 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5已代码验收，A5b已按范围验收，A5c报价误连已修复验收，A6已代码验收，A7真实身份及资源组合已代码验收，A8词条已按范围验收，A8b会员码客户端补齐并通过B端类型检查，A9权限及生成契约已代码验收，A10确认夹具已代码验收，A11质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
 > **执行方式：** 使用`superpowers:subagent-driven-development`逐任务实施及独立审查，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -985,10 +985,26 @@ Owned仅b-app/src/api/contract.ts、requests.ts、http.ts及新tests/member-code
 
 身份异常依据requireCurrentBuyer→SecurityUtils.requireUser→GlobalExceptionHandler.onUnauthorized，未被C过滤器接受的商家会话无身份，返回401/10401；onInvalid按现有信封返回200/10400。两类错误不能互相冒充。Helper在外层package-private static，普通测试不能构造依赖环境的Fixture或开启deployment属性。无后台进程/容器/数据库，不修改生产文件。
 
-- [ ] 先在真实共用helper路径补行为断言取得RED，不以缺类/编译失败记业务RED。
-- [ ] helper三方法实际零fail/error/skip，有限错误接受消融RED并逐字恢复GREEN。
-- [ ] 有效body、真实会话前后检查及零经济副作用断言代码编译通过；真实HTTP执行仍未验。
-- [ ] 独立规格/质量审查及精确提交，继续A11，不能据普通helper测试宣布M1部署验证通过。
+- [x] 先在真实共用helper路径补行为断言取得RED，不以缺类/编译失败记业务RED。
+- [x] helper三方法实际零fail/error/skip，有限错误接受消融RED并逐字恢复GREEN。
+- [x] 有效body、真实会话前后检查及零经济副作用断言代码编译通过；真实HTTP执行仍未验。
+- [x] 独立规格/质量审查及精确提交，继续A11，不能据普通helper测试宣布M1部署验证通过。
+
+### 2.36 Task60A-A11：恢复告警归因与SQL换行兼容（2026-10-25）
+
+档位0，已确认质量缺口，精确五文件与完整约束见[A11 brief](../../.superpowers/sdd/beauty-backend/task-60a-a11-brief.md)。不改变业务契约、生产恢复逻辑或既有告警级别。
+
+| AC | 实施 | 实际验证要求 |
+|---|---|---|
+| A11-W | WalkInRecoveryIT新增expectedRecoveryFailureEmitsAttributedWarningAndKeepsIntentRecoverable；复用丢失CONFIRM响应的受控所有者夹具及真实ReceptionRecovery，精确归因原operation与IllegalStateException | aliases有限选择器；单例正常GREEN、只移除既有LOG.warn消融断言RED、精确恢复源码及编译字节码后单例GREEN；持久意图/命令不丢失、租约清理、有界重试到ARRIVAL_PENDING，认证后恢复原操作 |
+| A11-R | 原生runner仅增加有限类/方法及模式安全测试，保持凭据、部署后置和自有资源清理 | 两个受影响Node文件；非法选择器在provision前失败，不放宽通配/跨模式 |
+| A11-N | SQL静态扫描器支持CR/LF/CRLF的Java行注释、原源行号与文本块续行；known/mask/rules不变 | 真实扫描fixture先RED、最小修复GREEN、lineOf消融RED及精确恢复GREEN；实际check fresh0/stale0 |
+
+临时生产消融只限ReceptionRecovery现有两行LOG.warn，finally逐字恢复、重新编译，不提交生产变更。原生验证仅指定一个新增用例，使用已缓存MySQL9.7.2、本任务UUID和共享锁；不停止其他容器、不调用远程或共享数据库。保留完整告警来源和清理证据，不压制WARN，不因单例成功宣布正式部署通过。A3首个成功VO比较和A8重复守卫biz边界保留模块最终审查triage，不授权无关修复。
+
+- [ ] 两个Node文件实际有限验证、真实SQL扫描和换行消融精确恢复。
+- [ ] 单个原生告警用例正常/消融/恢复XML及源码、字节码和自有资源清理证据。
+- [ ] 独立规格/质量审查、精确提交，随后BM04模块级代码对账和必要编译；BM05及P2～P4继续，部署统一后置。
 
 ## §3 数据层之后的业务任务与启动深化
 
@@ -2314,3 +2330,9 @@ Node真实19通过/1失败到最终20通过；正常原生三方法3/0失败/0�
 根核验全部106证据SHA、19路径/18变更、25项只读源、六阶段JavaXML、真实恢复及两代输出；独立新鲜snapshot输入7792文件、checker后7793，唯一新增ui-lib.page.html副产物保留在/tmp不入产品。全局25生成器实际exit0。独立规格PASS/质量APPROVED，无重要问题，[报告](../../.superpowers/sdd/beauty-backend/task-60a-a9-report.md)、[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a9.md)。Java登记消融发生在AST扩展之前，后续最终10项已真实运行，不虚称最终源码重复消融。
 
 Minor为既有glossary加载TS词条的MODULE_TYPELESS_PACKAGE_JSON输出，保留A11归因/最终分支审查，不改package元数据或静默压制。CannotVerify真源/快照/来源完整性由根实际hash、源码读取和106证据核验闭合；运行时ownerOnly及正式部署保持既有验证边界。无运行时授权/DDL/POM/known变更，未重复未变B242/typecheck/shared8或native。下一片A10，之后A11和BM05～P4继续。
+
+### 32.22 60A-A10确认夹具代码验收（2026-10-25）
+
+精确两测试文件提交`55e3d1d1fe0d170d06d68569414a6cd5f4821d60`，独立规格PASS/质量Approved，无Critical/Important/Minor。[报告](../../.superpowers/sdd/beauty-backend/task-60a-a10-report.md)、[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a10.md)、[root gate](../../.superpowers/sdd/beauty-backend/task-60a-a10-code-acceptance-root-gate.json)对应§2.35四条AC。三个普通用例真实初始3断言失败、首次3通过、错误接受消融2断言失败、精确恢复3通过；embedded test-compile成功。root核验29个证据文件及22个当前/BASE所有者事实，产品源码和运行/编译指纹一致。
+
+真实HTTP/SQL、经济副作用及embedded/standalone拓扑尚未执行，审查CannotVerify明确留最终60B，不能据普通helper测试宣布M1运行验收。有效quote body共用、401/10401严格身份拒绝及独立200/10400无效body分离已编码；所有生产鉴权和迁移未改。下一片§2.36 A11，随后BM04代码整体对账和必要编译，再继续BM05～P4；正式部署保持全部代码之后。
