@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.spi.pay.FundsPath;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.SettleService;
 import ai.neargo.shop.pay.points.model.AgreementSnapshot;
@@ -52,7 +53,7 @@ final class SettlementBasisFixtures {
             var agreement = new AgreementSnapshot("A:" + no, "T:" + no, "M0001", "ST-M0001",
                     "BASIS-OWNER", "v1", "HASH", "BASIS TEST", "PER_ORDER", "DIRECT",
                     "WECHAT", "v1", "ACTIVE");
-            var context = new PointsFundsGateway.FundsContext(PointsFundsGateway.FundsPath.DIRECT,
+            var context = new PointsFundsGateway.FundsContext(FundsPath.DIRECT,
                     "WECHAT", "M0001", "ST-M0001", "v1", "ORIGINAL-ACCOUNT", "O:" + no,
                     no, 350);
             var snapshot = new RedeemSnapshot(no, "BASIS-BUYER", "O:" + no, share, target,

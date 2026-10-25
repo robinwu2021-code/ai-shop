@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.spi.pay.FundsPath;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -179,7 +180,7 @@ class PointsRefundPreparationTest {
         addRedemption(type, false);
         var context =
                 new PointsFundsGateway.FundsContext(
-                        PointsFundsGateway.FundsPath.DIRECT,
+                        FundsPath.DIRECT,
                         "TEST",
                         "MERCHANT",
                         "STORE",
@@ -301,7 +302,7 @@ class PointsRefundPreparationTest {
     private PayoutCommand payoutCommand(String type) {
         var context =
                 new PointsFundsGateway.FundsContext(
-                        PointsFundsGateway.FundsPath.DIRECT,
+                        FundsPath.DIRECT,
                         "TEST",
                         "MERCHANT",
                         "STORE",
@@ -2092,7 +2093,7 @@ class PointsRefundPreparationTest {
         String no = PointsKeys.position("R", type, type);
         var context =
                 new PointsFundsGateway.FundsContext(
-                        PointsFundsGateway.FundsPath.DIRECT,
+                        FundsPath.DIRECT,
                         "TEST",
                         "MERCHANT",
                         "STORE",

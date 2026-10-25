@@ -18,7 +18,7 @@ import ai.neargo.shop.pay.points.policy.RedeemPolicy;
 import ai.neargo.shop.pay.points.pool.PointsSwitchService.Flow;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsContext;
-import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPath;
+import ai.neargo.shop.spi.pay.FundsPath;
 import ai.neargo.shop.pay.points.posting.PointsPostingService;
 import ai.neargo.shop.pay.points.redeem.RedeemService;
 import ai.neargo.shop.pay.points.store.PointsConfigurationStore;

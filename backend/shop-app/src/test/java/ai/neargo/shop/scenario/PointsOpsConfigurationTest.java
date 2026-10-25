@@ -571,7 +571,7 @@ class PointsOpsConfigurationTest {
         fund(type);
         var target =
                 new ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsContext(
-                        ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPath.DIRECT,
+                        ai.neargo.shop.spi.pay.FundsPath.DIRECT,
                         "TEST",
                         "PLATFORM",
                         "PLATFORM",
