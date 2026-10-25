@@ -162,6 +162,11 @@ const methods = {
     "refundBetweenFactReadsAndSerializedObservationNeverMixesSnapshots",
     "openAfterSaleBlocksExecutionAndCorruptedMappingBecomesUnknown"
   ],
+  "BeautyClaimedGuestResourceIT": [
+    "claimedGuestReplacementUsesCanonicalUserAndPreservesReceipts",
+    "revokedUsrBookingGrantCannotReplaceClaimedGuestAppointment",
+    "failedClaimedGuestReplacementPreservesOriginalResourceHold"
+  ],
   "BeautySourceCheckoutIT": [
     "realGuestClaimThenCurrentConsumerPurchaseFeedsBindingAndBill",
     "lostQuoteResponseRecoversRealOriginalUnderCurrentManager",
@@ -181,7 +186,7 @@ export function validateSelection(mode, selected) {
   for (const selector of selectors) {
     const parts = selector.split('#'), [name, explicit] = parts;
     if (parts.length > 2 || !Object.hasOwn(methods, name)
-      || (mode === 'beauty-source') !== (name === 'BeautySourceCheckoutIT')) invalid('class or mode');
+      || (mode === 'beauty-source') !== (['BeautySourceCheckoutIT', 'BeautyClaimedGuestResourceIT'].includes(name))) invalid('class or mode');
     const requested = explicit === undefined ? [] : explicit.split('+');
     if (explicit !== undefined && requested.some(method => !methods[name].includes(method))) invalid('method');
     if (Object.hasOwn(requestedMethods, name)) {

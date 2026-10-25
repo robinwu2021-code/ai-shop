@@ -292,6 +292,28 @@ test('usesDefaultsOnlyWhenVariableIsAbsent', () => {
   for (const value of ['', ' ', null, false, 0]) assert.throws(() => validateSelection('payment', value));
 });
 
+test('acceptsOnlyReviewedClaimedGuestResourceSelectors', async () => {
+  const name = 'BeautyClaimedGuestResourceIT';
+  const methods = ['claimedGuestReplacementUsesCanonicalUserAndPreservesReceipts',
+    'revokedUsrBookingGrantCannotReplaceClaimedGuestAppointment',
+    'failedClaimedGuestReplacementPreservesOriginalResourceHold'];
+  assert.deepEqual(validateSelection('beauty-source', name).classes, [name]);
+  for (const method of methods) {
+    assert.deepEqual(validateSelection('beauty-source', name + '#' + method).requestedMethods[name], [method]);
+    assert.throws(() => validateSelection('payment', name + '#' + method));
+    assert.throws(() => validateSelection('beauty-source', name + '#' + method + 'Typo'));
+    const f = fake({report: xml(name, [method])});
+    await main(['--beauty-source'], {CHECKOUT_PAYMENT_TESTS: name + '#' + method}, f.effects);
+    assert(f.children.find(child => child.command === 'mvn').args.includes('-Dtest=' + name + '#' + method));
+  }
+  assert.throws(() => validateSelection('payment', name));
+  assert.throws(() => validateSelection('beauty-source', 'BeautyUnknownIT'));
+  assert.throws(() => validateSelection('beauty-source', name + '#setup'));
+  assert.throws(() => validateSelection('beauty-source', name + ',' + beauty));
+  assert.deepEqual(validateSelection('beauty-source', name + '#' + methods.join('+')).requestedMethods[name], methods);
+  assert.equal(inspectReport(xml(name, methods), {className: name, methods}).tests, 3);
+});
+
 test('acceptsEachKnownClassAndExplicitMethod', () => {
   for (const [name, methods] of Object.entries(known)) {
     const mode = name === beauty ? 'beauty-source' : 'payment';
