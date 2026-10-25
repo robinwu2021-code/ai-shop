@@ -1,6 +1,9 @@
 package ai.neargo.shop.unit;
 
 import ai.neargo.shop.pay.mapper.storedvalue.SvRechargeMapper;
+import ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository;
+import ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerLedgerBridge;
+import java.util.Map;
 import ai.neargo.shop.pay.storedvalue.entity.SvRecharge;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueCreditService;
 import ai.neargo.shop.pay.storedvalue.service.impl.StoredValuePlanRechargeServiceImpl;
@@ -19,8 +22,13 @@ class StoredValueOfflineCreditResultTest {
         var recharges=mock(SvRechargeMapper.class);var credits=mock(StoredValueCreditService.class);
         var json=mock(ObjectMapper.class);
         var service=spy(new StoredValuePlanRechargeServiceImpl(null,recharges,null,null,null,credits,null,null,json,null));
+        // Existing originals are checked for owner/source routing even when issuer mode is disabled.
+        var issuer = mock(IssuerRepository.class);
+        String originalQuery = "SELECT * FROM sv_recharge WHERE tenant_no=? AND recharge_no=? AND deleted=0";
+        when(issuer.one(originalQuery, "MAIN", "R1"))
+                .thenReturn(Map.of("entity_no", "ENTITY", "source_kind", "PLAN"));
         org.springframework.test.util.ReflectionTestUtils.setField(service,"issuerLedger",
-                new ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerLedgerBridge(null,null,null,false));
+                new StoredValueIssuerLedgerBridge(issuer,null,null,false));
         var ctx=new EntitlementContext("MAIN","OWNER","retry","0".repeat(64));
         var command=mock(Create.class);var old=mock(RechargeView.class);var credited=mock(RechargeView.class);
         when(old.status()).thenReturn(RechargeState.RECEIVED);when(old.rechargeNo()).thenReturn("R1");
@@ -33,5 +41,6 @@ class StoredValueOfflineCreditResultTest {
         when(json.readValue("{}",DecisionRef.class)).thenReturn(mock(DecisionRef.class));
         when(credits.credit(eq(ctx),any())).thenReturn(credited);
         assertThat(service.confirmOffline(ctx,"ENTITY",command)).isSameAs(credited);
+        verify(issuer).one(originalQuery, "MAIN", "R1");
     }
 }

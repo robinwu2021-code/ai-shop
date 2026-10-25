@@ -3813,6 +3813,7 @@ Locate owned wallet by durable document　🔒
 | `market` | `string` | 是 | 市场代码 |
 | `currency` | `string` | 是 | ISO 货币代码 |
 | `status` | [`BuyerPointsAccountStatus`](#buyerpointsaccountstatus) | 是 | 服务端业务状态 |
+| `earningPaused` | `boolean` | 否 | 仅暂停新增赠送，不代表禁止已有余额抵扣 |
 | `balance` | `number` | 是 | 可用积分余额 |
 | `pendingBalance` | `number` | 是 | 待激活积分余额 |
 | `heldBalance` | `number` | 是 | 当前占用积分余额 |

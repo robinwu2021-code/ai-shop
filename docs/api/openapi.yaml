@@ -13114,6 +13114,9 @@ components:
         status:
           "$ref": "#/components/schemas/BuyerPointsAccountStatus"
           description: "服务端业务状态"
+        earningPaused:
+          type: "boolean"
+          description: "仅暂停新增赠送，不代表禁止已有余额抵扣"
         balance:
           type: "number"
           description: "可用积分余额"

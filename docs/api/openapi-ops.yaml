@@ -8927,6 +8927,10 @@ components:
     PointsRequestView:
       type: "object"
       properties:
+        submittedAt:
+          type: "number"
+        reviewedAt:
+          type: "number"
         id:
           type: "number"
           description: "持久记录主键"

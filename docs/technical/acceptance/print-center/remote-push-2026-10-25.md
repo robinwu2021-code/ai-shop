@@ -60,3 +60,7 @@ M–N/O批次另有4条守卫失败。媒体引用SPI已有依赖DataSource并�
 C端鉴权测试删除已无Handler的两个旧积分路径，将9个当前积分/储值路径登记为必须登录，补齐必填参数和合法探针请求，匿名仍须真实401，不进入待定清单。孤儿模块检查解析真实pom模块声明及标准源码根，承认食品插件实际reactor/profile归属，不豁免backend-plugins目录。媒体3、鉴权7、模块2与打印策略5共17项通过，见remote-push-architecture-results.json。原断言、known清单和生产鉴权未放宽。
 
 最后一批的储值通知测试仍verify旧push；生产已明确以pushTo进入代理事务。仅更新测试，精确验证USER、用户、TRADE、原标题正文、null链接和固定事件/接收者SHA256幂等键，并验证储值分支不走通用写入器。3项通过，见remote-push-notification-results.json，通知生产实现未改。
+
+八批旧快照诊断最终共6202项、8failure/8error、159skip，对应14个失败方法。最后一项为StoredValueOfflineCreditResultTest使用null仓库创建真实issuer路由桥；原件owner/source检查现为必要前置，即使issuer mode关闭也执行。仅补充与原件一致的ENTITY/PLAN仓库夹具并验证精确查询，保留原assertSame本次入账结果断言，1项通过，见remote-push-offline-credit-results.json。全部原始失败归集见remote-push-all-batches-diagnostic.json，明确保留diagnosticOnly和failure-ignore标记，不作为通过凭证或新增基线。
+
+上述14个失败方法均已有对应修复及定向绿证据，仍须最终候选的原始严格八批检查通过。远端并行更新40cad8532已普通合并，25个生成器重新生成并通过新鲜度检查。
