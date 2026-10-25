@@ -38,6 +38,9 @@ class PaymentOpenConcurrencyTest {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private ai.neargo.shop.pay.channel.PaymentAccountLookup accounts;
+
     @RepeatedTest(20)
     @DisplayName("★★★ F07 两次并发「去支付」：只有一行，两边拿到同一个商户单号")
     void concurrentOpenYieldsOneRow() throws Exception {
@@ -68,6 +71,8 @@ class PaymentOpenConcurrencyTest {
                 cmd.orderNo()))
                 .containsEntry("sub_merchant_id", "synthetic-channel-account")
                 .containsEntry("pay_merchant_no", "synthetic-pay");
+        // F12 · R14：收付通查单要的 sub_mchid 由支付域按交易查得到
+        assertThat(accounts.subMerchantOf(cmd.orderNo())).contains("synthetic-channel-account");
     }
 
     private static PaymentOpen command() {

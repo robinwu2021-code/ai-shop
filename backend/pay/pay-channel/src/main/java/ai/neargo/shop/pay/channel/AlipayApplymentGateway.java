@@ -2,8 +2,6 @@ package ai.neargo.shop.pay.channel;
 
 import ai.neargo.shop.pay.channel.base.AbstractApplymentGateway;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -19,8 +17,7 @@ import java.util.Map;
  * 结算卡放在 {@code biz_cards} 数组里，而微信是 {@code account_info} 一个对象。
  * 写在一个类里，每加一个字段都要先想清楚「这个是谁的」。
  */
-@Component
-@ConditionalOnProperty(name = "shop.pay.alipay.enabled", havingValue = "true")
+// 不自动装配，理由同 AlipayPayGateway（F12 · Review R13）；装配点在 AlipayChannelConfig
 public class AlipayApplymentGateway extends AbstractApplymentGateway {
 
     public AlipayApplymentGateway(@Qualifier("alipayChannelClient") ChannelClient client) {
