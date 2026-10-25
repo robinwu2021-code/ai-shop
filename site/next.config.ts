@@ -4,8 +4,9 @@ import type { NextConfig } from "next";
 // 与 ops-web 同一套写法（见 ops-web/next.config.ts），部署链路复用现成的 scp 流程。
 //
 // ⚠️ `images.unoptimized` 不是偷懒：`output:"export"` 下 next/image 的优化服务根本不存在，
-// 不写这一行构建直接报错。被关掉的那部分由 scripts/optimize-images.mjs（sharp）在
-// prebuild 阶段补上 —— 图片没过那一步就不许进 public/。见 TDD §3.1。
+// 不写这一行构建直接报错。被关掉的那部分按 TDD §3.1 应由 scripts/optimize-images.mjs（sharp）
+// 在 prebuild 阶段补上 —— 该脚本至今未落地（2026-10-25 核对，site/scripts/ 只有 subset-fonts.mjs），
+// 所以眼下 public/ 里的图是什么尺寸就发什么尺寸。
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 const nextConfig: NextConfig = {
