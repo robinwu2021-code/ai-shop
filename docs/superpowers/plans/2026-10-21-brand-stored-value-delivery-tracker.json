@@ -827,7 +827,7 @@
         "reviewPageCases": 12,
         "finalDelegationAffectedCases": 2,
         "fullRegression": false,
-        "physicalDevice": "342_INSTALLED_VERSION_STARTUP_VERIFIED;_FURTHER_UI_PENDING",
+        "physicalDevice": "342_INSTALLED_READONLY_MANAGEMENT_AND_INACTIVE_UNCONFIGURED_ISSUER_VERIFIED;_SETTLEMENT_NOT_VERIFIED",
         "wechatRealSending": "TEMPLATE_UNCONFIGURED",
         "reviewFindingsRemaining": 0,
         "deviceFixDistinctCases": 5,
@@ -938,7 +938,7 @@
         "apiChanged": false,
         "databaseChanged": false,
         "financialWrite": false,
-        "deviceAcceptance": false,
+        "deviceAcceptance": true,
         "publication": true,
         "sourceFixSha": "cb939f23eeca6ad07501e4149fcf85b95d4ae7cc",
         "publicationSha": "efaf99ff078c8db3466020041a9139e69f8dcc45",
@@ -947,7 +947,7 @@
         "apkMd5": "1c1ee1840d0b573807e54f163ee08a99",
         "apkBytes": 55569027,
         "deviceInstalled": true,
-        "deviceStatus": "342_INSTALLED_STARTUP_VERIFIED_UI_PAUSED_FOR_CONCURRENT_USE",
+        "deviceStatus": "342_INSTALLED_READONLY_MANAGEMENT_AND_INACTIVE_UNCONFIGURED_ISSUER_VERIFIED",
         "bH5AndSitePublished": true,
         "latestMetadataVerified": true,
         "backendRedeployed": false,
@@ -958,7 +958,11 @@
           "settlementReady": false,
           "crossEntityReady": false
         },
-        "deviceVersionVerified": true
+        "deviceVersionVerified": true,
+        "deviceAcceptanceScope": "MANAGEMENT_ENTRY_AND_INACTIVE_UNCONFIGURED_ISSUER_ONLY",
+        "financeEntryVisible": false,
+        "settlementDeviceVerified": false,
+        "auditRevocationDeviceVerified": false
       }
     }
   ],
@@ -1135,7 +1139,7 @@
     "releaseDependsOn": "P5 compatibility published; actual financial opening remains blocked by P3 historical-original decision",
     "testOrder": "Complete all phase coding and compilation, then one focused chain; no unrelated reruns",
     "scope": "Reports, bills, disputes, payment registration/independent receipt, organization membership saga, cross-entity readiness",
-    "currentBatch": "APK342 installed on real Android device, package version and logged-in startup verified; further UI paused for concurrent phone use; positive settlement tests still need isolated roles and bills",
+    "currentBatch": "APK342 installed and readonly management/inactive-unconfigured issuer verified; settlement entry absent for current actor, positive settlement/audit-revocation device cases need isolated roles and bills",
     "legacyCutoverInScope": false,
     "canonicalTarget": "efaf99ff078c8db3466020041a9139e69f8dcc45",
     "legacyCutover": "OUT_OF_SCOPE_NO_HISTORICAL_POSTING",
