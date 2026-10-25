@@ -66,7 +66,7 @@
 | 耗用冲销混入正向回执 | reverseAbsentReceiptCannotTriggerForwardConsumption观察到正向consume一次；reverseConfirmedForwardReceiptCannotMarkReversalCompleted观察到错误CONFIRMED | 有冲销意图时只执行原冲销；ABSENT保持未决，正向CONFIRMED触发协议冲突并保留UNKNOWN；17项及后续18项所在类通过 |
 | MVC方法入参错误误映射10500 | 交易HTTP空行选择及共享HandlerMethodValidationApiTest入参用例，10400预期而实际10500 | 共享Advice单独处理HandlerMethodValidationException，入参10400、返回值缺陷仍10500；共享4项及交易HTTP10项通过 |
 
-上述为本地修复，尚未提交、推送或部署。
+上述修复已提交、推送，并于2026-10-25随餐饮集成主应用发布；详见文末发布记录。
 
 ### 测试夹具修订与失败记录
 
@@ -101,6 +101,17 @@ Java21、离线Maven，测试在本轮专用回环MySQL和MariaDB容器执行。
 - 实际付款、退款、券储值积分扣减、真实打印/播报设备、真实供应商、Keeta及离线写入未验收。
 - 生产报表独立数据库、调度和导出仍未启用；本轮隔离环境验证不能代替生产启用验收。
 
-本轮代码及文档未提交、推送或部署。
+本轮代码及文档已提交、推送；生产运行版本见文末。
 
 临时环境已清理：仅删除本轮两个一次性MySQL/MariaDB容器并确认不存在，临时凭据文件已删除；其他容器未操作。最终文档引用、结构化计数及变更空白检查通过。
+
+## 2026-10-25 提交与集成发布记录
+
+- 修复与验收提交：`e011bdb59`；合并远端两笔文档提交后，固定发布版本为`fef7f00982c978819645a527d26b819d343d8aab`，已正常推送至`origin/codex/ai-shop-codex`，未强推。
+- 发布版本重新运行4类定向测试：HandlerMethodValidationApiTest 2、KitchenQueueApiTest 4、TradingHttpAcceptanceTest 10、OrderOperationsAcceptanceTest 18，共34条全部通过，无失败/错误/跳过。Java21、离线Maven、`food-embedded`构建；本次不重复全仓回归，推送时用定向验证替代全仓pre-push闸门。
+- 通过`scripts/deploy-backend.sh`从固定提交的干净副本构建，设置`MAVEN_ARGS=-Pfood-embedded`。112M产物上传MD5一致，部署锁和切换前版本校验通过。
+- 云端产物：`shop-app-20261025-1918-fef7f0098.jar`。健康检查HTTP200、状态UP，`/actuator/info`的完整gitSha与发布提交一致；包内确认包含food-api、food-core、food-web。
+- 线上仅做只读烟测：厨房列表未登录返回401；未以未登录响应冒充状态筛选与冲销业务验收。34项修复验证在隔离测试层完成，没有在生产创建订单、耗用或冲销。
+- PAY未发布、未重启，发布前后PID1573208、启动时间2026-10-25 15:10:56 CST一致。没有修改报表生产开关。
+- 部署锁已释放。上一版为`shop-app-20261025-1852-40cad8532.jar`，现有脚本保留回滚产物。
+- 本节及状态同步是发布后的文档更新，不改变已验证的生产二进制。

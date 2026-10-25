@@ -90,7 +90,7 @@
 
 ### A01 P2 厨房终态筛选与活动队列不一致
 
-**类型：代码合同问题；本轮验收已在本地修复，尚未提交发布。**
+**类型：代码合同问题；本轮验收已修复，并于2026-10-25随`fef7f0098`集成发布。**
 
 触发：`GET /biz/x/food/stores/{storeNo}/kitchen/tasks?stationNo=HOT&status=SERVED`，存在已上菜历史任务仍返回空；VOIDED同样如此。
 
