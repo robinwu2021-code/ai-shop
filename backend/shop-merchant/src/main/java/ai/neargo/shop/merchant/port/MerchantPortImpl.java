@@ -865,6 +865,15 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public Optional<PayStore> payStoreById(Long storeId) {
+        if (storeId == null) {
+            return Optional.empty();
+        }
+        MchStore store = DataScopeContext.executeWithoutScope(() -> storeMapper.selectById(storeId));
+        return store == null ? Optional.empty() : payStoreOf(store.getStoreNo());
+    }
+
+    @Override
     public Optional<PayStore> payStoreOf(String storeNo) {
         if (storeNo == null || storeNo.isBlank()) {
             return Optional.empty();

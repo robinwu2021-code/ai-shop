@@ -372,6 +372,11 @@ public interface MerchantQueryPort {
         return Optional.empty();
     }
 
+    /** 同上，按门店 id（支付新表按 id 关联核心系统；收款商户绑定校验同主体、同市场用 —— TDD-支付服务-I4 S2） */
+    default Optional<PayStore> payStoreById(Long storeId) {
+        return Optional.empty();
+    }
+
     record PaymentRoute(String merchantNo, String storeNo, String payMerchantNo, String channel,
                         String subMerchantId, String accountVersion, String fundsPath) {
     }

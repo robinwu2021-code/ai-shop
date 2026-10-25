@@ -970,6 +970,8 @@ public enum ErrorCode {
     PAY_REFUND_OPERATOR_REQUIRED(70087, "err.pay.refund_operator_required"),
     /** 两人复核：申请人、第一复核人、第二复核人不能是同一个人 */
     PAY_APPROVAL_SAME_PERSON(70088, "err.pay.approval_same_person"),
+    /** 收款商户绑定被拒：别的主体的门店、别的市场、商户不是 ACTIVE、渠道不符。回显原因 */
+    PAY_BINDING_INVALID(70089, "err.pay.binding_invalid"),
 
     /*
      * 快递代下单（TDD-快递100商家寄件）。

@@ -48,10 +48,17 @@
 - **不建 `ck_pay_merchant_2`**（MERCHANT_OWN 必须有密钥）：密钥模块搁置，执行方案 §4.6 过渡期 CN 凭据仍在配置里，而 MySQL 9 执行 CHECK —— 建了之后微信直连商户一行都回填不进去。密钥模块就绪时另起迁移加回。
 - 实体：`merchant.entity.{PayMerchant, PayMerchantBinding, PayMerchantProduct, PayMerchantStatusLog}` · `onboarding.entity.{PayOnboarding, PayOnboardingVersion, PayOnboardingMaterial}`；Mapper：`mapper.merchant.MerchantMappers` · `mapper.onboarding.OnboardingMappers`。
 
+### S2 · 收款路由与门店绑定
+- `spi.pay.PayMerchantQueryPort`（`routeOf` · `collectableRoutes` · `routeByPayMerchantId` · `capabilityOf`）+ `PayRoute` · `MerchantCapability`。
+- `merchant.port.PayMerchantQueryPortImpl`：`routeOf` 按 `active_key = 门店|渠道` 取绑定，商户须 ACTIVE；**没有绑定就是没有，不兜底**。`collectableRoutes` 按市场过滤、按优先级排。`routeByPayMerchantId` 不看绑定、不看 ACTIVE（关闭的除外），给退款与查单用冻结值。
+- `merchant.service.PayMerchantBindingService` / impl：`bind`（商户 ACTIVE、渠道一致、市场与门店一致、开户门店与本门店同主体；同一门店 × 渠道旧的 ACTIVE 先转 INACTIVE，同事务）· `unbind`。门店属于哪个主体、哪个市场经 `MerchantQueryPort#payStoreById`（新增，核心系统 Port）判断。
+- 错误码 `PAY_BINDING_INVALID`（70089，回显原因）+ 三语。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
+| AC2 / AC3 | `PayMerchantRoutingFlowTest`（5 条：`onlyStoreBindingResolves` 同主体没绑的店解析不到；`suspendedMerchantNotCollectableButRefundable`；`collectableRoutesByPriority`；`bindingRules` 别的主体 / 别的市场 / 非 ACTIVE / 渠道不符；`rebindKeepsOneActive`） | ✅ | ① 不看状态 + 不查同主体 → 两条红 ② 没绑定兜底取任一 ACTIVE（R01 的样子）+ 改绑不释放 → 两条红 ✅ |
 | AC1 | `MapperSmokeTest`（新 7 个 mapper）· `SchemaDriftTest` · `PayMigrationTest` · 本机 MySQL 9.7 临时库执行 V10 | ✅ | — |
 
 ## §6 对账二 · 设计 → 实现
@@ -61,3 +68,4 @@
 ### 偏差说明
 
 1. **V10 不建 `ck_pay_merchant_2`**，理由见 §2 S1。
+2. **反向依赖预算 MerchantQueryPort 31 → 35**：绑定校验要知道门店的主体与市场，新增 `payStoreById`（真的跨域调用，pay-svc 独立时要补一个 HTTP 客户端方法），已登记 `known-pay-reverse-deps.txt`。

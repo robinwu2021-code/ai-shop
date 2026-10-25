@@ -23,7 +23,10 @@
 # 2026-10-25 30 → 31：支付 I1 F08 新增 DirectAccounts（下单、收款落库、退款共用的「实际收款账户」规则），
 # 它的返回类型是 MerchantQueryPort.PaymentRoute —— 支付请求快照里本来就带着这个记录，**不是新的跨域调用**，
 # pay-svc 独立时不需要多一个 HTTP 客户端方法。计数按词元算，所以 +1。
-MerchantQueryPort	31
+# 2026-10-26 31 → 35：支付 I4 S2 收款商户绑定校验「门店同主体、同市场」经核心系统 Port 判断（表结构说明 §6.2），
+# 新增 `payStoreById` 一次调用（import ×2 + 字段 + 构造参数按词元计 4）。**这是真的跨域调用**：pay-svc 独立那天要多一个
+# HTTP 客户端方法（门店 id → 主体、市场）。门店是核心系统的，支付不复制门店表。
+MerchantQueryPort	35
 # 2026-09-29 14 → 15：`SettleServiceImpl` 判「这一单是不是平台代寄」
 # （`SettleSourcePort.SHIP_PLATFORM_CALL.equals(src.freightShipMode())`，V367 运费进结算）。
 # 不这么判就会对平台已付的快递费再抽一次佣金 —— 收两遍。
