@@ -31,3 +31,7 @@ it('does not replace a newer report filter with an older late response',async()=
 it('does not replace a newer issuer filter with an older bill response',async()=>{
  let finish!:(v:unknown)=>void;m.bills.mockImplementationOnce(()=>new Promise(r=>{finish=r})).mockResolvedValueOnce({...empty,records:[{...bill,billNo:'LATEST BILL',issuerNo:'I2'}]});const w=mount(ListPage);m.load({m:'M1'});m.show();await flushPromises();const vm=w.vm as unknown as {issuer:string;load:()=>Promise<void>};vm.issuer='I2';await vm.load();finish({...empty,records:[{...bill,billNo:'STALE BILL',issuerNo:'I1'}]});await flushPromises();expect(w.text()).toContain('Issuer two');expect(w.text()).not.toContain('Issuer one');w.unmount();
 });
+
+it('shows the actual report failure instead of claiming every failure is a network outage',async()=>{
+ m.summary.mockRejectedValueOnce(new Error('Report is not available'));const w=mount(SummaryPage,{global:{mocks:{$t:(key:string)=>key}}});m.load({m:'M1',b:'B1'});await flushPromises();expect(w.text()).toContain('Report is not available');expect(w.find('.sh-failed').exists()).toBe(true);w.unmount();
+});

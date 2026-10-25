@@ -27,3 +27,9 @@ it('reloads authorized brand actions after changing status',async()=>{
 it('uses server-verified delegation authority for an entity owner whose receipt permission is not onward-delegatable',async()=>{
  const financial={...grant,actorNo:'MCH:OWNER',resourceType:'ENTITY',resourceNo:'E1',resourceName:'Entity',permissionCode:'sv.settlement.receipt.confirm',status:'ACTIVE',delegatable:false};mocks.resources.mockImplementation(async(_m,q)=>({items:q?.actorNo==='MCH:A'?[]:[financial],nextCursor:null}));const w=mount(Grants,{global:{plugins:[createPinia()]}});await flushPromises();await tap(w,'management.staffmanagement.choose');await tap(w,'同事');await tap(w,'management.resourcemanagement.choose');await tap(w,'Entity · management.permission.sv_settlement_receipt_confirm');await tap(w,'management.grant');expect(mocks.resources).toHaveBeenCalledWith('M1',expect.objectContaining({view:'GRANTS',actorNo:'MCH:OWNER'}));expect(mocks.grant).toHaveBeenCalledWith('M1',expect.objectContaining({actorNo:'MCH:A',resourceType:'ENTITY',resourceNo:'E1',permissionCode:'sv.settlement.receipt.confirm'}));w.unmount();
 });
+
+it('formats management timestamps consistently when the native locale formatter falls back to an English date',async()=>{
+ const {managementTime}=await import('@/shared/management');
+ const native=vi.spyOn(Date.prototype,'toLocaleString').mockReturnValue('Wed Oct 21 2026 23:51:53 GMT+0800 (CST)');
+ try{expect(managementTime('2026-10-21T15:51:53Z')).toBe('2026-10-21 23:51');expect(managementTime('invalid')).toBe('—');expect(managementTime()).toBe('—')}finally{native.mockRestore()}
+});
