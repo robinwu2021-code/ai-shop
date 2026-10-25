@@ -42,6 +42,7 @@ export default {
     at: "{t}",
   },
   common: {
+    delete: "حذف",
     loadFailed: "تعذّر التحميل",
     loadFailedTip: "الشبكة على الأرجح. تحقّق منها ثم أعد المحاولة.",
     remove: "إزالة", search: "بحث", yes: "نعم", no: "لا", back: "رجوع", confirm: "تأكيد", cancel: "إلغاء", done: "تم", save: "حفظ", loading: "جارٍ التحميل…", empty: "لا يوجد محتوى بعد", retry: "إعادة", saved: "تم الحفظ", all: "الكل",
@@ -2514,6 +2515,8 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
     statusNONE: "غير مسجّل", statusAPPLYING: "قيد المراجعة", statusREJECTED: "مرفوض", statusACTIVE: "نشط", statusSUSPENDED: "موقوف",
   },
   perm: {
+    "biz:booking:view": "عرض المواعيد",
+    "biz:booking:manage": "إنشاء المواعيد وتعديلها وإلغاؤها",
     "biz:receive": "استلام البضائع والفرز",
     "biz:verify": "تسليم الطلبات بالرمز",
     "biz:ship": "الشحن وتأكيد التسليم",

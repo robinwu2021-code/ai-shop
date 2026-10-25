@@ -338,7 +338,7 @@ export default {
       valueMerged: "平台已存在「{name}」，已直接引用",
       // 三件事在一屏：用不用、什么顺序、叫什么
       adjustHint: "✕ 移除档位，＋ 从平台选用或新建。重命名仅影响本店显示，不影响跨店比价。",
-      save: "保存", cancel: "取消", reset: "恢复平台默认", saved: "已保存",
+      save: "保存", delete: "删除", cancel: "取消", reset: "恢复平台默认", saved: "已保存",
       addableHere: "可加回",
       catAllRemoved: "已全部移除",
       catAllRemovedProps: "已全部移除",
@@ -2825,6 +2825,8 @@ entryHint: "谁在买 · 谁不来了",
   // 后端也带了一份中文（BizPerms.LABELS），这里这份多了英文/阿语；
   // 两份对不上时以后端为准（它是判权那份），但界面优先用这里的本地化。
   perm: {
+    "biz:booking:view": "查看预约",
+    "biz:booking:manage": "创建、调整及取消预约",
     "biz:receive": "到货登记与分拣",
     "biz:verify": "核销取货",
     "biz:ship": "发货与标记送达",

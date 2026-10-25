@@ -42,6 +42,7 @@ export default {
     at: "{t}",
   },
   common: {
+    delete: "Delete",
     loadFailed: "Could not load",
     loadFailedTip: "Most likely the network. Check it and try again.",
     remove: "Remove", search: "Search", yes: "Yes", no: "No", back: "Back", confirm: "OK", cancel: "Cancel", done: "Done", save: "Save", loading: "Loading…", empty: "Nothing here yet", retry: "Retry", saved: "Saved", all: "All",
@@ -2516,6 +2517,8 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     statusNONE: "Not registered", statusAPPLYING: "Under review", statusREJECTED: "Rejected", statusACTIVE: "Active", statusSUSPENDED: "Suspended",
   },
   perm: {
+    "biz:booking:view": "View appointments",
+    "biz:booking:manage": "Create, change and cancel appointments",
     "biz:receive": "Goods-in and picking",
     "biz:verify": "Redeem pickups",
     "biz:ship": "Ship and mark delivered",
