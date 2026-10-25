@@ -1,20 +1,22 @@
 package ai.neargo.shop.product.mapper;
 
 import ai.neargo.shop.product.entity.PrdCategory;
-import ai.neargo.shop.product.entity.PrdStoreCatalog;
-import ai.neargo.shop.product.entity.PrdStoreCatalogVersion;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdSpecTemplate;
 import ai.neargo.shop.product.entity.PrdStockLock;
+import ai.neargo.shop.product.entity.PrdStoreCatalog;
+import ai.neargo.shop.product.entity.PrdStoreCatalogVersion;
 import ai.neargo.shop.product.entity.PrdStoreStock;
+
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
-import java.util.List;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /** product 域的 Mapper 集合。 */
 public final class ProductMappers {
@@ -359,6 +361,13 @@ public final class ProductMappers {
     }
 
     public interface StockLockMapper extends BaseMapper<PrdStockLock> {
+        /**
+         * Complete original rows, including settled rows, share one deterministic owner lock order.
+         */
+        @Select(
+                "SELECT * FROM prd_stock_lock WHERE tenant_no='MAIN' AND lock_no=#{order} "
+                        + "AND deleted=0 ORDER BY id FOR UPDATE")
+        List<PrdStockLock> lockOriginal(@Param("order") String order);
     }
 
     public interface CategoryMapper extends BaseMapper<PrdCategory> {

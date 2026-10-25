@@ -53,6 +53,9 @@ public final class BizPerms {
 
     /** 准备报价不授权购买，必须单独显式授予。 */
     public static final String CHECKOUT_PREPARE = "trade:checkout:prepare";
+
+    /** Merchant declaration approval is separate from existing cash-account authorization. */
+    public static final String MANUAL_CONFIRM = "trade:manual-service:confirm";
     /** 改库存（含门店库存）。高频日常动作，且<b>不出钱</b> —— 与改价是两件事 */
     public static final String STOCK = "biz:stock";
     /** 建/改商品、上下架、规格模板、识图。<b>含价格</b> */
@@ -177,6 +180,7 @@ public final class BizPerms {
             Map.entry(ORDER_VIEW, "看订单与金额"),
             Map.entry(CASH_RECEIVE, "确认线下实收"),
             Map.entry(CHECKOUT_PREPARE, "准备服务购买报价"),
+            Map.entry(MANUAL_CONFIRM, "人工确认服务收款"),
             Map.entry(STOCK, "看商品、改库存"),
             Map.entry(GOODS, "建商品、改价、上下架"),
             Map.entry(CAMPAIGN, "营销活动与报价"),

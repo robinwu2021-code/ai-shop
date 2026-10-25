@@ -8,18 +8,20 @@ import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.ReservationService;
 import ai.neargo.shop.inventory.service.ReturnReceiptService;
 import ai.neargo.shop.inventory.service.StockCountService;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
+import ai.neargo.shop.spi.product.StockPort.ReturnLine;
+import ai.neargo.shop.spi.product.StockPort.SkuQty;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
-import ai.neargo.shop.spi.product.StockPort.ReturnLine;
-import ai.neargo.shop.spi.product.StockPort.SkuQty;
-import org.springframework.beans.factory.annotation.Autowired;
-import tools.jackson.core.type.TypeReference;
 
 /**
  * 把平台侧的库存动作<b>补记</b>到进销存。双写的第二半。
@@ -209,7 +211,14 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
             }
             String locationId = locations.resolveStockLocation(
                     owner, acl.locationOfStore(owner, storeNo));
-            out.add(new ReservationService.Line(acl.itemIdOfSku(skuNo), locationId, qty, text(it, "fulfillmentRef")));
+            out.add(
+                    new ReservationService.Line(
+                            acl.itemIdOfSku(skuNo),
+                            locationId,
+                            qty,
+                            text(it, "fulfillmentRef"),
+                            text(it, "fulfillmentRef") == null ? null : skuNo,
+                            text(it, "fulfillmentRef") == null ? null : storeNo));
         }
         return out;
     }

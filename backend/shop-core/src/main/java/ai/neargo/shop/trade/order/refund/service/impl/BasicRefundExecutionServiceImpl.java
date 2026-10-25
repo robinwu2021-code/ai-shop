@@ -13,9 +13,11 @@ import ai.neargo.shop.trade.order.refund.service.RefundExecutionStore;
 import ai.neargo.shop.trade.order.refund.service.RefundPreparationService;
 import ai.neargo.shop.trade.order.refund.service.RefundResourceService;
 import ai.neargo.shop.trade.order.refund.service.RefundResultService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
 import tools.jackson.databind.ObjectMapper;
 
 /** The durable plan is committed before sends; every restart follows the original execution. */
@@ -51,7 +53,7 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
 
     @Override
     public void dispatch(String no) {
-        OrdRefundExecution row = store.claim(no);
+        OrdRefundExecution row = RefundExecutionStore.requireFunded(store.claim(no));
         if (row == null) {
             return;
         }
@@ -68,8 +70,9 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
                 }
                 store.cashReady(no);
             }
-            applyResult(settle.requestRefund(request(row)));
+            applyResult(settle.requestRefund(request(source(no))));
         } catch (RuntimeException failure) {
+            source(no);
             results.apply(new RefundDispatchResult(no, row.getPaymentNo(), DispatchStatus.UNKNOWN,
                     "REFUND_EXECUTION_UNKNOWN", true, null));
             log.warn("refund {} awaits original execution recovery: {}", no, failure.getClass().getSimpleName());
@@ -81,8 +84,11 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
         if (result == null) {
             throw new IllegalArgumentException("refund result required");
         }
-        RefundDispatchResult verified = result.status() == DispatchStatus.SUCCEEDED
-                ? settle.queryRefundExecution(request(store.read(result.executionNo()))) : result;
+        var original = source(result.executionNo());
+        RefundDispatchResult verified =
+                result.status() == DispatchStatus.SUCCEEDED
+                        ? settle.queryRefundExecution(request(original))
+                        : result;
         results.apply(verified);
         if (verified.status() == DispatchStatus.SUCCEEDED) {
             recoverSuccessful(verified.executionNo());
@@ -91,7 +97,7 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
 
     @Override
     public void recover(String no) {
-        OrdRefundExecution row = store.read(no);
+        OrdRefundExecution row = source(no);
         if (row == null) {
             return;
         }
@@ -111,7 +117,7 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
     }
 
     private void recoverSuccessful(String no) {
-        var row=store.read(no);
+        var row = source(no);
         if(row!=null && Integer.valueOf(2).equals(row.getClosureVersion())) {
             obligations.recover(no);
             results.closePending(no);
@@ -122,6 +128,10 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
     @Override
     public OrdRefundExecution find(String afterSaleNo) {
         return store.byAfterSale(afterSaleNo);
+    }
+
+    private OrdRefundExecution source(String no) {
+        return RefundExecutionStore.requireFunded(store.currentSource(no));
     }
 
     private RefundRequest request(OrdRefundExecution row) {

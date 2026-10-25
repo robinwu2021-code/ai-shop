@@ -2530,6 +2530,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     "biz:order:view": "See orders and amounts",
     "pay:cash:receive": "Confirm offline receipt",
     "trade:checkout:prepare": "Prepare service purchase quotes",
+    "trade:manual-service:confirm": "Confirm manual service receipt",
     "biz:stock": "View goods, edit stock",
     "biz:goods": "Create products, price, publish",
     "biz:campaign": "Campaigns and quotes",

@@ -107,6 +107,7 @@ public class OfflineReceiptServiceImpl implements OfflineReceiptService {
     @Override
     public PaymentAttemptView confirm(CheckoutScope scope, OfflineReceiptReq request) {
         var actor = access.requireCurrentCashier(scope);
+        operation(scope, request.operation());
         String key = CheckoutDigests.hash(request.requestKey());
         var row =
                 unscoped(
@@ -372,6 +373,9 @@ public class OfflineReceiptServiceImpl implements OfflineReceiptService {
     }
 
     private static void requireScope(CheckoutScope scope, OrdCheckoutOperation op) {
+        if (op != null && "MANUAL_OFFLINE".equals(op.getAdmissionKind())) {
+            throw conflict();
+        }
         if (op == null
                 || !scope.entityNo().equals(op.getEntityNo())
                 || !scope.storeNo().equals(op.getStoreNo())

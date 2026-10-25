@@ -86,6 +86,7 @@ public class CheckoutPaymentServiceImpl implements CheckoutPaymentService {
     @Override
     public PaymentAttemptView initiatePayment(InitiatePaymentReq request) {
         String buyer = access.requireCurrentBuyer();
+        buyerOperation(request.operation(), buyer);
         String key = CheckoutDigests.hash(request.requestKey());
         var row = unscoped(() -> requests.findKey("CONSUMER", "USR", buyer, INITIATE, key));
         if (row == null) {
@@ -349,6 +350,9 @@ public class CheckoutPaymentServiceImpl implements CheckoutPaymentService {
     }
 
     private static void requirePlaced(OrdCheckoutOperation op, String buyer) {
+        if (op != null && "MANUAL_OFFLINE".equals(op.getAdmissionKind())) {
+            throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
+        }
         if (op == null
                 || !buyer.equals(op.getBuyerNo())
                 || !"CREATED".equals(op.getPhase())

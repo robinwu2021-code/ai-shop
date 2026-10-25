@@ -1,23 +1,25 @@
 package ai.neargo.shop.invbridge.port;
 
+import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.invbridge.OriginalInventoryRestoreAdapter;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.ReservationService;
 import ai.neargo.shop.inventory.service.ReturnReceiptService;
 import ai.neargo.shop.inventory.service.StockCountService;
+import ai.neargo.shop.spi.product.StockDispositionContract.ReservationOwner;
 import ai.neargo.shop.spi.product.StockPort;
-import ai.neargo.shop.event.OutboxEventBus;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.LinkedHashMap;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 把交易域的库存调用接到**进销存**上 —— D2 的真相源切换开关。
@@ -46,7 +48,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Primary
 @ConditionalOnProperty(prefix = "shop.inventory", name = "stock-authority", havingValue = "INVENTORY")
-public class InventoryStockPort implements StockPort {
+public class InventoryStockPort implements StockPort, ReservationOwner {
+    @Override
+    public String stockAuthority() {
+        return "INVENTORY";
+    }
 
     /**
      * 预留的存活时长。与平台的「未支付自动关单」同一个量级 ——
@@ -180,7 +186,14 @@ public class InventoryStockPort implements StockPort {
         for (SkuQty q : items) {
             String locationId = locations.resolveStockLocation(
                     owner, acl.locationOfStore(owner, q.storeNo()));
-            lines.add(new ReservationService.Line(acl.itemIdOfSku(q.skuNo()), locationId, q.qty(), q.fulfillmentRef()));
+            lines.add(
+                    new ReservationService.Line(
+                            acl.itemIdOfSku(q.skuNo()),
+                            locationId,
+                            q.qty(),
+                            q.fulfillmentRef(),
+                            q.fulfillmentRef() == null ? null : q.skuNo(),
+                            q.fulfillmentRef() == null ? null : q.storeNo()));
         }
         return lines;
     }

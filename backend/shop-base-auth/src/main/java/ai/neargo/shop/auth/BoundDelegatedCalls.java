@@ -45,8 +45,13 @@ public final class BoundDelegatedCalls {
                 () -> {
                     bindings.requireRoute(
                             call, expectedEndpoint, expectedAction, mode.name(), expectedTargetNo);
-                    return DelegatedIdentityContext.call(
-                            call.binding().identity(), () -> bindings.reply(call, operation.get()));
+                    return BoundActionContext.call(
+                            call,
+                            bindings::digest,
+                            () ->
+                                    DelegatedIdentityContext.call(
+                                            call.binding().identity(),
+                                            () -> bindings.reply(call, operation.get())));
                 });
     }
 }

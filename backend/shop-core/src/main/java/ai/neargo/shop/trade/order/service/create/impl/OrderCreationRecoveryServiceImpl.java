@@ -2,16 +2,16 @@ package ai.neargo.shop.trade.order.service.create.impl;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.spi.product.StockDispositionContract.ReservationOwner;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.order.entity.OrdCreateIntent;
 import ai.neargo.shop.trade.order.mapper.CreateIntentMapper;
 import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import java.util.List;
-import java.time.LocalDateTime;
-import java.util.Objects;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -23,8 +23,13 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
+
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
 
 /** Stock is never reserved before its durable claim; recovery sends run after releasing the intent row lock. */
 @Service
@@ -53,6 +58,10 @@ public class OrderCreationRecoveryServiceImpl implements OrderCreationRecoverySe
 
     @Override
     public String register(String proposed, String buyer, String key, String hash, List<StockPort.SkuQty> needs) {
+        if (!(stock instanceof ReservationOwner actual)
+                || !Objects.equals(authority, actual.stockAuthority())) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
         return independent.execute(tx -> {
             OrdCreateIntent intent = new OrdCreateIntent();
             intent.setPayNo(proposed);
@@ -60,7 +69,7 @@ public class OrderCreationRecoveryServiceImpl implements OrderCreationRecoverySe
             intent.setEndpoint(ENDPOINT);
             intent.setIdemKey(key == null || key.isBlank() ? null : key);
             intent.setRequestHash(hash);
-            intent.setStockAuthority(authority);
+            intent.setStockAuthority(actual.stockAuthority());
             intent.setStockNeedsJson(json.writeValueAsString(needs));
             intent.setStatus(OrdCreateIntent.PREPARED);
             intent.setNextAttemptAt(System.currentTimeMillis() + LEASE_MS);

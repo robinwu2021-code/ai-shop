@@ -13,6 +13,12 @@ import java.time.LocalDateTime;
 @Setter
 @TableName("ord_checkout_operation")
 public class OrdCheckoutOperation extends BaseEntity {
+    /** Immutable owner-selected purchase lane; legacy requests cannot select manual mode. */
+    private String admissionKind;
+
+    private Long manualObservationRevision;
+    private String manualObservationHash;
+
     private String operationNo;
     private String caller;
     private String entityNo;

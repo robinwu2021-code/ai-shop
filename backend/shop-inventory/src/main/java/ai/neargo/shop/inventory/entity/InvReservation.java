@@ -1,6 +1,7 @@
 package ai.neargo.shop.inventory.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -11,6 +12,14 @@ import java.time.LocalDateTime;
 @Setter
 @TableName("inv_reservation")
 public class InvReservation extends InvMutableEntity {
+
+    /** Frozen full source manifest and immutable original confirmation identity. */
+    private String sourceManifestHash;
+
+    /** Real aggregate revision under the reservation head root; legacy originals remain null. */
+    private Long dispositionRevision;
+
+    private String confirmationOperationNo;
 
     private String reservationId;
 

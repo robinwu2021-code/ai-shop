@@ -1,6 +1,7 @@
 package ai.neargo.shop.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -56,6 +57,7 @@ class BoundDelegatedCallsTest {
                             mode,
                             "operation",
                             () -> {
+                                BoundActionContext.require(request);
                                 assertThat(DelegatedIdentityContext.current())
                                         .isEqualTo(request.binding().identity());
                                 assertThat(
@@ -66,6 +68,7 @@ class BoundDelegatedCallsTest {
                                 return new Result(1);
                             });
             assertThat(response.getStatusCode().value()).isEqualTo(200);
+            assertThat(BoundActionContext.present()).isFalse();
             assertThat(response.getBody()).isInstanceOf(InternalReply.class);
             assertThat(SecurityContextHolder.getContext()).isSameAs(previous);
             var failure =
@@ -125,5 +128,70 @@ class BoundDelegatedCallsTest {
                         () -> new Result(calls.incrementAndGet()));
         assertThat(wrong.getStatusCode().value()).isEqualTo(401);
         assertThat(calls).hasValue(0);
+    }
+
+    @Test
+    void verifiedPurposeAndPayloadCannotBeReusedAndNestedFailureRestoresOriginal() {
+        var helper = new BoundDelegatedCalls("secret");
+        var original = call("MERCHANT", "MCH");
+        var changed = new InternalCall<>(original.binding(), new Payload("changed"));
+        var purpose =
+                new InternalCall<>(
+                        new InternalRequestBinding(
+                                1,
+                                "TEST",
+                                "WRITE",
+                                original.binding().identity(),
+                                "entity",
+                                "store",
+                                "operation"),
+                        original.request());
+        var response =
+                helper.invoke(
+                        "secret",
+                        original,
+                        "TEST",
+                        "READ",
+                        BoundDelegatedCalls.Mode.MERCHANT,
+                        "operation",
+                        () -> {
+                            BoundActionContext.require(original);
+                            assertThatThrownBy(() -> BoundActionContext.require(changed))
+                                    .isInstanceOf(IllegalArgumentException.class);
+                            assertThatThrownBy(() -> BoundActionContext.require(purpose))
+                                    .isInstanceOf(IllegalArgumentException.class);
+                            var nested =
+                                    helper.invoke(
+                                            "secret",
+                                            purpose,
+                                            "TEST",
+                                            "WRITE",
+                                            BoundDelegatedCalls.Mode.MERCHANT,
+                                            "operation",
+                                            () -> {
+                                                BoundActionContext.require(purpose);
+                                                throw new IllegalStateException("nested");
+                                            });
+                            assertThat(nested.getStatusCode().value()).isEqualTo(503);
+                            BoundActionContext.require(original);
+                            return new Result(2);
+                        });
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(BoundActionContext.present()).isFalse();
+        assertThatThrownBy(() -> BoundActionContext.require(original))
+                .isInstanceOf(IllegalArgumentException.class);
+        var rejected =
+                helper.invoke(
+                        "secret",
+                        purpose,
+                        "TEST",
+                        "READ",
+                        BoundDelegatedCalls.Mode.MERCHANT,
+                        "operation",
+                        () -> {
+                            throw new AssertionError("invalid route entered");
+                        });
+        assertThat(rejected.getStatusCode().value()).isEqualTo(400);
+        assertThat(BoundActionContext.present()).isFalse();
     }
 }

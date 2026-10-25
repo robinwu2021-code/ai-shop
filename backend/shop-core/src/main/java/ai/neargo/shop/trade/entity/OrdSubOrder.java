@@ -1,7 +1,9 @@
 package ai.neargo.shop.trade.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -85,6 +87,9 @@ public class OrdSubOrder extends BaseEntity {
     private String fulfillmentAuthority;
 
     private String sourceOperationNo;
+
+    /** Copied from the immutable checkout operation, never a public pay-mode flag. */
+    private String admissionKind;
 
     private String subOrderNo;
     private String orderNo;

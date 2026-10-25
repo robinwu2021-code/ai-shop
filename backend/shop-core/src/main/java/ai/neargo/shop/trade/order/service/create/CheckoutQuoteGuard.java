@@ -93,7 +93,25 @@ public class CheckoutQuoteGuard {
                 op.getScopeRevision(),
                 op.getScopeHash(),
                 frozen.lines(),
-                catalog);
+                catalog,
+                op.getAdmissionKind(),
+                op.getOperationNo());
+    }
+
+    /**
+     * Initial manual pricing is possible only after its dedicated operation is actually persisted.
+     */
+    public void requireManualPricing(CheckoutPricingScope scope, String buyer) {
+        transaction();
+        var op = operations.lock("BEAUTY", scope.operationNo());
+        if (op == null
+                || !"MANUAL_OFFLINE".equals(op.getAdmissionKind())
+                || !buyer.equals(op.getBuyerNo())
+                || !scope.entityNo().equals(op.getEntityNo())
+                || !scope.storeNo().equals(op.getStoreNo())
+                || !scope.scopeHash().equals(op.getScopeHash())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
     }
 
     /**
@@ -194,6 +212,7 @@ public class CheckoutQuoteGuard {
         if (op == null
                 || quote == null
                 || confirmation == null
+                || !Objects.equals(expected.admissionKind(), op.getAdmissionKind())
                 || !"CONFIRMED".equals(op.getPhase())
                 || !"CONFIRMED".equals(quote.getStatus())
                 || !"AUTHORIZED".equals(confirmation.getStatus())

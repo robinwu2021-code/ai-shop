@@ -1,20 +1,24 @@
 package ai.neargo.shop.product.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.spi.product.StockPort;
-import ai.neargo.shop.product.service.OriginalStockRestoreService;
-import org.springframework.beans.factory.annotation.Autowired;
-import ai.neargo.shop.product.entity.PrdStockLock;
-import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
-import ai.neargo.shop.product.entity.PrdStoreStock;
-import ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import org.springframework.stereotype.Component;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import org.springframework.transaction.annotation.Transactional;
+import ai.neargo.shop.product.entity.PrdStockLock;
+import ai.neargo.shop.product.entity.PrdStoreStock;
+import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper;
+import ai.neargo.shop.product.service.OriginalStockRestoreService;
+import ai.neargo.shop.spi.product.StockDispositionContract;
+import ai.neargo.shop.spi.product.StockDispositionContract.ReservationOwner;
+import ai.neargo.shop.spi.product.StockPort;
+
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -31,7 +35,11 @@ import java.util.List;
  * 那时 DB 这层作为兜底保留，不是替换。
  */
 @Component
-public class StockPortImpl implements StockPort {
+public class StockPortImpl implements StockPort, ReservationOwner {
+    @Override
+    public String stockAuthority() {
+        return "PLATFORM";
+    }
 
     private final SkuMapper skuMapper;
     private final StockLockMapper lockMapper;
@@ -78,6 +86,54 @@ public class StockPortImpl implements StockPort {
     @Override
     @Transactional(propagation = Propagation.NESTED)
     public List<String> lock(String lockNo, List<SkuQty> items) {
+        boolean tracked =
+                items != null
+                        && !items.isEmpty()
+                        && items.stream().allMatch(item -> item.fulfillmentRef() != null);
+        String manifest =
+                tracked
+                        ? StockDispositionContract.manifestHash(
+                                StockDispositionContract.needs(items))
+                        : null;
+        if (tracked) {
+            var previous =
+                    DataScopeContext.executeWithoutScope(() -> lockMapper.lockOriginal(lockNo));
+            if (!previous.isEmpty()) {
+                var previousNeeds =
+                        previous.stream()
+                                .map(
+                                        row ->
+                                                new SkuQty(
+                                                        row.getSkuNo(),
+                                                        row.getQty(),
+                                                        row.getSourceStoreNo(),
+                                                        row.getFulfillmentRef(),
+                                                        row.getLifecycleVersion() == null
+                                                                ? 0
+                                                                : row.getLifecycleVersion()))
+                                .toList();
+                if (previous.stream()
+                                .anyMatch(
+                                        row ->
+                                                !manifest.equals(row.getSourceManifestHash())
+                                                        || PrdStockLock.RELEASED.equals(
+                                                                row.getStatus())
+                                                        || row.getLifecycleVersion() == null
+                                                        || items.stream()
+                                                                .anyMatch(
+                                                                        item ->
+                                                                                item
+                                                                                                .lifecycleVersion()
+                                                                                        != row
+                                                                                                .getLifecycleVersion()))
+                        || !manifest.equals(
+                                StockDispositionContract.manifestHash(
+                                        StockDispositionContract.needs(previousNeeds)))) {
+                    throw BizException.of(ErrorCode.CONFLICT);
+                }
+                return List.of();
+            }
+        }
         List<String> failed = new ArrayList<>();
         for (SkuQty item : items) {
             String storeNo = item.storeNo();
@@ -117,6 +173,11 @@ public class StockPortImpl implements StockPort {
             lock.setSkuNo(item.skuNo());
             lock.setFulfillmentRef(item.fulfillmentRef());
             lock.setQty(item.qty());
+            if (tracked) {
+                lock.setSourceManifestHash(manifest);
+                lock.setSourceStoreNo(item.storeNo());
+                lock.setLifecycleVersion(item.lifecycleVersion());
+            }
             // **锁在哪张表就记在哪** —— 释放与确认靠它决定把数减回哪里，
             // 记错的后果是库存凭空多出或少掉一批，而且要等到对账才发现
             lock.setStoreNo(perStore ? storeNo : null);
@@ -138,22 +199,14 @@ public class StockPortImpl implements StockPort {
     @Override
     @Transactional
     public void release(String lockNo) {
-        forEachActiveLock(lockNo, lock -> {
-            if (Boolean.TRUE.equals(lock.getPresale())) {
-                // 预售单取消：额度还回去。不还的话额度会随着取消数一路缩水，
-                // 而那批货其实还没卖出去 —— 表现是「明明没卖多少，却说额度满了」
-                DataScopeContext.executeWithoutScope(
-                        () -> skuMapper.releasePresale(lock.getSkuNo(), lock.getQty()));
-            } else if (lock.getStoreNo() != null) {
-                storeStockMapper.releaseStock(lock.getStoreNo(), lock.getSkuNo(), lock.getQty());
-            } else {
-                DataScopeContext.executeWithoutScope(
-                        () -> skuMapper.releaseStock(lock.getSkuNo(), lock.getQty()));
-            }
-            lock.setStatus(PrdStockLock.RELEASED);
-            lock.setSettledAt(LocalDateTime.now());
-            lockMapper.updateById(lock);
-        });
+        forEachActiveLock(
+                lockNo,
+                lock -> {
+                    releaseBalance(lock);
+                    lock.setStatus(PrdStockLock.RELEASED);
+                    lock.setSettledAt(LocalDateTime.now());
+                    checked(lock, lockMapper.updateById(lock));
+                });
     }
 
     @Override
@@ -169,19 +222,19 @@ public class StockPortImpl implements StockPort {
             if (Boolean.TRUE.equals(lock.getPresale())) {
                 lock.setStatus(PrdStockLock.CONFIRMED);
                 lock.setSettledAt(LocalDateTime.now());
-                lockMapper.updateById(lock);
+                checked(lock, lockMapper.updateById(lock));
                 return;
             }
             // 锁定转实扣：总库存减、锁定量同步减，此后不再释放
             if (lock.getStoreNo() != null) {
-                storeStockMapper.confirmStock(lock.getStoreNo(), lock.getSkuNo(), lock.getQty());
+                checked(lock, storeStockMapper.confirmStock(lock.getStoreNo(), lock.getSkuNo(), lock.getQty()));
             } else {
-                DataScopeContext.executeWithoutScope(
-                        () -> skuMapper.confirmStock(lock.getSkuNo(), lock.getQty()));
+                checked(lock, DataScopeContext.executeWithoutScope(
+                        () -> skuMapper.confirmStock(lock.getSkuNo(), lock.getQty())));
             }
             lock.setStatus(PrdStockLock.CONFIRMED);
             lock.setSettledAt(LocalDateTime.now());
-            lockMapper.updateById(lock);
+            checked(lock, lockMapper.updateById(lock));
         });
     }
 
@@ -189,11 +242,13 @@ public class StockPortImpl implements StockPort {
     @Transactional
     public void confirm(String lockNo, int lifecycleVersion) {
         if (lifecycleVersion != 2) { confirm(lockNo); return; }
-        forEachActiveLock(lockNo, lock -> {
-            lock.setStatus(PrdStockLock.ALLOCATED);
-            lock.setSettledAt(LocalDateTime.now());
-            lockMapper.updateById(lock);
-        });
+        forEachActiveLock(
+                lockNo,
+                lock -> {
+                    lock.setStatus(PrdStockLock.ALLOCATED);
+                    lock.setSettledAt(LocalDateTime.now());
+                    checked(lock, lockMapper.updateById(lock));
+                });
     }
 
     @Override
@@ -213,33 +268,53 @@ public class StockPortImpl implements StockPort {
                 lockMapper.selectList(Wrappers.<PrdStockLock>lambdaQuery()
                         .eq(PrdStockLock::getFulfillmentRef, fulfillmentRef)
                         .eq(PrdStockLock::getStatus, PrdStockLock.ALLOCATED).last("FOR UPDATE")));
-        locks.forEach(lock -> {
-            releaseBalance(lock);
-            lock.setStatus(PrdStockLock.RELEASED);
-            lock.setSettledAt(LocalDateTime.now());
-            lockMapper.updateById(lock);
-        });
+        locks.forEach(
+                lock -> {
+                    releaseBalance(lock);
+                    lock.setStatus(PrdStockLock.RELEASED);
+                    lock.setSettledAt(LocalDateTime.now());
+                    checked(lock, lockMapper.updateById(lock));
+                });
     }
 
     private void deductAllocated(PrdStockLock lock) {
         if (Boolean.TRUE.equals(lock.getPresale())) {
             lock.setStatus(PrdStockLock.CONFIRMED);
             lock.setSettledAt(LocalDateTime.now());
-            lockMapper.updateById(lock);
+            checked(lock, lockMapper.updateById(lock));
             return;
         }
-        if (lock.getStoreNo() != null) storeStockMapper.confirmStock(lock.getStoreNo(), lock.getSkuNo(), lock.getQty());
-        else DataScopeContext.executeWithoutScope(() -> skuMapper.confirmStock(lock.getSkuNo(), lock.getQty()));
+        if (lock.getStoreNo() != null)
+            checked(
+                    lock,
+                    storeStockMapper.confirmStock(
+                            lock.getStoreNo(), lock.getSkuNo(), lock.getQty()));
+        else
+            checked(
+                    lock,
+                    DataScopeContext.executeWithoutScope(
+                            () -> skuMapper.confirmStock(lock.getSkuNo(), lock.getQty())));
         lock.setStatus(PrdStockLock.CONFIRMED);
         lock.setSettledAt(LocalDateTime.now());
-        lockMapper.updateById(lock);
+        checked(lock, lockMapper.updateById(lock));
     }
 
     private void releaseBalance(PrdStockLock lock) {
         if (Boolean.TRUE.equals(lock.getPresale())) {
-            DataScopeContext.executeWithoutScope(() -> skuMapper.releasePresale(lock.getSkuNo(), lock.getQty()));
-        } else if (lock.getStoreNo() != null) storeStockMapper.releaseStock(lock.getStoreNo(), lock.getSkuNo(), lock.getQty());
-        else DataScopeContext.executeWithoutScope(() -> skuMapper.releaseStock(lock.getSkuNo(), lock.getQty()));
+            checked(
+                    lock,
+                    DataScopeContext.executeWithoutScope(
+                            () -> skuMapper.releasePresale(lock.getSkuNo(), lock.getQty())));
+        } else if (lock.getStoreNo() != null)
+            checked(
+                    lock,
+                    storeStockMapper.releaseStock(
+                            lock.getStoreNo(), lock.getSkuNo(), lock.getQty()));
+        else
+            checked(
+                    lock,
+                    DataScopeContext.executeWithoutScope(
+                            () -> skuMapper.releaseStock(lock.getSkuNo(), lock.getQty())));
     }
 
     @Override
@@ -329,6 +404,12 @@ public class StockPortImpl implements StockPort {
         return DataScopeContext.executeWithoutScope(() ->
                 storeStockMapper.selectCount(Wrappers.<PrdStoreStock>lambdaQuery()
                         .eq(PrdStoreStock::getSkuNo, skuNo))) > 0;
+    }
+
+    private static void checked(PrdStockLock lock, int affected) {
+        if (lock.getConfirmationOperationNo() != null && affected != 1) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
     }
 
     /** 只处理 LOCKED 状态的行 —— 重复释放/确认因此天然幂等（超时任务与用户取消会撞车）。 */

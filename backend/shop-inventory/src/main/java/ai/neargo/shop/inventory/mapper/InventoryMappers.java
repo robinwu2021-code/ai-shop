@@ -1,16 +1,15 @@
 package ai.neargo.shop.inventory.mapper;
 
+import ai.neargo.shop.inventory.entity.InvDailySnapshot;
 import ai.neargo.shop.inventory.entity.InvInboundLine;
 import ai.neargo.shop.inventory.entity.InvInboundOrder;
 import ai.neargo.shop.inventory.entity.InvItem;
 import ai.neargo.shop.inventory.entity.InvItemRef;
 import ai.neargo.shop.inventory.entity.InvLedger;
 import ai.neargo.shop.inventory.entity.InvLocation;
-import ai.neargo.shop.inventory.entity.InvSupplier;
+import ai.neargo.shop.inventory.entity.InvOpenCredential;
 import ai.neargo.shop.inventory.entity.InvOutboundLine;
 import ai.neargo.shop.inventory.entity.InvOutboundOrder;
-import ai.neargo.shop.inventory.entity.InvDailySnapshot;
-import ai.neargo.shop.inventory.entity.InvOpenCredential;
 import ai.neargo.shop.inventory.entity.InvOutbox;
 import ai.neargo.shop.inventory.entity.InvOwner;
 import ai.neargo.shop.inventory.entity.InvReservation;
@@ -19,11 +18,17 @@ import ai.neargo.shop.inventory.entity.InvStockBalance;
 import ai.neargo.shop.inventory.entity.InvStockCount;
 import ai.neargo.shop.inventory.entity.InvStockCountLine;
 import ai.neargo.shop.inventory.entity.InvStockCountOperation;
+import ai.neargo.shop.inventory.entity.InvSupplier;
 import ai.neargo.shop.inventory.entity.InvTransferOrder;
 import ai.neargo.shop.inventory.entity.InvUom;
+
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
+
+import java.util.List;
 
 /**
  * 进销存域的 Mapper 集合（形状与 {@code SettleMappers} / {@code ProductMappers} 一致：
@@ -144,9 +149,17 @@ public final class InventoryMappers {
 
     // ── 预留 ──────────────────────────────────────────────────────────────
     public interface ReservationMapper extends BaseMapper<InvReservation> {
+        @Select(
+                "SELECT * FROM inv_reservation WHERE external_ref=#{order} ORDER BY"
+                    + " owner_id,reservation_id FOR UPDATE")
+        List<InvReservation> lockOriginal(@Param("order") String order);
     }
 
     public interface ReservationLineMapper extends BaseMapper<InvReservationLine> {
+        @Select(
+                "SELECT * FROM inv_reservation_line WHERE reservation_id=#{reservation} ORDER BY"
+                    + " line_no FOR UPDATE")
+        List<InvReservationLine> lockOriginal(@Param("reservation") String reservation);
     }
 
     // ── 单据 ──────────────────────────────────────────────────────────────

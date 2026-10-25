@@ -33,6 +33,11 @@ public interface CheckoutService {
      */
     CheckoutQuote prepare(CheckoutScope scope, PrepareCheckoutReq request);
 
+    /**
+     * Dedicated owner operation persists manual mode; ordinary OFFLINE requests cannot select it.
+     */
+    CheckoutQuote prepareManual(CheckoutScope scope, PrepareCheckoutReq request);
+
     /** Read original quote evidence through the current merchant permission and data scope. */
     CheckoutQuote readQuote(CheckoutScope scope, OperationRef operation);
 

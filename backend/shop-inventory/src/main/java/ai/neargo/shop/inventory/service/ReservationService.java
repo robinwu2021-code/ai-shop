@@ -97,7 +97,19 @@ public interface ReservationService {
      */
     int countOverdue();
 
-    record Line(String itemId, String locationId, int qty, String fulfillmentRef) {
-        public Line(String itemId, String locationId, int qty) { this(itemId, locationId, qty, null); }
+    record Line(
+            String itemId,
+            String locationId,
+            int qty,
+            String fulfillmentRef,
+            String sourceSkuNo,
+            String sourceStoreNo) {
+        public Line(String itemId, String locationId, int qty, String fulfillmentRef) {
+            this(itemId, locationId, qty, fulfillmentRef, null, null);
+        }
+
+        public Line(String itemId, String locationId, int qty) {
+            this(itemId, locationId, qty, null, null, null);
+        }
     }
 }

@@ -31,6 +31,7 @@ import ai.neargo.shop.spi.trade.OrderEvents;
 import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.user.PickupQueryPort;
+import ai.neargo.shop.trade.dto.OrderPayMethodVO;
 import ai.neargo.shop.trade.dto.OrderVO;
 import ai.neargo.shop.trade.entitlement.CardSaleSnapshotPlan;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
@@ -42,6 +43,7 @@ import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.entity.TrdCartItem;
 import ai.neargo.shop.trade.mapper.CheckoutMappers;
+import ai.neargo.shop.trade.mapper.ManualAdmissionMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.CartItemMapper;
 import ai.neargo.shop.trade.order.command.OrderActor;
 import ai.neargo.shop.trade.order.contract.CancellationImpact;
@@ -221,6 +223,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     private OrderCreateRequestHasher createRequestHasher;
     @Autowired private OrderCreationRecoveryService creationRecovery;
     @Autowired private OrderStockAllocator stockAllocator;
+    @Autowired private ManualAdmissionMapper manualAdmissions;
     @Autowired private StoreOrderQueryService storeQueries;
     @Autowired private PaymentLifecycleService paymentLifecycle;
     @Autowired private PaymentResolutionService paymentResolutions;
@@ -1643,6 +1646,10 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             CreateOrderCommand cmd,
             LegacyCouponBoundOrderService.Binding binding,
             CheckoutPricingScope scope) {
+        boolean manual = scope != null && scope.manual();
+        if (manual) {
+            checkoutGuard.requireManualPricing(scope, userNo);
+        }
         Split raw = scope == null ? split(cmd) : split(cmd, userNo);
         if (raw.items.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -1684,12 +1691,13 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          * create 是全站最要害的方法，加东西的正确姿势是「在它之前挡住」，
          * 不是「在它中间插一脚」。
          */
-        String payMode = requirePayModeSupported(cmd, split, storeOfMerchant);
+        String payMode =
+                manual ? PayModes.OFFLINE : requirePayModeSupported(cmd, split, storeOfMerchant);
         String clientScene = ai.neargo.shop.common.PayScenes.normalize(cmd.payScene());
         Map<String, ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Decision> pointDecisions =
                 new LinkedHashMap<>();
         boolean wantsPoints = cmd.usePoints() != null && cmd.usePoints() > 0;
-        if (pointsEnabled && pointsCoordinator != null && clientScene != null) {
+        if (!manual && pointsEnabled && pointsCoordinator != null && clientScene != null) {
             for (Group g : split.groups) {
                 String store = storeOfMerchant.get(g.key());
                 if (store == null || store.isBlank()) continue;
@@ -1832,6 +1840,10 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             Discounts discounts) {
         var catalog = scope.catalog();
         var at = checkoutClock.now();
+        if (scope.manual()
+                && (discounts.total() != 0 || !gifts.isEmpty() || split.payAmount() <= 0)) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
         if (!"MAIN".equals(scope.tenantNo())
                 || split.groups().size() != 1
                 || !Fulfillments.STORE_VERIFY.equals(command.fulfillment())
@@ -1969,7 +1981,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 CheckoutDigests.hash(
                         legacyCheckoutJson,
                         Arrays.asList(
-                                "CHECKOUT_V1",
+                                scope.manual() ? "CHECKOUT_MANUAL_V1" : "CHECKOUT_V1",
                                 scope.tenantNo(),
                                 scope.scopeRevision(),
                                 scope.scopeHash(),
@@ -1980,6 +1992,9 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                                 command.couponNo(),
                                 command.activityChoices(),
                                 money));
+        if (scope.manual()) {
+            hash = CheckoutDigests.hash(legacyCheckoutJson, List.of("MANUAL_OFFLINE", hash));
+        }
         return new CheckoutEconomicSnapshot(
                 hash,
                 evidence,
@@ -2083,6 +2098,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         // ⑥ 落库：主单 + 子单 + 行，同一事务
         OrdOrder order = new OrdOrder();
         order.setOrderNo(orderNo);
+        order.setAdmissionKind(
+                checkoutScope == null ? "LEGACY_FUNDED" : checkoutScope.admissionKind());
         order.setUserNo(userNo);
         // 积分抵扣计入实付，但**不计入 discountAmount** —— 那一列是营销优惠，
         // 混进去会让「这单让了多少利」算错，而分账要按它拆出资方
@@ -2170,6 +2187,9 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
              * 用 wouldExceed 而不是 quotaExhausted：正好卡在额度边缘的那一单，
              * 放过去仍然会在通道侧失败。
              */
+            if (checkoutScope != null && checkoutScope.manual()) {
+                continue;
+            }
             var cap = merchantPort.payCapabilityOf(g.merchantNo, storeOfMerchant.get(g.key()));
             if (cap.wouldExceed(merchantPay)) {
                 throw BizException.of(ErrorCode.MERCHANT_QUOTA_EXHAUSTED);
@@ -2224,6 +2244,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
 
             OrdSubOrder sub = new OrdSubOrder();
             sub.setSubOrderNo(subOrderNo);
+            sub.setAdmissionKind(order.getAdmissionKind());
             sub.setOrderNo(orderNo);
             sub.setUserNo(userNo);
             sub.setEntityNo(g.merchantNo);
@@ -2570,6 +2591,18 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          * 下游一律用解析出来的主单号，别再用入参。
          */
         OrdOrder order = resolveOrder(orderNo);
+        if ("MANUAL_OFFLINE".equals(order.getAdmissionKind())) {
+            return new OrderPayMethodVO(
+                    order.getCurrency(),
+                    true,
+                    List.of(
+                            new OrderPayMethodVO.Method(
+                                    "MANUAL_DECLARATION",
+                                    null,
+                                    "人工登记收款",
+                                    false,
+                                    "请向门店收银员确认人工收款声明")));
+        }
         String mainNo = order.getOrderNo();
         List<OrdSubOrder> subs = DataScopeContext.executeWithoutScope(() ->
                 subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
@@ -2749,6 +2782,10 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                                     Wrappers.<OrdOrder>lambdaQuery()
                                             .eq(OrdOrder::getTenantNo, "MAIN")
                                             .eq(OrdOrder::getOrderNo, orderNo));
+                    if (op != null && "MANUAL_OFFLINE".equals(op.getAdmissionKind())
+                            || order != null && "MANUAL_OFFLINE".equals(order.getAdmissionKind())) {
+                        throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
+                    }
                     if (op == null
                             || order == null
                             || !buyerNo.equals(op.getBuyerNo())
@@ -2838,6 +2875,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     public PayResult pay(String orderNo, String payChannel) {
         // 同 payMethods：子单号也要能进收银台；下游（记账、商户单号）只认主单号
         OrdOrder order = resolveOrder(orderNo);
+        requireFunded(order);
         orderNo = order.getOrderNo();
         if (subOrders(orderNo).stream()
                 .anyMatch(
@@ -2963,6 +3001,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         OrdOrder source = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getOrderNo, orderNo).last("limit 1"));
         if (source == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        requireFunded(source);
         ai.neargo.shop.spi.points.PointsPaymentSnapshotPort.VerifiedPayment proof = null;
         if (Boolean.TRUE.equals(source.getPointsIntegrated()) && !OrdOrder.PAID.equals(source.getStatus())) {
             if (org.springframework.transaction.support.TransactionSynchronizationManager
@@ -3025,6 +3064,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         if (order == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        requireFunded(order);
         var confirmed =
                 receipt == null
                         ? paymentLifecycle.requireConfirmed(order, payChannel, payTradeNo)
@@ -3457,6 +3497,16 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     /** 取消一次支付（未付款 / 待当面收款）：支付单 CANCELLED + 其下订单 CANCELLED + 释放占用 */
     /** 不返回详情：详情按买家身份取，平台调用会 NOT_FOUND 并把整个取消回滚掉 */
     private void cancelPayment(OrdOrder order, String reason, Actor actor, String operatorNo, String label) {
+        if ("MANUAL_OFFLINE".equals(order.getAdmissionKind())) {
+            var current = manualAdmissions.lockParent(order.getOrderNo());
+            manualAdmissions.lockChildren(order.getOrderNo());
+            if (current == null
+                    || !OrdOrder.WAIT_OFFLINE_PAY.equals(current.getStatus())
+                    || current.getReceiptProvenance() != null) {
+                throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+            }
+            order = current;
+        }
         boolean pointsIntegrated = Boolean.TRUE.equals(order.getPointsIntegrated());
         statusWriter.payment(order, PaymentEvent.CANCEL, actor, operatorNo, label,
                 new PaymentContext(OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus()), true, true, false));
@@ -3551,6 +3601,9 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
      * 各写一遍的话，漏掉的那一项会让库存或券一直占着，而没有任何报错。
      */
     boolean closeOne(OrdOrder order, String reason) {
+        if ("MANUAL_OFFLINE".equals(order.getAdmissionKind())) {
+            return false;
+        }
         boolean pointsIntegrated = Boolean.TRUE.equals(order.getPointsIntegrated());
         /*
          * 状态先改再释放：**改失败（并发下已被支付）就不该释放**。
@@ -4515,6 +4568,12 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             }
         }
         return payMode;
+    }
+
+    private static void requireFunded(OrdOrder order) {
+        if ("MANUAL_OFFLINE".equals(order.getAdmissionKind())) {
+            throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
+        }
     }
 
     // 允许线下的履约方式挪到 PayModes.OFFLINE_FULFILLMENTS：结算页与建单共用一份

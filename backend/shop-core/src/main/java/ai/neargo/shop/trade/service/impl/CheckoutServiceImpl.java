@@ -56,6 +56,7 @@ import ai.neargo.shop.trade.order.service.create.CheckoutPricingScope;
 import ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard;
 import ai.neargo.shop.trade.order.service.create.ExpectedCheckoutQuote;
 import ai.neargo.shop.trade.policy.CheckoutAccessPolicy;
+import ai.neargo.shop.trade.policy.ManualServicePurchasePolicy;
 import ai.neargo.shop.trade.service.CheckoutOrderWriter;
 import ai.neargo.shop.trade.service.CheckoutPaymentService;
 import ai.neargo.shop.trade.service.CheckoutService;
@@ -63,6 +64,7 @@ import ai.neargo.shop.trade.service.OrderService;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -117,6 +119,7 @@ public class CheckoutServiceImpl implements CheckoutService {
     private final CheckoutMappers.PaymentRequestMapper paymentRequests;
     private final TransactionTemplate sourceReads;
     private final CheckoutPaymentService payments;
+    @Autowired private ManualServicePurchasePolicy manualPolicy;
 
     /**
      * Bind durable checkout writes and serialized source reads to the platform transaction manager.
@@ -191,7 +194,22 @@ public class CheckoutServiceImpl implements CheckoutService {
 
     @Override
     public CheckoutQuote prepare(CheckoutScope scope, PrepareCheckoutReq request) {
+        return prepareOwned(scope, request, "LEGACY_FUNDED");
+    }
+
+    @Override
+    public CheckoutQuote prepareManual(CheckoutScope scope, PrepareCheckoutReq request) {
+        return prepareOwned(scope, request, "MANUAL_OFFLINE");
+    }
+
+    private CheckoutQuote prepareOwned(
+            CheckoutScope scope, PrepareCheckoutReq request, String admissionKind) {
         var actor = access.requireMerchant(scope, BizPerms.CHECKOUT_PREPARE);
+        boolean manual = "MANUAL_OFFLINE".equals(admissionKind);
+        if (manual) {
+            manualPolicy.requireSupported(request);
+            manualPolicy.requireBusiness(scope);
+        }
         String keyHash =
                 CheckoutDigests.hash(
                         json,
@@ -203,7 +221,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                                 actor.realm(),
                                 actor.subjectKind(),
                                 actor.actorNo(),
-                                "PREPARE",
+                                manual ? "MANUAL_PREPARE" : "PREPARE",
                                 request.requestKey()));
         String payload =
                 CheckoutDigests.hash(
@@ -219,6 +237,12 @@ public class CheckoutServiceImpl implements CheckoutService {
                                 request.couponNo(),
                                 request.activityChoices(),
                                 request.remark()));
+        if (manual) {
+            payload =
+                    CheckoutDigests.hash(
+                            json, List.of("CHECKOUT_MANUAL_V1", admissionKind, payload));
+        }
+        final String payloadHash = payload;
         var existing =
                 unscoped(
                         () ->
@@ -226,7 +250,10 @@ public class CheckoutServiceImpl implements CheckoutService {
                                         request.operation().caller(),
                                         request.operation().operationNo()));
         if (existing != null) {
-            return replay(existing, scope, actor, keyHash, payload);
+            if (!admissionKind.equals(existing.getAdmissionKind())) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            return replay(existing, scope, actor, keyHash, payloadHash);
         }
         var used =
                 unscoped(
@@ -246,7 +273,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                                 scope.tenantNo(),
                                 actor.actorNo(),
                                 request.operation().operationNo(),
-                                payload),
+                                payloadHash),
                         new CustomerIdentityPort.ReferenceQuery(
                                 scope.entityNo(), scope.storeNo(), request.customerRef()));
         if (customer == null || customer.userNo() == null || customer.userNo().isBlank()) {
@@ -262,12 +289,16 @@ public class CheckoutServiceImpl implements CheckoutService {
                         request.scopeRevision(),
                         request.scopeHash(),
                         request.lines(),
-                        catalog);
-        var economic = writer.quoteFor(customer.userNo(), command, pricingScope);
+                        catalog,
+                        admissionKind,
+                        request.operation().operationNo());
+        var economic = manual ? null : writer.quoteFor(customer.userNo(), command, pricingScope);
         var at = clock.now().truncatedTo(ChronoUnit.MILLIS);
         String quoteNo = number("CQ");
         var operation = new OrdCheckoutOperation();
         operation.setOperationNo(request.operation().operationNo());
+        operation.setAdmissionKind(admissionKind);
+        operation.setManualObservationRevision(0L);
         operation.setCaller(request.operation().caller());
         operation.setEntityNo(scope.entityNo());
         operation.setStoreNo(scope.storeNo());
@@ -276,7 +307,7 @@ public class CheckoutServiceImpl implements CheckoutService {
         operation.setActorRealm(actor.realm());
         operation.setActorKind(actor.subjectKind());
         operation.setRequestKeyHash(keyHash);
-        operation.setPayloadHash(payload);
+        operation.setPayloadHash(payloadHash);
         operation.setScopeRevision(request.scopeRevision());
         operation.setScopeHash(request.scopeHash());
         operation.setCommandJson(
@@ -290,17 +321,34 @@ public class CheckoutServiceImpl implements CheckoutService {
         quote.setOperationNo(operation.getOperationNo());
         quote.setCaller(operation.getCaller());
         quote.setRevision(1L);
-        quote.setQuoteHash(economic.quoteHash());
-        quote.setPricingJson(json.writeValueAsString(economic));
+        if (economic != null) {
+            quote.setQuoteHash(economic.quoteHash());
+        }
+        if (economic != null) {
+            quote.setPricingJson(json.writeValueAsString(economic));
+        }
         quote.setExpiresAt(LocalDateTime.ofInstant(at.plusSeconds(300), ZoneOffset.UTC));
         quote.setStatus("OPEN");
         stamp(quote, actor.actorNo(), at);
+        if (manual) {
+            access.requireMerchant(scope, BizPerms.CHECKOUT_PREPARE);
+            manualPolicy.requireBusiness(scope);
+        }
         try {
             return unscoped(
                     () ->
                             writes.execute(
                                     status -> {
                                         operations.insert(operation);
+                                        if (manual) {
+                                            var sealed =
+                                                    writer.quoteFor(
+                                                            customer.userNo(),
+                                                            command,
+                                                            pricingScope);
+                                            quote.setQuoteHash(sealed.quoteHash());
+                                            quote.setPricingJson(json.writeValueAsString(sealed));
+                                        }
                                         quotes.insert(quote);
                                         return view(operation, quote);
                                     }));
@@ -314,7 +362,7 @@ public class CheckoutServiceImpl implements CheckoutService {
             if (winner == null) {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
-            return replay(winner, scope, actor, keyHash, payload);
+            return replay(winner, scope, actor, keyHash, payloadHash);
         }
     }
 
@@ -508,6 +556,14 @@ public class CheckoutServiceImpl implements CheckoutService {
         var quote = unscoped(() -> requireQuote(observed));
         var pricing = json.readValue(quote.getPricingJson(), CheckoutEconomicSnapshot.class);
         var frozen = json.readValue(observed.getCommandJson(), CheckoutCommand.class);
+        if ("MANUAL_OFFLINE".equals(observed.getAdmissionKind())) {
+            manualPolicy.requireBusiness(
+                    new CheckoutScope(
+                            "MAIN",
+                            observed.getEntityNo(),
+                            observed.getStoreNo(),
+                            observed.getActorNo()));
+        }
         // Preparation only; final local owner locks and actual writer pricing remain authoritative.
         catalogs.read(observed.getEntityNo(), observed.getStoreNo(), clock.now());
         campaigns.requireOrdinarySelection(buyer, pricing.activity());
@@ -626,7 +682,8 @@ public class CheckoutServiceImpl implements CheckoutService {
                                                         authorized
                                                                 .confirmation()
                                                                 .getExpiresAt()
-                                                                .toInstant(ZoneOffset.UTC));
+                                                                .toInstant(ZoneOffset.UTC),
+                                                        op.getAdmissionKind());
                                         var current =
                                                 json.readValue(
                                                         op.getCommandJson(), CheckoutCommand.class);
@@ -801,6 +858,18 @@ public class CheckoutServiceImpl implements CheckoutService {
                         var observed = requireOperation(request.operation());
                         requireSourceReference(observed, scope, request);
                         var order = sourceOrder(observed.getOrderNo());
+                        if ("MANUAL_OFFLINE".equals(observed.getAdmissionKind())) {
+                            return sourceReads.execute(
+                                    status -> {
+                                        var locked =
+                                                operations.lock(
+                                                        request.operation().caller(),
+                                                        request.operation().operationNo());
+                                        requireSourceReference(locked, scope, request);
+                                        return unknownSource(
+                                                locked, sourceOrder(locked.getOrderNo()));
+                                    });
+                        }
                         // All financial calls and possible receipt projection finish before the RR
                         // source lock.
                         var funding = sourceFunding(observed, order);

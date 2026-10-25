@@ -21,13 +21,17 @@ import ai.neargo.shop.trade.order.refund.service.BasicRefundPolicy;
 import ai.neargo.shop.trade.order.refund.service.RefundExecutionStore;
 import ai.neargo.shop.trade.order.refund.service.RefundPreparationService;
 import ai.neargo.shop.trade.order.refund.service.RefundableQuery;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import java.util.List;
-import java.util.Objects;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
+
 import tools.jackson.databind.ObjectMapper;
+
+import java.util.List;
+import java.util.Objects;
 
 /** Current child facts are read after serialization, including the original successful financial receipt. */
 @Service
@@ -72,6 +76,9 @@ public class RefundPreparationServiceImpl implements RefundPreparationService {
         OrdSubOrder child = locks.lockOrder(hint.getSubOrderNo());
         if (child == null || actor == null || !actor.owns(child)) {
             throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if ("MANUAL_OFFLINE".equals(child.getAdmissionKind())) {
+            throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
         }
         OrdAfterSale as = afterSale(no);
         OrdRefundExecution previous = store.byAfterSale(no);

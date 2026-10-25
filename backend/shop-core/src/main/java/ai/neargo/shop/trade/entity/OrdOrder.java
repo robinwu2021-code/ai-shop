@@ -1,7 +1,9 @@
 package ai.neargo.shop.trade.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -33,6 +35,11 @@ public class OrdOrder extends BaseEntity {
     public static final String WAIT_OFFLINE_PAY = "WAIT_OFFLINE_PAY";
     public static final String CANCELLED = "CANCELLED";
     public static final String CLOSED = "CLOSED";
+
+    /** Manual declarations never populate financial channel/trade identifiers. */
+    private String admissionKind;
+
+    private String receiptProvenance;
 
     private String orderNo;
     private String userNo;

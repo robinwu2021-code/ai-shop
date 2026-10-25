@@ -16,26 +16,30 @@ import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleEvent;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
 import ai.neargo.shop.trade.order.machine.order.OrderEvent;
 import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
-import ai.neargo.shop.trade.order.mapper.RefundLedgerMapper;
 import ai.neargo.shop.trade.order.mapper.RefundExecutionMapper;
-import ai.neargo.shop.trade.order.refund.service.BasicRefundPolicy;
-import ai.neargo.shop.trade.order.refund.model.RefundClosureFacts;
-import ai.neargo.shop.trade.order.refund.policy.RefundClosurePolicy;
+import ai.neargo.shop.trade.order.mapper.RefundLedgerMapper;
 import ai.neargo.shop.trade.order.mapper.StatusCasMapper;
+import ai.neargo.shop.trade.order.refund.model.RefundClosureFacts;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
+import ai.neargo.shop.trade.order.refund.policy.RefundClosurePolicy;
 import ai.neargo.shop.trade.order.refund.port.impl.MybatisRefundLedgerStore;
+import ai.neargo.shop.trade.order.refund.service.BasicRefundPolicy;
 import ai.neargo.shop.trade.order.refund.service.RefundExecutionStore;
 import ai.neargo.shop.trade.order.refund.service.RefundLedger;
 import ai.neargo.shop.trade.order.refund.service.RefundResultService;
 import ai.neargo.shop.trade.order.statemachine.Actor;
 import ai.neargo.shop.trade.order.transition.TradeStatusWriter;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import java.util.Objects;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
 import tools.jackson.databind.ObjectMapper;
+
+import java.util.Objects;
 
 /** Child-first locking makes replay and concurrent shipment decisions observe current refund facts. */
 @Service
@@ -76,6 +80,7 @@ public class RefundResultServiceImpl implements RefundResultService {
                 throw BizException.of(ErrorCode.NOT_FOUND);
             }
             OrdSubOrder child = locks.lockOrder(hint.getSubOrderNo());
+            requireFundedChild(child);
             OrdRefundExecution current = store.lock(result.executionNo());
             if (OrdRefundExecution.SUCCEEDED.equals(current.getStatus())) {
                 return null;
@@ -98,6 +103,12 @@ public class RefundResultServiceImpl implements RefundResultService {
             store.save(current);
             return null;
         });
+    }
+
+    private static void requireFundedChild(OrdSubOrder child) {
+        if (child == null || "MANUAL_OFFLINE".equals(child.getAdmissionKind())) {
+            throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
+        }
     }
 
     private void complete(OrdRefundExecution current, OrdSubOrder child, RefundDispatchResult result) {
@@ -142,6 +153,7 @@ public class RefundResultServiceImpl implements RefundResultService {
             var hint=store.read(no);
             if(hint==null || !Integer.valueOf(2).equals(hint.getClosureVersion())) return null;
             var child=locks.lockOrder(hint.getSubOrderNo());
+            requireFundedChild(child);
             var current=store.lock(no);
             if(!OrdRefundExecution.SUCCEEDED.equals(current.getStatus()) || "DONE".equals(current.getClosureStatus())
                     || !obligations.settled(no)) return null;
