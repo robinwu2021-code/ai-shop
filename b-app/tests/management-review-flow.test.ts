@@ -11,7 +11,7 @@ vi.mock('@ai-shop/ui/prompt',async importOriginal=>({...await importOriginal<typ
 import Grants from '@/pages/management-grants/index.vue';
 import Detail from '@/pages/brand-detail/index.vue';
 const grant={grantNo:'G1',actorNo:'MCH:A',resourceType:'STORE',resourceNo:'S1',permissionCode:'store.read',revision:3,status:'REVOKED',resourceName:'甲店',delegatable:true};
-beforeEach(()=>{vi.clearAllMocks();mocks.resources.mockImplementation(async(_m,q)=>({items:q?.view==='EFFECTIVE'?[{...grant,status:'ACTIVE',actorNo:'MCH:OWNER'}]:[grant],nextCursor:null}));mocks.recipients.mockResolvedValue({items:[{actorNo:'MCH:A',displayName:'同事'}],nextCursor:null});mocks.grant.mockResolvedValue({});mocks.brand.mockResolvedValue({brandNo:'B1',managementNo:'M1',name:'品牌',revision:0,status:'ACTIVE',actions:['brand.manage']});mocks.status.mockResolvedValue({status:'INACTIVE',revision:1});});
+beforeEach(()=>{vi.clearAllMocks();mocks.context.mockResolvedValue({actorKey:'MCH:OWNER',spaces:[]});mocks.resources.mockImplementation(async(_m,q)=>({items:q?.view==='EFFECTIVE'||q?.actorNo==='MCH:OWNER'?[{...grant,status:'ACTIVE',actorNo:'MCH:OWNER'}]:[grant],nextCursor:null}));mocks.recipients.mockResolvedValue({items:[{actorNo:'MCH:A',displayName:'同事'}],nextCursor:null});mocks.grant.mockResolvedValue({});mocks.brand.mockResolvedValue({brandNo:'B1',managementNo:'M1',name:'品牌',revision:0,status:'ACTIVE',actions:['brand.manage']});mocks.status.mockResolvedValue({status:'INACTIVE',revision:1});});
 const tap=async(w:ReturnType<typeof mount>,text:string)=>{const target=w.findAll('view').filter(v=>v.text()===text).at(-1);expect(target).toBeTruthy();await target!.trigger('tap');await flushPromises();};
 it('uses management-scoped recipients and explicitly reactivates a revoked permission',async()=>{
  const w=mount(Grants,{global:{plugins:[createPinia()]}});await flushPromises();await tap(w,'management.staffmanagement.choose');
@@ -22,4 +22,8 @@ it('uses management-scoped recipients and explicitly reactivates a revoked permi
 it('reloads authorized brand actions after changing status',async()=>{
  const w=mount(Detail,{global:{plugins:[createPinia()]}});await flushPromises();await tap(w,'management.stopBrand');
  expect(mocks.status).toHaveBeenCalled();expect(mocks.brand).toHaveBeenCalledTimes(2);expect(w.text()).toContain('management.edit');w.unmount();
+});
+
+it('uses server-verified delegation authority for an entity owner whose receipt permission is not onward-delegatable',async()=>{
+ const financial={...grant,actorNo:'MCH:OWNER',resourceType:'ENTITY',resourceNo:'E1',resourceName:'Entity',permissionCode:'sv.settlement.receipt.confirm',status:'ACTIVE',delegatable:false};mocks.resources.mockImplementation(async(_m,q)=>({items:q?.actorNo==='MCH:A'?[]:[financial],nextCursor:null}));const w=mount(Grants,{global:{plugins:[createPinia()]}});await flushPromises();await tap(w,'management.staffmanagement.choose');await tap(w,'同事');await tap(w,'management.resourcemanagement.choose');await tap(w,'Entity · management.permission.sv_settlement_receipt_confirm');await tap(w,'management.grant');expect(mocks.resources).toHaveBeenCalledWith('M1',expect.objectContaining({view:'GRANTS',actorNo:'MCH:OWNER'}));expect(mocks.grant).toHaveBeenCalledWith('M1',expect.objectContaining({actorNo:'MCH:A',resourceType:'ENTITY',resourceNo:'E1',permissionCode:'sv.settlement.receipt.confirm'}));w.unmount();
 });
