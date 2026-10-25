@@ -102,6 +102,13 @@ public class LocalDiskMediaStore implements MediaStore {
     }
 
     @Override
+    public InputStream openPrivate(String key) throws IOException {
+        String[] segments=key.split("/");
+        if (segments.length<3 || "goods".equalsIgnoreCase(segments[2])) throw new IllegalArgumentException("PRIVATE_KEY_REQUIRED");
+        return Files.newInputStream(resolve(key));
+    }
+
+    @Override
     public boolean exists(String key) {
         return Files.isRegularFile(resolve(key));
     }

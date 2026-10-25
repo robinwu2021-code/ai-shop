@@ -105,6 +105,7 @@ public class CosMediaStore implements MediaStore {
         if (isPublic(key)) {
             req.setCannedAcl(CannedAccessControlList.PublicRead);
         }
+        if (key.split("/").length>=3 && "reports".equals(key.split("/")[2])) req.setCannedAcl(CannedAccessControlList.Private);
         cos.putObject(req);
     }
 
@@ -123,6 +124,12 @@ public class CosMediaStore implements MediaStore {
             DeleteObjectsRequest req = new DeleteObjectsRequest(bucket).withKeys(batch);
             cos.deleteObjects(req); // 幂等：不存在的 key 不报错
         }
+    }
+
+    @Override
+    public InputStream openPrivate(String key) {
+        if (isPublic(key)) throw new IllegalArgumentException("PRIVATE_KEY_REQUIRED");
+        return cos.getObject(bucket,key).getObjectContent();
     }
 
     @Override

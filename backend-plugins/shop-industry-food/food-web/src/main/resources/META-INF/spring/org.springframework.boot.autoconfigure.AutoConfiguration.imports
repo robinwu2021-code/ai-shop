@@ -3,3 +3,4 @@ ai.neargo.shop.food.config.FoodKdsWebAutoConfiguration
 ai.neargo.shop.food.config.DiningIdentityWebAutoConfiguration
 ai.neargo.shop.food.config.DiningDeliveryWebAutoConfiguration
 ai.neargo.shop.food.config.FoodSupportWebAutoConfiguration
+ai.neargo.shop.food.config.FoodReportFactsAutoConfiguration

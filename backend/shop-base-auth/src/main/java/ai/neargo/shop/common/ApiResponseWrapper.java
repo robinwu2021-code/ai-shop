@@ -1,6 +1,7 @@
 package ai.neargo.shop.common;
 
 import org.springframework.core.MethodParameter;
+import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
@@ -71,7 +72,7 @@ public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
                                   Class<? extends HttpMessageConverter<?>> selectedConverterType,
                                   ServerHttpRequest request, ServerHttpResponse response) {
         // supports() 拿不到请求，所以路径在这里判
-        if (body instanceof ApiResult<?> || isInternal(request) || isShortLink(request)) {
+        if (body instanceof ApiResult<?> || body instanceof Resource || isInternal(request) || isShortLink(request)) {
             return body;
         }
         return ApiResult.ok(body);

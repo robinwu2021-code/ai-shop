@@ -1,4 +1,5 @@
 package ai.neargo.shop.auth;
+import java.util.stream.Collectors;
 
 import java.util.List;
 import java.util.Map;
@@ -60,6 +61,7 @@ public final class BizPerms {
     public static final String ORDER_VIEW = "biz:order:view";
     /** 改库存（含门店库存）。高频日常动作，且<b>不出钱</b> —— 与改价是两件事 */
     public static final String STOCK = "biz:stock";
+    public static final String REPORT_EXPORT = "biz:report:export";
     /** 建/改商品、上下架、规格模板、识图。<b>含价格</b> */
     public static final String GOODS = "biz:goods";
     /** 营销活动、开团、报价。让利与报价都是对钱的承诺 */
@@ -161,6 +163,7 @@ public final class BizPerms {
             Map.entry(SHIP, "发货与标记送达"),
             Map.entry(ORDER_VIEW, "看订单与金额"),
             Map.entry(STOCK, "看商品、改库存"),
+            Map.entry(REPORT_EXPORT, "导出经营报表"),
             Map.entry(GOODS, "建商品、改价、上下架"),
             Map.entry(CAMPAIGN, "营销活动与报价"),
             Map.entry(REVIEW, "回评价、差评申诉"),
@@ -206,7 +209,7 @@ public final class BizPerms {
     public static Set<String> assignableCodes() {
         return LABELS.keySet().stream()
                 .filter(c -> !STORE_ADMIN.equals(c) && !PRICING_TAX_UPDATE.equals(c))
-                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     private BizPerms() {
@@ -266,6 +269,6 @@ public final class BizPerms {
         }
         return roles.stream()
                 .flatMap(r -> ROLE_PERMS.getOrDefault(r, List.of()).stream())
-                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+                .collect(Collectors.toUnmodifiableSet());
     }
 }
