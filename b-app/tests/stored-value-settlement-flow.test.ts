@@ -11,6 +11,7 @@ vi.mock('@shared/net/http-client',async()=>({...await vi.importActual('@shared/n
 import SummaryPage from '@/pages/stored-value-summary/index.vue';
 import ListPage from '@/pages/stored-value-settlement/index.vue';
 import Page from '@/pages/stored-value-settlement-detail/index.vue';
+import {ApiError} from '@shared/net/http-client';
 import {storedValueFinanceHttp} from '@/api/stored-value-finance-http';
 const bill={periodFrom:'2026-10-01T00:00:00Z',periodTo:'2026-10-25T00:00:00Z',billNo:'B1',issuerNo:'I1',payerEntityNo:'E1',payeeEntityNo:'E2',currency:'CNY',status:'RECONCILED',billKind:'CROSS_ENTITY',payableMinor:10000,registeredPaymentMinor:0,confirmedReceiptMinor:0,revision:3};
 const empty={records:[],nextCursor:null,hasMore:false};
@@ -34,4 +35,8 @@ it('does not replace a newer issuer filter with an older bill response',async()=
 
 it('shows the actual report failure instead of claiming every failure is a network outage',async()=>{
  m.summary.mockRejectedValueOnce(new Error('Report is not available'));const w=mount(SummaryPage,{global:{mocks:{$t:(key:string)=>key}}});m.load({m:'M1',b:'B1'});await flushPromises();expect(w.text()).toContain('Report is not available');expect(w.find('.sh-failed').exists()).toBe(true);w.unmount();
+});
+
+it('shows an unavailable report as an empty state without fabricated zero balances or a network warning',async()=>{
+ m.summary.mockRejectedValueOnce(new ApiError(10404,'Not found'));const w=mount(SummaryPage,{global:{mocks:{$t:(key:string)=>key}}});m.load({m:'M1',b:'B1'});await flushPromises();expect(w.text()).toContain('svFinance.noReportData');expect(w.find('.sh-failed').exists()).toBe(false);expect(w.text()).not.toContain('common.loadFailedTip');expect(m.stores).not.toHaveBeenCalled();w.unmount();
 });
