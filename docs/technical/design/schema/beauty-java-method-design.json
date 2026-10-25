@@ -12316,5 +12316,258 @@
     },
     "codeCommit": "fb8fc86d50a394422be408b94278d50989d8ef8a",
     "review": ".superpowers/sdd/beauty-backend/review-task-64-r2.md"
+  },
+  "counterServicePlan": {
+    "status": "DESIGN_REVIEWED_TASK65_NOT_IMPLEMENTED_NOT_DEPLOYED",
+    "design": "../../../.superpowers/sdd/beauty-backend/bm05-m2-counter-source-design.md",
+    "designSha256": "f9eda33c67b92530bfe5754211a611f4fb47152291589e77d44bd7a4e4a47563",
+    "reviewSha256": "a98c07ce1a8b1a3a52ac528ae3420516f2842e7e43869522a09862389f463ea4",
+    "authority": "共用Core记录MERCHANT_RECORDED_IN_PERSON购买确认；USER/GUEST无需C会话，会员只提供权威身份与当前认领读取权。仍未实现，未打开服务开工。",
+    "routes": [
+      {
+        "method": "POST",
+        "path": "/biz/service-orders/counter-quotes",
+        "name": "prepareCounter",
+        "request": "PrepareCounterReq",
+        "response": "CounterCheckoutQuote"
+      },
+      {
+        "method": "GET",
+        "path": "/biz/service-orders/counter-quotes/{operationNo}",
+        "name": "readCounterQuote",
+        "request": "operationNo",
+        "response": "CounterCheckoutQuote"
+      },
+      {
+        "method": "POST",
+        "path": "/biz/service-orders/counter-quotes/{operationNo}/acceptances",
+        "name": "acceptCounter",
+        "request": "AcceptCounterReq",
+        "response": "CounterConfirmation"
+      },
+      {
+        "method": "POST",
+        "path": "/biz/service-orders/counter-quotes/{operationNo}/orders",
+        "name": "placeCounter",
+        "request": "PlaceCounterReq",
+        "response": "CheckoutResult"
+      },
+      {
+        "method": "POST",
+        "path": "/internal/trade/manual-service-admission/counter-prepare",
+        "name": "prepareCounter",
+        "request": "InternalCall<Scoped<PrepareCounterReq>>",
+        "response": "InternalReply<CounterCheckoutQuote>"
+      },
+      {
+        "method": "POST",
+        "path": "/internal/trade/manual-service-admission/counter-read",
+        "name": "readCounterQuote",
+        "request": "InternalCall<Scoped<OperationRef>>",
+        "response": "InternalReply<CounterCheckoutQuote>"
+      },
+      {
+        "method": "POST",
+        "path": "/internal/trade/manual-service-admission/counter-accept",
+        "name": "acceptCounter",
+        "request": "InternalCall<Scoped<AcceptCounterReq>>",
+        "response": "InternalReply<CounterConfirmation>"
+      },
+      {
+        "method": "POST",
+        "path": "/internal/trade/manual-service-admission/counter-place",
+        "name": "placeCounter",
+        "request": "InternalCall<Scoped<PlaceCounterReq>>",
+        "response": "InternalReply<CheckoutResult>"
+      }
+    ],
+    "methods": [
+      {
+        "owner": "ai.neargo.shop.spi.trade.ManualServiceAdmissionPort",
+        "signature": "CounterCheckoutQuote prepareCounter(CheckoutScope scope, PrepareCounterReq request)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.trade.ManualServiceAdmissionPort",
+        "signature": "CounterCheckoutQuote readCounterQuote(CheckoutScope scope, OperationRef operation)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.trade.ManualServiceAdmissionPort",
+        "signature": "CounterConfirmation acceptCounter(CheckoutScope scope, AcceptCounterReq request)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.trade.ManualServiceAdmissionPort",
+        "signature": "CheckoutResult placeCounter(CheckoutScope scope, PlaceCounterReq request)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.member.CustomerIdentityPort",
+        "signature": "ResolvedCustomer resolveCounterReference(EntitlementContext context, CounterReferenceQuery query)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.member.GuestRegistrationPort",
+        "signature": "CurrentClaim currentClaim(ConsumerScope scope, GuestRef guest)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.member.GuestRegistrationPort",
+        "signature": "List<CurrentClaim> currentClaims(ConsumerScope scope)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.product.StockDispositionPort",
+        "signature": "ReservationView reserveOriginal(Reservation command)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.product.StockDispositionPort",
+        "signature": "ReservationView observeReservation(ReservationLookup query)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.product.StoreSalesCatalogPort",
+        "signature": "Snapshot lockForCounterCheckout(String tenant, String entity, String store, Instant at)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.product.GoodsQueryPort",
+        "signature": "Map<String,SkuSnapshot> snapshotForCounter(CustomerParty party, List<String> skus, Map<String,String> stores)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.service.CheckoutOrderWriter",
+        "signature": "CheckoutEconomicSnapshot quoteManualFor(CustomerParty party, CreateOrderCommand command, CheckoutPricingScope scope)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.service.CheckoutOrderWriter",
+        "signature": "CounterOrderPlan stageCounterConfirmedFor(CustomerParty party, CreateOrderCommand command, String key, CounterPurchaseAuthorization authorization)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.service.CheckoutOrderWriter",
+        "signature": "OrderVO createCounterConfirmedFor(CustomerParty party, CounterOrderPlan plan, CounterPurchaseAuthorization authorization)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard",
+        "signature": "CheckoutPricingScope counterContext(CounterPurchaseAuthorization authorization)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard",
+        "signature": "void requireCounterMatches(CounterPurchaseAuthorization authorization, CheckoutEconomicSnapshot economic)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard",
+        "signature": "void completeCounter(CounterPurchaseAuthorization authorization, String orderNo, String subOrderNo)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.create.CounterOrderPlacementService",
+        "signature": "CheckoutResult place(CheckoutScope scope, PlaceCounterReq request)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.create.CounterOrderPlacementService",
+        "signature": "int recoverPending(int limit)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService",
+        "signature": "CounterOrderPlan registerCounter(CounterOrderPlan plan, CounterPurchaseAuthorization authorization)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService",
+        "signature": "void recordCounterReservation(String orderNo, long intentRevision, ReservationView reservation)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService",
+        "signature": "OrdCreateIntent findCounter(String operationNo)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.query.OrderCustomerAccess",
+        "signature": "CustomerReadScope currentReadScope()"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.query.OrderCustomerAccess",
+        "signature": "void requireReadable(OrdOrder order, CustomerReadScope scope)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.query.StoreOrderReadStore",
+        "signature": "StoreOrderMaterial findReadable(String orderNo, CustomerReadScope scope)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.query.StoreOrderReadStore",
+        "signature": "PageData<StoreOrderMaterial> pageReadable(CustomerReadScope scope, StoreOrderQuery query, long page, long size)"
+      },
+      {
+        "owner": "ai.neargo.shop.beauty.policy.ServiceSubmissionAccess",
+        "signature": "CustomerParty manualParty(BtyWorkOrderContext context, CounterCheckoutQuote quote)"
+      },
+      {
+        "owner": "ai.neargo.shop.beauty.policy.ServiceSubmissionAccess",
+        "signature": "CustomerParty manualParty(BtyWorkOrderContext context, ManualSourceFacts facts)"
+      },
+      {
+        "owner": "ai.neargo.shop.beauty.service.impl.ServiceSourceObservation",
+        "signature": "ManualObserved observeManual(ManualCanonical source, String actorNo)"
+      },
+      {
+        "owner": "ai.neargo.shop.beauty.service.impl.ServiceSourceObservation",
+        "signature": "BtySourceObservation manualHistory(ManualCanonical source)"
+      },
+      {
+        "owner": "ai.neargo.shop.beauty.service.impl.ServiceSourceObservation",
+        "signature": "BtySourceObservation invalidateManual(ManualCanonical source, String actorNo)"
+      },
+      {
+        "owner": "ai.neargo.shop.beauty.service.impl.ServiceSourceObservation",
+        "signature": "PlaceholderTicket claimManualPlaceholder(ManualCanonical source, String actorNo)"
+      },
+      {
+        "owner": "ai.neargo.shop.beauty.service.impl.ServiceSourceObservation",
+        "signature": "BtySourceObservation adoptManualPlaceholder(ManualCanonical source, ManualSourceFacts facts, PlaceholderTicket ticket, String actorNo)"
+      },
+      {
+        "owner": "ai.neargo.shop.beauty.service.impl.ServiceSourceBinding",
+        "signature": "Result bindManual(BtyServiceSubmission submission, Command command, ManualObserved observed, String actor)"
+      },
+      {
+        "owner": "ai.neargo.shop.beauty.mapper.BeautyMappers.SourceObservationMapper",
+        "signature": "int adoptManualPlaceholder(BtySourceObservation row, long expectedVersion, long expectedFinancialEpoch)"
+      },
+      {
+        "owner": "ai.neargo.shop.beauty.mapper.BeautyMappers.SourceObservationMapper",
+        "signature": "int completeManualObservation(BtySourceObservation row, long expectedVersion)"
+      },
+      {
+        "owner": "ai.neargo.shop.beauty.mapper.BeautyMappers.SourceAllocationGuardMapper",
+        "signature": "int allocateManualObservedQuantity(String entity, String store, String guardNo, long expectedVersion, long manualRevision, String manualHash, long ticket, BigDecimal qty)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.marketing.CampaignPort",
+        "signature": "List<AppliedActivity> counterCandidates(CustomerParty party, List<MerchantAmount> amounts)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.marketing.CampaignPort",
+        "signature": "void requireCounterSelection(CustomerParty party, Discount discount)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.marketing.CampaignPort",
+        "signature": "Map<String,Long> counterFlashPrices(CustomerParty party, Collection<String> skus)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.marketing.CampaignPort",
+        "signature": "Map<String,GiftRule> counterGiftRules(CustomerParty party, Collection<String> skus)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.marketing.CampaignPort",
+        "signature": "void commitCounter(CustomerParty party, String orderNo, Discount discount)"
+      },
+      {
+        "owner": "ai.neargo.shop.promotion.service.ActivityPricingService",
+        "signature": "void rejectUnsupportedCounterChoices(List<MerchantAmount> amounts, Map<String,String> choices)"
+      },
+      {
+        "owner": "ai.neargo.shop.promotion.service.ActivityPricingService",
+        "signature": "void rejectUnsupportedCounterPriceEffects(Collection<String> skus)"
+      }
+    ],
+    "contracts": [
+      "实施顺序：M2a柜台购买/类型化顾客/原库存/认领隐私→M2b人工观察/绑定/账单→M2c既有商家FULL_CUT；原49任务/160API/118功能/41表目标计数保持，以下是另列共用增量计划，不是已注册接口。",
+      "有效报价固定prepare时的真实顾客身份；报价后认领不重写历史GUEST，新的报价查询会员当前事实。USER无真实所有者版本时counter identityRevision允许空，GUEST必须真实revision；旧C/M1哈希保持。",
+      "共用原报价/确认/订单/明细/来源行/creation intent/库存，不新增会员购买见证或美业金额账。STOCK_RESERVE_V1与STOCK_CONFIRM_V1区分，丢响应只查/恢复原号；CREATED重试不反向锁既有parent。",
+      "人工观察使用独立manual epoch/hash/verified pair。既有空UNKNOWN占位仅在权威来源核验、无金融证据/绑定/占用后同一行一次性adopt；V9条件SQL和旧写防护不抹除真实funded证据。",
+      "MANUAL_EXISTING使用ManualSourceFacts身份重载，支持M1 USER/C及counter USER/GUEST，不伪造CounterCheckoutQuote；保留旧V2提交，升级用例必须保留其active门禁场景。",
+      "账单明确MANUAL_DECLARATION/NOT_APPLICABLE_MANUAL，人工金额单列，既有金融核验不被改成READY。MP155与C订单认领读取由会员当前所有权核验，历史party不改。",
+      "初期优惠仅既有mkt_campaign FULL_CUT，复用原分摊及最终经济封印；账户/积分/卡券/pmt/FLASH/GIFT不支持时明确拒绝，不静默丢弃，不允许零价。",
+      "所有具体DTO/Controller/Service/Mapper、候选字段、旧写兼容、AC→方法和有限验证见[冻结实施设计](../../../.superpowers/sdd/beauty-backend/bm05-m2-counter-source-design.md)。服务接口独立声明，不能extends SPI Port。M3许可/M4占用/M5作业/M6履约/M7日历后续，Pay链条暂缓。"
+    ]
   }
 }

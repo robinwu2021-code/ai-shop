@@ -113,6 +113,13 @@ def render():
             lines.append(f"| `{row['method']} {row['path']}` | `{row['name']}`<br>{row['request']} | {row['response']} |")
         lines += ['', '私有四方法：POST /internal/trade/manual-service-admission/{prepare,confirm,query,source}；绑定MERCHANT真实身份/范围/原operation/完整digest。', '']
         lines += [rule + '\n' for rule in manual['contracts']]
+    counter = data.get('counterServicePlan')
+    if counter:
+        lines += ['', '## 柜台购买与人工来源增量（Task65 M2：设计已审查，尚未实现）', '', counter['status'], '', counter['authority'], '',
+                  '| Method / route | Operation / input | Result |', '|---|---|---|']
+        for row in counter['routes']:
+            lines.append(f"| `{row['method']} {row['path']}` | `{row['name']}`<br>{row['request']} | {row['response']} |")
+        lines += [''] + [rule + '\n' for rule in counter['contracts']]
     return '\n'.join(lines)
 
 

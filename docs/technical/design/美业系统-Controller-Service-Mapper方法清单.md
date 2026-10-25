@@ -3836,3 +3836,73 @@ Task64 M1已完成代码、分版本定向验证和独立审查；正式部署�
 绑定返回还须对应完整原操作：所有operation相等，quote/source门店和实体相等，指定subOrder/declaration相等，CONFIRM返回的原method/amount/currency/receivedAt必须相等（不豁免AWAITING_RECEIPT）；结构合法但对应错误仍为依赖不可用。
 
 本地Service接口独立声明方法并引用SPI DTO，由.port适配器实现跨域Port；Service不继承Port。相同待处理观察只延后重试，不改变准入修订、来源摘要或业务事件，避免队首长期未知记录阻塞后续恢复。
+
+
+## 柜台购买与人工来源增量（Task65 M2：设计已审查，尚未实现）
+
+DESIGN_REVIEWED_TASK65_NOT_IMPLEMENTED_NOT_DEPLOYED
+
+共用Core记录MERCHANT_RECORDED_IN_PERSON购买确认；USER/GUEST无需C会话，会员只提供权威身份与当前认领读取权。仍未实现，未打开服务开工。
+
+| Owner / class | Planned method |
+|---|---|
+| `ai.neargo.shop.spi.trade.ManualServiceAdmissionPort` | `CounterCheckoutQuote prepareCounter(CheckoutScope scope, PrepareCounterReq request)` |
+| `ai.neargo.shop.spi.trade.ManualServiceAdmissionPort` | `CounterCheckoutQuote readCounterQuote(CheckoutScope scope, OperationRef operation)` |
+| `ai.neargo.shop.spi.trade.ManualServiceAdmissionPort` | `CounterConfirmation acceptCounter(CheckoutScope scope, AcceptCounterReq request)` |
+| `ai.neargo.shop.spi.trade.ManualServiceAdmissionPort` | `CheckoutResult placeCounter(CheckoutScope scope, PlaceCounterReq request)` |
+| `ai.neargo.shop.spi.member.CustomerIdentityPort` | `ResolvedCustomer resolveCounterReference(EntitlementContext context, CounterReferenceQuery query)` |
+| `ai.neargo.shop.spi.member.GuestRegistrationPort` | `CurrentClaim currentClaim(ConsumerScope scope, GuestRef guest)` |
+| `ai.neargo.shop.spi.member.GuestRegistrationPort` | `List<CurrentClaim> currentClaims(ConsumerScope scope)` |
+| `ai.neargo.shop.spi.product.StockDispositionPort` | `ReservationView reserveOriginal(Reservation command)` |
+| `ai.neargo.shop.spi.product.StockDispositionPort` | `ReservationView observeReservation(ReservationLookup query)` |
+| `ai.neargo.shop.spi.product.StoreSalesCatalogPort` | `Snapshot lockForCounterCheckout(String tenant, String entity, String store, Instant at)` |
+| `ai.neargo.shop.spi.product.GoodsQueryPort` | `Map<String,SkuSnapshot> snapshotForCounter(CustomerParty party, List<String> skus, Map<String,String> stores)` |
+| `ai.neargo.shop.trade.service.CheckoutOrderWriter` | `CheckoutEconomicSnapshot quoteManualFor(CustomerParty party, CreateOrderCommand command, CheckoutPricingScope scope)` |
+| `ai.neargo.shop.trade.service.CheckoutOrderWriter` | `CounterOrderPlan stageCounterConfirmedFor(CustomerParty party, CreateOrderCommand command, String key, CounterPurchaseAuthorization authorization)` |
+| `ai.neargo.shop.trade.service.CheckoutOrderWriter` | `OrderVO createCounterConfirmedFor(CustomerParty party, CounterOrderPlan plan, CounterPurchaseAuthorization authorization)` |
+| `ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard` | `CheckoutPricingScope counterContext(CounterPurchaseAuthorization authorization)` |
+| `ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard` | `void requireCounterMatches(CounterPurchaseAuthorization authorization, CheckoutEconomicSnapshot economic)` |
+| `ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard` | `void completeCounter(CounterPurchaseAuthorization authorization, String orderNo, String subOrderNo)` |
+| `ai.neargo.shop.trade.order.service.create.CounterOrderPlacementService` | `CheckoutResult place(CheckoutScope scope, PlaceCounterReq request)` |
+| `ai.neargo.shop.trade.order.service.create.CounterOrderPlacementService` | `int recoverPending(int limit)` |
+| `ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService` | `CounterOrderPlan registerCounter(CounterOrderPlan plan, CounterPurchaseAuthorization authorization)` |
+| `ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService` | `void recordCounterReservation(String orderNo, long intentRevision, ReservationView reservation)` |
+| `ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService` | `OrdCreateIntent findCounter(String operationNo)` |
+| `ai.neargo.shop.trade.order.service.query.OrderCustomerAccess` | `CustomerReadScope currentReadScope()` |
+| `ai.neargo.shop.trade.order.service.query.OrderCustomerAccess` | `void requireReadable(OrdOrder order, CustomerReadScope scope)` |
+| `ai.neargo.shop.trade.order.service.query.StoreOrderReadStore` | `StoreOrderMaterial findReadable(String orderNo, CustomerReadScope scope)` |
+| `ai.neargo.shop.trade.order.service.query.StoreOrderReadStore` | `PageData<StoreOrderMaterial> pageReadable(CustomerReadScope scope, StoreOrderQuery query, long page, long size)` |
+| `ai.neargo.shop.beauty.policy.ServiceSubmissionAccess` | `CustomerParty manualParty(BtyWorkOrderContext context, CounterCheckoutQuote quote)` |
+| `ai.neargo.shop.beauty.policy.ServiceSubmissionAccess` | `CustomerParty manualParty(BtyWorkOrderContext context, ManualSourceFacts facts)` |
+| `ai.neargo.shop.beauty.service.impl.ServiceSourceObservation` | `ManualObserved observeManual(ManualCanonical source, String actorNo)` |
+| `ai.neargo.shop.beauty.service.impl.ServiceSourceObservation` | `BtySourceObservation manualHistory(ManualCanonical source)` |
+| `ai.neargo.shop.beauty.service.impl.ServiceSourceObservation` | `BtySourceObservation invalidateManual(ManualCanonical source, String actorNo)` |
+| `ai.neargo.shop.beauty.service.impl.ServiceSourceObservation` | `PlaceholderTicket claimManualPlaceholder(ManualCanonical source, String actorNo)` |
+| `ai.neargo.shop.beauty.service.impl.ServiceSourceObservation` | `BtySourceObservation adoptManualPlaceholder(ManualCanonical source, ManualSourceFacts facts, PlaceholderTicket ticket, String actorNo)` |
+| `ai.neargo.shop.beauty.service.impl.ServiceSourceBinding` | `Result bindManual(BtyServiceSubmission submission, Command command, ManualObserved observed, String actor)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceObservationMapper` | `int adoptManualPlaceholder(BtySourceObservation row, long expectedVersion, long expectedFinancialEpoch)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceObservationMapper` | `int completeManualObservation(BtySourceObservation row, long expectedVersion)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceAllocationGuardMapper` | `int allocateManualObservedQuantity(String entity, String store, String guardNo, long expectedVersion, long manualRevision, String manualHash, long ticket, BigDecimal qty)` |
+| `ai.neargo.shop.spi.marketing.CampaignPort` | `List<AppliedActivity> counterCandidates(CustomerParty party, List<MerchantAmount> amounts)` |
+| `ai.neargo.shop.spi.marketing.CampaignPort` | `void requireCounterSelection(CustomerParty party, Discount discount)` |
+| `ai.neargo.shop.spi.marketing.CampaignPort` | `Map<String,Long> counterFlashPrices(CustomerParty party, Collection<String> skus)` |
+| `ai.neargo.shop.spi.marketing.CampaignPort` | `Map<String,GiftRule> counterGiftRules(CustomerParty party, Collection<String> skus)` |
+| `ai.neargo.shop.spi.marketing.CampaignPort` | `void commitCounter(CustomerParty party, String orderNo, Discount discount)` |
+| `ai.neargo.shop.promotion.service.ActivityPricingService` | `void rejectUnsupportedCounterChoices(List<MerchantAmount> amounts, Map<String,String> choices)` |
+| `ai.neargo.shop.promotion.service.ActivityPricingService` | `void rejectUnsupportedCounterPriceEffects(Collection<String> skus)` |
+
+实施顺序：M2a柜台购买/类型化顾客/原库存/认领隐私→M2b人工观察/绑定/账单→M2c既有商家FULL_CUT；原49任务/160API/118功能/41表目标计数保持，以下是另列共用增量计划，不是已注册接口。
+
+有效报价固定prepare时的真实顾客身份；报价后认领不重写历史GUEST，新的报价查询会员当前事实。USER无真实所有者版本时counter identityRevision允许空，GUEST必须真实revision；旧C/M1哈希保持。
+
+共用原报价/确认/订单/明细/来源行/creation intent/库存，不新增会员购买见证或美业金额账。STOCK_RESERVE_V1与STOCK_CONFIRM_V1区分，丢响应只查/恢复原号；CREATED重试不反向锁既有parent。
+
+人工观察使用独立manual epoch/hash/verified pair。既有空UNKNOWN占位仅在权威来源核验、无金融证据/绑定/占用后同一行一次性adopt；V9条件SQL和旧写防护不抹除真实funded证据。
+
+MANUAL_EXISTING使用ManualSourceFacts身份重载，支持M1 USER/C及counter USER/GUEST，不伪造CounterCheckoutQuote；保留旧V2提交，升级用例必须保留其active门禁场景。
+
+账单明确MANUAL_DECLARATION/NOT_APPLICABLE_MANUAL，人工金额单列，既有金融核验不被改成READY。MP155与C订单认领读取由会员当前所有权核验，历史party不改。
+
+初期优惠仅既有mkt_campaign FULL_CUT，复用原分摊及最终经济封印；账户/积分/卡券/pmt/FLASH/GIFT不支持时明确拒绝，不静默丢弃，不允许零价。
+
+所有具体DTO/Controller/Service/Mapper、候选字段、旧写兼容、AC→方法和有限验证见[冻结实施设计](../../../.superpowers/sdd/beauty-backend/bm05-m2-counter-source-design.md)。服务接口独立声明，不能extends SPI Port。M3许可/M4占用/M5作业/M6履约/M7日历后续，Pay链条暂缓。

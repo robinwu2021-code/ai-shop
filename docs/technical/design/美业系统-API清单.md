@@ -677,3 +677,37 @@ Task64 M1已完成代码、分版本定向验证和独立审查；正式部署�
 绑定返回还须对应完整原操作：所有operation相等，quote/source门店和实体相等，指定subOrder/declaration相等，CONFIRM返回的原method/amount/currency/receivedAt必须相等（不豁免AWAITING_RECEIPT）；结构合法但对应错误仍为依赖不可用。
 
 本地Service接口独立声明方法并引用SPI DTO，由.port适配器实现跨域Port；Service不继承Port。相同待处理观察只延后重试，不改变准入修订、来源摘要或业务事件，避免队首长期未知记录阻塞后续恢复。
+
+
+## 柜台购买与人工来源增量（Task65 M2：设计已审查，尚未实现）
+
+DESIGN_REVIEWED_TASK65_NOT_IMPLEMENTED_NOT_DEPLOYED
+
+共用Core记录MERCHANT_RECORDED_IN_PERSON购买确认；USER/GUEST无需C会话，会员只提供权威身份与当前认领读取权。仍未实现，未打开服务开工。
+
+| Method / route | Operation / input | Result |
+|---|---|---|
+| `POST /biz/service-orders/counter-quotes` | `prepareCounter`<br>PrepareCounterReq | CounterCheckoutQuote |
+| `GET /biz/service-orders/counter-quotes/{operationNo}` | `readCounterQuote`<br>operationNo | CounterCheckoutQuote |
+| `POST /biz/service-orders/counter-quotes/{operationNo}/acceptances` | `acceptCounter`<br>AcceptCounterReq | CounterConfirmation |
+| `POST /biz/service-orders/counter-quotes/{operationNo}/orders` | `placeCounter`<br>PlaceCounterReq | CheckoutResult |
+| `POST /internal/trade/manual-service-admission/counter-prepare` | `prepareCounter`<br>InternalCall<Scoped<PrepareCounterReq>> | InternalReply<CounterCheckoutQuote> |
+| `POST /internal/trade/manual-service-admission/counter-read` | `readCounterQuote`<br>InternalCall<Scoped<OperationRef>> | InternalReply<CounterCheckoutQuote> |
+| `POST /internal/trade/manual-service-admission/counter-accept` | `acceptCounter`<br>InternalCall<Scoped<AcceptCounterReq>> | InternalReply<CounterConfirmation> |
+| `POST /internal/trade/manual-service-admission/counter-place` | `placeCounter`<br>InternalCall<Scoped<PlaceCounterReq>> | InternalReply<CheckoutResult> |
+
+实施顺序：M2a柜台购买/类型化顾客/原库存/认领隐私→M2b人工观察/绑定/账单→M2c既有商家FULL_CUT；原49任务/160API/118功能/41表目标计数保持，以下是另列共用增量计划，不是已注册接口。
+
+有效报价固定prepare时的真实顾客身份；报价后认领不重写历史GUEST，新的报价查询会员当前事实。USER无真实所有者版本时counter identityRevision允许空，GUEST必须真实revision；旧C/M1哈希保持。
+
+共用原报价/确认/订单/明细/来源行/creation intent/库存，不新增会员购买见证或美业金额账。STOCK_RESERVE_V1与STOCK_CONFIRM_V1区分，丢响应只查/恢复原号；CREATED重试不反向锁既有parent。
+
+人工观察使用独立manual epoch/hash/verified pair。既有空UNKNOWN占位仅在权威来源核验、无金融证据/绑定/占用后同一行一次性adopt；V9条件SQL和旧写防护不抹除真实funded证据。
+
+MANUAL_EXISTING使用ManualSourceFacts身份重载，支持M1 USER/C及counter USER/GUEST，不伪造CounterCheckoutQuote；保留旧V2提交，升级用例必须保留其active门禁场景。
+
+账单明确MANUAL_DECLARATION/NOT_APPLICABLE_MANUAL，人工金额单列，既有金融核验不被改成READY。MP155与C订单认领读取由会员当前所有权核验，历史party不改。
+
+初期优惠仅既有mkt_campaign FULL_CUT，复用原分摊及最终经济封印；账户/积分/卡券/pmt/FLASH/GIFT不支持时明确拒绝，不静默丢弃，不允许零价。
+
+所有具体DTO/Controller/Service/Mapper、候选字段、旧写兼容、AC→方法和有限验证见[冻结实施设计](../../../.superpowers/sdd/beauty-backend/bm05-m2-counter-source-design.md)。服务接口独立声明，不能extends SPI Port。M3许可/M4占用/M5作业/M6履约/M7日历后续，Pay链条暂缓。
