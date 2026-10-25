@@ -104,6 +104,11 @@
 - 客户端：`pay.client.PaymentInternalApi`（调用方与凭据逐次放头里：同一进程替商城与餐饮各调各的）· `pay.client.port.RemotePaymentPort`（错误码还原成同一个 `BizException`）；shop-app `PayClientConfig` 在 `standalone` 下装它，凭据 `shop.pay.internal-caller-credentials.<app>`。
 - SPI 调整：`PaymentPort#queryPayment(bizType, payOrderNo)` —— 独立形态要知道以谁的身份查；内嵌实现对别的调用方的单返回空。
 
+### S9 · 回填与校验
+- `acquiring.backfill.PayOrderBackfill` / impl：`pendingOrderNos`（还没挂支付单的收款尝试所属订单号，分批）· `backfill(orderNo, bizType, 门店身份, 资金路径)`：一订单一事务，建支付单（状态由尝试推出：有成功 → SUCCEEDED / 部分退款 / 已退；有未终态 → AWAITING_PAYMENT；否则 CLOSED；实收、已退按尝试算）、挂上该订单号下全部尝试（含退款行）；**B7 流水期初**按冻结的资金路径回放收款与已退两张凭证，幂等键带 `BACKFILL`，不与实时记账撞。已挂的不再动（可重复跑）。
+- `acquiring.backfill.PayIntegrity` / impl：Q5 `unlinkedAttempts(since)` · Q7 `unbalancedVouchers()`。
+- shop-app `paybridge.PayOrderBackfillJob`（只手动触发）：支付域读不到交易表，订单门店（首个子单）与归属（有行业来源绑定 = 餐饮）在这里查好交过去；解析不出门店的单跳过并报失败（人工看）。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
@@ -117,6 +122,7 @@
 | AC8 | `PayCloseFlowTest`（3 条：`closeUnpaid` 支付单与尝试都 CLOSED；`closeFindsPaid` 关前查到已付 → 不关、入账成功；`orderCloseClosesPayOrderAndLatePaymentIsAnException` 订单关单 → 提交后关支付单 → 之后到账 LATE_PAYMENT、支付单仍 CLOSED） | ✅ | ① 关前不查单 + 订单关单不关支付单 → 两条红 ② 不关尝试 → 两条红 ✅ |
 | AC8′ | `OrderPaymentRecoveryWiringFlowTest#queryOfClosedOrderRetainsCashAndOneRecoverableResolution`（受影响回归抓到：关单关到尝试后，巡检不再扫它，丢回调的关单后到账没人发现 → 加观察窗后绿；该类 6 条改为按单号作答，见偏差 12） | ✅ | 去掉观察窗 → 红 ✅ |
 | AC9 | `PaymentPortLocalRemoteParityTest`（3 条，真 HTTP：建单与退款两种实现结果相同；可退余额不足 / 没有操作员原样过边界（错误码与参数）；餐饮凭据调商城退款 403、凭据错或没带 401）· `InternalTokenComparisonTest` 仍绿（新代码无 `equals` 比令牌） | ✅ | ① 端点不限业务类型 + 远程吞错误码 → 两条红 ② 凭据不比 → 鉴权那条红 ✅ |
+| B6/B7 · Q5/Q7 | `PayOrderBackfillFlowTest`（3 条：已付存量单回填一次、再跑不多、期初凭证一张；只关了的存量单 CLOSED 不记流水；全部回填后 Q5 = 0、Q7 = 0） | ✅ | ① 不回放期初 + 状态一律成功 → 两条红 ② 不挂尝试 → 两条红 ✅ |
 | AC1 | `MapperSmokeTest`（新 9 个 mapper 各查自己的表）· `SchemaDriftTest` · `PayMigrationTest` · 本机 MySQL 9.7 临时库执行 V7–V9（种子落库、CHECK 生效） | ✅ | — |
 
 ## §6 对账二 · 设计 → 实现
@@ -138,4 +144,5 @@
 11. **按业务类型授权而非路径前缀**：代码清单写的是「按路径前缀授权」，而商城与餐饮共用同一组端点、区别只在请求体的业务类型；按调用方 ↔ 业务类型限定，效果相同（餐饮调不了商城的退款）且不必为每个调用方复制一组路径。
 12. **测试替身按单号作答**：`FakePayQueryPort` 的全局答案会把同一个渠道交易号发给待查集合里的每一笔；观察窗让巡检扫到同类其他用例关掉的尝试，撞 `(pay_channel, trade_no)` 唯一键。加 `answerForTrade(outTradeNo, …)`（优先级最高），`OrderPaymentRecoveryWiringFlowTest` 的 4 处改用它 —— 真渠道本来就逐笔给各自的交易号。
 13. **反向依赖预算 SettlePort 56 → 58**：关前查到已付时用收款账本现成的入参 `SettlePort.PaymentSettled`（import + 一处构造），同为嵌套记录引用，已登记 `known-pay-reverse-deps.txt`。
+14. **回填的退款单不建**：B6 只建支付单并把退款行挂上（`refunded_minor` 按成功退款行算）；存量退款不补 `pay_refund` —— 它们已经走完，补建的退款单没有复核与占用可言，只会让「退款单 = 商户侧发起的一次申请」这句话变假。
 0. **I2 收尾的启动校验在切片测试里装不起来**：`PayDataSourceConfig#channelProductCoverageCheck` 硬依赖渠道注册表，只装了部分支付配置的切片测试（`RefundBackingTest` 等 6 个类）上下文起不来 —— I2 收尾时只复跑了被点名的那 65 条，没再跑全量。S3 的受影响回归抓到，改为 `ObjectProvider`，没有注册表就跳过。
