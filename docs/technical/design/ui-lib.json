@@ -1421,7 +1421,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 194,
+        "b-app": 196,
         "c-app": 95
       }
     },
@@ -2143,7 +2143,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 85,
+        "b-app": 86,
         "c-app": 42,
         "lib": 1
       },
@@ -3743,7 +3743,7 @@
         "sh-kv",
         "sh-scaffold"
       ],
-      "libClassHits": 39,
+      "libClassHits": 41,
       "localSelectors": 0,
       "localCssLines": 0,
       "rolled": []
@@ -5478,6 +5478,7 @@
       "key": "b-app/stored-value-summary",
       "file": "b-app/src/pages/stored-value-summary/index.vue",
       "components": [
+        "sh-empty",
         "sh-kv",
         "sh-scaffold",
         "sh-sheet"

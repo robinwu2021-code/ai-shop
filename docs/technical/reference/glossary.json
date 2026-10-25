@@ -26330,6 +26330,12 @@
           "ar": "لا توجد دفعات"
         },
         {
+          "key": "svFinance.noReportData",
+          "zh-CN": "暂无可用储值汇总",
+          "en": "No stored-value summary available",
+          "ar": "لا يتوفر ملخص للرصيد المخزن"
+        },
+        {
           "key": "svFinance.openingMinor",
           "zh-CN": "期初余额",
           "en": "Opening balance",
