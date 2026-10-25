@@ -99,6 +99,26 @@ public class ReservationServiceImpl implements ReservationService {
         if (ownerId == null || ownerId.isBlank() || externalRef == null || externalRef.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        /*
+         * 超过上限**直接拒**，不是悄悄改成上限值。
+         *
+         * 截断的话调用方以为占住了 7 天、实际只占了 1 天，而到期释放是静默的 ——
+         * 表现是「那张单的货莫名其妙被别人买走了」，查起来没有任何线索。
+         * 拒绝是响的：接的人在联调当天就知道，而不是上线后某一天。
+         *
+         * <b>只管上限，不管下限。</b>第一版顺手把 {@code ttlSeconds <= 0} 也拒了，
+         * 结果撞坏了 {@code InventoryFlowTest#overdueBacklogIsCountable} ——
+         * 它<b>故意传负数</b>来造一笔「一落库就已过期」的预留，好验回收任务，
+         * 而那是有道理的：真实场景里「过期」是时间走过去造成的，测试里没法等。
+         * 需求要的是上限（防止一个大数把货占住），下限是我自己加的，
+         * 它没有对应的风险，却挡住了一个正当用法。
+         *
+         * <b>放在查库之前</b>：它判的是入参本身，与 owner 在不在、单子有没有都无关。
+         * 放在后面时，owner 校验（FORBIDDEN）先拒，这道闸就没跑过 —— InventoryReserveTtlCapTest 正是为此而设。
+         */
+        if (ttlSeconds > maxTtlSeconds) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         if (exactDb != null) {
             if (exactDb.queryForList(
                                     "SELECT owner_id FROM inv_owner WHERE owner_id=? AND"
@@ -147,23 +167,6 @@ public class ReservationServiceImpl implements ReservationService {
                                                 entry.getValue(),
                                                 entry.getKey().fulfillmentRef()))
                         .toList();
-        /*
-         * 超过上限**直接拒**，不是悄悄改成上限值。
-         *
-         * 截断的话调用方以为占住了 7 天、实际只占了 1 天，而到期释放是静默的 ——
-         * 表现是「那张单的货莫名其妙被别人买走了」，查起来没有任何线索。
-         * 拒绝是响的：接的人在联调当天就知道，而不是上线后某一天。
-         *
-         * <b>只管上限，不管下限。</b>第一版顺手把 {@code ttlSeconds <= 0} 也拒了，
-         * 结果撞坏了 {@code InventoryFlowTest#overdueBacklogIsCountable} ——
-         * 它<b>故意传负数</b>来造一笔「一落库就已过期」的预留，好验回收任务，
-         * 而那是有道理的：真实场景里「过期」是时间走过去造成的，测试里没法等。
-         * 需求要的是上限（防止一个大数把货占住），下限是我自己加的，
-         * 它没有对应的风险，却挡住了一个正当用法。
-         */
-        if (ttlSeconds > maxTtlSeconds) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
 
         List<String> shortages = new ArrayList<>();
         for (Line l : lines) {
