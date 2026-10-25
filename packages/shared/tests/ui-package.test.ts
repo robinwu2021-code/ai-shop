@@ -246,7 +246,7 @@ describe("小程序的块间缝：顶层组件也要在名单上", () => {
     // ⚠️ **改名要同时改这里。** 2026-09-08 把 c 端的 `biz-region-picker` 改成
     //    `biz-address-region` 之后这条闸门当场变红 —— 而它报的是「这个件不在
     //    小程序块间缝名单上」，与「改名」毫无关系。名单里的字符串是改名的暗礁。
-    "biz-cart-fab", "phone-gate", "biz-region-picker", "biz-address-region", "biz-pickup-sheet",
+    "biz-cart-fab", "phone-gate", "biz-region-picker", "biz-pickup-sheet",
     "biz-item-picker", "biz-supplier-picker",
     // 切店幕布：position fixed 整屏盖住，与 sh-dialog 同一层
     "biz-switch-curtain",
