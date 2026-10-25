@@ -77,7 +77,7 @@ export default {
     "IMPACT_UNKNOWN": "业务影响尚未确认，请稍后重试",
     "DEPENDENCY_NOT_READY": "共享能力尚未就绪"
   },
-  "permission": {"sv_brand_activity_read": "查看品牌储值活动", "sv_brand_activity_manage": "管理品牌储值活动", "sv_brand_activity_publish": "提交品牌储值活动", "sv_brand_activity_approve": "审批品牌储值活动","sv_policy_read":"查看储值规则","sv_policy_manage":"配置储值规则","sv_store_activity_read":"查看储值活动","sv_store_activity_manage":"管理储值活动","sv_store_activity_publish":"提交储值活动","sv_store_activity_approve":"审批储值活动","sv_issuer_read":"查看储值发行设置","sv_issuer_configure":"配置储值发行方","sv_issuer_settlement_authorize":"授权储值结算主体",
+  "permission": {"sv_settlement_read":"查看结算账单","sv_settlement_generate":"生成结算账单","sv_settlement_reconcile":"确认结算对账","sv_settlement_dispute":"提出结算争议","sv_settlement_dispute_resolve":"处理结算争议","sv_settlement_adjust":"调整结算金额","sv_settlement_payment_register":"登记结算付款","sv_settlement_receipt_confirm":"确认结算收款","sv_settlement_payment_void":"撤销付款登记","sv_settlement_audit":"查看结算操作记录","sv_issuer_collection_confirm":"授权集中收款","sv_brand_report":"查看品牌储值汇总","sv_store_report":"查看门店储值汇总","sv_store_report_all":"查看本店发行汇总","sv_activity_report":"查看储值活动汇总","sv_brand_activity_read": "查看品牌储值活动", "sv_brand_activity_manage": "管理品牌储值活动", "sv_brand_activity_publish": "提交品牌储值活动", "sv_brand_activity_approve": "审批品牌储值活动","sv_policy_read":"查看储值规则","sv_policy_manage":"配置储值规则","sv_store_activity_read":"查看储值活动","sv_store_activity_manage":"管理储值活动","sv_store_activity_publish":"提交储值活动","sv_store_activity_approve":"审批储值活动","sv_issuer_read":"查看储值发行设置","sv_issuer_configure":"配置储值发行方","sv_issuer_settlement_authorize":"授权储值结算主体",
     "management_enter": "进入管理空间",
     "management_resource_read": "查看经营资源",
     "management_grant_manage": "管理资源授权",

@@ -120,5 +120,6 @@
   "packages/shared/src/generated/entitlement-backend.ts",
   "scripts/release/brand-p6.json",
   "scripts/release/brand-p6.mjs",
-  "scripts/release/brand-p6.test.mjs"
+  "scripts/release/brand-p6.test.mjs",
+  "site/lib/site.config.ts"
 ]
