@@ -63,6 +63,11 @@ class PaymentOpenConcurrencyTest {
                 "SELECT COUNT(*) FROM stl_payment WHERE order_no=? AND direction='PAY'", Integer.class, cmd.orderNo()))
                 .as("同一订单的未终态收款只能有一行 —— 两行同号时按单号锁行锁哪行不确定").isEqualTo(1);
         assertThat(outTradeNos).as("每一次点击都该拿到同一笔").containsOnly(cmd.orderNo());
+        // F08 · R08：实际收款账户落到行上，退款按它找原交易
+        assertThat(jdbc.queryForMap("SELECT sub_merchant_id, pay_merchant_no FROM stl_payment WHERE out_trade_no=?",
+                cmd.orderNo()))
+                .containsEntry("sub_merchant_id", "synthetic-channel-account")
+                .containsEntry("pay_merchant_no", "synthetic-pay");
     }
 
     private static PaymentOpen command() {

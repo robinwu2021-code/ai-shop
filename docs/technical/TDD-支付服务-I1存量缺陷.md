@@ -72,6 +72,11 @@
 - 尝试序号只数终态（不含 INIT / PENDING）：否则并发一方把对方的在途行数进去，算出「订单号-2」绕开唯一键（并发测试第 5 轮实测抓到）。
 - **测试建表**：`gen-test-schema.py` 与 `SchemaDriftTest` 接上 `db/pay`（在平台迁移之后重放，与生产执行顺序一致）。
 
+### F08 · 退款带原交易的子商户号
+- **迁移** `db/pay/V2__stl_payment_sub_merchant.sql`：`stl_payment` 加 `sub_merchant_id`、`pay_merchant_no`（两条 ALTER 分写）。
+- `DirectAccounts#of(PaymentOpen)`：DIRECT 取第一家门店的路由、AGGREGATED 为空 —— 下单（`OrdinaryPaymentInitiationServiceImpl`）、开单落库（`PaymentLedgerServiceImpl#open`）、退款（`RefundExecutionServiceImpl`）同一条规则。
+- 退款 `TxContext.subMchId`：先取原交易的列，存量行为空时回退到原交易请求快照（`PaymentLedgerService#paymentRequest`）。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
@@ -82,6 +87,7 @@
 | F04 | `ApplymentGatewayTest#outRequestNoIsPerApplyment` | ✅ 9/9 | 先红：字段已加、网关仍发主体编号时 `expected "E-1-E-100" but was "E-1"` ✅ |
 | F06 | `MicroPayCapabilityFlowTest#concurrentAccrualsAllLand` · `ApplymentGatewayTest#alipayQueryUsesDifferentApi`（加断言） | ✅ 9/9 · 9/9 | 先红：10 个并发累加只落 1 笔（`expected 10000 but was 1000`）；支付宝查询参数为空 ✅ |
 | F07 | `PaymentOpenConcurrencyTest#concurrentOpenYieldsOneRow`（@RepeatedTest 20，4 线程） | ✅ 20/20；`PaymentRequestSnapshotTest` 等 5 类全绿 | 先红：只有唯一键时 5 轮全是 `DuplicateKeyException` 抛给调用方；加复用后第 5 轮仍出两行（计数含在途行）→ 只数终态后 20/20 ✅ |
+| F08 | `RefundSubMerchantTest#refundCarriesTheOriginalSubMerchant` · `#legacyRowFallsBackToRequestSnapshot` · `PaymentOpenConcurrencyTest`（加列断言） | ✅ 2/2 · 20/20；退款相关 6 类全绿 | 先红：两条均 `expected "SUB-…" but was null` ✅ |
 | F05 | `MerchantPaymentFlowTest#stubDoesNotImpersonateUnlistedChannel` · `#inFlightCannotResubmit` · `#resubmitClearsRejectReason` | ✅ 10/10 | 先红：PAYBY 进件 code=0、在途重提 code=0、旧原因仍在。消融恢复回落 / 去在途拦截 / 去显式清空 → 三条红 ✅。注：`resubmitClearsRejectReason` 初版在旧代码上是绿的（stub 同步出结果，走了已修好的回查路径），加 `keepApplyingFor` 后才量到 submit 本身 |
 
 ## §6 对账二 · 设计 → 实现

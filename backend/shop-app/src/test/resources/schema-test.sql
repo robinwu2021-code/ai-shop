@@ -1110,6 +1110,8 @@ CREATE TABLE IF NOT EXISTS stl_payment
     refund_query_at BIGINT DEFAULT NULL,
     refund_terminal_proof LONGTEXT DEFAULT NULL,
     refund_recovery_proof LONGTEXT DEFAULT NULL,
+    sub_merchant_id VARCHAR(64) DEFAULT NULL,
+    pay_merchant_no VARCHAR(64) DEFAULT NULL,
     CONSTRAINT uk_stl_payment_out_trade_no UNIQUE (out_trade_no),
     CONSTRAINT uk_stl_payment_direction_after_sale_no UNIQUE (direction,after_sale_no),
     PRIMARY KEY (id),

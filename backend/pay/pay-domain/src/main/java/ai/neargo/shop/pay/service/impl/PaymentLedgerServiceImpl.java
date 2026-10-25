@@ -90,6 +90,11 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         p.setAmountMinor(cmd.amountMinor());
         p.setCurrency(cmd.currency());
         p.setPaymentRequestJson(json.writeValueAsString(cmd));
+        // 实际收款账户落到行上，退款按它找原交易（F08 · R08）。与下单时同一条规则
+        DirectAccounts.of(cmd).ifPresent(route -> {
+            p.setSubMerchantId(route.subMerchantId());
+            p.setPayMerchantNo(route.payMerchantNo());
+        });
         try {
             DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(p));
         } catch (org.springframework.dao.DuplicateKeyException race) {

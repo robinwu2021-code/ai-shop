@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service;
 public class RefundExecutionServiceImpl implements RefundExecutionService {
     @org.springframework.beans.factory.annotation.Autowired
     private PayOperationsDocuments documents;
+    /** 存量交易没落子商户号时，从它的请求快照取（F08 · Review R08） */
+    private ai.neargo.shop.pay.service.PaymentLedgerService ledger;
     private final RefundPaymentStore store;
     private final RefundCapacityLedger capacity;
     private final PayGatewayRouter gateways;
@@ -31,6 +33,28 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
         this.store = store;
         this.gateways = gateways;
         this.adjustment = adjustment;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setLedger(ai.neargo.shop.pay.service.PaymentLedgerService ledger) {
+        this.ledger = ledger;
+    }
+
+    /**
+     * 原交易实际进的子商户号。新交易落在行上；存量行为空时从它的请求快照按下单时同一规则取（F08 · Review R08）。
+     * 此前恒传 null：服务商 / 子商户模式下通道找不到原交易，退款失败而用户的钱已经扣了。
+     */
+    private String subMerchantOf(StlPayment origin) {
+        if (origin.getSubMerchantId() != null && !origin.getSubMerchantId().isBlank()) {
+            return origin.getSubMerchantId();
+        }
+        if (ledger == null || origin.getOutTradeNo() == null) {
+            return null;
+        }
+        return ledger.paymentRequest(origin.getOutTradeNo())
+                .flatMap(DirectAccounts::of)
+                .map(r -> r.subMerchantId())
+                .orElse(null);
     }
 
     @Override
@@ -79,7 +103,7 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             if (!gateway.supportsRefundCurrency(row.getCurrency())) {
                 return failed(row, "REFUND_CURRENCY_UNSUPPORTED");
             }
-            PayGateway.Result sent = gateway.refund(new PayGateway.TxContext(null, origin.getTradeNo(),
+            PayGateway.Result sent = gateway.refund(new PayGateway.TxContext(subMerchantOf(origin), origin.getTradeNo(),
                     origin.getOutTradeNo(), origin.getAmountMinor(), row.getCurrency()), row.getAmountMinor(),
                     row.getOutTradeNo(), request.reason());
             if (sent == null || (!sent.success() && sent.retryable())) {

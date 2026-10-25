@@ -49,9 +49,7 @@ public class OrdinaryPaymentInitiationServiceImpl implements OrdinaryPaymentInit
                     Map.of(), "支付通道未接入：" + frozen.payChannel());
         }
         String payerId = payer.openId();
-        String subMchId = !frozen.stores().isEmpty()
-                && "DIRECT".equals(frozen.stores().getFirst().route().fundsPath())
-                ? frozen.stores().getFirst().route().subMerchantId() : null;
+        String subMchId = DirectAccounts.of(frozen).map(r -> r.subMerchantId()).orElse(null);
         // A thrown or ambiguous response leaves the same original intent pending for query/recovery.
         var response = gateway.prepay(new PayGateway.PrepayCommand(outTradeNo, frozen.amountMinor(),
                 frozen.currency(), frozen.subject(), "JSAPI", subMchId, payerId));

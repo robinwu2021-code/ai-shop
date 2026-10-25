@@ -93,6 +93,12 @@ public class StlPayment extends BaseEntity {
     /** 通道交易号（微信 transaction_id / 支付宝 trade_no）。**对账单上是这个**。 */
     private String tradeNo;
 
+    /** 收款时下单用的子商户号（DIRECT 路径；AGGREGATED 为空）。退款按它找原交易（F08 · Review R08，db/pay V2） */
+    private String subMerchantId;
+
+    /** 收款商户号业务键（DIRECT 路径） */
+    private String payMerchantNo;
+
     /**
      * 付款人 openid。**按 {@link #wxAppid} 隔离** —— 同一个人在不同小程序下是不同的 openid。
      *
