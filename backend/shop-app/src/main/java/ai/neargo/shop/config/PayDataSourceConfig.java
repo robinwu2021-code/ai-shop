@@ -132,7 +132,14 @@ public class PayDataSourceConfig {
                           ObjectProvider<FlywayMigrationInitializer> platformFlyway,
                           @Value("${shop.pay.flyway.enabled:true}") boolean enabled,
                           @Value("${shop.pay.flyway.locations:classpath:db/pay}") String locations) {
-        platformFlyway.ifAvailable(initializer -> { });
+        /*
+         * **与平台迁移同开同关**：平台迁移没启用（H2 测试、只装几个 bean 的切片测试、手工迁移的环境）时，
+         * 支付迁移也不跑 —— 它要 ALTER 平台的 stl_* 表，平台没建表就跑只会失败。
+         * I1 加了第一批真迁移后，二十多个切片测试因此起不来，才补上这一条（TDD-支付服务-I1存量缺陷 §6）。
+         */
+        if (platformFlyway.getIfAvailable() == null) {
+            return new PayMigrated(PAY_HISTORY_TABLE, 0);
+        }
         return migratePay(ds, enabled, locations);
     }
 

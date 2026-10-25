@@ -38,14 +38,21 @@ class PayMigrationTest {
     }
 
     @Test
-    @DisplayName("★★ 真目录 db/pay 今天为空：只建历史表、零迁移、不报错 —— 生产首次部署就是这个样子")
-    void realLocationIsEmptyButValid() throws SQLException {
-        JdbcDataSource ds = h2("pay_mig_real");
-
-        var result = PayDataSourceConfig.migratePay(ds, true, "classpath:db/pay");
-
-        assertThat(result.applied()).isZero();
-        assertThat(tableExists(ds, "pay_flyway_history")).isTrue();
+    @DisplayName("★★ 真目录 db/pay 只放按版本命名的 SQL，号从 1 起连续 —— 支付迁移不与平台抢号，也不跳号")
+    void realLocationIsVersionedFromOne() throws Exception {
+        var resolver = new org.springframework.core.io.support.PathMatchingResourcePatternResolver();
+        var versions = new java.util.ArrayList<Integer>();
+        for (var r : resolver.getResources("classpath:db/pay/*.sql")) {
+            var m = java.util.regex.Pattern.compile("V(\\d+)__\\w+\\.sql").matcher(r.getFilename());
+            assertThat(m.matches()).as("不规范的文件名：%s", r.getFilename()).isTrue();
+            versions.add(Integer.parseInt(m.group(1)));
+        }
+        java.util.Collections.sort(versions);
+        assertThat(versions).as("db/pay 一条迁移都没有").isNotEmpty();
+        for (int i = 0; i < versions.size(); i++) {
+            assertThat(versions.get(i)).isEqualTo(i + 1);
+        }
+        // 真迁移要 ALTER 平台表，空库上跑不了 —— 在 MySQL 9.7 上的执行验证见 TDD-支付服务-I1存量缺陷 §7
     }
 
     @Test
