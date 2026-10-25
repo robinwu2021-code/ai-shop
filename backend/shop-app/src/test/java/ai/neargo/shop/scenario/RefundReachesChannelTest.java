@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import java.util.UUID;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.pay.SettleService;
@@ -57,12 +58,17 @@ class RefundReachesChannelTest {
 
     private static int seq = 0;
 
+    /** 每笔退款一张真实的售后单号（R21：不再合成 AS-{子单号}） */
+    private static String afterSale() {
+        return "AS-T-" + UUID.randomUUID().toString().substring(0, 8);
+    }
+
     @Test
     @DisplayName("★★★ 退款发到通道，通道退款单号落在流水上 —— 只落账不发钱是最不对称的缺口")
     void refundIsSentToTheChannel() {
         Fixture f = paidOrderWithBill("TEST");
 
-        String refundNo = settleService.refund(f.subOrderNo, 5_000L, "七天无理由");
+        String refundNo = settleService.refund(f.subOrderNo, afterSale(), 5_000L, "七天无理由");
 
         assertThat(refundNo).isNotBlank();
         StlPayment row = refundRow(refundNo);
@@ -72,11 +78,21 @@ class RefundReachesChannelTest {
     }
 
     @Test
+    @DisplayName("★★★ R21：同一子单的第二张售后退款要真的再退一笔 —— 合成的 AS-{子单号} 会把它当成第一笔的重复")
+    void secondAfterSaleOnSameSubOrderRefundsAgain() {
+        Fixture f = paidOrderWithBill("TEST");
+        String first = settleService.refund(f.subOrderNo, afterSale(), 1_000L, "少发");
+        String second = settleService.refund(f.subOrderNo, afterSale(), 1_000L, "又少发");
+        assertThat(second).as("第二张售后被当成第一张的重复 —— 用户的第二笔钱永远退不出来").isNotEqualTo(first);
+        assertThat(refundRow(second).getTradeNo()).startsWith("TESTRF-");
+    }
+
+    @Test
     @DisplayName("★★★ 通道受理后仍是 PENDING —— 微信退款异步，PROCESSING 是常态")
     void acceptedRefundStaysPending() {
         Fixture f = paidOrderWithBill("TEST");
 
-        String refundNo = settleService.refund(f.subOrderNo, 1_000L, "少发");
+        String refundNo = settleService.refund(f.subOrderNo, afterSale(), 1_000L, "少发");
 
         assertThat(refundRow(refundNo).getStatus())
                 .as("受理就写 SUCCESS 的话，账上写着退了而钱还在路上；"
@@ -90,7 +106,7 @@ class RefundReachesChannelTest {
         // 这个通道名没有任何网关认领，router 会直接抛
         Fixture f = paidOrderWithBill("NO-SUCH-CHANNEL");
 
-        String refundNo = settleService.refund(f.subOrderNo, 2_000L, "试");
+        String refundNo = settleService.refund(f.subOrderNo, afterSale(), 2_000L, "试");
 
         StlPayment row = refundRow(refundNo);
         assertThat(row.getStatus())
@@ -105,7 +121,7 @@ class RefundReachesChannelTest {
     void ledgerRowSurvivesChannelFailure() {
         Fixture f = paidOrderWithBill("NO-SUCH-CHANNEL");
 
-        String refundNo = settleService.refund(f.subOrderNo, 2_000L, "试");
+        String refundNo = settleService.refund(f.subOrderNo, afterSale(), 2_000L, "试");
 
         assertThat(refundNo)
                 .as("回滚掉的话，一笔可能已经发到通道的退款在我方一点痕迹都没有")

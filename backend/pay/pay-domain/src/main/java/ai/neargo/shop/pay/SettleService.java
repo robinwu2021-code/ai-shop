@@ -169,10 +169,10 @@ public interface SettleService {
      */
     boolean reverseSplit(String subOrderNo);
 
-    /** 原路退款。返回退款单号 */
-    String refund(String subOrderNo, long amountMinor, String reason);
-
-    /** 同上，幂等键 = 售后单号（一张售后单一笔退款）。 */
+    /**
+     * 原路退款，幂等键 = 售后单号（一张售后单一笔退款）。返回退款单号。
+     * 旧的三参签名（合成 {@code AS-子单号}，一张子单只能退一次）已删（R21 · TDD-支付服务-I3支付单退款流水 S6）。
+     */
     String refund(String subOrderNo, String afterSaleNo, long amountMinor, String reason);
 
     /** Persist the cash intent without sending. Bind it to source preparation before dispatch. */

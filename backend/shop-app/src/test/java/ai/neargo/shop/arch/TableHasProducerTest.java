@@ -71,8 +71,6 @@ class TableHasProducerTest {
     static {
         // Stage C retires the old engine. These tables remain only for historical test fixtures.
         // 支付服务 I3（TDD-支付服务-I3支付单退款流水）：表先建、写入逐片落地，落地一片删一行
-        NO_PRODUCER.put("pay_refund", "I3 S6 RefundService");
-        NO_PRODUCER.put("pay_approval", "I3 S6 两人复核");
         NO_PRODUCER.put("pay_refund_review_rule", "db/pay V8 种子；运营维护入口随 I5");
         NO_PRODUCER.put("pay_app", "db/pay V7 种子 MALL / FOOD；第三方接入方入口随 I5");
         NO_PRODUCER.put("pay_checkout_session", "收银会话随 I5 开放 API / 收银台");

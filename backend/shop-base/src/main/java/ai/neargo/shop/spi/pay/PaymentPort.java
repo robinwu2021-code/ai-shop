@@ -18,6 +18,12 @@ public interface PaymentPort {
     PaymentHandle queryPayment(String payOrderNo);
 
     /**
+     * 退款（S6）。<b>必须带商家操作员</b>：内部系统不能以系统身份退款 —— 商城售后、餐饮 POS 的退款按钮背后是商户操作员。
+     * 幂等键是调用方退款单号；复核中的退款再调一次即「复核通过后执行」。
+     */
+    RefundHandle requestRefund(InternalRefundCmd cmd);
+
+    /**
      * @param bizType    {@code MALL_ORDER}（商城，内部 app MALL）/ {@code FOOD_CHECK}（餐饮，内部 app FOOD）
      * @param outOrderNo 调用方单号：与内部 app 联合唯一。商城、餐饮都用核心订单号
      * @param storeId    {@code mch_store.id}：调用方用 {@code MerchantQueryPort#payStoreOf} 解析
@@ -30,6 +36,19 @@ public interface PaymentPort {
     }
 
     record PaymentHandle(Long payOrderId, String payOrderNo, String status) {
+    }
+
+    /**
+     * @param outRefundNo 调用方退款单号（幂等）
+     * @param bizRefundNo 业务售后单号（字符串，取代合成的 {@code AS-{subOrderNo}}，R21）
+     * @param operatorNo  商家操作员，必填
+     */
+    record InternalRefundCmd(String bizType, String payOrderNo, String outRefundNo, String bizRefundNo, long amountMinor,
+                             String reason, String operatorNo) {
+    }
+
+    /** @param status 退款单状态：PENDING_REVIEW / DISPATCHED / SUCCEEDED / FAILED / REJECTED … */
+    record RefundHandle(String payRefundNo, String status, String errorCode) {
     }
 
     String MALL_ORDER = "MALL_ORDER";

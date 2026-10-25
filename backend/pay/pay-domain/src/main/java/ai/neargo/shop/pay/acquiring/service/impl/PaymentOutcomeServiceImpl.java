@@ -74,8 +74,9 @@ public class PaymentOutcomeServiceImpl implements PaymentOutcomeService {
         patch.setPaidMinor(outcome.channelAmountMinor());
         patch.setSucceededAt(LocalDateTime.ofInstant(Instant.ofEpochMilli(outcome.succeededAt()), ZoneOffset.UTC));
         DataScopeContext.executeWithoutScope(() -> orders.updateById(patch));
-        if (ledgerEnabled) {
-            // 同事务记一张凭证（S5）：支付单成功与流水要么一起在、要么一起不在。未冻结资金路径的存量单留给回填 B7
+        if (ledgerEnabled && outcome.channelAmountMinor() > 0) {
+            // 同事务记一张凭证（S5）：支付单成功与流水要么一起在、要么一起不在。免单没有钱动，不记；
+            // 未冻结资金路径的存量单留给回填 B7
             funds.of(o.getFundsPath()).ifPresent(strategy -> ledger.post(
                     strategy.onPaymentSucceeded(o, outcome.channelAmountMinor(), outcome.payChannel())));
         }

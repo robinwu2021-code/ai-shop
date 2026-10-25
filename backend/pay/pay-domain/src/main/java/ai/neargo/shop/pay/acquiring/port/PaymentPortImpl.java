@@ -1,6 +1,11 @@
 package ai.neargo.shop.pay.acquiring.port;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.acquiring.dto.CreatePaymentCmd;
+import ai.neargo.shop.pay.acquiring.dto.RefundRequestCmd;
+import ai.neargo.shop.pay.acquiring.entity.PayRefund;
+import ai.neargo.shop.pay.acquiring.service.RefundService;
 import ai.neargo.shop.pay.acquiring.entity.PayOrder;
 import ai.neargo.shop.pay.acquiring.service.PaymentService;
 import ai.neargo.shop.spi.pay.PaymentPort;
@@ -13,11 +18,13 @@ import java.time.Instant;
 public class PaymentPortImpl implements PaymentPort {
 
     private final PaymentService payments;
+    private final RefundService refunds;
     private final InternalCallers callers;
     private final boolean enabled;
 
-    public PaymentPortImpl(PaymentService payments, InternalCallers callers, boolean enabled) {
+    public PaymentPortImpl(PaymentService payments, RefundService refunds, InternalCallers callers, boolean enabled) {
         this.payments = payments;
+        this.refunds = refunds;
         this.callers = callers;
         this.enabled = enabled;
     }
@@ -41,6 +48,21 @@ public class PaymentPortImpl implements PaymentPort {
         }
         PayOrder o = payments.find(payOrderNo);
         return o == null ? null : handle(payments.query(callers.system(appOf(o.getBizType()), o.getStoreId()), payOrderNo));
+    }
+
+    @Override
+    public RefundHandle requestRefund(InternalRefundCmd c) {
+        if (!enabled) {
+            return null;
+        }
+        PayOrder o = payments.find(c.payOrderNo());
+        if (o == null) {
+            throw BizException.of(ErrorCode.PAY_ORDER_NOT_FOUND);
+        }
+        // 商家操作员身份（BIZ），不是系统身份：没有操作员在这里就被拒
+        PayRefund r = refunds.request(callers.merchantOperator(appOf(c.bizType()), o.getStoreId(), c.operatorNo()),
+                new RefundRequestCmd(c.payOrderNo(), c.outRefundNo(), c.bizRefundNo(), c.amountMinor(), c.reason()));
+        return new RefundHandle(r.getPayRefundNo(), r.getStatus(), r.getFailedReason());
     }
 
     static String appOf(String bizType) {

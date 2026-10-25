@@ -83,6 +83,15 @@
 - 接入：`PaymentOutcomeServiceImpl` 在支付单进 SUCCEEDED 的同一事务里记 `PAY_SUCCEEDED`（`shop.pay.ledger.enabled` 默认 true）；退款成功凭证随 S6。
 - 守卫 `LedgerAppendOnlyTest`：扫描 pay-domain，流水 mapper 上调 update / delete 即红（带判据自测）。
 
+### S6 · 退款单与复核
+- `spi.pay.PaymentPort#requestRefund(InternalRefundCmd)` → `RefundHandle`：**必须带商家操作员**，`PaymentPortImpl` 用 `InternalCallers.merchantOperator` 造 BIZ 身份（没有操作员在构造点就拒）。
+- `acquiring.service.RefundService` / `impl.RefundServiceImpl`：`request`（权限 → 原支付单成功尝试 → 建退款单 → 交现有执行器）· `attachExecution`（现有售后路径按执行号进来时补建退款单）· `dispatchAllowed` / `dispatched` · `review`。建单共用 `open`：锁支付单 → `(pay_app_id, out_refund_no)` 幂等（金额必须一致）→ 可退余额 = 实收 − 已退 − 在途占用 → 占用 → 复核判定。
+- `acquiring.policy.RefundReviewPolicy`（纯函数）：最具体的 ACTIVE 规则（门店级 > 市场级）；**无 ACTIVE 规则 → 复核（NO_ACTIVE_RULE）**；门槛为「或」：单笔 / 当日累计含本笔 / 比例 / 超 N 天 / 强制。`shop.pay.refund.review` 默认 false（种子只有 DRAFT 规则，开了即全部复核 —— 运营确认规则后再开）。
+- `approval.service.ApprovalService` / impl：`open`（`open_key` 一对象一张进行中）· `decide`（PENDING_FIRST → PENDING_SECOND → APPROVED；任一步驳回 REJECTED；申请人 / 第一人 / 第二人互不相同，服务层与表 CHECK 两处）。
+- `acquiring.service.RefundOutcomeService` / impl：`succeeded`（退款单 SUCCEEDED、支付单已退 + / 占用 −、PARTIALLY_REFUNDED / REFUNDED、记 `REFUND_SUCCEEDED` 凭证）· `failed`（退款单 FAILED、释放占用）。只对挂着、未终态的退款单生效。
+- 接入现有执行器（不改它的「先落库 → 抢发送权 → 不明只查不重发」）：`RefundPaymentStore#prepare` 落行后 `attachExecution`（超额整笔回滚）；`RefundExecutionServiceImpl#request` 在抢发送权前问 `dispatchAllowed`（待复核返回 UNKNOWN `REFUND_REVIEW_PENDING`、可重试）、抢到后 `dispatched`；`confirmCurrent` / `completeZero` / `result` 在行第一次进终态时调结果入口。复核驳回经 `RefundPaymentStore#reject` 把执行行判失败（售后侧据此知道没退成）。
+- R21：删掉 `SettlePort` / `SettleService` 的三参 `refund`（合成 `AS-{子单号}`）—— 生产无调用方，测试改用真实售后单号；编译器保证不会再有人用回去。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
@@ -91,6 +100,8 @@
 | AC3 | `PayOrderFlowTest`（3 条：`createIsIdempotent` · `sameKeyDifferentContentRejected` · `mallPaymentHasPayOrder` 真下单去支付：门店 id、应付、AWAITING_PAYMENT、尝试挂 `pay_order_id`）· `IndustryCheckoutServiceTest#firstPaymentCreatesFoodPayOrderBeforeOpeningTheAttempt`（FOOD_CHECK、门店 id 42，先建单后开尝试） | ✅ | ① 商城不建单 + 摘要不含金额 → 两条红 ② 尝试不挂支付单 → `mallPaymentHasPayOrder` 红 ③ 餐饮不建单 → 餐饮那条红 ✅ |
 | AC4 | `PaymentOutcomeFlowTest`（3 条：`notifyTwiceBooksOnce` · `latePaymentCreatesException` · `amountMismatchKeepsRequestedAmountOnPayOrder`）· `OrderPaymentLifecycleWiringFlowTest` 8 条 · `OrderPaymentRecoveryWiringFlowTest` 6 条 · `PointsPaymentSnapshotTest` 3 条原样全绿 | ✅ | ① 关单后照常成功 → `latePayment…` 红（被状态机兜成 `PAY_ORDER_STATE`）② 不比金额 → `amountMismatch…` 红 ✅ |
 | AC5 | `LedgerVoucherTest`（4 条：不平、混账、非正金额 / 单行、平衡）· `LedgerFlowTest`（4 条：AGGREGATED 回执两次一张凭证且分录正确、业务日按上海；DIRECT 只记备查账；Q7 = 0；同一幂等键记两次一张 + 冲正追加反向凭证）· `LedgerAppendOnlyTest`（2 条） | ✅ | ① 成功不记账 → 两条红 ② 去掉幂等 + DIRECT 记进平台账户 → 幂等那条撞唯一键、DIRECT 那条被凭证自身的混账校验拦下 ✅ |
+| AC6 | `RefundOrderFlowTest`（4 条：`refundReservesThenBooks` 占用 → 确认 → 已退 / 占用归零 / 部分退款 / 反向凭证；`inFlightReservationCountsAgainstRefundable`；`refundWithoutOperatorRejected`；`afterSaleRefundAlsoHasRefundOrderAndFailureReleases` 现有售后路径同样有退款单）· `RefundReachesChannelTest#secondAfterSaleOnSameSubOrderRefundsAgain`（R21：先用三参签名跑出红 —— 第二笔被当成重复；删签名后全部改真实售后单号，5 条绿） | ✅ | ① 不查可退余额 → `inFlight…` 红 ② 成功不结退款单 → `refundReservesThenBooks` 红 ✅ |
+| AC7 | `RefundReviewPolicyTest`（4 条：无 ACTIVE 规则复核、门槛为或、门店级优先 + 强制、无关规则不算）· `RefundReviewFlowTest`（2 条，`shop.pay.refund.review=true`：待复核不发渠道 → 申请人自审被拒 → A 通过 → A 再审被拒 → B 通过 → 再调即执行；驳回 → 退款单 REJECTED、执行行 FAILED、占用释放） | ✅ | ③ 不拦待复核 → 「复核期间退款不发渠道」红 ④ 去掉同一人判定 → 被表的 CHECK 拦下（第二道） ✅ |
 | AC1 | `MapperSmokeTest`（新 9 个 mapper 各查自己的表）· `SchemaDriftTest` · `PayMigrationTest` · 本机 MySQL 9.7 临时库执行 V7–V9（种子落库、CHECK 生效） | ✅ | — |
 
 ## §6 对账二 · 设计 → 实现
@@ -104,4 +115,7 @@
 3. **流水补一个账户 `MERCHANT_SALES`**：DIRECT 收款只记平台外备查账，而设计的账户表里没有与 `MERCHANT_CHANNEL` 配对的对方科目；拿任何 `PLATFORM_*` 配都违反 AC18。补「商户销售（平台外备查）」作对方科目，表结构说明的账户值域随之补一项。
 4. **资金路径在建单时冻结**：设计是「选定方式时冻结路由快照」，而选方式（`PaymentService#start` + 收款路由）随 I4 才有；I3 由调用方按主体 `mch_entity.funds_mode` 带进来冻结进 `pay_order.funds_path`，记流水按它分录。未冻结的存量单不记（不猜），交给回填 B7。
 5. **R20 由支付单解决，尝试行口径不变**：R20 的害处是「应收被实收覆盖后再也看不出来」。支付单 `amount_minor` 建单后不改，应收从此有处可查；尝试行 `amount_minor` 继续表示实收（结算、对账、积分核验、退款上限都按这个口径读），渠道事实另写 `channel_*`。真把尝试行改成应收要逐个改这些读方，留到 I6 对账结算一并做。
+6. **现有售后路径的退款单没有操作员**：普通售后经 `RefundRequest(执行号…)` 进支付，这条记录里没有商家操作员；退款单 `requested_by` 记 `AFTER_SALE:{售后单号}` 以便追溯。「必须有操作员」只在新入口 `PaymentPort#requestRefund` 上强制；售后改走新入口、把审批人一路带进来随 I5 商户端退款一起做。积分售后（`SettleServiceImpl#prepareRefund / dispatchRefund`）不经这个执行器，I3 不挂退款单。
+7. **复核开关默认关**：种子只有一条 DRAFT 规则，开关一开即「全部复核」—— 上线即卡住所有售后退款。运营按两人规则把 CN 规则生效后再开（`shop.pay.refund.review=true`）。
+8. **受影响回归抓到的三处（S6 一并改）**：① 免单成功也去记凭证，零金额分录被凭证自身拒绝 → 只在金额 > 0 时记（S5 提交时只跑了新测试，没跑受影响回归）；② 零元退款去建退款单，被 `amount_minor > 0` 拒 → 零元退款不建；③ 可选依赖用 `@Lazy` 注入时，切片测试里拿到的是代理、一调就抛 → 收款账本、退款执行器、退款存储的挂钩一律改 `ObjectProvider`，调用时取不到就跳过。
 0. **I2 收尾的启动校验在切片测试里装不起来**：`PayDataSourceConfig#channelProductCoverageCheck` 硬依赖渠道注册表，只装了部分支付配置的切片测试（`RefundBackingTest` 等 6 个类）上下文起不来 —— I2 收尾时只复跑了被点名的那 65 条，没再跑全量。S3 的受影响回归抓到，改为 `ObjectProvider`，没有注册表就跳过。

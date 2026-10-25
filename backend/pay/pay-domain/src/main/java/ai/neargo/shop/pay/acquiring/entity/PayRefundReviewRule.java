@@ -37,6 +37,12 @@ public class PayRefundReviewRule extends PayBaseEntity {
     /** 门店 mch_store.id；NULL = 全市场（门店级更具体者优先） */
     private Long storeId;
 
+    /** 空串 = 全来源 */
+    private String sourceType;
+
+    /** 空串 = 全方式 */
+    private String payMethod;
+
     /** 单笔 ≥ 此值 */
     private Long singleAmountMinor;
 

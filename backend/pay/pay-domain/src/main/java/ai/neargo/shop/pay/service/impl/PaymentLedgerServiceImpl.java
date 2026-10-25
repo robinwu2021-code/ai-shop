@@ -2,7 +2,7 @@ package ai.neargo.shop.pay.service.impl;
 
 import ai.neargo.shop.pay.acquiring.dto.ChannelOutcome;
 import ai.neargo.shop.pay.acquiring.service.PaymentOutcomeService;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.pay.acquiring.service.PaymentService;
 import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
@@ -118,7 +118,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         documents.bind(DocumentType.PAYMENT_ATTEMPT, "MAIN", p.getPaymentNo());
         if (payOrders != null) {
             // 尝试挂到支付单上（I3 S3）；调用方没建支付单（开关关、存量单）时什么都不做
-            payOrders.attachAttempt(cmd.orderNo(), p.getId());
+            payOrders.ifAvailable(s -> s.attachAttempt(cmd.orderNo(), p.getId()));
         }
         return outTradeNo;
     }
@@ -138,17 +138,17 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     }
 
     /** 支付单（I3 S3）；手工构造的单测里没有 */
-    private PaymentService payOrders;
-    /** 结果唯一入口（I3 S4） */
-    private PaymentOutcomeService outcomes;
+    private ObjectProvider<PaymentService> payOrders;
+    /** 结果唯一入口（I3 S4）；切片测试里没有 —— 调用时再取 */
+    private ObjectProvider<PaymentOutcomeService> outcomes;
 
     @Autowired(required = false)
-    void setOutcomes(@Lazy PaymentOutcomeService outcomes) {
+    void setOutcomes(ObjectProvider<PaymentOutcomeService> outcomes) {
         this.outcomes = outcomes;
     }
 
     @Autowired(required = false)
-    void setPayOrders(@Lazy PaymentService payOrders) {
+    void setPayOrders(ObjectProvider<PaymentService> payOrders) {
         this.payOrders = payOrders;
     }
 
@@ -593,9 +593,9 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         patch.setChannelAmountMinor(cmd.amountMinor());
         patch.setChannelCurrency(cmd.currency());
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
-        if (outcomes != null) {
+        if (outcomes != null && outcomes.getIfAvailable() != null) {
             // 支付单这一层由结果唯一入口决定（I3 S4）：关单后到账、实收不符、重复支付都转异常，不进成功
-            outcomes.apply(new ChannelOutcome(existing.getId(), existing.getPayOrderId(), existing.getPayChannel(), cmd.tradeNo(),
+            outcomes.getObject().apply(new ChannelOutcome(existing.getId(), existing.getPayOrderId(), existing.getPayChannel(), cmd.tradeNo(),
                     cmd.amountMinor(), cmd.currency(), cmd.succeededAt()));
         }
         return existing.getOrderNo();

@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.service.impl;
 
+import ai.neargo.shop.pay.acquiring.service.RefundService;
+import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
 import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.common.BizException;
@@ -43,6 +45,14 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
 
     /** 渠道管线（TDD-支付服务-I2 S4）；手工构造的单测里没有，直调原网关 */
     private LegacyChannelBridge channels;
+
+    /** 退款单（I3 S6）；手工构造的单测与切片测试里没有 —— 调用时再取 */
+    private ObjectProvider<RefundService> refundOrderProvider;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setRefundOrders(ObjectProvider<RefundService> refundOrders) {
+        this.refundOrderProvider = refundOrders;
+    }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     void setChannels(LegacyChannelBridge channels) {
@@ -97,8 +107,17 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
                     existing == null ? DispatchStatus.FAILED : DispatchStatus.UNKNOWN,
                     existing == null ? "REFUND_PREPARATION_CONFLICT" : "REFUND_EXECUTION_CONFLICT", false, null);
         }
+        RefundService refundOrders = refundOrderProvider == null ? null : refundOrderProvider.getIfAvailable();
+        if (refundOrders != null && !refundOrders.dispatchAllowed(request.executionNo())) {
+            // 退款单待复核（I3 S6）：不发渠道。可重试 —— 复核通过后售后重试 / 调用方再调一次即执行
+            return new RefundDispatchResult(request.executionNo(), row.getPaymentNo(), DispatchStatus.UNKNOWN,
+                    "REFUND_REVIEW_PENDING", true, null);
+        }
         if (!store.claim(request.executionNo())) {
             return query(request);
+        }
+        if (refundOrders != null) {
+            refundOrders.dispatched(request.executionNo());
         }
         if (row.getAmountMinor() == 0) {
             return store.completeZero(row.getRefundExecutionNo());
