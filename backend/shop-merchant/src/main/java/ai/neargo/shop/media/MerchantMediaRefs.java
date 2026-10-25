@@ -6,7 +6,7 @@ import java.util.List;
 
 import static ai.neargo.shop.media.MediaRefColumn.of;
 
-/** shop-merchant 把图片地址放在哪些列里 —— 主体 logo、两类证件、门店背景图。 */
+/** shop-merchant 把图片地址放在哪些列里 —— 主体与品牌 logo、两类证件、门店背景图。 */
 @Component
 public class MerchantMediaRefs implements MediaRefSource {
 
@@ -14,6 +14,8 @@ public class MerchantMediaRefs implements MediaRefSource {
     public List<MediaRefColumn> columns() {
         return List.of(
                 of("mch_entity", "logo", "商家 · logo", "entity_no"),
+                // 品牌 logo（V544，BrandServiceImpl.validateLogo 只收站内相对路径）。漏登记的话回收任务会把它判成孤儿
+                of("mch_brand", "logo", "品牌 · logo", "brand_no"),
 
                 /*
                  * 两处证件必须都在：
