@@ -1,4 +1,5 @@
 "use client";
+import { ManualPointsRefundWorkspace } from "../manual-refunds";
 import { EarningEvents } from "../earning-events";
 import { useCan } from "@/lib/use-can";
 import { OrderEarningDetails } from "../order-earning-details";
@@ -18,6 +19,8 @@ import styles from "./page.module.css";
 function today() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
 function monthStart() { return `${today().slice(0, 7)}-01`; }
 export default function PointsTransactionsPage() {
+  const [refundsBusy, setRefundsBusy] = useState(false);
+  const [refundsOpen, setRefundsOpen] = useState(false);
   const can = useCan(); const [eventsOpen,setEventsOpen]=useState(false);
   const { t, locale } = usePointsText(); const types = useQuery({ queryKey: ["points-types"], queryFn: () => api.pointsTypes() });
   const [chosenType, setChosenType] = useState(""); const typeCode = chosenType || types.data?.[0]?.typeCode || "";
@@ -47,7 +50,7 @@ export default function PointsTransactionsPage() {
     { header: t("会员净变化", "Member net change"), numeric: true, cell: (r: PointsTransactionView) => number(r.pointsDelta) },
   ];
   return <main className={`space-y-3 ${styles.page}`}>
-    <div className="flex flex-wrap items-center justify-between gap-2"><TabHeader tabs={[{ key: "transactions", label: t("发放与核销", "Issuance & redemption") }]} value="transactions" onChange={() => {}} desc={t("核对积分发放、核销与处理记录", "Review issuance, redemption and processing records")} /><div className="flex gap-2"><Button variant="ghost" aria-expanded={showStats} aria-controls="points-period-summary" onClick={() => setShowStats(!showStats)}>{t("统计概览", "Period summary")}</Button><Button variant="outline" disabled={!typeCode} onClick={() => setEventsOpen(true)}>{t("处理记录", "Processing records")}</Button></div></div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><TabHeader tabs={[{ key: "transactions", label: t("发放与核销", "Issuance & redemption") }]} value="transactions" onChange={() => {}} desc={t("核对积分发放、核销与处理记录", "Review issuance, redemption and processing records")} /><div className="flex flex-wrap gap-2">{can("finance:settle:read") && <Button variant="outline" onClick={() => setRefundsOpen(true)}>{t("退款人工处理", "Manual refunds")}</Button>}<Button variant="ghost" aria-expanded={showStats} aria-controls="points-period-summary" onClick={() => setShowStats(!showStats)}>{t("统计概览", "Period summary")}</Button><Button variant="outline" disabled={!typeCode} onClick={() => setEventsOpen(true)}>{t("处理记录", "Processing records")}</Button></div></div>
     <form className={styles.filters} onSubmit={e => { e.preventDefault(); if (validDates) searchRecords(); }}>
       <label>{t("积分名称", "Points name")}<Select value={typeCode} onChange={e => { setChosenType(e.target.value); resetSelection(); setEventsOpen(false); }}>{types.data?.map(x => <option key={x.typeCode} value={x.typeCode}>{x.name} · {x.typeCode}</option>)}</Select></label>
       <label>{t("业务方向", "Direction")}<Select value={direction} onChange={e => { setDirection(e.target.value as PointsTransactionDirection); resetSelection(); }}><option value="EARN">{t("发放", "Issuance")}</option><option value="REDEEM">{t("核销", "Redemption")}</option><option value="REVERSAL">{t("冲正 / 退回", "Reversal / refund")}</option></Select></label>
@@ -64,6 +67,9 @@ export default function PointsTransactionsPage() {
     {(query.error || (showStats && stats.error) || types.error) && <Notice tone="warning">{String(query.error?.message ?? (showStats ? stats.error?.message : undefined) ?? types.error?.message)}<Button onClick={() => { void types.refetch(); if (validDates && typeCode) { void query.refetch(); if (showStats) void stats.refetch(); } }}>{t("重试", "Retry")}</Button></Notice>}
     <DataTable columns={columns} rows={validDates ? query.data?.rows : []} loading={types.isPending || (!!typeCode && validDates && query.isPending)} error={query.error} onRetry={() => { if (validDates && typeCode) void query.refetch(); }} rowKey={(r) => r.voucher.voucherNo} empty={t("当前条件下没有发放、核销或冲正记录。", "No issuance, redemption or reversal records match these filters.")} rowProps={(r) => ({ role: "button", tabIndex: 0, className: "cursor-pointer hover:bg-accent/50", onClick: () => setSelected(r), onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(r); } } })} />
     <div className="flex justify-end gap-2"><Button variant="outline" disabled={!after} onClick={() => { setAfter(0); setSelected(null); }}>{t("首页", "First page")}</Button><Button variant="outline" disabled={!validDates || !query.data?.hasMore || query.isFetching} onClick={() => { setAfter(query.data?.next ?? 0); setSelected(null); }}>{t("下一页", "Next page")}</Button></div>
+    <Drawer open={refundsOpen && can("finance:settle:read")} onOpenChange={open => { if (!refundsBusy) setRefundsOpen(open); }} title={t("退款人工处理", "Manual refunds")} width="w-[900px]" headerClassName={styles.drawerHead} bodyClassName={styles.drawerBody}>
+      {refundsOpen && can("finance:settle:read") && <ManualPointsRefundWorkspace onBusyChange={setRefundsBusy} canEdit={can("finance:settle:execute")} />}
+    </Drawer>
     <EarningEvents key={typeCode} typeCode={typeCode} typeName={types.data?.find(x => x.typeCode === typeCode)?.name} open={eventsOpen} onOpenChange={setEventsOpen} canRetry={can("finance:settle:execute")}/>
     <Drawer open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }} title={t("流水详情", "Transaction details")} desc={t("凭证、比例快照和不可变账务分录", "Voucher, conversion snapshot and immutable ledger entries")} width="w-[680px]" headerClassName={styles.drawerHead} bodyClassName={styles.drawerBody}>
       {selected && <div className="space-y-4"><section className={styles.surface}><h3>{t("业务信息", "Transaction information")}</h3><dl className={styles.fields}>

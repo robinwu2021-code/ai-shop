@@ -59,3 +59,7 @@ it("fetches summary on demand using its own date and type scope", async () => {
   expect(mock.stats).toHaveBeenCalledWith(expect.objectContaining({ typeCode: "HX" }));
   expect(host.textContent).toContain("不按门店、会员或方向筛选");
 });
+
+it("exposes manual refunds from the transactions workspace", async () => {
+  await render(); expect([...host.querySelectorAll("button")].some(b => b.textContent === "退款人工处理")).toBe(true);
+});
