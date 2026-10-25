@@ -69,7 +69,7 @@
             <artifactId>shop-report</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!-- 元器件是独立进程（elec-svc），主应用**不引它的代码**，只引零依赖的内部契约：
+        <!-- 元器件已迁到独立仓库 ai-hxkey（服务名 hxkey），主应用**不引它的代码**，只引零依赖的内部契约：
              给它开的 /internal/elec/** 与它那一侧的客户端用同一份路径与 record -->
         <dependency>
             <groupId>ai.neargo.shop</groupId>

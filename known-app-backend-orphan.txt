@@ -45,7 +45,7 @@
 #     付款才算成员），新版 c-app 不再调它；后端只剩一件事 —— 回 40033「请升级」。
 #     **留着是给线上旧版小程序的**：新版还没过审上架，旧版点「参团」要看到升级提示，
 #     删了就变成 404。新版小程序全量之后删掉后端这个端点与本行
-#     （连带 MpEndpointAuthTest 名单、gen-openapi.py、M6cGroupFlowTest.legacyJoinAsksToUpgrade）。
+#     （连带 MpEndpointAuthTest 名单、M6cGroupFlowTest.legacyJoinAsksToUpgrade）。
 b-app GET /biz/inventory/export
 b-app GET /biz/settle/bills/*
 b-app POST /biz/geo/geocode

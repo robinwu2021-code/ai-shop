@@ -280,7 +280,7 @@
       },
       "usage": {
         "b-app": 437,
-        "c-app": 89
+        "c-app": 88
       }
     },
     {
@@ -454,7 +454,7 @@
       },
       "usage": {
         "b-app": 46,
-        "c-app": 56
+        "c-app": 55
       }
     },
     {
@@ -514,7 +514,7 @@
       },
       "usage": {
         "b-app": 131,
-        "c-app": 83
+        "c-app": 82
       }
     },
     {
@@ -1772,7 +1772,7 @@
       },
       "usage": {
         "b-app": 2,
-        "c-app": 1
+        "c-app": 0
       }
     },
     {
@@ -2144,7 +2144,7 @@
       ],
       "usage": {
         "b-app": 83,
-        "c-app": 44,
+        "c-app": 42,
         "lib": 1
       },
       "note": "空态",
@@ -2682,7 +2682,7 @@
       ],
       "usage": {
         "b-app": 43,
-        "c-app": 14,
+        "c-app": 13,
         "lib": 1
       },
       "note": "底部弹层",
@@ -2890,7 +2890,7 @@
       ],
       "usage": {
         "b-app": 21,
-        "c-app": 15,
+        "c-app": 14,
         "lib": 0
       },
       "note": "筛选条",
@@ -6355,21 +6355,6 @@
     },
     {
       "app": "c-app",
-      "page": "biz-address-region",
-      "key": "c-app/biz-address-region",
-      "file": "c-app/src/components/biz/biz-address-region.vue",
-      "components": [
-        "sh-empty",
-        "sh-sheet",
-        "sh-tabs"
-      ],
-      "libClassHits": 4,
-      "localSelectors": 3,
-      "localCssLines": 16,
-      "rolled": []
-    },
-    {
-      "app": "c-app",
       "page": "biz-app-download",
       "key": "c-app/biz-app-download",
       "file": "c-app/src/components/biz/biz-app-download.vue",
@@ -6679,7 +6664,7 @@
     "tokens": 16,
     "blocks": 82,
     "components": 42,
-    "pages": 193,
+    "pages": 192,
     "gapKinds": 3
   }
 }
