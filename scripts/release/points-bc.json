@@ -120,5 +120,10 @@
   "prototypes/points-bc-accounts.html",
   "scripts/release/points-bc.json",
   "scripts/release/points-bc.mjs",
-  "site/lib/site.config.ts"
+  "site/lib/site.config.ts",
+  "b-app/tests/points-status-locales.test.ts",
+  "packages/shared/src/utils/points-status.ts",
+  "packages/shared/tests/points-status.test.ts",
+  "docs/technical/积分任务状态与后续优化-2026-10-25.md",
+  "docs/technical/积分1%规则与多端展示验收-2026-10-25.md"
 ]
