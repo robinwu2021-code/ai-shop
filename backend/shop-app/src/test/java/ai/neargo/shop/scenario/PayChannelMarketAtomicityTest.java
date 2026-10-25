@@ -22,7 +22,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
  * <p>市场替换是「先删后插」。中途失败（库连接断、某个市场码超长…）时，删已经发生、插只做了一半 ——
  * 而<b>空的市场集合在这套系统里就是「不限市场」</b>：一个只在大陆开的通道，就这样对全部市场开放了，没有任何报错。
  */
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:pay-channel-market-atomic;"
+// 支付服务 I1–I3 的场景共用一个 H2 库（DB_CLOSE_DELAY=-1 的内存库活到 JVM 结束，每个库都是一整套表）
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:pay-i3;"
         + "MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1")
 @ActiveProfiles("test")
 class PayChannelMarketAtomicityTest {

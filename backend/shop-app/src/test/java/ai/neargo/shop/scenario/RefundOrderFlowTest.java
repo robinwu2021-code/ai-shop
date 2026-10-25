@@ -28,7 +28,8 @@ import org.springframework.test.context.ActiveProfiles;
  *
  * <p>此前退款只有通道尝试一层（stl_payment REFUND），「这笔单还能退多少」要从几张表里拼；退款成功也不进任何流水。
  */
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:refund-order-flow;MODE=MySQL;"
+// 支付服务 I3 的六个场景类共用一个上下文（同一个库）：各自用随机单号，互不干扰；每类一个上下文会把全量测试撑爆堆
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:pay-i3;MODE=MySQL;"
         + "DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1")
 @ActiveProfiles("test")
 class RefundOrderFlowTest {

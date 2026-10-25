@@ -26,7 +26,8 @@ import org.springframework.test.context.ActiveProfiles;
  * <p>此前订单超时关单一行支付域都不碰：未终态的尝试永远停在 PENDING（对账待查集合只增不减），
  * 关掉的单仍能被渠道回执改成功。
  */
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:pay-close-flow;MODE=MySQL;"
+// 支付服务 I3 的六个场景类共用一个上下文（同一个库）：各自用随机单号，互不干扰；每类一个上下文会把全量测试撑爆堆
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:pay-i3;MODE=MySQL;"
         + "DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1")
 @ActiveProfiles("test")
 class PayCloseFlowTest {

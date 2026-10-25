@@ -23,7 +23,8 @@ import org.springframework.test.context.ActiveProfiles;
  * <p>此前只有通道尝试一层：已关闭的尝试被渠道回执静默改成功（R18）；应付金额被渠道实收覆盖（R20），
  * 事后再也看不出「应收 1990、实收 2000」。
  */
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:payment-outcome-flow;MODE=MySQL;"
+// 支付服务 I3 的六个场景类共用一个上下文（同一个库）：各自用随机单号，互不干扰；每类一个上下文会把全量测试撑爆堆
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:pay-i3;MODE=MySQL;"
         + "DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1")
 @ActiveProfiles("test")
 class PaymentOutcomeFlowTest {

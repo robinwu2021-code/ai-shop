@@ -30,7 +30,8 @@ import org.springframework.test.context.ActiveProfiles;
  * <p>种子只有一条 DRAFT 规则：<b>市场没有 ACTIVE 规则 = 全部复核</b>。复核期间退款不发渠道；
  * 申请人、第一复核人、第二复核人必须互不相同 —— 平台内部任何一个人都不能单方面把商户的钱退出去。
  */
-@SpringBootTest(properties = {"spring.datasource.url=jdbc:h2:mem:refund-review-flow;MODE=MySQL;"
+// 支付服务 I1–I3 的场景共用一个 H2 库（DB_CLOSE_DELAY=-1 的内存库活到 JVM 结束，每个库都是一整套表）
+@SpringBootTest(properties = {"spring.datasource.url=jdbc:h2:mem:pay-i3;MODE=MySQL;"
         + "DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1", "shop.pay.refund.review=true"})
 @ActiveProfiles("test")
 class RefundReviewFlowTest {

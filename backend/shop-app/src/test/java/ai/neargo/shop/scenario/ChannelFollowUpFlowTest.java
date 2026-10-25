@@ -39,7 +39,8 @@ import tools.jackson.databind.ObjectMapper;
  * <p>此前下单超时只留一行日志：用户其实付了钱，订单停在待支付，要等每小时的对账碰巧扫到；
  * 而补查若另写一段「补一下状态」，与回调撞在一起就是重复入账。
  */
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:channel-follow-up-flow;MODE=MySQL;"
+// 支付服务 I1–I3 的场景共用一个 H2 库（DB_CLOSE_DELAY=-1 的内存库活到 JVM 结束，每个库都是一整套表）
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:pay-i3;MODE=MySQL;"
         + "DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1")
 @ActiveProfiles("test")
 class ChannelFollowUpFlowTest {

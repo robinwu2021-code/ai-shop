@@ -32,7 +32,8 @@ import tools.jackson.databind.ObjectMapper;
  * <p>此前一笔钱的身份就是「订单号 + 一串 stl_payment」：没有一处能回答「这笔钱应收多少、实收多少、退了多少、
  * 现在什么状态」，对账、流水、退款各自从尝试行上拼。
  */
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:pay-order-flow;MODE=MySQL;"
+// 支付服务 I3 的六个场景类共用一个上下文（同一个库）：各自用随机单号，互不干扰；每类一个上下文会把全量测试撑爆堆
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:pay-i3;MODE=MySQL;"
         + "DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1")
 @ActiveProfiles("test")
 class PayOrderFlowTest {

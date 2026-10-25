@@ -41,7 +41,8 @@ import org.springframework.web.context.WebApplicationContext;
  * 一条验签通过、单号对得上、金额被改过的通知，照样推进成功。每一步也只落 {@code stl_channel_message}，
  * 四向记录里查不到渠道推来过什么。
  */
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:callback-template;MODE=MySQL;"
+// 支付服务 I1–I3 的场景共用一个 H2 库（DB_CLOSE_DELAY=-1 的内存库活到 JVM 结束，每个库都是一整套表）
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:pay-i3;MODE=MySQL;"
         + "DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1")
 @ActiveProfiles({"test", "api"})
 @Import(CallbackTemplateTest.FakeChannel.class)

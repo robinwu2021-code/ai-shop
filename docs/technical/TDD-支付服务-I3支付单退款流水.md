@@ -1,6 +1,6 @@
 # TDD-支付服务-I3支付单退款流水
 
-状态：实施中
+状态：已实现
 档位：2 · 依据：[开发计划 · 支付服务](./开发计划-支付服务.md) §5 I3 · [完整设计方案](./TDD-支付服务-完整设计方案.md) · [代码清单](./支付服务-代码清单-开放API刷卡POS内部调用.md) §2.1–§2.4、§5.2–§5.3 · [台湾阿联酋通道与开放API](./TDD-支付服务-台湾阿联酋通道与开放API.md) §2.8.2 能力矩阵 · [代码 Review](./支付服务-代码Review-2026-10-24.md) R18 / R20 / R21 · [数据库表结构说明 v4](./TDD-支付服务-数据库表结构说明.md)
 创建：2026-10-25 · 最后更新：2026-10-25
 
@@ -113,6 +113,7 @@
 
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
+| AC10 | **全量回归**（2026-10-25，4054 条，1151 个类）：与 I0 基线（`fails5`）相比除下面两条外无新增失败；基线里 `M7SettleFlowTest.rateCardIsVisibleToMerchant` 转绿。`PointsCoreAcceptanceTest#full_store_chain…` 与 `PointsKernelOperationsTest#stats_rebuild…` 在本机 20:00–24:00（+04）必红：用例按 `Asia/Shanghai` 取「今天」重建统计，而事件按 JVM 本地日期落 —— 以 `-Duser.timezone=Asia/Shanghai` 重跑两条均绿，与 I3 无关（积分域，已报不改）。`SettlePortImpl` 现有用例全绿 | ✅ | — |
 | AC2 | `CallerPolicyMatrixTest`（69 条：6 类 × 11 动作逐格，期望值在测试里另抄一份；`internalSystemCannotRefund`；`refundWithoutOperatorRejected`；`storeScope`） | ✅ | 给 INTERNAL 加退款 + 去掉操作员判断 → 3 条红 ✅ |
 | AC3 | `PayOrderFlowTest`（3 条：`createIsIdempotent` · `sameKeyDifferentContentRejected` · `mallPaymentHasPayOrder` 真下单去支付：门店 id、应付、AWAITING_PAYMENT、尝试挂 `pay_order_id`）· `IndustryCheckoutServiceTest#firstPaymentCreatesFoodPayOrderBeforeOpeningTheAttempt`（FOOD_CHECK、门店 id 42，先建单后开尝试） | ✅ | ① 商城不建单 + 摘要不含金额 → 两条红 ② 尝试不挂支付单 → `mallPaymentHasPayOrder` 红 ③ 餐饮不建单 → 餐饮那条红 ✅ |
 | AC4 | `PaymentOutcomeFlowTest`（3 条：`notifyTwiceBooksOnce` · `latePaymentCreatesException` · `amountMismatchKeepsRequestedAmountOnPayOrder`）· `OrderPaymentLifecycleWiringFlowTest` 8 条 · `OrderPaymentRecoveryWiringFlowTest` 6 条 · `PointsPaymentSnapshotTest` 3 条原样全绿 | ✅ | ① 关单后照常成功 → `latePayment…` 红（被状态机兜成 `PAY_ORDER_STATE`）② 不比金额 → `amountMismatch…` 红 ✅ |
@@ -127,7 +128,24 @@
 
 ## §6 对账二 · 设计 → 实现
 
-（实现后填）
+六个提交：`cadabcffd` S1–S2 · `7cc104862` S3 · `2e04d031d` S4–S5 · `7ef11f246` S6 · `54e2f42ff` S7–S8 · `cca83727f` S9（另有收尾提交）。
+`git diff --stat`（相对 I2 分支，不含生成的 `schema-test.sql`）：**105 个文件，+5222 / −41**。按包对 §2：
+
+| 改动位置 | §2 | 对得上 |
+|---|---|---|
+| `db/pay` V7–V9 · `openapp/entity` · `acquiring/entity`（5）· `approval/entity` · `ledger/entity`（2）· `mapper/{acquiring,ledger,openapp}` · `entity/StlPayment`、`StlBill` | S1 | ✅ |
+| `access`（`PayCaller`、`PayAction`）· `access/policy`（`CallerPolicy`、`CapabilityMatrix`、`impl.MatrixCallerPolicy`）· `acquiring/port/InternalCallers` · `common/ErrorCode` + 三语 i18n | S2 | ✅ |
+| `spi/pay/PaymentPort` · `spi/user/MerchantQueryPort#payStoreOf` + `MerchantPortImpl` · `acquiring/statemachine`（支付单三件）· `acquiring/service(/impl)/PaymentService(Impl)` · `acquiring/dto/CreatePaymentCmd` · `acquiring/port/PaymentPortImpl` · `common/BizKey` · `payclient/OrdinaryPaymentRouting` · `OrderServiceImpl` / `IndustryCheckoutServiceImpl` 建单 · `PaymentLedgerServiceImpl#open` 挂尝试 | S3 | ✅ |
+| `acquiring/service(/impl)/PaymentOutcomeService(Impl)` · `acquiring/dto/ChannelOutcome` · `PaymentLedgerServiceImpl#settle` | S4 | ✅ |
+| `ledger`（`LedgerAccount`、`LedgerVoucher`、`service(/impl)/LedgerService(Impl)`）· `funds`（6） | S5 | ✅ |
+| `acquiring/policy/RefundReviewPolicy` · `acquiring/dto/RefundRequestCmd` · `acquiring/statemachine/PayRefundStatus` · `acquiring/service(/impl)/Refund*Service(Impl)` · `approval/service(/impl)` · `RefundPaymentStore` / `RefundExecutionServiceImpl` 挂钩 · `SettlePort` / `SettleService` / `SettleServiceImpl` / `SettlePortImpl` 删三参 `refund` | S6 | ✅ |
+| `PaymentServiceImpl#close` · `PaymentPortImpl#closePayment` · `OrderServiceImpl#closeOne` · `ReconServiceImpl` 观察窗 · `known-pay-reverse-deps.txt` | S7 | ✅ |
+| pay-svc `InternalCallerRegistry` / `ConfigInternalCallerRegistry` / `InternalCallerFilter` / `InternalPaymentEndpoint` · `client/PaymentInternalApi` / `PaymentInternalPaths` / `PortResult` · `client/port/RemotePaymentPort` · `payclient/PayClientConfig` | S8 | ✅ |
+| `acquiring/backfill(/impl)`（4）· `paybridge/PayOrderBackfillJob` | S9 | ✅ |
+| `config/PayDataSourceConfig`（I2 启动校验改 `ObjectProvider`，偏差 0） | — | 偏差 0 |
+| 测试：pay-domain 4 个类 · pay-svc 1 · shop-app 场景 9 + `TableHasProducerTest` · `FakePayQueryPort` · `IndustryCheckoutServiceTest` · 现有 `RefundReachesChannelTest` / `OrderPaymentRecoveryWiringFlowTest` 调整 | §5 | ✅ |
+
+没有 §2 之外的文件；§2 列了而没动的：无（推迟的事件与 `startPayment` 见偏差 9、10，§2 里没有列成要做）。
 
 ### 偏差说明
 
@@ -145,4 +163,5 @@
 12. **测试替身按单号作答**：`FakePayQueryPort` 的全局答案会把同一个渠道交易号发给待查集合里的每一笔；观察窗让巡检扫到同类其他用例关掉的尝试，撞 `(pay_channel, trade_no)` 唯一键。加 `answerForTrade(outTradeNo, …)`（优先级最高），`OrderPaymentRecoveryWiringFlowTest` 的 4 处改用它 —— 真渠道本来就逐笔给各自的交易号。
 13. **反向依赖预算 SettlePort 56 → 58**：关前查到已付时用收款账本现成的入参 `SettlePort.PaymentSettled`（import + 一处构造），同为嵌套记录引用，已登记 `known-pay-reverse-deps.txt`。
 14. **回填的退款单不建**：B6 只建支付单并把退款行挂上（`refunded_minor` 按成功退款行算）；存量退款不补 `pay_refund` —— 它们已经走完，补建的退款单没有复核与占用可言，只会让「退款单 = 商户侧发起的一次申请」这句话变假。
+15. **I1–I3 的场景类共用一个 H2 库**：仓库惯例是每个场景类一个 H2 内存库（`DB_CLOSE_DELAY=-1`，活到 JVM 结束，每个都是一整套 400 多张表加种子）。I1–I3 一共加了 8 个这样的库，第一次全量回归 shop-app 的 fork 在末尾 `OutOfMemoryError`（6g 堆）退出，带倒其后的用例、末尾 13 个类没跑。12 个类改为共用 `jdbc:h2:mem:pay-i3`：替身不同的类仍各自一个上下文（缓存照常淘汰），但库只有一个；`schema-test.sql` 本来就是可重放的（`IF NOT EXISTS` + `INSERT IGNORE`），各类数据用随机或各自的单号。其中 I3 的 6 个普通类同时共用上下文。
 0. **I2 收尾的启动校验在切片测试里装不起来**：`PayDataSourceConfig#channelProductCoverageCheck` 硬依赖渠道注册表，只装了部分支付配置的切片测试（`RefundBackingTest` 等 6 个类）上下文起不来 —— I2 收尾时只复跑了被点名的那 65 条，没再跑全量。S3 的受影响回归抓到，改为 `ObjectProvider`，没有注册表就跳过。

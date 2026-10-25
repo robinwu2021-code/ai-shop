@@ -21,7 +21,8 @@ import org.springframework.test.context.ActiveProfiles;
  * 回填 B6 / B7 与完成标准 Q5 / Q7（TDD-支付服务-I3支付单退款流水 S9）。存量尝试按 I3 之前的样子落（不经支付单入口），
  * 回填后：挂上支付单、状态与实收对得上、流水期初记一次；再跑一遍什么都不多。
  */
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:pay-order-backfill;MODE=MySQL;"
+// 支付服务 I3 的六个场景类共用一个上下文（同一个库）：各自用随机单号，互不干扰；每类一个上下文会把全量测试撑爆堆
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:pay-i3;MODE=MySQL;"
         + "DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1")
 @ActiveProfiles("test")
 class PayOrderBackfillFlowTest {

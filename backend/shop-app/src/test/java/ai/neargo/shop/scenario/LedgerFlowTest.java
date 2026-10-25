@@ -26,7 +26,8 @@ import org.springframework.test.context.ActiveProfiles;
  * AC5：每笔支付成功一张借贷平衡的凭证、重复事件不重复记、按资金路径分账户（TDD-支付服务-I3支付单退款流水 S5）。
  * 完成标准 Q7（借贷不平的凭证数）= 0。
  */
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:ledger-flow;MODE=MySQL;"
+// 支付服务 I3 的六个场景类共用一个上下文（同一个库）：各自用随机单号，互不干扰；每类一个上下文会把全量测试撑爆堆
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:pay-i3;MODE=MySQL;"
         + "DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1")
 @ActiveProfiles("test")
 class LedgerFlowTest {

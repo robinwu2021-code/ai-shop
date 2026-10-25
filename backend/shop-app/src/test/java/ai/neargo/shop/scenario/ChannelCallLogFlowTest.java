@@ -29,7 +29,8 @@ import org.springframework.test.context.ActiveProfiles;
  * <p>此前渠道调用只有 {@code stl_channel_message} 的零散报文：哪次调用、第几次发送、走的什么容错策略、
  * 结果被归成哪一态，都没有记录 —— 用户报障拿着单号来，查不到渠道那一侧发生了什么。
  */
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:channel-call-log-flow;"
+// 支付服务 I1–I3 的场景共用一个 H2 库（DB_CLOSE_DELAY=-1 的内存库活到 JVM 结束，每个库都是一整套表）
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:pay-i3;"
         + "MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1")
 @ActiveProfiles("test")
 class ChannelCallLogFlowTest {

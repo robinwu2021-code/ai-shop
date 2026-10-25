@@ -27,7 +27,8 @@ import org.springframework.test.context.ActiveProfiles;
  * 之后按单号 {@code LIMIT 1 FOR UPDATE} 锁哪一行不确定。修法是两层：{@code out_trade_no} 唯一键兜底，
  * 撞键的那一方回读已落的那行、按同一套快照比对后返回同一个单号 —— 对用户而言两次点击是同一笔。
  */
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:payment-open-concurrency;"
+// 支付服务 I1–I3 的场景共用一个 H2 库（DB_CLOSE_DELAY=-1 的内存库活到 JVM 结束，每个库都是一整套表）
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:pay-i3;"
         + "MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1")
 @ActiveProfiles("test")
 class PaymentOpenConcurrencyTest {
