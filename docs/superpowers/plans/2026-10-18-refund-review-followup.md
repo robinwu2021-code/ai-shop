@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**执行记录：** [第四轮修复执行记录](../../technical/退款Review第四轮-修复执行记录-2026-10-18.md)。T1–T4 代码已完成，定向验收通过；生产 MySQL 专项及完整发布门禁仍待执行。实际接口裁决与验收范围以执行记录为准。
+**执行记录：** [第四轮修复执行记录](../../technical/archive/records/退款Review第四轮-修复执行记录-2026-10-18.md)。T1–T4 代码已完成，定向验收通过；生产 MySQL 专项及完整发布门禁仍待执行。实际接口裁决与验收范围以执行记录为准。
 
 **Goal:** 修复迟到成功误走失败补偿、历史失败无法回查、人工异常对账丢失和单笔异常中断整轮扫描四项问题。
 

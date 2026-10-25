@@ -1,8 +1,8 @@
 # 物流 API
 
-状态：草稿（随 [TDD-物流模块](TDD-物流模块.md) 一起确认，2026-10-09）· 实现后以三端 `gen:api` 生成的 OpenAPI 为准
-关联：[TDD-物流模块](TDD-物流模块.md) §2.3 · [物流-功能模块方案](物流-功能模块方案.md) · [物流-调用清单](物流-调用清单.md) ·
-[物流-功能清单](../requirements/物流-功能清单.md) · [响应格式规范](../api/响应格式规范.md)
+状态：草稿（随 [TDD-物流模块](../TDD-物流模块.md) 一起确认，2026-10-09）· 实现后以三端 `gen:api` 生成的 OpenAPI 为准
+关联：[TDD-物流模块](../TDD-物流模块.md) §2.3 · [物流-功能模块方案](物流-功能模块方案.md) · [物流-调用清单](物流-调用清单.md) ·
+[物流-功能清单](../../requirements/物流-功能清单.md) · [响应格式规范](../../api/响应格式规范.md)
 
 ---
 
@@ -40,7 +40,7 @@
 
 | 项 | 约定 | 来源 |
 |---|---|---|
-| 响应信封 | `{"code":0,"msg":"success","data":…}`；业务错误也是 HTTP 200 + 非 0 `code`，只有未登录用 401 | `ApiResult`、[响应格式规范](../api/响应格式规范.md) §2 |
+| 响应信封 | `{"code":0,"msg":"success","data":…}`；业务错误也是 HTTP 200 + 非 0 `code`，只有未登录用 401 | `ApiResult`、[响应格式规范](../../api/响应格式规范.md) §2 |
 | 令牌 | `Authorization: Bearer <token>`；C 端 `ctk_`、B 端 `btk_`、运营 `otk_` | `AbstractTokenAuthFilter` |
 | B 端门店 | `X-Store-No`；不传用默认店；传了无权的门店会**静默回落默认店** | `BizContextFilter` |
 | C 端端标识 | `X-Client`：`MP`（默认）/ `APP*` / `H5*` / `WEB*` → surface `MP` / `APP` / `H5` | `OrderServiceImpl.surfaceOf` |
@@ -254,7 +254,7 @@ c-app 拿到 `wx-plugin` → `openWaybillTracking(displayToken)`；`self-map` �
 {"result":true,"returnCode":"200","message":"成功"}
 ```
 
-**`yto`**：推送服务待调试；报文与回执以调通后的真实报文为准（[TDD-圆通物流直连](design/TDD-圆通物流直连.md)）。
+**`yto`**：推送服务待调试；报文与回执以调通后的真实报文为准（[TDD-圆通物流直连](TDD-圆通物流直连.md)）。
 
 ## 8 模块内契约（非 HTTP）
 

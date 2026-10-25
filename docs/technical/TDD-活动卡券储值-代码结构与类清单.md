@@ -294,7 +294,7 @@ JB-008门禁基础：pay.entitlement.config.PayEntitlementProperties与policy.Pa
 | core/merchant/platform | MerchantActivityCapabilityEvidence经MerchantScopeFactsPort及MasterDataPort核验持久主体、行业注册与资质事实 |
 | app.portal | BizActivityPresetController、BizVersionedActivityController、BizActivityMarketingSummaryController；OpsVersionedActivityController；InternalActivityParticipationEndpoint |
 
-Service遵循接口/Impl分层，跨域Port仅在shop-base SPI，聚合更新Mapper显式@Mapper并绑核心SqlSessionFactory。无真实pay来源提供者时拒绝新增参与，不注册假成功适配器。完整测试、迁移及阶段边界见[第一阶段交付报告](./活动第一阶段-交付与验收.md)。
+Service遵循接口/Impl分层，跨域Port仅在shop-base SPI，聚合更新Mapper显式@Mapper并绑核心SqlSessionFactory。无真实pay来源提供者时拒绝新增参与，不注册假成功适配器。完整测试、迁移及阶段边界见[第一阶段交付报告](./archive/records/活动第一阶段-交付与验收.md)。
 
 
 ### 第二阶段B1代码落点（编码中）
