@@ -42,3 +42,13 @@ e8171d925正常闸门在3153项、25模块处停止于D–F批次：权益订单
 8类47项定向验收通过，覆盖原权益HTTP/协调失败、权限守卫、64字符订单打印事实重复合并与消费投影、新旧设备UNKNOWN门控、文档策略及数据库验收，见remote-push-owner-width-results.json。MySQL 9.7.2一次性隔离库8组通过，新增校验字段属性保持、64字符身份/门控原样读回及65字符拒绝；仍是打印迁移专项，不代表整仓Flyway或实机验收。
 
 旧e817快照另以failure-ignore仅收集所有后续批次故障，不用其退出码或结果作为验收；最终仍须原始严格推送闸门通过。
+
+复核追加发现V1商家用户编号也允许64字符：V585在尚未发布时补齐原五张规范表的created_by/updated_by、requested_by及revoked_by引用，保留撤销人的utf8mb4_bin排序规则；旧scope与PrintActor接受完整操作人身份。bridge_actor_no是bindDevice显式校验的独立执行器32字符合同，保持原协议。追加原生MySQL验收9组通过，精确读回64字符请求人、创建人、更新人和撤销人；旧迁移hash、原lease和UNKNOWN门控仍保持。
+
+合并远端395ff958c期间的多语言增量后，fc5eb0047正常推送被三份过期生成文件挡下（ui-lib、两份glossary），尚未进入后端。后续统一重新生成；没有上传不完整版本。
+
+## 后续批次的夹具隔离
+
+G–L的GroupOrder商品页团排名失败，由GroupAudit及GroupOrder遗留的OPEN团挤占前三名造成。仅运行两来源/受害类即可重现19项中1失败；按本类精确活动号、团号清理成员、团和活动后，同命令19项全部通过。生产排序与所有断言保持，见remote-push-group-isolation-results.json。
+
+GoodsActivityOnly测试留下4笔成功创建但未支付订单，导致后续InventoryFlow全库对账出现SK0003平台占用4、库存占用0；组合命令已复现。现在逐笔保留本类订单号与原买家token，通过认证取消接口释放自身占用，并在finally恢复自身活动和商品模式，不直接改库存或放宽clean判据。TTL探针改用有效ACTIVE业主，正常900秒必须由缺货拒绝STOCK_SHORT_ITEMS，超长一年仍必须由TTL上限精确拒绝BAD_REQUEST。包含打印64字符操作人链路在内，同6类66项全部通过，见remote-push-actor-inventory-results.json。独立复核确认未修改库存算法、金额、业务授权或原对账断言。

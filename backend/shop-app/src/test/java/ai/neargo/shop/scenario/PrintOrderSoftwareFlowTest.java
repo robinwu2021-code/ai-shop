@@ -1,6 +1,10 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.OtpStore;
+import ai.neargo.shop.auth.LoginUser;
+import ai.neargo.shop.auth.Realm;
+import ai.neargo.shop.auth.TokenStore;
+import ai.neargo.shop.auth.TokenStores;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.print.api.PrintFactRef;
 import ai.neargo.shop.print.api.FrozenJson;
@@ -63,6 +67,7 @@ class PrintOrderSoftwareFlowTest {
     @Autowired WebApplicationContext context;
     @Autowired ObjectMapper json;
     @Autowired OtpStore otp;
+    @Autowired TokenStores tokens;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactions;
     @Autowired OrderPrintFactService facts;
@@ -211,6 +216,43 @@ class PrintOrderSoftwareFlowTest {
                         .header("X-Store-No", owner.store()).header("Idempotency-Key", "courier-simulation")
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(jsonPath("$.code").value(70006));
+    }
+
+    @Test
+    void authenticatedCanonicalMerchantAccountIsRetainedInPrintRequestAndAudit() throws Exception {
+        String account = "A".repeat(64), entity = "PRINT-ACTOR-ENTITY", store = "PRINT-ACTOR-STORE";
+        jdbc.update("INSERT INTO mch_entity(entity_no,name,status,market,tenant_no,created_at,updated_at) "
+                + "VALUES (?,'long printing actor','ACTIVE','CN','MAIN',now(),now())", entity);
+        jdbc.update("INSERT INTO mch_store(store_no,entity_no,name,status,is_default,tenant_no,created_at,updated_at) "
+                + "VALUES (?,?,'long actor store','ACTIVE',1,'MAIN',now(),now())", store, entity);
+        jdbc.update("INSERT INTO mch_account(mch_account_no,entity_no,is_owner,is_primary,status,tenant_no,created_at,updated_at) "
+                + "VALUES (?,?,1,1,'ACTIVE','MAIN',now(),now())", account, entity);
+        String token = tokens.of(Realm.MERCHANT).issue(TokenStore.SessionData.of(LoginUser.merchant(account, "printing operator")));
+        var owner = new Owner(token, entity, store);
+        String order = "PRINT-LONG-ACTOR-ORDER";
+        seedPaidOrder(order, owner);
+        PrintFactRef ref = new TransactionTemplate(transactions).execute(s ->
+                facts.recordPaid(order, new ConfirmedPayment("WECHAT", "ACTOR-PAY"))).getFirst();
+        String body = json.writeValueAsString(Map.of(
+                "storeNo", store, "scene", "ORDER_PAID", "variantCode", "STANDARD_58", "fixtureCode", "SUCCESS",
+                "source", Map.of("type", "FACT", "factRef", ref),
+                "templateSelection", Map.of("mode", "SCENE_DEFAULT", "variantCode", "STANDARD_58"),
+                "outputOptions", Map.of("pdfEnabled", false, "pdfProfile", "ORIGINAL_ROLL")));
+        var result = data(post("/biz/print/simulations").header("Idempotency-Key", "LONG-ACTOR-SIMULATION")
+                .contentType(MediaType.APPLICATION_JSON).content(body), owner);
+        String operation = result.path("operationNo").asString(), simulation = result.path("targetNo").asString();
+        try {
+            assertEquals(account, jdbc.queryForObject("SELECT actor_no FROM prn_operation WHERE operation_no=?",
+                    String.class, operation));
+            assertEquals(account, jdbc.queryForObject("SELECT created_by FROM prn_simulation_run WHERE simulation_no=?",
+                    String.class, simulation));
+            assertTrue(jdbc.queryForObject("SELECT COUNT(*) FROM prn_action_log WHERE entity_no=? AND actor_no=?",
+                    Long.class, entity, account) > 0);
+        } finally {
+            // This actor-attribution probe must not leave work for the next worker acceptance case.
+            jdbc.update("DELETE FROM prn_simulation_run WHERE simulation_no=? AND operation_no=? AND entity_no=? AND created_by=?",
+                    simulation, operation, entity, account);
+        }
     }
 
     @Test

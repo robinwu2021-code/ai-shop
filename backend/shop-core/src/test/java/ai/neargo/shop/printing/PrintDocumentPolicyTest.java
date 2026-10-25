@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 class PrintDocumentPolicyTest {
     @Test void ownerScopeKeepsCanonicalSixtyFourCharacterKeysWithoutExpandingPrintKeys() {
         PrintDocumentPolicy.scope(new Scope(
-                "E".repeat(64), "S".repeat(64), "ACTOR"));
+                "E".repeat(64), "S".repeat(64), "A".repeat(64)));
         assertThatThrownBy(() -> PrintDocumentPolicy.scope(new Scope(
                 "E".repeat(65), "S", "ACTOR"))).isInstanceOf(BizException.class);
         assertThatThrownBy(() -> PrintDocumentPolicy.key("D".repeat(33))).isInstanceOf(BizException.class);

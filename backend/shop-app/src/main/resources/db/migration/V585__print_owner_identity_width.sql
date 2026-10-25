@@ -77,3 +77,17 @@ ALTER TABLE ord_print_fact MODIFY COLUMN order_no VARCHAR(64) NOT NULL;
 ALTER TABLE ord_print_fact MODIFY COLUMN sub_order_no VARCHAR(64) NOT NULL;
 
 ALTER TABLE prn_template_catalog MODIFY COLUMN scope_key VARCHAR(80) NOT NULL COMMENT 'PLATFORM / ENTITY:<no> / STORE:<no>，不可为空';
+
+-- Merchant operation identities reference V1 user_no / mch_account_no (64), not generated print keys.
+ALTER TABLE prn_device MODIFY COLUMN created_by VARCHAR(64) NULL;
+ALTER TABLE prn_device MODIFY COLUMN updated_by VARCHAR(64) NULL;
+ALTER TABLE prn_template MODIFY COLUMN created_by VARCHAR(64) NULL;
+ALTER TABLE prn_template MODIFY COLUMN updated_by VARCHAR(64) NULL;
+ALTER TABLE prn_route MODIFY COLUMN created_by VARCHAR(64) NULL;
+ALTER TABLE prn_route MODIFY COLUMN updated_by VARCHAR(64) NULL;
+ALTER TABLE prn_job MODIFY COLUMN created_by VARCHAR(64) NULL;
+ALTER TABLE prn_job MODIFY COLUMN updated_by VARCHAR(64) NULL;
+ALTER TABLE prn_attempt MODIFY COLUMN created_by VARCHAR(64) NULL;
+ALTER TABLE prn_attempt MODIFY COLUMN updated_by VARCHAR(64) NULL;
+ALTER TABLE prn_job MODIFY COLUMN requested_by VARCHAR(64) NOT NULL;
+ALTER TABLE prn_device MODIFY COLUMN revoked_by VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL;

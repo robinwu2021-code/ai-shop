@@ -17,7 +17,8 @@
     "permission-append-idempotent",
     "custom-role-unchanged",
     "owner-identity-column-contract-preserved",
-    "64-character-owner-identities-and-uncertainty-gates"
+    "64-character-owner-identities-and-uncertainty-gates",
+    "64-character-merchant-operator-audit-identities"
   ],
   "limits": [
     "Focused printing migrations with minimal role fixtures; not full application Flyway acceptance.",

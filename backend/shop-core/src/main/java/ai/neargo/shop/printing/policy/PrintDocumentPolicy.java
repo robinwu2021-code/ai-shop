@@ -34,7 +34,7 @@ public final class PrintDocumentPolicy {
         }
         ownerKey(value.entityNo());
         ownerKey(value.storeNo());
-        key(value.actorNo());
+        ownerKey(value.actorNo());
     }
 
     private static void ownerKey(String value) {

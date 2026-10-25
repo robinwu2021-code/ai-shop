@@ -46,6 +46,7 @@ import java.time.*;
 import java.util.*;
 
 import javax.sql.DataSource;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 class PrintDatabaseAcceptanceTest {
     static AnnotationConfigApplicationContext context;
@@ -244,7 +245,7 @@ class PrintDatabaseAcceptanceTest {
                 "E2",
                 "S2",
                 "MERCHANT",
-                "U2",
+                "U".repeat(64),
                 key,
                 Set.of(
                         "SOURCE_ORDER_READ",
@@ -449,6 +450,14 @@ class PrintDatabaseAcceptanceTest {
                 facade.submit(
                         new PrintIntent(ref, PrintMode.EXISTING_FACT, null), flowActor("submit"));
         assertEquals(1, first.jobNos().size());
+        var actorJdbc = new JdbcTemplate(context.getBean(DataSource.class));
+        assertEquals("U".repeat(64), actorJdbc.queryForObject(
+                "SELECT created_by FROM prn_batch WHERE request_no=?", String.class, first.requestNo()));
+        assertEquals("U".repeat(64), actorJdbc.queryForObject(
+                "SELECT actor_no FROM prn_operation WHERE idempotency_key='device-create' AND entity_no='E2'", String.class));
+        assertTrue(actorJdbc.queryForObject(
+                "SELECT COUNT(*) FROM prn_action_log WHERE actor_no=? AND entity_no='E2'", Long.class, "U".repeat(64)) > 0);
+
         assertEquals(
                 first.requestNo(),
                 facade.submit(

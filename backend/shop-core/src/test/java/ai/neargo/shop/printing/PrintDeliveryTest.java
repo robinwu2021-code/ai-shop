@@ -108,8 +108,8 @@ class PrintDeliveryTest {
         String ownerWidths = Files.readString(Path.of("../shop-app/src/main/resources/db/migration/"
                 + "V585__print_owner_identity_width.sql"));
         var widthChanges = Pattern.compile(
-                "ALTER TABLE (prn_device|prn_template|prn_route|prn_job|prn_attempt|prn_printer_runtime) MODIFY COLUMN (entity_no|store_no) VARCHAR\\(64\\) (?:NOT NULL|NULL);").matcher(ownerWidths);
-        while (widthChanges.find()) jdbc.execute(widthChanges.group());
+                "ALTER TABLE (prn_device|prn_template|prn_route|prn_job|prn_attempt|prn_printer_runtime) MODIFY COLUMN (entity_no|store_no|created_by|updated_by|requested_by|revoked_by) VARCHAR\\(64\\)[^;]*;").matcher(ownerWidths);
+        while (widthChanges.find()) jdbc.execute(widthChanges.group().replace(" CHARACTER SET utf8mb4 COLLATE utf8mb4_bin", ""));
         var config = new MybatisConfiguration();
         config.setMapUnderscoreToCamelCase(true);
         var plugins = new MybatisPlusInterceptor();
@@ -149,6 +149,26 @@ class PrintDeliveryTest {
         service.publishTemplate(
                 OWNER, new TemplateReq("TPL1", "ORDER", 1, "ORDER", "{{reprint}}{{document}}"));
         service.putRoute(OWNER, new RouteReq("ROUTE", "ORDER", null, "DEVICE", "TPL1", 1));
+    }
+
+    @Test
+    void canonicalMerchantOperatorIdentityIsRetainedAcrossEnqueueClaimAndRevocation() {
+        String operator = "U".repeat(64);
+        var owner = new Scope("E", "S", operator);
+        service.publishTemplate(owner, new TemplateReq("TPL64", "ORDER", 2, "ORDER", "{{document}}"));
+        service.putRoute(owner, new RouteReq("ROUTE", "ORDER", null, "DEVICE", "TPL64", 1));
+        var job = service.enqueue(owner, new Enqueue("LONG-ACTOR", null, "PART", DOCUMENT)).getFirst();
+        assertThat(jdbc.queryForObject("SELECT requested_by FROM prn_job WHERE job_no=?", String.class, job.jobNo()))
+                .isEqualTo(operator);
+        assertThat(jdbc.queryForObject("SELECT created_by FROM prn_job WHERE job_no=?", String.class, job.jobNo()))
+                .isEqualTo(operator);
+        assertThat(jdbc.queryForObject("SELECT created_by FROM prn_template WHERE template_no='TPL64'", String.class))
+                .isEqualTo(operator);
+        service.heartbeat(BRIDGE, "DEVICE", true);
+        assertThat(service.claim(BRIDGE, "DEVICE").jobNo()).isEqualTo(job.jobNo());
+        service.revokeDevice(owner, "DEVICE", "owner stopped executor", "LONG-ACTOR-REVOKE");
+        assertThat(jdbc.queryForObject("SELECT revoked_by FROM prn_device WHERE device_no='DEVICE'", String.class))
+                .isEqualTo(operator);
     }
 
     @Test
