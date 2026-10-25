@@ -98,6 +98,10 @@
 - **契约**：`ReconDiffVO` 末尾加 `note`（只加不改，运营端不读也不受影响）。
 - 3 条旧断言原本断的是「说明在 resolution 里」（即缺陷本身），改为断 `note`；3 个直接引入 `PayDataSourceConfig` 的测试类补 `shop.pay.flyway.enabled=false`（I0 时 `db/pay` 为空没暴露）。
 
+### F13 · 回调报文带流水号；退款回调地址不拼接
+- R15：`PaymentLedgerService#paymentNoOf(outTradeNo)`（按全表唯一的 out_trade_no 查）；`PayMessagePortImpl#callbackSettled` 在调用方未给 `paymentNo` 时补上，查不到照样落报文。回调控制器十几处调用不改。
+- R32：`WechatDirectPayGateway` 新增 `refundNotifyUrl`：显式配置 `shop.pay.wechat.refund-notify-url`（新配置项，默认空）优先，否则按 URI 推导（路径末段后加 `refund`，查询参数保留）。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
@@ -113,6 +117,7 @@
 | F11 | `InternalTokenComparisonTest#noStringEqualsOnTokens` · `#detectorFires` | ✅ pay-svc 71/71 | 先红：抓到 `InternalPayEndpoint.java` ✅。R11 未执行（线上操作，待人工） |
 | F14 | `PayChannelMarketAtomicityTest#failedReplaceLeavesOldMarketsIntact`（spy 让第二个市场插入时抛错） | ✅ 1/1；`MarketChannelAndWithdrawTest` 8/8 | 先红：中途失败后市场集合变成 `[HK]`（CN 已删）✅ |
 | F15 | `ReconFlowTest#sameIssueNextDayIsNotDuplicated` · `#autoNoteDoesNotOccupyResolution` | ✅ 23/23；对账 4 类全绿 | 先红：三天三条；说明占了 resolution ✅ |
+| F13 | `PayMessagePortImplTest#fillsPaymentNoFromOutTradeNo` · `#explicitWinsAndUnknownStillRecords` · `WechatDirectPayGatewayTest#refundNotifyUrlIsDerivedNotConcatenated` | ✅ 2/2 · pay-channel 64/64；回调 3 类全绿 | 先红：payment_no 落库为 null；退款地址拼成 `…/WECHAT//refund` ✅ |
 | F05 | `MerchantPaymentFlowTest#stubDoesNotImpersonateUnlistedChannel` · `#inFlightCannotResubmit` · `#resubmitClearsRejectReason` | ✅ 10/10 | 先红：PAYBY 进件 code=0、在途重提 code=0、旧原因仍在。消融恢复回落 / 去在途拦截 / 去显式清空 → 三条红 ✅。注：`resubmitClearsRejectReason` 初版在旧代码上是绿的（stub 同步出结果，走了已修好的回查路径），加 `keepApplyingFor` 后才量到 submit 本身 |
 
 ## §6 对账二 · 设计 → 实现

@@ -50,6 +50,14 @@ public interface PaymentLedgerService {
 
     Attempt successfulOrdinaryPayment(String orderNo);
 
+    /**
+     * 商户单号（收款的 out_trade_no 或退款的 out_refund_no）对应的流水号。out_trade_no 全表唯一（db/pay V1）。
+     * 回调落报文时用它补上 payment_no（F13 · Review R15）。
+     */
+    default java.util.Optional<String> paymentNoOf(String outTradeNo) {
+        return java.util.Optional.empty();
+    }
+
     /** 原支付指令快照；缺失时不从当前商家配置合成。 */
     default java.util.Optional<SettlePort.PaymentOpen> paymentRequest(String outTradeNo) {
         return java.util.Optional.empty();

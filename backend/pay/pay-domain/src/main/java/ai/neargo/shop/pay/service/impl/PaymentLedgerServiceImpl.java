@@ -129,6 +129,16 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     }
 
     @Override
+    public Optional<String> paymentNoOf(String outTradeNo) {
+        if (outTradeNo == null || outTradeNo.isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                        Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getOutTradeNo, outTradeNo))))
+                .map(StlPayment::getPaymentNo);
+    }
+
+    @Override
     public Optional<SettlePort.PaymentOpen> paymentRequest(String outTradeNo) {
         StlPayment row = byOutTradeNo(outTradeNo);
         if (row == null || row.getPaymentRequestJson() == null) {

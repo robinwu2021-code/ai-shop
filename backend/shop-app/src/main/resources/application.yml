@@ -639,6 +639,8 @@ shop:
       # 支付结果回调。必须 HTTPS 且公网可达；不配则拒绝下单
       # （发出去也收不到通知，那笔单会停在 PENDING 只能等对账日）
       notify-url: ${WX_NOTIFY_URL:}
+      # 退款结果回调地址。空 = 由 notify-url 推导（路径末段后加 refund，查询参数保留）；地址不按这个规律时显式配
+      refund-notify-url: ${WX_REFUND_NOTIFY_URL:}
     alipay:
       enabled: ${ALIPAY_PAY_ENABLED:false}
       app-id: ${ALIPAY_APP_ID:}

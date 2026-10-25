@@ -100,9 +100,10 @@ public class WechatPayChannelConfig {
             WechatApiV3Signer signer,
             @Value("${shop.pay.wechat.mchid:}") String mchId,
             @Value("${shop.pay.wechat.appid:}") String appId,
-            @Value("${shop.pay.wechat.notify-url:}") String notifyUrl) {
+            @Value("${shop.pay.wechat.notify-url:}") String notifyUrl,
+            @Value("${shop.pay.wechat.refund-notify-url:}") String refundNotifyUrl) {
         return new WechatDirectPayGateway(client, channelMaster, recorder, signer,
-                mchId, appId, notifyUrl);
+                mchId, appId, notifyUrl, refundNotifyUrl);
     }
 
     /**
