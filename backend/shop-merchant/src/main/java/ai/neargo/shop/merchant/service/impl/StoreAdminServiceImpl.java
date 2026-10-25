@@ -268,6 +268,21 @@ public class StoreAdminServiceImpl implements StoreAdminService {
             if (!activePayMerchantNos(merchantNo).contains(payMerchantNo)) {
                 throw BizException.of(ErrorCode.BAD_REQUEST);
             }
+            /*
+             * 还要是**这家店能用的号**：主体级号（store_no 为空串）给哪家店都行；
+             * 某家门店单独进件的号是那家店的结算账户，绑给别的店 = 这家店的钱进了那家店的户（F03 · Review R03）。
+             */
+            String dedicatedTo = DataScopeContext.executeWithoutScope(() ->
+                            paymentMapper.selectList(Wrappers.<MchPaymentMerchant>lambdaQuery()
+                                    .eq(MchPaymentMerchant::getEntityNo, merchantNo)
+                                    .eq(MchPaymentMerchant::getPayMerchantNo, payMerchantNo)))
+                    .stream()
+                    .map(p -> p.getStoreNo() == null ? MchPaymentMerchant.ENTITY_LEVEL : p.getStoreNo())
+                    .findFirst()
+                    .orElse(MchPaymentMerchant.ENTITY_LEVEL);
+            if (!dedicatedTo.equals(MchPaymentMerchant.ENTITY_LEVEL) && !dedicatedTo.equals(storeNo)) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
             s.setPayMerchantNo(payMerchantNo);
         } else {
             // 传空是合法操作：回到「用主体的默认收款号」，不是清空错误

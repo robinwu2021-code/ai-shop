@@ -211,6 +211,26 @@ class StoreSettleFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ F03 B 店专属号不能绑给 A 店 —— 绑上之后 A 店的钱进了 B 店的结算账户")
+    void cannotBindAnotherStoresAccount() throws Exception {
+        String biz = merchant("12600210083", "绑号校验店");
+        String storeA = defaultStoreNo(biz);
+        String entityPm = activatePayment(biz, null);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "绑号校验·分店");
+        String storeBPm = activatePayment(biz, storeB);
+
+        mvc().perform(post("/biz/store/" + storeA + "/payment")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"payMerchantNo\":\"" + storeBPm + "\"}"))
+                .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
+        // 对照：主体级号给哪家店都行，B 店的号绑回 B 店也行
+        setStorePayment(biz, storeA, entityPm);
+        setStorePayment(biz, storeB, storeBPm);
+    }
+
+    @Test
     @DisplayName("★ 结算流水落 store_no：门店报表按它聚合，与打给谁无关")
     void billCarriesStoreDimension() throws Exception {
         String biz = merchant("12600210040", "门店统计店");
