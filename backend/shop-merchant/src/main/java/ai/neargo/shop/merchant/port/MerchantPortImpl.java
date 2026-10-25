@@ -23,6 +23,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -902,55 +903,70 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
-    public Optional<String> payMerchantNoOf(String merchantNo, String storeNo) {
+    public Optional<String> payMerchantNoOf(String merchantNo, String storeNo, String channel) {
         if (merchantNo == null || merchantNo.isBlank()) {
             return Optional.empty();
         }
+        boolean anyChannel = channel == null || channel.isBlank() || CHANNEL_FREE_PAY_CHANNELS.contains(channel);
         /*
          * 只认**本主体已 ACTIVE** 的收款号 —— 与 StoreAdminServiceImpl.setPayment 同一条门槛。
          * 门店上存着的号可能在配好之后被停用（进件被驳回、账户被冻结），
          * 那时不能继续往它打款：不校验的话，症状是打款接口报错而账面显示已打，
          * 比一开始就解析不出号难查得多。
+         *
+         * 按 id 升序在内存里排：「第一个」必须是建档最早的那个，不能取决于数据库返回顺序（F01 · R01）。
          */
-        java.util.Set<String> usable = DataScopeContext.executeWithoutScope(() ->
-                        merchantPaymentMapper.selectList(
-                                Wrappers.<ai.neargo.shop.merchant.entity.MchPaymentMerchant>lambdaQuery()
-                                        .eq(ai.neargo.shop.merchant.entity.MchPaymentMerchant::getEntityNo, merchantNo)
-                                        .eq(ai.neargo.shop.merchant.entity.MchPaymentMerchant::getApplyStatus,
-                                                ai.neargo.shop.merchant.entity.MchPaymentMerchant.ACTIVE)))
+        List<MchPaymentMerchant> usable = DataScopeContext.executeWithoutScope(() ->
+                        merchantPaymentMapper.selectList(Wrappers.<MchPaymentMerchant>lambdaQuery()
+                                .eq(MchPaymentMerchant::getEntityNo, merchantNo)
+                                .eq(MchPaymentMerchant::getApplyStatus, MchPaymentMerchant.ACTIVE)))
                 .stream()
-                .map(ai.neargo.shop.merchant.entity.MchPaymentMerchant::getPayMerchantNo)
-                .filter(x -> x != null && !x.isBlank())
-                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+                .filter(p -> p.getPayMerchantNo() != null && !p.getPayMerchantNo().isBlank())
+                .filter(p -> anyChannel || channel.equals(p.getPayChannel()))
+                .sorted(java.util.Comparator.comparing(MchPaymentMerchant::getId,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                .toList();
         if (usable.isEmpty()) {
             return Optional.empty();
         }
+        java.util.function.Predicate<String> isUsable = no -> no != null && !no.isBlank()
+                && usable.stream().anyMatch(p -> no.equals(p.getPayMerchantNo()));
 
         if (storeNo != null && !storeNo.isBlank()) {
             String configured = Optional.ofNullable(DataScopeContext.executeWithoutScope(() ->
-                            storeMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
-                                    .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
-                                    .eq(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, storeNo)
+                            storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                                    .eq(MchStore::getEntityNo, merchantNo)
+                                    .eq(MchStore::getStoreNo, storeNo)
                                     .last("limit 1"))))
-                    .map(ai.neargo.shop.merchant.entity.MchStore::getPayMerchantNo)
+                    .map(MchStore::getPayMerchantNo)
                     .orElse(null);
-            // 配了但已不可用 → 落回主体默认号，而不是解析失败：
+            // 配了但已不可用（或不是这个渠道的号）→ 落回兜底，而不是解析失败：
             // 钱照收了，不能因为商家把号停了就把这笔结算卡死
-            if (configured != null && !configured.isBlank() && usable.contains(configured)) {
+            if (isUsable.test(configured)) {
                 return Optional.of(configured);
             }
         }
-        // 主体默认号 = 默认门店配的号；默认门店也没配就取第一个可用号。
-        // 「第一个」是稳定的：查询按 id 顺序，进件先后不会因为查询而变
+        /*
+         * 兜底只在「主体级号 + 本店专属号」里找 —— 别家门店单独进件的号是那家店的结算账户，
+         * A 店的钱打进去就是打错人（F01 · R01）。
+         */
+        List<MchPaymentMerchant> fallback = usable.stream()
+                .filter(p -> MchPaymentMerchant.ENTITY_LEVEL.equals(Objects.toString(p.getStoreNo(), ""))
+                        || (storeNo != null && storeNo.equals(p.getStoreNo())))
+                .toList();
+        if (fallback.isEmpty()) {
+            return Optional.empty();
+        }
+        // 主体默认号 = 默认门店配的号（须在兜底范围内）；否则取兜底里建档最早的
         String byDefaultStore = defaultStoreNo(merchantNo)
                 .map(sn -> DataScopeContext.executeWithoutScope(() ->
-                        storeMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
-                                .eq(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, sn)
+                        storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                                .eq(MchStore::getStoreNo, sn)
                                 .last("limit 1"))))
-                .map(ai.neargo.shop.merchant.entity.MchStore::getPayMerchantNo)
-                .filter(x -> x != null && !x.isBlank() && usable.contains(x))
+                .map(MchStore::getPayMerchantNo)
+                .filter(no -> fallback.stream().anyMatch(p -> no.equals(p.getPayMerchantNo())))
                 .orElse(null);
-        return Optional.of(byDefaultStore != null ? byDefaultStore : usable.iterator().next());
+        return Optional.of(byDefaultStore != null ? byDefaultStore : fallback.get(0).getPayMerchantNo());
     }
 
     @Override

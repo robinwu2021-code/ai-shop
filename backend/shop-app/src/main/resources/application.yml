@@ -597,6 +597,9 @@ shop:
     # 假网关：只在开发期开。默认 false —— 默认开的话，真实现没接上时
     # 线上会「支付成功」而钱根本没动，且没有任何症状，要到对账日才发现
     stub: ${SHOP_PAY_STUB:false}
+    # stub 开着时替哪些渠道做进件（逗号分隔）。没点名的渠道照样「未接通」，进件直接失败 ——
+    # 此前查不到网关就回落 stub，任何渠道都能「开户成功」（TDD-支付服务-I1存量缺陷 F05）。
+    stub-channels: ${SHOP_PAY_STUB_CHANNELS:WECHAT,ALIPAY}
     wechat:
       # 显式开关：配了凭据不等于要启用（灰度、演练都可能只配不启）。
       # **不用「凭据配了没」判断**：${ENV:} 未配置时是空串，而 @ConditionalOnProperty

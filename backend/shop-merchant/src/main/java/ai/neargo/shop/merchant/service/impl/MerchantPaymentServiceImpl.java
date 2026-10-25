@@ -18,6 +18,7 @@ import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.service.MerchantPaymentService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,7 +47,10 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
     /** 通道主数据。2026-09-01 从 MasterDataPort 拆出来 —— 通道属性归 pay（见 ADR-023 那条原则） */
     private final PayChannelMasterPort payChannelMasterPort;
     private final tools.jackson.databind.ObjectMapper json;
-    /** 每通道一个实现；开发期是 STUB 一个顶俩 */
+    /**
+     * 每通道一个实现。开发期（{@code shop.pay.stub=true}）由 STUB 替 {@code shop.pay.stub-channels} 里**点了名**的渠道做事，
+     * 没点名的渠道照样「未接通」—— 此前是查不到就回落 STUB，任何渠道都能「开户成功」（F05 · Review R05）。
+     */
     private final Map<String, PayApplymentGateway> gateways;
     /** 为门店开进件时校验归属 —— 不是本主体的店一律 404 */
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
@@ -56,15 +60,23 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
                                       PayChannelMasterPort payChannelMasterPort,
                                       tools.jackson.databind.ObjectMapper json,
                                       ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
-                                      List<PayApplymentGateway> gatewayList) {
+                                      List<PayApplymentGateway> gatewayList,
+                                      @Value("${shop.pay.stub-channels:WECHAT,ALIPAY}") List<String> stubChannels) {
         this.paymentMapper = paymentMapper;
         this.merchantMapper = merchantMapper;
         this.masterDataPort = masterDataPort;
         this.payChannelMasterPort = payChannelMasterPort;
         this.json = json;
         this.storeMapper = storeMapper;
-        this.gateways = gatewayList.stream()
-                .collect(Collectors.toMap(PayApplymentGateway::payChannel, Function.identity()));
+        Map<String, PayApplymentGateway> byChannel = new java.util.HashMap<>(gatewayList.stream()
+                .collect(Collectors.toMap(PayApplymentGateway::payChannel, Function.identity())));
+        PayApplymentGateway stub = byChannel.get("STUB");
+        if (stub != null) {
+            // 真实现优先：同一渠道既有真网关又被点名替身时，用真的
+            stubChannels.stream().map(String::trim).filter(c -> !c.isEmpty())
+                    .forEach(c -> byChannel.putIfAbsent(c, stub));
+        }
+        this.gateways = Map.copyOf(byChannel);
     }
 
     @Override
@@ -155,6 +167,15 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
         if (MchPaymentMerchant.ACTIVE.equals(row.getApplyStatus())) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        /*
+         * **已发给通道、在等回执的也不许再提**（F05 · Review R06）。
+         * 判据是「发过通道」（有 channelApplyNo），不是状态串：入驻时建的占位也叫 APPLYING，
+         * 但它没发过 —— 那一行正是商家第一次提交要用的。
+         */
+        if (MchPaymentMerchant.APPLYING.equals(row.getApplyStatus())
+                && row.getChannelApplyNo() != null && !row.getChannelApplyNo().isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
 
         MchEntity entity = DataScopeContext.executeWithoutScope(() ->
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
@@ -187,10 +208,11 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
          */
         row.setSettleAccountMasked(mask(cmd.settleAccount()));
         row.setApplyStatus(MchPaymentMerchant.APPLYING);
-        // 重提时清掉上一次的拒因：留着的话商家改完资料还看见旧原因，会以为没提交成功
-        row.setRejectReason(null);
         row.setAppliedAt(System.currentTimeMillis());
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(row));
+        // 重提时清掉上一次的拒因：留着的话商家改完资料还看见旧原因，会以为没提交成功。
+        // 必须显式 set(null) —— updateById 跳过 null 字段（F05 · Review R23；回查路径早已这么做）
+        clearRejectReason(row);
 
         // 提交完立刻回查一次：stub 与部分通道是同步出结果的，让商家少等一轮
         return refresh(merchantNo, cmd.payChannel(), cmd.storeNo());
@@ -470,7 +492,6 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
          * 而这个错要到第一笔订单分账时才看得出来。
          */
         return Optional.ofNullable(gateways.get(payChannel))
-                .or(() -> Optional.ofNullable(gateways.get("STUB")))
                 /*
                  * **一个都没有 = 这个环境根本没接通道**，不是他填错了什么。
                  *

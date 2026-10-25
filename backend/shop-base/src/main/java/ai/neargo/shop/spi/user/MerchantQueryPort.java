@@ -323,12 +323,28 @@ public interface MerchantQueryPort {
      * <p>结算模式不是一个开关，是这个方法的返回值决定的：
      * 两家店解析出同一个号 = 合并结算，解析出不同号 = 分开结算。
      *
+     * <p><b>2026-10-25 起按渠道解析</b>（TDD-支付服务-I1存量缺陷 F01，Review R01）：此前不带渠道，
+     * 兜底「第一个可用号」的查询又没有排序 —— 支付宝的单可能快照到微信号、或别家门店的专属号，打款打错账户。
+     * 现在：门店显式配了、且同渠道 ACTIVE → 用它；否则只在<b>同渠道的主体级号与本店专属号</b>里按建档先后取，
+     * 别家门店的专属号永不参与兜底。线下 / 免单（{@link #CHANNEL_FREE_PAY_CHANNELS}）与空渠道不按渠道过滤，其余规则相同。
+     *
      * @param merchantNo 主体业务键
      * @param storeNo    门店业务键；<b>为空按主体默认号解析</b>（存量子单没有门店）
+     * @param channel    订单的实际支付渠道（{@code ord_order.pay_channel}）
      * @return 空表示这个主体一个可用收款号都没有 —— 进件还没走完，
      *         此时结算单照常生成（钱是欠着的，不是不存在），但不能发起打款
      */
-    java.util.Optional<String> payMerchantNoOf(String merchantNo, String storeNo);
+    java.util.Optional<String> payMerchantNoOf(String merchantNo, String storeNo, String channel);
+
+    /**
+     * 不按渠道过滤的收款方式，结算单上的收款号取「主体默认号」；其余渠道（WECHAT、ALIPAY …）一律只取同渠道的号（F01 · Review R01）。
+     * <ul>
+     *   <li>{@code OFFLINE} / {@code FREE}：钱不经过任何通道；</li>
+     *   <li>{@code STUB} / {@code TEST}：假网关与测试渠道（{@code sys_pay_channel} 里 TEST 生产种子是停用的），不收真钱，
+     *       也不对应任何一个收款号的渠道 —— 按它过滤会让开发 / 测试环境的结算单一律取不到号。</li>
+     * </ul>
+     */
+    java.util.Set<String> CHANNEL_FREE_PAY_CHANNELS = java.util.Set.of("OFFLINE", "FREE", "STUB", "TEST");
 
     /**
      * 交易快照专用：只解析指定门店显式绑定、同主体且已激活的指定通道收款号。
