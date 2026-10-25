@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS inv_ledger
     doc_kind        VARCHAR(8)  NOT NULL,
     doc_no          VARCHAR(32) NOT NULL,
     line_no         INT         NOT NULL,
-    reason_code     VARCHAR(16) NOT NULL,
+    reason_code VARCHAR(32) NOT NULL,
     qty_delta DECIMAL(24,6) NOT NULL,
     balance_after DECIMAL(24,6) NOT NULL,
     unit_cost_minor BIGINT      DEFAULT NULL,
